@@ -1,52 +1,62 @@
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGetPodContainers, ContainerInfo } from "@/services/api/tool";
-import LoadingCircleIcon from "../icon/LoadingCircleIcon";
-import {
-  ContainerSelect,
-  PodNamespacedName,
-  TableCellForm,
-} from "./PodContainerDialog";
-import { LogCard } from "./LogDialog";
-import { cn } from "@/lib/utils";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiGetPodContainers, ContainerInfo } from '@/services/api/tool'
+import LoadingCircleIcon from '../icon/LoadingCircleIcon'
+import { ContainerSelect, PodNamespacedName, TableCellForm } from './PodContainerDialog'
+import { LogCard } from './LogDialog'
+import { cn } from '@/lib/utils'
 
 export default function DetailPageLog({
   namespacedName,
   children,
   appendInfos,
 }: {
-  namespacedName?: PodNamespacedName;
-  children?: React.ReactNode;
+  namespacedName?: PodNamespacedName
+  children?: React.ReactNode
   appendInfos?: {
-    title: string;
-    content: React.ReactNode;
-  }[];
+    title: string
+    content: React.ReactNode
+  }[]
 }) {
-  const { namespace, name: podName } = namespacedName ?? {};
-  const queryClient = useQueryClient();
+  const { namespace, name: podName } = namespacedName ?? {}
+  const queryClient = useQueryClient()
 
-  const [selectedContainer, setSelectedContainer] = useState<
-    ContainerInfo | undefined
-  >();
+  const [selectedContainer, setSelectedContainer] = useState<ContainerInfo | undefined>()
 
   const { data: containers } = useQuery({
-    queryKey: ["log", "containers", namespace, podName],
+    queryKey: ['log', 'containers', namespace, podName],
     queryFn: () => apiGetPodContainers(namespace, podName),
-    select: (res) => res.data.data.containers.filter((c) => c.name !== ""),
+    select: (res) => res.data.data.containers.filter((c) => c.name !== ''),
     enabled: !!namespace && !!podName,
-  });
+  })
 
   useEffect(() => {
     for (const container of containers || []) {
       if (!container.isInitContainer) {
         setSelectedContainer((prev) => {
-          return prev || container;
-        });
-        void queryClient.invalidateQueries({ queryKey: ["logtext"] });
-        break;
+          return prev || container
+        })
+        void queryClient.invalidateQueries({ queryKey: ['logtext'] })
+        break
       }
     }
-  }, [containers, queryClient]);
+  }, [containers, queryClient])
 
   return (
     <>
@@ -57,10 +67,7 @@ export default function DetailPageLog({
       ) : (
         <div className="grid h-[calc(100vh_-_300px)] w-full gap-6 md:grid-cols-3 xl:grid-cols-4">
           {namespacedName && selectedContainer && (
-            <LogCard
-              namespacedName={namespacedName}
-              selectedContainer={selectedContainer}
-            />
+            <LogCard namespacedName={namespacedName} selectedContainer={selectedContainer} />
           )}
           <div className="space-y-4">
             {children ?? (
@@ -72,14 +79,14 @@ export default function DetailPageLog({
             )}
             <fieldset
               className={cn(
-                "border-input hidden h-[calc(100vh_-374px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid",
+                'border-input hidden h-[calc(100vh_-374px)] max-h-full gap-6 overflow-y-auto rounded-lg border p-4 shadow-xs md:grid',
                 {
-                  "h-[calc(100vh_-350px)]": !!children,
-                },
+                  'h-[calc(100vh_-350px)]': !!children,
+                }
               )}
             >
               <legend className="-ml-1 px-2 text-sm font-medium">
-                {selectedContainer.isInitContainer ? "初始化容器" : "容器信息"}
+                {selectedContainer.isInitContainer ? '初始化容器' : '容器信息'}
               </legend>
               <TableCellForm
                 namespace={namespace}
@@ -92,5 +99,5 @@ export default function DetailPageLog({
         </div>
       )}
     </>
-  );
+  )
 }

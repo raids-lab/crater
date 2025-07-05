@@ -1,3 +1,19 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // ignore-i18n-script
 import {
   BadgeCheck,
@@ -8,7 +24,7 @@ import {
   Moon,
   Sparkles,
   Sun,
-} from "lucide-react";
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,53 +38,51 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar";
-import { useAtomValue, useSetAtom } from "jotai";
+} from '@/components/ui/sidebar'
+import { useAtomValue, useSetAtom } from 'jotai'
 import {
   globalAccount,
   globalHideUsername,
   globalLastView,
   globalUserInfo,
   useResetStore,
-} from "@/utils/store";
-import { Link, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { useTheme } from "@/utils/theme";
-import { toast } from "sonner";
-import { Role } from "@/services/api/auth";
-import useIsAdmin from "@/hooks/useAdmin";
-import { configUrlWebsiteBaseAtom } from "@/utils/store/config";
-import { UserAvatar } from "../custom/UserDetail/UserAvatar";
-import { getUserPseudonym } from "@/utils/pseudonym";
-import { useTranslation } from "react-i18next";
+} from '@/utils/store'
+import { Link, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { useTheme } from '@/utils/theme'
+import { toast } from 'sonner'
+import { Role } from '@/services/api/auth'
+import useIsAdmin from '@/hooks/useAdmin'
+import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
+import { UserAvatar } from '../custom/UserDetail/UserAvatar'
+import { getUserPseudonym } from '@/utils/pseudonym'
+import { useTranslation } from 'react-i18next'
 
 export function NavUser() {
-  const website = useAtomValue(configUrlWebsiteBaseAtom);
-  const { isMobile } = useSidebar();
-  const queryClient = useQueryClient();
-  const { resetAll } = useResetStore();
-  const user = useAtomValue(globalUserInfo);
-  const account = useAtomValue(globalAccount);
-  const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
-  const setLastView = useSetAtom(globalLastView);
-  const isAdminView = useIsAdmin();
-  const hideUsername = useAtomValue(globalHideUsername);
-  const { t, i18n } = useTranslation();
+  const website = useAtomValue(configUrlWebsiteBaseAtom)
+  const { isMobile } = useSidebar()
+  const queryClient = useQueryClient()
+  const { resetAll } = useResetStore()
+  const user = useAtomValue(globalUserInfo)
+  const account = useAtomValue(globalAccount)
+  const navigate = useNavigate()
+  const { theme, setTheme } = useTheme()
+  const setLastView = useSetAtom(globalLastView)
+  const isAdminView = useIsAdmin()
+  const hideUsername = useAtomValue(globalHideUsername)
+  const { t, i18n } = useTranslation()
 
-  const displayName = hideUsername
-    ? getUserPseudonym(user.name)
-    : user.nickname || user.name;
+  const displayName = hideUsername ? getUserPseudonym(user.name) : user.nickname || user.name
 
-  const changeLanguage = (lng: "zh" | "en" | "ja" | "ko") => {
-    i18n.changeLanguage(lng);
-  };
+  const changeLanguage = (lng: 'zh' | 'en' | 'ja' | 'ko') => {
+    i18n.changeLanguage(lng)
+  }
 
   return (
     <SidebarMenu>
@@ -89,7 +103,7 @@ export function NavUser() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -109,21 +123,19 @@ export function NavUser() {
                   <DropdownMenuItem
                     onClick={() => {
                       if (isAdminView) {
-                        setLastView("portal");
-                        navigate("/portal");
-                        toast.success(t("navUser.switchToUserView"));
+                        setLastView('portal')
+                        navigate('/portal')
+                        toast.success(t('navUser.switchToUserView'))
                       } else {
-                        setLastView("admin");
-                        navigate("/admin");
-                        toast.success(t("navUser.switchToAdminView"));
+                        setLastView('admin')
+                        navigate('/admin')
+                        toast.success(t('navUser.switchToAdminView'))
                       }
                     }}
                   >
                     <Sparkles />
-                    {t("navUser.switchTo") +
-                      (isAdminView
-                        ? t("navUser.normalUser")
-                        : t("navUser.admin"))}
+                    {t('navUser.switchTo') +
+                      (isAdminView ? t('navUser.normalUser') : t('navUser.admin'))}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -133,51 +145,35 @@ export function NavUser() {
               <DropdownMenuItem asChild>
                 <Link to="/portal/setting/user">
                   <BadgeCheck />
-                  {t("navUser.personalPage")}
+                  {t('navUser.personalPage')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(website)}>
                 <BookOpenIcon />
-                {t("navUser.platformDocs")}
+                {t('navUser.platformDocs')}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              >
-                {theme === "light" ? <Moon /> : <Sun />}
-                {theme === "light"
-                  ? t("navUser.darkMode")
-                  : t("navUser.lightMode")}
+              <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+                {theme === 'light' ? <Moon /> : <Sun />}
+                {theme === 'light' ? t('navUser.darkMode') : t('navUser.lightMode')}
               </DropdownMenuItem>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <Globe className="text-muted-foreground mr-2 h-4 w-4" />
-                  {t("navUser.language")}
+                  {t('navUser.language')}
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup value={i18n.language}>
-                    <DropdownMenuRadioItem
-                      value="zh"
-                      onClick={() => changeLanguage("zh")}
-                    >
-                      {t("navUser.chinese")}
+                    <DropdownMenuRadioItem value="zh" onClick={() => changeLanguage('zh')}>
+                      {t('navUser.chinese')}
                     </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="en"
-                      onClick={() => changeLanguage("en")}
-                    >
-                      {t("navUser.english")}
+                    <DropdownMenuRadioItem value="en" onClick={() => changeLanguage('en')}>
+                      {t('navUser.english')}
                     </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="ja"
-                      onClick={() => changeLanguage("ja")}
-                    >
-                      {t("navUser.japanese")}
+                    <DropdownMenuRadioItem value="ja" onClick={() => changeLanguage('ja')}>
+                      {t('navUser.japanese')}
                     </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="ko"
-                      onClick={() => changeLanguage("ko")}
-                    >
-                      {t("navUser.korean")}
+                    <DropdownMenuRadioItem value="ko" onClick={() => changeLanguage('ko')}>
+                      {t('navUser.korean')}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
@@ -187,18 +183,18 @@ export function NavUser() {
             <DropdownMenuItem
               className="focus:bg-destructive focus:text-destructive-foreground"
               onClick={() => {
-                setLastView(isAdminView ? "admin" : "portal");
-                queryClient.clear();
-                resetAll();
-                toast.success(t("navUser.loggedOut"));
+                setLastView(isAdminView ? 'admin' : 'portal')
+                queryClient.clear()
+                resetAll()
+                toast.success(t('navUser.loggedOut'))
               }}
             >
               <LogOut className="dark:text-destructive-foreground" />
-              {t("navUser.logout")}
+              {t('navUser.logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  );
+  )
 }

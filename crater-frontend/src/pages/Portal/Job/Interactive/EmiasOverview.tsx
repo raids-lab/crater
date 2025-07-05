@@ -1,4 +1,20 @@
-import { ColumnDef } from "@tanstack/react-table";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { ColumnDef } from '@tanstack/react-table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,333 +25,288 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  apiJobDelete,
-  apiJobBatchList,
-  apiJupyterTokenGet,
-} from "@/services/api/vcjob";
-import { DataTable } from "@/components/custom/DataTable";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { Link } from "react-router-dom";
-import { TimeDistance } from "@/components/custom/TimeDistance";
-import { toast } from "sonner";
-import { getHeader } from "@/pages/Portal/Job/statuses";
-import { logger } from "@/utils/loglevel";
-import Quota from "./Quota";
-import SplitLinkButton from "@/components/button/SplitLinkButton";
-import { IJobInfo, JobType } from "@/services/api/vcjob";
-import { REFETCH_INTERVAL } from "@/config/task";
-import ResourceBadges from "@/components/badge/ResourceBadges";
-import JobTypeLabel from "@/components/badge/JobTypeBadge";
-import { globalJobUrl, globalUserInfo } from "@/utils/store";
-import { useAtomValue } from "jotai";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { Badge } from "@/components/ui/badge";
-import { ExternalLink, SquareIcon, Trash2Icon } from "lucide-react";
+} from '@/components/ui-custom/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { useMemo } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiJobDelete, apiJobBatchList, apiJupyterTokenGet } from '@/services/api/vcjob'
+import { DataTable } from '@/components/custom/DataTable'
+import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
+import { Link } from 'react-router-dom'
+import { TimeDistance } from '@/components/custom/TimeDistance'
+import { toast } from 'sonner'
+import { getHeader } from '@/pages/Portal/Job/statuses'
+import { logger } from '@/utils/loglevel'
+import Quota from './Quota'
+import SplitLinkButton from '@/components/button/SplitLinkButton'
+import { IJobInfo, JobType } from '@/services/api/vcjob'
+import { REFETCH_INTERVAL } from '@/config/task'
+import ResourceBadges from '@/components/badge/ResourceBadges'
+import JobTypeLabel from '@/components/badge/JobTypeBadge'
+import { globalJobUrl, globalUserInfo } from '@/utils/store'
+import { useAtomValue } from 'jotai'
+import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
+import { Badge } from '@/components/ui/badge'
+import { ExternalLink, SquareIcon, Trash2Icon } from 'lucide-react'
 
 export const priorities = [
   {
-    label: "高",
-    value: "high",
-    className:
-      "text-highlight-amber border-highlight-amber bg-highlight-amber/20",
+    label: '高',
+    value: 'high',
+    className: 'text-highlight-amber border-highlight-amber bg-highlight-amber/20',
   },
   {
-    label: "低",
-    value: "low",
-    className:
-      "text-highlight-slate border-highlight-slate bg-highlight-slate/20",
+    label: '低',
+    value: 'low',
+    className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
-];
+]
 
-export type StatusValue =
-  | "Queueing"
-  | "Created"
-  | "Running"
-  | "Failed"
-  | "Succeeded"
-  | "Preempted";
+export type StatusValue = 'Queueing' | 'Created' | 'Running' | 'Failed' | 'Succeeded' | 'Preempted'
 
 export const statuses: {
-  value: StatusValue;
-  label: string;
-  className?: string;
+  value: StatusValue
+  label: string
+  className?: string
 }[] = [
   {
-    value: "Queueing",
-    label: "检查中",
-    className:
-      "text-highlight-purple border-highlight-purple bg-highlight-purple/20",
+    value: 'Queueing',
+    label: '检查中',
+    className: 'text-highlight-purple border-highlight-purple bg-highlight-purple/20',
   },
   {
-    value: "Created",
-    label: "等待中",
-    className:
-      "text-highlight-slate border-highlight-slate bg-highlight-slate/20",
+    value: 'Created',
+    label: '等待中',
+    className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
   {
-    value: "Running",
-    label: "运行中",
-    className: "text-highlight-sky border-highlight-sky bg-highlight-sky/20",
+    value: 'Running',
+    label: '运行中',
+    className: 'text-highlight-sky border-highlight-sky bg-highlight-sky/20',
   },
   {
-    value: "Succeeded",
-    label: "已完成",
-    className:
-      "text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20",
+    value: 'Succeeded',
+    label: '已完成',
+    className: 'text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20',
   },
   {
-    value: "Preempted",
-    label: "被抢占",
-    className:
-      "text-highlight-orange border-highlight-orange bg-highlight-orange/20",
+    value: 'Preempted',
+    label: '被抢占',
+    className: 'text-highlight-orange border-highlight-orange bg-highlight-orange/20',
   },
   {
-    value: "Failed",
-    label: "失败",
-    className: "text-highlight-red border-highlight-red bg-highlight-red/20",
+    value: 'Failed',
+    label: '失败',
+    className: 'text-highlight-red border-highlight-red bg-highlight-red/20',
   },
-];
+]
 
 export const profilingStatuses = [
   {
-    value: "0",
-    label: "未分析",
-    className:
-      "text-highlight-purple border-highlight-purple bg-highlight-purple/20",
+    value: '0',
+    label: '未分析',
+    className: 'text-highlight-purple border-highlight-purple bg-highlight-purple/20',
   },
   {
-    value: "1",
-    label: "待分析",
-    className:
-      "text-highlight-slate border-highlight-slate bg-highlight-slate/20",
+    value: '1',
+    label: '待分析',
+    className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
   {
-    value: "2",
-    label: "分析中",
-    className: "text-highlight-sky border-highlight-sky bg-highlight-sky/20",
+    value: '2',
+    label: '分析中',
+    className: 'text-highlight-sky border-highlight-sky bg-highlight-sky/20',
   },
   {
-    value: "3",
-    label: "已分析",
-    className:
-      "text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20",
+    value: '3',
+    label: '已分析',
+    className: 'text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20',
   },
   {
-    value: "4",
-    label: "失败",
-    className: "text-highlight-red border-highlight-red bg-highlight-red/20",
+    value: '4',
+    label: '失败',
+    className: 'text-highlight-red border-highlight-red bg-highlight-red/20',
   },
   {
-    value: "5",
-    label: "跳过",
-    className:
-      "text-highlight-slate border-highlight-slate bg-highlight-slate/20",
+    value: '5',
+    label: '跳过',
+    className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
-];
+]
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索名称",
-    key: "title",
+    placeholder: '搜索名称',
+    key: 'title',
   },
   filterOptions: [
     {
-      key: "status",
-      title: "作业状态",
+      key: 'status',
+      title: '作业状态',
       option: statuses,
     },
     {
-      key: "priority",
-      title: "优先级",
+      key: 'priority',
+      title: '优先级',
       option: priorities,
     },
   ],
   getHeader: getHeader,
-};
+}
 
 interface ColocateJobInfo extends IJobInfo {
-  id: number;
-  profileStatus: string;
-  priority: string;
+  id: number
+  profileStatus: string
+  priority: string
 }
 
 const ColocateOverview = () => {
-  const queryClient = useQueryClient();
-  const jobType = useAtomValue(globalJobUrl);
-  const userInfo = useAtomValue(globalUserInfo);
+  const queryClient = useQueryClient()
+  const jobType = useAtomValue(globalJobUrl)
+  const userInfo = useAtomValue(globalUserInfo)
 
   const batchQuery = useQuery({
-    queryKey: ["job", "interactive"],
+    queryKey: ['job', 'interactive'],
     queryFn: apiJobBatchList,
     select: (res) =>
       res.data.data
         .filter((task) => task.jobType === JobType.Jupyter)
-        .sort((a, b) =>
-          b.createdAt.localeCompare(a.createdAt),
-        ) as unknown as ColocateJobInfo[],
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)) as unknown as ColocateJobInfo[],
     refetchInterval: REFETCH_INTERVAL,
-  });
+  })
 
   const { mutate: getPortToken } = useMutation({
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
     onSuccess: (res) => {
-      const data = res.data.data;
-      window.open(`${data.baseURL}?token=${data.token}`, "_blank");
+      const data = res.data.data
+      window.open(`${data.baseURL}?token=${data.token}`, '_blank')
     },
-  });
+  })
 
   const refetchTaskList = async () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-      ]);
+        queryClient.invalidateQueries({ queryKey: ['job'] }),
+        queryClient.invalidateQueries({ queryKey: ['aitask', 'quota'] }),
+        queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
+      ])
     } catch (error) {
-      logger.error("更新查询失败", error);
+      logger.error('更新查询失败', error)
     }
-  };
+  }
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: apiJobDelete,
     onSuccess: async () => {
-      await refetchTaskList();
-      toast.success("作业已删除");
+      await refetchTaskList()
+      toast.success('作业已删除')
     },
-  });
+  })
 
   const batchColumns = useMemo<ColumnDef<ColocateJobInfo>[]>(
     () => [
       {
-        accessorKey: "jobType",
+        accessorKey: 'jobType',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+          <DataTableColumnHeader column={column} title={getHeader('jobType')} />
         ),
-        cell: ({ row }) => (
-          <JobTypeLabel jobType={row.getValue<JobType>("jobType")} />
-        ),
+        cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
       {
-        accessorKey: "name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
-        ),
+        accessorKey: 'name',
+        header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
         cell: ({ row }) => (
-          <Link
-            to={`${row.original.id}`}
-            className="underline-offset-4 hover:underline"
-          >
-            {row.getValue("name")}
+          <Link to={`${row.original.id}`} className="underline-offset-4 hover:underline">
+            {row.getValue('name')}
           </Link>
         ),
       },
       {
-        accessorKey: "owner",
+        accessorKey: 'owner',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("owner")} />
+          <DataTableColumnHeader column={column} title={getHeader('owner')} />
         ),
-        cell: ({ row }) => <div>{row.getValue("owner")}</div>,
+        cell: ({ row }) => <div>{row.getValue('owner')}</div>,
       },
       {
-        accessorKey: "status",
+        accessorKey: 'status',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("status")} />
+          <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
         cell: ({ row }) => {
-          const status = statuses.find(
-            (status) => status.value === row.getValue("status"),
-          );
+          const status = statuses.find((status) => status.value === row.getValue('status'))
           if (!status) {
-            return null;
+            return null
           }
           return (
             <Badge className={status.className} variant="outline">
               {status.label}
             </Badge>
-          );
+          )
         },
         filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
+          return (value as string[]).includes(row.getValue(id))
         },
       },
       {
-        accessorKey: "priority",
+        accessorKey: 'priority',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("priority")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('priority')} />
         ),
         cell: ({ row }) => {
           const priority = priorities.find(
-            (priority) => priority.value === row.getValue("priority"),
-          );
+            (priority) => priority.value === row.getValue('priority')
+          )
           if (!priority) {
-            return null;
+            return null
           }
           return (
             <Badge className={priority.className} variant="outline">
               {priority.label}
             </Badge>
-          );
+          )
         },
         filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
+          return (value as string[]).includes(row.getValue(id))
         },
         enableSorting: false,
       },
       {
-        accessorKey: "resources",
+        accessorKey: 'resources',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("resources")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('resources')} />
         ),
         cell: ({ row }) => {
-          const resources = row.getValue<Record<string, string> | undefined>(
-            "resources",
-          );
-          return <ResourceBadges resources={resources} />;
+          const resources = row.getValue<Record<string, string> | undefined>('resources')
+          return <ResourceBadges resources={resources} />
         },
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: 'createdAt',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("createdAt")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('createdAt')} />
         ),
         cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
+          return <TimeDistance date={row.getValue('createdAt')}></TimeDistance>
         },
-        sortingFn: "datetime",
+        sortingFn: 'datetime',
       },
       {
-        accessorKey: "startedAt",
+        accessorKey: 'startedAt',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("startedAt")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('startedAt')} />
         ),
         cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("startedAt")}></TimeDistance>;
+          return <TimeDistance date={row.getValue('startedAt')}></TimeDistance>
         },
-        sortingFn: "datetime",
+        sortingFn: 'datetime',
       },
       {
-        id: "actions",
+        id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-          const jobInfo = row.original;
+          const jobInfo = row.original
           return (
             <div className="flex flex-row space-x-1">
               <Button
@@ -344,21 +315,18 @@ const ColocateOverview = () => {
                 className="text-primary hover:text-primary/90 h-8 w-8"
                 title="打开 Jupyter Lab"
                 onClick={() => {
-                  toast.info("即将打开 Jupyter 页面");
+                  toast.info('即将打开 Jupyter 页面')
                   setTimeout(() => {
-                    getPortToken(`${jobInfo.id}`);
-                  }, 500);
+                    getPortToken(`${jobInfo.id}`)
+                  }, 500)
                 }}
-                disabled={
-                  jobInfo.status !== "Running" ||
-                  userInfo.name !== jobInfo.owner
-                }
+                disabled={jobInfo.status !== 'Running' || userInfo.name !== jobInfo.owner}
               >
                 <ExternalLink className="size-4" />
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
+                  {jobInfo.status == 'Deleted' || jobInfo.status == 'Freed' ? (
                     <Button
                       variant="outline"
                       size="icon"
@@ -374,12 +342,12 @@ const ColocateOverview = () => {
                       className="hover:text-destructive/90 h-8 w-8 text-orange-600"
                       title="停止 Jupyter Lab"
                     >
-                      <SquareIcon className="h-3.5 w-3.5" strokeWidth={"2.5"} />
+                      <SquareIcon className="h-3.5 w-3.5" strokeWidth={'2.5'} />
                     </Button>
                   )}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
-                  {jobInfo.status == "Deleted" || jobInfo.status == "Freed" ? (
+                  {jobInfo.status == 'Deleted' || jobInfo.status == 'Freed' ? (
                     <>
                       <AlertDialogHeader>
                         <AlertDialogTitle>删除作业</AlertDialogTitle>
@@ -403,10 +371,8 @@ const ColocateOverview = () => {
                       <AlertDialogHeader>
                         <AlertDialogTitle>停止作业</AlertDialogTitle>
                         <AlertDialogDescription className="text-balance">
-                          作业 {jobInfo?.name} 将停止，除{" "}
-                          <span className="font-mono">
-                            /home/{jobInfo.owner}
-                          </span>{" "}
+                          作业 {jobInfo?.name} 将停止，除{' '}
+                          <span className="font-mono">/home/{jobInfo.owner}</span>{' '}
                           及其他挂载目录之外的文件将无法恢复，请确认已经保存好所需数据。
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -424,19 +390,19 @@ const ColocateOverview = () => {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-          );
+          )
         },
       },
     ],
-    [deleteTask, getPortToken, userInfo.name],
-  );
+    [deleteTask, getPortToken, userInfo.name]
+  )
 
   return (
     <>
       <DataTable
         info={{
-          title: "Jupyter Lab",
-          description: "提供开箱即用的 Jupyter Lab， 可用于代码编写、调试等。",
+          title: 'Jupyter Lab',
+          description: '提供开箱即用的 Jupyter Lab， 可用于代码编写、调试等。',
         }}
         storageKey="portal_aijob_interactive"
         query={batchQuery}
@@ -447,15 +413,15 @@ const ColocateOverview = () => {
             title: (rows) => `停止或删除 ${rows.length} 个作业`,
             description: (rows) => (
               <>
-                作业 {rows.map((row) => row.original.name).join(", ")}{" "}
+                作业 {rows.map((row) => row.original.name).join(', ')}{' '}
                 将被停止或删除，确认要继续吗？
               </>
             ),
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
               rows.forEach((row) => {
-                deleteTask(row.original.jobName);
-              });
+                deleteTask(row.original.jobName)
+              })
             },
             isDanger: true,
           },
@@ -467,13 +433,13 @@ const ColocateOverview = () => {
           urls={[
             {
               url: `portal/job/inter/new-jupyter-${jobType}`,
-              name: " Jupyter Lab",
+              name: ' Jupyter Lab',
             },
           ]}
         />
       </DataTable>
     </>
-  );
-};
+  )
+}
 
-export default ColocateOverview;
+export default ColocateOverview

@@ -1,18 +1,29 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import React from "react";
-import { useTranslation } from "react-i18next";
-import { motion, useMotionValue } from "framer-motion";
-import { DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Save, LogsIcon, InfoIcon } from "lucide-react";
-import CraterIcon from "@/components/icon/CraterIcon";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { motion, useMotionValue } from 'framer-motion'
+import { DropdownMenuLabel } from '@/components/ui/dropdown-menu'
+import { Save, LogsIcon, InfoIcon } from 'lucide-react'
+import CraterIcon from '@/components/icon/CraterIcon'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
 
 export default function FloatingBall({
   handleShowLog,
@@ -20,22 +31,19 @@ export default function FloatingBall({
   handleSnapshot,
   setIsDragging,
 }: {
-  handleShowLog: () => void;
-  handleSnapshot: () => void;
-  handleShowDetail: () => void;
-  setIsDragging: (isDragging: boolean) => void;
+  handleShowLog: () => void
+  handleSnapshot: () => void
+  handleShowDetail: () => void
+  setIsDragging: (isDragging: boolean) => void
 }) {
-  const { t } = useTranslation();
-  const x = useMotionValue(window.innerWidth - 60);
-  const y = useMotionValue(window.innerHeight - 60);
+  const { t } = useTranslation()
+  const x = useMotionValue(window.innerWidth - 60)
+  const y = useMotionValue(window.innerHeight - 60)
 
-  const constraintsRef = React.useRef(null);
+  const constraintsRef = React.useRef(null)
 
   return (
-    <motion.div
-      ref={constraintsRef}
-      className="pointer-events-none fixed inset-0"
-    >
+    <motion.div ref={constraintsRef} className="pointer-events-none fixed inset-0">
       <motion.div
         drag
         dragConstraints={constraintsRef}
@@ -51,7 +59,7 @@ export default function FloatingBall({
           <Tooltip>
             <TooltipTrigger asChild>
               <CraterIcon
-                style={{ filter: "drop-shadow(1px 1px 4px rgba(0,0,0,0.5))" }}
+                style={{ filter: 'drop-shadow(1px 1px 4px rgba(0,0,0,0.5))' }}
                 className="h-12 w-12"
               />
             </TooltipTrigger>
@@ -61,7 +69,7 @@ export default function FloatingBall({
               className="bg-background text-foreground flex w-32 flex-col border p-1 [&_span]:hidden"
             >
               <DropdownMenuLabel className="text-muted-foreground text-xs">
-                {t("floatingBall.tooltip.operations")}
+                {t('floatingBall.tooltip.operations')}
               </DropdownMenuLabel>
               {/* 按钮 */}
               <Button
@@ -70,7 +78,7 @@ export default function FloatingBall({
                 onClick={handleShowDetail}
               >
                 <InfoIcon className="text-primary" />
-                {t("floatingBall.tooltip.jobDetails")}
+                {t('floatingBall.tooltip.jobDetails')}
               </Button>
               <Button
                 variant="ghost"
@@ -78,7 +86,7 @@ export default function FloatingBall({
                 onClick={handleShowLog}
               >
                 <LogsIcon className="text-highlight-orange" />
-                {t("floatingBall.tooltip.logDiagnosis")}
+                {t('floatingBall.tooltip.logDiagnosis')}
               </Button>
               <Button
                 variant="ghost"
@@ -86,12 +94,12 @@ export default function FloatingBall({
                 onClick={handleSnapshot}
               >
                 <Save className="text-highlight-purple" />
-                {t("floatingBall.tooltip.saveSnapshot")}
+                {t('floatingBall.tooltip.saveSnapshot')}
               </Button>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </motion.div>
     </motion.div>
-  );
+  )
 }

@@ -1,29 +1,40 @@
-import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import { InfoIcon } from "lucide-react";
-import { DropdownMenuLabel } from "../ui/dropdown-menu";
-import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { InfoIcon } from 'lucide-react'
+import { DropdownMenuLabel } from '../ui/dropdown-menu'
+import { useNavigate } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
 
-  if (!nodes || nodes.length === 0 || nodes[0] === "") {
-    return <></>;
+  if (!nodes || nodes.length === 0 || nodes[0] === '') {
+    return <></>
   }
 
-  const isSingleNode = nodes.length === 1;
+  const isSingleNode = nodes.length === 1
   const handleBadgeClick = () => {
     if (isSingleNode) {
-      navigate(`/portal/overview/${nodes[0]}`);
+      navigate(`/portal/overview/${nodes[0]}`)
     }
-  };
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -32,8 +43,8 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
           <Badge
             variant="secondary"
             className={cn(
-              "font-mono font-normal select-none",
-              isSingleNode ? "cursor-pointer" : "cursor-help",
+              'font-mono font-normal select-none',
+              isSingleNode ? 'cursor-pointer' : 'cursor-help'
             )}
             onClick={handleBadgeClick}
           >
@@ -57,13 +68,11 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                 .map((node, i) => (
                   <div
                     key={node}
-                    className={cn("flex flex-col p-1", {
-                      "border-t dark:border-slate-700": i > 0,
+                    className={cn('flex flex-col p-1', {
+                      'border-t dark:border-slate-700': i > 0,
                     })}
                   >
-                    <DropdownMenuLabel className="text-xs">
-                      {node}
-                    </DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs">{node}</DropdownMenuLabel>
                     <Button
                       variant="ghost"
                       className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1"
@@ -79,7 +88,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  );
-};
+  )
+}
 
-export default NodeBadges;
+export default NodeBadges

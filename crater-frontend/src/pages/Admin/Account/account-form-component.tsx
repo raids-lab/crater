@@ -1,19 +1,31 @@
-import { useTranslation } from "react-i18next";
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { z } from "zod";
-import { useFieldArray, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { zhCN } from "date-fns/locale";
-import {
-  apiAccountCreate,
-  apiAccountUpdate,
-  IAccount,
-} from "@/services/api/account";
-import { AccountFormSchema, formSchema } from "./account-form";
-import { convertFormToQuota } from "@/utils/quota";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { z } from 'zod'
+import { useFieldArray, useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
+import { format } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
+import { apiAccountCreate, apiAccountUpdate, IAccount } from '@/services/api/account'
+import { AccountFormSchema, formSchema } from './account-form'
+import { convertFormToQuota } from '@/utils/quota'
 import {
   Form,
   FormControl,
@@ -22,42 +34,38 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { SandwichLayout } from "@/components/sheet/SandwichSheet";
-import FormLabelMust from "@/components/form/FormLabelMust";
-import LoadableButton from "@/components/button/LoadableButton";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, CirclePlusIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import SelectBox from "@/components/custom/SelectBox";
-import FormImportButton from "@/components/form/FormImportButton";
-import FormExportButton from "@/components/form/FormExportButton";
-import { MetadataFormAccount } from "@/components/form/types";
-import { apiAdminUserList } from "@/services/api/admin/user";
-import { useAtomValue } from "jotai";
-import { globalSettings } from "@/utils/store";
-import { apiResourceList } from "@/services/api/resource";
+} from '@/components/ui/form'
+import { SandwichLayout } from '@/components/sheet/SandwichSheet'
+import FormLabelMust from '@/components/form/FormLabelMust'
+import LoadableButton from '@/components/button/LoadableButton'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { CalendarIcon, CirclePlusIcon, XIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import SelectBox from '@/components/custom/SelectBox'
+import FormImportButton from '@/components/form/FormImportButton'
+import FormExportButton from '@/components/form/FormExportButton'
+import { MetadataFormAccount } from '@/components/form/types'
+import { apiAdminUserList } from '@/services/api/admin/user'
+import { useAtomValue } from 'jotai'
+import { globalSettings } from '@/utils/store'
+import { apiResourceList } from '@/services/api/resource'
 
 interface AccountFormProps {
-  onOpenChange: (open: boolean) => void;
-  account?: IAccount | null;
+  onOpenChange: (open: boolean) => void
+  account?: IAccount | null
 }
 
 export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
-  const { scheduler } = useAtomValue(globalSettings);
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [cachedFormName, setCachedFormName] = useState<string | null>(null);
+  const { scheduler } = useAtomValue(globalSettings)
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [cachedFormName, setCachedFormName] = useState<string | null>(null)
 
   const { data: userList } = useQuery({
-    queryKey: ["admin", "userlist"],
+    queryKey: ['admin', 'userlist'],
     queryFn: apiAdminUserList,
     select: (res) =>
       res.data.data.map((user) => ({
@@ -65,67 +73,67 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
         label: user.attributes.nickname || user.name,
         labelNote: user.name,
       })),
-  });
+  })
 
   const { data: resourceDimension } = useQuery({
-    queryKey: ["resources", "list"],
+    queryKey: ['resources', 'list'],
     queryFn: () => apiResourceList(false),
     select: (res) => {
       return res.data.data
         .map((item) => item.name)
         .filter(
           (name) =>
-            name != "ephemeral-storage" &&
-            name != "hugepages-1Gi" &&
-            name != "hugepages-2Mi" &&
-            name != "pods",
+            name != 'ephemeral-storage' &&
+            name != 'hugepages-1Gi' &&
+            name != 'hugepages-2Mi' &&
+            name != 'pods'
         )
         .sort(
           // cpu > memory > xx/xx > pods
           (a, b) => {
-            if (a === "cpu") {
-              return -1;
+            if (a === 'cpu') {
+              return -1
             }
-            if (b === "cpu") {
-              return 1;
+            if (b === 'cpu') {
+              return 1
             }
-            if (a === "memory") {
-              return -1;
+            if (a === 'memory') {
+              return -1
             }
-            if (b === "memory") {
-              return 1;
+            if (b === 'memory') {
+              return 1
             }
-            return a.localeCompare(b);
-          },
-        );
+            return a.localeCompare(b)
+          }
+        )
     },
-  });
+  })
 
   // 1. Define your form.
   const form = useForm<AccountFormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: account?.nickname || "",
+      name: account?.nickname || '',
       resources: resourceDimension?.map((name) => ({ name })) || [
-        { name: "cpu" },
-        { name: "memory" },
+        { name: 'cpu' },
+        { name: 'memory' },
       ],
       expiredAt: account?.expiredAt ? new Date(account.expiredAt) : undefined,
       admins: [],
       ...(account ? { id: account.id } : {}),
     },
-  });
+  })
 
-  const currentValues = form.watch();
+  const currentValues = form.watch()
 
   const {
     fields: resourcesFields,
     append: resourcesAppend,
     remove: resourcesRemove,
   } = useFieldArray<AccountFormSchema>({
-    name: "resources",
+    name: 'resources',
     control: form.control,
-  });
+  })
 
   const { mutate: createAccount, isPending: isCreatePending } = useMutation({
     mutationFn: (values: AccountFormSchema) =>
@@ -134,16 +142,16 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
         quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
         admins: values.admins?.map((id) => parseInt(id)),
-        withoutVolcano: scheduler !== "volcano",
+        withoutVolcano: scheduler !== 'volcano',
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
-        queryKey: ["admin", "accounts"],
-      });
-      toast.success(t("toast.accountCreated", { name }));
-      onOpenChange(false);
+        queryKey: ['admin', 'accounts'],
+      })
+      toast.success(t('toast.accountCreated', { name }))
+      onOpenChange(false)
     },
-  });
+  })
 
   const { mutate: updateAccount, isPending: isUpdatePending } = useMutation({
     mutationFn: (values: AccountFormSchema) =>
@@ -152,27 +160,27 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
         quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
         admins: values.admins?.map((id) => parseInt(id)),
-        withoutVolcano: scheduler !== "volcano",
+        withoutVolcano: scheduler !== 'volcano',
       }),
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
-        queryKey: ["admin", "accounts"],
-      });
-      toast.success(t("toast.accountUpdated", { name }));
-      onOpenChange(false);
+        queryKey: ['admin', 'accounts'],
+      })
+      toast.success(t('toast.accountUpdated', { name }))
+      onOpenChange(false)
     },
-  });
+  })
 
   // 2. Define a submit handler.
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     if (values.id) {
-      updateAccount(values);
+      updateAccount(values)
     } else {
-      createAccount(values);
+      createAccount(values)
     }
-  };
+  }
 
   return (
     <Form {...form}>
@@ -184,30 +192,30 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                 form={form}
                 metadata={MetadataFormAccount}
                 beforeImport={(data) => {
-                  setCachedFormName(data.name);
+                  setCachedFormName(data.name)
                 }}
                 afterImport={() => {
                   if (cachedFormName) {
-                    form.setValue("name", cachedFormName);
-                    form.setValue("expiredAt", undefined);
+                    form.setValue('name', cachedFormName)
+                    form.setValue('expiredAt', undefined)
                   }
-                  setCachedFormName(null);
+                  setCachedFormName(null)
                 }}
               />
               <FormExportButton form={form} metadata={MetadataFormAccount} />
               <LoadableButton
                 isLoading={isCreatePending || isUpdatePending}
                 isLoadingText={
-                  form.getValues("id")
-                    ? t("accountForm.updateButton")
-                    : t("accountForm.createButton")
+                  form.getValues('id')
+                    ? t('accountForm.updateButton')
+                    : t('accountForm.createButton')
                 }
                 type="submit"
               >
                 <CirclePlusIcon className="size-4" />
-                {form.getValues("id")
-                  ? t("accountForm.updateButton")
-                  : t("accountForm.createButton")}
+                {form.getValues('id')
+                  ? t('accountForm.updateButton')
+                  : t('accountForm.createButton')}
               </LoadableButton>
             </>
           }
@@ -219,20 +227,13 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
               render={({ field }) => (
                 <FormItem className="col-span-1 grow">
                   <FormLabel>
-                    {t("accountForm.nameLabel")}
+                    {t('accountForm.nameLabel')}
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      autoComplete="off"
-                      {...field}
-                      className="w-full"
-                      autoFocus={true}
-                    />
+                    <Input autoComplete="off" {...field} className="w-full" autoFocus={true} />
                   </FormControl>
-                  <FormDescription>
-                    {t("accountForm.nameDescription")}
-                  </FormDescription>
+                  <FormDescription>{t('accountForm.nameDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -242,23 +243,23 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
               name="expiredAt"
               render={({ field }) => (
                 <FormItem className="col-span-1 flex flex-col">
-                  <FormLabel>{t("accountForm.expiredAtLabel")}</FormLabel>
+                  <FormLabel>{t('accountForm.expiredAtLabel')}</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
-                          variant={"outline"}
+                          variant={'outline'}
                           className={cn(
-                            "w-[240px] pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground",
+                            'w-[240px] pl-3 text-left font-normal',
+                            !field.value && 'text-muted-foreground'
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP", {
+                            format(field.value, 'PPP', {
                               locale: zhCN,
                             })
                           ) : (
-                            <span>{t("accountForm.expiredAtPlaceholder")}</span>
+                            <span>{t('accountForm.expiredAtPlaceholder')}</span>
                           )}
                           <CalendarIcon className="ml-auto size-4 opacity-50" />
                         </Button>
@@ -275,48 +276,40 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>
-                    {t("accountForm.expiredAtDescription")}
-                  </FormDescription>
+                  <FormDescription>{t('accountForm.expiredAtDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          {!form.getValues("id") && (
+          {!form.getValues('id') && (
             <FormField
               control={form.control}
               name="admins"
               render={() => (
                 <FormItem>
                   <FormLabel>
-                    {t("accountForm.adminsLabel")}
+                    {t('accountForm.adminsLabel')}
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <SelectBox
                       className="my-0 h-8"
                       options={userList ?? []}
-                      inputPlaceholder={t(
-                        "accountForm.adminsSearchPlaceholder",
-                      )}
-                      placeholder={t("accountForm.adminsPlaceholder")}
+                      inputPlaceholder={t('accountForm.adminsSearchPlaceholder')}
+                      placeholder={t('accountForm.adminsPlaceholder')}
                       value={currentValues.admins}
-                      onChange={(value) => form.setValue("admins", value)}
+                      onChange={(value) => form.setValue('admins', value)}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t("accountForm.adminsDescription")}
-                  </FormDescription>
+                  <FormDescription>{t('accountForm.adminsDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           )}
           <div className="space-y-2">
-            {resourcesFields.length > 0 && (
-              <FormLabel>{t("accountForm.quotaLabel")}</FormLabel>
-            )}
+            {resourcesFields.length > 0 && <FormLabel>{t('accountForm.quotaLabel')}</FormLabel>}
             {resourcesFields.map(({ id }, index) => (
               <div key={id} className="flex flex-row gap-2">
                 <FormField
@@ -327,7 +320,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder={t("accountForm.resourcePlaceholder")}
+                          placeholder={t('accountForm.resourcePlaceholder')}
                           className="font-mono"
                         />
                       </FormControl>
@@ -343,7 +336,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder={t("accountForm.guaranteedPlaceholder")}
+                          placeholder={t('accountForm.guaranteedPlaceholder')}
                           className="font-mono"
                           {...form.register(`resources.${index}.guaranteed`, {
                             valueAsNumber: true,
@@ -362,7 +355,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       <FormControl>
                         <Input
                           type="string"
-                          placeholder={t("accountForm.deservedPlaceholder")}
+                          placeholder={t('accountForm.deservedPlaceholder')}
                           className="font-mono"
                           {...form.register(`resources.${index}.deserved`, {
                             valueAsNumber: true,
@@ -381,7 +374,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       <FormControl>
                         <Input
                           type="string"
-                          placeholder={t("accountForm.capabilityPlaceholder")}
+                          placeholder={t('accountForm.capabilityPlaceholder')}
                           className="font-mono"
                           {...form.register(`resources.${index}.capability`, {
                             valueAsNumber: true,
@@ -405,9 +398,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
               </div>
             ))}
             {resourcesFields.length > 0 && (
-              <FormDescription>
-                {t("accountForm.quotaDescription")}
-              </FormDescription>
+              <FormDescription>{t('accountForm.quotaDescription')}</FormDescription>
             )}
 
             <Button
@@ -415,16 +406,16 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
               variant="secondary"
               onClick={() =>
                 resourcesAppend({
-                  name: "",
+                  name: '',
                 })
               }
             >
               <CirclePlusIcon className="size-4" />
-              {t("accountForm.addQuotaButton")}
+              {t('accountForm.addQuotaButton')}
             </Button>
           </div>
         </SandwichLayout>
       </form>
     </Form>
-  );
-};
+  )
+}

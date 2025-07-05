@@ -1,91 +1,96 @@
-import { ColumnDef } from "@tanstack/react-table";
-import { apiJobGetPods, PodDetail } from "@/services/api/vcjob";
-import ResourceBadges from "@/components/badge/ResourceBadges";
-import PodPhaseLabel, { podPhases } from "@/components/badge/PodPhaseBadge";
-import {
-  EthernetPort,
-  GaugeIcon,
-  LogsIcon,
-  SquareTerminalIcon,
-  TerminalIcon,
-} from "lucide-react";
-import { DataTable } from "@/components/custom/DataTable";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { NamespacedName } from "@/components/codeblock/PodContainerDialog";
-import LogDialog from "@/components/codeblock/LogDialog";
-import TerminalDialog from "@/components/codeblock/TerminalDialog";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import NodeBadges from "@/components/badge/NodeBadges";
-import PodIngressDialog from "./Ingress";
-import TooltipButton from "@/components/custom/TooltipButton";
-import Nothing from "@/components/placeholder/Nothing";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { GrafanaIframe } from "@/pages/Embed/Monitor";
-import { useAtomValue } from "jotai";
-import { configGrafanaJobAtom } from "@/utils/store/config";
-import DetailPageLog from "@/components/codeblock/DetailPageLog";
-import TooltipCopy from "@/components/label/TooltipCopy";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { ColumnDef } from '@tanstack/react-table'
+import { apiJobGetPods, PodDetail } from '@/services/api/vcjob'
+import ResourceBadges from '@/components/badge/ResourceBadges'
+import PodPhaseLabel, { podPhases } from '@/components/badge/PodPhaseBadge'
+import { EthernetPort, GaugeIcon, LogsIcon, SquareTerminalIcon, TerminalIcon } from 'lucide-react'
+import { DataTable } from '@/components/custom/DataTable'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
+import LogDialog from '@/components/codeblock/LogDialog'
+import TerminalDialog from '@/components/codeblock/TerminalDialog'
+import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
+import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
+import NodeBadges from '@/components/badge/NodeBadges'
+import PodIngressDialog from './Ingress'
+import TooltipButton from '@/components/custom/TooltipButton'
+import Nothing from '@/components/placeholder/Nothing'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { GrafanaIframe } from '@/pages/Embed/Monitor'
+import { useAtomValue } from 'jotai'
+import { configGrafanaJobAtom } from '@/utils/store/config'
+import DetailPageLog from '@/components/codeblock/DetailPageLog'
+import TooltipCopy from '@/components/label/TooltipCopy'
 
 interface PodTableProps {
-  jobName: string;
-  userName: string;
+  jobName: string
+  userName: string
 }
 
 const getHeader = (key: string): string => {
   switch (key) {
-    case "name":
-      return "Pod 名称";
-    case "namespace":
-      return "命名空间";
-    case "nodename":
-      return "节点";
-    case "ip":
-      return "内网 IP";
-    case "port":
-      return "端口";
-    case "resource":
-      return "申请资源";
-    case "phase":
-      return "状态";
+    case 'name':
+      return 'Pod 名称'
+    case 'namespace':
+      return '命名空间'
+    case 'nodename':
+      return '节点'
+    case 'ip':
+      return '内网 IP'
+    case 'port':
+      return '端口'
+    case 'resource':
+      return '申请资源'
+    case 'phase':
+      return '状态'
     default:
-      return key;
+      return key
   }
-};
+}
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索 Pod 名称",
-    key: "name",
+    placeholder: '搜索 Pod 名称',
+    key: 'name',
   },
   filterOptions: [
     {
-      key: "phase",
-      title: "状态",
+      key: 'phase',
+      title: '状态',
       option: podPhases,
     },
   ],
   getHeader: getHeader,
-};
+}
 
 const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
-  return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`;
-};
+  return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`
+}
 
 const PodInfo = ({
   pod,
   setShowTerminal,
   setShowIngress,
 }: {
-  pod: PodDetail;
-  setShowTerminal: (namespacedName: NamespacedName) => void;
-  setShowIngress: (namespacedName: NamespacedName) => void;
+  pod: PodDetail
+  setShowTerminal: (namespacedName: NamespacedName) => void
+  setShowIngress: (namespacedName: NamespacedName) => void
 }) => {
   return (
     <DetailPageLog
@@ -95,11 +100,11 @@ const PodInfo = ({
       }}
       appendInfos={[
         {
-          title: "内网 IP",
+          title: '内网 IP',
           content: <TooltipCopy name={pod.ip} className="font-mono" />,
         },
         {
-          title: "节点",
+          title: '节点',
           content: <NodeBadges nodes={[pod.nodename]} />,
         },
       ]}
@@ -108,12 +113,12 @@ const PodInfo = ({
           <TooltipButton
             variant="outline"
             className="cursor-pointer"
-            disabled={pod.phase !== "Running"}
+            disabled={pod.phase !== 'Running'}
             onClick={() => {
               setShowTerminal({
                 namespace: pod.namespace,
                 name: pod.name,
-              });
+              })
             }}
             tooltipContent="网页终端"
           >
@@ -123,12 +128,12 @@ const PodInfo = ({
           <TooltipButton
             variant="outline"
             className="cursor-pointer"
-            disabled={pod.phase !== "Running"}
+            disabled={pod.phase !== 'Running'}
             onClick={() => {
               setShowIngress({
                 namespace: pod.namespace,
                 name: pod.name,
-              });
+              })
             }}
             tooltipContent="外部访问"
           >
@@ -138,33 +143,31 @@ const PodInfo = ({
         </div>
       }
     />
-  );
-};
+  )
+}
 
 export const PodTable = ({ jobName, userName }: PodTableProps) => {
-  const [showLog, setShowLog] = useState<NamespacedName>();
-  const [showTerminal, setShowTerminal] = useState<NamespacedName>();
-  const [showIngress, setShowIngress] = useState<NamespacedName>();
-  const [showMonitor, setShowMonitor] = useState(false);
-  const grafanaJob = useAtomValue(configGrafanaJobAtom);
-  const [grafanaUrl, setGrafanaUrl] = useState<string>("");
+  const [showLog, setShowLog] = useState<NamespacedName>()
+  const [showTerminal, setShowTerminal] = useState<NamespacedName>()
+  const [showIngress, setShowIngress] = useState<NamespacedName>()
+  const [showMonitor, setShowMonitor] = useState(false)
+  const grafanaJob = useAtomValue(configGrafanaJobAtom)
+  const [grafanaUrl, setGrafanaUrl] = useState<string>('')
 
   const query = useQuery({
-    queryKey: ["job", "detail", jobName, "pods"],
+    queryKey: ['job', 'detail', jobName, 'pods'],
     queryFn: () => apiJobGetPods(jobName),
     select: (res) => res.data.data.sort((a, b) => a.name.localeCompare(b.name)),
     enabled: !!jobName,
-  });
+  })
 
   const columns: ColumnDef<PodDetail>[] = useMemo(
     () => [
       {
-        accessorKey: "name",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("name")} />
-        ),
+        accessorKey: 'name',
+        header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
         cell: ({ row }) => {
-          const pod = row.original;
+          const pod = row.original
           return pod.name ? (
             <TooltipButton
               name={pod.name}
@@ -172,78 +175,68 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
               className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
               variant="link"
               onClick={() => {
-                setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
-                setShowMonitor(true);
+                setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod))
+                setShowMonitor(true)
               }}
             >
               {pod.name}
             </TooltipButton>
           ) : (
-            "---"
-          );
+            '---'
+          )
         },
       },
       {
-        accessorKey: "phase",
+        accessorKey: 'phase',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("phase")} />
+          <DataTableColumnHeader column={column} title={getHeader('phase')} />
         ),
-        cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue("phase")} />,
+        cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue('phase')} />,
         filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
+          return (value as string[]).includes(row.getValue(id))
         },
       },
       {
-        accessorKey: "ip",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("ip")} />
-        ),
-        cell: ({ row }) => (
-          <TooltipCopy name={row.getValue("ip")} className="font-mono" />
-        ),
+        accessorKey: 'ip',
+        header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('ip')} />,
+        cell: ({ row }) => <TooltipCopy name={row.getValue('ip')} className="font-mono" />,
         enableSorting: false,
       },
       {
-        accessorKey: "nodename",
+        accessorKey: 'nodename',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("nodename")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('nodename')} />
         ),
-        cell: ({ row }) => <NodeBadges nodes={[row.getValue("nodename")]} />,
+        cell: ({ row }) => <NodeBadges nodes={[row.getValue('nodename')]} />,
       },
       {
-        accessorKey: "resource",
+        accessorKey: 'resource',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("resource")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('resource')} />
         ),
         cell: ({ row }) => (
           <div className="flex flex-row gap-1">
-            <ResourceBadges resources={row.getValue("resource")} />
+            <ResourceBadges resources={row.getValue('resource')} />
           </div>
         ),
       },
       {
-        id: "actions",
-        header: "",
+        id: 'actions',
+        header: '',
         cell: ({ row }) => {
-          const pod = row.original;
+          const pod = row.original
           return (
             <div className="flex items-center space-x-1.5">
               <TooltipButton
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                disabled={pod.phase !== "Running"}
+                disabled={pod.phase !== 'Running'}
                 onClick={() => {
                   setShowTerminal({
                     namespace: pod.namespace,
                     name: pod.name,
-                  });
+                  })
                 }}
                 tooltipContent="网页终端"
               >
@@ -254,12 +247,12 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                disabled={pod.phase !== "Running"}
+                disabled={pod.phase !== 'Running'}
                 onClick={() => {
                   setShowIngress({
                     namespace: pod.namespace,
                     name: pod.name,
-                  });
+                  })
                 }}
                 tooltipContent="外部访问"
               >
@@ -270,10 +263,10 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                disabled={pod.phase !== "Running"}
+                disabled={pod.phase !== 'Running'}
                 onClick={() => {
-                  setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod));
-                  setShowMonitor(true);
+                  setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod))
+                  setShowMonitor(true)
                 }}
                 tooltipContent="资源监控"
               >
@@ -288,26 +281,26 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
                   setShowLog({
                     namespace: pod.namespace,
                     name: pod.name,
-                  });
+                  })
                 }}
                 tooltipContent="容器日志"
               >
                 <LogsIcon className="text-highlight-orange size-4" />
               </TooltipButton>
             </div>
-          );
+          )
         },
       },
     ],
-    [grafanaJob.pod],
-  );
+    [grafanaJob.pod]
+  )
 
   if (query.isLoading) {
-    return <></>;
+    return <></>
   }
 
   if (!query.data || query.data.length === 0) {
-    return <Nothing title="暂无作业信息，可查看作业事件" />;
+    return <Nothing title="暂无作业信息，可查看作业事件" />
   }
 
   return (
@@ -327,10 +320,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
         />
       )}
       <LogDialog namespacedName={showLog} setNamespacedName={setShowLog} />
-      <TerminalDialog
-        namespacedName={showTerminal}
-        setNamespacedName={setShowTerminal}
-      />
+      <TerminalDialog namespacedName={showTerminal} setNamespacedName={setShowTerminal} />
       <PodIngressDialog
         namespacedName={showIngress}
         setNamespacedName={setShowIngress}
@@ -348,5 +338,5 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
         </SheetContent>
       </Sheet>
     </>
-  );
-};
+  )
+}

@@ -1,3 +1,19 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /* tslint:disable */
 
 /**
@@ -6,140 +22,137 @@
  * - Please do NOT modify this file.
  */
 
-const PACKAGE_VERSION = "2.10.3";
-const INTEGRITY_CHECKSUM = "f5825c521429caf22a4dd13b66e243af";
-const IS_MOCKED_RESPONSE = Symbol("isMockedResponse");
-const activeClientIds = new Set();
+const PACKAGE_VERSION = '2.10.3'
+const INTEGRITY_CHECKSUM = 'f5825c521429caf22a4dd13b66e243af'
+const IS_MOCKED_RESPONSE = Symbol('isMockedResponse')
+const activeClientIds = new Set()
 
-addEventListener("install", function () {
-  self.skipWaiting();
-});
+addEventListener('install', function () {
+  self.skipWaiting()
+})
 
-addEventListener("activate", function (event) {
-  event.waitUntil(self.clients.claim());
-});
+addEventListener('activate', function (event) {
+  event.waitUntil(self.clients.claim())
+})
 
-addEventListener("message", async function (event) {
-  const clientId = Reflect.get(event.source || {}, "id");
+addEventListener('message', async function (event) {
+  const clientId = Reflect.get(event.source || {}, 'id')
 
   if (!clientId || !self.clients) {
-    return;
+    return
   }
 
-  const client = await self.clients.get(clientId);
+  const client = await self.clients.get(clientId)
 
   if (!client) {
-    return;
+    return
   }
 
   const allClients = await self.clients.matchAll({
-    type: "window",
-  });
+    type: 'window',
+  })
 
   switch (event.data) {
-    case "KEEPALIVE_REQUEST": {
+    case 'KEEPALIVE_REQUEST': {
       sendToClient(client, {
-        type: "KEEPALIVE_RESPONSE",
-      });
-      break;
+        type: 'KEEPALIVE_RESPONSE',
+      })
+      break
     }
 
-    case "INTEGRITY_CHECK_REQUEST": {
+    case 'INTEGRITY_CHECK_REQUEST': {
       sendToClient(client, {
-        type: "INTEGRITY_CHECK_RESPONSE",
+        type: 'INTEGRITY_CHECK_RESPONSE',
         payload: {
           packageVersion: PACKAGE_VERSION,
           checksum: INTEGRITY_CHECKSUM,
         },
-      });
-      break;
+      })
+      break
     }
 
-    case "MOCK_ACTIVATE": {
-      activeClientIds.add(clientId);
+    case 'MOCK_ACTIVATE': {
+      activeClientIds.add(clientId)
 
       sendToClient(client, {
-        type: "MOCKING_ENABLED",
+        type: 'MOCKING_ENABLED',
         payload: {
           client: {
             id: client.id,
             frameType: client.frameType,
           },
         },
-      });
-      break;
+      })
+      break
     }
 
-    case "MOCK_DEACTIVATE": {
-      activeClientIds.delete(clientId);
-      break;
+    case 'MOCK_DEACTIVATE': {
+      activeClientIds.delete(clientId)
+      break
     }
 
-    case "CLIENT_CLOSED": {
-      activeClientIds.delete(clientId);
+    case 'CLIENT_CLOSED': {
+      activeClientIds.delete(clientId)
 
       const remainingClients = allClients.filter((client) => {
-        return client.id !== clientId;
-      });
+        return client.id !== clientId
+      })
 
       // Unregister itself when there are no more clients
       if (remainingClients.length === 0) {
-        self.registration.unregister();
+        self.registration.unregister()
       }
 
-      break;
+      break
     }
   }
-});
+})
 
-addEventListener("fetch", function (event) {
+addEventListener('fetch', function (event) {
   // Bypass navigation requests.
-  if (event.request.mode === "navigate") {
-    return;
+  if (event.request.mode === 'navigate') {
+    return
   }
 
   // Opening the DevTools triggers the "only-if-cached" request
   // that cannot be handled by the worker. Bypass such requests.
-  if (
-    event.request.cache === "only-if-cached" &&
-    event.request.mode !== "same-origin"
-  ) {
-    return;
+  if (event.request.cache === 'only-if-cached' && event.request.mode !== 'same-origin') {
+    return
   }
 
   // Bypass all requests when there are no active clients.
   // Prevents the self-unregistered worked from handling requests
   // after it's been deleted (still remains active until the next reload).
   if (activeClientIds.size === 0) {
-    return;
+    return
   }
 
-  const requestId = crypto.randomUUID();
-  event.respondWith(handleRequest(event, requestId));
-});
+  const requestId = crypto.randomUUID()
+  event.respondWith(handleRequest(event, requestId))
+})
 
 /**
  * @param {FetchEvent} event
  * @param {string} requestId
  */
 async function handleRequest(event, requestId) {
-  const client = await resolveMainClient(event);
-  const requestCloneForEvents = event.request.clone();
-  const response = await getResponse(event, client, requestId);
+  const client = await resolveMainClient(event)
+  const requestCloneForEvents = event.request.clone()
+  const response = await getResponse(event, client, requestId)
 
   // Send back the response clone for the "response:*" life-cycle events.
   // Ensure MSW is active and ready to handle the message, otherwise
   // this message will pend indefinitely.
   if (client && activeClientIds.has(client.id)) {
-    const serializedRequest = await serializeRequest(requestCloneForEvents);
+    const serializedRequest = await serializeRequest(requestCloneForEvents)
 
     // Clone the response so both the client and the library could consume it.
-    const responseClone = response.clone();
+    const responseClone = response.clone()
 
     sendToClient(
       client,
       {
-        type: "RESPONSE",
+        type: 'RESPONSE',
         payload: {
           isMockedResponse: IS_MOCKED_RESPONSE in response,
           request: {
@@ -155,11 +168,11 @@ async function handleRequest(event, requestId) {
           },
         },
       },
-      responseClone.body ? [serializedRequest.body, responseClone.body] : [],
-    );
+      responseClone.body ? [serializedRequest.body, responseClone.body] : []
+    )
   }
 
-  return response;
+  return response
 }
 
 /**
@@ -171,30 +184,30 @@ async function handleRequest(event, requestId) {
  * @returns {Promise<Client | undefined>}
  */
 async function resolveMainClient(event) {
-  const client = await self.clients.get(event.clientId);
+  const client = await self.clients.get(event.clientId)
 
   if (activeClientIds.has(event.clientId)) {
-    return client;
+    return client
   }
 
-  if (client?.frameType === "top-level") {
-    return client;
+  if (client?.frameType === 'top-level') {
+    return client
   }
 
   const allClients = await self.clients.matchAll({
-    type: "window",
-  });
+    type: 'window',
+  })
 
   return allClients
     .filter((client) => {
       // Get only those clients that are currently visible.
-      return client.visibilityState === "visible";
+      return client.visibilityState === 'visible'
     })
     .find((client) => {
       // Find the client ID that's recorded in the
       // set of clients that have registered the worker.
-      return activeClientIds.has(client.id);
-    });
+      return activeClientIds.has(client.id)
+    })
 }
 
 /**
@@ -206,36 +219,34 @@ async function resolveMainClient(event) {
 async function getResponse(event, client, requestId) {
   // Clone the request because it might've been already used
   // (i.e. its body has been read and sent to the client).
-  const requestClone = event.request.clone();
+  const requestClone = event.request.clone()
 
   function passthrough() {
     // Cast the request headers to a new Headers instance
     // so the headers can be manipulated with.
-    const headers = new Headers(requestClone.headers);
+    const headers = new Headers(requestClone.headers)
 
     // Remove the "accept" header value that marked this request as passthrough.
     // This prevents request alteration and also keeps it compliant with the
     // user-defined CORS policies.
-    const acceptHeader = headers.get("accept");
+    const acceptHeader = headers.get('accept')
     if (acceptHeader) {
-      const values = acceptHeader.split(",").map((value) => value.trim());
-      const filteredValues = values.filter(
-        (value) => value !== "msw/passthrough",
-      );
+      const values = acceptHeader.split(',').map((value) => value.trim())
+      const filteredValues = values.filter((value) => value !== 'msw/passthrough')
 
       if (filteredValues.length > 0) {
-        headers.set("accept", filteredValues.join(", "));
+        headers.set('accept', filteredValues.join(', '))
       } else {
-        headers.delete("accept");
+        headers.delete('accept')
       }
     }
 
-    return fetch(requestClone, { headers });
+    return fetch(requestClone, { headers })
   }
 
   // Bypass mocking when the client is not active.
   if (!client) {
-    return passthrough();
+    return passthrough()
   }
 
   // Bypass initial page load requests (i.e. static assets).
@@ -243,34 +254,34 @@ async function getResponse(event, client, requestId) {
   // means that MSW hasn't dispatched the "MOCK_ACTIVATE" event yet
   // and is not ready to handle requests.
   if (!activeClientIds.has(client.id)) {
-    return passthrough();
+    return passthrough()
   }
 
   // Notify the client that a request has been intercepted.
-  const serializedRequest = await serializeRequest(event.request);
+  const serializedRequest = await serializeRequest(event.request)
   const clientMessage = await sendToClient(
     client,
     {
-      type: "REQUEST",
+      type: 'REQUEST',
       payload: {
         id: requestId,
         ...serializedRequest,
       },
     },
-    [serializedRequest.body],
-  );
+    [serializedRequest.body]
+  )
 
   switch (clientMessage.type) {
-    case "MOCK_RESPONSE": {
-      return respondWithMock(clientMessage.data);
+    case 'MOCK_RESPONSE': {
+      return respondWithMock(clientMessage.data)
     }
 
-    case "PASSTHROUGH": {
-      return passthrough();
+    case 'PASSTHROUGH': {
+      return passthrough()
     }
   }
 
-  return passthrough();
+  return passthrough()
 }
 
 /**
@@ -281,21 +292,18 @@ async function getResponse(event, client, requestId) {
  */
 function sendToClient(client, message, transferrables = []) {
   return new Promise((resolve, reject) => {
-    const channel = new MessageChannel();
+    const channel = new MessageChannel()
 
     channel.port1.onmessage = (event) => {
       if (event.data && event.data.error) {
-        return reject(event.data.error);
+        return reject(event.data.error)
       }
 
-      resolve(event.data);
-    };
+      resolve(event.data)
+    }
 
-    client.postMessage(message, [
-      channel.port2,
-      ...transferrables.filter(Boolean),
-    ]);
-  });
+    client.postMessage(message, [channel.port2, ...transferrables.filter(Boolean)])
+  })
 }
 
 /**
@@ -308,17 +316,17 @@ function respondWithMock(response) {
   // instance will have status code set to 0. Since it's not possible to create
   // a Response instance with status code 0, handle that use-case separately.
   if (response.status === 0) {
-    return Response.error();
+    return Response.error()
   }
 
-  const mockedResponse = new Response(response.body, response);
+  const mockedResponse = new Response(response.body, response)
 
   Reflect.defineProperty(mockedResponse, IS_MOCKED_RESPONSE, {
     value: true,
     enumerable: true,
-  });
+  })
 
-  return mockedResponse;
+  return mockedResponse
 }
 
 /**
@@ -339,5 +347,5 @@ async function serializeRequest(request) {
     referrerPolicy: request.referrerPolicy,
     body: await request.arrayBuffer(),
     keepalive: request.keepalive,
-  };
+  }
 }

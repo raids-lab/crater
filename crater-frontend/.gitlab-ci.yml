@@ -1,11 +1,25 @@
+# Copyright 2025 RAIDS Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 stages:
   - build_frontend
   - build_image
   - deploy
 
 variables:
-  HUSKY: "0" # avoid installing Git Hooks on CI servers
-  HARBOR_REGISTRY_IMAGE: "${HARBOR_REGISTRY}/crater/web-frontend"
+  HUSKY: '0' # avoid installing Git Hooks on CI servers
+  HARBOR_REGISTRY_IMAGE: '${HARBOR_REGISTRY}/crater/web-frontend'
 
 # Build frontend and generate artifacts for main branch
 build_frontend_main:
@@ -20,7 +34,7 @@ build_frontend_main:
   only:
     - main
   cache:
-    key: "crater-web-frontend"
+    key: 'crater-web-frontend'
     paths:
       - .pnpm-store/
       - node_modules/
@@ -34,7 +48,7 @@ build_image_main:
   stage: build_image
   image:
     name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
-    entrypoint: [""]
+    entrypoint: ['']
   script:
     # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
     - mkdir -p /kaniko/.docker
@@ -54,7 +68,7 @@ deploy_testing:
   stage: deploy
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
-    entrypoint: [""]
+    entrypoint: ['']
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
     - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
@@ -68,7 +82,7 @@ deploy_main:
   stage: deploy
   image:
     name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
-    entrypoint: [""]
+    entrypoint: ['']
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
     - kubectl set image deployment/crater-web-frontend crater-web-frontend-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater

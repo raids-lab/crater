@@ -1,5 +1,21 @@
-import { Button } from "@/components/ui/button";
-import useBreadcrumb from "@/hooks/useBreadcrumb";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Button } from '@/components/ui/button'
+import useBreadcrumb from '@/hooks/useBreadcrumb'
 import {
   ActivityIcon,
   BarChartBigIcon,
@@ -17,7 +33,7 @@ import {
   XIcon,
   GpuIcon,
   RedoDotIcon,
-} from "lucide-react";
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,12 +44,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import { useEffect, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+} from '@/components/ui-custom/alert-dialog'
+import { useEffect, useMemo } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
   apiJupyterTokenGet,
   apiJobDelete,
@@ -45,129 +61,120 @@ import {
   JobStatus,
   getJobStateType,
   apiJobGetPods,
-} from "@/services/api/vcjob";
-import JobPhaseLabel from "@/components/badge/JobPhaseBadge";
-import { TimeDistance } from "@/components/custom/TimeDistance";
-import { PodTable } from "./PodTable";
-import { CodeContent } from "@/components/codeblock/ConfigDialog";
-import { LazyContent } from "@/components/codeblock/Dialog";
-import { EventTimeline } from "@/components/custom/Timeline/EventTimeline";
-import PageTitle from "@/components/layout/PageTitle";
-import JobTypeLabel from "@/components/badge/JobTypeBadge";
-import { GrafanaIframe } from "@/pages/Embed/Monitor";
-import useFixedLayout from "@/hooks/useFixedLayout";
-import { DetailPage } from "@/components/layout/DetailPage";
-import { hasNvidiaGPU } from "@/utils/resource";
-import { SSHPortDialog } from "./SSHPortDialog";
-import ProfileDashboard from "@/components/metrics/profile-dashboard";
-import { getDaysDifference } from "@/utils/time";
-import { REFETCH_INTERVAL } from "@/config/task";
-import { useAtomValue } from "jotai";
-import { configGrafanaJobAtom } from "@/utils/store/config";
-import UserLabel from "@/components/label/UserLabel";
-import JupyterIcon from "@/components/icon/JupyterIcon";
-import PrefixLinkButton from "@/components/button/PrefixLinkButton";
-import { apiGetPodIngresses } from "@/services/api/tool";
-import TooltipButton from "@/components/custom/TooltipButton";
-import { getNewJobUrl } from "@/utils/job";
+} from '@/services/api/vcjob'
+import JobPhaseLabel from '@/components/badge/JobPhaseBadge'
+import { TimeDistance } from '@/components/custom/TimeDistance'
+import { PodTable } from './PodTable'
+import { CodeContent } from '@/components/codeblock/ConfigDialog'
+import { LazyContent } from '@/components/codeblock/Dialog'
+import { EventTimeline } from '@/components/custom/Timeline/EventTimeline'
+import PageTitle from '@/components/layout/PageTitle'
+import JobTypeLabel from '@/components/badge/JobTypeBadge'
+import { GrafanaIframe } from '@/pages/Embed/Monitor'
+import useFixedLayout from '@/hooks/useFixedLayout'
+import { DetailPage } from '@/components/layout/DetailPage'
+import { hasNvidiaGPU } from '@/utils/resource'
+import { SSHPortDialog } from './SSHPortDialog'
+import ProfileDashboard from '@/components/metrics/profile-dashboard'
+import { getDaysDifference } from '@/utils/time'
+import { REFETCH_INTERVAL } from '@/config/task'
+import { useAtomValue } from 'jotai'
+import { configGrafanaJobAtom } from '@/utils/store/config'
+import UserLabel from '@/components/label/UserLabel'
+import JupyterIcon from '@/components/icon/JupyterIcon'
+import PrefixLinkButton from '@/components/button/PrefixLinkButton'
+import { apiGetPodIngresses } from '@/services/api/tool'
+import TooltipButton from '@/components/custom/TooltipButton'
+import { getNewJobUrl } from '@/utils/job'
 
 export function BaseCore({ jobName }: { jobName: string }) {
-  useFixedLayout();
-  const navigate = useNavigate();
-  const grafanaJob = useAtomValue(configGrafanaJobAtom);
+  useFixedLayout()
+  const navigate = useNavigate()
+  const grafanaJob = useAtomValue(configGrafanaJobAtom)
 
   // 获取作业详情
   const { data, isLoading } = useQuery({
-    queryKey: ["job", "detail", jobName],
+    queryKey: ['job', 'detail', jobName],
     queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data.data,
     refetchInterval: REFETCH_INTERVAL,
-  });
+  })
 
   // Pod 相关信息获取
   const podQuery = useQuery({
-    queryKey: ["job", "detail", jobName, "pods"],
+    queryKey: ['job', 'detail', jobName, 'pods'],
     queryFn: () => apiJobGetPods(jobName),
     select: (res) => res.data.data.sort((a, b) => a.name.localeCompare(b.name)),
     enabled: !!jobName,
-  });
+  })
 
   // 使用 useMemo 缓存 namespace 和 podName，避免每次渲染都重新取值
   const [namespace, podName] = useMemo(() => {
-    const pod = podQuery.data?.[0];
-    return [pod?.namespace, pod?.name];
-  }, [podQuery.data]);
+    const pod = podQuery.data?.[0]
+    return [pod?.namespace, pod?.name]
+  }, [podQuery.data])
 
   // ingress 查询依赖 namespace 和 podName，且 enabled 依赖 podQuery.isSuccess
   const { data: ingressList = [] } = useQuery({
-    queryKey: ["ingresses", namespace, podName],
+    queryKey: ['ingresses', namespace, podName],
     queryFn: async () => {
-      if (!namespace || !podName) return [];
-      const response = await apiGetPodIngresses(namespace, podName);
-      return response.data.data.ingresses;
+      if (!namespace || !podName) return []
+      const response = await apiGetPodIngresses(namespace, podName)
+      return response.data.data.ingresses
     },
     enabled: !!namespace && !!podName && podQuery.isSuccess,
-  });
+  })
 
   // 用 useMemo 缓存 ingressNames 和 ingressPrefixes，避免不必要的计算
   const ingressNames = useMemo(
-    () =>
-      Array.isArray(ingressList)
-        ? ingressList.map((ing: { name: string }) => ing.name)
-        : [],
-    [ingressList],
-  );
+    () => (Array.isArray(ingressList) ? ingressList.map((ing: { name: string }) => ing.name) : []),
+    [ingressList]
+  )
   const ingressPrefixes = useMemo(
     () =>
-      Array.isArray(ingressList)
-        ? ingressList.map((ing: { prefix: string }) => ing.prefix)
-        : [],
-    [ingressList],
-  );
+      Array.isArray(ingressList) ? ingressList.map((ing: { prefix: string }) => ing.prefix) : [],
+    [ingressList]
+  )
 
   const { mutate: getPortToken } = useMutation({
     mutationFn: (jobName: string) => apiJupyterTokenGet(jobName),
     onSuccess: (_, jobName) => {
-      window.open(`/job/jupyter/${jobName}`);
+      window.open(`/job/jupyter/${jobName}`)
     },
-  });
+  })
 
   const { mutate: deleteJTask } = useMutation({
     mutationFn: () => apiJobDelete(jobName),
     onSuccess: () => {
-      navigate(-1);
-      toast.success("作业已删除");
+      navigate(-1)
+      toast.success('作业已删除')
     },
-  });
+  })
 
   const showGPUDashboard = useMemo(() => {
     if (!data) {
-      return false;
+      return false
     }
-    return hasNvidiaGPU(data.resources);
-  }, [data]);
+    return hasNvidiaGPU(data.resources)
+  }, [data])
 
   const isCompletedOver3Days = useMemo(() => {
-    return getDaysDifference(data?.completedAt) > 3;
-  }, [data?.completedAt]);
+    return getDaysDifference(data?.completedAt) > 3
+  }, [data?.completedAt])
 
   const jobStatus = useMemo(() => {
     if (!data) {
-      return JobStatus.Unknown;
+      return JobStatus.Unknown
     }
-    return getJobStateType(data.status);
-  }, [data]);
+    return getJobStateType(data.status)
+  }, [data])
 
   if (isLoading || !data) {
-    return <></>;
+    return <></>
   }
 
-  const fromTime = data.startedAt
-    ? new Date(data.startedAt).toISOString()
-    : "now-3h";
-  const toTime = data.completedAt
-    ? new Date(data.completedAt).toISOString()
-    : "now";
+  const fromTime = data.startedAt ? new Date(data.startedAt).toISOString() : 'now-3h'
+  const toTime = data.completedAt ? new Date(data.completedAt).toISOString() : 'now'
 
   return (
     <DetailPage
@@ -179,36 +186,30 @@ export function BaseCore({ jobName }: { jobName: string }) {
           descriptionCopiable
         >
           <div className="flex flex-row gap-3">
-            {(data.jobType === JobType.Jupyter ||
-              data.jobType === JobType.Custom) &&
+            {(data.jobType === JobType.Jupyter || data.jobType === JobType.Custom) &&
               data.status === JobPhase.Running && (
-                <PrefixLinkButton
-                  names={ingressNames}
-                  prefixes={ingressPrefixes}
-                />
+                <PrefixLinkButton names={ingressNames} prefixes={ingressPrefixes} />
               )}
-            {(data.jobType === JobType.Jupyter ||
-              data.jobType === JobType.Custom) &&
+            {(data.jobType === JobType.Jupyter || data.jobType === JobType.Custom) &&
               data.status === JobPhase.Running && (
                 <SSHPortDialog jobName={jobName} userName={data.username} />
               )}
-            {data.jobType === JobType.Jupyter &&
-              data.status === JobPhase.Running && (
-                <Button
-                  variant="secondary"
-                  title="打开 Jupyter Lab"
-                  onClick={() => {
-                    toast.info("即将打开 Jupyter Lab 交互式页面");
-                    setTimeout(() => {
-                      getPortToken(jobName);
-                    }, 500);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <JupyterIcon className="size-4" />
-                  Jupyter Lab
-                </Button>
-              )}
+            {data.jobType === JobType.Jupyter && data.status === JobPhase.Running && (
+              <Button
+                variant="secondary"
+                title="打开 Jupyter Lab"
+                onClick={() => {
+                  toast.info('即将打开 Jupyter Lab 交互式页面')
+                  setTimeout(() => {
+                    getPortToken(jobName)
+                  }, 500)
+                }}
+                className="cursor-pointer"
+              >
+                <JupyterIcon className="size-4" />
+                Jupyter Lab
+              </Button>
+            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 {jobStatus === JobStatus.NotStarted ? (
@@ -228,11 +229,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
                     停止作业
                   </Button>
                 ) : (
-                  <Button
-                    variant="destructive"
-                    title="删除作业"
-                    className="cursor-pointer"
-                  >
+                  <Button variant="destructive" title="删除作业" className="cursor-pointer">
                     <Trash2Icon className="size-4" />
                     删除作业
                   </Button>
@@ -242,18 +239,18 @@ export function BaseCore({ jobName }: { jobName: string }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>
                     {jobStatus === JobStatus.NotStarted
-                      ? "取消作业"
+                      ? '取消作业'
                       : jobStatus === JobStatus.Running
-                        ? "停止作业"
-                        : "删除作业"}
+                        ? '停止作业'
+                        : '删除作业'}
                   </AlertDialogTitle>
                   <AlertDialogDescription>
                     作业 {data.name} 将
                     {jobStatus === JobStatus.NotStarted
-                      ? "取消，是否放弃排队？"
+                      ? '取消，是否放弃排队？'
                       : jobStatus === JobStatus.Running
-                        ? "停止，请确认已经保存好所需数据。"
-                        : "删除，所有数据将被清理。"}
+                        ? '停止，请确认已经保存好所需数据。'
+                        : '删除，所有数据将被清理。'}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -261,14 +258,14 @@ export function BaseCore({ jobName }: { jobName: string }) {
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      deleteJTask();
+                      deleteJTask()
                     }}
                   >
                     {jobStatus === JobStatus.NotStarted
-                      ? "确认"
+                      ? '确认'
                       : jobStatus === JobStatus.Running
-                        ? "停止"
-                        : "删除"}
+                        ? '停止'
+                        : '删除'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -277,38 +274,38 @@ export function BaseCore({ jobName }: { jobName: string }) {
         </PageTitle>
       }
       info={[
-        { title: "账户", icon: CreditCardIcon, value: data.queue },
+        { title: '账户', icon: CreditCardIcon, value: data.queue },
         {
-          title: "用户",
+          title: '用户',
           icon: UserRoundIcon,
           value: <UserLabel info={data.userInfo} />,
         },
         {
-          title: "状态",
+          title: '状态',
           icon: ActivityIcon,
           value: <JobPhaseLabel jobPhase={data.status} />,
         },
         {
-          title: "创建于",
+          title: '创建于',
           icon: CalendarIcon,
           value: <TimeDistance date={data.createdAt} />,
         },
         {
-          title: "开始于",
+          title: '开始于',
           icon: ClockIcon,
           value: <TimeDistance date={data.startedAt} />,
         },
         {
-          title: "完成于",
+          title: '完成于',
           icon: CheckCircleIcon,
           value: <TimeDistance date={data.completedAt} />,
         },
       ]}
       tabs={[
         {
-          key: "profile",
+          key: 'profile',
           icon: BarChartBigIcon,
-          label: "统计信息",
+          label: '统计信息',
           children: <ProfileDashboard data={data} />,
           scrollable: true,
           hidden:
@@ -317,17 +314,17 @@ export function BaseCore({ jobName }: { jobName: string }) {
             jobStatus === JobStatus.NotStarted,
         },
         {
-          key: "base",
+          key: 'base',
           icon: LayoutGridIcon,
-          label: "基本信息",
+          label: '基本信息',
           children: <PodTable jobName={jobName} userName={data.username} />,
           scrollable: true,
           hidden: jobStatus === JobStatus.MetadataOnly || isCompletedOver3Days,
         },
         {
-          key: "config",
+          key: 'config',
           icon: FileSlidersIcon,
-          label: "作业配置",
+          label: '作业配置',
           children: (
             <LazyContent
               name={jobName}
@@ -336,7 +333,7 @@ export function BaseCore({ jobName }: { jobName: string }) {
               renderData={(yaml) => (
                 <CodeContent
                   data={yaml}
-                  language={"yaml"}
+                  language={'yaml'}
                   moreActions={
                     <>
                       <TooltipButton
@@ -345,8 +342,8 @@ export function BaseCore({ jobName }: { jobName: string }) {
                         className="size-8"
                         tooltipContent="克隆作业"
                         onClick={() => {
-                          const url = `${getNewJobUrl(data.jobType)}?fromJob=${jobName}`;
-                          navigate(url);
+                          const url = `${getNewJobUrl(data.jobType)}?fromJob=${jobName}`
+                          navigate(url)
                         }}
                       >
                         <RedoDotIcon />
@@ -359,9 +356,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           ),
         },
         {
-          key: "event",
+          key: 'event',
           icon: HistoryIcon,
-          label: jobStatus === JobStatus.Terminated ? "历史事件" : "作业事件",
+          label: jobStatus === JobStatus.Terminated ? '历史事件' : '作业事件',
           children: (
             <LazyContent
               name={jobName}
@@ -381,9 +378,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           scrollable: true,
         },
         {
-          key: "monitor",
+          key: 'monitor',
           icon: GaugeIcon,
-          label: "基础监控",
+          label: '基础监控',
           children: (
             <GrafanaIframe
               baseSrc={`${grafanaJob.basic}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
@@ -392,9 +389,9 @@ export function BaseCore({ jobName }: { jobName: string }) {
           hidden: jobStatus === JobStatus.NotStarted,
         },
         {
-          key: "gpu",
+          key: 'gpu',
           icon: GpuIcon,
-          label: "加速卡监控",
+          label: '加速卡监控',
           children: (
             <GrafanaIframe
               baseSrc={`${grafanaJob.nvidia}?var-job=${data.jobName}&from=${fromTime}&to=${toTime}`}
@@ -404,17 +401,17 @@ export function BaseCore({ jobName }: { jobName: string }) {
         },
       ]}
     />
-  );
+  )
 }
 
 export const Base = () => {
-  const { name } = useParams<string>();
-  const jobName = "" + name;
-  const setBreadcrumb = useBreadcrumb();
+  const { name } = useParams<string>()
+  const jobName = '' + name
+  const setBreadcrumb = useBreadcrumb()
 
   useEffect(() => {
-    setBreadcrumb([{ title: "作业详情" }]);
-  }, [setBreadcrumb]);
+    setBreadcrumb([{ title: '作业详情' }])
+  }, [setBreadcrumb])
 
-  return <BaseCore jobName={jobName} />;
-};
+  return <BaseCore jobName={jobName} />
+}

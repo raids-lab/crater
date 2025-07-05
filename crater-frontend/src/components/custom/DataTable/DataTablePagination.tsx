@@ -1,23 +1,39 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
-import { Row, Table } from "@tanstack/react-table";
+import { useTranslation } from 'react-i18next'
+import { Row, Table } from '@tanstack/react-table'
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
   RefreshCcw,
-} from "lucide-react";
+} from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,23 +44,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import TooltipButton from "../TooltipButton";
-import React from "react";
+} from '@/components/ui-custom/alert-dialog'
+import TooltipButton from '../TooltipButton'
+import React from 'react'
 
 export interface MultipleHandler<TData> {
-  title: (rows: Row<TData>[]) => string;
-  description: (rows: Row<TData>[]) => React.ReactNode;
-  handleSubmit: (rows: Row<TData>[]) => void;
-  icon: React.ReactNode;
-  isDanger?: boolean;
+  title: (rows: Row<TData>[]) => string
+  description: (rows: Row<TData>[]) => React.ReactNode
+  handleSubmit: (rows: Row<TData>[]) => void
+  icon: React.ReactNode
+  isDanger?: boolean
 }
 
 interface DataTablePaginationProps<TData> {
-  updatedAt: string;
-  refetch: () => void;
-  table: Table<TData>;
-  multipleHandlers?: MultipleHandler<TData>[];
+  updatedAt: string
+  refetch: () => void
+  table: Table<TData>
+  multipleHandlers?: MultipleHandler<TData>[]
 }
 
 export function DataTablePagination<TData>({
@@ -53,7 +69,7 @@ export function DataTablePagination<TData>({
   table,
   multipleHandlers,
 }: DataTablePaginationProps<TData>) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   return (
     <div className="flex w-full items-center justify-between">
@@ -68,9 +84,7 @@ export function DataTablePagination<TData>({
                   variant="outline"
                   size="icon"
                   className="size-9"
-                  tooltipContent={multipleHandler.title(
-                    table.getFilteredSelectedRowModel().rows,
-                  )}
+                  tooltipContent={multipleHandler.title(table.getFilteredSelectedRowModel().rows)}
                 >
                   {multipleHandler.icon}
                 </TooltipButton>
@@ -79,33 +93,23 @@ export function DataTablePagination<TData>({
                 <>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      {multipleHandler.title(
-                        table.getFilteredSelectedRowModel().rows,
-                      )}
+                      {multipleHandler.title(table.getFilteredSelectedRowModel().rows)}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      {multipleHandler.description(
-                        table.getFilteredSelectedRowModel().rows,
-                      )}
+                      {multipleHandler.description(table.getFilteredSelectedRowModel().rows)}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>
-                      {t("dataTablePagination.cancel")}
-                    </AlertDialogCancel>
+                    <AlertDialogCancel>{t('dataTablePagination.cancel')}</AlertDialogCancel>
                     <AlertDialogAction
-                      variant={
-                        multipleHandler.isDanger ? "destructive" : "default"
-                      }
+                      variant={multipleHandler.isDanger ? 'destructive' : 'default'}
                       onClick={() => {
-                        multipleHandler.handleSubmit(
-                          table.getFilteredSelectedRowModel().rows,
-                        );
+                        multipleHandler.handleSubmit(table.getFilteredSelectedRowModel().rows)
                         // cancel selection
-                        table.resetRowSelection();
+                        table.resetRowSelection()
                       }}
                     >
-                      {t("dataTablePagination.confirm")}
+                      {t('dataTablePagination.confirm')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </>
@@ -116,7 +120,7 @@ export function DataTablePagination<TData>({
           variant="outline"
           size="icon"
           className="size-9"
-          tooltipContent={t("dataTablePagination.refresh")}
+          tooltipContent={t('dataTablePagination.refresh')}
           onClick={refetch}
         >
           <RefreshCcw className="h-3.5 w-3.5" />
@@ -124,7 +128,7 @@ export function DataTablePagination<TData>({
         <Select
           value={`${table.getState().pagination.pageSize}`}
           onValueChange={(value) => {
-            table.setPageSize(Number(value));
+            table.setPageSize(Number(value))
           }}
         >
           <SelectTrigger className="bg-background h-9 w-[100px] pr-2 pl-3 text-xs">
@@ -133,23 +137,23 @@ export function DataTablePagination<TData>({
           <SelectContent side="top">
             {[10, 20, 50, 100, 200].map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
-                {t("dataTablePagination.itemsPerPage", { count: pageSize })}
+                {t('dataTablePagination.itemsPerPage', { count: pageSize })}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <p className="text-muted-foreground pl-1.5 font-medium">
-          {t("dataTablePagination.updatedAt", { time: updatedAt })}
-          {", "}
+          {t('dataTablePagination.updatedAt', { time: updatedAt })}
+          {', '}
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>
-              {t("dataTablePagination.totalItems", {
+              {t('dataTablePagination.totalItems', {
                 count: table.getFilteredRowModel().rows.length,
               })}
             </>
           ) : (
             <>
-              {t("dataTablePagination.selectedItems", {
+              {t('dataTablePagination.selectedItems', {
                 selected: table.getFilteredSelectedRowModel().rows.length,
                 total: table.getFilteredRowModel().rows.length,
               })}
@@ -159,7 +163,7 @@ export function DataTablePagination<TData>({
       </div>
       <div className="flex items-center space-x-6">
         <p className="text-muted-foreground text-xs font-medium">
-          {t("dataTablePagination.currentPage", {
+          {t('dataTablePagination.currentPage', {
             page: table.getState().pagination.pageIndex + 1,
             totalPages: table.getPageCount(),
           })}
@@ -170,7 +174,7 @@ export function DataTablePagination<TData>({
             className="hidden size-9 p-0 lg:flex"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
-            title={t("dataTablePagination.firstPage")}
+            title={t('dataTablePagination.firstPage')}
           >
             <ChevronsLeftIcon className="size-4" />
           </Button>
@@ -179,11 +183,9 @@ export function DataTablePagination<TData>({
             className="size-9 p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            title={t("dataTablePagination.previousPage")}
+            title={t('dataTablePagination.previousPage')}
           >
-            <span className="sr-only">
-              {t("dataTablePagination.previousPage")}
-            </span>
+            <span className="sr-only">{t('dataTablePagination.previousPage')}</span>
             <ChevronLeftIcon className="size-4" />
           </Button>
           <Button
@@ -191,9 +193,9 @@ export function DataTablePagination<TData>({
             className="size-9 p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            title={t("dataTablePagination.nextPage")}
+            title={t('dataTablePagination.nextPage')}
           >
-            <span className="sr-only">{t("dataTablePagination.nextPage")}</span>
+            <span className="sr-only">{t('dataTablePagination.nextPage')}</span>
             <ChevronRightIcon className="size-4" />
           </Button>
           <Button
@@ -201,13 +203,13 @@ export function DataTablePagination<TData>({
             className="hidden size-9 p-0 lg:flex"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
-            title={t("dataTablePagination.lastPage")}
+            title={t('dataTablePagination.lastPage')}
           >
-            <span className="sr-only">{t("dataTablePagination.lastPage")}</span>
+            <span className="sr-only">{t('dataTablePagination.lastPage')}</span>
             <ChevronsRightIcon className="size-4" />
           </Button>
         </div>
       </div>
     </div>
-  );
+  )
 }

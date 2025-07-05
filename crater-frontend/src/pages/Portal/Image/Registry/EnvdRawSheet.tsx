@@ -1,5 +1,21 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Form,
   FormControl,
@@ -8,95 +24,92 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { z } from "zod";
-import { toast } from "sonner";
-import SandwichSheet, {
-  SandwichLayout,
-  SandwichSheetProps,
-} from "@/components/sheet/SandwichSheet";
-import LoadableButton from "@/components/button/LoadableButton";
-import { PackagePlusIcon } from "lucide-react";
-import FormImportButton from "@/components/form/FormImportButton";
-import FormExportButton from "@/components/form/FormExportButton";
-import { MetadataFormEnvdRaw } from "@/components/form/types";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/form'
+import { z } from 'zod'
+import { toast } from 'sonner'
+import SandwichSheet, { SandwichLayout, SandwichSheetProps } from '@/components/sheet/SandwichSheet'
+import LoadableButton from '@/components/button/LoadableButton'
+import { PackagePlusIcon } from 'lucide-react'
+import FormImportButton from '@/components/form/FormImportButton'
+import FormExportButton from '@/components/form/FormExportButton'
+import { MetadataFormEnvdRaw } from '@/components/form/types'
+import { Input } from '@/components/ui/input'
 import {
   apiUserCreateByEnvd,
   FetchAllUniqueImageTagObjects,
   imageNameRegex,
   ImagePackSource,
   imageTagRegex,
-} from "@/services/api/imagepack";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import FormLabelMust from "@/components/form/FormLabelMust";
-import { DockerfileEditor } from "./DockerfileEditor";
-import { TagsInput } from "@/components/form/TagsInput";
-import { exportToJsonString } from "@/utils/form";
-import { useImageTemplateLoader } from "@/hooks/useTemplateLoader";
+} from '@/services/api/imagepack'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import FormLabelMust from '@/components/form/FormLabelMust'
+import { DockerfileEditor } from './DockerfileEditor'
+import { TagsInput } from '@/components/form/TagsInput'
+import { exportToJsonString } from '@/utils/form'
+import { useImageTemplateLoader } from '@/hooks/useTemplateLoader'
 
 const envdRawFormSchema = z.object({
-  envdScript: z.string().min(1, "Envd script content is required"),
-  description: z.string().min(1, "请为镜像添加描述"),
+  envdScript: z.string().min(1, 'Envd script content is required'),
+  description: z.string().min(1, '请为镜像添加描述'),
   imageName: z
     .string()
-    .min(1, "镜像名不能为空")
+    .min(1, '镜像名不能为空')
     .refine(
       (v) => {
         if (v) {
-          return imageNameRegex.test(v);
+          return imageNameRegex.test(v)
         } else {
-          return true;
+          return true
         }
       },
       {
-        message: "仅允许小写字母、数字、. _ -，且不能以分隔符开头/结尾",
-      },
+        message: '仅允许小写字母、数字、. _ -，且不能以分隔符开头/结尾',
+      }
     )
-    .refine((v) => !v || v.includes("envd"), {
+    .refine((v) => !v || v.includes('envd'), {
       message: "名称需包含 'envd' ",
     }),
   imageTag: z
     .string()
-    .min(1, "镜像标签不能为空")
+    .min(1, '镜像标签不能为空')
     .refine(
       (v) => {
         if (v) {
-          return imageTagRegex.test(v);
+          return imageTagRegex.test(v)
         } else {
-          return true;
+          return true
         }
       },
       {
-        message: "仅允许字母、数字、_ . + -，且不能以 . 或 - 开头/结尾",
-      },
+        message: '仅允许字母、数字、_ . + -，且不能以 . 或 - 开头/结尾',
+      }
     )
-    .refine((value) => value !== "latest", {
+    .refine((value) => value !== 'latest', {
       message: "镜像标签不能为: 'latest'",
     }),
   tags: z
     .array(
       z.object({
         value: z.string(),
-      }),
+      })
     )
     .optional(),
-});
+})
 
-export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>;
+export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>
 
 interface EnvdRawSheetContentProps {
-  closeSheet: () => void;
-  imagePackName?: string;
-  setImagePackName: (imagePackName: string) => void;
+  closeSheet: () => void
+  imagePackName?: string
+  setImagePackName: (imagePackName: string) => void
 }
 
 function EnvdRawSheetContent({
   closeSheet,
-  imagePackName = "",
+  imagePackName = '',
   setImagePackName,
 }: EnvdRawSheetContentProps) {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const form = useForm<EnvdRawFormValues>({
     resolver: zodResolver(envdRawFormSchema),
@@ -110,49 +123,49 @@ def build():
     install.apt_packages(["openssh-server", "build-essential", "iputils-ping", "net-tools", "htop"])
     config.pip_index(url = "https://pypi.tuna.tsinghua.edu.cn/simple")
     config.jupyter()`,
-      description: "",
-      imageName: "",
-      imageTag: "",
+      description: '',
+      imageName: '',
+      imageTag: '',
     },
-  });
+  })
 
   const { mutate: submitEnvdRawSheet, isPending } = useMutation({
     mutationFn: (values: EnvdRawFormValues) =>
       apiUserCreateByEnvd({
         description: values.description,
         envd: values.envdScript,
-        name: values.imageName ?? "",
-        tag: values.imageTag ?? "",
-        python: "",
-        base: "",
+        name: values.imageName ?? '',
+        tag: values.imageTag ?? '',
+        python: '',
+        base: '',
         tags: values.tags?.map((item) => item.value) ?? [],
         template: exportToJsonString(MetadataFormEnvdRaw, values),
         buildSource: ImagePackSource.EnvdRaw,
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-        queryClient.invalidateQueries({ queryKey: ["imagepack", "list"] }),
-      );
-      closeSheet();
-      toast.success(`镜像开始制作，请在下方列表中查看制作状态`);
+        queryClient.invalidateQueries({ queryKey: ['imagepack', 'list'] })
+      )
+      closeSheet()
+      toast.success(`镜像开始制作，请在下方列表中查看制作状态`)
     },
-  });
+  })
 
   const { data: allImageTags } = useQuery({
-    queryKey: ["allImageTags"],
+    queryKey: ['allImageTags'],
     queryFn: FetchAllUniqueImageTagObjects,
-  });
+  })
 
   const onSubmit = (values: EnvdRawFormValues) => {
-    submitEnvdRawSheet(values);
-  };
+    submitEnvdRawSheet(values)
+  }
 
   useImageTemplateLoader({
     form: form,
     metadata: MetadataFormEnvdRaw,
     imagePackName: imagePackName,
     setImagePackName: setImagePackName,
-  });
+  })
 
   return (
     <Form {...form}>
@@ -163,11 +176,7 @@ def build():
               <FormImportButton metadata={MetadataFormEnvdRaw} form={form} />
               <FormExportButton metadata={MetadataFormEnvdRaw} form={form} />
 
-              <LoadableButton
-                isLoading={isPending}
-                isLoadingText="正在提交"
-                type="submit"
-              >
+              <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">
                 <PackagePlusIcon />
                 开始制作
               </LoadableButton>
@@ -262,18 +271,18 @@ def build():
         </SandwichLayout>
       </form>
     </Form>
-  );
+  )
 }
 
 interface EnvdRawSheetProps extends SandwichSheetProps {
-  closeSheet: () => void;
-  imagePackName?: string;
-  setImagePackName: (imagePackName: string) => void;
+  closeSheet: () => void
+  imagePackName?: string
+  setImagePackName: (imagePackName: string) => void
 }
 
 export function EnvdRawSheet({
   closeSheet,
-  imagePackName = "",
+  imagePackName = '',
   setImagePackName,
   ...props
 }: EnvdRawSheetProps) {
@@ -285,5 +294,5 @@ export function EnvdRawSheet({
         closeSheet={closeSheet}
       />
     </SandwichSheet>
-  );
+  )
 }

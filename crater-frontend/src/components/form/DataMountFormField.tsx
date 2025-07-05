@@ -1,10 +1,26 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useTranslation } from "react-i18next";
-import { useState } from "react";
-import { ArrayPath, Path, UseFormReturn, useFieldArray } from "react-hook-form";
-import { Button } from "@/components/ui/button";
+import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
+import { ArrayPath, Path, UseFormReturn, useFieldArray } from 'react-hook-form'
+import { Button } from '@/components/ui/button'
 import {
   FormControl,
   FormDescription,
@@ -12,71 +28,71 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { CirclePlus, HardDriveIcon, XIcon } from "lucide-react";
-import FormLabelMust from "@/components/form/FormLabelMust";
-import { FileSelectDialog } from "@/components/file/FileSelectDialog";
-import Combobox from "@/components/form/Combobox";
-import DatasetItem from "@/components/form/DatasetItem";
-import AccordionCard from "@/components/form/AccordionCard";
-import { useQuery } from "@tanstack/react-query";
-import { apiGetDataset, IDataset } from "@/services/api/dataset";
-import { useAtomValue } from "jotai";
-import { globalUserInfo } from "@/utils/store";
-import { ComboboxItem } from "@/components/form/Combobox";
-import { VolumeMountsSchema, VolumeMountType } from "@/utils/form";
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { CirclePlus, HardDriveIcon, XIcon } from 'lucide-react'
+import FormLabelMust from '@/components/form/FormLabelMust'
+import { FileSelectDialog } from '@/components/file/FileSelectDialog'
+import Combobox from '@/components/form/Combobox'
+import DatasetItem from '@/components/form/DatasetItem'
+import AccordionCard from '@/components/form/AccordionCard'
+import { useQuery } from '@tanstack/react-query'
+import { apiGetDataset, IDataset } from '@/services/api/dataset'
+import { useAtomValue } from 'jotai'
+import { globalUserInfo } from '@/utils/store'
+import { ComboboxItem } from '@/components/form/Combobox'
+import { VolumeMountsSchema, VolumeMountType } from '@/utils/form'
 
 interface VolumeMountsCardProps<
   T extends {
-    volumeMounts: VolumeMountsSchema;
+    volumeMounts: VolumeMountsSchema
   },
 > {
-  form: UseFormReturn<T>;
-  className?: string;
+  form: UseFormReturn<T>
+  className?: string
 }
 
 export function VolumeMountsCard<
   T extends {
-    volumeMounts: VolumeMountsSchema;
+    volumeMounts: VolumeMountsSchema
   },
 >({ form, className }: VolumeMountsCardProps<T>) {
-  const { t } = useTranslation();
-  const [dataMountOpen, setDataMountOpen] = useState<boolean>(true);
-  const user = useAtomValue(globalUserInfo);
+  const { t } = useTranslation()
+  const [dataMountOpen, setDataMountOpen] = useState<boolean>(true)
+  const user = useAtomValue(globalUserInfo)
 
   // Get dataset information
   const datasetInfo = useQuery({
-    queryKey: ["datsets"],
+    queryKey: ['datsets'],
     queryFn: () => apiGetDataset(),
     select: (res) => {
       // 去重，根据 Label
       // TODO(zhengxl): 不允许重复的 Label，需要在上传数据集时进行校验
-      const uniqueLabels = new Set();
+      const uniqueLabels = new Set()
       const uniqueData = res.data.data.filter((item) => {
         if (uniqueLabels.has(item.name)) {
-          return false;
+          return false
         }
-        uniqueLabels.add(item.name);
-        return true;
-      });
+        uniqueLabels.add(item.name)
+        return true
+      })
       return uniqueData.map(
         (item) =>
           ({
             value: item.id.toString(),
             label: `${item.name} 
-            (${item.extra.tag?.join(", ")})
-            [${item.type === "model" ? "模型" : "数据集"}]
+            (${item.extra.tag?.join(', ')})
+            [${item.type === 'model' ? '模型' : '数据集'}]
             [${item.userInfo.nickname} ${item.userInfo.username}]`,
             selectedLabel: item.name,
             detail: item,
-          }) as ComboboxItem<IDataset>,
-      );
+          }) as ComboboxItem<IDataset>
+      )
     },
-  });
+  })
 
   // Field array for volume mounts
   const {
@@ -84,23 +100,23 @@ export function VolumeMountsCard<
     append: volumeMountAppend,
     remove: volumeMountRemove,
   } = useFieldArray({
-    name: "volumeMounts" as ArrayPath<T>,
+    name: 'volumeMounts' as ArrayPath<T>,
     control: form.control,
-  });
+  })
 
   const resetVolumeMountsFields = (index: number, type: number) => {
     form.setValue(`volumeMounts.${index}` as Path<T>, {
       type: type,
-      subPath: "",
-      mountPath: "",
-    });
-  };
+      subPath: '',
+      mountPath: '',
+    })
+  }
 
-  const currentValues = form.watch();
+  const currentValues = form.watch()
 
   return (
     <AccordionCard
-      cardTitle={t("volumeMounts.cardTitle")}
+      cardTitle={t('volumeMounts.cardTitle')}
       icon={HardDriveIcon}
       open={dataMountOpen}
       setOpen={setDataMountOpen}
@@ -109,25 +125,24 @@ export function VolumeMountsCard<
       <div className="mt-3 space-y-5">
         {volumeMountFields.map((field, index) => (
           <div key={field.id}>
-            <Separator className={cn("mb-5", index === 0 && "hidden")} />
+            <Separator className={cn('mb-5', index === 0 && 'hidden')} />
             <div className="space-y-5">
               <FormField
                 control={form.control}
                 name={`volumeMounts.${index}.subPath`}
                 render={({ field }) => {
                   const disabled =
-                    form.getValues(`volumeMounts.${index}.mountPath`) ===
-                    `/home/${user.name}`;
+                    form.getValues(`volumeMounts.${index}.mountPath`) === `/home/${user.name}`
                   return (
                     <FormItem className="relative">
                       <FormLabel>
-                        {t("volumeMounts.mountSource", { index: index + 1 })}
+                        {t('volumeMounts.mountSource', { index: index + 1 })}
                         <FormLabelMust />
                       </FormLabel>
                       <button
                         type="button"
                         onClick={() => {
-                          volumeMountRemove(index);
+                          volumeMountRemove(index)
                         }}
                         className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 cursor-pointer rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                       >
@@ -137,18 +152,15 @@ export function VolumeMountsCard<
                       <FormControl>
                         <Tabs
                           value={
-                            currentValues.volumeMounts[index].type ===
-                            VolumeMountType.FileType
-                              ? "file"
-                              : "dataset"
+                            currentValues.volumeMounts[index].type === VolumeMountType.FileType
+                              ? 'file'
+                              : 'dataset'
                           }
                           onValueChange={(value) => {
                             form.setValue(
                               `volumeMounts.${index}.type`,
-                              value === "file"
-                                ? VolumeMountType.FileType
-                                : VolumeMountType.DataType,
-                            );
+                              value === 'file' ? VolumeMountType.FileType : VolumeMountType.DataType
+                            )
                           }}
                           className="w-full"
                         >
@@ -156,55 +168,46 @@ export function VolumeMountsCard<
                             <TabsTrigger
                               value="file"
                               onClick={() =>
-                                resetVolumeMountsFields(
-                                  index,
-                                  VolumeMountType.FileType,
-                                )
+                                resetVolumeMountsFields(index, VolumeMountType.FileType)
                               }
                               className="cursor-pointer"
                               disabled={disabled}
                             >
-                              {t("volumeMounts.fileTab")}
+                              {t('volumeMounts.fileTab')}
                             </TabsTrigger>
                             <TabsTrigger
                               value="dataset"
                               onClick={() =>
-                                resetVolumeMountsFields(
-                                  index,
-                                  VolumeMountType.DataType,
-                                )
+                                resetVolumeMountsFields(index, VolumeMountType.DataType)
                               }
                               className="cursor-pointer"
                               disabled={disabled}
                             >
-                              {t("volumeMounts.dataTab")}
+                              {t('volumeMounts.dataTab')}
                             </TabsTrigger>
                           </TabsList>
                           <TabsContent value="file">
                             <FileSelectDialog
-                              value={field.value.split("/").pop()}
+                              value={field.value.split('/').pop()}
                               handleSubmit={(item) => {
-                                field.onChange(item.id);
+                                field.onChange(item.id)
                                 form.setValue(
                                   `volumeMounts.${index}.type`,
-                                  VolumeMountType.FileType,
-                                );
-                                let mountName = `/data/${item.name}`;
+                                  VolumeMountType.FileType
+                                )
+                                let mountName = `/data/${item.name}`
                                 switch (item.id) {
-                                  case "user":
-                                    mountName = `/home/${user.name}`;
-                                    break;
-                                  case "account":
-                                    mountName = `/data/account`;
-                                    break;
-                                  case "public":
-                                    mountName = `/data/public`;
-                                    break;
+                                  case 'user':
+                                    mountName = `/home/${user.name}`
+                                    break
+                                  case 'account':
+                                    mountName = `/data/account`
+                                    break
+                                  case 'public':
+                                    mountName = `/data/public`
+                                    break
                                 }
-                                form.setValue(
-                                  `volumeMounts.${index}.mountPath`,
-                                  mountName,
-                                );
+                                form.setValue(`volumeMounts.${index}.mountPath`, mountName)
                               }}
                               disabled={disabled}
                             />
@@ -215,23 +218,18 @@ export function VolumeMountsCard<
                               current={field.value}
                               disabled={disabled}
                               useDialog={true}
-                              renderLabel={(item) => (
-                                <DatasetItem item={item} />
-                              )}
+                              renderLabel={(item) => <DatasetItem item={item} />}
                               handleSelect={(value) => {
-                                field.onChange(value);
+                                field.onChange(value)
                                 form.setValue(
                                   `volumeMounts.${index}.type`,
-                                  VolumeMountType.DataType,
-                                );
-                                form.setValue(
-                                  `volumeMounts.${index}.datasetID`,
-                                  Number(value),
-                                );
+                                  VolumeMountType.DataType
+                                )
+                                form.setValue(`volumeMounts.${index}.datasetID`, Number(value))
                                 form.setValue(
                                   `volumeMounts.${index}.mountPath`,
-                                  `/data/${datasetInfo.data?.find((item) => item.value === value)?.detail?.name}`,
-                                );
+                                  `/data/${datasetInfo.data?.find((item) => item.value === value)?.detail?.name}`
+                                )
                               }}
                               formTitle="数据"
                             />
@@ -240,7 +238,7 @@ export function VolumeMountsCard<
                       </FormControl>
                       <FormMessage />
                     </FormItem>
-                  );
+                  )
                 }}
               />
               <FormField
@@ -248,12 +246,11 @@ export function VolumeMountsCard<
                 name={`volumeMounts.${index}.mountPath`}
                 render={({ field }) => {
                   const disabled =
-                    form.getValues(`volumeMounts.${index}.mountPath`) ===
-                    `/home/${user.name}`;
+                    form.getValues(`volumeMounts.${index}.mountPath`) === `/home/${user.name}`
                   return (
                     <FormItem>
                       <FormLabel>
-                        {t("volumeMounts.mountPoint", { index: index + 1 })}
+                        {t('volumeMounts.mountPoint', { index: index + 1 })}
                         <FormLabelMust />
                       </FormLabel>
                       <FormControl>
@@ -261,12 +258,12 @@ export function VolumeMountsCard<
                       </FormControl>
                       <FormDescription>
                         {disabled
-                          ? t("volumeMounts.defaultMountDescription")
-                          : t("volumeMounts.mountPathDescription")}
+                          ? t('volumeMounts.defaultMountDescription')
+                          : t('volumeMounts.mountPathDescription')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
-                  );
+                  )
                 }}
               />
             </div>
@@ -279,17 +276,17 @@ export function VolumeMountsCard<
           onClick={() =>
             volumeMountAppend({
               type: VolumeMountType.FileType,
-              subPath: "",
-              mountPath: "",
+              subPath: '',
+              mountPath: '',
             })
           }
         >
           <CirclePlus className="size-4" />
-          {t("volumeMounts.addButton", {
-            mountType: t("volumeMounts.cardTitle"),
+          {t('volumeMounts.addButton', {
+            mountType: t('volumeMounts.cardTitle'),
           })}
         </Button>
       </div>
     </AccordionCard>
-  );
+  )
 }

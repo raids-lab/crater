@@ -1,5 +1,21 @@
-import { useMemo, useState } from "react";
-import { Input } from "@/components/ui/input";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useMemo, useState } from 'react'
+import { Input } from '@/components/ui/input'
 //import { Link } from "react-router-dom";
 import {
   Select,
@@ -7,8 +23,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import {
   ArrowDownAZIcon,
   ArrowDownZAIcon,
@@ -17,16 +33,16 @@ import {
   EllipsisVerticalIcon,
   PackageIcon,
   SearchIcon,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 //import TooltipButton from "@/components/custom/TooltipButton";
-import TooltipLink from "@/components/label/TooltipLink";
-import PageTitle from "@/components/layout/PageTitle";
-import TipBadge from "@/components/badge/TipBadge";
-import { TimeDistance } from "@/components/custom/TimeDistance";
-import { motion } from "framer-motion";
-import { globalUserInfo } from "@/utils/store";
-import { useAtomValue } from "jotai";
+import TooltipLink from '@/components/label/TooltipLink'
+import PageTitle from '@/components/layout/PageTitle'
+import TipBadge from '@/components/badge/TipBadge'
+import { TimeDistance } from '@/components/custom/TimeDistance'
+import { motion } from 'framer-motion'
+import { globalUserInfo } from '@/utils/store'
+import { useAtomValue } from 'jotai'
 // 导入所需组件
 import {
   DropdownMenu,
@@ -34,7 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,63 +61,63 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import { Trash2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { IUserInfo } from "@/services/api/vcjob";
-import UserLabel from "@/components/label/UserLabel";
-import Nothing from "@/components/placeholder/Nothing";
+} from '@/components/ui-custom/alert-dialog'
+import { Trash2Icon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { IUserInfo } from '@/services/api/vcjob'
+import UserLabel from '@/components/label/UserLabel'
+import Nothing from '@/components/placeholder/Nothing'
 
 export interface DataItem {
-  id: number;
-  name: string;
-  desc: string;
-  createdAt?: string;
-  tag: string[];
-  url?: string;
-  template?: string;
-  owner: IUserInfo;
+  id: number
+  name: string
+  desc: string
+  createdAt?: string
+  tag: string[]
+  url?: string
+  template?: string
+  owner: IUserInfo
 }
 //假设 JobType 是这样定义的枚举
 enum JobType {
-  Jupyter = "jupyter",
-  Custom = "custom",
-  Tensorflow = "tensorflow",
-  Pytorch = "pytorch",
+  Jupyter = 'jupyter',
+  Custom = 'custom',
+  Tensorflow = 'tensorflow',
+  Pytorch = 'pytorch',
 }
 
 const getNewJobUrl = (jobType: JobType) => {
   switch (jobType) {
     case JobType.Jupyter: // 直接匹配枚举值
-      return "job/inter/new-jupyter-vcjobs";
+      return 'job/inter/new-jupyter-vcjobs'
     case JobType.Custom:
-      return "job/batch/new-vcjobs";
+      return 'job/batch/new-vcjobs'
     case JobType.Tensorflow:
-      return "job/batch/new-tensorflow";
+      return 'job/batch/new-tensorflow'
     case JobType.Pytorch:
-      return "job/batch/new-pytorch";
+      return 'job/batch/new-pytorch'
     default:
-      return "job/batch/new-vcjobs";
+      return 'job/batch/new-vcjobs'
   }
-};
+}
 
 // 新增 JSON 解析函数
 const getJobUrlFromTemplate = (template: string): string => {
   try {
-    const parsed = JSON.parse(template);
+    const parsed = JSON.parse(template)
 
     // 类型安全校验
     if (!parsed.type || !Object.values(JobType).includes(parsed.type)) {
-      return getNewJobUrl(JobType.Jupyter);
+      return getNewJobUrl(JobType.Jupyter)
     }
 
     // 通过类型断言确保类型安全
-    const jobType = parsed.type as JobType;
-    return getNewJobUrl(jobType);
+    const jobType = parsed.type as JobType
+    return getNewJobUrl(jobType)
   } catch {
-    return getNewJobUrl(JobType.Jupyter); // 解析失败返回默认
+    return getNewJobUrl(JobType.Jupyter) // 解析失败返回默认
   }
-};
+}
 
 export default function DataList({
   items,
@@ -109,51 +125,43 @@ export default function DataList({
   actionArea,
   handleDelete,
 }: {
-  items: DataItem[];
-  title: string;
-  actionArea?: React.ReactNode;
-  handleDelete?: (id: number) => void;
+  items: DataItem[]
+  title: string
+  actionArea?: React.ReactNode
+  handleDelete?: (id: number) => void
 }) {
-  const [sort, setSort] = useState("ascending");
-  const [modelType, setModelType] = useState("所有标签");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState("所有"); // 修改默认值为"所有"
-  const user = useAtomValue(globalUserInfo);
+  const [sort, setSort] = useState('ascending')
+  const [modelType, setModelType] = useState('所有标签')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [ownerFilter, setOwnerFilter] = useState('所有') // 修改默认值为"所有"
+  const user = useAtomValue(globalUserInfo)
 
   const tags = useMemo(() => {
-    const tags = new Set<string>();
+    const tags = new Set<string>()
     items.forEach((model) => {
-      model.tag.forEach((tag) => tags.add(tag));
-    });
-    return Array.from(tags);
-  }, [items]);
+      model.tag.forEach((tag) => tags.add(tag))
+    })
+    return Array.from(tags)
+  }, [items])
 
   const filteredItems = items
     .sort((a, b) =>
-      sort === "descending"
-        ? new Date(a.createdAt || "").getTime() -
-          new Date(b.createdAt || "").getTime()
-        : new Date(b.createdAt || "").getTime() -
-          new Date(a.createdAt || "").getTime(),
+      sort === 'descending'
+        ? new Date(a.createdAt || '').getTime() - new Date(b.createdAt || '').getTime()
+        : new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
     )
     .filter((item) =>
-      modelType === "所有标签"
-        ? true
-        : item.tag.includes(modelType)
-          ? true
-          : false,
+      modelType === '所有标签' ? true : item.tag.includes(modelType) ? true : false
     )
-    .filter((item) =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
+    .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
     // 修改：基于所有者筛选，添加"所有"选项
     .filter((item) =>
-      ownerFilter === "所有"
+      ownerFilter === '所有'
         ? true
-        : ownerFilter === "我的"
+        : ownerFilter === '我的'
           ? user.name === item.owner.username
-          : user.name !== item.owner.username,
-    );
+          : user.name !== item.owner.username
+    )
 
   return (
     <div>
@@ -174,7 +182,7 @@ export default function DataList({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          {title !== "作业模板" && (
+          {title !== '作业模板' && (
             <Select value={modelType} onValueChange={setModelType}>
               <SelectTrigger className="min-w-36">
                 <SelectValue>{modelType}</SelectValue>
@@ -205,11 +213,7 @@ export default function DataList({
         <Select value={sort} onValueChange={setSort}>
           <SelectTrigger className="w-16">
             <SelectValue>
-              {sort === "ascending" ? (
-                <ArrowDownAZIcon size={16} />
-              ) : (
-                <ArrowDownZAIcon size={16} />
-              )}
+              {sort === 'ascending' ? <ArrowDownAZIcon size={16} /> : <ArrowDownZAIcon size={16} />}
             </SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
@@ -247,17 +251,17 @@ export default function DataList({
                   <div
                     className={`bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg p-1`}
                   >
-                    {title === "模型" ? (
+                    {title === '模型' ? (
                       <BotIcon />
-                    ) : title === "数据集" ? (
+                    ) : title === '数据集' ? (
                       <DatabaseZapIcon />
                     ) : (
                       <PackageIcon />
                     )}
                   </div>
-                  {title === "作业模板" ? (
+                  {title === '作业模板' ? (
                     <TooltipLink
-                      to={`/portal/${getJobUrlFromTemplate(item.template || "")}?fromTemplate=${item.id}`}
+                      to={`/portal/${getJobUrlFromTemplate(item.template || '')}?fromTemplate=${item.id}`}
                       name={<p className="text-left">{item.name}</p>}
                       tooltip={`查看${title}详情`}
                       className="font-semibold"
@@ -275,11 +279,7 @@ export default function DataList({
                   <AlertDialog>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 p-0"
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
                           <span className="sr-only">更多操作</span>
                           <EllipsisVerticalIcon className="size-4" />
                         </Button>
@@ -310,8 +310,8 @@ export default function DataList({
                         <AlertDialogAction
                           variant="destructive"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete?.(item.id);
+                            e.stopPropagation()
+                            handleDelete?.(item.id)
                           }}
                         >
                           删除
@@ -325,11 +325,7 @@ export default function DataList({
               {item.tag.length > 0 && (
                 <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
                   {item.tag.map((tag) => (
-                    <Badge
-                      variant="secondary"
-                      key={tag}
-                      className="rounded-full"
-                    >
+                    <Badge variant="secondary" key={tag} className="rounded-full">
                       {tag}
                     </Badge>
                   ))}
@@ -352,7 +348,7 @@ export default function DataList({
                     }
                   />
                   <TipBadge
-                    title={<TimeDistance date={item.createdAt || "2023"} />}
+                    title={<TimeDistance date={item.createdAt || '2023'} />}
                     className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
                   />
                 </div>
@@ -362,5 +358,5 @@ export default function DataList({
         </ul>
       )}
     </div>
-  );
+  )
 }

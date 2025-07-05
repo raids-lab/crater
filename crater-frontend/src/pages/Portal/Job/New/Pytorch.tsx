@@ -1,10 +1,26 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import CardTitle from "@/components/label/CardTitle";
-import { HammerIcon, LayoutGridIcon, PickaxeIcon } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import CardTitle from '@/components/label/CardTitle'
+import { HammerIcon, LayoutGridIcon, PickaxeIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -13,14 +29,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useForm, useFieldArray } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiPytorchCreate } from "@/services/api/vcjob";
-import { toast } from "sonner";
-import { CirclePlus, CirclePlusIcon, XIcon } from "lucide-react";
-import FormLabelMust from "@/components/form/FormLabelMust";
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { apiPytorchCreate } from '@/services/api/vcjob'
+import { toast } from 'sonner'
+import { CirclePlus, CirclePlusIcon, XIcon } from 'lucide-react'
+import FormLabelMust from '@/components/form/FormLabelMust'
 import {
   volumeMountsSchema,
   envsSchema,
@@ -32,23 +48,23 @@ import {
   forwardsSchema,
   jobNameSchema,
   defaultResource,
-} from "@/utils/form";
-import { useState } from "react";
-import { useAtomValue } from "jotai";
-import { globalUserInfo } from "@/utils/store";
-import { Textarea } from "@/components/ui/textarea";
-import { ImageFormField } from "@/components/form/ImageFormField";
-import { VolumeMountsCard } from "@/components/form/DataMountFormField";
-import { MetadataFormPytorch } from "@/components/form/types";
-import { OtherOptionsFormCard } from "@/components/form/OtherOptionsFormField";
-import FormExportButton from "@/components/form/FormExportButton";
-import FormImportButton from "@/components/form/FormImportButton";
-import LoadableButton from "@/components/button/LoadableButton";
-import PageTitle from "@/components/layout/PageTitle";
-import { PublishConfigForm } from "./Publish";
-import { TemplateInfo } from "@/components/form/TemplateInfo";
-import { ResourceFormFields } from "@/components/form/ResourceFormField";
-import { EnvFormCard } from "@/components/form/EnvFormField";
+} from '@/utils/form'
+import { useState } from 'react'
+import { useAtomValue } from 'jotai'
+import { globalUserInfo } from '@/utils/store'
+import { Textarea } from '@/components/ui/textarea'
+import { ImageFormField } from '@/components/form/ImageFormField'
+import { VolumeMountsCard } from '@/components/form/DataMountFormField'
+import { MetadataFormPytorch } from '@/components/form/types'
+import { OtherOptionsFormCard } from '@/components/form/OtherOptionsFormField'
+import FormExportButton from '@/components/form/FormExportButton'
+import FormImportButton from '@/components/form/FormImportButton'
+import LoadableButton from '@/components/button/LoadableButton'
+import PageTitle from '@/components/layout/PageTitle'
+import { PublishConfigForm } from './Publish'
+import { TemplateInfo } from '@/components/form/TemplateInfo'
+import { ResourceFormFields } from '@/components/form/ResourceFormField'
+import { EnvFormCard } from '@/components/form/EnvFormField'
 
 const markdown = `## 运行规则
 
@@ -121,7 +137,7 @@ su - \${NB_USER} -c 'your_command_2'
 启用后，CPU 和内存限制将被忽略。请注意，RDMA 资源配置必须在所有角色中保持一致。
 
 相关文档有待补充。
-`;
+`
 
 const formSchema = z.object({
   jobName: jobNameSchema,
@@ -132,36 +148,36 @@ const formSchema = z.object({
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
-});
+})
 
-type FormSchema = z.infer<typeof formSchema>;
+type FormSchema = z.infer<typeof formSchema>
 
 const dataProcessor = (data: FormSchema) => {
   // Convert forwards to a format suitable for the API
   if (data.forwards === undefined || data.forwards === null) {
-    data.forwards = [];
+    data.forwards = []
   }
   if (!data.ps.resource.network) {
     data.ps.resource.network = {
       enabled: false,
       model: undefined,
-    };
+    }
   }
   if (!data.worker.resource.network) {
     data.worker.resource.network = {
       enabled: false,
       model: undefined,
-    };
+    }
   }
-  return data;
-};
+  return data
+}
 
 export const Component = () => {
-  const [envOpen, setEnvOpen] = useState<boolean>(false);
-  const [otherOpen, setOtherOpen] = useState<boolean>(true);
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const user = useAtomValue(globalUserInfo);
+  const [envOpen, setEnvOpen] = useState<boolean>(false)
+  const [otherOpen, setOtherOpen] = useState<boolean>(true)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const user = useAtomValue(globalUserInfo)
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
@@ -193,8 +209,8 @@ export const Component = () => {
         selectors: values.nodeSelector.enable
           ? [
               {
-                key: "kubernetes.io/hostname",
-                operator: "In",
+                key: 'kubernetes.io/hostname',
+                operator: 'In',
                 values: [`${values.nodeSelector.nodeName}`],
               },
             ]
@@ -204,32 +220,32 @@ export const Component = () => {
       }),
     onSuccess: async (_, { jobName: taskname }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["job"] }),
-        queryClient.invalidateQueries({ queryKey: ["context", "quota"] }),
-        queryClient.invalidateQueries({ queryKey: ["aitask", "stats"] }),
-      ]);
-      toast.success(`作业 ${taskname} 创建成功`);
-      navigate(-1);
+        queryClient.invalidateQueries({ queryKey: ['job'] }),
+        queryClient.invalidateQueries({ queryKey: ['context', 'quota'] }),
+        queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
+      ])
+      toast.success(`作业 ${taskname} 创建成功`)
+      navigate(-1)
     },
-  });
+  })
 
   // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      jobName: "",
+      jobName: '',
       ps: {
-        taskName: "master",
+        taskName: 'master',
         replicas: 1,
         resource: defaultResource,
-        image: "",
+        image: '',
         ports: [],
       },
       worker: {
-        taskName: "worker",
+        taskName: 'worker',
         replicas: 1,
         resource: defaultResource,
-        image: "",
+        image: '',
         ports: [],
       },
       volumeMounts: [
@@ -245,53 +261,51 @@ export const Component = () => {
         enable: false,
       },
     },
-  });
+  })
 
   const {
     fields: psPortFields,
     append: psPortAppend,
     remove: psPortRemove,
   } = useFieldArray<FormSchema>({
-    name: "ps.ports",
+    name: 'ps.ports',
     control: form.control,
-  });
+  })
 
   const {
     fields: workerPortFields,
     append: workerPortAppend,
     remove: workerPortRemove,
   } = useFieldArray<FormSchema>({
-    name: "worker.ports",
+    name: 'worker.ports',
     control: form.control,
-  });
+  })
 
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
     if (isPending) {
-      toast.info("请勿重复提交");
-      return;
+      toast.info('请勿重复提交')
+      return
     }
     if (
-      values.ps.resource.network.enabled !==
-        values.worker.resource.network.enabled ||
+      values.ps.resource.network.enabled !== values.worker.resource.network.enabled ||
       (values.ps.resource.network.enabled &&
-        values.ps.resource.network.model !==
-          values.worker.resource.network.model)
+        values.ps.resource.network.model !== values.worker.resource.network.model)
     ) {
-      form.setError("ps.resource.network.model", {
-        type: "manual",
-        message: "RDMA 资源配置必须在所有角色中保持一致",
-      });
-      form.setError("worker.resource.network.model", {
-        type: "manual",
-        message: "RDMA 资源配置必须在所有角色中保持一致",
-      });
-      return;
+      form.setError('ps.resource.network.model', {
+        type: 'manual',
+        message: 'RDMA 资源配置必须在所有角色中保持一致',
+      })
+      form.setError('worker.resource.network.model', {
+        type: 'manual',
+        message: 'RDMA 资源配置必须在所有角色中保持一致',
+      })
+      return
     }
-    createTask(values);
-  };
+    createTask(values)
+  }
 
   return (
     <>
@@ -313,23 +327,16 @@ export const Component = () => {
                 dataProcessor={dataProcessor}
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
-                    setEnvOpen(true);
+                    setEnvOpen(true)
                   }
                   if (data.nodeSelector.enable) {
-                    setOtherOpen(true);
+                    setOtherOpen(true)
                   }
                 }}
               />
               <FormExportButton metadata={MetadataFormPytorch} form={form} />
-              <PublishConfigForm
-                config={MetadataFormPytorch}
-                configform={form}
-              />
-              <LoadableButton
-                isLoading={isPending}
-                isLoadingText="提交作业"
-                type="submit"
-              >
+              <PublishConfigForm config={MetadataFormPytorch} configform={form} />
+              <LoadableButton isLoading={isPending} isLoadingText="提交作业" type="submit">
                 <CirclePlus className="size-4" />
                 提交作业
               </LoadableButton>
@@ -354,9 +361,7 @@ export const Component = () => {
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
-                      <FormDescription>
-                        名称可重复，最多包含 40 个字符
-                      </FormDescription>
+                      <FormDescription>名称可重复，最多包含 40 个字符</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -380,7 +385,7 @@ export const Component = () => {
                       <FormControl>
                         <Input
                           type="number"
-                          {...form.register("ps.replicas", {
+                          {...form.register('ps.replicas', {
                             valueAsNumber: true,
                           })}
                         />
@@ -396,8 +401,8 @@ export const Component = () => {
                   gpuCountPath="ps.resource.gpu.count"
                   gpuModelPath="ps.resource.gpu.model"
                   rdmaPath={{
-                    rdmaEnabled: "ps.resource.network.enabled",
-                    rdmaLabel: "ps.resource.network.model",
+                    rdmaEnabled: 'ps.resource.network.enabled',
+                    rdmaLabel: 'ps.resource.network.model',
                   }}
                 />
                 <ImageFormField form={form} name="ps.image" />
@@ -411,8 +416,8 @@ export const Component = () => {
                         <Textarea {...field} className="h-24 font-mono" />
                       </FormControl>
                       <FormDescription>
-                        如果设置，将覆盖镜像的启动命令，可通过{" "}
-                        <span className="font-mono">;</span> 拆分多行命令
+                        如果设置，将覆盖镜像的启动命令，可通过 <span className="font-mono">;</span>{' '}
+                        拆分多行命令
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -428,8 +433,7 @@ export const Component = () => {
                         <Input {...field} className="font-mono" />
                       </FormControl>
                       <FormDescription>
-                        用户文件夹位于{" "}
-                        <span className="font-mono">/home/{user.name}</span>
+                        用户文件夹位于 <span className="font-mono">/home/{user.name}</span>
                         ，重启后数据不会丢失
                       </FormDescription>
                       <FormMessage />
@@ -487,7 +491,7 @@ export const Component = () => {
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => psPortAppend({ name: "", port: 0 })}
+                    onClick={() => psPortAppend({ name: '', port: 0 })}
                   >
                     <CirclePlusIcon className="size-4" />
                     添加端口
@@ -512,7 +516,7 @@ export const Component = () => {
                       <FormControl>
                         <Input
                           type="number"
-                          {...form.register("worker.replicas", {
+                          {...form.register('worker.replicas', {
                             valueAsNumber: true,
                           })}
                         />
@@ -528,8 +532,8 @@ export const Component = () => {
                   gpuCountPath="worker.resource.gpu.count"
                   gpuModelPath="worker.resource.gpu.model"
                   rdmaPath={{
-                    rdmaEnabled: "worker.resource.network.enabled",
-                    rdmaLabel: "worker.resource.network.model",
+                    rdmaEnabled: 'worker.resource.network.enabled',
+                    rdmaLabel: 'worker.resource.network.model',
                   }}
                 />
                 <ImageFormField form={form} name="worker.image" />
@@ -543,8 +547,8 @@ export const Component = () => {
                         <Textarea {...field} className="h-24 font-mono" />
                       </FormControl>
                       <FormDescription>
-                        如果设置，将覆盖镜像的启动命令，可通过{" "}
-                        <span className="font-mono">;</span> 拆分多行命令
+                        如果设置，将覆盖镜像的启动命令，可通过 <span className="font-mono">;</span>{' '}
+                        拆分多行命令
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -560,8 +564,7 @@ export const Component = () => {
                         <Input {...field} className="font-mono" />
                       </FormControl>
                       <FormDescription>
-                        用户文件夹位于{" "}
-                        <span className="font-mono">/home/{user.name}</span>
+                        用户文件夹位于 <span className="font-mono">/home/{user.name}</span>
                         ，重启后数据不会丢失
                       </FormDescription>
                       <FormMessage />
@@ -597,23 +600,16 @@ export const Component = () => {
                               <Input
                                 type="number"
                                 placeholder="端口号"
-                                {...form.register(
-                                  `worker.ports.${index}.port`,
-                                  {
-                                    valueAsNumber: true,
-                                  },
-                                )}
+                                {...form.register(`worker.ports.${index}.port`, {
+                                  valueAsNumber: true,
+                                })}
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => workerPortRemove(index)}
-                      >
+                      <Button size="icon" variant="outline" onClick={() => workerPortRemove(index)}>
                         <XIcon className="size-4" />
                       </Button>
                     </div>
@@ -621,7 +617,7 @@ export const Component = () => {
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={() => workerPortAppend({ name: "", port: 0 })}
+                    onClick={() => workerPortAppend({ name: '', port: 0 })}
                   >
                     <CirclePlusIcon className="size-4" />
                     添加端口
@@ -640,8 +636,7 @@ export const Component = () => {
                   value: true,
                 },
                 {
-                  condition: (data) =>
-                    data.nodeSelector.enable || data.alertEnabled,
+                  condition: (data) => data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: true,
                 },
@@ -666,5 +661,5 @@ export const Component = () => {
         </form>
       </Form>
     </>
-  );
-};
+  )
+}

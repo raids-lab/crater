@@ -1,5 +1,21 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,14 +23,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { useLocalStorage } from "usehooks-ts";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { QrCode, RocketIcon } from "lucide-react";
-import { MarkdownRenderer } from "@/components/form/markdown-renderer";
+} from '@/components/ui/dialog'
+import { useLocalStorage } from 'usehooks-ts'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { QrCode, RocketIcon } from 'lucide-react'
+import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 
 // Current app version - update this when you release new features
-const CURRENT_VERSION = "0.0.0";
+const CURRENT_VERSION = '0.0.0'
 
 // This would be your markdown content
 const WHATS_NEW_CONTENT = `
@@ -36,31 +52,31 @@ const WHATS_NEW_CONTENT = `
 - 镜像按照标签搜索，Python、CUDA、Jupyter... 想要什么搜什么！
 - 数据缓存优化，多次访问同一数据集时极大提速，对标企业级体验！
 - 作业锁定的工单系统，不用再在群里 @ 管理员，小需求快捷通过
-`;
+`
 
 interface WhatsNewDialogProps {
   // You can pass a custom version if needed
-  version?: string;
+  version?: string
 }
 
-export function WhatsNewDialog({
-  version = CURRENT_VERSION,
-}: WhatsNewDialogProps) {
-  const [lastConfirmedVersion, setLastConfirmedVersion] =
-    useLocalStorage<string>("app-last-confirmed-version", "");
-  const [open, setOpen] = useState(false);
+export function WhatsNewDialog({ version = CURRENT_VERSION }: WhatsNewDialogProps) {
+  const [lastConfirmedVersion, setLastConfirmedVersion] = useLocalStorage<string>(
+    'app-last-confirmed-version',
+    ''
+  )
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
     // Check if the current version is different from the last confirmed version
     if (lastConfirmedVersion !== version) {
-      setOpen(true);
+      setOpen(true)
     }
-  }, [lastConfirmedVersion, version]);
+  }, [lastConfirmedVersion, version])
 
   const handleConfirm = () => {
-    setLastConfirmedVersion(version);
-    setOpen(false);
-  };
+    setLastConfirmedVersion(version)
+    setOpen(false)
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -104,5 +120,5 @@ export function WhatsNewDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

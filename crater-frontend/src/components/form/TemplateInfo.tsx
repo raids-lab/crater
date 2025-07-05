@@ -1,33 +1,44 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
-import React from "react";
-import { UIStateUpdater, useTemplateLoader } from "@/hooks/useTemplateLoader";
-import { FieldValues, UseFormReturn } from "react-hook-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
-import CardTitle from "@/components/label/CardTitle";
-import { Badge } from "@/components/ui/badge";
-import { MarkdownRenderer } from "./markdown-renderer";
-import { InfoIcon, NotepadTextIcon } from "lucide-react";
+import { useTranslation } from 'react-i18next'
+import React from 'react'
+import { UIStateUpdater, useTemplateLoader } from '@/hooks/useTemplateLoader'
+import { FieldValues, UseFormReturn } from 'react-hook-form'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import CardTitle from '@/components/label/CardTitle'
+import { Badge } from '@/components/ui/badge'
+import { MarkdownRenderer } from './markdown-renderer'
+import { InfoIcon, NotepadTextIcon } from 'lucide-react'
 
 interface TemplateInfoProps<T extends FieldValues> {
   /** The form object to populate */
-  form: UseFormReturn<T>;
+  form: UseFormReturn<T>
   /** Metadata configuration for import/export */
-  metadata: { version: string; type: string };
+  metadata: { version: string; type: string }
   /** Optional UI state updaters for accordions, tabs, etc. */
-  uiStateUpdaters?: UIStateUpdater<T>[];
+  uiStateUpdaters?: UIStateUpdater<T>[]
   /** Optional callback when template loaded successfully */
-  onSuccess?: (data: T) => void;
+  onSuccess?: (data: T) => void
   /** Optional additional data processing */
-  dataProcessor?: (data: T) => T;
+  dataProcessor?: (data: T) => T
   /** Default Markdown content */
-  defaultMarkdown?: string;
+  defaultMarkdown?: string
 }
 
 export function TemplateInfo<T extends FieldValues>({
@@ -38,7 +49,7 @@ export function TemplateInfo<T extends FieldValues>({
   dataProcessor,
   defaultMarkdown,
 }: TemplateInfoProps<T>) {
-  const { t } = useTranslation();
+  const { t } = useTranslation()
 
   // 使用 hook 获取模板信息
   const { fromJob, fromTemplate, templateData } = useTemplateLoader({
@@ -47,30 +58,28 @@ export function TemplateInfo<T extends FieldValues>({
     uiStateUpdaters,
     onSuccess,
     dataProcessor,
-  });
+  })
 
   // 缓存Markdown内容以避免不必要的重渲染
   const markdownContent = React.useMemo(() => {
-    return templateData?.document || "";
-  }, [templateData?.document]);
+    return templateData?.document || ''
+  }, [templateData?.document])
 
   if (!fromJob && !fromTemplate) {
     if (defaultMarkdown) {
       return (
         <Card>
           <CardHeader>
-            <CardTitle icon={InfoIcon}>
-              {t("templateInfo.jobInstructions")}
-            </CardTitle>
+            <CardTitle icon={InfoIcon}>{t('templateInfo.jobInstructions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>
           </CardContent>
         </Card>
-      );
+      )
     }
     // 如果没有模板，不渲染任何内容
-    return null;
+    return null
   }
 
   return (
@@ -79,9 +88,7 @@ export function TemplateInfo<T extends FieldValues>({
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle icon={NotepadTextIcon} className="flex items-center">
-              {fromJob
-                ? t("templateInfo.jobTemplate")
-                : t("templateInfo.presetTemplate")}
+              {fromJob ? t('templateInfo.jobTemplate') : t('templateInfo.presetTemplate')}
               <Badge variant="outline" className="ml-2">
                 {fromJob || templateData?.name}
               </Badge>
@@ -89,7 +96,7 @@ export function TemplateInfo<T extends FieldValues>({
 
             {templateData?.userInfo.nickname && (
               <Badge variant="secondary">
-                {t("templateInfo.authorLabel", {
+                {t('templateInfo.authorLabel', {
                   nickname: templateData.userInfo.nickname,
                 })}
               </Badge>
@@ -97,9 +104,7 @@ export function TemplateInfo<T extends FieldValues>({
           </div>
 
           <CardDescription>
-            {fromJob
-              ? t("templateInfo.loadedFromJob", { fromJob })
-              : templateData?.describe}
+            {fromJob ? t('templateInfo.loadedFromJob', { fromJob }) : templateData?.describe}
           </CardDescription>
         </CardHeader>
 
@@ -114,9 +119,7 @@ export function TemplateInfo<T extends FieldValues>({
       {defaultMarkdown && (
         <Card>
           <CardHeader>
-            <CardTitle icon={InfoIcon}>
-              {t("templateInfo.jobInstructions")}
-            </CardTitle>
+            <CardTitle icon={InfoIcon}>{t('templateInfo.jobInstructions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <MarkdownRenderer>{defaultMarkdown}</MarkdownRenderer>
@@ -124,5 +127,5 @@ export function TemplateInfo<T extends FieldValues>({
         </Card>
       )}
     </>
-  );
+  )
 }

@@ -1,3 +1,19 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,39 +22,30 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { ChevronDownIcon } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { useLocalStorage } from "usehooks-ts";
-import { ReactNode, useEffect } from "react";
+} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+import { ChevronDownIcon } from 'lucide-react'
+import { Separator } from '@/components/ui/separator'
+import { useLocalStorage } from 'usehooks-ts'
+import { ReactNode, useEffect } from 'react'
 
 export interface SplitButtonItem {
-  key: string;
-  title: string;
-  action: () => void;
-  disabled?: boolean;
+  key: string
+  title: string
+  action: () => void
+  disabled?: boolean
 }
 
 interface SplitButtonProps {
-  icon: ReactNode;
-  renderTitle: (itemTitle?: string) => ReactNode;
-  itemTitle: string;
-  items: SplitButtonItem[];
-  cacheKey: string;
+  icon: ReactNode
+  renderTitle: (itemTitle?: string) => ReactNode
+  itemTitle: string
+  items: SplitButtonItem[]
+  cacheKey: string
 }
 
-const SplitButton = ({
-  icon,
-  renderTitle,
-  itemTitle,
-  items,
-  cacheKey,
-}: SplitButtonProps) => {
-  const [position, setPosition] = useLocalStorage(
-    `split-button-${cacheKey}`,
-    items[0].key,
-  );
+const SplitButton = ({ icon, renderTitle, itemTitle, items, cacheKey }: SplitButtonProps) => {
+  const [position, setPosition] = useLocalStorage(`split-button-${cacheKey}`, items[0].key)
 
   useEffect(() => {
     // if position is not in items, or item is disabled, set position to first not disabled
@@ -46,9 +53,9 @@ const SplitButton = ({
       !items.find((item) => item.key === position) ||
       items.find((item) => item.key === position)?.disabled
     ) {
-      setPosition(items.find((item) => !item.disabled)?.key || items[0].key);
+      setPosition(items.find((item) => !item.disabled)?.key || items[0].key)
     }
-  }, [items, position, setPosition]);
+  }, [items, position, setPosition])
 
   return (
     <div className="bg-highlight hover:bg-highlight/90 flex h-9 w-fit items-center rounded-md transition-colors">
@@ -70,23 +77,14 @@ const SplitButton = ({
             <ChevronDownIcon className="text-highlight-foreground size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          alignOffset={-5}
-          className="w-[200px]"
-          forceMount
-        >
+        <DropdownMenuContent align="end" alignOffset={-5} className="w-[200px]" forceMount>
           <DropdownMenuLabel className="text-muted-foreground text-xs">
             {itemTitle}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
             {items.map((item) => (
-              <DropdownMenuRadioItem
-                key={item.key}
-                value={item.key}
-                disabled={item.disabled}
-              >
+              <DropdownMenuRadioItem key={item.key} value={item.key} disabled={item.disabled}>
                 {item.title}
               </DropdownMenuRadioItem>
             ))}
@@ -94,7 +92,7 @@ const SplitButton = ({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  );
-};
+  )
+}
 
-export default SplitButton;
+export default SplitButton

@@ -1,14 +1,30 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useTranslation } from "react-i18next";
-import * as React from "react";
-import { ChevronsUpDown, XIcon, CircleHelpIcon } from "lucide-react";
-import { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
+import { useTranslation } from 'react-i18next'
+import * as React from 'react'
+import { ChevronsUpDown, XIcon, CircleHelpIcon } from 'lucide-react'
+import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -16,82 +32,67 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { NothingCore } from "../placeholder/Nothing";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { NothingCore } from '../placeholder/Nothing'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Sample predefined tags
 const predefinedTags = [
-  { value: "react", label: "React" },
-  { value: "nextjs", label: "Next.js" },
-  { value: "tailwind", label: "Tailwind CSS" },
-  { value: "ui", label: "UI" },
-  { value: "design", label: "Design" },
-  { value: "api", label: "API" },
-  { value: "database", label: "Database" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "typescript", label: "TypeScript" },
-  { value: "node", label: "Node.js" },
-  { value: "express", label: "Express" },
-  { value: "graphql", label: "GraphQL" },
-  { value: "redux", label: "Redux" },
-  { value: "vue", label: "Vue.js" },
-  { value: "angular", label: "Angular" },
-  { value: "svelte", label: "Svelte" },
-  { value: "docker", label: "Docker" },
-  { value: "kubernetes", label: "Kubernetes" },
-  { value: "aws", label: "AWS" },
-  { value: "azure", label: "Azure" },
-  { value: "gcp", label: "Google Cloud" },
-  { value: "firebase", label: "Firebase" },
-  { value: "mongodb", label: "MongoDB" },
-  { value: "postgresql", label: "PostgreSQL" },
-  { value: "mysql", label: "MySQL" },
-  { value: "redis", label: "Redis" },
-  { value: "testing", label: "Testing" },
-  { value: "jest", label: "Jest" },
-  { value: "cypress", label: "Cypress" },
-  { value: "storybook", label: "Storybook" },
-];
+  { value: 'react', label: 'React' },
+  { value: 'nextjs', label: 'Next.js' },
+  { value: 'tailwind', label: 'Tailwind CSS' },
+  { value: 'ui', label: 'UI' },
+  { value: 'design', label: 'Design' },
+  { value: 'api', label: 'API' },
+  { value: 'database', label: 'Database' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'node', label: 'Node.js' },
+  { value: 'express', label: 'Express' },
+  { value: 'graphql', label: 'GraphQL' },
+  { value: 'redux', label: 'Redux' },
+  { value: 'vue', label: 'Vue.js' },
+  { value: 'angular', label: 'Angular' },
+  { value: 'svelte', label: 'Svelte' },
+  { value: 'docker', label: 'Docker' },
+  { value: 'kubernetes', label: 'Kubernetes' },
+  { value: 'aws', label: 'AWS' },
+  { value: 'azure', label: 'Azure' },
+  { value: 'gcp', label: 'Google Cloud' },
+  { value: 'firebase', label: 'Firebase' },
+  { value: 'mongodb', label: 'MongoDB' },
+  { value: 'postgresql', label: 'PostgreSQL' },
+  { value: 'mysql', label: 'MySQL' },
+  { value: 'redis', label: 'Redis' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'jest', label: 'Jest' },
+  { value: 'cypress', label: 'Cypress' },
+  { value: 'storybook', label: 'Storybook' },
+]
 
 export interface Tag {
-  value: string;
-  label?: string;
+  value: string
+  label?: string
 }
 
 interface TagsInputProps<T extends FieldValues> {
   /** The form object to populate */
-  form: UseFormReturn<T>;
+  form: UseFormReturn<T>
   /** The path to the tags field in the form data */
-  tagsPath: FieldPath<T>;
+  tagsPath: FieldPath<T>
   /** Optional label for the form field */
-  label?: string;
+  label?: string
   /** Optional description for the form field */
-  description?: string;
+  description?: string
   /** Optional custom predefined tags */
-  customTags?: Tag[];
+  customTags?: Tag[]
   /** Whether the field is required */
-  required?: boolean;
+  required?: boolean
   /** Whether the search and add field is required */
-  imageBuildArch?: boolean;
+  imageBuildArch?: boolean
 }
 
 export function TagsInput<T extends FieldValues>({
@@ -103,51 +104,49 @@ export function TagsInput<T extends FieldValues>({
   required = false,
   imageBuildArch = false,
 }: TagsInputProps<T>) {
-  const { t } = useTranslation();
-  const [open, setOpen] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState("");
+  const { t } = useTranslation()
+  const [open, setOpen] = React.useState(false)
+  const [inputValue, setInputValue] = React.useState('')
 
   // Use the provided tags or default to predefined ones
-  const availableTags = customTags || predefinedTags;
+  const availableTags = customTags || predefinedTags
 
   // Get current tags from form
-  const tags = form.watch(tagsPath) || [];
+  const tags = form.watch(tagsPath) || []
 
   // Add a new custom tag
   const addCustomTag = () => {
     if (
-      inputValue.trim() !== "" &&
-      !tags.some(
-        (tag: Tag) => tag.value.toLowerCase() === inputValue.toLowerCase(),
-      )
+      inputValue.trim() !== '' &&
+      !tags.some((tag: Tag) => tag.value.toLowerCase() === inputValue.toLowerCase())
     ) {
       const newTag = {
         value: inputValue,
         label: inputValue,
-      };
-      form.setValue(tagsPath, [...tags, newTag], { shouldValidate: true });
-      setInputValue("");
+      }
+      form.setValue(tagsPath, [...tags, newTag], { shouldValidate: true })
+      setInputValue('')
     }
-  };
+  }
 
   // Remove a tag
   const removeTag = (tagToRemove: string) => {
     form.setValue(
       tagsPath,
       tags.filter((tag: Tag) => tag.value !== tagToRemove),
-      { shouldValidate: true },
-    );
-  };
+      { shouldValidate: true }
+    )
+  }
 
   // Handle key press in the input field
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (inputValue.trim() !== "") {
-        addCustomTag();
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (inputValue.trim() !== '') {
+        addCustomTag()
       }
     }
-  };
+  }
 
   return (
     <FormField
@@ -156,7 +155,7 @@ export function TagsInput<T extends FieldValues>({
       render={() => (
         <FormItem>
           <FormLabel>
-            {label || t("tagsInput.label")}
+            {label || t('tagsInput.label')}
             {required && <span className="text-destructive ml-1">*</span>}
             <TooltipProvider delayDuration={100}>
               <Tooltip>
@@ -176,16 +175,16 @@ export function TagsInput<T extends FieldValues>({
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
-                    variant={"outline"}
+                    variant={'outline'}
                     className={cn(
-                      "flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between px-3 py-1 font-normal whitespace-nowrap",
-                      "data-[state=open]:border-ring data-[state=open]:ring-ring/50 data-[state=open]:ring-[3px]",
+                      'flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between px-3 py-1 font-normal whitespace-nowrap',
+                      'data-[state=open]:border-ring data-[state=open]:ring-ring/50 data-[state=open]:ring-[3px]'
                     )}
                   >
                     <div
                       className={cn(
-                        "items-center gap-1 overflow-hidden text-sm",
-                        "flex grow flex-wrap",
+                        'items-center gap-1 overflow-hidden text-sm',
+                        'flex grow flex-wrap'
                       )}
                     >
                       {tags.length > 0 ? (
@@ -198,8 +197,8 @@ export function TagsInput<T extends FieldValues>({
                               <span>{tag.label ?? tag.value}</span>
                               <span
                                 onClick={(e) => {
-                                  e.preventDefault();
-                                  removeTag(tag.value);
+                                  e.preventDefault()
+                                  removeTag(tag.value)
                                 }}
                                 className="text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground flex cursor-pointer items-center rounded-sm px-[1px]"
                               >
@@ -211,8 +210,8 @@ export function TagsInput<T extends FieldValues>({
                       ) : (
                         <span className="text-muted-foreground mr-auto">
                           {imageBuildArch
-                            ? t("tagsInput.noArchsLabel")
-                            : t("tagsInput.noTagsLabel")}
+                            ? t('tagsInput.noArchsLabel')
+                            : t('tagsInput.noTagsLabel')}
                         </span>
                       )}
                     </div>
@@ -220,10 +219,10 @@ export function TagsInput<T extends FieldValues>({
                       {tags.length > 0 ? (
                         <div
                           onClick={(e) => {
-                            e.preventDefault();
+                            e.preventDefault()
                             form.setValue(tagsPath, [], {
                               shouldValidate: true,
-                            });
+                            })
                           }}
                         >
                           <XIcon className="size-4" />
@@ -241,29 +240,25 @@ export function TagsInput<T extends FieldValues>({
                     <CommandInput
                       placeholder={
                         imageBuildArch
-                          ? t("tagsInput.archSearchPlaceholder")
-                          : t("tagsInput.searchPlaceholder")
+                          ? t('tagsInput.archSearchPlaceholder')
+                          : t('tagsInput.searchPlaceholder')
                       }
                     />
                     <CommandList className="max-h-[200px] overflow-y-auto">
                       <CommandEmpty>
                         <NothingCore className="gap-2" />
                       </CommandEmpty>
-                      {availableTags.filter(
-                        (tag) => !tags.some((t: Tag) => t.value === tag.value),
-                      ).length > 0 && (
+                      {availableTags.filter((tag) => !tags.some((t: Tag) => t.value === tag.value))
+                        .length > 0 && (
                         <CommandGroup
                           heading={
                             imageBuildArch
-                              ? t("tagsInput.commonArchsLabel")
-                              : t("tagsInput.commonTagsLabel")
+                              ? t('tagsInput.commonArchsLabel')
+                              : t('tagsInput.commonTagsLabel')
                           }
                         >
                           {availableTags
-                            .filter(
-                              (tag) =>
-                                !tags.some((t: Tag) => t.value === tag.value),
-                            )
+                            .filter((tag) => !tags.some((t: Tag) => t.value === tag.value))
                             .map((tag) => (
                               <CommandItem
                                 key={tag.value}
@@ -271,7 +266,7 @@ export function TagsInput<T extends FieldValues>({
                                 onSelect={() => {
                                   form.setValue(tagsPath, [...tags, tag], {
                                     shouldValidate: true,
-                                  });
+                                  })
                                 }}
                                 className="cursor-pointer"
                               >
@@ -284,11 +279,11 @@ export function TagsInput<T extends FieldValues>({
                     {!imageBuildArch && (
                       <div className="border-t p-2">
                         <div className="text-muted-foreground mb-2 ml-1 text-xs font-medium">
-                          {t("tagsInput.addNewLabel")}
+                          {t('tagsInput.addNewLabel')}
                         </div>
                         <div className="flex gap-2">
                           <Input
-                            placeholder={t("tagsInput.newTagPlaceholder")}
+                            placeholder={t('tagsInput.newTagPlaceholder')}
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -298,11 +293,11 @@ export function TagsInput<T extends FieldValues>({
                             type="button"
                             variant="secondary"
                             onClick={() => {
-                              addCustomTag();
+                              addCustomTag()
                             }}
                             disabled={!inputValue.trim()}
                           >
-                            {t("tagsInput.addButton")}
+                            {t('tagsInput.addButton')}
                           </Button>
                         </div>
                       </div>
@@ -316,5 +311,5 @@ export function TagsInput<T extends FieldValues>({
         </FormItem>
       )}
     />
-  );
+  )
 }

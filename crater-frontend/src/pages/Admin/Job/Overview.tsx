@@ -1,20 +1,36 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
+import { useTranslation } from 'react-i18next'
 import {
   IJobInfo,
   JobType,
   apiAdminGetJobList as apiAdminGetJobList,
   apiJobDeleteForAdmin,
-} from "@/services/api/vcjob";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import JobPhaseLabel, { jobPhases } from "@/components/badge/JobPhaseBadge";
-import { JobPhase } from "@/services/api/vcjob";
-import { DataTable } from "@/components/custom/DataTable";
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { TimeDistance } from "@/components/custom/TimeDistance";
+} from '@/services/api/vcjob'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ColumnDef } from '@tanstack/react-table'
+import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
+import JobPhaseLabel, { jobPhases } from '@/components/badge/JobPhaseBadge'
+import { JobPhase } from '@/services/api/vcjob'
+import { DataTable } from '@/components/custom/DataTable'
+import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
+import { TimeDistance } from '@/components/custom/TimeDistance'
 import {
   CircleIcon,
   ClockIcon,
@@ -24,13 +40,13 @@ import {
   StopwatchIcon,
   StopIcon,
   DotsHorizontalIcon,
-} from "@radix-ui/react-icons";
-import { Link } from "react-router-dom";
-import ResourceBadges from "@/components/badge/ResourceBadges";
-import NodeBadges from "@/components/badge/NodeBadges";
-import JobTypeLabel, { jobTypes } from "@/components/badge/JobTypeBadge";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+} from '@radix-ui/react-icons'
+import { Link } from 'react-router-dom'
+import ResourceBadges from '@/components/badge/ResourceBadges'
+import NodeBadges from '@/components/badge/NodeBadges'
+import JobTypeLabel, { jobTypes } from '@/components/badge/JobTypeBadge'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,125 +57,119 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
-import {
-  InfoIcon,
-  LockIcon,
-  SquareIcon,
-  Trash2Icon,
-  UnlockIcon,
-} from "lucide-react";
+} from '@/components/ui-custom/alert-dialog'
+import { InfoIcon, LockIcon, SquareIcon, Trash2Icon, UnlockIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { logger } from "@/utils/loglevel";
-import { useCallback, useMemo, useState } from "react";
+} from '@/components/ui/dropdown-menu'
+import { logger } from '@/utils/loglevel'
+import { useCallback, useMemo, useState } from 'react'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { JobNameCell } from "@/components/label/JobNameLabel";
-import UserLabel from "@/components/label/UserLabel";
-import { DurationDialog } from "./DurationDialog";
+} from '@/components/ui/select'
+import { JobNameCell } from '@/components/label/JobNameLabel'
+import UserLabel from '@/components/label/UserLabel'
+import { DurationDialog } from './DurationDialog'
 
 export type StatusValue =
-  | "Queueing"
-  | "Created"
-  | "Pending"
-  | "Running"
-  | "Failed"
-  | "Succeeded"
-  | "Preempted"
-  | "Deleted";
+  | 'Queueing'
+  | 'Created'
+  | 'Pending'
+  | 'Running'
+  | 'Failed'
+  | 'Succeeded'
+  | 'Preempted'
+  | 'Deleted'
 
 export const statuses: {
-  value: StatusValue;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  value: StatusValue
+  label: string
+  icon: React.ComponentType<{ className?: string }>
 }[] = [
   {
-    value: "Queueing",
-    label: "检查配额",
+    value: 'Queueing',
+    label: '检查配额',
     icon: ClockIcon,
   },
   {
-    value: "Created",
-    label: "已创建",
+    value: 'Created',
+    label: '已创建',
     icon: CircleIcon,
   },
   {
-    value: "Pending",
-    label: "等待中",
+    value: 'Pending',
+    label: '等待中',
     icon: ClockIcon,
   },
   {
-    value: "Running",
-    label: "运行中",
+    value: 'Running',
+    label: '运行中',
     icon: StopwatchIcon,
   },
   {
-    value: "Failed",
-    label: "失败",
+    value: 'Failed',
+    label: '失败',
     icon: CrossCircledIcon,
   },
   {
-    value: "Succeeded",
-    label: "成功",
+    value: 'Succeeded',
+    label: '成功',
     icon: CheckCircledIcon,
   },
   {
-    value: "Preempted",
-    label: "被抢占",
+    value: 'Preempted',
+    label: '被抢占',
     icon: MinusCircledIcon,
   },
   {
-    value: "Deleted",
-    label: "已停止",
+    value: 'Deleted',
+    label: '已停止',
     icon: StopIcon,
   },
-];
+]
 
 export const getHeader = (key: string): string => {
   switch (key) {
-    case "jobName":
-      return "名称";
-    case "jobType":
-      return "类型";
-    case "queue":
-      return "账户";
-    case "owner":
-      return "用户";
-    case "status":
-      return "状态";
-    case "createdAt":
-      return "创建于";
-    case "startedAt":
-      return "开始于";
-    case "completedAt":
-      return "完成于";
-    case "nodes":
-      return "节点";
-    case "resources":
-      return "资源";
+    case 'jobName':
+      return '名称'
+    case 'jobType':
+      return '类型'
+    case 'queue':
+      return '账户'
+    case 'owner':
+      return '用户'
+    case 'status':
+      return '状态'
+    case 'createdAt':
+      return '创建于'
+    case 'startedAt':
+      return '开始于'
+    case 'completedAt':
+      return '完成于'
+    case 'nodes':
+      return '节点'
+    case 'resources':
+      return '资源'
     default:
-      return key;
+      return key
   }
-};
+}
 
 const AdminJobOverview = () => {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [days, setDays] = useState(7);
-  const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([]);
-  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false);
-  const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false);
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [days, setDays] = useState(7)
+  const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([])
+  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false)
+  const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false)
 
   const toolbarConfig: DataTableToolbarConfig = {
     globalSearch: {
@@ -167,198 +177,181 @@ const AdminJobOverview = () => {
     },
     filterOptions: [
       {
-        key: "jobType",
-        title: t("adminJobOverview.filters.jobType"),
+        key: 'jobType',
+        title: t('adminJobOverview.filters.jobType'),
         option: jobTypes,
       },
       {
-        key: "status",
-        title: t("adminJobOverview.filters.status"),
+        key: 'status',
+        title: t('adminJobOverview.filters.status'),
         option: jobPhases,
       },
     ],
     getHeader: getHeader,
-  };
+  }
 
   const vcjobQuery = useQuery({
-    queryKey: ["admin", "tasklist", "job", days],
+    queryKey: ['admin', 'tasklist', 'job', days],
     queryFn: () => apiAdminGetJobList(days),
     select: (res) => res.data.data,
-  });
+  })
 
   const refetchTaskList = useCallback(async () => {
     try {
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({
-            queryKey: ["admin", "tasklist", "job", days],
-          }),
+            queryKey: ['admin', 'tasklist', 'job', days],
+          })
         ),
-      ]);
+      ])
     } catch (error) {
-      logger.error("更新查询失败", error);
+      logger.error('更新查询失败', error)
     }
-  }, [queryClient, days]);
+  }, [queryClient, days])
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: apiJobDeleteForAdmin,
     onSuccess: async () => {
-      await refetchTaskList();
-      toast.success(t("adminJobOverview.successMessage"));
+      await refetchTaskList()
+      toast.success(t('adminJobOverview.successMessage'))
     },
-  });
+  })
 
   const handleClick = useCallback((jobInfo: IJobInfo) => {
-    setSelectedJobs([jobInfo]);
-    setIsLockDialogOpen(true);
-  }, []);
+    setSelectedJobs([jobInfo])
+    setIsLockDialogOpen(true)
+  }, [])
 
   const handleClickToExtend = useCallback((jobInfo: IJobInfo) => {
-    setSelectedJobs([jobInfo]);
-    setIsExtendDialogOpen(true);
-  }, []);
+    setSelectedJobs([jobInfo])
+    setIsExtendDialogOpen(true)
+  }, [])
 
   const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
     const getHeader = (key: string): string => {
       switch (key) {
-        case "jobName":
-          return t("adminJobOverview.headers.jobName");
-        case "jobType":
-          return t("adminJobOverview.headers.jobType");
-        case "queue":
-          return t("adminJobOverview.headers.queue");
-        case "owner":
-          return t("adminJobOverview.headers.owner");
-        case "status":
-          return t("adminJobOverview.headers.status");
-        case "createdAt":
-          return t("adminJobOverview.headers.createdAt");
-        case "startedAt":
-          return t("adminJobOverview.headers.startedAt");
-        case "completedAt":
-          return t("adminJobOverview.headers.completedAt");
-        case "nodes":
-          return t("adminJobOverview.headers.nodes");
-        case "resources":
-          return t("adminJobOverview.headers.resources");
+        case 'jobName':
+          return t('adminJobOverview.headers.jobName')
+        case 'jobType':
+          return t('adminJobOverview.headers.jobType')
+        case 'queue':
+          return t('adminJobOverview.headers.queue')
+        case 'owner':
+          return t('adminJobOverview.headers.owner')
+        case 'status':
+          return t('adminJobOverview.headers.status')
+        case 'createdAt':
+          return t('adminJobOverview.headers.createdAt')
+        case 'startedAt':
+          return t('adminJobOverview.headers.startedAt')
+        case 'completedAt':
+          return t('adminJobOverview.headers.completedAt')
+        case 'nodes':
+          return t('adminJobOverview.headers.nodes')
+        case 'resources':
+          return t('adminJobOverview.headers.resources')
         default:
-          return key;
+          return key
       }
-    };
+    }
     return [
       {
-        accessorKey: "jobType",
+        accessorKey: 'jobType',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobType")} />
+          <DataTableColumnHeader column={column} title={getHeader('jobType')} />
         ),
-        cell: ({ row }) => (
-          <JobTypeLabel jobType={row.getValue<JobType>("jobType")} />
-        ),
+        cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
       {
-        accessorKey: "jobName",
+        accessorKey: 'jobName',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("jobName")} />
+          <DataTableColumnHeader column={column} title={getHeader('jobName')} />
         ),
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
-        accessorKey: "owner",
+        accessorKey: 'owner',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("owner")} />
+          <DataTableColumnHeader column={column} title={getHeader('owner')} />
         ),
         cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
       },
       {
-        accessorKey: "queue",
+        accessorKey: 'queue',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("queue")} />
+          <DataTableColumnHeader column={column} title={getHeader('queue')} />
         ),
-        cell: ({ row }) => <div>{row.getValue("queue")}</div>,
+        cell: ({ row }) => <div>{row.getValue('queue')}</div>,
       },
       {
-        accessorKey: "nodes",
+        accessorKey: 'nodes',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("nodes")} />
+          <DataTableColumnHeader column={column} title={getHeader('nodes')} />
         ),
         cell: ({ row }) => {
-          const nodes = row.getValue<string[]>("nodes");
-          return <NodeBadges nodes={nodes} />;
+          const nodes = row.getValue<string[]>('nodes')
+          return <NodeBadges nodes={nodes} />
         },
       },
       {
-        accessorKey: "resources",
+        accessorKey: 'resources',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("resources")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('resources')} />
         ),
         cell: ({ row }) => {
-          const resources = row.getValue<Record<string, string> | undefined>(
-            "resources",
-          );
-          return <ResourceBadges resources={resources} />;
+          const resources = row.getValue<Record<string, string> | undefined>('resources')
+          return <ResourceBadges resources={resources} />
         },
       },
       {
-        accessorKey: "status",
+        accessorKey: 'status',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader("status")} />
+          <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
         cell: ({ row }) => {
-          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>("status")} />;
+          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>('status')} />
         },
         filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id));
+          return (value as string[]).includes(row.getValue(id))
         },
       },
       {
-        accessorKey: "createdAt",
+        accessorKey: 'createdAt',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("createdAt")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('createdAt')} />
         ),
         cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("createdAt")} />;
+          return <TimeDistance date={row.getValue('createdAt')} />
         },
-        sortingFn: "datetime",
+        sortingFn: 'datetime',
       },
       {
-        accessorKey: "startedAt",
+        accessorKey: 'startedAt',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("startedAt")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('startedAt')} />
         ),
         cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("startedAt")} />;
+          return <TimeDistance date={row.getValue('startedAt')} />
         },
-        sortingFn: "datetime",
+        sortingFn: 'datetime',
       },
       {
-        accessorKey: "completedAt",
+        accessorKey: 'completedAt',
         header: ({ column }) => (
-          <DataTableColumnHeader
-            column={column}
-            title={getHeader("completedAt")}
-          />
+          <DataTableColumnHeader column={column} title={getHeader('completedAt')} />
         ),
         cell: ({ row }) => {
-          return <TimeDistance date={row.getValue("completedAt")} />;
+          return <TimeDistance date={row.getValue('completedAt')} />
         },
-        sortingFn: "datetime",
+        sortingFn: 'datetime',
       },
       {
-        id: "actions",
+        id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-          const jobInfo = row.original;
-          const shouldStop =
-            jobInfo.status !== "Deleted" && jobInfo.status !== "Freed";
+          const jobInfo = row.original
+          const shouldStop = jobInfo.status !== 'Deleted' && jobInfo.status !== 'Freed'
           return (
             <div className="flex flex-row space-x-1">
               <AlertDialog>
@@ -366,24 +359,24 @@ const AdminJobOverview = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <span className="sr-only">
-                        {t("adminJobOverview.actions.dropdown.ariaLabel")}
+                        {t('adminJobOverview.actions.dropdown.ariaLabel')}
                       </span>
                       <DotsHorizontalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
-                      {t("adminJobOverview.actions.dropdown.title")}
+                      {t('adminJobOverview.actions.dropdown.title')}
                     </DropdownMenuLabel>
                     <Link to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
                         <InfoIcon className="text-highlight-emerald" />
-                        {t("adminJobOverview.actions.dropdown.details")}
+                        {t('adminJobOverview.actions.dropdown.details')}
                       </DropdownMenuItem>
                     </Link>
                     <DropdownMenuItem
                       onClick={() => handleClick(jobInfo)}
-                      title={t("adminJobOverview.actions.dropdown.lockTitle")}
+                      title={t('adminJobOverview.actions.dropdown.lockTitle')}
                     >
                       {row.original.locked ? (
                         <UnlockIcon className="text-highlight-purple" />
@@ -391,16 +384,16 @@ const AdminJobOverview = () => {
                         <LockIcon className="text-highlight-purple" />
                       )}
                       {row.original.locked
-                        ? t("adminJobOverview.actions.dropdown.unlock")
-                        : t("adminJobOverview.actions.dropdown.lock")}
+                        ? t('adminJobOverview.actions.dropdown.unlock')
+                        : t('adminJobOverview.actions.dropdown.lock')}
                     </DropdownMenuItem>
                     {row.original.locked && (
                       <DropdownMenuItem
                         onClick={() => handleClickToExtend(jobInfo)}
-                        title={t("adminJobOverview.actions.dropdown.lockTitle")}
+                        title={t('adminJobOverview.actions.dropdown.lockTitle')}
                       >
                         <LockIcon className="text-highlight-purple" />
-                        {t("adminJobOverview.actions.dropdown.extend")}
+                        {t('adminJobOverview.actions.dropdown.extend')}
                       </DropdownMenuItem>
                     )}
                     <AlertDialogTrigger asChild>
@@ -411,8 +404,8 @@ const AdminJobOverview = () => {
                           <Trash2Icon className="text-destructive" />
                         )}
                         {shouldStop
-                          ? t("adminJobOverview.actions.dropdown.stop")
-                          : t("adminJobOverview.actions.dropdown.delete")}
+                          ? t('adminJobOverview.actions.dropdown.stop')
+                          : t('adminJobOverview.actions.dropdown.delete')}
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   </DropdownMenuContent>
@@ -421,47 +414,45 @@ const AdminJobOverview = () => {
                   <AlertDialogHeader>
                     <AlertDialogTitle>
                       {shouldStop
-                        ? t("adminJobOverview.dialog.stop.title")
-                        : t("adminJobOverview.dialog.delete.title")}
+                        ? t('adminJobOverview.dialog.stop.title')
+                        : t('adminJobOverview.dialog.delete.title')}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       {shouldStop
-                        ? t("adminJobOverview.dialog.stop.description", {
+                        ? t('adminJobOverview.dialog.stop.description', {
                             name: jobInfo?.name,
                           })
-                        : t("adminJobOverview.dialog.delete.description", {
+                        : t('adminJobOverview.dialog.delete.description', {
                             name: jobInfo?.name,
                           })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>
-                      {t("adminJobOverview.dialog.cancel")}
-                    </AlertDialogCancel>
+                    <AlertDialogCancel>{t('adminJobOverview.dialog.cancel')}</AlertDialogCancel>
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => deleteTask(jobInfo.jobName)}
                     >
                       {shouldStop
-                        ? t("adminJobOverview.dialog.stop.action")
-                        : t("adminJobOverview.dialog.delete.action")}
+                        ? t('adminJobOverview.dialog.stop.action')
+                        : t('adminJobOverview.dialog.delete.action')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
             </div>
-          );
+          )
         },
       },
-    ];
-  }, [deleteTask, handleClick, handleClickToExtend, t]);
+    ]
+  }, [deleteTask, handleClick, handleClickToExtend, t])
 
   return (
     <>
       <DataTable
         info={{
-          title: t("adminJobOverview.title"),
-          description: t("adminJobOverview.description"),
+          title: t('adminJobOverview.title'),
+          description: t('adminJobOverview.description'),
         }}
         storageKey="admin_job_overview"
         query={vcjobQuery}
@@ -470,41 +461,41 @@ const AdminJobOverview = () => {
         multipleHandlers={[
           {
             title: (rows) =>
-              t("adminJobOverview.handlers.stopOrDeleteTitle", {
+              t('adminJobOverview.handlers.stopOrDeleteTitle', {
                 count: rows.length,
               }),
             description: (rows) => (
               <>
-                {t("adminJobOverview.handlers.stopOrDeleteDescription", {
-                  jobs: rows.map((row) => row.original.name).join(", "),
+                {t('adminJobOverview.handlers.stopOrDeleteDescription', {
+                  jobs: rows.map((row) => row.original.name).join(', '),
                 })}
               </>
             ),
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
               rows.forEach((row) => {
-                deleteTask(row.original.jobName);
-              });
+                deleteTask(row.original.jobName)
+              })
             },
             isDanger: true,
           },
           {
             title: (rows) =>
-              t("adminJobOverview.handlers.lockOrUnlockTitle", {
+              t('adminJobOverview.handlers.lockOrUnlockTitle', {
                 count: rows.length,
               }),
             description: (rows) => (
               <>
-                {t("adminJobOverview.handlers.lockOrUnlockDescription", {
-                  jobs: rows.map((row) => row.original.name).join(", "),
+                {t('adminJobOverview.handlers.lockOrUnlockDescription', {
+                  jobs: rows.map((row) => row.original.name).join(', '),
                 })}
               </>
             ),
             icon: <LockIcon className="text-highlight-purple" />,
             handleSubmit: (rows) => {
-              const jobInfos = rows.map((row) => row.original);
-              setSelectedJobs(jobInfos);
-              setIsLockDialogOpen(true);
+              const jobInfos = rows.map((row) => row.original)
+              setSelectedJobs(jobInfos)
+              setIsLockDialogOpen(true)
             },
             isDanger: false,
           },
@@ -513,7 +504,7 @@ const AdminJobOverview = () => {
         <Select
           value={days.toString()}
           onValueChange={(value) => {
-            setDays(parseInt(value));
+            setDays(parseInt(value))
           }}
         >
           <SelectTrigger className="bg-background h-9 pr-2 pl-3">
@@ -523,8 +514,8 @@ const AdminJobOverview = () => {
             {[7, 14, 30, 90, -1].map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
                 {pageSize === -1
-                  ? t("adminJobOverview.select.all")
-                  : t("adminJobOverview.select.recentDays", { days: pageSize })}
+                  ? t('adminJobOverview.select.all')
+                  : t('adminJobOverview.select.recentDays', { days: pageSize })}
               </SelectItem>
             ))}
           </SelectContent>
@@ -548,7 +539,7 @@ const AdminJobOverview = () => {
         setExtend={true}
       />
     </>
-  );
-};
+  )
+}
 
-export default AdminJobOverview;
+export default AdminJobOverview

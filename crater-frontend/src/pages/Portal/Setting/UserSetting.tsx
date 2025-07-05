@@ -1,11 +1,27 @@
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from "react-i18next";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
+import { useTranslation } from 'react-i18next'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
+import { useForm } from 'react-hook-form'
+import * as z from 'zod'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -14,22 +30,22 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useEffect, useState } from "react";
-import { toast } from "sonner";
-import { useAtom } from "jotai";
-import { globalUserInfo } from "@/utils/store";
-import { useMutation } from "@tanstack/react-query";
-import { IUserAttributes } from "@/services/api/admin/user";
+} from '@/components/ui/form'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { useAtom } from 'jotai'
+import { globalUserInfo } from '@/utils/store'
+import { useMutation } from '@tanstack/react-query'
+import { IUserAttributes } from '@/services/api/admin/user'
 import {
   apiContextUpdateUserAttributes,
   apiSendVerificationEmail,
   apiVerifyEmailCode,
-} from "@/services/api/context";
-import { MailPlusIcon, UserRoundCogIcon } from "lucide-react";
+} from '@/services/api/context'
+import { MailPlusIcon, UserRoundCogIcon } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -38,29 +54,24 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import LoadableButton from "@/components/button/LoadableButton";
-import Quota from "../Job/Interactive/Quota";
-import PageTitle from "@/components/layout/PageTitle";
-import { apiUserEmailVerified } from "@/services/api/user";
-import { TimeDistance } from "@/components/custom/TimeDistance";
+} from '@/components/ui/alert-dialog'
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
+import LoadableButton from '@/components/button/LoadableButton'
+import Quota from '../Job/Interactive/Quota'
+import PageTitle from '@/components/layout/PageTitle'
+import { apiUserEmailVerified } from '@/services/api/user'
+import { TimeDistance } from '@/components/custom/TimeDistance'
 
 // Moved Zod schema to component
 function getFormSchema(t: (key: string) => string) {
   return z.object({
     nickname: z.string().min(2, {
-      message: t("userSettings.nicknameError"),
+      message: t('userSettings.nicknameError'),
     }),
     email: z
       .string()
       .email({
-        message: t("userSettings.emailError"),
+        message: t('userSettings.emailError'),
       })
       .optional()
       .nullable(),
@@ -69,20 +80,20 @@ function getFormSchema(t: (key: string) => string) {
     expiredAt: z.string().optional().nullable(),
     phone: z.string().optional().nullable(),
     avatar: z.string().url().optional().nullable(),
-  });
+  })
 }
 
 export default function UserSettings() {
-  const { t } = useTranslation();
-  const [user, setUser] = useAtom(globalUserInfo);
-  const [avatarPreview, setAvatarPreview] = useState(user.avatar || "");
-  const [originalEmail, setOriginalEmail] = useState(user.email || "");
-  const [isEmailVerified, setIsEmailVerified] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isVerifyError, setIsVerifyError] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
+  const { t } = useTranslation()
+  const [user, setUser] = useAtom(globalUserInfo)
+  const [avatarPreview, setAvatarPreview] = useState(user.avatar || '')
+  const [originalEmail, setOriginalEmail] = useState(user.email || '')
+  const [isEmailVerified, setIsEmailVerified] = useState(true)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isVerifyError, setIsVerifyError] = useState(false)
+  const [verificationCode, setVerificationCode] = useState('')
 
-  const formSchema = getFormSchema(t);
+  const formSchema = getFormSchema(t)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,63 +106,59 @@ export default function UserSettings() {
       phone: user.phone || null,
       avatar: user.avatar || null,
     },
-  });
+  })
 
   const { data: emailVerified } = useQuery({
-    queryKey: ["emailVerified"],
+    queryKey: ['emailVerified'],
     queryFn: () => apiUserEmailVerified(),
     select: (res) => res.data,
-  });
+  })
 
   const { mutate: updateUser } = useMutation({
-    mutationFn: (values: IUserAttributes) =>
-      apiContextUpdateUserAttributes(values),
+    mutationFn: (values: IUserAttributes) => apiContextUpdateUserAttributes(values),
     onSuccess: (_data, values) => {
-      toast.success(t("userSettings.updateSuccess"));
-      setUser((prev) => ({ ...prev, ...values }));
+      toast.success(t('userSettings.updateSuccess'))
+      setUser((prev) => ({ ...prev, ...values }))
     },
-  });
+  })
 
-  const {
-    mutate: sendVerificationEmail,
-    isPending: isSendVerificationPending,
-  } = useMutation({
+  const { mutate: sendVerificationEmail, isPending: isSendVerificationPending } = useMutation({
     mutationFn: (email: string) => apiSendVerificationEmail(email),
     onSuccess: () => {
-      setIsVerifyError(false);
-      setVerificationCode("");
-      setIsDialogOpen(true);
+      setIsVerifyError(false)
+      setVerificationCode('')
+      setIsDialogOpen(true)
     },
-  });
+  })
 
   const { mutate: verifyEmailCode } = useMutation({
     mutationFn: ({ email, code }: { email: string; code: string }) =>
       apiVerifyEmailCode(email, code),
     onError: () => {
-      setIsVerifyError(true);
+      setIsVerifyError(true)
     },
     onSuccess: () => {
-      toast.success(t("userSettings.emailVerifiedSuccess"));
-      setOriginalEmail(form.getValues("email") ?? "");
-      setIsEmailVerified(true);
-      setIsDialogOpen(false);
+      toast.success(t('userSettings.emailVerifiedSuccess'))
+      setOriginalEmail(form.getValues('email') ?? '')
+      setIsEmailVerified(true)
+      setIsDialogOpen(false)
     },
-  });
+  })
 
   useEffect(() => {
     if (emailVerified?.verified) {
-      return;
+      return
     }
-    setIsEmailVerified(false);
-  }, [emailVerified]);
+    setIsEmailVerified(false)
+  }, [emailVerified])
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (!isEmailVerified && values.email !== originalEmail) {
-      form.setError("email", {
-        type: "manual",
-        message: t("userSettings.verifyEmailFirst"),
-      });
-      return;
+      form.setError('email', {
+        type: 'manual',
+        message: t('userSettings.verifyEmailFirst'),
+      })
+      return
     }
 
     updateUser({
@@ -164,23 +171,23 @@ export default function UserSettings() {
       expiredAt: values.expiredAt ?? user.expiredAt,
       phone: values.phone ?? user.phone,
       avatar: values.avatar ?? user.avatar,
-    });
+    })
   }
 
   return (
     <>
       <div>
         <PageTitle
-          title={t("userSettings.quotaTitle")}
-          description={t("userSettings.quotaDescription")}
+          title={t('userSettings.quotaTitle')}
+          description={t('userSettings.quotaDescription')}
           className="mb-4"
         />
         <Quota />
       </div>
       <div>
         <PageTitle
-          title={t("userSettings.userInfoTitle")}
-          description={t("userSettings.userInfoDescription")}
+          title={t('userSettings.userInfoTitle')}
+          description={t('userSettings.userInfoDescription')}
           className="mb-4"
         />
         <Card className="lg:col-span-2">
@@ -193,24 +200,22 @@ export default function UserSettings() {
                     name="avatar"
                     render={({ field }) => (
                       <FormItem className="flex-1">
-                        <FormLabel>{t("userSettings.avatarLabel")}</FormLabel>
+                        <FormLabel>{t('userSettings.avatarLabel')}</FormLabel>
                         <FormControl>
                           <div className="flex items-center space-x-4">
                             <Input
                               {...field}
-                              value={field.value || ""}
-                              placeholder={t("userSettings.avatarPlaceholder")}
+                              value={field.value || ''}
+                              placeholder={t('userSettings.avatarPlaceholder')}
                               className="font-mono"
                               onChange={(e) => {
-                                field.onChange(e);
-                                setAvatarPreview(e.target.value);
+                                field.onChange(e)
+                                setAvatarPreview(e.target.value)
                               }}
                             />
                           </div>
                         </FormControl>
-                        <FormDescription>
-                          {t("userSettings.avatarDescription")}
-                        </FormDescription>
+                        <FormDescription>{t('userSettings.avatarDescription')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -225,47 +230,41 @@ export default function UserSettings() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("userSettings.emailLabel")}</FormLabel>
+                      <FormLabel>{t('userSettings.emailLabel')}</FormLabel>
                       <FormControl>
                         <div className="flex items-center space-x-2">
                           <Input
                             {...field}
                             type="email"
                             className="font-mono"
-                            value={field.value || ""}
+                            value={field.value || ''}
                             onChange={(e) => {
-                              field.onChange(e);
-                              setIsEmailVerified(false);
+                              field.onChange(e)
+                              setIsEmailVerified(false)
                             }}
                           />
-                          {(field.value !== originalEmail ||
-                            emailVerified?.verified !== true) && (
+                          {(field.value !== originalEmail || emailVerified?.verified !== true) && (
                             <LoadableButton
                               isLoading={isSendVerificationPending}
-                              isLoadingText={t(
-                                "userSettings.verificationLoading",
-                              )}
+                              isLoadingText={t('userSettings.verificationLoading')}
                               variant="secondary"
                               type="button"
                               onClick={() => {
-                                sendVerificationEmail(field.value || "");
+                                sendVerificationEmail(field.value || '')
                               }}
                             >
                               <MailPlusIcon />
-                              {t("userSettings.verifyButton")}
+                              {t('userSettings.verifyButton')}
                             </LoadableButton>
                           )}
                         </div>
                       </FormControl>
                       <FormDescription>
-                        {t("userSettings.emailDescription")}
+                        {t('userSettings.emailDescription')}
                         {emailVerified?.lastEmailVerifiedAt && (
                           <span className="ml-0.5">
-                            ({t("userSettings.lastVerified")}{" "}
-                            <TimeDistance
-                              date={emailVerified.lastEmailVerifiedAt}
-                            />
-                            )
+                            ({t('userSettings.lastVerified')}{' '}
+                            <TimeDistance date={emailVerified.lastEmailVerifiedAt} />)
                           </span>
                         )}
                       </FormDescription>
@@ -277,7 +276,7 @@ export default function UserSettings() {
               <CardFooter className="px-6 pt-6">
                 <Button type="submit">
                   <UserRoundCogIcon />
-                  {t("userSettings.updateButton")}
+                  {t('userSettings.updateButton')}
                 </Button>
               </CardFooter>
             </form>
@@ -285,18 +284,16 @@ export default function UserSettings() {
           <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t("userSettings.verifyDialogTitle")}
-                </AlertDialogTitle>
+                <AlertDialogTitle>{t('userSettings.verifyDialogTitle')}</AlertDialogTitle>
 
                 {isVerifyError ? (
                   <AlertDialogDescription className="text-destructive">
-                    {t("userSettings.invalidCode")}
+                    {t('userSettings.invalidCode')}
                   </AlertDialogDescription>
                 ) : (
                   <AlertDialogDescription>
-                    {t("userSettings.verifyDialogDescription", {
-                      email: form.getValues("email"),
+                    {t('userSettings.verifyDialogDescription', {
+                      email: form.getValues('email'),
                     })}
                   </AlertDialogDescription>
                 )}
@@ -321,18 +318,16 @@ export default function UserSettings() {
                 </InputOTP>
               </div>
               <AlertDialogFooter>
-                <AlertDialogCancel>
-                  {t("userSettings.cancelButton")}
-                </AlertDialogCancel>
+                <AlertDialogCancel>{t('userSettings.cancelButton')}</AlertDialogCancel>
                 <Button
                   onClick={() =>
                     verifyEmailCode({
                       code: verificationCode,
-                      email: form.getValues("email") ?? "",
+                      email: form.getValues('email') ?? '',
                     })
                   }
                 >
-                  {t("userSettings.verifyButton")}
+                  {t('userSettings.verifyButton')}
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -340,5 +335,5 @@ export default function UserSettings() {
         </Card>
       </div>
     </>
-  );
+  )
 }

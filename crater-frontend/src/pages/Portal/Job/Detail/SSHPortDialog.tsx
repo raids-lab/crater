@@ -1,4 +1,20 @@
-import { useState } from "react";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -6,23 +22,23 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { CopyableCommand } from "@/components/codeblock/CopyableCommand";
-import { Terminal } from "lucide-react";
-import DocsButton from "@/components/button/DocsButton";
-import { apiOpenSSH, SSHInfo } from "@/services/api/vcjob";
-import { useMutation } from "@tanstack/react-query";
-import LoadableButton from "@/components/button/LoadableButton";
-import { getErrorCode } from "@/services/axios";
-import { ERROR_SERVICE_SSHD_NOT_FOUND } from "@/services/error_code";
-import { toast } from "sonner";
+} from '@/components/ui/dialog'
+import { CopyableCommand } from '@/components/codeblock/CopyableCommand'
+import { Terminal } from 'lucide-react'
+import DocsButton from '@/components/button/DocsButton'
+import { apiOpenSSH, SSHInfo } from '@/services/api/vcjob'
+import { useMutation } from '@tanstack/react-query'
+import LoadableButton from '@/components/button/LoadableButton'
+import { getErrorCode } from '@/services/axios'
+import { ERROR_SERVICE_SSHD_NOT_FOUND } from '@/services/error_code'
+import { toast } from 'sonner'
 
 interface SSHPortDialogProps {
-  jobName: string;
-  userName: string;
-  withButton?: boolean; // 是否展示按钮
-  open?: boolean; // 外部控制打开
-  onOpenChange?: (open: boolean) => void; // 控制变化回调
+  jobName: string
+  userName: string
+  withButton?: boolean // 是否展示按钮
+  open?: boolean // 外部控制打开
+  onOpenChange?: (open: boolean) => void // 控制变化回调
 }
 
 export function SSHPortDialog({
@@ -32,29 +48,27 @@ export function SSHPortDialog({
   open,
   onOpenChange,
 }: SSHPortDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
-  const [sshInfo, setSSHInfo] = useState<SSHInfo | null>(null);
+  const [internalOpen, setInternalOpen] = useState(false)
+  const [sshInfo, setSSHInfo] = useState<SSHInfo | null>(null)
 
-  const isControlled = open !== undefined;
-  const dialogOpen = isControlled ? open : internalOpen;
-  const handleOpenChange = isControlled ? onOpenChange : setInternalOpen;
+  const isControlled = open !== undefined
+  const dialogOpen = isControlled ? open : internalOpen
+  const handleOpenChange = isControlled ? onOpenChange : setInternalOpen
 
   const { mutate: openSSH, isPending } = useMutation({
     mutationFn: () => apiOpenSSH(jobName),
     onSuccess: (response) => {
-      const data = response.data.data;
-      setSSHInfo(data);
-      handleOpenChange?.(true);
+      const data = response.data.data
+      setSSHInfo(data)
+      handleOpenChange?.(true)
     },
     onError: (error) => {
-      const [errorCode] = getErrorCode(error);
+      const [errorCode] = getErrorCode(error)
       if (errorCode === ERROR_SERVICE_SSHD_NOT_FOUND) {
-        toast.error(
-          <div className="flex flex-row items-center">未检测到 SSHD 服务</div>,
-        );
+        toast.error(<div className="flex flex-row items-center">未检测到 SSHD 服务</div>)
       }
     },
-  });
+  })
 
   return (
     <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
@@ -65,11 +79,11 @@ export function SSHPortDialog({
             title="打开 SSH 端口"
             className="cursor-pointer"
             onClick={(e) => {
-              e.preventDefault();
+              e.preventDefault()
               if (!sshInfo) {
-                openSSH();
+                openSSH()
               } else {
-                handleOpenChange?.(true);
+                handleOpenChange?.(true)
               }
             }}
             isLoading={isPending}
@@ -101,5 +115,5 @@ export function SSHPortDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

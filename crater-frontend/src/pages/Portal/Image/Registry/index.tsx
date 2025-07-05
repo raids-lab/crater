@@ -1,11 +1,27 @@
-import { DataTableToolbarConfig } from "@/components/custom/DataTable/DataTableToolbar";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FC, useState } from "react";
-import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "@/components/custom/DataTable/DataTableColumnHeader";
-import { DataTable } from "@/components/custom/DataTable";
-import { Button } from "@/components/ui/button";
-import { TimeDistance } from "@/components/custom/TimeDistance";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { type FC, useState } from 'react'
+import { ColumnDef } from '@tanstack/react-table'
+import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
+import { DataTable } from '@/components/custom/DataTable'
+import { Button } from '@/components/ui/button'
+import { TimeDistance } from '@/components/custom/TimeDistance'
 import {
   apiUserDeleteKanikoList,
   apiUserListKaniko,
@@ -16,9 +32,9 @@ import {
   imagepackStatuses,
   KanikoInfoResponse,
   ListKanikoResponse,
-} from "@/services/api/imagepack";
-import { logger } from "@/utils/loglevel";
-import { toast } from "sonner";
+} from '@/services/api/imagepack'
+import { logger } from '@/utils/loglevel'
+import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui-custom/alert-dialog";
+} from '@/components/ui-custom/alert-dialog'
 import {
   InfoIcon,
   PackagePlusIcon,
@@ -38,59 +54,57 @@ import {
   CheckCheck,
   SquareCheckBig,
   RedoDotIcon,
-} from "lucide-react";
-import { useNavigate, useRoutes } from "react-router-dom";
-import KanikoDetail from "../Info";
+} from 'lucide-react'
+import { useNavigate, useRoutes } from 'react-router-dom'
+import KanikoDetail from '../Info'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
-import DocsButton from "@/components/button/DocsButton";
-import { PipAptSheet } from "./PipAptSheet";
-import { DockerfileSheet } from "./DockerfileSheet";
-import SplitButton from "@/components/button/SplitButton";
-import TooltipLink from "@/components/label/TooltipLink";
-import ImageLabel from "@/components/label/ImageLabel";
-import ImagePhaseBadge from "@/components/badge/ImagePhaseBadge";
-import { formatBytes } from "@/utils/formatter";
-import { IResponse } from "@/services/types";
-import { AxiosResponse } from "axios";
-import { globalUserInfo } from "@/utils/store";
-import { useAtomValue } from "jotai";
-import { ValidDialog } from "../Image/ValidDialog";
-import UserLabel from "@/components/label/UserLabel";
-import { EnvdSheet } from "./EnvdSheet";
-import { EnvdRawSheet } from "./EnvdRawSheet";
-import { ProjectDetail } from "./ProjectDetail";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+} from '@/components/ui/dropdown-menu'
+import { DotsHorizontalIcon } from '@radix-ui/react-icons'
+import DocsButton from '@/components/button/DocsButton'
+import { PipAptSheet } from './PipAptSheet'
+import { DockerfileSheet } from './DockerfileSheet'
+import SplitButton from '@/components/button/SplitButton'
+import TooltipLink from '@/components/label/TooltipLink'
+import ImageLabel from '@/components/label/ImageLabel'
+import ImagePhaseBadge from '@/components/badge/ImagePhaseBadge'
+import { formatBytes } from '@/utils/formatter'
+import { IResponse } from '@/services/types'
+import { AxiosResponse } from 'axios'
+import { globalUserInfo } from '@/utils/store'
+import { useAtomValue } from 'jotai'
+import { ValidDialog } from '../Image/ValidDialog'
+import UserLabel from '@/components/label/UserLabel'
+import { EnvdSheet } from './EnvdSheet'
+import { EnvdRawSheet } from './EnvdRawSheet'
+import { ProjectDetail } from './ProjectDetail'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: "搜索镜像",
-    key: "image",
+    placeholder: '搜索镜像',
+    key: 'image',
   },
   filterOptions: [
     {
-      key: "status",
-      title: "状态",
+      key: 'status',
+      title: '状态',
       option: imagepackStatuses,
     },
   ],
   getHeader: getHeader,
-};
+}
 
 interface KanikoListTableProps {
-  apiListKaniko: () => Promise<AxiosResponse<IResponse<ListKanikoResponse>>>;
-  apiDeleteKanikoList: (
-    idList: number[],
-  ) => Promise<AxiosResponse<IResponse<string>>>;
-  isAdminMode: boolean;
+  apiListKaniko: () => Promise<AxiosResponse<IResponse<ListKanikoResponse>>>
+  apiDeleteKanikoList: (idList: number[]) => Promise<AxiosResponse<IResponse<string>>>
+  isAdminMode: boolean
 }
 
 export const KanikoListTable: FC<KanikoListTableProps> = ({
@@ -98,53 +112,47 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   apiDeleteKanikoList,
   isAdminMode,
 }) => {
-  const queryClient = useQueryClient();
-  const [openPipAptSheet, setOpenPipAptSheet] = useState(false);
-  const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false);
-  const [openEnvdSheet, setOpenEnvdSheet] = useState(false);
-  const [openEnvdRawSheet, setOpenEnvdRawSheet] = useState(false);
-  const [imagePackName, setImagePackName] = useState<string>("");
-  const navigate = useNavigate();
-  const [openCheckDialog, setCheckOpenDialog] = useState(false);
-  const user = useAtomValue(globalUserInfo);
-  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>(
-    [],
-  );
+  const queryClient = useQueryClient()
+  const [openPipAptSheet, setOpenPipAptSheet] = useState(false)
+  const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false)
+  const [openEnvdSheet, setOpenEnvdSheet] = useState(false)
+  const [openEnvdRawSheet, setOpenEnvdRawSheet] = useState(false)
+  const [imagePackName, setImagePackName] = useState<string>('')
+  const navigate = useNavigate()
+  const [openCheckDialog, setCheckOpenDialog] = useState(false)
+  const user = useAtomValue(globalUserInfo)
+  const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>([])
 
   const imageQuery = useQuery({
-    queryKey: ["imagepack", "list"],
+    queryKey: ['imagepack', 'list'],
     queryFn: () => apiListKaniko(),
     select: (res) =>
       res.data.data.kanikoList.map((i) => ({
         ...i,
         image: `${i.imageLink} (${i.description})`,
       })),
-  });
+  })
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["imagepack", "list"] }),
-      ]);
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ['imagepack', 'list'] })])
     } catch (error) {
-      logger.error("更新查询失败", error);
+      logger.error('更新查询失败', error)
     }
-  };
+  }
 
   const { mutate: deleteKanikoList } = useMutation({
     mutationFn: (idList: number[]) => apiDeleteKanikoList(idList),
     onSuccess: async () => {
-      await refetchImagePackList();
-      toast.success("镜像已删除");
+      await refetchImagePackList()
+      toast.success('镜像已删除')
     },
-  });
+  })
 
   let columns: ColumnDef<KanikoInfoResponse>[] = [
     {
-      accessorKey: "image",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("image")} />
-      ),
+      accessorKey: 'image',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('image')} />,
       cell: ({ row }) => (
         <TooltipLink
           name={
@@ -160,57 +168,49 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       ),
     },
     {
-      id: "userInfo",
-      accessorKey: "userInfo",
+      id: 'userInfo',
+      accessorKey: 'userInfo',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("userInfo")} />
+        <DataTableColumnHeader column={column} title={getHeader('userInfo')} />
       ),
       cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
     },
     {
-      accessorKey: "createdAt",
+      accessorKey: 'createdAt',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("createdAt")} />
+        <DataTableColumnHeader column={column} title={getHeader('createdAt')} />
       ),
       cell: ({ row }) => {
-        return <TimeDistance date={row.getValue("createdAt")}></TimeDistance>;
+        return <TimeDistance date={row.getValue('createdAt')}></TimeDistance>
       },
-      sortingFn: "datetime",
+      sortingFn: 'datetime',
     },
     {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("status")} />
-      ),
+      accessorKey: 'status',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('status')} />,
       cell: ({ row }) => {
-        return (
-          <ImagePhaseBadge status={row.getValue<ImagePackStatus>("status")} />
-        );
+        return <ImagePhaseBadge status={row.getValue<ImagePackStatus>('status')} />
       },
       filterFn: (row, id, value) => {
-        return (value as string[]).includes(row.getValue(id));
+        return (value as string[]).includes(row.getValue(id))
       },
     },
     {
-      accessorKey: "size",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={getHeader("size")} />
-      ),
+      accessorKey: 'size',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('size')} />,
       cell: ({ row }) => {
         return (
           <>
-            {row.getValue<number>("size") > 0 && (
-              <span>{formatBytes(row.getValue("size"))}</span>
-            )}
+            {row.getValue<number>('size') > 0 && <span>{formatBytes(row.getValue('size'))}</span>}
           </>
-        );
+        )
       },
     },
     {
-      id: "actions",
+      id: 'actions',
       enableHiding: false,
       cell: ({ row }) => {
-        const kanikoInfo = row.original;
+        const kanikoInfo = row.original
         return (
           <div className="flex flex-row space-x-1">
             <AlertDialog>
@@ -225,34 +225,24 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
                     操作
                   </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => navigate(`${kanikoInfo.imagepackName}`)}
-                  >
+                  <DropdownMenuItem onClick={() => navigate(`${kanikoInfo.imagepackName}`)}>
                     <InfoIcon className="text-highlight-emerald" />
                     详情
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
                     onClick={() => {
-                      setImagePackName(kanikoInfo.imagepackName);
-                      if (
-                        kanikoInfo.buildSource === ImagePackSource.EnvdAdvanced
-                      ) {
-                        setOpenEnvdSheet(true);
-                      } else if (
-                        kanikoInfo.buildSource === ImagePackSource.EnvdRaw
-                      ) {
-                        setOpenEnvdRawSheet(true);
-                      } else if (
-                        kanikoInfo.buildSource === ImagePackSource.Dockerfile
-                      ) {
-                        setOpenDockerfileSheet(true);
-                      } else if (
-                        kanikoInfo.buildSource === ImagePackSource.PipApt
-                      ) {
-                        setOpenPipAptSheet(true);
+                      setImagePackName(kanikoInfo.imagepackName)
+                      if (kanikoInfo.buildSource === ImagePackSource.EnvdAdvanced) {
+                        setOpenEnvdSheet(true)
+                      } else if (kanikoInfo.buildSource === ImagePackSource.EnvdRaw) {
+                        setOpenEnvdRawSheet(true)
+                      } else if (kanikoInfo.buildSource === ImagePackSource.Dockerfile) {
+                        setOpenDockerfileSheet(true)
+                      } else if (kanikoInfo.buildSource === ImagePackSource.PipApt) {
+                        setOpenPipAptSheet(true)
                       } else {
-                        toast.error("该镜像不支持克隆");
+                        toast.error('该镜像不支持克隆')
                       }
                     }}
                   >
@@ -281,7 +271,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => {
-                      deleteKanikoList([kanikoInfo.ID]);
+                      deleteKanikoList([kanikoInfo.ID])
                     }}
                   >
                     删除
@@ -290,23 +280,23 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               </AlertDialogContent>
             </AlertDialog>
           </div>
-        );
+        )
       },
     },
-  ];
-  columns = columns.filter((column) => column.id !== "nickName" || isAdminMode);
+  ]
+  columns = columns.filter((column) => column.id !== 'nickName' || isAdminMode)
   return (
     <>
       <DataTable
         info={
           isAdminMode
             ? {
-                title: "镜像制作管理",
-                description: "支持 Dockerfile 、低代码、快照等方式制作镜像",
+                title: '镜像制作管理',
+                description: '支持 Dockerfile 、低代码、快照等方式制作镜像',
               }
             : {
-                title: "镜像制作",
-                description: "支持 Dockerfile 、低代码、快照等方式制作镜像",
+                title: '镜像制作',
+                description: '支持 Dockerfile 、低代码、快照等方式制作镜像',
               }
         }
         storageKey="image_registry"
@@ -316,8 +306,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         className="lg:col-span-2"
         multipleHandlers={[
           {
-            title: (rows) =>
-              `删除 ${rows.length} 个镜像创建任务，以及对应镜像链接`,
+            title: (rows) => `删除 ${rows.length} 个镜像创建任务，以及对应镜像链接`,
             description: (rows) => (
               <div className="border-destructive/20 bg-destructive/5 rounded-md border px-4 py-3">
                 <div className="flex items-start gap-3">
@@ -332,10 +321,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     <ScrollArea className="h-[200px] w-full overflow-hidden">
                       <div className="p-4">
                         {rows.map((row, index) => (
-                          <p
-                            key={index}
-                            className="text-muted-foreground text-sm"
-                          >
+                          <p key={index} className="text-muted-foreground text-sm">
                             {`『${row.original.description}』`}
                           </p>
                         ))}
@@ -347,8 +333,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             ),
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
-              const ids = rows.map((row) => row.original.ID);
-              deleteKanikoList(ids);
+              const ids = rows.map((row) => row.original.ID)
+              deleteKanikoList(ids)
             },
             isDanger: true,
           },
@@ -360,18 +346,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <div className="w-full overflow-hidden">
                     <p className="flex items-center gap-2 font-medium">
                       <SquareCheckBig className="h-4 w-4 text-green-600" />
-                      <span className="text-sm leading-4 text-green-600">
-                        以下镜像链接将被检测
-                      </span>
+                      <span className="text-sm leading-4 text-green-600">以下镜像链接将被检测</span>
                     </p>
                     <Separator className="my-2" />
                     <ScrollArea className="h-[200px] w-full overflow-hidden">
                       <div className="p-4">
                         {rows.map((row, index) => (
-                          <p
-                            key={index}
-                            className="text-muted-foreground text-sm"
-                          >
+                          <p key={index} className="text-muted-foreground text-sm">
                             {`『${row.original.description}』`}
                           </p>
                         ))}
@@ -389,9 +370,9 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   imageLink: row.original.imageLink,
                   description: row.original.description,
                   creator: row.original.userInfo,
-                })),
-              );
-              setCheckOpenDialog(true);
+                }))
+              )
+              setCheckOpenDialog(true)
             },
             isDanger: false,
           },
@@ -400,8 +381,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           !isAdminMode ? (
             <ProjectDetail
               successImageNumber={
-                imageQuery.data?.filter((c) => c.status == "Finished").length ??
-                0
+                imageQuery.data?.filter((c) => c.status == 'Finished').length ?? 0
               }
             />
           ) : null
@@ -416,31 +396,31 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               itemTitle="构建方式"
               items={[
                 {
-                  key: "envd",
-                  title: "Python + CUDA 自定义构建",
+                  key: 'envd',
+                  title: 'Python + CUDA 自定义构建',
                   action: () => {
-                    setOpenEnvdSheet(true);
+                    setOpenEnvdSheet(true)
                   },
                 },
                 {
-                  key: "pip-apt",
-                  title: "基于现有镜像构建",
+                  key: 'pip-apt',
+                  title: '基于现有镜像构建',
                   action: () => {
-                    setOpenPipAptSheet(true);
+                    setOpenPipAptSheet(true)
                   },
                 },
                 {
-                  key: "dockerfile",
-                  title: "基于 Dockerfile 构建",
+                  key: 'dockerfile',
+                  title: '基于 Dockerfile 构建',
                   action: () => {
-                    setOpenDockerfileSheet(true);
+                    setOpenDockerfileSheet(true)
                   },
                 },
                 {
-                  key: "envd-raw",
-                  title: "基于 Envd 构建",
+                  key: 'envd-raw',
+                  title: '基于 Envd 构建',
                   action: () => {
-                    setOpenEnvdRawSheet(true);
+                    setOpenEnvdRawSheet(true)
                   },
                 },
               ]}
@@ -458,8 +438,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description="Python+CUDA指定版本构建"
             className="sm:max-w-3xl"
             closeSheet={() => {
-              setOpenEnvdSheet(false);
-              setImagePackName("");
+              setOpenEnvdSheet(false)
+              setImagePackName('')
             }}
             imagePackName={imagePackName}
             setImagePackName={setImagePackName}
@@ -471,8 +451,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description="直接编写 Envd 构建脚本，实现更复杂的定制化"
             className="sm:max-w-3xl"
             closeSheet={() => {
-              setOpenEnvdRawSheet(false);
-              setImagePackName("");
+              setOpenEnvdRawSheet(false)
+              setImagePackName('')
             }}
             imagePackName={imagePackName}
             setImagePackName={setImagePackName}
@@ -484,8 +464,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description="基于平台提供的基础镜像，快速制作自定义镜像"
             className="sm:max-w-3xl"
             closeSheet={() => {
-              setOpenPipAptSheet(false);
-              setImagePackName("");
+              setOpenPipAptSheet(false)
+              setImagePackName('')
             }}
             imagePackName={imagePackName}
             setImagePackName={setImagePackName}
@@ -497,8 +477,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             description="基于 Dockerfile 制作镜像"
             className="sm:max-w-3xl"
             closeSheet={() => {
-              setOpenDockerfileSheet(false);
-              setImagePackName("");
+              setOpenDockerfileSheet(false)
+              setImagePackName('')
             }}
             imagePackName={imagePackName}
             setImagePackName={setImagePackName}
@@ -513,15 +493,15 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               deleteKanikoList(
                 invalidPairs
                   .filter((pair) => pair.creator.username === user.name)
-                  .map((pair) => pair.id),
-              );
+                  .map((pair) => pair.id)
+              )
             }}
           />
         </DialogContent>
       </Dialog>
     </>
-  );
-};
+  )
+}
 
 export const Component = () => {
   const routes = useRoutes([
@@ -536,10 +516,10 @@ export const Component = () => {
       ),
     },
     {
-      path: ":name",
+      path: ':name',
       element: <KanikoDetail />,
     },
-  ]);
+  ])
 
-  return <>{routes}</>;
-};
+  return <>{routes}</>
+}

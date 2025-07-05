@@ -1,25 +1,39 @@
-import { useQuery } from "@tanstack/react-query";
-import { type FC, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { apiUserGetQuota } from "@/services/api/imagepack";
-import { BoxIcon, HardDriveIcon, KeyIcon, UserRoundIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import LoadingCircleIcon from "@/components/icon/LoadingCircleIcon";
-import { UserHarborCredentialsDialog } from "./UserHarborCredentialsDialog";
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { useQuery } from '@tanstack/react-query'
+import { type FC, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { apiUserGetQuota } from '@/services/api/imagepack'
+import { BoxIcon, HardDriveIcon, KeyIcon, UserRoundIcon } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import LoadingCircleIcon from '@/components/icon/LoadingCircleIcon'
+import { UserHarborCredentialsDialog } from './UserHarborCredentialsDialog'
 
 interface ProjectDetailProps {
-  successImageNumber: number;
+  successImageNumber: number
 }
 
-export const ProjectDetail: FC<ProjectDetailProps> = ({
-  successImageNumber,
-}) => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+export const ProjectDetail: FC<ProjectDetailProps> = ({ successImageNumber }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const quotaQuery = useQuery({
-    queryKey: ["imagepack", "quota"],
+    queryKey: ['imagepack', 'quota'],
     queryFn: () => apiUserGetQuota(),
     select: (res) => res.data.data,
-  });
+  })
   return (
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -32,11 +46,7 @@ export const ProjectDetail: FC<ProjectDetailProps> = ({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {quotaQuery.isLoading ? (
-                <LoadingCircleIcon />
-              ) : (
-                <>{successImageNumber}</>
-              )}
+              {quotaQuery.isLoading ? <LoadingCircleIcon /> : <>{successImageNumber}</>}
             </p>
           </CardContent>
         </Card>
@@ -70,11 +80,7 @@ export const ProjectDetail: FC<ProjectDetailProps> = ({
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {quotaQuery.isLoading ? (
-                <LoadingCircleIcon />
-              ) : (
-                <>{quotaQuery.data?.project}</>
-              )}
+              {quotaQuery.isLoading ? <LoadingCircleIcon /> : <>{quotaQuery.data?.project}</>}
             </p>
           </CardContent>
         </Card>
@@ -87,21 +93,14 @@ export const ProjectDetail: FC<ProjectDetailProps> = ({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              onClick={() => setIsDialogOpen(true)}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={() => setIsDialogOpen(true)} className="w-full">
               获取初始凭据
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <UserHarborCredentialsDialog
-        isDialogOpen={isDialogOpen}
-        setIsDialogOpen={setIsDialogOpen}
-      />
+      <UserHarborCredentialsDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
     </>
-  );
-};
+  )
+}
