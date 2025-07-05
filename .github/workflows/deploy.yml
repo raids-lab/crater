@@ -20,6 +20,7 @@ on:
     paths:
       - 'src/**'        
       - 'content/**'
+      - 'package.json'
 
 jobs:
   build:
@@ -35,14 +36,14 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9 # 使用与您项目兼容的pnpm版本
+          version: 10 # 使用与您项目兼容的pnpm版本
           run_install: false
 
       # 设置 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 21 # 使用您项目需要的Node版本
+          node-version: 22 # 使用您项目需要的Node版本
           cache: "pnpm"
 
       # 安装依赖
