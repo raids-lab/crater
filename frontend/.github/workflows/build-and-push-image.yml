@@ -1,0 +1,117 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*" # 匹配 v 开头的标签
+
+env:
+  # 修改为 Docker Hub 配置
+  REGISTRY: ghcr.io
+  # 设置您的 Docker Hub 用户名和仓库名
+  IMAGE_REPO: raids-lab/crater-frontend
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_short_sha: ${{ steps.set-short-sha.outputs.short_sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set short SHA
+        id: set-short-sha
+        run: echo "short_sha=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Set env variables
+        run: |
+          sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${{ steps.set-short-sha.outputs.short_sha }}\"/" .env
+          echo "HUSKY=0" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  build-and-push-image:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      # 设置 QEMU 支持多架构构建
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 创建构建器实例支持多平台
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:master
+
+      # 登录 Docker Hub
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tags
+        id: set-tags
+        run: |
+          # 如果是标签推送事件
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            version_tag="${GITHUB_REF#refs/tags/}"
+            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:$version_tag" >> $GITHUB_OUTPUT
+          else
+            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:${{ needs.build-frontend.outputs.commit_short_sha }}" >> $GITHUB_OUTPUT
+          fi
+
+          # 总是添加 latest 标签
+          echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}:latest" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64, linux/arm64
+          push: true
+          tags: |
+            ${{ steps.set-tags.outputs.tags }}

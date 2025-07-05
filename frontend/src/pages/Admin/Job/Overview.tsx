@@ -454,7 +454,7 @@ const AdminJobOverview = () => {
         },
       },
     ];
-  }, [deleteTask, handleClick, t]);
+  }, [deleteTask, handleClick, handleClickToExtend, t]);
 
   return (
     <>
