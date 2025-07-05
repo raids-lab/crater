@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
     tags:
-      - 'v*' # 匹配 v 开头的标签
+      - 'v*.*.*'
 
 env:
   # 修改为 Docker Hub 配置
@@ -111,6 +111,7 @@ jobs:
             ghcr.io/raids-lab/crater-frontend
           # generate Docker tags based on the following events/attributes
           tags: |
+            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -124,3 +125,14 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
+      - uses: quartx-analytics/ghcr-cleaner@v1
+        with:
+          owner-type: org # or user
+          token: ${{ secrets.PAT_TOKEN  }}
+          repository_owner: ${{ github.repository_owner }}
+          package-name: crater-frontend
+          delete-untagged: true
+          keep-at-most: 2
+          filter-tags: sha-*
+          skip-tags: main,buildcache
