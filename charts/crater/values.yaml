@@ -1,0 +1,218 @@
+# depolyment configuration variables
+createNamespace: false
+imagePullSecrets: []
+
+urls:
+  host: "gpu.raids-lab.cn"
+  grafanaHost: "gpu-grafana.raids-lab.cn"
+
+images:
+  backend:
+    repository: "harbor.raids-lab.cn/crater/web-backend"
+    tag: "bef3ac36"
+  frontend:
+    repository: "ghcr.io/raids-lab/crater-frontend"
+    tag: "sha-d43d765"
+  storage:
+    repository: "crater-harbor.raids-lab.cn/crater/webdav"
+    tag: "pfl9s61a"
+  cronjob:
+    repository: "crater-harbor.raids-lab.cn/crater/curl-jq"
+    tag: "v0"
+  grafanaProxy:
+    repository: "crater-harbor.raids-lab.cn/docker.io/library/nginx"
+    tag: "1.27.3-bookworm"
+  buildkit:
+    repository: "crater-harbor.raids-lab.cn/docker.io/moby/buildkit"
+    tag: "v0.18.2-rootless"
+
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      preference:
+        matchExpressions:
+          - key: nvidia.com/gpu.present
+            operator: NotIn
+            values:
+              - "true"
+
+web:
+  migrate:
+    createMigrationJob: true
+    admin:
+      username: "crater-admin"
+      password: "<MASKED>"  # 密码已掩码
+  ingress:
+    host: "gpu.raids-lab.cn"
+  grafana:
+    address: http://prometheus-grafana.monitoring
+    token: "<MASKED>"  # Bearer令牌已掩码
+    ancestor: https://gpu.raids-lab.cn
+    host: gpu-grafana.raids-lab.cn
+
+# BuildKit configuration variables
+buildkitConfig:
+  replicas: 3
+  dockerconfigjson: "<MASKED>"  # Docker认证配置已掩码
+  httpsProxy: 192.168.5.58:1080
+  noProxy: crater-harbor.raids-lab.cn
+  resources:
+    requests:
+      cpu: 8
+      memory: 24Gi
+    limits:
+      cpu: 16
+      memory: 48Gi
+  cache:
+    storageClass: "openebs-hostpath"
+    storageSize: 400Gi
+    maxUsedSpace: "400GB"
+    minFreeSpace: "50GB"
+    reservedSpace: "50GB"
+  
+# Frontend configuration variables
+frontendConfig:
+  version: "1.0.0"
+  url:
+    host: "gpu.raids-lab.cn"
+    apiBase: "https://gpu.raids-lab.cn/api/"
+    apiVersion: "v1"
+    websiteBase: "https://raids-lab.github.io/crater/cn"
+  grafana:
+    overview:
+      main: "https://gpu-grafana.raids-lab.cn/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
+      schedule: "https://gpu-grafana.raids-lab.cn/d/be9oh7yk24jy8f/crater-gpu-e8b083-e5baa6-e58f82-e88083"
+      network: "https://gpu-grafana.raids-lab.cn/d/8b7a8b326d7a6f1f04y7fh66368c67af/networking"
+    node:
+      basic: "https://gpu-grafana.raids-lab.cn/d/k8s_views_nodes/crater-node-basic-dashboard"
+      nvidia: "https://gpu-grafana.raids-lab.cn/d/nvidia-dcgm-dashboard/crater-node-nvidia-dashboard"
+    job:
+      basic: "https://gpu-grafana.raids-lab.cn/d/R4ZPFfyIz/crater-job-basic-dashboard"
+      nvidia: "https://gpu-grafana.raids-lab.cn/d/2CDE0AC7/crater-job-nvidia-dashboard"
+      pod: "https://gpu-grafana.raids-lab.cn/d/MhnFUFLSz/crater-pod-dashboard"
+    user:
+      nvidia: "https://gpu-grafana.raids-lab.cn/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
+  featureFlags:
+    enableRegister: true
+
+# Backend configuration variables
+backendConfig:
+  enableLeaderElection: false
+  leaderElectionID: 1ca428e5.training-operator.kubeflow.org
+  prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+  serverAddr: :8088
+  metricsAddr: :8080
+  probeAddr: :8081
+  monitoringPort: 9443
+  host: gpu.raids-lab.cn
+  tlsSecretName: crater-tls-secret
+  tlsForwardSecretName: crater-tls-forward-secret
+  postgres:
+    host: database-cluster-rw.crater
+    port: 5432
+    dbname: crater
+    user: crater
+    password: "<MASKED>"  # 数据库密码已掩码
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+  userSpacePrefix: sugon-gpu-home-lab
+  accountSpacePrefix: crater-accounts
+  publicSpacePrefix: sugon-gpu-incoming
+  workspace:
+    namespace: crater-workspace
+    rwxpvcName: crater-rw-storage
+    roxpvcName: crater-ro-storage
+    ingressName: crater-jobs-ingress
+    imageNameSpace: crater-images
+  act:
+    strictRegisterMode: true
+    uidServerURL: <MASKED>
+    image:
+      registryServer: gpu-harbor.raids-lab.cn
+      registryUser: robot$gpu-crater
+      registryPass: "<MASKED>"  # 仓库密码已掩码
+      registryProject: crater
+      registryAdmin: admin
+      registryAdminPass: "<MASKED>"  # 管理员密码已掩码
+    openAPI:
+      url: <MASKED>
+      chameleonKey: "<MASKED>"  # API密钥已掩码
+      accessToken: "<MASKED>"   # 访问令牌已掩码
+    auth:
+      userName: <MASKED>
+      password: "<MASKED>"     # LDAP密码已掩码
+      address: <MASKED>
+      searchDN: <MASKED>
+      accessTokenSecret: "<MASKED>"   # Token密钥已掩码
+      refreshTokenSecret: "<MASKED>"  # Token密钥已掩码
+    smtp:
+      host: mail.raids-lab.cn
+      port: 25
+      user: notify
+      password: "<MASKED>"  # SMTP密码已掩码
+      notify: notify@raids-lab.cn
+  schedulerPlugins:
+    aijob:
+      aijobEn: false
+      enableProfiling: true
+      profilingTimeout: 120
+    spjob:
+      spjobEn: false
+      predictionServiceAddress: http://resource-analyze-svc.kube-gpu-sparse:80
+  dindArgs:
+    buildkitImage: crater-harbor.raids-lab.cn/xxx/buildkit/buildctl:v0.18.2
+    buildxImage: crater-harbor.raids-lab.cn/xxx/buildx-multiarch:v5
+    nerdctlImage: crater-harbor.raids-lab.cn/crater/nerdctl:2.0.1-retry
+    envdImage: gpu-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.0
+    envdAmdImage: crater-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.1-amd
+    envdArmImage: crater-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.1-arm
+
+# CronJob Config
+cronjobConfig:
+  USERNAME: "<MASKED>"
+  PASSWORD: "<MASKED>"  # 密码已掩码
+  HOST: "gpu.raids-lab.cn"
+  jobs:
+    lowGPUUtil:
+      schedule: "*/5 * * * *"
+      TIME_RANGE: "90"
+      WAIT_TIME: "30"
+      UTIL: "0"
+    longTime:
+      schedule: "*/5 * * * *"
+      BATCH_DAYS: "4"
+      INTERACTIVE_DAYS: "4"
+    waitingJupyter:
+      schedule: "*/5 * * * *"
+      JUPYTER_WAIT_MINUTES: "5"
+
+# cert-manager configuration variables
+tls:
+  base:
+    enabled: false
+    cert: "<MASKED>"  # 证书已掩码
+    key: "<MASKED>"   # 私钥已掩码
+  forward:
+    enabled: false
+    cert: "<MASKED>"  # 证书已掩码
+    key: "<MASKED>"   # 私钥已掩码
+
+ssConfig:
+  content: "<MASKED>"  # 敏感配置文件内容已掩码
+
+# pvc configuration variables
+storage:
+  create: false
+  request: 2Ti
+  storageClass: "rook-ceph-rbd"
+  rwName: "crater-rw-storage"
+  roName: "crater-ro-storage"
