@@ -4,22 +4,22 @@ Crater is a Kubernetes-based GPU cluster management system providing a comprehen
 
 <table>
   <tr>
-    <td align="center" width="200px">
-      <img src="./docs/images/jupyter.gif" width="150"><br>
+    <td align="center" width="45%">
+      <img src="./docs/images/jupyter.gif"><br>
       <em>Jupyter Lab</em>
     </td>
-    <td align="center" width="200px">
-      <img src="./docs/images/ray.gif" width="150"><br>
+    <td align="center" width="45%">
+      <img src="./docs/images/ray.gif"><br>
       <em>Ray Job</em>
     </td>
   </tr>
   <tr>
-    <td align="center" width="200px">
-      <img src="./docs/images/monitor.gif" width="150"><br>
+    <td align="center" width="45%">
+      <img src="./docs/images/monitor.gif"><br>
       <em>Monitor</em>
     </td>
-    <td align="center" width="200px">
-      <img src="./docs/images/datasets.gif" width="150"><br>
+    <td align="center" width="45%">
+      <img src="./docs/images/datasets.gif"><br>
       <em>Models</em>
     </td>
   </tr>

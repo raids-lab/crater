@@ -130,9 +130,9 @@ jobs:
         with:
           owner-type: org # or user
           token: ${{ secrets.PAT_TOKEN  }}
-          repository_owner: ${{ github.repository_owner }}
+          repository-owner: ${{ github.repository_owner }}
           package-name: crater-frontend
           delete-untagged: true
           keep-at-most: 2
           filter-tags: sha-*
-          skip-tags: main,buildcache
+          skip-tags: main
