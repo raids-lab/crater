@@ -33,9 +33,9 @@ func main() {
 		r.Handle(m, "/api/ss", service.WebDav)
 		r.Handle(m, "/api/ss/*path", service.WebDav)
 	}
-
-	service.RegisterDataset(r)
-	service.RegisterFile(r)
+	webdavGroup := r.Group("api/ss", service.WebDAVMiddleware())
+	service.RegisterDataset(webdavGroup)
+	service.RegisterFile(webdavGroup)
 	err = r.Run(":7320")
 	if err != nil {
 		logutils.Log.Fatal(err)
