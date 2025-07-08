@@ -64,6 +64,14 @@ func CheckJWTToken(c *gin.Context) (util.JWTMessage, error) {
 	return token, nil
 }
 
+func WebDAVMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		AlloweOption(c)
+		checkfs()
+		c.Next()
+	}
+}
+
 func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
 	if token.RolePlatform == model.RoleAdmin {
 		return model.ReadWrite
@@ -214,9 +222,6 @@ func AlloweOption(c *gin.Context) {
 }
 
 func Download(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
-
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
@@ -269,11 +274,12 @@ func GetBasicFiles(c *gin.Context, token util.JWTMessage, isadmin bool) []Files 
 	}
 	files := GetFilesByPaths(s, c)
 	for i, f := range files {
-		if f.Name == userSpacePrefix {
+		switch f.Name {
+		case userSpacePrefix:
 			files[i].Name = model.UserPath
-		} else if f.Name == publicSpacePrefix {
+		case publicSpacePrefix:
 			files[i].Name = model.PublicPath
-		} else if f.Name == accountSpacePrefix {
+		case accountSpacePrefix:
 			files[i].Name = model.AccountPath
 		}
 	}
@@ -294,11 +300,12 @@ func GetRWFiles(c *gin.Context, token util.JWTMessage) []Files {
 	}
 	files := GetFilesByPaths(s, c)
 	for i, f := range files {
-		if f.Name == userSpacePrefix {
+		switch f.Name {
+		case userSpacePrefix:
 			files[i].Name = model.UserPath
-		} else if f.Name == publicSpacePrefix {
+		case publicSpacePrefix:
 			files[i].Name = model.PublicPath
-		} else if f.Name == accountSpacePrefix {
+		case accountSpacePrefix:
 			files[i].Name = model.AccountPath
 		}
 	}
@@ -325,8 +332,6 @@ func GetFilesByPaths(paths []string, c *gin.Context) []Files {
 
 // 用户获取文件
 func GetFiles(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
@@ -360,8 +365,6 @@ func GetFiles(c *gin.Context) {
 
 // 用户获取有读写权限的可移动文件
 func GetFilesWithRWAcc(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
@@ -406,8 +409,6 @@ func getFirstToken(path string) string {
 
 // admin获取文件
 func GetAllFiles(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
@@ -479,8 +480,6 @@ func GetDatasetURLByID(c *gin.Context, datasetID uint) (string, error) {
 
 // 通过数据集获取文件
 func GetDatasetFiles(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
@@ -562,7 +561,7 @@ func checkSpace() {
 	ctx := context.Background()
 	var baseSpace []string
 	baseSpace = append(baseSpace, config.GetConfig().AccountSpacePrefix,
-		config.GetConfig().UserSpacePrefix, config.GetConfig().PublicSpacePrefix)
+		config.GetConfig().UserSpacePrefix, config.GetConfig().PublicSpacePrefix, model.DatasetPrefix, model.ModelPrefix)
 	for _, space := range baseSpace {
 		_, err := fs.FileSystem.Stat(ctx, space)
 		if err != nil {
@@ -621,8 +620,6 @@ func checkSpace() {
 }
 
 func DeleteFile(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
@@ -647,7 +644,7 @@ func DeleteFile(c *gin.Context) {
 	response.Success(c, "Delete file successfully ")
 }
 
-// 获得用户权限，不判断是否为管理员
+// 获得用户权限
 func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.FilePermission {
 	path = strings.TrimLeft(path, "/")
 	cleanedPath := filepath.Clean(path)
@@ -655,28 +652,29 @@ func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.Fil
 		return model.ReadOnly
 	}
 	part := strings.Split(cleanedPath, "/")
-	if part[0] == model.AccountPath {
+	switch part[0] {
+	case model.AccountPath:
 		a := query.Account
 		_, err := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
 		if err != nil {
 			return model.NotAllowed
 		}
 		return model.FilePermission(token.AccountAccessMode)
-	} else if part[0] == model.PublicPath {
+	case model.PublicPath:
 		return model.FilePermission(token.PublicAccessMode)
-	} else if part[0] == model.UserPath {
+	case model.UserPath:
 		u := query.User
 		_, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 		if err != nil {
 			return model.NotAllowed
 		}
 		return model.ReadWrite
-	} else if part[0] == model.AdminAccountPath || part[0] == model.AdminPublicPath || part[0] == model.AdminUserPath {
+	case model.AdminAccountPath, model.AdminPublicPath, model.AdminUserPath:
 		if token.RolePlatform != model.RoleAdmin {
 			return model.NotAllowed
 		}
 		return model.ReadWrite
-	} else {
+	default:
 		return model.NotAllowed
 	}
 }
@@ -713,8 +711,6 @@ type AccountSpaceResp struct {
 }
 
 func GetUserSpace(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
@@ -741,8 +737,6 @@ func GetUserSpace(c *gin.Context) {
 }
 
 func GetAccountSpace(c *gin.Context) {
-	AlloweOption(c)
-	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
 		response.Error(c, err.Error(), response.NotSpecified)
@@ -818,19 +812,19 @@ func Redirect(c *gin.Context, path string, token util.JWTMessage) (string, error
 	return "", fmt.Errorf("an illegal path")
 }
 
-func RegisterFile(r *gin.Engine) {
-	r.Handle("OPTIONS", "/api/ss", AlloweOption)
-	r.Handle("OPTIONS", "/api/ss/*path", AlloweOption)
-	r.Handle("GET", "/api/ss/files", GetFiles)
-	r.Handle("GET", "/api/ss/files/*path", GetFiles)
-	r.Handle("GET", "/api/ss/rwfiles", GetFilesWithRWAcc)
-	r.Handle("GET", "/api/ss/rwfiles/*path", GetFilesWithRWAcc)
-	r.Handle("GET", "/api/ss/admin/files", GetAllFiles)
-	r.Handle("GET", "/api/ss/admin/files/*path", GetAllFiles)
-	r.Handle("GET", "/api/ss/download/*path", Download)
-	r.Handle("DELETE", "/api/ss/delete/*path", DeleteFile)
-	r.Handle("GET", "/api/ss/userspace", GetUserSpace)
-	r.Handle("GET", "/api/ss/queuespace", GetAccountSpace)
-	r.Handle("GET", "/api/ss/dataset/:id", GetDatasetFiles)
-	r.Handle("GET", "/api/ss/dataset/:id/*path", GetDatasetFiles)
+func RegisterFile(webdavGroup *gin.RouterGroup) {
+	webdavGroup.Handle("OPTIONS", "")
+	webdavGroup.Handle("OPTIONS", "/*path")
+	webdavGroup.GET("/files", GetFiles)
+	webdavGroup.GET("/files/*path", GetFiles)
+	webdavGroup.GET("/rwfiles", GetFilesWithRWAcc)
+	webdavGroup.GET("/rwfiles/*path", GetFilesWithRWAcc)
+	webdavGroup.GET("/admin/files", GetAllFiles)
+	webdavGroup.GET("/admin/files/*path", GetAllFiles)
+	webdavGroup.GET("/download/*path", Download)
+	webdavGroup.DELETE("/delete/*path", DeleteFile)
+	webdavGroup.GET("/userspace", GetUserSpace)
+	webdavGroup.GET("/queuespace", GetAccountSpace)
+	webdavGroup.GET("/dataset/:id", GetDatasetFiles)
+	webdavGroup.GET("/dataset/:id/*path", GetDatasetFiles)
 }
