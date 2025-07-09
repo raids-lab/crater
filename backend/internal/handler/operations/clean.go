@@ -529,6 +529,7 @@ func (mgr *OperationsMgr) deleteUnscheduledJupyterJobs(c *gin.Context, waitMinit
 	return deletedJobs
 }
 
+// 如果VCJob还没有创建Pod，返回false
 // 所有Pod被schedule，返回true；否则返回false
 func (mgr *OperationsMgr) isJobscheduled(c *gin.Context, jobName string) bool {
 	namespace := config.GetConfig().Workspace.Namespace
@@ -538,6 +539,11 @@ func (mgr *OperationsMgr) isJobscheduled(c *gin.Context, jobName string) bool {
 	})
 	if err != nil {
 		logutils.Log.Errorf("Failed to get pods: %v", err)
+		return false
+	}
+
+	if len(pods.Items) == 0 {
+		// 没有Pod，说明VCJob还没有创建Pod
 		return false
 	}
 
