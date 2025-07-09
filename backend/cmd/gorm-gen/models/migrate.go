@@ -1,22 +1,3 @@
-// Migration script for gorm-gen
-//
-// Usage:
-//
-// // For Dev Cluster (***REMOVED***)
-//
-// make migrate
-//
-// // For ActGPU Cluster (***REMOVED***)
-//
-// CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-actgpu.yaml make migrate
-//
-// // For Little Cluster (192.168.5.76)
-//
-// CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-little.yaml make migrate
-//
-// // For Ali Cluster (localhost)
-//
-// CRATER_DEBUG_CONFIG_PATH=${PWD}/etc/debug-config-ali.yaml make migrate
 package main
 
 import (
@@ -504,7 +485,7 @@ func main() {
 				ID:       1,
 				Name:     name,
 				Nickname: "管理员",
-				Email:    ptr.To("***REMOVED***"),
+				Email:    ptr.To("admin@crater.io"),
 				Teacher:  ptr.To("管理员"),
 				Group:    ptr.To("管理员"),
 				UID:      ptr.To("1001"),

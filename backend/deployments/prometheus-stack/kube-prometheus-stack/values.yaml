@@ -1000,23 +1000,23 @@ alertmanager:
 grafana:
   ## ===========grafana charts value================
   image:
-    registry: ***REMOVED***
+    registry: crater-harbor.act.buaa.edu.cn
     repository: crater/grafana
     tag: "11.3.0"
   testFramework:
     image:
-      registry: ***REMOVED***/docker.io
+      registry: crater-harbor.act.buaa.edu.cn/docker.io
   downloadDashboardsImage:
-    registry: ***REMOVED***/docker.io
+    registry: crater-harbor.act.buaa.edu.cn/docker.io
     repository: curlimages/curl
     tag: 7.85.0
   initChownData:
     image:
-      registry: ***REMOVED***/docker.io
+      registry: crater-harbor.act.buaa.edu.cn/docker.io
   imageRenderer:
     autoscaling:
       image:
-        registry: ***REMOVED***/docker.io
+        registry: crater-harbor.act.buaa.edu.cn/docker.io
   persistence:
     type: pvc
     enabled: true
@@ -2152,7 +2152,7 @@ kube-state-metrics:
   nodeSelector:
     "crater.raids-lab.io/devops": "true"
   image:
-    registry: ***REMOVED***/registry.k8s.io
+    registry: crater-harbor.act.buaa.edu.cn/registry.k8s.io
   ## ================================================================
 
   namespaceOverride: ""
@@ -2626,7 +2626,7 @@ prometheusOperator:
     patch:
       enabled: true
       image:
-        registry: ***REMOVED***/registry.k8s.io
+        registry: crater-harbor.act.buaa.edu.cn/registry.k8s.io
         repository: ingress-nginx/kube-webhook-certgen
         tag: v20221220-controller-v1.5.1-58-g787ea74b6
         sha: ""

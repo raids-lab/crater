@@ -1,0 +1,70 @@
+# this is example config file for crater-web-backend
+# use env CRATER_DEBUG_CONFIG_PATH to override backend config path
+imagePullSecretName: "" #pull secrets for all image
+enableLeaderElection: false #backend-leader-election enable switch
+leaderElectionID: #"crater-web-backend-leader-election"
+prometheusAPI: #prometheus url
+serverAddr: #backend port
+metricsAddr: #metrics port
+probeAddr: #health check port
+monitoringPort: # monitoring port
+jycache: true
+host: #backend host
+tlsSecretName: # crater-tls-secret
+tlsForwardSecretName: # crater-tls-forward-secret
+postgres:
+  host: #database host
+  port: #database port
+  dbname: #database name
+  user: #database user
+  password: #database password
+  sslmode: #sslmode switch
+  TimeZone: #Asia/Shanghai
+userSpacePrefix: #fileserver user space name prefix
+accountSpacePrefix: #fileserver account space name prefix
+publicSpacePrefix: #fileserver public space name prefix
+workspace:
+  namespace: #fileserver namespace 
+  rwxpvcName: #fileserver rw namespace
+  roxpvcName: #fileserver ro namespace
+  ingressName: #fileserver ingressname
+  imageNameSpace: #fileserver image namespace
+act:
+  strictRegisterMode: false #not in use for non-act environments
+  uidServerURL: null #not in use for non-act environments
+  image:
+    registryServer: #docker registry server
+    registryUser: #docker registry user
+    registryPass: #docker registry password
+    registryProject: #docker registry project
+    registryAdmin: #docker registry admin user
+    registryAdminPass: #docker registry admin password
+  openAPI:
+    url: null #not in use for non-act environments
+    chameleonKey: null #not in use for non-act environments
+    accessToken: null #not in use for non-act environments
+  auth:
+    userName: null #not in use for non-act environments
+    password: null #not in use for non-act environments
+    address: null #not in use for non-act environments
+    searchDN: null #not in use for non-act environmentsn
+    accessTokenSecret: null #not in use for non-act environments
+    refreshTokenSecret: null #not in use for non-act environments
+  smtp:
+    host: #smtp server host
+    port: #smtp server port
+    user: #smtp server user
+    password: #smtp server password
+    notify: #smtp server notify email
+schedulerPlugins:
+  aijob:
+    aijobEn: false  #custom scheduler plugin enable switch
+    enableProfiling: true
+    profilingTimeout: 120
+  spjob:
+    spjobEn: false #custom scheduler plugin enable switch
+    predictionServiceAddress: #sparse prediction service address
+dindArgs:
+  buildkitImage: #buildkit image
+  nerdctlImage: #nerdctl image
+  envdImage: #envd image

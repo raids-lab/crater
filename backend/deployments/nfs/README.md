@@ -77,7 +77,7 @@ Example hosts.ini inventory:
 
 [centos]
 10.8.0.10
-***REMOVED***
+10.8.0.11
 ```
 
 ## 3. Test NFS Mount on Clients
@@ -101,7 +101,7 @@ helm install -n kube-system nfs-client nfs-subdir-external-provisioner/nfs-subdi
 --set nfs.server=10.8.0.10 \
 --set nfs.path=/data/nfs \
 --set storageClass.defaultClass=true \
---set image.repository=***REMOVED***/registry.k8s.io/sig-storage/nfs-subdir-external-provisioner
+--set image.repository=crater-harbor.act.buaa.edu.cn/registry.k8s.io/sig-storage/nfs-subdir-external-provisioner
 ```
 
 ### Step 2: Create a PVC and Pod to Test NFS
@@ -128,7 +128,7 @@ metadata:
 spec:
   containers:
     - name: test
-      image: ***REMOVED***/dockerhub/library/busybox:latest
+      image: crater-harbor.act.buaa.edu.cn/dockerhub/library/busybox:latest
       command: ["sh", "-c", "echo 'Hello from NFS test pod' > /data/test.txt && sleep 3600"]
       volumeMounts:
         - mountPath: /data

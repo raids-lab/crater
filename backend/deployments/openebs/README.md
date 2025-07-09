@@ -26,7 +26,7 @@ localpv-provisioner:
     image:
       # Make sure that registry name end with a '/'.
       # For example : quay.io/ is a correct value here and quay.io is incorrect
-      registry: ***REMOVED***/docker.io/
+      registry: crater-harbor.act.buaa.edu.cn/docker.io/
     nodeSelector:
       node-role.kubernetes.io/control-plane: ""
     tolerations:
@@ -35,7 +35,7 @@ localpv-provisioner:
         effect: NoSchedule
   helperPod:
     image:
-      registry: ***REMOVED***/docker.io/
+      registry: crater-harbor.act.buaa.edu.cn/docker.io/
 
 # Refer to https://github.com/openebs/zfs-localpv/blob/v2.6.2/deploy/helm/charts/values.yaml for complete set of values.
 zfs-localpv:
@@ -63,7 +63,7 @@ mayastor:
         enabled: true
         containers:
         - name: nvme-tcp-probe
-          image: ***REMOVED***/docker.io/busybox:latest
+          image: crater-harbor.act.buaa.edu.cn/docker.io/busybox:latest
           command: ['sh', '-c', 'trap "exit 1" TERM; until $(lsmod | grep nvme_tcp &>/dev/null); do [ -z "$WARNED" ] && echo "nvme_tcp module not loaded..."; WARNED=1; sleep 60; done;']
   etcd:
     # -- Kubernetes Cluster Domain
@@ -77,7 +77,7 @@ mayastor:
 preUpgradeHook:
   image:
     # -- The container image registry URL for the hook job
-    registry: ***REMOVED***/docker.io
+    registry: crater-harbor.act.buaa.edu.cn/docker.io
     # -- The container repository for the hook job
     repo: bitnami/kubectl
     # -- The container image tag for the hook job
@@ -138,7 +138,7 @@ spec:
       claimName: local-hostpath-pvc
   containers:
   - name: hello-container
-    image: ***REMOVED***/docker.io/library/busybox:1.37.0-glibc
+    image: crater-harbor.act.buaa.edu.cn/docker.io/library/busybox:1.37.0-glibc
     command:
        - sh
        - -c

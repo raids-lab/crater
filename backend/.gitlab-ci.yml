@@ -21,7 +21,7 @@ variables:
 
 # 自动代码质量检查
 lint:
-  image: ***REMOVED***/crater/golangci/golangci-lint:v1.61.0
+  image: harbor.act.buaa.edu.cn/crater/golangci/golangci-lint:v1.61.0
   stage: test
   <<: *setup_go
   script:
@@ -42,7 +42,7 @@ lint:
 # 合并构建作业 - 同时生成迁移工具和后端服务
 build_binaries:
   stage: build
-  image: ***REMOVED***/crater/library/golang:1.23-alpine
+  image: harbor.act.buaa.edu.cn/crater/library/golang:1.23-alpine
   <<: *setup_go
   script:
     - go run github.com/swaggo/swag/cmd/swag@latest init
@@ -63,7 +63,7 @@ build_binaries:
 build_image:
   stage: build_image
   image:
-    name: ***REMOVED***/crater/kaniko-executor:debug
+    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
     entrypoint: [""]
   needs: ["build_binaries"]
   script:
@@ -82,7 +82,7 @@ build_image:
 deploy:
   stage: deploy
   image:
-    name: ***REMOVED***/crater/bitnami-kubectl:240302
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   needs: ["build_image"]
   script:
@@ -95,7 +95,7 @@ deploy:
 deploy-release:
   stage: deploy
   image:
-    name: ***REMOVED***/crater/bitnami-kubectl:240302
+    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
     entrypoint: [""]
   needs: ["build_image"]
   script:

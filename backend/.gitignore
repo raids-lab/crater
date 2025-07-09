@@ -8,7 +8,11 @@
 bin
 testbin/*
 Dockerfile.cross
-etc/
+
+# Ignore developer-specific config
+etc/*
+# Do not ignore template
+!etc/example-config.yaml
 
 # Test binary, build with `go test -c`
 *.test
@@ -33,10 +37,10 @@ __debug_*
 kubeconfig*
 
 # certs
-***REMOVED***
-***REMOVED****
-***REMOVED***
-***REMOVED****
+act.buaa.edu.cn
+act.buaa.edu.cn*
+gpu.act.buaa.edu.cn
+gpu.act.buaa.edu.cn*
 
 # statistic files
 *.csv
