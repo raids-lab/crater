@@ -3,8 +3,9 @@ package packer
 import (
 	"context"
 
-	"github.com/raids-lab/crater/dao/model"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/raids-lab/crater/dao/model"
 )
 
 type ImageRegistrySecret struct {
