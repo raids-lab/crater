@@ -23,8 +23,8 @@ helm upgrade --install ingress-nginx ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --version 4.11.3 \
-  --set controller.image.registry="***REMOVED***/registry.k8s.io" \
-  --set controller.admissionWebhooks.patch.image.registry="***REMOVED***/registry.k8s.io" \
+  --set controller.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
+  --set controller.admissionWebhooks.patch.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
   --set controller.hostNetwork=true \
   --set controller.dnsPolicy=ClusterFirstWithHostNet \
   --set controller.healthCheckHost="10.109.80.4" \
@@ -42,8 +42,8 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --version 4.11.3 \
-  --set controller.image.registry="***REMOVED***/registry.k8s.io" \
-  --set controller.admissionWebhooks.patch.image.registry="***REMOVED***/registry.k8s.io" \
+  --set controller.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
+  --set controller.admissionWebhooks.patch.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
   --set controller.allowSnippetAnnotations=true
 ```
 

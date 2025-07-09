@@ -9,7 +9,7 @@ basic:
   image_pull_policy: "Always"
   image_tag_version: "v1.10.0"
   admission_port: 8443
-  image_registry: "***REMOVED***/docker.io"
+  image_registry: "crater-harbor.act.buaa.edu.cn/docker.io"
 custom:
   metrics_enable: false
   admission_enable: true

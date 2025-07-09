@@ -96,7 +96,7 @@ livenessProbe:
 
 image:
   # -- The Docker registry
-  registry: ***REMOVED***
+  registry: crater-harbor.act.buaa.edu.cn
   # -- Docker image repository
   repository: crater/grafana
   # Overrides the Grafana image tag whose default is the chart appVersion
@@ -120,7 +120,7 @@ testFramework:
   # hookType: test
   image:
     # -- The Docker registry
-    registry: ***REMOVED***/docker.io
+    registry: crater-harbor.act.buaa.edu.cn/docker.io
     repository: bats/bats
     tag: "v1.4.1"
   imagePullPolicy: IfNotPresent
@@ -184,7 +184,7 @@ extraLabels: {}
 
 downloadDashboardsImage:
   # -- The Docker registry
-  registry: ***REMOVED***/docker.io
+  registry: crater-harbor.act.buaa.edu.cn/docker.io
   repository: curlimages/curl
   tag: 7.85.0
   sha: ""
@@ -457,7 +457,7 @@ initChownData:
   ##
   image:
     # -- The Docker registry
-    registry: ***REMOVED***/docker.io
+    registry: crater-harbor.act.buaa.edu.cn/docker.io
     repository: library/busybox
     tag: "1.31.1"
     sha: ""
@@ -1216,7 +1216,7 @@ imageRenderer:
   renderingCallbackURL: ""
   image:
     # -- The Docker registry
-    registry: ***REMOVED***/docker.io
+    registry: crater-harbor.act.buaa.edu.cn/docker.io
     # image-renderer Image repository
     repository: grafana/grafana-image-renderer
     # image-renderer Image tag

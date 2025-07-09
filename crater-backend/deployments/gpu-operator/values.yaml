@@ -50,7 +50,7 @@ daemonsets:
     maxUnavailable: "1"
 
 validator:
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: gpu-operator-validator
   # If version is not specified, then default is to use chart.AppVersion
   #version: ""
@@ -65,7 +65,7 @@ validator:
         value: "false"
 
 operator:
-  repository: ***REMOVED***/nvcr.io/nvidia
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia
   image: gpu-operator
   # If version is not specified, then default is to use chart.AppVersion
   #version: ""
@@ -82,7 +82,7 @@ operator:
   upgradeCRD: true
   initContainer:
     image: cuda
-    repository: ***REMOVED***/nvcr.io/nvidia
+    repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia
     version: 12.6.2-base-ubi9
     imagePullPolicy: IfNotPresent
   tolerations:
@@ -141,7 +141,7 @@ driver:
   # use pre-compiled packages for NVIDIA driver installation.
   # only supported for as a tech-preview feature on ubuntu22.04 kernels.
   usePrecompiled: false
-  repository: ***REMOVED***/nvcr.io/nvidia
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia
   image: driver
   version: "550.127.05"
   imagePullPolicy: IfNotPresent
@@ -190,7 +190,7 @@ driver:
       deleteEmptyDir: false
   manager:
     image: k8s-driver-manager
-    repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+    repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
     # When choosing a different version of k8s-driver-manager, DO NOT downgrade to a version lower than v0.6.4
     # to ensure k8s-driver-manager stays compatible with gpu-operator starting from v24.3.0
     version: v0.7.0
@@ -229,7 +229,7 @@ driver:
 
 toolkit:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia/k8s
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/k8s
   image: container-toolkit
   version: v1.17.0-ubuntu20.04
   imagePullPolicy: IfNotPresent
@@ -244,7 +244,7 @@ toolkit:
 
 devicePlugin:
   enabled: true
-  repository: ***REMOVED***/nvidia
+  repository: crater-harbor.act.buaa.edu.cn/crater/nvidia
   image: k8s-device-plugin
   version: v0.17.0-ubi9-with-rename
   imagePullPolicy: IfNotPresent
@@ -341,7 +341,7 @@ devicePlugin:
 dcgm:
   # disabled by default to use embedded nv-hostengine by exporter
   enabled: false
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: dcgm
   version: 3.3.8-1-ubuntu22.04
   imagePullPolicy: IfNotPresent
@@ -351,7 +351,7 @@ dcgm:
 
 dcgmExporter:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia/k8s
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/k8s
   image: dcgm-exporter
   version: 3.3.8-3.6.0-ubuntu22.04
   imagePullPolicy: IfNotPresent
@@ -399,7 +399,7 @@ dcgmExporter:
     # DCGM_FI_DEV_MEM_CLOCK, gauge, Memory clock frequency (in MHz).
 gfd:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia
   image: k8s-device-plugin
   version: v0.17.0-ubi9
   imagePullPolicy: IfNotPresent
@@ -413,7 +413,7 @@ gfd:
 
 migManager:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: k8s-mig-manager
   version: v0.10.0-ubuntu20.04
   imagePullPolicy: IfNotPresent
@@ -466,7 +466,7 @@ migManager:
 
 nodeStatusExporter:
   enabled: false
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: gpu-operator-validator
   # If version is not specified, then default is to use chart.AppVersion
   #version: ""
@@ -476,7 +476,7 @@ nodeStatusExporter:
 
 gds:
   enabled: false
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: nvidia-fs
   version: "2.20.5"
   imagePullPolicy: IfNotPresent
@@ -486,7 +486,7 @@ gds:
 
 gdrcopy:
   enabled: false
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: gdrdrv
   version: "v2.4.1-2"
   imagePullPolicy: IfNotPresent
@@ -505,7 +505,7 @@ vgpuManager:
   resources: {}
   driverManager:
     image: k8s-driver-manager
-    repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+    repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
     # When choosing a different version of k8s-driver-manager, DO NOT downgrade to a version lower than v0.6.4
     # to ensure k8s-driver-manager stays compatible with gpu-operator starting from v24.3.0
     version: v0.7.0
@@ -518,7 +518,7 @@ vgpuManager:
 
 vgpuDeviceManager:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: vgpu-device-manager
   version: v0.2.8
   imagePullPolicy: IfNotPresent
@@ -530,7 +530,7 @@ vgpuDeviceManager:
 
 vfioManager:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia
   image: cuda
   version: 12.6.2-base-ubi9
   imagePullPolicy: IfNotPresent
@@ -539,7 +539,7 @@ vfioManager:
   resources: {}
   driverManager:
     image: k8s-driver-manager
-    repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+    repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
     # When choosing a different version of k8s-driver-manager, DO NOT downgrade to a version lower than v0.6.4
     # to ensure k8s-driver-manager stays compatible with gpu-operator starting from v24.3.0
     version: v0.7.0
@@ -566,7 +566,7 @@ kataManager:
         artifacts:
           url: nvcr.io/nvidia/cloud-native/kata-gpu-artifacts:ubuntu22.04-535.86.10-snp
           pullSecret: ""
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: k8s-kata-manager
   version: v0.2.2
   imagePullPolicy: IfNotPresent
@@ -576,7 +576,7 @@ kataManager:
 
 sandboxDevicePlugin:
   enabled: true
-  repository: ***REMOVED***/nvcr.io/nvidia
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia
   image: kubevirt-gpu-device-plugin
   version: v1.2.10
   imagePullPolicy: IfNotPresent
@@ -588,7 +588,7 @@ sandboxDevicePlugin:
 ccManager:
   enabled: false
   defaultMode: "off"
-  repository: ***REMOVED***/nvcr.io/nvidia/cloud-native
+  repository: crater-harbor.act.buaa.edu.cn/nvcr.io/nvidia/cloud-native
   image: k8s-cc-manager
   version: v0.1.1
   imagePullPolicy: IfNotPresent
@@ -600,7 +600,7 @@ ccManager:
 
 node-feature-discovery:
   image:
-    repository: "***REMOVED***/registry.k8s.io/nfd/node-feature-discovery"
+    repository: "crater-harbor.act.buaa.edu.cn/registry.k8s.io/nfd/node-feature-discovery"
   enableNodeFeatureApi: true
   priorityClassName: system-node-critical
   gc:

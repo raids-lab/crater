@@ -1,4 +1,4 @@
-FROM ***REMOVED***/crater/alpine:240304 AS backend
+FROM harbor.act.buaa.edu.cn/crater/alpine:240304 AS backend
 
 WORKDIR /
 

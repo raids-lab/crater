@@ -17,14 +17,14 @@ helm install crater-harbor harbor/harbor -f values.yaml -n harbor-system --creat
 
 ## Note: Ensure that:
 
-The domain name (e.g., ***REMOVED***) is resolvable within your cluster or internal DNS.
+The domain name (e.g., crater-harbor.act.buaa.edu.cn) is resolvable within your cluster or internal DNS.
 
 You have a valid TLS setup or set expose.tls.enabled=false for HTTP.
 
 ## Configuration Tips
 Set externalURL correctly in values.yaml:
 ```yaml
-externalURL: https://***REMOVED***
+externalURL: https://crater-harbor.act.buaa.edu.cn
 ```
 Configure ingress with appropriate class (ingress-nginx) and hostname.
 
@@ -39,7 +39,7 @@ expose:
 To allow Crater components to pull images from Harbor:
 ```bash
 kubectl create secret docker-registry crater-harbor-auth \
-  --docker-server=***REMOVED*** \
+  --docker-server=crater-harbor.act.buaa.edu.cn \
   --docker-username=<user> \
   --docker-password=<password> \
   -n <target-namespace>
@@ -60,7 +60,7 @@ Most system components (e.g., gpu-operator, ingress-nginx, prometheus) are preco
 
 The image path should look like:
 ```ruby
-***REMOVED***/<component>:<tag>
+crater-harbor.act.buaa.edu.cn/crater/<component>:<tag>
 ```
 During Helm chart customization, update image.repository and imagePullSecrets.
 

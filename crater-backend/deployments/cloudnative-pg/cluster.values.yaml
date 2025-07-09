@@ -129,7 +129,7 @@ cluster:
 
   # -- Name of the container image, supporting both tags (<image>:<tag>) and digests for deterministic and repeatable deployments:
   # <image>:<tag>@sha256:<digestValue>
-  imageName: "***REMOVED***/cloudnative-pg/postgresql:16" # Default value depends on type (postgresql/postgis/timescaledb)
+  imageName: "crater-harbor.act.buaa.edu.cn/crater/cloudnative-pg/postgresql:16" # Default value depends on type (postgresql/postgis/timescaledb)
 
   # -- Reference to `ImageCatalog` of `ClusterImageCatalog`, if specified takes precedence over `cluster.imageName`
   imageCatalogRef:
@@ -141,7 +141,7 @@ cluster:
   # More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
   imagePullPolicy: IfNotPresent
 
-  pingTestImageName: ***REMOVED***/docker.io/alpine:3.17
+  pingTestImageName: crater-harbor.act.buaa.edu.cn/docker.io/alpine:3.17
 
   # -- The list of pull secrets to be used to pull the images.
   # See: https://cloudnative-pg.io/documentation/current/cloudnative-pg.v1/#postgresql-cnpg-io-v1-LocalObjectReference

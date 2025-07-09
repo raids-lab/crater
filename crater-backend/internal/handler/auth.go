@@ -411,7 +411,7 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		if errorResult.Error != "" {
 			return nil, ErrorUIDServerNotFound
 		}
-		userAttribute.Email = ptr.To(name + "@***REMOVED***")
+		userAttribute.Email = ptr.To(name + "@act.buaa.edu.cn")
 		userAttribute.UID = ptr.To(result.UID)
 		userAttribute.GID = ptr.To(result.GID)
 	}
