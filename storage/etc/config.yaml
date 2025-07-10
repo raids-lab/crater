@@ -1,0 +1,11 @@
+postgres:
+  host: your host
+  port: your port
+  dbname: your dbname
+  user: your user
+  password: your password
+  sslmode: your sslmode
+  TimeZone: your TimeZone
+userSpacePrefix: your userSpacePrefix
+accountSpacePrefix: your accountSpacePrefix
+publicSpacePrefix: your publicSpacePrefix
