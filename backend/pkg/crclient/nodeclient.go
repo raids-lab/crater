@@ -10,8 +10,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/utils"
+)
+
+const (
+	VCJOBAPIVERSION = "batch.volcano.sh/v1alpha1"
+	VCJOBKIND       = "Job"
 )
 
 type BriefResource struct {
@@ -33,13 +40,16 @@ type ClusterNodeInfo struct {
 }
 
 type Pod struct {
-	Name           string                  `json:"name"`
-	Namespace      string                  `json:"namespace"`
-	OwnerReference []metav1.OwnerReference `json:"ownerReference"`
-	IP             string                  `json:"ip"`
-	CreateTime     metav1.Time             `json:"createTime"`
-	Status         corev1.PodPhase         `json:"status"`
-	Resources      corev1.ResourceList     `json:"resources"`
+	Name            string                  `json:"name"`
+	Namespace       string                  `json:"namespace"`
+	OwnerReference  []metav1.OwnerReference `json:"ownerReference"`
+	IP              string                  `json:"ip"`
+	CreateTime      metav1.Time             `json:"createTime"`
+	Status          corev1.PodPhase         `json:"status"`
+	Resources       corev1.ResourceList     `json:"resources"`
+	Locked          bool                    `json:"locked"`
+	PermanentLocked bool                    `json:"permanentLocked"`
+	LockedTimestamp metav1.Time             `json:"lockedTimestamp"`
 }
 
 type ClusterNodeDetail struct {
@@ -418,14 +428,33 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		pods[i] = Pod{
-			Name:           pod.Name,
-			Namespace:      pod.Namespace,
-			IP:             pod.Status.PodIP,
-			CreateTime:     pod.CreationTimestamp,
-			Status:         pod.Status.Phase,
-			OwnerReference: pod.OwnerReferences,
-			Resources:      utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+			Name:            pod.Name,
+			Namespace:       pod.Namespace,
+			IP:              pod.Status.PodIP,
+			CreateTime:      pod.CreationTimestamp,
+			Status:          pod.Status.Phase,
+			OwnerReference:  pod.OwnerReferences,
+			Resources:       utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+			Locked:          false,
+			LockedTimestamp: metav1.Time{},
 		}
+		if len(pod.OwnerReferences) == 0 {
+			continue
+		}
+		owner := pod.OwnerReferences[0]
+		if owner.Kind != VCJOBKIND || owner.APIVersion != VCJOBAPIVERSION {
+			continue
+		}
+		// VCJob Pod, Check if it is locked
+		jobDB := query.Job
+		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(owner.Name)).First()
+		if err != nil {
+			logutils.Log.Errorf("Get job %s failed, err: %v", owner.Name, err)
+			continue
+		}
+		pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())
+		pods[i].PermanentLocked = utils.IsPermanentTime(job.LockedTimestamp)
+		pods[i].LockedTimestamp = metav1.NewTime(job.LockedTimestamp)
 	}
 
 	return pods, nil
