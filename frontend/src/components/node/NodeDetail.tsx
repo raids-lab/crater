@@ -27,6 +27,7 @@ import {
   apiGetNodeGPU,
 } from '@/services/api/cluster'
 import { TimeDistance } from '@/components/custom/TimeDistance'
+import { LockIcon } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,11 +65,20 @@ import PageTitle from '../layout/PageTitle'
 import { GrafanaIframe } from '@/pages/Embed/Monitor'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import TooltipButton from '../custom/TooltipButton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
+import TipBadge from '../badge/TipBadge'
 import { useAtomValue } from 'jotai'
 import { configGrafanaJobAtom, configGrafanaNodeAtom } from '@/utils/store/config'
 import useIsAdmin from '@/hooks/useAdmin'
 import TooltipCopy from '../label/TooltipCopy'
 import { globalSettings } from '@/utils/store'
+import { zhCN } from 'date-fns/locale'
+import { format } from 'date-fns'
+
+const formatLockDate = (timestamp?: string) => {
+  const date = new Date(timestamp ?? Date.now())
+  return format(date, 'M月d日 HH:mm', { locale: zhCN })
+}
 
 type GpuDemoProps = React.ComponentProps<typeof Card> & {
   gpuInfo?: {
@@ -187,16 +197,40 @@ const getColumns = (
     header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
     cell: ({ row }) => {
       const podName = row.getValue<string>('name')
+      const locked = row.original.locked || false
+      const permanentLocked = row.original.permanentLocked
+      const lockedTimestamp = row.original.lockedTimestamp
+
       return (
-        <TooltipButton
-          name={podName}
-          tooltipContent={`查看 Pod 监控`}
-          className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
-          variant="link"
-          onClick={() => handleShowMonitor(row.original)}
-        >
-          {podName}
-        </TooltipButton>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TooltipButton
+                name={podName}
+                tooltipContent={`查看 Pod 监控`}
+                className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
+                variant="link"
+                onClick={() => handleShowMonitor(row.original)}
+              >
+                {podName}
+                {locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
+              </TooltipButton>
+            </TooltipTrigger>
+            {locked && (
+              <TooltipContent side="top">
+                <div className="flex flex-row items-center justify-between gap-1.5">
+                  <p className="text-xs">查看 {podName} 监控</p>
+                  <TipBadge
+                    title={
+                      permanentLocked ? '长期锁定中' : `锁定至 ${formatLockDate(lockedTimestamp)}`
+                    }
+                    className="text-primary bg-primary-foreground z-10"
+                  />
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       )
     },
     enableSorting: false,
