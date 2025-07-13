@@ -57,6 +57,9 @@ export interface IClusterPodInfo {
   createTime: string
   status: string
   resources: Record<string, string>
+  locked: boolean
+  permanentLocked: boolean
+  lockedTimestamp?: string
   // added by frontend
   type?: string
 }
