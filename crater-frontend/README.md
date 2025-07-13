@@ -120,9 +120,9 @@ done
 
 ## 🚀 Deployment
 
-```bash
-pnpm build
-```
+To deploy Crater Project in a production environment, we provide a Helm Chart available at: [Crater Helm Chart](https://github.com/raids-lab/crater).
+
+Please refer to the main documentation for detailed deployment instructions.
 
 ## 📁 Project Structure
 
@@ -147,3 +147,72 @@ src/
 ## 🐛 Known Issues
 
 1. **Dark Mode Input Styling**: Browser autofill causes white backgrounds in dark mode ([TailwindCSS#8679](https://github.com/tailwindlabs/tailwindcss/discussions/8679))
+
+## 👥 Contribution Guide
+
+We welcome and appreciate contributions from the community! Here's how you can help improve Crater Frontend.
+
+### 🛠️ Development Workflow
+
+1. **Fork** the repository
+2. **Clone** your fork locally:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/crater-frontend.git
+   cd crater-frontend
+   ```
+3. Create a new **feature branch**:
+   ```bash
+   git checkout -b feat/your-feature-name
+   ```
+4. Make your changes and **commit** them (see commit guidelines below)
+5. **Push** to your fork:
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+6. Open a **Pull Request** to the main repository
+
+### ✍️ Commit Guidelines
+
+> [!NOTE]
+> This project uses **Husky** and **Commitlint** to enforce commit message conventions.
+>
+> **Do not use GUI clients (GitHub Desktop, GitKraken, etc.) for committing code** as they may bypass our commit message validation hooks.
+
+Each commit message must follow this format:
+
+```
+type(scope): subject
+```
+
+**Examples:**
+
+```
+feat(portal): add job submission form
+fix(admin): resolve user role validation issue
+docs(readme): update contribution guidelines
+```
+
+Allowed Types:
+
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style/formatting
+- `refactor`: Code refactoring
+- `test`: Test additions/modifications
+- `chore`: Build process or tooling changes
+
+Scope (optional):
+
+- Indicate which part of the application is affected (e.g., `portal`, `admin`, `ui`, `api`)
+
+## 🚨 Reporting Issues
+
+When reporting bugs, please include:
+
+- Steps to reproduce
+- Expected vs actual behavior
+- Screenshots if applicable
+- Browser/OS version information
+
+Thank you for contributing to Crater Frontend! Your help makes this project better for everyone.

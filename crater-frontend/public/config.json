@@ -1,28 +1,28 @@
 {
   "version": "1.0.0",
   "url": {
-    "host": "gpu.act.buaa.edu.cn",
-    "apiBase": "https://gpu.act.buaa.edu.cn/api/",
+    "host": "gpu.crater.example.io",
+    "apiBase": "https://gpu.crater.example.io/api/",
     "apiVersion": "v1",
-    "websiteBase": "https://gpu.act.buaa.edu.cn/website/cn"
+    "websiteBase": "https://gpu.crater.example.io/website/cn"
   },
   "grafana": {
     "overview": {
-      "main": "https://gpu-grafana.act.buaa.edu.cn/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad",
-      "schedule": "https://gpu-grafana.act.buaa.edu.cn/d/be9oh7yk24jy8f/crater-gpu-e8b083-e5baa6-e58f82-e88083",
-      "network": "https://gpu-grafana.act.buaa.edu.cn/d/8b7a8b326d7a6f1f04y7fh66368c67af/networking"
+      "main": "https://gpu-grafana.crater.example.io/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad",
+      "schedule": "https://gpu-grafana.crater.example.io/d/be9oh7yk24jy8f/crater-gpu-e8b083-e5baa6-e58f82-e88083",
+      "network": "https://gpu-grafana.crater.example.io/d/8b7a8b326d7a6f1f04y7fh66368c67af/networking"
     },
     "node": {
-      "basic": "https://gpu-grafana.act.buaa.edu.cn/d/k8s_views_nodes/crater-node-basic-dashboard",
-      "nvidia": "https://gpu-grafana.act.buaa.edu.cn/d/nvidia-dcgm-dashboard/crater-node-nvidia-dashboard"
+      "basic": "https://gpu-grafana.crater.example.io/d/k8s_views_nodes/crater-node-basic-dashboard",
+      "nvidia": "https://gpu-grafana.crater.example.io/d/nvidia-dcgm-dashboard/crater-node-nvidia-dashboard"
     },
     "job": {
-      "basic": "https://gpu-grafana.act.buaa.edu.cn/d/R4ZPFfyIz/crater-job-basic-dashboard",
-      "nvidia": "https://gpu-grafana.act.buaa.edu.cn/d/2CDE0AC7/crater-job-nvidia-dashboard",
-      "pod": "https://gpu-grafana.act.buaa.edu.cn/d/MhnFUFLSz/crater-pod-dashboard"
+      "basic": "https://gpu-grafana.crater.example.io/d/R4ZPFfyIz/crater-job-basic-dashboard",
+      "nvidia": "https://gpu-grafana.crater.example.io/d/2CDE0AC7/crater-job-nvidia-dashboard",
+      "pod": "https://gpu-grafana.crater.example.io/d/MhnFUFLSz/crater-pod-dashboard"
     },
     "user": {
-      "nvidia": "https://gpu-grafana.act.buaa.edu.cn/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
+      "nvidia": "https://gpu-grafana.crater.example.io/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
     }
   },
   "featureFlags": {
