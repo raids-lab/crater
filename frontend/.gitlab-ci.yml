@@ -24,7 +24,7 @@ variables:
 # Build frontend and generate artifacts for main branch
 build_frontend_main:
   stage: build_frontend
-  image: harbor.act.buaa.edu.cn/crater/node-pnpm:21
+  image: harbor.crater.example.io/crater/node-pnpm:21
   script:
     - sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${CI_COMMIT_SHORT_SHA}\"/" .env
     - pnpm config set store-dir .pnpm-store
@@ -47,7 +47,7 @@ build_frontend_main:
 build_image_main:
   stage: build_image
   image:
-    name: harbor.act.buaa.edu.cn/crater/kaniko-executor:debug
+    name: harbor.crater.example.io/crater/kaniko-executor:debug
     entrypoint: ['']
   script:
     # Since GitLab container registry is not enabled, we need to set up harbor registry manually.
@@ -67,7 +67,7 @@ build_image_main:
 deploy_testing:
   stage: deploy
   image:
-    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
+    name: harbor.crater.example.io/crater/bitnami-kubectl:240302
     entrypoint: ['']
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
@@ -81,7 +81,7 @@ deploy_testing:
 deploy_main:
   stage: deploy
   image:
-    name: harbor.act.buaa.edu.cn/crater/bitnami-kubectl:240302
+    name: harbor.crater.example.io/crater/bitnami-kubectl:240302
     entrypoint: ['']
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster

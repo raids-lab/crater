@@ -27,10 +27,9 @@ export const handlers = [
     const { username, password } = await request.json()
     logger.info(`login with username: ${username}, password: ${password}`)
     const mockUser = {
-      username: 'ganhao',
+      username: 'username',
       password: '',
-      accessToken:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aSI6NiwicWkiOjIzLCJ1biI6ImdhbmhhbyIsInFuIjoicS0yMyIsInJxIjozLCJycCI6MywiYW0iOjMsInBhIjoxLCJleHAiOjE3MTg4ODg3MDl9.-v3oQ_X9L1cwW96eRkk-SRPUGcJsRgHApM011BRTlWs',
+      accessToken: '',
       refreshToken: '',
       role: Role.Admin,
     }
