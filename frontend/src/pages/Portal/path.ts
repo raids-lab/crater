@@ -160,9 +160,5 @@ export const craterPath: PathInfo = {
         },
       ],
     },
-    {
-      path: 'feedback',
-      titleKey: 'navigation.helpAndFeedback',
-    },
   ],
 }

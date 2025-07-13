@@ -33,6 +33,9 @@ export interface UserInfo {
 export function useAuth(requireRole: Role) {
   const { rolePlatform: role } = useAtomValue(globalAccount)
   const isAuthenticated = useMemo(() => {
+    if (process.env.NODE_ENV === 'development' && import.meta.env.VITE_USE_MSW === 'true') {
+      return true
+    }
     switch (requireRole) {
       case Role.Admin:
         return role === Role.Admin
