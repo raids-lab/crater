@@ -22,7 +22,6 @@ import {
   BoxIcon,
   DatabaseIcon,
   FlaskConicalIcon,
-  MessageSquareMoreIcon,
   SettingsIcon,
   SquareChartGanttIcon,
   ShoppingBagIcon,
@@ -33,7 +32,6 @@ import { datasetRoutes, modelRoutes, shareFileRoutes } from './Data'
 import { NavGroupProps } from '@/components/sidebar/types'
 import AuthedRouter from './AuthedRouter'
 import NotFound from '@/components/layout/NotFound'
-import FeedBack from './Feedback'
 import UserSettings from './Setting/UserSetting'
 import AssignmentTemplateList from './Job/Store'
 import NvidiaOverview from '@/components/monitor/NvidiaOverview'
@@ -140,10 +138,6 @@ const portalRoutes: RouteObject[] = [
         element: <UserSettings />,
       },
     ],
-  },
-  {
-    path: 'feedback',
-    element: <FeedBack />,
   },
 ]
 
@@ -257,11 +251,6 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
               url: 'setting/user',
             },
           ],
-        },
-        {
-          title: t('navigation.helpAndFeedback'),
-          url: 'feedback',
-          icon: MessageSquareMoreIcon,
         },
       ],
     },

@@ -1,1030 +1,680 @@
 {
-  "accountDetail": {
-    "form": {
-      "validation": {
-        "minUsers": "少なくとも1人のユーザーを選択してください",
-        "invalidRole": "無効なロール",
-        "invalidAccess": "無効なアクセスモード"
-      },
-      "user": "ユーザー",
-      "selectUser": "ユーザーを選択",
-      "searchUser": "ユーザーを検索...",
-      "noUsersFound": "ユーザーが見つかりません",
-      "selectUsersToAdd": "アカウントに追加するユーザーを選択",
-      "role": "ロール",
-      "userRole": {
-        "normal": "一般ユーザー",
-        "admin": "管理者"
-      },
-      "roleDescription": "アカウント内でのユーザーロールを設定",
-      "access": "アクセス権限",
-      "accessModes": {
-        "readOnly": "読み取り専用",
-        "readWrite": "読み書き"
-      },
-      "accessDescription": "アカウントスペースでのユーザーアクセス権限を設定",
-      "cancel": "キャンセル",
-      "add": "追加"
-    },
-    "table": {
-      "headers": {
-        "name": "ユーザー名",
-        "role": "アカウントロール",
-        "accessmode": "アクセス権限",
-        "capability": "リソース制限"
-      },
-      "accessmodes": {
-        "readOnly": "読み取り専用",
-        "readWrite": "読み書き"
-      },
-      "actions": {
-        "moreOptions": "その他のオプション",
-        "operations": "操作",
-        "role": "ロール",
-        "permissions": "権限",
-        "delete": "削除"
-      },
-      "filter": {
-        "searchUser": "ユーザー名を検索",
-        "role": "ロール",
-        "permissions": "権限"
-      }
-    },
-    "toast": {
-      "added": "ユーザーが追加されました",
-      "updated": "ユーザー情報が更新されました",
-      "removed": "ユーザーが削除されました"
-    },
-    "dialog": {
-      "title": {
-        "deleteUser": "ユーザー削除"
-      },
-      "description": {
-        "deleteUser": "ユーザー「{{name}}」を削除します。操作に注意してください。"
-      },
-      "cancel": "キャンセル",
-      "delete": "削除"
-    },
-    "addUser": "ユーザー追加",
-    "tabs": {
-      "users": "ユーザー管理",
-      "quota": "クォータ使用量"
-    },
-    "error": {
-      "title": "アカウントデータを読み込めません",
-      "description": "アカウントが存在しないか、アクセス権限がありません"
-    },
-    "info": {
-      "userCount": "ユーザー数",
-      "accountLevel": "アカウントレベル",
-      "expiry": "有効期限"
-    }
-  },
-  "loadingIndicator": {
-    "loadingText": "読み込み中..."
-  },
-  "fileSelect": {
-    "confirmButton": "選択を確認"
-  },
-  "refreshButton": {
-    "ariaLabel": "更新"
-  },
-  "imageItem": {
-    "tooltip": {
-      "createdOn": "作成日"
-    }
-  },
-  "forwardCard": {
-    "title": "外部アクセス"
-  },
-  "forwardForm": {
-    "nameLabel": "ルール名 {{index}}",
-    "nameDescription": "小文字のみ、最大20文字",
-    "portLabel": "ポート番号 {{index}}",
-    "removeButton": "削除",
-    "addButton": "ポート転送ルールを追加"
-  },
-  "quotaCard": {
-    "used": "使用済み",
-    "limit": "制限: ",
-    "entitled": "割当量: ",
-    "usedLabel": "使用済み: ",
-    "guaranteed": "保証量: "
-  },
-  "sharedResource": {
-    "serialNumber": "シリアル番号",
-    "userName": "ユーザー名",
-    "userCancelShare": "ユーザー共有を解除",
-    "cancelShare": "共有解除",
-    "cancelUserShare": "ユーザー共有を解除",
-    "cancelUserShareDescription": "指定ユーザーとの{{type}}共有を解除",
-    "cancel": "キャンセル",
-    "confirm": "確認",
-    "accountName": "アカウント名",
-    "cancelAccountShare": "アカウント共有を解除",
-    "cancelAccountShareDescription": "指定アカウントとの{{type}}共有を解除",
-    "name": "名前",
-    "lastModified": "更新日",
-    "size": "サイズ",
-    "shareCanceled": "共有が解除されました",
-    "deletedSuccess": "{{type}}が削除されました",
-    "deleteFailed": "{{type}}の削除に失敗しました",
-    "detail": "詳細",
-    "dataset": "データセット",
-    "model": "モデル",
-    "sharefile": "共有ファイル",
-    "userShare": "ユーザー共有",
-    "shareToUser": "ユーザーと共有",
-    "shareToUserDescription": "指定ユーザーと{{type}}を共有",
-    "accountShare": "アカウント共有",
-    "shareToAccount": "{{type}}を共有",
-    "shareToAccountDescription": "アカウントと{{type}}を共有",
-    "delete": "削除",
-    "deleteTitle": "{{type}}を削除",
-    "deleteDescription": "{{type}}「{{name}}」を削除します",
-    "user": "ユーザー",
-    "createdAt": "作成日",
-    "datasetInfo": "{{type}}基本情報",
-    "datasetTags": "{{type}}タグ",
-    "datasetRepo": "{{type}}リポジトリURL",
-    "datasetDescription": "{{type}}説明",
-    "userShares": "{{type}}のユーザー",
-    "accountShares": "{{type}}のアカウント",
-    "datasetFiles": "{{type}}のファイルディレクトリ",
-    "goBack": "前の画面に戻る",
-    "editable": "編集可能",
-    "readOnly": "読み取り専用"
-  },
-  "combobox": {
-    "select": "{{formTitle}}を選択",
-    "search": "{{formTitle}}を検索",
-    "noResults": "一致する{{formTitle}}が見つかりません"
-  },
-  "toast": {
-    "accountDeleted": "アカウント {{name}} が削除されました",
-    "accountCreated": "アカウント {{name}} が作成されました",
-    "accountUpdated": "アカウント {{name}} が更新されました"
-  },
-  "accountManagement": {
-    "title": "アカウント管理",
-    "description": "アカウントには複数のユーザーを含めることができ、各アカウントにリソースクォータを設定できます。公開アカウントにはデフォルトでクォータが設定されず、優先度が最も低くなります"
-  },
-  "accountForm": {
-    "createButton": "新規アカウント作成",
-    "editTitle": "アカウント編集",
-    "createTitle": "新規アカウント作成",
-    "description": "アカウントには複数のユーザーを含めることができ、各アカウントにリソースクォータと有効期限を設定できます",
-    "nameLabel": "アカウント名",
-    "nameDescription": "アカウント名は最大16文字で、漢字を含めることができますが、一意である必要があります",
-    "expiredAtLabel": "有効期限",
-    "expiredAtPlaceholder": "日付を選択",
-    "expiredAtDescription": "未設定の場合、アカウントは無期限です",
-    "adminsLabel": "アカウント管理者",
-    "adminsSearchPlaceholder": "ユーザーを検索",
-    "adminsPlaceholder": "ユーザーを選択",
-    "adminsDescription": "アカウント管理者を指定すると、アカウント内のユーザー管理やリソース割り当てなどの操作をアカウント管理者が担当します",
-    "quotaLabel": "リソースクォータ",
-    "resourcePlaceholder": "リソース",
-    "guaranteedPlaceholder": "保証量",
-    "deservedPlaceholder": "割当量",
-    "capabilityPlaceholder": "上限",
-    "quotaDescription": "整数を入力してください。CPUリソースの単位はコア数、メモリリソースの単位はGBです。未入力の場合、保証量と割当量は0、上限は無制限になります",
-    "addQuotaButton": "リソースクォータ次元を追加",
-    "updateButton": "アカウントを更新"
-  },
+  "accountDetail.addUser": "ユーザー追加",
+  "accountDetail.dialog.cancel": "キャンセル",
+  "accountDetail.dialog.delete": "削除",
+  "accountDetail.dialog.description.deleteUser": "ユーザー「{{name}}」を削除します。操作に注意してください。",
+  "accountDetail.dialog.title.deleteUser": "ユーザー削除",
+  "accountDetail.error.description": "アカウントが存在しないか、アクセス権限がありません",
+  "accountDetail.error.title": "アカウントデータを読み込めません",
+  "accountDetail.form.access": "アクセス権限",
+  "accountDetail.form.accessDescription": "アカウントスペースでのユーザーアクセス権限を設定",
+  "accountDetail.form.accessModes.readOnly": "読み取り専用",
+  "accountDetail.form.accessModes.readWrite": "読み書き",
+  "accountDetail.form.add": "追加",
+  "accountDetail.form.cancel": "キャンセル",
+  "accountDetail.form.noUsersFound": "ユーザーが見つかりません",
+  "accountDetail.form.role": "ロール",
+  "accountDetail.form.roleDescription": "アカウント内でのユーザーロールを設定",
+  "accountDetail.form.searchUser": "ユーザーを検索...",
+  "accountDetail.form.selectUser": "ユーザーを選択",
+  "accountDetail.form.selectUsersToAdd": "アカウントに追加するユーザーを選択",
+  "accountDetail.form.user": "ユーザー",
+  "accountDetail.form.userRole.admin": "管理者",
+  "accountDetail.form.userRole.normal": "一般ユーザー",
+  "accountDetail.form.validation.invalidAccess": "無効なアクセスモード",
+  "accountDetail.form.validation.invalidRole": "無効なロール",
+  "accountDetail.form.validation.minUsers": "少なくとも1人のユーザーを選択してください",
+  "accountDetail.info.accountLevel": "アカウントレベル",
+  "accountDetail.info.expiry": "有効期限",
+  "accountDetail.info.userCount": "ユーザー数",
+  "accountDetail.table.accessmodes.readOnly": "読み取り専用",
+  "accountDetail.table.accessmodes.readWrite": "読み書き",
+  "accountDetail.table.actions.delete": "削除",
+  "accountDetail.table.actions.moreOptions": "その他のオプション",
+  "accountDetail.table.actions.operations": "操作",
+  "accountDetail.table.actions.permissions": "権限",
+  "accountDetail.table.actions.role": "ロール",
+  "accountDetail.table.filter.permissions": "権限",
+  "accountDetail.table.filter.role": "ロール",
+  "accountDetail.table.filter.searchUser": "ユーザー名を検索",
+  "accountDetail.table.headers.accessmode": "アクセス権限",
+  "accountDetail.table.headers.capability": "リソース制限",
+  "accountDetail.table.headers.name": "ユーザー名",
+  "accountDetail.table.headers.role": "アカウントロール",
+  "accountDetail.tabs.quota": "クォータ使用量",
+  "accountDetail.tabs.users": "ユーザー管理",
+  "accountDetail.toast.added": "ユーザーが追加されました",
+  "accountDetail.toast.removed": "ユーザーが削除されました",
+  "accountDetail.toast.updated": "ユーザー情報が更新されました",
+  "accountForm.addQuotaButton": "リソースクォータ次元を追加",
+  "accountForm.adminsDescription": "アカウント管理者を指定すると、アカウント内のユーザー管理やリソース割り当てなどの操作をアカウント管理者が担当します",
+  "accountForm.adminsLabel": "アカウント管理者",
+  "accountForm.adminsPlaceholder": "ユーザーを選択",
+  "accountForm.adminsSearchPlaceholder": "ユーザーを検索",
+  "accountForm.capabilityPlaceholder": "上限",
+  "accountForm.createButton": "新規アカウント作成",
+  "accountForm.createTitle": "新規アカウント作成",
+  "accountForm.description": "アカウントには複数のユーザーを含めることができ、各アカウントにリソースクォータと有効期限を設定できます",
+  "accountForm.deservedPlaceholder": "割当量",
+  "accountForm.editTitle": "アカウント編集",
+  "accountForm.expiredAtDescription": "未設定の場合、アカウントは無期限です",
+  "accountForm.expiredAtLabel": "有効期限",
+  "accountForm.expiredAtPlaceholder": "日付を選択",
+  "accountForm.guaranteedPlaceholder": "保証量",
+  "accountForm.nameDescription": "アカウント名は最大16文字で、漢字を含めることができますが、一意である必要があります",
+  "accountForm.nameLabel": "アカウント名",
+  "accountForm.quotaDescription": "整数を入力してください。CPUリソースの単位はコア数、メモリリソースの単位はGBです。未入力の場合、保証量と割当量は0、上限は無制限になります",
+  "accountForm.quotaLabel": "リソースクォータ",
+  "accountForm.resourcePlaceholder": "リソース",
+  "accountForm.updateButton": "アカウントを更新",
+  "accountManagement.description": "アカウントには複数のユーザーを含めることができ、各アカウントにリソースクォータを設定できます。公開アカウントにはデフォルトでクォータが設定されず、優先度が最も低くなります",
+  "accountManagement.title": "アカウント管理",
+  "accountSelect.placeholder": "アカウントを選択",
+  "adminDatasetTable.actions.delete": "削除",
+  "adminDatasetTable.actions.menuLabel": "操作",
+  "adminDatasetTable.actions.menuTrigger": "操作",
+  "adminDatasetTable.actions.viewDetails": "詳細",
+  "adminDatasetTable.column.actions": "操作",
+  "adminDatasetTable.column.createdAt": "作成日",
+  "adminDatasetTable.column.creator": "作成者",
+  "adminDatasetTable.column.name": "名前",
+  "adminDatasetTable.column.type": "タイプ",
+  "adminDatasetTable.dialog.cancel": "キャンセル",
+  "adminDatasetTable.dialog.delete": "削除",
+  "adminDatasetTable.dialog.description": "データセット{{name}}が削除されます",
+  "adminDatasetTable.dialog.title": "データセットまたはモデルを削除",
+  "adminDatasetTable.info.description": "システム内のすべてのデータセット/モデルを管理",
+  "adminDatasetTable.info.title": "データセット管理",
+  "adminDatasetTable.toast.deleteSuccess": "データセット {{name}} が削除されました",
+  "adminDatasetTable.toolbar.filter.placeholder": "データセット名を検索",
+  "adminDatasetTable.toolbar.filter.title": "タイプ",
+  "adminDatasetTable.toolbar.filter.type.dataset": "データセット",
+  "adminDatasetTable.toolbar.filter.type.model": "モデル",
+  "adminDatasetTable.toolbar.filter.type.sharefile": "共有ファイル",
+  "adminJobOverview.actions.dropdown.ariaLabel": "操作",
+  "adminJobOverview.actions.dropdown.delete": "削除",
+  "adminJobOverview.actions.dropdown.details": "詳細",
+  "adminJobOverview.actions.dropdown.lock": "ロック",
+  "adminJobOverview.actions.dropdown.lockTitle": "ジョブ自動削除ポリシーを設定",
+  "adminJobOverview.actions.dropdown.stop": "停止",
+  "adminJobOverview.actions.dropdown.title": "操作",
+  "adminJobOverview.actions.dropdown.unlock": "ロック解除",
+  "adminJobOverview.description": "管理者はジョブをロックして定期的なクリーンアップを回避したり、ユーザーのジョブを手動で停止または削除したりできます",
+  "adminJobOverview.dialog.delete.action": "削除",
+  "adminJobOverview.dialog.delete.cancel": "キャンセル",
+  "adminJobOverview.dialog.delete.description": "ジョブ {{name}} が削除されます。すべてのメタデータがクリーンアップされます。",
+  "adminJobOverview.dialog.delete.title": "ジョブを削除",
+  "adminJobOverview.dialog.stop.action": "停止",
+  "adminJobOverview.dialog.stop.cancel": "キャンセル",
+  "adminJobOverview.dialog.stop.description": "ジョブ {{name}} が停止されます。マウントディレクトリ以外のファイルは復元できません。必要なデータが保存されていることを確認してください。",
+  "adminJobOverview.dialog.stop.title": "ジョブを停止",
+  "adminJobOverview.filters.jobType": "タイプ",
+  "adminJobOverview.filters.status": "ステータス",
+  "adminJobOverview.handlers.lockOrUnlockDescription": "ジョブ {{jobs}} がロックまたはロック解除されます。続行しますか？",
+  "adminJobOverview.handlers.lockOrUnlockTitle": "{{count}} 個のジョブをロックまたはロック解除",
+  "adminJobOverview.handlers.stopOrDeleteDescription": "ジョブ {{jobs}} が停止または削除されます。続行しますか？",
+  "adminJobOverview.handlers.stopOrDeleteTitle": "{{count}} 個のジョブを停止または削除",
+  "adminJobOverview.headers.completedAt": "完了日",
+  "adminJobOverview.headers.createdAt": "作成日",
+  "adminJobOverview.headers.jobName": "名前",
+  "adminJobOverview.headers.jobType": "タイプ",
+  "adminJobOverview.headers.nodes": "ノード",
+  "adminJobOverview.headers.owner": "ユーザー",
+  "adminJobOverview.headers.queue": "アカウント",
+  "adminJobOverview.headers.resources": "リソース",
+  "adminJobOverview.headers.startedAt": "開始日",
+  "adminJobOverview.headers.status": "ステータス",
+  "adminJobOverview.select.all": "すべて",
+  "adminJobOverview.select.recentDays": "最近 {{days}} 日間のデータ",
+  "adminJobOverview.statuses.created.label": "作成済み",
+  "adminJobOverview.statuses.deleted.label": "停止済み",
+  "adminJobOverview.statuses.failed.label": "失敗",
+  "adminJobOverview.statuses.pending.label": "保留中",
+  "adminJobOverview.statuses.preempted.label": "プリエンプト済み",
+  "adminJobOverview.statuses.queueing.label": "クォータチェック中",
+  "adminJobOverview.statuses.running.label": "実行中",
+  "adminJobOverview.statuses.succeeded.label": "成功",
+  "adminJobOverview.successMessage": "操作が成功しました",
+  "adminJobOverview.title": "ジョブ管理",
+  "codeBlock.copyMessage": "コードがクリップボードにコピーされました",
+  "columns.modifytime.header": "更新日",
+  "columns.name.header": "名前",
+  "columns.size.header": "サイズ",
+  "combobox.noResults": "一致する{{formTitle}}が見つかりません",
+  "combobox.search": "{{formTitle}}を検索",
+  "combobox.select": "{{formTitle}}を選択",
+  "common.actions": "操作",
+  "common.cancel": "キャンセル",
+  "common.confirm": "確認",
+  "common.delete": "削除",
+  "common.moreOptions": "その他のオプション",
+  "common.saveChanges": "変更を保存",
+  "common.saving": "保存中...",
+  "common.updating": "更新中...",
+  "cronPolicy.batchDays": "バッチジョブ実行日数（BATCH_DAYS）",
+  "cronPolicy.cancel": "キャンセル",
+  "cronPolicy.confirm": "確認",
+  "cronPolicy.confirmTitle": "ジョブクリーンアップ確認",
+  "cronPolicy.interactiveDays": "対話型ジョブ実行日数（INTERACTIVE_DAYS）",
+  "cronPolicy.invalidCron": "無効なCron式です。形式と値の範囲を確認してください",
+  "cronPolicy.jobsToDelete": "以下のジョブが削除されます：",
+  "cronPolicy.jupyterError": "キュー中のjupyterジョブクリーンアップの更新に失敗しました：",
+  "cronPolicy.jupyterSuccess": "キュー中のjupyterジョブクリーンアップが更新されました",
+  "cronPolicy.jupyterTitle": "キュー中のjupyterジョブをクリーンアップ",
+  "cronPolicy.jupyterUpdate": "キュー中のjupyterジョブクリーンアップポリシーを更新",
+  "cronPolicy.jupyterWait": "待機時間（JUPYTER_WAIT_MINUTES、分）",
+  "cronPolicy.loadError": "ポリシーの取得に失敗しました：",
+  "cronPolicy.longTimeError": "長時間実行ジョブクリーンアップの更新に失敗しました：",
+  "cronPolicy.longTimeSuccess": "長時間実行ジョブクリーンアップが更新されました",
+  "cronPolicy.longTimeTitle": "長時間実行ジョブをクリーンアップ",
+  "cronPolicy.longTimeUpdate": "長時間実行ジョブクリーンアップポリシーを更新",
+  "cronPolicy.lowGpuError": "低GPU利用率ジョブクリーンアップの更新に失敗しました：",
+  "cronPolicy.lowGpuSuccess": "低GPU利用率ジョブクリーンアップが更新されました",
+  "cronPolicy.lowGpuTitle": "低GPU利用率ジョブをクリーンアップ",
+  "cronPolicy.lowGpuUpdate": "低GPU利用率ジョブクリーンアップポリシーを更新",
+  "cronPolicy.noJobs": "削除対象のジョブはありません。",
+  "cronPolicy.runJob": "すぐにクリーンアップ",
+  "cronPolicy.schedule": "実行スケジュール",
+  "cronPolicy.suspend": "一時停止",
+  "cronPolicy.timeRange": "時間範囲（分、TIME_RANGE）",
+  "cronPolicy.title": "スケジュールポリシー",
+  "cronPolicy.util": "利用率（UTIL）",
+  "cronPolicy.waitTime": "待機時間（WAIT_TIME、分）",
+  "dataTable.noData": "データがありません",
+  "dataTable.selectAll": "すべて選択",
+  "dataTable.selectRow": "行を選択",
+  "dataTableColumnHeader.hide": "非表示",
+  "dataTableColumnHeader.sortAscending": "昇順",
+  "dataTableColumnHeader.sortDescending": "降順",
+  "dataTableFacetedFilter.clearFilter": "フィルタをクリア",
+  "dataTableFacetedFilter.noResults": "結果なし",
+  "dataTableFacetedFilter.selected": "{{count}} 件選択済み",
+  "dataTablePagination.cancel": "キャンセル",
+  "dataTablePagination.confirm": "確認",
+  "dataTablePagination.currentPage": "{{page}} / {{totalPages}} ページ",
+  "dataTablePagination.firstPage": "最初のページへ",
+  "dataTablePagination.itemsPerPage": "{{count}} 件/ページ",
+  "dataTablePagination.lastPage": "最後のページへ",
+  "dataTablePagination.nextPage": "次のページへ",
+  "dataTablePagination.previousPage": "前のページへ",
+  "dataTablePagination.refresh": "更新",
+  "dataTablePagination.selectedItems": "{{selected}} / {{total}} 件選択",
+  "dataTablePagination.totalItems": "合計 {{count}} 件",
+  "dataTablePagination.updatedAt": "{{time}} に更新",
+  "dataTableToolbar.clearFiltersButtonTitle": "フィルタをクリア",
+  "dataTableToolbar.globalSearchPlaceholder": "グローバル検索",
+  "dataTableViewOptions.viewButtonText": "ビュー",
+  "dataTableViewOptions.viewLabel": "ビュー",
+  "dataView.addButton": "{{sourceTitle}}を追加",
+  "dataView.createDescription": "新しい{{sourceTitle}}を作成",
+  "dataView.createTitle": "{{sourceTitle}}を作成",
+  "dataView.docsButtonTitle": "{{sourceTitle}}ドキュメント",
+  "dataView.sourceType.dataset": "データセット",
+  "dataView.sourceType.model": "モデル",
+  "dataView.sourceType.sharefile": "共有ファイル",
+  "dataset.fileSelect.title": "データセットURLを選択",
+  "dataset.form.describeLabel": "{{type}}説明",
+  "dataset.form.editTitle": "更新",
+  "dataset.form.nameLabel": "{{type}}名",
+  "dataset.form.updateButton": "{{type}}を更新",
+  "dataset.form.urlLabel": "{{type}}URL",
+  "dataset.form.weburlLabel": "{{type}}リポジトリURL",
+  "dataset.tags.description": "{{type}}にタグを追加して分類や検索を容易にします",
+  "dataset.tags.label": "{{type}}タグ",
+  "dataset.toast.failure": "更新に失敗しました。ネットワークまたはデータ形式を確認してください",
+  "dataset.toast.success": "{{name}} が更新されました",
+  "dataset.type.dataset": "データセット",
+  "dataset.type.model": "モデル",
+  "dataset.type.sharefile": "共有ファイル",
+  "dataset.updateDialog.title": "{{type}}を更新",
+  "datasetItem.createdOn": "作成日",
+  "datasetItem.dataset": "データセット",
+  "datasetItem.model": "モデル",
+  "datasetType.dataset": "データセット",
+  "datasetType.model": "モデル",
+  "datasetType.shareFile": "共有ファイル",
+  "durationDialog.button.lock": "ジョブをロック",
+  "durationDialog.button.locking": "ロック中...",
+  "durationDialog.button.unlock": "{{count}} 個のジョブをロック解除",
+  "durationDialog.button.unlocking": "ロック解除中...",
+  "durationDialog.card.description": "一括操作を行うには、ステータスが一致するジョブ（すべてロック済みまたはすべてロック解除済み）を選択してください。",
+  "durationDialog.card.title": "選択したジョブのステータスが一致しません",
+  "durationDialog.description.lock": "{{count}} 個のジョブのロック期間を設定します。ロックされたジョブは自動的にクリーンアップされません。",
+  "durationDialog.description.unlock": "{{count}} 個のジョブのロックを解除します。ロック解除されたジョブはポリシーに従って自動的にクリーンアップされます。",
+  "durationDialog.form.currentTime": "現在時刻",
+  "durationDialog.form.days.min": "日数は負の値にできません",
+  "durationDialog.form.days.text": "日数",
+  "durationDialog.form.expirationPreview": "有効期限プレビュー：",
+  "durationDialog.form.hours.max": "時間数は23を超えられません",
+  "durationDialog.form.hours.min": "時間数は負の値にできません",
+  "durationDialog.form.hours.text": "時間",
+  "durationDialog.form.permanentLock": "永久ロック",
+  "durationDialog.form.permanentLockDescription": "ジョブは永久にロックされ、自動クリーンアップポリシーで削除されません。",
+  "durationDialog.title.lock": "ジョブをロック",
+  "durationDialog.title.unlock": "ジョブのロックを解除",
+  "durationDialog.toast.lockError": "ロック操作に失敗しました",
+  "durationDialog.toast.lockSuccess": "{{count}} 個のジョブをロックしました",
+  "durationDialog.toast.noDuration": "ロック期間を設定するか、永久ロックを選択してください",
+  "durationDialog.toast.unlockError": "ロック解除操作に失敗しました",
+  "durationDialog.toast.unlockSuccess": "{{count}} 個のジョブのロックを解除しました",
+  "envFormCard.addButton": "{{cardTitle}}を追加",
+  "envFormCard.closeButton": "閉じる",
+  "envFormCard.variableName": "変数名 {{index}}",
+  "envFormCard.variableValue": "変数値 {{index}}",
+  "fileActions.createFolder.description": "フォルダ名を入力",
+  "fileActions.createFolder.nameLabel": "名前",
+  "fileActions.createFolder.success": "フォルダが作成されました",
+  "fileActions.createFolder.title": "新しいフォルダを作成",
+  "fileActions.createFolder.tooltip": "フォルダを作成",
+  "fileActions.delete.description": "{{type}} {{name}} を完全に削除します",
+  "fileActions.delete.success": "削除に成功しました",
+  "fileActions.delete.title": "{{type}}を削除",
+  "fileActions.delete.tooltip": "{{type}}を削除",
+  "fileActions.download.error": "ダウンロード失敗: {{status}}",
+  "fileActions.download.inProgress": "ファイルをダウンロード中です",
+  "fileActions.download.success": "ファイルのダウンロードに成功しました！",
+  "fileActions.download.tooltip": "ファイルをダウンロード",
+  "fileActions.move.currentItem": "移動中: {{name}}",
+  "fileActions.move.description": "移動先を選択してください。移動後、元の場所には残りません",
+  "fileActions.move.selectTitle": "移動先を選択",
+  "fileActions.move.success": "ファイルの移動に成功しました",
+  "fileActions.move.title": "{{type}}を移動",
+  "fileActions.move.tooltip": "{{type}}を移動",
+  "fileActions.return.tooltip": "前の画面に戻る",
+  "fileActions.upload.tooltip": "ファイルをアップロード",
+  "fileSelect.confirmButton": "選択を確認",
+  "fileSelectDialog.accountSpace": "アカウントスペース",
+  "fileSelectDialog.confirmSelection": "{{name}} を選択",
+  "fileSelectDialog.description": "単一ファイルまたはフォルダを選択できます",
+  "fileSelectDialog.publicSpace": "パブリックスペース",
+  "fileSelectDialog.selectFile": "ファイルを選択",
+  "fileSelectDialog.selectFileOrFolder": "ファイルまたはフォルダを選択してください",
+  "fileSelectDialog.selectedFile": "{{id}} を選択しました",
+  "fileSelectDialog.title": "マウントデータを選択",
+  "fileSelectDialog.userSpace": "ユーザースペース",
+  "fileSize.bytes": "B",
+  "fileSize.gigabytes": "GB",
+  "fileSize.kilobytes": "KB",
+  "fileSize.megabytes": "MB",
+  "fileUpload.buttonTitle": "ファイルをアップロード",
+  "fileUpload.progressLabel": "アップロード進捗: {{progress}}%",
+  "fileUpload.successMessage": "ファイルがアップロードされました",
+  "folderNavigation.folderDescriptions.account": "アカウント共有スペースで、アカウント内のユーザーのみがアクセス可能です。アップロード権限が必要な場合はアカウント管理者に連絡してください。",
+  "folderNavigation.folderDescriptions.public": "プラットフォーム上のすべてのユーザーがアクセス可能です。アップロード権限が必要な場合は管理者に連絡してください。",
+  "folderNavigation.folderDescriptions.user": "個人スペースで、現在のユーザーのみがアクセス可能です。完全な読み書き権限があります。",
+  "folderNavigation.noFolders.description": "現在フォルダがありません。",
+  "folderNavigation.noFolders.title": "フォルダが見つかりません",
+  "folderNavigation.pageTitle.description": "フォルダを選択して内容を表示します。ここでファイルのアップロード、ダウンロード、移動、削除などの操作が可能です。",
+  "folderNavigation.pageTitle.title": "ファイルシステム",
+  "folderNavigation.viewButton": "{{folder}}を表示",
+  "formExportButton.buttonText": "設定をエクスポート",
+  "formExportButton.tooltipContent": "現在の設定をローカルファイルにエクスポート",
+  "formImportButton.buttonText": "設定をインポート",
+  "formImportButton.successToast": "設定のインポートに成功しました",
+  "formImportButton.tooltip": "ローカルファイルからジョブ設定をインポート",
+  "forwardCard.title": "外部アクセス",
+  "forwardForm.addButton": "ポート転送ルールを追加",
+  "forwardForm.nameDescription": "小文字のみ、最大20文字",
+  "forwardForm.nameLabel": "ルール名 {{index}}",
+  "forwardForm.portLabel": "ポート番号 {{index}}",
+  "forwardForm.removeButton": "削除",
+  "imageFormField.comboboxFormTitle": "イメージ",
+  "imageFormField.label": "コンテナイメージ",
+  "imageItem.tooltip.createdOn": "作成日",
   "imageSettingsCard": "高度な設定",
-  "imageSettingsForm": {
-    "tipBadgeTitle": "イメージリンク",
-    "nameLabel": "名前",
-    "namePlaceholder": "デフォルトイメージ名",
-    "tagLabel": "タグ",
-    "tagPlaceholder": "デフォルトイメージタグ",
-    "description": "ユーザー定義のイメージ名とタグを入力します。空の場合、システムによって自動生成されます"
-  },
-  "formExportButton": {
-    "buttonText": "設定をエクスポート",
-    "tooltipContent": "現在の設定をローカルファイルにエクスポート"
-  },
-  "dataset": {
-    "type": {
-      "dataset": "データセット",
-      "model": "モデル",
-      "sharefile": "共有ファイル"
-    },
-    "updateDialog": {
-      "title": "{{type}}を更新"
-    },
-    "form": {
-      "nameLabel": "{{type}}名",
-      "describeLabel": "{{type}}説明",
-      "urlLabel": "{{type}}URL",
-      "weburlLabel": "{{type}}リポジトリURL",
-      "editTitle": "更新",
-      "updateButton": "{{type}}を更新"
-    },
-    "fileSelect": {
-      "title": "データセットURLを選択"
-    },
-    "tags": {
-      "label": "{{type}}タグ",
-      "description": "{{type}}にタグを追加して分類や検索を容易にします"
-    },
-    "toast": {
-      "success": "{{name}} が更新されました",
-      "failure": "更新に失敗しました。ネットワークまたはデータ形式を確認してください"
-    }
-  },
-  "common": {
-    "cancel": "キャンセル",
-    "updating": "更新中...",
-    "moreOptions": "その他のオプション",
-    "actions": "操作",
-    "saving": "保存中...",
-    "saveChanges": "変更を保存",
-    "delete": "削除",
-    "confirm": "確認"
-  },
-  "otherOptionsFormCard": {
-    "accordionTitle": "その他のオプション",
-    "receiveStatusNotifications": "ステータス通知を受け取る",
-    "tooltip": {
-      "receiveEmailNotifications": "メールで通知を受け取る:",
-      "notification1": "1. ジョブ開始通知（キューイング後）",
-      "notification2": "2. ジョブ成功通知",
-      "notification3": "3. ジョブ失敗通知",
-      "notification4": "4. 低利用率/長時間実行ジョブ解放予告通知",
-      "notification5": "5. 低利用率/長時間実行ジョブ解放通知",
-      "emailSupport": "注: 北航メール、Googleメールなどに対応",
-      "debugPerformanceTesting": "デバッグや特定ノードのパフォーマンステストシナリオ用"
-    },
-    "specifyWorkNode": "作業ノードを指定",
-    "nodeNameDescription": "ノード名（空きリソース検索で確認可能）"
-  },
-  "table": {
-    "headers": {
-      "nickname": "アカウント",
-      "deserved": "割当量",
-      "guaranteed": "保証量",
-      "capability": "上限"
-    },
-    "tooltip": {
-      "expired": "期限切れ",
-      "valid": "有効",
-      "expires": "期限切れ"
-    },
-    "actions": {
-      "deleteTitle": "アカウント削除",
-      "deleteDescription": "アカウント {{name}} を削除します。操作に注意してください。",
-      "delete": "削除",
-      "manageUser": "ユーザー管理",
-      "editQuota": "クォータ編集",
-      "cancel": "キャンセル"
-    },
-    "toolbar": {
-      "searchPlaceholder": "アカウント名を検索"
-    }
-  },
-  "envFormCard": {
-    "variableName": "変数名 {{index}}",
-    "variableValue": "変数値 {{index}}",
-    "addButton": "{{cardTitle}}を追加",
-    "closeButton": "閉じる"
-  },
-  "tree": {
-    "folderTitle": {
-      "public": "パブリックスペース",
-      "account": "アカウントスペース",
-      "default": "ユーザースペース"
-    },
-    "adminFolderTitle": {
-      "public": "パブリックスペース",
-      "account": "アカウントスペース",
-      "default": "ユーザースペース"
-    }
-  },
-  "imageFormField": {
-    "label": "コンテナイメージ",
-    "comboboxFormTitle": "イメージ"
-  },
-  "tagFilter": {
-    "label": "タグでフィルタリング"
-  },
-  "formImportButton": {
-    "tooltip": "ローカルファイルからジョブ設定をインポート",
-    "buttonText": "設定をインポート",
-    "successToast": "設定のインポートに成功しました"
-  },
-  "updateResourceForm": {
-    "title": "リソースを編集",
-    "description": "{{name}} の詳細",
-    "label": "エイリアス",
-    "formDescription": "ジョブ送信時のノードタイプ選択に使用",
-    "cancelButton": "キャンセル",
-    "submitButton": "送信",
-    "labelError": "エイリアスは必須です",
-    "successMessage": "更新に成功しました"
-  },
-  "updateResourceTypeForm": {
-    "title": "リソースタイプを設定",
-    "label": "リソースタイプ",
-    "placeholder": "リソースタイプを選択",
-    "type": {
-      "default": "タイプなし",
-      "gpu": "GPU",
-      "rdma": "RDMA"
-    },
-    "formDescription": "GPUリソースはRDMAネットワークリソースと関連付けることができます。",
-    "submitButton": "保存",
-    "successMessage": "リソースタイプが更新されました"
-  },
-  "networkAssociationForm": {
-    "title": "ネットワーク関連を管理",
-    "gpuResourceLabel": "GPUリソース",
-    "currentNetworksLabel": "現在関連付けられているネットワーク",
-    "availableResourcesLabel": "利用可能なRDMAリソース",
-    "loadingMessage": "読み込み中...",
-    "noNetworksMessage": "関連ネットワークがありません",
-    "noResourcesMessage": "利用可能なRDMAリソースがありません",
-    "disconnectButton": "関連を解除",
-    "connectButton": "関連付け",
-    "addSuccess": "ネットワーク関連が追加されました",
-    "removeSuccess": "ネットワーク関連が削除されました",
-    "doneButton": "完了"
-  },
-  "resourceForm": {
-    "cpuLabel": "CPU (コア数)",
-    "memoryLabel": "メモリ (GiB)",
-    "gpuCountLabel": "GPU (枚数)",
-    "gpuModelLabel": "GPUモデル",
-    "gpuTip": "最大 {{max}} 枚まで申請可能",
-    "gpuComboboxTitle": "GPUモデル",
-    "freeResourceButton": "空きリソース検索",
-    "freeResourceSheetTitle": "空きリソース検索",
-    "rdmaLabel": "RDMAを有効化",
-    "tooltip": {
-      "title": "InfiniBandベースのRDMA:",
-      "line1": "1. V100モデルは100Gb/s、A100モデルは200Gb/sの速度",
-      "line2": "2. RDMA有効時、CPUとメモリ制限は無視されます",
-      "line3": "3. この機能を使用する場合は、可能な限り単一ノード上のすべてのカードを申請してください",
-      "line4": "4. RDMAネットワーク選択時、同一ジョブ内では同じネットワークトポロジを選択してください",
-      "line5": "5. イメージはRDMAに対応している必要があります（ジョブドキュメントを参照）"
-    },
-    "rdmaNetworkTitle": " RDMAネットワークトポロジ",
-    "rdmaDescription": "同一ジョブ内の異なるロールがすべて同じ {{field}} ネットワークトポロジを使用することを確認してください"
-  },
-  "fileSize": {
-    "bytes": "B",
-    "kilobytes": "KB",
-    "megabytes": "MB",
-    "gigabytes": "GB"
-  },
-  "columns": {
-    "name": {
-      "header": "名前"
-    },
-    "modifytime": {
-      "header": "更新日"
-    },
-    "size": {
-      "header": "サイズ"
-    }
-  },
-  "search": {
-    "name": {
-      "placeholder": "名前を検索"
-    }
-  },
-  "fileActions": {
-    "download": {
-      "tooltip": "ファイルをダウンロード",
-      "success": "ファイルのダウンロードに成功しました！",
-      "error": "ダウンロード失敗: {{status}}",
-      "inProgress": "ファイルをダウンロード中です"
-    },
-    "delete": {
-      "tooltip": "{{type}}を削除",
-      "title": "{{type}}を削除",
-      "description": "{{type}} {{name}} を完全に削除します",
-      "success": "削除に成功しました"
-    },
-    "move": {
-      "tooltip": "{{type}}を移動",
-      "title": "{{type}}を移動",
-      "description": "移動先を選択してください。移動後、元の場所には残りません",
-      "currentItem": "移動中: {{name}}",
-      "success": "ファイルの移動に成功しました",
-      "selectTitle": "移動先を選択"
-    },
-    "return": {
-      "tooltip": "前の画面に戻る"
-    },
-    "upload": {
-      "tooltip": "ファイルをアップロード"
-    },
-    "createFolder": {
-      "tooltip": "フォルダを作成",
-      "title": "新しいフォルダを作成",
-      "description": "フォルダ名を入力",
-      "nameLabel": "名前",
-      "success": "フォルダが作成されました"
-    }
-  },
-  "resources": {
-    "actions": {
-      "menu": "操作メニュー",
-      "title": "操作",
-      "editLabels": "ラベルを編集",
-      "editType": "タイプを設定",
-      "associateNetworks": "ネットワークを関連付け",
-      "delete": "リソースを削除"
-    },
-    "delete": {
-      "title": "リソースを削除",
-      "confirm": "リソース \"{{name}}\" を削除しますか？この操作は元に戻せません。",
-      "confirmAction": "削除を確認",
-      "success": "リソースが削除されました"
-    },
-    "filter": {
-      "placeholder": "リソース名を検索"
-    },
-    "columns": {
-      "name": "リソース",
-      "type": "タイプ",
-      "networks": "関連ネットワーク",
-      "total": "総量",
-      "maxPerNode": "ノードあたり最大数",
-      "format": "フォーマット"
-    },
-    "type": {
-      "gpu": "GPU",
-      "rdma": "RDMA"
-    },
-    "info": {
-      "title": "リソース管理",
-      "description": "クラスター内のGPU、CPU、メモリなどのリソースを表示"
-    },
-    "sync": {
-      "button": "リソースリストを同期",
-      "title": "リソースリストを同期",
-      "confirm": "リソースリスト情報を更新しますか？",
-      "success": "リソースリストが同期されました"
-    }
-  },
-  "tagsInput": {
-    "label": "タグ",
-    "description": "既存のタグを選択または新しいタグを作成",
-    "noTagsLabel": "タグを選択または追加",
-    "searchPlaceholder": "よく使われるタグを検索...",
-    "commonTagsLabel": "よく使われるタグ",
-    "addNewLabel": "新しいタグを追加",
-    "newTagPlaceholder": "新しいタグを入力...",
-    "addButton": "追加"
-  },
-  "codeBlock": {
-    "copyMessage": "コードがクリップボードにコピーされました"
-  },
-  "nodeManagement": {
-    "searchPlaceholder": "ノード名を検索",
-    "statusFilter": "ステータス",
-    "title": "ノード管理",
-    "description": "ここでノードのスケジューリングポリシーや特定アカウントによる専有設定などを変更します",
-    "operationSuccess": "操作が成功しました",
-    "operationFailed": "操作に失敗しました: {{error}}",
-    "occupationSuccess": "ノードの専有に成功しました",
-    "occupationFailed": "ノードの専有に失敗しました: {{error}}",
-    "releaseSuccess": "ノード専有の解除に成功しました",
-    "releaseFailed": "ノード専有の解除に失敗しました: {{error}}",
-    "actionsLabel": "操作",
-    "accountOccupation": "アカウント専有",
-    "releaseOccupation": "専有を解除",
-    "disableScheduling": "スケジューリングを無効化",
-    "enableScheduling": "スケジューリングを有効化",
-    "occupationDialogTitle": "アカウント専有",
-    "releaseDialogTitle": "専有を解除",
-    "confirmRelease": "{{account}}の専有を解除します:",
-    "cancel": "キャンセル",
-    "submit": "送信"
-  },
-  "fileSelectDialog": {
-    "userSpace": "ユーザースペース",
-    "accountSpace": "アカウントスペース",
-    "publicSpace": "パブリックスペース",
-    "selectFile": "ファイルを選択",
-    "title": "マウントデータを選択",
-    "description": "単一ファイルまたはフォルダを選択できます",
-    "confirmSelection": "{{name}} を選択",
-    "selectedFile": "{{id}} を選択しました",
-    "selectFileOrFolder": "ファイルまたはフォルダを選択してください"
-  },
-  "accountSelect": {
-    "placeholder": "アカウントを選択"
-  },
-  "templateInfo": {
-    "jobInstructions": "ジョブ説明",
-    "jobTemplate": "ジョブテンプレート",
-    "presetTemplate": "プリセットテンプレート",
-    "authorLabel": "作成者: {{nickname}}",
-    "loadedFromJob": "ジョブ {{fromJob}} からテンプレート設定を読み込みました"
-  },
-  "userEditDialog": {
-    "title": "ユーザー情報を編集",
-    "description": "ユーザー {{name}} の個人情報を更新",
-    "nicknameLabel": "ニックネーム",
-    "nicknamePlaceholder": "ニックネーム",
-    "emailLabel": "メール",
-    "emailPlaceholder": "メールアドレス",
-    "teacherLabel": "指導教員",
-    "teacherPlaceholder": "指導教員名",
-    "groupLabel": "グループ",
-    "groupPlaceholder": "グループ",
-    "phoneLabel": "電話番号",
-    "phonePlaceholder": "電話番号",
-    "successToast": "ユーザー情報が更新されました",
-    "errorToast": "更新に失敗しました"
-  },
-  "userTable": {
-    "headers": {
-      "name": "ユーザー",
-      "group": "グループ",
-      "teacher": "指導教員",
-      "role": "権限",
-      "status": "ステータス"
-    },
-    "title": "ユーザー管理",
-    "description": "ここでユーザー情報を表示および管理します",
-    "editInfo": "情報を編集",
-    "roleLabel": "権限",
-    "roles": {
-      "1": "管理者",
-      "0": "一般ユーザー"
-    },
-    "delete": "削除",
-    "deleteTitle": "ユーザーを削除",
-    "deleteDescription": "ユーザー「{{name}}」を削除します。操作に注意してください。",
-    "deleteSuccess": "ユーザー {{name}} が削除されました",
-    "roleUpdateSuccess": "ユーザー {{name}} の権限が更新されました",
-    "selfDeleteError": "自分自身を削除することはできません。削除するには別のユーザーでログインしてください"
-  },
-  "userForm": {
-    "emailError": "無効なメールアドレス"
-  },
-  "fileUpload": {
-    "buttonTitle": "ファイルをアップロード",
-    "successMessage": "ファイルがアップロードされました",
-    "progressLabel": "アップロード進捗: {{progress}}%"
-  },
-  "datasetItem": {
-    "model": "モデル",
-    "dataset": "データセット",
-    "createdOn": "作成日"
-  },
-  "volumeMounts": {
-    "cardTitle": "データマウント",
-    "mountSource": "マウント元 {{index}}",
-    "fileTab": "ファイル",
-    "dataTab": "データ",
-    "mountPoint": "マウントポイント {{index}}",
-    "defaultMountDescription": "デフォルトでユーザーホームディレクトリが永続化されます。変更には注意が必要です",
-    "mountPathDescription": "コンテナ内のマウントパスを変更できます",
-    "addButton": "{{mountType}}を追加"
-  },
-  "folderNavigation": {
-    "pageTitle": {
-      "title": "ファイルシステム",
-      "description": "フォルダを選択して内容を表示します。ここでファイルのアップロード、ダウンロード、移動、削除などの操作が可能です。"
-    },
-    "folderDescriptions": {
-      "public": "プラットフォーム上のすべてのユーザーがアクセス可能です。アップロード権限が必要な場合は管理者に連絡してください。",
-      "account": "アカウント共有スペースで、アカウント内のユーザーのみがアクセス可能です。アップロード権限が必要な場合はアカウント管理者に連絡してください。",
-      "user": "個人スペースで、現在のユーザーのみがアクセス可能です。完全な読み書き権限があります。"
-    },
-    "viewButton": "{{folder}}を表示",
-    "noFolders": {
-      "title": "フォルダが見つかりません",
-      "description": "現在フォルダがありません。"
-    }
-  },
-  "adminJobOverview": {
-    "statuses": {
-      "queueing": {
-        "label": "クォータチェック中"
-      },
-      "created": {
-        "label": "作成済み"
-      },
-      "pending": {
-        "label": "保留中"
-      },
-      "running": {
-        "label": "実行中"
-      },
-      "failed": {
-        "label": "失敗"
-      },
-      "succeeded": {
-        "label": "成功"
-      },
-      "preempted": {
-        "label": "プリエンプト済み"
-      },
-      "deleted": {
-        "label": "停止済み"
-      }
-    },
-    "headers": {
-      "jobName": "名前",
-      "jobType": "タイプ",
-      "queue": "アカウント",
-      "owner": "ユーザー",
-      "status": "ステータス",
-      "createdAt": "作成日",
-      "startedAt": "開始日",
-      "completedAt": "完了日",
-      "nodes": "ノード",
-      "resources": "リソース"
-    },
-    "filters": {
-      "jobType": "タイプ",
-      "status": "ステータス"
-    },
-    "title": "ジョブ管理",
-    "description": "管理者はジョブをロックして定期的なクリーンアップを回避したり、ユーザーのジョブを手動で停止または削除したりできます",
-    "successMessage": "操作が成功しました",
-    "actions": {
-      "dropdown": {
-        "ariaLabel": "操作",
-        "title": "操作",
-        "details": "詳細",
-        "lockTitle": "ジョブ自動削除ポリシーを設定",
-        "lock": "ロック",
-        "unlock": "ロック解除",
-        "stop": "停止",
-        "delete": "削除"
-      }
-    },
-    "dialog": {
-      "stop": {
-        "title": "ジョブを停止",
-        "description": "ジョブ {{name}} が停止されます。マウントディレクトリ以外のファイルは復元できません。必要なデータが保存されていることを確認してください。",
-        "cancel": "キャンセル",
-        "action": "停止"
-      },
-      "delete": {
-        "title": "ジョブを削除",
-        "description": "ジョブ {{name}} が削除されます。すべてのメタデータがクリーンアップされます。",
-        "cancel": "キャンセル",
-        "action": "削除"
-      }
-    },
-    "handlers": {
-      "stopOrDeleteTitle": "{{count}} 個のジョブを停止または削除",
-      "stopOrDeleteDescription": "ジョブ {{jobs}} が停止または削除されます。続行しますか？",
-      "lockOrUnlockTitle": "{{count}} 個のジョブをロックまたはロック解除",
-      "lockOrUnlockDescription": "ジョブ {{jobs}} がロックまたはロック解除されます。続行しますか？"
-    },
-    "select": {
-      "all": "すべて",
-      "recentDays": "最近 {{days}} 日間のデータ"
-    }
-  },
-  "tipBadge": {
-    "defaultTitle": "進行中"
-  },
-  "datasetType": {
-    "model": "モデル",
-    "dataset": "データセット",
-    "shareFile": "共有ファイル"
-  },
-  "durationDialog": {
-    "title": {
-      "lock": "ジョブをロック",
-      "unlock": "ジョブのロックを解除"
-    },
-    "description": {
-      "lock": "{{count}} 個のジョブのロック期間を設定します。ロックされたジョブは自動的にクリーンアップされません。",
-      "unlock": "{{count}} 個のジョブのロックを解除します。ロック解除されたジョブはポリシーに従って自動的にクリーンアップされます。"
-    },
-    "card": {
-      "title": "選択したジョブのステータスが一致しません",
-      "description": "一括操作を行うには、ステータスが一致するジョブ（すべてロック済みまたはすべてロック解除済み）を選択してください。"
-    },
-    "button": {
-      "unlock": "{{count}} 個のジョブをロック解除",
-      "unlocking": "ロック解除中...",
-      "lock": "ジョブをロック",
-      "locking": "ロック中..."
-    },
-    "form": {
-      "permanentLock": "永久ロック",
-      "permanentLockDescription": "ジョブは永久にロックされ、自動クリーンアップポリシーで削除されません。",
-      "days": {
-        "text": "日数",
-        "min": "日数は負の値にできません"
-      },
-      "hours": {
-        "text": "時間",
-        "min": "時間数は負の値にできません",
-        "max": "時間数は23を超えられません"
-      },
-      "expirationPreview": "有効期限プレビュー：",
-      "currentTime": "現在時刻"
-    },
-    "toast": {
-      "lockSuccess": "{{count}} 個のジョブをロックしました",
-      "lockError": "ロック操作に失敗しました",
-      "unlockSuccess": "{{count}} 個のジョブのロックを解除しました",
-      "unlockError": "ロック解除操作に失敗しました",
-      "noDuration": "ロック期間を設定するか、永久ロックを選択してください"
-    }
-  },
-  "cronPolicy": {
-    "title": "スケジュールポリシー",
-    "longTimeTitle": "長時間実行ジョブをクリーンアップ",
-    "suspend": "一時停止",
-    "schedule": "実行スケジュール",
-    "batchDays": "バッチジョブ実行日数（BATCH_DAYS）",
-    "interactiveDays": "対話型ジョブ実行日数（INTERACTIVE_DAYS）",
-    "longTimeUpdate": "長時間実行ジョブクリーンアップポリシーを更新",
-    "lowGpuTitle": "低GPU利用率ジョブをクリーンアップ",
-    "timeRange": "時間範囲（分、TIME_RANGE）",
-    "util": "利用率（UTIL）",
-    "waitTime": "待機時間（WAIT_TIME、分）",
-    "lowGpuUpdate": "低GPU利用率ジョブクリーンアップポリシーを更新",
-    "jupyterTitle": "キュー中のjupyterジョブをクリーンアップ",
-    "jupyterWait": "待機時間（JUPYTER_WAIT_MINUTES、分）",
-    "jupyterUpdate": "キュー中のjupyterジョブクリーンアップポリシーを更新",
-    "runJob": "すぐにクリーンアップ",
-    "confirmTitle": "ジョブクリーンアップ確認",
-    "jobsToDelete": "以下のジョブが削除されます：",
-    "noJobs": "削除対象のジョブはありません。",
-    "cancel": "キャンセル",
-    "confirm": "確認",
-    "invalidCron": "無効なCron式です。形式と値の範囲を確認してください",
-    "loadError": "ポリシーの取得に失敗しました：",
-    "longTimeSuccess": "長時間実行ジョブクリーンアップが更新されました",
-    "longTimeError": "長時間実行ジョブクリーンアップの更新に失敗しました：",
-    "lowGpuSuccess": "低GPU利用率ジョブクリーンアップが更新されました",
-    "lowGpuError": "低GPU利用率ジョブクリーンアップの更新に失敗しました：",
-    "jupyterSuccess": "キュー中のjupyterジョブクリーンアップが更新されました",
-    "jupyterError": "キュー中のjupyterジョブクリーンアップの更新に失敗しました："
-  },
-  "dataTableViewOptions": {
-    "viewButtonText": "ビュー",
-    "viewLabel": "ビュー"
-  },
-  "dataTableToolbar": {
-    "globalSearchPlaceholder": "グローバル検索",
-    "clearFiltersButtonTitle": "フィルタをクリア"
-  },
-  "dataTableColumnHeader": {
-    "sortAscending": "昇順",
-    "sortDescending": "降順",
-    "hide": "非表示"
-  },
-  "dataTableFacetedFilter": {
-    "selected": "{{count}} 件選択済み",
-    "noResults": "結果なし",
-    "clearFilter": "フィルタをクリア"
-  },
-  "dataTablePagination": {
-    "refresh": "更新",
-    "itemsPerPage": "{{count}} 件/ページ",
-    "updatedAt": "{{time}} に更新",
-    "totalItems": "合計 {{count}} 件",
-    "selectedItems": "{{selected}} / {{total}} 件選択",
-    "currentPage": "{{page}} / {{totalPages}} ページ",
-    "firstPage": "最初のページへ",
-    "previousPage": "前のページへ",
-    "nextPage": "次のページへ",
-    "lastPage": "最後のページへ",
-    "cancel": "キャンセル",
-    "confirm": "確認"
-  },
-  "dataTable": {
-    "noData": "データがありません",
-    "selectAll": "すべて選択",
-    "selectRow": "行を選択"
-  },
-  "runningJobs": {
-    "title": "実行中のジョブ",
-    "headers": {
-      "jobName": "ジョブ名",
-      "status": "ステータス",
-      "progress": "進捗"
-    }
-  },
-  "jobs": {
-    "dataPreprocessing": "データ前処理",
-    "modelTraining": "モデルトレーニング",
-    "resultAnalysis": "結果分析"
-  },
-  "statuses": {
-    "running": "実行中",
-    "waiting": "待機中",
-    "queued": "キュー中"
-  },
-  "sharedItems": {
-    "title": "共有されたモデルとデータセット",
-    "downloadCount": "ダウンロード回数"
-  },
-  "recentActivity": {
-    "title": "最近の活動",
-    "uploadDataset": "新しいデータセットをアップロード",
-    "updateModel": "画像分類モデルを更新",
-    "publishPaper": "新しい研究論文を発表",
-    "joinWorkshop": "オンラインワークショップに参加",
-    "shareRepo": "コードリポジトリを共有"
-  },
-  "userDetail": {
-    "breadcrumb": {
-      "title": "ユーザー詳細"
-    },
-    "header": {
-      "errorTitle": "ユーザーデータの読み込みエラー",
-      "userNotFound": "ユーザーが見つかりません"
-    },
-    "info": {
-      "advisor": {
-        "title": "指導教員"
-      },
-      "researchGroup": {
-        "title": "研究グループ"
-      },
-      "joinDate": {
-        "title": "参加日"
-      },
-      "notSet": "未設定"
-    },
-    "tabs": {
-      "gpuMonitoring": "GPUモニタリング",
-      "userActivity": "ユーザーアクティビティ",
-      "runningJobs": "実行中のジョブ",
-      "sharedResources": "共有リソース",
-      "recentActivity": "最近の活動"
-    }
-  },
-  "userAvatar": {
-    "alt": "ユーザーアバター"
-  },
-  "loginHeatmap": {
-    "title": "ユーザーアクティビティ"
-  },
-  "pagination": {
-    "totalRows": "合計 {{count}} 行",
-    "selectedRows": "{{count}} 行選択",
-    "rowsPerPage": "{{count}} 行/ページ",
-    "currentPage": "{{currentPage}} / {{totalPages}} ページ",
-    "firstPage": "最初のページへ",
-    "previousPage": "前のページへ",
-    "nextPage": "次のページへ",
-    "lastPage": "最後のページへ"
-  },
-  "shareDatasetToQueueDialog": {
-    "select": {
-      "inputPlaceholder": "アカウントを検索",
-      "placeholder": "アカウントを選択"
-    },
-    "cancel": "キャンセル",
-    "share": "共有",
-    "success": "共有に成功しました"
-  },
-  "adminDatasetTable": {
-    "toolbar": {
-      "filter": {
-        "placeholder": "データセット名を検索",
-        "title": "タイプ",
-        "type": {
-          "dataset": "データセット",
-          "model": "モデル",
-          "sharefile": "共有ファイル"
-        }
-      }
-    },
-    "column": {
-      "name": "名前",
-      "type": "タイプ",
-      "creator": "作成者",
-      "createdAt": "作成日",
-      "actions": "操作"
-    },
-    "toast": {
-      "deleteSuccess": "データセット {{name}} が削除されました"
-    },
-    "actions": {
-      "menuTrigger": "操作",
-      "menuLabel": "操作",
-      "viewDetails": "詳細",
-      "delete": "削除"
-    },
-    "dialog": {
-      "title": "データセットまたはモデルを削除",
-      "description": "データセット{{name}}が削除されます",
-      "cancel": "キャンセル",
-      "delete": "削除"
-    },
-    "info": {
-      "title": "データセット管理",
-      "description": "システム内のすべてのデータセット/モデルを管理"
-    }
-  },
-  "selectBox": {
-    "inputPlaceholder": "検索...",
-    "emptyPlaceholder": "結果が見つかりません。"
-  },
-  "shareDatasetToUserDialog": {
-    "toastSuccess": "共有に成功しました",
-    "selectBox": {
-      "searchPlaceholder": "ユーザーを検索",
-      "selectPlaceholder": "ユーザーを選択"
-    },
-    "cancelButton": "キャンセル",
-    "shareButton": "共有"
-  },
-  "smallDataCard": {
-    "title": "タイトル",
-    "description": "説明"
-  },
-  "unit": {
-    "gb": "GB",
-    "gbPerSecond": "GB/秒"
-  },
-  "dataView": {
-    "sourceType": {
-      "model": "モデル",
-      "sharefile": "共有ファイル",
-      "dataset": "データセット"
-    },
-    "docsButtonTitle": "{{sourceTitle}}ドキュメント",
-    "createTitle": "{{sourceTitle}}を作成",
-    "createDescription": "新しい{{sourceTitle}}を作成",
-    "addButton": "{{sourceTitle}}を追加"
-  },
-  "navUser": {
-    "switchToUserView": "ユーザービューに切り替え",
-    "switchToAdminView": "管理者ビューに切り替え",
-    "switchTo": "切り替え",
-    "normalUser": "一般ユーザー",
-    "admin": "管理者",
-    "personalPage": "個人ページ",
-    "platformDocs": "プラットフォームドキュメント",
-    "darkMode": "ダークモード",
-    "lightMode": "ライトモード",
-    "language": "言語を切り替え",
-    "chinese": "简体中文",
-    "english": "English",
-    "japanese": "日本語",
-    "korean": "한국어",
-    "loggedOut": "ログアウト済み",
-    "logout": "ログアウト"
-  },
-  "navigation": {
-    "admin": "管理",
-    "portal": "ポータル",
-    "resourceManagement": "リソース管理",
-    "nodeManagement": "ノード管理",
-    "nodeLabels": "ノードラベル",
-    "clusterMonitoring": "クラスタモニタリング",
-    "networkMonitoring": "ネットワークモニタリング",
-    "ioMonitoring": "I/Oモニタリング",
-    "accountManagement": "アカウント管理",
-    "userManagement": "ユーザー管理",
-    "jobManagement": "ジョブ管理",
-    "cronPolicy": "スケジュールポリシー",
-    "imageManagement": "イメージ管理",
-    "imageCreation": "イメージ作成",
-    "imageList": "イメージリスト",
-    "dataManagement": "データ管理",
-    "userFiles": "ユーザーファイル",
-    "accountFiles": "アカウントファイル",
-    "datasets": "データセット",
-    "platformSettings": "プラットフォーム設定",
-    "platformOverview": "プラットフォーム概要",
-    "platformFullName": "異種クラウドリソース混合スケジューリングおよび運用プラットフォーム",
-    "gpuMonitoring": "GPUモニタリング",
-    "freeResources": "空きリソース",
-    "myJobs": "マイジョブ",
-    "customJobs": "カスタムジョブ",
-    "createCustomJob": "新しいカスタムジョブを作成",
-    "createTensorflowJob": "新しいTensorflow PSジョブを作成",
-    "createPytorchJob": "新しいPytorch DDPジョブを作成",
-    "jupyterLab": "Jupyter Lab",
-    "createJupyterLab": "新しいJupyter Labを作成",
-    "jobTemplates": "ジョブテンプレート",
-    "myImages": "マイイメージ",
-    "fileSystem": "ファイルシステム",
-    "models": "モデル",
-    "sharedFiles": "共有ファイル",
-    "memberManagement": "メンバー管理",
-    "settings": "設定",
-    "userSettings": "ユーザー設定",
-    "helpAndFeedback": "ヘルプとフィードバック"
-  },
-  "sidebar": {
-    "resourceAndMonitoring": "リソースとモニタリング",
-    "jobsAndServices": "ジョブとサービス",
-    "usersAndAccounts": "ユーザーとアカウント",
-    "dataAndImages": "データとイメージ",
-    "others": "その他",
-    "data": "データ"
-  }
+  "imageSettingsForm.description": "ユーザー定義のイメージ名とタグを入力します。空の場合、システムによって自動生成されます",
+  "imageSettingsForm.nameLabel": "名前",
+  "imageSettingsForm.namePlaceholder": "デフォルトイメージ名",
+  "imageSettingsForm.tagLabel": "タグ",
+  "imageSettingsForm.tagPlaceholder": "デフォルトイメージタグ",
+  "imageSettingsForm.tipBadgeTitle": "イメージリンク",
+  "jobs.dataPreprocessing": "データ前処理",
+  "jobs.modelTraining": "モデルトレーニング",
+  "jobs.resultAnalysis": "結果分析",
+  "loadingIndicator.loadingText": "読み込み中...",
+  "loginHeatmap.title": "ユーザーアクティビティ",
+  "navUser.admin": "管理者",
+  "navUser.chinese": "简体中文",
+  "navUser.darkMode": "ダークモード",
+  "navUser.english": "English",
+  "navUser.japanese": "日本語",
+  "navUser.korean": "한국어",
+  "navUser.language": "言語を切り替え",
+  "navUser.lightMode": "ライトモード",
+  "navUser.loggedOut": "ログアウト済み",
+  "navUser.logout": "ログアウト",
+  "navUser.normalUser": "一般ユーザー",
+  "navUser.personalPage": "個人ページ",
+  "navUser.platformDocs": "プラットフォームドキュメント",
+  "navUser.switchTo": "切り替え",
+  "navUser.switchToAdminView": "管理者ビューに切り替え",
+  "navUser.switchToUserView": "ユーザービューに切り替え",
+  "navigation.accountFiles": "アカウントファイル",
+  "navigation.accountManagement": "アカウント管理",
+  "navigation.admin": "管理",
+  "navigation.clusterMonitoring": "クラスタモニタリング",
+  "navigation.createCustomJob": "新しいカスタムジョブを作成",
+  "navigation.createJupyterLab": "新しいJupyter Labを作成",
+  "navigation.createPytorchJob": "新しいPytorch DDPジョブを作成",
+  "navigation.createTensorflowJob": "新しいTensorflow PSジョブを作成",
+  "navigation.cronPolicy": "スケジュールポリシー",
+  "navigation.customJobs": "カスタムジョブ",
+  "navigation.dataManagement": "データ管理",
+  "navigation.datasets": "データセット",
+  "navigation.fileSystem": "ファイルシステム",
+  "navigation.freeResources": "空きリソース",
+  "navigation.gpuMonitoring": "GPUモニタリング",
+  "navigation.helpAndFeedback": "ヘルプとフィードバック",
+  "navigation.imageCreation": "イメージ作成",
+  "navigation.imageList": "イメージリスト",
+  "navigation.imageManagement": "イメージ管理",
+  "navigation.ioMonitoring": "I/Oモニタリング",
+  "navigation.jobManagement": "ジョブ管理",
+  "navigation.jobTemplates": "ジョブテンプレート",
+  "navigation.jupyterLab": "Jupyter Lab",
+  "navigation.memberManagement": "メンバー管理",
+  "navigation.models": "モデル",
+  "navigation.myImages": "マイイメージ",
+  "navigation.myJobs": "マイジョブ",
+  "navigation.networkMonitoring": "ネットワークモニタリング",
+  "navigation.nodeLabels": "ノードラベル",
+  "navigation.nodeManagement": "ノード管理",
+  "navigation.platformFullName": "異種クラウドリソース混合スケジューリングおよび運用プラットフォーム",
+  "navigation.platformOverview": "プラットフォーム概要",
+  "navigation.platformSettings": "プラットフォーム設定",
+  "navigation.portal": "ポータル",
+  "navigation.resourceManagement": "リソース管理",
+  "navigation.settings": "設定",
+  "navigation.sharedFiles": "共有ファイル",
+  "navigation.userFiles": "ユーザーファイル",
+  "navigation.userManagement": "ユーザー管理",
+  "navigation.userSettings": "ユーザー設定",
+  "networkAssociationForm.addSuccess": "ネットワーク関連が追加されました",
+  "networkAssociationForm.availableResourcesLabel": "利用可能なRDMAリソース",
+  "networkAssociationForm.connectButton": "関連付け",
+  "networkAssociationForm.currentNetworksLabel": "現在関連付けられているネットワーク",
+  "networkAssociationForm.disconnectButton": "関連を解除",
+  "networkAssociationForm.doneButton": "完了",
+  "networkAssociationForm.gpuResourceLabel": "GPUリソース",
+  "networkAssociationForm.loadingMessage": "読み込み中...",
+  "networkAssociationForm.noNetworksMessage": "関連ネットワークがありません",
+  "networkAssociationForm.noResourcesMessage": "利用可能なRDMAリソースがありません",
+  "networkAssociationForm.removeSuccess": "ネットワーク関連が削除されました",
+  "networkAssociationForm.title": "ネットワーク関連を管理",
+  "nodeManagement.accountOccupation": "アカウント専有",
+  "nodeManagement.actionsLabel": "操作",
+  "nodeManagement.cancel": "キャンセル",
+  "nodeManagement.confirmRelease": "{{account}}の専有を解除します:",
+  "nodeManagement.description": "ここでノードのスケジューリングポリシーや特定アカウントによる専有設定などを変更します",
+  "nodeManagement.disableScheduling": "スケジューリングを無効化",
+  "nodeManagement.enableScheduling": "スケジューリングを有効化",
+  "nodeManagement.occupationDialogTitle": "アカウント専有",
+  "nodeManagement.occupationFailed": "ノードの専有に失敗しました: {{error}}",
+  "nodeManagement.occupationSuccess": "ノードの専有に成功しました",
+  "nodeManagement.operationFailed": "操作に失敗しました: {{error}}",
+  "nodeManagement.operationSuccess": "操作が成功しました",
+  "nodeManagement.releaseDialogTitle": "専有を解除",
+  "nodeManagement.releaseFailed": "ノード専有の解除に失敗しました: {{error}}",
+  "nodeManagement.releaseOccupation": "専有を解除",
+  "nodeManagement.releaseSuccess": "ノード専有の解除に成功しました",
+  "nodeManagement.searchPlaceholder": "ノード名を検索",
+  "nodeManagement.statusFilter": "ステータス",
+  "nodeManagement.submit": "送信",
+  "nodeManagement.title": "ノード管理",
+  "otherOptionsFormCard.accordionTitle": "その他のオプション",
+  "otherOptionsFormCard.nodeNameDescription": "ノード名（空きリソース検索で確認可能）",
+  "otherOptionsFormCard.receiveStatusNotifications": "ステータス通知を受け取る",
+  "otherOptionsFormCard.specifyWorkNode": "作業ノードを指定",
+  "otherOptionsFormCard.tooltip.debugPerformanceTesting": "デバッグや特定ノードのパフォーマンステストシナリオ用",
+  "otherOptionsFormCard.tooltip.emailSupport": "注: 北航メール、Googleメールなどに対応",
+  "otherOptionsFormCard.tooltip.notification1": "1. ジョブ開始通知（キューイング後）",
+  "otherOptionsFormCard.tooltip.notification2": "2. ジョブ成功通知",
+  "otherOptionsFormCard.tooltip.notification3": "3. ジョブ失敗通知",
+  "otherOptionsFormCard.tooltip.notification4": "4. 低利用率/長時間実行ジョブ解放予告通知",
+  "otherOptionsFormCard.tooltip.notification5": "5. 低利用率/長時間実行ジョブ解放通知",
+  "otherOptionsFormCard.tooltip.receiveEmailNotifications": "メールで通知を受け取る:",
+  "pagination.currentPage": "{{currentPage}} / {{totalPages}} ページ",
+  "pagination.firstPage": "最初のページへ",
+  "pagination.lastPage": "最後のページへ",
+  "pagination.nextPage": "次のページへ",
+  "pagination.previousPage": "前のページへ",
+  "pagination.rowsPerPage": "{{count}} 行/ページ",
+  "pagination.selectedRows": "{{count}} 行選択",
+  "pagination.totalRows": "合計 {{count}} 行",
+  "quotaCard.entitled": "割当量: ",
+  "quotaCard.guaranteed": "保証量: ",
+  "quotaCard.limit": "制限: ",
+  "quotaCard.used": "使用済み",
+  "quotaCard.usedLabel": "使用済み: ",
+  "recentActivity.joinWorkshop": "オンラインワークショップに参加",
+  "recentActivity.publishPaper": "新しい研究論文を発表",
+  "recentActivity.shareRepo": "コードリポジトリを共有",
+  "recentActivity.title": "最近の活動",
+  "recentActivity.updateModel": "画像分類モデルを更新",
+  "recentActivity.uploadDataset": "新しいデータセットをアップロード",
+  "refreshButton.ariaLabel": "更新",
+  "resourceForm.cpuLabel": "CPU (コア数)",
+  "resourceForm.freeResourceButton": "空きリソース検索",
+  "resourceForm.freeResourceSheetTitle": "空きリソース検索",
+  "resourceForm.gpuComboboxTitle": "GPUモデル",
+  "resourceForm.gpuCountLabel": "GPU (枚数)",
+  "resourceForm.gpuModelLabel": "GPUモデル",
+  "resourceForm.gpuTip": "最大 {{max}} 枚まで申請可能",
+  "resourceForm.memoryLabel": "メモリ (GiB)",
+  "resourceForm.rdmaDescription": "同一ジョブ内の異なるロールがすべて同じ {{field}} ネットワークトポロジを使用することを確認してください",
+  "resourceForm.rdmaLabel": "RDMAを有効化",
+  "resourceForm.rdmaNetworkTitle": " RDMAネットワークトポロジ",
+  "resourceForm.tooltip.line1": "1. V100モデルは100Gb/s、A100モデルは200Gb/sの速度",
+  "resourceForm.tooltip.line2": "2. RDMA有効時、CPUとメモリ制限は無視されます",
+  "resourceForm.tooltip.line3": "3. この機能を使用する場合は、可能な限り単一ノード上のすべてのカードを申請してください",
+  "resourceForm.tooltip.line4": "4. RDMAネットワーク選択時、同一ジョブ内では同じネットワークトポロジを選択してください",
+  "resourceForm.tooltip.line5": "5. イメージはRDMAに対応している必要があります（ジョブドキュメントを参照）",
+  "resourceForm.tooltip.title": "InfiniBandベースのRDMA:",
+  "resources.actions.associateNetworks": "ネットワークを関連付け",
+  "resources.actions.delete": "リソースを削除",
+  "resources.actions.editLabels": "ラベルを編集",
+  "resources.actions.editType": "タイプを設定",
+  "resources.actions.menu": "操作メニュー",
+  "resources.actions.title": "操作",
+  "resources.columns.format": "フォーマット",
+  "resources.columns.maxPerNode": "ノードあたり最大数",
+  "resources.columns.name": "リソース",
+  "resources.columns.networks": "関連ネットワーク",
+  "resources.columns.total": "総量",
+  "resources.columns.type": "タイプ",
+  "resources.delete.confirm": "リソース \"{{name}}\" を削除しますか？この操作は元に戻せません。",
+  "resources.delete.confirmAction": "削除を確認",
+  "resources.delete.success": "リソースが削除されました",
+  "resources.delete.title": "リソースを削除",
+  "resources.filter.placeholder": "リソース名を検索",
+  "resources.info.description": "クラスター内のGPU、CPU、メモリなどのリソースを表示",
+  "resources.info.title": "リソース管理",
+  "resources.sync.button": "リソースリストを同期",
+  "resources.sync.confirm": "リソースリスト情報を更新しますか？",
+  "resources.sync.success": "リソースリストが同期されました",
+  "resources.sync.title": "リソースリストを同期",
+  "resources.type.gpu": "GPU",
+  "resources.type.rdma": "RDMA",
+  "runningJobs.headers.jobName": "ジョブ名",
+  "runningJobs.headers.progress": "進捗",
+  "runningJobs.headers.status": "ステータス",
+  "runningJobs.title": "実行中のジョブ",
+  "search.name.placeholder": "名前を検索",
+  "selectBox.emptyPlaceholder": "結果が見つかりません。",
+  "selectBox.inputPlaceholder": "検索...",
+  "shareDatasetToQueueDialog.cancel": "キャンセル",
+  "shareDatasetToQueueDialog.select.inputPlaceholder": "アカウントを検索",
+  "shareDatasetToQueueDialog.select.placeholder": "アカウントを選択",
+  "shareDatasetToQueueDialog.share": "共有",
+  "shareDatasetToQueueDialog.success": "共有に成功しました",
+  "shareDatasetToUserDialog.cancelButton": "キャンセル",
+  "shareDatasetToUserDialog.selectBox.searchPlaceholder": "ユーザーを検索",
+  "shareDatasetToUserDialog.selectBox.selectPlaceholder": "ユーザーを選択",
+  "shareDatasetToUserDialog.shareButton": "共有",
+  "shareDatasetToUserDialog.toastSuccess": "共有に成功しました",
+  "sharedItems.downloadCount": "ダウンロード回数",
+  "sharedItems.title": "共有されたモデルとデータセット",
+  "sharedResource.accountName": "アカウント名",
+  "sharedResource.accountShare": "アカウント共有",
+  "sharedResource.accountShares": "{{type}}のアカウント",
+  "sharedResource.cancel": "キャンセル",
+  "sharedResource.cancelAccountShare": "アカウント共有を解除",
+  "sharedResource.cancelAccountShareDescription": "指定アカウントとの{{type}}共有を解除",
+  "sharedResource.cancelShare": "共有解除",
+  "sharedResource.cancelUserShare": "ユーザー共有を解除",
+  "sharedResource.cancelUserShareDescription": "指定ユーザーとの{{type}}共有を解除",
+  "sharedResource.confirm": "確認",
+  "sharedResource.createdAt": "作成日",
+  "sharedResource.dataset": "データセット",
+  "sharedResource.datasetDescription": "{{type}}説明",
+  "sharedResource.datasetFiles": "{{type}}のファイルディレクトリ",
+  "sharedResource.datasetInfo": "{{type}}基本情報",
+  "sharedResource.datasetRepo": "{{type}}リポジトリURL",
+  "sharedResource.datasetTags": "{{type}}タグ",
+  "sharedResource.delete": "削除",
+  "sharedResource.deleteDescription": "{{type}}「{{name}}」を削除します",
+  "sharedResource.deleteFailed": "{{type}}の削除に失敗しました",
+  "sharedResource.deleteTitle": "{{type}}を削除",
+  "sharedResource.deletedSuccess": "{{type}}が削除されました",
+  "sharedResource.detail": "詳細",
+  "sharedResource.editable": "編集可能",
+  "sharedResource.goBack": "前の画面に戻る",
+  "sharedResource.lastModified": "更新日",
+  "sharedResource.model": "モデル",
+  "sharedResource.name": "名前",
+  "sharedResource.readOnly": "読み取り専用",
+  "sharedResource.serialNumber": "シリアル番号",
+  "sharedResource.shareCanceled": "共有が解除されました",
+  "sharedResource.shareToAccount": "{{type}}を共有",
+  "sharedResource.shareToAccountDescription": "アカウントと{{type}}を共有",
+  "sharedResource.shareToUser": "ユーザーと共有",
+  "sharedResource.shareToUserDescription": "指定ユーザーと{{type}}を共有",
+  "sharedResource.sharefile": "共有ファイル",
+  "sharedResource.size": "サイズ",
+  "sharedResource.user": "ユーザー",
+  "sharedResource.userCancelShare": "ユーザー共有を解除",
+  "sharedResource.userName": "ユーザー名",
+  "sharedResource.userShare": "ユーザー共有",
+  "sharedResource.userShares": "{{type}}のユーザー",
+  "sidebar.data": "データ",
+  "sidebar.dataAndImages": "データとイメージ",
+  "sidebar.jobsAndServices": "ジョブとサービス",
+  "sidebar.others": "その他",
+  "sidebar.resourceAndMonitoring": "リソースとモニタリング",
+  "sidebar.usersAndAccounts": "ユーザーとアカウント",
+  "smallDataCard.description": "説明",
+  "smallDataCard.title": "タイトル",
+  "statuses.queued": "キュー中",
+  "statuses.running": "実行中",
+  "statuses.waiting": "待機中",
+  "table.actions.cancel": "キャンセル",
+  "table.actions.delete": "削除",
+  "table.actions.deleteDescription": "アカウント {{name}} を削除します。操作に注意してください。",
+  "table.actions.deleteTitle": "アカウント削除",
+  "table.actions.editQuota": "クォータ編集",
+  "table.actions.manageUser": "ユーザー管理",
+  "table.headers.capability": "上限",
+  "table.headers.deserved": "割当量",
+  "table.headers.guaranteed": "保証量",
+  "table.headers.nickname": "アカウント",
+  "table.toolbar.searchPlaceholder": "アカウント名を検索",
+  "table.tooltip.expired": "期限切れ",
+  "table.tooltip.expires": "期限切れ",
+  "table.tooltip.valid": "有効",
+  "tagFilter.label": "タグでフィルタリング",
+  "tagsInput.addButton": "追加",
+  "tagsInput.addNewLabel": "新しいタグを追加",
+  "tagsInput.commonTagsLabel": "よく使われるタグ",
+  "tagsInput.description": "既存のタグを選択または新しいタグを作成",
+  "tagsInput.label": "タグ",
+  "tagsInput.newTagPlaceholder": "新しいタグを入力...",
+  "tagsInput.noTagsLabel": "タグを選択または追加",
+  "tagsInput.searchPlaceholder": "よく使われるタグを検索...",
+  "templateInfo.authorLabel": "作成者: {{nickname}}",
+  "templateInfo.jobInstructions": "ジョブ説明",
+  "templateInfo.jobTemplate": "ジョブテンプレート",
+  "templateInfo.loadedFromJob": "ジョブ {{fromJob}} からテンプレート設定を読み込みました",
+  "templateInfo.presetTemplate": "プリセットテンプレート",
+  "tipBadge.defaultTitle": "進行中",
+  "toast.accountCreated": "アカウント {{name}} が作成されました",
+  "toast.accountDeleted": "アカウント {{name}} が削除されました",
+  "toast.accountUpdated": "アカウント {{name}} が更新されました",
+  "tree.adminFolderTitle.account": "アカウントスペース",
+  "tree.adminFolderTitle.default": "ユーザースペース",
+  "tree.adminFolderTitle.public": "パブリックスペース",
+  "tree.folderTitle.account": "アカウントスペース",
+  "tree.folderTitle.default": "ユーザースペース",
+  "tree.folderTitle.public": "パブリックスペース",
+  "unit.gb": "GB",
+  "unit.gbPerSecond": "GB/秒",
+  "updateResourceForm.cancelButton": "キャンセル",
+  "updateResourceForm.description": "{{name}} の詳細",
+  "updateResourceForm.formDescription": "ジョブ送信時のノードタイプ選択に使用",
+  "updateResourceForm.label": "エイリアス",
+  "updateResourceForm.labelError": "エイリアスは必須です",
+  "updateResourceForm.submitButton": "送信",
+  "updateResourceForm.successMessage": "更新に成功しました",
+  "updateResourceForm.title": "リソースを編集",
+  "updateResourceTypeForm.formDescription": "GPUリソースはRDMAネットワークリソースと関連付けることができます。",
+  "updateResourceTypeForm.label": "リソースタイプ",
+  "updateResourceTypeForm.placeholder": "リソースタイプを選択",
+  "updateResourceTypeForm.submitButton": "保存",
+  "updateResourceTypeForm.successMessage": "リソースタイプが更新されました",
+  "updateResourceTypeForm.title": "リソースタイプを設定",
+  "updateResourceTypeForm.type.default": "タイプなし",
+  "updateResourceTypeForm.type.gpu": "GPU",
+  "updateResourceTypeForm.type.rdma": "RDMA",
+  "userAvatar.alt": "ユーザーアバター",
+  "userDetail.breadcrumb.title": "ユーザー詳細",
+  "userDetail.header.errorTitle": "ユーザーデータの読み込みエラー",
+  "userDetail.header.userNotFound": "ユーザーが見つかりません",
+  "userDetail.info.advisor.title": "指導教員",
+  "userDetail.info.joinDate.title": "参加日",
+  "userDetail.info.notSet": "未設定",
+  "userDetail.info.researchGroup.title": "研究グループ",
+  "userDetail.tabs.gpuMonitoring": "GPUモニタリング",
+  "userDetail.tabs.recentActivity": "最近の活動",
+  "userDetail.tabs.runningJobs": "実行中のジョブ",
+  "userDetail.tabs.sharedResources": "共有リソース",
+  "userDetail.tabs.userActivity": "ユーザーアクティビティ",
+  "userEditDialog.description": "ユーザー {{name}} の個人情報を更新",
+  "userEditDialog.emailLabel": "メール",
+  "userEditDialog.emailPlaceholder": "メールアドレス",
+  "userEditDialog.errorToast": "更新に失敗しました",
+  "userEditDialog.groupLabel": "グループ",
+  "userEditDialog.groupPlaceholder": "グループ",
+  "userEditDialog.nicknameLabel": "ニックネーム",
+  "userEditDialog.nicknamePlaceholder": "ニックネーム",
+  "userEditDialog.phoneLabel": "電話番号",
+  "userEditDialog.phonePlaceholder": "電話番号",
+  "userEditDialog.successToast": "ユーザー情報が更新されました",
+  "userEditDialog.teacherLabel": "指導教員",
+  "userEditDialog.teacherPlaceholder": "指導教員名",
+  "userEditDialog.title": "ユーザー情報を編集",
+  "userForm.emailError": "無効なメールアドレス",
+  "userTable.delete": "削除",
+  "userTable.deleteDescription": "ユーザー「{{name}}」を削除します。操作に注意してください。",
+  "userTable.deleteSuccess": "ユーザー {{name}} が削除されました",
+  "userTable.deleteTitle": "ユーザーを削除",
+  "userTable.description": "ここでユーザー情報を表示および管理します",
+  "userTable.editInfo": "情報を編集",
+  "userTable.headers.group": "グループ",
+  "userTable.headers.name": "ユーザー",
+  "userTable.headers.role": "権限",
+  "userTable.headers.status": "ステータス",
+  "userTable.headers.teacher": "指導教員",
+  "userTable.roleLabel": "権限",
+  "userTable.roleUpdateSuccess": "ユーザー {{name}} の権限が更新されました",
+  "userTable.roles.0": "一般ユーザー",
+  "userTable.roles.1": "管理者",
+  "userTable.selfDeleteError": "自分自身を削除することはできません。削除するには別のユーザーでログインしてください",
+  "userTable.title": "ユーザー管理",
+  "volumeMounts.addButton": "{{mountType}}を追加",
+  "volumeMounts.cardTitle": "データマウント",
+  "volumeMounts.dataTab": "データ",
+  "volumeMounts.defaultMountDescription": "デフォルトでユーザーホームディレクトリが永続化されます。変更には注意が必要です",
+  "volumeMounts.fileTab": "ファイル",
+  "volumeMounts.mountPathDescription": "コンテナ内のマウントパスを変更できます",
+  "volumeMounts.mountPoint": "マウントポイント {{index}}",
+  "volumeMounts.mountSource": "マウント元 {{index}}"
 }

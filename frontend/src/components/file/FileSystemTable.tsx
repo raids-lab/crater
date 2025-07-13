@@ -94,7 +94,7 @@ const getHeader = (key: string, t: (key: string) => string): string => {
 const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig => {
   return {
     filterInput: {
-      placeholder: 'search.name.placeholder',
+      placeholder: t('search.name.placeholder'),
       key: 'name',
     },
     filterOptions: [],

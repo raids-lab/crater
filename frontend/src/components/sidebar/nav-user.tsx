@@ -21,6 +21,7 @@ import {
   ChevronsUpDown,
   Globe,
   LogOut,
+  MessageSquareMoreIcon,
   Moon,
   Sparkles,
   Sun,
@@ -151,6 +152,12 @@ export function NavUser() {
               <DropdownMenuItem onClick={() => window.open(website)}>
                 <BookOpenIcon />
                 {t('navUser.platformDocs')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => window.open('https://github.com/raids-lab/crater/issues')}
+              >
+                <MessageSquareMoreIcon />
+                {t('navUser.feedback')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
                 {theme === 'light' ? <Moon /> : <Sun />}
