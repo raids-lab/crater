@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState, type FC } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
 import { DataTable } from '@/components/custom/DataTable'
+import { useTranslation } from 'react-i18next'
 import {
   apiGetNodeDetail,
   apiGetNodePods,
@@ -97,6 +98,7 @@ type GpuDemoProps = React.ComponentProps<typeof Card> & {
 
 export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
   const grafanaNode = useAtomValue(configGrafanaNodeAtom)
+  const { t } = useTranslation()
   if (!gpuInfo?.haveGPU) return null
   else
     return (
@@ -113,22 +115,22 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
         <CardContent className="mt-6 grid grid-flow-col grid-rows-4 gap-x-2 gap-y-3 text-xs">
           <div className="text-muted-foreground flex items-center space-x-2">
             <Memory className="h-6 w-6" />
-            <span className="text-sm font-bold">显存</span>
+            <span className="text-sm font-bold">{t('nodeDetail.gpu.memory')}</span>
           </div>
 
           <div className="text-muted-foreground flex items-center space-x-2">
             <Grid className="h-6 w-6" />
-            <span className="text-sm font-bold">GPU数量</span>
+            <span className="text-sm font-bold">{t('nodeDetail.gpu.count')}</span>
           </div>
 
           <div className="text-muted-foreground flex items-center space-x-2">
             <Layers className="h-6 w-6" />
-            <span className="text-sm font-bold">架构</span>
+            <span className="text-sm font-bold">{t('nodeDetail.gpu.architecture')}</span>
           </div>
 
           <div className="text-muted-foreground flex items-center space-x-2">
             <Cable className="h-6 w-6" />
-            <span className="text-sm font-bold">驱动版本</span>
+            <span className="text-sm font-bold">{t('nodeDetail.gpu.driverVersion')}</span>
           </div>
           <p className="text-lg font-bold">{parseInt(gpuInfo?.gpuMemory) / 1024} GB</p>
           <p className="text-lg font-bold">{gpuInfo?.gpuCount}</p>
@@ -145,25 +147,25 @@ export function GpuCardDemo({ gpuInfo }: GpuDemoProps) {
             }}
           >
             <GpuIcon className="text-highlight-purple" />
-            <span className="truncate font-normal">加速卡监控</span>
+            <span className="truncate font-normal">{t('nodeDetail.gpu.monitoring')}</span>
           </Button>
         </CardFooter>
       </Card>
     )
 }
 
-const getHeader = (name: string): string => {
+const getHeader = (name: string, t: (key: string) => string): string => {
   switch (name) {
     case 'type':
-      return '类型'
+      return t('nodeDetail.table.headers.type')
     case 'name':
-      return 'Pod 名称'
+      return t('nodeDetail.table.headers.name')
     case 'status':
-      return '状态'
+      return t('nodeDetail.table.headers.status')
     case 'createTime':
-      return '创建于'
+      return t('nodeDetail.table.headers.createTime')
     case 'resources':
-      return '申请资源'
+      return t('nodeDetail.table.headers.resources')
     default:
       return name
   }
@@ -172,11 +174,12 @@ const getHeader = (name: string): string => {
 const getColumns = (
   isAdminView: boolean,
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
-  handleShowMonitor: (pod: IClusterPodInfo) => void
+  handleShowMonitor: (pod: IClusterPodInfo) => void,
+  t: (key: string) => string
 ): ColumnDef<IClusterPodInfo>[] => [
   {
     accessorKey: 'type',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('type')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('type', t)} />,
     cell: ({ row }) => {
       if (!row.getValue('type')) return null
       const splitValue = row.getValue<string>('type').split('/')
@@ -194,35 +197,50 @@ const getColumns = (
   },
   {
     accessorKey: 'name',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name', t)} />,
     cell: ({ row }) => {
       const podName = row.getValue<string>('name')
       const locked = row.original.locked || false
       const permanentLocked = row.original.permanentLocked
       const lockedTimestamp = row.original.lockedTimestamp
 
+      // 檢查是否有 Job 類型的 ownerReference
+      const jobOwner = row.original.ownerReference?.find((owner) => owner.kind === 'Job')
+      const displayName = jobOwner ? jobOwner.name : podName
+      const subtitle = jobOwner ? podName : undefined
+
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <TooltipButton
-                name={podName}
-                tooltipContent={`查看 Pod 监控`}
+                name={displayName}
+                tooltipContent={t('nodeDetail.tooltip.viewMonitor')}
                 className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
                 variant="link"
                 onClick={() => handleShowMonitor(row.original)}
               >
-                {podName}
+                <div className="flex flex-col items-start">
+                  <span>{displayName}</span>
+                  {subtitle && <span className="text-muted-foreground text-xs">{subtitle}</span>}
+                </div>
                 {locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
               </TooltipButton>
             </TooltipTrigger>
             {locked && (
               <TooltipContent side="top">
                 <div className="flex flex-row items-center justify-between gap-1.5">
-                  <p className="text-xs">查看 {podName} 监控</p>
+                  <p className="text-xs">
+                    {t('nodeDetail.tooltip.viewMonitorFor').replace('{{podName}}', podName)}
+                  </p>
                   <TipBadge
                     title={
-                      permanentLocked ? '长期锁定中' : `锁定至 ${formatLockDate(lockedTimestamp)}`
+                      permanentLocked
+                        ? t('nodeDetail.status.permanentLocked')
+                        : t('nodeDetail.status.lockedUntil').replace(
+                            '{{time}}',
+                            formatLockDate(lockedTimestamp)
+                          )
                     }
                     className="text-primary bg-primary-foreground z-10"
                   />
@@ -237,7 +255,9 @@ const getColumns = (
   },
   {
     accessorKey: 'status',
-    header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('status')} />,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader('status', t)} />
+    ),
     cell: ({ row }) => (
       <div className="flex flex-row items-center justify-start">
         <PodPhaseLabel podPhase={row.getValue('status')} />
@@ -250,7 +270,7 @@ const getColumns = (
   {
     accessorKey: 'resources',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader('resources')} />
+      <DataTableColumnHeader column={column} title={getHeader('resources', t)} />
     ),
     cell: ({ row }) => {
       return (
@@ -266,7 +286,7 @@ const getColumns = (
   {
     accessorKey: 'createTime',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title={getHeader('createTime')} />
+      <DataTableColumnHeader column={column} title={getHeader('createTime', t)} />
     ),
     cell: ({ row }) => {
       return <TimeDistance date={row.getValue('createTime')}></TimeDistance>
@@ -282,13 +302,17 @@ const getColumns = (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">操作</span>
+              <span className="sr-only">{t('nodeDetail.actions.operations')}</span>
               <DotsHorizontalIcon className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>监控</DropdownMenuItem>
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
+              {t('nodeDetail.actions.operations')}
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>
+              {t('nodeDetail.actions.monitor')}
+            </DropdownMenuItem>
             {isAdminView && (
               <DropdownMenuItem
                 onClick={() =>
@@ -298,7 +322,7 @@ const getColumns = (
                   })
                 }
               >
-                日志
+                {t('nodeDetail.actions.logs')}
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -311,6 +335,7 @@ const getColumns = (
 export const NodeDetail: FC = () => {
   const { id: nodeName } = useParams()
   const setBreadcrumb = useBreadcrumb()
+  const { t } = useTranslation()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const grafanaNode = useAtomValue(configGrafanaNodeAtom)
   const [showLogPod, setShowLogPod] = useState<NamespacedName>()
@@ -348,32 +373,37 @@ export const NodeDetail: FC = () => {
   const isAdminView = useIsAdmin()
   const columns = useMemo(
     () =>
-      getColumns(isAdminView, setShowLogPod, (pod) => {
-        setGrafanaUrl(
-          `${grafanaJob.pod}?orgId=1&var-node_name=${nodeName}&var-pod_name=${pod.name}&from=now-1h&to=now`
-        )
-        setShowMonitor(true)
-      }),
-    [nodeName, grafanaJob, isAdminView]
+      getColumns(
+        isAdminView,
+        setShowLogPod,
+        (pod) => {
+          setGrafanaUrl(
+            `${grafanaJob.pod}?orgId=1&var-node_name=${nodeName}&var-pod_name=${pod.name}&from=now-1h&to=now`
+          )
+          setShowMonitor(true)
+        },
+        t
+      ),
+    [nodeName, grafanaJob, isAdminView, t]
   )
 
   const scheduler = useAtomValue(globalSettings).scheduler
   const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
     return {
       filterInput: {
-        placeholder: '搜索 Pod 名称',
+        placeholder: t('nodeDetail.table.filter.searchPodName'),
         key: 'name',
       },
       filterOptions: [
         {
           key: 'status',
-          title: '状态',
+          title: t('nodeDetail.table.filter.status'),
           option: podPhases,
           defaultValues: ['Running'],
         },
         {
           key: 'type',
-          title: '类型',
+          title: t('nodeDetail.table.filter.type'),
           option: [
             {
               value: 'batch.volcano.sh/v1alpha1/Job',
@@ -391,9 +421,9 @@ export const NodeDetail: FC = () => {
           ],
         },
       ],
-      getHeader: getHeader,
+      getHeader: (key: string) => getHeader(key, t),
     }
-  }, [scheduler])
+  }, [scheduler, t])
 
   // 修改 BreadCrumb
   useEffect(() => {
@@ -408,32 +438,32 @@ export const NodeDetail: FC = () => {
       info={[
         {
           icon: ServerIcon,
-          title: '操作系统',
+          title: t('nodeDetail.info.operatingSystem'),
           value: <span className="font-mono">{nodeDetail?.osVersion}</span>,
         },
         {
           icon: Grid,
-          title: '架构',
+          title: t('nodeDetail.info.architecture'),
           value: <span className="font-mono uppercase">{nodeDetail?.arch}</span>,
         },
         {
           icon: NetworkIcon,
-          title: 'IP 地址',
+          title: t('nodeDetail.info.ipAddress'),
           value: <TooltipCopy name={nodeDetail?.address} className="font-mono" />,
         },
         {
           icon: BotIcon,
-          title: '角色',
+          title: t('nodeDetail.info.role'),
           value: <span className="font-mono capitalize">{nodeDetail?.role}</span>,
         },
         {
           icon: CpuIcon,
-          title: 'Kubelet 版本',
+          title: t('nodeDetail.info.kubeletVersion'),
           value: <span className="font-mono">{nodeDetail?.kubeletVersion}</span>,
         },
         {
           icon: Layers,
-          title: '容器运行时',
+          title: t('nodeDetail.info.containerRuntime'),
           value: <span className="font-mono">{nodeDetail?.containerRuntimeVersion}</span>,
         },
       ]}
@@ -441,7 +471,7 @@ export const NodeDetail: FC = () => {
         {
           key: 'pods',
           icon: BoxIcon,
-          label: '节点负载',
+          label: t('nodeDetail.tabs.nodeLoad'),
           children: (
             <>
               <DataTable
@@ -454,7 +484,7 @@ export const NodeDetail: FC = () => {
               <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
                 <SheetContent className="sm:max-w-4xl">
                   <SheetHeader>
-                    <SheetTitle>资源监控</SheetTitle>
+                    <SheetTitle>{t('nodeDetail.monitor.title')}</SheetTitle>
                   </SheetHeader>
                   <div className="h-[calc(100vh-6rem)] w-full px-4">
                     <GrafanaIframe baseSrc={grafanaUrl} />
@@ -468,7 +498,7 @@ export const NodeDetail: FC = () => {
         {
           key: 'base',
           icon: GaugeIcon,
-          label: '基础监控',
+          label: t('nodeDetail.tabs.basicMonitoring'),
           children: (
             <GrafanaIframe
               baseSrc={`${grafanaNode.basic}?from=now-1h&to=now&var-datasource=prometheus&var-cluster=&var-resolution=30s&var-node=${nodeName}`}
@@ -478,7 +508,7 @@ export const NodeDetail: FC = () => {
         {
           key: 'gpu',
           icon: GpuIcon,
-          label: '加速卡监控',
+          label: t('nodeDetail.tabs.acceleratorMonitoring'),
           children: (
             <GrafanaIframe
               baseSrc={`${grafanaNode.nvidia}?from=now-30m&to=now&var-datasource=prometheus&var-host=${nodeName}&var-gpu=$__all&refresh=5s`}
