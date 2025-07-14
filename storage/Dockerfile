@@ -1,28 +1,22 @@
-FROM golang:1.22 as build
-
-WORKDIR /app
-ENV GOPROXY=https://proxy.golang.com.cn,direct
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o webdav-server main.go
-
 FROM alpine
 
-COPY --from=build /app/webdav-server /webdav-server
+ARG BIN_DIR
+ARG TARGETPLATFORM
+
+WORKDIR /
+
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add tzdata
 ENV TZ=Asia/Shanghai
 
-COPY ./etc /etc
+COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/storage-server .
 
-EXPOSE 7320
+COPY ./etc /etc 
 
-USER root
+RUN chmod +x storage-server
 
-WORKDIR /
+EXPOSE 7320 
 
-CMD ["/webdav-server"]
+USER root 
+
+CMD ["/storage-server"]
