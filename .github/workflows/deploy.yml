@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./crater-website  # Set working directory to the website folder
+        working-directory: crater-website  # Set working directory to the website folder
 
     steps:
       # Checkout repository
@@ -50,6 +50,7 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
+          cache-dependency-path: "crater-website/pnpm-lock.yaml"
 
       # Install dependencies using pnpm
       - name: Install dependencies
