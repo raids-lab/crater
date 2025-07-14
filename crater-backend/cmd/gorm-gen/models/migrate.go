@@ -422,6 +422,26 @@ func main() {
 				return tx.Migrator().DropTable("image_accounts") // 删除 image_accounts 表
 			},
 		},
+		{
+			ID: "202507141714",
+			Migrate: func(tx *gorm.DB) error {
+				type CudaBaseImage struct {
+					gorm.Model
+					Label      string `gorm:"type:varchar(128);not null;comment:image label showed in UI"`
+					ImageLabel string `gorm:"uniqueIndex;type:varchar(128);null;comment:image label for imagelink generate"`
+					Value      string `gorm:"type:varchar(512);comment:Full Cuda Image Link"`
+				}
+
+				// 明确指定表名
+				if err := tx.Table("cuda_base_images").Migrator().CreateTable(&CudaBaseImage{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("cuda_base_images")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -441,6 +461,7 @@ func main() {
 			&model.Alert{},
 			&model.ImageAccount{},
 			&model.ImageUser{},
+			&model.CudaBaseImage{},
 		)
 		if err != nil {
 			return err
