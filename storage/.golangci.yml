@@ -117,7 +117,7 @@ linters:
     - godox
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
