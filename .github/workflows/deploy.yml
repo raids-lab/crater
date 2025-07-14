@@ -18,54 +18,59 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'        
-      - 'content/**'
-      - 'package.json'
+      - 'crater-website/src/**'        
+      - 'crater-website/content/**'
+      - 'crater-website/package.json'
 
 jobs:
   build:
     name: Build Next.js Site
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./crater-website  # Set working directory to the website folder
+
     steps:
+      # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 设置 pnpm
+      # Setup pnpm package manager
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10 # 使用与您项目兼容的pnpm版本
+          version: 10
           run_install: false
 
-      # 设置 Node.js
+      # Setup Node.js environment
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 # 使用您项目需要的Node版本
+          node-version: 22
           cache: "pnpm"
 
-      # 安装依赖
+      # Install dependencies using pnpm
       - name: Install dependencies
         run: pnpm install
 
-      # 构建项目
+      # Build the Next.js project
       - name: Build website
         env:
           ORAMA_PRIVATE_API_KEY: ${{ secrets.ORAMA_PRIVATE_API_KEY }}
           ORAMA_INDEX_NAME: ${{ secrets.ORAMA_INDEX_NAME }}
         run: pnpm build
 
-      # 添加.nojekyll文件防止Jekyll处理
+      # Create .nojekyll file to prevent Jekyll processing
       - name: Create .nojekyll file
         run: touch ./out/.nojekyll
 
-      # 上传构建产物
+      # Upload build artifacts for deployment
       - name: Upload Build Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out
+          path: ./crater-website/out  # Path to build output in the subfolder
 
   deploy:
     name: Deploy to GitHub Pages
@@ -78,6 +83,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
+      # Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
