@@ -34,6 +34,7 @@ import FormExportButton from '@/components/form/FormExportButton'
 import { MetadataFormEnvdAdvanced } from '@/components/form/types'
 import { Input } from '@/components/ui/input'
 import {
+  apiGetCudaBaseImages,
   apiUserCreateByEnvd,
   FetchAllUniqueImageTagObjects,
   imageNameRegex,
@@ -191,7 +192,7 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
         name: values.imageName ?? '',
         tag: values.imageTag ?? '',
         python: values.python,
-        base: CUDA_BASE_IMAGE.find((image) => image.value === values.base)?.imageLabel ?? '',
+        base: cudaBaseImages.find((image) => image.value === values.base)?.imageLabel ?? '',
         tags: values.tags?.map((item) => item.value) ?? [],
         template: exportToJsonString(MetadataFormEnvdAdvanced, values),
         buildSource: ImagePackSource.EnvdAdvanced,
@@ -213,6 +214,24 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
   const onSubmit = (values: EnvdFormValues) => {
     submitDockerfileSheet(values)
   }
+
+  const {
+    data: cudaBaseImages = [],
+    error: cudaBaseImagesError,
+    isLoading: isCudaLoading,
+  } = useQuery({
+    queryKey: ['cudaBaseImages'],
+    queryFn: apiGetCudaBaseImages,
+    select: (res) => {
+      // eslint-disable-next-line no-console
+      console.log('CUDA Base Images API Response:', res)
+      return res.data.data.cudaBaseImages.map((item) => ({
+        label: item.label,
+        value: item.value,
+        imageLabel: item.imageLabel,
+      }))
+    },
+  })
 
   useImageTemplateLoader({
     form: form,
@@ -291,12 +310,19 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
                   </FormLabel>
                   <FormControl>
                     <Combobox
-                      items={CUDA_BASE_IMAGE}
+                      items={cudaBaseImages}
                       current={field.value}
                       handleSelect={(value) => field.onChange(value)}
                       formTitle="CUDA版本"
+                      disabled={isCudaLoading}
                     />
                   </FormControl>
+                  {cudaBaseImagesError && (
+                    <FormDescription className="text-destructive">
+                      获取 CUDA 版本失败，请联系管理员
+                    </FormDescription>
+                  )}
+                  {isCudaLoading && <FormDescription>正在加载 CUDA 版本...</FormDescription>}
                   <FormMessage />
                 </FormItem>
               )}
@@ -435,103 +461,6 @@ export function EnvdSheet({
     </SandwichSheet>
   )
 }
-
-const CUDA_BASE_IMAGE: {
-  imageLabel: string
-  label: string
-  value: string
-}[] = [
-  {
-    imageLabel: 'cu12.8.1',
-    label: 'CUDA 12.8.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu12.6.3',
-    label: 'CUDA 12.6.3',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu12.5.1',
-    label: 'CUDA 12.5.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu12.4.1',
-    label: 'CUDA 12.4.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu12.3.2',
-    label: 'CUDA 12.3.2',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.3.2-cudnn9-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu12.2.2',
-    label: 'CUDA 12.2.2',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu12.1.1',
-    label: 'CUDA 12.1.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.1.1-cudnn8-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu11.8.0',
-    label: 'CUDA 11.8.0',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu11.7.1',
-    label: 'CUDA 11.7.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04',
-  },
-  {
-    imageLabel: 'cu11.6.1',
-    label: 'CUDA 11.6.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.6.1-cudnn8-devel-ubuntu20.04',
-  },
-  {
-    imageLabel: 'cu11.5.2',
-    label: 'CUDA 11.5.2',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04',
-  },
-  {
-    imageLabel: 'cu11.4.3',
-    label: 'CUDA 11.4.3',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.4.3-cudnn8-devel-ubuntu20.04',
-  },
-  {
-    imageLabel: 'cu11.3.1',
-    label: 'CUDA 11.3.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04',
-  },
-  {
-    imageLabel: 'cu11.2.2',
-    label: 'CUDA 11.2.2',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.2.2-cudnn8-devel-ubuntu20.04',
-  },
-  {
-    imageLabel: 'cu11.1.1',
-    label: 'CUDA 11.1.1',
-    value: 'crater-harbor.act.buaa.edu.cn/nvidia/cuda:11.1.1-cudnn8-devel-ubuntu20.04',
-  },
-  {
-    imageLabel: 'ubuntu22.04',
-    label: 'Ubuntu 22.04 (no CUDA)',
-    value: 'crater-harbor.act.buaa.edu.cn/library/ubuntu:22.04',
-  },
-  {
-    imageLabel: 'ubuntu20.04',
-    label: 'Ubuntu 20.04 (no CUDA)',
-    value: 'crater-harbor.act.buaa.edu.cn/library/ubuntu:20.04',
-  },
-  {
-    imageLabel: 'ubuntu18.04',
-    label: 'Ubuntu 18.04 (no CUDA)',
-    value: 'crater-harbor.act.buaa.edu.cn/library/ubuntu:18.04',
-  },
-]
 
 const PYTHON_VERSIONS = ['3.13', '3.12', '3.11', '3.10', '3.9', '3.8', '3.7', '3.6']
 
