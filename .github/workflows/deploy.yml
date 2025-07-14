@@ -18,6 +18,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/**'
       - 'crater-website/src/**'        
       - 'crater-website/content/**'
       - 'crater-website/package.json'
