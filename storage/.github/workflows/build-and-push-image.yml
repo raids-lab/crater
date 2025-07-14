@@ -1,0 +1,166 @@
+# Copyright 2025 RAIDS Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Check Code Style, Build and Push Docker Image
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*.*.*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_REPO: raids-lab/storage-server
+  GOLANGCI_LINT_VERSION: v1.61.0
+
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod' 
+
+      - name: Download dependencies
+        run: | 
+          go env -w GO111MODULE=on
+          go env -w GOPROXY=https://goproxy.cn,direct
+          go mod download
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          args: --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
+
+      - name: Upload code quality report
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-report
+          path: gl-code-quality-report.json
+          retention-days: 7
+
+  build_storage_server:
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        platform:
+          - goos: linux
+            goarch: amd64
+            image_platform: linux/amd64
+          - goos: linux
+            goarch: arm64
+            image_platform: linux/arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Download dependencies
+        run: | 
+          go env -w GO111MODULE=on
+          go env -w GOPROXY=https://goproxy.cn,direct
+          go mod download
+
+      - name: Build storage server binaries
+        run: |
+          mkdir -p bin/${{ matrix.platform.image_platform }}
+          go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/storage-server main.go
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.platform.goos }}
+          GOARCH: ${{ matrix.platform.goarch }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.platform.goos }}_${{ matrix.platform.goarch }}  # Forward slash / cannot appear in name
+          path: bin/${{ matrix.platform.image_platform }}
+
+  build_and_push_image:
+    runs-on: ubuntu-latest
+    needs: build_storage_server
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all platform binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: bin/
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+
+      - name: Build and push multi-platform image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            BIN_DIR=bin
+
+      - uses: quartx-analytics/ghcr-cleaner@v1
+        with:
+          owner-type: org # or user
+          token: ${{ secrets.PAT_TOKEN  }}
+          repository-owner: ${{ github.repository_owner }}
+          package-name: storage-server
+          delete-untagged: true
+          keep-at-most: 2
+          skip-tags: v*
