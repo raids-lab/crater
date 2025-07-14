@@ -1,0 +1,9 @@
+[submodule "crater-backend"]
+	path = crater-backend
+	url = https://github.com/raids-lab/crater-backend.git
+[submodule "crater-frontend"]
+	path = crater-frontend
+	url = https://github.com/raids-lab/crater-frontend.git
+[submodule "storage-server"]
+	path = storage-server
+	url = https://github.com/raids-lab/storage-server.git
