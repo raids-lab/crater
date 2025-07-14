@@ -21,9 +21,6 @@ linters-settings:
             desc: Should be replaced by standard lib errors package.
           - pkg: "github.com/instana/testify"
             desc: It's a fork of github.com/stretchr/testify.
-        files:
-          # logrus is allowed to use only in logutils package.
-          - "!**/pkg/logutils/**.go"
   dupl:
     threshold: 100
   funlen:
@@ -55,7 +52,7 @@ linters-settings:
         replacement: "any"
   goimports:
     local-prefixes: github.com/golangci/golangci-lint
-  gomnd:
+  mnd:
     # don't include the "operation" and "assign"
     checks:
       - argument
@@ -146,7 +143,7 @@ issues:
     - path: (.+)_test\.go
       linters:
         - dupl
-        - gomnd
+        - mnd
         - lll
 
     - path: pkg/golinters
