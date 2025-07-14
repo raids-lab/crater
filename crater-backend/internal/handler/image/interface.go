@@ -63,6 +63,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/share", mgr.GetImageGrantedUserOrAccount)
 	g.GET("/user", mgr.UserSearchUngrantedUsers)
 	g.GET("/account", mgr.UserGetImageUngrantedAccounts)
+	g.GET("/cudabaseimage", mgr.UserGetCudaBaseImages)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
