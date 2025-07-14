@@ -921,3 +921,39 @@ func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
 	resp := ImageGrantResponse{UserList: userInfos}
 	resputil.Success(c, resp)
 }
+
+// UserGetCudaBaseImages godoc
+//
+//	@Summary		获取所有Cuda基础镜像
+//	@Description	获取所有可用的Cuda基础镜像列表
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Router			/v1/images/cudabaseimage [GET]
+func (mgr *ImagePackMgr) UserGetCudaBaseImages(c *gin.Context) {
+	// 查询所有 CudaBaseImage 数据
+	cudaBaseImageQuery := query.CudaBaseImage
+	cudaBaseImages, err := cudaBaseImageQuery.WithContext(c).Find()
+	if err != nil {
+		logutils.Log.Errorf("fetch cuda base images failed, err:%v", err)
+		resputil.Error(c, "fetch cuda base images failed", resputil.NotSpecified)
+		return
+	}
+
+	// 转换为值类型切片
+	cudaBaseImageList := []CudaBaseImage{}
+	for _, img := range cudaBaseImages {
+		cudaBaseImageList = append(cudaBaseImageList, CudaBaseImage{
+			Label:      img.Label,
+			ImageLabel: img.ImageLabel,
+			Value:      img.Value,
+		})
+	}
+
+	// 构造响应
+	resp := CudaBaseImagesResponse{
+		CudaBaseImages: cudaBaseImageList,
+	}
+	resputil.Success(c, resp)
+}

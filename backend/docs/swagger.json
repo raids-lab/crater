@@ -3092,6 +3092,27 @@
                 "responses": {}
             }
         },
+        "/v1/images/cudabaseimage": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取所有可用的Cuda基础镜像列表",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "获取所有Cuda基础镜像",
+                "responses": {}
+            }
+        },
         "/v1/images/deleteimage": {
             "post": {
                 "security": [

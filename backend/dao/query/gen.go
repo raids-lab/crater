@@ -21,6 +21,7 @@ var (
 	Account         *account
 	AccountDataset  *accountDataset
 	Alert           *alert
+	CudaBaseImage   *cudaBaseImage
 	Dataset         *dataset
 	Image           *image
 	ImageAccount    *imageAccount
@@ -41,6 +42,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Account = &Q.Account
 	AccountDataset = &Q.AccountDataset
 	Alert = &Q.Alert
+	CudaBaseImage = &Q.CudaBaseImage
 	Dataset = &Q.Dataset
 	Image = &Q.Image
 	ImageAccount = &Q.ImageAccount
@@ -62,6 +64,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Account:         newAccount(db, opts...),
 		AccountDataset:  newAccountDataset(db, opts...),
 		Alert:           newAlert(db, opts...),
+		CudaBaseImage:   newCudaBaseImage(db, opts...),
 		Dataset:         newDataset(db, opts...),
 		Image:           newImage(db, opts...),
 		ImageAccount:    newImageAccount(db, opts...),
@@ -84,6 +87,7 @@ type Query struct {
 	Account         account
 	AccountDataset  accountDataset
 	Alert           alert
+	CudaBaseImage   cudaBaseImage
 	Dataset         dataset
 	Image           image
 	ImageAccount    imageAccount
@@ -107,6 +111,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Account:         q.Account.clone(db),
 		AccountDataset:  q.AccountDataset.clone(db),
 		Alert:           q.Alert.clone(db),
+		CudaBaseImage:   q.CudaBaseImage.clone(db),
 		Dataset:         q.Dataset.clone(db),
 		Image:           q.Image.clone(db),
 		ImageAccount:    q.ImageAccount.clone(db),
@@ -137,6 +142,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Account:         q.Account.replaceDB(db),
 		AccountDataset:  q.AccountDataset.replaceDB(db),
 		Alert:           q.Alert.replaceDB(db),
+		CudaBaseImage:   q.CudaBaseImage.replaceDB(db),
 		Dataset:         q.Dataset.replaceDB(db),
 		Image:           q.Image.replaceDB(db),
 		ImageAccount:    q.ImageAccount.replaceDB(db),
@@ -157,6 +163,7 @@ type queryCtx struct {
 	Account         IAccountDo
 	AccountDataset  IAccountDatasetDo
 	Alert           IAlertDo
+	CudaBaseImage   ICudaBaseImageDo
 	Dataset         IDatasetDo
 	Image           IImageDo
 	ImageAccount    IImageAccountDo
@@ -177,6 +184,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Account:         q.Account.WithContext(ctx),
 		AccountDataset:  q.AccountDataset.WithContext(ctx),
 		Alert:           q.Alert.WithContext(ctx),
+		CudaBaseImage:   q.CudaBaseImage.WithContext(ctx),
 		Dataset:         q.Dataset.WithContext(ctx),
 		Image:           q.Image.WithContext(ctx),
 		ImageAccount:    q.ImageAccount.WithContext(ctx),

@@ -2862,6 +2862,19 @@ paths:
       summary: 创建用户的harbor项目，并返回用户的harbor项目的凭证
       tags:
       - ImagePack
+  /v1/images/cudabaseimage:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有可用的Cuda基础镜像列表
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 获取所有Cuda基础镜像
+      tags:
+      - ImagePack
   /v1/images/deleteimage:
     post:
       consumes:

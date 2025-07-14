@@ -80,3 +80,10 @@ type ImageAccount struct {
 	AccountID uint
 	Account   Account
 }
+
+type CudaBaseImage struct {
+	gorm.Model
+	Label      string `gorm:"type:varchar(128);not null;comment:image label showed in UI"`
+	ImageLabel string `gorm:"uniqueIndex;type:varchar(128);null;comment:image label for imagelink generate"`
+	Value      string `gorm:"type:varchar(512);comment:Full Cuda Image Link"`
+}

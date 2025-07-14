@@ -183,6 +183,10 @@ type (
 	SearchUserResponse struct {
 		UserList []ImageGrantedUsers `json:"userList"`
 	}
+
+	CudaBaseImagesResponse struct {
+		CudaBaseImages []CudaBaseImage `json:"cudaBaseImages"`
+	}
 )
 
 type (
@@ -261,5 +265,11 @@ type (
 	ImageGrantedAccounts struct {
 		Name string `json:"name"`
 		ID   uint   `json:"id"`
+	}
+
+	CudaBaseImage struct {
+		Label      string `json:"label"`
+		ImageLabel string `json:"imageLabel"`
+		Value      string `json:"value"`
 	}
 )
