@@ -101,6 +101,10 @@ export type GetUngrantedAccountsResponse = {
   accountList: ImageAccounts[]
 }
 
+export type CudaBaseImageResponse = {
+  cudaBaseImages: CudaBaseImage[]
+}
+
 export const getHeader = (key: string): string => {
   switch (key) {
     case 'image':
@@ -286,6 +290,12 @@ export interface GetUngrantedAccounts {
   imageID: number
 }
 
+export interface CudaBaseImage {
+  imageLabel: string
+  label: string
+  value: string
+}
+
 export const ImageTaskType = {
   JupyterTask: 1, // Jupyter交互式任务
   WebIDETask: 2, // Web IDE任务
@@ -465,3 +475,6 @@ export const apiUserGetUngrantedAccounts = (data: GetUngrantedAccounts) =>
   instance.get<IResponse<GetUngrantedAccountsResponse>>(`${VERSION}/images/account`, {
     params: data,
   })
+
+export const apiGetCudaBaseImages = () =>
+  instance.get<IResponse<CudaBaseImageResponse>>(`${VERSION}/images/cudabaseimage`)
