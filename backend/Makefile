@@ -59,38 +59,25 @@ migrate: ## Migrate database.
 	@echo "Migrating database..."
 	go run cmd/gorm-gen/models/migrate.go
 
-.PHONY: api-docs
-swagger: ## Generate swagger docs.
+.PHONY: swagger
+swagger: swaggo ## Generate swagger docs.
 	@echo "Generating swagger docs..."
 	$(SWAGGO) init
 
 .PHONY: run
-run: fmt api-docs  ## Run a controller from your host.
+run: fmt swagger  ## Run a controller from your host.
 	export KUBECONFIG="$(KUBECONFIG_PATH)" && \
 	go run main.go --config-file "$(CONFIG_FILE)"
 
 ##@ Build
 
 .PHONY: build
-build: fmt lint swagger # generate vet ## Build manager binary.
+build: fmt lint swagger ## Build manager binary.
 	go build -ldflags="-w -s" -o bin/controller main.go
 
 .PHONY: build-migrate
-build-migrate: fmt lint
+build-migrate: fmt lint ## Build migration binary.
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/migrate cmd/gorm-gen/models/migrate.go
-
-.PHONY: docker-build
-docker-build: fmt swagger ## Build docker image with the manager.
-	docker build -t ${IMG} .
-
-.PHONY: docker-push
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
-
-.PHONY: build-backend
-build-backend:
-	docker build -t ${IMG} -f Dockerfile.
-	docker push ${IMG}
 
 ##@ Build Dependencies
 
