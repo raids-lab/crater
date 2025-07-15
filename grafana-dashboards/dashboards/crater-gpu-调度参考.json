@@ -1,0 +1,772 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "grafana",
+            "uid": "-- Grafana --"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "id": 42,
+    "links": [],
+    "panels": [
+      {
+        "description": "",
+        "fieldConfig": {
+          "defaults": {},
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 24,
+          "x": 0,
+          "y": 0
+        },
+        "id": 7,
+        "options": {
+          "code": {
+            "language": "plaintext",
+            "showLineNumbers": false,
+            "showMiniMap": false
+          },
+          "content": "# 空闲资源查询\n\n目前空闲资源查询会包含课题组专用节点、异常节点，请结合主页的节点概况，分析资源需求是否可以得到满足。",
+          "mode": "markdown"
+        },
+        "pluginVersion": "11.3.0+security-01",
+        "title": "Tips",
+        "type": "text"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 4
+        },
+        "id": 2,
+        "panels": [],
+        "title": "GPU 空闲卡数",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "orange",
+                  "value": 4
+                },
+                {
+                  "color": "blue",
+                  "value": 10
+                },
+                {
+                  "color": "green",
+                  "value": 20
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 5,
+          "w": 24,
+          "x": 0,
+          "y": 5
+        },
+        "id": 1,
+        "maxPerRow": 3,
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "11.3.0+security-01",
+        "repeat": "model",
+        "repeatDirection": "h",
+        "targets": [
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "(sum(kube_node_status_allocatable{resource=~\"$model\"})\n- sum (\n  kube_pod_container_resource_requests{resource=~\"$model\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n)) or sum(kube_node_status_allocatable{resource=~\"$model\"})",
+            "instant": true,
+            "legendFormat": "{{modelName}}",
+            "range": false,
+            "refId": "A"
+          }
+        ],
+        "title": "$model",
+        "type": "stat"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 10
+        },
+        "id": 3,
+        "panels": [],
+        "title": "GPU 节点可分配资源",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "filterable": false,
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "green",
+                  "value": 4
+                }
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "可用 Memory"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "bytes"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "可用 CPU"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text",
+                    "wrapText": false
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "可用 GPU"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "applyToRow": false,
+                    "mode": "gradient",
+                    "type": "color-background",
+                    "wrapText": false
+                  }
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "mode": "thresholds"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "可用 Memory"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text",
+                    "wrapText": false
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "GPU 型号"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text"
+                  }
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "blue",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 24,
+          "x": 0,
+          "y": 11
+        },
+        "id": 4,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "GPU 型号"
+            }
+          ]
+        },
+        "pluginVersion": "11.3.0+security-01",
+        "targets": [
+          {
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "kube_node_status_allocatable{resource=\"cpu\"}\n- ignoring(container, endpoint, instance, job, namespace, pod, resource, service, unit) \nsum by (node) (\n  kube_pod_container_resource_requests{resource=\"cpu\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n)",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "kube_node_status_allocatable{resource=\"memory\"}\n- ignoring(container, endpoint, instance, job, namespace, pod, resource, service, unit) \nsum by (node) (\n  kube_pod_container_resource_requests{resource=\"memory\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n)",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "(kube_node_status_allocatable{resource=~\"nvidia_com_.*\"}\n- ignoring(container, endpoint, instance, job, namespace, pod, service, unit) \nsum by (node, resource) (\n  kube_pod_container_resource_requests{resource=~\"nvidia_com_.*\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n))\nor\nsum by(node, resource) (kube_node_status_allocatable{resource=~\"nvidia_com_.*\"})",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "C"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "sum by (node, modelName) (label_replace(DCGM_FI_DEV_GPU_UTIL, \"node\", \"$1\", \"Hostname\", \"(.*)\"))",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "D"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "sum by (node) (label_replace((count(DCGM_FI_DEV_GPU_UTIL * on (pod) group_left(host_ip) kube_pod_info) by (Hostname,host_ip,modelName)), \"node\", \"$1\", \"Hostname\", \"(.*)\"))",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "E"
+          }
+        ],
+        "title": "",
+        "transformations": [
+          {
+            "filter": {
+              "id": "byRefId",
+              "options": ""
+            },
+            "id": "merge",
+            "options": {}
+          },
+          {
+            "id": "filterFieldsByName",
+            "options": {
+              "byVariable": false,
+              "include": {
+                "names": [
+                  "node",
+                  "Value #A",
+                  "Value #B",
+                  "Value #C",
+                  "modelName",
+                  "Value #E",
+                  "resource"
+                ]
+              }
+            }
+          },
+          {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "regex",
+                    "options": {
+                      "value": "${model}"
+                    }
+                  },
+                  "fieldName": "resource"
+                }
+              ],
+              "match": "any",
+              "type": "include"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Value #E": true,
+                "resource": true
+              },
+              "includeByName": {},
+              "indexByName": {
+                "Value #A": 2,
+                "Value #B": 3,
+                "Value #C": 5,
+                "Value #E": 4,
+                "modelName": 1,
+                "node": 0
+              },
+              "renameByName": {
+                "Value #A": "可用 CPU",
+                "Value #B": "可用 Memory",
+                "Value #C": "可用 GPU",
+                "Value #E": "总 GPU",
+                "modelName": "GPU 型号",
+                "node": "节点"
+              }
+            }
+          }
+        ],
+        "type": "table"
+      },
+      {
+        "collapsed": false,
+        "gridPos": {
+          "h": 1,
+          "w": 24,
+          "x": 0,
+          "y": 20
+        },
+        "id": 5,
+        "panels": [],
+        "title": "CPU 节点可分配资源",
+        "type": "row"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "align": "auto",
+              "cellOptions": {
+                "type": "auto"
+              },
+              "filterable": false,
+              "inspect": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 1
+                },
+                {
+                  "color": "green",
+                  "value": 4
+                }
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Memory"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "bytes"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "总 GPU"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text",
+                    "wrapText": false
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "可用 GPU"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "applyToRow": false,
+                    "mode": "gradient",
+                    "type": "color-background",
+                    "wrapText": false
+                  }
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "mode": "thresholds"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "CPU"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text",
+                    "wrapText": false
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Memory"
+              },
+              "properties": [
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text",
+                    "wrapText": false
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 24,
+          "x": 0,
+          "y": 21
+        },
+        "id": 6,
+        "options": {
+          "cellHeight": "sm",
+          "footer": {
+            "countRows": false,
+            "enablePagination": false,
+            "fields": "",
+            "reducer": [
+              "sum"
+            ],
+            "show": false
+          },
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "GPU 型号"
+            }
+          ]
+        },
+        "pluginVersion": "11.3.0+security-01",
+        "targets": [
+          {
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "kube_node_status_allocatable{resource=\"cpu\",node!~\"dell-.*\"}\n- ignoring(container, endpoint, instance, job, namespace, pod, resource, service, unit) \nsum by (node) (\n  kube_pod_container_resource_requests{resource=\"cpu\",node!~\"dell-.*\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n)",
+            "format": "table",
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "kube_node_status_allocatable{resource=\"memory\",node!~\"dell-.*\"}\n- ignoring(container, endpoint, instance, job, namespace, pod, resource, service, unit) \nsum by (node) (\n  kube_pod_container_resource_requests{resource=\"memory\",node!~\"dell-.*\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n)",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "(kube_node_status_allocatable{resource=~\"nvidia_com_.*\"}\n- ignoring(container, endpoint, instance, job, namespace, pod, service, unit) \nsum by (node, resource) (\n  kube_pod_container_resource_requests{resource=~\"nvidia_com_.*\"} \n  * on(pod, namespace) group_left() \n  kube_pod_status_phase{phase=\"Running\"}\n))\nor\nsum by(node) (kube_node_status_allocatable{resource=~\"nvidia_com_.*\"})",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "C"
+          }
+        ],
+        "title": "",
+        "transformations": [
+          {
+            "filter": {
+              "id": "byRefId",
+              "options": ""
+            },
+            "id": "merge",
+            "options": {}
+          },
+          {
+            "id": "filterFieldsByName",
+            "options": {
+              "byVariable": false,
+              "include": {
+                "names": [
+                  "node",
+                  "Value #A",
+                  "Value #B",
+                  "Value #C",
+                  "modelName",
+                  "Value #E",
+                  "resource"
+                ]
+              }
+            }
+          },
+          {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "isNotNull",
+                    "options": {}
+                  },
+                  "fieldName": "resource"
+                }
+              ],
+              "match": "all",
+              "type": "exclude"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Value #C": true,
+                "resource": true
+              },
+              "includeByName": {},
+              "indexByName": {
+                "Value #A": 2,
+                "Value #B": 3,
+                "Value #C": 5,
+                "Value #E": 4,
+                "modelName": 1,
+                "node": 0
+              },
+              "renameByName": {
+                "Value #A": "CPU",
+                "Value #B": "Memory",
+                "Value #C": "可用 GPU",
+                "Value #E": "总 GPU",
+                "modelName": "GPU 型号",
+                "node": "节点"
+              }
+            }
+          }
+        ],
+        "type": "table"
+      }
+    ],
+    "preload": false,
+    "schemaVersion": 40,
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "allValue": "nvidia_com_.*",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "definition": "label_values(kube_node_status_allocatable{resource=~\"nvidia_com_.*\"},resource)",
+          "includeAll": true,
+          "label": "GPU 型号",
+          "name": "model",
+          "options": [],
+          "query": {
+            "qryType": 5,
+            "query": "label_values(kube_node_status_allocatable{resource=~\"nvidia_com_.*\"},resource)",
+            "refId": "PrometheusVariableQueryEditor-VariableQuery"
+          },
+          "refresh": 1,
+          "regex": "",
+          "type": "query"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-5m",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Crater GPU 调度参考",
+    "uid": "be9oh7yk24jy8f",
+    "version": 28,
+    "weekStart": ""
+  }
