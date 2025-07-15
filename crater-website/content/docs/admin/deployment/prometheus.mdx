@@ -1,0 +1,74 @@
+---
+title: Prometheus Stack Deployment Guide
+description: kube-prometheus-stack provides comprehensive monitoring including GPU, job lifecycle, and cluster metrics with Rook Ceph RBD storage backend.
+---
+
+## Overview
+
+Crater relies on the **kube-prometheus-stack** to provide a robust and extensible monitoring solution. It powers real-time and historical observability for:
+
+- Cluster resource usage (CPU, memory, GPU, storage)
+- Job lifecycle metrics
+- System-level performance indicators
+- GPU health and utilization (via DCGM)
+- Application-specific custom metrics
+
+### Core Components
+
+- **Prometheus**: Time-series database for metrics collection and alerting
+- **Grafana**: Dashboard visualization and user-facing metrics panels
+- **Alertmanager**: Optional alert routing system (disabled by default)
+- **DCGM Exporter**: From `gpu-operator`, exports GPU metrics to Prometheus
+- **metrics-server**: Provides Kubernetes resource metrics (CPU, memory)
+
+Crater integrates Grafana dashboards **directly into its frontend**, providing users with multi-dimensional insights without leaving the platform UI.
+
+---
+
+## Storage Backend
+
+We use **Rook Ceph RBD** as the persistent storage backend for Prometheus.
+
+This ensures:
+
+- High availability and durability of historical metrics
+- Block-level performance suitable for large-scale time-series ingestion
+
+> 📌 Make sure `rook-ceph` is correctly installed and the `rook-ceph-rbd` StorageClass is available **before** installing Prometheus stack.
+
+---
+
+## Dependencies
+
+To fully enable Crater monitoring, please ensure the following components are **installed first**:
+
+| Dependency         | Purpose                                           | Reference                                                                 |
+|--------------------|---------------------------------------------------|---------------------------------------------------------------------------|
+| `rook-ceph-rbd`    | Persistent storage backend                        | [docs/rook-ceph.md](./rook-ceph.md)                                       |
+| `gpu-operator`     | DCGM Exporter (NVIDIA GPU metrics)                | [docs/gpu-operator.md](./gpu-operator.md)                                 |
+| `metrics-server`   | Basic CPU/Memory resource metrics                 | [docs/metrics-server.md](./metrics-server.md)                             |
+
+---
+
+## Crater Customizations
+
+We provide modified `values.yaml` and subchart configurations for:
+
+- Enabling DCGM metrics scraping
+- Preloading a set of Grafana dashboards relevant to Crater workloads
+- Setting Grafana service type to `ClusterIP` with Crater-managed ingress
+- Configuring Prometheus with a long retention window and custom storage class
+- Adjusting image registries and repository paths
+
+Please review and edit these configurations to match your cluster setup, including:
+
+- 🔁 **StorageClass**: Ensure it's set to `rook-ceph-rbd`
+- 📦 **Image Repositories**: Match your local/private registry if needed
+
+---
+
+## Installation
+
+We recommend using the official Helm chart with Crater's preconfigured values.
+ 
+📖 Detailed guide: [`deployments/prometheus-stack/README.md`](../deployments/prometheus-stack/README.md)
