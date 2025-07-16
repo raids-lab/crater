@@ -37,32 +37,32 @@ tolerations:
 affinity:
   nodeAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 100
-      preference:
-        matchExpressions:
-          - key: nvidia.com/gpu.present
-            operator: NotIn
-            values:
-              - "true"
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: nvidia.com/gpu.present
+              operator: NotIn
+              values:
+                - "true"
 
 web:
   migrate:
     createMigrationJob: true
     admin:
       username: "crater-admin"
-      password: "<MASKED>"  # 密码已掩码
+      password: "<MASKED>" # 密码已掩码
   ingress:
     host: "gpu.raids-lab.cn"
   grafana:
     address: http://prometheus-grafana.monitoring
-    token: "<MASKED>"  # Bearer令牌已掩码
+    token: "<MASKED>" # Bearer令牌已掩码
     ancestor: https://gpu.raids-lab.cn
     host: gpu-grafana.raids-lab.cn
 
 # BuildKit configuration variables
 buildkitConfig:
   replicas: 3
-  dockerconfigjson: "<MASKED>"  # Docker认证配置已掩码
+  dockerconfigjson: "<MASKED>" # Docker认证配置已掩码
   httpsProxy: 192.168.5.58:1080
   noProxy: crater-harbor.raids-lab.cn
   resources:
@@ -78,7 +78,7 @@ buildkitConfig:
     maxUsedSpace: "400GB"
     minFreeSpace: "50GB"
     reservedSpace: "50GB"
-  
+
 # Frontend configuration variables
 frontendConfig:
   version: "1.0.0"
@@ -121,7 +121,7 @@ backendConfig:
     port: 5432
     dbname: crater
     user: crater
-    password: "<MASKED>"  # 数据库密码已掩码
+    password: "<MASKED>" # 数据库密码已掩码
     sslmode: disable
     TimeZone: Asia/Shanghai
   userSpacePrefix: sugon-gpu-home-lab
@@ -139,26 +139,26 @@ backendConfig:
     image:
       registryServer: gpu-harbor.raids-lab.cn
       registryUser: robot$gpu-crater
-      registryPass: "<MASKED>"  # 仓库密码已掩码
+      registryPass: "<MASKED>" # 仓库密码已掩码
       registryProject: crater
       registryAdmin: admin
-      registryAdminPass: "<MASKED>"  # 管理员密码已掩码
+      registryAdminPass: "<MASKED>" # 管理员密码已掩码
     openAPI:
       url: <MASKED>
-      chameleonKey: "<MASKED>"  # API密钥已掩码
-      accessToken: "<MASKED>"   # 访问令牌已掩码
+      chameleonKey: "<MASKED>" # API密钥已掩码
+      accessToken: "<MASKED>" # 访问令牌已掩码
     auth:
       userName: <MASKED>
-      password: "<MASKED>"     # LDAP密码已掩码
+      password: "<MASKED>" # LDAP密码已掩码
       address: <MASKED>
       searchDN: <MASKED>
-      accessTokenSecret: "<MASKED>"   # Token密钥已掩码
-      refreshTokenSecret: "<MASKED>"  # Token密钥已掩码
+      accessTokenSecret: "<MASKED>" # Token密钥已掩码
+      refreshTokenSecret: "<MASKED>" # Token密钥已掩码
     smtp:
       host: mail.raids-lab.cn
       port: 25
       user: notify
-      password: "<MASKED>"  # SMTP密码已掩码
+      password: "<MASKED>" # SMTP密码已掩码
       notify: notify@raids-lab.cn
   schedulerPlugins:
     aijob:
@@ -170,7 +170,7 @@ backendConfig:
       predictionServiceAddress: http://resource-analyze-svc.kube-gpu-sparse:80
   dindArgs:
     buildkitImage: crater-harbor.raids-lab.cn/xxx/buildkit/buildctl:v0.18.2
-    buildxImage: crater-harbor.raids-lab.cn/xxx/buildx-multiarch:v5
+    buildxImage: crater-harbor.raids-lab.cn/xxx/buildx-multiarch:v6
     nerdctlImage: crater-harbor.raids-lab.cn/crater/nerdctl:2.0.1-retry
     envdImage: gpu-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.0
     envdAmdImage: crater-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.1-amd
@@ -179,7 +179,7 @@ backendConfig:
 # CronJob Config
 cronjobConfig:
   USERNAME: "<MASKED>"
-  PASSWORD: "<MASKED>"  # 密码已掩码
+  PASSWORD: "<MASKED>" # 密码已掩码
   HOST: "gpu.raids-lab.cn"
   jobs:
     lowGPUUtil:
@@ -199,15 +199,15 @@ cronjobConfig:
 tls:
   base:
     enabled: false
-    cert: "<MASKED>"  # 证书已掩码
-    key: "<MASKED>"   # 私钥已掩码
+    cert: "<MASKED>" # 证书已掩码
+    key: "<MASKED>" # 私钥已掩码
   forward:
     enabled: false
-    cert: "<MASKED>"  # 证书已掩码
-    key: "<MASKED>"   # 私钥已掩码
+    cert: "<MASKED>" # 证书已掩码
+    key: "<MASKED>" # 私钥已掩码
 
 ssConfig:
-  content: "<MASKED>"  # 敏感配置文件内容已掩码
+  content: "<MASKED>" # 敏感配置文件内容已掩码
 
 # pvc configuration variables
 storage:
