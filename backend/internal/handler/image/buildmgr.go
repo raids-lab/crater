@@ -207,7 +207,7 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			name	query	string	true	"获取ImagePack的name"
-//	@Router			/v1/images/get [GET]
+//	@Router			/v1/images/getbyname [GET]
 func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 	kanikoQuery := query.Kaniko
 	var req GetKanikoRequest
