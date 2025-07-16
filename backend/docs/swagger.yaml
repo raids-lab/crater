@@ -2991,6 +2991,25 @@ paths:
       summary: 获取imagepack的模板信息
       tags:
       - ImagePack
+  /v1/images/getbyname:
+    get:
+      consumes:
+      - application/json
+      description: 获取imagepackname，搜索到imagepack
+      parameters:
+      - description: 获取ImagePack的name
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 获取imagepack的详细信息
+      tags:
+      - ImagePack
   /v1/images/grant:
     get:
       consumes:
