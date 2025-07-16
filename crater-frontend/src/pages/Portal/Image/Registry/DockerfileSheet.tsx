@@ -99,7 +99,7 @@ const dockerfileFormSchema = z.object({
         value: z.string(),
       })
     )
-    .optional(),
+    .min(1, '至少选择一个架构'),
 })
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>

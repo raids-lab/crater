@@ -146,7 +146,7 @@ const pipAptFormSchema = z.object({
         value: z.string(),
       })
     )
-    .optional(),
+    .min(1, '至少选择一个架构'),
 })
 
 export type PipAptFormValues = z.infer<typeof pipAptFormSchema>
