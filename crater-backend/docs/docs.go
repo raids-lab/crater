@@ -3306,6 +3306,36 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/images/getbyname": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取imagepackname，搜索到imagepack",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "获取imagepack的详细信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "获取ImagePack的name",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/v1/images/grant": {
             "get": {
                 "security": [

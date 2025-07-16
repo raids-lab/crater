@@ -74,18 +74,39 @@ func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	archs := strings.Join(data.Archs, ",")
-	buildArgs := []string{
-		"--progress", "plain",
-		"--platform", archs,
-		"--file", "/workspace/Dockerfile",
-		"--output", output,
-		"/workspace",
+
+	// 判断archs字符串是否包含arm
+	appendArmCmd := ""
+	if strings.Contains(archs, "arm") {
+		appendArmCmd = `docker buildx create \
+		--name multi-platform-builder \
+		--append \
+		--node arm-node \
+		--driver remote tcp://buildkitd.buildkit-arm:1234 && \
+		`
 	}
+
+	// 构建完整的命令
+	cmd := fmt.Sprintf(`
+		docker buildx create \
+		--name multi-platform-builder \
+		--node amd-node \
+		--driver remote tcp://buildkitd.crater-images:1234 && \
+		%s	docker buildx use multi-platform-builder && \
+		docker buildx build --progress plain --platform %s --file /workspace/Dockerfile --output %s /workspace
+	`, appendArmCmd, archs, output)
+
+	setupCommands := []string{
+		"/bin/sh",
+		"-c",
+		cmd,
+	}
+
 	buildkitContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
 			Image: config.GetConfig().DindArgs.BuildxImage,
-			Args:  buildArgs,
+			Args:  setupCommands,
 			Env: []corev1.EnvVar{
 				{
 					Name:  "DOCKER_CONFIG",
