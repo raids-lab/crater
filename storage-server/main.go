@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"os"
 	"webdav/dao/query"
-	"webdav/service"
-
 	"webdav/logutils"
+	"webdav/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +35,11 @@ func main() {
 	webdavGroup := r.Group("api/ss", service.WebDAVMiddleware())
 	service.RegisterDataset(webdavGroup)
 	service.RegisterFile(webdavGroup)
-	err = r.Run(":7320")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "7320" // 默认端口
+	}
+	err = r.Run(":" + port)
 	if err != nil {
 		logutils.Log.Fatal(err)
 	}

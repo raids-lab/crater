@@ -1,93 +1,151 @@
-# WebDAV
+#  Storage server
+
+Crater is a Kubernetes-based GPU cluster management system providing a comprehensive solution for GPU resource orchestration.
 
 
 
-## Getting started
+## 💻 Development Guide
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Before getting started with development, please ensure your environment has the following tools installed:
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **Go**: Version `v1.22.1` is recommended  
+  📖 [Go Installation Guide](https://go.dev/doc/install)
 
-## Add your files
+- **Kubectl**: Version `v1.22.1` is recommended  
+  📖 [Kubectl Installation Guide](https://kubernetes.io/docs/tasks/tools/)
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
 
+### 📐 Code Style & Linting
+
+This project uses [`golangci-lint`](https://golangci-lint.run/) to enforce Go code conventions and best practices. To avoid running it manually, we recommend setting up a Git pre-commit hook to automatically check the code before each commit.
+
+After installation, you might need to add your GOPATH to the system PATH so that golangci-lint can be used in the terminal. For example, on Linux:
+
+```bash
+# Check your GOPATH
+go env GOPATH
+# /Users/your-username/go
+
+# Add the path to .bashrc or .zshrc
+export PATH="/Users/your-username/go/bin:$PATH"
+
+# Reload the shell and verify
+golangci-lint --version
+# golangci-lint has version 1.61.0
 ```
-cd existing_repo
-git remote add origin https://github.com/raids-lab/Storage-Server.git
-git branch -M main
-git push -uf origin main
+#### Setting Up Git Pre-Commit Hook
+
+Copy the `.githook/pre-commit` script to your Git hooks directory and make it executable:
+
+**Linux/macOS:**
+```bash
+cp .githook/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+Windows:
+
+* Copy the script to .git/hooks/pre-commit
+
+* Modify the script to replace golangci-lint with golangci-lint.exe if needed, or adapt it into a .bat file.
+
+With the hook in place, golangci-lint will automatically run on staged files before each commit.
+
+
+
+#### 🛠️ Database Code Generation
+The project uses GORM Gen to generate boilerplate code for database CRUD operations.
+
+Generation scripts and documentation can be found in: [`gorm_gen`](./cmd/gorm-gen/README.md)
+
+Please regenerate the code after modifying database models or schema definitions, while CI pipeline will automatically make database migrations.
+
+###  Project Configuration
+Install dependencies and plugins:
+```bash
+go mod download
+```
+Sure! Here's the **English version** of the **"Running the Code"** section for your `README.md`, divided into two parts: **Local Development** and **Kubernetes Deployment**, with a recommendation for the latter.
+
+---
+
+## 🚀 Running the Code
+
+This project supports two ways to run: **Local Development** and **Deployment on a Kubernetes Cluster**. We **recommend using the Kubernetes deployment** for full functionality and behavior closer to production.
+
+---
+
+### 🧑‍💻 Local Development
+
+> Suitable for quick testing and development phases.
+
+#### 📁 Directory Setup:
+
+**Create a folder named `crater` in the project root directory to simulate file handling behavior:**
+
+```bash
+mkdir crater
 ```
 
-## Integrate with your tools
+This directory will act as the root for file uploads and processing.
 
-- [ ] [Set up project integrations](https://github.com/raids-lab/Storage-Server/-/settings/integrations)
+#### 📄 Configuration:
 
-## Collaborate with your team
+Make sure you have a [config.yaml](./etc/config.yaml) file with the correct database settings. 
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Create a `.env` file at the root directory to customize local ports. This file is ignored by Git:
 
-## Test and Deploy
+```env
+PORT=xxxx
+```
 
-Use the built-in continuous integration in GitLab.
+#### 🚀 Run the Application:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+make run
+```
 
-***
+The service will start and listen on `localhost:port` by default.
 
-# Editing this README
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+---
 
-## Suggestions for a good README
+### ☸️ Deploying to Kubernetes 
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+#### ✅ Prerequisites:
 
-## Name
-Choose a self-explaining name for your project.
+- Docker
+- Access to a Kubernetes cluster (`kubectl`)
+- A PVC named `crater-rw-storage` already created (for persistent file storage)
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+#### 📦 Build and Push the Docker Image:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+docker build -t your-registry/crater-webdav:latest .
+docker push your-registry/crater-webdav:latest
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+> Replace `your-registry` with your actual container registry.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+#### 🚀 Deploy to Kubernetes:
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Make sure the following files exist in your current directory:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- `Dockerfile`
+- `deployment.yaml`
+- `service.yaml` (if applicable)
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+You can find these files in https://github.com/raids-lab/crater/tree/main/charts/crater/templates/storage-server
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Apply the manifests:
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+```bash
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+> Ensure that the `deployment.yaml` correctly references the image and mounts the PVC `crater-rw-storage`.
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### 🚀 Quik Deployment
+To deploy Crater Project in a production environment, we provide a Helm Chart available at: [Crater Helm Chart](https://github.com/raids-lab/crater).
 
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Please refer to the main documentation for detailed deployment instructions.
