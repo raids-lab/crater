@@ -1,0 +1,112 @@
+{{- if .Values.buildkitConfig.amdConfig.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: buildkitd-x86
+  name: buildkitd-x86
+  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+spec:
+  serviceName: buildkitd-x86
+  podManagementPolicy: Parallel
+  replicas: {{ .Values.buildkitConfig.amdConfig.replicas }}
+  selector:
+    matchLabels:
+      app: buildkitd-x86
+  template:
+    metadata:
+      labels:
+        app: buildkitd-x86
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}  
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: buildkitd
+          image: {{ .Values.images.buildkit.repository }}:{{ .Values.images.buildkit.tag }}
+          args:
+            - --addr
+            - unix:///run/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --config
+            - /root/.config/buildkit/buildkitd.toml
+          readinessProbe:
+            exec:
+              command:
+                - buildctl
+                - debug
+                - workers
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          livenessProbe:
+            exec:
+              command:
+                - buildctl
+                - debug
+                - workers
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          ports:
+            - containerPort: 1234
+              protocol: TCP
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /root/.local/share/buildkit
+              name: buildkit-x86
+            - name: config
+              readOnly: true
+              mountPath: /root/.config/buildkit/buildkitd.toml
+              subPath: buildkitd.toml
+          resources:
+            requests:
+              cpu: {{ .Values.buildkitConfig.generalConfig.resources.requests.cpu }}
+              memory: {{ .Values.buildkitConfig.generalConfig.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.buildkitConfig.generalConfig.resources.limits.cpu }}
+              memory: {{ .Values.buildkitConfig.generalConfig.resources.limits.memory }}
+          env:
+            - name: HTTPS_PROXY
+              value: {{ .Values.buildkitConfig.generalConfig.httpsProxy }}
+      volumes:
+        - name: config
+          configMap:
+            name: buildkitd-config-x86
+            items:
+              - key: buildkitd.toml
+                path: buildkitd.toml
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: buildkit-x86
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.buildkitConfig.amdConfig.cache.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.buildkitConfig.amdConfig.cache.storageSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: buildkitd-x86
+  name: buildkitd-x86
+  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+spec:
+  ports:
+    - port: 1234
+      protocol: TCP
+  selector:
+    app: buildkitd-x86
+{{- end }}
