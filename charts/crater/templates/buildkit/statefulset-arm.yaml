@@ -1,0 +1,117 @@
+{{- if .Values.buildkitConfig.armConfig.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: buildkitd-arm
+  name: buildkitd-arm
+  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+spec:
+  serviceName: buildkitd-arm
+  podManagementPolicy: Parallel
+  replicas: {{ .Values.buildkitConfig.armConfig.replicas }}
+  selector:
+    matchLabels:
+      app: buildkitd-arm
+  template:
+    metadata:
+      labels:
+        app: buildkitd-arm
+    spec:
+      tolerations:
+      - key: "arm"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}  
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: buildkitd
+          image: {{ .Values.images.buildkit.repository }}:{{ .Values.images.buildkit.tag }}
+          args:
+            - --addr
+            - unix:///run/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --config
+            - /root/.config/buildkit/buildkitd.toml
+          readinessProbe:
+            exec:
+              command:
+                - buildctl
+                - debug
+                - workers
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          livenessProbe:
+            exec:
+              command:
+                - buildctl
+                - debug
+                - workers
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          ports:
+            - containerPort: 1234
+              protocol: TCP
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /root/.local/share/buildkit
+              name: buildkit-arm
+            - name: config
+              readOnly: true
+              mountPath: /root/.config/buildkit/buildkitd.toml
+              subPath: buildkitd.toml
+          resources:
+            requests:
+              cpu: {{ .Values.buildkitConfig.generalConfig.resources.requests.cpu }}
+              memory: {{ .Values.buildkitConfig.generalConfig.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.buildkitConfig.generalConfig.resources.limits.cpu }}
+              memory: {{ .Values.buildkitConfig.generalConfig.resources.limits.memory }}
+          env:
+            - name: HTTPS_PROXY
+              value: {{ .Values.buildkitConfig.generalConfig.httpsProxy }}
+      volumes:
+        - name: config
+          configMap:
+            name: buildkitd-config-arm
+            items:
+              - key: buildkitd.toml
+                path: buildkitd.toml
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: buildkit-arm
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.buildkitConfig.armConfig.cache.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.buildkitConfig.armConfig.cache.storageSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: buildkitd-arm
+  name: buildkitd-arm
+  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+spec:
+  ports:
+    - port: 1234
+      protocol: TCP
+  selector:
+    app: buildkitd-arm
+{{- end }}
