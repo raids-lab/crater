@@ -88,12 +88,9 @@ type Config struct {
 	} `yaml:"schedulerPlugins"`
 	// dind plugin
 	DindArgs struct {
-		BuildkitImage string `yaml:"buildkitImage"`
-		BuildxImage   string `yaml:"buildxImage"` // Image for buildx frontend
-		NerdctlImage  string `yaml:"nerdctlImage"`
-		EnvdImage     string `yaml:"envdImage"`
-		EnvdAmdImage  string `yaml:"envdAmdImage"`
-		EnvdArmImage  string `yaml:"envdArmImage"` // Image for ARM architecture
+		BuildxImage  string `yaml:"buildxImage"` // Image for buildx frontend
+		NerdctlImage string `yaml:"nerdctlImage"`
+		EnvdImage    string `yaml:"envdImage"`
 	} `yaml:"dindArgs"`
 	// tls secret name
 	TLSSecretName        string `yaml:"tlsSecretName"`
