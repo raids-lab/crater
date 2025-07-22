@@ -24,7 +24,6 @@ jobs:
       - name: AutoCorrect and Commit (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: huacnlee/autocorrect-action@main
-        working-directory: ./crater-website
         with:
           args: --fix
 
@@ -40,6 +39,5 @@ jobs:
       - name: Lint Check (for forked PRs)
         if: github.event.pull_request.head.repo.full_name != github.repository
         uses: huacnlee/autocorrect-action@main
-        working-directory: ./crater-website
         with:
           args: --lint
