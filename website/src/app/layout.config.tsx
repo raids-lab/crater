@@ -83,7 +83,7 @@ export function baseOptions(locale: string): BaseLayoutProps {
       {
         text: locale === "cn" ? "开始使用" : "Get Started",
         icon: <ExternalLinkIcon />,
-        url: "https://gpu.act.buaa.edu.cn/portal",
+        url: `https://raids-lab.github.io/crater/${locale}/docs/admin/deployment/overview/|||https://gpu.act.buaa.edu.cn/portal`,
       },
     ],
     githubUrl: 'https://github.com/raids-lab/crater',
