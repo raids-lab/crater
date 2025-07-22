@@ -93,7 +93,7 @@ SWAGGO ?= $(LOCATION)/swag
 HACK_DIR ?= $(PWD)/hack
 
 ## Tool Versions
-GOLANGCI_LINT_VERSION ?= v1.61.0
+GOLANGCI_LINT_VERSION ?= v2.2.1
 SWAGGO_VERSION ?= v1.16.3
 GOIMPORTS_VERSION ?= v0.28.0
 
@@ -101,7 +101,7 @@ GOIMPORTS_VERSION ?= v0.28.0
 golangci-lint: $(GOLANGCI_LINT) ## Install golangci-lint
 $(GOLANGCI_LINT): $(LOCATION)
 	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
-	GOBIN=$(LOCATION) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	GOBIN=$(LOCATION) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 .PHONY: goimports
 goimports: $(GOIMPORTS) ## Install goimports

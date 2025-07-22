@@ -340,7 +340,8 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequest
 
 	// if no expressions, use prefer
 	gpuCount := GetGPUCountFromResource(totalRequests)
-	if gpuCount == 0 {
+	switch gpuCount {
+	case 0:
 		return ptr.To(v1.Affinity{
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
@@ -363,7 +364,7 @@ func GenerateNodeAffinity(expressions []v1.NodeSelectorRequirement, totalRequest
 				},
 			}),
 		})
-	} else if gpuCount == 1 {
+	case 1:
 		return ptr.To(v1.Affinity{
 			NodeAffinity: ptr.To(v1.NodeAffinity{
 				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{

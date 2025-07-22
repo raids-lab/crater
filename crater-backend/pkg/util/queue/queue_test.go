@@ -104,10 +104,10 @@ func TestHeap_PushIfNotPresent(t *testing.T) {
 	_ = h.PushIfNotPresent(mkHeapObj("zab", 30))
 	_ = h.PushIfNotPresent(mkHeapObj("foo", 13)) // This is not added.
 
-	if length := len(h.data.items); length != 4 {
+	if length := len(h.items); length != 4 {
 		t.Errorf("unexpected number of items: %d", length)
 	}
-	if val := h.data.items["foo"].obj.(testHeapObject).val; val != 10 {
+	if val := h.items["foo"].obj.(testHeapObject).val; val != 10 {
 		t.Errorf("unexpected value: %d", val)
 	}
 	item := h.Pop()
@@ -139,7 +139,7 @@ func TestHeap_PushOrUpdate(t *testing.T) {
 	h.PushOrUpdate(mkHeapObj("foo", 1)) // This behaviors as update.
 	h.PushOrUpdate(mkHeapObj("zab", 8)) // This behaviors as add.
 
-	if length := len(h.data.items); length != 3 {
+	if length := len(h.items); length != 3 {
 		t.Errorf("unexpected number of items: %d", length)
 	}
 	item := h.Pop()
@@ -169,9 +169,9 @@ func TestHeap_Delete(t *testing.T) {
 	}
 	h.PushOrUpdate(mkHeapObj("zab", 30))
 	h.PushOrUpdate(mkHeapObj("faz", 30))
-	length := h.data.Len()
+	length := h.Len()
 	h.Delete("non-existent")
-	if length != h.data.Len() {
+	if length != h.Len() {
 		t.Fatalf("Didn't expect any item removal")
 	}
 	// Delete tail.
@@ -186,7 +186,7 @@ func TestHeap_Delete(t *testing.T) {
 	if e, a := 30, item.(testHeapObject).val; a != e {
 		t.Fatalf("expected %d, got %d", e, a)
 	}
-	if h.data.Len() != 0 {
+	if h.Len() != 0 {
 		t.Fatalf("expected an empty heap.")
 	}
 }
@@ -202,7 +202,7 @@ func TestHeap_Update(t *testing.T) {
 
 	// Update an item to a value that should push it to the head.
 	h.PushOrUpdate(mkHeapObj("baz", 0))
-	if h.data.keys[0] != "baz" || h.data.items["baz"].index != 0 {
+	if h.keys[0] != "baz" || h.items["baz"].index != 0 {
 		t.Fatalf("expected baz to be at the head")
 	}
 	item := h.Pop()
@@ -211,7 +211,7 @@ func TestHeap_Update(t *testing.T) {
 	}
 	// Update bar to push it farther back in the queue.
 	h.PushOrUpdate(mkHeapObj("bar", 100))
-	if h.data.keys[0] != "foo" || h.data.items["foo"].index != 0 {
+	if h.keys[0] != "foo" || h.items["foo"].index != 0 {
 		t.Fatalf("expected foo to be at the head")
 	}
 }

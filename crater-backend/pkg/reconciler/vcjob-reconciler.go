@@ -77,6 +77,7 @@ func NewVcJobReconciler(
 // SetupWithManager sets up the controller with the Manager.
 func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("vcjob-reconciler").
 		For(&batch.Job{}).
 		WithOptions(controller.Options{}).
 		Complete(r)
@@ -294,10 +295,10 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
 	for _, condition := range conditions {
-		if condition.Status == batch.Running {
+		switch condition.Status {
+		case batch.Running:
 			runningTimestamp = condition.LastTransitionTime.Time
-		} else if condition.Status == batch.Completed || condition.Status == batch.Failed ||
-			condition.Status == batch.Aborted || condition.Status == batch.Terminated {
+		case batch.Completed, batch.Failed, batch.Aborted, batch.Terminated:
 			completedTimestamp = condition.LastTransitionTime.Time
 		}
 	}

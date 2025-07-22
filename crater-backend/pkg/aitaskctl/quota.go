@@ -39,9 +39,10 @@ func (info *QuotaInfo) AddTask(task *model.AITask) {
 	if _, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
 		resourceRequest, _ := model.JSONToResourceList(task.ResourceRequest)
-		if task.SLO == model.EmiasHighSLO {
+		switch task.SLO {
+		case model.EmiasHighSLO:
 			AddResourceList(info.HardUsed, resourceRequest)
-		} else if task.SLO == model.EmiasLowSLO {
+		case model.EmiasLowSLO:
 			AddResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
@@ -53,9 +54,10 @@ func (info *QuotaInfoSnapshot) AddTask(task *model.AITask) {
 	if _, ok := info.UsedTasks[key]; !ok {
 		info.UsedTasks[key] = task
 		resourceRequest, _ := model.JSONToResourceList(task.ResourceRequest)
-		if task.SLO == model.EmiasHighSLO {
+		switch task.SLO {
+		case model.EmiasHighSLO:
 			AddResourceList(info.HardUsed, resourceRequest)
-		} else if task.SLO == model.EmiasLowSLO {
+		case model.EmiasLowSLO:
 			AddResourceList(info.SoftUsed, resourceRequest)
 		}
 	}
@@ -70,9 +72,10 @@ func (info *QuotaInfo) DeleteTask(task *model.AITask) {
 	if task, ok := info.UsedTasks[key]; ok {
 		delete(info.UsedTasks, key)
 		resourceRequest, _ := model.JSONToResourceList(task.ResourceRequest)
-		if task.SLO == model.EmiasHighSLO {
+		switch task.SLO {
+		case model.EmiasHighSLO:
 			SubResourceList(info.HardUsed, resourceRequest)
-		} else if task.SLO == model.EmiasLowSLO {
+		case model.EmiasLowSLO:
 			SubResourceList(info.SoftUsed, resourceRequest)
 		}
 	}

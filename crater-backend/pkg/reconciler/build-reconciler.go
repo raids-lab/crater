@@ -65,6 +65,7 @@ func NewBuildKitReconciler(crClient client.Client, scheme *runtime.Scheme,
 // SetupWithManager sets up the controller with the Manager.
 func (r *BuildKitReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("buildkit-reconciler").
 		For(&batchv1.Job{}).
 		Owns(&v1.Pod{}).
 		WithOptions(controller.Options{}).

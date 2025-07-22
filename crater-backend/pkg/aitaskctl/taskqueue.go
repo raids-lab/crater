@@ -27,9 +27,10 @@ func (tq *TaskQueue) InitUserQueue(username string, taskList []*model.AITask) {
 	q := NewUserQueue(username)
 	for i := range taskList {
 		task := taskList[i]
-		if task.SLO == model.EmiasHighSLO {
+		switch task.SLO {
+		case model.EmiasHighSLO:
 			q.gauranteedQueue.PushIfNotPresent(task)
-		} else if task.SLO == model.EmiasLowSLO {
+		case model.EmiasLowSLO:
 			q.bestEffortQueue.PushIfNotPresent(task)
 		}
 	}
@@ -44,9 +45,10 @@ func (tq *TaskQueue) AddTask(task *model.AITask) {
 	if !ok {
 		return
 	}
-	if task.SLO == model.EmiasHighSLO {
+	switch task.SLO {
+	case model.EmiasHighSLO:
 		q.gauranteedQueue.PushOrUpdate(task)
-	} else if task.SLO == model.EmiasLowSLO {
+	case model.EmiasLowSLO:
 		q.bestEffortQueue.PushOrUpdate(task)
 	}
 }
@@ -59,9 +61,10 @@ func (tq *TaskQueue) DeleteTask(task *model.AITask) {
 	if !ok {
 		return
 	}
-	if task.SLO == model.EmiasHighSLO {
+	switch task.SLO {
+	case model.EmiasHighSLO:
 		q.gauranteedQueue.Delete(task)
-	} else if task.SLO == model.EmiasLowSLO {
+	case model.EmiasLowSLO:
 		q.bestEffortQueue.Delete(task)
 	}
 }
@@ -86,10 +89,11 @@ func (tq *TaskQueue) UpdateTask(task *model.AITask) {
 	if !ok {
 		return
 	}
-	if task.SLO == model.EmiasHighSLO {
+	switch task.SLO {
+	case model.EmiasHighSLO:
 		q.gauranteedQueue.PushOrUpdate(task)
 		q.bestEffortQueue.Delete(task)
-	} else if task.SLO == model.EmiasLowSLO {
+	case model.EmiasLowSLO:
 		q.bestEffortQueue.PushOrUpdate(task)
 		q.gauranteedQueue.Delete(task)
 	}
