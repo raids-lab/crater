@@ -72,7 +72,7 @@ buildkitConfig:
       minFreeSpace: "50GB"
       reservedSpace: "50GB"
   armConfig:
-    enabled: true
+    enabled: false # Can only be true when ARM nodes exist.
     replicas: 2
     cache:
       storageClass: "openebs-hostpath"
