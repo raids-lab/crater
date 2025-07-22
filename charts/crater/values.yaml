@@ -8,8 +8,8 @@ urls:
 
 images:
   backend:
-    repository: "harbor.raids-lab.cn/crater/web-backend"
-    tag: "bef3ac36"
+    repository: "ghcr.io/raids-lab/crater-backend"
+    tag: "sha-1fc613a"
   frontend:
     repository: "ghcr.io/raids-lab/crater-frontend"
     tag: "sha-d43d765"
@@ -24,7 +24,7 @@ images:
     tag: "1.27.3-bookworm"
   buildkit:
     repository: "crater-harbor.raids-lab.cn/docker.io/moby/buildkit"
-    tag: "v0.18.2-rootless"
+    tag: "v0.23.1"
 
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
@@ -60,25 +60,36 @@ web:
     host: gpu-grafana.raids-lab.cn
 
 # BuildKit configuration variables
+# BuildKit configuration variables
 buildkitConfig:
-  replicas: 3
-  dockerconfigjson: "<MASKED>"  # Docker认证配置已掩码
-  httpsProxy: 192.168.5.58:1080
-  noProxy: crater-harbor.raids-lab.cn
-  resources:
-    requests:
-      cpu: 8
-      memory: 24Gi
-    limits:
-      cpu: 16
-      memory: 48Gi
-  cache:
-    storageClass: "openebs-hostpath"
-    storageSize: 400Gi
-    maxUsedSpace: "400GB"
-    minFreeSpace: "50GB"
-    reservedSpace: "50GB"
-  
+  amdConfig:
+    enabled: true
+    replicas: 3
+    cache:
+      storageClass: "openebs-hostpath"
+      storageSize: 400Gi
+      maxUsedSpace: "400GB"
+      minFreeSpace: "50GB"
+      reservedSpace: "50GB"
+  armConfig:
+    enabled: false # Can only be true when ARM nodes exist.
+    replicas: 2
+    cache:
+      storageClass: "openebs-hostpath"
+      storageSize: 80Gi
+      maxUsedSpace: "80GB"
+      minFreeSpace: "10GB"
+      reservedSpace: "10GB"
+  generalConfig:
+    dockerconfigjson: "<MASKED>"  # Docker认证配置已掩码    httpsProxy: 192.168.5.58:1080
+    resources:
+      requests:
+        cpu: 8
+        memory: 24Gi
+      limits:
+        cpu: 16
+        memory: 48Gi
+
 # Frontend configuration variables
 frontendConfig:
   version: "1.0.0"
@@ -169,12 +180,9 @@ backendConfig:
       spjobEn: false
       predictionServiceAddress: http://resource-analyze-svc.kube-gpu-sparse:80
   dindArgs:
-    buildkitImage: crater-harbor.raids-lab.cn/xxx/buildkit/buildctl:v0.18.2
-    buildxImage: crater-harbor.raids-lab.cn/xxx/buildx-multiarch:v5
+    buildxImage: crater-harbor.raids-lab.cn/xxx/buildx-multiarch:v6
     nerdctlImage: crater-harbor.raids-lab.cn/crater/nerdctl:2.0.1-retry
-    envdImage: gpu-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.0
-    envdAmdImage: crater-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.1-amd
-    envdArmImage: crater-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.1-arm
+    envdImage: gpu-harbor.raids-lab.cn/xxx/envd-build-frontend:v1.2.1
 
 # CronJob Config
 cronjobConfig:
