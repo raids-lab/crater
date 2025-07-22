@@ -23,10 +23,9 @@ jobs:
 
       - name: AutoCorrect and Commit (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: huacnlee/autocorrect-action@v2
+        uses: huacnlee/autocorrect-action@main
         with:
           args: --fix
-          reviewdog: true
 
       - name: Commit changes (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
@@ -39,7 +38,6 @@ jobs:
 
       - name: Lint Check (for forked PRs)
         if: github.event.pull_request.head.repo.full_name != github.repository
-        uses: huacnlee/autocorrect-action@v2
+        uses: huacnlee/autocorrect-action@main
         with:
           args: --lint
-          reviewdog: true
