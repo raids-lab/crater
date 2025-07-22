@@ -90,7 +90,7 @@ func (r *VcJobReconciler) getNewEventsForJob(c context.Context, job *batch.Job, 
 
 	// sort events by timestamp
 	sort.Slice(events, func(i, j int) bool {
-		return events[i].LastTimestamp.Time.After(events[j].LastTimestamp.Time)
+		return events[i].LastTimestamp.After(events[j].LastTimestamp.Time)
 	})
 
 	// 最大保留 20 条最近的事件，避免存储过多的事件

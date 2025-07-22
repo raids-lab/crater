@@ -140,9 +140,9 @@ type Queue struct {
 // PushOrUpdate inserts an item to the queue.
 // The item will be updated if it already exists.
 func (q *Queue) PushOrUpdate(obj any) {
-	key := q.data.keyFunc(obj)
-	if _, exists := q.data.items[key]; exists {
-		q.data.items[key].obj = obj
+	key := q.keyFunc(obj)
+	if _, exists := q.items[key]; exists {
+		q.items[key].obj = obj
 	} else {
 		q.push(&itemKeyValue{key, obj})
 	}
