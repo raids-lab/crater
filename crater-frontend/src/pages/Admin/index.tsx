@@ -32,6 +32,7 @@ import {
   UsersRoundIcon,
   BarChartBigIcon,
   AlarmClockIcon,
+  FolderIcon,
 } from 'lucide-react'
 import admindatasetRoutes from './Data'
 import { NavGroupProps } from '@/components/sidebar/types'
@@ -122,12 +123,17 @@ const routeItems: RouteObject[] = [
     path: 'data',
     children: [
       {
-        path: 'filesystem/*',
-        lazy: () => import('./Data/FileSystem'),
-      },
-      {
         path: 'dataset/*',
         children: admindatasetRoutes,
+      },
+    ],
+  },
+  {
+    path: 'files',
+    children: [
+      {
+        path: 'spacefile/*',
+        lazy: () => import('./Data/FileSystem'),
       },
     ],
   },
@@ -224,16 +230,12 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
         {
           title: t('navigation.dataManagement'),
           icon: DatabaseIcon,
-          items: [
-            {
-              title: t('navigation.fileSystem'),
-              url: 'data/filesystem',
-            },
-            {
-              title: t('sidebar.data'),
-              url: 'data/dataset',
-            },
-          ],
+          url: 'data/dataset',
+        },
+        {
+          title: t('navigation.fileManagement'),
+          icon: FolderIcon,
+          url: 'files/spacefile',
         },
       ],
     },

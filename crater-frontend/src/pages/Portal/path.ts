@@ -136,6 +136,17 @@ export const craterPath: PathInfo = {
       ],
     },
     {
+      path: 'files',
+      titleKey: 'navigation.fileManagement',
+      isEmpty: true,
+      children: [
+        {
+          path: 'spacefile',
+          titleKey: 'navigation.spaceFile',
+        },
+      ],
+    },
+    {
       path: 'account',
       titleKey: 'navigation.accountManagement',
       isEmpty: true,
