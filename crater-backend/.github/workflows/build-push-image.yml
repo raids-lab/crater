@@ -17,6 +17,8 @@ name: Check Code Style, Build and Push Docker Image
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'hack/**'
     tags:
       - 'v*.*.*'
 
