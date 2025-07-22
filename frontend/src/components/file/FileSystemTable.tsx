@@ -102,7 +102,7 @@ const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig =>
   }
 }
 
-interface FilesystemTableProps {
+interface SpacefileTableProps {
   apiGetFiles: (path: string) => Promise<AxiosResponse<IResponse<FileItem[] | undefined>>>
   isadmin: boolean
 }
@@ -281,7 +281,7 @@ const FileActions = ({
   )
 }
 
-export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) {
+export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -290,7 +290,7 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
   const apiBaseURL = useAtomValue(configUrlApiBaseAtom)
 
   const path = useMemo(() => {
-    const basePattern = isadmin ? /^\/admin\/data\/filesystem/ : /^\/portal\/data\/filesystem/
+    const basePattern = isadmin ? /^\/admin\/files\/spacefile/ : /^\/portal\/files\/spacefile/
     return pathname.replace(basePattern, '')
   }, [pathname, isadmin])
 
@@ -303,21 +303,20 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
           return {
             title: 'Portal',
           }
-        } else if (index == 1 && value == 'data') {
+        } else if (index == 1 && value == 'files') {
           return {
-            title: '数据管理',
-            path: '/portal/data',
-            isEmpty: true,
+            title: '文件管理',
+            path: '/portal/files',
           }
-        } else if (index == 2 && value == 'filesystem') {
+        } else if (index == 2 && value == 'spacefile') {
           return {
-            title: '文件系统',
-            path: '/portal/data/filesystem',
+            title: '空间文件',
+            path: '/portal/files/spacefile',
           }
         } else if (index == 3) {
           return {
             title: getFolderTitle(t, value),
-            path: `/portal/data/filesystem/${value}`,
+            path: `/portal/files/spacefile/${value}`,
           }
         }
       } else {
@@ -325,21 +324,20 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
           return {
             title: 'Admin',
           }
-        } else if (index == 1 && value == 'data') {
+        } else if (index == 1 && value == 'files') {
           return {
-            title: '数据管理',
-            path: '/admin/data',
-            isEmpty: true,
+            title: '文件管理',
+            path: '/portal/files',
           }
-        } else if (index == 2 && value == 'filesystem') {
+        } else if (index == 2 && value == 'spacefile') {
           return {
-            title: '文件系统',
-            path: '/admin/data/filesystem',
+            title: '空间文件',
+            path: '/admin/files/spacefile',
           }
         } else if (index == 3) {
           return {
             title: getAdminFolderTitle(t, value),
-            path: `/admin/data/filesystem/${value}`,
+            path: `/admin/files/spacefile/${value}`,
           }
         }
       }
@@ -363,7 +361,7 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
   }, [pathname])
 
   const query = useQuery({
-    queryKey: ['data', 'filesystem', path],
+    queryKey: ['data', 'spacefile', path],
     queryFn: () => apiGetFiles(`${path}`),
     select: (res) => {
       return (
@@ -429,17 +427,17 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
   }, [accountInfoQuery.data])
 
   const isRoot = useMemo(() => {
-    const basePath = isadmin ? '/admin/data/filesystem' : '/portal/data/filesystem'
+    const basePath = isadmin ? '/admin/files/spacefile' : '/portal/files/spacefile'
     return pathname === basePath
   }, [pathname, isadmin])
 
   const isAdminUserSpace = useMemo(() => {
-    const basePath = '/admin/data/filesystem/admin-user'
+    const basePath = '/admin/files/spacefile/admin-user'
     return pathname === basePath
   }, [pathname])
 
   const isAdminAccountSpace = useMemo(() => {
-    const basePath = '/admin/data/filesystem/admin-account'
+    const basePath = '/admin/files/spacefile/admin-account'
     return pathname === basePath
   }, [pathname])
 
@@ -448,7 +446,7 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
     onSuccess: async () => {
       toast.success(t('fileActions.delete.success'))
       await queryClient.invalidateQueries({
-        queryKey: ['data', 'filesystem', path],
+        queryKey: ['data', 'spacefile', path],
       })
     },
   })
@@ -473,7 +471,7 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
     onSuccess: async () => {
       toast.success(t('fileActions.move.success'))
       await queryClient.invalidateQueries({
-        queryKey: ['data', 'filesystem', path],
+        queryKey: ['data', 'spacefile', path],
       })
     },
   })
@@ -646,7 +644,7 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
     mutationFn: () => clientCreateDir(path),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ['data', 'filesystem', path],
+        queryKey: ['data', 'spacefile', path],
       })
     },
   })
@@ -661,7 +659,7 @@ export function FileSystemTable({ apiGetFiles, isadmin }: FilesystemTableProps) 
         <FolderNavigation data={query.data} isadmin={isadmin}></FolderNavigation>
       ) : (
         <DataTable
-          storageKey="filesystem"
+          storageKey="spacefile"
           query={query}
           columns={columns}
           toolbarConfig={getToolbarConfig(t)}

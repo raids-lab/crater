@@ -25,6 +25,7 @@ import {
   SettingsIcon,
   SquareChartGanttIcon,
   ShoppingBagIcon,
+  FolderIcon,
 } from 'lucide-react'
 import batchRoutes from './Job/Batch'
 import interactiveRoutes from './Job/Interactive'
@@ -96,10 +97,6 @@ const portalRoutes: RouteObject[] = [
     path: 'data',
     children: [
       {
-        path: 'filesystem/*',
-        lazy: () => import('./Data/FileSystem'),
-      },
-      {
         path: 'dataset/*',
         children: datasetRoutes,
       },
@@ -110,6 +107,15 @@ const portalRoutes: RouteObject[] = [
       {
         path: 'sharefile/*',
         children: shareFileRoutes,
+      },
+    ],
+  },
+  {
+    path: 'files',
+    children: [
+      {
+        path: 'spacefile/*',
+        lazy: () => import('./Data/FileSystem'),
       },
     ],
   },
@@ -220,10 +226,6 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           icon: DatabaseIcon,
           items: [
             {
-              title: t('navigation.fileSystem'),
-              url: 'data/filesystem',
-            },
-            {
               title: t('navigation.datasets'),
               url: 'data/dataset',
             },
@@ -234,6 +236,16 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
             {
               title: t('navigation.sharedFiles'),
               url: 'data/sharefile',
+            },
+          ],
+        },
+        {
+          title: t('navigation.fileManagement'),
+          icon: FolderIcon,
+          items: [
+            {
+              title: t('navigation.spaceFile'),
+              url: 'files/spacefile',
             },
           ],
         },
