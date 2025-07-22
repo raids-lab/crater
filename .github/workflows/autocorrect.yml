@@ -3,7 +3,9 @@ name: AutoCorrect Website Files
 on:
   pull_request:
     paths:
-      - 'crater-website/**'
+      - '.github/**'
+      - 'crater-website/src/**'        
+      - 'crater-website/content/**'
 
 jobs:
   autocorrect:
