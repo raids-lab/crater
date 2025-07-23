@@ -1,0 +1,38 @@
+name: Feature Request
+description: Request a new feature
+type: Feature
+body:
+- type: textarea
+  id: feature
+  attributes:
+    label: Feature Description
+    description: Describe the feature you'd like to see
+    placeholder: |
+      [Example]:
+      A dark mode theme for the dashboard interface.
+      Should include:
+      - Toggle switch in user profile
+      - System preference detection
+      - All major UI components styled
+  validations:
+    required: true
+
+- type: textarea
+  id: use-case
+  attributes:
+    label: Use Case
+    description: How would this feature be used?
+    placeholder: |
+      - Reduce eye strain for nighttime users
+      - Match OS-level dark mode preferences
+      - Save energy on OLED devices
+
+- type: textarea
+  id: alternatives
+  attributes:
+    label: Alternatives Considered
+    description: Any existing workarounds or alternatives?
+    placeholder: |
+      Currently users can:
+      1. Use browser extensions (imperfect styling)
+      2. Invert colors (breaks images)
