@@ -3,7 +3,9 @@ name: AutoCorrect Website Files
 on:
   pull_request:
     paths:
-      - 'crater-website/**'
+      - '.github/**'
+      - 'crater-website/src/**'        
+      - 'crater-website/content/**'
 
 jobs:
   autocorrect:
@@ -21,9 +23,8 @@ jobs:
 
       - name: AutoCorrect and Commit (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
-        uses: huacnlee/autocorrect@v2
+        uses: huacnlee/autocorrect-action@main
         with:
-          working-directory: ./crater-website
           args: --fix
 
       - name: Commit changes (for internal PRs)
@@ -37,7 +38,6 @@ jobs:
 
       - name: Lint Check (for forked PRs)
         if: github.event.pull_request.head.repo.full_name != github.repository
-        uses: huacnlee/autocorrect@v2
+        uses: huacnlee/autocorrect-action@main
         with:
-          working-directory: ./crater-website
           args: --lint
