@@ -1,6 +1,6 @@
 ---
 title: 快速部署 DeepSeek R1 单机推理
-description: 本平台提供了快速部署 DeepSeek R1 单机推理的作业模板，可以直接使用其创建单机任务，快速部署属于您自己的 DeepSeek ，也可以启动 Web UI 界面和大模型交互。
+description: 本平台提供了快速部署 DeepSeek R1 单机推理的作业模板，可以直接使用其创建单机任务，快速部署属于您自己的 DeepSeek，也可以启动 Web UI 界面和大模型交互。
 ---
 
 # 快速部署 DeepSeek R1 单机推理

@@ -55,7 +55,7 @@ web:
     host: "gpu.raids-lab.cn"
   grafana:
     address: http://prometheus-grafana.monitoring
-    token: "<MASKED>"  # Bearer令牌已掩码
+    token: "<MASKED>"  # Bearer 令牌已掩码
     ancestor: https://gpu.raids-lab.cn
     host: gpu-grafana.raids-lab.cn
 
@@ -156,20 +156,20 @@ backendConfig:
       registryAdminPass: "<MASKED>"  # 管理员密码已掩码
     openAPI:
       url: <MASKED>
-      chameleonKey: "<MASKED>"  # API密钥已掩码
+      chameleonKey: "<MASKED>"  # API 密钥已掩码
       accessToken: "<MASKED>"   # 访问令牌已掩码
     auth:
       userName: <MASKED>
-      password: "<MASKED>"     # LDAP密码已掩码
+      password: "<MASKED>"     # LDAP 密码已掩码
       address: <MASKED>
       searchDN: <MASKED>
-      accessTokenSecret: "<MASKED>"   # Token密钥已掩码
-      refreshTokenSecret: "<MASKED>"  # Token密钥已掩码
+      accessTokenSecret: "<MASKED>"   # Token 密钥已掩码
+      refreshTokenSecret: "<MASKED>"  # Token 密钥已掩码
     smtp:
       host: mail.raids-lab.cn
       port: 25
       user: notify
-      password: "<MASKED>"  # SMTP密码已掩码
+      password: "<MASKED>"  # SMTP 密码已掩码
       notify: notify@raids-lab.cn
   schedulerPlugins:
     aijob:

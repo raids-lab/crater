@@ -467,7 +467,7 @@
             "refId": "A"
           }
         ],
-        "title": "Pod网络接收流量",
+        "title": "Pod 网络接收流量",
         "type": "timeseries"
       },
       {
@@ -566,7 +566,7 @@
             "refId": "A"
           }
         ],
-        "title": "pod网络发送流量",
+        "title": "pod 网络发送流量",
         "type": "timeseries"
       },
       {
