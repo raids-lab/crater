@@ -1,0 +1,32 @@
+name: Documentation
+description: Request documentation improvements
+type: Documents
+body:
+- type: textarea
+  id: doc-issue
+  attributes:
+    label: Documentation Issue
+    description: Describe the documentation problem or gap
+    placeholder: |
+      [Example]:
+      The API reference for endpoint /users is missing the 'created_at' field description.
+      The current examples don't show how to handle pagination.
+  validations:
+    required: true
+
+- type: textarea
+  id: location
+  attributes:
+    label: Document Location
+    description: URL or path to the problematic documentation
+    placeholder: https://docs.example.com/api/v2/users#get
+
+- type: textarea
+  id: suggestion
+  attributes:
+    label: Suggested Improvement
+    description: Your suggestion for improvement (optional)
+    placeholder: |
+      Please add:
+      1. Field description for 'created_at' including format
+      2. Example response with pagination headers
