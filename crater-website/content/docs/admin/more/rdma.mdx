@@ -156,7 +156,7 @@ network-operator-xxxxxxxx-xxxxx   1/1     Running   1 (22h ago)   26h
 - **性能差异**：[IPoIB (IP over InfiniBand) vs. RDMA performance](https://serverfault.com/questions/876403/ipoib-ip-over-infiniband-vs-rdma-performance)，此外 Shared Device Plugin 在只有一个 Pod 申请资源时，带宽差不多能打满；多个的情况还没有测试过
 - **部署方式**：目前先采用了 RDMA Shared Device Plugin 的方式，在 V100 上运行正常；但不太清楚这种方式能否使用聚合后的网卡，后续可能会切换到 Host Network 模式？
 - **资源申请**：安装后一般节点会新增和 RDMA 相关资源，有些情况还需要在 Annotations 中标记要使用的辅助网络（比如 Multus 或者 Macvlan？）
-- **最低要求**：[验证镜像是否支持 RDMA--机器学习平台-火山引擎](https://www.volcengine.com/docs/6459/119595)
+- **最低要求**：[验证镜像是否支持 RDMA--机器学习平台 - 火山引擎](https://www.volcengine.com/docs/6459/119595)
 - **如何测试**：[Prepare a cluster for running RDMA workloads and GPU-Direct RDMA workloads.](https://github.com/Mellanox/network-operator/tree/master/example)
 - **错误和解决方案**：见本文末尾
 
@@ -266,7 +266,7 @@ $ kubectl get nodes -o json | jq -r '.items[] | {
 
 本节主要是对过程中失败尝试的记录，如果您对 RDMA Shared Device Plugin 后续如何验证更感兴趣，可以直接跳到下一节。
 
-由于在配置 RDMA Shared Device Plugin （下简称方法 1）的过程中，我遇到了一些其他问题，导致我错以为方法 1 的路子走不通，并且在 K8s RDMA Shared Dev Plugin 项目的讨论区，还有人说了这样一段话[^3]（虽然底下就有人给出反例，但当时我没调通，以为已经过时）：
+由于在配置 RDMA Shared Device Plugin（下简称方法 1）的过程中，我遇到了一些其他问题，导致我错以为方法 1 的路子走不通，并且在 K8s RDMA Shared Dev Plugin 项目的讨论区，还有人说了这样一段话[^3]（虽然底下就有人给出反例，但当时我没调通，以为已经过时）：
 
 > [!quote] [Adrian Chiris](https://github.com/adrianchiris)
 >
@@ -491,7 +491,7 @@ chmod +x ./patch_node_gpu.sh
 
 ### 1. 准备支持 RDMA 的镜像
 
-> [!quote] [验证镜像是否支持 RDMA--机器学习平台-火山引擎](https://www.volcengine.com/docs/6459/119595)
+> [!quote] [验证镜像是否支持 RDMA--机器学习平台 - 火山引擎](https://www.volcengine.com/docs/6459/119595)
 
 一个简单的适用于 V100 机型的 Dockerfile 可能是这样的：
 
@@ -987,7 +987,7 @@ IB device mlx5_bond_0 not found
 
 以上记录了在本地 Kubernetes 集群接入 RDMA 的过程。目前来看相关文档的缺失、过程涉及的问题域较广是阻碍这方面学习的主要因素。确实需要比较扎实的计算机基础才行。
 
-[^1]: [2 个 RoCE 网卡 Bond 聚合，实现带宽 X2-云社区-华为云](https://bbs.huaweicloud.com/blogs/412088)
+[^1]: [2 个 RoCE 网卡 Bond 聚合，实现带宽 X2-云社区 - 华为云](https://bbs.huaweicloud.com/blogs/412088)
 [^2]: [RDG for Accelerated K8s Cluster over NVIDIA DGX A100 Servers and 200Gbps Ethernet Network Fabric](https://docs.nvidia.com/networking/display/public/sol/rdg+for+accelerated+k8s+cluster+over+nvidia+dgx+a100+servers+and+200gbps+ethernet+network+fabric)
 [^3]: [Enhance documentaitons · Issue #54 · Mellanox/k8s-rdma-shared-dev-plugin](https://github.com/Mellanox/k8s-rdma-shared-dev-plugin/issues/54)
 [^4]: [Multus-CNI 与 whereabouts 的简单运用 - 剑轩的专栏 - TNBLOG](https://www.tnblog.net/aojiancc2/article/details/7929)
