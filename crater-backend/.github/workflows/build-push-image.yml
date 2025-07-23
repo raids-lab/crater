@@ -51,7 +51,7 @@ jobs:
 
       - name: Install and init Swag
         run: | 
-          go install github.com/swaggo/swag/cmd/swag@latest
+          go install github.com/swaggo/swag/cmd/swag@v1.16.3
           swag init
 
       - name: Run golangci-lint
@@ -98,7 +98,7 @@ jobs:
           go mod download
 
       - name: Swag
-        run: go run github.com/swaggo/swag/cmd/swag@latest init
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.3 init
         shell: bash
 
       - name: Build backend binaries
