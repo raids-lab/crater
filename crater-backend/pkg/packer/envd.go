@@ -35,20 +35,37 @@ func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {
 
 func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
-	buildArgs := []string{
-		"build",
-		"--platform", "linux/amd64",
-		"--output", output,
+	buildkitdAmdNameSpace := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Workspace.ImageNamespace)
+	backendHost := config.GetConfig().Host
+	// 构建完整的命令，先创建context，再执行build
+	cmd := fmt.Sprintf(`
+		envd context create \
+		--name buildkitd \
+		--builder tcp \
+		--builder-address %s:1234 \
+		--use && \
+		envd build --platform linux/amd64 --output %s
+	`, buildkitdAmdNameSpace, output)
+
+	setupCommands := []string{
+		"/bin/sh",
+		"-c",
+		cmd,
 	}
+
 	envdContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().DindArgs.EnvdAmdImage,
-			Args:  buildArgs,
+			Image: config.GetConfig().DindArgs.EnvdImage,
+			Args:  setupCommands,
 			Env: []corev1.EnvVar{
 				{
 					Name:  "DOCKER_CONFIG",
 					Value: "/.docker",
+				},
+				{
+					Name:  "NO_PROXY",
+					Value: fmt.Sprintf("$(NO_PROXY),%s,%s", buildkitdAmdNameSpace, backendHost),
 				},
 			},
 			VolumeMounts: []corev1.VolumeMount{

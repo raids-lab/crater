@@ -78,23 +78,25 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	// 判断archs字符串是否包含arm
 	appendArmCmd := ""
 	if strings.Contains(archs, "arm") {
-		appendArmCmd = `docker buildx create \
+		buildkitdArmNameSpace := fmt.Sprintf("%s.%s", buildkitdArmName, config.GetConfig().Workspace.ImageNamespace)
+		appendArmCmd = fmt.Sprintf(`docker buildx create \
 		--name multi-platform-builder \
 		--append \
 		--node arm-node \
-		--driver remote tcp://buildkitd.buildkit-arm:1234 && \
-		`
+		--driver remote tcp://%s:1234 && \
+		`, buildkitdArmNameSpace)
 	}
 
+	buildkitdAmdNameSpace := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Workspace.ImageNamespace)
 	// 构建完整的命令
 	cmd := fmt.Sprintf(`
 		docker buildx create \
 		--name multi-platform-builder \
 		--node amd-node \
-		--driver remote tcp://buildkitd.crater-images:1234 && \
+		--driver remote tcp://%s:1234 && \
 		%s	docker buildx use multi-platform-builder && \
 		docker buildx build --progress plain --platform %s --file /workspace/Dockerfile --output %s /workspace
-	`, appendArmCmd, archs, output)
+	`, buildkitdAmdNameSpace, appendArmCmd, archs, output)
 
 	setupCommands := []string{
 		"/bin/sh",

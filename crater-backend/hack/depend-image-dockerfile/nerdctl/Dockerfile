@@ -1,4 +1,4 @@
-FROM crater-harbor.act.buaa.edu.cn/docker.io/library/alpine:3.21.0
+FROM docker.io/library/alpine:3.21.0
 
 # 从 ./bin/nerdctl 拷贝到镜像内
 COPY ./bin/nerdctl /usr/local/bin/nerdctl

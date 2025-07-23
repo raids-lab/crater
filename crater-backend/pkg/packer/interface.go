@@ -68,9 +68,11 @@ type imagePacker struct {
 }
 
 var (
-	runAsUerNumber   int64 = 1000
-	runAsGroupNumber int64 = 1000
-	fsAsGroupNumber  int64 = 1000
+	buildkitdArmName string = "buildkitd-arm"
+	buildkitdAmdName string = "buildkitd-x86"
+	runAsUerNumber   int64  = 1000
+	runAsGroupNumber int64  = 1000
+	fsAsGroupNumber  int64  = 1000
 
 	harborCreditSecretName string = "buildkit-secret"
 
