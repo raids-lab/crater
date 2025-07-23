@@ -1,0 +1,35 @@
+name: Enhancement
+description: Suggest an improvement to existing functionality
+type: Enhancement
+body:
+- type: textarea
+  id: current
+  attributes:
+    label: Current Behavior
+    description: Describe how the feature currently works
+    placeholder: |
+      Currently, the notification system only supports email.
+      Users cannot customize notification preferences.
+  validations:
+    required: true
+
+- type: textarea
+  id: proposed
+  attributes:
+    label: Proposed Enhancement
+    description: Describe your suggested improvement
+    placeholder: |
+      Add support for Slack and SMS notifications.
+      Allow users to select preferred channels in profile settings.
+  validations:
+    required: true
+
+- type: textarea
+  id: benefit
+  attributes:
+    label: Expected Benefit
+    description: How will this improve the product?
+    placeholder: |
+      - Better user engagement
+      - More flexible notification options
+      - Reduced email overload
