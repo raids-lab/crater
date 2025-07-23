@@ -24,8 +24,11 @@ env:
   REGISTRY: ghcr.io
   REPOSITORY: raids-lab
   BUILDX_CLIENT: buildx-client
+  BUILDX_VERSION: v0.25.0
   ENVD_CLIENT: envd-client
+  ENVD_VERSION: v1.2.1
   NERDCTL_CLIENT: nerdctl-client
+  NERDCTL_VERSION: v2.1.2
 
 jobs:
   detect-changes:
@@ -85,6 +88,7 @@ jobs:
             type=ref,event=branch
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ env.BUILDX_VERSION }}
 
       - name: Build and push buildx-client image
         uses: docker/build-push-action@v6
@@ -129,6 +133,7 @@ jobs:
             type=ref,event=branch
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ env.ENVD_VERSION }}
 
       - name: Build and push envd-client image
         uses: docker/build-push-action@v6
@@ -173,6 +178,7 @@ jobs:
             type=ref,event=branch
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ env.NERDCTL_VERSION }}
 
       - name: Build and push nerdctl-client image
         uses: docker/build-push-action@v6

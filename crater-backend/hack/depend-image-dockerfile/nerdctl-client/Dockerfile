@@ -2,7 +2,7 @@ FROM docker.io/library/alpine:3.21.0
 
 # 安装 wget 和 tar，下载并安装 nerdctl 二进制文件
 RUN apk add --no-cache wget tar && \
-    NERDCTL_VERSION=1.7.7 && \
+    NERDCTL_VERSION=2.1.2 && \
     TARGETARCH=$(uname -m) && \
     case ${TARGETARCH} in \
         x86_64) TARGETARCH="amd64" ;; \
