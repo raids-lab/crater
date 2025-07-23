@@ -10,14 +10,10 @@ updates:
   schedule:
     interval: weekly
   labels:
-  - "area/dependency"
-  - "release-note-none"
   - "ok-to-test"
 - package-ecosystem: "gomod"
   directory: "/"
   schedule:
     interval: weekly
   labels:
-  - "area/dependency"
-  - "release-note-none"
   - "ok-to-test"
