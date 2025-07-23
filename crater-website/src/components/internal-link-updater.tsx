@@ -29,7 +29,7 @@ export function InternalLinkUpdater() {
       // 2. 收集所有不重复的内网主机地址，以进行一次性的并行网络检查
       const internalHosts = new Set<string>();
       linksToProcess.forEach(link => {
-        // 取spilt的第二部分作为内网地址
+        // 取 spilt 的第二部分作为内网地址
         // 注意：这里假设链接格式为 "externalUrl|||internalUrl"
 
 
@@ -42,7 +42,7 @@ export function InternalLinkUpdater() {
           try {
             console.log(`Checking internal URL: ${internalUrl}`);
             internalHosts.add(new URL(internalUrl).origin);
-          } catch (e) { /* 忽略无效的 URL */ }
+          } catch { /* 忽略无效的 URL */ }
         }
       });
       
@@ -76,7 +76,7 @@ export function InternalLinkUpdater() {
             // 内网不可达，使用外网 URL (并替换语言占位符)
             link.href = externalUrlTemplate.replace('${locale}', locale);
           }
-        } catch (e) {
+        } catch {
           // 如果 URL 无效，则恢复为外网地址以防万一
           link.href = externalUrlTemplate.replace('${locale}', locale);
         }

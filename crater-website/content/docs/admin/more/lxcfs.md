@@ -64,7 +64,7 @@ LXCFS（Linux Container Filesystem）是一个基于用户空间的文件系统�
 1. 一组文件，可以绑定挂载到其 `/proc` 原始文件上，以提供 CGroup 感知值。
 2. 容器感知的类似 cgroupfs 的树。
 
-有了 LXCFS，当我们在容器中查询 `/proc/cpuinfo` 等信息时，查询的内容将被 LXCFS 使用 FUSE 方式注入以 “劫持”，LXCFS 会结合容器的 `cgroup` 信息，给出正确的结果。
+有了 LXCFS，当我们在容器中查询 `/proc/cpuinfo` 等信息时，查询的内容将被 LXCFS 使用 FUSE 方式注入以“劫持”，LXCFS 会结合容器的 `cgroup` 信息，给出正确的结果。
 
 ## 现有 LXCFS for Kubernetes 方案的不足
 

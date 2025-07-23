@@ -1,12 +1,12 @@
 ---
 title: 使用 SSH 功能快速连接
 
-description: 为了帮助用户更便捷的连接到容器，本平台提供了 SSH 功能 。在配置 SSH 免密登陆后，用户可以一键复制连接命令，通过 Terminal 或 VSCode 连接至容器。
+description: 为了帮助用户更便捷的连接到容器，本平台提供了 SSH 功能。在配置 SSH 免密登陆后，用户可以一键复制连接命令，通过 Terminal 或 VSCode 连接至容器。
 ---
 
 ## 配置 SSH 免密登录
 
-可使用 `authorized_keys` 配置免密登录，上传公钥（通常是 `id_rsa.pub`）到服务器（生成过程可参考 [VSCode 连接到 Jupyter 容器内](./vscode-ssh.md) 的 “确保本机已生成公私钥” 章节）。
+可使用 `authorized_keys` 配置免密登录，上传公钥（通常是 `id_rsa.pub`）到服务器（生成过程可参考 [VSCode 连接到 Jupyter 容器内](./vscode-ssh.md) 的“确保本机已生成公私钥”章节）。
 
 - 若 `.ssh` 文件夹不存在，可执行以下命令创建 `.ssh` 文件夹，并设置适当的权限：
 
@@ -30,7 +30,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 目前平台提供的官方镜像内**已包含 SSHD**，无需额外安装 🚀。
 
-如您需要使用自定义镜像，则需保证您构建的镜像内已包含 SSHD 。
+如您需要使用自定义镜像，则需保证您构建的镜像内已包含 SSHD。
 
 ## 一键复制连接命令
 
@@ -38,7 +38,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 ![](./img/ssh-func/ssh-detail.webp)
 
-点击后会弹出如下对话框:
+点击后会弹出如下对话框：
 
 ![](./img/ssh-func/ssh-func.webp)
 
