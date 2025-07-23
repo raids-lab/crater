@@ -42,7 +42,7 @@ export function InternalLinkUpdater() {
           try {
             console.log(`Checking internal URL: ${internalUrl}`);
             internalHosts.add(new URL(internalUrl).origin);
-          } catch (e) { /* 忽略无效的 URL */ }
+          } catch { /* 忽略无效的 URL */ }
         }
       });
       
@@ -76,7 +76,7 @@ export function InternalLinkUpdater() {
             // 内网不可达，使用外网 URL (并替换语言占位符)
             link.href = externalUrlTemplate.replace('${locale}', locale);
           }
-        } catch (e) {
+        } catch {
           // 如果 URL 无效，则恢复为外网地址以防万一
           link.href = externalUrlTemplate.replace('${locale}', locale);
         }
