@@ -1,0 +1,60 @@
+# Copyright 2025 Crater
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Build Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/**'
+      - 'crater-website/src/**'
+      - 'crater-website/content/**'
+      - 'crater-website/package.json'
+      - 'crater-website/pnpm-lock.yaml'
+
+jobs:
+  build:
+    name: Build Next.js Site
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: crater-website # Set working directory to the website folder
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Setup pnpm package manager
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      # 3. Setup Node.js environment
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: "crater-website/pnpm-lock.yaml"
+
+      # 4. Install dependencies using pnpm
+      - name: Install dependencies
+        run: pnpm install
+
+      # 5. Build the Next.js project without running post-build scripts
+      - name: Build website
+        run: pnpm exec next build

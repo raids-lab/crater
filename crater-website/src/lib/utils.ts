@@ -36,7 +36,7 @@ export async function checkInternalNetwork(
     // 如果 fetch 成功执行（没有抛出异常），说明网络是可达的。
     clearTimeout(timeoutId);
     return true;
-  } catch (error) {
+  } catch {
     clearTimeout(timeoutId);
     return false;
   }
