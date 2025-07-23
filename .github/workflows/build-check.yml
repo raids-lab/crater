@@ -57,4 +57,4 @@ jobs:
 
       # 5. Build the Next.js project without running post-build scripts
       - name: Build website
-        run: pnpm build --ignore-scripts #
+        run: pnpm exec next build
