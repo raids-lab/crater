@@ -19,6 +19,7 @@ import { RootProvider } from "fumadocs-ui/provider";
 import type { ReactNode } from "react";
 import type { Translations } from "fumadocs-ui/i18n";
 import OramaSearchDialog from "@/components/search/search";
+import { InternalLinkUpdater } from '@/components/internal-link-updater';
 
 const cn: Partial<Translations> = {
   search: "搜索", // Update: Orama search should be available
@@ -66,8 +67,10 @@ export default async function Layout({
           }}
           // Orama搜索
           search={{SearchDialog: OramaSearchDialog}}
+          
       >
         {children}
+        <InternalLinkUpdater />
       </RootProvider>
       </body>
     </html>

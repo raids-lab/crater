@@ -46,7 +46,7 @@ export function GetStarted() {
           </a>
 
           <a
-            href="https://github.com/yourorg/crater"
+            href="https://github.com/raids-lab/crater"
             className="flex flex-col items-center bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow text-center"
           >
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-4">
