@@ -1,0 +1,53 @@
+name: Bug Report
+description: Report a bug to help us improve
+type: Bug
+body:
+- type: markdown
+  attributes:
+    value: |
+      ### Before Reporting
+      * Please check existing issues to avoid duplicates
+      * Provide as much detail as possible
+
+- type: textarea
+  id: description
+  attributes:
+    label: Bug Description
+    description: A clear and concise description of the bug
+    placeholder: |
+      [Example]:
+      When clicking the submit button after filling form A, the page crashes with error 500.
+      This occurs consistently in Chrome v102 but works fine in Firefox.
+  validations:
+    required: true
+
+- type: textarea
+  id: steps
+  attributes:
+    label: Reproduction Steps
+    description: Steps to reproduce the behavior
+    placeholder: |
+      1. Go to '...'
+      2. Click on '....'
+      3. Scroll down to '....'
+      4. See error
+  validations:
+    required: true
+
+- type: textarea
+  id: expected
+  attributes:
+    label: Expected Behavior
+    description: What you expected to happen
+    placeholder: The form should submit successfully and show confirmation message.
+
+- type: textarea
+  id: environment
+  attributes:
+    label: Environment
+    description: |
+      Your environment details (OS, Browser, Version etc.)
+    placeholder: |
+      - OS: [e.g. macOS 12.4]
+      - Browser: [e.g. Chrome 102]
+      - Device: [e.g. MacBook Pro M1]
