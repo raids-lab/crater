@@ -75,9 +75,9 @@ const oramaSuggestions = {
         "How to perform LLM inference on Crater?"
     ],
     cn: [
-        "怎么启动Pytorch job？",
-        "怎么进行SSH连接？",
-        "怎么在Crater上进行LLM推理？"
+        "怎么启动 Pytorch job？",
+        "怎么进行 SSH 连接？",
+        "怎么在 Crater 上进行 LLM 推理？"
     ]
 };
 

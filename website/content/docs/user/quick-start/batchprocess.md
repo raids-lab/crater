@@ -1,6 +1,6 @@
 ---
 title: 自定义作业
-description: 提交一个PyTorch手写识别GPU训练作业
+description: 提交一个 PyTorch 手写识别 GPU 训练作业
 ---
 # 批处理作业
 
@@ -15,7 +15,7 @@ Crater 的 **单机批处理任务** 用于在一个特定环境下按既定的�
 在本地创建好要执行的代码文件。鉴于批处理系统在代码调试环节存在诸多不便之处，建议仅将在本地已成功调试且可正常执行的代码，应用于批处理系统之中，以保障整体业务流程的顺畅推进与稳定性。
 
 ```python
-#本代码参考github PyToch手写识别GPU训练任务实例
+#本代码参考 github PyToch 手写识别 GPU 训练任务实例
 import argparse
 import torch
 import torch.nn as nn
