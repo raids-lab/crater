@@ -20,7 +20,7 @@ description: NodePort 规则可以暴露服务端口，并允许外部用户通�
 - 通过 SSH（端口 22）连接集群中的节点。
 - 其他需要通过特定端口访问的应用。
 
-**转发路径**： 可通过 `{nodeIP}:{nodePort}` 访问。其中，`nodeIP` 是集群任一节点的地址，`nodePort `为所分配的端口号。
+**转发路径**：可通过 `{nodeIP}:{nodePort}` 访问。其中，`nodeIP` 是集群任一节点的地址，`nodePort `为所分配的端口号。
 
 ![nodeport-intro](./img/nodeport-intro.webp)
 

@@ -31,7 +31,7 @@
         },
         "id": 50,
         "panels": [],
-        "title": "GPU资源监控概览",
+        "title": "GPU 资源监控概览",
         "type": "row"
       },
       {
@@ -60,7 +60,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "未使用GPU卡"
+                "options": "未使用 GPU 卡"
               },
               "properties": [
                 {
@@ -75,7 +75,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "已使用GPU卡"
+                "options": "已使用 GPU 卡"
               },
               "properties": [
                 {
@@ -90,7 +90,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "总GPU卡"
+                "options": "总 GPU 卡"
               },
               "properties": [
                 {
@@ -139,7 +139,7 @@
             "expr": "count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"})",
             "hide": false,
             "instant": false,
-            "legendFormat": "总GPU卡",
+            "legendFormat": "总 GPU 卡",
             "range": true,
             "refId": "E"
           },
@@ -151,7 +151,7 @@
             "editorMode": "code",
             "expr": "count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"})",
             "instant": false,
-            "legendFormat": "已申请GPU卡",
+            "legendFormat": "已申请 GPU 卡",
             "range": true,
             "refId": "A"
           },
@@ -165,7 +165,7 @@
             "expr": "count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[1m])>0)",
             "hide": false,
             "instant": true,
-            "legendFormat": "已使用GPU卡",
+            "legendFormat": "已使用 GPU 卡",
             "range": false,
             "refId": "B"
           },
@@ -179,7 +179,7 @@
             "expr": "count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"})-count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[1m])>0)",
             "hide": false,
             "instant": true,
-            "legendFormat": "未使用GPU卡",
+            "legendFormat": "未使用 GPU 卡",
             "range": false,
             "refId": "F"
           }
@@ -396,7 +396,7 @@
             "refId": "A"
           }
         ],
-        "title": "GPU使用总功率",
+        "title": "GPU 使用总功率",
         "type": "gauge"
       },
       {
@@ -471,7 +471,7 @@
             "refId": "A"
           }
         ],
-        "title": "已申请GPU利用率",
+        "title": "已申请 GPU 利用率",
         "type": "gauge"
       },
       {
@@ -546,7 +546,7 @@
             "refId": "A"
           }
         ],
-        "title": "已使用GPU利用率",
+        "title": "已使用 GPU 利用率",
         "type": "gauge"
       },
       {
@@ -816,7 +816,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "GPU使用率"
+                "options": "GPU 使用率"
               },
               "properties": [
                 {
@@ -864,7 +864,7 @@
             "expr": "sum(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) / count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"})",
             "format": "time_series",
             "instant": false,
-            "legendFormat": "GPU使用率",
+            "legendFormat": "GPU 使用率",
             "range": true,
             "refId": "A"
           }
@@ -910,7 +910,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "已申请GPU资源"
+                "options": "已申请 GPU 资源"
               },
               "properties": [
                 {
@@ -933,7 +933,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "总GPU资源"
+                "options": "总 GPU 资源"
               },
               "properties": [
                 {
@@ -957,7 +957,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "已使用GPU资源"
+                "options": "已使用 GPU 资源"
               },
               "properties": [
                 {
@@ -1016,7 +1016,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "主机IP"
+                "options": "主机 IP"
               },
               "properties": [
                 {
@@ -1037,7 +1037,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "空闲GPU资源"
+                "options": "空闲 GPU 资源"
               },
               "properties": [
                 {
@@ -1104,7 +1104,7 @@
             "expr": "count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} * on (pod) group_left(host_ip) kube_pod_info) by (Hostname,host_ip,modelName)",
             "format": "table",
             "instant": true,
-            "legendFormat": "总GPU资源",
+            "legendFormat": "总 GPU 资源",
             "range": false,
             "refId": "A"
           },
@@ -1134,7 +1134,7 @@
             "format": "table",
             "hide": false,
             "instant": true,
-            "legendFormat": "已使用GPU资源",
+            "legendFormat": "已使用 GPU 资源",
             "range": false,
             "refId": "C"
           },
@@ -1180,14 +1180,14 @@
               },
               "renameByName": {
                 "Hostname": "主机名",
-                "Value #A": "总GPU资源",
-                "Value #B": "已申请GPU资源",
-                "Value #C": "已使用GPU资源",
-                "Value #D": "空闲GPU资源",
-                "Value #E": "已使用GPU资源（外部业务）",
-                "Value #F": "已申请GPU资源（内部业务）",
-                "Value #G": "已使用GPU资源（内部业务）",
-                "host_ip": "主机IP",
+                "Value #A": "总 GPU 资源",
+                "Value #B": "已申请 GPU 资源",
+                "Value #C": "已使用 GPU 资源",
+                "Value #D": "空闲 GPU 资源",
+                "Value #E": "已使用 GPU 资源（外部业务）",
+                "Value #F": "已申请 GPU 资源（内部业务）",
+                "Value #G": "已使用 GPU 资源（内部业务）",
+                "host_ip": "主机 IP",
                 "modelName": "GPU 型号"
               }
             }
@@ -1198,11 +1198,11 @@
               "include": {
                 "names": [
                   "主机名",
-                  "主机IP",
-                  "总GPU资源",
-                  "空闲GPU资源",
-                  "已申请GPU资源",
-                  "已使用GPU资源",
+                  "主机 IP",
+                  "总 GPU 资源",
+                  "空闲 GPU 资源",
+                  "已申请 GPU 资源",
+                  "已使用 GPU 资源",
                   "GPU 型号"
                 ]
               }
@@ -1313,7 +1313,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "GPU使用率"
+                "options": "GPU 使用率"
               },
               "properties": [
                 {
@@ -1454,11 +1454,11 @@
               "renameByName": {
                 "Hostname": "主机名",
                 "Value": "卡数",
-                "Value #A": "GPU使用率",
+                "Value #A": "GPU 使用率",
                 "Value #B": "显存使用率",
                 "Value #C": "卡数",
-                "gpu": "GPU卡序号",
-                "host_ip": "主机IP",
+                "gpu": "GPU 卡序号",
+                "host_ip": "主机 IP",
                 "modelName": "GPU 型号",
                 "namespace": "NameSpace",
                 "owner_name": "Job 名称",
@@ -1474,7 +1474,7 @@
                 "names": [
                   "Job 名称",
                   "GPU 型号",
-                  "GPU使用率",
+                  "GPU 使用率",
                   "显存使用率",
                   "卡数"
                 ]
@@ -1563,7 +1563,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "主机IP"
+                "options": "主机 IP"
               },
               "properties": [
                 {
@@ -1588,7 +1588,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "GPU卡序号"
+                "options": "GPU 卡序号"
               },
               "properties": [
                 {
@@ -1641,7 +1641,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "GPU使用率"
+                "options": "GPU 使用率"
               },
               "properties": [
                 {
@@ -1753,10 +1753,10 @@
               },
               "renameByName": {
                 "Hostname": "主机名",
-                "Value #A": "GPU使用率",
+                "Value #A": "GPU 使用率",
                 "Value #B": "显存使用率",
-                "gpu": "GPU卡序号",
-                "host_ip": "主机IP",
+                "gpu": "GPU 卡序号",
+                "host_ip": "主机 IP",
                 "namespace": "NameSpace",
                 "pod": "Pod"
               }
@@ -1768,12 +1768,12 @@
               "include": {
                 "names": [
                   "主机名",
-                  "主机IP",
+                  "主机 IP",
                   "NameSpace",
                   "Pod",
-                  "GPU卡序号",
+                  "GPU 卡序号",
                   "显存使用率",
-                  "GPU使用率"
+                  "GPU 使用率"
                 ]
               }
             }
@@ -1786,7 +1786,7 @@
           "type": "prometheus",
           "uid": "${idc}"
         },
-        "description": "监控展示NVIDIA驱动版本、芯片类型、GPU卡健康状态等",
+        "description": "监控展示 NVIDIA 驱动版本、芯片类型、GPU 卡健康状态等",
         "fieldConfig": {
           "defaults": {
             "color": {
@@ -1915,7 +1915,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "主机IP"
+                "options": "主机 IP"
               },
               "properties": [
                 {
@@ -1936,7 +1936,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "NVIDIA驱动版本"
+                "options": "NVIDIA 驱动版本"
               },
               "properties": [
                 {
@@ -1999,7 +1999,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "CPU使用率"
+                "options": "CPU 使用率"
               },
               "properties": [
                 {
@@ -2176,7 +2176,7 @@
             "format": "table",
             "hide": false,
             "instant": true,
-            "legendFormat": "CPU使用率",
+            "legendFormat": "CPU 使用率",
             "range": false,
             "refId": "D"
           },
@@ -2226,7 +2226,7 @@
             "refId": "G"
           }
         ],
-        "title": "GPU算力卡健康状态&版本信息概览",
+        "title": "GPU 算力卡健康状态&版本信息概览",
         "transformations": [
           {
             "id": "merge",
@@ -2271,14 +2271,14 @@
                 "os_image": 10
               },
               "renameByName": {
-                "DCGM_FI_DRIVER_VERSION": "NVIDIA驱动版本",
+                "DCGM_FI_DRIVER_VERSION": "NVIDIA 驱动版本",
                 "Hostname": "主机名",
                 "Value #A": "GPU 卡数",
-                "Value #D": "CPU使用率",
+                "Value #D": "CPU 使用率",
                 "Value #E": "内存使用率",
                 "Value #F": "内存时钟频率",
                 "Value #G": "SM 时钟频率",
-                "host_ip": "主机IP",
+                "host_ip": "主机 IP",
                 "kernel_version": "Kernel",
                 "modelName": "芯片类型",
                 "os_image": "操作系统版本",
@@ -2452,7 +2452,7 @@
             "refId": "A"
           }
         ],
-        "title": "GPU显存使用率（单台展示）",
+        "title": "GPU 显存使用率（单台展示）",
         "type": "bargauge"
       },
       {
