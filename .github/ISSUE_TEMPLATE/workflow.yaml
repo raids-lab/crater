@@ -1,0 +1,39 @@
+name: Workflow
+description: Suggest improvements to development workflows
+type: Workflow
+body:
+- type: textarea
+  id: current-flow
+  attributes:
+    label: Current Workflow
+    description: Describe the existing process
+    placeholder: |
+      [Example]:
+      Currently, code reviews require:
+      1. PR creation
+      2. Manual assignment to reviewers
+      3. Multiple Slack reminders
+      4. Manual merge after approval
+  validations:
+    required: true
+
+- type: textarea
+  id: problem
+  attributes:
+    label: Pain Points
+    description: What problems exist in current workflow?
+    placeholder: |
+      - Reviewers often miss assignments
+      - No SLA for review turnaround
+      - Merge conflicts accumulate
+
+- type: textarea
+  id: suggestion
+  attributes:
+    label: Suggested Improvement
+    description: Your proposed workflow change
+    placeholder: |
+      Implement:
+      1. Auto-assignment based on CODEOWNERS
+      2. Review deadline notifications
+      3. Auto-merge when approved and CI passes
