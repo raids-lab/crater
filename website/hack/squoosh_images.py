@@ -20,7 +20,7 @@ from pathlib import Path
 from collections import defaultdict
 
 def find_all_images(content_dir):
-    """扫描所有图片文件，返回相对content的路径集合"""
+    """扫描所有图片文件，返回相对 content 的路径集合"""
     image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
     image_paths = set()
     
@@ -33,7 +33,7 @@ def find_all_images(content_dir):
     return image_paths
 
 def extract_image_refs(content_dir):
-    """提取所有md/mdx文件中的图片引用，返回（图片相对content的路径, 原始引用字符串）映射"""
+    """提取所有 md/mdx 文件中的图片引用，返回（图片相对 content 的路径，原始引用字符串）映射"""
     refs = defaultdict(set)
     md_file_exts = {'.md', '.mdx'}
     
@@ -49,7 +49,7 @@ def extract_image_refs(content_dir):
                 if not matches:
                     continue
                 
-                # 计算当前md文件所在目录（相对content）
+                # 计算当前 md 文件所在目录（相对 content）
                 md_rel_dir = os.path.relpath(root, content_dir)
                 
                 for img_ref in matches:
@@ -58,14 +58,14 @@ def extract_image_refs(content_dir):
                         abs_ref = os.path.normpath(os.path.join(md_rel_dir, img_ref))
                         abs_ref = abs_ref.replace(os.sep, '/')
                         refs[abs_ref].add(img_ref)
-                    # 处理绝对路径（从content开始）
+                    # 处理绝对路径（从 content 开始）
                     else:
                         refs[img_ref.lstrip('/')].add(img_ref)
     
     return refs
 
 def compress_image(img_path, max_size=1080, quality=50):
-    """压缩图片并转换为webp格式"""
+    """压缩图片并转换为 webp 格式"""
     try:
         with Image.open(img_path) as img:
             # 调整大小（保持比例）
@@ -74,7 +74,7 @@ def compress_image(img_path, max_size=1080, quality=50):
                 new_size = (int(img.width * ratio), int(img.height * ratio))
                 img = img.resize(new_size, Image.LANCZOS)
             
-            # 转换为webp
+            # 转换为 webp
             webp_path = f"{os.path.splitext(img_path)[0]}.webp"
             img.save(webp_path, 'WEBP', quality=quality)
             return webp_path
@@ -93,16 +93,16 @@ def main():
     content_dir = os.path.abspath(args.content)
     print(f"Scanning content directory: {content_dir}")
 
-    # 步骤1: 扫描所有图片
+    # 步骤 1: 扫描所有图片
     all_images = find_all_images(content_dir)
     print(f"Found {len(all_images)} images")
 
-    # 步骤2: 提取所有引用
+    # 步骤 2: 提取所有引用
     image_refs = extract_image_refs(content_dir)
     referenced_images = set(image_refs.keys())
     print(f"Found {len(referenced_images)} referenced images")
 
-    # 步骤3: 检查未使用图片
+    # 步骤 3: 检查未使用图片
     unused_images = all_images - referenced_images
     if unused_images:
         print(f"\nFound {len(unused_images)} UNUSED images:")
@@ -122,12 +122,12 @@ def main():
     else:
         print("\nNo unused images found")
 
-    # 步骤4: 处理需要压缩的图片
+    # 步骤 4: 处理需要压缩的图片
     conversion_map = {}
     for img_rel_path, ref_strings in image_refs.items():
         img_abs_path = os.path.join(content_dir, img_rel_path)
         
-        # 跳过已经是webp格式的
+        # 跳过已经是 webp 格式的
         if img_rel_path.lower().endswith('.webp'):
             continue
             
@@ -147,7 +147,7 @@ def main():
             os.remove(img_abs_path)
             print(f"Deleted original: {img_rel_path}")
 
-    # 步骤5: 更新Markdown文件中的引用
+    # 步骤 5: 更新 Markdown 文件中的引用
     if conversion_map:
         print("\nUpdating Markdown files...")
         md_file_exts = {'.md', '.mdx'}
