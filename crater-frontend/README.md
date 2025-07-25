@@ -114,7 +114,7 @@ Update shadcn components:
 
 ```bash
 for file in src/components/ui/*.tsx; do
-  pnpm dlx shadcn-ui@latest add -y $(basename "$file" .tsx)
+  pnpm dlx shadcn@latest add -yo $(basename "$file" .tsx)
 done
 ```
 
