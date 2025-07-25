@@ -1,5 +1,28 @@
 ![crater](./crater-website/content/docs/admin/deployment/assets/icon.webp)
 
+<table>
+  <tr>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif"><br>
+      <em>Jupyter Lab</em>
+    </td>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif"><br>
+      <em>Ray Job</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif"><br>
+      <em>Monitor</em>
+    </td>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif"><br>
+      <em>Models</em>
+    </td>
+  </tr>
+</table>
+
 # About Crater
 
 **Crater** is a university-developed cluster management platform designed to provide users with an efficient and user-friendly solution for managing computing clusters. It offers unified scheduling and management of computing, storage, and other resources within a cluster, ensuring stable operation and optimal resource utilization.
