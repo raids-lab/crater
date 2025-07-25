@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM harbor.act.buaa.edu.cn/crater/nginx:240302
+FROM nginx:stable
 
 # 暴露端口 80
 EXPOSE 80
