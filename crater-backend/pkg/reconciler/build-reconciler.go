@@ -30,6 +30,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -39,7 +40,6 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/imageregistry"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/packer"
 )
 
@@ -177,7 +177,7 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 	u := query.User
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).First()
 	if err != nil {
-		logutils.Log.Errorf("get user failed, userID: %d, err: %v", userID, err)
+		klog.Errorf("get user failed, userID: %d, err: %v", userID, err)
 		return ctrl.Result{}, err
 	}
 	kanikoRecord := model.Kaniko{
@@ -193,7 +193,7 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 		Template:      job.Annotations[packer.AnnotationKeyTemplate],
 	}
 	if err := k.WithContext(ctx).Create(&kanikoRecord); err != nil {
-		logutils.Log.Errorf("create imagepack record failed, params: %+v, %+v", kanikoRecord, err)
+		klog.Errorf("create imagepack record failed, params: %+v, %+v", kanikoRecord, err)
 	} else {
 		logger.Info("successfully created kaniko record")
 	}

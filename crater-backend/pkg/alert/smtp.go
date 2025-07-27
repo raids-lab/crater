@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"gopkg.in/gomail.v2"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	config "github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type SMTPAlerter struct {
@@ -47,7 +47,7 @@ func newSMTPAlerter() (alertHandlerInterface, error) {
 
 func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttribute, subject, body string) error {
 	if receiver.Email == nil {
-		logutils.Log.Warnf("%s does not have an email address", receiver.Name)
+		klog.Warningf("%s does not have an email address", receiver.Name)
 		return nil
 	}
 
@@ -64,10 +64,10 @@ func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttr
 	d.SSL = false
 
 	if err := d.DialAndSend(m); err != nil {
-		logutils.Log.Errorf("Failed to send email to %s: %v", *receiver.Email, err)
+		klog.Errorf("Failed to send email to %s: %v", *receiver.Email, err)
 		return err
 	}
 
-	logutils.Log.Infof("Sent email to %s", *receiver.Email)
+	klog.Infof("Sent email to %s", *receiver.Email)
 	return nil
 }

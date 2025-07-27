@@ -12,13 +12,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/model"
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type JobControl struct {
@@ -333,7 +333,7 @@ func GenVolumeAndMountsFromAITask(task *model.AITask) ([]v1.Volume, []v1.VolumeM
 	if task.ShareDirs != "" {
 		taskShareDir := model.JSONStringToVolumes(task.ShareDirs)
 		if taskShareDir == nil {
-			logutils.Log.Errorf("parse task share dir: %v", task.ShareDirs)
+			klog.Errorf("parse task share dir: %v", task.ShareDirs)
 			return nil, nil, fmt.Errorf("parse task share dir: %v", task.ShareDirs)
 		}
 		for pvc, mounts := range taskShareDir {

@@ -6,8 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
-
-	"github.com/raids-lab/crater/pkg/logutils"
+	"k8s.io/klog/v2"
 )
 
 type Config struct {
@@ -132,11 +131,11 @@ func initConfig() *Config {
 	} else {
 		configPath = "/etc/config/config.yaml"
 	}
-	logutils.Log.Info("config path", configPath)
+	klog.Info("config path", configPath)
 
 	err := readConfig(configPath, config)
 	if err != nil {
-		logutils.Log.Error("init config", err)
+		klog.Error("init config", err)
 		panic(err)
 	}
 	return config

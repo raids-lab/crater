@@ -16,6 +16,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -30,7 +31,6 @@ import (
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/util"
 )
@@ -498,7 +498,7 @@ func (mgr *AIJobMgr) GetDetail(c *gin.Context) {
 		resp.CompletedTimestamp = metav1.NewTime(taskModel.UpdatedAt)
 	}
 
-	logutils.Log.Infof("get task success, taskID: %d", req.JobID)
+	klog.Infof("get task success, taskID: %d", req.JobID)
 	resputil.Success(c, resp)
 }
 
@@ -546,7 +546,7 @@ func (mgr *AIJobMgr) Delete(c *gin.Context) {
 		return
 	}
 
-	logutils.Log.Infof("delete task success, taskID: %d", req.JobID)
+	klog.Infof("delete task success, taskID: %d", req.JobID)
 	resputil.Success(c, "")
 }
 
@@ -556,7 +556,7 @@ type UpdateTaskSLOReq struct {
 }
 
 func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
-	logutils.Log.Infof("Task Update, url: %s", c.Request.URL)
+	klog.Infof("Task Update, url: %s", c.Request.URL)
 	var req UpdateTaskSLOReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate update parameters failed, err %v", err), resputil.NotSpecified)
@@ -575,7 +575,7 @@ func (mgr *AIJobMgr) UpdateSLO(c *gin.Context) {
 		return
 	}
 	mgr.NotifyTaskUpdate(req.TaskID, token.Username, util.UpdateTask)
-	logutils.Log.Infof("update task success, taskID: %d", req.TaskID)
+	klog.Infof("update task success, taskID: %d", req.TaskID)
 	resputil.Success(c, "")
 }
 
@@ -714,7 +714,7 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 	job.Annotations[AnnotationKeyJupyter] = jupyterToken
 	if err := mgr.client.Update(c, job); err != nil {
 		// Log the error but continue, as this is not critical
-		logutils.Log.Errorf("Failed to update job annotations: %v", err)
+		klog.Errorf("Failed to update job annotations: %v", err)
 	}
 
 	resputil.Success(c, vcjob.JobTokenResp{

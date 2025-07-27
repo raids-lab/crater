@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -14,7 +15,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/util"
 )
 
@@ -137,7 +137,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
-	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
+	klog.Infof("create task success, taskID: %d", taskModel.ID)
 	resp := CreateTaskResp{
 		TaskID: taskModel.ID,
 	}
@@ -196,7 +196,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	}
 	mgr.NotifyTaskUpdate(taskModel.ID, taskModel.UserName, util.CreateTask)
 
-	logutils.Log.Infof("create task success, taskID: %d", taskModel.ID)
+	klog.Infof("create task success, taskID: %d", taskModel.ID)
 	resp := CreateTaskResp{
 		TaskID: taskModel.ID,
 	}

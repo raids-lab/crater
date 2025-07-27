@@ -6,12 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 // UserListKaniko godoc
@@ -34,7 +34,7 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 		Order(k.CreatedAt.Desc()).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+		klog.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
 	response := mgr.generateKanikoListResponse(kanikos)
 	resputil.Success(c, response)
@@ -55,7 +55,7 @@ func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 	kanikoQuery := query.Kaniko
 	kanikos, err = kanikoQuery.WithContext(c).Preload(kanikoQuery.User).Order(kanikoQuery.CreatedAt.Desc()).Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+		klog.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
 	response := mgr.generateKanikoListResponse(kanikos)
 	resputil.Success(c, response)
@@ -146,7 +146,7 @@ func (mgr *ImagePackMgr) deleteKanikoByIDList(c *gin.Context, isAdminMode bool, 
 	for _, kanikoID := range kanikoIDList {
 		if isSuccess, errorMsg := mgr.deleteKanikoByID(c, isAdminMode, kanikoID, userID); !isSuccess {
 			flag = false
-			logutils.Log.Errorf("delete kaniko failed, err:%v", errorMsg)
+			klog.Errorf("delete kaniko failed, err:%v", errorMsg)
 		}
 	}
 	return flag
@@ -167,32 +167,32 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 	if kaniko, err = k.WithContext(c).
 		Where(k.ID.Eq(kanikoID)).First(); err != nil {
 		errorMsg = fmt.Sprintf("kaniko not exist or have no permission %+v", err)
-		logutils.Log.Error(errorMsg)
+		klog.Error(errorMsg)
 		return false, errorMsg
 	}
 	// 2. if kaniko is finished, delete image entity
 	if kaniko.Status == model.BuildJobFinished {
 		if _, err = query.Image.WithContext(c).Where(query.Image.ImagePackName.Eq(kaniko.ImagePackName)).Delete(); err != nil {
 			errorMsg = fmt.Sprintf("delete image entity failed! err:%v", err)
-			logutils.Log.Error(errorMsg)
+			klog.Error(errorMsg)
 		}
 	}
 	// 3. delete kaniko entity
 	if _, err = kanikoQuery.Delete(kaniko); err != nil {
 		errorMsg = fmt.Sprintf("delete kaniko entity failed! err:%v", err)
-		logutils.Log.Error(errorMsg)
+		klog.Error(errorMsg)
 		return false, errorMsg
 	}
 	// 4. delete kaniko job
 	if err = mgr.imagePacker.DeleteJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
 		errorMsg = fmt.Sprintf("delete kaniko job failed! err:%v", err)
-		logutils.Log.Error(errorMsg)
+		klog.Error(errorMsg)
 	}
 	// 5. if buildkit finished, then delete image from harbor
 	if kaniko.Status == model.BuildJobFinished {
 		if err = mgr.imageRegistry.DeleteImageFromProject(c, kaniko.ImageLink); err != nil {
 			errorMsg = fmt.Sprintf("delete imagepack artifact failed! err:%+v", err)
-			logutils.Log.Error(errorMsg)
+			klog.Error(errorMsg)
 		}
 	}
 	return flag, errorMsg

@@ -9,13 +9,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -92,7 +92,7 @@ func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 	d := query.Dataset
 	userDatasets, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
 	if err != nil {
-		logutils.Log.Infof("Can't get , err: %v", err)
+		klog.Infof("Can't get , err: %v", err)
 		resputil.Error(c, "Can't get mydatasets", resputil.NotSpecified)
 		return
 	}

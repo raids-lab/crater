@@ -8,10 +8,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -449,7 +449,7 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 		jobDB := query.Job
 		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(owner.Name)).First()
 		if err != nil {
-			logutils.Log.Errorf("Get job %s failed, err: %v", owner.Name, err)
+			klog.Errorf("Get job %s failed, err: %v", owner.Name, err)
 			continue
 		}
 		pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())

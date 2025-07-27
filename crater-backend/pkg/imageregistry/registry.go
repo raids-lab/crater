@@ -12,9 +12,9 @@ import (
 	harbormodelv2 "github.com/mittwald/goharbor-client/v5/apiv2/model"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 var (
@@ -35,7 +35,7 @@ func (r *ImageRegistry) CheckOrCreateProjectForUser(c context.Context, userName 
 	u := query.User
 	if _, err := u.WithContext(c).Where(u.Name.Eq(userName)).
 		Update(u.ImageQuota, DefaultQuotaSize); err != nil {
-		logutils.Log.Errorf("save user imageQuota failed, err:%v", err)
+		klog.Errorf("save user imageQuota failed, err:%v", err)
 		return err
 	}
 
@@ -44,10 +44,10 @@ func (r *ImageRegistry) CheckOrCreateProjectForUser(c context.Context, userName 
 		Public:       &ProjectIsPublic,
 		StorageLimit: &DefaultQuotaSize,
 	}); err != nil {
-		logutils.Log.Errorf("create harbor project failed! err:%+v", err)
+		klog.Errorf("create harbor project failed! err:%+v", err)
 		return err
 	}
-	logutils.Log.Info("create harbor project success!")
+	klog.Info("create harbor project success!")
 	return nil
 }
 
@@ -66,7 +66,7 @@ func (r *ImageRegistry) getImageInfo(fullImageURL string) (projectName, imageNam
 	matches := re.FindStringSubmatch(fullImageURL)
 	exceptedMatchesLen := 4
 	if len(matches) != exceptedMatchesLen {
-		logutils.Log.Errorf("invalid full image url: %s", fullImageURL)
+		klog.Errorf("invalid full image url: %s", fullImageURL)
 		return "", "", "", fmt.Errorf("invalid full image url: %s", fullImageURL)
 	}
 	projectName = matches[1]
@@ -88,7 +88,7 @@ func (r *ImageRegistry) DeleteImageFromProject(c context.Context, fullImageURL s
 func (r *ImageRegistry) UpdateQuotaForProject(c context.Context, projectName string, quotaSize int64) error {
 	project, err := r.harborClient.GetProject(c, projectName)
 	if err != nil {
-		logutils.Log.Errorf("get harbor project failed, err: %+v", err)
+		klog.Errorf("get harbor project failed, err: %+v", err)
 		return err
 	}
 	return r.harborClient.UpdateStorageQuotaByProjectID(c, int64(project.ProjectID), quotaSize)
@@ -102,7 +102,7 @@ func (r *ImageRegistry) GetImageSize(c context.Context, fullImageName string) (i
 
 	imageArtifact, err := r.harborClient.GetArtifact(c, projectName, imageName, imageTag)
 	if err != nil {
-		logutils.Log.Errorf("get image artifact failed! err:%+v", err)
+		klog.Errorf("get image artifact failed! err:%+v", err)
 		return 0, err
 	}
 	return imageArtifact.Size, nil
@@ -136,11 +136,11 @@ func (r *ImageRegistry) CreateUser(c context.Context, userName string) (string, 
 	email := userName + TmpEmailSuffix
 	password, err := GenerateRandomPassword(PasswordLength)
 	if err != nil {
-		logutils.Log.Errorf("generate random password failed! err:%+v", err)
+		klog.Errorf("generate random password failed! err:%+v", err)
 		return "", err
 	}
 	if err = r.harborClient.NewUser(c, userName, email, userName, password, ""); err != nil {
-		logutils.Log.Errorf("create harbor user failed! err:%+v", err)
+		klog.Errorf("create harbor user failed! err:%+v", err)
 		return "", err
 	}
 	return password, nil
@@ -167,7 +167,7 @@ func (r *ImageRegistry) CheckOrCreateUser(c context.Context, userName string) (s
 	}
 
 	if err = r.AddProjectMember(c, userName); err != nil {
-		logutils.Log.Errorf("add project member failed! err:%+v", err)
+		klog.Errorf("add project member failed! err:%+v", err)
 		return password, err
 	}
 
@@ -177,7 +177,7 @@ func (r *ImageRegistry) CheckOrCreateUser(c context.Context, userName string) (s
 func (r *ImageRegistry) DeleteUser(c context.Context, userName string) error {
 	userResp, err := r.harborClient.GetUserByName(c, userName)
 	if err != nil {
-		logutils.Log.Errorf("get harbor user failed! err:%+v", err)
+		klog.Errorf("get harbor user failed! err:%+v", err)
 		return err
 	}
 	return r.harborClient.DeleteUser(c, userResp.UserID)
@@ -205,13 +205,13 @@ func (r *ImageRegistry) GetProjectQuota(c context.Context, projectName string) (
 	var project *harbormodelv2.Project
 	project, err = r.harborClient.GetProject(c, projectName)
 	if err != nil {
-		logutils.Log.Errorf("get harbor project failed, err: %+v", err)
+		klog.Errorf("get harbor project failed, err: %+v", err)
 		return 0, 0, err
 	}
 	var quota *harbormodelv2.Quota
 	quota, err = r.harborClient.GetQuotaByProjectID(c, int64(project.ProjectID))
 	if err != nil {
-		logutils.Log.Errorf("get harbor project quota failed, err: %+v", err)
+		klog.Errorf("get harbor project quota failed, err: %+v", err)
 		return 0, 0, err
 	}
 	return quota.Used["storage"], quota.Hard["storage"], nil

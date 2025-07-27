@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -32,7 +33,6 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -1249,7 +1249,7 @@ func (mgr *APIServerMgr) EditPodResource(
 			pod.Namespace, pod.Name, idx, err)
 	}
 
-	logutils.Log.Infof("Updated pod %s/%s container[%d]=%q resources=%+v",
+	klog.Infof("Updated pod %s/%s container[%d]=%q resources=%+v",
 		updated.Namespace, updated.Name, idx, updated.Spec.Containers[idx].Name,
 		updated.Spec.Containers[idx].Resources)
 

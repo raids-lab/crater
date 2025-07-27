@@ -6,10 +6,10 @@ import (
 	"net/url"
 
 	"github.com/gin-gonic/gin"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -42,7 +42,7 @@ func (mgr *ImagePackMgr) GetHarborIP(c *gin.Context) {
 func (mgr *ImagePackMgr) CheckLinkValidity(c *gin.Context) {
 	req := &CheckLinkValidityRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate link pairs failed, err %v", err)
+		klog.Errorf("validate link pairs failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -62,14 +62,14 @@ func (mgr *ImagePackMgr) CheckLinkValidity(c *gin.Context) {
 func (mgr *ImagePackMgr) checkLinkValidity(link string) bool {
 	ip, project, repository, tag, err := utils.SplitImageLink(link)
 	if err != nil {
-		logutils.Log.Errorf("split image link failed, err %v", err)
+		klog.Errorf("split image link failed, err %v", err)
 		return false
 	}
 	encodedRepo := url.PathEscape(repository)
 	encodedURL := fmt.Sprintf("https://%s/api/v2.0/projects/%s/repositories/%s/artifacts/%s", ip, project, encodedRepo, tag)
 	response, err := mgr.req.R().Get(encodedURL)
 	if err != nil {
-		logutils.Log.Errorf("http failure between checking link validity failed, err %v", err)
+		klog.Errorf("http failure between checking link validity failed, err %v", err)
 		return false
 	}
 	return response.IsSuccessState()
@@ -88,7 +88,7 @@ func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 	token := util.GetToken(c)
 	detail, err := mgr.imageRegistry.GetProjectDetail(c, token.Username)
 	if err != nil {
-		logutils.Log.Errorf("fetch project quota failed, err:%v", err)
+		klog.Errorf("fetch project quota failed, err:%v", err)
 	}
 	resp := GetProjectDetailResponse{
 		Quota:   float64(detail.TotalSize) / float64(GBit),
@@ -110,26 +110,26 @@ func (mgr *ImagePackMgr) UserGetProjectDetail(c *gin.Context) {
 func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
-		logutils.Log.Errorf("check project failed")
+		klog.Errorf("check project failed")
 		resputil.Error(c, "check or create project failed", resputil.NotSpecified)
 		return
 	}
 	if exist := mgr.imageRegistry.CheckUserExist(c, token.Username); exist {
 		err := mgr.imageRegistry.DeleteUser(c, token.Username)
 		if err != nil {
-			logutils.Log.Errorf("delete user failed")
+			klog.Errorf("delete user failed")
 			resputil.Error(c, "delete user failed", resputil.NotSpecified)
 			return
 		}
 	}
 	password, err := mgr.imageRegistry.CreateUser(c, token.Username)
 	if err != nil {
-		logutils.Log.Errorf("create user failed: %+v", err)
+		klog.Errorf("create user failed: %+v", err)
 		resputil.Error(c, "create user failed", resputil.NotSpecified)
 		return
 	}
 	if err = mgr.imageRegistry.AddProjectMember(c, token.Username); err != nil {
-		logutils.Log.Errorf("add project member failed")
+		klog.Errorf("add project member failed")
 		resputil.Error(c, "add project member failed", resputil.NotSpecified)
 		return
 	}
@@ -155,7 +155,7 @@ func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 	req := &UpdateProjectQuotaRequest{}
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate update project quota failed, err %v", err)
+		klog.Errorf("validate update project quota failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}

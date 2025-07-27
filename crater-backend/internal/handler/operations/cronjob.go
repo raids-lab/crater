@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 const (
@@ -123,7 +123,7 @@ func (mgr *OperationsMgr) getCronjobConfigs(c *gin.Context) ([]CronjobConfigs, e
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		logutils.Log.Errorf("Failed to get cronjobs: %v", err)
+		klog.Errorf("Failed to get cronjobs: %v", err)
 		return nil, err
 	}
 	for i := range cronjobs.Items {
