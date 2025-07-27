@@ -3,10 +3,12 @@ createNamespace: false
 imagePullSecrets: []
 
 global:
-  host: "gpu.raids-lab.cn"
+  host: "gpu.raids-lab.cn"                # Main service domain
+  grafanaHost: "gpu-grafana.raids-lab.cn" # Grafana domain
+  apiBase: "https://gpu.raids-lab.cn/api/" # API base URL
+  websiteBase: "https://raids-lab.github.io/crater/cn" # Website base URL
   namespace: "crater-workspace"
   imageNamespace: "crater-images"
-  grafanaHost: "gpu-grafana.raids-lab.cn"
   tlsSecretName: "crater-tls-secret"
   tlsForwardSecretName: "crater-tls-forward-secret"
   secrets:
@@ -31,8 +33,8 @@ global:
     ssConfigContent: "<TO_BE_SET_BY_USER>"      # Storage server sensitive config content
 
 urls:
-  host: "gpu.raids-lab.cn"
-  grafanaHost: "gpu-grafana.raids-lab.cn"
+  host: {{ .Values.global.host }}
+  grafanaHost: {{ .Values.global.grafanaHost }}
 
 images:
   backend:
@@ -80,12 +82,12 @@ web:
       username: "crater-admin"
       password: {{ .Values.global.secrets.adminPassword | quote }}
   ingress:
-    host: "gpu.raids-lab.cn"
+    host: {{ .Values.global.host }}
   grafana:
+    host: {{ .Values.global.grafanaHost }}
     address: http://prometheus-grafana.monitoring
     token: {{ .Values.global.secrets.grafanaToken | quote }}
     ancestor: https://gpu.raids-lab.cn
-    host: gpu-grafana.raids-lab.cn
 
 # BuildKit configuration variables
 buildkitConfig:
@@ -121,10 +123,10 @@ buildkitConfig:
 frontendConfig:
   version: "1.0.0"
   url:
-    host: "gpu.raids-lab.cn"
-    apiBase: "https://gpu.raids-lab.cn/api/"
+    host: {{ .Values.global.host }}
+    apiBase: {{ .Values.global.apiBase }}
     apiVersion: "v1"
-    websiteBase: "https://raids-lab.github.io/crater/cn"
+    websiteBase: {{ .Values.global.websiteBase }}
   grafana:
     overview:
       main: "https://gpu-grafana.raids-lab.cn/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
@@ -151,7 +153,7 @@ backendConfig:
   metricsAddr: :8080
   probeAddr: :8081
   monitoringPort: 9443
-  host: gpu.raids-lab.cn
+  host: {{ .Values.global.host }}
   tlsSecretName: crater-tls-secret
   tlsForwardSecretName: crater-tls-forward-secret
   postgres:
@@ -213,7 +215,7 @@ backendConfig:
 cronjobConfig:
   USERNAME: {{ .Values.global.secrets.cronjobUsername | quote }}
   PASSWORD: {{ .Values.global.secrets.cronjobPassword | quote }}
-  HOST: "gpu.raids-lab.cn"
+  HOST: {{ .Values.global.host }}
   jobs:
     lowGPUUtil:
       schedule: "*/5 * * * *"
