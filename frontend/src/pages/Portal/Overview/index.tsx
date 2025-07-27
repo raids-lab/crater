@@ -44,6 +44,7 @@ import DocsButton from '@/components/button/DocsButton'
 import PageTitle from '@/components/layout/PageTitle'
 import UserLabel from '@/components/label/UserLabel'
 import { getUserPseudonym } from '@/utils/pseudonym'
+import useResourceListQuery from '@/hooks/query/useResourceQuery'
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -182,6 +183,16 @@ export const Component: FC = () => {
     select: (res) => res.data.data,
     refetchInterval: REFETCH_INTERVAL,
   })
+
+  const resourcesQuery = useResourceListQuery(
+    true,
+    (resource) => {
+      return resource.type == 'gpu'
+    },
+    (resource) => {
+      return resource.name
+    }
+  )
 
   const jobStatus = useMemo(() => {
     if (!jobQuery.data) {
@@ -368,7 +379,7 @@ export const Component: FC = () => {
         }}
         storageKey="overview_nodelist"
         query={nodeQuery}
-        columns={getNodeColumns(getNicknameByName)}
+        columns={getNodeColumns(getNicknameByName, resourcesQuery.data)}
       />
     </>
   )

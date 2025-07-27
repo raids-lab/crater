@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { K8sResources } from '@/utils/resource'
+import { V1ResourceList } from '@/utils/resource'
 import instance, { VERSION } from '../axios'
 import { IResponse } from '../types'
 import { globalJobUrl, store } from '@/utils/store'
@@ -311,7 +311,7 @@ export interface NodeSelectorRequirement {
 
 export interface IJupyterCreate {
   name: string
-  resource: K8sResources
+  resource: V1ResourceList
   image: string
   volumeMounts: VolumeMount[]
   envs: Env[]
@@ -343,7 +343,7 @@ export interface ITensorflowCreate {
   tasks: {
     name: string
     replicas: number
-    resource: K8sResources
+    resource: V1ResourceList
     image: string
     command?: string
     workingDir?: string

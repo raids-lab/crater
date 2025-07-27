@@ -133,7 +133,9 @@ const Quota = ({ accountID }: { accountID: number }) => {
     <>
       <QuotaCard resource={quota?.cpu} icon={CpuIcon} />
       <QuotaCard resource={quota?.memory} icon={MemoryStickIcon} />
-      {quota?.gpus?.map((gpu, i) => <QuotaCard key={i} resource={gpu} icon={GpuIcon} />)}
+      {quota?.gpus?.map((gpu, i) => (
+        <QuotaCard key={i} resource={gpu} icon={GpuIcon} />
+      ))}
     </>
   )
 }

@@ -16,18 +16,50 @@
 
 import { PhaseBadge } from './PhaseBadge'
 
+// These are valid but not exhaustive conditions of node. A cloud provider may set a condition not listed here.
+// Relevant events contain "NodeReady", "NodeNotReady", "NodeSchedulable", and "NodeNotSchedulable".
+// const (
+// 	// NodeReady means kubelet is healthy and ready to accept pods.
+// 	NodeReady NodeConditionType = "Ready"
+// 	// NodeMemoryPressure means the kubelet is under pressure due to insufficient available memory.
+// 	NodeMemoryPressure NodeConditionType = "MemoryPressure"
+// 	// NodeDiskPressure means the kubelet is under pressure due to insufficient available disk.
+// 	NodeDiskPressure NodeConditionType = "DiskPressure"
+// 	// NodePIDPressure means the kubelet is under pressure due to insufficient available PID.
+// 	NodePIDPressure NodeConditionType = "PIDPressure"
+// 	// NodeNetworkUnavailable means that network for the node is not correctly configured.
+// 	NodeNetworkUnavailable NodeConditionType = "NetworkUnavailable"
+// )
 export const nodeStatuses = [
   {
-    value: 'true',
+    value: 'Ready',
     label: '运行中',
     color: 'text-highlight-blue bg-highlight-blue/20',
     description: '节点正常运行',
   },
   {
-    value: 'false',
-    label: '异常',
+    value: 'MemoryPressure',
+    label: '内存压力',
     color: 'text-highlight-red bg-highlight-red/20',
-    description: '节点出现异常',
+    description: '节点内存压力过大',
+  },
+  {
+    value: 'DiskPressure',
+    label: '磁盘压力',
+    color: 'text-highlight-red bg-highlight-red/20',
+    description: '节点磁盘压力过大',
+  },
+  {
+    value: 'PIDPressure',
+    label: 'PID压力',
+    color: 'text-highlight-red bg-highlight-red/20',
+    description: '节点PID压力过大',
+  },
+  {
+    value: 'NetworkUnavailable',
+    label: '网络不可用',
+    color: 'text-highlight-red bg-highlight-red/20',
+    description: '节点网络不可用',
   },
   {
     value: 'Unschedulable',
