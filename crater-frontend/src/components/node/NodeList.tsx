@@ -67,10 +67,10 @@ export const UsageCell: FC<{
           for (const accelerator of accelerators) {
             if (used && used[accelerator]) {
               resourceUsed = used[accelerator]
-              acceleratorName = accelerator
             }
             if (allocatable && allocatable[accelerator]) {
               resourceAllocatable = allocatable[accelerator]
+              acceleratorName = accelerator
             }
           }
         } else {
