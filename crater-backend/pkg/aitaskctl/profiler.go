@@ -202,9 +202,10 @@ func (p *Profiler) run(ctx context.Context) {
 				}
 
 				jobStatus := ""
-				if pod.Status.Phase == corev1.PodFailed {
+				switch pod.Status.Phase {
+				case corev1.PodFailed:
 					jobStatus = model.EmiasTaskFailedStatus
-				} else if pod.Status.Phase == corev1.PodSucceeded {
+				case corev1.PodSucceeded:
 					jobStatus = model.EmiasTaskSucceededStatus
 				}
 				podUtil, err := p.prometheusClient.QueryPodProfileMetric(pod.Namespace, pod.Name)

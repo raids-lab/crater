@@ -176,7 +176,7 @@ func (b *imagePacker) updateOwnerReference(c context.Context, configMap *corev1.
 		BlockOwnerDeletion: ptr.To(true),
 	}
 	fmt.Printf("ownerReference: %+v\n", ownerReference)
-	configMap.ObjectMeta.OwnerReferences = append(configMap.ObjectMeta.OwnerReferences, ownerReference)
+	configMap.OwnerReferences = append(configMap.OwnerReferences, ownerReference)
 	err := b.client.Update(c, configMap)
 	fmt.Printf("configMap: %+v\n", configMap)
 	return err

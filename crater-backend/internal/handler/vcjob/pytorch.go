@@ -108,7 +108,8 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			},
 		}
 
-		if task.Name == "master" {
+		switch task.Name {
+		case "master":
 			taskSpec.Policies = []batch.LifecyclePolicy{
 				{
 					Action: bus.CompleteJobAction,
@@ -119,7 +120,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 					Event:  bus.PodFailedEvent,
 				},
 			}
-		} else if task.Name == "worker" {
+		case "worker":
 			taskSpec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 		}
 

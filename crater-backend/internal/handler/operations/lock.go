@@ -89,7 +89,7 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 		return
 	}
 	// 若永久锁定，则不允许延长锁定时间
-	if j.LockedTimestamp == utils.GetPermanentTime() {
+	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
 		resputil.Error(c, "Job is already permanently locked", resputil.NotSpecified)
 		return
 	}
