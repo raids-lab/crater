@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: crater-web-frontend
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.global.namespace | default .Release.Namespace }}
   labels:
     app: crater-web-frontend
   annotations:
