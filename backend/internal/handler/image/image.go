@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/gin-gonic/gin"
+	"k8s.io/klog/v2"
 
 	"gorm.io/datatypes"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 // UserUploadImage godoc
@@ -37,7 +37,7 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 	userQuery := query.User
 	user, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(token.UserID)).First()
 	if err != nil {
-		logutils.Log.Errorf("fetch user failed, params: %+v err:%v", req, err)
+		klog.Errorf("fetch user failed, params: %+v err:%v", req, err)
 		return
 	}
 	imageEntity := &model.Image{
@@ -52,7 +52,7 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 	}
 	imageQuery := query.Image
 	if err := imageQuery.WithContext(c).Create(imageEntity); err != nil {
-		logutils.Log.Errorf("create imagepack entity failed, params: %+v", imageEntity)
+		klog.Errorf("create imagepack entity failed, params: %+v", imageEntity)
 	}
 	resputil.Success(c, "")
 }
@@ -85,7 +85,7 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 		Or(imageQuery.IsPublic).
 		Order(imageQuery.CreatedAt.Desc()).
 		Find(); err != nil {
-		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+		klog.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
 	imageInfoList = mgr.processImageListResponse(oldPublicImages, model.Public, imageInfoList)
 	// 2. 获取公共镜像（ImageAccountID = 1）
@@ -101,7 +101,7 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 		Where(imageQuery.UserID.Eq(token.UserID)).
 		Order(imageQuery.CreatedAt.Desc()).
 		Find(); err != nil {
-		logutils.Log.Errorf("fetch kaniko entity failed, err:%v", err)
+		klog.Errorf("fetch kaniko entity failed, err:%v", err)
 	}
 	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
 	// 5. 获取其他用户分享的镜像
@@ -137,7 +137,7 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 	if err = imageAccountQuery.WithContext(c).
 		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
 		Pluck(imageAccountQuery.ImageID, &publicImageIDs); err != nil {
-		logutils.Log.Errorf("get public account ids failed, err:%v", err)
+		klog.Errorf("get public account ids failed, err:%v", err)
 		resputil.Error(c, "get public account ids failed", resputil.NotSpecified)
 		return
 	}
@@ -145,7 +145,7 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 	if err = imageQuery.WithContext(c).
 		Where(imageQuery.IsPublic).
 		Pluck(imageQuery.ID, &oldPublicImages); err != nil {
-		logutils.Log.Errorf("get old public account ids failed, err:%v", err)
+		klog.Errorf("get old public account ids failed, err:%v", err)
 		resputil.Error(c, "get old public account ids failed", resputil.NotSpecified)
 		return
 	}
@@ -154,7 +154,7 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 		Preload(query.Image.User).
 		Where(imageQuery.ID.In(publicImageIDs...)).
 		Find(); err != nil {
-		logutils.Log.Errorf("fetch public image entity failed, err:%v", err)
+		klog.Errorf("fetch public image entity failed, err:%v", err)
 		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
 		return
 	}
@@ -163,7 +163,7 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 		Preload(query.Image.User).
 		Where(imageQuery.ID.NotIn(publicImageIDs...)).
 		Find(); err != nil {
-		logutils.Log.Errorf("fetch public image entity failed, err:%v", err)
+		klog.Errorf("fetch public image entity failed, err:%v", err)
 		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
 		return
 	}
@@ -201,7 +201,7 @@ func (mgr *ImagePackMgr) getUserSharedImages(c *gin.Context, userID uint) []*mod
 		Where(imageShareQuery.UserID.Eq(userID)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch shared image failed, err:%v", err)
+		klog.Errorf("fetch shared image failed, err:%v", err)
 		return sharedImages
 	}
 
@@ -220,7 +220,7 @@ func (mgr *ImagePackMgr) getPublicImages(c *gin.Context) []*model.Image {
 		Where(imageShareQuery.AccountID.Eq(model.DefaultAccountID)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch shared image failed, err:%v", err)
+		klog.Errorf("fetch shared image failed, err:%v", err)
 		return sharedImages
 	}
 	for _, imageShare := range imageShares {
@@ -239,7 +239,7 @@ func (mgr *ImagePackMgr) getAccountSharedImages(c *gin.Context, accountID uint) 
 		Where(imageShareQuery.AccountID.Eq(accountID)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch shared image failed, err:%v", err)
+		klog.Errorf("fetch shared image failed, err:%v", err)
 		return sharedImages
 	}
 	for _, imageShare := range imageShares {
@@ -281,7 +281,7 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	imageID := deleteImageRequest.ID
 	imageQuery := query.Image
 	if _, err = imageQuery.WithContext(c).Where(imageQuery.ID.Eq(imageID)).Delete(); err != nil {
-		logutils.Log.Errorf("delete image entity failed! err:%v", err)
+		klog.Errorf("delete image entity failed! err:%v", err)
 		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
@@ -347,7 +347,7 @@ func (mgr *ImagePackMgr) deleteImageByIDList(c *gin.Context, isAdminMode bool, i
 		specifiedQuery = specifiedQuery.Where(iq.UserID.Eq(util.GetToken(c).UserID))
 	}
 	if _, err := specifiedQuery.Where(iq.ID.In(imageIDList...)).Delete(); err != nil {
-		logutils.Log.Errorf("delete image entity failed! err:%v", err)
+		klog.Errorf("delete image entity failed! err:%v", err)
 		flag = false
 	}
 	return flag
@@ -367,7 +367,7 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 	req := &ChangeImagePublicStatusRequest{}
 	var err error
 	if err = c.ShouldBindUri(req); err != nil {
-		logutils.Log.Errorf("validate update image public status params failed, err %v", err)
+		klog.Errorf("validate update image public status params failed, err %v", err)
 		resputil.Error(c, "validate params", resputil.NotSpecified)
 		return
 	}
@@ -382,7 +382,7 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 			AccountID: model.DefaultAccountID,
 		}
 		if err = imageAccountQuery.WithContext(c).Create(imageAccountEntity); err != nil {
-			logutils.Log.Errorf("create image share entity failed, err %v", err)
+			klog.Errorf("create image share entity failed, err %v", err)
 			resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
 			return
 		}
@@ -395,7 +395,7 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 			Where(imageAccountQuery.ImageID.Eq(req.ID)).
 			Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
 			Delete(); err != nil {
-			logutils.Log.Errorf("delete image share entity failed, err %v", err)
+			klog.Errorf("delete image share entity failed, err %v", err)
 			resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
 			return
 		}
@@ -419,7 +419,7 @@ func (mgr *ImagePackMgr) AdminUpdateImagePublicStatus(c *gin.Context) {
 func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate description failed, err %v", err)
+		klog.Errorf("validate description failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -438,7 +438,7 @@ func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
 func (mgr *ImagePackMgr) AdminChangeImageDescription(c *gin.Context) {
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate description failed, err %v", err)
+		klog.Errorf("validate description failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -454,7 +454,7 @@ func (mgr *ImagePackMgr) changeImageDescription(c *gin.Context, isAdminMode bool
 	if _, err := specifiedQuery.
 		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.Description, newDescription); err != nil {
-		logutils.Log.Errorf("update image description failed, err %v", err)
+		klog.Errorf("update image description failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update description failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
@@ -472,7 +472,7 @@ func (mgr *ImagePackMgr) changeImageDescription(c *gin.Context, isAdminMode bool
 func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate task type failed, err %v", err)
+		klog.Errorf("validate task type failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -491,7 +491,7 @@ func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 func (mgr *ImagePackMgr) AdminChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate task type failed, err %v", err)
+		klog.Errorf("validate task type failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -507,7 +507,7 @@ func (mgr ImagePackMgr) changeImageTaskType(c *gin.Context, isAdminMode bool, im
 	if _, err := specifiedQuery.
 		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.TaskType, newTaskType); err != nil {
-		logutils.Log.Errorf("update image task type failed, err %v", err)
+		klog.Errorf("update image task type failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update task type failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
@@ -555,7 +555,7 @@ func (mgr *ImagePackMgr) processImageListResponse(
 func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
 	req := &ChangeImageTagsRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		klog.Errorf("validate tags data failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -574,7 +574,7 @@ func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
 func (mgr *ImagePackMgr) AdminChangeImageTags(c *gin.Context) {
 	req := &ChangeImageTagsRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		klog.Errorf("validate tags data failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -586,7 +586,7 @@ func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags [
 	if _, err := imageQuery.WithContext(c).
 		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.Tags, datatypes.NewJSONType(newTags)); err != nil {
-		logutils.Log.Errorf("update image tags failed, err %v", err)
+		klog.Errorf("update image tags failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "update tags failed", resputil.NotSpecified)
 	}
 	resputil.Success(c, "")
@@ -604,20 +604,20 @@ func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags [
 func (mgr *ImagePackMgr) UserShareImage(c *gin.Context) {
 	req := &ShareImageRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		klog.Errorf("validate tags data failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
 	for _, id := range req.IDList {
 		if req.Type == "user" {
 			if err := mgr.createImageUserEntity(c, req.ImageID, id); err != nil {
-				logutils.Log.Errorf("create image share entity failed, err %v", err)
+				klog.Errorf("create image share entity failed, err %v", err)
 				resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
 				return
 			}
 		} else {
 			if err := mgr.createImageAccountEntity(c, req.ImageID, id); err != nil {
-				logutils.Log.Errorf("create image share entity failed, err %v", err)
+				klog.Errorf("create image share entity failed, err %v", err)
 				resputil.Error(c, fmt.Sprintf("%+v", err), resputil.NotSpecified)
 				return
 			}
@@ -691,7 +691,7 @@ func (mgr *ImagePackMgr) createImageUserEntity(c *gin.Context, imageID, userID u
 func (mgr *ImagePackMgr) UserCancelShareImage(c *gin.Context) {
 	req := &CancelShareImageRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
-		logutils.Log.Errorf("validate tags data failed, err %v", err)
+		klog.Errorf("validate tags data failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -767,7 +767,7 @@ func (mgr *ImagePackMgr) cancelShareImageWithUser(c *gin.Context, imageID, userI
 func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 	req := &ImageGrantRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		logutils.Log.Errorf("validate imageID failed, err %v", err)
+		klog.Errorf("validate imageID failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -779,7 +779,7 @@ func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 		Where(imageAccountQuery.ImageID.Eq(req.ImageID)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch image share with account failed, err:%v", err)
+		klog.Errorf("fetch image share with account failed, err:%v", err)
 		resputil.Error(c, "fetch image share with account failed", resputil.NotSpecified)
 		return
 	}
@@ -797,7 +797,7 @@ func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 		Where(imageUserQuery.ImageID.Eq(req.ImageID)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch image share with user failed, err:%v", err)
+		klog.Errorf("fetch image share with user failed, err:%v", err)
 		resputil.Error(c, "fetch image share with user failed", resputil.NotSpecified)
 		return
 	}
@@ -823,7 +823,7 @@ func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 	req := &AccountSearchRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		logutils.Log.Errorf("validate search failed, err %v", err)
+		klog.Errorf("validate search failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -833,7 +833,7 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 	if err := imageAccountQuery.WithContext(c).
 		Where(imageAccountQuery.ImageID.Eq(req.ImageID)).
 		Pluck(imageAccountQuery.AccountID, &sharedAccountIDs); err != nil {
-		logutils.Log.Errorf("query shared account ids failed, err:%v", err)
+		klog.Errorf("query shared account ids failed, err:%v", err)
 		resputil.Error(c, "query shared account ids failed", resputil.NotSpecified)
 		return
 	}
@@ -845,7 +845,7 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 	if err := userAccountQuery.WithContext(c).
 		Where(userAccountQuery.UserID.Eq(util.GetToken(c).UserID)).
 		Pluck(userAccountQuery.AccountID, &accountIDs); err != nil {
-		logutils.Log.Errorf("get user current account failed, err:%v", err)
+		klog.Errorf("get user current account failed, err:%v", err)
 		resputil.Error(c, "get user current account failed", resputil.NotSpecified)
 	}
 	// 4. 查询未被分享的Account
@@ -855,7 +855,7 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 		Where(accountQuery.ID.NotIn(sharedAccountIDs...)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch account failed, err:%v", err)
+		klog.Errorf("fetch account failed, err:%v", err)
 		resputil.Error(c, "fetch account failed", resputil.NotSpecified)
 		return
 	}
@@ -883,7 +883,7 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
 	req := &UserSearchRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
-		logutils.Log.Errorf("validate search failed, err %v", err)
+		klog.Errorf("validate search failed, err %v", err)
 		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
 		return
 	}
@@ -906,7 +906,7 @@ func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
 		Where(userQuery.ID.NotIn(sharedUserIDs...)).
 		Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch user failed, err:%v", err)
+		klog.Errorf("fetch user failed, err:%v", err)
 		resputil.Error(c, "fetch user failed", resputil.NotSpecified)
 		return
 	}
@@ -936,7 +936,7 @@ func (mgr *ImagePackMgr) UserGetCudaBaseImages(c *gin.Context) {
 	cudaBaseImageQuery := query.CudaBaseImage
 	cudaBaseImages, err := cudaBaseImageQuery.WithContext(c).Find()
 	if err != nil {
-		logutils.Log.Errorf("fetch cuda base images failed, err:%v", err)
+		klog.Errorf("fetch cuda base images failed, err:%v", err)
 		resputil.Error(c, "fetch cuda base images failed", resputil.NotSpecified)
 		return
 	}

@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -22,7 +23,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -83,7 +83,7 @@ func (mgr *OperationsMgr) handleLowGPUUsageJobs(
 	for _, job := range deletionJobs {
 		err := mgr.freeLowGPUUsageVCjob(c, job)
 		if err != nil {
-			logutils.Log.Errorf("Failed to delete job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to delete job %s: %v", job.JobName, err)
 			continue
 		}
 		deletionJobList = append(deletionJobList, job.JobName)
@@ -94,7 +94,7 @@ func (mgr *OperationsMgr) handleLowGPUUsageJobs(
 	for _, job := range reamindJobs {
 		err := mgr.remindLowGPUUsageVCjob(c, job, deleteTime)
 		if err != nil {
-			logutils.Log.Errorf("Failed to remind job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to remind job %s: %v", job.JobName, err)
 			continue
 		}
 		remindJobList = append(remindJobList, job.JobName)
@@ -104,7 +104,7 @@ func (mgr *OperationsMgr) handleLowGPUUsageJobs(
 	for _, job := range normalJobs {
 		err := mgr.allowRepeatAlert(c, job, model.LowGPUJobRemindedAlert)
 		if err != nil {
-			logutils.Log.Errorf("Failed to allow repeat alert for job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to allow repeat alert for job %s: %v", job.JobName, err)
 			continue
 		}
 	}
@@ -126,7 +126,7 @@ func (mgr *OperationsMgr) freeLowGPUUsageVCjob(c *gin.Context, job *model.Job) e
 	// 发送邮件
 	alertMgr := alert.GetAlertMgr()
 	if err := alertMgr.DeleteJob(c, job.JobName, nil); err != nil {
-		logutils.Log.Errorf("Send Alarm Email failed for job %s", job.JobName)
+		klog.Errorf("Send Alarm Email failed for job %s", job.JobName)
 	}
 
 	return nil
@@ -135,14 +135,14 @@ func (mgr *OperationsMgr) freeLowGPUUsageVCjob(c *gin.Context, job *model.Job) e
 func (mgr *OperationsMgr) remindLowGPUUsageVCjob(c *gin.Context, job *model.Job, deleteTime time.Time) error {
 	if !job.AlertEnabled {
 		// 不需要发送邮件
-		logutils.Log.Infof("Job %s is not alert enabled", job.JobName)
+		klog.Infof("Job %s is not alert enabled", job.JobName)
 		return nil
 	}
 
 	// 发送邮件
 	alertMgr := alert.GetAlertMgr()
 	if err := alertMgr.RemindLowUsageJob(c, job.JobName, deleteTime, nil); err != nil {
-		logutils.Log.Errorf("Send Alarm Email failed for job %s", job.JobName)
+		klog.Errorf("Send Alarm Email failed for job %s", job.JobName)
 		return err
 	}
 
@@ -229,7 +229,7 @@ func (mgr *OperationsMgr) getLowGPUUsageVCjobs(c *gin.Context, duration, gpuUtil
 	whiteList, err := mgr.getJobWhiteList(c)
 	if err != nil {
 		// 拿不到白名单，就不进行清理，以免“误伤”
-		logutils.Log.Errorf("Failed to get job white list: %v", err)
+		klog.Errorf("Failed to get job white list: %v", err)
 		return nil
 	}
 
@@ -252,7 +252,7 @@ func (mgr *OperationsMgr) getLowGPUUsageVCjobs(c *gin.Context, duration, gpuUtil
 
 		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(owner.Name)).First()
 		if err != nil {
-			logutils.Log.Infof("Fail to get vcjob %s\n", owner.Name)
+			klog.Infof("Fail to get vcjob %s\n", owner.Name)
 			continue
 		}
 
@@ -344,7 +344,7 @@ func (mgr *OperationsMgr) handleLongTimeRunningJobs(
 	for _, job := range deletionJobs {
 		err := mgr.freeLongTimeVCjob(c, job)
 		if err != nil {
-			logutils.Log.Errorf("Failed to delete job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to delete job %s: %v", job.JobName, err)
 			continue
 		}
 		deletionJobList = append(deletionJobList, job.JobName)
@@ -355,7 +355,7 @@ func (mgr *OperationsMgr) handleLongTimeRunningJobs(
 	for _, job := range reamindJobs {
 		err := mgr.remindLongTimeVCjob(c, job, deleteTime)
 		if err != nil {
-			logutils.Log.Errorf("Failed to remind job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to remind job %s: %v", job.JobName, err)
 			continue
 		}
 		remindJobList = append(remindJobList, job.JobName)
@@ -378,7 +378,7 @@ func (mgr *OperationsMgr) freeLongTimeVCjob(c *gin.Context, job *model.Job) erro
 	// 发送邮件
 	alertMgr := alert.GetAlertMgr()
 	if err := alertMgr.CleanJob(c, job.JobName, nil); err != nil {
-		logutils.Log.Errorf("Send Alarm Email failed for job %s", job.JobName)
+		klog.Errorf("Send Alarm Email failed for job %s", job.JobName)
 		return err
 	}
 
@@ -388,14 +388,14 @@ func (mgr *OperationsMgr) freeLongTimeVCjob(c *gin.Context, job *model.Job) erro
 func (mgr *OperationsMgr) remindLongTimeVCjob(c *gin.Context, job *model.Job, deleteTime time.Time) error {
 	if !job.AlertEnabled {
 		// 不需要发送邮件
-		logutils.Log.Infof("Job %s is not alert enabled", job.JobName)
+		klog.Infof("Job %s is not alert enabled", job.JobName)
 		return nil
 	}
 
 	// 发送邮件
 	alertMgr := alert.GetAlertMgr()
 	if err := alertMgr.RemindLongTimeRunningJob(c, job.JobName, deleteTime, nil); err != nil {
-		logutils.Log.Errorf("Send Alarm Email failed for job %s", job.JobName)
+		klog.Errorf("Send Alarm Email failed for job %s", job.JobName)
 		return err
 	}
 
@@ -427,14 +427,14 @@ func (mgr *OperationsMgr) getLongTimeVCjobs(c *gin.Context, batchTimeout, intera
 	runningJobs, err := jobDB.WithContext(c).Where(jobDB.Status.Eq(string(batch.Running))).Find()
 
 	if err != nil {
-		logutils.Log.Errorf("Failed to get running jobs: %v", err)
+		klog.Errorf("Failed to get running jobs: %v", err)
 		return nil
 	}
 
 	whiteList, err := mgr.getJobWhiteList(c)
 	if err != nil {
 		// 拿不到白名单，就不进行清理，以免“误伤”
-		logutils.Log.Errorf("Failed to get job white list: %v", err)
+		klog.Errorf("Failed to get job white list: %v", err)
 		return nil
 	}
 
@@ -500,7 +500,7 @@ func (mgr *OperationsMgr) deleteUnscheduledJupyterJobs(c *gin.Context, waitMinit
 	).Find()
 
 	if err != nil {
-		logutils.Log.Errorf("Failed to get unscheduled jupyter jobs: %v", err)
+		klog.Errorf("Failed to get unscheduled jupyter jobs: %v", err)
 		return nil
 	}
 
@@ -514,12 +514,12 @@ func (mgr *OperationsMgr) deleteUnscheduledJupyterJobs(c *gin.Context, waitMinit
 		vcjob := &batch.Job{}
 		namespace := config.GetConfig().Workspace.Namespace
 		if err := mgr.client.Get(c, client.ObjectKey{Name: job.JobName, Namespace: namespace}, vcjob); err != nil {
-			logutils.Log.Errorf("Failed to get job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to get job %s: %v", job.JobName, err)
 			continue
 		}
 
 		if err := mgr.client.Delete(c, vcjob); err != nil {
-			logutils.Log.Errorf("Failed to delete job %s: %v", job.JobName, err)
+			klog.Errorf("Failed to delete job %s: %v", job.JobName, err)
 			continue
 		}
 
@@ -538,7 +538,7 @@ func (mgr *OperationsMgr) isJobscheduled(c *gin.Context, jobName string) bool {
 		LabelSelector: fmt.Sprintf("volcano.sh/job-name=%s", jobName),
 	})
 	if err != nil {
-		logutils.Log.Errorf("Failed to get pods: %v", err)
+		klog.Errorf("Failed to get pods: %v", err)
 		return false
 	}
 

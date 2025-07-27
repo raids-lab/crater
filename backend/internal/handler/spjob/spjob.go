@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -23,7 +24,6 @@ import (
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/logutils"
 	utils "github.com/raids-lab/crater/pkg/util"
 	craterUtils "github.com/raids-lab/crater/pkg/utils"
 )
@@ -209,7 +209,7 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 		}
 		pods := mgr.GetPodsByName(c, spjob.Name)
 		if len(pods) < 1 {
-			logutils.Log.Printf("skip spjob %q", spjob.Name)
+			klog.Infof("skip spjob %q", spjob.Name)
 			continue
 		}
 		pod := pods[0]

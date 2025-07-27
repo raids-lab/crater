@@ -463,7 +463,7 @@ package crclient
 // 		jobDB := query.Job
 // 		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(owner.Name)).First()
 // 		if err != nil {
-// 			logutils.Log.Errorf("Get job %s failed, err: %v", owner.Name, err)
+// 			klog.Errorf("Get job %s failed, err: %v", owner.Name, err)
 // 			continue
 // 		}
 // 		pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())

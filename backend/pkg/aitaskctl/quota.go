@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type QuotaInfo struct {
@@ -120,7 +120,7 @@ func (c *TaskController) GetQuotaInfo(username string) *QuotaInfo {
 		q := query.Account
 		quotadb, err := q.WithContext(context.Background()).Where(q.Name.Eq((username))).First()
 		if err != nil {
-			logutils.Log.Errorf("get quota from db failed, err: %v", err)
+			klog.Errorf("get quota from db failed, err: %v", err)
 			return nil
 		}
 		_, info := c.AddOrUpdateQuotaInfo(quotadb)

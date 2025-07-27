@@ -4,9 +4,10 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/klog/v2"
+
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 
 	// "github.com/amitshekhariitbhu/go-backend-clean-architecture/domain"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -92,12 +93,12 @@ func (tm *TokenManager) CreateTokens(msg *JWTMessage) (
 	accessToken string, refreshToken string, err error) {
 	accessToken, err = tm.createToken(msg, tm.accessTokenTTL)
 	if err != nil {
-		logutils.Log.Error(err)
+		klog.Error(err)
 		return "", "", err
 	}
 	refreshToken, err = tm.createToken(msg, tm.refreshTokenTTL)
 	if err != nil {
-		logutils.Log.Error(err)
+		klog.Error(err)
 		return "", "", err
 	}
 	return accessToken, refreshToken, nil

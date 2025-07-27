@@ -7,11 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -177,7 +177,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
 		return
 	}
-	logutils.Log.Infof("create params: %+v", req)
+	klog.Infof("create params: %+v", req)
 	dockerfile := mgr.generateDockerfile(req)
 	buildData := &DockerfileBuildData{
 		BaseImage:   req.SourceImage,
@@ -253,7 +253,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {
-		logutils.Log.Errorf("create imagepack failed, err:%+v", err)
+		klog.Errorf("create imagepack failed, err:%+v", err)
 		resputil.Error(c, "create imagepack failed", resputil.NotSpecified)
 		return
 	}
@@ -287,7 +287,7 @@ func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
 	}
 
 	if err := mgr.imagePacker.CreateFromEnvd(c, envdData); err != nil {
-		logutils.Log.Errorf("create imagepack failed, err:%+v", err)
+		klog.Errorf("create imagepack failed, err:%+v", err)
 		resputil.Error(c, "create imagepack failed", resputil.NotSpecified)
 		return
 	}
