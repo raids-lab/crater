@@ -6,14 +6,22 @@ func CalculateRequsetsByContainers(containers []v1.Container) (resources v1.Reso
 	resources = make(v1.ResourceList, 0)
 	for j := range containers {
 		container := &containers[j]
-		for name, quantity := range container.Resources.Requests {
-			if v, ok := resources[name]; !ok {
-				resources[name] = quantity
+		resources = SumResources(resources, container.Resources.Requests)
+	}
+	return resources
+}
+
+func SumResources(resources ...v1.ResourceList) v1.ResourceList {
+	result := make(v1.ResourceList)
+	for _, res := range resources {
+		for name, quantity := range res {
+			if v, ok := result[name]; !ok {
+				result[name] = quantity.DeepCopy()
 			} else {
 				v.Add(quantity)
-				resources[name] = v
+				result[name] = v
 			}
 		}
 	}
-	return resources
+	return result
 }

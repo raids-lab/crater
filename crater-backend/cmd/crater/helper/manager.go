@@ -9,8 +9,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
@@ -23,6 +21,7 @@ import (
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/imageregistry"
+	"github.com/raids-lab/crater/pkg/indexer"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/util"
@@ -52,12 +51,6 @@ func (ms *ManagerSetup) CreateCRDManager() (manager.Manager, error) {
 
 	mgr, err := ctrl.NewManager(ms.cfg, ctrl.Options{
 		Scheme: scheme,
-		Cache: cache.Options{
-			DefaultNamespaces: map[string]cache.Config{
-				config.GetConfig().Workspace.Namespace:      {},
-				config.GetConfig().Workspace.ImageNamespace: {},
-			},
-		},
 		Metrics: metricsserver.Options{
 			BindAddress: ms.backendConfig.MetricsAddr,
 		},
@@ -95,6 +88,11 @@ func (ms *ManagerSetup) SetupCustomCRDAddon(
 
 	// Setup Volcano
 	if err := ms.setupVolcano(mgr, registerConfig); err != nil {
+		return err
+	}
+
+	// Setup Indexeres
+	if err := indexer.SetupIndexers(mgr); err != nil {
 		return err
 	}
 
@@ -177,15 +175,6 @@ func (ms *ManagerSetup) setupImagePacker(mgr manager.Manager, registerConfig *ha
 func (ms *ManagerSetup) setupVolcano(mgr manager.Manager, registerConfig *handler.RegisterConfig) error {
 	utilruntime.Must(scheduling.AddToScheme(mgr.GetScheme()))
 	utilruntime.Must(batch.AddToScheme(mgr.GetScheme()))
-
-	// Create a new field indexer
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &batch.Job{}, "spec.queue", func(rawObj client.Object) []string {
-		// Extract the `spec.queue` field from the Job object
-		job := rawObj.(*batch.Job)
-		return []string{job.Spec.Queue}
-	}); err != nil {
-		return fmt.Errorf("unable to index field spec.queue: %w", err)
-	}
 
 	vcjobReconciler := reconciler.NewVcJobReconciler(
 		mgr.GetClient(),
