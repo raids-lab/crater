@@ -3,7 +3,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: crater-web-backend-ingress
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.global.namespace | default .Release.Namespace }}
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -11,10 +11,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - {{ .Values.web.ingress.host }}
-      secretName: crater-tls-secret
+        - {{ .Values.global.host | default .Values.web.ingress.host }}
+      secretName: {{ .Values.global.tlsSecretName | default "crater-tls-secret" }}
   rules:
-    - host: {{ .Values.web.ingress.host }}
+    - host: {{ .Values.global.host | default .Values.web.ingress.host }}
       http:
         paths:
           - backend:

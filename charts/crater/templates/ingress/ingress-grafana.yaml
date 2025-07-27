@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: crater-grafana-proxy-ingress
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Values.global.namespace | default .Release.Namespace }}
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/configuration-snippet: |
@@ -12,10 +12,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - {{ .Values.web.grafana.host }}
-      secretName: crater-tls-secret
+        - {{ .Values.global.grafanaHost | default .Values.web.grafana.host }}
+      secretName: {{ .Values.global.tlsSecretName | default "crater-tls-secret" }}
   rules:
-    - host: {{ .Values.web.grafana.host }}
+    - host: {{ .Values.global.grafanaHost | default .Values.web.grafana.host }}
       http:
         paths:
           - path: /
