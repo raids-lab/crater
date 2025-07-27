@@ -7,8 +7,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
-
-	"github.com/raids-lab/crater/pkg/logutils"
+	"k8s.io/klog/v2"
 )
 
 // TaskType
@@ -163,7 +162,7 @@ func JSONStringToVolumes(str string) map[string][]DirMount {
 	var volumes map[string][]DirMount
 	err := json.Unmarshal([]byte(str), &volumes)
 	if err != nil {
-		logutils.Log.Errorf("JSONStringToVolumes error: %v", err)
+		klog.Errorf("JSONStringToVolumes error: %v", err)
 		return nil
 	}
 	return volumes

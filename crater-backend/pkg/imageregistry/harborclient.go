@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	haborapiv2 "github.com/mittwald/goharbor-client/v5/apiv2"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 type AuthInfo struct {
@@ -26,7 +26,7 @@ func NewHarborClient() HarborClient {
 	HarborAPIServer := fmt.Sprintf("https://%s/api/", harborConfig.RegistryServer)
 	restClient, err := haborapiv2.NewRESTClientForHost(HarborAPIServer, harborConfig.RegistryAdmin, harborConfig.RegistryAdminPass, nil)
 	if err != nil {
-		logutils.Log.Errorf("establish harbor client failed, err: %+v", err)
+		klog.Errorf("establish harbor client failed, err: %+v", err)
 	}
 	authInfo := AuthInfo{
 		RegistryServer:  harborConfig.RegistryServer,

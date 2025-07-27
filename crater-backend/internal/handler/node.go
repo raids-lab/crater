@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -73,7 +73,7 @@ func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 //	@Failure		500	{object}	resputil.Response[any]		"其他错误"
 //	@Router			/v1/nodes [get]
 func (mgr *NodeMgr) ListNode(c *gin.Context) {
-	logutils.Log.Infof("Node List, url: %s", c.Request.URL)
+	klog.Infof("Node List, url: %s", c.Request.URL)
 	nodes, err := mgr.nodeClient.ListNodes()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list nodes failed, err %v", err), resputil.NotSpecified)
@@ -98,7 +98,7 @@ func (mgr *NodeMgr) ListNode(c *gin.Context) {
 func (mgr *NodeMgr) GetNode(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
-		logutils.Log.Infof("Bind URI failed, err: %v", err)
+		klog.Infof("Bind URI failed, err: %v", err)
 		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
 		return
 	}
@@ -126,7 +126,7 @@ func (mgr *NodeMgr) GetNode(c *gin.Context) {
 func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
-		logutils.Log.Infof("Bind URI failed, err: %v", err)
+		klog.Infof("Bind URI failed, err: %v", err)
 		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
 		return
 	}
@@ -156,7 +156,7 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 func (mgr *NodeMgr) AddNodetaint(c *gin.Context) {
 	var req NodeTaint
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logutils.Log.Infof("Bind URI failed, err: %v", err)
+		klog.Infof("Bind URI failed, err: %v", err)
 		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
 		return
 	}
@@ -187,7 +187,7 @@ func (mgr *NodeMgr) AddNodetaint(c *gin.Context) {
 func (mgr *NodeMgr) DeleteNodetaint(c *gin.Context) {
 	var req NodeTaint
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logutils.Log.Infof("Delete Bind URI failed, err: %v", err)
+		klog.Infof("Delete Bind URI failed, err: %v", err)
 		resputil.Error(c, "Delete Invalid request parameter", resputil.NotSpecified)
 		return
 	}
@@ -216,12 +216,12 @@ func (mgr *NodeMgr) DeleteNodetaint(c *gin.Context) {
 func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 	var req NodePodRequest
 	if err := c.ShouldBindUri(&req); err != nil {
-		logutils.Log.Infof("Bind URI failed, err: %v", err)
+		klog.Infof("Bind URI failed, err: %v", err)
 		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
 		return
 	}
 
-	logutils.Log.Infof("Node List Pod, name: %s", req.Name)
+	klog.Infof("Node List Pod, name: %s", req.Name)
 	pods, err := mgr.nodeClient.GetPodsForNode(c, req.Name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
@@ -249,7 +249,7 @@ func (mgr *NodeMgr) ListNodeGPUInfo(c *gin.Context) {
 		return
 	}
 
-	logutils.Log.Infof("List Node GPU Util, name: %s", req.Name)
+	klog.Infof("List Node GPU Util, name: %s", req.Name)
 	gpuInfo, err := mgr.nodeClient.GetNodeGPUInfo(req.Name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get nodes GPU failed, err %v", err), resputil.NotSpecified)

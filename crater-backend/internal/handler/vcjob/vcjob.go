@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -27,7 +28,6 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/imageregistry"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -658,7 +658,7 @@ func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
 	sshInfoStr := fmt.Sprintf("%s:%d", ip, port)
 	pod.Annotations[AnnotationKeySSHEnabled] = sshInfoStr
 	if err := mgr.client.Update(c, &pod); err != nil {
-		logutils.Log.Errorf("failed to update pod annotation: %v", err)
+		klog.Errorf("failed to update pod annotation: %v", err)
 	}
 
 	resputil.Success(c, sshInfo)

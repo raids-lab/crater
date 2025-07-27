@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/util"
 )
 
@@ -77,15 +77,15 @@ func (c *TaskController) Init() error {
 	q := query.Account
 	quotas, err := q.WithContext(context.Background()).Find()
 	if err != nil {
-		logutils.Log.Errorf("list all quotas failed, err: %v", err)
+		klog.Errorf("list all quotas failed, err: %v", err)
 	}
-	logutils.Log.Infof("list all quotas success, len: %v", len(quotas))
+	klog.Infof("list all quotas success, len: %v", len(quotas))
 	for i := range quotas {
 		// 添加quota
 		c.AddOrUpdateQuotaInfo(quotas[i])
 		queueingList, err := c.taskDB.ListByUserAndStatuses(quotas[i].Name, model.EmiasTaskQueueingStatuses)
 		if err != nil {
-			logutils.Log.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].Name, err)
+			klog.Errorf("list user:%v queueing tasks failed, err: %v", quotas[i].Name, err)
 			continue
 		}
 		c.taskQueue.InitUserQueue(quotas[i].Name, queueingList)
@@ -98,7 +98,7 @@ func (c *TaskController) Start(ctx context.Context) error {
 	// init share dirs
 	// err := c.jobControl.InitShareDir()
 	// if err != nil {
-	// 	logutils.Log.Errorf("get share dirs failed, err: %v", err)
+	// 	klog.Errorf("get share dirs failed, err: %v", err)
 	// 	return err
 	// }
 	// 1. init 初始化task队列和quota信息，存在缓存里
@@ -122,7 +122,7 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 			// 更新task在db中的状态
 			task, err := c.updateTaskStatus(ctx, status.TaskID, status.NewStatus, status.Reason)
 			if err != nil {
-				logutils.Log.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
+				klog.Infof("get job status event, taskID: %v, newStatus: %v", status.TaskID, status.NewStatus)
 				continue
 			}
 			// 更新quota，减去已经完成的作业的资源
@@ -145,11 +145,11 @@ func (c *TaskController) watchJobStatus(ctx context.Context) {
 func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 	task, err := c.taskDB.GetByID(event.TaskID)
 	if err != nil {
-		logutils.Log.Errorf("get task update event failed, err: %v", err)
+		klog.Errorf("get task update event failed, err: %v", err)
 		return
 	}
 	tidStr := strconv.FormatUint(uint64(event.TaskID), 10)
-	logutils.Log.Infof("get task update event, taskID: %v, operation: %v", tidStr, event.Operation)
+	klog.Infof("get task update event, taskID: %v, operation: %v", tidStr, event.Operation)
 	switch event.Operation {
 	case util.CreateTask:
 		//
@@ -166,13 +166,13 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 		// delete aijob in cluster? todo:
 		err = c.jobControl.DeleteJobFromTask(task)
 		if err != nil {
-			logutils.Log.Errorf("delete job from task failed, err: %v", err)
+			klog.Errorf("delete job from task failed, err: %v", err)
 		}
 		// delete from profiler
 		if c.profiler != nil && (task.ProfileStatus == model.EmiasProfileQueued || task.ProfileStatus == model.EmiasProfiling) {
 			c.profiler.DeleteProfilePodFromTask(task.ID)
 		}
-		logutils.Log.Infof("delete task in task controller, %d", event.TaskID)
+		klog.Infof("delete task in task controller, %d", event.TaskID)
 	}
 }
 
@@ -184,16 +184,16 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 // 			// 更新task在队列的状态
 // 			task, err := c.taskDB.GetByID(t.TaskID)
 // 			tidStr := strconv.FormatUint(uint64(t.TaskID), 10)
-// 			logutils.Log.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
+// 			klog.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
 // 			// 1. delete的情况
 // 			if t.Operation == util.DeleteTask {
 // 				c.taskQueue.DeleteTaskByUserNameAndTaskID(t.UserName, tidStr)
 // 				// delete in cluster
 // 				err = c.jobControl.DeleteJobFromTask(task)
 // 				if err != nil {
-// 					logutils.Log.Errorf("delete job from task failed, err: %v", err)
+// 					klog.Errorf("delete job from task failed, err: %v", err)
 // 				}
-// 				logutils.Log.Infof("delete task in task controller, %d", t.TaskID)
+// 				klog.Infof("delete task in task controller, %d", t.TaskID)
 // 				continue
 // 			} else if t.Operation == util.CreateTask {
 // 				// 2. create
@@ -247,10 +247,10 @@ func (c *TaskController) schedule(_ context.Context) {
 	// 1. guaranteed job schedule
 	for username, q := range c.taskQueue.userQueues {
 		// 1. 复制一份quota
-		// logutils.Log.Infof(username, q.gauranteedQueue)
+		// klog.Infof(username, q.gauranteedQueue)
 		quotaCopy := c.GetQuotaInfoSnapshotByUsername(username)
 		if quotaCopy == nil {
-			logutils.Log.Errorf("quota not found, username: %v", username)
+			klog.Errorf("quota not found, username: %v", username)
 			continue
 		}
 		// 2. 从gauranteedQueue队列选出不超过quota的作业
@@ -260,9 +260,9 @@ func (c *TaskController) schedule(_ context.Context) {
 			if !quotaCopy.CheckHardQuotaExceed(task) {
 				candiates = append(candiates, task)
 				quotaCopy.AddTask(task)
-				logutils.Log.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
+				klog.Infof("task quota check succeed,user %v task %v taskid %v", task.UserName, task.TaskName, task.ID)
 			} else {
-				logutils.Log.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v",
+				klog.Infof("task quota exceed, user %v task %v taskid %v, request:%v, used:%v, hard:%v",
 					task.UserName, task.TaskName, task.ID, task.ResourceRequest, quotaCopy.HardUsed, quotaCopy.Hard)
 				// bug: 如果先检查资源多的，可能后面的都调度不了？？
 			}
@@ -273,13 +273,13 @@ func (c *TaskController) schedule(_ context.Context) {
 	for _, q := range c.taskQueue.userQueues {
 		for _, t := range q.bestEffortQueue.List() {
 			task := t.(*model.AITask)
-			// logutils.Log.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
+			// klog.Infof("user:%v, task: %v, task status:%v, profile status: %v", task.UserName, task.ID, task.Status, task.ProfileStatus)
 			// update profile status
 			if c.profiler != nil {
 				// todo: udpate profile status???
 				if task.Status == model.EmiasTaskQueueingStatus && task.ProfileStatus == model.EmiasUnProfiled {
 					c.profiler.SubmitProfileTask(task.ID)
-					logutils.Log.Infof("submit profile task, user:%v taskID:%v, taskName:%v", task.UserName, task.ID, task.TaskName)
+					klog.Infof("submit profile task, user:%v taskID:%v, taskName:%v", task.UserName, task.ID, task.TaskName)
 					task.ProfileStatus = model.EmiasProfileQueued
 				} else {
 					// todo: 优化 check profile status
@@ -299,7 +299,7 @@ func (c *TaskController) schedule(_ context.Context) {
 	for _, candidate := range candiates {
 		task, err := c.taskDB.GetByID(candidate.ID)
 		if err != nil {
-			logutils.Log.Errorf("get task from db failed, err: %v", err)
+			klog.Errorf("get task from db failed, err: %v", err)
 			continue
 		}
 		// check profiling status
@@ -314,9 +314,9 @@ func (c *TaskController) schedule(_ context.Context) {
 		// submit AIJob
 		err = c.admitTask(task)
 		if err != nil {
-			logutils.Log.Errorf("create job from task: %v", err)
+			klog.Errorf("create job from task: %v", err)
 		} else {
-			logutils.Log.Infof("create job from task success, taskID: %v", task.ID)
+			klog.Infof("create job from task success, taskID: %v", task.ID)
 		}
 	}
 }

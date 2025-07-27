@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 func (p *PrometheusClient) QueryPodProfileMetric(namespace, podname string) (PodUtil, error) {
@@ -191,7 +191,7 @@ func (p *PrometheusClient) QueryNodeCPUUsageRatio() map[string]float32 {
 	query := `100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)`
 	data, err := p.float32MapQuery(query, "instance")
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeCPUUsageRatio error: %v", err)
+		klog.Errorf("QueryNodeCPUUsageRatio error: %v", err)
 		return nil
 	}
 	return data
@@ -201,7 +201,7 @@ func (p *PrometheusClient) QueryNodeMemoryUsageRatio() map[string]float32 {
 	query := "(1 - (avg by (instance) (node_memory_MemAvailable_bytes) / avg by (instance) (node_memory_MemTotal_bytes))) * 100"
 	data, err := p.float32MapQuery(query, "instance")
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeMemoryUsageRatio error: %v", err)
+		klog.Errorf("QueryNodeMemoryUsageRatio error: %v", err)
 		return nil
 	}
 	return data
@@ -216,7 +216,7 @@ func (p *PrometheusClient) QueryNodeAllocatedMemory() map[string]int {
 	  )`
 	data, err := p.intMapQuery(query, "node")
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeAllocatedMemory error: %v", err)
+		klog.Errorf("QueryNodeAllocatedMemory error: %v", err)
 		return nil
 	}
 	return data
@@ -231,7 +231,7 @@ func (p *PrometheusClient) QueryNodeAllocatedCPU() map[string]float32 {
 	  )`
 	data, err := p.float32MapQuery(query, "node")
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeAllocatedCPU error: %v", err)
+		klog.Errorf("QueryNodeAllocatedCPU error: %v", err)
 		return nil
 	}
 	return data
@@ -246,7 +246,7 @@ func (p *PrometheusClient) QueryNodeAllocatedGPU() map[string]int {
 	  )`
 	data, err := p.intMapQuery(query, "node")
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeAllocatedGPU error: %v", err)
+		klog.Errorf("QueryNodeAllocatedGPU error: %v", err)
 		return nil
 	}
 	return data
@@ -260,7 +260,7 @@ func (p *PrometheusClient) QueryNodeRunningPodCount() map[string]int {
 	)`, config.GetConfig().Workspace.Namespace)
 	data, err := p.intMapQuery(query, "node")
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeRunningPodCount error: %v", err)
+		klog.Errorf("QueryNodeRunningPodCount error: %v", err)
 		return nil
 	}
 	return data
@@ -270,7 +270,7 @@ func (p *PrometheusClient) QueryPodCPUUsage(podName string) float32 {
 	query := fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{pod=%q}[5m]))", podName)
 	data, err := p.float32MapQuery(query, "")
 	if err != nil {
-		logutils.Log.Errorf("QueryPodCPURatio error: %v", err)
+		klog.Errorf("QueryPodCPURatio error: %v", err)
 		return 0.0
 	}
 	var sum float32
@@ -284,7 +284,7 @@ func (p *PrometheusClient) QueryPodCPUAllocate(podName, namespace string) int {
 	query := fmt.Sprintf("kube_pod_container_resource_requests{pod=%q, namespace=%q, resource=\"cpu\"}", podName, namespace)
 	data, err := p.intMapQuery(query, "")
 	if err != nil {
-		logutils.Log.Errorf("QueryPodCPUAllocate error: %v", err)
+		klog.Errorf("QueryPodCPUAllocate error: %v", err)
 		return -1
 	}
 	var sum int
@@ -298,7 +298,7 @@ func (p *PrometheusClient) QueryPodMemoryUsage(podName string) int {
 	query := fmt.Sprintf("container_memory_usage_bytes{pod=%q}", podName)
 	data, err := p.intMapQuery(query, "")
 	if err != nil {
-		logutils.Log.Errorf("QueryPodMemory error: %v", err)
+		klog.Errorf("QueryPodMemory error: %v", err)
 		return 0
 	}
 	var sum int
@@ -312,7 +312,7 @@ func (p *PrometheusClient) QueryPodMemoryAllocate(podName, namespace string) int
 	query := fmt.Sprintf("kube_pod_container_resource_requests{pod=%q, namespace=%q, resource=\"memory\"}", podName, namespace)
 	data, err := p.intMapQuery(query, "")
 	if err != nil {
-		logutils.Log.Errorf("QueryPodCPUAllocate error: %v", err)
+		klog.Errorf("QueryPodCPUAllocate error: %v", err)
 		return -1
 	}
 	var sum int
@@ -326,7 +326,7 @@ func (p *PrometheusClient) QueryPodGPUAllocate(podName, namespace string) map[st
 	query := fmt.Sprintf("kube_pod_container_resource_requests{pod=%q, namespace=%q, resource!=\"cpu\", resource!=\"memory\"}", podName, namespace)
 	data, err := p.intMapQuery(query, "resource")
 	if err != nil {
-		logutils.Log.Errorf("QueryPodCPUAllocate error: %v", err)
+		klog.Errorf("QueryPodCPUAllocate error: %v", err)
 		return nil
 	}
 	return data
@@ -336,7 +336,7 @@ func (p *PrometheusClient) QueryNodeGPUUtil() []NodeGPUUtil {
 	expression := "DCGM_FI_DEV_GPU_UTIL"
 	data, err := p.getNodeGPUUtil(expression)
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeGPUUtil error: %v", err)
+		klog.Errorf("QueryNodeGPUUtil error: %v", err)
 		return nil
 	}
 	return data
@@ -346,7 +346,7 @@ func (p *PrometheusClient) QueryNodeGPUUtilInNS(namespace string) []NodeGPUUtil 
 	expression := fmt.Sprintf("DCGM_FI_DEV_GPU_UTIL{namespace=%q}", namespace)
 	data, err := p.getNodeGPUUtil(expression)
 	if err != nil {
-		logutils.Log.Errorf("QueryNodeGPUUtil error: %v", err)
+		klog.Errorf("QueryNodeGPUUtil error: %v", err)
 		return nil
 	}
 	return data
@@ -356,7 +356,7 @@ func (p *PrometheusClient) GetJobPodsList() map[string][]string {
 	query := fmt.Sprintf(`kube_pod_info{namespace=%q,created_by_kind="Job"}`, config.GetConfig().Workspace.Namespace)
 	data, err := p.getJobPods(query)
 	if err != nil {
-		logutils.Log.Errorf("GetJobPodsList error: %v", err)
+		klog.Errorf("GetJobPodsList error: %v", err)
 		return nil
 	}
 	return data
@@ -366,7 +366,7 @@ func (p *PrometheusClient) GetPodOwner(podName string) string {
 	query := fmt.Sprintf("kube_pod_owner{pod=%q}", podName)
 	data, err := p.intMapQuery(query, "owner_name")
 	if err != nil {
-		logutils.Log.Errorf("GetJobPodsList error: %v", err)
+		klog.Errorf("GetJobPodsList error: %v", err)
 		return ""
 	}
 	if len(data) == 0 {
@@ -382,7 +382,7 @@ func (p *PrometheusClient) GetLeastUsedGPUJobList(podName, _time, util string) i
 	query := fmt.Sprintf("max_over_time(DCGM_FI_DEV_GPU_UTIL{pod=%q}[%vm]) <= %v and DCGM_FI_DEV_GPU_UTIL{pod=%q} offset %vm", podName, _time, util, podName, _time)
 	data, err := p.checkGPUUsed(query)
 	if err != nil {
-		logutils.Log.Errorf("GetLeastUsedGPUJobList error: %v", err)
+		klog.Errorf("GetLeastUsedGPUJobList error: %v", err)
 		return 0
 	}
 	return data

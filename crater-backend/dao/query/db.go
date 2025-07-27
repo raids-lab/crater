@@ -7,9 +7,9 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 var (
@@ -47,7 +47,7 @@ func GetDB() *gorm.DB {
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 		sqlDB.SetConnMaxLifetime(time.Hour)
 
-		logutils.Log.Info("Postgres init success!")
+		klog.Info("Postgres init success!")
 	})
 	return instance
 }
