@@ -12,6 +12,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/indexer"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -21,22 +23,30 @@ const (
 	VCJOBKIND       = "Job"
 )
 
-type BriefResource struct {
-	CPU string `json:"cpu"`
-	Mem string `json:"memory"`
-	GPU string `json:"gpu"`
-}
+type NodeRole string
 
-type ClusterNodeInfo struct {
-	Type      string            `json:"type"`
-	Name      string            `json:"name"`
-	Role      string            `json:"role"`
-	Labels    map[string]string `json:"labels"`
-	IsReady   string            `json:"isReady"`
-	Taint     string            `json:"taint"`
-	Capacity  BriefResource     `json:"capacity"`
-	Allocated BriefResource     `json:"allocated"`
-	PodCount  int               `json:"podCount"`
+const (
+	NodeRoleControlPlane NodeRole = "control-plane"
+	NodeRoleWorker       NodeRole = "worker"
+	NodeRoleVirtual      NodeRole = "virtual"
+)
+
+const (
+	NodeStatusUnschedulable corev1.NodeConditionType = "Unschedulable"
+	NodeStatusOccupied      corev1.NodeConditionType = "Occupied"
+)
+
+type NodeBriefInfo struct {
+	Name        string                   `json:"name"`
+	Role        NodeRole                 `json:"role"`
+	Arch        string                   `json:"arch"`
+	Status      corev1.NodeConditionType `json:"status"`
+	Vendor      string                   `json:"vendor"`
+	Taints      []string                 `json:"taints"`
+	Capacity    corev1.ResourceList      `json:"capacity"`
+	Allocatable corev1.ResourceList      `json:"allocatable"`
+	Used        corev1.ResourceList      `json:"used"`
+	Workloads   int                      `json:"workloads"`
 }
 
 type Pod struct {
@@ -53,24 +63,20 @@ type Pod struct {
 }
 
 type ClusterNodeDetail struct {
-	Name                    string `json:"name"`
-	Role                    string `json:"role"`
-	IsReady                 string `json:"isReady"`
-	Taint                   string `json:"taint"`
-	Time                    string `json:"time"`
-	Address                 string `json:"address"`
-	Os                      string `json:"os"`
-	OsVersion               string `json:"osVersion"`
-	Arch                    string `json:"arch"`
-	KubeletVersion          string `json:"kubeletVersion"`
-	ContainerRuntimeVersion string `json:"containerRuntimeVersion"`
-	GPUMemory               string `json:"gpuMemory"`
-	GPUCount                int    `json:"gpuCount"`
-	GPUArch                 string `json:"gpuArch"`
-}
-
-type ListNodeResp struct {
-	Rows []ClusterNodeInfo `json:"rows"`
+	Name                    string                   `json:"name"`
+	Role                    string                   `json:"role"`
+	Status                  corev1.NodeConditionType `json:"status"`
+	Taint                   string                   `json:"taint"`
+	Time                    string                   `json:"time"`
+	Address                 string                   `json:"address"`
+	Os                      string                   `json:"os"`
+	OsVersion               string                   `json:"osVersion"`
+	Arch                    string                   `json:"arch"`
+	KubeletVersion          string                   `json:"kubeletVersion"`
+	ContainerRuntimeVersion string                   `json:"containerRuntimeVersion"`
+	GPUMemory               string                   `json:"gpuMemory"`
+	GPUCount                int                      `json:"gpuCount"`
+	GPUArch                 string                   `json:"gpuArch"`
 }
 
 type GPUInfo struct {
@@ -106,22 +112,16 @@ const (
 	StatusTrue  = "true"
 )
 
-// 判断是否会有网络、内存、磁盘等压力问题
-// 判断是否被占用
-func isNodeReady(node *corev1.Node) string {
+func getNodeStatus(node *corev1.Node) corev1.NodeConditionType {
 	if node.Spec.Unschedulable {
-		return "Unschedulable"
-	}
-
-	if !isNodeConditionsReady(node) {
-		return StatusFalse
+		return NodeStatusUnschedulable
 	}
 
 	if isNodeOccupied(node) {
-		return "occupied"
+		return NodeStatusOccupied
 	}
 
-	return StatusTrue
+	return getNodeCondition(node) // 节点正常时返回 NodeReady
 }
 
 func isNodeOccupied(node *corev1.Node) bool {
@@ -134,35 +134,36 @@ func isNodeOccupied(node *corev1.Node) bool {
 	return false
 }
 
-func isNodeConditionsReady(node *corev1.Node) bool {
-	var (
-		isReady          bool
-		diskPressure     bool
-		memoryPressure   bool
-		pidPressure      bool
-		networkAvailable = true
-	)
-
+func getNodeCondition(node *corev1.Node) corev1.NodeConditionType {
 	for _, condition := range node.Status.Conditions {
-		switch condition.Type {
-		case corev1.NodeReady:
-			isReady = (condition.Status == corev1.ConditionTrue)
-		case corev1.NodeDiskPressure:
-			diskPressure = (condition.Status == corev1.ConditionTrue)
-		case corev1.NodeMemoryPressure:
-			memoryPressure = (condition.Status == corev1.ConditionTrue)
-		case corev1.NodePIDPressure:
-			pidPressure = (condition.Status == corev1.ConditionTrue)
-		case corev1.NodeNetworkUnavailable:
-			networkAvailable = (condition.Status == corev1.ConditionFalse)
+		if condition.Status == corev1.ConditionTrue {
+			switch condition.Type {
+			case corev1.NodeReady:
+				return corev1.NodeReady
+			case corev1.NodeDiskPressure:
+				return corev1.NodeDiskPressure
+			case corev1.NodeMemoryPressure:
+				return corev1.NodeMemoryPressure
+			case corev1.NodePIDPressure:
+				return corev1.NodePIDPressure
+			case corev1.NodeNetworkUnavailable:
+				return corev1.NodeNetworkUnavailable
+			default:
+				// 其他条件不影响就绪状态
+				continue
+			}
 		}
 	}
 
-	if !isReady || diskPressure || memoryPressure || pidPressure || !networkAvailable {
-		return false
-	}
+	return corev1.NodeReady // 如果没有任何条件为 True，则视为就绪
+}
 
-	return true
+func taintsToStringArray(taints []corev1.Taint) []string {
+	var taintStrings []string
+	for _, taint := range taints {
+		taintStrings = append(taintStrings, taintToString(taint))
+	}
+	return taintStrings
 }
 
 // taintsToString将节点的taint转化成字符串
@@ -179,117 +180,75 @@ func taintsToString(taints []corev1.Taint) string {
 }
 
 // getNodeRole 获取节点角色
-func getNodeRole(node *corev1.Node) string {
+func getNodeRole(node *corev1.Node) NodeRole {
 	for key := range node.Labels {
 		switch key {
 		case "node-role.kubernetes.io/master", "node-role.kubernetes.io/control-plane":
-			return "master"
+			return NodeRoleControlPlane
 		}
 	}
-	return "worker"
-}
-
-func formatCPULoad(cpu float32) string {
-	return fmt.Sprintf("%.2f", cpu)
-}
-
-func formatMemoryLoad(mem int) string {
-	trans := 1024
-	mem_ := mem / trans
-	if mem_ < trans {
-		result := fmt.Sprintf("%dKi", mem_)
-		return result
-	} else {
-		mem_ /= trans
-		result := fmt.Sprintf("%dMi", mem_)
-		return result
+	// 检查是否为虚拟节点
+	if nodeType, exists := node.Labels["crater.raids.io/nodetype"]; exists && nodeType == "virtual" {
+		return NodeRoleVirtual
 	}
+	return NodeRoleWorker
 }
 
-// 节点中GPU的数量
-func (nc *NodeClient) getGPUCountOfNodes(nodes []corev1.Node) map[string]int {
-	nodeMap := make(map[string]struct{})
-	for i := range nodes {
-		nodeMap[nodes[i].Name] = struct{}{}
-	}
-	gpuUtils := nc.PrometheusClient.QueryNodeGPUUtil()
-	gpuCountMap := make(map[string]int)
-	for i := range gpuUtils {
-		gpuUtil := &gpuUtils[i]
-		if _, ok := nodeMap[gpuUtil.Hostname]; ok {
-			gpuCountMap[gpuUtil.Hostname]++
-			continue
-		}
-		// try to check ip for ack
-		// TODO(liyilong): remove hack code
-		instanceSlice := strings.Split(gpuUtil.Instance, ":")
-		if len(instanceSlice) != 2 {
-			continue
-		}
-		ip := instanceSlice[0]
-		for k := range nodeMap {
-			if strings.Contains(k, ip) {
-				gpuCountMap[k]++
-				break
-			}
-		}
-	}
-	return gpuCountMap
-}
-
-// GetNodes 获取所有 Node 列表
-func (nc *NodeClient) ListNodes() ([]ClusterNodeInfo, error) {
+// ListNodes 获取所有 Node 列表
+func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	var nodes corev1.NodeList
 
-	err := nc.List(context.Background(), &nodes)
+	err := nc.List(ctx, &nodes)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeInfos := make([]ClusterNodeInfo, len(nodes.Items))
-	CPUMap := nc.PrometheusClient.QueryNodeAllocatedCPU()
-	MemMap := nc.PrometheusClient.QueryNodeAllocatedMemory()
-	GPUMap := nc.PrometheusClient.QueryNodeAllocatedGPU()
-	// 获取节点的 GPU 数量
-	gpuCountMap := nc.getGPUCountOfNodes(nodes.Items)
-	podCountMap := nc.PrometheusClient.QueryNodeRunningPodCount()
+	nodeInfos := make([]NodeBriefInfo, len(nodes.Items))
 
-	// Loop through each node and print allocated resources
+	// Loop through each node and calculate resources from pods
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
 
-		allocatedInfo := BriefResource{
-			CPU: formatCPULoad(CPUMap[node.Name]),
-			Mem: formatMemoryLoad(MemMap[node.Name]),
-			GPU: fmt.Sprintf("%d", GPUMap[node.Name]),
+		// 获取节点上的所有 Pods（通过索引）
+		pods, err := indexer.QueryPodsByNodeName(ctx, nc.Client, node.Name)
+		if err != nil {
+			klog.Errorf("Failed to get pods for node %s: %v", node.Name, err)
+			// 继续处理，但 pods 为空
+			pods = []corev1.Pod{}
 		}
 
-		cpuCapacity := node.Status.Capacity[corev1.ResourceCPU]
-		memCapacity := node.Status.Capacity[corev1.ResourceMemory]
-		gpuCapacity := gpuCountMap[node.Name]
-		capacityInfo := BriefResource{
-			CPU: cpuCapacity.String(),
-			Mem: memCapacity.String(),
-			GPU: fmt.Sprintf("%d", gpuCapacity),
+		// 计算节点上所有 Pods 使用的资源
+		usedResources := make(corev1.ResourceList)
+		workloadCount := 0
+
+		for j := range pods {
+			pod := &pods[j]
+			podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
+			usedResources = utils.SumResources(usedResources, podResources)
+
+			if pod.Namespace == config.GetConfig().Workspace.Namespace {
+				// 只计算特定命名空间的 pods
+				workloadCount++
+			}
 		}
 
-		podCount := 0
-		if v, ok := podCountMap[node.Name]; ok {
-			podCount = v
+		// 获取节点的供应商信息
+		vendor := ""
+		if vendorLabel, exists := node.Labels["crater.raids-lab.io/instance-type"]; exists {
+			vendor = vendorLabel
 		}
 
-		// 获取节点类型
-		nodeType := node.Labels["crater.raids.io/nodetype"]
-		nodeInfos[i] = ClusterNodeInfo{
-			Type:      nodeType, // 添加节点类型
-			Name:      node.Name,
-			Taint:     taintsToString(node.Spec.Taints),
-			Role:      getNodeRole(node),
-			Labels:    node.Labels,
-			IsReady:   isNodeReady(node),
-			Capacity:  capacityInfo,
-			Allocated: allocatedInfo,
-			PodCount:  podCount,
+		nodeInfos[i] = NodeBriefInfo{
+			Name:        node.Name,
+			Role:        getNodeRole(node),
+			Arch:        node.Status.NodeInfo.Architecture,
+			Status:      getNodeStatus(node),
+			Vendor:      vendor,
+			Taints:      taintsToStringArray(node.Spec.Taints),
+			Capacity:    node.Status.Capacity,
+			Allocatable: node.Status.Allocatable,
+			Used:        usedResources,
+			Workloads:   workloadCount,
 		}
 	}
 
@@ -299,19 +258,14 @@ func (nc *NodeClient) ListNodes() ([]ClusterNodeInfo, error) {
 // GetNode 获取指定 Node 的信息
 func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDetail, error) {
 	node := &corev1.Node{}
-
-	err := nc.Get(ctx, client.ObjectKey{
-		Namespace: "",
-		Name:      name,
-	}, node)
-	if err != nil {
+	if err := nc.Get(ctx, client.ObjectKey{Name: name}, node); err != nil {
 		return ClusterNodeDetail{}, err
 	}
 
 	nodeInfo := ClusterNodeDetail{
 		Name:                    node.Name,
-		Role:                    getNodeRole(node),
-		IsReady:                 isNodeReady(node),
+		Role:                    string(getNodeRole(node)),
+		Status:                  getNodeStatus(node),
 		Taint:                   taintsToString(node.Spec.Taints),
 		Time:                    node.CreationTimestamp.String(),
 		Address:                 node.Status.Addresses[0].Address,
