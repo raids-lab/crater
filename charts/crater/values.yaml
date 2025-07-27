@@ -9,6 +9,26 @@ global:
   grafanaHost: "gpu-grafana.raids-lab.cn"
   tlsSecretName: "crater-tls-secret"
   tlsForwardSecretName: "crater-tls-forward-secret"
+  secrets:
+    dbPassword: "<TO_BE_SET_BY_USER>"           # PostgreSQL database password
+    adminPassword: "<TO_BE_SET_BY_USER>"        # Admin account password
+    grafanaToken: "<TO_BE_SET_BY_USER>"         # Grafana API token
+    registryPass: "<TO_BE_SET_BY_USER>"         # Registry robot password
+    registryAdminPass: "<TO_BE_SET_BY_USER>"    # Registry admin password
+    chameleonKey: "<TO_BE_SET_BY_USER>"         # OpenAPI chameleon key
+    openApiAccessToken: "<TO_BE_SET_BY_USER>"   # OpenAPI access token
+    ldapPassword: "<TO_BE_SET_BY_USER>"         # LDAP authentication password
+    accessTokenSecret: "<TO_BE_SET_BY_USER>"    # JWT access token secret
+    refreshTokenSecret: "<TO_BE_SET_BY_USER>"   # JWT refresh token secret
+    smtpPassword: "<TO_BE_SET_BY_USER>"         # SMTP email password
+    cronjobPassword: "<TO_BE_SET_BY_USER>"      # CronJob account password
+    cronjobUsername: "<TO_BE_SET_BY_USER>"      # CronJob account username
+    tlsBaseCert: "<TO_BE_SET_BY_USER>"          # Base TLS certificate (base64)
+    tlsBaseKey: "<TO_BE_SET_BY_USER>"           # Base TLS private key (base64)
+    tlsForwardCert: "<TO_BE_SET_BY_USER>"       # Forward TLS certificate (base64)
+    tlsForwardKey: "<TO_BE_SET_BY_USER>"        # Forward TLS private key (base64)
+    dockerconfigjson: "<TO_BE_SET_BY_USER>"     # Docker registry authentication config (base64)
+    ssConfigContent: "<TO_BE_SET_BY_USER>"      # Storage server sensitive config content
 
 urls:
   host: "gpu.raids-lab.cn"
@@ -58,16 +78,15 @@ web:
     createMigrationJob: true
     admin:
       username: "crater-admin"
-      password: "<MASKED>"  # 密码已掩码
+      password: {{ .Values.global.secrets.adminPassword | quote }}
   ingress:
     host: "gpu.raids-lab.cn"
   grafana:
     address: http://prometheus-grafana.monitoring
-    token: "<MASKED>"  # Bearer 令牌已掩码
+    token: {{ .Values.global.secrets.grafanaToken | quote }}
     ancestor: https://gpu.raids-lab.cn
     host: gpu-grafana.raids-lab.cn
 
-# BuildKit configuration variables
 # BuildKit configuration variables
 buildkitConfig:
   amdConfig:
@@ -89,7 +108,7 @@ buildkitConfig:
       minFreeSpace: "10GB"
       reservedSpace: "10GB"
   generalConfig:
-    dockerconfigjson: "<MASKED>"  # Docker认证配置已掩码    httpsProxy: 192.168.5.58:1080
+    dockerconfigjson: {{ .Values.global.secrets.dockerconfigjson | quote }}
     resources:
       requests:
         cpu: 8
@@ -140,7 +159,7 @@ backendConfig:
     port: 5432
     dbname: crater
     user: crater
-    password: "<MASKED>"  # 数据库密码已掩码
+    password: {{ .Values.global.secrets.dbPassword | quote }}
     sslmode: disable
     TimeZone: Asia/Shanghai
   userSpacePrefix: sugon-gpu-home-lab
@@ -156,26 +175,26 @@ backendConfig:
     image:
       registryServer: gpu-harbor.raids-lab.cn
       registryUser: robot$gpu-crater
-      registryPass: "<MASKED>"  # 仓库密码已掩码
+      registryPass: {{ .Values.global.secrets.registryPass | quote }}
       registryProject: crater
       registryAdmin: admin
-      registryAdminPass: "<MASKED>"  # 管理员密码已掩码
+      registryAdminPass: {{ .Values.global.secrets.registryAdminPass | quote }}
     openAPI:
       url: <MASKED>
-      chameleonKey: "<MASKED>"  # API 密钥已掩码
-      accessToken: "<MASKED>"   # 访问令牌已掩码
+      chameleonKey: {{ .Values.global.secrets.chameleonKey | quote }}
+      accessToken: {{ .Values.global.secrets.openApiAccessToken | quote }}
     auth:
       userName: <MASKED>
-      password: "<MASKED>"     # LDAP 密码已掩码
+      password: {{ .Values.global.secrets.ldapPassword | quote }}
       address: <MASKED>
       searchDN: <MASKED>
-      accessTokenSecret: "<MASKED>"   # Token 密钥已掩码
-      refreshTokenSecret: "<MASKED>"  # Token 密钥已掩码
+      accessTokenSecret: {{ .Values.global.secrets.accessTokenSecret | quote }}
+      refreshTokenSecret: {{ .Values.global.secrets.refreshTokenSecret | quote }}
     smtp:
       host: mail.raids-lab.cn
       port: 25
       user: notify
-      password: "<MASKED>"  # SMTP 密码已掩码
+      password: {{ .Values.global.secrets.smtpPassword | quote }}
       notify: notify@raids-lab.cn
   schedulerPlugins:
     aijob:
@@ -192,8 +211,8 @@ backendConfig:
 
 # CronJob Config
 cronjobConfig:
-  USERNAME: "<MASKED>"
-  PASSWORD: "<MASKED>"  # 密码已掩码
+  USERNAME: {{ .Values.global.secrets.cronjobUsername | quote }}
+  PASSWORD: {{ .Values.global.secrets.cronjobPassword | quote }}
   HOST: "gpu.raids-lab.cn"
   jobs:
     lowGPUUtil:
@@ -213,15 +232,15 @@ cronjobConfig:
 tls:
   base:
     enabled: false
-    cert: "<MASKED>"  # 证书已掩码
-    key: "<MASKED>"   # 私钥已掩码
+    cert: {{ .Values.global.secrets.tlsBaseCert | quote }}
+    key: {{ .Values.global.secrets.tlsBaseKey | quote }}
   forward:
     enabled: false
-    cert: "<MASKED>"  # 证书已掩码
-    key: "<MASKED>"   # 私钥已掩码
+    cert: {{ .Values.global.secrets.tlsForwardCert | quote }}
+    key: {{ .Values.global.secrets.tlsForwardKey | quote }}
 
 ssConfig:
-  content: "<MASKED>"  # 敏感配置文件内容已掩码
+  content: {{ .Values.global.secrets.ssConfigContent | quote }}
 
 # pvc configuration variables
 storage:
