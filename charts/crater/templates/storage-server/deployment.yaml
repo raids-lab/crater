@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: webdav-deployment
-  namespace: {{ .Values.backendConfig.workspace.namespace}}
+  namespace: {{ .Values.global.namespace | default .Values.backendConfig.workspace.namespace }}
   labels:
     app: webdav-crater
 spec:
