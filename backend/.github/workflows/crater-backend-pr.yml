@@ -1,0 +1,85 @@
+# Copyright 2025 RAIDS Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: PR Lint and Build Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'hack/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_REPO: raids-lab/crater-backend
+  GOLANGCI_LINT_VERSION: v2.2.1
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Download dependencies
+        run: |
+          go env -w GO111MODULE=on
+          go env -w GOPROXY=https://goproxy.cn,direct
+          go mod download
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+
+  build_backend_test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Download dependencies
+        run: |
+          go env -w GO111MODULE=on
+          go env -w GOPROXY=https://goproxy.cn,direct
+          go mod download
+
+      - name: Swag
+        run: make docs
+        shell: bash
+
+      - name: Build backend binaries
+        run: |
+          mkdir -p bin/linux_amd64
+          go build -ldflags="-w -s" -o bin/linux_amd64/migrate cmd/gorm-gen/models/migrate.go
+          go build -ldflags="-w -s" -o bin/linux_amd64/controller cmd/crater/main.go
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: amd64 
