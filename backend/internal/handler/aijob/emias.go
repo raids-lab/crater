@@ -620,7 +620,7 @@ func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 	}
 
 	// prune useless field
-	job.ObjectMeta.ManagedFields = nil
+	job.ManagedFields = nil
 
 	// utilize json omitempty tag to further prune
 	jsonData, err := json.Marshal(job)

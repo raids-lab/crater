@@ -768,7 +768,7 @@ func (mgr *VolcanojobMgr) GetJobYaml(c *gin.Context) {
 	vcjob := job.Attributes.Data()
 
 	// prune useless field
-	vcjob.ObjectMeta.ManagedFields = nil
+	vcjob.ManagedFields = nil
 
 	// utilize json omitempty tag to further prune
 	jsonData, err := json.Marshal(vcjob)

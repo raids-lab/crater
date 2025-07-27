@@ -75,6 +75,7 @@ func (r *AIJobReconciler) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.R
 // SetupWithManager sets up the controller with the Manager.
 func (r *AIJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("aijob-reconciler").
 		For(&aijobapi.AIJob{}).
 		WithEventFilter(r).
 		Complete(r)

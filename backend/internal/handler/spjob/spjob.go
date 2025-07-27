@@ -208,7 +208,7 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 			continue
 		}
 		pods := mgr.GetPodsByName(c, spjob.Name)
-		if pods == nil || len(pods) < 1 {
+		if len(pods) < 1 {
 			logutils.Log.Printf("skip spjob %q", spjob.Name)
 			continue
 		}
@@ -414,7 +414,7 @@ func (mgr *SparseJobMgr) GetYaml(c *gin.Context) {
 	}
 
 	// prune useless field
-	job.ObjectMeta.ManagedFields = nil
+	job.ManagedFields = nil
 
 	// utilize json omitempty tag to further prune
 	jsonData, err := json.Marshal(job)

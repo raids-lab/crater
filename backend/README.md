@@ -5,10 +5,10 @@ Crater is a Kubernetes-based GPU cluster management system providing a comprehen
 
 Before getting started with development, please ensure your environment has the following tools installed:
 
-- **Go**: Version `v1.22.1` is recommended  
+- **Go**: Version `v1.24.4` is recommended  
   📖 [Go Installation Guide](https://go.dev/doc/install)
 
-- **Kubectl**: Version `v1.22.1` is recommended  
+- **Kubectl**: Version `v1.33` is recommended  
   📖 [Kubectl Installation Guide](https://kubernetes.io/docs/tasks/tools/)
 
 ### 📐 Code Style & Linting
@@ -27,7 +27,7 @@ export PATH="/Users/your-username/go/bin:$PATH"
 
 # Reload the shell and verify
 golangci-lint --version
-# golangci-lint has version 1.61.0
+# golangci-lint has version 2.2.1
 ```
 #### Setting Up Git Pre-Commit Hook
 
@@ -49,7 +49,7 @@ With the hook in place, golangci-lint will automatically run on staged files bef
 ### 📄 API Documentation (Swagger)
 We use Swag to generate OpenAPI documentation. Please install it before development:
 ```bash
-go install github.com/swaggo/swag/cmd/swag@latest
+go install github.com/swaggo/swag/cmd/swag@v1.16.3
 ```
 Before running the backend, make sure to initialize Swagger docs:
 ```bash

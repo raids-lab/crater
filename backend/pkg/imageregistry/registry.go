@@ -56,12 +56,12 @@ func (r *ImageRegistry) getImageInfo(fullImageURL string) (projectName, imageNam
 	// projectName: crater-images, imageName: crater, imageTag: latest
 	// get projectName, imageName, imageTag from fullImageURL by regex
 	// check if full image url starts with inner registry
-	if !strings.HasPrefix(fullImageURL, r.harborClient.AuthInfo.RegistryServer) {
+	if !strings.HasPrefix(fullImageURL, r.harborClient.RegistryServer) {
 		// skip delete if image is not in inner registry
 		return "", "", "", fmt.Errorf("image is not in inner registry: %s", fullImageURL)
 	}
 
-	regexPattern := fmt.Sprintf(`%s/(.*?)/(.*?):(.*?)$`, r.harborClient.AuthInfo.RegistryServer)
+	regexPattern := fmt.Sprintf(`%s/(.*?)/(.*?):(.*?)$`, r.harborClient.RegistryServer)
 	re := regexp.MustCompile(regexPattern)
 	matches := re.FindStringSubmatch(fullImageURL)
 	exceptedMatchesLen := 4
