@@ -6773,9 +6773,6 @@
                 "gpuMemory": {
                     "type": "string"
                 },
-                "isReady": {
-                    "type": "string"
-                },
                 "kubeletVersion": {
                     "type": "string"
                 },
@@ -6790,6 +6787,9 @@
                 },
                 "role": {
                     "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/v1.NodeConditionType"
                 },
                 "taint": {
                     "type": "string"
@@ -7817,6 +7817,23 @@
                     ]
                 }
             }
+        },
+        "v1.NodeConditionType": {
+            "type": "string",
+            "enum": [
+                "Ready",
+                "MemoryPressure",
+                "DiskPressure",
+                "PIDPressure",
+                "NetworkUnavailable"
+            ],
+            "x-enum-varnames": [
+                "NodeReady",
+                "NodeMemoryPressure",
+                "NodeDiskPressure",
+                "NodePIDPressure",
+                "NodeNetworkUnavailable"
+            ]
         },
         "v1.NodeSelectorOperator": {
             "type": "string",

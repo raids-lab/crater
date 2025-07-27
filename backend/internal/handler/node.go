@@ -74,7 +74,7 @@ func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 //	@Router			/v1/nodes [get]
 func (mgr *NodeMgr) ListNode(c *gin.Context) {
 	klog.Infof("Node List, url: %s", c.Request.URL)
-	nodes, err := mgr.nodeClient.ListNodes()
+	nodes, err := mgr.nodeClient.ListNodes(c)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list nodes failed, err %v", err), resputil.NotSpecified)
 		return

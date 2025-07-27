@@ -322,8 +322,6 @@ definitions:
         type: integer
       gpuMemory:
         type: string
-      isReady:
-        type: string
       kubeletVersion:
         type: string
       name:
@@ -334,6 +332,8 @@ definitions:
         type: string
       role:
         type: string
+      status:
+        $ref: '#/definitions/v1.NodeConditionType'
       taint:
         type: string
       time:
@@ -1045,6 +1045,20 @@ definitions:
           Selects a key of a secret in the pod's namespace
           +optional
     type: object
+  v1.NodeConditionType:
+    enum:
+    - Ready
+    - MemoryPressure
+    - DiskPressure
+    - PIDPressure
+    - NetworkUnavailable
+    type: string
+    x-enum-varnames:
+    - NodeReady
+    - NodeMemoryPressure
+    - NodeDiskPressure
+    - NodePIDPressure
+    - NodeNetworkUnavailable
   v1.NodeSelectorOperator:
     enum:
     - In
