@@ -7,10 +7,11 @@ package query
 import (
 	"context"
 
-	"github.com/raids-lab/crater/dao/model"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
+
+	"github.com/raids-lab/crater/dao/model"
 
 	"gorm.io/gen"
 	"gorm.io/gen/field"

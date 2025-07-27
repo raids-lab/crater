@@ -49,11 +49,6 @@ jobs:
           go env -w GOPROXY=https://goproxy.cn,direct
           go mod download
 
-      - name: Install and init Swag
-        run: | 
-          go install github.com/swaggo/swag/cmd/swag@v1.16.3
-          swag init
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -98,14 +93,14 @@ jobs:
           go mod download
 
       - name: Swag
-        run: go run github.com/swaggo/swag/cmd/swag@v1.16.3 init
+        run: make docs
         shell: bash
 
       - name: Build backend binaries
         run: |
           mkdir -p bin/${{ matrix.platform.image_platform }}
           go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/migrate cmd/gorm-gen/models/migrate.go
-          go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/controller main.go
+          go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/controller cmd/crater/main.go
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.platform.goos }}

@@ -45,7 +45,7 @@ import-check: goimports ## Check if goimports is needed.
 	fi
 
 .PHONY: lint
-lint: fmt import-check golangci-lint ## Lint go files.
+lint: fmt imports import-check golangci-lint ## Lint go files.
 	@echo "Linting go files..."
 	$(GOLANGCI_LINT) run --timeout 5m
 
@@ -59,21 +59,21 @@ migrate: ## Migrate database.
 	@echo "Migrating database..."
 	go run cmd/gorm-gen/models/migrate.go
 
-.PHONY: swagger
-swagger: swaggo ## Generate swagger docs.
+.PHONY: docs
+docs: swaggo ## Generate docs docs.
 	@echo "Generating swagger docs..."
-	$(SWAGGO) init
+	$(SWAGGO) init -g cmd/crater/main.go -q --parseInternal --parseDependency
 
 .PHONY: run
-run: fmt swagger  ## Run a controller from your host.
+run: fmt docs imports ## Run a controller from your host.
 	export KUBECONFIG="$(KUBECONFIG_PATH)" && \
-	go run main.go --config-file "$(CONFIG_FILE)"
+	go run cmd/crater/main.go --config-file "$(CONFIG_FILE)"
 
 ##@ Build
 
 .PHONY: build
-build: fmt lint swagger ## Build manager binary.
-	go build -ldflags="-w -s" -o bin/controller main.go
+build: fmt lint docs ## Build manager binary.
+	go build -ldflags="-w -s" -o bin/controller cmd/crater/main.go
 
 .PHONY: build-migrate
 build-migrate: fmt lint ## Build migration binary.
