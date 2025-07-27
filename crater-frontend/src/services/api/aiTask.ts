@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { K8sResources } from '@/utils/resource'
+import { V1ResourceList } from '@/utils/resource'
 import instance, { VERSION } from '../axios'
 import { IResponse } from '../types'
 import { showErrorToast } from '@/utils/toast'
@@ -87,7 +87,7 @@ export interface AiTask {
   duration: number
   jct: number
   image: string
-  resourceRequest: K8sResources
+  resourceRequest: V1ResourceList
   workingDir: string
   ShareDirs: string[]
   command: string
@@ -106,7 +106,7 @@ export const convertAiTask = (task: IAiTask): AiTask => {
   try {
     const aiTaskINfo: AiTask = {
       ...task,
-      resourceRequest: JSON.parse(task.resourceRequest) as K8sResources,
+      resourceRequest: JSON.parse(task.resourceRequest) as V1ResourceList,
       profileStat:
         task.profileStat === '' ? undefined : (JSON.parse(task.profileStat) as ProfileStat),
     }

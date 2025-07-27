@@ -44,6 +44,7 @@ import {
   apichangeNodeScheduling,
   apiAddNodeTaint,
   apiDeleteNodeTaint,
+  NodeStatus,
 } from '@/services/api/cluster'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -54,6 +55,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog'
+import useResourceListQuery from '@/hooks/query/useResourceQuery'
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -142,13 +144,25 @@ const NodeForAdmin = () => {
     }
     setOpen(false)
   }, [selectedAccount, selectedNode, isOccupation, addNodeTaint, deleteNodeTaint])
+
   const { getNicknameByName } = useAccountNameLookup()
+
+  const resourcesQuery = useResourceListQuery(
+    true,
+    (resource) => {
+      return resource.type == 'gpu'
+    },
+    (resource) => {
+      return resource.name
+    }
+  )
 
   // 生成稳定的列定义
   const nodeColumns = useMemo(
-    () => getNodeColumns((name: string) => getNicknameByName(name) || ''),
-    [getNicknameByName] // 依赖项确保列定义稳定
+    () => getNodeColumns((name: string) => getNicknameByName(name) || '', resourcesQuery.data),
+    [getNicknameByName, resourcesQuery] // 依赖项确保列定义稳定
   )
+
   const columns = useMemo(
     () => [
       ...nodeColumns,
@@ -157,11 +171,10 @@ const NodeForAdmin = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const nodeId = row.original.name
-          const isReady = row.original.isReady
-          const taint = row.original.taint
-          const occupiedaccount = taint
-            .split(',')
-            .find((t) => t.startsWith('crater.raids.io/account'))
+          const nodeStatus = row.original.status
+          const taints = row.original.taints
+          const occupiedaccount = taints
+            ?.find((t) => t.startsWith('crater.raids.io/account'))
             ?.split('=')[1]
             .split(':')[0]
           return (
@@ -176,7 +189,7 @@ const NodeForAdmin = () => {
                 <DropdownMenuLabel className="text-muted-foreground text-xs">
                   {t('nodeManagement.actionsLabel')}
                 </DropdownMenuLabel>
-                {isReady === 'occupied' ? (
+                {nodeStatus === NodeStatus.Occupied ? (
                   <DropdownMenuItem
                     onClick={() => {
                       setSelectedNode(nodeId)
@@ -201,12 +214,12 @@ const NodeForAdmin = () => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
-                  {isReady === 'true' ? (
+                  {nodeStatus === NodeStatus.Ready ? (
                     <BanIcon className="size-4" />
                   ) : (
                     <ZapIcon className="size-4" />
                   )}
-                  {isReady === 'true'
+                  {nodeStatus === NodeStatus.Ready
                     ? t('nodeManagement.disableScheduling')
                     : t('nodeManagement.enableScheduling')}
                 </DropdownMenuItem>

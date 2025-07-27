@@ -16,7 +16,7 @@
 
 import { showErrorToast } from './toast'
 
-export type K8sResources = Record<string, string> | undefined
+export type V1ResourceList = Record<string, string> | undefined
 
 export type Resources = {
   cpu?: number
@@ -56,6 +56,25 @@ export const convertKResourceToResource = (key: string, value?: string): number 
   }
 }
 
+export const betterResourceQuantity = (key: string, value?: number, withUnit?: boolean): string => {
+  // 保留整数部分，向下取整
+  if (value === undefined) {
+    return ''
+  }
+
+  switch (key) {
+    case 'cpu':
+      return withUnit ? `${Math.floor(value)}C` : `${Math.floor(value)}`
+    case 'memory':
+      if (value > 1024) {
+        return withUnit ? `${Math.floor(value / 1024)}Ti` : `${Math.floor(value / 1024)}`
+      }
+      return withUnit ? `${Math.floor(value)}Gi` : `${Math.floor(value)}`
+    default:
+      return `${value}`
+  }
+}
+
 export const convertResourceToKResource = (key: string, value?: number): string => {
   // key is cpu or memory or others
   switch (key) {
@@ -69,7 +88,7 @@ export const convertResourceToKResource = (key: string, value?: number): string 
   }
 }
 
-export const convertToResources = (resources?: K8sResources): Resources => {
+export const convertToResources = (resources?: V1ResourceList): Resources => {
   // if resource.cpu is string, parse to int
   // if resource.cpu is number, keep it
   if (!resources) {
@@ -93,12 +112,12 @@ export const convertToResources = (resources?: K8sResources): Resources => {
   }
 }
 
-export const convertToK8sResources = (resources: Resources): K8sResources => {
+export const convertToK8sResources = (resources: Resources): V1ResourceList => {
   const cpu = resources.cpu !== undefined && resources.cpu > -1 ? `${resources.cpu}` : undefined
   const memory =
     resources.memory !== undefined && resources.memory > -1 ? `${resources.memory}Gi` : undefined
 
-  const k8sResource: K8sResources = resources.others ?? {}
+  const k8sResource: V1ResourceList = resources.others ?? {}
 
   if (cpu !== undefined) {
     k8sResource['cpu'] = cpu
@@ -111,7 +130,7 @@ export const convertToK8sResources = (resources: Resources): K8sResources => {
   return k8sResource
 }
 
-export const hasNvidiaGPU = (resources: K8sResources): boolean => {
+export const hasNvidiaGPU = (resources: V1ResourceList): boolean => {
   // key is start with nvidia.com/, means it's a gpu resource
   return Object.keys(resources ?? {}).some((key) => key.startsWith('nvidia.com/'))
 }

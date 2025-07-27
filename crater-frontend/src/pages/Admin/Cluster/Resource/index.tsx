@@ -289,9 +289,7 @@ const Resources: FC = () => {
     queryKey: ['resource', 'list'],
     queryFn: () => apiResourceList(false),
     select: (res) => {
-      return res.data.data
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .filter((x) => !x.name.startsWith('hugepages'))
+      return res.data.data.sort((a, b) => a.name.localeCompare(b.name))
     },
   })
 

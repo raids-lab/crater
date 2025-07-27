@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod'
-import { K8sResources } from './resource'
+import { V1ResourceList } from './resource'
 import { MetadataFormType } from '@/components/form/types'
 
 export const jobNameSchema = z
@@ -255,8 +255,8 @@ export const importFromJsonString = <T>(metadata: MetadataFormType, text: string
   return jobInfo.data
 }
 
-export const convertToResourceList = (resource: ResourceSchema): K8sResources => {
-  let k8sResource: K8sResources = {
+export const convertToResourceList = (resource: ResourceSchema): V1ResourceList => {
+  let k8sResource: V1ResourceList = {
     cpu: `${resource.cpu}`,
     memory: `${resource.memory}Gi`,
   }

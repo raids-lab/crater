@@ -15,35 +15,21 @@
  */
 
 import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
-import { type FC } from 'react'
+import { useMemo, type FC } from 'react'
 import { ColumnDef } from '@tanstack/react-table'
 import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
-import NodeTypeBadge from '@/components/badge/NodeTypeBadge'
-import { NodeType } from '@/services/api/cluster'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { NvidiaGpuInfoCard } from './GPUInfo'
+import { INodeBriefInfo } from '@/services/api/cluster'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import NodeStatusBadge from '@/components/badge/NodeStatusBadge'
 import TooltipLink from '../label/TooltipLink'
-
-interface ResourceInfo {
-  percent: number
-  description: string
-}
-
-export interface ClusterNodeInfo {
-  type: NodeType
-  name: string
-  isReady: string
-  taint: string
-  role: string
-  cpu?: ResourceInfo
-  memory?: ResourceInfo
-  gpu?: ResourceInfo
-  labels: Record<string, string>
-  podCount?: number
-}
+import {
+  betterResourceQuantity,
+  convertKResourceToResource,
+  V1ResourceList,
+} from '@/utils/resource'
+import { ProgressBar } from '../custom/ProgressBar'
 
 export const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -54,36 +40,109 @@ export const toolbarConfig: DataTableToolbarConfig = {
   getHeader: (x) => x,
 }
 
-export const UsageCell: FC<{ value?: ResourceInfo }> = ({ value }) => {
-  if (!value || isNaN(value.percent)) {
+export const UsageCell: FC<{
+  used?: V1ResourceList
+  allocatable?: V1ResourceList
+  resourceKey: 'cpu' | 'memory' | 'accelerator'
+  accelerators?: string[]
+}> = ({ used, allocatable, resourceKey: key, accelerators }) => {
+  const [percent, value, acceleratorName] = useMemo(() => {
+    // TODO
+    // 1. 如果 key 是 CPU 或者 Memory，从字符串转换成数字，计算百分比和展示的值
+    // 2. 如果 key 是 accelerator，查找 V1ResourceList = Record<string, string> | undefined 是否包含某个加速卡，包含则返回其使用结果
+    let resourceUsed = ''
+    let resourceAllocatable = ''
+    let acceleratorName = ''
+    switch (key) {
+      case 'cpu':
+        resourceUsed = used?.['cpu'] || '0'
+        resourceAllocatable = allocatable?.['cpu'] || '0'
+        break
+      case 'memory':
+        resourceUsed = used?.memory ?? '0'
+        resourceAllocatable = allocatable?.memory ?? '0'
+        break
+      case 'accelerator':
+        if (accelerators && accelerators.length > 0) {
+          for (const accelerator of accelerators) {
+            if (used && used[accelerator]) {
+              resourceUsed = used[accelerator]
+              acceleratorName = accelerator
+            }
+            if (allocatable && allocatable[accelerator]) {
+              resourceAllocatable = allocatable[accelerator]
+            }
+          }
+        } else {
+          return [0, '0']
+        }
+        break
+      default:
+        return [0, '0']
+    }
+
+    const usedValue = convertKResourceToResource(key, resourceUsed) || 0
+    const allocatableValue = convertKResourceToResource(key, resourceAllocatable)
+    if (allocatableValue === undefined || allocatableValue === 0) {
+      return [null, null]
+    }
+
+    return [
+      (usedValue / allocatableValue) * 100,
+      `${betterResourceQuantity(key, usedValue)}/${betterResourceQuantity(key, allocatableValue, true)}`,
+      acceleratorName,
+    ]
+  }, [accelerators, allocatable, key, used])
+
+  if (percent === null || value === null) {
     return <></>
   }
 
   return (
-    <div>
-      <p
-        className={cn('text-highlight-emerald mb-0.5 font-mono text-sm font-bold', {
-          'text-highlight-yellow': value.percent > 25 && value.percent <= 50,
-          'text-highlight-orange': value.percent > 50 && value.percent <= 75,
-          'text-highlight-red': value.percent > 75,
-        })}
-      >
-        {value.percent.toFixed(1)}
-        <span className="ml-0.5">%</span>
-      </p>
-      <p className="text-muted-foreground font-mono text-xs">{value.description}</p>
+    <div className="flex flex-row items-center justify-between gap-2">
+      <div className="w-20">
+        {/* 'bg-highlight-emerald': width <= 20,
+            'bg-highlight-sky': width > 20 && width <= 50,
+            'bg-highlight-yellow': width > 50 && width <= 70,
+            'bg-highlight-orange': width > 70 && width <= 90,
+            'bg-highlight-red': width > 90, */}
+        <p
+          className={cn('text-highlight-emerald mb-0.5 font-mono text-sm font-bold', {
+            'text-highlight-emerald': percent <= 20,
+            'text-highlight-sky': percent > 20 && percent <= 50,
+            'text-highlight-yellow': percent > 50 && percent <= 70,
+            'text-highlight-orange': percent > 70 && percent <= 90,
+            'text-highlight-red': percent > 90,
+          })}
+        >
+          {percent.toFixed(1)}
+          <span className="ml-0.5">%</span>
+        </p>
+        <ProgressBar width={percent} className="h-1 w-full" />
+        <p className="text-muted-foreground pt-1 font-mono text-xs">{value}</p>
+      </div>
+      {acceleratorName && acceleratorName !== '' && (
+        <Badge variant="secondary" className="font-mono font-normal">
+          {acceleratorName}
+        </Badge>
+      )}
     </div>
   )
 }
 
 export const getNodeColumns = (
-  getNicknameByName?: (name: string) => string | undefined
-): ColumnDef<ClusterNodeInfo>[] => {
+  getNicknameByName?: (name: string) => string | undefined,
+  accelerators?: string[]
+): ColumnDef<INodeBriefInfo>[] => {
   return [
     {
-      accessorKey: 'type',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={'类型'} />,
-      cell: ({ row }) => <NodeTypeBadge nodeType={row.getValue<NodeType>('type')} />,
+      accessorKey: 'arch',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={'架构'} />,
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-mono font-normal">
+          {row.getValue('arch')}
+        </Badge>
+      ),
     },
     {
       accessorKey: 'name',
@@ -97,17 +156,17 @@ export const getNodeColumns = (
       ),
     },
     {
-      accessorKey: 'isReady',
+      accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'状态'} />,
       cell: ({ row }) => {
-        const taints = row.original.taint.split(',')
-        const status = row.getValue<string>('isReady')
+        const taints = row.original.taints || []
+        const status = row.getValue<string>('status')
 
         // 如果状态为"occupied"，提取占用的账户名
         let accountInfo = null
         if (status === 'occupied' && getNicknameByName) {
           const occupiedAccount = taints
-            .find((t) => t.startsWith('crater.raids.io/account'))
+            .find((t: string) => t.startsWith('crater.raids.io/account'))
             ?.split('=')[1]
             ?.split(':')[0]
 
@@ -121,7 +180,7 @@ export const getNodeColumns = (
         // 过滤taints，如果状态是"occupied"
         const displayTaints =
           status === 'occupied'
-            ? taints.filter((taint) => taint.includes('crater.raids.io/account'))
+            ? taints.filter((taint: string) => taint.includes('crater.raids.io/account'))
             : taints
 
         return (
@@ -141,13 +200,13 @@ export const getNodeColumns = (
             )}
 
             {/* 原有的taints提示 */}
-            {row.original.taint && displayTaints.length > 0 && status !== 'occupied' && (
+            {row.original.taints && displayTaints.length > 0 && status !== 'occupied' && (
               <Tooltip>
                 <TooltipTrigger className="flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white">
                   {displayTaints.length}
                 </TooltipTrigger>
                 <TooltipContent className="font-mono">
-                  {displayTaints.map((taint, index) => (
+                  {displayTaints.map((taint: string, index: number) => (
                     <p key={index} className="text-xs">
                       {taint}
                     </p>
@@ -165,7 +224,7 @@ export const getNodeColumns = (
       cell: ({ row }) => (
         <div className="flex flex-row items-center justify-start gap-1">
           <Badge
-            variant={row.getValue('role') === 'master' ? 'default' : 'secondary'}
+            variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
             className="font-mono font-normal"
           >
             {row.getValue('role')}
@@ -176,13 +235,13 @@ export const getNodeColumns = (
                 'bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs hover:cursor-help',
                 {
                   'bg-primary text-primary-foreground':
-                    row.original.podCount && row.original.podCount > 0,
+                    row.original.workloads && row.original.workloads > 0,
                 }
               )}
             >
-              {row.original.podCount}
+              {row.original.workloads}
             </TooltipTrigger>
-            <TooltipContent>{row.original.podCount} 个作业正在运行</TooltipContent>
+            <TooltipContent>{row.original.workloads} 个作业正在运行</TooltipContent>
           </Tooltip>
         </div>
       ),
@@ -191,61 +250,55 @@ export const getNodeColumns = (
       accessorKey: 'cpu',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'CPU'} />,
       cell: ({ row }) => {
-        return <UsageCell value={row.original.cpu} />
+        return (
+          <UsageCell
+            used={row.original.used}
+            allocatable={row.original.allocatable}
+            resourceKey="cpu"
+          />
+        )
       },
       sortingFn: (rowA, rowB) => {
-        const a = rowA.original.cpu?.percent ?? 0
-        const b = rowB.original.cpu?.percent ?? 0
+        const getUsagePercent = (used?: V1ResourceList, allocatable?: V1ResourceList) => {
+          if (!used?.cpu || !allocatable?.cpu) return 0
+          return (parseFloat(used.cpu) / parseFloat(allocatable.cpu)) * 100
+        }
+        const a = getUsagePercent(rowA.original.used, rowA.original.allocatable)
+        const b = getUsagePercent(rowB.original.used, rowB.original.allocatable)
         return a - b
       },
     },
     {
       accessorKey: 'memory',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'Memory'} />,
-      cell: ({ row }) => <UsageCell value={row.getValue<ResourceInfo | undefined>('memory')} />,
+      cell: ({ row }) => (
+        <UsageCell
+          used={row.original.used}
+          allocatable={row.original.allocatable}
+          resourceKey="memory"
+        />
+      ),
       sortingFn: (rowA, rowB) => {
-        const a = rowA.original.memory?.percent ?? 0
-        const b = rowB.original.memory?.percent ?? 0
+        const getUsagePercent = (used?: V1ResourceList, allocatable?: V1ResourceList) => {
+          if (!used?.memory || !allocatable?.memory) return 0
+          return (parseFloat(used.memory) / parseFloat(allocatable.memory)) * 100
+        }
+        const a = getUsagePercent(rowA.original.used, rowA.original.allocatable)
+        const b = getUsagePercent(rowB.original.used, rowB.original.allocatable)
         return a - b
       },
     },
     {
       accessorKey: 'gpu',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'GPU'} />,
-      cell: ({ row }) => <UsageCell value={row.getValue<ResourceInfo>('gpu')} />,
-      sortingFn: (rowA, rowB) => {
-        const a = rowA.original.gpu?.percent ?? 0
-        const b = rowB.original.gpu?.percent ?? 0
-        return a - b
-      },
+      cell: ({ row }) => (
+        <UsageCell
+          used={row.original.used}
+          allocatable={row.original.allocatable}
+          resourceKey="accelerator"
+          accelerators={accelerators}
+        />
+      ),
     },
-    {
-      accessorKey: 'labels',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={'GPU 标签'} />,
-      cell: ({ row }) => {
-        const labels = row.original.labels
-        return (
-          <div className="flex flex-col items-start justify-center gap-1 font-mono">
-            {Object.keys(labels)
-              .filter((k) => k.includes('nvidia.com/gpu.product'))
-              .map((key) => (
-                <TooltipProvider delayDuration={100} key={key}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Badge className="cursor-help text-xs font-normal" variant={'outline'}>
-                        {labels[key]}
-                      </Badge>
-                    </TooltipTrigger>
-                    <TooltipContent className="p-0">
-                      <NvidiaGpuInfoCard labels={labels} />
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-          </div>
-        )
-      },
-      enableSorting: false,
-    },
-  ] as ColumnDef<ClusterNodeInfo>[]
+  ] as ColumnDef<INodeBriefInfo>[]
 }

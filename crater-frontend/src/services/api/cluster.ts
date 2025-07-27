@@ -16,43 +16,39 @@
 
 import instance, { VERSION } from '@/services/axios'
 import { IResponse } from '@/services/types'
+import { V1ResourceList } from '@/utils/resource'
+import { V1OwnerReference } from '@kubernetes/client-node'
 
-export enum NodeType {
-  Hygon = 'hygon',
-  Shenwei = 'shenwei',
-  Yitian = 'yitian',
+export enum NodeRole {
+  ControlPlane = 'control-plane',
+  Worker = 'worker',
+  Virtual = 'virtual',
 }
 
-interface BriefResource {
-  cpu: string
-  memory: string
-  gpu: string
+export enum NodeStatus {
+  Ready = 'Ready',
+  NotReady = 'NotReady',
+  Unschedulable = 'Unschedulable',
+  Occupied = 'Occupied',
 }
 
-export interface IClusterNodeInfo {
-  type: NodeType
+export interface INodeBriefInfo {
   name: string
-  role: string
-  labels: Record<string, string>
-  isReady: string
-  taint: string
-  capacity: BriefResource
-  allocated: BriefResource
-  podCount: number
+  role: NodeRole
+  arch: string
+  status: NodeStatus
+  vendor: string
+  taints: string[]
+  capacity: V1ResourceList
+  allocatable: V1ResourceList
+  used: V1ResourceList
+  workloads: number
 }
-
-export interface IOwnerReference {
-  apiVersion: string
-  kind: string
-  name: string
-  uid: string
-}
-
 export interface IClusterPodInfo {
   // from backend
   name: string
   namespace: string
-  ownerReference: IOwnerReference[]
+  ownerReference: V1OwnerReference[]
   ip: string
   createTime: string
   status: string
@@ -94,7 +90,7 @@ export interface IClusterNodeTaint {
   name: string
   taint: string
 }
-export const apiGetNodes = () => instance.get<IResponse<IClusterNodeInfo[]>>(VERSION + '/nodes')
+export const apiGetNodes = () => instance.get<IResponse<INodeBriefInfo[]>>(VERSION + '/nodes')
 
 export const apiGetNodeDetail = (name: string) =>
   instance.get<IResponse<IClusterNodeDetail>>(VERSION + `/nodes/${name}`)

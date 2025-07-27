@@ -15,22 +15,30 @@
  */
 
 import { useQuery } from '@tanstack/react-query'
-import { apiGetNodes, NodeRole } from '@/services/api/cluster'
+import { apiResourceList, Resource } from '@/services/api/resource'
 
-const useNodeQuery = (onlyWorker?: boolean) => {
+const useResourceListQuery = <T = Resource>(
+  withVendorDomain: boolean,
+  filter?: (resource: Resource) => boolean,
+  mapper?: (resource: Resource) => T
+) => {
   return useQuery({
-    queryKey: ['overview', 'nodes'],
-    queryFn: apiGetNodes,
-    select: (res) =>
-      res.data.data
-        .sort((a, b) => a.name.localeCompare(b.name))
+    queryKey: ['resources', 'list', withVendorDomain],
+    queryFn: () => apiResourceList(withVendorDomain),
+    select: (res) => {
+      return res.data.data
         .sort((a, b) => {
-          // 按照 vendor 排序，优先 hygon => shenwei => yitian => 空字符串
-          const vendorOrder = ['hygon', 'shenwei', 'yitian', '']
-          return vendorOrder.indexOf(a.vendor) - vendorOrder.indexOf(b.vendor)
+          return a.name.localeCompare(b.name)
         })
-        .filter((x) => !onlyWorker || x.role === NodeRole.Worker),
+        .filter((resource) => {
+          if (!filter) return true
+          return filter(resource)
+        })
+        .map((resource) => {
+          return mapper ? mapper(resource) : (resource as T)
+        })
+    },
   })
 }
 
-export default useNodeQuery
+export default useResourceListQuery
