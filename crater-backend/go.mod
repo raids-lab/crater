@@ -15,7 +15,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
 	github.com/imroc/req/v3 v3.48.0
 	github.com/joho/godotenv v1.5.1
-	github.com/mittwald/goharbor-client/v5 v5.6.0
+	github.com/mittwald/goharbor-client/v5 v5.6.4
 	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/common v0.65.0
 	github.com/samber/lo v1.47.0
