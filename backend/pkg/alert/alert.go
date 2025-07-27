@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -40,7 +40,7 @@ func initAlertMgr() *alertMgr {
 	// 后续可以考虑从 Config 中进行配置
 	smtpHandler, err := newSMTPAlerter()
 	if err != nil {
-		logutils.Log.Error("Init alert mgr error")
+		klog.Error("Init alert mgr error")
 	}
 	return &alertMgr{
 		handler: smtpHandler,
@@ -142,7 +142,7 @@ func (a *alertMgr) sendJobNotification(
 
 	if alertErr == nil && !record.AllowRepeat {
 		// 该job该type的邮件已经发送过，且不允许再发送
-		logutils.Log.Infof("job %s type %s already sent", jobName, alertType.String())
+		klog.Infof("job %s type %s already sent", jobName, alertType.String())
 		return nil
 	}
 

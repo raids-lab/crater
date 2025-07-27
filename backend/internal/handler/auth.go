@@ -18,6 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -25,7 +26,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -141,11 +141,6 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	l := logutils.Log.WithFields(logutils.Fields{
-		"username": req.Username,
-		"auth":     req.AuthMethod,
-	})
-
 	var username, password, token string
 	switch req.AuthMethod {
 	case AuthMethodACTAPI:
@@ -163,7 +158,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		password = *req.Password
 		// Username must start with lowercase letter and can only contain lowercase letters, numbers, and hyphens
 		if !regexp.MustCompile(UserNamePattern).MatchString(username) {
-			l.Error("invalid username")
+			klog.Error("invalid username")
 			resputil.HTTPError(c, http.StatusBadRequest, "Invalid username", resputil.InvalidRequest)
 			return
 		}
@@ -178,26 +173,26 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	switch req.AuthMethod {
 	case AuthMethodACTAPI:
 		if err := mgr.actAPIAuth(c, token, &attributes); err != nil {
-			l.Error("invalid token: ", err)
+			klog.Error("invalid token: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.NotSpecified)
 			return
 		}
 		allowRegister = true
 	case AuthMethodACTLDAP:
 		if err := mgr.actLDAPAuth(c, username, password); err != nil {
-			l.Error("invalid credentials: ", err)
+			klog.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
 		allowRegister = !config.GetConfig().ACT.StrictRegisterMode
 	case AuthMethodNormal:
 		if err := mgr.normalAuth(c, username, password); err != nil {
-			l.Error("invalid credentials: ", err)
+			klog.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
 	default:
-		l.Error("invalid auth method: ", req.AuthMethod)
+		klog.Error("invalid auth method: ", req.AuthMethod)
 		resputil.HTTPError(c, http.StatusBadRequest, "Invalid auth method", resputil.InvalidRequest)
 		return
 	}
@@ -206,32 +201,32 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	user, err := mgr.getOrCreateUser(c, &req, &attributes, allowRegister)
 	if err != nil {
 		if errors.Is(err, ErrorMustRegister) {
-			l.Error("user must register before login")
+			klog.Error("user must register before login")
 			resputil.Error(c, "User must register before login", resputil.MustRegister)
 			return
 		} else if errors.Is(err, ErrorUIDServerConnect) {
-			l.Error("can't connect to UID server")
+			klog.Error("can't connect to UID server")
 			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
 			return
 		} else if errors.Is(err, ErrorUIDServerNotFound) {
-			l.Error("UID not found")
+			klog.Error("UID not found")
 			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
 			return
 		} else {
-			l.Error("create or update user", err)
+			klog.Error("create or update user", err)
 			resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
 			return
 		}
 	}
 
 	if err = updateUserIfNeeded(c, user, &attributes); err != nil {
-		l.Error("create or update user", err)
+		klog.Error("create or update user", err)
 		resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
 		return
 	}
 
 	if user.Status != model.StatusActive {
-		l.Error("user is not active")
+		klog.Error("user is not active")
 		resputil.HTTPError(c, http.StatusUnauthorized, "User is not active", resputil.NotSpecified)
 		return
 	}
@@ -241,14 +236,14 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
-		l.Error("user has no queue", err)
+		klog.Error("user has no queue", err)
 		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
 		return
 	}
 
 	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.AccountID)).First()
 	if err != nil {
-		l.Error("user has no queue", err)
+		klog.Error("user has no queue", err)
 		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
 		return
 	}
@@ -626,10 +621,6 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	l := logutils.Log.WithFields(logutils.Fields{
-		"username": req.Username,
-	})
-
 	if config.GetConfig().ACT.StrictRegisterMode {
 		resputil.Error(c, "User must sign up with token", resputil.NotSpecified)
 		return
@@ -651,15 +642,15 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 	_, err = mgr.createUser(c, req.Username, &req.Password)
 	if err != nil {
 		if errors.Is(err, ErrorUIDServerConnect) {
-			l.Error("can't connect to UID server")
+			klog.Error("can't connect to UID server")
 			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
 			return
 		} else if errors.Is(err, ErrorUIDServerNotFound) {
-			l.Error("UID not found")
+			klog.Error("UID not found")
 			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
 			return
 		}
-		l.Error("create new user", err)
+		klog.Error("create new user", err)
 		resputil.Error(c, "Create user failed", resputil.NotSpecified)
 		return
 	}

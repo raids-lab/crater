@@ -8,10 +8,10 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/pkg/logutils"
 )
 
 const MaxJobEvents = 20
@@ -95,7 +95,7 @@ func (r *VcJobReconciler) getNewEventsForJob(c context.Context, job *batch.Job, 
 
 	// 最大保留 20 条最近的事件，避免存储过多的事件
 	if len(events) > MaxJobEvents {
-		logutils.Log.Warnf(
+		klog.Warningf(
 			"Job %s/%s has too many events (%d), only keep the latest %d events", job.Namespace, job.Name, len(events), MaxJobEvents,
 		)
 		events = events[:MaxJobEvents]

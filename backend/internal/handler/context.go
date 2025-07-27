@@ -9,6 +9,7 @@ import (
 	"golang.org/x/exp/rand"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -19,7 +20,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -301,7 +301,7 @@ func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 	// update user's LastEmailVerifiedAt
 	curTime := utils.GetLocalTime()
 	if _, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).Update(u.LastEmailVerifiedAt, curTime); err != nil {
-		logutils.Log.Error("Failed to update LastEmailVerifiedAt", err)
+		klog.Error("Failed to update LastEmailVerifiedAt", err)
 	}
 
 	resputil.Success(c, "User email updated successfully")

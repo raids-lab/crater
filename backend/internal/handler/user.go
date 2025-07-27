@@ -6,13 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/logutils"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -105,7 +105,7 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 		return
 	}
 	// TODO: delete resource
-	logutils.Log.Infof("delete user success, username: %s", name)
+	klog.Infof("delete user success, username: %s", name)
 	resputil.Success(c, "")
 }
 
@@ -132,7 +132,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	logutils.Log.Infof("list users success, count: %d", len(users))
+	klog.Infof("list users success, count: %d", len(users))
 	resputil.Success(c, users)
 }
 
@@ -158,7 +158,7 @@ func (mgr *UserMgr) ListUserBaseInfo(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
 		return
 	}
-	logutils.Log.Infof("list users success, count: %d", len(users))
+	klog.Infof("list users success, count: %d", len(users))
 	resputil.Success(c, users)
 }
 
@@ -203,7 +203,7 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 	userResp.Group = data.Group
 	userResp.Avatar = data.Avatar
 
-	logutils.Log.Infof("get user success, username: %s", name)
+	klog.Infof("get user success, username: %s", name)
 	resputil.Success(c, userResp)
 }
 
@@ -245,7 +245,7 @@ func (mgr *UserMgr) UpdateRole(c *gin.Context) {
 		return
 	}
 
-	logutils.Log.Infof("update user role success, user: %s, role: %v", name, req.Role)
+	klog.Infof("update user role success, user: %s, role: %v", name, req.Role)
 
 	resputil.Success(c, "")
 }
@@ -326,6 +326,6 @@ func (mgr *UserMgr) UpdateUserAttributesByAdmin(c *gin.Context) {
 		return
 	}
 
-	logutils.Log.Infof("update user attributes success by admin, username: %s", name)
+	klog.Infof("update user attributes success by admin, username: %s", name)
 	resputil.Success(c, "用户属性更新成功")
 }
