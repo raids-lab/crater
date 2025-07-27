@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.backendConfig.workspace.namespace }}
+  name: {{ .Values.global.namespace | default .Values.backendConfig.workspace.namespace }}
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:

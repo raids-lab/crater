@@ -5,7 +5,7 @@ metadata:
   labels:
     app: buildkitd-x86
   name: buildkitd-x86
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.global.imageNamespace | default .Values.backendConfig.workspace.imageNameSpace }}
 spec:
   serviceName: buildkitd-x86
   podManagementPolicy: Parallel
@@ -102,7 +102,7 @@ metadata:
   labels:
     app: buildkitd-x86
   name: buildkitd-x86
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.global.imageNamespace | default .Values.backendConfig.workspace.imageNameSpace }}
 spec:
   ports:
     - port: 1234

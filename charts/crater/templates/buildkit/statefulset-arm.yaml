@@ -5,7 +5,7 @@ metadata:
   labels:
     app: buildkitd-arm
   name: buildkitd-arm
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.global.imageNamespace | default .Values.backendConfig.workspace.imageNameSpace }}
 spec:
   serviceName: buildkitd-arm
   podManagementPolicy: Parallel
@@ -107,7 +107,7 @@ metadata:
   labels:
     app: buildkitd-arm
   name: buildkitd-arm
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.global.imageNamespace | default .Values.backendConfig.workspace.imageNameSpace }}
 spec:
   ports:
     - port: 1234

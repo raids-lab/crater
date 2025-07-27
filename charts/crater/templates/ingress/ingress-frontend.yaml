@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - {{ .Values.web.ingress.host }}
-      secretName: crater-tls-secret
+        - {{ .Values.global.host | default .Values.web.ingress.host }}
+      secretName: {{ .Values.global.tlsSecretName | default "crater-tls-secret" }}
   rules:
-    - host: {{ .Values.web.ingress.host }}
+    - host: {{ .Values.global.host | default .Values.web.ingress.host }}
       http:
         paths:
           - path: /website

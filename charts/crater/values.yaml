@@ -2,6 +2,14 @@
 createNamespace: false
 imagePullSecrets: []
 
+global:
+  host: "gpu.raids-lab.cn"
+  namespace: "crater-workspace"
+  imageNamespace: "crater-images"
+  grafanaHost: "gpu-grafana.raids-lab.cn"
+  tlsSecretName: "crater-tls-secret"
+  tlsForwardSecretName: "crater-tls-forward-secret"
+
 urls:
   host: "gpu.raids-lab.cn"
   grafanaHost: "gpu-grafana.raids-lab.cn"
@@ -139,11 +147,9 @@ backendConfig:
   accountSpacePrefix: crater-accounts
   publicSpacePrefix: sugon-gpu-incoming
   workspace:
-    namespace: crater-workspace
-    rwxpvcName: crater-rw-storage
-    roxpvcName: crater-ro-storage
+    namespace: {{ .Values.global.namespace | default "crater-workspace" }}
     ingressName: crater-jobs-ingress
-    imageNameSpace: crater-images
+    imageNameSpace: {{ .Values.global.imageNamespace | default "crater-images" }}
   act:
     strictRegisterMode: true
     uidServerURL: <MASKED>
