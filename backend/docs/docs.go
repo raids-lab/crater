@@ -6781,9 +6781,6 @@ const docTemplate = `{
                 "gpuMemory": {
                     "type": "string"
                 },
-                "isReady": {
-                    "type": "string"
-                },
                 "kubeletVersion": {
                     "type": "string"
                 },
@@ -6798,6 +6795,9 @@ const docTemplate = `{
                 },
                 "role": {
                     "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/v1.NodeConditionType"
                 },
                 "taint": {
                     "type": "string"
@@ -7825,6 +7825,23 @@ const docTemplate = `{
                     ]
                 }
             }
+        },
+        "v1.NodeConditionType": {
+            "type": "string",
+            "enum": [
+                "Ready",
+                "MemoryPressure",
+                "DiskPressure",
+                "PIDPressure",
+                "NetworkUnavailable"
+            ],
+            "x-enum-varnames": [
+                "NodeReady",
+                "NodeMemoryPressure",
+                "NodeDiskPressure",
+                "NodePIDPressure",
+                "NodeNetworkUnavailable"
+            ]
         },
         "v1.NodeSelectorOperator": {
             "type": "string",
