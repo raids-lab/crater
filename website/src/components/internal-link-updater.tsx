@@ -11,7 +11,7 @@ const SEPARATOR = '|||';
 // 这个函数用于获取当前页面的语言代码
 function getCurrentLocale(): string {
   const pathSegments = window.location.pathname.split('/');
-  if (pathSegments[1] && (pathSegments[1] === 'en' || pathSegments[1] === 'cn')) {
+  if (pathSegments[1] && (pathSegments[1] === 'en' || pathSegments[1] === 'zh')) {
     return pathSegments[1];
   }
   return 'en'; 
