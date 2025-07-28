@@ -55,7 +55,10 @@ CraterIcon.displayName = "CraterIcon";
  * Home Layout: app/(home)/layout.tsx
  * Docs Layout: app/docs/layout.tsx
  */
-export function baseOptions(locale: string): BaseLayoutProps {
+export function baseOptions(
+  lang: string,
+  t: (key: string) => string
+): BaseLayoutProps {
   return {
     i18n,
     nav: {
@@ -65,25 +68,25 @@ export function baseOptions(locale: string): BaseLayoutProps {
           Crater
         </>
       ),
-      url: `/${locale}`,
+      url: `/${lang}`,
     },
     links: [
       {
-        text: locale === "cn" ? "用户指南" : "User Guide",
+        text: t('userGuide'),
         icon: <BookUserIcon />,
-        url: `/${locale}/docs/user`,
+        url: `/${lang}/docs/user`,
         active: "nested-url",
       },
       {
-        text: locale === "cn" ? "管理员指南" : "Admin Guide",
+        text: t('adminGuide'),
         icon: <BookKeyIcon />,
-        url: `/${locale}/docs/admin`,
+        url: `/${lang}/docs/admin`,
         active: "nested-url",
       },
       {
-        text: locale === "cn" ? "开始使用" : "Get Started",
+        text: t('getStarted'),
         icon: <ExternalLinkIcon />,
-        url: `https://raids-lab.github.io/crater/${locale}/docs/admin/deployment/overview/|||https://gpu.act.buaa.edu.cn/portal`,
+        url: `https://raids-lab.github.io/crater/${lang}/docs/admin/deployment/overview/|||https://gpu.act.buaa.edu.cn/portal`,
       },
     ],
     githubUrl: 'https://github.com/raids-lab/crater',

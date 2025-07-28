@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import type { I18nConfig } from "fumadocs-core/i18n";
+import { locales, defaultLocale } from '@/i18n/config';
 
 export const i18n: I18nConfig = {
-  defaultLanguage: "cn",
-  languages: ["cn", "en"],
+  defaultLanguage: defaultLocale,
+  languages: [...locales],
 };
