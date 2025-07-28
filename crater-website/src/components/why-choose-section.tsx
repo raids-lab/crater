@@ -18,33 +18,36 @@
 
 import type React from "react";
 import { CheckCircle, Share2, Lock } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export function WhyChooseSection() {
+  const t = useTranslations("WhyChooseSection");
+
   return (
     <section id="features" className="py-20 px-4 bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto max-w-6xl">
         <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-          为何选择{" "}
+          {t("heading")}
           <span className="text-blue-600 dark:text-blue-500">Crater</span>
         </h2>
 
         <div className="grid md:grid-cols-3 gap-8">
           <FeatureCard
             icon={<CheckCircle className="h-8 w-8 text-blue-600" />}
-            title="开箱即用的深度学习平台"
-            description="无需用户掌握容器或 Kubernetes 知识，提供直观易用的界面，降低使用门槛"
+            title={t("features.platform.title")}
+            description= {t("features.platform.description")}
           />
 
           <FeatureCard
             icon={<Lock className="h-8 w-8 text-blue-600" />}
-            title="开源增强，避免厂商锁定"
-            description="深度集成 Volcano/Fluid/Envd 等开源项目，兼容 K8s 生态，确保技术自主可控"
+            title= {t("features.openSource.title")}
+            description={t("features.openSource.description")}
           />
 
           <FeatureCard
             icon={<Share2 className="h-8 w-8 text-blue-600" />}
-            title="智能算力共享，优化成本"
-            description="通过干扰感知的智能共享调度策略，在用户无感知的情况下，GPU 资源利用率提升 12%"
+            title= {t("features.costOptimization.title")}
+            description= {t("features.costOptimization.description")}
           />
         </div>
       </div>

@@ -1,0 +1,265 @@
+{
+  "Links": {
+    "userGuide": "用户指南",
+    "adminGuide": "管理员指南",
+    "getStarted": "开始使用"
+},
+  "Fumadocs": {
+    "search": "搜索",
+    "searchNoResult": "没有找到结果",
+    "toc": "目录",
+    "tocNoHeadings": "没有标题",
+    "lastUpdate": "最后更新于",
+    "chooseLanguage": "选择语言",
+    "nextPage": "下一页",
+    "previousPage": "上一页",
+    "chooseTheme": "选择主题",
+    "editOnGithub": "在 GitHub 上编辑"
+},
+  "HeroSection": {
+    "title": "Crater · 云原生智算平台",
+    "descriptionLine1": "基于 Kubernetes 的机器学习一站式解决方案",
+    "descriptionLine2": "整合开源生态，为 AI 训练与服务提供简单高效的体验",
+    "buttons": {
+    "getStarted": "开始使用",
+    "readDocs": "阅读文档"
+    },
+    "altText": "Crater 平台"
+  },
+  "Footer": {
+    "copyright": "© {year} Crater. 保留所有权利。",
+    "product": {
+      "title": "产品",
+      "features": "功能",
+      "pricing": "定价",
+      "caseStudies": "案例研究"
+    },
+    "resources": {
+      "title": "资源",
+      "documentation": "文档",
+      "blog": "博客",
+      "community": "社区"
+    },
+    "company": {
+      "title": "公司",
+      "aboutUs": "关于我们",
+      "contactUs": "联系我们",
+      "careers": "加入我们"
+    }
+  },
+  "WhyChooseSection": {
+    "heading": "为何选择 ",
+    "features": {
+      "platform": {
+        "title": "开箱即用的深度学习平台",
+        "description": "无需用户掌握容器或 Kubernetes 知识，提供直观易用的界面，降低使用门槛。"
+      },
+      "openSource": {
+        "title": "开源增强，避免厂商锁定",
+        "description": "深度集成 Volcano/Fluid/Envd 等开源项目，兼容 K8s 生态，确保技术自主可控。"
+      },
+      "costOptimization": {
+        "title": "智能算力共享，优化成本",
+        "description": "通过干扰感知的智能共享调度策略，在用户无感知的情况下，GPU 资源利用率提升 12%。"
+      }
+    }
+  },
+  "CoreCapabilities": {
+    "title": "核心能力",
+    "description": "Crater 提供全面的机器学习平台能力，从数据管理到模型训练，一站式解决您的 AI 工作流需求",
+    "cards": {
+      "dataManagement": {
+        "title": "数据管理",
+        "features": [
+          "Fluid 加速的分布式缓存系统",
+          "细粒度数据共享机制",
+          "智能数据预处理流水线"
+        ]
+      },
+      "environmentSetup": {
+        "title": "环境搭建",
+        "features": [
+          "Envd 环境模板，无需掌握 Docker",
+          "支持 JupyterLab/VSCode 远程开发",
+          "环境共享与快速复用"
+        ]
+      },
+      "modelTraining": {
+        "title": "模型训练",
+        "features": [
+          "分布式训练框架支持",
+          "实时 GPU 利用率监控",
+          "训练任务自动调度"
+        ]
+      },
+      "performanceMonitoring": {
+        "title": "性能监控",
+        "features": [
+          "实时损失曲线可视化",
+          "资源使用统计报表",
+          "训练进度追踪"
+        ]
+      },
+      "versionControl": {
+        "title": "版本控制",
+        "features": [
+          "模型版本管理",
+          "实验追踪与比较",
+          "配置历史记录"
+        ]
+      },
+      "modelDeployment": {
+        "title": "模型部署",
+        "features": [
+          "一键模型服务化",
+          "自动扩缩容",
+          "API 管理与监控"
+        ]
+      }
+    }
+  },
+  "TechnicalAdvantages": {
+    "heading": "技术优势",
+    "cards": {
+      "performance": {
+        "title": "高性能计算架构",
+        "description": "基于 Kubernetes 构建的高性能计算架构，支持大规模分布式训练和推理，充分发挥 GPU 集群的计算潜力。",
+        "features": [
+          "优化的 CUDA 加速计算",
+          "高效的内存管理机制",
+          "智能化资源调度算法"
+        ]
+      },
+      "security": {
+        "title": "企业级安全保障",
+        "description": "提供全面的安全机制，保护您的数据和模型资产，满足企业级安全合规要求。",
+        "features": [
+          "细粒度访问控制",
+          "数据传输加密",
+          "审计日志与合规报告"
+        ]
+      },
+      "integration": {
+        "title": "开源生态集成",
+        "description": "深度整合主流开源组件，提供统一的用户体验，避免技术碎片化。",
+        "features": [
+          "Volcano 作业调度引擎",
+          "Fluid 数据加速系统",
+          "Envd 环境管理工具"
+        ]
+      },
+      "scalability": {
+        "title": "灵活的扩展能力",
+        "description": "模块化设计，支持灵活扩展，适应不同规模和场景的需求。",
+        "features": [
+          "插件化架构",
+          "自定义工作流支持",
+          "API 集成能力"
+        ]
+      }
+    }
+  },
+  "CustomerScenarios": {
+    "heading": "适用场景",
+    "subheading": "Crater 为不同类型的组织提供定制化的解决方案，满足各种 AI 计算需求。",
+    "cards": {
+      "education": {
+        "title": "高校科研",
+        "description": "替代传统的 Slurm 集群，管理私有的高性能 GPU 节点，提供更友好的用户体验和更高的资源利用率。",
+        "features": [
+          "多用户资源隔离",
+          "科研项目管理",
+          "灵活的权限控制"
+        ]
+      },
+      "enterprise": {
+        "title": "企业 AI 团队",
+        "description": "为企业 AI 团队提供统一的开发和生产环境，加速模型从研发到部署的全流程。",
+        "features": [
+          "DevOps 集成",
+          "模型版本管理",
+          "CI/CD 流水线"
+        ]
+      },
+      "cloudProvider": {
+        "title": "云服务提供商",
+        "description": "构建公有云或私有云 AI 平台服务，为客户提供弹性、安全、高效的机器学习基础设施。",
+        "features": [
+          "多租户架构",
+          "计量计费系统",
+          "服务级别保障"
+        ]
+      }
+    }
+  },
+  "GetStarted": {
+    "heading": "立即开始使用 Crater",
+    "subheading": "通过以下资源快速了解和部署 Crater，开启您的云原生 AI 计算之旅。",
+    "cards": {
+      "docs": {
+        "title": "快速入门指南",
+        "description": "详细的文档和教程，帮助您快速上手 Crater 平台。"
+      },
+      "github": {
+        "title": "GitHub 仓库",
+        "description": "访问我们的开源代码，参与社区贡献和讨论。"
+      },
+      "contact": {
+        "title": "联系我们",
+        "description": "获取技术支持或了解企业级部署方案。"
+      }
+    }
+  },
+  "FaqSection": {
+    "heading": "常见问题",
+    "faqs": {
+      "0": {
+        "question": "Crater 与 OpenPAI / Kubeflow 的区别？",
+        "answer": "Crater 深度整合了调度、数据和环境配置组件，提供更贴近生产环境的开箱即用体验。相比 OpenPAI 和 Kubeflow，Crater 更注重用户体验和资源利用率，降低了使用门槛，同时保持了高度的可扩展性。"
+      },
+      "1": {
+        "question": "是否支持私有化部署？",
+        "answer": "是的，Crater 完全支持私有化部署，可以在裸金属服务器、VMware、OpenStack 以及主流云厂商的 Kubernetes 服务上部署。我们提供完整的部署文档和技术支持，确保您的部署顺利进行。"
+      },
+      "2": {
+        "question": "如何保证数据安全？",
+        "answer": "Crater 采用多层次的安全机制保护您的数据，包括网络隔离、访问控制、数据加密等。所有数据处理都在您的私有环境中进行，不会上传到外部服务器，确保数据安全和隐私。"
+      },
+      "3": {
+        "question": "支持哪些深度学习框架？",
+        "answer": "Crater 支持主流的深度学习框架，包括但不限于 PyTorch、TensorFlow、JAX、MXNet 等。我们提供这些框架的预配置环境模板，您可以根据需要选择和定制。"
+      },
+      "4": {
+        "question": "如何进行资源配额管理？",
+        "answer": "Crater 提供细粒度的资源配额管理功能，管理员可以为不同的用户组或项目设置 GPU、CPU、内存等资源的使用限制，确保资源的合理分配和使用。"
+      },
+      "5": {
+        "question": "是否提供商业支持？",
+        "answer": "是的，我们提供企业级的商业支持服务，包括技术咨询、定制开发、培训和 7x24 小时故障响应等。请通过官方渠道联系我们了解详情。"
+      }
+    }
+  },
+  "OramaSearch": {
+    "dictionary": {
+      "searchPlaceholder": "搜索文档...",
+      "chatPlaceholder": "询问 AI 助手...",
+      "noResultsFound": "没有找到结果",
+      "noResultsFoundFor": "关于",
+      "suggestionsTitle": "你或许想试试",
+      "seeAll": "查看所有结果",
+      "addMore": "加载更多",
+      "clearChat": "重置对话",
+      "errorMessage": "哎呀！搜索出错了。",
+      "disclaimer": "AI 生成的回复可能并不总是准确。",
+      "startYourSearch": "开始搜索吧",
+      "initErrorSearch": "搜索服务初始化失败",
+      "initErrorChat": "聊天服务初始化失败",
+      "chatButtonLabel": "获取 AI 摘要"
+    },
+    "suggestions": [
+      "怎么启动 Pytorch job？",
+      "怎么进行 SSH 连接？",
+      "怎么在 Crater 上进行 LLM 推理？"
+    ]
+  }
+}

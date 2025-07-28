@@ -18,6 +18,7 @@ import type { ReactNode } from "react";
 import { source } from "@/lib/source";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { baseOptions } from "@/app/layout.config";
+import {getTranslations, setRequestLocale} from 'next-intl/server';
 
 export default async function Layout({
   params,
@@ -26,10 +27,12 @@ export default async function Layout({
   params: Promise<{ lang: string }>;
   children: ReactNode;
 }) {
-  const { lang } = await params;
+  const {lang} = await params;
+  setRequestLocale(lang);
+  const t = await getTranslations('Links');
 
   return (
-    <DocsLayout {...baseOptions(lang)} tree={source.pageTree[lang]}>
+    <DocsLayout {...baseOptions(lang, t)} tree={source.pageTree[lang]}>
       {children}
     </DocsLayout>
   );
