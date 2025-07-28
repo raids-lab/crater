@@ -24,9 +24,12 @@ import { FaqSection } from "@/components/faq-section";
 import {use} from 'react';
 import {setRequestLocale} from 'next-intl/server';
 import {useTranslations } from "next-intl";
+import { locales } from '@/i18n/config';
 
 export async function generateStaticParams() {
-  return [{ lang: "zh" }, { lang: "en" }];
+  return locales.map((lang) => ({
+    lang: lang,
+  }));
 }
 
 export default function HomePage({ params }: { params: Promise<{ lang: string }> }) {
