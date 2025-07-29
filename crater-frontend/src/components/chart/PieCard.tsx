@@ -36,18 +36,18 @@ const PieCard = ({
   ...props
 }: PieCardProps) => {
   return (
-    <Card className={cn('relative pb-0', className)}>
+    <Card className={cn('relative gap-0 pb-0', className)}>
       {isLoading && (
         <div className="absolute top-0 right-0 bottom-0 left-0 z-10 flex items-center justify-center">
           <LoadingCircleIcon />
         </div>
       )}
-      <CardHeader>
+      <CardHeader className="mb-0 pb-0">
         <CardTitle className="flex flex-row items-center">
           <TooltipProvider delayDuration={100}>
             <Tooltip>
-              <TooltipTrigger className="flex cursor-help flex-row items-center">
-                <props.icon className="text-primary mr-1.5 size-5" />
+              <TooltipTrigger className="text-muted-foreground flex cursor-help flex-row items-center text-sm font-normal">
+                <props.icon className="text-muted-foreground mr-1 size-4" />
                 {cardTitle}
               </TooltipTrigger>
               <TooltipContent>{cardDescription}</TooltipContent>
@@ -55,7 +55,7 @@ const PieCard = ({
           </TooltipProvider>
         </CardTitle>
       </CardHeader>
-      <div className="relative h-52 overflow-hidden px-2">{children}</div>
+      <div className="relative h-56 overflow-hidden px-2">{children}</div>
     </Card>
   )
 }

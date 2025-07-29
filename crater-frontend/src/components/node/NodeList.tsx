@@ -290,7 +290,7 @@ export const getNodeColumns = (
     },
     {
       accessorKey: 'gpu',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={'GPU'} />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={'加速卡'} />,
       cell: ({ row }) => (
         <UsageCell
           used={row.original.used}

@@ -72,7 +72,7 @@ const DashboardLayout = ({ groups }: { groups: NavGroupProps[] }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', duration: 1.2 }}
           className={cn(
-            'flex flex-col gap-6 p-6 pt-0',
+            '@container/main flex flex-col gap-6 p-6 pt-0',
             fixedLayout &&
               'absolute top-0 right-0 bottom-0 left-0 w-full grow overflow-hidden peer-[.header-fixed]/header:mt-16'
           )}

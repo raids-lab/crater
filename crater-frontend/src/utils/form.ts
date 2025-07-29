@@ -47,7 +47,7 @@ export const resourceSchema = z.object({
         return gpu.count === 0 || (gpu.count > 0 && gpu.model !== null && gpu.model !== undefined)
       },
       {
-        message: 'GPU 型号不能为空',
+        message: '加速卡型号不能为空',
         path: ['model'], // The path for the error message
       }
     ),
