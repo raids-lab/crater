@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -64,15 +65,15 @@ type resource struct {
 	CreatedAt       field.Time
 	UpdatedAt       field.Time
 	DeletedAt       field.Field
-	ResourceName    field.String
-	VendorDomain    field.String
-	ResourceType    field.String
-	Amount          field.Int64
-	AmountSingleMax field.Int64
-	Format          field.String
-	Priority        field.Int
-	Label           field.String
-	Type            field.String
+	ResourceName    field.String // 资源名称
+	VendorDomain    field.String // 供应商域名
+	ResourceType    field.String // 资源类型
+	Amount          field.Int64  // 资源总量
+	AmountSingleMax field.Int64  // 单机最大资源量
+	Format          field.String // 资源格式
+	Priority        field.Int    // 优先级
+	Label           field.String // 用于显示的别名
+	Type            field.String // 资源类型
 	Networks        resourceManyToManyNetworks
 
 	fieldMap map[string]field.Expr
@@ -146,11 +147,14 @@ func (r *resource) fillFieldMap() {
 
 func (r resource) clone(db *gorm.DB) resource {
 	r.resourceDo.ReplaceConnPool(db.Statement.ConnPool)
+	r.Networks.db = db.Session(&gorm.Session{Initialized: true})
+	r.Networks.db.Statement.ConnPool = db.Statement.ConnPool
 	return r
 }
 
 func (r resource) replaceDB(db *gorm.DB) resource {
 	r.resourceDo.ReplaceDB(db)
+	r.Networks.db = db.Session(&gorm.Session{})
 	return r
 }
 
@@ -191,6 +195,11 @@ func (a resourceManyToManyNetworks) Model(m *model.Resource) *resourceManyToMany
 	return &resourceManyToManyNetworksTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a resourceManyToManyNetworks) Unscoped() *resourceManyToManyNetworks {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type resourceManyToManyNetworksTx struct{ tx *gorm.Association }
 
 func (a resourceManyToManyNetworksTx) Find() (result []*model.Resource, err error) {
@@ -227,6 +236,11 @@ func (a resourceManyToManyNetworksTx) Clear() error {
 
 func (a resourceManyToManyNetworksTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a resourceManyToManyNetworksTx) Unscoped() *resourceManyToManyNetworksTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type resourceDo struct{ gen.DO }
@@ -286,6 +300,8 @@ type IResourceDo interface {
 	FirstOrCreate() (*model.Resource, error)
 	FindByPage(offset int, limit int) (result []*model.Resource, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IResourceDo
 	UnderlyingDB() *gorm.DB

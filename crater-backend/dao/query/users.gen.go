@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -65,15 +66,15 @@ type user struct {
 	CreatedAt           field.Time
 	UpdatedAt           field.Time
 	DeletedAt           field.Field
-	Name                field.String
-	Nickname            field.String
-	Password            field.String
-	Role                field.Uint8
-	Status              field.Uint8
-	Space               field.String
-	ImageQuota          field.Int64
-	LastEmailVerifiedAt field.Time
-	Attributes          field.Field
+	Name                field.String // 用户名
+	Nickname            field.String // 昵称
+	Password            field.String // 密码
+	Role                field.Uint8  // 用户在平台的角色 (guest, user, admin)
+	Status              field.Uint8  // 用户状态 (pending, active, inactive)
+	Space               field.String // 用户空间绝对路径
+	ImageQuota          field.Int64  // 用户在镜像仓库的配额
+	LastEmailVerifiedAt field.Time   // 最后一次邮箱验证时间
+	Attributes          field.Field  // 用户的额外属性 (昵称、邮箱、电话、头像等)
 	UserAccounts        userHasManyUserAccounts
 
 	UserDatasets userHasManyUserDatasets
@@ -149,11 +150,17 @@ func (u *user) fillFieldMap() {
 
 func (u user) clone(db *gorm.DB) user {
 	u.userDo.ReplaceConnPool(db.Statement.ConnPool)
+	u.UserAccounts.db = db.Session(&gorm.Session{Initialized: true})
+	u.UserAccounts.db.Statement.ConnPool = db.Statement.ConnPool
+	u.UserDatasets.db = db.Session(&gorm.Session{Initialized: true})
+	u.UserDatasets.db.Statement.ConnPool = db.Statement.ConnPool
 	return u
 }
 
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
+	u.UserAccounts.db = db.Session(&gorm.Session{})
+	u.UserDatasets.db = db.Session(&gorm.Session{})
 	return u
 }
 
@@ -188,6 +195,11 @@ func (a userHasManyUserAccounts) Session(session *gorm.Session) *userHasManyUser
 
 func (a userHasManyUserAccounts) Model(m *model.User) *userHasManyUserAccountsTx {
 	return &userHasManyUserAccountsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a userHasManyUserAccounts) Unscoped() *userHasManyUserAccounts {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type userHasManyUserAccountsTx struct{ tx *gorm.Association }
@@ -228,6 +240,11 @@ func (a userHasManyUserAccountsTx) Count() int64 {
 	return a.tx.Count()
 }
 
+func (a userHasManyUserAccountsTx) Unscoped() *userHasManyUserAccountsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
 type userHasManyUserDatasets struct {
 	db *gorm.DB
 
@@ -259,6 +276,11 @@ func (a userHasManyUserDatasets) Session(session *gorm.Session) *userHasManyUser
 
 func (a userHasManyUserDatasets) Model(m *model.User) *userHasManyUserDatasetsTx {
 	return &userHasManyUserDatasetsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a userHasManyUserDatasets) Unscoped() *userHasManyUserDatasets {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type userHasManyUserDatasetsTx struct{ tx *gorm.Association }
@@ -297,6 +319,11 @@ func (a userHasManyUserDatasetsTx) Clear() error {
 
 func (a userHasManyUserDatasetsTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a userHasManyUserDatasetsTx) Unscoped() *userHasManyUserDatasetsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type userDo struct{ gen.DO }
@@ -356,6 +383,8 @@ type IUserDo interface {
 	FirstOrCreate() (*model.User, error)
 	FindByPage(offset int, limit int) (result []*model.User, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IUserDo
 	UnderlyingDB() *gorm.DB

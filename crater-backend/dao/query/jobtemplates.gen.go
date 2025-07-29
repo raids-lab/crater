@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -65,10 +66,10 @@ type jobtemplate struct {
 	CreatedAt field.Time
 	UpdatedAt field.Time
 	DeletedAt field.Field
-	Name      field.String
-	Describe  field.String
-	Document  field.String
-	Template  field.String
+	Name      field.String // 作业模板名称
+	Describe  field.String // 作业模板的描述
+	Document  field.String // 作业模板的文档
+	Template  field.String // 作业的模板配置
 	UserID    field.Uint
 	User      jobtemplateBelongsToUser
 
@@ -137,11 +138,14 @@ func (j *jobtemplate) fillFieldMap() {
 
 func (j jobtemplate) clone(db *gorm.DB) jobtemplate {
 	j.jobtemplateDo.ReplaceConnPool(db.Statement.ConnPool)
+	j.User.db = db.Session(&gorm.Session{Initialized: true})
+	j.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return j
 }
 
 func (j jobtemplate) replaceDB(db *gorm.DB) jobtemplate {
 	j.jobtemplateDo.ReplaceDB(db)
+	j.User.db = db.Session(&gorm.Session{})
 	return j
 }
 
@@ -185,6 +189,11 @@ func (a jobtemplateBelongsToUser) Model(m *model.Jobtemplate) *jobtemplateBelong
 	return &jobtemplateBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a jobtemplateBelongsToUser) Unscoped() *jobtemplateBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type jobtemplateBelongsToUserTx struct{ tx *gorm.Association }
 
 func (a jobtemplateBelongsToUserTx) Find() (result *model.User, err error) {
@@ -221,6 +230,11 @@ func (a jobtemplateBelongsToUserTx) Clear() error {
 
 func (a jobtemplateBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a jobtemplateBelongsToUserTx) Unscoped() *jobtemplateBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type jobtemplateDo struct{ gen.DO }
@@ -280,6 +294,8 @@ type IJobtemplateDo interface {
 	FirstOrCreate() (*model.Jobtemplate, error)
 	FindByPage(offset int, limit int) (result []*model.Jobtemplate, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IJobtemplateDo
 	UnderlyingDB() *gorm.DB

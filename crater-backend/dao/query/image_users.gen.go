@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -144,11 +145,17 @@ func (i *imageUser) fillFieldMap() {
 
 func (i imageUser) clone(db *gorm.DB) imageUser {
 	i.imageUserDo.ReplaceConnPool(db.Statement.ConnPool)
+	i.Image.db = db.Session(&gorm.Session{Initialized: true})
+	i.Image.db.Statement.ConnPool = db.Statement.ConnPool
+	i.User.db = db.Session(&gorm.Session{Initialized: true})
+	i.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return i
 }
 
 func (i imageUser) replaceDB(db *gorm.DB) imageUser {
 	i.imageUserDo.ReplaceDB(db)
+	i.Image.db = db.Session(&gorm.Session{})
+	i.User.db = db.Session(&gorm.Session{})
 	return i
 }
 
@@ -195,6 +202,11 @@ func (a imageUserBelongsToImage) Model(m *model.ImageUser) *imageUserBelongsToIm
 	return &imageUserBelongsToImageTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a imageUserBelongsToImage) Unscoped() *imageUserBelongsToImage {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type imageUserBelongsToImageTx struct{ tx *gorm.Association }
 
 func (a imageUserBelongsToImageTx) Find() (result *model.Image, err error) {
@@ -233,6 +245,11 @@ func (a imageUserBelongsToImageTx) Count() int64 {
 	return a.tx.Count()
 }
 
+func (a imageUserBelongsToImageTx) Unscoped() *imageUserBelongsToImageTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
 type imageUserBelongsToUser struct {
 	db *gorm.DB
 
@@ -264,6 +281,11 @@ func (a imageUserBelongsToUser) Session(session *gorm.Session) *imageUserBelongs
 
 func (a imageUserBelongsToUser) Model(m *model.ImageUser) *imageUserBelongsToUserTx {
 	return &imageUserBelongsToUserTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a imageUserBelongsToUser) Unscoped() *imageUserBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type imageUserBelongsToUserTx struct{ tx *gorm.Association }
@@ -302,6 +324,11 @@ func (a imageUserBelongsToUserTx) Clear() error {
 
 func (a imageUserBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a imageUserBelongsToUserTx) Unscoped() *imageUserBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type imageUserDo struct{ gen.DO }
@@ -361,6 +388,8 @@ type IImageUserDo interface {
 	FirstOrCreate() (*model.ImageUser, error)
 	FindByPage(offset int, limit int) (result []*model.ImageUser, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IImageUserDo
 	UnderlyingDB() *gorm.DB

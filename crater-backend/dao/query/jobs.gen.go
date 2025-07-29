@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -97,27 +98,27 @@ type job struct {
 	CreatedAt                field.Time
 	UpdatedAt                field.Time
 	DeletedAt                field.Field
-	Name                     field.String
-	JobName                  field.String
+	Name                     field.String // 作业名称
+	JobName                  field.String // 作业名称
 	UserID                   field.Uint
 	AccountID                field.Uint
-	JobType                  field.String
-	Status                   field.String
-	CreationTimestamp        field.Time
-	RunningTimestamp         field.Time
-	CompletedTimestamp       field.Time
-	Nodes                    field.Field
-	Resources                field.Field
-	Attributes               field.Field
-	Template                 field.String
-	AlertEnabled             field.Bool
-	Reminded                 field.Bool
-	KeepWhenLowResourceUsage field.Bool
-	LockedTimestamp          field.Time
-	ProfileData              field.Field
-	ScheduleData             field.Field
-	Events                   field.Field
-	TerminatedStates         field.Field
+	JobType                  field.String // 作业类型
+	Status                   field.String // 作业状态
+	CreationTimestamp        field.Time   // 作业创建时间
+	RunningTimestamp         field.Time   // 作业开始运行时间
+	CompletedTimestamp       field.Time   // 作业完成时间
+	Nodes                    field.Field  // 作业运行的节点
+	Resources                field.Field  // 作业的资源需求
+	Attributes               field.Field  // 作业的原始属性
+	Template                 field.String // 作业的模板配置
+	AlertEnabled             field.Bool   // 是否启用通知
+	Reminded                 field.Bool   // 是否已经处于发送了提醒的状态
+	KeepWhenLowResourceUsage field.Bool   // 当资源利用率低时是否保留
+	LockedTimestamp          field.Time   // 作业锁定时间
+	ProfileData              field.Field  // 作业的性能数据
+	ScheduleData             field.Field  // 作业的调度数据
+	Events                   field.Field  // 作业的事件 (运行时、失败时采集)
+	TerminatedStates         field.Field  // 作业的终止状态 (运行时、失败时采集)
 	User                     jobBelongsToUser
 
 	Account jobBelongsToAccount
@@ -217,11 +218,17 @@ func (j *job) fillFieldMap() {
 
 func (j job) clone(db *gorm.DB) job {
 	j.jobDo.ReplaceConnPool(db.Statement.ConnPool)
+	j.User.db = db.Session(&gorm.Session{Initialized: true})
+	j.User.db.Statement.ConnPool = db.Statement.ConnPool
+	j.Account.db = db.Session(&gorm.Session{Initialized: true})
+	j.Account.db.Statement.ConnPool = db.Statement.ConnPool
 	return j
 }
 
 func (j job) replaceDB(db *gorm.DB) job {
 	j.jobDo.ReplaceDB(db)
+	j.User.db = db.Session(&gorm.Session{})
+	j.Account.db = db.Session(&gorm.Session{})
 	return j
 }
 
@@ -265,6 +272,11 @@ func (a jobBelongsToUser) Model(m *model.Job) *jobBelongsToUserTx {
 	return &jobBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a jobBelongsToUser) Unscoped() *jobBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type jobBelongsToUserTx struct{ tx *gorm.Association }
 
 func (a jobBelongsToUserTx) Find() (result *model.User, err error) {
@@ -301,6 +313,11 @@ func (a jobBelongsToUserTx) Clear() error {
 
 func (a jobBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a jobBelongsToUserTx) Unscoped() *jobBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type jobBelongsToAccount struct {
@@ -343,6 +360,11 @@ func (a jobBelongsToAccount) Model(m *model.Job) *jobBelongsToAccountTx {
 	return &jobBelongsToAccountTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a jobBelongsToAccount) Unscoped() *jobBelongsToAccount {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type jobBelongsToAccountTx struct{ tx *gorm.Association }
 
 func (a jobBelongsToAccountTx) Find() (result *model.Account, err error) {
@@ -379,6 +401,11 @@ func (a jobBelongsToAccountTx) Clear() error {
 
 func (a jobBelongsToAccountTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a jobBelongsToAccountTx) Unscoped() *jobBelongsToAccountTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type jobDo struct{ gen.DO }
@@ -438,6 +465,8 @@ type IJobDo interface {
 	FirstOrCreate() (*model.Job, error)
 	FindByPage(offset int, limit int) (result []*model.Job, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IJobDo
 	UnderlyingDB() *gorm.DB
