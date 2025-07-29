@@ -45,6 +45,7 @@ export type KanikoInfoResponse = {
   userInfo: IUserInfo
   tags: string[]
   imagepackName: string
+  archs: string[]
 }
 
 export type ListImageResponse = {
@@ -64,6 +65,7 @@ export type ImageInfoResponse = {
   imageBuildSource: imagepackSourceTypeValue
   imagepackName: string
   imageShareStatus: Visibility
+  archs: string[]
 }
 
 export type ProjectCredentialResponse = {
@@ -123,6 +125,8 @@ export const getHeader = (key: string): string => {
       return '可见性'
     case 'size':
       return '大小'
+    case 'archs':
+      return '架构'
     default:
       return key
   }
