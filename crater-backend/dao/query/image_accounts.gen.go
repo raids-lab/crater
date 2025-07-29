@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -156,11 +157,17 @@ func (i *imageAccount) fillFieldMap() {
 
 func (i imageAccount) clone(db *gorm.DB) imageAccount {
 	i.imageAccountDo.ReplaceConnPool(db.Statement.ConnPool)
+	i.Image.db = db.Session(&gorm.Session{Initialized: true})
+	i.Image.db.Statement.ConnPool = db.Statement.ConnPool
+	i.Account.db = db.Session(&gorm.Session{Initialized: true})
+	i.Account.db.Statement.ConnPool = db.Statement.ConnPool
 	return i
 }
 
 func (i imageAccount) replaceDB(db *gorm.DB) imageAccount {
 	i.imageAccountDo.ReplaceDB(db)
+	i.Image.db = db.Session(&gorm.Session{})
+	i.Account.db = db.Session(&gorm.Session{})
 	return i
 }
 
@@ -207,6 +214,11 @@ func (a imageAccountBelongsToImage) Model(m *model.ImageAccount) *imageAccountBe
 	return &imageAccountBelongsToImageTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a imageAccountBelongsToImage) Unscoped() *imageAccountBelongsToImage {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type imageAccountBelongsToImageTx struct{ tx *gorm.Association }
 
 func (a imageAccountBelongsToImageTx) Find() (result *model.Image, err error) {
@@ -243,6 +255,11 @@ func (a imageAccountBelongsToImageTx) Clear() error {
 
 func (a imageAccountBelongsToImageTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a imageAccountBelongsToImageTx) Unscoped() *imageAccountBelongsToImageTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type imageAccountBelongsToAccount struct {
@@ -285,6 +302,11 @@ func (a imageAccountBelongsToAccount) Model(m *model.ImageAccount) *imageAccount
 	return &imageAccountBelongsToAccountTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a imageAccountBelongsToAccount) Unscoped() *imageAccountBelongsToAccount {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type imageAccountBelongsToAccountTx struct{ tx *gorm.Association }
 
 func (a imageAccountBelongsToAccountTx) Find() (result *model.Account, err error) {
@@ -321,6 +343,11 @@ func (a imageAccountBelongsToAccountTx) Clear() error {
 
 func (a imageAccountBelongsToAccountTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a imageAccountBelongsToAccountTx) Unscoped() *imageAccountBelongsToAccountTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type imageAccountDo struct{ gen.DO }
@@ -380,6 +407,8 @@ type IImageAccountDo interface {
 	FirstOrCreate() (*model.ImageAccount, error)
 	FindByPage(offset int, limit int) (result []*model.ImageAccount, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IImageAccountDo
 	UnderlyingDB() *gorm.DB

@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -78,11 +79,11 @@ type dataset struct {
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
-	Name         field.String
-	URL          field.String
-	Describe     field.String
-	Type         field.String
-	Extra        field.Field
+	Name         field.String // 数据集名
+	URL          field.String // 数据集空间路径
+	Describe     field.String // 数据集描述
+	Type         field.String // 数据类型
+	Extra        field.Field  // 额外信息(tags、weburl等)
 	UserID       field.Uint
 	UserDatasets datasetHasManyUserDatasets
 
@@ -155,11 +156,20 @@ func (d *dataset) fillFieldMap() {
 
 func (d dataset) clone(db *gorm.DB) dataset {
 	d.datasetDo.ReplaceConnPool(db.Statement.ConnPool)
+	d.UserDatasets.db = db.Session(&gorm.Session{Initialized: true})
+	d.UserDatasets.db.Statement.ConnPool = db.Statement.ConnPool
+	d.AccountDatasets.db = db.Session(&gorm.Session{Initialized: true})
+	d.AccountDatasets.db.Statement.ConnPool = db.Statement.ConnPool
+	d.User.db = db.Session(&gorm.Session{Initialized: true})
+	d.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return d
 }
 
 func (d dataset) replaceDB(db *gorm.DB) dataset {
 	d.datasetDo.ReplaceDB(db)
+	d.UserDatasets.db = db.Session(&gorm.Session{})
+	d.AccountDatasets.db = db.Session(&gorm.Session{})
+	d.User.db = db.Session(&gorm.Session{})
 	return d
 }
 
@@ -194,6 +204,11 @@ func (a datasetHasManyUserDatasets) Session(session *gorm.Session) *datasetHasMa
 
 func (a datasetHasManyUserDatasets) Model(m *model.Dataset) *datasetHasManyUserDatasetsTx {
 	return &datasetHasManyUserDatasetsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a datasetHasManyUserDatasets) Unscoped() *datasetHasManyUserDatasets {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type datasetHasManyUserDatasetsTx struct{ tx *gorm.Association }
@@ -234,6 +249,11 @@ func (a datasetHasManyUserDatasetsTx) Count() int64 {
 	return a.tx.Count()
 }
 
+func (a datasetHasManyUserDatasetsTx) Unscoped() *datasetHasManyUserDatasetsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
 type datasetHasManyAccountDatasets struct {
 	db *gorm.DB
 
@@ -265,6 +285,11 @@ func (a datasetHasManyAccountDatasets) Session(session *gorm.Session) *datasetHa
 
 func (a datasetHasManyAccountDatasets) Model(m *model.Dataset) *datasetHasManyAccountDatasetsTx {
 	return &datasetHasManyAccountDatasetsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a datasetHasManyAccountDatasets) Unscoped() *datasetHasManyAccountDatasets {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type datasetHasManyAccountDatasetsTx struct{ tx *gorm.Association }
@@ -303,6 +328,11 @@ func (a datasetHasManyAccountDatasetsTx) Clear() error {
 
 func (a datasetHasManyAccountDatasetsTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a datasetHasManyAccountDatasetsTx) Unscoped() *datasetHasManyAccountDatasetsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type datasetBelongsToUser struct {
@@ -345,6 +375,11 @@ func (a datasetBelongsToUser) Model(m *model.Dataset) *datasetBelongsToUserTx {
 	return &datasetBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a datasetBelongsToUser) Unscoped() *datasetBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type datasetBelongsToUserTx struct{ tx *gorm.Association }
 
 func (a datasetBelongsToUserTx) Find() (result *model.User, err error) {
@@ -381,6 +416,11 @@ func (a datasetBelongsToUserTx) Clear() error {
 
 func (a datasetBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a datasetBelongsToUserTx) Unscoped() *datasetBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type datasetDo struct{ gen.DO }
@@ -440,6 +480,8 @@ type IDatasetDo interface {
 	FirstOrCreate() (*model.Dataset, error)
 	FindByPage(offset int, limit int) (result []*model.Dataset, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IDatasetDo
 	UnderlyingDB() *gorm.DB

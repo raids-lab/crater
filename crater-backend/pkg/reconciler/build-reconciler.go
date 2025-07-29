@@ -174,6 +174,8 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 	source := job.Annotations[packer.AnnotationKeySource]
 	var tags []string
 	_ = json.Unmarshal([]byte(job.Annotations[packer.AnnotationKeyTags]), &tags)
+	var archs []string
+	_ = json.Unmarshal([]byte(job.Annotations[packer.AnnotationKeyArchs]), &archs)
 	u := query.User
 	_, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).First()
 	if err != nil {
@@ -191,6 +193,7 @@ func (r *BuildKitReconciler) handleRecordNotFound(ctx context.Context, job *batc
 		BuildSource:   model.BuildSource(source),
 		Tags:          datatypes.NewJSONType(tags),
 		Template:      job.Annotations[packer.AnnotationKeyTemplate],
+		Archs:         datatypes.NewJSONType(archs),
 	}
 	if err := k.WithContext(ctx).Create(&kanikoRecord); err != nil {
 		klog.Errorf("create imagepack record failed, params: %+v, %+v", kanikoRecord, err)
@@ -246,6 +249,7 @@ func (r *BuildKitReconciler) createImageRecord(ctx context.Context, kaniko *mode
 		ImageSource:   model.ImageCreateType,
 		Size:          kaniko.Size,
 		Tags:          kaniko.Tags,
+		Archs:         kaniko.Archs,
 	}
 	err = im.WithContext(ctx).Create(image)
 	if err != nil {

@@ -700,6 +700,10 @@ definitions:
     type: object
   internal_handler_image.CreateByEnvdRequest:
     properties:
+      archs:
+        items:
+          type: string
+        type: array
       base:
         type: string
       buildSource:
@@ -755,6 +759,10 @@ definitions:
     type: object
   internal_handler_image.UploadImageRequest:
     properties:
+      archs:
+        items:
+          type: string
+        type: array
       description:
         type: string
       imageLink:

@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -40,6 +41,7 @@ func newImage(db *gorm.DB, opts ...gen.DOOption) image {
 	_image.ImageSource = field.NewUint8(tableName, "image_source")
 	_image.Size = field.NewInt64(tableName, "size")
 	_image.Tags = field.NewField(tableName, "tags")
+	_image.Archs = field.NewField(tableName, "archs")
 	_image.User = imageBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -70,14 +72,15 @@ type image struct {
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
 	UserID        field.Uint
-	ImageLink     field.String
-	ImagePackName field.String
-	Description   field.String
-	IsPublic      field.Bool
-	TaskType      field.String
-	ImageSource   field.Uint8
-	Size          field.Int64
-	Tags          field.Field
+	ImageLink     field.String // 镜像链接
+	ImagePackName field.String // ImagePack CRD 名称
+	Description   field.String // 描述
+	IsPublic      field.Bool   // 是否公共
+	TaskType      field.String // 镜像任务类型
+	ImageSource   field.Uint8  // 镜像来源类型
+	Size          field.Int64  // 镜像大小
+	Tags          field.Field  // 镜像标签
+	Archs         field.Field  // 镜像架构
 	User          imageBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -108,6 +111,7 @@ func (i *image) updateTableName(table string) *image {
 	i.ImageSource = field.NewUint8(table, "image_source")
 	i.Size = field.NewInt64(table, "size")
 	i.Tags = field.NewField(table, "tags")
+	i.Archs = field.NewField(table, "archs")
 
 	i.fillFieldMap()
 
@@ -132,7 +136,7 @@ func (i *image) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (i *image) fillFieldMap() {
-	i.fieldMap = make(map[string]field.Expr, 14)
+	i.fieldMap = make(map[string]field.Expr, 15)
 	i.fieldMap["id"] = i.ID
 	i.fieldMap["created_at"] = i.CreatedAt
 	i.fieldMap["updated_at"] = i.UpdatedAt
@@ -146,16 +150,20 @@ func (i *image) fillFieldMap() {
 	i.fieldMap["image_source"] = i.ImageSource
 	i.fieldMap["size"] = i.Size
 	i.fieldMap["tags"] = i.Tags
+	i.fieldMap["archs"] = i.Archs
 
 }
 
 func (i image) clone(db *gorm.DB) image {
 	i.imageDo.ReplaceConnPool(db.Statement.ConnPool)
+	i.User.db = db.Session(&gorm.Session{Initialized: true})
+	i.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return i
 }
 
 func (i image) replaceDB(db *gorm.DB) image {
 	i.imageDo.ReplaceDB(db)
+	i.User.db = db.Session(&gorm.Session{})
 	return i
 }
 
@@ -199,6 +207,11 @@ func (a imageBelongsToUser) Model(m *model.Image) *imageBelongsToUserTx {
 	return &imageBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a imageBelongsToUser) Unscoped() *imageBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type imageBelongsToUserTx struct{ tx *gorm.Association }
 
 func (a imageBelongsToUserTx) Find() (result *model.User, err error) {
@@ -235,6 +248,11 @@ func (a imageBelongsToUserTx) Clear() error {
 
 func (a imageBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a imageBelongsToUserTx) Unscoped() *imageBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type imageDo struct{ gen.DO }
@@ -294,6 +312,8 @@ type IImageDo interface {
 	FirstOrCreate() (*model.Image, error)
 	FindByPage(offset int, limit int) (result []*model.Image, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IImageDo
 	UnderlyingDB() *gorm.DB
