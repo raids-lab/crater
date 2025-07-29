@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -52,9 +53,9 @@ type userAccount struct {
 	DeletedAt  field.Field
 	UserID     field.Uint
 	AccountID  field.Uint
-	Role       field.Uint8
-	AccessMode field.Uint8
-	Quota      field.Field
+	Role       field.Uint8 // 用户在账户中的角色 (user, admin)
+	AccessMode field.Uint8 // 用户在账户空间的访问模式 (na, ro, rw)
+	Quota      field.Field // 用户在账户中的资源配额
 
 	fieldMap map[string]field.Expr
 }
@@ -185,6 +186,8 @@ type IUserAccountDo interface {
 	FirstOrCreate() (*model.UserAccount, error)
 	FindByPage(offset int, limit int) (result []*model.UserAccount, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IUserAccountDo
 	UnderlyingDB() *gorm.DB

@@ -189,6 +189,8 @@ func (b *imagePacker) createJob(
 	volumes []corev1.Volume,
 ) (*batchv1.Job, error) {
 	tagsString, _ := json.Marshal(data.Tags)
+	archString, _ := json.Marshal(data.Archs)
+	fmt.Printf("archString: %s\n", archString)
 	jobMeta := metav1.ObjectMeta{
 		Name:      data.JobName,
 		Namespace: data.Namespace,
@@ -200,6 +202,7 @@ func (b *imagePacker) createJob(
 			AnnotationKeyTags:        string(tagsString),
 			AnnotationKeySource:      string(data.BuildSource),
 			AnnotationKeyTemplate:    data.Template,
+			AnnotationKeyArchs:       string(archString),
 		},
 	}
 	jobSpec := batchv1.JobSpec{

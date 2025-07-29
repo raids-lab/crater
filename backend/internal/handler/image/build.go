@@ -155,6 +155,7 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 		Tags:        req.Tags,
 		Template:    req.Template,
 		BuildSource: req.BuildSource,
+		Archs:       req.Archs,
 	}
 	mgr.buildFromEnvd(c, buildData)
 }
@@ -284,6 +285,7 @@ func (mgr *ImagePackMgr) buildFromEnvd(c *gin.Context, data *EnvdBuildData) {
 		Tags:        data.Tags,
 		Template:    data.Template,
 		BuildSource: data.BuildSource,
+		Archs:       data.Archs,
 	}
 
 	if err := mgr.imagePacker.CreateFromEnvd(c, envdData); err != nil {

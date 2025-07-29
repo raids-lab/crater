@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -61,11 +62,11 @@ type account struct {
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
-	Name         field.String
-	Nickname     field.String
-	Space        field.String
-	ExpiredAt    field.Time
-	Quota        field.Field
+	Name         field.String // 账户名称 (对应 Volcano Queue CRD)
+	Nickname     field.String // 账户别名 (用于显示)
+	Space        field.String // 账户空间绝对路径
+	ExpiredAt    field.Time   // 账户过期时间
+	Quota        field.Field  // 账户对应队列的资源配额
 	UserAccounts accountHasManyUserAccounts
 
 	AccountDatasets accountHasManyAccountDatasets
@@ -133,11 +134,17 @@ func (a *account) fillFieldMap() {
 
 func (a account) clone(db *gorm.DB) account {
 	a.accountDo.ReplaceConnPool(db.Statement.ConnPool)
+	a.UserAccounts.db = db.Session(&gorm.Session{Initialized: true})
+	a.UserAccounts.db.Statement.ConnPool = db.Statement.ConnPool
+	a.AccountDatasets.db = db.Session(&gorm.Session{Initialized: true})
+	a.AccountDatasets.db.Statement.ConnPool = db.Statement.ConnPool
 	return a
 }
 
 func (a account) replaceDB(db *gorm.DB) account {
 	a.accountDo.ReplaceDB(db)
+	a.UserAccounts.db = db.Session(&gorm.Session{})
+	a.AccountDatasets.db = db.Session(&gorm.Session{})
 	return a
 }
 
@@ -172,6 +179,11 @@ func (a accountHasManyUserAccounts) Session(session *gorm.Session) *accountHasMa
 
 func (a accountHasManyUserAccounts) Model(m *model.Account) *accountHasManyUserAccountsTx {
 	return &accountHasManyUserAccountsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a accountHasManyUserAccounts) Unscoped() *accountHasManyUserAccounts {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type accountHasManyUserAccountsTx struct{ tx *gorm.Association }
@@ -212,6 +224,11 @@ func (a accountHasManyUserAccountsTx) Count() int64 {
 	return a.tx.Count()
 }
 
+func (a accountHasManyUserAccountsTx) Unscoped() *accountHasManyUserAccountsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
 type accountHasManyAccountDatasets struct {
 	db *gorm.DB
 
@@ -243,6 +260,11 @@ func (a accountHasManyAccountDatasets) Session(session *gorm.Session) *accountHa
 
 func (a accountHasManyAccountDatasets) Model(m *model.Account) *accountHasManyAccountDatasetsTx {
 	return &accountHasManyAccountDatasetsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a accountHasManyAccountDatasets) Unscoped() *accountHasManyAccountDatasets {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type accountHasManyAccountDatasetsTx struct{ tx *gorm.Association }
@@ -281,6 +303,11 @@ func (a accountHasManyAccountDatasetsTx) Clear() error {
 
 func (a accountHasManyAccountDatasetsTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a accountHasManyAccountDatasetsTx) Unscoped() *accountHasManyAccountDatasetsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type accountDo struct{ gen.DO }
@@ -340,6 +367,8 @@ type IAccountDo interface {
 	FirstOrCreate() (*model.Account, error)
 	FindByPage(offset int, limit int) (result []*model.Account, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IAccountDo
 	UnderlyingDB() *gorm.DB

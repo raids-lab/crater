@@ -322,6 +322,11 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 	kanikoInfos := []KanikoInfo{}
 	for i := range kanikos {
 		kaniko := kanikos[i]
+		archs := kaniko.Archs.Data()
+		// TODO: remove temporary fix for empty archs
+		if kaniko.Archs.Data() == nil {
+			archs = []string{"linux/amd64"}
+		}
 		kanikoInfo := KanikoInfo{
 			ID:          kaniko.ID,
 			ImageLink:   kaniko.ImageLink,
@@ -334,6 +339,7 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 				Nickname: kaniko.User.Nickname,
 			},
 			Tags:          kaniko.Tags.Data(),
+			Archs:         archs,
 			ImagePackName: kaniko.ImagePackName,
 			BuildSource:   kaniko.BuildSource,
 		}
