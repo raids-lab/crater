@@ -88,6 +88,7 @@ def main():
     parser.add_argument('--max-size', type=int, default=1080, help='Max image dimension')
     parser.add_argument('--quality', type=int, default=75, help='WebP compression quality (0-100)')
     parser.add_argument('--delete-unused', action='store_true', help='Delete unused images without confirmation')
+    parser.add_argument('--optimize-unused', action='store_true', default=False, help='Optimize unused images without confirmation')
     args = parser.parse_args()
 
     content_dir = os.path.abspath(args.content)
@@ -146,6 +147,29 @@ def main():
             # 删除原始图片
             os.remove(img_abs_path)
             print(f"Deleted original: {img_rel_path}")
+
+    if args.optimize_unused:
+        # 步骤 4.1: 优化未使用的图片
+        for img in unused_images:
+            img_abs_path = os.path.join(content_dir, img)
+
+            # 跳过已经是 webp 格式的
+            if img.lower().endswith('.webp'):
+                continue
+
+            webp_path = compress_image(
+                img_abs_path,
+                max_size=args.max_size,
+                quality=args.quality
+            )
+            if webp_path:
+                webp_rel = os.path.relpath(webp_path, content_dir).replace(os.sep, '/')
+                conversion_map[img] = webp_rel
+                print(f"Optimized unused image: {img} -> {webp_rel}")
+                
+                # 删除原始图片
+                os.remove(img_abs_path)
+                print(f"Deleted original unused image: {img}")
 
     # 步骤 5: 更新 Markdown 文件中的引用
     if conversion_map:
