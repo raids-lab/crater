@@ -29,7 +29,7 @@ import { IJobInfo, JobType, apiJobAllList } from '@/services/api/vcjob'
 import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
 import NivoPie from '@/components/chart/NivoPie'
 import SplitLinkButton from '@/components/button/SplitLinkButton'
-import { FlaskConicalIcon, GpuIcon, UserRoundIcon } from 'lucide-react'
+import { ClockIcon, FlaskConicalIcon, GpuIcon, UsersRoundIcon } from 'lucide-react'
 import { useRoutes } from 'react-router-dom'
 import ResourceBadges from '@/components/badge/ResourceBadges'
 import NodeBadges from '@/components/badge/NodeBadges'
@@ -45,6 +45,7 @@ import PageTitle from '@/components/layout/PageTitle'
 import UserLabel from '@/components/label/UserLabel'
 import { getUserPseudonym } from '@/utils/pseudonym'
 import useResourceListQuery from '@/hooks/query/useResourceQuery'
+import { SectionCards } from '@/components/metrics/section-cards'
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -61,7 +62,7 @@ const toolbarConfig: DataTableToolbarConfig = {
       key: 'status',
       title: '状态',
       option: jobPhases,
-      defaultValues: ['Running'],
+      defaultValues: ['Running', 'Pending'],
     },
   ],
   getHeader: getHeader,
@@ -184,15 +185,9 @@ export const Component: FC = () => {
     refetchInterval: REFETCH_INTERVAL,
   })
 
-  const resourcesQuery = useResourceListQuery(
-    true,
-    (resource) => {
-      return resource.type == 'gpu'
-    },
-    (resource) => {
-      return resource.name
-    }
-  )
+  const resourcesQuery = useResourceListQuery(true, (resource) => {
+    return resource.type == 'gpu'
+  })
 
   const jobStatus = useMemo(() => {
     if (!jobQuery.data) {
@@ -278,13 +273,29 @@ export const Component: FC = () => {
     }))
   }, [jobQuery.data])
 
+  const gpuAllocation = useMemo(() => {
+    if (resourcesQuery.data === undefined) {
+      return 0
+    }
+    const total = resourcesQuery.data.reduce((acc, resource) => {
+      if (resource.type === 'gpu') {
+        return acc + resource.amount
+      }
+      return acc
+    }, 0)
+    const used = gpuStatus.reduce((acc, item) => {
+      return acc + item.value
+    }, 0)
+    return total > 0 ? (used / total) * 100 : 0
+  }, [resourcesQuery, gpuStatus])
+
   const mainElement = (
     <>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <PageTitle
           title={`欢迎回来，${userInfo.nickname} 👋`}
           description="使用异构集群管理平台 Crater 加速您的科研工作"
-          className="lg:col-span-3"
+          className="lg:col-span-2"
         >
           <div className="flex flex-row gap-3">
             <DocsButton title="平台文档" url="" />
@@ -326,6 +337,39 @@ export const Component: FC = () => {
             />
           </div>
         </PageTitle>
+        <SectionCards
+          items={[
+            {
+              title: '运行中作业',
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Running).length ?? 0,
+              className: 'text-highlight-blue',
+              description: '正在运行的作业数量',
+              icon: FlaskConicalIcon,
+            },
+            {
+              title: '等待中作业',
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Pending).length ?? 0,
+              className: 'text-highlight-purple',
+              description: '等待调度或未就绪的作业数量',
+              icon: ClockIcon,
+            },
+            {
+              title: '活跃用户',
+              value: userStatus.length,
+              className: 'text-highlight-emerald',
+              description: '当前活跃的用户数量',
+              icon: UsersRoundIcon,
+            },
+            {
+              title: '加速卡分配率',
+              value: `${gpuAllocation.toFixed()}%`,
+              className: 'text-highlight-orange',
+              description: '当前 GPU 资源的分配率',
+              icon: GpuIcon,
+            },
+          ]}
+          className="lg:col-span-2"
+        />
         <PieCard
           icon={FlaskConicalIcon}
           cardTitle="作业状态"
@@ -334,7 +378,7 @@ export const Component: FC = () => {
         >
           <NivoPie
             data={jobStatus}
-            margin={{ top: 25, bottom: 30 }}
+            margin={{ top: 20, bottom: 30 }}
             colors={({ id }) => {
               return jobPhases.find((x) => x.value === id)?.color ?? '#000'
             }}
@@ -342,24 +386,12 @@ export const Component: FC = () => {
           />
         </PieCard>
         <PieCard
-          icon={UserRoundIcon}
+          icon={UsersRoundIcon}
           cardTitle="用户统计"
           cardDescription="当前正在运行作业所属的用户"
           isLoading={jobQuery.isLoading}
         >
-          <NivoPie data={userStatus} margin={{ top: 25, bottom: 30 }} />
-        </PieCard>
-        <PieCard
-          icon={GpuIcon}
-          cardTitle="使用中 GPU"
-          cardDescription="正在使用的 GPU 资源"
-          isLoading={jobQuery.isLoading}
-        >
-          <NivoPie
-            data={gpuStatus}
-            margin={{ top: 25, bottom: 30 }}
-            colors={{ scheme: 'accent' }}
-          />
+          <NivoPie data={userStatus} margin={{ top: 20, bottom: 30 }} />
         </PieCard>
       </div>
       <DataTable
@@ -379,7 +411,10 @@ export const Component: FC = () => {
         }}
         storageKey="overview_nodelist"
         query={nodeQuery}
-        columns={getNodeColumns(getNicknameByName, resourcesQuery.data)}
+        columns={getNodeColumns(
+          getNicknameByName,
+          resourcesQuery.data?.map((r) => r.name)
+        )}
       />
     </>
   )
