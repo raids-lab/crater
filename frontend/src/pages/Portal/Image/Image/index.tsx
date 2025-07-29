@@ -85,6 +85,7 @@ import TooltipLink from '@/components/label/TooltipLink'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { ImageShareSheet } from './ShareImageSheet'
+import { Badge } from '@/components/ui/badge'
 
 const toolbarConfig: DataTableToolbarConfig = {
   globalSearch: {
@@ -229,6 +230,20 @@ export const ImageListTable: FC<ImageListTableProps> = ({
           )
         }
       },
+    },
+    {
+      id: 'archs',
+      accessorKey: 'archs',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('archs')} />,
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {(row.original.archs || []).map((arch, index) => (
+            <Badge key={index} variant="outline" className="text-xs">
+              {arch}
+            </Badge>
+          ))}
+        </div>
+      ),
     },
     {
       id: 'userInfo',

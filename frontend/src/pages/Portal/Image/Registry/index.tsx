@@ -85,6 +85,7 @@ import { ProjectDetail } from './ProjectDetail'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -165,6 +166,20 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           to={`${row.original.imagepackName}`}
           tooltip={`查看镜像详情`}
         />
+      ),
+    },
+    {
+      id: 'archs',
+      accessorKey: 'archs',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('archs')} />,
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1">
+          {(row.original.archs || []).map((arch, index) => (
+            <Badge key={index} variant="outline" className="text-xs">
+              {arch}
+            </Badge>
+          ))}
+        </div>
       ),
     },
     {
