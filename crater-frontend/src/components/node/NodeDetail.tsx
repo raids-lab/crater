@@ -196,6 +196,19 @@ const getColumns = (
     },
   },
   {
+    accessorKey: 'namespace',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader('namespace', t)} />
+    ),
+    cell: ({ row }) => {
+      return (
+        <Badge variant="outline" className="cursor-help font-mono font-normal">
+          {row.getValue<string>('namespace')}
+        </Badge>
+      )
+    },
+  },
+  {
     accessorKey: 'name',
     header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name', t)} />,
     cell: ({ row }) => {
@@ -216,7 +229,7 @@ const getColumns = (
               <TooltipButton
                 name={displayName}
                 tooltipContent={t('nodeDetail.tooltip.viewMonitor')}
-                className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
+                className="text-foreground hover:text-primary cursor-pointer px-0 font-mono hover:no-underline has-[>svg]:px-0"
                 variant="link"
                 onClick={() => handleShowMonitor(row.original)}
               >
@@ -388,6 +401,23 @@ export const NodeDetail: FC = () => {
   )
 
   const scheduler = useAtomValue(globalSettings).scheduler
+
+  const namespaces = useMemo(() => {
+    return (
+      podsQuery.data
+        ?.reduce((acc, pod) => {
+          if (pod.namespace && !acc.includes(pod.namespace)) {
+            acc.push(pod.namespace)
+          }
+          return acc
+        }, [] as string[])
+        .map((namespace) => ({
+          value: namespace,
+          label: namespace,
+        })) || []
+    )
+  }, [podsQuery.data])
+
   const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
     return {
       filterInput: {
@@ -396,10 +426,16 @@ export const NodeDetail: FC = () => {
       },
       filterOptions: [
         {
+          key: 'namespace',
+          title: 'Namespace',
+          option: namespaces,
+          defaultValues: [],
+        },
+        {
           key: 'status',
           title: t('nodeDetail.table.filter.status'),
           option: podPhases,
-          defaultValues: ['Running'],
+          defaultValues: ['Running', 'Pending'],
         },
         {
           key: 'type',
