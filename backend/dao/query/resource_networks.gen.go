@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -63,8 +64,8 @@ type resourceNetwork struct {
 	CreatedAt  field.Time
 	UpdatedAt  field.Time
 	DeletedAt  field.Field
-	ResourceID field.Uint
-	NetworkID  field.Uint
+	ResourceID field.Uint // 资源ID
+	NetworkID  field.Uint // 网络ID
 	Resource   resourceNetworkBelongsToResource
 
 	Network resourceNetworkBelongsToNetwork
@@ -130,11 +131,17 @@ func (r *resourceNetwork) fillFieldMap() {
 
 func (r resourceNetwork) clone(db *gorm.DB) resourceNetwork {
 	r.resourceNetworkDo.ReplaceConnPool(db.Statement.ConnPool)
+	r.Resource.db = db.Session(&gorm.Session{Initialized: true})
+	r.Resource.db.Statement.ConnPool = db.Statement.ConnPool
+	r.Network.db = db.Session(&gorm.Session{Initialized: true})
+	r.Network.db.Statement.ConnPool = db.Statement.ConnPool
 	return r
 }
 
 func (r resourceNetwork) replaceDB(db *gorm.DB) resourceNetwork {
 	r.resourceNetworkDo.ReplaceDB(db)
+	r.Resource.db = db.Session(&gorm.Session{})
+	r.Network.db = db.Session(&gorm.Session{})
 	return r
 }
 
@@ -175,6 +182,11 @@ func (a resourceNetworkBelongsToResource) Model(m *model.ResourceNetwork) *resou
 	return &resourceNetworkBelongsToResourceTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a resourceNetworkBelongsToResource) Unscoped() *resourceNetworkBelongsToResource {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type resourceNetworkBelongsToResourceTx struct{ tx *gorm.Association }
 
 func (a resourceNetworkBelongsToResourceTx) Find() (result *model.Resource, err error) {
@@ -213,6 +225,11 @@ func (a resourceNetworkBelongsToResourceTx) Count() int64 {
 	return a.tx.Count()
 }
 
+func (a resourceNetworkBelongsToResourceTx) Unscoped() *resourceNetworkBelongsToResourceTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
 type resourceNetworkBelongsToNetwork struct {
 	db *gorm.DB
 
@@ -244,6 +261,11 @@ func (a resourceNetworkBelongsToNetwork) Session(session *gorm.Session) *resourc
 
 func (a resourceNetworkBelongsToNetwork) Model(m *model.ResourceNetwork) *resourceNetworkBelongsToNetworkTx {
 	return &resourceNetworkBelongsToNetworkTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a resourceNetworkBelongsToNetwork) Unscoped() *resourceNetworkBelongsToNetwork {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type resourceNetworkBelongsToNetworkTx struct{ tx *gorm.Association }
@@ -282,6 +304,11 @@ func (a resourceNetworkBelongsToNetworkTx) Clear() error {
 
 func (a resourceNetworkBelongsToNetworkTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a resourceNetworkBelongsToNetworkTx) Unscoped() *resourceNetworkBelongsToNetworkTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type resourceNetworkDo struct{ gen.DO }
@@ -341,6 +368,8 @@ type IResourceNetworkDo interface {
 	FirstOrCreate() (*model.ResourceNetwork, error)
 	FindByPage(offset int, limit int) (result []*model.ResourceNetwork, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IResourceNetworkDo
 	UnderlyingDB() *gorm.DB

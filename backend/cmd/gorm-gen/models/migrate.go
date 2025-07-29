@@ -442,6 +442,50 @@ func main() {
 				return tx.Migrator().DropTable("cuda_base_images")
 			},
 		},
+		//nolint:dupl// 相似的migrate代码
+		{
+			ID: "202507291446",
+			Migrate: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					Archs datatypes.JSONType[[]string] `gorm:"null;comment:镜像架构"`
+				}
+				if err := tx.Migrator().AddColumn(&Kaniko{}, "Archs"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Kaniko struct {
+					Archs datatypes.JSONType[[]string] `gorm:"null;comment:镜像架构"`
+				}
+				if err := tx.Migrator().DropColumn(&Kaniko{}, "Archs"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		//nolint:dupl// 相似的migrate代码
+		{
+			ID: "202507291447",
+			Migrate: func(tx *gorm.DB) error {
+				type Image struct {
+					Archs datatypes.JSONType[[]string] `gorm:"null;comment:镜像架构"`
+				}
+				if err := tx.Migrator().AddColumn(&Image{}, "Archs"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Image struct {
+					Archs datatypes.JSONType[[]string] `gorm:"null;comment:镜像架构"`
+				}
+				if err := tx.Migrator().DropColumn(&Image{}, "Archs"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

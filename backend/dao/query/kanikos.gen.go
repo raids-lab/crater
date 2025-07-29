@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -42,6 +43,7 @@ func newKaniko(db *gorm.DB, opts ...gen.DOOption) kaniko {
 	_kaniko.BuildSource = field.NewString(tableName, "build_source")
 	_kaniko.Tags = field.NewField(tableName, "tags")
 	_kaniko.Template = field.NewString(tableName, "template")
+	_kaniko.Archs = field.NewField(tableName, "archs")
 	_kaniko.User = kanikoBelongsToUser{
 		db: db.Session(&gorm.Session{}),
 
@@ -72,16 +74,17 @@ type kaniko struct {
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
 	UserID        field.Uint
-	ImagePackName field.String
-	ImageLink     field.String
-	NameSpace     field.String
-	Status        field.String
-	Description   field.String
-	Size          field.Int64
-	Dockerfile    field.String
-	BuildSource   field.String
-	Tags          field.Field
-	Template      field.String
+	ImagePackName field.String // ImagePack CRD 名称
+	ImageLink     field.String // 镜像链接
+	NameSpace     field.String // 命名空间
+	Status        field.String // 构建状态
+	Description   field.String // 描述
+	Size          field.Int64  // 镜像大小
+	Dockerfile    field.String // Dockerfile内容
+	BuildSource   field.String // 构建来源
+	Tags          field.Field  // 镜像标签
+	Template      field.String // 镜像的模板配置
+	Archs         field.Field  // 镜像架构
 	User          kanikoBelongsToUser
 
 	fieldMap map[string]field.Expr
@@ -114,6 +117,7 @@ func (k *kaniko) updateTableName(table string) *kaniko {
 	k.BuildSource = field.NewString(table, "build_source")
 	k.Tags = field.NewField(table, "tags")
 	k.Template = field.NewString(table, "template")
+	k.Archs = field.NewField(table, "archs")
 
 	k.fillFieldMap()
 
@@ -138,7 +142,7 @@ func (k *kaniko) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (k *kaniko) fillFieldMap() {
-	k.fieldMap = make(map[string]field.Expr, 16)
+	k.fieldMap = make(map[string]field.Expr, 17)
 	k.fieldMap["id"] = k.ID
 	k.fieldMap["created_at"] = k.CreatedAt
 	k.fieldMap["updated_at"] = k.UpdatedAt
@@ -154,16 +158,20 @@ func (k *kaniko) fillFieldMap() {
 	k.fieldMap["build_source"] = k.BuildSource
 	k.fieldMap["tags"] = k.Tags
 	k.fieldMap["template"] = k.Template
+	k.fieldMap["archs"] = k.Archs
 
 }
 
 func (k kaniko) clone(db *gorm.DB) kaniko {
 	k.kanikoDo.ReplaceConnPool(db.Statement.ConnPool)
+	k.User.db = db.Session(&gorm.Session{Initialized: true})
+	k.User.db.Statement.ConnPool = db.Statement.ConnPool
 	return k
 }
 
 func (k kaniko) replaceDB(db *gorm.DB) kaniko {
 	k.kanikoDo.ReplaceDB(db)
+	k.User.db = db.Session(&gorm.Session{})
 	return k
 }
 
@@ -207,6 +215,11 @@ func (a kanikoBelongsToUser) Model(m *model.Kaniko) *kanikoBelongsToUserTx {
 	return &kanikoBelongsToUserTx{a.db.Model(m).Association(a.Name())}
 }
 
+func (a kanikoBelongsToUser) Unscoped() *kanikoBelongsToUser {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
 type kanikoBelongsToUserTx struct{ tx *gorm.Association }
 
 func (a kanikoBelongsToUserTx) Find() (result *model.User, err error) {
@@ -243,6 +256,11 @@ func (a kanikoBelongsToUserTx) Clear() error {
 
 func (a kanikoBelongsToUserTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a kanikoBelongsToUserTx) Unscoped() *kanikoBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type kanikoDo struct{ gen.DO }
@@ -302,6 +320,8 @@ type IKanikoDo interface {
 	FirstOrCreate() (*model.Kaniko, error)
 	FindByPage(offset int, limit int) (result []*model.Kaniko, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IKanikoDo
 	UnderlyingDB() *gorm.DB

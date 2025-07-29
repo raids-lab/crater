@@ -6,6 +6,7 @@ package query
 
 import (
 	"context"
+	"database/sql"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -50,11 +51,11 @@ type alert struct {
 	CreatedAt      field.Time
 	UpdatedAt      field.Time
 	DeletedAt      field.Field
-	JobName        field.String
-	AlertType      field.String
-	AlertTimestamp field.Time
-	AllowRepeat    field.Bool
-	SendCount      field.Int
+	JobName        field.String // 作业名
+	AlertType      field.String // 邮件类型
+	AlertTimestamp field.Time   // 邮件发送时间
+	AllowRepeat    field.Bool   // 是否允许重复发送
+	SendCount      field.Int    // 邮件发送次数
 
 	fieldMap map[string]field.Expr
 }
@@ -183,6 +184,8 @@ type IAlertDo interface {
 	FirstOrCreate() (*model.Alert, error)
 	FindByPage(offset int, limit int) (result []*model.Alert, count int64, err error)
 	ScanByPage(result interface{}, offset int, limit int) (count int64, err error)
+	Rows() (*sql.Rows, error)
+	Row() *sql.Row
 	Scan(result interface{}) (err error)
 	Returning(value interface{}, columns ...string) IAlertDo
 	UnderlyingDB() *gorm.DB

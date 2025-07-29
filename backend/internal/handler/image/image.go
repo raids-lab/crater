@@ -48,6 +48,7 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 		IsPublic:    false,
 		Description: &req.Description,
 		Tags:        datatypes.NewJSONType(req.Tags),
+		Archs:       datatypes.NewJSONType(req.Archs),
 		ImageSource: model.ImageUploadType,
 	}
 	imageQuery := query.Image
@@ -521,6 +522,11 @@ func (mgr *ImagePackMgr) processImageListResponse(
 	imageInfos := []*ImageInfo{}
 	for i := range images {
 		image := images[i]
+		archs := image.Archs.Data()
+		// TODO: remove temporary fix for empty archs
+		if image.Archs.Data() == nil {
+			archs = []string{"linux/amd64"}
+		}
 		imageInfo := &ImageInfo{
 			ID:          image.ID,
 			ImageLink:   image.ImageLink,
@@ -533,6 +539,7 @@ func (mgr *ImagePackMgr) processImageListResponse(
 				Nickname: image.User.Nickname,
 			},
 			Tags:             image.Tags.Data(),
+			Archs:            archs,
 			ImageBuildSource: image.ImageSource,
 			ImagePackName:    image.ImagePackName,
 			ImageShareStatus: status,

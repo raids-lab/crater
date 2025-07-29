@@ -38,6 +38,7 @@ type (
 		Tags        []string          `json:"tags"`
 		Template    string            `json:"template"`
 		BuildSource model.BuildSource `json:"buildSource"`
+		Archs       []string          `json:"archs"`
 	}
 
 	UploadImageRequest struct {
@@ -45,6 +46,7 @@ type (
 		TaskType    model.JobType `json:"taskType"`
 		Description string        `json:"description"`
 		Tags        []string      `json:"tags"`
+		Archs       []string      `json:"archs"`
 	}
 
 	DeleteKanikoByIDRequest struct {
@@ -201,6 +203,7 @@ type (
 		Tags          []string          `json:"tags"`
 		ImagePackName string            `json:"imagepackName"`
 		BuildSource   model.BuildSource `json:"buildSource"`
+		Archs         []string          `json:"archs"`
 	}
 
 	ListKanikoResponse struct {
@@ -219,6 +222,7 @@ type (
 		ImageBuildSource model.ImageSourceType `json:"imageBuildSource"`
 		ImagePackName    *string               `json:"imagepackName"`
 		ImageShareStatus model.ImageShareType  `json:"imageShareStatus"`
+		Archs            []string              `json:"archs"`
 	}
 
 	ImageInfoLinkPair struct {
@@ -255,6 +259,7 @@ type (
 		Tags        []string
 		Template    string
 		BuildSource model.BuildSource
+		Archs       []string
 	}
 
 	ImageGrantedUsers struct {

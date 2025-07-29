@@ -49,6 +49,7 @@ type Kaniko struct {
 	BuildSource   BuildSource                  `gorm:"type:varchar(32);not null;default:buildkit;comment:构建来源"`
 	Tags          datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
 	Template      string                       `gorm:"type:text;comment:镜像的模板配置"`
+	Archs         datatypes.JSONType[[]string] `gorm:"null;comment:镜像架构"`
 }
 
 type Image struct {
@@ -63,6 +64,7 @@ type Image struct {
 	ImageSource   ImageSourceType              `gorm:"not null;comment:镜像来源类型"`
 	Size          int64                        `gorm:"type:bigint;default:0;comment:镜像大小"`
 	Tags          datatypes.JSONType[[]string] `gorm:"null;comment:镜像标签"`
+	Archs         datatypes.JSONType[[]string] `gorm:"null;comment:镜像架构"`
 }
 
 type ImageUser struct {

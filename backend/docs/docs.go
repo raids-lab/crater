@@ -7357,6 +7357,12 @@ const docTemplate = `{
         "internal_handler_image.CreateByEnvdRequest": {
             "type": "object",
             "properties": {
+                "archs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "base": {
                     "type": "string"
                 },
@@ -7441,6 +7447,12 @@ const docTemplate = `{
         "internal_handler_image.UploadImageRequest": {
             "type": "object",
             "properties": {
+                "archs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },

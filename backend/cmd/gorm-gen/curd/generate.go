@@ -39,7 +39,7 @@ func main() {
 		model.ResourceNetwork{},
 		model.ImageUser{},
 		model.ImageAccount{},
-		&model.CudaBaseImage{},
+		model.CudaBaseImage{},
 	)
 
 	// 执行并生成代码

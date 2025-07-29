@@ -54,6 +54,7 @@ type EnvdReq struct {
 	Tags         []string
 	Template     string
 	BuildSource  model.BuildSource
+	Archs        []string
 }
 
 type ImagePackerInterface interface {
@@ -92,9 +93,10 @@ const (
 	AnnotationKeyImageLink   = "build-data/ImageLink"   // 镜像链接
 	AnnotationKeyScript      = "build-data/Script"      // 镜像构建脚本（Dockerfile or Envd 类型）
 	AnnotationKeyDescription = "build-data/Description" // 镜像描述
-	AnnotationKeyTags        = "build-data/Tags"        // 是镜像标签
+	AnnotationKeyTags        = "build-data/Tags"        // 镜像标签
 	AnnotationKeySource      = "build-data/Source"      // 镜像构建来源
 	AnnotationKeyTemplate    = "build-data/Template"    // 镜像模板（提交表单转化为Json格式）
+	AnnotationKeyArchs       = "build-data/Archs"       // 镜像架构
 )
 
 func GetImagePackerMgr(cli client.Client) ImagePackerInterface {
