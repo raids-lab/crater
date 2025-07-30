@@ -135,7 +135,10 @@ const FileActions = ({
           className="size-8 p-0 hover:text-sky-700"
           tooltipContent={t('fileActions.download.tooltip')}
           onClick={() => {
-            const link = `${apiBaseURL}ss/download${path}/${name}`
+            const baseUrl = new URL(apiBaseURL)
+            const fullPath = `ss/download${path ? (path.startsWith('/') ? path : '/' + path) : ''}/${name}`
+            const url = new URL(fullPath, baseUrl)
+            const link = url.toString()
             const o = new XMLHttpRequest()
             o.open('GET', link)
             o.responseType = 'blob'
