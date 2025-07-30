@@ -35,6 +35,8 @@ jobs:
       # 1. Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # 2. Setup pnpm package manager
       - name: Setup pnpm
@@ -58,3 +60,54 @@ jobs:
       # 5. Build the Next.js project without running post-build scripts
       - name: Build website
         run: pnpm exec next build
+
+      # 6. Check for non-WEBP images in the pull request
+      - name: Check for Non-WEBP Images in PR
+        run: |
+          echo "Running non-WEBP image check for PR..."
+
+          CHECK_DIRS="src/ content/"
+
+          NON_WEBP_EXTENSIONS="\\.png \\.jpg \\.jpeg \\.gif \\.bmp"
+
+          CHANGED_FILES=$(git diff --name-only --diff-filter=A --diff-filter=M \
+                            ${{ github.event.pull_request.base.sha }} \
+                            ${{ github.event.pull_request.head.sha }})
+
+          FOUND_NON_WEBP=0
+          NON_WEBP_LIST=""
+
+          echo "Checking these changed files:"
+          echo "$CHANGED_FILES"
+          echo "---"
+
+          for file in $CHANGED_FILES; do
+              IS_IN_CHECK_DIR=0
+              for dir in $CHECK_DIRS; do
+                  if [[ "$file" == "${dir}"* ]]; then
+                      IS_IN_CHECK_DIR=1
+                      break
+                  fi
+              done
+
+              if [ "$IS_IN_CHECK_DIR" -eq 1 ]; then
+                  extension=$(echo "$file" | awk -F'.' '{print tolower($NF)}')
+                  
+                  if echo "$NON_WEBP_EXTENSIONS" | grep -wq "\.${extension}"; then
+                      echo "Error: Found non-WebP image: '$file'."
+                      NON_WEBP_LIST+="- $file\n"
+                      FOUND_NON_WEBP=1
+                  fi
+              fi
+          done
+
+          if [ $FOUND_NON_WEBP -eq 1 ]; then
+              echo "--- Non-WEBP Image Check Failed ---"
+              echo "The following non-WEBP images were detected in the Pull Request:"
+              echo -e "$NON_WEBP_LIST" # 使用 -e 来解释 \n 换行符
+              echo "Please convert these images to WebP format before merging."
+              exit 1
+          else
+              echo "No non-WEBP images found among the changed files in '$CHECK_DIRS'."
+              exit 0
+          fi

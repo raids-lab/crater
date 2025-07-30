@@ -21,12 +21,22 @@ import { TechnicalAdvantages } from "@/components/technical-advantages";
 import { CustomerScenarios } from "@/components/customer-scenarios";
 import { GetStarted } from "@/components/get-started";
 import { FaqSection } from "@/components/faq-section";
+import {use} from 'react';
+import {setRequestLocale} from 'next-intl/server';
+import {useTranslations } from "next-intl";
+import { locales } from '@/i18n/config';
 
 export async function generateStaticParams() {
-  return [{ lang: "cn" }, { lang: "en" }];
+  return locales.map((lang) => ({
+    lang: lang,
+  }));
 }
 
-export default function HomePage() {
+export default function HomePage({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = use(params);
+  setRequestLocale(lang);
+  const tFooter = useTranslations("Footer");
+
   return (
     <div className="min-h-screen text-gray-900 dark:text-gray-100">
       <main>
@@ -48,19 +58,19 @@ export default function HomePage() {
                 <span className="text-lg font-bold">Crater</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                © {new Date().getFullYear()} Crater. 保留所有权利。
+                {tFooter("copyright", {year: new Date().getFullYear()})}
               </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
               <div>
-                <h3 className="font-medium mb-4">产品</h3>
+                <h3 className="font-medium mb-4">{tFooter("product.title")}</h3>
                 <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li>
                     <a
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      功能
+                      {tFooter("product.features")}
                     </a>
                   </li>
                   <li>
@@ -68,7 +78,7 @@ export default function HomePage() {
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      定价
+                      {tFooter("product.pricing")}
                     </a>
                   </li>
                   <li>
@@ -76,20 +86,20 @@ export default function HomePage() {
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      案例研究
+                      {tFooter("product.caseStudies")}
                     </a>
                   </li>
                 </ul>
               </div>
               <div>
-                <h3 className="font-medium mb-4">资源</h3>
+                <h3 className="font-medium mb-4">{tFooter("resources.title")}</h3>
                 <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li>
                     <a
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      文档
+                      {tFooter("resources.documentation")}
                     </a>
                   </li>
                   <li>
@@ -97,7 +107,7 @@ export default function HomePage() {
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      博客
+                      {tFooter("resources.blog")}
                     </a>
                   </li>
                   <li>
@@ -105,20 +115,20 @@ export default function HomePage() {
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      社区
+                      {tFooter("resources.community")}
                     </a>
                   </li>
                 </ul>
               </div>
               <div>
-                <h3 className="font-medium mb-4">公司</h3>
+                <h3 className="font-medium mb-4">{tFooter("company.title")}</h3>
                 <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                   <li>
                     <a
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      关于我们
+                      {tFooter("company.aboutUs")}
                     </a>
                   </li>
                   <li>
@@ -126,7 +136,7 @@ export default function HomePage() {
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      联系我们
+                      {tFooter("company.contactUs")}
                     </a>
                   </li>
                   <li>
@@ -134,7 +144,7 @@ export default function HomePage() {
                       href="#"
                       className="hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      加入我们
+                      {tFooter("company.careers")}
                     </a>
                   </li>
                 </ul>
