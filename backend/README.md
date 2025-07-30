@@ -76,7 +76,10 @@ CRATER_FE_PORT=xxxx
 CRATER_BE_PORT=xxxx
 CRATER_MS_PORT=xxxx
 CRATER_HP_PORT=xxxx
+CRATER_SS_TARGET="http://localhost:7320"
 ```
+CRATER_SS_TARGET is the destination address for forwarding requests to the storage service.
+
 You will also need access to a Kubernetes cluster. The cluster admin will provide a `kubeconfig` file. Copy it to the backend project root and rename it as `kubeconfig`:
 ```bash
 cp ./kubeconfig ./web-backend/kubeconfig
