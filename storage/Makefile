@@ -1,4 +1,3 @@
-PORT := $(shell if [ -f .env ]; then grep PORT .env | cut -d '=' -f2; else echo "7320"; fi)
 
 BINARY=mywebdav
 MAIN_FILE=main.go
@@ -13,8 +12,8 @@ help:
 
 .PHONY: run
 run: fmt
-	@echo "Running application on port ${PORT}..."
-	go run $(MAIN_FILE) -port=$(PORT)
+	@echo "Running application "
+	go run $(MAIN_FILE)
 
 .PHONY: fmt
 fmt:
