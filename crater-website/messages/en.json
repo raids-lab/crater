@@ -1,0 +1,265 @@
+{
+  "Links": {  
+    "userGuide": "User Guide",
+    "adminGuide": "Admin Guide",
+    "getStarted": "Get Started"
+  },
+  "Fumadocs": {
+    "search": "Search",
+    "searchNoResult": "No results found",
+    "toc": "Table of Contents",
+    "tocNoHeadings": "No headings",
+    "lastUpdate": "Last updated on",
+    "chooseLanguage": "Choose language",
+    "nextPage": "Next page",
+    "previousPage": "Previous page",
+    "chooseTheme": "Choose theme",
+    "editOnGithub": "Edit on GitHub"
+  },
+  "HeroSection": {
+    "title": "Crater - Cloud-Native AI Platform",
+    "descriptionLine1": "A one-stop solution for machine learning based on Kubernetes.",
+    "descriptionLine2": "Efficient experience in AI training and serving.",
+    "buttons": {
+      "getStarted": "Get Started",
+      "readDocs": "Read the Docs"
+    },
+    "altText": "Crater Platform"
+  },
+  "Footer": {
+    "copyright": "© {year} Crater. All Rights Reserved.",
+    "product": {
+      "title": "Product",
+      "features": "Features",
+      "pricing": "Pricing",
+      "caseStudies": "Case Studies"
+    },
+    "resources": {
+      "title": "Resources",
+      "documentation": "Documentation",
+      "blog": "Blog",
+      "community": "Community"
+    },
+    "company": {
+      "title": "Company",
+      "aboutUs": "About Us",
+      "contactUs": "Contact Us",
+      "careers": "Careers"
+    }
+  },
+  "WhyChooseSection": {
+    "heading": "Why Choose ",
+    "features": {
+      "platform": {
+        "title": "Out-of-the-Box Deep Learning Platform",
+        "description": "Provides an intuitive, easy-to-use interface, eliminating the need to master containers or Kubernetes and lowering the barrier to entry."
+      },
+      "openSource": {
+        "title": "Open-Source Enhanced, No Vendor Lock-In",
+        "description": "Deeply integrated with open-source projects like Volcano, Fluid, and Envd, ensuring compatibility with the K8s ecosystem and technological autonomy."
+      },
+      "costOptimization": {
+        "title": "Intelligent GPU Sharing for Cost Optimization",
+        "description": "Increases GPU resource utilization by 12% through an interference-aware intelligent sharing strategy, without impacting the user's experience."
+      }
+    }
+  },
+  "CoreCapabilities": {
+    "title": "Core Capabilities",
+    "description": "Crater provides comprehensive machine learning platform capabilities, from data management to model training, to solve your AI workflow needs in one stop.",
+    "cards": {
+      "dataManagement": {
+        "title": "Data Management",
+        "features": [
+          "Distributed caching system accelerated by Fluid",
+          "Fine-grained data sharing mechanism",
+          "Intelligent data preprocessing pipeline"
+        ]
+      },
+      "environmentSetup": {
+        "title": "Environment Setup",
+        "features": [
+          "Envd environment templates, no Docker skills required",
+          "Support for JupyterLab/VSCode remote development",
+          "Environment sharing and rapid reuse"
+        ]
+      },
+      "modelTraining": {
+        "title": "Model Training",
+        "features": [
+          "Support for distributed training frameworks",
+          "Real-time GPU utilization monitoring",
+          "Automatic scheduling of training tasks"
+        ]
+      },
+      "performanceMonitoring": {
+        "title": "Performance Monitoring",
+        "features": [
+          "Real-time loss curve visualization",
+          "Resource Usage Statistics Reports",
+          "Training Progress Tracking"
+        ]
+      },
+      "versionControl": {
+        "title": "Version Control",
+        "features": [
+          "Model version management",
+          "Experiment tracking and comparison",
+          "Configuration history records"
+        ]
+      },
+      "modelDeployment": {
+        "title": "Model Deployment",
+        "features": [
+          "One-click model serving",
+          "Auto-scaling",
+          "API management and monitoring"
+        ]
+      }
+    }
+  },
+  "TechnicalAdvantages": {
+    "heading": "Technical Advantages",
+    "cards": {
+      "performance": {
+        "title": "High-Performance Computing Architecture",
+        "description": "A high-performance computing architecture built on Kubernetes, supporting large-scale distributed training and inference to fully leverage the computational potential of GPU clusters.",
+        "features": [
+          "Optimized CUDA accelerated computing",
+          "Efficient memory management mechanisms",
+          "Intelligent resource scheduling algorithms"
+        ]
+      },
+      "security": {
+        "title": "Enterprise-Grade Security",
+        "description": "Provides comprehensive security mechanisms to protect your data and model assets, meeting enterprise-level security and compliance requirements.",
+        "features": [
+          "Fine-grained access control",
+          "Data-in-transit encryption",
+          "Audit logs and compliance reporting"
+        ]
+      },
+      "integration": {
+        "title": "Open-Source Ecosystem Integration",
+        "description": "Deeply integrates with mainstream open-source components to provide a unified user experience and avoid technological fragmentation.",
+        "features": [
+          "Volcano job scheduling engine",
+          "Fluid data acceleration system",
+          "Envd environment management tool"
+        ]
+      },
+      "scalability": {
+        "title": "Flexible Scalability",
+        "description": "A modular design that supports flexible expansion to adapt to the needs of different scales and scenarios.",
+        "features": [
+          "Plugin-based architecture",
+          "Custom workflow support",
+          "API integration capabilities"
+        ]
+      }
+    }
+  },
+  "CustomerScenarios": {
+    "heading": "Customer Scenarios",
+    "subheading": "Crater provides customized solutions for different types of organizations to meet various AI computing needs.",
+    "cards": {
+      "education": {
+        "title": "University Research",
+        "description": "Replaces traditional Slurm clusters to manage private high-performance GPU nodes, offering a more user-friendly experience and higher resource utilization.",
+        "features": [
+          "Multi-user resource isolation",
+          "Research project management",
+          "Flexible permission control"
+        ]
+      },
+      "enterprise": {
+        "title": "Enterprise AI Teams",
+        "description": "Provides a unified development and production environment for enterprise AI teams, accelerating the entire model lifecycle from R&D to deployment.",
+        "features": [
+          "DevOps integration",
+          "Model version management",
+          "CI/CD pipelines"
+        ]
+      },
+      "cloudProvider": {
+        "title": "Cloud Service Providers",
+        "description": "Build public or private cloud AI platform services, offering customers elastic, secure, and efficient machine learning infrastructure.",
+        "features": [
+          "Multi-tenant architecture",
+          "Metering and billing system",
+          "Service Level Guarantees"
+        ]
+      }
+    }
+  },
+  "GetStarted": {
+    "heading": "Get Started with Crater",
+    "subheading": "Explore the resources below to quickly learn and deploy Crater, starting your journey into cloud-native AI.",
+    "cards": {
+      "docs": {
+        "title": "Quick Start Guide",
+        "description": "Detailed documentation and tutorials to help you get started with the Crater platform quickly."
+      },
+      "github": {
+        "title": "GitHub Repository",
+        "description": "Access our open-source code, contribute to the community, and join the discussion."
+      },
+      "contact": {
+        "title": "Contact Us",
+        "description": "Get technical support or learn about our enterprise deployment solutions."
+      }
+    }
+  },
+  "FaqSection": {
+    "heading": "Frequently Asked Questions",
+    "faqs": {
+      "0": {
+        "question": "What's the difference between Crater, OpenPAI, and Kubeflow?",
+        "answer": "Crater deeply integrates scheduling, data, and environment configuration components to provide a more production-ready, out-of-the-box experience. Compared to OpenPAI and Kubeflow, Crater focuses more on user experience and resource utilization, lowering the entry barrier while maintaining high scalability."
+      },
+      "1": {
+        "question": "Do you support on-premise deployment?",
+        "answer": "Yes, Crater fully supports on-premise deployment on bare metal servers, VMware, OpenStack, and major cloud providers' Kubernetes services. We provide complete deployment documentation and technical support to ensure a smooth process."
+      },
+      "2": {
+        "question": "How is data security ensured?",
+        "answer": "Crater employs a multi-layered security mechanism to protect your data, including network isolation, access control, and data encryption. All data processing occurs within your private environment and is not uploaded to external servers, ensuring data security and privacy."
+      },
+      "3": {
+        "question": "Which deep learning frameworks are supported?",
+        "answer": "Crater supports mainstream deep learning frameworks, including but not limited to PyTorch, TensorFlow, JAX, and MXNet. We provide pre-configured environment templates for these frameworks, which you can select and customize as needed."
+      },
+      "4": {
+        "question": "How is resource quota management handled?",
+        "answer": "Crater offers fine-grained resource quota management, allowing administrators to set usage limits on GPU, CPU, memory, etc., for different user groups or projects, ensuring fair resource allocation and usage."
+      },
+      "5": {
+        "question": "Do you offer commercial support?",
+        "answer": "Yes, we offer enterprise-grade commercial support services, including technical consulting, custom development, training, and 24/7 incident response. Please contact us through official channels for more details."
+      }
+    }
+  },
+  "OramaSearch": {
+    "dictionary": {
+      "searchPlaceholder": "Search our documentation...",
+      "chatPlaceholder": "Ask our AI assistant...",
+      "noResultsFound": "We couldn't find any results",
+      "noResultsFoundFor": "for",
+      "suggestionsTitle": "You might want to try",
+      "seeAll": "View all results",
+      "addMore": "Load more",
+      "clearChat": "Reset conversation",
+      "errorMessage": "Oops! Something went wrong with your search.",
+      "disclaimer": "AI-generated responses may not always be accurate.",
+      "startYourSearch": "Begin your search",
+      "initErrorSearch": "Search service initialization failed",
+      "initErrorChat": "Chat service initialization failed",
+      "chatButtonLabel": "Get AI summary"
+    },
+    "suggestions": [
+      "How to start a PyTorch job?",
+      "How to connect via SSH?",
+      "How to perform LLM inference on Crater?"
+    ]
+  }
+}

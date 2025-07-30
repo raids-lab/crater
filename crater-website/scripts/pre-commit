@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# 设置 Git 仓库根目录
+GIT_ROOT="." 
+cd "$GIT_ROOT" || exit 1
+
+# 定义您的网站内容目录（相对于 Git 仓库根目录）
+WEBSITE_CONTENT_DIR="crater-website"
+
+echo "Running pre-commit hook for '$WEBSITE_CONTENT_DIR'..."
+
+# 获取所有在暂存区中被标记为“新增”的文件
+# --diff-filter=A: 只显示新增的文件
+# --name-only: 只显示文件名
+# git diff --cached HEAD -- "$WEBSITE_CONTENT_DIR"
+# 注意：git diff --cached HEAD 会比较暂存区和HEAD。
+# 对于第一次提交，HEAD不存在，所以需要处理。
+# 简单起见，我们直接检查所有暂存文件，如果它们是新增的且是非webp图片。
+
+# 获取所有在 crater-website 目录下，在暂存区中标记为“新增”的文件路径
+# 对于首次提交 (HEAD 不存在)，git diff --cached 的行为是比较空树和暂存区。
+# 对于后续提交，它比较 HEAD 和暂存区。
+# 因此，'A' 状态的文件总是相对于 HEAD 是新增的。
+NEWLY_ADDED_FILES=$(git diff --cached --name-only --diff-filter=A -- "$WEBSITE_CONTENT_DIR")
+
+# 定义非 WebP 图片扩展名
+NON_WEBP_EXTENSIONS=".png .jpg .jpeg .gif .bmp"
+
+# 遍历所有新增的文件，检查是否是非 WebP 格式图片
+FOUND_NON_WEBP=0
+for file in $NEWLY_ADDED_FILES; do
+    # 提取文件扩展名（转换为小写）
+    extension=$(echo "$file" | awk -F'.' '{print tolower($NF)}')
+    
+    # 检查扩展名是否在非 WebP 列表中且不是 .webp
+    if echo "$NON_WEBP_EXTENSIONS" | grep -q "\.${extension}"; then
+        echo "Error: Found newly added non-WebP image in '$file'."
+        echo "Please convert this image to WebP format before committing."
+        FOUND_NON_WEBP=1
+    fi
+done
+
+if [ $FOUND_NON_WEBP -eq 1 ]; then
+    echo "Pre-commit hook failed: Non-WebP images detected among newly added files. Aborting commit."
+    echo ""
+    echo "+ Please convert all images to WebP by format in '$WEBSITE_CONTENT_DIR/hack' before committing."
+    exit 1
+else
+    echo "No newly added non-WebP images found in '$WEBSITE_CONTENT_DIR'. Proceeding with commit."
+    exit 0
+fi
