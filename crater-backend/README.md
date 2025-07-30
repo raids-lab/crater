@@ -1,104 +1,139 @@
 # ![Crater Backend](./docs/image/icon.png) Crater Backend
 Crater is a Kubernetes-based GPU cluster management system providing a comprehensive solution for GPU resource orchestration.
 
-## 💻 Development Guide
 
-Before getting started with development, please ensure your environment has the following tools installed:
+## 🚀 Run Crater Backend
+
+### Install Essential Software
+
+It is recommended to install the following software in the suggested versions.
 
 - **Go**: Version `v1.24.4` is recommended  
   📖 [Go Installation Guide](https://go.dev/doc/install)
-
 - **Kubectl**: Version `v1.33` is recommended  
   📖 [Kubectl Installation Guide](https://kubernetes.io/docs/tasks/tools/)
 
-### 📐 Code Style & Linting
-
-This project uses [`golangci-lint`](https://golangci-lint.run/) to enforce Go code conventions and best practices. To avoid running it manually, we recommend setting up a Git pre-commit hook to automatically check the code before each commit.
-
-After installation, you might need to add your GOPATH to the system PATH so that golangci-lint can be used in the terminal. For example, on Linux:
+Next, set the required environment variables.
 
 ```bash
-# Check your GOPATH
-go env GOPATH
-# /Users/your-username/go
+# Linux/macOS
 
-# Add the path to .bashrc or .zshrc
-export PATH="/Users/your-username/go/bin:$PATH"
+# Set GOROOT to your Go installation directory
+export GOROOT=/usr/local/go  # Change this path to your actual Go installation location
 
-# Reload the shell and verify
-golangci-lint --version
-# golangci-lint has version 2.2.1
+# Add Go to PATH
+export PATH=$PATH:$GOROOT/bin
+
+# Set proxy for Go
+export GOPROXY=https://goproxy.cn,direct
 ```
-#### Setting Up Git Pre-Commit Hook
 
-Copy the `.githook/pre-commit` script to your Git hooks directory and make it executable:
+You may add this into your shell config such as `.zshrc`.
 
-**Linux/macOS:**
+For Go proxy, you can also set with a single command running, instead of add a command into shell config.
+
 ```bash
-cp .githook/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+go env -w GOPROXY=https://goproxy.cn,direct
 ```
-Windows:
 
-* Copy the script to .git/hooks/pre-commit
+### Prepare Config Files
 
-* Modify the script to replace golangci-lint with golangci-lint.exe if needed, or adapt it into a .bat file.
+To run the project, you also need to contact your administrator to obtain some configuration files.
 
-With the hook in place, golangci-lint will automatically run on staged files before each commit.
+```
+kubeconfig
+etc/debug-config.yaml
+.debug.env
+```
 
-### 📄 API Documentation (Swagger)
-We use Swag to generate OpenAPI documentation. Please install it before development:
+Crater backend cannot run properly if any of these three files are missing.
+
+#### kubeconfig
+
+`kubeconfig` is a configuration file used by Kubernetes clients and tools to access and manage your Kubernetes cluster. It contains cluster connection details, user credentials, and context information. Please obtain the correct `kubeconfig` file from your administrator to ensure proper access to the cluster.
+
+#### debug-config.yaml
+
+The `etc/debug-config.yaml` file contains the application configuration for the Crater backend service. This configuration file defines various settings including:
+
+- **Service Configuration**: Server ports, metrics endpoints, and profiling settings
+- **Database Connection**: PostgreSQL connection parameters and credentials
+- **Workspace Settings**: Kubernetes namespace, storage PVCs, and ingress configurations
+- **External Integrations**: ACT system authentication (no need for non-act environments), image registry, SMTP, and OpenAPI endpoints
+- **Feature Flags**: Scheduler and job type enablement settings
+
+You can find an example in `etc/example-config.yaml`. 
+
+For adminstrator, you need to fill in relative values based on your deployment helm charts values, and provide it to your members.
+
+#### .debug.env
+
+The `.debug.env` file specifies the port numbers used by the services. If your team is developing on the same node, you need to coordinate to avoid port conflicts.
+
+```env
+CRATER_FE_PORT=xxxx  # Frontend
+CRATER_BE_PORT=xxxx  # Backend
+CRATER_MS_PORT=xxxx  # Microservice
+CRATER_HP_PORT=xxxx  # Health Probe
+CRATER_SS_TARGET="http://localhost:7320"
+```
+
+CRATER_SS_TARGET is the destination address for forwarding requests to the storage service. If your development does not involve the storage service, you can **skip** setting this environment variable.
+
+### Run Crater Backend
+
+After completing the above setup, you can run the project using the `make` command. If you don't have `make` installed yet, it is recommended to install it.
+
 ```bash
-go install github.com/swaggo/swag/cmd/swag@v1.16.3
-```
-Before running the backend, make sure to initialize Swagger docs:
-```bash
-swag init
+make run
 ```
 
-#### 🛠️ Database Code Generation
+If the server is running and accessible at your configured port, you can open the Swagger UI to verify:
+
+```bash
+http://localhost:<your-backend-port>/swagger/index.html#/
+```
+
+![Swagger UI](./docs/image/swag.png)
+
+
+## 💻 Development Guide
+
+If you want to develop and contribute your code, you need to perform some additional steps on top of the above.
+
+### Development Tools
+
+The project uses swag to generate API documentation and golangci-lint for code style checking. Some hooks are also configured, but you don't need to install them manually. You can simply use the `make` command to install all required tools and hooks with one command.
+
+```bash
+make setup
+```
+
+You don't have to run this command manually; the required tools will be installed into the `bin` directory by `make` when needed. 
+
+However, please note that `make` does not check the versions of tools you have already installed. If the project updates the versions of these tools, you need to delete your local copies and let `make` reinstall them for you.
+
+### 🛠️ Database Code Generation (If Needed)
 The project uses GORM Gen to generate boilerplate code for database CRUD operations.
 
 Generation scripts and documentation can be found in: [`gorm_gen`](./cmd/gorm-gen/README.md)
 
 Please regenerate the code after modifying database models or schema definitions, while CI pipeline will automatically make database migrations.
 
-### 🚀 Running the Project
-Install dependencies and plugins:
-```bash
-go mod download
-```
+### Manual Check before commit (If Needed)
 
-Create a `.debug.env` file at the root directory to customize local ports. This file is ignored by Git:
-
-```env
-CRATER_FE_PORT=xxxx
-CRATER_BE_PORT=xxxx
-CRATER_MS_PORT=xxxx
-CRATER_HP_PORT=xxxx
-CRATER_SS_TARGET="http://localhost:7320"
-```
-CRATER_SS_TARGET is the destination address for forwarding requests to the storage service.
-
-You will also need access to a Kubernetes cluster. The cluster admin will provide a `kubeconfig` file. Copy it to the backend project root and rename it as `kubeconfig`:
-```bash
-cp ./kubeconfig ./web-backend/kubeconfig
-```
-Then you can start the backend server:
+If you have completed the previous steps, some checks will be automatically performed by `git` before you commit. If these checks fail, your commit will be rejected. You can also manually trigger these checks with the following command.
 
 ```bash
-make run
+make pre-commit-check
 ```
-If the server is running and accessible at your configured port, you can open the Swagger UI to verify:
-```bash
-http://localhost:<your-backend-port>/swagger/index.html#/
-```
-![Swagger UI](./docs/image/swag.png)
 
-### 🐞 Debugging with VSCode
+### 🐞 Debugging with VSCode (If Needed)
+
 You can start the backend in debug mode using VSCode by pressing F5 (Start Debugging). You can set breakpoints and step through the code interactively.
 
 Example launch configuration:
+
 ```json
  {
             "name": "Debug Server",
@@ -112,4 +147,3 @@ Example launch configuration:
             }
         }
 ```
-`etc/example-config.yaml` is provided and you need to fill in relative values based on your deployment helm charts values.
