@@ -52,9 +52,15 @@ func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 		fe := os.Getenv("CRATER_FE_PORT")
 		if fe != "" {
 			url := "http://localhost:" + fe
+			allowedMethods := []string{
+				http.MethodGet, http.MethodPost, http.MethodPut,
+				http.MethodDelete, http.MethodOptions, "MKCOL",
+				"PROPFIND", "PROPPATCH", "COPY", "MOVE",
+			}
 			corsConf := cors.DefaultConfig()
 			corsConf.AllowOrigins = []string{url}
 			corsConf.AllowCredentials = true
+			corsConf.AllowMethods = allowedMethods
 			corsConf.AllowHeaders = []string{"Authorization", "Origin", "Content-Length", "Content-Type"}
 			b.R.Use(cors.New(corsConf))
 		}
