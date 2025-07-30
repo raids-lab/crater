@@ -78,15 +78,6 @@ This project supports two ways to run: **Local Development** and **Deployment on
 
 > Suitable for quick testing and development phases.
 
-#### 📁 Directory Setup:
-
-**Create a folder named `crater` in the project root directory to simulate file handling behavior:**
-
-```bash
-mkdir crater
-```
-
-This directory will act as the root for file uploads and processing.
 
 #### 📄 Configuration:
 
@@ -96,7 +87,21 @@ Create a `.env` file at the root directory to customize local ports. This file i
 
 ```env
 PORT=xxxx
+ROOTDIR="/crater"
 ```
+
+#### 📁 Directory Setup:
+
+**Create a folder named `crater` in the project root directory to simulate file handling behavior.**
+
+**Alternatively, you can modify the `ROOTDIR` in the .env file and use it as the root directory for your testing.**
+
+```bash
+mkdir crater
+```
+
+This directory will act as the root for file processing.
+
 
 #### 🚀 Run the Application:
 
