@@ -17,34 +17,13 @@
 import "../global.css";
 import { RootProvider } from "fumadocs-ui/provider";
 import type { ReactNode } from "react";
-import type { Translations } from "fumadocs-ui/i18n";
+import {notFound} from 'next/navigation';
+import {NextIntlClientProvider, hasLocale, } from 'next-intl';
 import OramaSearchDialog from "@/components/search/search";
 import { InternalLinkUpdater } from '@/components/internal-link-updater';
-
-const cn: Partial<Translations> = {
-  search: "搜索", // Update: Orama search should be available
-  searchNoResult: "没有找到结果",
-  toc: "目录",
-  tocNoHeadings: "没有标题",
-  lastUpdate: "最后更新于",
-  chooseLanguage: "选择语言",
-  nextPage: "下一页",
-  previousPage: "上一页",
-  chooseTheme: "选择主题",
-  editOnGithub: "在 GitHub 上编辑",
-  // other translations
-};
-
-const locales = [
-  {
-    name: "English",
-    locale: "en",
-  },
-  {
-    name: "简体中文",
-    locale: "cn",
-  },
-];
+import {routing} from '@/i18n/routing';
+import {setRequestLocale, getMessages} from 'next-intl/server';
+import { locales, localeNames } from '@/i18n/config';
 
 export default async function Layout({
   params,
@@ -53,25 +32,37 @@ export default async function Layout({
   params: Promise<{ lang: string }>;
   children: ReactNode;
 }) {
-  const lang = (await params).lang;
+  const {lang} = await params;
+
+  if (!hasLocale(routing.locales, lang)) {
+    notFound();
+  }
+
+  setRequestLocale(lang);
+  const messages = await getMessages();
+  const fumadocsLocales = locales.map((l) => ({
+    name: localeNames[l],
+    locale: l,
+  }));
+  
   return (
     <html lang={lang} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
-        <RootProvider
-          i18n={{
-            locale: lang,
-            // available languages
-            locales,
-            // translations for UI
-            translations: { cn }[lang],
-          }}
-          // Orama搜索
-          search={{SearchDialog: OramaSearchDialog}}
-          
-      >
-        {children}
-        <InternalLinkUpdater />
-      </RootProvider>
+        <NextIntlClientProvider locale={lang} messages={messages}>
+          <RootProvider
+            search={{SearchDialog: OramaSearchDialog}}  
+            // 还需要提供语言切换器所需的信息
+            i18n={{
+              locale: lang,
+              locales: fumadocsLocales,
+              translations: messages.Fumadocs
+            }}
+
+          >
+            {children}
+            <InternalLinkUpdater />
+          </RootProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
