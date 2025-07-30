@@ -41,9 +41,16 @@ type Permissions struct {
 
 func checkfs() {
 	fsonce.Do(func() {
+		rootDir := "/crater"
+		if gin.Mode() == gin.DebugMode {
+			if envDir := os.Getenv("ROOTDIR"); envDir != "" {
+				rootDir = envDir
+				logutils.Log.Infof("WebDAV root set from ROOTDIR: %s", rootDir)
+			}
+		}
 		fs = &webdav.Handler{
 			Prefix:     "/api/ss",
-			FileSystem: webdav.Dir("/crater"),
+			FileSystem: webdav.Dir(rootDir),
 			LockSystem: webdav.NewMemLS(),
 		}
 	})

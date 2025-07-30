@@ -8,6 +8,7 @@ import (
 	"webdav/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -19,6 +20,16 @@ func main() {
 	}
 
 	query.SetDefault(query.DB)
+	if gin.Mode() == gin.DebugMode {
+		err = godotenv.Load(".env")
+		if err != nil {
+			logutils.Log.Info("can't load env,err:", err)
+		}
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "7320" // 默认端口
+	}
 
 	go service.StartCheckSpace()
 	methods := []string{
@@ -35,10 +46,7 @@ func main() {
 	webdavGroup := r.Group("api/ss", service.WebDAVMiddleware())
 	service.RegisterDataset(webdavGroup)
 	service.RegisterFile(webdavGroup)
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "7320" // 默认端口
-	}
+
 	err = r.Run(":" + port)
 	if err != nil {
 		logutils.Log.Fatal(err)
