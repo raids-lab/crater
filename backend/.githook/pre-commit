@@ -5,8 +5,8 @@ if ! (make lint); then
 fi
 
 # generate swagger
-if ! (swag init); then
-    echo "Swagger generation fail!"
+if ! (make docs); then
+    echo "Make docs fail!"
     exit 1
 fi
 
