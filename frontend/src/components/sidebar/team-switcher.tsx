@@ -13,8 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import Identicon from '@polkadot/react-identicon'
+import { Avatar } from '@radix-ui/react-avatar'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useLocation } from '@tanstack/react-router'
+import { format, formatDistanceToNow } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
+import { useAtom } from 'jotai'
 import { ChevronsUpDown } from 'lucide-react'
+import { useMemo } from 'react'
+import { toast } from 'sonner'
 
 import {
   DropdownMenu,
@@ -29,26 +37,19 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useMemo } from 'react'
-import { globalAccount } from '@/utils/store'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
 import { apiQueueSwitch } from '@/services/api/auth'
-import { useLocation } from 'react-router-dom'
 import { QueueBasic, apiQueueList } from '@/services/api/queue'
-import { useAtom } from 'jotai'
-import { showErrorToast } from '@/utils/toast'
-import { Avatar } from '@radix-ui/react-avatar'
-import Identicon from '@polkadot/react-identicon'
+
 import { stringToSS58 } from '@/utils/ss58'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
-import { format, formatDistanceToNow } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { atomUserContext } from '@/utils/store'
+import { showErrorToast } from '@/utils/toast'
 
 export function TeamSwitcher() {
   const { isMobile } = useSidebar()
 
-  const [account, setAccount] = useAtom(globalAccount)
+  const [account, setAccount] = useAtom(atomUserContext)
   const queryClient = useQueryClient()
   const location = useLocation()
 
@@ -60,11 +61,11 @@ export function TeamSwitcher() {
   const { data: queues } = useQuery({
     queryKey: ['queues'],
     queryFn: apiQueueList,
-    select: (res) => res.data.data,
+    select: (res) => res.data,
   })
 
   const currentQueue = useMemo(() => {
-    return queues?.find((p) => p.name === account.queue)
+    return queues?.find((p) => p.name === account?.queue)
   }, [queues, account])
 
   const [currentExpiredAt, currentExpiredDiff] = useMemo(() => {

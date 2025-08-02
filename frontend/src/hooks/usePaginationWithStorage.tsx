@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { useState } from 'react'
 import { PaginationState } from '@tanstack/react-table'
+import { useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 
 const usePaginationWithStorage = (tableKey: string = 'default-table') => {

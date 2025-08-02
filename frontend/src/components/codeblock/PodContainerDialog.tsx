@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // Reference: https://github.com/kubesphere/console/blob/master/packages/shared/src/stores/pod.ts#L187
-import { useState, useEffect, useMemo, Fragment } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { BoxIcon } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   Select,
@@ -24,18 +27,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiGetPodContainers, ContainerInfo } from '@/services/api/tool'
-import { toast } from 'sonner'
-import ResourceBadges from '../badge/ResourceBadges'
-import { cn } from '@/lib/utils'
-import { TimeDistance } from '../custom/TimeDistance'
-import { shortenImageName, shortestImageName } from '@/utils/formatter'
-import { BoxIcon } from 'lucide-react'
-import ContainerStatusBadge, { ContainerStatus } from '../badge/ContainerStatusBadge'
+
+import { ContainerInfo, apiGetPodContainers } from '@/services/api/tool'
+
 import useNamespacedState from '@/hooks/useNamespacedState'
-import LoadingCircleIcon from '../icon/LoadingCircleIcon'
+
+import { shortenImageName, shortestImageName } from '@/utils/formatter'
+
+import { cn } from '@/lib/utils'
+
+import ContainerStatusBadge, { ContainerStatus } from '../badge/ContainerStatusBadge'
+import ResourceBadges from '../badge/ResourceBadges'
 import TipBadge from '../badge/TipBadge'
+import { TimeDistance } from '../custom/TimeDistance'
+import LoadingCircleIcon from '../icon/LoadingCircleIcon'
 
 export interface PodNamespacedName {
   namespace: string
@@ -239,7 +244,7 @@ function Content({
   const { data: containers } = useQuery({
     queryKey: ['log', 'containers', namespace, podName],
     queryFn: () => apiGetPodContainers(namespace, podName),
-    select: (res) => res.data.data.containers.filter((c) => c.name !== ''),
+    select: (res) => res.data.containers.filter((c) => c.name !== ''),
     enabled: !!namespace && !!podName,
   })
 

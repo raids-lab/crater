@@ -13,10 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { ChartNoAxesColumn, CircleHelpIcon } from 'lucide-react'
+import { useMemo } from 'react'
+import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+
 import { Button } from '@/components/ui/button'
 import {
   FormControl,
@@ -27,20 +32,18 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
-import { useQuery } from '@tanstack/react-query'
-import { apiResourceList, apiResourceNetworks, Resource } from '@/services/api/resource'
-import FormLabelMust from '@/components/form/FormLabelMust'
-import Combobox, { ComboboxItem } from '@/components/form/Combobox'
-import TipBadge from '@/components/badge/TipBadge'
-import { ChartNoAxesColumn, CircleHelpIcon } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { GrafanaIframe } from '@/pages/Embed/Monitor'
-import { useAtomValue } from 'jotai'
+import { Switch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
+import TipBadge from '@/components/badge/TipBadge'
+import Combobox, { ComboboxItem } from '@/components/form/Combobox'
+import FormLabelMust from '@/components/form/FormLabelMust'
+import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
+
+import { Resource, apiResourceList, apiResourceNetworks } from '@/services/api/resource'
+
 import { configGrafanaOverviewAtom } from '@/utils/store/config'
-import { Switch } from '../ui/switch'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
-import { useMemo } from 'react'
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>
@@ -71,7 +74,7 @@ export function ResourceFormFields<T extends FieldValues>({
     queryKey: ['resources', 'list'],
     queryFn: () => apiResourceList(true),
     select: (res) => {
-      return res.data.data
+      return res.data
         .sort((a, b) => {
           return b.amountSingleMax - a.amountSingleMax
         })
@@ -237,7 +240,7 @@ function RDMAFormFields<T extends FieldValues>({
     queryKey: ['resources', 'networks', 'list', gpuID],
     queryFn: () => apiResourceNetworks(gpuID),
     select: (res) =>
-      res.data.data
+      res.data
         .filter((item) => item.amountSingleMax > 0)
         .map(
           (item) =>

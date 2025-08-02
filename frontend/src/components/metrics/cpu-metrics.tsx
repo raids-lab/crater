@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { ProfileData } from '@/services/api/vcjob'
+
 import { MetricCard } from '../ui-custom/metric-card'
 import { MetricGroup } from '../ui-custom/metric-group'
 

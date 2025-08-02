@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { SVGProps } from 'react'
 
 // https://github.com/material-extensions/vscode-material-icon-theme/blob/main/icons/jupyter.svg?short_path=770bffb

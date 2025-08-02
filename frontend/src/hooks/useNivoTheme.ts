@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { PartialTheme } from '@nivo/theming'
 
 import nivoDarkTheme from '@/components/chart/darkTheme'
 import nivoLightTheme from '@/components/chart/defaultTheme'
-import { PartialTheme } from '@nivo/theming'
+
 import { useTheme } from '@/utils/theme'
 
 /**

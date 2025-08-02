@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
-import instance, { VERSION } from '../axios'
 import { IResponse } from '../types'
 
 export interface Resource {
@@ -32,8 +32,8 @@ export interface Resource {
 }
 
 export const apiResourceList = (withVendorDomain: boolean) => {
-  return instance.get<IResponse<Resource[]>>(`${VERSION}/resources`, {
-    params: {
+  return apiV1Get<IResponse<Resource[]>>(`/resources`, {
+    searchParams: {
       withVendorDomain,
     },
   })
@@ -41,12 +41,12 @@ export const apiResourceList = (withVendorDomain: boolean) => {
 
 // @Router /v1/resources/{id}/networks [get]
 export const apiResourceNetworks = (id: number) => {
-  return instance.get<IResponse<Resource[]>>(`${VERSION}/resources/${id}/networks`)
+  return apiV1Get<IResponse<Resource[]>>(`/resources/${id}/networks`)
 }
 
 // @Router /v1/admin/resources/sync [post]
 export const apiAdminResourceSync = () => {
-  return instance.post<IResponse<never>>(`${VERSION}/admin/resources/sync`)
+  return apiV1Post<IResponse<never>>(`/admin/resources/sync`)
 }
 
 // @Router /v1/admin/resources/{id} [put]
@@ -55,7 +55,7 @@ export const apiAdminResourceUpdate = (
   label?: string,
   type?: 'gpu' | 'rdma' | 'default' | null
 ) => {
-  return instance.put<IResponse<Resource>>(`${VERSION}/admin/resources/${id}`, {
+  return apiV1Put<IResponse<Resource>>(`/admin/resources/${id}`, {
     label,
     type,
   })
@@ -69,46 +69,38 @@ export const apiAdminResourceReset = (
   value: string
 ) => {
   if (key === 'cpu') {
-    return instance.put<IResponse<string>>(
-      `${VERSION}/admin/namespaces/${namespace}/pods/${podName}/resources`,
-      {
-        resources: {
-          cpu: value,
-        },
-      }
-    )
+    return apiV1Put<IResponse<string>>(`/admin/namespaces/${namespace}/pods/${podName}/resources`, {
+      resources: {
+        cpu: value,
+      },
+    })
   } else {
-    return instance.put<IResponse<string>>(
-      `${VERSION}/admin/namespaces/${namespace}/pods/${podName}/resources`,
-      {
-        resources: {
-          memory: value,
-        },
-      }
-    )
+    return apiV1Put<IResponse<string>>(`/admin/namespaces/${namespace}/pods/${podName}/resources`, {
+      resources: {
+        memory: value,
+      },
+    })
   }
 }
 
 // @Router /v1/admin/resources/{id} [delete]
 export const apiAdminResourceDelete = (id: number) => {
-  return instance.delete<IResponse<Resource>>(`${VERSION}/admin/resources/${id}`)
+  return apiV1Delete<IResponse<Resource>>(`/admin/resources/${id}`)
 }
 
 // @Router /v1/admin/resources/{id}/networks [get]
 export const apiAdminResourceNetworksList = (id: number) => {
-  return instance.get<IResponse<Resource[]>>(`${VERSION}/admin/resources/${id}/networks`)
+  return apiV1Get<IResponse<Resource[]>>(`/admin/resources/${id}/networks`)
 }
 
 // @Router /v1/admin/resources/{id}/networks [post]
 export const apiAdminResourceNetworkAdd = (id: number, rdmaId: number) => {
-  return instance.post<IResponse<Resource>>(`${VERSION}/admin/resources/${id}/networks`, {
+  return apiV1Post<IResponse<Resource>>(`/admin/resources/${id}/networks`, {
     rdmaId,
   })
 }
 
 // @Router /v1/admin/resources/{id}/networks/{networkId} [delete]
 export const apiAdminResourceNetworkDelete = (id: number, networkId: number) => {
-  return instance.delete<IResponse<Resource>>(
-    `${VERSION}/admin/resources/${id}/networks/${networkId}`
-  )
+  return apiV1Delete<IResponse<Resource>>(`/admin/resources/${id}/networks/${networkId}`)
 }

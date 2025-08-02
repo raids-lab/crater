@@ -1,8 +1,9 @@
 import { LucideIcon } from 'lucide-react'
+import { ReactNode } from 'react'
 
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+
 import { cn } from '@/lib/utils'
-import { ReactNode } from 'react'
 
 interface SectionCardsProps {
   items: {

@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { CirclePlus, HardDriveIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { ArrayPath, Path, UseFormReturn, useFieldArray } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+
 import { Button } from '@/components/ui/button'
 import {
   FormControl,
@@ -32,19 +35,20 @@ import {
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
-import { CirclePlus, HardDriveIcon, XIcon } from 'lucide-react'
-import FormLabelMust from '@/components/form/FormLabelMust'
+
 import { FileSelectDialog } from '@/components/file/FileSelectDialog'
-import Combobox from '@/components/form/Combobox'
-import DatasetItem from '@/components/form/DatasetItem'
 import AccordionCard from '@/components/form/AccordionCard'
-import { useQuery } from '@tanstack/react-query'
-import { apiGetDataset, IDataset } from '@/services/api/dataset'
-import { useAtomValue } from 'jotai'
-import { globalUserInfo } from '@/utils/store'
+import Combobox from '@/components/form/Combobox'
 import { ComboboxItem } from '@/components/form/Combobox'
-import { VolumeMountsSchema, VolumeMountType } from '@/utils/form'
+import DatasetItem from '@/components/form/DatasetItem'
+import FormLabelMust from '@/components/form/FormLabelMust'
+
+import { IDataset, apiGetDataset } from '@/services/api/dataset'
+
+import { VolumeMountType, VolumeMountsSchema } from '@/utils/form'
+import { atomUserInfo } from '@/utils/store'
+
+import { cn } from '@/lib/utils'
 
 interface VolumeMountsCardProps<
   T extends {
@@ -62,7 +66,7 @@ export function VolumeMountsCard<
 >({ form, className }: VolumeMountsCardProps<T>) {
   const { t } = useTranslation()
   const [dataMountOpen, setDataMountOpen] = useState<boolean>(true)
-  const user = useAtomValue(globalUserInfo)
+  const user = useAtomValue(atomUserInfo)
 
   // Get dataset information
   const datasetInfo = useQuery({
@@ -72,7 +76,7 @@ export function VolumeMountsCard<
       // 去重，根据 Label
       // TODO(zhengxl): 不允许重复的 Label，需要在上传数据集时进行校验
       const uniqueLabels = new Set()
-      const uniqueData = res.data.data.filter((item) => {
+      const uniqueData = res.data.filter((item) => {
         if (uniqueLabels.has(item.name)) {
           return false
         }

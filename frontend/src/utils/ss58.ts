@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { blake2AsU8a, encodeAddress } from '@polkadot/util-crypto'
 
 // 将用户名转换为 SS58 地址

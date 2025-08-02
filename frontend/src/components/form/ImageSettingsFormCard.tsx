@@ -13,25 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from 'react-i18next'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { CircleHelpIcon } from 'lucide-react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
-import { Separator } from '@/components/ui/separator'
+import { useTranslation } from 'react-i18next'
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
 import TipBadge from '@/components/badge/TipBadge'
-import { TagsInput } from './TagsInput'
+
 import { ImageDefaultArchs } from '@/services/api/imagepack'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip'
-import { CircleHelpIcon } from 'lucide-react'
+
+import { TagsInput } from './TagsInput'
 
 export function ImageSettingsFormCard<T extends FieldValues>({
   form,

@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from 'react-i18next'
-import React, { useEffect, useMemo } from 'react'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
-import { ChevronRight, FileDigitIcon, FolderIcon, type LucideIcon } from 'lucide-react'
-import useResizeObserver from 'use-resize-observer'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { ChevronRight, FileDigitIcon, FolderIcon, type LucideIcon } from 'lucide-react'
+import React, { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import useResizeObserver from 'use-resize-observer'
+
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+
 import { FileItem, apiGetFiles, apiGetRWFiles } from '@/services/api/file'
+
+import { cn } from '@/lib/utils'
 
 interface TreeDataItem {
   id: string
@@ -39,17 +41,16 @@ export const getFolderTitle = (t: (key: string) => string, folder: string) => {
     return t('tree.folderTitle.public')
   } else if (folder === 'account') {
     return t('tree.folderTitle.account')
-  }
-  return t('tree.folderTitle.default')
-}
-
-export const getAdminFolderTitle = (t: (key: string) => string, folder: string) => {
-  if (folder === 'admin-public') {
+  } else if (folder === 'user') {
+    return t('tree.folderTitle.default')
+  } else if (folder === 'admin-public') {
     return t('tree.adminFolderTitle.public')
   } else if (folder === 'admin-account') {
     return t('tree.adminFolderTitle.account')
+  } else if (folder === 'admin-user') {
+    return t('tree.adminFolderTitle.default')
   }
-  return t('tree.adminFolderTitle.default')
+  return folder
 }
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -87,7 +88,7 @@ const Tree = ({
     queryKey: ['directory', 'list', isrw],
     queryFn: () => (isrw ? apiGetRWFiles('') : apiGetFiles('')),
     select: (res) =>
-      res.data.data
+      res.data
         ?.map((r) => {
           return {
             name: r.name,
@@ -183,7 +184,7 @@ const TreeItem = ({
     mutationFn: () => (isrw ? apiGetRWFiles(currentPath) : apiGetFiles(currentPath)),
     onSuccess: (fileList) => {
       const children =
-        fileList.data.data?.sort((a, b) => {
+        fileList.data?.sort((a, b) => {
           if (a.isdir && !b.isdir) {
             return -1 // a在b之前
           } else if (!a.isdir && b.isdir) {

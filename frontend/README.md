@@ -65,7 +65,7 @@ pnpm install
 Create `.env.development` with:
 
 ```env
-VITE_API_BASE_URL="http://localhost:8098/"
+VITE_SERVER_PROXY_DOMAIN="http://localhost:8098/"
 VITE_USE_MSW=false  # Enable API mocking
 PORT=5180           # Dev server port
 ```

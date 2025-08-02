@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { MayHaveLabel, PieSvgProps, ResponsivePie } from '@nivo/pie'
 
 import useNivoTheme from '@/hooks/useNivoTheme'
-import { MayHaveLabel, PieSvgProps, ResponsivePie } from '@nivo/pie'
 
 const NivoPie = <RawDatum extends MayHaveLabel>(
   props: Omit<PieSvgProps<RawDatum>, 'width' | 'height'>

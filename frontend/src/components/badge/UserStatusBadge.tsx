@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { ProjectStatus } from '@/services/api/account'
 
 import { PhaseBadge } from './PhaseBadge'
-import { ProjectStatus } from '@/services/api/account'
 
 export const userAccesses = [
   {

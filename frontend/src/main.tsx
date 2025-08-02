@@ -13,55 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
-import './index.css'
-import Login from './pages/Auth'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { portalRoute } from './pages/Portal'
+import { Provider as JotaiProvider } from 'jotai'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+
 import { Toaster } from '@/components/ui-custom/sonner'
-import { ThemeProvider } from './utils/theme'
-import { store, VITE_UI_THEME_KEY } from './utils/store'
-import { adminRoute } from './pages/Admin'
-import Jupyter from './pages/Embed/IframeJupyter'
-import { logger } from './utils/loglevel'
-import Website from './pages/Website'
-import { getDefaultStore, Provider as JotaiProvider } from 'jotai'
-import NotFound from './components/layout/NotFound'
-import { configDocsAsHomeAtom } from './utils/store/config'
+
+import App from './app'
 import './i18n'
-
-const defaultStore = getDefaultStore()
-
-const docsAsHome = await defaultStore.get(configDocsAsHomeAtom)
-
-const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <Login />,
-  },
-  portalRoute,
-  adminRoute,
-  {
-    path: '/job/jupyter/:id',
-    element: <Jupyter />,
-  },
-  {
-    path: '/',
-    element: <Navigate to={docsAsHome ? '/website' : '/portal'} replace />,
-  },
-  {
-    path: '/website',
-    element: <Website />,
-  },
-  {
-    path: '*',
-    element: <NotFound />,
-  },
-])
+import './index.css'
+import { logger } from './utils/loglevel'
+import { VITE_UI_THEME_KEY, store } from './utils/store'
+import { ThemeProvider } from './utils/theme'
 
 // TypeError: Failed to fetch dynamically imported module
 // https://github.com/vitejs/vite/issues/11804
@@ -93,9 +58,9 @@ enableMocking()
         <JotaiProvider store={store}>
           <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
             <QueryClientProvider client={queryClient}>
-              <RouterProvider router={router} />
+              <App queryClient={queryClient} />
               <Toaster richColors closeButton />
-              <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+              <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
             </QueryClientProvider>
           </ThemeProvider>
         </JotaiProvider>

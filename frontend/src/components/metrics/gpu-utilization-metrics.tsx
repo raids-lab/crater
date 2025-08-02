@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { ProfileData } from '@/services/api/vcjob'
-import { ProgressCard } from '../ui-custom/progress-card'
-import { MetricGroup } from '../ui-custom/metric-group'
+
 import { MetricCard } from '../ui-custom/metric-card'
+import { MetricGroup } from '../ui-custom/metric-group'
+import { ProgressCard } from '../ui-custom/progress-card'
 
 interface GpuUtilizationMetricsProps {
   profileData: ProfileData

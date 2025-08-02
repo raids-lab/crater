@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import i18n from 'i18next'
-import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
+import { initReactI18next } from 'react-i18next'
 
 import enTranslation from './locales/enUS/translation.json'
-import zhTranslation from './locales/zhCN/translation.json'
 import jaTranslation from './locales/ja/translation.json'
 import koTranslation from './locales/ko/translation.json'
+import zhTranslation from './locales/zhCN/translation.json'
 
 i18n
   .use(LanguageDetector)
