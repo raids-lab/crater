@@ -32,10 +32,6 @@ func SetupIndexers(mgr manager.Manager) error {
 	return nil
 }
 
-func QueryPodsByNodeName(ctx context.Context, c client.Client, nodeName string) ([]corev1.Pod, error) {
-	podList := &corev1.PodList{}
-	if err := c.List(ctx, podList, client.MatchingFields{PodNodeNameIndex: nodeName}); err != nil {
-		return nil, fmt.Errorf("failed to list pods by node name %s: %w", nodeName, err)
-	}
-	return podList.Items, nil
+func MatchingPodsByNodeName(nodeName string) client.MatchingFields {
+	return client.MatchingFields{PodNodeNameIndex: nodeName}
 }
