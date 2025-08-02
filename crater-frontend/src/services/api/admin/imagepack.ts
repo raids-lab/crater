@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import instance, { VERSION } from '@/services/axios'
+import { apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'
+
 import {
   ListImageResponse,
   ListKanikoResponse,
@@ -24,7 +24,7 @@ import {
 } from '../imagepack'
 
 // export const apiAdminImagepackCreate = async (imagepack: KanikoCreate) => {
-//   const response = await instance.post<IResponse<string>>(
+//   const response = await apiPost<IResponse<string>>(
 //     VERSION + "/admin/images/create",
 //     imagepack,
 //   );
@@ -32,12 +32,12 @@ import {
 // };
 
 // export const apiAdminImagePackList = (type: number) =>
-//   instance.get<IResponse<ImagePackListResponse>>(
-//     `${VERSION}/admin/images/list?type=${type}`,
+//   apiGet<IResponse<ImagePackListResponse>>(
+//     `/admin/images/list?type=${type}`,
 //   );
 
 // export const apiAdminImagePackDelete = async (id: number) => {
-//   const response = await instance.post<IResponse<string>>(
+//   const response = await apiPost<IResponse<string>>(
 //     VERSION + "/admin/images/delete",
 //     id,
 //   );
@@ -50,31 +50,30 @@ import {
 // }
 
 export const apiAdminImagePublicStatusChange = async (id: number) => {
-  const response = await instance.post<IResponse<string>>(VERSION + '/admin/images/change', id)
+  const response = await apiV1Post<IResponse<string>>('/admin/images/change', id)
   return response.data
 }
 
-export const apiAdminListImage = () =>
-  instance.get<IResponse<ListImageResponse>>(`${VERSION}/admin/images/image`)
+export const apiAdminListImage = () => apiV1Get<IResponse<ListImageResponse>>(`/admin/images/image`)
 
 export const apiAdminDeleteKanikoList = (idList: number[]) =>
-  instance.post<IResponse<string>>(`${VERSION}/admin/images/deletekaniko`, {
+  apiV1Post<IResponse<string>>(`/admin/images/deletekaniko`, {
     idList,
   })
 
 export const apiAdminListKaniko = () =>
-  instance.get<IResponse<ListKanikoResponse>>(`${VERSION}/admin/images/kaniko`)
+  apiV1Get<IResponse<ListKanikoResponse>>(`/admin/images/kaniko`)
 
 export const apiAdminDeleteImageList = (idList: number[]) =>
-  instance.post<IResponse<string>>(`${VERSION}/admin/images/deleteimage`, {
+  apiV1Post<IResponse<string>>(`/admin/images/deleteimage`, {
     idList,
   })
 
 export const apiAdminChangeImagePublicStatus = (id: number) =>
-  instance.post<IResponse<string>>(VERSION + `/admin/images/change/${id}`)
+  apiV1Post<IResponse<string>>(`/admin/images/change/${id}`)
 
 export const apiAdminChangeImageDescription = (data: UpdateDescription) =>
-  instance.post<IResponse<string>>(`${VERSION}/admin/images/description`, data)
+  apiV1Post<IResponse<string>>(`/admin/images/description`, data)
 
 export const apiAdminChangeImageTaskType = (data: UpdateTaskType) =>
-  instance.post<IResponse<string>>(`${VERSION}/admin/images/type`, data)
+  apiV1Post<IResponse<string>>(`/admin/images/type`, data)

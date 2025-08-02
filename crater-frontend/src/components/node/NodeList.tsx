@@ -13,23 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
-import { useMemo, type FC } from 'react'
+import { linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
-import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
-import { cn } from '@/lib/utils'
+import { type FC, useMemo } from 'react'
+
 import { Badge } from '@/components/ui/badge'
-import { INodeBriefInfo } from '@/services/api/cluster'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
 import NodeStatusBadge from '@/components/badge/NodeStatusBadge'
-import TooltipLink from '../label/TooltipLink'
+import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
+
+import { INodeBriefInfo } from '@/services/api/cluster'
+
 import {
+  V1ResourceList,
   betterResourceQuantity,
   convertKResourceToResource,
-  V1ResourceList,
 } from '@/utils/resource'
-import { ProgressBar } from '../custom/ProgressBar'
+
+import { cn } from '@/lib/utils'
+
+import TooltipLink from '../label/tooltip-link'
+import { ProgressBar } from '../ui-custom/colorful-progress'
 
 export const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -130,9 +136,22 @@ export const UsageCell: FC<{
   )
 }
 
+const adminNodeLinkOptions = linkOptions({
+  to: '/admin/cluster/nodes/$node',
+  params: { node: '' },
+  search: { tab: '' },
+})
+
+const portalNodeLinkOptions = linkOptions({
+  to: '/portal/overview/$node',
+  params: { node: '' },
+  search: { tab: '' },
+})
+
 export const getNodeColumns = (
   getNicknameByName?: (name: string) => string | undefined,
-  accelerators?: string[]
+  accelerators?: string[],
+  isAdminMode?: boolean
 ): ColumnDef<INodeBriefInfo>[] => {
   return [
     {
@@ -150,7 +169,8 @@ export const getNodeColumns = (
       cell: ({ row }) => (
         <TooltipLink
           name={row.getValue('name')}
-          to={row.getValue('name')}
+          {...(isAdminMode ? adminNodeLinkOptions : portalNodeLinkOptions)}
+          params={{ node: row.getValue<string>('name') }}
           tooltip={`查看 ${row.original.name} 节点详情`}
         />
       ),

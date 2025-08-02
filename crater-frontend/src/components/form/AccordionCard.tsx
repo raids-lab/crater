@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0 (no translatable strings)
+import { LucideIcon } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
+
 import {
   Accordion,
   AccordionContent,
@@ -22,9 +24,9 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card } from '@/components/ui/card'
+
 import { cn } from '@/lib/utils'
-import { LucideIcon } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+
 import CardTitle from '../label/CardTitle'
 
 type AccordionCardProps = React.HTMLAttributes<HTMLDivElement> & {

@@ -13,12 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from 'react-i18next'
-import { useMemo, useState } from 'react'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
+import { useAtomValue } from 'jotai'
+import { ChevronRight, Folder, FolderOpen, LogInIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -27,16 +31,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { LogInIcon, Folder, FolderOpen, ChevronRight } from 'lucide-react'
+
 import { getFolderTitle } from '@/components/file/LazyFileTree'
-import { useLocation, useNavigate } from 'react-router-dom'
+import PageTitle from '@/components/layout/page-title'
+
+import { AccessMode, IUserContext } from '@/services/api/auth'
 import { FileItem } from '@/services/api/file'
+
+import { atomUserContext } from '@/utils/store'
+
 import { cn } from '@/lib/utils'
-import PageTitle from '@/components/layout/PageTitle'
-import { useAtomValue } from 'jotai'
-import { globalAccount } from '@/utils/store'
-import { AccessMode, AccountContext } from '@/services/api/auth'
+
 import UserAccessBadge from '../badge/UserAccessBadge'
 
 const isPublicFolder = (folder: string) => folder === 'public'
@@ -54,7 +59,10 @@ const getFolderDescription = (folder: string, t: (key: string) => string) => {
   return t('folderNavigation.folderDescriptions.user')
 }
 
-const getAccessMode = (folder: string, token: AccountContext) => {
+const getAccessMode = (folder: string, token?: IUserContext) => {
+  if (!token) {
+    return AccessMode.NotAllowed
+  }
   if (isPublicFolder(folder)) {
     return token.accessPublic
   } else if (isAccountFolder(folder)) {
@@ -74,7 +82,7 @@ export default function FolderNavigation({
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null)
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const token = useAtomValue(globalAccount)
+  const context = useAtomValue(atomUserContext)
 
   // 对文件夹进行排序，公共 -> 账户 -> 用户
   const sortFolders = (folders: FileItem[]) => {
@@ -116,21 +124,21 @@ export default function FolderNavigation({
   const handleTitleNavigation = (name: string) => {
     if (isPublicFolder(name)) {
       if (isadmin) {
-        navigate(pathname + '/admin-public')
+        navigate({ to: pathname + '/admin-public' })
       } else {
-        navigate(pathname + '/public')
+        navigate({ to: pathname + '/public' })
       }
     } else if (isAccountFolder(name)) {
       if (isadmin) {
-        navigate(`${pathname}/admin-account`)
+        navigate({ to: `${pathname}/admin-account` })
       } else {
-        navigate(`${pathname}/account`)
+        navigate({ to: `${pathname}/account` })
       }
     } else {
       if (isadmin) {
-        navigate(`${pathname}/admin-user`)
+        navigate({ to: `${pathname}/admin-user` })
       } else {
-        navigate(`${pathname}/user`)
+        navigate({ to: `${pathname}/user` })
       }
     }
   }
@@ -178,7 +186,7 @@ export default function FolderNavigation({
                     )}
                     <CardTitle className="flex flex-row items-center gap-2 text-xl">
                       {getFolderTitle(t, r.name)}
-                      <UserAccessBadge access={getAccessMode(r.name, token).toString()} />
+                      <UserAccessBadge access={getAccessMode(r.name, context).toString()} />
                     </CardTitle>
                   </div>
                   <CardDescription className="leading-relaxed text-balance">

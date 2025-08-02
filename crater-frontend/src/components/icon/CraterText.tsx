@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { Ref, SVGProps, forwardRef } from 'react'
 
-import { SVGProps, Ref, forwardRef } from 'react'
 const SvgComponent = (props: SVGProps<SVGSVGElement>, ref: Ref<SVGSVGElement>) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 533.902 72.502" ref={ref} {...props}>
     <path

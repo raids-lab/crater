@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiGet, apiPost } from '@/services/client'
 
-import instance, { VERSION } from '../axios'
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
+
+import { OK } from '../error_code'
 import { IResponse } from '../types'
 import { IUserAttributes } from './admin/user'
 
@@ -54,7 +56,7 @@ export enum AccessMode {
   ReadWrite,
 }
 
-export interface AccountContext {
+export interface IUserContext {
   queue: string
   roleQueue: Role
   rolePlatform: Role
@@ -67,30 +69,26 @@ export interface IAuthResponse {
   accessToken: string
   refreshToken: string
   user: IUserAttributes
-  context: AccountContext
+  context: IUserContext
 }
 
 export const apiUserSignup = async (user: ISignup) => {
-  const response = await instance.post<IAuthResponse>('auth/signup', user)
+  const response = await apiPost<IAuthResponse>('auth/signup', user)
   return response.data
 }
 
-export const apiUserLogin = async (user: ILogin) => {
-  const response = await instance.post<IResponse<IAuthResponse>>('auth/login', user)
-  const { accessToken, refreshToken } = response.data.data
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
-  return response.data.data
-}
+export const apiUserLogin = (user: ILogin) => apiPost<IResponse<IAuthResponse>>('auth/login', user)
+
+export const apiCheckToken = () => apiGet<IResponse<IAuthResponse | undefined>>('auth/check')
 
 export const apiQueueSwitch = async (queue: string) => {
-  const response = await instance.post<IResponse<IAuthResponse>>(VERSION + '/auth/switch', {
+  const response = await apiPost<IResponse<IAuthResponse>>('/auth/switch', {
     queue,
   })
-  if (response.status === 200) {
-    const { accessToken, refreshToken } = response.data.data
+  if (response.code === OK) {
+    const { accessToken, refreshToken } = response.data
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
   }
-  return response.data.data
+  return response.data
 }

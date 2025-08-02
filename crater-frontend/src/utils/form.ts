@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { z } from 'zod'
-import { V1ResourceList } from './resource'
+
 import { MetadataFormType } from '@/components/form/types'
+
+import { V1ResourceList } from './resource'
 
 export const jobNameSchema = z
   .string()

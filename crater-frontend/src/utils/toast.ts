@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { toast } from 'sonner'
-import { IErrorResponse } from '@/services/types'
 import { isAxiosError } from 'axios'
+import { toast } from 'sonner'
+
+import { IErrorResponse } from '@/services/types'
 
 export const showErrorToast = (error: unknown) => {
   if (isAxiosError(error)) {

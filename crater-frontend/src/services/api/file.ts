@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import instance from '../axios'
+import { apiClient, apiDelete, apiGet, apiPost } from '@/services/client'
 import { IResponse } from '@/services/types'
 
 export interface FileItem {
@@ -29,6 +28,7 @@ export interface UserSpace {
   username: string
   space: string
 }
+
 export interface QeueuSpace {
   queuename: string
   space: string
@@ -40,38 +40,37 @@ export interface MoveFile {
 }
 
 export const apiGetFiles = (path: string) =>
-  instance.get<IResponse<FileItem[] | undefined>>(`ss/files/${path.replace(/^\//, '')}`)
+  apiGet<IResponse<FileItem[] | undefined>>(
+    `ss/files/${encodeURIComponent(path.replace(/^\//, ''))}`
+  )
 export const apiGetRWFiles = (path: string) =>
-  instance.get<IResponse<FileItem[] | undefined>>(`ss/rwfiles/${path.replace(/^\//, '')}`)
+  apiGet<IResponse<FileItem[] | undefined>>(`ss/rwfiles/${path.replace(/^\//, '')}`)
 export const apiGetAdminFile = (path: string) =>
-  instance.get<IResponse<FileItem[] | undefined>>(`ss/admin/files/${path.replace(/^\//, '')}`)
+  apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/files/${path.replace(/^\//, '')}`)
 
 export const apiGetUserFiles = (path: string) =>
-  instance.get<IResponse<FileItem[] | undefined>>(`ss/admin/${path.replace(/^\//, '')}`)
+  apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/${path.replace(/^\//, '')}`)
 
 export const apiGetQueueFiles = (path: string) =>
-  instance.get<IResponse<FileItem[] | undefined>>(`ss/admin/${path.replace(/^\//, '')}`)
+  apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/${path.replace(/^\//, '')}`)
 
 export const apiMkdir = async (path: string) => {
-  await instance.request({
+  await apiClient('ss/' + path.replace(/^\//, ''), {
     method: 'MKCOL',
-    url: `ss/${path.replace(/^\//, '')}`,
   })
 }
 
 export const apiFileDelete = (path: string) =>
-  instance.delete<IResponse<string>>(`/ss/delete/${path.replace(/^\//, '')}`)
+  apiDelete<IResponse<string>>(`ss/delete/${path.replace(/^\//, '')}`)
 
-export const apiGetUserSpace = () =>
-  instance.get<IResponse<UserSpace[] | undefined>>(`ss/userspace`)
+export const apiGetUserSpace = () => apiGet<IResponse<UserSpace[] | undefined>>(`ss/userspace`)
 
-export const apiGetQueueSpace = () =>
-  instance.get<IResponse<QeueuSpace[] | undefined>>(`ss/queuespace`)
+export const apiGetQueueSpace = () => apiGet<IResponse<QeueuSpace[] | undefined>>(`ss/queuespace`)
 
 export const apiMoveFile = (req: MoveFile, path: string) =>
-  instance.post<IResponse<MoveFile>>(`ss/move/${path.replace(/^\//, '')}`, req)
+  apiPost<IResponse<MoveFile>>(`ss/move/${path.replace(/^\//, '')}`, req)
 
 export const apiGetDatasetFiles = (datasetID: number, path: string) =>
-  instance.get<IResponse<FileItem[]>>(
+  apiGet<IResponse<FileItem[]>>(
     path === '' ? `ss/dataset/${datasetID}` : `ss/dataset/${datasetID}/${path.replace(/^\//, '')}`
   )

@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // src/atoms/configAtom.ts
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
+
 import { AppConfig } from './type'
+
 // 添加配置存储 key
 export const CONFIG_STORAGE_KEY = 'app_config'
 export const CONFIG_VERSION_KEY = 'app_config_version'
@@ -64,8 +65,8 @@ export const initializeConfig = async () => {
       url: {
         ...config.url,
         host: import.meta.env.VITE_HOST,
-        apiBase: import.meta.env.VITE_API_BASE_URL,
-        apiVersion: import.meta.env.VITE_API_VERSION,
+        apiBase: import.meta.env.VITE_SERVER_PROXY_DOMAIN,
+        apiVersion: import.meta.env.VITE_SERVER_PROXY_PREFIX,
         websiteBase: import.meta.env.VITE_WEBSITE_BASE_URL,
       },
       grafana: {

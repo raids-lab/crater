@@ -13,20 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { FieldValues, UseFormReturn } from 'react-hook-form'
-import { useSearchParams } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
-import { apiJobTemplate } from '@/services/api/vcjob'
-import { importFromJsonString } from '@/utils/form'
 import { toast } from 'sonner'
-import { showErrorToast } from '@/utils/toast'
+
+import { PublishSearch } from '@/components/job/publish'
+
+import { apiUserGetImageTemplate } from '@/services/api/imagepack'
 import { getJobTemplate } from '@/services/api/jobtemplate'
 import { JobTemplate } from '@/services/api/jobtemplate'
-import { apiUserGetImageTemplate } from '@/services/api/imagepack'
-import { useAtomValue } from 'jotai'
-import { globalUserInfo } from '@/utils/store'
+import { apiJobTemplate } from '@/services/api/vcjob'
+
+import { importFromJsonString } from '@/utils/form'
+import { atomUserInfo } from '@/utils/store'
+import { showErrorToast } from '@/utils/toast'
 
 export interface UIStateUpdater<T> {
   /** Condition to determine if this state should be updated */
@@ -48,6 +50,8 @@ interface TemplateLoaderOptions<T extends FieldValues> {
   onSuccess?: (data: T) => void
   /** Optional additional data processing */
   dataProcessor?: (data: T) => T
+  /** Search Params */
+  searchParams: PublishSearch
 }
 
 interface ImageTemplateLoaderOptions<T extends FieldValues> {
@@ -85,11 +89,9 @@ export function useTemplateLoader<T extends FieldValues>({
   uiStateUpdaters = [],
   onSuccess,
   dataProcessor,
+  searchParams: { fromJob, fromTemplate },
 }: TemplateLoaderOptions<T>) {
-  const [searchParams] = useSearchParams()
-  const user = useAtomValue(globalUserInfo)
-  const fromJob = searchParams.get('fromJob')
-  const fromTemplate = searchParams.get('fromTemplate')
+  const user = useAtomValue(atomUserInfo)
   const [templateData, setTemplateData] = useState<JobTemplate | null>(null)
 
   const { mutate: loadJobTemplate } = useMutation({
@@ -98,7 +100,7 @@ export function useTemplateLoader<T extends FieldValues>({
       try {
         // replace /home/${CRATER_USERNAME} with /home/${username}
         // Import the template data
-        let jobInfo = importFromJsonString<T>(metadata, response.data.data)
+        let jobInfo = importFromJsonString<T>(metadata, response.data)
 
         // Apply optional data processing
         if (dataProcessor) {
@@ -134,15 +136,15 @@ export function useTemplateLoader<T extends FieldValues>({
     mutationFn: (templateId: number) => getJobTemplate(templateId),
     onSuccess: (response) => {
       try {
-        const template = response.data.data.template.replace(
+        const template = response.data.template.replace(
           /\/home\/\${CRATER_USERNAME}/g,
-          `/home/${user.name}`
+          `/home/${user?.name}`
         )
         // Import the template data
         let templateInfo = importFromJsonString<T>(metadata, template)
 
         // Store template data for display
-        setTemplateData(response.data.data)
+        setTemplateData(response.data)
 
         // Apply optional data processing
         if (dataProcessor) {
@@ -199,7 +201,7 @@ export function useImageTemplateLoader<T extends FieldValues>({
     onSuccess: (response) => {
       try {
         // Import the template data
-        const kanikoInfo = importFromJsonString<T>(metadata, response.data.data)
+        const kanikoInfo = importFromJsonString<T>(metadata, response.data)
 
         // Reset the form with the loaded data
         form.reset(kanikoInfo)

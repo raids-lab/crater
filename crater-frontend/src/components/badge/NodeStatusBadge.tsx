@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import { PhaseBadge } from './PhaseBadge'
 
 // These are valid but not exhaustive conditions of node. A cloud provider may set a condition not listed here.

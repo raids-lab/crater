@@ -13,10 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
+import { DialogTrigger } from '@radix-ui/react-dialog'
+import { ChevronsUpDown } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -25,12 +30,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { DialogTrigger } from '@radix-ui/react-dialog'
+
 import { Tree, TreeDataItem } from '@/components/file/LazyFileTree'
-import { ChevronsUpDown } from 'lucide-react'
-import { toast } from 'sonner'
+
 import { cn } from '@/lib/utils'
 
 export const FileSelectDialog = ({

@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { ArrowDownUp, Cpu, GpuIcon, MemoryStickIcon as Memory } from 'lucide-react'
+import { useMemo } from 'react'
 
+import { IJupyterDetail, ProfileData } from '@/services/api/vcjob'
+
+import { MetricCard } from '../ui-custom/metric-card'
 import { MetricSection } from '../ui-custom/metric-section'
 import { ProgressCard } from '../ui-custom/progress-card'
-import { MetricCard } from '../ui-custom/metric-card'
-import { Cpu, MemoryStickIcon as Memory, ArrowDownUp, GpuIcon } from 'lucide-react'
-import { IJupyterDetail, ProfileData } from '@/services/api/vcjob'
-import { useMemo } from 'react'
 import { JobInfoSections } from './ScheduleInfoSection'
 
 interface ProfileDashboardProps {

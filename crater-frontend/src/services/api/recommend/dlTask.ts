@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Post } from '@/services/client'
 
-import instance, { VERSION } from '../../axios'
 import { IResponse } from '../../types'
 
 export interface IDlAnalyze {
@@ -44,6 +44,6 @@ interface IDlAnalyzeRequest {
 
 // /v1/recommenddljob/analyze
 export const apiDlAnalyze = (data: IDlAnalyzeRequest) =>
-  instance.post<IResponse<IDlAnalyze>>(VERSION + '/recommenddljob/analyze', {
+  apiV1Post<IResponse<IDlAnalyze>>('/recommenddljob/analyze', {
     ...data,
   })

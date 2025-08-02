@@ -5,3 +5,4 @@ pnpm-lock.yaml
 # Ignore all generated files by shadcn:
 src/components/ui
 src/components/ui-custom
+src/routeTree.gen.ts

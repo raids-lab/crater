@@ -13,18 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import useIsAdmin from '@/hooks/useAdmin'
-import { apiAdminResourceReset } from '@/services/api/resource'
-import { toast } from 'sonner'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AxiosResponse } from 'axios'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
+import { apiAdminResourceReset } from '@/services/api/resource'
 import { IResponse } from '@/services/types'
+
+import useIsAdmin from '@/hooks/use-admin'
 
 interface ResourceBadgesProps {
   namespace?: string
@@ -114,11 +115,7 @@ export default function ResourceBadges({
   const isAdmin = useIsAdmin()
   const queryClient = useQueryClient()
 
-  const { mutate: updateResource } = useMutation<
-    AxiosResponse<IResponse<string>>,
-    Error,
-    UpdateResourceVars
-  >({
+  const { mutate: updateResource } = useMutation<IResponse<string>, Error, UpdateResourceVars>({
     mutationFn: ({ namespace, podName, key, numericValue }) =>
       apiAdminResourceReset(namespace, podName, key, numericValue),
     onSuccess: (_res, { podName, key, numericValue }) => {

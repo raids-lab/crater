@@ -13,32 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
-import { useTranslation } from 'react-i18next'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { DataTable } from '@/components/custom/DataTable'
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { DataTableColumnHeader } from '@/components/custom/DataTable/DataTableColumnHeader'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { ColumnDef, Row } from '@tanstack/react-table'
-import { DataTableToolbarConfig } from '@/components/custom/DataTable/DataTableToolbar'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import { FileSizeComponent } from '@/components/file/FileSize'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useAtomValue, useSetAtom } from 'jotai'
 import {
   ArrowLeftIcon,
   DownloadIcon,
@@ -48,12 +28,31 @@ import {
   MoveIcon,
   Trash2,
 } from 'lucide-react'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { globalAccount, globalBreadCrumb } from '@/utils/store'
-import { FileItem, MoveFile, apiFileDelete, apiMkdir, apiMoveFile } from '@/services/api/file'
-import { ACCESS_TOKEN_KEY } from '@/utils/store'
-import { showErrorToast } from '@/utils/toast'
-import { getAdminFolderTitle, getFolderTitle } from '@/components/file/LazyFileTree'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
+import { TimeDistance } from '@/components/custom/TimeDistance'
+import { FileSizeComponent } from '@/components/file/FileSize'
+import FileUpload from '@/components/file/FileUpload'
+import { getFolderTitle } from '@/components/file/LazyFileTree'
+import { DataTable } from '@/components/query-table'
+import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,18 +64,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
-import FileUpload from '@/components/file/FileUpload'
-import FolderNavigation from './FolderNavigation'
-import { AxiosResponse } from 'axios'
-import { IResponse } from '@/services/types'
-import { FileSelectDialog } from './FileSelectDialog'
-import TooltipButton from '../custom/TooltipButton'
-import { configUrlApiBaseAtom } from '@/utils/store/config'
-import { AccessMode } from '@/services/api/auth'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
-import { BaseUserInfo, apiGetBaseUserInfo } from '@/services/api/user'
+
 import { IAccount, apiAdminAccountList } from '@/services/api/account'
+import { AccessMode } from '@/services/api/auth'
+import { FileItem, MoveFile, apiFileDelete, apiMkdir, apiMoveFile } from '@/services/api/file'
+import { BaseUserInfo, apiGetBaseUserInfo } from '@/services/api/user'
+import { IResponse } from '@/services/types'
+
+import useIsAdmin from '@/hooks/use-admin'
+
+import { atomBreadcrumb, atomUserContext } from '@/utils/store'
+import { ACCESS_TOKEN_KEY } from '@/utils/store'
+import { configUrlApiBaseAtom } from '@/utils/store/config'
+import { showErrorToast } from '@/utils/toast'
+
 import { cn } from '@/lib/utils'
+
+import TooltipButton from '../button/tooltip-button'
+import { FileSelectDialog } from './FileSelectDialog'
+import FolderNavigation from './FolderNavigation'
 
 const getHeader = (key: string, t: (key: string) => string): string => {
   switch (key) {
@@ -103,8 +109,8 @@ const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig =>
 }
 
 interface SpacefileTableProps {
-  apiGetFiles: (path: string) => Promise<AxiosResponse<IResponse<FileItem[] | undefined>>>
-  isadmin: boolean
+  apiGetFiles: (path: string) => Promise<IResponse<FileItem[] | undefined>>
+  path: string
 }
 
 const FileActions = ({
@@ -284,91 +290,46 @@ const FileActions = ({
   )
 }
 
-export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
+export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [dirName, setDirName] = useState<string>('')
-  const setBreadcrumb = useSetAtom(globalBreadCrumb)
+  const setBreadcrumb = useSetAtom(atomBreadcrumb)
   const apiBaseURL = useAtomValue(configUrlApiBaseAtom)
-
-  const path = useMemo(() => {
-    const basePattern = isadmin ? /^\/admin\/files\/spacefile/ : /^\/portal\/files\/spacefile/
-    return pathname.replace(basePattern, '')
-  }, [pathname, isadmin])
+  const isAdmin = useIsAdmin()
 
   useEffect(() => {
-    const pathParts = pathname.split('/').filter(Boolean)
+    const baseURL = isAdmin ? '/admin/files' : '/portal/files'
+    const pathParts = path.split('/').filter(Boolean)
     const breadcrumb = pathParts.map((value, index) => {
       value = decodeURIComponent(value)
-      if (!isadmin) {
-        if (index == 0 && value == 'portal') {
-          return {
-            title: 'Portal',
-          }
-        } else if (index == 1 && value == 'files') {
-          return {
-            title: '文件管理',
-            path: '/portal/files',
-          }
-        } else if (index == 2 && value == 'spacefile') {
-          return {
-            title: '空间文件',
-            path: '/portal/files/spacefile',
-          }
-        } else if (index == 3) {
-          return {
-            title: getFolderTitle(t, value),
-            path: `/portal/files/spacefile/${value}`,
-          }
-        }
-      } else {
-        if (index == 0 && value == 'admin') {
-          return {
-            title: 'Admin',
-          }
-        } else if (index == 1 && value == 'files') {
-          return {
-            title: '文件管理',
-            path: '/portal/files',
-          }
-        } else if (index == 2 && value == 'spacefile') {
-          return {
-            title: '空间文件',
-            path: '/admin/files/spacefile',
-          }
-        } else if (index == 3) {
-          return {
-            title: getAdminFolderTitle(t, value),
-            path: `/admin/files/spacefile/${value}`,
-          }
-        }
-      }
-
+      // 累加路径：取当前索引及之前的所有路径片段
+      const cumulativePath = pathParts.slice(0, index + 1).join('/')
       return {
-        title: value,
-        path: `/${pathParts.slice(0, index + 1).join('/')}`,
+        label: getFolderTitle(t, value),
+        href: `${baseURL}/${cumulativePath}`,
       }
     })
-    // 删除第一个元素
-    breadcrumb.shift()
-    // 将最后一个元素的 path 设置为 undefined
-    if (breadcrumb.length > 1) {
-      breadcrumb[breadcrumb.length - 1].path = undefined
-    }
-    setBreadcrumb(breadcrumb)
-  }, [isadmin, pathname, setBreadcrumb, t])
+    setBreadcrumb([
+      {
+        label: t('navigation.fileManagement'),
+        href: baseURL,
+      },
+      ...breadcrumb,
+    ])
 
-  const backpath = useMemo(() => {
-    return pathname.replace(/\/[^/]+$/, '')
-  }, [pathname])
+    return () => {
+      setBreadcrumb([]) // 清空面包屑
+    }
+  }, [isAdmin, path, setBreadcrumb, t])
 
   const query = useQuery({
     queryKey: ['data', 'spacefile', path],
     queryFn: () => apiGetFiles(`${path}`),
     select: (res) => {
       return (
-        res.data.data
+        res.data
           ?.map((r) => {
             return {
               name: r.name,
@@ -397,9 +358,9 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
     queryFn: () => {
       return apiGetBaseUserInfo()
     },
-    select: (res) => res.data.data,
+    select: (res) => res.data,
     staleTime: 5 * 60 * 1000,
-    enabled: isadmin,
+    enabled: isAdmin,
   })
 
   const userMap = useMemo(() => {
@@ -416,10 +377,10 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
       return apiAdminAccountList()
     },
     select: (res) => {
-      return res.data.data
+      return res.data
     },
     staleTime: 5 * 60 * 1000,
-    enabled: isadmin,
+    enabled: isAdmin,
   })
   const accountMap = useMemo(() => {
     // 添加类型断言确保数据安全
@@ -430,9 +391,8 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
   }, [accountInfoQuery.data])
 
   const isRoot = useMemo(() => {
-    const basePath = isadmin ? '/admin/files/spacefile' : '/portal/files/spacefile'
-    return pathname === basePath
-  }, [pathname, isadmin])
+    return path === ''
+  }, [path])
 
   const isAdminUserSpace = useMemo(() => {
     const basePath = '/admin/files/spacefile/admin-user'
@@ -454,19 +414,19 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
     },
   })
 
-  const token = useAtomValue(globalAccount)
+  const token = useAtomValue(atomUserContext)
   const canShow = useMemo(() => {
     if (path.startsWith('/public')) {
-      return token.accessPublic === AccessMode.ReadWrite
+      return token?.accessPublic === AccessMode.ReadWrite
     }
     if (path.startsWith('/account')) {
-      return token.accessQueue === AccessMode.ReadWrite // 根据实际权限规则调整
+      return token?.accessQueue === AccessMode.ReadWrite // 根据实际权限规则调整
     }
     if (path.startsWith('/user') || path.startsWith('/admin')) {
       return true
     }
     return false // 默认不显示
-  }, [path, token.accessPublic, token.accessQueue])
+  }, [path, token?.accessPublic, token?.accessQueue])
 
   const { mutate: moveFile } = useMutation({
     mutationFn: ({ fileData, path }: { fileData: MoveFile; path: string }) =>
@@ -498,7 +458,7 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
           <div className="flex items-center">
             <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
             <Button
-              onClick={() => navigate(pathname + '/' + row.original.name)}
+              onClick={() => navigate({ to: pathname + '/' + row.original.name })}
               variant="link"
               className="text-secondary-foreground h-8 px-0 text-left font-normal"
             >
@@ -519,7 +479,7 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
             <TooltipTrigger asChild>
               {row.original.isdir ? (
                 <Button
-                  onClick={() => navigate(pathname + '/' + row.original.name)}
+                  onClick={() => navigate({ to: pathname + '/' + row.original.name })}
                   variant="link"
                   className="text-secondary-foreground hover:text-primary h-8 px-0 text-left font-normal"
                 >
@@ -652,14 +612,10 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
     },
   })
 
-  const handleReturnNavigation = (backpath: string) => {
-    navigate(backpath)
-  }
-
   return (
     <>
       {isRoot ? (
-        <FolderNavigation data={query.data} isadmin={isadmin}></FolderNavigation>
+        <FolderNavigation data={query.data} isadmin={isAdmin}></FolderNavigation>
       ) : (
         <DataTable
           storageKey="spacefile"
@@ -671,7 +627,7 @@ export function SpacefileTable({ apiGetFiles, isadmin }: SpacefileTableProps) {
             variant="outline"
             size="icon"
             onClick={() => {
-              handleReturnNavigation(backpath)
+              navigate({ to: '..' })
             }}
             className="h-8 w-8"
             disabled={isRoot}

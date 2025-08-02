@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { AppWindowIcon, Cable, Grid, Layers, MemoryStickIcon as Memory } from 'lucide-react'
 
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { MemoryStickIcon as Memory, Grid, Layers, Cable, AppWindowIcon } from 'lucide-react'
-import { Separator } from '../ui/separator'
+import { Separator } from '@/components/ui/separator'
 
 interface NvidiaGpuInfoProps {
   labels: Record<string, string>

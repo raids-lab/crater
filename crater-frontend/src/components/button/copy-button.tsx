@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import { VariantProps } from 'class-variance-authority'
 import { Check, Copy } from 'lucide-react'
 
-import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
+
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
-import TooltipButton from '../custom/TooltipButton'
-import { VariantProps } from 'class-variance-authority'
-import { buttonVariants } from '../ui/button'
+
+import { cn } from '@/lib/utils'
+
+import TooltipButton from './tooltip-button'
 
 type CopyButtonProps = React.ComponentProps<'button'> &
   VariantProps<typeof buttonVariants> & {

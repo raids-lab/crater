@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // Reference: https://github.com/kubesphere/console/blob/master/packages/shared/src/stores/pod.ts#L187
-import { AxiosResponse } from 'axios'
-import { IResponse } from '@/services/types'
-import { Card } from '@/components/ui/card'
-import { FetchSheet } from './Dialog'
 import useResizeObserver from 'use-resize-observer'
-import { ScrollArea, ScrollBar } from '../ui/scroll-area'
+
+import { Card } from '@/components/ui/card'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+
+import { IResponse } from '@/services/types'
+
+import { cn } from '@/lib/utils'
+
 import { CopyButton } from '../button/copy-button'
 import { HighlightedPre } from '../form/markdown-renderer'
-import { cn } from '@/lib/utils'
+import { FetchSheet } from './Dialog'
 
 export interface PodNamespacedName {
   namespace: string
@@ -68,7 +70,7 @@ export function CodeContent({
 interface ConfigContentProps {
   jobName: string
   language?: string
-  getConfig: (name: string) => Promise<AxiosResponse<IResponse<string>, unknown>>
+  getConfig: (name: string) => Promise<IResponse<string>>
 }
 
 type ConfigDialogProps = React.HTMLAttributes<HTMLDivElement> & ConfigContentProps

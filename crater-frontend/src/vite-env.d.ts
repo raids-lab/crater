@@ -20,8 +20,8 @@ interface ImportMetaEnv {
 
   // URLs
   readonly VITE_HOST: string
-  readonly VITE_API_BASE_URL: string
-  readonly VITE_API_VERSION: string
+  readonly VITE_SERVER_PROXY_DOMAIN: string
+  readonly VITE_SERVER_PROXY_PREFIX: string
   readonly VITE_WEBSITE_BASE_URL: string
 
   // Grafana URLs
