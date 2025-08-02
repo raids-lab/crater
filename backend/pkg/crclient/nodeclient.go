@@ -34,6 +34,7 @@ const (
 const (
 	NodeStatusUnschedulable corev1.NodeConditionType = "Unschedulable"
 	NodeStatusOccupied      corev1.NodeConditionType = "Occupied"
+	NodeStatusUnknown       corev1.NodeConditionType = "Unknown"
 )
 
 type NodeBriefInfo struct {
@@ -155,7 +156,7 @@ func getNodeCondition(node *corev1.Node) corev1.NodeConditionType {
 		}
 	}
 
-	return corev1.NodeReady // 如果没有任何条件为 True，则视为就绪
+	return NodeStatusUnknown // 如果没有任何条件为 True，则视为就绪
 }
 
 func taintsToStringArray(taints []corev1.Taint) []string {
@@ -210,19 +211,18 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 		node := &nodes.Items[i]
 
 		// 获取节点上的所有 Pods（通过索引）
-		pods, err := indexer.QueryPodsByNodeName(ctx, nc.Client, node.Name)
-		if err != nil {
+		podList := &corev1.PodList{}
+		if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(node.Name)); err != nil {
 			klog.Errorf("Failed to get pods for node %s: %v", node.Name, err)
 			// 继续处理，但 pods 为空
-			pods = []corev1.Pod{}
 		}
 
 		// 计算节点上所有 Pods 使用的资源
 		usedResources := make(corev1.ResourceList)
 		workloadCount := 0
 
-		for j := range pods {
-			pod := &pods[j]
+		for j := range podList.Items {
+			pod := &podList.Items[j]
 			podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
 			usedResources = utils.SumResources(usedResources, podResources)
 
@@ -369,11 +369,9 @@ func (nc *NodeClient) DeleteNodetaint(ctx context.Context, name, taint string) e
 }
 func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
 	// Get Pods for the node, which is a costly operation
-	// TODO(zhangry): Add a cache for this? Or query from Prometheus?
-	podList, err := nc.KubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{
-		FieldSelector: "spec.nodeName=" + nodeName,
-	})
-	if err != nil {
+	podList := &corev1.PodList{}
+	if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(nodeName)); err != nil {
+		klog.Errorf("Failed to get pods for node %s: %v", nodeName, err)
 		return nil, err
 	}
 
