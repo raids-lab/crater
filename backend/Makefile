@@ -127,7 +127,7 @@ $(SWAGGO): $(LOCATION)
 ##@ Git Hooks
 
 ## Location to install git hooks to
-GIT_HOOKS_DIR ?= $(PWD)/.git/hooks
+GIT_HOOKS_DIR ?= $(shell git rev-parse --git-path hooks)
 $(GIT_HOOKS_DIR):
 	@echo "Creating git hooks directory..."
 	@mkdir -p $(GIT_HOOKS_DIR)
