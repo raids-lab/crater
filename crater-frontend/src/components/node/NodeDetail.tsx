@@ -459,7 +459,7 @@ export const NodeDetail: FC = () => {
       ],
       getHeader: (key: string) => getHeader(key, t),
     }
-  }, [scheduler, t])
+  }, [namespaces, scheduler, t])
 
   // 修改 BreadCrumb
   useEffect(() => {
