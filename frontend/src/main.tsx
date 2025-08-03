@@ -36,7 +36,13 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload() // for example, refresh the page
 })
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000,
+    },
+  },
+})
 
 async function enableMocking() {
   // Enable mocking in development when VITE_USE_MSW is true
@@ -60,7 +66,9 @@ enableMocking()
             <QueryClientProvider client={queryClient}>
               <App queryClient={queryClient} />
               <Toaster richColors closeButton />
-              <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
+              {import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
+                <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
+              )}
             </QueryClientProvider>
           </ThemeProvider>
         </JotaiProvider>

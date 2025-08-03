@@ -42,8 +42,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { nodeStatuses } from '@/components/badge/NodeStatusBadge'
-import { getNodeColumns } from '@/components/node/NodeList'
 import { useAccountNameLookup } from '@/components/node/getaccountnickname'
+import { getNodeColumns } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
@@ -263,7 +263,7 @@ function NodesForAdmin() {
             </DialogTitle>
           </DialogHeader>
           {isOccupation ? (
-            <div className="grid gap-4 py-4">
+            <div className="grid w-full gap-4 py-4">
               <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
             </div>
           ) : (

@@ -147,7 +147,7 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
               url: 'data/models',
             },
             {
-              title: t('navigation.sharedFiles'),
+              title: t('navigation.blocks'),
               url: 'data/blocks',
             },
           ],

@@ -25,20 +25,30 @@ import {
   apiAdminShareDatasetwithUser,
   apiDatasetDelete,
 } from '@/services/api/dataset'
+import { queryAdminDataByID } from '@/services/query/data'
 
 export const Route = createFileRoute('/admin/data/$id')({
   validateSearch: detailValidateSearch,
   component: DatasetDetail,
+  loader: async ({ params, context: { queryClient } }) => {
+    const { id } = params
+    const datasetId = Number(id) || 0
+    const { data } = await queryClient.ensureQueryData(queryAdminDataByID(datasetId))
+    const dataset = data.length > 0 ? data[0] : undefined
+    return {
+      crumb: dataset?.name || id,
+      data: dataset,
+    }
+  },
 })
 
 function DatasetDetail() {
-  const id = Route.useParams().id
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <SharedResourceTable
       resourceType="dataset"
-      id={id}
+      data={Route.useLoaderData().data}
       apiShareDatasetwithQueue={apiAdminShareDatasetwithQueue}
       apiShareDatasetwithUser={apiAdminShareDatasetwithUser}
       apiCancelDatasetSharewithQueue={apiAdminCancelShareWithQueue}

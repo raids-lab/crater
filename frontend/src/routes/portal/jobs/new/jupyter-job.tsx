@@ -16,6 +16,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { CirclePlus, LayoutGridIcon } from 'lucide-react'
 import { useState } from 'react'
@@ -71,6 +72,11 @@ import { configFeatureFlags } from '@/utils/store/config'
 export const Route = createFileRoute('/portal/jobs/new/jupyter-job')({
   validateSearch: publishValidateSearch,
   component: RouteComponent,
+  loader: () => {
+    return {
+      crumb: t('jobs.new.jupyterJob'),
+    }
+  },
 })
 
 const JupyterMarkdown = `Jupyter 为用户提供交互式的 Web 实验环境，可用于代码调试等场景。

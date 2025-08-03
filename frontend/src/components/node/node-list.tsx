@@ -176,11 +176,10 @@ export const getNodeColumns = (
       ),
     },
     {
-      accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={'状态'} />,
+      accessorKey: 'role',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={'角色'} />,
       cell: ({ row }) => {
         const taints = row.original.taints || []
-        const status = row.getValue<string>('status')
 
         // 如果状态为"occupied"，提取占用的账户名
         let accountInfo = null
@@ -202,11 +201,14 @@ export const getNodeColumns = (
           status === 'occupied'
             ? taints.filter((taint: string) => taint.includes('crater.raids.io/account'))
             : taints
-
         return (
           <div className="flex flex-row items-center justify-start gap-1">
-            <NodeStatusBadge status={status} />
-
+            <Badge
+              variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
+              className="font-mono font-normal"
+            >
+              {row.getValue('role')}
+            </Badge>
             {/* 如果有账户信息，显示一个单独的提示 */}
             {status === 'occupied' && accountInfo && (
               <Tooltip>
@@ -239,32 +241,30 @@ export const getNodeColumns = (
       },
     },
     {
-      accessorKey: 'role',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={'角色'} />,
-      cell: ({ row }) => (
-        <div className="flex flex-row items-center justify-start gap-1">
-          <Badge
-            variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
-            className="font-mono font-normal"
-          >
-            {row.getValue('role')}
-          </Badge>
-          <Tooltip>
-            <TooltipTrigger
-              className={cn(
-                'bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs hover:cursor-help',
-                {
-                  'bg-primary text-primary-foreground':
-                    row.original.workloads && row.original.workloads > 0,
-                }
-              )}
-            >
-              {row.original.workloads}
-            </TooltipTrigger>
-            <TooltipContent>{row.original.workloads} 个作业正在运行</TooltipContent>
-          </Tooltip>
-        </div>
-      ),
+      accessorKey: 'status',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={'状态'} />,
+      cell: ({ row }) => {
+        const status = row.getValue<string>('status')
+        return (
+          <div className="flex flex-row items-center justify-start gap-1">
+            <NodeStatusBadge status={status} />
+            <Tooltip>
+              <TooltipTrigger
+                className={cn(
+                  'bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs hover:cursor-help',
+                  {
+                    'bg-primary text-primary-foreground':
+                      row.original.workloads && row.original.workloads > 0,
+                  }
+                )}
+              >
+                {row.original.workloads}
+              </TooltipTrigger>
+              <TooltipContent>{row.original.workloads} 个作业正在运行</TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'cpu',
