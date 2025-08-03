@@ -86,6 +86,10 @@ export const apiGetDataset = () => apiV1Get<IResponse<IDataset[]>>(`/dataset/myd
 export const apiGetDatasetByID = (datasetID: number) =>
   apiV1Get<IResponse<IDataset[]>>(`/dataset/detail/${datasetID}`)
 
+// TODO: 后端需要修改接口，返回单个数据集而不是数组，管理员有单独的查询接口
+export const apiAdminGetDatasetByID = (datasetID: number) =>
+  apiV1Get<IResponse<IDataset[]>>(`/dataset/detail/${datasetID}`)
+
 export const apiAdminGetDataset = () => apiV1Get<IResponse<IDataset[]>>(`/admin/dataset/alldataset`)
 
 export const apiShareDatasetwithUser = (ud: UserDataset) =>
@@ -131,5 +135,6 @@ export const apiAdminCancelShareWithUser = (CSU: cancelSharedUserResp) =>
 
 export const apiAdminCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
   apiV1Post<IResponse<string>>(`/admin/dataset/cancelshare/queue`, CSQ)
+
 export const apiDatasetUpdate = (dataset: DatasetReq & { datasetId: number }) =>
   apiV1Post<IResponse<string>>('/dataset/update', dataset)

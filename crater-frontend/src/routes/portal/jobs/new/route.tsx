@@ -1,11 +1,11 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
+import { t } from 'i18next'
 
 export const Route = createFileRoute('/portal/jobs/new')({
   component: RouteComponent,
   loader: () => {
     return {
-      crumb: 'Job Detail',
-      nolink: true, // Prevents the breadcrumb from being a link
+      crumb: t('navigation.jobNew'),
     }
   },
 })

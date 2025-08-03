@@ -22,6 +22,7 @@ interface ImportMetaEnv {
   readonly VITE_HOST: string
   readonly VITE_SERVER_PROXY_DOMAIN: string
   readonly VITE_SERVER_PROXY_PREFIX: string
+  readonly VITE_SERVER_PROXY_STORAGE: string
   readonly VITE_WEBSITE_BASE_URL: string
 
   // Grafana URLs
@@ -38,4 +39,6 @@ interface ImportMetaEnv {
   // Development
   readonly VITE_USE_MSW: string
   readonly VITE_SET_DOCS_AS_HOME: string
+  readonly VITE_TANSTACK_QUERY_DEVTOOLS: string
+  readonly VITE_TANSTACK_ROUTER_DEVTOOLS: string
 }

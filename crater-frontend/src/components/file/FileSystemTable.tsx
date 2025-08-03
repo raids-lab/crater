@@ -23,9 +23,10 @@ import {
   ArrowLeftIcon,
   DownloadIcon,
   File,
+  FileOutputIcon,
   Folder,
+  FolderOutputIcon,
   FolderPlusIcon,
-  MoveIcon,
   Trash2,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -81,6 +82,7 @@ import { showErrorToast } from '@/utils/toast'
 import { cn } from '@/lib/utils'
 
 import TooltipButton from '../button/tooltip-button'
+import { Badge } from '../ui/badge'
 import { FileSelectDialog } from './FileSelectDialog'
 import FolderNavigation from './FolderNavigation'
 
@@ -120,7 +122,7 @@ const FileActions = ({
   isDir,
   name,
   path,
-  canShow,
+  canEdit,
 }: {
   apiBaseURL: string
   deleteFile: (path: string) => void
@@ -128,12 +130,12 @@ const FileActions = ({
   isDir: boolean
   name: string
   path: string
-  canShow: boolean
+  canEdit: boolean
 }) => {
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
   const { t } = useTranslation()
   return (
-    <div className="flex flex-row space-x-1">
+    <div className="flex flex-row items-center justify-end space-x-1">
       {/* 下载按钮（仅文件显示）*/}
       {!isDir ? (
         <TooltipButton
@@ -180,19 +182,23 @@ const FileActions = ({
         <div className="size-8" />
       )}
       {/* 移动操作 （有读写权限显示）*/}
-      {canShow ? (
+      {canEdit ? (
         <AlertDialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
           <AlertDialogTrigger asChild>
             <div>
               <TooltipButton
-                className="hover:text-destructive h-8 w-8 p-0"
+                className="hover:text-highlight-orange h-8 w-8 p-0"
                 variant="outline"
                 size="icon"
                 tooltipContent={t('fileActions.move.tooltip', {
-                  type: isDir ? 'folder' : 'file',
+                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
                 })}
               >
-                <MoveIcon size={16} strokeWidth={2} />
+                {isDir ? (
+                  <FolderOutputIcon size={16} strokeWidth={2} />
+                ) : (
+                  <FileOutputIcon size={16} strokeWidth={2} />
+                )}
               </TooltipButton>
             </div>
           </AlertDialogTrigger>
@@ -200,7 +206,7 @@ const FileActions = ({
             <AlertDialogHeader>
               <AlertDialogTitle className="text-lg">
                 {t('fileActions.move.title', {
-                  type: isDir ? 'folder' : 'file',
+                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
                 })}
               </AlertDialogTitle>
               <AlertDialogDescription>
@@ -240,7 +246,7 @@ const FileActions = ({
         <div className="size-8" />
       )}
       {/* 删除操作 （有读写权限显示）*/}
-      {canShow ? (
+      {canEdit ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <div>
@@ -249,7 +255,7 @@ const FileActions = ({
                 variant="outline"
                 size="icon"
                 tooltipContent={t('fileActions.delete.tooltip', {
-                  type: isDir ? 'folder' : 'file',
+                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
                 })}
               >
                 <Trash2 size={16} strokeWidth={2} />
@@ -260,12 +266,12 @@ const FileActions = ({
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {t('fileActions.delete.title', {
-                  type: isDir ? 'folder' : 'file',
+                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
                 })}
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {t('fileActions.delete.description', {
-                  type: isDir ? 'folder' : 'file',
+                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
                   name,
                 })}
               </AlertDialogDescription>
@@ -415,14 +421,14 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   })
 
   const token = useAtomValue(atomUserContext)
-  const canShow = useMemo(() => {
-    if (path.startsWith('/public')) {
+  const canEdit = useMemo(() => {
+    if (path.startsWith('public')) {
       return token?.accessPublic === AccessMode.ReadWrite
     }
-    if (path.startsWith('/account')) {
+    if (path.startsWith('account')) {
       return token?.accessQueue === AccessMode.ReadWrite // 根据实际权限规则调整
     }
-    if (path.startsWith('/user') || path.startsWith('/admin')) {
+    if (path.startsWith('user') || path.startsWith('admin')) {
       return true
     }
     return false // 默认不显示
@@ -455,19 +461,20 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
       if (!isSpecialPath) {
         // 默认渲染逻辑
         return row.original.isdir ? (
-          <div className="flex items-center">
-            <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
-            <Button
+          <div className="flex items-center justify-start gap-2">
+            <Folder className="size-5 text-yellow-600 dark:text-yellow-400" />
+            <TooltipButton
+              tooltipContent="查看文件夹内容"
               onClick={() => navigate({ to: pathname + '/' + row.original.name })}
               variant="link"
               className="text-secondary-foreground h-8 px-0 text-left font-normal"
             >
               {row.getValue('name')}
-            </Button>
+            </TooltipButton>
           </div>
         ) : (
-          <div className="flex items-center">
-            <File className="text-muted-foreground mr-2 size-5" />
+          <div className="flex items-center gap-2">
+            <File className="text-muted-foreground size-5" />
             <span className="text-secondary-foreground">{row.getValue('name')}</span>
           </div>
         )
@@ -478,16 +485,16 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               {row.original.isdir ? (
-                <Button
-                  onClick={() => navigate({ to: pathname + '/' + row.original.name })}
-                  variant="link"
-                  className="text-secondary-foreground hover:text-primary h-8 px-0 text-left font-normal"
-                >
-                  <div className="flex items-center">
-                    <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+                <div className="flex items-center">
+                  <Folder className="mr-2 size-5 text-yellow-600 dark:text-yellow-400" />
+                  <Button
+                    onClick={() => navigate({ to: pathname + '/' + row.original.name })}
+                    variant="link"
+                    className="text-secondary-foreground hover:text-primary h-8 px-0 text-left font-normal"
+                  >
                     {displayName}
-                  </div>
-                </Button>
+                  </Button>
+                </div>
               ) : (
                 <div className="flex items-center">
                   <File className="text-muted-foreground mr-2 size-5" />
@@ -520,25 +527,37 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   const baseColumns = useMemo<ColumnDef<FileItem>[]>(() => {
     return [
       {
-        accessorKey: 'modifytime',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('modifytime', t)} />
-        ),
-        cell: ({ row }) => {
-          return <TimeDistance date={row.getValue('modifytime')}></TimeDistance>
-        },
-      },
-      {
         accessorKey: 'size',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('size', t)} />
         ),
         cell: ({ row }) => {
           if (row.original.isdir) {
-            return
+            return (
+              <>
+                {row.original.size > 0 && (
+                  <Badge variant="secondary">
+                    {t('fileActions.size.tooltip', { size: row.original.size })}
+                  </Badge>
+                )}
+              </>
+            )
           } else {
-            return <FileSizeComponent size={row.getValue('size')} />
+            return (
+              <Badge variant="outline">
+                <FileSizeComponent size={row.getValue('size')} />
+              </Badge>
+            )
           }
+        },
+      },
+      {
+        accessorKey: 'modifytime',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader('modifytime', t)} />
+        ),
+        cell: ({ row }) => {
+          return <TimeDistance date={row.getValue('modifytime')}></TimeDistance>
         },
       },
       {
@@ -555,13 +574,13 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
               isDir={isdir}
               name={name}
               path={path}
-              canShow={canShow}
+              canEdit={canEdit}
             />
           )
         },
       },
     ]
-  }, [apiBaseURL, deleteFile, moveFile, path, canShow, t])
+  }, [apiBaseURL, deleteFile, moveFile, path, canEdit, t])
 
   const nameColumn = useMemo<ColumnDef<FileItem>[]>(() => {
     return [
@@ -615,7 +634,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   return (
     <>
       {isRoot ? (
-        <FolderNavigation data={query.data} isadmin={isAdmin}></FolderNavigation>
+        <FolderNavigation data={query.data} isadmin={isAdmin} />
       ) : (
         <DataTable
           storageKey="spacefile"
@@ -627,7 +646,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
             variant="outline"
             size="icon"
             onClick={() => {
-              navigate({ to: '..' })
+              history.back()
             }}
             className="h-8 w-8"
             disabled={isRoot}
