@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { globalSettings, store } from '@/utils/store'
-import instance, { VERSION } from '../axios'
+
 import { IResponse } from '../types'
 import { IUserAttributes } from './admin/user'
 
@@ -42,20 +43,20 @@ const { scheduler } = store.get(globalSettings)
 
 export const apiContextQuota = () => {
   const url = scheduler === 'volcano' ? '/context/quota' : '/aijobs/quota'
-  return instance.get<IResponse<QuotaResp>>(VERSION + url)
+  return apiV1Get<IResponse<QuotaResp>>(url)
 }
 
 export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
-  instance.put<IResponse<string>>(`${VERSION}/context/attributes`, data)
+  apiV1Put<IResponse<string>>(`/context/attributes`, data)
 
 // apiSendVerificationEmail,
 // apiVerifyEmailCode,
 
 export const apiSendVerificationEmail = (email: string) =>
-  instance.post<IResponse<string>>(`${VERSION}/context/email/code`, { email })
+  apiV1Post<IResponse<string>>(`/context/email/code`, { email })
 
 export const apiVerifyEmailCode = (email: string, code: string) =>
-  instance.post<IResponse<string>>(`${VERSION}/context/email/update`, {
+  apiV1Post<IResponse<string>>(`/context/email/update`, {
     code,
     email,
   })

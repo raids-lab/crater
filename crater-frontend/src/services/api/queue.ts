@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Get } from '@/services/client'
 
-import instance, { VERSION } from '../axios'
 import { IResponse } from '../types'
 import { AccessMode, Role } from './auth'
 
@@ -26,4 +26,4 @@ export interface QueueBasic {
   expiredAt?: Date
 }
 
-export const apiQueueList = () => instance.get<IResponse<QueueBasic[]>>(`${VERSION}/accounts`)
+export const apiQueueList = () => apiV1Get<IResponse<QueueBasic[]>>(`/accounts`)

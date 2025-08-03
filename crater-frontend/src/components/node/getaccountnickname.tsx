@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { useCallback, useState, useRef } from 'react'
-import { apiAccountGetByName } from '@/services/api/account'
+import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
+
+import { apiAccountGetByName } from '@/services/api/account'
+
 /**
  * 获取账户昵称的工具函数
  */
@@ -46,7 +47,7 @@ export const useAccountNameLookup = () => {
 
         apiAccountGetByName(name)
           .then((response) => {
-            const nickname = response.data?.data?.nickname
+            const nickname = response.data?.nickname
             if (nickname) {
               // 存储到 ref 中，不触发重新渲染
               nicknameCache.current[name] = nickname

@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiGetPodContainers, ContainerInfo } from '@/services/api/tool'
-import LoadingCircleIcon from '../icon/LoadingCircleIcon'
-import { ContainerSelect, PodNamespacedName, TableCellForm } from './PodContainerDialog'
-import { LogCard } from './LogDialog'
+import { useEffect, useState } from 'react'
+
+import { ContainerInfo, apiGetPodContainers } from '@/services/api/tool'
+
 import { cn } from '@/lib/utils'
+
+import LoadingCircleIcon from '../icon/LoadingCircleIcon'
+import { LogCard } from './LogDialog'
+import { ContainerSelect, PodNamespacedName, TableCellForm } from './PodContainerDialog'
 
 export default function DetailPageLog({
   namespacedName,
@@ -42,7 +44,7 @@ export default function DetailPageLog({
   const { data: containers } = useQuery({
     queryKey: ['log', 'containers', namespace, podName],
     queryFn: () => apiGetPodContainers(namespace, podName),
-    select: (res) => res.data.data.containers.filter((c) => c.name !== ''),
+    select: (res) => res.data.containers.filter((c) => c.name !== ''),
     enabled: !!namespace && !!podName,
   })
 

@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { configAtom, initializeConfig } from '@/utils/store/config'
 import { useQuery } from '@tanstack/react-query'
 import { useAtom } from 'jotai'
 import { useEffect } from 'react'
+
+import { configAtom, initializeConfig } from '@/utils/store/config'
 
 /**
  * useConfigLoader

@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0 (no translatable strings)
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
 import { format, formatDistanceToNow } from 'date-fns'
-import { zhCN, ja, ko, enUS, type Locale } from 'date-fns/locale'
+import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
+import { cn } from '@/lib/utils'
 
 export const TimeDistance = ({ date, className }: { date?: string; className?: string }) => {
   const [timeDiff, setTimeDiff] = useState('')

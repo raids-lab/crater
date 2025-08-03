@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { globalFixedLayout } from '@/utils/store'
 import { useSetAtom } from 'jotai'
 import { useEffect } from 'react'
+
+import { atomFixedLayout } from '@/utils/store'
 
 /**
  * `useFixedLayout` is a custom hook that sets the global fixed layout state to true when the component mounts,
@@ -34,8 +34,8 @@ import { useEffect } from 'react'
  * };
  * ```
  */
-const useFixedLayout = () => {
-  const setFixedLayout = useSetAtom(globalFixedLayout)
+const useFixedLayout = (): void => {
+  const setFixedLayout = useSetAtom(atomFixedLayout)
 
   useEffect(() => {
     setFixedLayout(true)

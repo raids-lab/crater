@@ -5,6 +5,18 @@
   "printWidth": 100,
   "useTabs": false,
   "tabWidth": 2,
-  "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindFunctions": ["clsx"]
+  "plugins": ["@trivago/prettier-plugin-sort-imports", "prettier-plugin-tailwindcss"],
+  "tailwindFunctions": ["clsx"],
+  "importOrder": [
+    "^@/components/ui/(.*)$",
+    "^@/components/(.*)$",
+    "^@/services/(.*)$",
+    "^@/hooks/(.*)$",
+    "^@/i18n/(.*)$",
+    "^@/utils/(.*)$",
+    "^@/lib/(.*)$",
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
 }

@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { LucideIcon } from 'lucide-react'
-import LoadingCircleIcon from '../icon/LoadingCircleIcon'
-import { Card, CardHeader, CardTitle } from '../ui/card'
+
+import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
 import { cn } from '@/lib/utils'
+
+import LoadingCircleIcon from '../icon/LoadingCircleIcon'
 
 interface PieCardProps extends React.HTMLAttributes<HTMLDivElement> {
   icon: LucideIcon

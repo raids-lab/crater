@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useEffect, useState } from 'react'
 
 import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
-import { useEffect, useState } from 'react'
 
 /**
  * `useNamespacedState` is a custom hook that manages the state of a dialog based on a namespaced name.

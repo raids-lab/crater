@@ -13,16 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
-import { useTranslation } from 'react-i18next'
-import instance from '@/services/axios'
 import { useQueryClient } from '@tanstack/react-query'
 import { UploadIcon } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import styled, { keyframes } from 'styled-components'
+
+import { Button } from '@/components/ui/button'
+
+import { apiPutWithProgress } from '@/services/client'
 
 const progressPulse = keyframes`
   0% { left: -50%; }
@@ -162,29 +163,25 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
     const filename = file.name.split('/').pop()
     if (filename === undefined) return null
     const filedataBuffer = await Files[0].arrayBuffer()
+
     try {
-      await instance
-        .put(`/ss${uploadPath}/${filename}`, filedataBuffer, {
-          onUploadProgress(e) {
-            const loaded = e.loaded || 0
-            const total = e.total || 1
-            const percentCompleted = Math.round((loaded * 100) / total)
-            setProgress(percentCompleted)
-            if (percentCompleted === 100) {
-              setIsProcessing(true)
-            }
-          },
-        })
-        .then(() => {
-          toast.success(t('fileUpload.successMessage'))
-          void queryClient.invalidateQueries({
-            queryKey: ['data', 'filesystem', uploadPath],
-          })
-          setTimeout(() => setProgress(0), 500)
-        })
-        .catch((error) => {
-          toast.info(error)
-        })
+      await apiPutWithProgress(`ss/${uploadPath}/${filename}`, filedataBuffer, (progressEvent) => {
+        const loaded = progressEvent.loaded || 0
+        const total = progressEvent.total || 1
+        const percentCompleted = Math.round((loaded * 100) / total)
+        setProgress(percentCompleted)
+        if (percentCompleted === 100) {
+          setIsProcessing(true)
+        }
+      })
+
+      toast.success(t('fileUpload.successMessage'))
+      void queryClient.invalidateQueries({
+        queryKey: ['data', 'filesystem', uploadPath],
+      })
+      setTimeout(() => setProgress(0), 500)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Upload failed')
     } finally {
       setTimeout(() => {
         setIsUploading(false)

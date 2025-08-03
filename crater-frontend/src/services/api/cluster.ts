@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import instance, { VERSION } from '@/services/axios'
-import { IResponse } from '@/services/types'
-import { V1ResourceList } from '@/utils/resource'
 import { V1OwnerReference } from '@kubernetes/client-node'
+
+import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
+import { IResponse } from '@/services/types'
+
+import { V1ResourceList } from '@/utils/resource'
 
 export enum NodeRole {
   ControlPlane = 'control-plane',
@@ -90,23 +91,23 @@ export interface IClusterNodeTaint {
   name: string
   taint: string
 }
-export const apiGetNodes = () => instance.get<IResponse<INodeBriefInfo[]>>(VERSION + '/nodes')
+export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('/nodes')
 
 export const apiGetNodeDetail = (name: string) =>
-  instance.get<IResponse<IClusterNodeDetail>>(VERSION + `/nodes/${name}`)
+  apiV1Get<IResponse<IClusterNodeDetail>>(`/nodes/${name}`)
 
 export const apiGetNodePods = (name: string) =>
-  instance.get<IResponse<IClusterPodInfo[]>>(VERSION + `/nodes/${name}/pods`)
+  apiV1Get<IResponse<IClusterPodInfo[]>>(`/nodes/${name}/pods`)
 
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>
-  instance.get<IResponse<IClusterNodeGPU>>(VERSION + `/nodes/${name}/gpu`)
+  apiV1Get<IResponse<IClusterNodeGPU>>(`/nodes/${name}/gpu`)
 // 改变节点的可调度状态
 export const apichangeNodeScheduling = (name: string) =>
-  instance.put<IResponse<string>>(VERSION + `/nodes/${name}`)
+  apiV1Put<IResponse<string>>(`/nodes/${name}`)
 export const apiAddNodeTaint = (nodetaint: IClusterNodeTaint) =>
-  instance.post<IResponse<string>>(VERSION + `/nodes/${nodetaint.name}/taint`, nodetaint)
+  apiV1Post<IResponse<string>>(`/nodes/${nodetaint.name}/taint`, nodetaint)
 export const apiDeleteNodeTaint = (nodetaint: IClusterNodeTaint) =>
-  instance.delete<IResponse<string>>(VERSION + `/nodes/${nodetaint.name}/taint`, {
+  apiV1Delete<IResponse<string>>(`/nodes/${nodetaint.name}/taint`, {
     data: nodetaint,
   })

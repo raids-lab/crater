@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Get } from '@/services/client'
 
 import { V1ResourceList } from '@/utils/resource'
-import instance, { VERSION } from '../axios'
-import { IResponse } from '../types'
 import { showErrorToast } from '@/utils/toast'
+
+import { IResponse } from '../types'
 
 export interface IAiTask {
   id: number
@@ -118,8 +119,8 @@ export const convertAiTask = (task: IAiTask): AiTask => {
 }
 
 export const apiAiTaskGet = (taskID: number) =>
-  instance.get<IResponse<IAiTask>>(VERSION + '/aitask/get', {
-    params: {
+  apiV1Get<IResponse<IAiTask>>('/aitask/get', {
+    searchParams: {
       taskID,
     },
   })

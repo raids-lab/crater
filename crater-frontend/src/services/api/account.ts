@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
-import instance, { VERSION } from '../axios'
 import { IResponse } from '../types'
 import { IUserAttributes } from './admin/user'
 import { Role } from './auth'
@@ -60,20 +60,19 @@ export interface IAccount {
   expiredAt?: string
 }
 
-export const apiAdminAccountList = () =>
-  instance.get<IResponse<IAccount[]>>(`${VERSION}/admin/accounts`)
+export const apiAdminAccountList = () => apiV1Get<IResponse<IAccount[]>>(`/admin/accounts`)
 
 export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
-  instance.post<IResponse<ICreateProjectResponse>>(VERSION + '/admin/accounts', account)
+  apiV1Post<IResponse<ICreateProjectResponse>>('/admin/accounts', account)
 
 export const apiAccountUpdate = (id: number, account: ICreateOrUpdateAccount) =>
-  instance.put<IResponse<ICreateProjectResponse>>(`${VERSION}/admin/accounts/${id}`, account)
+  apiV1Put<IResponse<ICreateProjectResponse>>(`/admin/accounts/${id}`, account)
 
 export interface IDeleteProjectResp {
   name: string
 }
 export const apiProjectDelete = (id: number) =>
-  instance.delete<IResponse<IDeleteProjectResp>>(`${VERSION}/admin/accounts/${id}`)
+  apiV1Delete<IResponse<IDeleteProjectResp>>(`/admin/accounts/${id}`)
 
 export interface IUserInAccountCreate {
   id: number
@@ -95,33 +94,33 @@ export enum Access {
 }
 
 export const apiAddUser = async (pid: number, user: IUserInAccountCreate) =>
-  instance.post<IResponse<IUserInAccount>>(VERSION + '/admin/accounts/add/' + pid + '/' + user.id, {
+  apiV1Post<IResponse<IUserInAccount>>('/admin/accounts/add/' + pid + '/' + user.id, {
     role: user.role,
     accessmode: user.accessmode,
   })
 
 export const apiUpdateUser = async (pid: number, user: IUserInAccountCreate) =>
-  instance.post<IResponse<IUserInAccount>>(
-    VERSION + '/admin/accounts/update/' + pid + '/' + user.id,
-    { role: user.role, accessmode: user.accessmode }
-  )
+  apiV1Post<IResponse<IUserInAccount>>('/admin/accounts/update/' + pid + '/' + user.id, {
+    role: user.role,
+    accessmode: user.accessmode,
+  })
 
 export const apiRemoveUser = async (pid: number, user: IUserInAccountCreate) =>
-  instance.delete<IResponse<IUserInAccount>>(VERSION + '/admin/accounts/' + pid + '/' + user.id)
+  apiV1Delete<IResponse<IUserInAccount>>('/admin/accounts/' + pid + '/' + user.id)
 
 export const apiUserInProjectList = (pid: number) =>
-  instance.get<IResponse<IUserInAccount[]>>(VERSION + '/admin/accounts/userIn/' + pid)
+  apiV1Get<IResponse<IUserInAccount[]>>('/admin/accounts/userIn/' + pid)
 
 export const apiUserOutOfProjectList = (pid: number) =>
-  instance.get<IResponse<IUserInAccount[]>>(VERSION + '/admin/accounts/userOutOf/' + pid)
+  apiV1Get<IResponse<IUserInAccount[]>>('/admin/accounts/userOutOf/' + pid)
 
 export const apiAccountQuotaGet = (pid: number) => {
-  return instance.get<IResponse<QuotaResp>>(`${VERSION}/admin/accounts/${pid}/quota`)
+  return apiV1Get<IResponse<QuotaResp>>(`/admin/accounts/${pid}/quota`)
 }
 
 export const apiAccountGet = (pid: number) => {
-  return instance.get<IResponse<IAccount>>(`${VERSION}/admin/accounts/${pid}`)
+  return apiV1Get<IResponse<IAccount>>(`/admin/accounts/${pid}`)
 }
 export const apiAccountGetByName = (name: string) => {
-  return instance.get<IResponse<IAccount>>(VERSION + `/accounts/${name}`)
+  return apiV1Get<IResponse<IAccount>>(`/accounts/${name}`)
 }

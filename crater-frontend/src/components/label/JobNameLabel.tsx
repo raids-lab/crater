@@ -13,13 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import { Link, linkOptions } from '@tanstack/react-router'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { LockIcon } from 'lucide-react'
-import TooltipLink from '@/components/label/TooltipLink'
-import { getJobStateType, IJobInfo, JobStatus } from '@/services/api/vcjob'
+
+import { IJobInfo, JobStatus, getJobStateType } from '@/services/api/vcjob'
+
+import useIsAdmin from '@/hooks/use-admin'
+
 import TipBadge from '../badge/TipBadge'
+import SimpleTooltip from './simple-tooltip'
 
 interface JobNameCellProps {
   jobInfo: IJobInfo
@@ -31,37 +35,49 @@ const formatLockDate = (timestamp?: string) => {
   return format(date, 'M月d日 HH:mm', { locale: zhCN })
 }
 
+const adminJobLinkOptions = linkOptions({
+  to: '/admin/jobs/$name',
+  params: { name: '' },
+  search: { tab: '' },
+})
+
+const portalJobLinkOptions = linkOptions({
+  to: '/portal/jobs/detail/$name',
+  params: { name: '' },
+  search: { tab: '' },
+})
+
 export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
+  const isAdminView = useIsAdmin()
+
   return (
-    <div className="relative flex items-center">
-      <TooltipLink
-        name={
-          <div className="flex flex-row items-center">
-            <p className="max-w-36 truncate">{jobInfo.name}</p>
-            {jobInfo.locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
-          </div>
-        }
-        to={
-          getJobStateType(jobInfo.status) === JobStatus.NotStarted
-            ? `${jobInfo.jobName}?tab=event`
-            : jobInfo.jobName
-        }
-        tooltip={
-          <div className="flex flex-row items-center justify-between gap-1.5">
-            <p className="text-xs">查看 {jobInfo.jobName} 详情</p>
-            {jobInfo.locked && (
-              <TipBadge
-                title={
-                  jobInfo.permanentLocked
-                    ? '长期锁定中'
-                    : `锁定至 ${formatLockDate(jobInfo.lockedTimestamp)}`
-                }
-                className="text-primary bg-primary-foreground z-10"
-              />
-            )}
-          </div>
-        }
-      />
-    </div>
+    <SimpleTooltip
+      tooltip={
+        <div className="flex flex-row items-center justify-between gap-1.5">
+          <p className="text-xs">查看 {jobInfo.jobName} 详情</p>
+          {jobInfo.locked && (
+            <TipBadge
+              title={
+                jobInfo.permanentLocked
+                  ? '长期锁定中'
+                  : `锁定至 ${formatLockDate(jobInfo.lockedTimestamp)}`
+              }
+              className="text-primary bg-primary-foreground z-10"
+            />
+          )}
+        </div>
+      }
+    >
+      <Link
+        {...(isAdminView ? adminJobLinkOptions : portalJobLinkOptions)}
+        params={{ name: jobInfo.jobName }}
+        search={{ tab: getJobStateType(jobInfo.status) === JobStatus.NotStarted ? 'event' : '' }}
+      >
+        <div className="flex flex-row items-center">
+          <p className="max-w-36 truncate">{jobInfo.name}</p>
+          {jobInfo.locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
+        </div>
+      </Link>
+    </SimpleTooltip>
   )
 }

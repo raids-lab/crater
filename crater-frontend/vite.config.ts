@@ -13,20 +13,75 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react-swc'
+import fs from 'fs'
+import path from 'path'
+import { defineConfig, loadEnv } from 'vite'
+import { Plugin } from 'vite'
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [
+      tanstackRouter({
+        target: 'react',
+        autoCodeSplitting: true,
+      }),
+      react(),
+      tailwindcss(),
+      cleanMSW(),
+    ],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-  build: {
-    target: 'esnext',
-  },
+    build: {
+      target: 'esnext',
+    },
+    server: {
+      proxy: {
+        '/api/ss': {
+          target: 'http://localhost:7320/',
+          changeOrigin: true,
+        },
+        '/api': {
+          target: env.VITE_SERVER_PROXY_DOMAIN,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\//, env.VITE_SERVER_PROXY_PREFIX),
+        },
+      },
+    },
+  }
 })
+
+// This plugin cleans up the MSW mock service worker file after the build
+// to prevent it from being served in production.
+function cleanMSW(): Plugin {
+  const PLUGIN_NAME = 'clean-msw'
+  const MSW_FILENAME = 'mockServiceWorker.js'
+  return {
+    name: PLUGIN_NAME,
+    writeBundle(outputOptions) {
+      const outDir = outputOptions.dir
+
+      if (outDir === undefined) return
+
+      const mswDir = path.resolve(outDir, MSW_FILENAME)
+
+      fs.unlink(mswDir, (err) => {
+        if (err) {
+          console.log(
+            `\n[${PLUGIN_NAME}]: MSW public file, at '${mswDir}' could not be deleted`,
+            err
+          )
+          return
+        }
+        console.log(`\n[${PLUGIN_NAME}]: MSW public file, at '${mswDir}' was deleted successfully`)
+      })
+    },
+  }
+}
