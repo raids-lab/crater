@@ -2,16 +2,20 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import BaseCore from '@/components/job/detail'
 import { detailValidateSearch } from '@/components/layout/detail-page'
+import NotFound from '@/components/placeholder/not-found'
+
+import { queryJobDetail } from '@/services/query/job'
 
 export const Route = createFileRoute('/portal/jobs/detail/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
-  loader: ({ params }) => {
-    const { name } = params
+  loader: async ({ params, context: { queryClient } }) => {
+    const { data } = await queryClient.ensureQueryData(queryJobDetail(params.name))
     return {
-      crumb: name,
+      crumb: data.name ?? params.name,
     }
   },
+  errorComponent: () => <NotFound />,
 })
 
 function RouteComponent() {

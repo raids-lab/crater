@@ -17,6 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useNavigate } from '@tanstack/react-router'
+import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { HammerIcon, LayoutGridIcon, PickaxeIcon } from 'lucide-react'
 import { CirclePlus, CirclePlusIcon, XIcon } from 'lucide-react'
@@ -73,6 +74,11 @@ import { atomUserInfo } from '@/utils/store'
 export const Route = createFileRoute('/portal/jobs/new/tensorflow-ps-job')({
   validateSearch: publishValidateSearch,
   component: RouteComponent,
+  loader: () => {
+    return {
+      crumb: t('jobs.new.tensorflowPSJob'),
+    }
+  },
 })
 
 const markdown = `# Env User Guidance

@@ -16,6 +16,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { LayoutGridIcon } from 'lucide-react'
 import { CirclePlus } from 'lucide-react'
@@ -71,6 +72,11 @@ import { atomUserInfo } from '@/utils/store'
 export const Route = createFileRoute('/portal/jobs/new/emias-jupyter-job')({
   validateSearch: publishValidateSearch,
   component: RouteComponent,
+  loader: () => {
+    return {
+      crumb: t('jobs.new.emiasJupyterJob'),
+    }
+  },
 })
 
 const JupyterMarkdown = `Jupyter 为用户提供交互式的 Web 实验环境，可用于代码调试等场景。

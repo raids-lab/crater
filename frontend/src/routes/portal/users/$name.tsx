@@ -1,15 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DetailPageSearch } from '@/components/layout/detail-page'
+import { detailValidateSearch } from '@/components/layout/detail-page'
 import UserDetail from '@/components/layout/user-detail'
 
 export const Route = createFileRoute('/portal/users/$name')({
-  validateSearch: (search): DetailPageSearch => {
+  validateSearch: detailValidateSearch,
+  component: RouteComponent,
+  loader: ({ params }) => {
+    const { name } = params
     return {
-      tab: (search.tab as string) || '',
+      crumb: name,
     }
   },
-  component: RouteComponent,
 })
 
 function RouteComponent() {

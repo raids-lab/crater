@@ -130,7 +130,7 @@ export const craterPath: PathInfo = {
         },
         {
           path: 'sharefile',
-          titleKey: 'navigation.sharedFiles',
+          titleKey: 'navigation.blocks',
         },
       ],
     },

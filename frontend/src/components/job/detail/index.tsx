@@ -83,11 +83,11 @@ import {
 
 import useFixedLayout from '@/hooks/useFixedLayout'
 
-import { getNewJobUrl } from '@/utils/job'
 import { hasNvidiaGPU } from '@/utils/resource'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 import { getDaysDifference } from '@/utils/time'
 
+import { getNewJobLink } from '../new-job-button'
 import { PodTable } from './PodTable'
 import { SSHPortDialog } from './SSHPortDialog'
 
@@ -334,8 +334,11 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                         className="size-8"
                         tooltipContent="克隆作业"
                         onClick={() => {
-                          const url = `${getNewJobUrl(data.jobType)}?fromJob=${jobName}`
-                          navigate({ to: url })
+                          const option = getNewJobLink(data.jobType)
+                          navigate({
+                            ...option,
+                            search: { fromJob: data.jobName, fromTemplate: 0 },
+                          })
                         }}
                       >
                         <RedoDotIcon />

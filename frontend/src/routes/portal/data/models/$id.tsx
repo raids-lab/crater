@@ -17,6 +17,7 @@ import { createFileRoute } from '@tanstack/react-router'
  */
 import { SharedResourceTable } from '@/components/file/data-detail'
 import { detailValidateSearch } from '@/components/layout/detail-page'
+import NotFound from '@/components/placeholder/not-found'
 
 import {
   apiCancelShareWithQueue,
@@ -25,10 +26,22 @@ import {
   apiShareDatasetwithQueue,
   apiShareDatasetwithUser,
 } from '@/services/api/dataset'
+import { queryDataByID } from '@/services/query/data'
 
 export const Route = createFileRoute('/portal/data/models/$id')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
+  errorComponent: () => <NotFound />,
+  loader: async ({ params, context: { queryClient } }) => {
+    const { id } = params
+    const datasetId = Number(id) || 0
+    const { data } = await queryClient.ensureQueryData(queryDataByID(datasetId))
+    const dataset = data.length > 0 ? data[0] : undefined
+    return {
+      crumb: dataset?.name || id,
+      data: dataset,
+    }
+  },
 })
 
 function RouteComponent() {
@@ -37,7 +50,10 @@ function RouteComponent() {
   return (
     <SharedResourceTable
       resourceType="model"
-      id={Route.useParams().id}
+      // 即使不通过 Route 传递，也可以借助 react query 的机制避免重复查询
+      // 这里这样写，是因为返回数组实在是太奇怪了，以后的同学重构一下吧
+      // 此外，这个数据本身不会发生变化，所以可以直接使用
+      data={Route.useLoaderData().data}
       apiShareDatasetwithQueue={apiShareDatasetwithQueue}
       apiShareDatasetwithUser={apiShareDatasetwithUser}
       apiCancelDatasetSharewithQueue={apiCancelShareWithQueue}

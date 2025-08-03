@@ -15,10 +15,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as PortalUsersRouteRouteImport } from './routes/portal/users/route'
 import { Route as PortalTemplatesRouteRouteImport } from './routes/portal/templates/route'
+import { Route as PortalSettingsRouteRouteImport } from './routes/portal/settings/route'
 import { Route as PortalOverviewRouteRouteImport } from './routes/portal/overview/route'
 import { Route as PortalMonitorRouteRouteImport } from './routes/portal/monitor/route'
+import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
+import { Route as PortalUsersIndexRouteImport } from './routes/portal/users/index'
 import { Route as PortalTemplatesIndexRouteImport } from './routes/portal/templates/index'
+import { Route as PortalSettingsIndexRouteImport } from './routes/portal/settings/index'
 import { Route as PortalOverviewIndexRouteImport } from './routes/portal/overview/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
@@ -44,6 +49,10 @@ import { Route as AdminDataIdRouteImport } from './routes/admin/data/$id'
 import { Route as AdminAccountsIdRouteImport } from './routes/admin/accounts/$id'
 import { Route as PortalJobsNewRouteRouteImport } from './routes/portal/jobs/new/route'
 import { Route as PortalJobsDetailRouteRouteImport } from './routes/portal/jobs/detail/route'
+import { Route as PortalEnvRegistryRouteRouteImport } from './routes/portal/env/registry/route'
+import { Route as PortalDataModelsRouteRouteImport } from './routes/portal/data/models/route'
+import { Route as PortalDataDatasetsRouteRouteImport } from './routes/portal/data/datasets/route'
+import { Route as PortalDataBlocksRouteRouteImport } from './routes/portal/data/blocks/route'
 import { Route as PortalJobsNewIndexRouteImport } from './routes/portal/jobs/new/index'
 import { Route as PortalJobsInterIndexRouteImport } from './routes/portal/jobs/inter/index'
 import { Route as PortalJobsDetailIndexRouteImport } from './routes/portal/jobs/detail/index'
@@ -102,9 +111,19 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const PortalUsersRouteRoute = PortalUsersRouteRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
 const PortalTemplatesRouteRoute = PortalTemplatesRouteRouteImport.update({
   id: '/templates',
   path: '/templates',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalSettingsRouteRoute = PortalSettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => PortalRouteRoute,
 } as any)
 const PortalOverviewRouteRoute = PortalOverviewRouteRouteImport.update({
@@ -117,10 +136,25 @@ const PortalMonitorRouteRoute = PortalMonitorRouteRouteImport.update({
   path: '/monitor',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const AdminUsersRouteRoute = AdminUsersRouteRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const PortalUsersIndexRoute = PortalUsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalUsersRouteRoute,
+} as any)
 const PortalTemplatesIndexRoute = PortalTemplatesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PortalTemplatesRouteRoute,
+} as any)
+const PortalSettingsIndexRoute = PortalSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalSettingsRouteRoute,
 } as any)
 const PortalOverviewIndexRoute = PortalOverviewIndexRouteImport.update({
   id: '/',
@@ -128,9 +162,9 @@ const PortalOverviewIndexRoute = PortalOverviewIndexRouteImport.update({
   getParentRoute: () => PortalOverviewRouteRoute,
 } as any)
 const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
-  id: '/users/',
-  path: '/users/',
-  getParentRoute: () => AdminRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminUsersRouteRoute,
 } as any)
 const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
   id: '/settings/',
@@ -158,14 +192,14 @@ const AdminAccountsIndexRoute = AdminAccountsIndexRouteImport.update({
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const PortalUsersNameRoute = PortalUsersNameRouteImport.update({
-  id: '/users/$name',
-  path: '/users/$name',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => PortalUsersRouteRoute,
 } as any)
 const PortalSettingsUserRoute = PortalSettingsUserRouteImport.update({
-  id: '/settings/user',
-  path: '/settings/user',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/user',
+  path: '/user',
+  getParentRoute: () => PortalSettingsRouteRoute,
 } as any)
 const PortalOverviewNodeRoute = PortalOverviewNodeRouteImport.update({
   id: '/$node',
@@ -198,9 +232,9 @@ const IngressJupyterNameRoute = IngressJupyterNameRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersNameRoute = AdminUsersNameRouteImport.update({
-  id: '/users/$name',
-  path: '/users/$name',
-  getParentRoute: () => AdminRouteRoute,
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => AdminUsersRouteRoute,
 } as any)
 const AdminMonitorNetworkRoute = AdminMonitorNetworkRouteImport.update({
   id: '/monitor/network',
@@ -247,6 +281,26 @@ const PortalJobsDetailRouteRoute = PortalJobsDetailRouteRouteImport.update({
   path: '/jobs/detail',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const PortalEnvRegistryRouteRoute = PortalEnvRegistryRouteRouteImport.update({
+  id: '/env/registry',
+  path: '/env/registry',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalDataModelsRouteRoute = PortalDataModelsRouteRouteImport.update({
+  id: '/data/models',
+  path: '/data/models',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalDataDatasetsRouteRoute = PortalDataDatasetsRouteRouteImport.update({
+  id: '/data/datasets',
+  path: '/data/datasets',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalDataBlocksRouteRoute = PortalDataBlocksRouteRouteImport.update({
+  id: '/data/blocks',
+  path: '/data/blocks',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
 const PortalJobsNewIndexRoute = PortalJobsNewIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -268,9 +322,9 @@ const PortalJobsCustomIndexRoute = PortalJobsCustomIndexRouteImport.update({
   getParentRoute: () => PortalRouteRoute,
 } as any)
 const PortalEnvRegistryIndexRoute = PortalEnvRegistryIndexRouteImport.update({
-  id: '/env/registry/',
-  path: '/env/registry/',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalEnvRegistryRouteRoute,
 } as any)
 const PortalEnvImagesIndexRoute = PortalEnvImagesIndexRouteImport.update({
   id: '/env/images/',
@@ -278,19 +332,19 @@ const PortalEnvImagesIndexRoute = PortalEnvImagesIndexRouteImport.update({
   getParentRoute: () => PortalRouteRoute,
 } as any)
 const PortalDataModelsIndexRoute = PortalDataModelsIndexRouteImport.update({
-  id: '/data/models/',
-  path: '/data/models/',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalDataModelsRouteRoute,
 } as any)
 const PortalDataDatasetsIndexRoute = PortalDataDatasetsIndexRouteImport.update({
-  id: '/data/datasets/',
-  path: '/data/datasets/',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalDataDatasetsRouteRoute,
 } as any)
 const PortalDataBlocksIndexRoute = PortalDataBlocksIndexRouteImport.update({
-  id: '/data/blocks/',
-  path: '/data/blocks/',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalDataBlocksRouteRoute,
 } as any)
 const AdminEnvRegistryIndexRoute = AdminEnvRegistryIndexRouteImport.update({
   id: '/env/registry/',
@@ -357,24 +411,24 @@ const PortalJobsDetailNameRoute = PortalJobsDetailNameRouteImport.update({
   getParentRoute: () => PortalJobsDetailRouteRoute,
 } as any)
 const PortalEnvRegistryNameRoute = PortalEnvRegistryNameRouteImport.update({
-  id: '/env/registry/$name',
-  path: '/env/registry/$name',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/$name',
+  path: '/$name',
+  getParentRoute: () => PortalEnvRegistryRouteRoute,
 } as any)
 const PortalDataModelsIdRoute = PortalDataModelsIdRouteImport.update({
-  id: '/data/models/$id',
-  path: '/data/models/$id',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalDataModelsRouteRoute,
 } as any)
 const PortalDataDatasetsIdRoute = PortalDataDatasetsIdRouteImport.update({
-  id: '/data/datasets/$id',
-  path: '/data/datasets/$id',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalDataDatasetsRouteRoute,
 } as any)
 const PortalDataBlocksIdRoute = PortalDataBlocksIdRouteImport.update({
-  id: '/data/blocks/$id',
-  path: '/data/blocks/$id',
-  getParentRoute: () => PortalRouteRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => PortalDataBlocksRouteRoute,
 } as any)
 const AdminEnvRegistryNameRoute = AdminEnvRegistryNameRouteImport.update({
   id: '/env/registry/$name',
@@ -391,12 +445,19 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
+  '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/monitor': typeof PortalMonitorRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
+  '/portal/settings': typeof PortalSettingsRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
+  '/portal/users': typeof PortalUsersRouteRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/auth': typeof AuthIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/portal/data/blocks': typeof PortalDataBlocksRouteRouteWithChildren
+  '/portal/data/datasets': typeof PortalDataDatasetsRouteRouteWithChildren
+  '/portal/data/models': typeof PortalDataModelsRouteRouteWithChildren
+  '/portal/env/registry': typeof PortalEnvRegistryRouteRouteWithChildren
   '/portal/jobs/detail': typeof PortalJobsDetailRouteRouteWithChildren
   '/portal/jobs/new': typeof PortalJobsNewRouteRouteWithChildren
   '/admin/accounts/$id': typeof AdminAccountsIdRoute
@@ -420,9 +481,11 @@ export interface FileRoutesByFullPath {
   '/admin/data': typeof AdminDataIndexRoute
   '/admin/jobs': typeof AdminJobsIndexRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
-  '/admin/users': typeof AdminUsersIndexRoute
+  '/admin/users/': typeof AdminUsersIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
+  '/portal/settings/': typeof PortalSettingsIndexRoute
   '/portal/templates/': typeof PortalTemplatesIndexRoute
+  '/portal/users/': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
@@ -441,11 +504,11 @@ export interface FileRoutesByFullPath {
   '/admin/cluster/resources': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry': typeof AdminEnvRegistryIndexRoute
-  '/portal/data/blocks': typeof PortalDataBlocksIndexRoute
-  '/portal/data/datasets': typeof PortalDataDatasetsIndexRoute
-  '/portal/data/models': typeof PortalDataModelsIndexRoute
+  '/portal/data/blocks/': typeof PortalDataBlocksIndexRoute
+  '/portal/data/datasets/': typeof PortalDataDatasetsIndexRoute
+  '/portal/data/models/': typeof PortalDataModelsIndexRoute
   '/portal/env/images': typeof PortalEnvImagesIndexRoute
-  '/portal/env/registry': typeof PortalEnvRegistryIndexRoute
+  '/portal/env/registry/': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/detail/': typeof PortalJobsDetailIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
@@ -480,7 +543,9 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
   '/portal/overview': typeof PortalOverviewIndexRoute
+  '/portal/settings': typeof PortalSettingsIndexRoute
   '/portal/templates': typeof PortalTemplatesIndexRoute
+  '/portal/users': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
@@ -514,12 +579,19 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
+  '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/monitor': typeof PortalMonitorRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
+  '/portal/settings': typeof PortalSettingsRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
+  '/portal/users': typeof PortalUsersRouteRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/auth/': typeof AuthIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/portal/data/blocks': typeof PortalDataBlocksRouteRouteWithChildren
+  '/portal/data/datasets': typeof PortalDataDatasetsRouteRouteWithChildren
+  '/portal/data/models': typeof PortalDataModelsRouteRouteWithChildren
+  '/portal/env/registry': typeof PortalEnvRegistryRouteRouteWithChildren
   '/portal/jobs/detail': typeof PortalJobsDetailRouteRouteWithChildren
   '/portal/jobs/new': typeof PortalJobsNewRouteRouteWithChildren
   '/admin/accounts/$id': typeof AdminAccountsIdRoute
@@ -545,7 +617,9 @@ export interface FileRoutesById {
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
+  '/portal/settings/': typeof PortalSettingsIndexRoute
   '/portal/templates/': typeof PortalTemplatesIndexRoute
+  '/portal/users/': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
@@ -580,12 +654,19 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/portal'
+    | '/admin/users'
     | '/portal/monitor'
     | '/portal/overview'
+    | '/portal/settings'
     | '/portal/templates'
+    | '/portal/users'
     | '/admin/'
     | '/auth'
     | '/portal/'
+    | '/portal/data/blocks'
+    | '/portal/data/datasets'
+    | '/portal/data/models'
+    | '/portal/env/registry'
     | '/portal/jobs/detail'
     | '/portal/jobs/new'
     | '/admin/accounts/$id'
@@ -609,9 +690,11 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/jobs'
     | '/admin/settings'
-    | '/admin/users'
+    | '/admin/users/'
     | '/portal/overview/'
+    | '/portal/settings/'
     | '/portal/templates/'
+    | '/portal/users/'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
     | '/portal/data/blocks/$id'
@@ -630,11 +713,11 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources'
     | '/admin/env/images'
     | '/admin/env/registry'
-    | '/portal/data/blocks'
-    | '/portal/data/datasets'
-    | '/portal/data/models'
+    | '/portal/data/blocks/'
+    | '/portal/data/datasets/'
+    | '/portal/data/models/'
     | '/portal/env/images'
-    | '/portal/env/registry'
+    | '/portal/env/registry/'
     | '/portal/jobs/custom'
     | '/portal/jobs/detail/'
     | '/portal/jobs/inter'
@@ -669,7 +752,9 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/portal/overview'
+    | '/portal/settings'
     | '/portal/templates'
+    | '/portal/users'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
     | '/portal/data/blocks/$id'
@@ -702,12 +787,19 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/portal'
+    | '/admin/users'
     | '/portal/monitor'
     | '/portal/overview'
+    | '/portal/settings'
     | '/portal/templates'
+    | '/portal/users'
     | '/admin/'
     | '/auth/'
     | '/portal/'
+    | '/portal/data/blocks'
+    | '/portal/data/datasets'
+    | '/portal/data/models'
+    | '/portal/env/registry'
     | '/portal/jobs/detail'
     | '/portal/jobs/new'
     | '/admin/accounts/$id'
@@ -733,7 +825,9 @@ export interface FileRouteTypes {
     | '/admin/settings/'
     | '/admin/users/'
     | '/portal/overview/'
+    | '/portal/settings/'
     | '/portal/templates/'
+    | '/portal/users/'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
     | '/portal/data/blocks/$id'
@@ -815,11 +909,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/portal/users': {
+      id: '/portal/users'
+      path: '/users'
+      fullPath: '/portal/users'
+      preLoaderRoute: typeof PortalUsersRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/templates': {
       id: '/portal/templates'
       path: '/templates'
       fullPath: '/portal/templates'
       preLoaderRoute: typeof PortalTemplatesRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/settings': {
+      id: '/portal/settings'
+      path: '/settings'
+      fullPath: '/portal/settings'
+      preLoaderRoute: typeof PortalSettingsRouteRouteImport
       parentRoute: typeof PortalRouteRoute
     }
     '/portal/overview': {
@@ -836,12 +944,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalMonitorRouteRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/portal/users/': {
+      id: '/portal/users/'
+      path: '/'
+      fullPath: '/portal/users/'
+      preLoaderRoute: typeof PortalUsersIndexRouteImport
+      parentRoute: typeof PortalUsersRouteRoute
+    }
     '/portal/templates/': {
       id: '/portal/templates/'
       path: '/'
       fullPath: '/portal/templates/'
       preLoaderRoute: typeof PortalTemplatesIndexRouteImport
       parentRoute: typeof PortalTemplatesRouteRoute
+    }
+    '/portal/settings/': {
+      id: '/portal/settings/'
+      path: '/'
+      fullPath: '/portal/settings/'
+      preLoaderRoute: typeof PortalSettingsIndexRouteImport
+      parentRoute: typeof PortalSettingsRouteRoute
     }
     '/portal/overview/': {
       id: '/portal/overview/'
@@ -852,10 +981,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/users/': {
       id: '/admin/users/'
-      path: '/users'
-      fullPath: '/admin/users'
+      path: '/'
+      fullPath: '/admin/users/'
       preLoaderRoute: typeof AdminUsersIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
+      parentRoute: typeof AdminUsersRouteRoute
     }
     '/admin/settings/': {
       id: '/admin/settings/'
@@ -894,17 +1023,17 @@ declare module '@tanstack/react-router' {
     }
     '/portal/users/$name': {
       id: '/portal/users/$name'
-      path: '/users/$name'
+      path: '/$name'
       fullPath: '/portal/users/$name'
       preLoaderRoute: typeof PortalUsersNameRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalUsersRouteRoute
     }
     '/portal/settings/user': {
       id: '/portal/settings/user'
-      path: '/settings/user'
+      path: '/user'
       fullPath: '/portal/settings/user'
       preLoaderRoute: typeof PortalSettingsUserRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalSettingsRouteRoute
     }
     '/portal/overview/$node': {
       id: '/portal/overview/$node'
@@ -950,10 +1079,10 @@ declare module '@tanstack/react-router' {
     }
     '/admin/users/$name': {
       id: '/admin/users/$name'
-      path: '/users/$name'
+      path: '/$name'
       fullPath: '/admin/users/$name'
       preLoaderRoute: typeof AdminUsersNameRouteImport
-      parentRoute: typeof AdminRouteRoute
+      parentRoute: typeof AdminUsersRouteRoute
     }
     '/admin/monitor/network': {
       id: '/admin/monitor/network'
@@ -1018,6 +1147,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalJobsDetailRouteRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/portal/env/registry': {
+      id: '/portal/env/registry'
+      path: '/env/registry'
+      fullPath: '/portal/env/registry'
+      preLoaderRoute: typeof PortalEnvRegistryRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/data/models': {
+      id: '/portal/data/models'
+      path: '/data/models'
+      fullPath: '/portal/data/models'
+      preLoaderRoute: typeof PortalDataModelsRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/data/datasets': {
+      id: '/portal/data/datasets'
+      path: '/data/datasets'
+      fullPath: '/portal/data/datasets'
+      preLoaderRoute: typeof PortalDataDatasetsRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/data/blocks': {
+      id: '/portal/data/blocks'
+      path: '/data/blocks'
+      fullPath: '/portal/data/blocks'
+      preLoaderRoute: typeof PortalDataBlocksRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/jobs/new/': {
       id: '/portal/jobs/new/'
       path: '/'
@@ -1048,10 +1205,10 @@ declare module '@tanstack/react-router' {
     }
     '/portal/env/registry/': {
       id: '/portal/env/registry/'
-      path: '/env/registry'
-      fullPath: '/portal/env/registry'
+      path: '/'
+      fullPath: '/portal/env/registry/'
       preLoaderRoute: typeof PortalEnvRegistryIndexRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalEnvRegistryRouteRoute
     }
     '/portal/env/images/': {
       id: '/portal/env/images/'
@@ -1062,24 +1219,24 @@ declare module '@tanstack/react-router' {
     }
     '/portal/data/models/': {
       id: '/portal/data/models/'
-      path: '/data/models'
-      fullPath: '/portal/data/models'
+      path: '/'
+      fullPath: '/portal/data/models/'
       preLoaderRoute: typeof PortalDataModelsIndexRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalDataModelsRouteRoute
     }
     '/portal/data/datasets/': {
       id: '/portal/data/datasets/'
-      path: '/data/datasets'
-      fullPath: '/portal/data/datasets'
+      path: '/'
+      fullPath: '/portal/data/datasets/'
       preLoaderRoute: typeof PortalDataDatasetsIndexRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalDataDatasetsRouteRoute
     }
     '/portal/data/blocks/': {
       id: '/portal/data/blocks/'
-      path: '/data/blocks'
-      fullPath: '/portal/data/blocks'
+      path: '/'
+      fullPath: '/portal/data/blocks/'
       preLoaderRoute: typeof PortalDataBlocksIndexRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalDataBlocksRouteRoute
     }
     '/admin/env/registry/': {
       id: '/admin/env/registry/'
@@ -1167,31 +1324,31 @@ declare module '@tanstack/react-router' {
     }
     '/portal/env/registry/$name': {
       id: '/portal/env/registry/$name'
-      path: '/env/registry/$name'
+      path: '/$name'
       fullPath: '/portal/env/registry/$name'
       preLoaderRoute: typeof PortalEnvRegistryNameRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalEnvRegistryRouteRoute
     }
     '/portal/data/models/$id': {
       id: '/portal/data/models/$id'
-      path: '/data/models/$id'
+      path: '/$id'
       fullPath: '/portal/data/models/$id'
       preLoaderRoute: typeof PortalDataModelsIdRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalDataModelsRouteRoute
     }
     '/portal/data/datasets/$id': {
       id: '/portal/data/datasets/$id'
-      path: '/data/datasets/$id'
+      path: '/$id'
       fullPath: '/portal/data/datasets/$id'
       preLoaderRoute: typeof PortalDataDatasetsIdRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalDataDatasetsRouteRoute
     }
     '/portal/data/blocks/$id': {
       id: '/portal/data/blocks/$id'
-      path: '/data/blocks/$id'
+      path: '/$id'
       fullPath: '/portal/data/blocks/$id'
       preLoaderRoute: typeof PortalDataBlocksIdRouteImport
-      parentRoute: typeof PortalRouteRoute
+      parentRoute: typeof PortalDataBlocksRouteRoute
     }
     '/admin/env/registry/$name': {
       id: '/admin/env/registry/$name'
@@ -1210,7 +1367,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminUsersRouteRouteChildren {
+  AdminUsersNameRoute: typeof AdminUsersNameRoute
+  AdminUsersIndexRoute: typeof AdminUsersIndexRoute
+}
+
+const AdminUsersRouteRouteChildren: AdminUsersRouteRouteChildren = {
+  AdminUsersNameRoute: AdminUsersNameRoute,
+  AdminUsersIndexRoute: AdminUsersIndexRoute,
+}
+
+const AdminUsersRouteRouteWithChildren = AdminUsersRouteRoute._addFileChildren(
+  AdminUsersRouteRouteChildren,
+)
+
 interface AdminRouteRouteChildren {
+  AdminUsersRouteRoute: typeof AdminUsersRouteRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAccountsIdRoute: typeof AdminAccountsIdRoute
   AdminDataIdRoute: typeof AdminDataIdRoute
@@ -1219,13 +1391,11 @@ interface AdminRouteRouteChildren {
   AdminMonitorGpuRoute: typeof AdminMonitorGpuRoute
   AdminMonitorIdleRoute: typeof AdminMonitorIdleRoute
   AdminMonitorNetworkRoute: typeof AdminMonitorNetworkRoute
-  AdminUsersNameRoute: typeof AdminUsersNameRoute
   AdminAccountsIndexRoute: typeof AdminAccountsIndexRoute
   AdminCronjobsIndexRoute: typeof AdminCronjobsIndexRoute
   AdminDataIndexRoute: typeof AdminDataIndexRoute
   AdminJobsIndexRoute: typeof AdminJobsIndexRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
-  AdminUsersIndexRoute: typeof AdminUsersIndexRoute
   AdminClusterNodesNodeRoute: typeof AdminClusterNodesNodeRoute
   AdminEnvRegistryNameRoute: typeof AdminEnvRegistryNameRoute
   AdminClusterNodesIndexRoute: typeof AdminClusterNodesIndexRoute
@@ -1235,6 +1405,7 @@ interface AdminRouteRouteChildren {
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminUsersRouteRoute: AdminUsersRouteRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminAccountsIdRoute: AdminAccountsIdRoute,
   AdminDataIdRoute: AdminDataIdRoute,
@@ -1243,13 +1414,11 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMonitorGpuRoute: AdminMonitorGpuRoute,
   AdminMonitorIdleRoute: AdminMonitorIdleRoute,
   AdminMonitorNetworkRoute: AdminMonitorNetworkRoute,
-  AdminUsersNameRoute: AdminUsersNameRoute,
   AdminAccountsIndexRoute: AdminAccountsIndexRoute,
   AdminCronjobsIndexRoute: AdminCronjobsIndexRoute,
   AdminDataIndexRoute: AdminDataIndexRoute,
   AdminJobsIndexRoute: AdminJobsIndexRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
-  AdminUsersIndexRoute: AdminUsersIndexRoute,
   AdminClusterNodesNodeRoute: AdminClusterNodesNodeRoute,
   AdminEnvRegistryNameRoute: AdminEnvRegistryNameRoute,
   AdminClusterNodesIndexRoute: AdminClusterNodesIndexRoute,
@@ -1290,6 +1459,19 @@ const PortalOverviewRouteRouteChildren: PortalOverviewRouteRouteChildren = {
 const PortalOverviewRouteRouteWithChildren =
   PortalOverviewRouteRoute._addFileChildren(PortalOverviewRouteRouteChildren)
 
+interface PortalSettingsRouteRouteChildren {
+  PortalSettingsUserRoute: typeof PortalSettingsUserRoute
+  PortalSettingsIndexRoute: typeof PortalSettingsIndexRoute
+}
+
+const PortalSettingsRouteRouteChildren: PortalSettingsRouteRouteChildren = {
+  PortalSettingsUserRoute: PortalSettingsUserRoute,
+  PortalSettingsIndexRoute: PortalSettingsIndexRoute,
+}
+
+const PortalSettingsRouteRouteWithChildren =
+  PortalSettingsRouteRoute._addFileChildren(PortalSettingsRouteRouteChildren)
+
 interface PortalTemplatesRouteRouteChildren {
   PortalTemplatesIndexRoute: typeof PortalTemplatesIndexRoute
 }
@@ -1300,6 +1482,81 @@ const PortalTemplatesRouteRouteChildren: PortalTemplatesRouteRouteChildren = {
 
 const PortalTemplatesRouteRouteWithChildren =
   PortalTemplatesRouteRoute._addFileChildren(PortalTemplatesRouteRouteChildren)
+
+interface PortalUsersRouteRouteChildren {
+  PortalUsersNameRoute: typeof PortalUsersNameRoute
+  PortalUsersIndexRoute: typeof PortalUsersIndexRoute
+}
+
+const PortalUsersRouteRouteChildren: PortalUsersRouteRouteChildren = {
+  PortalUsersNameRoute: PortalUsersNameRoute,
+  PortalUsersIndexRoute: PortalUsersIndexRoute,
+}
+
+const PortalUsersRouteRouteWithChildren =
+  PortalUsersRouteRoute._addFileChildren(PortalUsersRouteRouteChildren)
+
+interface PortalDataBlocksRouteRouteChildren {
+  PortalDataBlocksIdRoute: typeof PortalDataBlocksIdRoute
+  PortalDataBlocksIndexRoute: typeof PortalDataBlocksIndexRoute
+}
+
+const PortalDataBlocksRouteRouteChildren: PortalDataBlocksRouteRouteChildren = {
+  PortalDataBlocksIdRoute: PortalDataBlocksIdRoute,
+  PortalDataBlocksIndexRoute: PortalDataBlocksIndexRoute,
+}
+
+const PortalDataBlocksRouteRouteWithChildren =
+  PortalDataBlocksRouteRoute._addFileChildren(
+    PortalDataBlocksRouteRouteChildren,
+  )
+
+interface PortalDataDatasetsRouteRouteChildren {
+  PortalDataDatasetsIdRoute: typeof PortalDataDatasetsIdRoute
+  PortalDataDatasetsIndexRoute: typeof PortalDataDatasetsIndexRoute
+}
+
+const PortalDataDatasetsRouteRouteChildren: PortalDataDatasetsRouteRouteChildren =
+  {
+    PortalDataDatasetsIdRoute: PortalDataDatasetsIdRoute,
+    PortalDataDatasetsIndexRoute: PortalDataDatasetsIndexRoute,
+  }
+
+const PortalDataDatasetsRouteRouteWithChildren =
+  PortalDataDatasetsRouteRoute._addFileChildren(
+    PortalDataDatasetsRouteRouteChildren,
+  )
+
+interface PortalDataModelsRouteRouteChildren {
+  PortalDataModelsIdRoute: typeof PortalDataModelsIdRoute
+  PortalDataModelsIndexRoute: typeof PortalDataModelsIndexRoute
+}
+
+const PortalDataModelsRouteRouteChildren: PortalDataModelsRouteRouteChildren = {
+  PortalDataModelsIdRoute: PortalDataModelsIdRoute,
+  PortalDataModelsIndexRoute: PortalDataModelsIndexRoute,
+}
+
+const PortalDataModelsRouteRouteWithChildren =
+  PortalDataModelsRouteRoute._addFileChildren(
+    PortalDataModelsRouteRouteChildren,
+  )
+
+interface PortalEnvRegistryRouteRouteChildren {
+  PortalEnvRegistryNameRoute: typeof PortalEnvRegistryNameRoute
+  PortalEnvRegistryIndexRoute: typeof PortalEnvRegistryIndexRoute
+}
+
+const PortalEnvRegistryRouteRouteChildren: PortalEnvRegistryRouteRouteChildren =
+  {
+    PortalEnvRegistryNameRoute: PortalEnvRegistryNameRoute,
+    PortalEnvRegistryIndexRoute: PortalEnvRegistryIndexRoute,
+  }
+
+const PortalEnvRegistryRouteRouteWithChildren =
+  PortalEnvRegistryRouteRoute._addFileChildren(
+    PortalEnvRegistryRouteRouteChildren,
+  )
 
 interface PortalJobsDetailRouteRouteChildren {
   PortalJobsDetailNameRoute: typeof PortalJobsDetailNameRoute
@@ -1344,22 +1601,18 @@ const PortalJobsNewRouteRouteWithChildren =
 interface PortalRouteRouteChildren {
   PortalMonitorRouteRoute: typeof PortalMonitorRouteRouteWithChildren
   PortalOverviewRouteRoute: typeof PortalOverviewRouteRouteWithChildren
+  PortalSettingsRouteRoute: typeof PortalSettingsRouteRouteWithChildren
   PortalTemplatesRouteRoute: typeof PortalTemplatesRouteRouteWithChildren
+  PortalUsersRouteRoute: typeof PortalUsersRouteRouteWithChildren
   PortalIndexRoute: typeof PortalIndexRoute
+  PortalDataBlocksRouteRoute: typeof PortalDataBlocksRouteRouteWithChildren
+  PortalDataDatasetsRouteRoute: typeof PortalDataDatasetsRouteRouteWithChildren
+  PortalDataModelsRouteRoute: typeof PortalDataModelsRouteRouteWithChildren
+  PortalEnvRegistryRouteRoute: typeof PortalEnvRegistryRouteRouteWithChildren
   PortalJobsDetailRouteRoute: typeof PortalJobsDetailRouteRouteWithChildren
   PortalJobsNewRouteRoute: typeof PortalJobsNewRouteRouteWithChildren
   PortalFilesSplatRoute: typeof PortalFilesSplatRoute
-  PortalSettingsUserRoute: typeof PortalSettingsUserRoute
-  PortalUsersNameRoute: typeof PortalUsersNameRoute
-  PortalDataBlocksIdRoute: typeof PortalDataBlocksIdRoute
-  PortalDataDatasetsIdRoute: typeof PortalDataDatasetsIdRoute
-  PortalDataModelsIdRoute: typeof PortalDataModelsIdRoute
-  PortalEnvRegistryNameRoute: typeof PortalEnvRegistryNameRoute
-  PortalDataBlocksIndexRoute: typeof PortalDataBlocksIndexRoute
-  PortalDataDatasetsIndexRoute: typeof PortalDataDatasetsIndexRoute
-  PortalDataModelsIndexRoute: typeof PortalDataModelsIndexRoute
   PortalEnvImagesIndexRoute: typeof PortalEnvImagesIndexRoute
-  PortalEnvRegistryIndexRoute: typeof PortalEnvRegistryIndexRoute
   PortalJobsCustomIndexRoute: typeof PortalJobsCustomIndexRoute
   PortalJobsInterIndexRoute: typeof PortalJobsInterIndexRoute
 }
@@ -1367,22 +1620,18 @@ interface PortalRouteRouteChildren {
 const PortalRouteRouteChildren: PortalRouteRouteChildren = {
   PortalMonitorRouteRoute: PortalMonitorRouteRouteWithChildren,
   PortalOverviewRouteRoute: PortalOverviewRouteRouteWithChildren,
+  PortalSettingsRouteRoute: PortalSettingsRouteRouteWithChildren,
   PortalTemplatesRouteRoute: PortalTemplatesRouteRouteWithChildren,
+  PortalUsersRouteRoute: PortalUsersRouteRouteWithChildren,
   PortalIndexRoute: PortalIndexRoute,
+  PortalDataBlocksRouteRoute: PortalDataBlocksRouteRouteWithChildren,
+  PortalDataDatasetsRouteRoute: PortalDataDatasetsRouteRouteWithChildren,
+  PortalDataModelsRouteRoute: PortalDataModelsRouteRouteWithChildren,
+  PortalEnvRegistryRouteRoute: PortalEnvRegistryRouteRouteWithChildren,
   PortalJobsDetailRouteRoute: PortalJobsDetailRouteRouteWithChildren,
   PortalJobsNewRouteRoute: PortalJobsNewRouteRouteWithChildren,
   PortalFilesSplatRoute: PortalFilesSplatRoute,
-  PortalSettingsUserRoute: PortalSettingsUserRoute,
-  PortalUsersNameRoute: PortalUsersNameRoute,
-  PortalDataBlocksIdRoute: PortalDataBlocksIdRoute,
-  PortalDataDatasetsIdRoute: PortalDataDatasetsIdRoute,
-  PortalDataModelsIdRoute: PortalDataModelsIdRoute,
-  PortalEnvRegistryNameRoute: PortalEnvRegistryNameRoute,
-  PortalDataBlocksIndexRoute: PortalDataBlocksIndexRoute,
-  PortalDataDatasetsIndexRoute: PortalDataDatasetsIndexRoute,
-  PortalDataModelsIndexRoute: PortalDataModelsIndexRoute,
   PortalEnvImagesIndexRoute: PortalEnvImagesIndexRoute,
-  PortalEnvRegistryIndexRoute: PortalEnvRegistryIndexRoute,
   PortalJobsCustomIndexRoute: PortalJobsCustomIndexRoute,
   PortalJobsInterIndexRoute: PortalJobsInterIndexRoute,
 }

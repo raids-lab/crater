@@ -17,8 +17,16 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { ComboboxItem } from '@/components/form/Combobox'
 
-import { ImageInfoResponse } from '@/services/api/imagepack'
+import { ImageInfoResponse, apiUserGetKaniko } from '@/services/api/imagepack'
 import { JobType, apiJTaskImageList } from '@/services/api/vcjob'
+
+export const queryBuildDetail = (name: string) =>
+  queryOptions({
+    queryKey: ['imagepack', 'get', name],
+    queryFn: () => apiUserGetKaniko(`${name}`),
+    select: (res) => res.data,
+    enabled: !!name,
+  })
 
 export const queryBaseImages = (type?: JobType) => {
   return queryOptions({
