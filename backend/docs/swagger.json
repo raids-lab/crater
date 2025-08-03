@@ -7,6 +7,46 @@
         "version": "1.0.0"
     },
     "paths": {
+        "/auth/check": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "验证Authorization header中的Bearer token，返回用户信息和上下文",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "验证用户token并返回用户信息",
+                "responses": {
+                    "200": {
+                        "description": "token验证成功，返回用户信息和上下文",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp"
+                        }
+                    },
+                    "401": {
+                        "description": "token无效或已过期",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "校验用户身份，生成包含当前用户和项目的 JWT Token",
