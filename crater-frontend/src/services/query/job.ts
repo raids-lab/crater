@@ -1,6 +1,7 @@
+import { REFETCH_INTERVAL } from '@/config/task'
 import { queryOptions } from '@tanstack/react-query'
 
-import { apiJupyterTokenGet } from '@/services/api/vcjob'
+import { apiJobGetDetail, apiJupyterTokenGet } from '@/services/api/vcjob'
 
 export const queryJupyterToken = (name: string) =>
   queryOptions({
@@ -10,4 +11,12 @@ export const queryJupyterToken = (name: string) =>
     retryDelay: 2000,
     select: (res) => res.data,
     enabled: !!name,
+  })
+
+export const queryJobDetail = (jobName: string) =>
+  queryOptions({
+    queryKey: ['job', 'detail', jobName],
+    queryFn: () => apiJobGetDetail(jobName),
+    select: (res) => res.data,
+    refetchInterval: REFETCH_INTERVAL,
   })

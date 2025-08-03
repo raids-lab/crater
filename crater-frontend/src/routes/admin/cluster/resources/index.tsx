@@ -211,7 +211,7 @@ function Resources() {
         cell: ({ row }) => {
           return (
             <div>
-              <p className="font-mono font-semibold">{row.original.label}</p>
+              <p className="font-mono">{row.original.label}</p>
               <p className="text-muted-foreground font-mono text-xs font-normal">
                 {row.getValue<string>('name')}
               </p>
@@ -256,10 +256,21 @@ function Resources() {
         ),
         cell: ({ row }) => {
           const amount = row.getValue<number>('amount')
-          if (amount > 1024 * 1024) {
-            return <div className="font-mono">{formatBytes(amount)}</div>
+          if (amount == 0) {
+            return
           }
-          return <div className="font-mono">{row.getValue('amount')}</div>
+          if (amount > 1024 * 1024) {
+            return (
+              <Badge className="font-mono" variant="secondary">
+                {formatBytes(amount)}
+              </Badge>
+            )
+          }
+          return (
+            <Badge className="font-mono" variant="secondary">
+              {row.getValue('amount')}
+            </Badge>
+          )
         },
       },
       {
@@ -269,10 +280,21 @@ function Resources() {
         ),
         cell: ({ row }) => {
           const amount = row.getValue<number>('amountSingleMax')
-          if (amount > 1024 * 1024) {
-            return <div className="font-mono">{formatBytes(amount)}</div>
+          if (amount == 0) {
+            return
           }
-          return <div className="font-mono">{row.getValue('amountSingleMax')}</div>
+          if (amount > 1024 * 1024) {
+            return (
+              <Badge className="font-mono" variant="secondary">
+                {formatBytes(amount)}
+              </Badge>
+            )
+          }
+          return (
+            <Badge className="font-mono" variant="secondary">
+              {row.getValue('amountSingleMax')}
+            </Badge>
+          )
         },
       },
       {

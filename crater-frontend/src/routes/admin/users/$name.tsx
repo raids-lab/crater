@@ -6,6 +6,12 @@ import UserDetail from '@/components/layout/user-detail'
 export const Route = createFileRoute('/admin/users/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
+  loader: ({ params }) => {
+    const { name } = params
+    return {
+      crumb: name,
+    }
+  },
 })
 
 function RouteComponent() {

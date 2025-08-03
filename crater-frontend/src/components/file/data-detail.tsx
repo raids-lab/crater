@@ -56,11 +56,11 @@ import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page
 import { DataTable } from '@/components/query-table'
 
 import {
+  IDataset,
   QueueDataset,
   QueueDatasetGetResp,
   UserDataset,
   UserDatasetResp,
-  apiGetDatasetByID,
   apiListQueuesInDataset,
   apiListUsersInDataset,
   cancelSharedQueueResp,
@@ -82,7 +82,7 @@ import { DatasetUpdateForm } from './data-update-form'
 
 interface SharedResourceTableProps extends DetailPageCoreProps {
   resourceType: 'model' | 'dataset' | 'sharefile'
-  id: string
+  data?: IDataset
   apiShareDatasetwithUser: (ud: UserDataset) => Promise<IResponse<string>>
   apiShareDatasetwithQueue: (qd: QueueDataset) => Promise<IResponse<string>>
   apiCancelDatasetSharewithUser: (csu: cancelSharedUserResp) => Promise<IResponse<string>>
@@ -92,7 +92,7 @@ interface SharedResourceTableProps extends DetailPageCoreProps {
 
 export function SharedResourceTable({
   resourceType,
-  id,
+  data,
   apiShareDatasetwithUser,
   apiShareDatasetwithQueue,
   apiCancelDatasetSharewithUser,
@@ -100,9 +100,9 @@ export function SharedResourceTable({
   apiDatasetDelete,
   ...props
 }: SharedResourceTableProps) {
+  const datasetId = data?.id || 0
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const datasetId = id ? parseInt(id, 10) : 0
   const user = useAtomValue(atomUserInfo)
   const isAdminMode = useIsAdmin()
   const dataTypeLabel = (() => {
@@ -128,11 +128,6 @@ export function SharedResourceTable({
     select: (res) => res.data,
   })
   const queryClient = useQueryClient()
-  const query = useQuery({
-    queryKey: ['data', 'datasetByID', datasetId],
-    queryFn: () => apiGetDatasetByID(datasetId),
-    select: (res) => res.data[0],
-  })
   const [pathname, setPathname] = useState<string>('')
 
   const handleBackClick = () => {
@@ -214,10 +209,10 @@ export function SharedResourceTable({
   })
 
   const formattedTags = useMemo(() => {
-    const tags = query.data?.extra.tag
+    const tags = data?.extra.tag
     if (!tags || !Array.isArray(tags)) return []
     return tags.map((tag) => ({ value: tag }))
-  }, [query.data?.extra.tag])
+  }, [data?.extra.tag])
 
   const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(() => {
     return [
@@ -419,25 +414,25 @@ export function SharedResourceTable({
       header={
         <DetailTitle
           icon={resourceType === 'model' ? BotIcon : DatabaseIcon}
-          title={query.data?.name}
+          title={data?.name}
           description={
-            query.data?.extra.editable ? t('sharedResource.editable') : t('sharedResource.readOnly')
+            data?.extra.editable ? t('sharedResource.editable') : t('sharedResource.readOnly')
           }
         >
-          {(user?.name === query.data?.userInfo.username || isAdminMode) && (
+          {(user?.name === data?.userInfo.username || isAdminMode) && (
             <div className="flex flex-row space-x-1">
               <DatasetUpdateForm
                 type={resourceType}
                 initialData={{
                   datasetId: datasetId,
-                  datasetName: query.data?.name || '',
-                  describe: query.data?.describe || '',
-                  url: query.data?.url || '',
+                  datasetName: data?.name || '',
+                  describe: data?.describe || '',
+                  url: data?.url || '',
                   type: resourceType,
                   tags: formattedTags,
-                  weburl: query.data?.extra.weburl || '',
+                  weburl: data?.extra.weburl || '',
                   ispublic: true,
-                  readOnly: !query.data?.extra.editable,
+                  readOnly: !data?.extra.editable,
                 }}
                 onSuccess={() => {
                   queryClient.invalidateQueries({
@@ -525,7 +520,7 @@ export function SharedResourceTable({
                     <DialogDescription>
                       {t('sharedResource.deleteDescription', {
                         type: dataTypeLabel,
-                        name: query.data?.name,
+                        name: data?.name,
                       })}
                     </DialogDescription>
                   </DialogHeader>
@@ -553,12 +548,12 @@ export function SharedResourceTable({
         {
           title: t('sharedResource.user'),
           icon: UserRoundIcon,
-          value: query.data?.userInfo.username,
+          value: data?.userInfo.username,
         },
         {
           title: t('sharedResource.createdAt'),
           icon: CalendarIcon,
-          value: <TimeDistance date={query.data?.createdAt} />,
+          value: <TimeDistance date={data?.createdAt} />,
         },
       ]}
       tabs={[
@@ -568,7 +563,7 @@ export function SharedResourceTable({
           label: t('sharedResource.datasetInfo', { type: dataTypeLabel }),
           children: (
             <div className="space-y-1 md:space-y-2 lg:space-y-3">
-              {query.data?.extra.tag && (
+              {data?.extra.tag && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
@@ -576,12 +571,12 @@ export function SharedResourceTable({
                       {t('sharedResource.datasetTags', { type: dataTypeLabel })}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
-                      {query.data?.extra.tag.join('、')}
+                      {data?.extra.tag.join('、')}
                     </CardDescription>
                   </CardHeader>
                 </Card>
               )}
-              {query.data?.extra.weburl && (
+              {data?.extra.weburl && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center text-xl">
@@ -589,7 +584,7 @@ export function SharedResourceTable({
                       {t('sharedResource.datasetRepo', { type: dataTypeLabel })}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground font-mono text-sm">
-                      {query.data?.extra.weburl}
+                      {data?.extra.weburl}
                     </CardDescription>
                   </CardHeader>
                 </Card>
@@ -603,7 +598,7 @@ export function SharedResourceTable({
                     })}
                   </CardTitle>
                   <CardDescription className="text-muted-foreground font-mono text-sm">
-                    {query.data?.describe}
+                    {data?.describe}
                   </CardDescription>
                 </CardHeader>
               </Card>

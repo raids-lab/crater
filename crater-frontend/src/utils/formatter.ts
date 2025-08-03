@@ -33,5 +33,5 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   const value = bytes / Math.pow(k, i)
 
-  return `${value.toFixed(decimals)} ${sizes[i]}`
+  return `${value.toFixed(decimals)}${sizes[i]}`
 }

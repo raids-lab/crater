@@ -40,7 +40,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
-import { KanikoInfoResponse, apiUserDeleteKaniko, apiUserGetKaniko } from '@/services/api/imagepack'
+import { KanikoInfoResponse, apiUserDeleteKaniko } from '@/services/api/imagepack'
+import { queryBuildDetail } from '@/services/query/image'
 
 import { shortenImageName } from '@/utils/formatter'
 
@@ -165,12 +166,7 @@ function RegistryInfo({ kanikoInfo, ...props }: DetailPageCoreProps & KanikoCard
 }
 
 const RegistryDetail = ({ name, ...props }: DetailPageCoreProps & { name: string }) => {
-  const { data: kanikoInfo } = useQuery({
-    queryKey: ['imagepack', 'get', name],
-    queryFn: () => apiUserGetKaniko(`${name}`),
-    select: (res) => res.data,
-    enabled: !!name,
-  })
+  const { data: kanikoInfo } = useQuery(queryBuildDetail(name))
 
   return <RegistryInfo kanikoInfo={kanikoInfo} {...props} />
 }

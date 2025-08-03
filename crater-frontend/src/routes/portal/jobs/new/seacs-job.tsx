@@ -18,6 +18,7 @@ import { Cross1Icon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
+import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { CpuIcon, LayoutGridIcon } from 'lucide-react'
 import { ChevronLeftIcon, CircleArrowDown, CircleArrowUp, CirclePlus } from 'lucide-react'
@@ -70,6 +71,11 @@ import { cn } from '@/lib/utils'
 export const Route = createFileRoute('/portal/jobs/new/seacs-job')({
   validateSearch: publishValidateSearch,
   component: RouteComponent,
+  loader: () => {
+    return {
+      crumb: t('jobs.new.seacsJob'),
+    }
+  },
 })
 
 const VERSION = '20240528'

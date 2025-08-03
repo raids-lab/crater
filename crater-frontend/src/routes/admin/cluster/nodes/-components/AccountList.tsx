@@ -42,22 +42,20 @@ const AccountSelect: React.FC<AccountSelectProps> = ({ value, onChange }) => {
   })
 
   return (
-    <div>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id="account-select">
-          <SelectValue placeholder={t('accountSelect.placeholder')} />
-        </SelectTrigger>
-        <SelectContent>
-          {data?.data
-            .filter((account: IAccount) => account.name !== 'default')
-            .map((account: IAccount) => (
-              <SelectItem key={account.name} value={account.name.toString()}>
-                {account.nickname}
-              </SelectItem>
-            ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger id="account-select" className="w-full">
+        <SelectValue placeholder={t('accountSelect.placeholder')} />
+      </SelectTrigger>
+      <SelectContent>
+        {data?.data
+          .filter((account: IAccount) => account.name !== 'default')
+          .map((account: IAccount) => (
+            <SelectItem key={account.name} value={account.name.toString()}>
+              {account.nickname}
+            </SelectItem>
+          ))}
+      </SelectContent>
+    </Select>
   )
 }
 
