@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
+import { CircleHelpIcon, SettingsIcon } from 'lucide-react'
+import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+
 import {
   FormControl,
   FormDescription,
@@ -26,11 +28,11 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
-import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
-import AccordionCard from './AccordionCard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { CircleHelpIcon, SettingsIcon } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
+
+import AccordionCard from './AccordionCard'
 
 export function getOtherCardTitle(t: (key: string) => string) {
   return t('otherOptionsFormCard.accordionTitle')

@@ -13,18 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from 'react-i18next'
-import React from 'react'
-import { UIStateUpdater, useTemplateLoader } from '@/hooks/useTemplateLoader'
-import { FieldValues, UseFormReturn } from 'react-hook-form'
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
-import CardTitle from '@/components/label/CardTitle'
-import { Badge } from '@/components/ui/badge'
-import { MarkdownRenderer } from './markdown-renderer'
 import { InfoIcon, NotepadTextIcon } from 'lucide-react'
+import React from 'react'
+import { FieldValues, UseFormReturn } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+
+import { PublishSearch } from '@/components/job/publish'
+import CardTitle from '@/components/label/CardTitle'
+
+import { UIStateUpdater, useTemplateLoader } from '@/hooks/useTemplateLoader'
+
+import { MarkdownRenderer } from './markdown-renderer'
 
 interface TemplateInfoProps<T extends FieldValues> {
   /** The form object to populate */
@@ -39,6 +43,8 @@ interface TemplateInfoProps<T extends FieldValues> {
   dataProcessor?: (data: T) => T
   /** Default Markdown content */
   defaultMarkdown?: string
+  /** Search Params */
+  searchParams: PublishSearch
 }
 
 export function TemplateInfo<T extends FieldValues>({
@@ -46,6 +52,7 @@ export function TemplateInfo<T extends FieldValues>({
   metadata,
   uiStateUpdaters = [],
   onSuccess,
+  searchParams,
   dataProcessor,
   defaultMarkdown,
 }: TemplateInfoProps<T>) {
@@ -58,6 +65,7 @@ export function TemplateInfo<T extends FieldValues>({
     uiStateUpdaters,
     onSuccess,
     dataProcessor,
+    searchParams,
   })
 
   // 缓存Markdown内容以避免不必要的重渲染

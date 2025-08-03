@@ -15,7 +15,7 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ProgressBar } from "../custom/ProgressBar"
+import { ProgressBar } from "./colorful-progress"
 
 interface ProgressCardProps {
   title: string

@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { apiV1Get } from '@/services/client'
 
-import { Role } from './auth'
-import { ProjectStatus } from './account'
-import instance, { VERSION } from '../axios'
 import { IResponse } from '../types'
+import { ProjectStatus } from './account'
+import { Role } from './auth'
 
 // type UserDetailResp struct {
 // 	ID        uint         `json:"id"`        // 用户ID
@@ -47,20 +47,14 @@ export interface BaseUserInfo {
   space: string
 }
 
-export const apiGetUser = (userName: string) =>
-  instance.get<IResponse<IUser>>(`${VERSION}/users/${userName}`)
+export const apiGetUser = (userName: string) => apiV1Get<IResponse<IUser>>(`/users/${userName}`)
 
 export interface EmailVerifiedResponse {
   verified: boolean // 是否已验证
   lastEmailVerifiedAt?: string // 上次验证时间
 }
 
-export const apiUserEmailVerified = async () => {
-  const res = await instance.get<IResponse<EmailVerifiedResponse>>(
-    `${VERSION}/users/email/verified`
-  )
-  return res.data
-}
+export const apiUserEmailVerified = () =>
+  apiV1Get<IResponse<EmailVerifiedResponse>>(`/users/email/verified`)
 
-export const apiGetBaseUserInfo = () =>
-  instance.get<IResponse<BaseUserInfo[]>>(`${VERSION}/admin/users/baseinfo`)
+export const apiGetBaseUserInfo = () => apiV1Get<IResponse<BaseUserInfo[]>>(`/admin/users/baseinfo`)

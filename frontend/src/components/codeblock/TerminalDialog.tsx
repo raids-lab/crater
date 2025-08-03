@@ -13,22 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+import { FitAddon } from '@xterm/addon-fit'
+import { Terminal } from '@xterm/xterm'
+import '@xterm/xterm/css/xterm.css'
+import { useAtomValue } from 'jotai'
 import { useEffect, useRef } from 'react'
-import { Card } from '../ui/card'
+import { useDebounceCallback } from 'usehooks-ts'
+
+import { Card } from '@/components/ui/card'
+
 import { ContainerInfo } from '@/services/api/tool'
+
+import { REFRESH_TOKEN_KEY } from '@/utils/store'
+import { configUrlApiBaseAtom, configVersionAtom } from '@/utils/store/config'
+
 import {
   PodContainerDialog,
   PodContainerDialogProps,
   PodNamespacedName,
 } from './PodContainerDialog'
-import { Terminal } from '@xterm/xterm'
-import { FitAddon } from '@xterm/addon-fit'
-import '@xterm/xterm/css/xterm.css'
-import { REFRESH_TOKEN_KEY } from '@/utils/store'
-import { useDebounceCallback } from 'usehooks-ts'
-import { useAtomValue } from 'jotai'
-import { configUrlApiBaseAtom, configVersionAtom } from '@/utils/store/config'
 
 const buildWebSocketUrl = (
   apiBaseUrl: string,

@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { MetricSection } from '../ui-custom/metric-section'
-import { MetricCard } from '../ui-custom/metric-card'
-import { ClockIcon } from 'lucide-react'
-import { IJupyterDetail } from '@/services/api/vcjob'
-import { Fragment, useMemo } from 'react'
 import { formatDistanceStrict, formatDuration, intervalToDuration } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
+import { ClockIcon } from 'lucide-react'
+import { Fragment, useMemo } from 'react'
+
+import { IJupyterDetail } from '@/services/api/vcjob'
+
+import { MetricCard } from '../ui-custom/metric-card'
+import { MetricSection } from '../ui-custom/metric-section'
 import { TerminatedSection } from './TerminatedSection'
 
 const parseDurationString = (durationStr: string): number => {

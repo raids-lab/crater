@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { BugIcon } from 'lucide-react'
+import { ReactNode } from 'react'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+import { TerminatedState } from '@/services/api/tool'
 
 import { MetricSection } from '../ui-custom/metric-section'
-import { BugIcon } from 'lucide-react'
-import { TerminatedState } from '@/services/api/tool'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ReactNode } from 'react'
 
 // 退出码对照表
 const EXIT_CODE_MAP: Record<number, { name: string; suggestion: ReactNode }> = {

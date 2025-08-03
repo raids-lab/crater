@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import instance, { VERSION } from '@/services/axios'
+import { apiV1Delete, apiV1Get, apiV1Put } from '@/services/client'
 import { IResponse } from '@/services/types'
-import { Role } from '../auth'
+
 import { ProjectStatus } from '../account'
+import { Role } from '../auth'
 
 export interface IUserAttributes {
   id: number
@@ -41,15 +41,15 @@ export interface IUser {
   attributes: IUserAttributes
 }
 
-export const apiAdminUserList = () => instance.get<IResponse<IUser[]>>(`${VERSION}/admin/users`)
+export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>(`/admin/users`)
 
 export const apiAdminUserDelete = (userName: string) =>
-  instance.delete<IResponse<string>>(`${VERSION}/admin/users/${userName}`)
+  apiV1Delete<IResponse<string>>(`/admin/users/${userName}`)
 
 export const apiAdminUpdateUserAttributes = (username: string, data: IUserAttributes) =>
-  instance.put<IResponse<string>>(`${VERSION}/admin/users/${username}/attributes`, data)
+  apiV1Put<IResponse<string>>(`/admin/users/${username}/attributes`, data)
 
 export const apiAdminUserUpdateRole = (userName: string, role: Role) =>
-  instance.put<IResponse<string>>(`${VERSION}/admin/users/${userName}/role`, {
+  apiV1Put<IResponse<string>>(`/admin/users/${userName}/role`, {
     role,
   })

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useAtomValue } from 'jotai'
+import { UsersRoundIcon } from 'lucide-react'
+import { useMemo } from 'react'
 
-import { NavGroup } from '@/components/sidebar/nav-main'
-import { NavUser } from '@/components/sidebar/nav-user'
-import { TeamSwitcher } from '@/components/sidebar/team-switcher'
 import {
   Sidebar,
   SidebarContent,
@@ -24,12 +24,17 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import useIsAdmin from '@/hooks/useAdmin'
+
+import { NavGroup } from '@/components/sidebar/nav-main'
+import { NavUser } from '@/components/sidebar/nav-user'
+import { TeamSwitcher } from '@/components/sidebar/team-switcher'
+
 import { Role } from '@/services/api/auth'
-import { globalAccount } from '@/utils/store'
-import { useAtomValue } from 'jotai'
-import { UsersRoundIcon } from 'lucide-react'
-import { useMemo } from 'react'
+
+import useIsAdmin from '@/hooks/use-admin'
+
+import { atomUserContext } from '@/utils/store'
+
 import { NavGroupProps } from './types'
 
 export function AppSidebar({
@@ -39,14 +44,14 @@ export function AppSidebar({
   groups: NavGroupProps[]
 }) {
   const isAdminView = useIsAdmin()
-  const accountInfo = useAtomValue(globalAccount)
+  const accountInfo = useAtomValue(atomUserContext)
 
   // 特殊规则，当当前账户为其他账户时，且当前用户的权限是账户管理员，且当前处于用户模式时，添加账户管理菜单
   const filteredGroups = useMemo(() => {
     if (
       !isAdminView &&
-      accountInfo.queue !== 'default' &&
-      accountInfo.roleQueue === Role.Admin &&
+      accountInfo?.queue !== 'default' &&
+      accountInfo?.roleQueue === Role.Admin &&
       groups.length > 0 &&
       groups[groups.length - 1].items.length > 0 &&
       groups[groups.length - 1].items[0].title !== '账户管理'
@@ -68,7 +73,7 @@ export function AppSidebar({
     }
     // revert
     if (
-      (isAdminView || accountInfo.queue === 'default' || accountInfo.roleQueue !== Role.Admin) &&
+      (isAdminView || accountInfo?.queue === 'default' || accountInfo?.roleQueue !== Role.Admin) &&
       groups.length > 0 &&
       groups[groups.length - 1].items.length > 0 &&
       groups[groups.length - 1].items[0].title === '账户管理'
@@ -76,7 +81,7 @@ export function AppSidebar({
       groups[groups.length - 1].items = groups[groups.length - 1].items.slice(1)
     }
     return groups
-  }, [isAdminView, accountInfo.queue, accountInfo.roleQueue, groups])
+  }, [isAdminView, accountInfo, groups])
 
   return (
     <Sidebar collapsible="icon" {...props}>

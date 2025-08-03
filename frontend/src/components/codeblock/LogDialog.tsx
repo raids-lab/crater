@@ -13,11 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
-import useResizeObserver from 'use-resize-observer'
-import { Card } from '../ui/card'
-import { apiGetPodContainerLog, ContainerInfo } from '@/services/api/tool'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import {
   CalendarArrowDown,
   CalendarOff,
@@ -26,23 +23,29 @@ import {
   DownloadIcon,
   RefreshCcw,
 } from 'lucide-react'
-import { PlayCircle, Square, Play, Pause } from 'lucide-react'
+import { Pause, Play, PlayCircle, Square } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import useResizeObserver from 'use-resize-observer'
 import { useCopyToClipboard } from 'usehooks-ts'
+
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+
+import { ContainerInfo, apiGetPodContainerLog } from '@/services/api/tool'
+
+import { logger } from '@/utils/loglevel'
+import { configUrlApiBaseAtom } from '@/utils/store/config'
+
+import TooltipButton from '../button/tooltip-button'
+import LoadingCircleIcon from '../icon/LoadingCircleIcon'
 import { ButtonGroup } from '../ui-custom/button-group'
-import { Button } from '../ui/button'
 import {
   PodContainerDialog,
   PodContainerDialogProps,
   PodNamespacedName,
 } from './PodContainerDialog'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { toast } from 'sonner'
-import LoadingCircleIcon from '../icon/LoadingCircleIcon'
-import TooltipButton from '../custom/TooltipButton'
-import { logger } from '@/utils/loglevel'
-import { useAtomValue } from 'jotai'
-import { configUrlApiBaseAtom } from '@/utils/store/config'
 
 const DEFAULT_TAIL_LINES = 500
 
@@ -105,7 +108,7 @@ export function LogCard({
       }),
     select: (res) => {
       // 使用改进的方法解码base64字符串为UTF-8文本
-      return decodeBase64ToUtf8(res.data.data)
+      return decodeBase64ToUtf8(res.data)
     },
     enabled:
       !selectedContainer.state.waiting &&
@@ -125,7 +128,7 @@ export function LogCard({
       }),
     onSuccess: (res) => {
       // 使用改进的方法解码base64字符串为UTF-8文本
-      const logText = decodeBase64ToUtf8(res.data.data)
+      const logText = decodeBase64ToUtf8(res.data)
       const blob = new Blob([logText], {
         type: 'text/plain;charset=utf-8',
       })

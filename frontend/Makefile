@@ -24,7 +24,7 @@ prepare: ## 🔧 Prepare development environment
 	@echo "$(BLUE)Preparing development environment...$(RESET)"
 	@if [ ! -f .env.development ]; then \
 		echo "$(YELLOW)Creating .env.development file...$(RESET)"; \
-		echo 'VITE_API_BASE_URL="http://localhost:8098/"' > .env.development; \
+		echo 'VITE_SERVER_PROXY_DOMAIN="http://localhost:8098/"' > .env.development; \
 		echo 'VITE_USE_MSW=false  # Enable API mocking' >> .env.development; \
 		echo 'PORT=5180           # Dev server port' >> .env.development; \
 		echo "$(GREEN)✅ .env.development created successfully!$(RESET)"; \

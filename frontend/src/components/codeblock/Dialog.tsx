@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query'
 
 import { IResponse } from '@/services/types'
-import { useQuery } from '@tanstack/react-query'
-import { AxiosResponse } from 'axios'
+
 import TipBadge from '../badge/TipBadge'
+import Nothing from '../placeholder/nothing'
 import SandwichSheet from '../sheet/SandwichSheet'
-import Nothing from '../placeholder/Nothing'
 
 interface FetchContentProps<T> {
   name: string
   type: string
-  fetchData: (name: string) => Promise<AxiosResponse<IResponse<T>, unknown>>
+  fetchData: (name: string) => Promise<IResponse<T>>
   renderData: (data: T) => React.ReactNode
 }
 
@@ -37,7 +37,7 @@ export function LazyContent<T>({ name, type, fetchData, renderData }: FetchConte
   const { data } = useQuery({
     queryKey: ['code', type, name],
     queryFn: () => fetchData(name),
-    select: (res) => res.data.data,
+    select: (res) => res.data,
     enabled: !!name,
   })
 

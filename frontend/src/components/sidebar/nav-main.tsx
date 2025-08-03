@@ -13,11 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { ReactNode, useMemo } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronRight } from 'lucide-react'
+import { ReactNode, useMemo } from 'react'
+
+import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -29,20 +38,11 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { Badge } from '../ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '../ui/dropdown-menu'
-import { NavCollapsible, NavItem, NavLink, type NavGroupProps } from './types.ts'
+
+import { NavCollapsible, type NavGroupProps, NavItem, NavLink } from './types.ts'
 
 export function NavGroup({ title, items }: NavGroupProps) {
   const { state } = useSidebar()
-  // get href from react-router-dom
   const location = useLocation()
   const href = useMemo(
     () => location.pathname.replace(/^\/portal\//, '').replace(/^\/admin\//, ''),

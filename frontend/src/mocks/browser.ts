@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // src/mocks/browser.js
 import { setupWorker } from 'msw/browser'
+
 import { handlers } from './handlers'
 
 export const worker = setupWorker(...handlers)

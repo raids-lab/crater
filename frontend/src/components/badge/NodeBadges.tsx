@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useNavigate } from '@tanstack/react-router'
+import { InfoIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
-import { InfoIcon } from 'lucide-react'
-import { DropdownMenuLabel } from '../ui/dropdown-menu'
-import { useNavigate } from 'react-router-dom'
+import { DropdownMenuLabel } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+
 import { cn } from '@/lib/utils'
 
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
@@ -32,7 +33,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const isSingleNode = nodes.length === 1
   const handleBadgeClick = () => {
     if (isSingleNode) {
-      navigate(`/portal/overview/${nodes[0]}`)
+      navigate({ to: `/portal/overview/${nodes[0]}` })
     }
   }
 
@@ -76,7 +77,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                     <Button
                       variant="ghost"
                       className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1"
-                      onClick={() => navigate(`/portal/overview/${node}`)}
+                      onClick={() => navigate({ to: `/portal/overview/${node}` })}
                     >
                       <InfoIcon className="mr-2 h-4 w-4" />
                       <span className="truncate font-normal">节点详情</span>

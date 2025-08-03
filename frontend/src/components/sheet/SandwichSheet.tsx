@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { HelpCircleIcon } from 'lucide-react'
+import { ReactNode } from 'react'
+import useResizeObserver from 'use-resize-observer'
 
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn } from '@/lib/utils'
-import useResizeObserver from 'use-resize-observer'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { ReactNode } from 'react'
-import { HelpCircleIcon } from 'lucide-react'
+
+import { cn } from '@/lib/utils'
 
 export interface SandwichSheetProps {
   isOpen?: boolean

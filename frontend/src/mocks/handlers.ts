@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // 1. Import the "HttpResponse" class from the library.
+import { HttpResponse, http } from 'msw'
+
 import { AccessMode, IAuthResponse, ILogin, Role } from '@/services/api/auth'
 import { IResponse } from '@/services/types'
-import { logger } from '@/utils/loglevel'
-import { http, HttpResponse } from 'msw'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL
+import { logger } from '@/utils/loglevel'
+
+const baseURL = import.meta.env.VITE_SERVER_PROXY_DOMAIN
 
 export const handlers = [
   http.post<never, ILogin, IResponse<IAuthResponse>>(baseURL + `login`, async ({ request }) => {

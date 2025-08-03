@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 // i18n-processed-v1.1.0
 // Modified code
-import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
-import { SVGProps, useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { apiGetFiles } from '@/services/api/file'
+import { SVGProps, useState } from 'react'
 import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { Button } from '@/components/ui/button'
+
+import { apiGetFiles } from '@/services/api/file'
 
 interface DirectoryItem {
   name: string
@@ -84,9 +85,9 @@ function Directory({ name, path = '', onPathChange, selectedPath }: DirectoryPro
   const { mutate: getDirectoryList } = useMutation({
     mutationFn: (truePath: string) => apiGetFiles(truePath),
     onSuccess: (fileList) => {
-      if (fileList.data.data !== null) {
+      if (fileList.data !== null) {
         const childDirectories: DirectoryItem[] =
-          fileList.data.data
+          fileList.data
             ?.filter((file) => file.isdir)
             .map((file) => {
               return {
@@ -166,7 +167,7 @@ export function FileSelect({ onClose, handleSubpathInfo, handleSubpath }: FileSe
   const { data: FileList, isLoading } = useQuery({
     queryKey: ['directory', 'list'],
     queryFn: () => apiGetFiles('/'),
-    select: (res) => res.data.data,
+    select: (res) => res.data,
   })
 
   useEffect(() => {
