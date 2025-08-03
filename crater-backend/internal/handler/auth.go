@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -55,6 +56,7 @@ func (mgr *AuthMgr) GetName() string { return mgr.name }
 
 func (mgr *AuthMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.POST("login", mgr.Login)
+	g.GET("check", mgr.Check)
 	g.POST("signup", mgr.Signup)
 	g.POST("refresh", mgr.RefreshToken)
 	g.GET("mode", mgr.GetAuthMode)
@@ -117,6 +119,92 @@ func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 		resputil.Success(c, "act")
 	}
 	resputil.Success(c, "normal")
+}
+
+// Check godoc
+//
+//	@Summary		验证用户token并返回用户信息
+//	@Description	验证Authorization header中的Bearer token，返回用户信息和上下文
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[LoginResp]	"token验证成功，返回用户信息和上下文"
+//	@Failure		401	{object}	resputil.Response[any]			"token无效或已过期"
+//	@Failure		500	{object}	resputil.Response[any]			"服务器内部错误"
+//	@Router			/auth/check [get]
+func (mgr *AuthMgr) Check(c *gin.Context) {
+	// 从Authorization header中提取token
+	authHeader := c.Request.Header.Get("Authorization")
+	parts := strings.Split(authHeader, " ")
+	if len(parts) < 2 || parts[0] != "Bearer" {
+		resputil.Success(c, nil)
+		return
+	}
+
+	token := parts[1]
+
+	// 验证token
+	jwtMessage, err := mgr.tokenMgr.CheckToken(token)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusUnauthorized, err.Error(), resputil.TokenExpired)
+		return
+	}
+
+	// 从数据库获取用户信息
+	u := query.User
+	q := query.Account
+	uq := query.UserAccount
+
+	user, err := u.WithContext(c).Where(u.ID.Eq(jwtMessage.UserID)).First()
+	if err != nil {
+		resputil.Success(c, nil)
+		return
+	}
+
+	// 检查用户状态
+	if user.Status != model.StatusActive {
+		resputil.Success(c, nil)
+		return
+	}
+
+	// 获取当前队列信息
+	currentQueue, err := q.WithContext(c).Where(q.ID.Eq(jwtMessage.AccountID)).First()
+	if err != nil {
+		resputil.Success(c, nil)
+		return
+	}
+
+	// 获取用户队列信息
+	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(jwtMessage.AccountID)).First()
+	if err != nil {
+		resputil.Success(c, nil)
+		return
+	}
+
+	// 获取公共访问权限
+	publicAccessMode := model.AccessModeNA
+	defaultUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
+	if err == nil {
+		publicAccessMode = defaultUserQueue.AccessMode
+	}
+
+	// 构造响应
+	checkResponse := LoginResp{
+		AccessToken:  "", // Check API不返回新token
+		RefreshToken: "", // Check API不返回新token
+		Context: AccountContext{
+			Queue:        currentQueue.Name,
+			RoleQueue:    userQueue.Role,
+			RolePlatform: user.Role,
+			AccessQueue:  userQueue.AccessMode,
+			AccessPublic: publicAccessMode,
+			Space:        user.Space,
+		},
+		User: user.Attributes.Data(),
+	}
+
+	resputil.Success(c, checkResponse)
 }
 
 // Login godoc

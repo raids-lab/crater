@@ -79,7 +79,6 @@ func (c *TaskController) Init() error {
 	if err != nil {
 		klog.Errorf("list all quotas failed, err: %v", err)
 	}
-	klog.Infof("list all quotas success, len: %v", len(quotas))
 	for i := range quotas {
 		// 添加quota
 		c.AddOrUpdateQuotaInfo(quotas[i])

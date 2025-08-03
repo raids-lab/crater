@@ -1170,6 +1170,31 @@ info:
   title: Crater API
   version: 1.0.0
 paths:
+  /auth/check:
+    get:
+      consumes:
+      - application/json
+      description: 验证Authorization header中的Bearer token，返回用户信息和上下文
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token验证成功，返回用户信息和上下文
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp'
+        "401":
+          description: token无效或已过期
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 验证用户token并返回用户信息
+      tags:
+      - Auth
   /auth/login:
     post:
       consumes:
