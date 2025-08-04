@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { ActivityIcon, Clock, CodeIcon, Hash, Link2, LogsIcon, Trash2Icon } from 'lucide-react'
 import React from 'react'
 import { toast } from 'sonner'
@@ -50,12 +50,12 @@ type KanikoCard = React.ComponentProps<typeof Card> & {
 }
 
 function RegistryInfo({ kanikoInfo, ...props }: DetailPageCoreProps & KanikoCard) {
-  const navigate = useNavigate()
+  const router = useRouter()
 
   const { mutate: userDeleteKaniko } = useMutation({
     mutationFn: (id: number) => apiUserDeleteKaniko(id),
     onSuccess: async () => {
-      navigate({ to: '..' })
+      router.history.back()
       toast.success('镜像已删除')
     },
   })

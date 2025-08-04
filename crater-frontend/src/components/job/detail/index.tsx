@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { REFETCH_INTERVAL } from '@/config/task'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import {
   ActivityIcon,
@@ -87,6 +86,8 @@ import { hasNvidiaGPU } from '@/utils/resource'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 import { getDaysDifference } from '@/utils/time'
 
+import { REFETCH_INTERVAL } from '@/lib/constants'
+
 import { getNewJobLink } from '../new-job-button'
 import { PodTable } from './PodTable'
 import { SSHPortDialog } from './SSHPortDialog'
@@ -94,6 +95,7 @@ import { SSHPortDialog } from './SSHPortDialog'
 export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { jobName: string }) {
   useFixedLayout()
   const navigate = useNavigate()
+  const router = useRouter()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
 
   // 获取作业详情
@@ -143,8 +145,8 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   const { mutate: deleteJTask } = useMutation({
     mutationFn: () => apiJobDelete(jobName),
     onSuccess: () => {
-      navigate({ to: '..' })
       toast.success('作业已删除')
+      router.history.back()
     },
   })
 

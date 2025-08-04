@@ -21,7 +21,7 @@ import { IJupyterDetail, ProfileData } from '@/services/api/vcjob'
 import { MetricCard } from '../ui-custom/metric-card'
 import { MetricSection } from '../ui-custom/metric-section'
 import { ProgressCard } from '../ui-custom/progress-card'
-import { JobInfoSections } from './ScheduleInfoSection'
+import { JobInfoSections } from './schedule-info-section'
 
 interface ProfileDashboardProps {
   data: IJupyterDetail

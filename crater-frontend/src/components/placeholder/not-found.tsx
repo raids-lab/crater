@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 
 export default function NotFound() {
+  const router = useRouter()
   return (
     <div className="h-svh">
       <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
@@ -28,7 +29,7 @@ export default function NotFound() {
           不存在或者可能已被移除
         </p>
         <div className="mt-6 flex gap-4 pb-24">
-          <Button variant="outline" onClick={() => history.back()}>
+          <Button variant="outline" onClick={() => router.history.back()}>
             返回上一页
           </Button>
           <Button variant="outline" asChild>

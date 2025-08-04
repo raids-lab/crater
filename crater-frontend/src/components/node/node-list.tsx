@@ -21,10 +21,12 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import NodeStatusBadge from '@/components/badge/NodeStatusBadge'
+import TooltipLink from '@/components/label/tooltip-link'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
+import { ProgressBar, progressTextColor } from '@/components/ui-custom/colorful-progress'
 
-import { INodeBriefInfo } from '@/services/api/cluster'
+import { INodeBriefInfo, NodeStatus } from '@/services/api/cluster'
 
 import {
   V1ResourceList,
@@ -33,9 +35,6 @@ import {
 } from '@/utils/resource'
 
 import { cn } from '@/lib/utils'
-
-import TooltipLink from '../label/tooltip-link'
-import { ProgressBar } from '../ui-custom/colorful-progress'
 
 export const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -49,6 +48,7 @@ export const toolbarConfig: DataTableToolbarConfig = {
 export const UsageCell: FC<{
   used?: V1ResourceList
   allocatable?: V1ResourceList
+  capacity?: V1ResourceList
   resourceKey: 'cpu' | 'memory' | 'accelerator'
   accelerators?: string[]
 }> = ({ used, allocatable, resourceKey: key, accelerators }) => {
@@ -107,24 +107,11 @@ export const UsageCell: FC<{
   return (
     <div className="flex flex-row items-center justify-between gap-2">
       <div className="w-20">
-        {/* 'bg-highlight-emerald': width <= 20,
-            'bg-highlight-sky': width > 20 && width <= 50,
-            'bg-highlight-yellow': width > 50 && width <= 70,
-            'bg-highlight-orange': width > 70 && width <= 90,
-            'bg-highlight-red': width > 90, */}
-        <p
-          className={cn('text-highlight-emerald mb-0.5 font-mono text-sm font-bold', {
-            'text-highlight-emerald': percent <= 20,
-            'text-highlight-sky': percent > 20 && percent <= 50,
-            'text-highlight-yellow': percent > 50 && percent <= 70,
-            'text-highlight-orange': percent > 70 && percent <= 90,
-            'text-highlight-red': percent > 90,
-          })}
-        >
+        <p className={progressTextColor(percent)}>
           {percent.toFixed(1)}
           <span className="ml-0.5">%</span>
         </p>
-        <ProgressBar width={percent} className="h-1 w-full" />
+        <ProgressBar percent={percent} className="h-1 w-full" />
         <p className="text-muted-foreground pt-1 font-mono text-xs">{value}</p>
       </div>
       {acceleratorName && acceleratorName !== '' && (
@@ -179,11 +166,12 @@ export const getNodeColumns = (
       accessorKey: 'role',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'角色'} />,
       cell: ({ row }) => {
+        const status = row.original.status
         const taints = row.original.taints || []
 
         // 如果状态为"occupied"，提取占用的账户名
         let accountInfo = null
-        if (status === 'occupied' && getNicknameByName) {
+        if (status === NodeStatus.Occupied && getNicknameByName) {
           const occupiedAccount = taints
             .find((t: string) => t.startsWith('crater.raids.io/account'))
             ?.split('=')[1]
@@ -192,39 +180,42 @@ export const getNodeColumns = (
           if (occupiedAccount) {
             // 获取账户昵称
             const nickname = getNicknameByName(occupiedAccount)
-            accountInfo = nickname ? `${nickname} (${occupiedAccount})` : occupiedAccount
+            accountInfo = nickname ? `${nickname}` : occupiedAccount
           }
         }
 
         // 过滤taints，如果状态是"occupied"
         const displayTaints =
-          status === 'occupied'
+          status === NodeStatus.Occupied
             ? taints.filter((taint: string) => taint.includes('crater.raids.io/account'))
             : taints
         return (
           <div className="flex flex-row items-center justify-start gap-1">
-            <Badge
-              variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
-              className="font-mono font-normal"
-            >
-              {row.getValue('role')}
-            </Badge>
             {/* 如果有账户信息，显示一个单独的提示 */}
-            {status === 'occupied' && accountInfo && (
+            {status === NodeStatus.Occupied && accountInfo ? (
               <Tooltip>
-                <TooltipTrigger className="flex size-4 items-center justify-center rounded-full bg-blue-500 text-xs text-white">
-                  A
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="font-mono font-normal">
+                    {accountInfo}
+                  </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="text-xs font-medium">占用账户: {accountInfo}</p>
+                  <p className="text-xs font-medium">该节点处于账户独占状态</p>
                 </TooltipContent>
               </Tooltip>
+            ) : (
+              <Badge
+                variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
+                className="font-mono font-normal"
+              >
+                {row.getValue('role')}
+              </Badge>
             )}
 
             {/* 原有的taints提示 */}
-            {row.original.taints && displayTaints.length > 0 && status !== 'occupied' && (
+            {row.original.taints && displayTaints.length > 0 && status !== NodeStatus.Occupied && (
               <Tooltip>
-                <TooltipTrigger className="flex size-4 items-center justify-center rounded-full bg-slate-600 text-xs text-white">
+                <TooltipTrigger className="bg-highlight-slate flex size-4 items-center justify-center rounded-full text-xs text-white">
                   {displayTaints.length}
                 </TooltipTrigger>
                 <TooltipContent className="font-mono">
@@ -315,6 +306,7 @@ export const getNodeColumns = (
         <UsageCell
           used={row.original.used}
           allocatable={row.original.allocatable}
+          capacity={row.original.capacity}
           resourceKey="accelerator"
           accelerators={accelerators}
         />

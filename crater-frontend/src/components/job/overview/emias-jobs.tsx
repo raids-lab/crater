@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { REFETCH_INTERVAL } from '@/config/task'
 import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
@@ -57,6 +56,8 @@ import { apiJobBatchList, apiJobDelete } from '@/services/api/vcjob'
 import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
+
+import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import Quota from '../../../routes/portal/jobs/inter/-components/Quota'
 import ListedNewJobButton from '../new-job-button'
@@ -314,11 +315,7 @@ const ColocateOverview = () => {
                     操作
                   </DropdownMenuLabel>
                   <DropdownMenuItem asChild>
-                    <Link
-                      to="/portal/jobs/detail/$name"
-                      params={{ name: taskInfo.jobName }}
-                      search={{ tab: '' }}
-                    >
+                    <Link to="/portal/jobs/detail/$name" params={{ name: taskInfo.jobName }}>
                       详情
                     </Link>
                   </DropdownMenuItem>

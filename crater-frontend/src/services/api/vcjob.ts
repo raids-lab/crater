@@ -60,7 +60,7 @@ export const apiAdminGetJobList = (days: number) =>
   })
 
 export const apiAdminGetJobDetail = (jobName: string) =>
-  apiV1Get<IResponse<IJupyterDetail>>(`/admin/${JOB_URL}/${jobName}/detail`)
+  apiV1Get<IResponse<IJupyterDetail>>(`admin/${JOB_URL}/${jobName}/detail`)
 
 export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`/${JOB_URL}/all`)
 
@@ -362,51 +362,51 @@ export interface ITensorflowCreate {
 }
 
 export const apiJupyterCreate = (task: IJupyterCreate) =>
-  apiV1Post<IResponse<string>>(`/${JOB_URL}/jupyter`, task)
+  apiV1Post<IResponse<string>>(`${JOB_URL}/jupyter`, task)
 
 export const apiTrainingCreate = (task: ITrainingCreate) =>
-  apiV1Post<IResponse<string>>(`/${JOB_URL}/training`, task)
+  apiV1Post<IResponse<string>>(`${JOB_URL}/training`, task)
 
 export const apiSparseCreate = (task: ISparseCreate) =>
-  apiV1Post<IResponse<string>>(`/${JOB_URL}/training`, task)
+  apiV1Post<IResponse<string>>(`${JOB_URL}/training`, task)
 
 export const apiTensorflowCreate = (task: ITensorflowCreate) =>
-  apiV1Post<IResponse<string>>(`/${JOB_URL}/tensorflow`, task)
+  apiV1Post<IResponse<string>>(`${JOB_URL}/tensorflow`, task)
 
 export const apiPytorchCreate = (task: ITensorflowCreate) =>
-  apiV1Post<IResponse<string>>(`/${JOB_URL}/pytorch`, task)
+  apiV1Post<IResponse<string>>(`${JOB_URL}/pytorch`, task)
 
 export const apiJobDelete = (jobName: string) =>
-  apiV1Delete<IResponse<string>>(`/${JOB_URL}/${jobName}`)
+  apiV1Delete<IResponse<string>>(`${JOB_URL}/${jobName}`)
 
 export const apiJobDeleteForAdmin = (jobName: string) =>
-  apiV1Delete<IResponse<string>>(`/admin/${JOB_URL}/${jobName}`)
+  apiV1Delete<IResponse<string>>(`admin/${JOB_URL}/${jobName}`)
 
 export const apiJobToggleKeepForAdmin = (jobName: string) =>
-  apiV1Put<IResponse<string>>(`/admin/operations/keep/${jobName}`)
+  apiV1Put<IResponse<string>>(`admin/operations/keep/${jobName}`)
 
 export const apiJobUnlock = (jobName: string) =>
-  apiV1Put<IResponse<string>>(`/admin/operations/clear/locktime`, {
+  apiV1Put<IResponse<string>>(`admin/operations/clear/locktime`, {
     name: jobName,
   })
 
 export const apiJobLock = (params: object) =>
-  apiV1Put<IResponse<string>>(`/admin/operations/add/locktime`, params)
+  apiV1Put<IResponse<string>>(`admin/operations/add/locktime`, params)
 
 export const apiJobGetDetail = (jobName: string) =>
-  apiV1Get<IResponse<IJupyterDetail>>(`/${JOB_URL}/${jobName}/detail`)
+  apiV1Get<IResponse<IJupyterDetail>>(`${JOB_URL}/${jobName}/detail`)
 
 export const apiJobGetPods = (jobName: string) =>
   apiV1Get<IResponse<PodDetail[]>>(`/${JOB_URL}/${jobName}/pods`)
 
 export const apiJobGetYaml = (jobName: string) =>
-  apiV1Get<IResponse<string>>(`/${JOB_URL}/${jobName}/yaml`)
+  apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/yaml`)
 
 export const apiJobGetEvent = (jobName: string) =>
   apiV1Get<IResponse<KubernetesEvent[]>>(`/${JOB_URL}/${jobName}/event`)
 
 export const apiJobTemplate = (jobName: string) =>
-  apiV1Get<IResponse<string>>(`/${JOB_URL}/${jobName}/template`)
+  apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/template`)
 
 export const apiJTaskImageList = (imageTaskType: string) =>
   apiV1Get<IResponse<{ images: ImageInfoResponse[] }>>(`/images/available?type=${imageTaskType}`)
@@ -424,13 +424,13 @@ export const apiJupyterTokenGet = (jobName: string) =>
 
 // @Router /v1/vcjobs/jupyter/{name}/snapshot [post]
 export const apiJupyterSnapshot = (jobName: string) =>
-  apiV1Post<IResponse<string>>(`/${JOB_URL}/jupyter/${jobName}/snapshot`)
+  apiV1Post<IResponse<string>>(`${JOB_URL}/jupyter/${jobName}/snapshot`)
 
 // 开启 SSH 端口
 export const apiOpenSSH = (jobName: string) =>
-  apiV1Post<IResponse<SSHInfo>>(`/${JOB_URL}/${jobName}/ssh`)
+  apiV1Post<IResponse<SSHInfo>>(`${JOB_URL}/${jobName}/ssh`)
 
-export const apiJobScheduleAdmin = () => apiV1Get<IResponse<string>>(`/admin/operations/cronjob`)
+export const apiJobScheduleAdmin = () => apiV1Get<IResponse<string>>(`admin/operations/cronjob`)
 
 export const apiJobScheduleChangeAdmin = (schedule: object) =>
-  apiV1Put<IResponse<string>>(`/admin/operations/cronjob`, schedule)
+  apiV1Put<IResponse<string>>(`admin/operations/cronjob`, schedule)

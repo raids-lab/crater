@@ -139,7 +139,6 @@ function RouteComponent() {
               }
               to={'/admin/data/$id'}
               params={{ id: row.original.id.toString() }}
-              search={{ tab: '' }}
               tooltip={
                 <div className="flex flex-row items-center justify-between gap-1.5">
                   <p className="text-xs">查看 {row.getValue('name')} 详情</p>

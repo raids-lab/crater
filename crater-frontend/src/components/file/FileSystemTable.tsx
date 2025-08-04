@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useLocation, useNavigate } from '@tanstack/react-router'
+import { useLocation, useNavigate, useRouter } from '@tanstack/react-router'
 import { ColumnDef, Row } from '@tanstack/react-table'
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
@@ -304,6 +304,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   const setBreadcrumb = useSetAtom(atomBreadcrumb)
   const apiBaseURL = useAtomValue(configUrlApiBaseAtom)
   const isAdmin = useIsAdmin()
+  const router = useRouter()
 
   useEffect(() => {
     const baseURL = isAdmin ? '/admin/files' : '/portal/files'
@@ -646,7 +647,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
             variant="outline"
             size="icon"
             onClick={() => {
-              history.back()
+              router.history.back()
             }}
             className="h-8 w-8"
             disabled={isRoot}

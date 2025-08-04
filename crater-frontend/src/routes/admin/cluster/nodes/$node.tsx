@@ -5,6 +5,7 @@ import NodeDetail from '@/components/node/node-detail'
 
 export const Route = createFileRoute('/admin/cluster/nodes/$node')({
   validateSearch: detailValidateSearch,
+  loader: ({ params }) => ({ crumb: params.node }),
   component: NodeDetailPage,
 })
 

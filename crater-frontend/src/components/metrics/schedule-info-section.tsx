@@ -22,7 +22,7 @@ import { IJupyterDetail } from '@/services/api/vcjob'
 
 import { MetricCard } from '../ui-custom/metric-card'
 import { MetricSection } from '../ui-custom/metric-section'
-import { TerminatedSection } from './TerminatedSection'
+import { TerminatedSection } from './terminated-section'
 
 const parseDurationString = (durationStr: string): number => {
   if (!durationStr) return 0

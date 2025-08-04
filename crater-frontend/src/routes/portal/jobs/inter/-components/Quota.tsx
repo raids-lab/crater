@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { REFETCH_INTERVAL } from '@/config/task'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { CpuIcon, GpuIcon, MemoryStickIcon, NetworkIcon } from 'lucide-react'
@@ -27,6 +26,7 @@ import { ResourceResp, apiContextQuota } from '@/services/api/context'
 
 import { atomUserContext } from '@/utils/store'
 
+import { REFETCH_INTERVAL } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const showAmount = (allocated: number, label?: string) => {
@@ -87,7 +87,7 @@ const QuotaCard = ({
         </div>
       </CardHeader>
       <CardContent>
-        <ProgressBar width={progress} aria-label={resource?.label} />
+        <ProgressBar percent={progress} aria-label={resource?.label} />
       </CardContent>
     </Card>
   )

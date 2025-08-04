@@ -87,6 +87,7 @@ export interface IClusterNodeGPU {
   cudaVersion: string
   gpuProduct: string
 }
+
 export interface IClusterNodeTaint {
   name: string
   taint: string
@@ -94,20 +95,21 @@ export interface IClusterNodeTaint {
 export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('/nodes')
 
 export const apiGetNodeDetail = (name: string) =>
-  apiV1Get<IResponse<IClusterNodeDetail>>(`/nodes/${name}`)
+  apiV1Get<IResponse<IClusterNodeDetail>>(`nodes/${name}`)
 
 export const apiGetNodePods = (name: string) =>
   apiV1Get<IResponse<IClusterPodInfo[]>>(`/nodes/${name}/pods`)
 
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>
-  apiV1Get<IResponse<IClusterNodeGPU>>(`/nodes/${name}/gpu`)
+  apiV1Get<IResponse<IClusterNodeGPU>>(`nodes/${name}/gpu`)
+
 // 改变节点的可调度状态
 export const apichangeNodeScheduling = (name: string) =>
-  apiV1Put<IResponse<string>>(`/nodes/${name}`)
+  apiV1Put<IResponse<string>>(`nodes/${name}`)
+
 export const apiAddNodeTaint = (nodetaint: IClusterNodeTaint) =>
-  apiV1Post<IResponse<string>>(`/nodes/${nodetaint.name}/taint`, nodetaint)
+  apiV1Post<IResponse<string>>(`nodes/${nodetaint.name}/taint`, nodetaint)
+
 export const apiDeleteNodeTaint = (nodetaint: IClusterNodeTaint) =>
-  apiV1Delete<IResponse<string>>(`/nodes/${nodetaint.name}/taint`, {
-    data: nodetaint,
-  })
+  apiV1Delete<IResponse<string>>(`nodes/${nodetaint.name}/taint`, nodetaint)

@@ -70,8 +70,11 @@ export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
     >
       <Link
         {...(isAdminView ? adminJobLinkOptions : portalJobLinkOptions)}
+        preload="intent"
         params={{ name: jobInfo.jobName }}
-        search={{ tab: getJobStateType(jobInfo.status) === JobStatus.NotStarted ? 'event' : '' }}
+        search={{
+          tab: getJobStateType(jobInfo.status) === JobStatus.NotStarted ? 'event' : undefined,
+        }}
       >
         <div className="flex flex-row items-center">
           <p className="max-w-36 truncate">{jobInfo.name}</p>

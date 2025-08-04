@@ -31,11 +31,6 @@ export const Route = createFileRoute('/admin')({
       })
     }
   },
-  loader: () => {
-    return {
-      crumb: 'Admin',
-    }
-  },
   component: RouteComponent,
 })
 
@@ -67,6 +62,10 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
             {
               title: t('navigation.gpuMonitoring'),
               url: 'monitor/gpu',
+            },
+            {
+              title: t('navigation.freeResources'),
+              url: 'monitor/idle',
             },
             {
               title: t('navigation.networkMonitoring'),

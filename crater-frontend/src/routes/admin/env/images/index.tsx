@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { t } from 'i18next'
 
 /**
  * Copyright 2025 RAIDS Lab
@@ -28,6 +29,11 @@ import {
 
 export const Route = createFileRoute('/admin/env/images/')({
   component: RouteComponent,
+  loader: () => {
+    return {
+      crumb: t('navigation.imageList'),
+    }
+  },
 })
 
 function RouteComponent() {

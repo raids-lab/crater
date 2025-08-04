@@ -119,7 +119,7 @@ export const convertAiTask = (task: IAiTask): AiTask => {
 }
 
 export const apiAiTaskGet = (taskID: number) =>
-  apiV1Get<IResponse<IAiTask>>('/aitask/get', {
+  apiV1Get<IResponse<IAiTask>>('aitask/get', {
     searchParams: {
       taskID,
     },
