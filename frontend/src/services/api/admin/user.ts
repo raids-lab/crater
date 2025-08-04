@@ -44,12 +44,12 @@ export interface IUser {
 export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>(`/admin/users`)
 
 export const apiAdminUserDelete = (userName: string) =>
-  apiV1Delete<IResponse<string>>(`/admin/users/${userName}`)
+  apiV1Delete<IResponse<string>>(`admin/users/${userName}`)
 
 export const apiAdminUpdateUserAttributes = (username: string, data: IUserAttributes) =>
-  apiV1Put<IResponse<string>>(`/admin/users/${username}/attributes`, data)
+  apiV1Put<IResponse<string>>(`admin/users/${username}/attributes`, data)
 
 export const apiAdminUserUpdateRole = (userName: string, role: Role) =>
-  apiV1Put<IResponse<string>>(`/admin/users/${userName}/role`, {
+  apiV1Put<IResponse<string>>(`admin/users/${userName}/role`, {
     role,
   })

@@ -63,7 +63,6 @@ const UserLabel = ({ info, className }: { info: IUserInfo; className?: string })
       <Link
         {...(isAdminMode ? adminUserLinkOptions : portalUserLinkOptions)}
         params={{ name: info.username }}
-        search={{ tab: 'gpu' }}
       >
         <span className={cn('truncate text-sm font-normal', className)}>{displayName}</span>
       </Link>

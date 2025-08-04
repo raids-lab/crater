@@ -47,16 +47,16 @@ export const apiContextQuota = () => {
 }
 
 export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
-  apiV1Put<IResponse<string>>(`/context/attributes`, data)
+  apiV1Put<IResponse<string>>(`context/attributes`, data)
 
 // apiSendVerificationEmail,
 // apiVerifyEmailCode,
 
 export const apiSendVerificationEmail = (email: string) =>
-  apiV1Post<IResponse<string>>(`/context/email/code`, { email })
+  apiV1Post<IResponse<string>>(`context/email/code`, { email })
 
 export const apiVerifyEmailCode = (email: string, code: string) =>
-  apiV1Post<IResponse<string>>(`/context/email/update`, {
+  apiV1Post<IResponse<string>>(`context/email/update`, {
     code,
     email,
   })

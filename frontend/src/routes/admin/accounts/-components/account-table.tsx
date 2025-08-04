@@ -108,7 +108,7 @@ export const AccountTable = ({
             <Link
               to={'/admin/accounts/$id'}
               params={{ id: row.original.id.toString() }}
-              search={{ tab: 'users' }}
+              preload="intent"
               className="hover:text-primary flex flex-row items-center justify-start gap-2"
             >
               <div className="flex flex-col items-start gap-0.5">{row.getValue('nickname')}</div>
@@ -153,11 +153,7 @@ export const AccountTable = ({
         cell: ({ row }) => {
           return (
             <div className="flex flex-row items-center justify-center gap-1">
-              <Link
-                to={'/admin/accounts/$id'}
-                params={{ id: row.original.id.toString() }}
-                search={{ tab: 'users' }}
-              >
+              <Link to={'/admin/accounts/$id'} params={{ id: row.original.id.toString() }}>
                 <Button
                   title={t('table.actions.manageUser')}
                   variant="outline"

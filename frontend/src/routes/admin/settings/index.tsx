@@ -16,6 +16,7 @@
 // i18n-processed-v1.1.0
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute } from '@tanstack/react-router'
+import { t } from 'i18next'
 import { useAtom } from 'jotai'
 import { FileCogIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -47,6 +48,7 @@ import { globalSettings } from '@/utils/store'
 
 export const Route = createFileRoute('/admin/settings/')({
   component: RouteComponent,
+  loader: () => ({ crumb: t('navigation.platformSettings') }),
 })
 
 function RouteComponent() {

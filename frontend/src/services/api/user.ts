@@ -47,7 +47,7 @@ export interface BaseUserInfo {
   space: string
 }
 
-export const apiGetUser = (userName: string) => apiV1Get<IResponse<IUser>>(`/users/${userName}`)
+export const apiGetUser = (userName: string) => apiV1Get<IResponse<IUser>>(`users/${userName}`)
 
 export interface EmailVerifiedResponse {
   verified: boolean // 是否已验证
@@ -55,6 +55,6 @@ export interface EmailVerifiedResponse {
 }
 
 export const apiUserEmailVerified = () =>
-  apiV1Get<IResponse<EmailVerifiedResponse>>(`/users/email/verified`)
+  apiV1Get<IResponse<EmailVerifiedResponse>>(`users/email/verified`)
 
 export const apiGetBaseUserInfo = () => apiV1Get<IResponse<BaseUserInfo[]>>(`/admin/users/baseinfo`)

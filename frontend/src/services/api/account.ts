@@ -63,16 +63,16 @@ export interface IAccount {
 export const apiAdminAccountList = () => apiV1Get<IResponse<IAccount[]>>(`/admin/accounts`)
 
 export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
-  apiV1Post<IResponse<ICreateProjectResponse>>('/admin/accounts', account)
+  apiV1Post<IResponse<ICreateProjectResponse>>('admin/accounts', account)
 
 export const apiAccountUpdate = (id: number, account: ICreateOrUpdateAccount) =>
-  apiV1Put<IResponse<ICreateProjectResponse>>(`/admin/accounts/${id}`, account)
+  apiV1Put<IResponse<ICreateProjectResponse>>(`admin/accounts/${id}`, account)
 
 export interface IDeleteProjectResp {
   name: string
 }
 export const apiProjectDelete = (id: number) =>
-  apiV1Delete<IResponse<IDeleteProjectResp>>(`/admin/accounts/${id}`)
+  apiV1Delete<IResponse<IDeleteProjectResp>>(`admin/accounts/${id}`)
 
 export interface IUserInAccountCreate {
   id: number
@@ -94,19 +94,19 @@ export enum Access {
 }
 
 export const apiAddUser = async (pid: number, user: IUserInAccountCreate) =>
-  apiV1Post<IResponse<IUserInAccount>>('/admin/accounts/add/' + pid + '/' + user.id, {
+  apiV1Post<IResponse<IUserInAccount>>('admin/accounts/add/' + pid + '/' + user.id, {
     role: user.role,
     accessmode: user.accessmode,
   })
 
 export const apiUpdateUser = async (pid: number, user: IUserInAccountCreate) =>
-  apiV1Post<IResponse<IUserInAccount>>('/admin/accounts/update/' + pid + '/' + user.id, {
+  apiV1Post<IResponse<IUserInAccount>>('admin/accounts/update/' + pid + '/' + user.id, {
     role: user.role,
     accessmode: user.accessmode,
   })
 
 export const apiRemoveUser = async (pid: number, user: IUserInAccountCreate) =>
-  apiV1Delete<IResponse<IUserInAccount>>('/admin/accounts/' + pid + '/' + user.id)
+  apiV1Delete<IResponse<IUserInAccount>>('admin/accounts/' + pid + '/' + user.id)
 
 export const apiUserInProjectList = (pid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>('/admin/accounts/userIn/' + pid)
@@ -115,12 +115,12 @@ export const apiUserOutOfProjectList = (pid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>('/admin/accounts/userOutOf/' + pid)
 
 export const apiAccountQuotaGet = (pid: number) => {
-  return apiV1Get<IResponse<QuotaResp>>(`/admin/accounts/${pid}/quota`)
+  return apiV1Get<IResponse<QuotaResp>>(`admin/accounts/${pid}/quota`)
 }
 
 export const apiAccountGet = (pid: number) => {
-  return apiV1Get<IResponse<IAccount>>(`/admin/accounts/${pid}`)
+  return apiV1Get<IResponse<IAccount>>(`admin/accounts/${pid}`)
 }
 export const apiAccountGetByName = (name: string) => {
-  return apiV1Get<IResponse<IAccount>>(`/accounts/${name}`)
+  return apiV1Get<IResponse<IAccount>>(`accounts/${name}`)
 }

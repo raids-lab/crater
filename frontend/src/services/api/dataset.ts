@@ -93,25 +93,25 @@ export const apiAdminGetDatasetByID = (datasetID: number) =>
 export const apiAdminGetDataset = () => apiV1Get<IResponse<IDataset[]>>(`/admin/dataset/alldataset`)
 
 export const apiShareDatasetwithUser = (ud: UserDataset) =>
-  apiV1Post<IResponse<string>>('/dataset/share/user', ud)
+  apiV1Post<IResponse<string>>('dataset/share/user', ud)
 
 export const apiShareDatasetwithQueue = (qd: QueueDataset) =>
-  apiV1Post<IResponse<string>>('/dataset/share/queue', qd)
+  apiV1Post<IResponse<string>>('dataset/share/queue', qd)
 
 export const apiDatasetCreate = (dataset: DatasetReq) =>
-  apiV1Post<IResponse<string>>('/dataset/create', dataset)
+  apiV1Post<IResponse<string>>('dataset/create', dataset)
 
 export const apiDatasetDelete = (datasetID: number) =>
-  apiV1Delete<IResponse<string>>(`/dataset/delete/${datasetID}`)
+  apiV1Delete<IResponse<string>>(`dataset/delete/${datasetID}`)
 
 export const apiDatasetRename = (drr: DatasetRenameReq) =>
-  apiV1Post<IResponse<string>>('/dataset/rename', drr)
+  apiV1Post<IResponse<string>>('dataset/rename', drr)
 
 export const apiAdminShareDatasetwithUser = (ud: UserDataset) =>
-  apiV1Post<IResponse<string>>('/admin/dataset/share/user', ud)
+  apiV1Post<IResponse<string>>('admin/dataset/share/user', ud)
 
 export const apiAdminShareDatasetwithQueue = (qd: QueueDataset) =>
-  apiV1Post<IResponse<string>>('/admin/dataset/share/queue', qd)
+  apiV1Post<IResponse<string>>('admin/dataset/share/queue', qd)
 
 export const apiListUsersNotInDataset = (datasetID: number) =>
   apiV1Get<IResponse<IUserAttributes[]>>(`/dataset/${datasetID}/usersNotIn`)
@@ -125,16 +125,16 @@ export const apiListQueuesInDataset = (datasetID: number) =>
   apiV1Get<IResponse<QueueDatasetGetResp[]>>(`/dataset/${datasetID}/queuesIn`)
 
 export const apiCancelShareWithUser = (CSU: cancelSharedUserResp) =>
-  apiV1Post<IResponse<string>>(`/dataset/cancelshare/user`, CSU)
+  apiV1Post<IResponse<string>>(`dataset/cancelshare/user`, CSU)
 
 export const apiCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
-  apiV1Post<IResponse<string>>(`/dataset/cancelshare/queue`, CSQ)
+  apiV1Post<IResponse<string>>(`dataset/cancelshare/queue`, CSQ)
 
 export const apiAdminCancelShareWithUser = (CSU: cancelSharedUserResp) =>
-  apiV1Post<IResponse<string>>(`/admin/dataset/cancelshare/user`, CSU)
+  apiV1Post<IResponse<string>>(`admin/dataset/cancelshare/user`, CSU)
 
 export const apiAdminCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
-  apiV1Post<IResponse<string>>(`/admin/dataset/cancelshare/queue`, CSQ)
+  apiV1Post<IResponse<string>>(`admin/dataset/cancelshare/queue`, CSQ)
 
 export const apiDatasetUpdate = (dataset: DatasetReq & { datasetId: number }) =>
-  apiV1Post<IResponse<string>>('/dataset/update', dataset)
+  apiV1Post<IResponse<string>>('dataset/update', dataset)

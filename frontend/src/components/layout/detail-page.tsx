@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { motion } from 'framer-motion'
 import { LucideIcon } from 'lucide-react'
-import { ReactNode, useMemo } from 'react'
+import { ReactNode, useEffect, useMemo, useRef } from 'react'
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -45,12 +46,12 @@ export interface DetailPageCoreProps {
 }
 
 export type DetailPageSearch = {
-  tab: string
+  tab?: string
 }
 
 export const detailValidateSearch = (search: Record<string, unknown>): DetailPageSearch => {
   return {
-    tab: (search.tab as string) || '',
+    tab: (search.tab as string) || undefined,
   }
 }
 
@@ -73,9 +74,32 @@ export default function DetailPage({
     return rawTabs.filter((tab) => !tab.hidden)
   }, [rawTabs])
 
+  const previousTabRef = useRef<string>('')
+
   const tab = useMemo(() => {
-    return currentTab == '' ? tabs[0].key : currentTab
+    return currentTab === undefined || currentTab === '' ? tabs[0].key : currentTab
   }, [currentTab, tabs])
+
+  // 计算动画方向 - 基于从哪个 tab 切换过来
+  const animationDirection = useMemo(() => {
+    const previousIndex = tabs.findIndex((t) => t.key === previousTabRef.current)
+    const currentIndex = tabs.findIndex((t) => t.key === tab)
+
+    // 如果没有previous tab（首次加载），不应用动画
+    if (previousTabRef.current === '' || previousIndex === -1) {
+      return 'none'
+    }
+
+    // 根据索引位置决定动画方向
+    return currentIndex > previousIndex ? 'right' : 'left'
+  }, [tabs, tab])
+
+  // 更新 previous tab
+  useEffect(() => {
+    if (tab !== previousTabRef.current) {
+      previousTabRef.current = tab || ''
+    }
+  }, [tab])
 
   return (
     <div className="flex h-full w-full flex-col space-y-6">
@@ -100,16 +124,40 @@ export default function DetailPage({
             </TabsTrigger>
           ))}
         </TabsList>
-        {tabs.map((tab) => (
-          <TabsContent key={tab.key} value={tab.key} className="w-full">
-            {tab.scrollable ? (
-              <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
-                {tab.children}
-                <ScrollBar orientation="horizontal" />
-              </ScrollArea>
-            ) : (
-              <div className="h-[calc(100vh_-_300px)] w-full">{tab.children}</div>
-            )}
+        {tabs.map((tabItem) => (
+          <TabsContent key={tabItem.key} value={tabItem.key} asChild>
+            <motion.div
+              key={`${tabItem.key}-${tab}`}
+              className="w-full"
+              initial={{
+                opacity: animationDirection === 'none' ? 1 : 0,
+                x:
+                  animationDirection === 'none'
+                    ? 0
+                    : animationDirection === 'right'
+                      ? '50%'
+                      : '-50%',
+              }}
+              animate={{
+                opacity: 1,
+                x: 0,
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 30,
+                duration: animationDirection === 'none' ? 0 : 1.2,
+              }}
+            >
+              {tabItem.scrollable ? (
+                <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
+                  {tabItem.children}
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              ) : (
+                <div className="h-[calc(100vh_-_300px)] w-full">{tabItem.children}</div>
+              )}
+            </motion.div>
           </TabsContent>
         ))}
       </Tabs>
