@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import ky, { HTTPError } from 'ky'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 
 import LogDialog from '@/components/codeblock/LogDialog'
 import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
+import JupyterIcon from '@/components/icon/JupyterIcon'
 
 import { apiJupyterSnapshot } from '@/services/api/vcjob'
 import { queryJupyterToken } from '@/services/query/job'
@@ -35,6 +37,16 @@ export const Route = createFileRoute('/ingress/jupyter/$name')({
         'Jupyter token is not available. Please check the job status or try again later.'
       )
     }
+    // try to check if connection to  Jupyter Notebook is ready
+    const url = `${data.fullURL}?token=${data.token}`
+    try {
+      await ky.get(url, { timeout: 5000 })
+    } catch (error) {
+      if (error instanceof HTTPError) {
+        throw new Error('Jupyter Notebook is not ready yet. Please try again later.')
+      }
+      throw error
+    }
   },
   component: Jupyter,
   errorComponent: Refresh,
@@ -43,7 +55,7 @@ export const Route = createFileRoute('/ingress/jupyter/$name')({
 function Refresh() {
   const { name } = Route.useParams()
   const navigate = useNavigate()
-  const [countdown, setCountdown] = useState(5)
+  const [countdown, setCountdown] = useState(10)
 
   // 自动重试倒计时
   useEffect(() => {
@@ -51,7 +63,7 @@ function Refresh() {
       setCountdown((prev) => {
         if (prev <= 1) {
           window.location.reload()
-          return 5
+          return 0
         }
         return prev - 1
       })
@@ -69,16 +81,14 @@ function Refresh() {
   }
 
   return (
-    <div className="from-highlight-orange to-highlight-fuchsia via-highlight-red flex min-h-screen items-center justify-center bg-gradient-to-br">
+    <div className="from-primary to-highlight-violet via-highlight-emerald flex min-h-screen items-center justify-center bg-gradient-to-br">
       <Card className="mx-4 w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
-            <RefreshCw className="h-6 w-6 animate-spin text-orange-600" />
+          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-orange-100">
+            <JupyterIcon className="size-8" />
           </div>
           <CardTitle className="text-xl">Jupyter 服务正在启动</CardTitle>
-          <CardDescription className="text-balance">
-            Jupyter Notebook 服务可能还未完全就绪，请稍等片刻或手动刷新页面
-          </CardDescription>
+          <CardDescription className="text-balance">请稍等片刻或手动刷新页面</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-center text-sm text-gray-600">
@@ -88,11 +98,11 @@ function Refresh() {
 
           <div className="flex flex-col space-y-2">
             <Button onClick={handleRefresh} className="w-full">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              立即刷新
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              立即刷新页面
             </Button>
             <Button onClick={handleGoBack} variant="outline" className="w-full">
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <ExternalLink className="h-4 w-4" />
               返回任务详情
             </Button>
           </div>
