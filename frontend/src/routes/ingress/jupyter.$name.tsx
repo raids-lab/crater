@@ -28,8 +28,13 @@ import { queryJupyterToken } from '@/services/query/job'
 import FloatingBall from './-components/FloatingBall'
 
 export const Route = createFileRoute('/ingress/jupyter/$name')({
-  loader: ({ context: { queryClient }, params: { name } }) => {
-    return queryClient.ensureQueryData(queryJupyterToken(name))
+  loader: async ({ context: { queryClient }, params: { name } }) => {
+    const { data } = await queryClient.ensureQueryData(queryJupyterToken(name))
+    if (!data.token || data.token === '') {
+      throw new Error(
+        'Jupyter token is not available. Please check the job status or try again later.'
+      )
+    }
   },
   component: Jupyter,
   errorComponent: Refresh,
@@ -38,7 +43,7 @@ export const Route = createFileRoute('/ingress/jupyter/$name')({
 function Refresh() {
   const { name } = Route.useParams()
   const navigate = useNavigate()
-  const [countdown, setCountdown] = useState(10)
+  const [countdown, setCountdown] = useState(5)
 
   // 自动重试倒计时
   useEffect(() => {
