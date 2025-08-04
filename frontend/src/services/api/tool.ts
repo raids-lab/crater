@@ -57,7 +57,7 @@ export const apiGetPodContainerLog = (
   query?: PodContainerLogQueryReq
 ) => {
   return apiV1Get<IResponse<string>>(
-    `/namespaces/${namespace}/pods/${podName}/containers/${containerName}/log`,
+    `namespaces/${namespace}/pods/${podName}/containers/${containerName}/log`,
     {
       searchParams: { ...query },
     }
@@ -80,21 +80,21 @@ export interface PodIngressesList {
 }
 
 export const apiGetPodIngresses = (namespace: string, podName: string) =>
-  apiV1Get<IResponse<PodIngressesList>>(`/namespaces/${namespace}/pods/${podName}/ingresses`)
+  apiV1Get<IResponse<PodIngressesList>>(`namespaces/${namespace}/pods/${podName}/ingresses`)
 
 export const apiCreatePodIngress = (
   namespace: string,
   podName: string,
   ingressMgr: PodIngressMgr
 ) =>
-  apiV1Post<IResponse<PodIngress>>(`/namespaces/${namespace}/pods/${podName}/ingresses`, ingressMgr)
+  apiV1Post<IResponse<PodIngress>>(`namespaces/${namespace}/pods/${podName}/ingresses`, ingressMgr)
 
 export const apiDeletePodIngress = (
   namespace: string,
   podName: string,
   ingressMgr: PodIngressMgr
 ) =>
-  apiV1Delete<IResponse<string>>(`/namespaces/${namespace}/pods/${podName}/ingresses`, {
+  apiV1Delete<IResponse<string>>(`namespaces/${namespace}/pods/${podName}/ingresses`, {
     data: ingressMgr,
   })
 
@@ -115,7 +115,7 @@ export interface PodNodeportsList {
 }
 
 export const apiGetPodNodeports = (namespace: string, podName: string) =>
-  apiV1Get<IResponse<PodNodeportsList>>(`/namespaces/${namespace}/pods/${podName}/nodeports`)
+  apiV1Get<IResponse<PodNodeportsList>>(`namespaces/${namespace}/pods/${podName}/nodeports`)
 
 export const apiCreatePodNodeport = (
   namespace: string,
@@ -132,6 +132,6 @@ export const apiDeletePodNodeport = (
   podName: string,
   nodeportMgr: PodNodeportMgr
 ) =>
-  apiV1Delete<IResponse<string>>(`/namespaces/${namespace}/pods/${podName}/nodeports`, {
+  apiV1Delete<IResponse<string>>(`namespaces/${namespace}/pods/${podName}/nodeports`, {
     data: nodeportMgr,
   })

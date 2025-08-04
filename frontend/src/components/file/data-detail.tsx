@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
 import {
@@ -102,7 +102,7 @@ export function SharedResourceTable({
 }: SharedResourceTableProps) {
   const datasetId = data?.id || 0
   const { t } = useTranslation()
-  const navigate = useNavigate()
+  const router = useRouter()
   const user = useAtomValue(atomUserInfo)
   const isAdminMode = useIsAdmin()
   const dataTypeLabel = (() => {
@@ -186,7 +186,7 @@ export function SharedResourceTable({
   const { mutate: deleteDataset } = useMutation({
     mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
     onSuccess: () => {
-      navigate({ to: '..' })
+      router.history.back()
       toast.success(t('sharedResource.deletedSuccess', { type: dataTypeLabel }))
     },
     onError: () => {

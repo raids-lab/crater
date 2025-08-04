@@ -15,7 +15,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { CirclePlus, LayoutGridIcon } from 'lucide-react'
@@ -125,10 +125,10 @@ function RouteComponent() {
   const searchParams = Route.useSearch()
   const [envOpen, setEnvOpen] = useState(false)
   const [otherOpen, setOtherOpen] = useState(true)
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
   const flags = useAtomValue(configFeatureFlags)
+  const router = useRouter()
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
@@ -157,7 +157,7 @@ function RouteComponent() {
         queryClient.invalidateQueries({ queryKey: ['job'] })
       )
       toast.success(`作业 ${jobName} 创建成功`)
-      navigate({ to: '..' })
+      router.history.back()
     },
   })
 

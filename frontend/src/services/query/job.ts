@@ -1,7 +1,8 @@
-import { REFETCH_INTERVAL } from '@/config/task'
 import { queryOptions } from '@tanstack/react-query'
 
 import { apiJobGetDetail, apiJupyterTokenGet } from '@/services/api/vcjob'
+
+import { REFETCH_INTERVAL } from '@/lib/constants'
 
 export const queryJupyterToken = (name: string) =>
   queryOptions({

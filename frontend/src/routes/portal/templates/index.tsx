@@ -89,7 +89,7 @@ function RouteComponent() {
             </div>
             <TooltipLink
               {...getJobUrlFromTemplate(item.template || '')}
-              search={{ fromTemplate: item.id, fromJob: '' }}
+              search={{ fromTemplate: item.id }}
               name={<p className="text-left">{item.name}</p>}
               tooltip={`使用该模板`}
               className="font-semibold"

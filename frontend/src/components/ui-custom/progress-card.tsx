@@ -57,7 +57,7 @@ export function ProgressCard({
             </span>)}
           {showPercentage && <span className="text-2xl font-bold">{percentage.toFixed(1)}<span className="text-xl ml-0.5">%</span></span>}
         </div>
-        {percentage > 0.1 && <ProgressBar width={percentage} />}
+        {percentage > 0.1 && <ProgressBar percent={percentage} />}
       </CardContent>
     </Card>
   )

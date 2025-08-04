@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { REFETCH_INTERVAL } from '@/config/task'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
@@ -43,6 +42,8 @@ import { JobPhase, apiJobDelete, apiJobInteractiveList } from '@/services/api/vc
 import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
+
+import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import Quota from './-components/Quota'
 

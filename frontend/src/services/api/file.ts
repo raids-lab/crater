@@ -43,8 +43,10 @@ export const apiGetFiles = (path: string) =>
   apiGet<IResponse<FileItem[] | undefined>>(
     `ss/files/${encodeURIComponent(path.replace(/^\//, ''))}`
   )
+
 export const apiGetRWFiles = (path: string) =>
   apiGet<IResponse<FileItem[] | undefined>>(`ss/rwfiles/${path.replace(/^\//, '')}`)
+
 export const apiGetAdminFile = (path: string) =>
   apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/files/${path.replace(/^\//, '')}`)
 

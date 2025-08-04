@@ -15,7 +15,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { LayoutGridIcon } from 'lucide-react'
@@ -122,7 +122,7 @@ function RouteComponent() {
   const searchParams = Route.useSearch()
   const [envOpen, setEnvOpen] = useState<boolean>(false)
   const [otherOpen, setOtherOpen] = useState<boolean>(false)
-  const navigate = useNavigate()
+  const router = useRouter()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
 
@@ -155,7 +155,7 @@ function RouteComponent() {
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
       toast.success(`作业 ${jobName} 创建成功`)
-      navigate({ to: '..' })
+      router.history.back()
     },
   })
 

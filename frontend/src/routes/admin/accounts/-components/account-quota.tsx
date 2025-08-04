@@ -15,18 +15,19 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { REFETCH_INTERVAL } from '@/config/task'
 import { useQuery } from '@tanstack/react-query'
 import { CpuIcon, GpuIcon, MemoryStickIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Card, CardDescription, CardFooter, CardHeader } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+
+import { ProgressBar, progressTextColor } from '@/components/ui-custom/colorful-progress'
 
 import { apiAccountQuotaGet } from '@/services/api/account'
 import { ResourceResp } from '@/services/api/context'
 
+import { REFETCH_INTERVAL } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const showAmount = (allocated: number, label?: string) => {
@@ -60,6 +61,7 @@ const QuotaCard = ({
     const overflow = progress > 100
     return [overflow ? 100 : progress, overflow]
   }, [allocated, quota])
+
   return (
     <Card className="flex flex-col items-stretch justify-between">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -70,27 +72,19 @@ const QuotaCard = ({
           {resource?.label}
         </CardDescription>
         <p
-          className={cn('text-muted-foreground mx-0.5 font-mono text-xl font-bold', {
+          className={cn('text-muted-foreground mx-0.5 font-mono text-base font-bold', {
             'text-orange-500': overflow,
           })}
         >
           {t('quotaCard.used')}
-          <span
-            className={cn('text-primary mx-0.5 font-mono text-xl font-bold', {
-              'text-orange-500': overflow,
-            })}
-          >
+          <span className={cn(progressTextColor(progress), 'text-2xl')}>
             {showAmount(allocated, resource?.label)}
           </span>
           {showUnit(resource?.label)}
         </p>
       </CardHeader>
       <CardFooter className="flex flex-col gap-2">
-        <Progress
-          value={progress}
-          aria-label={resource?.label}
-          className={cn({ 'bg-orange-500/20 *:bg-orange-400': overflow })}
-        />
+        <ProgressBar percent={progress} aria-label={resource?.label} className="w-full" />
         <div className="flex w-full flex-row-reverse items-center justify-between text-xs">
           {resource?.capability?.amount !== undefined && (
             <p className="text-orange-500">

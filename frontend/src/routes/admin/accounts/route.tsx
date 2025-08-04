@@ -1,13 +1,9 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 
-export const Route = createFileRoute('/portal/monitor')({
+export const Route = createFileRoute('/admin/accounts')({
   component: RouteComponent,
-  loader: () => {
-    return {
-      crumb: t('navigation.clusterMonitoring'),
-    }
-  },
+  loader: () => ({ crumb: t('navigation.accountManagement') }),
 })
 
 function RouteComponent() {

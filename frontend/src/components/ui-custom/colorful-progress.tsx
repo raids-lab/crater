@@ -16,22 +16,32 @@
 // i18n-processed-v1.1.0
 import { cn } from '@/lib/utils'
 
+export const progressTextColor = (percent: number) => {
+  return cn('text-highlight-emerald mb-0.5 font-mono text-sm font-bold', {
+            'text-highlight-emerald': percent <= 20,
+            'text-highlight-sky': percent > 20 && percent <= 50,
+            'text-highlight-yellow': percent > 50 && percent <= 70,
+            'text-highlight-orange': percent > 70 && percent <= 90,
+            'text-highlight-red': percent > 90,
+          })
+}
+
 export const ProgressBar = ({
-  width,
+  percent,
   label,
   className,
 }: {
-  width: number
+  percent: number
   label?: string
   className?: string
 }) => {
-  const newWidth = width > 100 ? 100 : width
+  const newWidth = percent > 100 ? 100 : percent
   return (
     <div
       className={cn(
         'bg-accent text-foreground relative h-2 rounded-md',
         {
-          'text-white': width > 90,
+          'text-white': percent > 90,
         },
         className
       )}
@@ -40,11 +50,11 @@ export const ProgressBar = ({
         className={cn(
           'h-2 rounded-md transition-all duration-500',
           {
-            'bg-highlight-emerald': width <= 20,
-            'bg-highlight-sky': width > 20 && width <= 50,
-            'bg-highlight-yellow': width > 50 && width <= 70,
-            'bg-highlight-orange': width > 70 && width <= 90,
-            'bg-highlight-red': width > 90,
+            'bg-highlight-emerald': percent <= 20,
+            'bg-highlight-sky': percent > 20 && percent <= 50,
+            'bg-highlight-yellow': percent > 50 && percent <= 70,
+            'bg-highlight-orange': percent > 70 && percent <= 90,
+            'bg-highlight-red': percent > 90,
           },
           className
         )}

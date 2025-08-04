@@ -49,14 +49,14 @@ import { createJobTemplate, updateJobTemplate } from '@/services/api/jobtemplate
 import { atomUserInfo } from '@/utils/store'
 
 export type PublishSearch = {
-  fromTemplate: number
-  fromJob: string
+  fromTemplate?: number
+  fromJob?: string
 }
 
 export const publishValidateSearch = (search: Record<string, unknown>): PublishSearch => {
   return {
-    fromTemplate: Number(search.fromTemplate) || 0,
-    fromJob: (search.fromJob as string) || '',
+    fromTemplate: Number(search.fromTemplate) || undefined,
+    fromJob: (search.fromJob as string) || undefined,
   }
 }
 
@@ -72,7 +72,7 @@ type FormValues = z.infer<typeof formSchema>
 interface PublishConfigFormProps<T extends FieldValues> {
   config: object // The configuration object to be published
   configform: UseFormReturn<T>
-  fromTemplate: number
+  fromTemplate?: number
 }
 
 export function PublishConfigForm<T extends FieldValues>({
