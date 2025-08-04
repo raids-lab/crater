@@ -16,7 +16,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Cross1Icon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
@@ -116,7 +116,7 @@ type FormSchema = z.infer<typeof formSchema>
 function RouteComponent() {
   const [envOpen, setEnvOpen] = useState<boolean>(false)
   const [otherOpen, setOtherOpen] = useState<boolean>(false)
-  const navigate = useNavigate()
+  const router = useRouter()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
 
@@ -165,7 +165,7 @@ function RouteComponent() {
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
       toast.success(`作业 ${jobName} 创建成功`)
-      navigate({ to: '..' })
+      router.history.back()
     },
   })
   const imagesInfo = useQuery({
@@ -305,7 +305,7 @@ function RouteComponent() {
                 size="icon"
                 type="button"
                 className="h-8 w-8"
-                onClick={() => navigate({ to: '..' })}
+                onClick={() => router.history.back()}
               >
                 <ChevronLeftIcon className="size-4" />
               </Button>
@@ -629,12 +629,12 @@ function RouteComponent() {
                       </CardHeader>
                       <CardContent className="space-y-1.5">
                         <ProgressBar
-                          width={analyze.p100.gpuUtilAvg}
+                          percent={analyze.p100.gpuUtilAvg}
                           label={`gpuUtilAvg: ${analyze.p100.gpuUtilAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
-                          width={(analyze.p100.gpuMemoryMaxGB / 16.0) * 100}
+                          percent={(analyze.p100.gpuMemoryMaxGB / 16.0) * 100}
                           label={`gpuMemoryMaxGB: ${analyze.p100.gpuMemoryMaxGB.toFixed(2)}GB`}
                           className="h-4"
                         />
@@ -646,12 +646,12 @@ function RouteComponent() {
                       </CardHeader>
                       <CardContent className="space-y-1.5">
                         <ProgressBar
-                          width={analyze.v100.gpuUtilAvg}
+                          percent={analyze.v100.gpuUtilAvg}
                           label={`gpuUtilAvg: ${analyze.v100.gpuUtilAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
-                          width={(analyze.v100.gpuMemoryMaxGB / 32.0) * 100}
+                          percent={(analyze.v100.gpuMemoryMaxGB / 32.0) * 100}
                           label={`gpuMemoryMaxGB: ${analyze.v100.gpuMemoryMaxGB.toFixed(2)}GB`}
                           className="h-4"
                         />
@@ -660,22 +660,22 @@ function RouteComponent() {
                     // fp32ActiveAvg: number;
                     // dramActiveAvg: number; */}
                         <ProgressBar
-                          width={analyze.v100.smActiveAvg}
+                          percent={analyze.v100.smActiveAvg}
                           label={`smActiveAvg: ${analyze.v100.smActiveAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
-                          width={analyze.v100.smOccupancyAvg}
+                          percent={analyze.v100.smOccupancyAvg}
                           label={`smOccupancyAvg: ${analyze.v100.smOccupancyAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
-                          width={analyze.v100.fp32ActiveAvg}
+                          percent={analyze.v100.fp32ActiveAvg}
                           label={`fp32ActiveAvg: ${analyze.v100.fp32ActiveAvg.toFixed(2)}%`}
                           className="h-4"
                         />
                         <ProgressBar
-                          width={analyze.v100.dramActiveAvg}
+                          percent={analyze.v100.dramActiveAvg}
                           label={`dramActiveAvg: ${analyze.v100.dramActiveAvg.toFixed(2)}%`}
                           className="h-4"
                         />

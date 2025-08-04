@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { REFETCH_INTERVAL } from '@/config/task'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { Trash2Icon } from 'lucide-react'
@@ -36,6 +35,8 @@ import { JobPhase, apiJobBatchList, apiJobDelete } from '@/services/api/vcjob'
 import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
+
+import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import ListedNewJobButton from '../new-job-button'
 

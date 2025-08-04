@@ -37,14 +37,14 @@ export const listJobTemplate = () => {
   return apiV1Get<IResponse<JobTemplate[]>>(`/jobtemplate/list`)
 }
 export const createJobTemplate = (data: JobTemplateReq) => {
-  return apiV1Post<IResponse<string>>(`/jobtemplate/create`, data)
+  return apiV1Post<IResponse<string>>(`jobtemplate/create`, data)
 }
 export const getJobTemplate = (id: number) => {
-  return apiV1Get<IResponse<JobTemplate>>(`/jobtemplate/${id}`)
+  return apiV1Get<IResponse<JobTemplate>>(`jobtemplate/${id}`)
 }
 export const deleteJobTemplate = (id: number) => {
-  return apiV1Delete<IResponse<string>>(`/jobtemplate/delete/${id}`)
+  return apiV1Delete<IResponse<string>>(`jobtemplate/delete/${id}`)
 }
 export const updateJobTemplate = (data: JobTemplateReq & { id: number }) => {
-  return apiV1Put<IResponse<string>>(`/jobtemplate/update/${data.id}`, data)
+  return apiV1Put<IResponse<string>>(`jobtemplate/update/${data.id}`, data)
 }

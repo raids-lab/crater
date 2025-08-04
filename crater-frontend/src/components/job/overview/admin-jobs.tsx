@@ -28,7 +28,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
-import { InfoIcon, LockIcon, SquareIcon, Trash2Icon, UnlockIcon } from 'lucide-react'
+import { CalendarIcon, InfoIcon, LockIcon, SquareIcon, Trash2Icon, UnlockIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -507,6 +507,7 @@ const AdminJobOverview = () => {
           }}
         >
           <SelectTrigger className="bg-background h-9 pr-2 pl-3">
+            <CalendarIcon />
             <SelectValue placeholder={days.toString()} />
           </SelectTrigger>
           <SelectContent side="top">

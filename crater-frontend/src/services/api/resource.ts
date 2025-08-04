@@ -46,7 +46,7 @@ export const apiResourceNetworks = (id: number) => {
 
 // @Router /v1/admin/resources/sync [post]
 export const apiAdminResourceSync = () => {
-  return apiV1Post<IResponse<never>>(`/admin/resources/sync`)
+  return apiV1Post<IResponse<never>>(`admin/resources/sync`)
 }
 
 // @Router /v1/admin/resources/{id} [put]
@@ -55,7 +55,7 @@ export const apiAdminResourceUpdate = (
   label?: string,
   type?: 'gpu' | 'rdma' | 'default' | null
 ) => {
-  return apiV1Put<IResponse<Resource>>(`/admin/resources/${id}`, {
+  return apiV1Put<IResponse<Resource>>(`admin/resources/${id}`, {
     label,
     type,
   })
@@ -69,13 +69,13 @@ export const apiAdminResourceReset = (
   value: string
 ) => {
   if (key === 'cpu') {
-    return apiV1Put<IResponse<string>>(`/admin/namespaces/${namespace}/pods/${podName}/resources`, {
+    return apiV1Put<IResponse<string>>(`admin/namespaces/${namespace}/pods/${podName}/resources`, {
       resources: {
         cpu: value,
       },
     })
   } else {
-    return apiV1Put<IResponse<string>>(`/admin/namespaces/${namespace}/pods/${podName}/resources`, {
+    return apiV1Put<IResponse<string>>(`admin/namespaces/${namespace}/pods/${podName}/resources`, {
       resources: {
         memory: value,
       },
@@ -85,7 +85,7 @@ export const apiAdminResourceReset = (
 
 // @Router /v1/admin/resources/{id} [delete]
 export const apiAdminResourceDelete = (id: number) => {
-  return apiV1Delete<IResponse<Resource>>(`/admin/resources/${id}`)
+  return apiV1Delete<IResponse<Resource>>(`admin/resources/${id}`)
 }
 
 // @Router /v1/admin/resources/{id}/networks [get]
@@ -95,12 +95,12 @@ export const apiAdminResourceNetworksList = (id: number) => {
 
 // @Router /v1/admin/resources/{id}/networks [post]
 export const apiAdminResourceNetworkAdd = (id: number, rdmaId: number) => {
-  return apiV1Post<IResponse<Resource>>(`/admin/resources/${id}/networks`, {
+  return apiV1Post<IResponse<Resource>>(`admin/resources/${id}/networks`, {
     rdmaId,
   })
 }
 
 // @Router /v1/admin/resources/{id}/networks/{networkId} [delete]
 export const apiAdminResourceNetworkDelete = (id: number, networkId: number) => {
-  return apiV1Delete<IResponse<Resource>>(`/admin/resources/${id}/networks/${networkId}`)
+  return apiV1Delete<IResponse<Resource>>(`admin/resources/${id}/networks/${networkId}`)
 }

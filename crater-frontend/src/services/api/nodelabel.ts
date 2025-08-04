@@ -36,12 +36,12 @@ export const apiNodeLabelsList = () => {
 }
 
 export const apiNodeLabelsUpdate = (id: number, name: string, priority: number) => {
-  return apiV1Put<IResponse<LabelInfo>>(`/admin/labels/${id}`, {
+  return apiV1Put<IResponse<LabelInfo>>(`admin/labels/${id}`, {
     name,
     priority,
   })
 }
 
 export const apiNodeLabelsNvidiaSync = () => {
-  return apiV1Post<IResponse<never>>(`/admin/labels/sync/nvidia`)
+  return apiV1Post<IResponse<never>>(`admin/labels/sync/nvidia`)
 }

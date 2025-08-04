@@ -204,7 +204,7 @@ const getColumns = (
     ),
     cell: ({ row }) => {
       return (
-        <Badge variant="outline" className="cursor-help font-mono font-normal">
+        <Badge variant="outline" className="font-mono font-normal">
           {row.getValue<string>('namespace')}
         </Badge>
       )

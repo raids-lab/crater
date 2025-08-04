@@ -44,6 +44,6 @@ interface IDlAnalyzeRequest {
 
 // /v1/recommenddljob/analyze
 export const apiDlAnalyze = (data: IDlAnalyzeRequest) =>
-  apiV1Post<IResponse<IDlAnalyze>>('/recommenddljob/analyze', {
+  apiV1Post<IResponse<IDlAnalyze>>('recommenddljob/analyze', {
     ...data,
   })

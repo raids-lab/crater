@@ -9,13 +9,13 @@ import { queryJobDetail } from '@/services/query/job'
 export const Route = createFileRoute('/portal/jobs/detail/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
+  errorComponent: () => <NotFound />,
   loader: async ({ params, context: { queryClient } }) => {
     const { data } = await queryClient.ensureQueryData(queryJobDetail(params.name))
     return {
       crumb: data.name ?? params.name,
     }
   },
-  errorComponent: () => <NotFound />,
 })
 
 function RouteComponent() {

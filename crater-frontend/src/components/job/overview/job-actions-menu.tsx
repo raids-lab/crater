@@ -65,17 +65,13 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
           <DropdownMenuItem asChild>
-            <Link
-              to="/portal/jobs/detail/$name"
-              params={{ name: jobInfo.jobName }}
-              search={{ tab: '' }}
-            >
+            <Link to="/portal/jobs/detail/$name" params={{ name: jobInfo.jobName }}>
               <InfoIcon className="text-highlight-emerald size-4" />
               详情
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link {...option} search={{ fromJob: jobInfo.jobName, fromTemplate: 0 }}>
+            <Link {...option} search={{ fromJob: jobInfo.jobName }}>
               <RedoDotIcon className="text-highlight-purple size-4" />
               克隆
             </Link>

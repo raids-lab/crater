@@ -20,6 +20,7 @@ import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
+import { t } from 'i18next'
 import { Briefcase, Calendar, Layers, UserRoundPlusIcon, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -90,19 +91,39 @@ import {
   Access,
   IUserInAccount,
   IUserInAccountCreate,
-  apiAccountGet,
   apiAddUser,
   apiRemoveUser,
   apiUpdateUser,
   apiUserInProjectList,
   apiUserOutOfProjectList,
 } from '@/services/api/account'
+import { queryAccountByID } from '@/services/query/account'
 
 import Quota from './-components/account-quota'
 
 export const Route = createFileRoute('/admin/accounts/$id')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
+  loader: async ({ params, context: { queryClient } }) => {
+    const id = Number(params.id)
+    const { data } = await queryClient.ensureQueryData(queryAccountByID(id))
+    return {
+      crumb: data?.nickname || params.id,
+    }
+  },
+})
+
+// Moved Zod schema to component
+const formSchema = z.object({
+  userIds: z.array(z.string()).min(1, {
+    message: t('accountDetail.form.validation.minUsers'),
+  }),
+  role: z.string().min(1, {
+    message: t('accountDetail.form.validation.invalidRole'),
+  }),
+  accessmode: z.string().min(1, {
+    message: t('accountDetail.form.validation.invalidAccess'),
+  }),
 })
 
 function RouteComponent() {
@@ -112,23 +133,6 @@ function RouteComponent() {
   const pid = useMemo(() => Number(id), [id])
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
-
-  // Moved Zod schema to component
-  const formSchema = useMemo(
-    () =>
-      z.object({
-        userIds: z.array(z.string()).min(1, {
-          message: t('accountDetail.form.validation.minUsers'),
-        }),
-        role: z.string().min(1, {
-          message: t('accountDetail.form.validation.invalidRole'),
-        }),
-        accessmode: z.string().min(1, {
-          message: t('accountDetail.form.validation.invalidAccess'),
-        }),
-      }),
-    [t]
-  )
 
   const getHeader = useCallback(
     (key: string): string => {
@@ -168,12 +172,7 @@ function RouteComponent() {
     select: (res) => res.data,
   })
 
-  const { data: accountInfo, isLoading: isLoadingAccount } = useQuery({
-    queryKey: ['admin', 'accounts', pid],
-    queryFn: () => apiAccountGet(pid),
-    select: (res) => res.data,
-    enabled: !!pid,
-  })
+  const { data: accountInfo, isLoading: isLoadingAccount } = useQuery(queryAccountByID(pid))
 
   const { mutate: addUser } = useMutation({
     mutationFn: (users: IUserInAccountCreate[]) =>

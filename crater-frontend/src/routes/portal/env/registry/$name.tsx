@@ -9,13 +9,13 @@ import { queryBuildDetail } from '@/services/query/image'
 export const Route = createFileRoute('/portal/env/registry/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
+  errorComponent: () => <NotFound />,
   loader: async ({ params, context: { queryClient } }) => {
     const { data } = await queryClient.ensureQueryData(queryBuildDetail(params.name))
     return {
       crumb: data?.description || params.name,
     }
   },
-  errorComponent: () => <NotFound />,
 })
 
 function RouteComponent() {

@@ -6,6 +6,7 @@ import { detailValidateSearch } from '@/components/layout/detail-page'
 export const Route = createFileRoute('/admin/jobs/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
+  loader: ({ params }) => ({ crumb: params.name }),
 })
 
 function RouteComponent() {

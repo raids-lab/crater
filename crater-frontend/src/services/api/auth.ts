@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { apiGet, apiPost } from '@/services/client'
+import { apiGet, apiPost, apiV1Post } from '@/services/client'
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
 
@@ -82,7 +82,7 @@ export const apiUserLogin = (user: ILogin) => apiPost<IResponse<IAuthResponse>>(
 export const apiCheckToken = () => apiGet<IResponse<IAuthResponse | undefined>>('auth/check')
 
 export const apiQueueSwitch = async (queue: string) => {
-  const response = await apiPost<IResponse<IAuthResponse>>('/auth/switch', {
+  const response = await apiV1Post<IResponse<IAuthResponse>>('auth/switch', {
     queue,
   })
   if (response.code === OK) {

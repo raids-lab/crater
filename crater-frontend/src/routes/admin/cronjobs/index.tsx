@@ -17,6 +17,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { createFileRoute } from '@tanstack/react-router'
 import { isValidCron } from 'cron-validator'
+import { t } from 'i18next'
 import { AlarmClockIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -50,6 +51,7 @@ import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/admin/cronjobs/')({
   component: CronPolicy,
+  loader: () => ({ crumb: t('navigation.cronPolicy') }),
 })
 
 interface Job {

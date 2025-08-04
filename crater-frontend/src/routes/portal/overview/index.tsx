@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { REFETCH_INTERVAL } from '@/config/task'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
@@ -47,6 +46,8 @@ import { queryResources } from '@/services/query/resource'
 
 import { getUserPseudonym } from '@/utils/pseudonym'
 import { atomUserInfo, globalHideUsername } from '@/utils/store'
+
+import { REFETCH_INTERVAL } from '@/lib/constants'
 
 export const Route = createFileRoute('/portal/overview/')({
   component: Overview,
@@ -311,14 +312,14 @@ function Overview() {
           items={[
             {
               title: '运行中作业',
-              value: jobQuery.data?.filter((job) => job.status === JobPhase.Running).length ?? 0,
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Running).length,
               className: 'text-highlight-blue',
               description: '正在运行的作业数量',
               icon: FlaskConicalIcon,
             },
             {
               title: '等待中作业',
-              value: jobQuery.data?.filter((job) => job.status === JobPhase.Pending).length ?? 0,
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Pending).length,
               className: 'text-highlight-purple',
               description: '等待调度或未就绪的作业数量',
               icon: ClockIcon,
