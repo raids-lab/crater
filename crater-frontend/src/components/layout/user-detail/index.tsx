@@ -20,8 +20,6 @@ import { useAtomValue } from 'jotai'
 import { Activity, Calendar, Database, GpuIcon, List, User, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Skeleton } from '@/components/ui/skeleton'
-
 import TipBadge from '@/components/badge/TipBadge'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
@@ -45,11 +43,7 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
   const hideUsername = useAtomValue(globalHideUsername)
 
   // Fetch user data
-  const {
-    data: user,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data: user } = useQuery({
     queryKey: ['user', name],
     queryFn: () => apiGetUser(name || ''),
     select: (data) => data.data,
@@ -57,54 +51,17 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
   })
   const grafanaUser = useAtomValue(configGrafanaUserAtom)
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <DetailPage
-        header={
-          <div className="flex items-center space-x-4">
-            <Skeleton className="h-20 w-20 rounded-full" />
-            <div>
-              <Skeleton className="mb-2 h-8 w-40" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          </div>
-        }
-        info={[]}
-        tabs={[]}
-      />
-    )
-  }
-
-  // Error state
-  if (error || !user) {
-    return (
-      <DetailPage
-        header={
-          <div>
-            <h1 className="text-2xl font-bold text-red-500">{t('userDetail.header.errorTitle')}</h1>
-            <p className="text-muted-foreground">
-              {(error as Error)?.message || t('userDetail.header.userNotFound')}
-            </p>
-          </div>
-        }
-        info={[]}
-        tabs={[]}
-      />
-    )
-  }
-
   // User header content with actual data
   const header = (
     <div className="flex items-center space-x-4">
       <UserAvatar user={user} className="size-20" size={80} />
       <div>
         <h1 className="flex items-center gap-2 text-3xl font-bold">
-          {hideUsername ? getUserPseudonym(user.name) : user.nickname || user.name}
-          {user.role === Role.Admin && <TipBadge />}
+          {hideUsername ? getUserPseudonym(user?.name) : user?.nickname || user?.name}
+          {user?.role === Role.Admin && <TipBadge />}
         </h1>
         <p className="text-muted-foreground">
-          @{hideUsername ? getUserPseudonym(user.name) : user.name}
+          @{hideUsername ? getUserPseudonym(user?.name) : user?.name}
         </p>
       </div>
     </div>
@@ -115,17 +72,17 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
     {
       icon: User,
       title: t('userDetail.info.advisor.title'),
-      value: user.teacher || t('userDetail.info.notSet'),
+      value: user?.teacher || t('userDetail.info.notSet'),
     },
     {
       icon: Users,
       title: t('userDetail.info.researchGroup.title'),
-      value: user.group || t('userDetail.info.notSet'),
+      value: user?.group || t('userDetail.info.notSet'),
     },
     {
       icon: Calendar,
       title: t('userDetail.info.joinDate.title'),
-      value: <TimeDistance date={user.createdAt} />,
+      value: <TimeDistance date={user?.createdAt} />,
     },
   ]
 
@@ -135,7 +92,7 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
       key: 'gpu',
       icon: GpuIcon,
       label: t('userDetail.tabs.gpuMonitoring'),
-      children: <GrafanaIframe baseSrc={`${grafanaUser.nvidia}?var-user=${user.name}`} />,
+      children: <GrafanaIframe baseSrc={`${grafanaUser.nvidia}?var-user=${user?.name}`} />,
     },
     {
       key: 'activity',

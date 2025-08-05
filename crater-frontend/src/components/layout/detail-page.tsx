@@ -77,6 +77,9 @@ export default function DetailPage({
   const previousTabRef = useRef<string>('')
 
   const tab = useMemo(() => {
+    if (tabs.length === 0) {
+      return ''
+    }
     return currentTab === undefined || currentTab === '' ? tabs[0].key : currentTab
   }, [currentTab, tabs])
 
