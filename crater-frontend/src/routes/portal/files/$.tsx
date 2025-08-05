@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import FileSystem from '@/components/file/FileSystemTable'
 
-import { apiGetAdminFile } from '@/services/api/file'
+import { apiGetFiles } from '@/services/api/file'
 
 export const Route = createFileRoute('/portal/files/$')({
   component: RouteComponent,
@@ -10,5 +10,5 @@ export const Route = createFileRoute('/portal/files/$')({
 
 function RouteComponent() {
   const path = Route.useParams()._splat
-  return <FileSystem apiGetFiles={apiGetAdminFile} path={path || ''} />
+  return <FileSystem apiGetFiles={apiGetFiles} path={path || ''} />
 }
