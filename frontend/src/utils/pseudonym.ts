@@ -126,7 +126,7 @@ const userPseudonymMap = new Map<string, string>()
 /**
  * 获取用户的假名，使用缓存避免重复计算
  */
-export function getUserPseudonym(username: string): string {
+export function getUserPseudonym(username: string = ''): string {
   if (!userPseudonymMap.has(username)) {
     userPseudonymMap.set(username, generatePseudonym(username))
   }
