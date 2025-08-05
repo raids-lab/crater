@@ -24,16 +24,6 @@ export interface FileItem {
   sys?: never
 }
 
-export interface UserSpace {
-  username: string
-  space: string
-}
-
-export interface QeueuSpace {
-  queuename: string
-  space: string
-}
-
 export interface MoveFile {
   fileName: string
   dst: string
@@ -47,14 +37,8 @@ export const apiGetFiles = (path: string) =>
 export const apiGetRWFiles = (path: string) =>
   apiGet<IResponse<FileItem[] | undefined>>(`ss/rwfiles/${path.replace(/^\//, '')}`)
 
-export const apiGetAdminFile = (path: string) =>
+export const apiGetAdminFiles = (path: string) =>
   apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/files/${path.replace(/^\//, '')}`)
-
-export const apiGetUserFiles = (path: string) =>
-  apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/${path.replace(/^\//, '')}`)
-
-export const apiGetQueueFiles = (path: string) =>
-  apiGet<IResponse<FileItem[] | undefined>>(`ss/admin/${path.replace(/^\//, '')}`)
 
 export const apiMkdir = async (path: string) => {
   await apiClient('ss/' + path.replace(/^\//, ''), {
@@ -64,10 +48,6 @@ export const apiMkdir = async (path: string) => {
 
 export const apiFileDelete = (path: string) =>
   apiDelete<IResponse<string>>(`ss/delete/${path.replace(/^\//, '')}`)
-
-export const apiGetUserSpace = () => apiGet<IResponse<UserSpace[] | undefined>>(`ss/userspace`)
-
-export const apiGetQueueSpace = () => apiGet<IResponse<QeueuSpace[] | undefined>>(`ss/queuespace`)
 
 export const apiMoveFile = (req: MoveFile, path: string) =>
   apiPost<IResponse<MoveFile>>(`ss/move/${path.replace(/^\//, '')}`, req)
