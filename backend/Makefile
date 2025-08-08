@@ -1,6 +1,22 @@
 KUBECONFIG_PATH := ${PWD}/kubeconfig
 CONFIG_FILE := ./etc/debug-config.yaml
 
+# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
+# $1 - target path with name of binary
+# $2 - package url which can be installed
+# $3 - specific version of package
+define go-install-tool
+@[ -f "$(1)-$(3)" ] || { \
+set -e; \
+package=$(2)@$(3) ;\
+echo "Downloading $${package}" ;\
+rm -f $(1) || true ;\
+GOBIN=$(LOCALBIN) go install $${package} ;\
+mv $(1) $(1)-$(3) ;\
+} ;\
+ln -sf $(1)-$(3) $(1)
+endef
+
 ##@ General
 
 # The help target prints out all targets with their descriptions organized
@@ -91,38 +107,35 @@ build-migrate: fmt lint ## Build migration binary.
 ##@ Development Tools
 
 ## Location to install tools to
-LOCATION ?= $(PWD)/bin
-$(LOCATION):
-	mkdir -p $(LOCATION)
+LOCALBIN ?= $(PWD)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
-GOLANGCI_LINT ?= $(LOCATION)/golangci-lint
-GOIMPORTS ?= $(LOCATION)/goimports
-SWAGGO ?= $(LOCATION)/swag
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
+GOIMPORTS ?= $(LOCALBIN)/goimports
+SWAGGO ?= $(LOCALBIN)/swag
 HACK_DIR ?= $(PWD)/hack
 
 ## Tool Versions
 GOLANGCI_LINT_VERSION ?= v2.2.1
-SWAGGO_VERSION ?= v1.16.3
+SWAGGO_VERSION ?= v1.16.6
 GOIMPORTS_VERSION ?= v0.28.0
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Install golangci-lint
-$(GOLANGCI_LINT): $(LOCATION)
-	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."
-	GOBIN=$(LOCATION) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+$(GOLANGCI_LINT): $(LOCALBIN)
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 .PHONY: goimports
 goimports: $(GOIMPORTS) ## Install goimports
-$(GOIMPORTS): $(LOCATION)
-	@echo "Installing goimports $(GOIMPORTS_VERSION)..."
-	GOBIN=$(LOCATION) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
+$(GOIMPORTS): $(LOCALBIN)
+	$(call go-install-tool,$(GOIMPORTS),golang.org/x/tools/cmd/goimports,$(GOIMPORTS_VERSION))
 
 .PHONY: swaggo
 swaggo: $(SWAGGO) ## Install swaggo
-$(SWAGGO): $(LOCATION)
-	@echo "Installing swag $(SWAGGO_VERSION)..."
-	GOBIN=$(LOCATION) go install github.com/swaggo/swag/cmd/swag@$(SWAGGO_VERSION)
+$(SWAGGO): $(LOCALBIN)
+	$(call go-install-tool,$(SWAGGO),github.com/swaggo/swag/cmd/swag,$(SWAGGO_VERSION))
 
 ##@ Git Hooks
 

@@ -1,6 +1,28 @@
 # ![Crater Backend](./docs/image/icon.png) Crater Backend
 Crater is a Kubernetes-based GPU cluster management system providing a comprehensive solution for GPU resource orchestration.
 
+<table>
+  <tr>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif"><br>
+      <em>Jupyter Lab</em>
+    </td>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif"><br>
+      <em>Ray Job</em>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif"><br>
+      <em>Monitor</em>
+    </td>
+    <td align="center" width="45%">
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif"><br>
+      <em>Models</em>
+    </td>
+  </tr>
+</table>
 
 ## 🚀 Run Crater Backend
 

@@ -6,12 +6,19 @@ definitions:
     - 2
     - 3
     - 4
+    format: int32
     type: integer
     x-enum-comments:
       AccessModeAO: Append-only mode
       AccessModeNA: Not-allowed mode
       AccessModeRO: Read-only mode
       AccessModeRW: Read-write mode
+    x-enum-descriptions:
+    - ""
+    - Not-allowed mode
+    - Read-only mode
+    - Read-write mode
+    - Append-only mode
     x-enum-varnames:
     - _
     - AccessModeNA
@@ -78,6 +85,7 @@ definitions:
     - 1
     - 2
     - 3
+    format: int32
     type: integer
     x-enum-varnames:
     - _
@@ -90,11 +98,17 @@ definitions:
     - 1
     - 2
     - 3
+    format: int32
     type: integer
     x-enum-comments:
       StatusActive: Active status
       StatusInactive: Inactive status
       StatusPending: Pending status, not yet activated
+    x-enum-descriptions:
+    - ""
+    - Pending status, not yet activated
+    - Active status
+    - Inactive status
     x-enum-varnames:
     - _
     - StatusPending
@@ -355,6 +369,7 @@ definitions:
         type: string
       gpuUtil:
         additionalProperties:
+          format: float32
           type: number
         type: object
       haveGPU:
@@ -971,6 +986,10 @@ definitions:
           BinarySI: e.g., 12Mi (12 * 2^20)
           DecimalExponent: e.g., 12e6
           DecimalSI: e.g., 12M  (12 * 10^6)
+        x-enum-descriptions:
+        - e.g., 12e6
+        - e.g., 12Mi (12 * 2^20)
+        - e.g., 12M  (12 * 10^6)
         x-enum-varnames:
         - DecimalExponent
         - BinarySI
@@ -1752,8 +1771,7 @@ paths:
         in: body
         name: data
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -1794,8 +1812,7 @@ paths:
         in: body
         name: req
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -1871,8 +1888,7 @@ paths:
         in: body
         name: req
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -2489,8 +2505,7 @@ paths:
         in: body
         name: job
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -4553,8 +4568,7 @@ paths:
         in: body
         name: data
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -5150,8 +5164,7 @@ paths:
         in: body
         name: CreateTrainingReq
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
@@ -5182,8 +5195,7 @@ paths:
         in: body
         name: CreateTrainingReq
         required: true
-        schema:
-          type: object
+        schema: {}
       produces:
       - application/json
       responses:
