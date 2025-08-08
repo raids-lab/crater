@@ -12,12 +12,12 @@ import (
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/schema"
 
-	"github.com/raids-lab/crater/dao/model"
-
 	"gorm.io/gen"
 	"gorm.io/gen/field"
 
 	"gorm.io/plugin/dbresolver"
+
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func newCudaBaseImage(db *gorm.DB, opts ...gen.DOOption) cudaBaseImage {

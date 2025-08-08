@@ -25,6 +25,34 @@ definitions:
     - AccessModeRO
     - AccessModeRW
     - AccessModeAO
+  github_com_raids-lab_crater_dao_model.ApprovalOrderStatus:
+    enum:
+    - Pending
+    - Approved
+    - Rejected
+    - Canceled
+    type: string
+    x-enum-comments:
+      ApprovalOrderStatusApproved: 已批准
+      ApprovalOrderStatusCancelled: 已取消
+      ApprovalOrderStatusPending: 待审批
+      ApprovalOrderStatusRejected: 已拒绝
+    x-enum-varnames:
+    - ApprovalOrderStatusPending
+    - ApprovalOrderStatusApproved
+    - ApprovalOrderStatusRejected
+    - ApprovalOrderStatusCancelled
+  github_com_raids-lab_crater_dao_model.ApprovalOrderType:
+    enum:
+    - dataset
+    - job
+    type: string
+    x-enum-comments:
+      ApprovalOrderTypeDataset: 数据集类型
+      ApprovalOrderTypeJob: 任务类型
+    x-enum-varnames:
+    - ApprovalOrderTypeDataset
+    - ApprovalOrderTypeJob
   github_com_raids-lab_crater_dao_model.BuildSource:
     enum:
     - Dockerfile
@@ -421,6 +449,27 @@ definitions:
       role:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Role'
     type: object
+  internal_handler.ApprovalOrderreq:
+    properties:
+      extensionHours:
+        description: 延长小时数
+        type: integer
+      name:
+        type: string
+      reason:
+        description: 审批原因
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus'
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType'
+      typeID:
+        description: 关联的ID，可能是数据集或任务ID
+        type: integer
+    required:
+    - name
+    - type
+    type: object
   internal_handler.AuthMethod:
     enum:
     - normal
@@ -579,6 +628,33 @@ definitions:
         type: string
       userId:
         type: integer
+    type: object
+  internal_handler.UpdateApprovalOrder:
+    properties:
+      extensionHours:
+        description: 延长小时数
+        type: integer
+      name:
+        type: string
+      reason:
+        description: 审批原因
+        type: string
+      reviewNotes:
+        description: 审批备注
+        type: string
+      reviewerID:
+        description: 审批人ID
+        type: integer
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus'
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType'
+      typeID:
+        description: 关联的ID，可能是数据集或任务ID
+        type: integer
+    required:
+    - name
+    - type
     type: object
   internal_handler.UpdateDatasetreq:
     properties:
@@ -1382,6 +1458,31 @@ paths:
       summary: 获取指定账户
       tags:
       - Project
+  /v1/admin/approvalorder:
+    get:
+      consumes:
+      - application/json
+      description: 展示所有审批订单
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 展示所有审批订单
+      tags:
+      - approvalorder
   /v1/admin/dataset/alldataset:
     get:
       consumes:
@@ -2548,6 +2649,124 @@ paths:
       summary: 管理员模式根据ID列表删除Image
       tags:
       - ImagePack
+  /v1/approvalorder:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户创建的所有审批工单
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回工单列表
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取我的审批工单
+      tags:
+      - approvalorder
+    post:
+      consumes:
+      - application/json
+      description: 创建新的审批工单
+      parameters:
+      - description: 审批工单信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ApprovalOrderreq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建审批工单
+      tags:
+      - approvalorder
+  /v1/approvalorder/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的审批工单
+      parameters:
+      - description: 工单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 删除审批工单
+      tags:
+      - approvalorder
+    put:
+      consumes:
+      - application/json
+      description: 更新现有的审批工单
+      parameters:
+      - description: 审批工单信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateApprovalOrder'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 更新审批工单
+      tags:
+      - approvalorder
   /v1/auth/switch:
     post:
       consumes:
@@ -4281,38 +4500,6 @@ paths:
       tags:
       - Node
   /v1/nodes/{name}/taint:
-    post:
-      consumes:
-      - application/json
-      description: 通过nodeclient调用k8s接口添加节点污点
-      parameters:
-      - description: 节点名称+污点
-        in: body
-        name: req
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler.NodeTaint'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 成功返回值描述
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 添加节点污点
-      tags:
-      - 接口对应的标签
-  /v1/nodes/name/taint:
     delete:
       consumes:
       - application/json
@@ -4342,6 +4529,37 @@ paths:
       security:
       - Bearer: []
       summary: 删除节点的污点
+      tags:
+      - 接口对应的标签
+    post:
+      consumes:
+      - application/json
+      description: 通过nodeclient调用k8s接口添加节点污点
+      parameters:
+      - description: 节点名称+污点
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.NodeTaint'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 添加节点污点
       tags:
       - 接口对应的标签
   /v1/operations/add/locktime:
