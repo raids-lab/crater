@@ -21,6 +21,7 @@ var (
 	Account         *account
 	AccountDataset  *accountDataset
 	Alert           *alert
+	ApprovalOrder   *approvalOrder
 	CudaBaseImage   *cudaBaseImage
 	Dataset         *dataset
 	Image           *image
@@ -42,6 +43,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Account = &Q.Account
 	AccountDataset = &Q.AccountDataset
 	Alert = &Q.Alert
+	ApprovalOrder = &Q.ApprovalOrder
 	CudaBaseImage = &Q.CudaBaseImage
 	Dataset = &Q.Dataset
 	Image = &Q.Image
@@ -64,6 +66,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Account:         newAccount(db, opts...),
 		AccountDataset:  newAccountDataset(db, opts...),
 		Alert:           newAlert(db, opts...),
+		ApprovalOrder:   newApprovalOrder(db, opts...),
 		CudaBaseImage:   newCudaBaseImage(db, opts...),
 		Dataset:         newDataset(db, opts...),
 		Image:           newImage(db, opts...),
@@ -87,6 +90,7 @@ type Query struct {
 	Account         account
 	AccountDataset  accountDataset
 	Alert           alert
+	ApprovalOrder   approvalOrder
 	CudaBaseImage   cudaBaseImage
 	Dataset         dataset
 	Image           image
@@ -111,6 +115,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Account:         q.Account.clone(db),
 		AccountDataset:  q.AccountDataset.clone(db),
 		Alert:           q.Alert.clone(db),
+		ApprovalOrder:   q.ApprovalOrder.clone(db),
 		CudaBaseImage:   q.CudaBaseImage.clone(db),
 		Dataset:         q.Dataset.clone(db),
 		Image:           q.Image.clone(db),
@@ -142,6 +147,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Account:         q.Account.replaceDB(db),
 		AccountDataset:  q.AccountDataset.replaceDB(db),
 		Alert:           q.Alert.replaceDB(db),
+		ApprovalOrder:   q.ApprovalOrder.replaceDB(db),
 		CudaBaseImage:   q.CudaBaseImage.replaceDB(db),
 		Dataset:         q.Dataset.replaceDB(db),
 		Image:           q.Image.replaceDB(db),
@@ -163,6 +169,7 @@ type queryCtx struct {
 	Account         IAccountDo
 	AccountDataset  IAccountDatasetDo
 	Alert           IAlertDo
+	ApprovalOrder   IApprovalOrderDo
 	CudaBaseImage   ICudaBaseImageDo
 	Dataset         IDatasetDo
 	Image           IImageDo
@@ -184,6 +191,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Account:         q.Account.WithContext(ctx),
 		AccountDataset:  q.AccountDataset.WithContext(ctx),
 		Alert:           q.Alert.WithContext(ctx),
+		ApprovalOrder:   q.ApprovalOrder.WithContext(ctx),
 		CudaBaseImage:   q.CudaBaseImage.WithContext(ctx),
 		Dataset:         q.Dataset.WithContext(ctx),
 		Image:           q.Image.WithContext(ctx),

@@ -320,6 +320,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/approvalorder": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "展示所有审批订单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "展示所有审批订单",
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/dataset/alldataset": {
             "get": {
                 "security": [
@@ -2150,6 +2190,193 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {}
+            }
+        },
+        "/v1/approvalorder": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户创建的所有审批工单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "获取我的审批工单",
+                "responses": {
+                    "200": {
+                        "description": "成功返回工单列表",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "创建新的审批工单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "创建审批工单",
+                "parameters": [
+                    {
+                        "description": "审批工单信息",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ApprovalOrderreq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/approvalorder/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新现有的审批工单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "更新审批工单",
+                "parameters": [
+                    {
+                        "description": "审批工单信息",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateApprovalOrder"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除指定的审批工单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "删除审批工单",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/auth/switch": {
@@ -4691,57 +4918,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/nodes/name/taint": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "匹配是否存在该污点，存在则删除",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "接口对应的标签"
-                ],
-                "summary": "删除节点的污点",
-                "parameters": [
-                    {
-                        "description": "节点名称+污点",
-                        "name": "req",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handler.NodeTaint"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回值描述",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
-                        }
-                    },
-                    "400": {
-                        "description": "Request parameter error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "Other errors",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/nodes/{name}": {
             "get": {
                 "security": [
@@ -4952,6 +5128,55 @@ const docTemplate = `{
                     "接口对应的标签"
                 ],
                 "summary": "添加节点污点",
+                "parameters": [
+                    {
+                        "description": "节点名称+污点",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.NodeTaint"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "匹配是否存在该污点，存在则删除",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "接口对应的标签"
+                ],
+                "summary": "删除节点的污点",
                 "parameters": [
                     {
                         "description": "节点名称+污点",
@@ -6391,6 +6616,42 @@ const docTemplate = `{
                 "AccessModeAO"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.ApprovalOrderStatus": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Approved",
+                "Rejected",
+                "Canceled"
+            ],
+            "x-enum-comments": {
+                "ApprovalOrderStatusApproved": "已批准",
+                "ApprovalOrderStatusCancelled": "已取消",
+                "ApprovalOrderStatusPending": "待审批",
+                "ApprovalOrderStatusRejected": "已拒绝"
+            },
+            "x-enum-varnames": [
+                "ApprovalOrderStatusPending",
+                "ApprovalOrderStatusApproved",
+                "ApprovalOrderStatusRejected",
+                "ApprovalOrderStatusCancelled"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.ApprovalOrderType": {
+            "type": "string",
+            "enum": [
+                "dataset",
+                "job"
+            ],
+            "x-enum-comments": {
+                "ApprovalOrderTypeDataset": "数据集类型",
+                "ApprovalOrderTypeJob": "任务类型"
+            },
+            "x-enum-varnames": [
+                "ApprovalOrderTypeDataset",
+                "ApprovalOrderTypeJob"
+            ]
+        },
         "github_com_raids-lab_crater_dao_model.BuildSource": {
             "type": "string",
             "enum": [
@@ -6959,6 +7220,36 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.ApprovalOrderreq": {
+            "type": "object",
+            "required": [
+                "name",
+                "type"
+            ],
+            "properties": {
+                "extensionHours": {
+                    "description": "延长小时数",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "审批原因",
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType"
+                },
+                "typeID": {
+                    "description": "关联的ID，可能是数据集或任务ID",
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.AuthMethod": {
             "type": "string",
             "enum": [
@@ -7192,6 +7483,44 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "userId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.UpdateApprovalOrder": {
+            "type": "object",
+            "required": [
+                "name",
+                "type"
+            ],
+            "properties": {
+                "extensionHours": {
+                    "description": "延长小时数",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "审批原因",
+                    "type": "string"
+                },
+                "reviewNotes": {
+                    "description": "审批备注",
+                    "type": "string"
+                },
+                "reviewerID": {
+                    "description": "审批人ID",
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType"
+                },
+                "typeID": {
+                    "description": "关联的ID，可能是数据集或任务ID",
                     "type": "integer"
                 }
             }

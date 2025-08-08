@@ -40,6 +40,7 @@ func main() {
 		model.ImageUser{},
 		model.ImageAccount{},
 		model.CudaBaseImage{},
+		model.ApprovalOrder{},
 	)
 
 	// 执行并生成代码

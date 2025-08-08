@@ -486,6 +486,29 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202508041548",
+			Migrate: func(tx *gorm.DB) error {
+				type ApprovalOrder struct {
+					gorm.Model
+					Name        string                                         `gorm:"type:varchar(256);not null;comment:审批订单名称"`
+					Type        model.ApprovalOrderType                        `gorm:"type:varchar(32);not null;default:job;comment:审批订单类型"`
+					Status      model.ApprovalOrderStatus                      `gorm:"type:varchar(32);not null;default:Pending;comment:审批订单状态"`
+					Content     datatypes.JSONType[model.ApprovalOrderContent] `gorm:"comment:审批订单内容"`
+					ReviewNotes string                                         `gorm:"type:varchar(512);comment:审批备注"`
+					CreatorID   uint                                           `gorm:"comment:创建者ID"`
+					ReviewerID  uint                                           `gorm:"comment:审批者ID"`
+				}
+				// 明确指定表名
+				if err := tx.Table("approval_orders").Migrator().CreateTable(&ApprovalOrder{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("approval_orders")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -506,6 +529,7 @@ func main() {
 			&model.ImageAccount{},
 			&model.ImageUser{},
 			&model.CudaBaseImage{},
+			&model.ApprovalOrder{},
 		)
 		if err != nil {
 			return err
