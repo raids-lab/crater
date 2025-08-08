@@ -906,9 +906,7 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -971,9 +969,7 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -1180,9 +1176,7 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -1902,9 +1896,7 @@ const docTemplate = `{
                         "name": "job",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -5352,9 +5344,7 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -5867,9 +5857,7 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -5918,9 +5906,7 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -6376,6 +6362,7 @@ const docTemplate = `{
     "definitions": {
         "github_com_raids-lab_crater_dao_model.AccessMode": {
             "type": "integer",
+            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6389,6 +6376,13 @@ const docTemplate = `{
                 "AccessModeRO": "Read-only mode",
                 "AccessModeRW": "Read-write mode"
             },
+            "x-enum-descriptions": [
+                "",
+                "Not-allowed mode",
+                "Read-only mode",
+                "Read-write mode",
+                "Append-only mode"
+            ],
             "x-enum-varnames": [
                 "_",
                 "AccessModeNA",
@@ -6465,6 +6459,7 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Role": {
             "type": "integer",
+            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6480,6 +6475,7 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
+            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6491,6 +6487,12 @@ const docTemplate = `{
                 "StatusInactive": "Inactive status",
                 "StatusPending": "Pending status, not yet activated"
             },
+            "x-enum-descriptions": [
+                "",
+                "Pending status, not yet activated",
+                "Active status",
+                "Inactive status"
+            ],
             "x-enum-varnames": [
                 "_",
                 "StatusPending",
@@ -6871,7 +6873,8 @@ const docTemplate = `{
                 "gpuUtil": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "number"
+                        "type": "number",
+                        "format": "float32"
                     }
                 },
                 "haveGPU": {
@@ -7795,6 +7798,11 @@ const docTemplate = `{
                         "DecimalExponent": "e.g., 12e6",
                         "DecimalSI": "e.g., 12M  (12 * 10^6)"
                     },
+                    "x-enum-descriptions": [
+                        "e.g., 12e6",
+                        "e.g., 12Mi (12 * 2^20)",
+                        "e.g., 12M  (12 * 10^6)"
+                    ],
                     "x-enum-varnames": [
                         "DecimalExponent",
                         "BinarySI",
