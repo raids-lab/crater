@@ -17,9 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"os"
-	"time"
-
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -34,22 +31,19 @@ import (
 // @name						Authorization
 // @description					访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
 func main() {
-	// Set global timezone
-	time.Local = time.UTC
-
 	// Initialize configuration
 	configInit := helper.NewConfigInitializer()
 	backendConfig := configInit.GetBackendConfig()
 
 	// Load debug environment if needed
 	if err := configInit.LoadDebugEnvironment(); err != nil {
-		panic(err.Error())
+		klog.Fatalf("Failed to load env: %s", err)
 	}
 
 	// Initialize register config and dependencies
 	registerConfig, err := configInit.InitializeRegisterConfig()
 	if err != nil {
-		panic(err.Error())
+		klog.Fatalf("Failed to register config: %s\n", err)
 	}
 
 	// Setup server runner and logger
@@ -57,31 +51,29 @@ func main() {
 	serverRunner.SetupLogger()
 
 	// Initialize signal handler
-	stopCh := ctrl.SetupSignalHandler()
+	ctx := ctrl.SetupSignalHandler()
 
 	// Create and setup manager
 	managerSetup := helper.NewManagerSetup(registerConfig.KubeConfig, backendConfig)
 	mgr, err := managerSetup.CreateCRDManager()
 	if err != nil {
-		klog.ErrorS(err, "unable to create manager")
-		os.Exit(1)
+		klog.Fatalf("Failed to create manager: %s", err)
 	}
 
 	// Setup manager dependencies
 	configInit.SetupManagerDependencies(registerConfig, mgr)
 
 	// Setup custom CRD addons
-	err = managerSetup.SetupCustomCRDAddon(mgr, registerConfig, stopCh)
+	err = managerSetup.SetupCustomCRDAddon(mgr, registerConfig, ctx)
 	if err != nil {
-		klog.ErrorS(err, "unable to set up custom CRD addon")
-		os.Exit(1)
+		klog.Fatalf("Failed to set up custom CRD addon: %s", err)
 	}
 
 	// Setup health checks
 	serverRunner.SetupHealthChecks(mgr)
 
 	// Start manager
-	serverRunner.StartManager(mgr, stopCh)
+	serverRunner.StartManager(ctx, mgr)
 
 	// Start HTTP server
 	serverRunner.StartServer(registerConfig)

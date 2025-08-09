@@ -12,8 +12,6 @@ import (
 type Config struct {
 	// Leader Election Settings
 	EnableLeaderElection bool `json:"enableLeaderElection"` // "Enable leader election for controller manager.
-	// Enabling this will ensure there is only one active controller manager."
-	LeaderElectionID string `json:"leaderElectionID"` // "The ID for leader election."
 	// Profiling Settings
 	PrometheusAPI string `json:"prometheusAPI"`
 
@@ -129,6 +127,10 @@ func GetConfig() *Config {
 	return config
 }
 
+func IsDebugMode() bool {
+	return gin.Mode() == gin.DebugMode
+}
+
 // InitConfig initializes the configuration by reading the configuration file.
 // If the environment is set to debug, it reads the debug-config.yaml file.
 // Otherwise, it reads the config.yaml file from ConfigMap.
@@ -137,7 +139,7 @@ func initConfig() *Config {
 	// 读取配置文件
 	config := &Config{}
 	var configPath string
-	if gin.Mode() == gin.DebugMode {
+	if IsDebugMode() {
 		if os.Getenv("CRATER_DEBUG_CONFIG_PATH") != "" {
 			configPath = os.Getenv("CRATER_DEBUG_CONFIG_PATH")
 		} else {
@@ -146,7 +148,7 @@ func initConfig() *Config {
 	} else {
 		configPath = "/etc/config/config.yaml"
 	}
-	klog.Info("config path", configPath)
+	klog.Info("config path: ", configPath)
 
 	err := readConfig(configPath, config)
 	if err != nil {

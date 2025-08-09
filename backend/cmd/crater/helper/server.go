@@ -3,16 +3,15 @@ package helper
 import (
 	"context"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-
-	"github.com/gin-gonic/gin"
 
 	"github.com/raids-lab/crater/internal"
 	"github.com/raids-lab/crater/internal/handler"
@@ -37,32 +36,60 @@ func (sr *ServerRunner) SetupLogger() {
 }
 
 // StartManager 启动管理器
-func (sr *ServerRunner) StartManager(mgr manager.Manager, stopCh context.Context) {
+func (sr *ServerRunner) StartManager(ctx context.Context, mgr manager.Manager) {
 	klog.Info("starting manager")
 	go func() {
-		startErr := mgr.Start(stopCh)
+		startErr := mgr.Start(ctx)
 		if startErr != nil {
 			klog.Error(startErr, "problem running manager")
 			os.Exit(1)
 		}
 	}()
 
-	mgr.GetCache().WaitForCacheSync(stopCh)
+	mgr.GetCache().WaitForCacheSync(ctx)
 	klog.Info("cache sync success")
 }
+
+var (
+	readHeaderTimeout = 10 * time.Second // 设置读取头部的超时时间
+	cancelTimeout     = 10 * time.Second // 设置取消操作的超时时间
+)
 
 // StartServer 启动HTTP服务器
 func (sr *ServerRunner) StartServer(registerConfig *handler.RegisterConfig) {
 	klog.Info("starting server")
 	backend := internal.Register(registerConfig)
 
-	if gin.Mode() == gin.DebugMode {
-		sr.setupSSProxy(backend.R)
+	// reference: https://gin-gonic.com/en/docs/examples/graceful-restart-or-stop
+	srv := &http.Server{
+		Addr:              sr.backendConfig.ServerAddr,
+		Handler:           backend,
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
-	if err := backend.R.Run(sr.backendConfig.ServerAddr); err != nil {
-		klog.Error(err, "problem running server")
-		os.Exit(1)
+
+	go func() {
+		// service connections
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			klog.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with
+	// a timeout of 5 seconds.
+	quit := make(chan os.Signal, 1)
+	// kill (no params) by default sends syscall.SIGTERM
+	// kill -2 is syscall.SIGINT
+	// kill -9 is syscall.SIGKILL but can't be caught, so don't need add it
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	klog.Info("Shutdown Gin Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), cancelTimeout)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		klog.Info("Gin Server Shutdown:", err)
 	}
+	klog.Info("Gin Server exiting")
 }
 
 // SetupHealthChecks 设置健康检查
@@ -75,79 +102,4 @@ func (sr *ServerRunner) SetupHealthChecks(mgr manager.Manager) {
 		klog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
-}
-
-// 用于本地开发时转发ss的代理
-func NewReverseProxy(targetAddr string) (*httputil.ReverseProxy, error) {
-	targetURL, err := url.Parse(targetAddr)
-	if err != nil {
-		return nil, err
-	}
-
-	proxy := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			originalURL := *req.URL
-
-			// 仅修改路径：/ss/* → /api/ss/*
-			req.URL.Scheme = targetURL.Scheme
-			req.URL.Host = targetURL.Host
-			req.URL.Path = "/api" + originalURL.Path
-
-			req.URL.RawQuery = originalURL.RawQuery
-
-			if _, ok := req.Header["User-Agent"]; !ok {
-				req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; Go-ReverseProxy)")
-			}
-			req.Header.Del("Accept-Encoding") // 防止压缩响应
-			if _, ok := req.Header["User-Agent"]; !ok {
-				req.Header.Set("User-Agent", "Go-ReverseProxy")
-			}
-			klog.Infof("Proxying: %s%s → %s",
-				req.Host,
-				originalURL.Path,
-				req.URL.String())
-		},
-
-		// 错误处理
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			klog.Errorf("[Proxy] 转发失败: %s → %v", r.URL.String(), err)
-			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte("Bad Gateway"))
-		},
-
-		// 响应修改器
-		ModifyResponse: func(resp *http.Response) error {
-			klog.Infof("[Proxy] 响应: %s %d", resp.Request.URL, resp.StatusCode)
-
-			return nil
-		},
-	}
-
-	return proxy, nil
-}
-
-// setupSSProxy 配置/ss开头的请求代理
-func (sr *ServerRunner) setupSSProxy(router *gin.Engine) {
-	ssTarget := os.Getenv("CRATER_SS_TARGET")
-	if ssTarget == "" {
-		klog.Info("CRATER_SS_TARGET not set, skipping SS proxy")
-		return
-	}
-
-	proxy, err := NewReverseProxy(ssTarget)
-	if err != nil {
-		klog.Errorf("Failed to create reverse proxy: %v", err)
-		return
-	}
-
-	proxyHandler := func(c *gin.Context) {
-		c.Writer.Header().Del("Access-Control-Allow-Origin")
-		c.Writer.Header().Del("Access-Control-Allow-Credentials")
-		proxy.ServeHTTP(c.Writer, c.Request)
-		c.Abort()
-	}
-	router.Any("/ss/*path", proxyHandler)
-	router.Handle("MKCOL", "/ss/*path", proxyHandler)
-
-	klog.Infof("SS proxy enabled: /ss/* → %s/api/ss/*", ssTarget)
 }
