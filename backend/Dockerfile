@@ -22,6 +22,8 @@ LABEL org.opencontainers.image.source="https://github.com/raids-lab/crater-backe
 LABEL org.opencontainers.image.description="Crater Web Backend"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
+RUN apk add tzdata && ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
 WORKDIR /
 
 ENV GIN_MODE=release
