@@ -105,8 +105,10 @@ export const apiClient = ky.create({
             } catch (error) {
               processQueue(error, null)
               // 跳转到登录页
-              window.location.href = '/auth'
-              throw error
+              if (!window.location.href.endsWith('/auth')) {
+                window.location.href = '/auth'
+                throw error
+              }
             } finally {
               isRefreshing = false
             }
