@@ -66,9 +66,10 @@ enableMocking()
             <QueryClientProvider client={queryClient}>
               <App queryClient={queryClient} />
               <Toaster richColors closeButton />
-              {import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
-                <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
-              )}
+              {import.meta.env.MODE === 'development' &&
+                import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
+                  <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
+                )}
             </QueryClientProvider>
           </ThemeProvider>
         </JotaiProvider>

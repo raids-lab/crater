@@ -23,6 +23,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import LogDialog from '@/components/codeblock/LogDialog'
 import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
 import JupyterIcon from '@/components/icon/JupyterIcon'
+import BasicIframe from '@/components/layout/embed/basic-iframe'
 
 import { apiJupyterSnapshot } from '@/services/api/vcjob'
 import { queryJupyterToken } from '@/services/query/job'
@@ -192,7 +193,7 @@ function Jupyter() {
 
   return (
     <div className="relative h-screen w-screen">
-      <iframe
+      <BasicIframe
         title="jupyter notebook"
         src={url}
         className="absolute top-0 right-0 bottom-0 left-0 h-screen w-screen"
@@ -232,7 +233,7 @@ function Jupyter() {
             <SheetTitle>{t('jupyter.detail.title')}</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100vh-6rem)] w-full px-4">
-            <iframe src={`/portal/jobs/detail/${name}`} height={'100%'} width={'100%'} />
+            <BasicIframe src={`/portal/jobs/detail/${name}`} height={'100%'} width={'100%'} />
           </div>
         </SheetContent>
       </Sheet>
