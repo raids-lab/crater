@@ -6,13 +6,7 @@ import { toast } from 'sonner'
 
 import Loading from '@/components/placeholder/loading-spinner'
 
-import {
-  IAuthResponse,
-  ILogin,
-  IUserContext,
-  apiCheckToken,
-  apiUserLogin,
-} from '@/services/api/auth'
+import { IAuthResponse, ILogin, IUserContext, apiCheckToken, apiLogin } from '@/services/api/auth'
 import { IResponse } from '@/services/types'
 
 import { logger } from '@/utils/loglevel'
@@ -74,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (auth: ILogin) => {
-    return apiUserLogin(auth).then((res) => {
+    return apiLogin(auth).then((res) => {
       const { accessToken, refreshToken, ...data } = res.data
       localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
       localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)

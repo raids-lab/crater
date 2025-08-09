@@ -24,7 +24,7 @@ import GrafanaIframe from './grafana-iframe'
 const FixedGrafanaIframe: FC<{ baseSrc: string }> = ({ baseSrc }: { baseSrc: string }) => {
   useFixedLayout()
   return (
-    <div className="h-[calc(100vh_-_80px)] w-full">
+    <div className="h-[calc(100vh_-_80px)] w-full overflow-hidden rounded-xl">
       <GrafanaIframe baseSrc={baseSrc || ''} />
     </div>
   )
