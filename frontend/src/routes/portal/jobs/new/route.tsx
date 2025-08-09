@@ -6,6 +6,7 @@ export const Route = createFileRoute('/portal/jobs/new')({
   loader: () => {
     return {
       crumb: t('navigation.jobNew'),
+      back: true, // history back when clicking this breadcrumb
     }
   },
 })

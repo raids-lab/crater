@@ -65,7 +65,7 @@ import { apiUserEmailVerified } from '@/services/api/user'
 
 import { atomUserInfo } from '@/utils/store'
 
-import Quota from '../jobs/inter/-components/Quota'
+import Quota from '../jobs/inter/-components/quota'
 
 // Moved Zod schema to component
 function getFormSchema(t: (key: string) => string) {

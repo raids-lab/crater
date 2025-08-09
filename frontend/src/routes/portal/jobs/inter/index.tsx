@@ -45,7 +45,7 @@ import { logger } from '@/utils/loglevel'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
-import Quota from './-components/Quota'
+import Quota from './-components/quota'
 
 export const Route = createFileRoute('/portal/jobs/inter/')({
   loader: () => {

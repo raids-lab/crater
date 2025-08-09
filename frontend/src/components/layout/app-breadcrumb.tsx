@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Link, isMatch, useMatches } from '@tanstack/react-router'
+import { Link, isMatch, useMatches, useRouter } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 
@@ -28,21 +28,22 @@ import {
 
 import { atomBreadcrumb } from '@/utils/store'
 
-import { cn } from '@/lib/utils'
-
 export const NavBreadcrumb = ({ className }: { className: string }) => {
   const customItems = useAtomValue(atomBreadcrumb)
   const matches = useMatches()
+  const router = useRouter()
 
   const items = useMemo(() => {
     if (customItems.length > 0) {
       return customItems
     }
     const matchesWithCrumbs = matches.filter((match) => isMatch(match, 'loaderData.crumb'))
+    const matchedWithBacks = matches.filter((match) => isMatch(match, 'loaderData.back'))
     return matchesWithCrumbs.map(({ pathname, loaderData }) => {
       return {
         href: pathname,
         label: loaderData?.crumb,
+        back: matchedWithBacks.some((match) => match.pathname === pathname),
       }
     })
   }, [matches, customItems])
@@ -54,26 +55,19 @@ export const NavBreadcrumb = ({ className }: { className: string }) => {
           return (
             <Fragment key={`bread-${index}`}>
               {index !== 0 && <BreadcrumbSeparator key={`bread-separator-${index}`} />}
-              {!item.href && (
-                <BreadcrumbPage
-                  className={cn({
-                    'text-muted-foreground': items.length > 1,
-                  })}
-                >
-                  {item.label}
-                </BreadcrumbPage>
-              )}
-              {item.href && (
-                <BreadcrumbItem key={`bread-item-${index}`}>
-                  {item.href && index !== items.length - 1 ? (
-                    <BreadcrumbLink asChild>
-                      <Link to={item.href}>{item.label}</Link>
-                    </BreadcrumbLink>
-                  ) : (
-                    <BreadcrumbPage>{item.label}</BreadcrumbPage>
-                  )}
-                </BreadcrumbItem>
-              )}
+              <BreadcrumbItem key={`bread-item-${index}`}>
+                {index === items.length - 1 ? (
+                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                ) : item.back ? (
+                  <BreadcrumbLink onClick={() => router.history.back()} className="cursor-pointer">
+                    {item.label}
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <Link to={item.href}>{item.label}</Link>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
             </Fragment>
           )
         })}
