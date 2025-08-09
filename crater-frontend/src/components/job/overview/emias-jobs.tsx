@@ -59,7 +59,7 @@ import { logger } from '@/utils/loglevel'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
-import Quota from '../../../routes/portal/jobs/inter/-components/Quota'
+import Quota from '../../../routes/portal/jobs/inter/-components/quota'
 import ListedNewJobButton from '../new-job-button'
 
 export const priorities = [
