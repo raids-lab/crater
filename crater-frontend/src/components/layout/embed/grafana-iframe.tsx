@@ -20,11 +20,11 @@ import { useTranslation } from 'react-i18next'
 
 import { useTheme } from '@/utils/theme'
 
-export default function GrafanaIframe({ baseSrc }: { baseSrc: string }) {
-  const { t } = useTranslation()
-  const { theme } = useTheme()
+import BasicIframe from './basic-iframe'
 
-  // if baseURL does not have parameter, add ?, else if baseURL does not ends with &, add &
+export default function GrafanaIframe({ baseSrc }: { baseSrc: string }) {
+  const { theme } = useTheme()
+  const { t } = useTranslation()
   const base = useMemo(() => {
     if (baseSrc.indexOf('?') === -1) {
       return `${baseSrc}?`
@@ -36,11 +36,9 @@ export default function GrafanaIframe({ baseSrc }: { baseSrc: string }) {
   }, [baseSrc])
 
   return (
-    <iframe
+    <BasicIframe
       title={t('grafanaIframe.title')}
       src={`${base}theme=${theme}&kiosk&timezone=Asia%2FShanghai`}
-      height={'100%'}
-      width={'100%'}
     />
   )
 }

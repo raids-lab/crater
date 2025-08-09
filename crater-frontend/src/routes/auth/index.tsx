@@ -34,6 +34,9 @@ import CraterIcon from '@/components/icon/CraterIcon'
 import CraterText from '@/components/icon/CraterText'
 import NotFound from '@/components/placeholder/not-found'
 
+import { AuthMode } from '@/services/api/auth'
+import { queryAuthMode } from '@/services/query/auth'
+
 import useConfigLoader from '@/hooks/useConfigLoader'
 
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
@@ -41,12 +44,12 @@ import { useTheme } from '@/utils/theme'
 
 import { ForgotPasswordForm } from './-components/ForgotPasswordForm'
 import { SignupForm } from './-components/SignupForm'
-import { AuthMode, LoginForm } from './-components/login-form'
+import { LoginForm } from './-components/login-form'
 
 export const Route = createFileRoute('/auth/')({
   validateSearch: (search) => ({
-    redirect: (search.redirect as string) || '',
-    token: (search.token as string) || '',
+    redirect: (search.redirect as string) || undefined,
+    token: (search.token as string) || undefined,
   }),
   beforeLoad: ({ context, search }) => {
     // Redirect if already authenticated
@@ -54,20 +57,34 @@ export const Route = createFileRoute('/auth/')({
       throw redirect({ to: search.redirect })
     }
   },
+  loader: async ({ context: { queryClient } }) => {
+    return queryClient
+      .ensureQueryData(queryAuthMode)
+      .then((data) => {
+        return {
+          authMode: data.data,
+        }
+      })
+      .catch(() => {
+        return {
+          authMode: AuthMode.NORMAL,
+        }
+      })
+  },
   component: LoginPage,
   notFoundComponent: () => <NotFound />,
 })
 
 function LoginPage() {
   useConfigLoader()
+  const searchParams = Route.useSearch()
   const { auth } = Route.useRouteContext()
   const [showSignup, setShowSignup] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [showRegisterDialog, setShowRegisterDialog] = useState(false)
   const { theme, setTheme } = useTheme()
-  const [currentMode, setCurrentMode] = useState<AuthMode>(AuthMode.ACT)
+  const currentMode = Route.useLoaderData().authMode
   const website = useAtomValue(configUrlWebsiteBaseAtom)
-  const searchParams = Route.useSearch()
 
   // 处理注册按钮点击
   const handleRegisterClick = () => {
@@ -100,21 +117,6 @@ function LoginPage() {
       {/* 左侧部分 */}
       <div className="bg-primary hidden lg:block dark:bg-slate-800/70">
         <div className="relative h-full w-full">
-          {/* 背景SVG图像 */}
-          <svg
-            className="absolute inset-0 h-full w-full object-cover"
-            xmlns="http://www.w3.org/2000/svg"
-            preserveAspectRatio="xMidYMid slice"
-            viewBox="0 0 1463 823"
-          >
-            <g fill="none" fillRule="evenodd">
-              <path
-                className="text-zinc-950 opacity-40"
-                fill="currentColor"
-                d="M-39.04 645.846L1561.58-44l-22.288 1752.758z"
-              />
-            </g>
-          </svg>
           {/* 顶部Logo */}
           <div
             className="absolute top-10 left-10 z-20 flex items-center text-lg font-medium"
@@ -123,12 +125,6 @@ function LoginPage() {
             <button
               className="flex h-14 w-full flex-row items-center justify-center text-white"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              onDoubleClick={() => {
-                setCurrentMode((prev) => {
-                  return prev === AuthMode.ACT ? AuthMode.NORMAL : AuthMode.ACT
-                })
-                toast.info(`当前认证模式：${currentMode}`)
-              }}
             >
               <CraterIcon className="mr-1.5 h-8 w-8" />
               <CraterText className="h-4" />

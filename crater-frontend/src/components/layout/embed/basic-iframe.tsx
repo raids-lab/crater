@@ -15,45 +15,80 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { type FC, useMemo } from 'react'
+import { Globe, Info, MonitorOff } from 'lucide-react'
+import { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import useFixedLayout from '@/hooks/useFixedLayout'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-import { useTheme } from '@/utils/theme'
+import { cn } from '@/lib/utils'
 
-export const GrafanaIframe = ({ baseSrc }: { baseSrc: string }) => {
+type BasicIframeProps = React.IframeHTMLAttributes<HTMLIFrameElement>
+
+export const BasicIframe: FC<BasicIframeProps> = ({
+  src,
+  className = '',
+  title,
+  ...iframeProps
+}) => {
   const { t } = useTranslation()
-  const { theme } = useTheme()
 
-  // if baseURL does not have parameter, add ?, else if baseURL does not ends with &, add &
-  const base = useMemo(() => {
-    if (baseSrc.indexOf('?') === -1) {
-      return `${baseSrc}?`
-    } else if (baseSrc.endsWith('&') === false) {
-      return `${baseSrc}&`
-    } else {
-      return baseSrc
-    }
-  }, [baseSrc])
+  // 检查是否为开发模式
+  const isDevelopment = import.meta.env.MODE === 'development'
 
+  // 开发模式下显示占位图
+  if (isDevelopment) {
+    return (
+      <div className={cn('relative h-full w-full overflow-hidden rounded-xl', className)}>
+        {/* 毛玻璃效果层 */}
+        <div className="bg-sidebar absolute inset-0" />
+
+        {/* 居中内容卡片 */}
+        <div className="absolute inset-0 flex items-center justify-center p-8">
+          <Card className="bg-background/80 border-border/50 mx-auto w-full max-w-md shadow-2xl backdrop-blur-md">
+            <CardHeader className="pb-3 text-center">
+              <div className="mb-3 flex justify-center">
+                <div className="bg-primary/10 rounded-full p-3">
+                  <MonitorOff className="text-highlight-orange h-8 w-8" />
+                </div>
+              </div>
+              <CardTitle className="text-xl font-semibold">
+                {t('basicIframe.developmentMode.title')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Globe className="text-highlight-orange h-4 w-4" />
+                <span className="text-sm">{t('basicIframe.developmentMode.crossOrigin')}</span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Info className="text-highlight-orange h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    {t('basicIframe.info.source')} {title}
+                  </span>
+                </div>
+                <p className="bg-muted/50 text-muted-foreground rounded p-2 font-mono text-xs break-all">
+                  {src}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // 生产模式或禁用占位图时显示正常的 iframe
   return (
     <iframe
-      title={t('grafanaIframe.title')}
-      src={`${base}theme=${theme}&kiosk&timezone=Asia%2FShanghai`}
-      height={'100%'}
-      width={'100%'}
+      src={src}
+      title={title}
+      className={cn('h-full w-full rounded-xl border-none', className)}
+      {...iframeProps}
     />
   )
 }
 
-const Monitor: FC<{ baseSrc: string }> = ({ baseSrc }: { baseSrc: string }) => {
-  useFixedLayout()
-  return (
-    <div className="h-[calc(100vh_-_80px)] w-full">
-      <GrafanaIframe baseSrc={baseSrc || ''} />
-    </div>
-  )
-}
-
-export default Monitor
+export default BasicIframe

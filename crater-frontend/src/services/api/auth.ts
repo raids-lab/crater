@@ -72,14 +72,27 @@ export interface IAuthResponse {
   context: IUserContext
 }
 
-export const apiUserSignup = async (user: ISignup) => {
+// 定义认证模式枚举
+export enum AuthMode {
+  ACT = 'act',
+  NORMAL = 'normal',
+}
+
+export type ICheckResponse = {
+  user: IUserAttributes
+  context: IUserContext
+}
+
+export const apiSignup = async (user: ISignup) => {
   const response = await apiPost<IAuthResponse>('auth/signup', user)
   return response.data
 }
 
-export const apiUserLogin = (user: ILogin) => apiPost<IResponse<IAuthResponse>>('auth/login', user)
+export const apiGetAuthMode = () => apiGet<IResponse<AuthMode>>('auth/mode')
 
-export const apiCheckToken = () => apiGet<IResponse<IAuthResponse | undefined>>('auth/check')
+export const apiLogin = (user: ILogin) => apiPost<IResponse<IAuthResponse>>('auth/login', user)
+
+export const apiCheckToken = () => apiGet<IResponse<ICheckResponse | undefined>>('auth/check')
 
 export const apiQueueSwitch = async (queue: string) => {
   const response = await apiV1Post<IResponse<IAuthResponse>>('auth/switch', {

@@ -46,7 +46,7 @@ import { Input } from '@/components/ui/input'
 import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
 
-import { IAuthResponse, ILogin } from '@/services/api/auth'
+import { AuthMode, IAuthResponse, ILogin } from '@/services/api/auth'
 import {
   ERROR_INVALID_CREDENTIALS,
   ERROR_MUST_REGISTER,
@@ -58,15 +58,9 @@ import { IErrorResponse, IResponse } from '@/services/types'
 import { atomUserContext, atomUserInfo, useResetStore } from '@/utils/store'
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 
-// 定义认证模式枚举
-export enum AuthMode {
-  ACT = 'act',
-  NORMAL = 'normal',
-}
-
 export type LoginSearch = {
-  redirect: string
-  token: string
+  redirect?: string
+  token?: string
 }
 
 const formSchema = z.object({

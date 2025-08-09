@@ -33,7 +33,7 @@ import { Input } from '@/components/ui/input'
 
 import LoadableButton from '@/components/button/loadable-button'
 
-import { apiUserSignup } from '@/services/api/auth'
+import { apiSignup } from '@/services/api/auth'
 import { ERROR_REGISTER_NOT_FOUND, ERROR_REGISTER_TIMEOUT } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
 
@@ -66,7 +66,7 @@ export function SignupForm() {
   const navigate = useNavigate()
   const { mutate: loginUser, isPending } = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) =>
-      apiUserSignup({
+      apiSignup({
         userName: values.username,
         password: values.password,
       }),
