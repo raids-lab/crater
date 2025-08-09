@@ -2,7 +2,6 @@ package image
 
 import (
 	"fmt"
-	"net/http"
 	"net/url"
 
 	"github.com/gin-gonic/gin"
@@ -43,7 +42,7 @@ func (mgr *ImagePackMgr) CheckLinkValidity(c *gin.Context) {
 	req := &CheckLinkValidityRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate link pairs failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	invalidPairs := []ImageInfoLinkPair{}
@@ -156,7 +155,7 @@ func (mgr *ImagePackMgr) UpdateProjectQuota(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate update project quota failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	projectName := fmt.Sprintf("user-%s", token.Username)

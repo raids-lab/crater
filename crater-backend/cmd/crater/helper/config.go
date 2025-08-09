@@ -47,17 +47,7 @@ func (ci *ConfigInitializer) LoadDebugEnvironment() error {
 	if be == "" {
 		panic("CRATER_BE_PORT is not set")
 	}
-	ms := os.Getenv("CRATER_MS_PORT")
-	if ms == "" {
-		panic("CRATER_MS_PORT is not set")
-	}
-	hp := os.Getenv("CRATER_HP_PORT")
-	if hp == "" {
-		panic("CRATER_HP_PORT is not set")
-	}
 
-	ci.backendConfig.ProbeAddr = ":" + hp
-	ci.backendConfig.MetricsAddr = ":" + ms
 	ci.backendConfig.ServerAddr = ":" + be
 
 	return nil

@@ -93,11 +93,7 @@ For adminstrator, you need to fill in relative values based on your deployment h
 The `.debug.env` file specifies the port numbers used by the services. If your team is developing on the same node, you need to coordinate to avoid port conflicts.
 
 ```env
-CRATER_FE_PORT=xxxx  # Frontend
 CRATER_BE_PORT=xxxx  # Backend
-CRATER_MS_PORT=xxxx  # Microservice
-CRATER_HP_PORT=xxxx  # Health Probe
-CRATER_SS_TARGET="http://localhost:7320"
 ```
 
 CRATER_SS_TARGET is the destination address for forwarding requests to the storage service. If your development does not involve the storage service, you can **skip** setting this environment variable.

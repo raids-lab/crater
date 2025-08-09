@@ -2,7 +2,6 @@ package image
 
 import (
 	"fmt"
-	"net/http"
 	"sort"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +30,7 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate upload parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	userQuery := query.User
@@ -276,7 +275,7 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	var deleteImageRequest DeleteImageByIDRequest
 	if err = c.ShouldBindUri(&deleteImageRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	imageID := deleteImageRequest.ID
@@ -303,7 +302,7 @@ func (mgr *ImagePackMgr) UserDeleteImageByIDList(c *gin.Context) {
 	var deleteImageListRequest DeleteImageByIDListRequest
 	if err = c.ShouldBindJSON(&deleteImageListRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	flag := mgr.deleteImageByIDList(c, false, deleteImageListRequest.IDList)
@@ -329,7 +328,7 @@ func (mgr *ImagePackMgr) AdminDeleteImageByIDList(c *gin.Context) {
 	var deleteImageListRequest DeleteImageByIDListRequest
 	if err = c.ShouldBindJSON(&deleteImageListRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	flag := mgr.deleteImageByIDList(c, true, deleteImageListRequest.IDList)
@@ -421,7 +420,7 @@ func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate description failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	mgr.changeImageDescription(c, false, req.ID, req.Description)
@@ -440,7 +439,7 @@ func (mgr *ImagePackMgr) AdminChangeImageDescription(c *gin.Context) {
 	req := &ChangeImageDescriptionRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate description failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	mgr.changeImageDescription(c, true, req.ID, req.Description)
@@ -456,7 +455,7 @@ func (mgr *ImagePackMgr) changeImageDescription(c *gin.Context, isAdminMode bool
 		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.Description, newDescription); err != nil {
 		klog.Errorf("update image description failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "update description failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "update description failed")
 	}
 	resputil.Success(c, "")
 }
@@ -474,7 +473,7 @@ func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate task type failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	mgr.changeImageTaskType(c, false, req.ID, req.TaskType)
@@ -493,7 +492,7 @@ func (mgr *ImagePackMgr) AdminChangeImageTaskType(c *gin.Context) {
 	req := &ChangeImageTaskTypeRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate task type failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	mgr.changeImageTaskType(c, true, req.ID, req.TaskType)
@@ -509,7 +508,7 @@ func (mgr ImagePackMgr) changeImageTaskType(c *gin.Context, isAdminMode bool, im
 		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.TaskType, newTaskType); err != nil {
 		klog.Errorf("update image task type failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "update task type failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "update task type failed")
 	}
 	resputil.Success(c, "")
 }
@@ -563,7 +562,7 @@ func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
 	req := &ChangeImageTagsRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate tags data failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	mgr.changeImageTags(c, req.ID, req.Tags)
@@ -582,7 +581,7 @@ func (mgr *ImagePackMgr) AdminChangeImageTags(c *gin.Context) {
 	req := &ChangeImageTagsRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate tags data failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	mgr.changeImageTags(c, req.ID, req.Tags)
@@ -594,7 +593,7 @@ func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags [
 		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.Tags, datatypes.NewJSONType(newTags)); err != nil {
 		klog.Errorf("update image tags failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "update tags failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "update tags failed")
 	}
 	resputil.Success(c, "")
 }
@@ -612,7 +611,7 @@ func (mgr *ImagePackMgr) UserShareImage(c *gin.Context) {
 	req := &ShareImageRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate tags data failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	for _, id := range req.IDList {
@@ -699,7 +698,7 @@ func (mgr *ImagePackMgr) UserCancelShareImage(c *gin.Context) {
 	req := &CancelShareImageRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate tags data failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	if req.Type == "user" {
@@ -775,7 +774,7 @@ func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 	req := &ImageGrantRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		klog.Errorf("validate imageID failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 
@@ -831,7 +830,7 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 	req := &AccountSearchRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		klog.Errorf("validate search failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 	// 1. 查询已分享的AccountID
@@ -891,7 +890,7 @@ func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
 	req := &UserSearchRequest{}
 	if err := c.ShouldBindQuery(req); err != nil {
 		klog.Errorf("validate search failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, "validate failed", resputil.NotSpecified)
+		resputil.BadRequestError(c, "validate failed")
 		return
 	}
 

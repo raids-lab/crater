@@ -2,7 +2,6 @@ package image
 
 import (
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +30,7 @@ func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	dockerfile := mgr.generateDockerfile(req)
@@ -67,13 +66,13 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	baseImage, err := extractBaseImageFromDockerfile(req.Dockerfile)
 	if err != nil {
 		msg := fmt.Sprintf("failed to extract base image from Dockerfile, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	buildData := &DockerfileBuildData{
@@ -139,7 +138,7 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 
@@ -175,7 +174,7 @@ func (mgr *ImagePackMgr) AdminCreate(c *gin.Context) {
 	token := util.GetToken(c)
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	klog.Infof("create params: %+v", req)

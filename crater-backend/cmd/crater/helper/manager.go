@@ -29,14 +29,14 @@ import (
 
 // ManagerSetup 封装manager相关的设置逻辑
 type ManagerSetup struct {
-	cfg           *rest.Config
+	kubeConfig    *rest.Config
 	backendConfig *config.Config
 }
 
 // NewManagerSetup 创建新的ManagerSetup实例
 func NewManagerSetup(cfg *rest.Config, backendConfig *config.Config) *ManagerSetup {
 	return &ManagerSetup{
-		cfg:           cfg,
+		kubeConfig:    cfg,
 		backendConfig: backendConfig,
 	}
 }
@@ -49,15 +49,22 @@ func (ms *ManagerSetup) CreateCRDManager() (manager.Manager, error) {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(schedulerpluginsv1alpha1.AddToScheme(scheme))
 
-	mgr, err := ctrl.NewManager(ms.cfg, ctrl.Options{
+	options := ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress: ms.backendConfig.MetricsAddr,
 		},
 		HealthProbeBindAddress: ms.backendConfig.ProbeAddr,
 		LeaderElection:         ms.backendConfig.EnableLeaderElection,
-		LeaderElectionID:       ms.backendConfig.LeaderElectionID,
-	})
+		LeaderElectionID:       "0566f233.raids-lab.github.io",
+	}
+
+	if config.IsDebugMode() {
+		options.Metrics.BindAddress = "0"    // Disable metrics in debug mode
+		options.HealthProbeBindAddress = "0" // Disable health probes in debug mode
+	}
+
+	mgr, err := ctrl.NewManager(ms.kubeConfig, options)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create manager: %w", err)
 	}

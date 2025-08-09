@@ -1012,7 +1012,7 @@ func (mgr *APIServerMgr) GetPodContainerTerminal(c *gin.Context) {
 		WriteBufferSize: 1024,
 	}
 	// Allow all origins in debug mode
-	if gin.Mode() == gin.DebugMode {
+	if config.IsDebugMode() {
 		upgrade.CheckOrigin = func(_ *http.Request) bool {
 			return true
 		}

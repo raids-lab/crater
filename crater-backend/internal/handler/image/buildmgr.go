@@ -2,7 +2,6 @@ package image
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	corev1 "k8s.io/api/core/v1"
@@ -77,7 +76,7 @@ func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
 	var deleteKanikoRequest DeleteKanikoByIDRequest
 	if err = c.ShouldBindUri(&deleteKanikoRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	kanikoID := deleteKanikoRequest.ID
@@ -103,7 +102,7 @@ func (mgr *ImagePackMgr) UserDeleteKanikoByIDList(c *gin.Context) {
 	var deleteKanikoListRequest DeleteKanikoByIDListRequest
 	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	flag := mgr.deleteKanikoByIDList(c, true, deleteKanikoListRequest.IDList)
@@ -129,7 +128,7 @@ func (mgr *ImagePackMgr) AdminDeleteKanikoByIDList(c *gin.Context) {
 	var deleteKanikoListRequest DeleteKanikoByIDListRequest
 	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	flag := mgr.deleteKanikoByIDList(c, true, deleteKanikoListRequest.IDList)
@@ -214,7 +213,7 @@ func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 	var err error
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	var kaniko *model.Kaniko
@@ -222,7 +221,7 @@ func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 		Where(kanikoQuery.ImagePackName.Eq(req.ImagePackName)).
 		First(); err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 
@@ -258,7 +257,7 @@ func (mgr *ImagePackMgr) GetKanikoTemplateByImagePackName(c *gin.Context) {
 	var err error
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	var kaniko *model.Kaniko
@@ -266,7 +265,7 @@ func (mgr *ImagePackMgr) GetKanikoTemplateByImagePackName(c *gin.Context) {
 		Where(kanikoQuery.ImagePackName.Eq(req.ImagePackName)).
 		First(); err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 
@@ -288,7 +287,7 @@ func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
 	var err error
 	if err = c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return
 	}
 	podName, podNameSpace := mgr.getPodName(c, req.ID)
@@ -307,7 +306,7 @@ func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns str
 		Where(kanikoQuery.ID.Eq(kanikoID)).
 		First(); err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
-		resputil.HTTPError(c, http.StatusBadRequest, msg, resputil.NotSpecified)
+		resputil.BadRequestError(c, msg)
 		return "", UserNameSpace
 	}
 	var pod *corev1.Pod

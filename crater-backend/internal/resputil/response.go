@@ -41,15 +41,15 @@ func Error(c *gin.Context, msg string, errorCode ErrorCode) {
 }
 
 // HTTPError sends an HTTP error response with the specified HTTP code, error message, and error code.
-func HTTPError(c *gin.Context, httpCode int, msg string, errorCode ErrorCode) {
+func HTTPError(c *gin.Context, httpCode int, err string, errorCode ErrorCode) {
 	c.JSON(httpCode, gin.H{
 		"code": errorCode,
 		"data": nil,
-		"msg":  msg,
+		"msg":  err,
 	})
 }
 
 // 用于 Gin ShouldBindJSON、ShouldBindQuery 等绑定参数失败时返回错误
-func BadRequestError(c *gin.Context, msg string) {
-	HTTPError(c, http.StatusBadRequest, msg, InvalidRequest)
+func BadRequestError(c *gin.Context, err string) {
+	HTTPError(c, http.StatusBadRequest, err, InvalidRequest)
 }

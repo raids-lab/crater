@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 
@@ -111,8 +111,6 @@ const (
 	AuthMethodNormal  AuthMethod = "normal"
 	AuthMethodACTLDAP AuthMethod = "act-ldap"
 	AuthMethodACTAPI  AuthMethod = "act-api"
-
-	UserNamePattern = `^[a-z][a-z0-9-]*$`
 )
 
 // GetAuthMode godoc
@@ -244,25 +242,25 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	switch req.AuthMethod {
 	case AuthMethodACTAPI:
 		if req.Token == nil {
-			resputil.HTTPError(c, http.StatusBadRequest, "Token not provided", resputil.InvalidRequest)
+			resputil.BadRequestError(c, "Token not provided")
 			return
 		}
 		token = *req.Token
 	case AuthMethodACTLDAP, AuthMethodNormal:
 		if req.Username == nil || req.Password == nil {
-			resputil.HTTPError(c, http.StatusBadRequest, "Username or password not provided", resputil.InvalidRequest)
+			resputil.BadRequestError(c, "Username or password not provided")
 			return
 		}
 		username = *req.Username
 		password = *req.Password
 		// Username must start with lowercase letter and can only contain lowercase letters, numbers, and hyphens
-		if !regexp.MustCompile(UserNamePattern).MatchString(username) {
+		if len(validation.IsDNS1123Label(username)) > 0 {
 			klog.Error("invalid username")
-			resputil.HTTPError(c, http.StatusBadRequest, "Invalid username", resputil.InvalidRequest)
+			resputil.BadRequestError(c, "Invalid username")
 			return
 		}
 	default:
-		resputil.HTTPError(c, http.StatusBadRequest, "Invalid auth method", resputil.InvalidRequest)
+		resputil.BadRequestError(c, "Invalid auth method")
 		return
 	}
 
@@ -272,27 +270,23 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	switch req.AuthMethod {
 	case AuthMethodACTAPI:
 		if err := mgr.actAPIAuth(c, token, &attributes); err != nil {
-			klog.Error("invalid token: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.NotSpecified)
 			return
 		}
 		allowRegister = true
 	case AuthMethodACTLDAP:
 		if err := mgr.actLDAPAuth(c, username, password); err != nil {
-			klog.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
 		allowRegister = !config.GetConfig().RaidsLab.Enable
 	case AuthMethodNormal:
 		if err := mgr.normalAuth(c, username, password); err != nil {
-			klog.Error("invalid credentials: ", err)
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
 	default:
-		klog.Error("invalid auth method: ", req.AuthMethod)
-		resputil.HTTPError(c, http.StatusBadRequest, "Invalid auth method", resputil.InvalidRequest)
+		resputil.BadRequestError(c, "Invalid auth method")
 		return
 	}
 
@@ -300,32 +294,26 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 	user, err := mgr.getOrCreateUser(c, &req, &attributes, allowRegister)
 	if err != nil {
 		if errors.Is(err, ErrorMustRegister) {
-			klog.Error("user must register before login")
 			resputil.Error(c, "User must register before login", resputil.MustRegister)
 			return
 		} else if errors.Is(err, ErrorUIDServerConnect) {
-			klog.Error("can't connect to UID server")
 			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
 			return
 		} else if errors.Is(err, ErrorUIDServerNotFound) {
-			klog.Error("UID not found")
 			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
 			return
 		} else {
-			klog.Error("create or update user", err)
 			resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
 			return
 		}
 	}
 
 	if err = updateUserIfNeeded(c, user, &attributes); err != nil {
-		klog.Error("create or update user", err)
 		resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
 		return
 	}
 
 	if user.Status != model.StatusActive {
-		klog.Error("user is not active")
 		resputil.HTTPError(c, http.StatusUnauthorized, "User is not active", resputil.NotSpecified)
 		return
 	}
@@ -335,14 +323,12 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 
 	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
 	if err != nil {
-		klog.Error("user has no queue", err)
 		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
 		return
 	}
 
 	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.AccountID)).First()
 	if err != nil {
-		klog.Error("user has no queue", err)
 		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
 		return
 	}
