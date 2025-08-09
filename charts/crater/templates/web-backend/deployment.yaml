@@ -17,6 +17,8 @@ spec:
     metadata:
       labels:
         app: crater-web-backend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/web-backend/configmap.yaml") . | sha256sum }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -62,10 +64,16 @@ spec:
               protocol: TCP
           readinessProbe:
             httpGet:
-              path: /swagger/index.html
+              path: /healthz
               port: 8088
             initialDelaySeconds: 10
             periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8088
+            initialDelaySeconds: 30
+            periodSeconds: 10
       serviceAccountName: crater-web-backend
       volumes:
         - name: backend-conf

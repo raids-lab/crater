@@ -17,6 +17,8 @@ spec:
     metadata:
       labels:
         app: crater-web-frontend
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/web-frontend/configmap.yaml") . | sha256sum }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
