@@ -56,7 +56,7 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	envdContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().DindArgs.EnvdImage,
+			Image: config.GetConfig().ImageBuildTools.EnvdImage,
 			Args:  setupCommands,
 			Env: []corev1.EnvVar{
 				{

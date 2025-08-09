@@ -48,7 +48,7 @@ func NewAuthMgr(_ *RegisterConfig) Manager {
 		client:   &http.Client{},
 		req:      imrocreq.C(),
 		tokenMgr: util.GetTokenMgr(),
-		openAPI:  config.GetConfig().ACT.OpenAPI,
+		openAPI:  config.GetConfig().RaidsLab.OpenAPI,
 	}
 }
 
@@ -83,6 +83,11 @@ type (
 		User         model.UserAttribute `json:"user"`
 	}
 
+	CheckResp struct {
+		Context AccountContext      `json:"context"`
+		User    model.UserAttribute `json:"user"`
+	}
+
 	AccountContext struct {
 		Queue        string           `json:"queue"`        // Current Queue Name
 		RoleQueue    model.Role       `json:"roleQueue"`    // User role of the queue
@@ -91,6 +96,13 @@ type (
 		AccessPublic model.AccessMode `json:"accessPublic"` // User access mode of the platform
 		Space        string           `json:"space"`        // User pvc subpath the platform
 	}
+)
+
+type AuthMode string
+
+const (
+	AuthModeACT    AuthMode = "act"
+	AuthModeNormal AuthMode = "normal"
 )
 
 type AuthMethod string
@@ -115,8 +127,9 @@ const (
 //	@Failure		500	{object}	resputil.Response[any]		"获取相关配置时错误"
 //	@Router			/auth/mode [get]
 func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
-	if config.GetConfig().ACT.StrictRegisterMode {
+	if config.GetConfig().RaidsLab.Enable {
 		resputil.Success(c, "act")
+		return
 	}
 	resputil.Success(c, "normal")
 }
@@ -129,7 +142,7 @@ func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[LoginResp]	"token验证成功，返回用户信息和上下文"
+//	@Success		200	{object}	resputil.Response[CheckResp]	"token验证成功，返回用户信息和上下文"
 //	@Failure		401	{object}	resputil.Response[any]			"token无效或已过期"
 //	@Failure		500	{object}	resputil.Response[any]			"服务器内部错误"
 //	@Router			/auth/check [get]
@@ -190,9 +203,7 @@ func (mgr *AuthMgr) Check(c *gin.Context) {
 	}
 
 	// 构造响应
-	checkResponse := LoginResp{
-		AccessToken:  "", // Check API不返回新token
-		RefreshToken: "", // Check API不返回新token
+	checkResponse := CheckResp{
 		Context: AccountContext{
 			Queue:        currentQueue.Name,
 			RoleQueue:    userQueue.Role,
@@ -272,7 +283,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
 			return
 		}
-		allowRegister = !config.GetConfig().ACT.StrictRegisterMode
+		allowRegister = !config.GetConfig().RaidsLab.Enable
 	case AuthMethodNormal:
 		if err := mgr.normalAuth(c, username, password); err != nil {
 			klog.Error("invalid credentials: ", err)
@@ -483,8 +494,8 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		GID: ptr.To("1001"),
 	}
 	// Custom Check if the user is valid in external UID server
-	if config.GetConfig().ACT.StrictRegisterMode {
-		uidServerURL := config.GetConfig().ACT.UIDServerURL
+	if config.GetConfig().RaidsLab.Enable {
+		uidServerURL := config.GetConfig().RaidsLab.UIDServerURL
 		var result ActUIDServerSuccessResp
 		var errorResult ActUIDServerErrorResp
 		if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
@@ -538,42 +549,6 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 	// TODO: Create personal directory
 
 	return &user, nil
-}
-
-func (mgr *AuthMgr) CreatePersonalDir(c *gin.Context, user *model.User) error {
-	client := mgr.client
-	jwtMessage := util.JWTMessage{
-		UserID:            user.ID,
-		Username:          user.Name,
-		AccountID:         util.QueueIDNull,
-		AccountName:       util.QueueNameNull,
-		RoleAccount:       model.RoleGuest,
-		RolePlatform:      user.Role,
-		AccountAccessMode: model.AccessModeRW,
-		PublicAccessMode:  model.AccessModeRO,
-	}
-	accessToken, _, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
-	if err != nil {
-		return errors.New("create token err:" + err.Error())
-	}
-	baseurl := fmt.Sprintf("https://%s/api/ss/", config.GetConfig().Host)
-	uRL := baseurl + user.Space
-	// 创建请求
-	req, err := http.NewRequestWithContext(c.Request.Context(), "MKCOL", uRL, http.NoBody)
-	if err != nil {
-		return fmt.Errorf("can't create request:%s", err.Error())
-	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
-	// 发送请求
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("can't send request %s", err.Error())
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-	return nil
 }
 
 func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error {
@@ -655,18 +630,18 @@ func (mgr *AuthMgr) actAPIAuth(_ context.Context, token string, attr *model.User
 func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string) error {
 	authConfig := config.GetConfig()
 	// ACT 管理员认证
-	l, err := ldap.DialURL(authConfig.ACT.Auth.Address)
+	l, err := ldap.DialURL(authConfig.RaidsLab.LDAP.Address)
 	if err != nil {
 		return err
 	}
-	err = l.Bind(authConfig.ACT.Auth.UserName, authConfig.ACT.Auth.Password)
+	err = l.Bind(authConfig.RaidsLab.LDAP.UserName, authConfig.RaidsLab.LDAP.Password)
 	if err != nil {
 		return err
 	}
 
 	// ACT 管理员搜索用户
 	searchRequest := ldap.NewSearchRequest(
-		authConfig.ACT.Auth.SearchDN, // 搜索基准 DN
+		authConfig.RaidsLab.LDAP.SearchDN, // 搜索基准 DN
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		fmt.Sprintf("(sAMAccountName=%s)", username), // 过滤条件
 		[]string{"dn"}, // 返回的属性列表
@@ -709,7 +684,7 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	if config.GetConfig().ACT.StrictRegisterMode {
+	if config.GetConfig().RaidsLab.Enable {
 		resputil.Error(c, "User must sign up with token", resputil.NotSpecified)
 		return
 	}

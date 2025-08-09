@@ -118,8 +118,8 @@ func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount
 	mount v1.VolumeMount, err error,
 ) {
 	// Get PVC names from config
-	rwxPVCName := config.GetConfig().Workspace.RWXPVCName
-	roxPVCName := config.GetConfig().Workspace.ROXPVCName
+	rwxPVCName := config.GetConfig().Storage.RWXPVCName
+	roxPVCName := config.GetConfig().Storage.ROXPVCName
 
 	// Handle dataset type volumes - always read-only
 	if vm.Type == DataType {
@@ -150,7 +150,7 @@ func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount
 	switch {
 	case strings.HasPrefix(vm.SubPath, "public"):
 		// Public space paths - permission based on PublicAccessMode
-		subPath := filepath.Clean(config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(vm.SubPath, "public"))
+		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.Public + strings.TrimPrefix(vm.SubPath, "public"))
 		if isReadOnly(token.PublicAccessMode) {
 			// Read-only access
 			return v1.VolumeMount{
@@ -173,7 +173,7 @@ func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount
 		if err != nil {
 			return v1.VolumeMount{}, err
 		}
-		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + "/" + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
+		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.Account + "/" + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
 		if isReadOnly(token.AccountAccessMode) {
 			// Read-only access
 			return v1.VolumeMount{
@@ -197,7 +197,7 @@ func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount
 		if err != nil {
 			return v1.VolumeMount{}, err
 		}
-		subPath := filepath.Clean(config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user"))
+		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.User + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user"))
 		// User's own space always gets read-write access
 		return v1.VolumeMount{
 			Name:      rwxPVCName,
@@ -407,9 +407,9 @@ func generatePodSpecForParallelJob(
 	ports []v1.ContainerPort,
 ) (podSpec v1.PodSpec) {
 	imagePullSecrets := []v1.LocalObjectReference{}
-	if config.GetConfig().ImagePullSecretName != "" {
+	if config.GetConfig().Secrets.ImagePullSecretName != "" {
 		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
-			Name: config.GetConfig().ImagePullSecretName,
+			Name: config.GetConfig().Secrets.ImagePullSecretName,
 		})
 	}
 

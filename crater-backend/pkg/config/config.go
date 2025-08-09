@@ -5,101 +5,116 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"gopkg.in/yaml.v3"
 	"k8s.io/klog/v2"
+	"sigs.k8s.io/yaml"
 )
 
 type Config struct {
-	ImagePullSecretName string `yaml:"imagePullSecretName"` // "The name of the image pull secret."
 	// Leader Election Settings
-	EnableLeaderElection bool `yaml:"enableLeaderElection"` // "Enable leader election for controller manager.
+	EnableLeaderElection bool `json:"enableLeaderElection"` // "Enable leader election for controller manager.
 	// Enabling this will ensure there is only one active controller manager."
-	LeaderElectionID string `yaml:"leaderElectionID"` // "The ID for leader election."
+	LeaderElectionID string `json:"leaderElectionID"` // "The ID for leader election."
 	// Profiling Settings
-	PrometheusAPI string `yaml:"prometheusAPI"`
+	PrometheusAPI string `json:"prometheusAPI"`
+
+	// Port Settings
+	Host        string `json:"host"`        // The domain name of the server.
+	ServerAddr  string `json:"serverAddr"`  // The address the server endpoint binds to.
+	MetricsAddr string `json:"metricsAddr"` // The address the metric endpoint binds to.
+	ProbeAddr   string `json:"probeAddr"`   // The address the probe endpoint binds to.
+
+	Auth struct {
+		AccessTokenSecret  string `json:"accessTokenSecret"`
+		RefreshTokenSecret string `json:"refreshTokenSecret"`
+	} `json:"auth"`
+
 	// New DB Settings
 	Postgres struct {
-		Host     string `yaml:"host"`
-		Port     string `yaml:"port"`
-		DBName   string `yaml:"dbname"`
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		SSLMode  string `yaml:"sslmode"`
-		TimeZone string `yaml:"TimeZone"`
-	} `yaml:"postgres"`
-	UserSpacePrefix    string `yaml:"userSpacePrefix"`
-	AccountSpacePrefix string `yaml:"accountSpacePrefix"`
-	PublicSpacePrefix  string `yaml:"publicSpacePrefix"`
-	// Port Settings
-	Host           string `yaml:"host"`        // "The domain name of the server."
-	ServerAddr     string `yaml:"serverAddr"`  // "The address the server endpoint binds to."
-	MetricsAddr    string `yaml:"metricsAddr"` // "The address the metric endpoint binds to."
-	ProbeAddr      string `yaml:"probeAddr"`   // "The address the probe endpoint binds to."
-	MonitoringPort int    `yaml:"monitoringPort"`
-	JYCache        bool   `yaml:"jycache"`
+		Host     string `json:"host"`
+		Port     string `json:"port"`
+		DBName   string `json:"dbname"`
+		User     string `json:"user"`
+		Password string `json:"password"`
+		SSLMode  string `json:"sslmode"`
+		TimeZone string `json:"TimeZone"`
+	} `json:"postgres"`
+
+	Storage struct {
+		RWXPVCName string `json:"rwxpvcName"`
+		ROXPVCName string `json:"roxpvcName"`
+		Prefix     struct {
+			User    string `json:"user"`    // The prefix for user storage paths.
+			Account string `json:"account"` // The prefix for account storage paths.
+			Public  string `json:"public"`  // The prefix for public storage paths.
+		} `json:"prefix"` // The prefix for storage paths.
+	} `json:"storage"`
+
 	// Workspace Settings
 	Workspace struct {
-		Namespace      string `yaml:"namespace"`
-		RWXPVCName     string `yaml:"rwxpvcName"`
-		ROXPVCName     string `yaml:"roxpvcName"`
-		IngressName    string `yaml:"ingressName"`
-		ImageNamespace string `yaml:"imageNameSpace"`
-	} `yaml:"workspace"`
-	ACT struct {
-		Image struct {
-			RegistryServer    string `yaml:"registryServer"`
-			RegistryUser      string `yaml:"registryUser"`
-			RegistryPass      string `yaml:"registryPass"`
-			RegistryProject   string `yaml:"registryProject"`
-			RegistryAdmin     string `yaml:"registryAdmin"`
-			RegistryAdminPass string `yaml:"registryAdminPass"`
-		} `yaml:"image"`
-		Auth struct {
-			UserName           string `yaml:"userName"`
-			Password           string `yaml:"password"`
-			Address            string `yaml:"address"`
-			SearchDN           string `yaml:"searchDN"`
-			AccessTokenSecret  string `yaml:"accessTokenSecret"`
-			RefreshTokenSecret string `yaml:"refreshTokenSecret"`
-		} `yaml:"auth"`
-		SMTP struct {
-			Host     string `yaml:"host"`
-			Port     string `yaml:"port"`
-			User     string `yaml:"user"`
-			Password string `yaml:"password"`
-			Notify   string `yaml:"notify"`
-		} `yaml:"smtp"`
-		OpenAPI            ACTOpenAPI `yaml:"openAPI"`            // The Token configuration for ACT OpenAPI
-		StrictRegisterMode bool       `yaml:"strictRegisterMode"` // If true, the user must sign up with token.
-		UIDServerURL       string     `yaml:"uidServerURL"`       // The URL of the UID server
-	} `yaml:"act"`
+		Namespace      string `json:"namespace"`
+		ImageNamespace string `json:"imageNameSpace"`
+	} `json:"workspace"`
+
+	Secrets struct {
+		TLSSecretName        string `json:"tlsSecretName"`        // The name of the TLS secret.
+		TLSForwardSecretName string `json:"tlsForwardSecretName"` // The name of the TLS forward secret.
+		ImagePullSecretName  string `json:"imagePullSecretName"`  // The name of the image pull secret.
+	}
+
+	ImageRegistry struct {
+		Server        string `json:"server"`
+		User          string `json:"user"`
+		Password      string `json:"password"`
+		Project       string `json:"project"`
+		Admin         string `json:"admin"`
+		AdminPassword string `json:"adminPassword"`
+	} `json:"imageRegistry"`
+
+	// image build tools
+	ImageBuildTools struct {
+		BuildxImage  string `json:"buildxImage"` // Image for buildx frontend
+		NerdctlImage string `json:"nerdctlImage"`
+		EnvdImage    string `json:"envdImage"`
+	} `json:"imageBuildTools"`
+
+	SMTP struct {
+		Host     string `json:"host"`
+		Port     string `json:"port"`
+		User     string `json:"user"`
+		Password string `json:"password"`
+		Notify   string `json:"notify"`
+	} `json:"smtp"`
+
+	RaidsLab struct {
+		Enable bool `json:"enable"` // If true, the user must sign up with token.
+		LDAP   struct {
+			UserName string `json:"userName"`
+			Password string `json:"password"`
+			Address  string `json:"address"`
+			SearchDN string `json:"searchDN"`
+		} `json:"ldap"`
+		OpenAPI      ACTOpenAPI `json:"openAPI"`      // The Token configuration for ACT OpenAPI
+		UIDServerURL string     `json:"uidServerURL"` // The URL of the UID server
+	} `json:"raidsLab"`
+
 	// scheduler plugin
 	SchedulerPlugins struct {
-		Aijob struct {
-			AijobEn          bool `yaml:"aijobEn"`
-			EnableProfiling  bool `yaml:"enableProfiling"`
-			ProfilingTimeout int  `yaml:"profilingTimeout"`
-		} `yaml:"aijob"`
-		Spjob struct {
-			SpjobEn                  bool   `yaml:"spjobEn"`
-			PredictionServiceAddress string `yaml:"predictionServiceAddress"`
-		} `yaml:"spjob"`
-	} `yaml:"schedulerPlugins"`
-	// dind plugin
-	DindArgs struct {
-		BuildxImage  string `yaml:"buildxImage"` // Image for buildx frontend
-		NerdctlImage string `yaml:"nerdctlImage"`
-		EnvdImage    string `yaml:"envdImage"`
-	} `yaml:"dindArgs"`
-	// tls secret name
-	TLSSecretName        string `yaml:"tlsSecretName"`
-	TLSForwardSecretName string `yaml:"tlsForwardSecretName"`
+		EMIAS struct {
+			Enable           bool `json:"enable"`
+			EnableProfiling  bool `json:"enableProfiling"`
+			ProfilingTimeout int  `json:"profilingTimeout"`
+		} `json:"aijob"`
+		SEACS struct {
+			Enable                   bool   `json:"enable"`
+			PredictionServiceAddress string `json:"predictionServiceAddress"`
+		} `json:"spjob"`
+	} `json:"schedulerPlugins"`
 }
 
 type ACTOpenAPI struct {
-	URL          string `yaml:"url"`
-	ChameleonKey string `yaml:"chameleonKey"`
-	AccessToken  string `yaml:"accessToken"`
+	URL          string `json:"url"`
+	ChameleonKey string `json:"chameleonKey"`
+	AccessToken  string `json:"accessToken"`
 }
 
 var (

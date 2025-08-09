@@ -107,7 +107,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	buildkitContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().DindArgs.BuildxImage,
+			Image: config.GetConfig().ImageBuildTools.BuildxImage,
 			Args:  setupCommands,
 			Env: []corev1.EnvVar{
 				{

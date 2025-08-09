@@ -23,8 +23,8 @@ type SMTPAlerter struct {
 
 func newSMTPAlerter() (alertHandlerInterface, error) {
 	smtpConfig := config.GetConfig()
-	smtpHost := smtpConfig.ACT.SMTP.Host
-	smtpPort := smtpConfig.ACT.SMTP.Port
+	smtpHost := smtpConfig.SMTP.Host
+	smtpPort := smtpConfig.SMTP.Port
 
 	// 将端口字符串转换为整数
 	port, err := strconv.Atoi(smtpPort)
@@ -38,9 +38,9 @@ func newSMTPAlerter() (alertHandlerInterface, error) {
 	return &SMTPAlerter{
 		host:     smtpHost,
 		port:     port,
-		username: smtpConfig.ACT.SMTP.User,
-		password: smtpConfig.ACT.SMTP.Password,
-		from:     smtpConfig.ACT.SMTP.Notify,
+		username: smtpConfig.SMTP.User,
+		password: smtpConfig.SMTP.Password,
+		from:     smtpConfig.SMTP.Notify,
 		fromName: fromName,
 	}, nil
 }

@@ -299,7 +299,7 @@ func (mgr *DatasetMgr) CreateDataset(c *gin.Context) {
 // 正则去除前缀/后的url,重定向到实际位置，如在user后加上user.space的路径
 func redirectDatasetURL(c *gin.Context, url string, token util.JWTMessage) (string, error) {
 	if strings.HasPrefix(url, "public") {
-		subPath := filepath.Clean(config.GetConfig().PublicSpacePrefix + strings.TrimPrefix(url, "public"))
+		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.Public + strings.TrimPrefix(url, "public"))
 		return subPath, nil
 	} else if strings.HasPrefix(url, "account") {
 		a := query.Account
@@ -307,7 +307,7 @@ func redirectDatasetURL(c *gin.Context, url string, token util.JWTMessage) (stri
 		if aerr != nil {
 			return "", aerr
 		}
-		subPath := filepath.Clean(config.GetConfig().AccountSpacePrefix + "/" + account.Space + strings.TrimPrefix(url, "account"))
+		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.Account + "/" + account.Space + strings.TrimPrefix(url, "account"))
 		return subPath, nil
 	} else if strings.HasPrefix(url, "user") {
 		u := query.User
@@ -315,7 +315,7 @@ func redirectDatasetURL(c *gin.Context, url string, token util.JWTMessage) (stri
 		if uerr != nil {
 			return "", uerr
 		}
-		subPath := config.GetConfig().UserSpacePrefix + "/" + user.Space + strings.TrimPrefix(url, "user")
+		subPath := config.GetConfig().Storage.Prefix.User + "/" + user.Space + strings.TrimPrefix(url, "user")
 		return subPath, nil
 	} else {
 		return "", fmt.Errorf("dataset url err")

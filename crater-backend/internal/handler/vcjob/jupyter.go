@@ -155,9 +155,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
-	if config.GetConfig().ImagePullSecretName != "" {
+	if config.GetConfig().Secrets.ImagePullSecretName != "" {
 		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
-			Name: config.GetConfig().ImagePullSecretName,
+			Name: config.GetConfig().Secrets.ImagePullSecretName,
 		})
 	}
 
