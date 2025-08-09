@@ -90,9 +90,9 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
-	if config.GetConfig().ImagePullSecretName != "" {
+	if config.GetConfig().Secrets.ImagePullSecretName != "" {
 		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
-			Name: config.GetConfig().ImagePullSecretName,
+			Name: config.GetConfig().Secrets.ImagePullSecretName,
 		})
 	}
 

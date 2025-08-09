@@ -94,10 +94,7 @@ func (a *alertMgr) getJobAlertInfo(ctx context.Context, jobName string) (*JobInf
 	}
 
 	host := config.GetConfig().Host
-	jobURL := fmt.Sprintf("https://%s/portal/job/batch/%s", host, job.JobName)
-	if job.JobType == "jupyter" {
-		jobURL = fmt.Sprintf("https://%s/portal/job/inter/%s", host, job.JobName)
-	}
+	jobURL := fmt.Sprintf("https://%s/portal/jobs/detail/%s", host, job.JobName)
 
 	receiver := job.User.Attributes.Data()
 

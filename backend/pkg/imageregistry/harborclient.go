@@ -22,17 +22,22 @@ type HarborClient struct {
 }
 
 func NewHarborClient() HarborClient {
-	harborConfig := config.GetConfig().ACT.Image
-	HarborAPIServer := fmt.Sprintf("https://%s/api/", harborConfig.RegistryServer)
-	restClient, err := haborapiv2.NewRESTClientForHost(HarborAPIServer, harborConfig.RegistryAdmin, harborConfig.RegistryAdminPass, nil)
+	harborConfig := config.GetConfig().ImageRegistry
+	HarborAPIServer := fmt.Sprintf("https://%s/api/", harborConfig.Server)
+	restClient, err := haborapiv2.NewRESTClientForHost(
+		HarborAPIServer,
+		harborConfig.Admin,
+		harborConfig.AdminPassword,
+		nil,
+	)
 	if err != nil {
 		klog.Errorf("establish harbor client failed, err: %+v", err)
 	}
 	authInfo := AuthInfo{
-		RegistryServer:  harborConfig.RegistryServer,
-		RegistryUser:    harborConfig.RegistryUser,
-		RegistryPass:    harborConfig.RegistryPass,
-		RegistryProject: harborConfig.RegistryProject,
+		RegistryServer:  harborConfig.Server,
+		RegistryUser:    harborConfig.User,
+		RegistryPass:    harborConfig.Password,
+		RegistryProject: harborConfig.Project,
 	}
 	return HarborClient{*restClient, authInfo}
 }

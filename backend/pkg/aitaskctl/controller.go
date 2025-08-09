@@ -175,38 +175,6 @@ func (c *TaskController) TaskUpdated(event util.TaskUpdateChan) {
 	}
 }
 
-// deprecated
-// func (c *TaskController) watchTaskUpdate(ctx context.Context) {
-// 	for {
-// 		select {
-// 		case t := <-c.taskUpdateChan:
-// 			// 更新task在队列的状态
-// 			task, err := c.taskDB.GetByID(t.TaskID)
-// 			tidStr := strconv.FormatUint(uint64(t.TaskID), 10)
-// 			klog.Infof("get task update event, taskID: %v, operation: %v", tidStr, t.Operation)
-// 			// 1. delete的情况
-// 			if t.Operation == util.DeleteTask {
-// 				c.taskQueue.DeleteTaskByUserNameAndTaskID(t.UserName, tidStr)
-// 				// delete in cluster
-// 				err = c.jobControl.DeleteJobFromTask(task)
-// 				if err != nil {
-// 					klog.Errorf("delete job from task failed, err: %v", err)
-// 				}
-// 				klog.Infof("delete task in task controller, %d", t.TaskID)
-// 				continue
-// 			} else if t.Operation == util.CreateTask {
-// 				// 2. create
-// 				c.taskQueue.AddTask(task)
-// 			} else if t.Operation == util.UpdateTask {
-// 				// 3. update slo
-// 				c.taskQueue.UpdateTask(task)
-// 			}
-// 		case <-ctx.Done():
-// 			return
-// 		}
-// 	}
-// }
-
 func (c *TaskController) updateTaskStatus(ctx context.Context, taskID, status, reason string) (*model.AITask, error) {
 	// convert taskID to uint
 	tid, _ := strconv.ParseUint(taskID, 10, 64)

@@ -310,7 +310,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{host},
-					SecretName: s.config.TLSSecretName,
+					SecretName: s.config.Secrets.TLSSecretName,
 				},
 			},
 		},
@@ -417,7 +417,7 @@ func (s *serviceManagerImpl) CreateIngress(
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{subdomain},
-					SecretName: s.config.TLSForwardSecretName,
+					SecretName: s.config.Secrets.TLSForwardSecretName,
 				},
 			},
 		},

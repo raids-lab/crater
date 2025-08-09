@@ -6,7 +6,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +24,6 @@ type JobControl struct {
 	client.Client
 	KubeClient     kubernetes.Interface
 	ServiceManager ServiceManagerInterface
-	mu             sync.Mutex
 }
 
 const (
@@ -60,52 +58,6 @@ func (c *JobControl) DeleteJobFromTask(task *model.AITask) error {
 		err = fmt.Errorf("delete job %s failed: %w", task.JobName, err)
 		return err
 	}
-
-	// 对于 Jupyter 类型，还需要删除 Service
-	if task.TaskType == model.EmiasJupyterTask {
-		svc := &v1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      ServicePrefix + task.JobName,
-				Namespace: ns,
-			},
-		}
-		err = c.Delete(context.Background(), svc)
-		if err != nil {
-			err = fmt.Errorf("delete service %s: %w", task.JobName, err)
-			return err
-		}
-	}
-
-	// 此外，还需要删除 Ingress
-
-	// 添加锁
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	ingressClient := c.KubeClient.NetworkingV1().Ingresses(ns)
-
-	// Get the existing Ingress
-	ingress, err := ingressClient.Get(context.TODO(), config.GetConfig().Workspace.IngressName, metav1.GetOptions{})
-	if err != nil {
-		err = fmt.Errorf("get crater-jobs-ingress: %w", err)
-		return err
-	}
-
-	// Remove the path from the first rule
-	for i, path := range ingress.Spec.Rules[0].HTTP.Paths {
-		if strings.Contains(path.Path, task.JobName) {
-			ingress.Spec.Rules[0].HTTP.Paths = append(ingress.Spec.Rules[0].HTTP.Paths[:i], ingress.Spec.Rules[0].HTTP.Paths[i+1:]...)
-			break
-		}
-	}
-
-	// Update the Ingress
-	_, err = ingressClient.Update(context.Background(), ingress, metav1.UpdateOptions{})
-	if err != nil {
-		err = fmt.Errorf("update ingress: %w", err)
-		return err
-	}
-
 	return err
 }
 
@@ -317,7 +269,7 @@ func GenVolumeAndMountsFromAITask(task *model.AITask) ([]v1.Volume, []v1.VolumeM
 			Name: "personal-volume",
 			VolumeSource: v1.VolumeSource{
 				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-					ClaimName: config.GetConfig().Workspace.RWXPVCName,
+					ClaimName: config.GetConfig().Storage.RWXPVCName,
 				},
 			},
 		},

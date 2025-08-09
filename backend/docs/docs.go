@@ -37,7 +37,7 @@ const docTemplate = `{
                     "200": {
                         "description": "token验证成功，返回用户信息和上下文",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp"
                         }
                     },
                     "401": {
@@ -946,7 +946,9 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -1009,7 +1011,9 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -1216,7 +1220,9 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -1936,7 +1942,9 @@ const docTemplate = `{
                         "name": "job",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -5569,7 +5577,9 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -6082,7 +6092,9 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -6131,7 +6143,9 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -6587,7 +6601,6 @@ const docTemplate = `{
     "definitions": {
         "github_com_raids-lab_crater_dao_model.AccessMode": {
             "type": "integer",
-            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6601,13 +6614,6 @@ const docTemplate = `{
                 "AccessModeRO": "Read-only mode",
                 "AccessModeRW": "Read-write mode"
             },
-            "x-enum-descriptions": [
-                "",
-                "Not-allowed mode",
-                "Read-only mode",
-                "Read-write mode",
-                "Append-only mode"
-            ],
             "x-enum-varnames": [
                 "_",
                 "AccessModeNA",
@@ -6720,7 +6726,6 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Role": {
             "type": "integer",
-            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6736,7 +6741,6 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
-            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6748,12 +6752,6 @@ const docTemplate = `{
                 "StatusInactive": "Inactive status",
                 "StatusPending": "Pending status, not yet activated"
             },
-            "x-enum-descriptions": [
-                "",
-                "Pending status, not yet activated",
-                "Active status",
-                "Inactive status"
-            ],
             "x-enum-varnames": [
                 "_",
                 "StatusPending",
@@ -6903,6 +6901,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.CheckResp"
                 },
                 "msg": {
                     "type": "string"
@@ -7134,8 +7146,7 @@ const docTemplate = `{
                 "gpuUtil": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "number",
-                        "format": "float32"
+                        "type": "number"
                     }
                 },
                 "haveGPU": {
@@ -7262,6 +7273,17 @@ const docTemplate = `{
                 "AuthMethodACTLDAP",
                 "AuthMethodACTAPI"
             ]
+        },
+        "internal_handler.CheckResp": {
+            "type": "object",
+            "properties": {
+                "context": {
+                    "$ref": "#/definitions/internal_handler.AccountContext"
+                },
+                "user": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
+                }
+            }
         },
         "internal_handler.DatasetReq": {
             "type": "object",
@@ -8127,11 +8149,6 @@ const docTemplate = `{
                         "DecimalExponent": "e.g., 12e6",
                         "DecimalSI": "e.g., 12M  (12 * 10^6)"
                     },
-                    "x-enum-descriptions": [
-                        "e.g., 12e6",
-                        "e.g., 12Mi (12 * 2^20)",
-                        "e.g., 12M  (12 * 10^6)"
-                    ],
                     "x-enum-varnames": [
                         "DecimalExponent",
                         "BinarySI",

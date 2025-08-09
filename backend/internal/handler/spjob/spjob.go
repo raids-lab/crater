@@ -30,7 +30,7 @@ import (
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
-	if config.GetConfig().SchedulerPlugins.Spjob.SpjobEn {
+	if config.GetConfig().SchedulerPlugins.SEACS.Enable {
 		handler.Registers = append(handler.Registers, NewSparseJobMgr)
 	}
 }
@@ -135,9 +135,9 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 	}
 
 	imagePullSecrets := []corev1.LocalObjectReference{}
-	if config.GetConfig().ImagePullSecretName != "" {
+	if config.GetConfig().Secrets.ImagePullSecretName != "" {
 		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{
-			Name: config.GetConfig().ImagePullSecretName,
+			Name: config.GetConfig().Secrets.ImagePullSecretName,
 		})
 	}
 
@@ -528,7 +528,7 @@ func (mgr *SparseJobMgr) AnalyzeResourceUsage(c *gin.Context) {
 		req.EmbeddingTableCount = 0
 	}
 	analyzeResp := &ResourceAnalyzeWebhookResponse{}
-	if err := utils.PostJSON(c, config.GetConfig().SchedulerPlugins.Spjob.PredictionServiceAddress, "/api/v1/task/analyze/end2end",
+	if err := utils.PostJSON(c, config.GetConfig().SchedulerPlugins.SEACS.PredictionServiceAddress, "/api/v1/task/analyze/end2end",
 		map[string]any{
 			"embedding_table_count": req.EmbeddingTableCount,
 			"embedding_dim_total":   req.EmbeddingDimTotal,

@@ -72,12 +72,12 @@ func (ms *ManagerSetup) SetupCustomCRDAddon(
 	stopCh context.Context,
 ) error {
 	// Setup AIJob
-	if err := ms.setupAIJob(mgr, registerConfig, stopCh); err != nil {
+	if err := ms.setupEMIASJob(mgr, registerConfig, stopCh); err != nil {
 		return err
 	}
 
 	// Setup SPJob
-	if err := ms.setupSPJob(mgr); err != nil {
+	if err := ms.setupSEACSJob(mgr); err != nil {
 		return err
 	}
 
@@ -99,10 +99,10 @@ func (ms *ManagerSetup) SetupCustomCRDAddon(
 	return nil
 }
 
-// setupAIJob 设置AIJob相关组件
-func (ms *ManagerSetup) setupAIJob(mgr manager.Manager, registerConfig *handler.RegisterConfig, stopCh context.Context) error {
+// setupEMIASJob 设置AIJob相关组件
+func (ms *ManagerSetup) setupEMIASJob(mgr manager.Manager, registerConfig *handler.RegisterConfig, stopCh context.Context) error {
 	var taskCtrl aitaskctl.TaskControllerInterface
-	if ms.backendConfig.SchedulerPlugins.Aijob.AijobEn {
+	if ms.backendConfig.SchedulerPlugins.EMIAS.Enable {
 		utilruntime.Must(aisystemv1alpha1.AddToScheme(mgr.GetScheme()))
 
 		// 1. init task controller
@@ -131,8 +131,8 @@ func (ms *ManagerSetup) setupAIJob(mgr manager.Manager, registerConfig *handler.
 		}
 
 		// 3. profiler config
-		if ms.backendConfig.SchedulerPlugins.Aijob.EnableProfiling {
-			aijobProfiler := aitaskctl.NewProfiler(mgr, registerConfig.PrometheusClient, ms.backendConfig.SchedulerPlugins.Aijob.ProfilingTimeout)
+		if ms.backendConfig.SchedulerPlugins.EMIAS.EnableProfiling {
+			aijobProfiler := aitaskctl.NewProfiler(mgr, registerConfig.PrometheusClient, ms.backendConfig.SchedulerPlugins.EMIAS.ProfilingTimeout)
 			taskCtrl.SetProfiler(aijobProfiler)
 			aijobProfiler.Start(stopCh)
 		}
@@ -146,9 +146,9 @@ func (ms *ManagerSetup) setupAIJob(mgr manager.Manager, registerConfig *handler.
 	return nil
 }
 
-// setupSPJob 设置SPJob相关组件
-func (ms *ManagerSetup) setupSPJob(mgr manager.Manager) error {
-	if ms.backendConfig.SchedulerPlugins.Spjob.SpjobEn {
+// setupSEACSJob 设置SPJob相关组件
+func (ms *ManagerSetup) setupSEACSJob(mgr manager.Manager) error {
+	if ms.backendConfig.SchedulerPlugins.SEACS.Enable {
 		utilruntime.Must(recommenddljob.AddToScheme(mgr.GetScheme()))
 	}
 	return nil
