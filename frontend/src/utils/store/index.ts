@@ -36,6 +36,7 @@ export const VITE_UI_THEME_KEY = 'vite_ui_theme'
 export type BreadCrumbItem = {
   href: string
   label: string
+  back?: boolean
 }
 
 export const atomBreadcrumb = atom([] as BreadCrumbItem[])

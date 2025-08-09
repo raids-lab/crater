@@ -16,17 +16,17 @@
 // i18n-processed-v1.1.0
 // Modified code
 import { Row, Table } from '@tanstack/react-table'
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-  RefreshCcw,
-} from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, RefreshCcw } from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@/components/ui/button'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+} from '@/components/ui/pagination'
 import {
   Select,
   SelectContent,
@@ -48,6 +48,67 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import TooltipButton from '../button/tooltip-button'
+
+const DOTS = '...'
+
+function usePagination({
+  currentPage,
+  totalPages,
+  siblingCount = 1,
+}: {
+  currentPage: number
+  totalPages: number
+  siblingCount?: number
+}) {
+  return React.useMemo(() => {
+    const totalPageNumbers = siblingCount + 5 // Start, end, current, and 2 siblings
+
+    // Case 1: If the number of pages is less than the page numbers we want to show
+    if (totalPageNumbers >= totalPages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    const leftSiblingIndex = Math.max(currentPage - siblingCount, 1)
+    const rightSiblingIndex = Math.min(currentPage + siblingCount, totalPages)
+
+    const shouldShowLeftDots = leftSiblingIndex > 2
+    const shouldShowRightDots = rightSiblingIndex < totalPages - 2
+
+    const firstPageIndex = 1
+    const lastPageIndex = totalPages
+
+    // Case 2: No left dots to show, but rights dots to be shown
+    if (!shouldShowLeftDots && shouldShowRightDots) {
+      const leftItemCount = 3 + 2 * siblingCount
+      const leftRange = Array.from({ length: leftItemCount }, (_, i) => i + 1)
+
+      return [...leftRange, DOTS, totalPages]
+    }
+
+    // Case 3: No right dots to show, but left dots to be shown
+    if (shouldShowLeftDots && !shouldShowRightDots) {
+      const rightItemCount = 3 + 2 * siblingCount
+      const rightRange = Array.from(
+        { length: rightItemCount },
+        (_, i) => totalPages - rightItemCount + i + 1
+      )
+
+      return [firstPageIndex, DOTS, ...rightRange]
+    }
+
+    // Case 4: Both left and right dots to be shown
+    if (shouldShowLeftDots && shouldShowRightDots) {
+      const middleRange = Array.from(
+        { length: rightSiblingIndex - leftSiblingIndex + 1 },
+        (_, i) => leftSiblingIndex + i
+      )
+
+      return [firstPageIndex, DOTS, ...middleRange, DOTS, lastPageIndex]
+    }
+
+    return []
+  }, [currentPage, totalPages, siblingCount])
+}
 
 export interface MultipleHandler<TData> {
   title: (rows: Row<TData>[]) => string
@@ -71,6 +132,19 @@ export function DataTablePagination<TData>({
   multipleHandlers,
 }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation()
+
+  const currentPage = table.getState().pagination.pageIndex + 1
+  const totalPages = table.getPageCount()
+
+  const paginationRange = usePagination({
+    currentPage,
+    totalPages,
+    siblingCount: 1,
+  })
+
+  const onPageChange = (page: number) => {
+    table.setPageIndex(page - 1)
+  }
 
   return (
     <div className="flex w-full items-center justify-between">
@@ -163,52 +237,65 @@ export function DataTablePagination<TData>({
         </p>
       </div>
       <div className="flex items-center space-x-6">
-        <p className="text-muted-foreground text-xs font-medium">
-          {t('dataTablePagination.currentPage', {
-            page: table.getState().pagination.pageIndex + 1,
-            totalPages: table.getPageCount(),
-          })}
-        </p>
-        <div className="flex items-center space-x-1.5">
-          <Button
-            variant="outline"
-            className="hidden size-9 p-0 lg:flex"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-            title={t('dataTablePagination.firstPage')}
-          >
-            <ChevronsLeftIcon className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="size-9 p-0"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            title={t('dataTablePagination.previousPage')}
-          >
-            <span className="sr-only">{t('dataTablePagination.previousPage')}</span>
-            <ChevronLeftIcon className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="size-9 p-0"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            title={t('dataTablePagination.nextPage')}
-          >
-            <span className="sr-only">{t('dataTablePagination.nextPage')}</span>
-            <ChevronRightIcon className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            className="hidden size-9 p-0 lg:flex"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-            title={t('dataTablePagination.lastPage')}
-          >
-            <span className="sr-only">{t('dataTablePagination.lastPage')}</span>
-            <ChevronsRightIcon className="size-4" />
-          </Button>
+        <div className="flex items-center space-x-2">
+          <Pagination>
+            <PaginationContent>
+              {/* Previous button */}
+              <PaginationItem>
+                <PaginationLink
+                  aria-label={t('dataTablePagination.previousPage')}
+                  size="icon"
+                  className={
+                    currentPage <= 1
+                      ? 'pointer-events-none cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
+                  }
+                  onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+                >
+                  <ChevronLeftIcon className="size-4" />
+                </PaginationLink>
+              </PaginationItem>
+
+              {/* Page numbers */}
+              {paginationRange.map((pageNumber, index) => {
+                if (pageNumber === DOTS) {
+                  return (
+                    <PaginationItem key={`dots-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )
+                }
+
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      onClick={() => onPageChange(pageNumber as number)}
+                      isActive={pageNumber === currentPage}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+
+              {/* Next button */}
+              <PaginationItem>
+                <PaginationLink
+                  aria-label={t('dataTablePagination.nextPage')}
+                  size="icon"
+                  className={
+                    currentPage >= totalPages
+                      ? 'pointer-events-none cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
+                  }
+                  onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
+                >
+                  <ChevronRightIcon className="size-4" />
+                </PaginationLink>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </div>
     </div>

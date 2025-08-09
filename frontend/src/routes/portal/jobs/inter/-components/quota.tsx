@@ -20,7 +20,7 @@ import { useMemo } from 'react'
 
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 
-import { ProgressBar } from '@/components/ui-custom/colorful-progress'
+import { ProgressBar, progressTextColor } from '@/components/ui-custom/colorful-progress'
 
 import { ResourceResp, apiContextQuota } from '@/services/api/context'
 
@@ -57,10 +57,9 @@ const QuotaCard = ({
   const allocated = resource?.allocated?.amount ?? 0
   const deserved = resource?.deserved?.amount ?? 0
   const quota = resource?.deserved?.amount ?? resource?.capability?.amount ?? 1
-  const [progress, overflow] = useMemo(() => {
+  const [progress] = useMemo(() => {
     const progress = (allocated / quota) * 100
-    const overflow = progress > 100
-    return [overflow ? 100 : progress, overflow]
+    return [progress > 100 ? 100 : progress]
   }, [allocated, quota])
   return (
     <Card className="flex flex-col items-stretch justify-between gap-3">
@@ -73,11 +72,7 @@ const QuotaCard = ({
         </CardDescription>
         <div className="text-muted-foreground font-sans text-xs">
           已用
-          <span
-            className={cn('text-primary mx-0.5 font-mono text-2xl font-bold', {
-              'text-orange-500': overflow,
-            })}
-          >
+          <span className={cn(progressTextColor(progress), 'mx-0.5 font-mono text-2xl font-bold')}>
             {showAmount(allocated, resource?.label)}
             {deserved > 0 && (
               <span className="text-base">/{showAmount(deserved, resource?.label)}</span>

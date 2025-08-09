@@ -57,9 +57,7 @@ import { Route as PortalDataBlocksRouteRouteImport } from './routes/portal/data/
 import { Route as AdminEnvRegistryRouteRouteImport } from './routes/admin/env/registry/route'
 import { Route as AdminClusterResourcesRouteRouteImport } from './routes/admin/cluster/resources/route'
 import { Route as AdminClusterNodesRouteRouteImport } from './routes/admin/cluster/nodes/route'
-import { Route as PortalJobsNewIndexRouteImport } from './routes/portal/jobs/new/index'
 import { Route as PortalJobsInterIndexRouteImport } from './routes/portal/jobs/inter/index'
-import { Route as PortalJobsDetailIndexRouteImport } from './routes/portal/jobs/detail/index'
 import { Route as PortalJobsCustomIndexRouteImport } from './routes/portal/jobs/custom/index'
 import { Route as PortalEnvRegistryIndexRouteImport } from './routes/portal/env/registry/index'
 import { Route as PortalEnvImagesIndexRouteImport } from './routes/portal/env/images/index'
@@ -326,20 +324,10 @@ const AdminClusterNodesRouteRoute = AdminClusterNodesRouteRouteImport.update({
   path: '/cluster/nodes',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const PortalJobsNewIndexRoute = PortalJobsNewIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PortalJobsNewRouteRoute,
-} as any)
 const PortalJobsInterIndexRoute = PortalJobsInterIndexRouteImport.update({
   id: '/jobs/inter/',
   path: '/jobs/inter/',
   getParentRoute: () => PortalRouteRoute,
-} as any)
-const PortalJobsDetailIndexRoute = PortalJobsDetailIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PortalJobsDetailRouteRoute,
 } as any)
 const PortalJobsCustomIndexRoute = PortalJobsCustomIndexRouteImport.update({
   id: '/jobs/custom/',
@@ -539,15 +527,15 @@ export interface FileRoutesByFullPath {
   '/portal/env/images': typeof PortalEnvImagesIndexRoute
   '/portal/env/registry': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
-  '/portal/jobs/detail/': typeof PortalJobsDetailIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
-  '/portal/jobs/new/': typeof PortalJobsNewIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminIndexRoute
   '/auth': typeof AuthIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/portal/jobs/detail': typeof PortalJobsDetailRouteRouteWithChildren
+  '/portal/jobs/new': typeof PortalJobsNewRouteRouteWithChildren
   '/admin/accounts/$id': typeof AdminAccountsIdRoute
   '/admin/data/$id': typeof AdminDataIdRoute
   '/admin/files/$': typeof AdminFilesSplatRoute
@@ -598,9 +586,7 @@ export interface FileRoutesByTo {
   '/portal/env/images': typeof PortalEnvImagesIndexRoute
   '/portal/env/registry': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
-  '/portal/jobs/detail': typeof PortalJobsDetailIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
-  '/portal/jobs/new': typeof PortalJobsNewIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -676,9 +662,7 @@ export interface FileRoutesById {
   '/portal/env/images/': typeof PortalEnvImagesIndexRoute
   '/portal/env/registry/': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom/': typeof PortalJobsCustomIndexRoute
-  '/portal/jobs/detail/': typeof PortalJobsDetailIndexRoute
   '/portal/jobs/inter/': typeof PortalJobsInterIndexRoute
-  '/portal/jobs/new/': typeof PortalJobsNewIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -755,15 +739,15 @@ export interface FileRouteTypes {
     | '/portal/env/images'
     | '/portal/env/registry'
     | '/portal/jobs/custom'
-    | '/portal/jobs/detail/'
     | '/portal/jobs/inter'
-    | '/portal/jobs/new/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/auth'
     | '/portal'
+    | '/portal/jobs/detail'
+    | '/portal/jobs/new'
     | '/admin/accounts/$id'
     | '/admin/data/$id'
     | '/admin/files/$'
@@ -814,9 +798,7 @@ export interface FileRouteTypes {
     | '/portal/env/images'
     | '/portal/env/registry'
     | '/portal/jobs/custom'
-    | '/portal/jobs/detail'
     | '/portal/jobs/inter'
-    | '/portal/jobs/new'
   id:
     | '__root__'
     | '/'
@@ -891,9 +873,7 @@ export interface FileRouteTypes {
     | '/portal/env/images/'
     | '/portal/env/registry/'
     | '/portal/jobs/custom/'
-    | '/portal/jobs/detail/'
     | '/portal/jobs/inter/'
-    | '/portal/jobs/new/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1242,26 +1222,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClusterNodesRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/portal/jobs/new/': {
-      id: '/portal/jobs/new/'
-      path: '/'
-      fullPath: '/portal/jobs/new/'
-      preLoaderRoute: typeof PortalJobsNewIndexRouteImport
-      parentRoute: typeof PortalJobsNewRouteRoute
-    }
     '/portal/jobs/inter/': {
       id: '/portal/jobs/inter/'
       path: '/jobs/inter'
       fullPath: '/portal/jobs/inter'
       preLoaderRoute: typeof PortalJobsInterIndexRouteImport
       parentRoute: typeof PortalRouteRoute
-    }
-    '/portal/jobs/detail/': {
-      id: '/portal/jobs/detail/'
-      path: '/'
-      fullPath: '/portal/jobs/detail/'
-      preLoaderRoute: typeof PortalJobsDetailIndexRouteImport
-      parentRoute: typeof PortalJobsDetailRouteRoute
     }
     '/portal/jobs/custom/': {
       id: '/portal/jobs/custom/'
@@ -1672,12 +1638,10 @@ const PortalDataModelsRouteRouteWithChildren =
 
 interface PortalJobsDetailRouteRouteChildren {
   PortalJobsDetailNameRoute: typeof PortalJobsDetailNameRoute
-  PortalJobsDetailIndexRoute: typeof PortalJobsDetailIndexRoute
 }
 
 const PortalJobsDetailRouteRouteChildren: PortalJobsDetailRouteRouteChildren = {
   PortalJobsDetailNameRoute: PortalJobsDetailNameRoute,
-  PortalJobsDetailIndexRoute: PortalJobsDetailIndexRoute,
 }
 
 const PortalJobsDetailRouteRouteWithChildren =
@@ -1693,7 +1657,6 @@ interface PortalJobsNewRouteRouteChildren {
   PortalJobsNewSeacsJobRoute: typeof PortalJobsNewSeacsJobRoute
   PortalJobsNewSingleJobRoute: typeof PortalJobsNewSingleJobRoute
   PortalJobsNewTensorflowPsJobRoute: typeof PortalJobsNewTensorflowPsJobRoute
-  PortalJobsNewIndexRoute: typeof PortalJobsNewIndexRoute
 }
 
 const PortalJobsNewRouteRouteChildren: PortalJobsNewRouteRouteChildren = {
@@ -1704,7 +1667,6 @@ const PortalJobsNewRouteRouteChildren: PortalJobsNewRouteRouteChildren = {
   PortalJobsNewSeacsJobRoute: PortalJobsNewSeacsJobRoute,
   PortalJobsNewSingleJobRoute: PortalJobsNewSingleJobRoute,
   PortalJobsNewTensorflowPsJobRoute: PortalJobsNewTensorflowPsJobRoute,
-  PortalJobsNewIndexRoute: PortalJobsNewIndexRoute,
 }
 
 const PortalJobsNewRouteRouteWithChildren =
