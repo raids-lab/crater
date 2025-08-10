@@ -1,7 +1,7 @@
 package constants
 
 const (
-	APIPrefix        = ""
-	APIV1Prefix      = "v1"
-	APIV1AdminPrefix = "v1/admin"
+	APIPrefix        = "api"
+	APIV1Prefix      = "api/v1"
+	APIV1AdminPrefix = "api/v1/admin"
 )
