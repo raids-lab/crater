@@ -45,13 +45,12 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api/ss': {
-          target: 'http://localhost:7320/',
+          target: env.VITE_SERVER_PROXY_STORAGE,
           changeOrigin: true,
         },
         '/api': {
           target: env.VITE_SERVER_PROXY_DOMAIN,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api\//, env.VITE_SERVER_PROXY_PREFIX),
         },
       },
     },
