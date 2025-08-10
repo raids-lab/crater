@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { motion } from 'framer-motion'
+import { linkOptions } from '@tanstack/react-router'
 import { LucideIcon } from 'lucide-react'
+import { motion } from 'motion/react'
 import { ReactNode, useEffect, useMemo, useRef } from 'react'
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
@@ -54,6 +55,13 @@ export const detailValidateSearch = (search: Record<string, unknown>): DetailPag
     tab: (search.tab as string) || undefined,
   }
 }
+
+export const detailLinkOptions = (tab: string) =>
+  linkOptions({
+    to: '.',
+    search: { tab },
+    replace: true,
+  })
 
 interface DetailPageProps extends DetailPageCoreProps {
   header: ReactNode

@@ -16,11 +16,11 @@
 // i18n-processed-v1.1.0
 // Modified code
 import { zodResolver } from '@hookform/resolvers/zod'
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
+import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { Briefcase, Calendar, Layers, UserRoundPlusIcon, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -70,7 +70,10 @@ import SelectBox from '@/components/custom/SelectBox'
 import { TimeDistance } from '@/components/custom/TimeDistance'
 import FormLabelMust from '@/components/form/FormLabelMust'
 import UserLabel from '@/components/label/user-label'
-import DetailPage, { detailValidateSearch } from '@/components/layout/detail-page'
+import DetailPage, {
+  detailLinkOptions,
+  detailValidateSearch,
+} from '@/components/layout/detail-page'
 import DetailTitle from '@/components/layout/detail-title'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
@@ -651,7 +654,7 @@ function RouteComponent() {
       info={info}
       tabs={tabs}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate({ to: '.', search: { tab } })}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
     />
   )
 }

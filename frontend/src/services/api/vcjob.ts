@@ -55,14 +55,14 @@ export interface IJobInfo {
 }
 
 export const apiAdminGetJobList = (days: number) =>
-  apiV1Get<IResponse<IJobInfo[]>>(`/admin/${JOB_URL}`, {
+  apiV1Get<IResponse<IJobInfo[]>>(`admin/${JOB_URL}`, {
     searchParams: { days },
   })
 
 export const apiAdminGetJobDetail = (jobName: string) =>
   apiV1Get<IResponse<IJupyterDetail>>(`admin/${JOB_URL}/${jobName}/detail`)
 
-export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`/${JOB_URL}/all`)
+export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/all`)
 
 export enum JobPhase {
   Pending = 'Pending',
@@ -129,9 +129,9 @@ export const getJobStateType = (phase: JobPhase): JobStatus => {
   return JobStatus.Unknown
 }
 
-export const apiJobBatchList = () => apiV1Get<IResponse<IJobInfo[]>>(`/${JOB_URL}`)
+export const apiJobBatchList = () => apiV1Get<IResponse<IJobInfo[]>>(JOB_URL)
 
-export const apiJobInteractiveList = () => apiV1Get<IResponse<IJobInfo[]>>(`/${JOB_URL}`)
+export const apiJobInteractiveList = () => apiV1Get<IResponse<IJobInfo[]>>(JOB_URL)
 
 export interface PodDetail {
   name: string
@@ -386,30 +386,30 @@ export const apiJobToggleKeepForAdmin = (jobName: string) =>
   apiV1Put<IResponse<string>>(`admin/operations/keep/${jobName}`)
 
 export const apiJobUnlock = (jobName: string) =>
-  apiV1Put<IResponse<string>>(`admin/operations/clear/locktime`, {
+  apiV1Put<IResponse<string>>('admin/operations/clear/locktime', {
     name: jobName,
   })
 
 export const apiJobLock = (params: object) =>
-  apiV1Put<IResponse<string>>(`admin/operations/add/locktime`, params)
+  apiV1Put<IResponse<string>>('admin/operations/add/locktime', params)
 
 export const apiJobGetDetail = (jobName: string) =>
   apiV1Get<IResponse<IJupyterDetail>>(`${JOB_URL}/${jobName}/detail`)
 
 export const apiJobGetPods = (jobName: string) =>
-  apiV1Get<IResponse<PodDetail[]>>(`/${JOB_URL}/${jobName}/pods`)
+  apiV1Get<IResponse<PodDetail[]>>(`${JOB_URL}/${jobName}/pods`)
 
 export const apiJobGetYaml = (jobName: string) =>
   apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/yaml`)
 
 export const apiJobGetEvent = (jobName: string) =>
-  apiV1Get<IResponse<KubernetesEvent[]>>(`/${JOB_URL}/${jobName}/event`)
+  apiV1Get<IResponse<KubernetesEvent[]>>(`${JOB_URL}/${jobName}/event`)
 
 export const apiJobTemplate = (jobName: string) =>
   apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/template`)
 
 export const apiJTaskImageList = (imageTaskType: string) =>
-  apiV1Get<IResponse<{ images: ImageInfoResponse[] }>>(`/images/available?type=${imageTaskType}`)
+  apiV1Get<IResponse<{ images: ImageInfoResponse[] }>>(`images/available?type=${imageTaskType}`)
 
 export const apiJupyterTokenGet = (jobName: string) =>
   apiV1Get<
@@ -420,7 +420,7 @@ export const apiJupyterTokenGet = (jobName: string) =>
       podName: string
       namespace: string
     }>
-  >(`/${JOB_URL}/${jobName}/token`)
+  >(`${JOB_URL}/${jobName}/token`)
 
 // @Router /v1/vcjobs/jupyter/{name}/snapshot [post]
 export const apiJupyterSnapshot = (jobName: string) =>
@@ -430,7 +430,7 @@ export const apiJupyterSnapshot = (jobName: string) =>
 export const apiOpenSSH = (jobName: string) =>
   apiV1Post<IResponse<SSHInfo>>(`${JOB_URL}/${jobName}/ssh`)
 
-export const apiJobScheduleAdmin = () => apiV1Get<IResponse<string>>(`admin/operations/cronjob`)
+export const apiJobScheduleAdmin = () => apiV1Get<IResponse<string>>('admin/operations/cronjob')
 
 export const apiJobScheduleChangeAdmin = (schedule: object) =>
-  apiV1Put<IResponse<string>>(`admin/operations/cronjob`, schedule)
+  apiV1Put<IResponse<string>>('admin/operations/cronjob', schedule)

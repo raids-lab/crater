@@ -92,13 +92,13 @@ export interface IClusterNodeTaint {
   name: string
   taint: string
 }
-export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('/nodes')
+export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('nodes')
 
 export const apiGetNodeDetail = (name: string) =>
   apiV1Get<IResponse<IClusterNodeDetail>>(`nodes/${name}`)
 
 export const apiGetNodePods = (name: string) =>
-  apiV1Get<IResponse<IClusterPodInfo[]>>(`/nodes/${name}/pods`)
+  apiV1Get<IResponse<IClusterPodInfo[]>>(`nodes/${name}/pods`)
 
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>

@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useQuery } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
+import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { LockIcon } from 'lucide-react'
 import {
   BotIcon,

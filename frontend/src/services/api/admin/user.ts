@@ -41,7 +41,7 @@ export interface IUser {
   attributes: IUserAttributes
 }
 
-export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>(`/admin/users`)
+export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>('admin/users')
 
 export const apiAdminUserDelete = (userName: string) =>
   apiV1Delete<IResponse<string>>(`admin/users/${userName}`)

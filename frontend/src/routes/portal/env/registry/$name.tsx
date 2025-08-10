@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import RegistryDetail from '@/components/image/registry/registry-detail'
-import { detailValidateSearch } from '@/components/layout/detail-page'
+import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
 import NotFound from '@/components/placeholder/not-found'
 
 import { queryBuildDetail } from '@/services/query/image'
@@ -26,7 +26,7 @@ function RouteComponent() {
     <RegistryDetail
       name={name}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate({ to: '.', search: { tab } })}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
     />
   )
 }

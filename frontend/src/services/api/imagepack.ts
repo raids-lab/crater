@@ -13,14 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {
-  CheckCircledIcon,
-  CircleIcon,
-  ClockIcon,
-  CrossCircledIcon,
-  StopwatchIcon,
-} from '@radix-ui/react-icons'
-
 import { Visibility } from '@/components/badge/VisibilityBadge'
 
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
@@ -147,32 +139,26 @@ export enum ImagePackSource {
 export const imagepackStatuses: {
   value: ImagePackStatus
   label: string
-  icon: React.ComponentType<{ className?: string }>
 }[] = [
   {
     value: 'Initial',
     label: '检查中',
-    icon: CircleIcon,
   },
   {
     value: 'Pending',
     label: '等待中',
-    icon: ClockIcon,
   },
   {
     value: 'Running',
     label: '运行中',
-    icon: StopwatchIcon,
   },
   {
     value: 'Finished',
     label: '成功',
-    icon: CheckCircledIcon,
   },
   {
     value: 'Failed',
     label: '失败',
-    icon: CrossCircledIcon,
   },
 ]
 
@@ -388,7 +374,7 @@ export function parseImageLink(imageLink: string) {
   return { imageName: '', imageTag: '' }
 }
 
-export const apiUserListKaniko = () => apiV1Get<IResponse<ListKanikoResponse>>(`images/kaniko`)
+export const apiUserListKaniko = () => apiV1Get<IResponse<ListKanikoResponse>>('images/kaniko')
 
 export const apiUserCreateKaniko = async (imagepack: KanikoCreate) => {
   const response = await apiV1Post<IResponse<string>>('images/kaniko', imagepack)
@@ -409,14 +395,14 @@ export const apiUserDeleteKaniko = (id: number) =>
   apiV1Delete<IResponse<string>>(`images/kaniko/${id}`)
 
 export const apiUserDeleteKanikoList = (idList: number[]) =>
-  apiV1Post<IResponse<string>>(`images/deletekaniko`, {
+  apiV1Post<IResponse<string>>('images/deletekaniko', {
     idList,
   })
 
 export const apiUserGetKaniko = (name: string) =>
   apiV1Get<IResponse<KanikoInfoResponse>>(`images/getbyname?name=${name}`)
 
-export const apiUserListImage = () => apiV1Get<IResponse<ListImageResponse>>(`images/image`)
+export const apiUserListImage = () => apiV1Get<IResponse<ListImageResponse>>('images/image')
 
 export const apiUserChangeImagePublicStatus = (id: number) =>
   apiV1Post<IResponse<string>>(`images/change/${id}`)
@@ -430,50 +416,50 @@ export const apiUserDeleteImage = (id: number) =>
   apiV1Delete<IResponse<string>>(`images/image/${id}`)
 
 export const apiUserDeleteImageList = (idList: number[]) =>
-  apiV1Post<IResponse<string>>(`images/deleteimage`, { idList })
+  apiV1Post<IResponse<string>>('images/deleteimage', { idList })
 
 export const apiUserGetCredential = () =>
-  apiV1Post<IResponse<ProjectCredentialResponse>>(`images/credential`)
+  apiV1Post<IResponse<ProjectCredentialResponse>>('images/credential')
 
-export const apiUserGetQuota = () => apiV1Get<IResponse<ProjectDetailResponse>>(`images/quota`)
+export const apiUserGetQuota = () => apiV1Get<IResponse<ProjectDetailResponse>>('images/quota')
 
 export const apiUserChangeImageDescription = (data: UpdateDescription) =>
-  apiV1Post<IResponse<string>>(`images/description`, data)
+  apiV1Post<IResponse<string>>('images/description', data)
 
 export const apiUserChangeImageTaskType = (data: UpdateTaskType) =>
-  apiV1Post<IResponse<string>>(`images/type`, data)
+  apiV1Post<IResponse<string>>('images/type', data)
 
 export const apiUserCheckImageValid = (linkPairs: ImageLinkPairs) =>
-  apiV1Post<IResponse<ImageLinkPairs>>(`images/valid`, linkPairs)
+  apiV1Post<IResponse<ImageLinkPairs>>('images/valid', linkPairs)
 
-export const apiGetHarborIP = () => apiV1Get<IResponse<HarborIPData>>(`images/harbor`)
+export const apiGetHarborIP = () => apiV1Get<IResponse<HarborIPData>>('images/harbor')
 
 export const apiUserUpdateImageTags = (data: UpdateImageTag) =>
-  apiV1Post<IResponse<string>>(`images/tags`, data)
+  apiV1Post<IResponse<string>>('images/tags', data)
 
 export const apiUserGetImageTemplate = (name: string) =>
   apiV1Get<IResponse<string>>(`images/template?name=${name}`)
 
 export const apiUserGetImageShareObjects = (data: GetImageShare) =>
-  apiV1Get<IResponse<ImageShareObjectsResponse>>(`images/share`, {
+  apiV1Get<IResponse<ImageShareObjectsResponse>>('images/share', {
     searchParams: { ...data },
   })
 
 export const apiUserAddImageShare = (data: AddImageShare) =>
-  apiV1Post<IResponse<string>>(`images/share`, data)
+  apiV1Post<IResponse<string>>('images/share', data)
 
 export const apiUserDeleteImageShare = (data: DeleteImageShare) =>
-  apiV1Delete<IResponse<string>>(`images/share`, { data })
+  apiV1Delete<IResponse<string>>('images/share', { data })
 
 export const apiUserSearchUser = (data: SearchUngrantedUsers) =>
-  apiV1Get<IResponse<SearchUngrantedUserResponse>>(`images/user`, {
+  apiV1Get<IResponse<SearchUngrantedUserResponse>>('images/user', {
     searchParams: { ...data },
   })
 
 export const apiUserGetUngrantedAccounts = (data: GetUngrantedAccounts) =>
-  apiV1Get<IResponse<GetUngrantedAccountsResponse>>(`images/account`, {
+  apiV1Get<IResponse<GetUngrantedAccountsResponse>>('images/account', {
     searchParams: { ...data },
   })
 
 export const apiGetCudaBaseImages = () =>
-  apiV1Get<IResponse<CudaBaseImageResponse>>(`images/cudabaseimage`)
+  apiV1Get<IResponse<CudaBaseImageResponse>>('images/cudabaseimage')

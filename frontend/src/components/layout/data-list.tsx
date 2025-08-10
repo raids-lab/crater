@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { motion } from 'framer-motion'
 import { useAtomValue } from 'jotai'
 import { ArrowDownAZIcon, ArrowDownZAIcon, EllipsisVerticalIcon, SearchIcon } from 'lucide-react'
 import { Trash2Icon } from 'lucide-react'
+import { motion } from 'motion/react'
 import { ReactNode, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'

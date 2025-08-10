@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { detailValidateSearch } from '@/components/layout/detail-page'
+import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
 import NodeDetail from '@/components/node/node-detail'
 
 export const Route = createFileRoute('/portal/overview/$node')({
@@ -22,7 +22,7 @@ function NodeDetailPage() {
     <NodeDetail
       nodeName={nodeName}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate({ to: '.', search: { tab } })}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
     />
   )
 }

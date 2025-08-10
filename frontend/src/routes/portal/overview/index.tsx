@@ -34,7 +34,7 @@ import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
 import { useAccountNameLookup } from '@/components/node/getaccountnickname'
-import { getNodeColumns } from '@/components/node/node-list'
+import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
@@ -387,6 +387,7 @@ function Overview() {
           resourcesQuery.data?.map((r) => r.name),
           false
         )}
+        toolbarConfig={nodesToolbarConfig}
       />
     </>
   )

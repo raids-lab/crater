@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
+import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { BoxIcon, NetworkIcon, RefreshCcwIcon, TagIcon, Trash2Icon } from 'lucide-react'
 import { type FC, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

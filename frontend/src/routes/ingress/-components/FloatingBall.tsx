@@ -15,8 +15,8 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { motion, useMotionValue } from 'framer-motion'
 import { InfoIcon, LogsIcon, Save } from 'lucide-react'
+import { motion, useMotionValue } from 'motion/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 

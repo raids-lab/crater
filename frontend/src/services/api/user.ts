@@ -55,6 +55,6 @@ export interface EmailVerifiedResponse {
 }
 
 export const apiUserEmailVerified = () =>
-  apiV1Get<IResponse<EmailVerifiedResponse>>(`users/email/verified`)
+  apiV1Get<IResponse<EmailVerifiedResponse>>('users/email/verified')
 
-export const apiGetBaseUserInfo = () => apiV1Get<IResponse<BaseUserInfo[]>>(`/admin/users/baseinfo`)
+export const apiGetBaseUserInfo = () => apiV1Get<IResponse<BaseUserInfo[]>>('admin/users/baseinfo')
