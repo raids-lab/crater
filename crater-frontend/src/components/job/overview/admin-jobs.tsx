@@ -15,20 +15,18 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import {
-  CheckCircledIcon,
-  CircleIcon,
-  ClockIcon,
-  CrossCircledIcon,
-  DotsHorizontalIcon,
-  MinusCircledIcon,
-  StopIcon,
-  StopwatchIcon,
-} from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
-import { CalendarIcon, InfoIcon, LockIcon, SquareIcon, Trash2Icon, UnlockIcon } from 'lucide-react'
+import {
+  CalendarIcon,
+  EllipsisVerticalIcon,
+  InfoIcon,
+  LockIcon,
+  SquareIcon,
+  Trash2Icon,
+  UnlockIcon,
+} from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -87,53 +85,6 @@ export type StatusValue =
   | 'Succeeded'
   | 'Preempted'
   | 'Deleted'
-
-export const statuses: {
-  value: StatusValue
-  label: string
-  icon: React.ComponentType<{ className?: string }>
-}[] = [
-  {
-    value: 'Queueing',
-    label: '检查配额',
-    icon: ClockIcon,
-  },
-  {
-    value: 'Created',
-    label: '已创建',
-    icon: CircleIcon,
-  },
-  {
-    value: 'Pending',
-    label: '等待中',
-    icon: ClockIcon,
-  },
-  {
-    value: 'Running',
-    label: '运行中',
-    icon: StopwatchIcon,
-  },
-  {
-    value: 'Failed',
-    label: '失败',
-    icon: CrossCircledIcon,
-  },
-  {
-    value: 'Succeeded',
-    label: '成功',
-    icon: CheckCircledIcon,
-  },
-  {
-    value: 'Preempted',
-    label: '被抢占',
-    icon: MinusCircledIcon,
-  },
-  {
-    value: 'Deleted',
-    label: '已停止',
-    icon: StopIcon,
-  },
-]
 
 export const getHeader = (key: string): string => {
   switch (key) {
@@ -360,7 +311,7 @@ const AdminJobOverview = () => {
                       <span className="sr-only">
                         {t('adminJobOverview.actions.dropdown.ariaLabel')}
                       </span>
-                      <DotsHorizontalIcon className="size-4" />
+                      <EllipsisVerticalIcon className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

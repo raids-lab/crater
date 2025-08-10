@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { CheckIcon } from '@radix-ui/react-icons'
 import { Column } from '@tanstack/react-table'
-import { ListFilter } from 'lucide-react'
+import { CheckIcon, ListFilter } from 'lucide-react'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'

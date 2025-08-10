@@ -26,4 +26,4 @@ export interface QueueBasic {
   expiredAt?: Date
 }
 
-export const apiQueueList = () => apiV1Get<IResponse<QueueBasic[]>>(`/accounts`)
+export const apiQueueList = () => apiV1Get<IResponse<QueueBasic[]>>('accounts')

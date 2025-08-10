@@ -16,9 +16,9 @@
 // i18n-processed-v1.1.0
 // Modified code
 import { useLocation, useNavigate } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
 import { useAtomValue } from 'jotai'
 import { ChevronRight, Folder, FolderOpen, LogInIcon } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 

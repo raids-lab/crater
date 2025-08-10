@@ -268,7 +268,7 @@ function RouteComponent() {
       volumeMounts: [
         {
           type: VolumeMountType.FileType,
-          subPath: `user`,
+          subPath: 'user',
           mountPath: `/home/${user?.name}`,
         },
       ],

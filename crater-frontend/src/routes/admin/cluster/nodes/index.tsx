@@ -15,9 +15,9 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { BanIcon, Users, ZapIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useCallback, useMemo } from 'react'
@@ -41,11 +41,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import { nodeStatuses } from '@/components/badge/NodeStatusBadge'
 import { useAccountNameLookup } from '@/components/node/getaccountnickname'
-import { getNodeColumns } from '@/components/node/node-list'
+import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
-import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   NodeStatus,
@@ -63,21 +61,6 @@ import AccountSelect from './-components/AccountList'
 export const Route = createFileRoute('/admin/cluster/nodes/')({
   component: NodesForAdmin,
 })
-
-const adminNodesToolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: '搜索节点名称',
-    key: 'name',
-  },
-  filterOptions: [
-    {
-      key: 'isReady',
-      title: '状态',
-      option: nodeStatuses,
-    },
-  ],
-  getHeader: (x) => x,
-}
 
 function NodesForAdmin() {
   const { t } = useTranslation()
@@ -251,7 +234,7 @@ function NodesForAdmin() {
         storageKey="admin_node_management"
         query={nodeQuery}
         columns={columns}
-        toolbarConfig={adminNodesToolbarConfig}
+        toolbarConfig={nodesToolbarConfig}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

@@ -20,7 +20,7 @@ import { type FC, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-import NodeStatusBadge from '@/components/badge/NodeStatusBadge'
+import NodeStatusBadge, { nodeStatuses } from '@/components/badge/NodeStatusBadge'
 import TooltipLink from '@/components/label/tooltip-link'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
@@ -35,6 +35,92 @@ import {
 } from '@/utils/resource'
 
 import { cn } from '@/lib/utils'
+
+import AcceleratorBadge from '../badge/accelerator-badge'
+
+// 资源使用情况计算结果接口
+export interface ResourceUsageInfo {
+  usagePercent: number | null
+  displayValue: string | null
+  acceleratorName?: string
+}
+
+// 计算资源使用情况的帮助函数
+export function calculateResourceUsage(
+  resourceKey: 'cpu' | 'memory' | 'accelerator',
+  used?: V1ResourceList,
+  allocatable?: V1ResourceList,
+  accelerators?: string[]
+): ResourceUsageInfo {
+  let resourceUsed = ''
+  let resourceAllocatable = ''
+  let acceleratorName = ''
+
+  switch (resourceKey) {
+    case 'cpu':
+      resourceUsed = used?.['cpu'] || '0'
+      resourceAllocatable = allocatable?.['cpu'] || '0'
+      break
+    case 'memory':
+      resourceUsed = used?.memory ?? '0'
+      resourceAllocatable = allocatable?.memory ?? '0'
+      break
+    case 'accelerator':
+      if (accelerators && accelerators.length > 0) {
+        for (const accelerator of accelerators) {
+          if (used && used[accelerator]) {
+            resourceUsed = used[accelerator]
+          }
+          if (allocatable && allocatable[accelerator]) {
+            resourceAllocatable = allocatable[accelerator]
+            acceleratorName = accelerator
+          }
+        }
+      } else {
+        return {
+          usagePercent: null,
+          displayValue: null,
+        }
+      }
+      break
+    default:
+      return {
+        usagePercent: null,
+        displayValue: null,
+      }
+  }
+
+  const usedValue = convertKResourceToResource(resourceKey, resourceUsed) || 0
+  const allocatableValue = convertKResourceToResource(resourceKey, resourceAllocatable)
+
+  if (allocatableValue === undefined || allocatableValue === 0) {
+    return {
+      usagePercent: null,
+      displayValue: null,
+      acceleratorName,
+    }
+  }
+
+  const usagePercent = (usedValue / allocatableValue) * 100
+  const displayValue = `${betterResourceQuantity(resourceKey, usedValue)}/${betterResourceQuantity(resourceKey, allocatableValue, true)}`
+
+  return {
+    usagePercent,
+    displayValue,
+    acceleratorName,
+  }
+}
+
+// 获取资源使用百分比的帮助函数，用于排序
+export function getResourceUsagePercent(
+  resourceKey: 'cpu' | 'memory' | 'accelerator',
+  used?: V1ResourceList,
+  allocatable?: V1ResourceList,
+  accelerators?: string[]
+): number {
+  const usageInfo = calculateResourceUsage(resourceKey, used, allocatable, accelerators)
+  return usageInfo.usagePercent ?? 0
+}
 
 export const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
@@ -51,74 +137,23 @@ export const UsageCell: FC<{
   capacity?: V1ResourceList
   resourceKey: 'cpu' | 'memory' | 'accelerator'
   accelerators?: string[]
-}> = ({ used, allocatable, resourceKey: key, accelerators }) => {
-  const [percent, value, acceleratorName] = useMemo(() => {
-    // TODO
-    // 1. 如果 key 是 CPU 或者 Memory，从字符串转换成数字，计算百分比和展示的值
-    // 2. 如果 key 是 accelerator，查找 V1ResourceList = Record<string, string> | undefined 是否包含某个加速卡，包含则返回其使用结果
-    let resourceUsed = ''
-    let resourceAllocatable = ''
-    let acceleratorName = ''
-    switch (key) {
-      case 'cpu':
-        resourceUsed = used?.['cpu'] || '0'
-        resourceAllocatable = allocatable?.['cpu'] || '0'
-        break
-      case 'memory':
-        resourceUsed = used?.memory ?? '0'
-        resourceAllocatable = allocatable?.memory ?? '0'
-        break
-      case 'accelerator':
-        if (accelerators && accelerators.length > 0) {
-          for (const accelerator of accelerators) {
-            if (used && used[accelerator]) {
-              resourceUsed = used[accelerator]
-            }
-            if (allocatable && allocatable[accelerator]) {
-              resourceAllocatable = allocatable[accelerator]
-              acceleratorName = accelerator
-            }
-          }
-        } else {
-          return [0, '0']
-        }
-        break
-      default:
-        return [0, '0']
-    }
+}> = ({ used, allocatable, resourceKey, accelerators }) => {
+  const { usagePercent, displayValue } = useMemo(() => {
+    return calculateResourceUsage(resourceKey, used, allocatable, accelerators)
+  }, [accelerators, allocatable, resourceKey, used])
 
-    const usedValue = convertKResourceToResource(key, resourceUsed) || 0
-    const allocatableValue = convertKResourceToResource(key, resourceAllocatable)
-    if (allocatableValue === undefined || allocatableValue === 0) {
-      return [null, null]
-    }
-
-    return [
-      (usedValue / allocatableValue) * 100,
-      `${betterResourceQuantity(key, usedValue)}/${betterResourceQuantity(key, allocatableValue, true)}`,
-      acceleratorName,
-    ]
-  }, [accelerators, allocatable, key, used])
-
-  if (percent === null || value === null) {
+  if (usagePercent === null || displayValue === null) {
     return <></>
   }
 
   return (
-    <div className="flex flex-row items-center justify-between gap-2">
-      <div className="w-20">
-        <p className={progressTextColor(percent)}>
-          {percent.toFixed(1)}
-          <span className="ml-0.5">%</span>
-        </p>
-        <ProgressBar percent={percent} className="h-1 w-full" />
-        <p className="text-muted-foreground pt-1 font-mono text-xs">{value}</p>
-      </div>
-      {acceleratorName && acceleratorName !== '' && (
-        <Badge variant="secondary" className="font-mono font-normal">
-          {acceleratorName}
-        </Badge>
-      )}
+    <div className="w-20">
+      <p className={progressTextColor(usagePercent)}>
+        {usagePercent.toFixed(1)}
+        <span className="ml-0.5">%</span>
+      </p>
+      <ProgressBar percent={usagePercent} className="h-1 w-full" />
+      <p className="text-muted-foreground pt-1 font-mono text-xs">{displayValue}</p>
     </div>
   )
 }
@@ -134,6 +169,20 @@ const portalNodeLinkOptions = linkOptions({
   params: { node: '' },
   search: { tab: '' },
 })
+
+export const nodesToolbarConfig: DataTableToolbarConfig = {
+  globalSearch: {
+    enabled: true,
+  },
+  filterOptions: [
+    {
+      key: 'status',
+      title: '状态',
+      option: nodeStatuses,
+    },
+  ],
+  getHeader: (x) => x,
+}
 
 export const getNodeColumns = (
   getNicknameByName?: (name: string) => string | undefined,
@@ -270,12 +319,8 @@ export const getNodeColumns = (
         )
       },
       sortingFn: (rowA, rowB) => {
-        const getUsagePercent = (used?: V1ResourceList, allocatable?: V1ResourceList) => {
-          if (!used?.cpu || !allocatable?.cpu) return 0
-          return (parseFloat(used.cpu) / parseFloat(allocatable.cpu)) * 100
-        }
-        const a = getUsagePercent(rowA.original.used, rowA.original.allocatable)
-        const b = getUsagePercent(rowB.original.used, rowB.original.allocatable)
+        const a = getResourceUsagePercent('cpu', rowA.original.used, rowA.original.allocatable)
+        const b = getResourceUsagePercent('cpu', rowB.original.used, rowB.original.allocatable)
         return a - b
       },
     },
@@ -290,17 +335,13 @@ export const getNodeColumns = (
         />
       ),
       sortingFn: (rowA, rowB) => {
-        const getUsagePercent = (used?: V1ResourceList, allocatable?: V1ResourceList) => {
-          if (!used?.memory || !allocatable?.memory) return 0
-          return (parseFloat(used.memory) / parseFloat(allocatable.memory)) * 100
-        }
-        const a = getUsagePercent(rowA.original.used, rowA.original.allocatable)
-        const b = getUsagePercent(rowB.original.used, rowB.original.allocatable)
+        const a = getResourceUsagePercent('memory', rowA.original.used, rowA.original.allocatable)
+        const b = getResourceUsagePercent('memory', rowB.original.used, rowB.original.allocatable)
         return a - b
       },
     },
     {
-      accessorKey: 'gpu',
+      accessorKey: 'accelerator',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'加速卡'} />,
       cell: ({ row }) => (
         <UsageCell
@@ -311,6 +352,47 @@ export const getNodeColumns = (
           accelerators={accelerators}
         />
       ),
+      sortingFn: (rowA, rowB) => {
+        const a = getResourceUsagePercent(
+          'accelerator',
+          rowA.original.used,
+          rowA.original.allocatable,
+          accelerators
+        )
+        const b = getResourceUsagePercent(
+          'accelerator',
+          rowB.original.used,
+          rowB.original.allocatable,
+          accelerators
+        )
+        return a - b
+      },
+    },
+    {
+      accessorKey: 'acceleratorModel',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={'加速卡型号'} />,
+      cell: ({ row }) => {
+        const usageInfo = calculateResourceUsage(
+          'accelerator',
+          row.original.used,
+          row.original.allocatable,
+          accelerators
+        )
+        if (!usageInfo.acceleratorName) {
+          return <></>
+        }
+        return <AcceleratorBadge acceleratorString={usageInfo.acceleratorName} />
+      },
+      accessorFn: (row) => {
+        const usageInfo = calculateResourceUsage(
+          'accelerator',
+          row.used,
+          row.allocatable,
+          accelerators
+        )
+        return usageInfo.acceleratorName
+      },
+      enableSorting: true,
     },
   ] as ColumnDef<INodeBriefInfo>[]
 }

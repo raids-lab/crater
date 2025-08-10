@@ -80,17 +80,17 @@ export interface cancelSharedQueueResp {
   datasetID: number
   queueID: number
 }
-export const apiGetDataset = () => apiV1Get<IResponse<IDataset[]>>(`/dataset/mydataset`)
+export const apiGetDataset = () => apiV1Get<IResponse<IDataset[]>>('dataset/mydataset')
 
 //因为table表单的query必须要返回数组，实际上数组里只有一个数据集的数据
 export const apiGetDatasetByID = (datasetID: number) =>
-  apiV1Get<IResponse<IDataset[]>>(`/dataset/detail/${datasetID}`)
+  apiV1Get<IResponse<IDataset[]>>(`dataset/detail/${datasetID}`)
 
 // TODO: 后端需要修改接口，返回单个数据集而不是数组，管理员有单独的查询接口
 export const apiAdminGetDatasetByID = (datasetID: number) =>
-  apiV1Get<IResponse<IDataset[]>>(`/dataset/detail/${datasetID}`)
+  apiV1Get<IResponse<IDataset[]>>(`dataset/detail/${datasetID}`)
 
-export const apiAdminGetDataset = () => apiV1Get<IResponse<IDataset[]>>(`/admin/dataset/alldataset`)
+export const apiAdminGetDataset = () => apiV1Get<IResponse<IDataset[]>>('admin/dataset/alldataset')
 
 export const apiShareDatasetwithUser = (ud: UserDataset) =>
   apiV1Post<IResponse<string>>('dataset/share/user', ud)
@@ -114,27 +114,27 @@ export const apiAdminShareDatasetwithQueue = (qd: QueueDataset) =>
   apiV1Post<IResponse<string>>('admin/dataset/share/queue', qd)
 
 export const apiListUsersNotInDataset = (datasetID: number) =>
-  apiV1Get<IResponse<IUserAttributes[]>>(`/dataset/${datasetID}/usersNotIn`)
+  apiV1Get<IResponse<IUserAttributes[]>>(`dataset/${datasetID}/usersNotIn`)
 
 export const apiListQueuesNotInDataset = (datasetID: number) =>
-  apiV1Get<IResponse<QueueDatasetGetResp[]>>(`/dataset/${datasetID}/queuesNotIn`)
+  apiV1Get<IResponse<QueueDatasetGetResp[]>>(`dataset/${datasetID}/queuesNotIn`)
 export const apiListUsersInDataset = (datasetID: number) =>
-  apiV1Get<IResponse<UserDatasetResp[]>>(`/dataset/${datasetID}/usersIn`)
+  apiV1Get<IResponse<UserDatasetResp[]>>(`dataset/${datasetID}/usersIn`)
 
 export const apiListQueuesInDataset = (datasetID: number) =>
-  apiV1Get<IResponse<QueueDatasetGetResp[]>>(`/dataset/${datasetID}/queuesIn`)
+  apiV1Get<IResponse<QueueDatasetGetResp[]>>(`dataset/${datasetID}/queuesIn`)
 
 export const apiCancelShareWithUser = (CSU: cancelSharedUserResp) =>
-  apiV1Post<IResponse<string>>(`dataset/cancelshare/user`, CSU)
+  apiV1Post<IResponse<string>>('dataset/cancelshare/user', CSU)
 
 export const apiCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
-  apiV1Post<IResponse<string>>(`dataset/cancelshare/queue`, CSQ)
+  apiV1Post<IResponse<string>>('dataset/cancelshare/queue', CSQ)
 
 export const apiAdminCancelShareWithUser = (CSU: cancelSharedUserResp) =>
-  apiV1Post<IResponse<string>>(`admin/dataset/cancelshare/user`, CSU)
+  apiV1Post<IResponse<string>>('admin/dataset/cancelshare/user', CSU)
 
 export const apiAdminCancelShareWithQueue = (CSQ: cancelSharedQueueResp) =>
-  apiV1Post<IResponse<string>>(`admin/dataset/cancelshare/queue`, CSQ)
+  apiV1Post<IResponse<string>>('admin/dataset/cancelshare/queue', CSQ)
 
 export const apiDatasetUpdate = (dataset: DatasetReq & { datasetId: number }) =>
   apiV1Post<IResponse<string>>('dataset/update', dataset)

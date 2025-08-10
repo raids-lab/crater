@@ -16,7 +16,7 @@ import { createFileRoute } from '@tanstack/react-router'
  * limitations under the License.
  */
 import { SharedResourceTable } from '@/components/file/data-detail'
-import { detailValidateSearch } from '@/components/layout/detail-page'
+import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
 import NotFound from '@/components/placeholder/not-found'
 
 import {
@@ -63,7 +63,7 @@ function DatasetDetail() {
       apiCancelDatasetSharewithUser={apiCancelShareWithUser}
       apiDatasetDelete={apiDatasetDelete}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate({ to: '.', search: { tab } })}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
     />
   )
 }

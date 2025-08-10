@@ -34,10 +34,10 @@ export interface JobTemplateReq {
   template: string
 }
 export const listJobTemplate = () => {
-  return apiV1Get<IResponse<JobTemplate[]>>(`/jobtemplate/list`)
+  return apiV1Get<IResponse<JobTemplate[]>>('jobtemplate/list')
 }
 export const createJobTemplate = (data: JobTemplateReq) => {
-  return apiV1Post<IResponse<string>>(`jobtemplate/create`, data)
+  return apiV1Post<IResponse<string>>('jobtemplate/create', data)
 }
 export const getJobTemplate = (id: number) => {
   return apiV1Get<IResponse<JobTemplate>>(`jobtemplate/${id}`)

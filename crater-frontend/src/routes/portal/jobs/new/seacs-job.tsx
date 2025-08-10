@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Cross1Icon } from '@radix-ui/react-icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
-import { CpuIcon, LayoutGridIcon } from 'lucide-react'
+import { CpuIcon, LayoutGridIcon, XIcon } from 'lucide-react'
 import { ChevronLeftIcon, CircleArrowDown, CircleArrowUp, CirclePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
@@ -211,7 +210,7 @@ function RouteComponent() {
       volumeMounts: [
         {
           type: VolumeMountType.FileType,
-          subPath: `user`,
+          subPath: 'user',
           mountPath: `/home/${user?.name}`,
         },
       ],
@@ -597,7 +596,7 @@ function RouteComponent() {
                                     variant={'outline'}
                                     onClick={() => dimRemove(index)}
                                   >
-                                    <Cross1Icon className="h-3 w-3" />
+                                    <XIcon className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </div>

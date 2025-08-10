@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import { detailValidateSearch } from '@/components/layout/detail-page'
+import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
 import UserDetail from '@/components/layout/user-detail'
 
 export const Route = createFileRoute('/portal/users/$name')({
@@ -22,7 +22,7 @@ function RouteComponent() {
     <UserDetail
       name={userName}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate({ to: '.', search: { tab } })}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
     />
   )
 }

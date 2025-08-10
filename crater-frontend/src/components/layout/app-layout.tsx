@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { motion } from 'framer-motion'
 import { useAtomValue } from 'jotai'
 import { CogIcon } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useMemo } from 'react'
 
 import { Badge } from '@/components/ui/badge'

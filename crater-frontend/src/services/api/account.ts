@@ -60,7 +60,7 @@ export interface IAccount {
   expiredAt?: string
 }
 
-export const apiAdminAccountList = () => apiV1Get<IResponse<IAccount[]>>(`/admin/accounts`)
+export const apiAdminAccountList = () => apiV1Get<IResponse<IAccount[]>>('admin/accounts')
 
 export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
   apiV1Post<IResponse<ICreateProjectResponse>>('admin/accounts', account)
@@ -94,25 +94,25 @@ export enum Access {
 }
 
 export const apiAddUser = async (pid: number, user: IUserInAccountCreate) =>
-  apiV1Post<IResponse<IUserInAccount>>('admin/accounts/add/' + pid + '/' + user.id, {
+  apiV1Post<IResponse<IUserInAccount>>(`admin/accounts/add/${pid}/${user.id}`, {
     role: user.role,
     accessmode: user.accessmode,
   })
 
 export const apiUpdateUser = async (pid: number, user: IUserInAccountCreate) =>
-  apiV1Post<IResponse<IUserInAccount>>('admin/accounts/update/' + pid + '/' + user.id, {
+  apiV1Post<IResponse<IUserInAccount>>(`admin/accounts/update/${pid}/${user.id}`, {
     role: user.role,
     accessmode: user.accessmode,
   })
 
 export const apiRemoveUser = async (pid: number, user: IUserInAccountCreate) =>
-  apiV1Delete<IResponse<IUserInAccount>>('admin/accounts/' + pid + '/' + user.id)
+  apiV1Delete<IResponse<IUserInAccount>>(`admin/accounts/${pid}/${user.id}`)
 
 export const apiUserInProjectList = (pid: number) =>
-  apiV1Get<IResponse<IUserInAccount[]>>('/admin/accounts/userIn/' + pid)
+  apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userIn/${pid}`)
 
 export const apiUserOutOfProjectList = (pid: number) =>
-  apiV1Get<IResponse<IUserInAccount[]>>('/admin/accounts/userOutOf/' + pid)
+  apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userOutOf/${pid}`)
 
 export const apiAccountQuotaGet = (pid: number) => {
   return apiV1Get<IResponse<QuotaResp>>(`admin/accounts/${pid}/quota`)

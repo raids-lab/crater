@@ -176,7 +176,11 @@ export function DataTable<TData, TValue>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} colSpan={header.colSpan} className="px-4 py-2">
+                      <TableHead
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className="text-muted-foreground px-4"
+                      >
                         {header.isPlaceholder
                           ? null
                           : flexRender(header.column.columnDef.header, header.getContext())}

@@ -32,7 +32,7 @@ export interface LabelInfo {
 }
 
 export const apiNodeLabelsList = () => {
-  return apiV1Get<IResponse<LabelInfo[]>>(`/labels`)
+  return apiV1Get<IResponse<LabelInfo[]>>('labels')
 }
 
 export const apiNodeLabelsUpdate = (id: number, name: string, priority: number) => {
@@ -43,5 +43,5 @@ export const apiNodeLabelsUpdate = (id: number, name: string, priority: number) 
 }
 
 export const apiNodeLabelsNvidiaSync = () => {
-  return apiV1Post<IResponse<never>>(`admin/labels/sync/nvidia`)
+  return apiV1Post<IResponse<never>>('admin/labels/sync/nvidia')
 }

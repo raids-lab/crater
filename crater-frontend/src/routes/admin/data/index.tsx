@@ -15,12 +15,12 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { DotsHorizontalIcon } from '@radix-ui/react-icons'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
+import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { InfoIcon, Trash2Icon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'

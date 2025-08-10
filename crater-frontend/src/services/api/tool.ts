@@ -36,12 +36,10 @@ export interface ContainerStatusResponse {
 }
 
 export const apiGetPodContainers = (namespace?: string, podName?: string) =>
-  apiV1Get<IResponse<ContainerStatusResponse>>(
-    `/namespaces/${namespace}/pods/${podName}/containers`
-  )
+  apiV1Get<IResponse<ContainerStatusResponse>>(`namespaces/${namespace}/pods/${podName}/containers`)
 
 export const apiGetPodEvents = (namespace?: string, podName?: string) =>
-  apiV1Get<IResponse<KubernetesEvent[]>>(`/namespaces/${namespace}/pods/${podName}/events`)
+  apiV1Get<IResponse<KubernetesEvent[]>>(`namespaces/${namespace}/pods/${podName}/events`)
 
 export interface PodContainerLogQueryReq {
   timestamps: boolean
@@ -122,10 +120,7 @@ export const apiCreatePodNodeport = (
   podName: string,
   nodeportMgr: PodNodeportMgr
 ) =>
-  apiV1Post<IResponse<PodIngress>>(
-    `/namespaces/${namespace}/pods/${podName}/nodeports`,
-    nodeportMgr
-  )
+  apiV1Post<IResponse<PodIngress>>(`namespaces/${namespace}/pods/${podName}/nodeports`, nodeportMgr)
 
 export const apiDeletePodNodeport = (
   namespace: string,

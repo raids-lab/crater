@@ -205,10 +205,10 @@ export function VolumeMountsCard<
                                     mountName = `/home/${user.name}`
                                     break
                                   case 'account':
-                                    mountName = `/data/account`
+                                    mountName = '/data/account'
                                     break
                                   case 'public':
-                                    mountName = `/data/public`
+                                    mountName = '/data/public'
                                     break
                                 }
                                 form.setValue(`volumeMounts.${index}.mountPath`, mountName)

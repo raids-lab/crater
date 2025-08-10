@@ -15,8 +15,7 @@
  */
 // i18n-processed-v1.1.0
 import { DialogOverlay } from '@radix-ui/react-dialog'
-import { CheckIcon, Cross2Icon } from '@radix-ui/react-icons'
-import { ChevronsUpDown, XIcon } from 'lucide-react'
+import { CheckIcon, ChevronsUpDown, XIcon } from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -116,7 +115,7 @@ const SelectBox = ({
                         }}
                         className="text-muted-foreground/60 hover:bg-accent hover:text-muted-foreground flex items-center rounded-sm px-[1px]"
                       >
-                        <Cross2Icon />
+                        <XIcon />
                       </span>
                     </span>
                   ))
@@ -161,7 +160,7 @@ const SelectBox = ({
                       onInputChange?.('')
                     }}
                   >
-                    <Cross2Icon className="size-4" />
+                    <XIcon className="size-4" />
                   </div>
                 )}
               </div>

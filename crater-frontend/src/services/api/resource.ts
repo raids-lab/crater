@@ -32,7 +32,7 @@ export interface Resource {
 }
 
 export const apiResourceList = (withVendorDomain: boolean) => {
-  return apiV1Get<IResponse<Resource[]>>(`/resources`, {
+  return apiV1Get<IResponse<Resource[]>>('resources', {
     searchParams: {
       withVendorDomain,
     },
@@ -41,12 +41,12 @@ export const apiResourceList = (withVendorDomain: boolean) => {
 
 // @Router /v1/resources/{id}/networks [get]
 export const apiResourceNetworks = (id: number) => {
-  return apiV1Get<IResponse<Resource[]>>(`/resources/${id}/networks`)
+  return apiV1Get<IResponse<Resource[]>>(`resources/${id}/networks`)
 }
 
 // @Router /v1/admin/resources/sync [post]
 export const apiAdminResourceSync = () => {
-  return apiV1Post<IResponse<never>>(`admin/resources/sync`)
+  return apiV1Post<IResponse<never>>('admin/resources/sync')
 }
 
 // @Router /v1/admin/resources/{id} [put]
@@ -90,7 +90,7 @@ export const apiAdminResourceDelete = (id: number) => {
 
 // @Router /v1/admin/resources/{id}/networks [get]
 export const apiAdminResourceNetworksList = (id: number) => {
-  return apiV1Get<IResponse<Resource[]>>(`/admin/resources/${id}/networks`)
+  return apiV1Get<IResponse<Resource[]>>(`admin/resources/${id}/networks`)
 }
 
 // @Router /v1/admin/resources/{id}/networks [post]
