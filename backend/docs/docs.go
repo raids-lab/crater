@@ -946,9 +946,7 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -1011,9 +1009,7 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -1220,9 +1216,7 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -1942,9 +1936,7 @@ const docTemplate = `{
                         "name": "job",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -3385,6 +3377,66 @@ const docTemplate = `{
                     "ImagePack"
                 ],
                 "summary": "获取所有Cuda基础镜像",
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "添加新的CUDA基础镜像到系统中",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "添加CUDA基础镜像",
+                "parameters": [
+                    {
+                        "description": "CUDA基础镜像信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_image.CudaBaseImageCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/images/cudabaseimage/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据ID删除指定的CUDA基础镜像",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "删除CUDA基础镜像",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "CUDA基础镜像ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {}
             }
         },
@@ -5577,9 +5629,7 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -6092,9 +6142,7 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -6143,9 +6191,7 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
@@ -6601,6 +6647,7 @@ const docTemplate = `{
     "definitions": {
         "github_com_raids-lab_crater_dao_model.AccessMode": {
             "type": "integer",
+            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6614,6 +6661,13 @@ const docTemplate = `{
                 "AccessModeRO": "Read-only mode",
                 "AccessModeRW": "Read-write mode"
             },
+            "x-enum-descriptions": [
+                "",
+                "Not-allowed mode",
+                "Read-only mode",
+                "Read-write mode",
+                "Append-only mode"
+            ],
             "x-enum-varnames": [
                 "_",
                 "AccessModeNA",
@@ -6636,6 +6690,12 @@ const docTemplate = `{
                 "ApprovalOrderStatusPending": "待审批",
                 "ApprovalOrderStatusRejected": "已拒绝"
             },
+            "x-enum-descriptions": [
+                "待审批",
+                "已批准",
+                "已拒绝",
+                "已取消"
+            ],
             "x-enum-varnames": [
                 "ApprovalOrderStatusPending",
                 "ApprovalOrderStatusApproved",
@@ -6653,6 +6713,10 @@ const docTemplate = `{
                 "ApprovalOrderTypeDataset": "数据集类型",
                 "ApprovalOrderTypeJob": "任务类型"
             },
+            "x-enum-descriptions": [
+                "数据集类型",
+                "任务类型"
+            ],
             "x-enum-varnames": [
                 "ApprovalOrderTypeDataset",
                 "ApprovalOrderTypeJob"
@@ -6726,6 +6790,7 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Role": {
             "type": "integer",
+            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6741,6 +6806,7 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
+            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6752,6 +6818,12 @@ const docTemplate = `{
                 "StatusInactive": "Inactive status",
                 "StatusPending": "Pending status, not yet activated"
             },
+            "x-enum-descriptions": [
+                "",
+                "Pending status, not yet activated",
+                "Active status",
+                "Inactive status"
+            ],
             "x-enum-varnames": [
                 "_",
                 "StatusPending",
@@ -7146,7 +7218,8 @@ const docTemplate = `{
                 "gpuUtil": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "number"
+                        "type": "number",
+                        "format": "float32"
                     }
                 },
                 "haveGPU": {
@@ -7827,6 +7900,25 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_image.CudaBaseImageCreateRequest": {
+            "type": "object",
+            "required": [
+                "imageLabel",
+                "label",
+                "value"
+            ],
+            "properties": {
+                "imageLabel": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_image.UpdateProjectQuotaRequest": {
             "type": "object",
             "required": [
@@ -8149,6 +8241,11 @@ const docTemplate = `{
                         "DecimalExponent": "e.g., 12e6",
                         "DecimalSI": "e.g., 12M  (12 * 10^6)"
                     },
+                    "x-enum-descriptions": [
+                        "e.g., 12e6",
+                        "e.g., 12Mi (12 * 2^20)",
+                        "e.g., 12M  (12 * 10^6)"
+                    ],
                     "x-enum-varnames": [
                         "DecimalExponent",
                         "BinarySI",

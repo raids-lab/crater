@@ -128,6 +128,16 @@ type (
 	AccountSearchRequest struct {
 		ImageID uint `form:"imageID" binding:"required"`
 	}
+
+	CudaBaseImageCreateRequest struct {
+		ImageLabel string `json:"imageLabel" binding:"required"`
+		Label      string `json:"label" binding:"required"`
+		Value      string `json:"value" binding:"required"`
+	}
+
+	CudaBaseImageDeleteRequest struct {
+		ID uint `uri:"id" binding:"required"`
+	}
 )
 
 type (
@@ -273,6 +283,7 @@ type (
 	}
 
 	CudaBaseImage struct {
+		ID         uint   `json:"id"`
 		Label      string `json:"label"`
 		ImageLabel string `json:"imageLabel"`
 		Value      string `json:"value"`
