@@ -6,19 +6,12 @@ definitions:
     - 2
     - 3
     - 4
-    format: int32
     type: integer
     x-enum-comments:
       AccessModeAO: Append-only mode
       AccessModeNA: Not-allowed mode
       AccessModeRO: Read-only mode
       AccessModeRW: Read-write mode
-    x-enum-descriptions:
-    - ""
-    - Not-allowed mode
-    - Read-only mode
-    - Read-write mode
-    - Append-only mode
     x-enum-varnames:
     - _
     - AccessModeNA
@@ -37,11 +30,6 @@ definitions:
       ApprovalOrderStatusCancelled: 已取消
       ApprovalOrderStatusPending: 待审批
       ApprovalOrderStatusRejected: 已拒绝
-    x-enum-descriptions:
-    - 待审批
-    - 已批准
-    - 已拒绝
-    - 已取消
     x-enum-varnames:
     - ApprovalOrderStatusPending
     - ApprovalOrderStatusApproved
@@ -55,9 +43,6 @@ definitions:
     x-enum-comments:
       ApprovalOrderTypeDataset: 数据集类型
       ApprovalOrderTypeJob: 任务类型
-    x-enum-descriptions:
-    - 数据集类型
-    - 任务类型
     x-enum-varnames:
     - ApprovalOrderTypeDataset
     - ApprovalOrderTypeJob
@@ -79,10 +64,12 @@ definitions:
     enum:
     - gpu
     - rdma
+    - vgpu
     type: string
     x-enum-varnames:
     - ResourceTypeGPU
     - ResourceTypeRDMA
+    - ResourceTypeVGPU
   github_com_raids-lab_crater_dao_model.DataType:
     enum:
     - dataset
@@ -121,7 +108,6 @@ definitions:
     - 1
     - 2
     - 3
-    format: int32
     type: integer
     x-enum-varnames:
     - _
@@ -134,17 +120,11 @@ definitions:
     - 1
     - 2
     - 3
-    format: int32
     type: integer
     x-enum-comments:
       StatusActive: Active status
       StatusInactive: Inactive status
       StatusPending: Pending status, not yet activated
-    x-enum-descriptions:
-    - ""
-    - Pending status, not yet activated
-    - Active status
-    - Inactive status
     x-enum-varnames:
     - _
     - StatusPending
@@ -414,7 +394,6 @@ definitions:
         type: string
       gpuUtil:
         additionalProperties:
-          format: float32
           type: number
         type: object
       haveGPU:
@@ -562,6 +541,19 @@ definitions:
     - name
     - template
     type: object
+  internal_handler.LinkGPUToVGPUReq:
+    properties:
+      description:
+        type: string
+      max:
+        type: integer
+      min:
+        type: integer
+      vgpuResourceId:
+        type: integer
+    required:
+    - vgpuResourceId
+    type: object
   internal_handler.LinkResourceReq:
     properties:
       rdmaId:
@@ -701,6 +693,17 @@ definitions:
     - describe
     - name
     - url
+    type: object
+  internal_handler.UpdateGPUVGPULinkReq:
+    properties:
+      description:
+        type: string
+      max:
+        type: integer
+      min:
+        type: integer
+      vgpuResourceId:
+        type: integer
     type: object
   internal_handler.UpdateJobTemplateReq:
     properties:
@@ -1099,10 +1102,6 @@ definitions:
           BinarySI: e.g., 12Mi (12 * 2^20)
           DecimalExponent: e.g., 12e6
           DecimalSI: e.g., 12M  (12 * 10^6)
-        x-enum-descriptions:
-        - e.g., 12e6
-        - e.g., 12Mi (12 * 2^20)
-        - e.g., 12M  (12 * 10^6)
         x-enum-varnames:
         - DecimalExponent
         - BinarySI
@@ -1909,7 +1908,8 @@ paths:
         in: body
         name: data
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -1950,7 +1950,8 @@ paths:
         in: body
         name: req
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -2026,7 +2027,8 @@ paths:
         in: body
         name: req
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -2214,6 +2216,154 @@ paths:
       summary: Delete the link between a GPU resource and an RDMA resource
       tags:
       - Resource
+  /v1/admin/resources/{id}/vgpu:
+    get:
+      consumes:
+      - application/json
+      description: This API will return all VGPU resources linked to the specified
+        GPU resource.
+      parameters:
+      - description: GPU Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get all VGPU resources linked to a GPU resource
+      tags:
+      - Resource
+    post:
+      consumes:
+      - application/json
+      description: This API will create a one-to-one relationship between a GPU resource
+        and a VGPU resource.
+      parameters:
+      - description: GPU Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: VGPU resource configuration
+        in: body
+        name: vgpuRequest
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.LinkGPUToVGPUReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Link a GPU resource to a VGPU resource
+      tags:
+      - Resource
+  /v1/admin/resources/{id}/vgpu/{vgpuId}:
+    delete:
+      consumes:
+      - application/json
+      description: This API will delete the relationship between a GPU resource and
+        a VGPU resource.
+      parameters:
+      - description: GPU Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: VGPU Link ID
+        in: path
+        name: vgpuId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete a GPU-VGPU resource relationship
+      tags:
+      - Resource
+    put:
+      consumes:
+      - application/json
+      description: This API will update the relationship between a GPU resource and
+        a VGPU resource.
+      parameters:
+      - description: GPU Resource ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: VGPU Link ID
+        in: path
+        name: vgpuId
+        required: true
+        type: integer
+      - description: VGPU resource configuration to update
+        in: body
+        name: vgpuRequest
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateGPUVGPULinkReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Update a GPU-VGPU resource relationship
+      tags:
+      - Resource
   /v1/admin/resources/link:
     post:
       consumes:
@@ -2252,7 +2402,8 @@ paths:
       consumes:
       - application/json
       description: This API will get the allocatable resources from the Kubernetes
-        cluster and update the database with the latest information.
+        cluster and update the database with the latest information. It will also
+        remove resources that no longer exist in the cluster.
       produces:
       - application/json
       responses:
@@ -2643,7 +2794,8 @@ paths:
         in: body
         name: job
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -4861,7 +5013,8 @@ paths:
         in: body
         name: data
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -5457,7 +5610,8 @@ paths:
         in: body
         name: CreateTrainingReq
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -5488,7 +5642,8 @@ paths:
         in: body
         name: CreateTrainingReq
         required: true
-        schema: {}
+        schema:
+          type: object
       produces:
       - application/json
       responses:

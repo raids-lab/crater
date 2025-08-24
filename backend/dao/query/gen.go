@@ -32,6 +32,7 @@ var (
 	Kaniko          *kaniko
 	Resource        *resource
 	ResourceNetwork *resourceNetwork
+	ResourceVGPU    *resourceVGPU
 	User            *user
 	UserAccount     *userAccount
 	UserDataset     *userDataset
@@ -54,6 +55,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Kaniko = &Q.Kaniko
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
+	ResourceVGPU = &Q.ResourceVGPU
 	User = &Q.User
 	UserAccount = &Q.UserAccount
 	UserDataset = &Q.UserDataset
@@ -77,6 +79,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Kaniko:          newKaniko(db, opts...),
 		Resource:        newResource(db, opts...),
 		ResourceNetwork: newResourceNetwork(db, opts...),
+		ResourceVGPU:    newResourceVGPU(db, opts...),
 		User:            newUser(db, opts...),
 		UserAccount:     newUserAccount(db, opts...),
 		UserDataset:     newUserDataset(db, opts...),
@@ -101,6 +104,7 @@ type Query struct {
 	Kaniko          kaniko
 	Resource        resource
 	ResourceNetwork resourceNetwork
+	ResourceVGPU    resourceVGPU
 	User            user
 	UserAccount     userAccount
 	UserDataset     userDataset
@@ -126,6 +130,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Kaniko:          q.Kaniko.clone(db),
 		Resource:        q.Resource.clone(db),
 		ResourceNetwork: q.ResourceNetwork.clone(db),
+		ResourceVGPU:    q.ResourceVGPU.clone(db),
 		User:            q.User.clone(db),
 		UserAccount:     q.UserAccount.clone(db),
 		UserDataset:     q.UserDataset.clone(db),
@@ -158,6 +163,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Kaniko:          q.Kaniko.replaceDB(db),
 		Resource:        q.Resource.replaceDB(db),
 		ResourceNetwork: q.ResourceNetwork.replaceDB(db),
+		ResourceVGPU:    q.ResourceVGPU.replaceDB(db),
 		User:            q.User.replaceDB(db),
 		UserAccount:     q.UserAccount.replaceDB(db),
 		UserDataset:     q.UserDataset.replaceDB(db),
@@ -180,6 +186,7 @@ type queryCtx struct {
 	Kaniko          IKanikoDo
 	Resource        IResourceDo
 	ResourceNetwork IResourceNetworkDo
+	ResourceVGPU    IResourceVGPUDo
 	User            IUserDo
 	UserAccount     IUserAccountDo
 	UserDataset     IUserDatasetDo
@@ -202,6 +209,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Kaniko:          q.Kaniko.WithContext(ctx),
 		Resource:        q.Resource.WithContext(ctx),
 		ResourceNetwork: q.ResourceNetwork.WithContext(ctx),
+		ResourceVGPU:    q.ResourceVGPU.WithContext(ctx),
 		User:            q.User.WithContext(ctx),
 		UserAccount:     q.UserAccount.WithContext(ctx),
 		UserDataset:     q.UserDataset.WithContext(ctx),

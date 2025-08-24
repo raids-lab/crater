@@ -509,6 +509,37 @@ func main() {
 				return tx.Migrator().DropTable("approval_orders")
 			},
 		},
+		{
+			ID: "202508241756",
+			Migrate: func(tx *gorm.DB) error {
+				// ResourceVGPU is the table for GPU and VGPU resource relationships
+				// It stores the one-to-one association between GPU resources and VGPU resources
+				type ResourceVGPU struct {
+					gorm.Model
+					// GPU resource ID (nvidia.com/gpu)
+					GPUResourceID uint `gorm:"not null;comment:GPU资源ID" json:"gpuResourceId"`
+					// VGPU resource ID (nvidia.com/gpucores or nvidia.com/gpumem)
+					VGPUResourceID uint `gorm:"not null;comment:VGPU资源ID" json:"vgpuResourceId"`
+
+					// Configuration range
+					Min         *int    `gorm:"comment:最小值" json:"min"`
+					Max         *int    `gorm:"comment:最大值" json:"max"`
+					Description *string `gorm:"type:text;comment:备注说明(用于区分是Cores还是Mem)" json:"description"`
+
+					// Foreign key relationships
+					GPUResource  model.Resource `gorm:"foreignKey:GPUResourceID;constraint:OnDelete:CASCADE;" json:"gpuResource"`
+					VGPUResource model.Resource `gorm:"foreignKey:VGPUResourceID;constraint:OnDelete:CASCADE;" json:"vgpuResource"`
+				}
+
+				if err := tx.Migrator().CreateTable(&ResourceVGPU{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&model.ResourceVGPU{})
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -530,6 +561,8 @@ func main() {
 			&model.ImageUser{},
 			&model.CudaBaseImage{},
 			&model.ApprovalOrder{},
+			&model.ResourceNetwork{},
+			&model.ResourceVGPU{},
 		)
 		if err != nil {
 			return err

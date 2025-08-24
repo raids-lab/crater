@@ -946,7 +946,9 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -1009,7 +1011,9 @@ const docTemplate = `{
                         "name": "req",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -1216,7 +1220,9 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -1345,7 +1351,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "This API will get the allocatable resources from the Kubernetes cluster and update the database with the latest information.",
+                "description": "This API will get the allocatable resources from the Kubernetes cluster and update the database with the latest information. It will also remove resources that no longer exist in the cluster.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1513,6 +1519,230 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "RDMA Resource ID",
                         "name": "networkId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/resources/{id}/vgpu": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "This API will return all VGPU resources linked to the specified GPU resource.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Resource"
+                ],
+                "summary": "Get all VGPU resources linked to a GPU resource",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "GPU Resource ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "This API will create a one-to-one relationship between a GPU resource and a VGPU resource.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Resource"
+                ],
+                "summary": "Link a GPU resource to a VGPU resource",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "GPU Resource ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "VGPU resource configuration",
+                        "name": "vgpuRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.LinkGPUToVGPUReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/resources/{id}/vgpu/{vgpuId}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "This API will update the relationship between a GPU resource and a VGPU resource.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Resource"
+                ],
+                "summary": "Update a GPU-VGPU resource relationship",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "GPU Resource ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "VGPU Link ID",
+                        "name": "vgpuId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "VGPU resource configuration to update",
+                        "name": "vgpuRequest",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateGPUVGPULinkReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "This API will delete the relationship between a GPU resource and a VGPU resource.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Resource"
+                ],
+                "summary": "Delete a GPU-VGPU resource relationship",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "GPU Resource ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "VGPU Link ID",
+                        "name": "vgpuId",
                         "in": "path",
                         "required": true
                     }
@@ -1936,7 +2166,9 @@ const docTemplate = `{
                         "name": "job",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -5629,7 +5861,9 @@ const docTemplate = `{
                         "name": "data",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -6142,7 +6376,9 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -6191,7 +6427,9 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -6647,7 +6885,6 @@ const docTemplate = `{
     "definitions": {
         "github_com_raids-lab_crater_dao_model.AccessMode": {
             "type": "integer",
-            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6661,13 +6898,6 @@ const docTemplate = `{
                 "AccessModeRO": "Read-only mode",
                 "AccessModeRW": "Read-write mode"
             },
-            "x-enum-descriptions": [
-                "",
-                "Not-allowed mode",
-                "Read-only mode",
-                "Read-write mode",
-                "Append-only mode"
-            ],
             "x-enum-varnames": [
                 "_",
                 "AccessModeNA",
@@ -6690,12 +6920,6 @@ const docTemplate = `{
                 "ApprovalOrderStatusPending": "待审批",
                 "ApprovalOrderStatusRejected": "已拒绝"
             },
-            "x-enum-descriptions": [
-                "待审批",
-                "已批准",
-                "已拒绝",
-                "已取消"
-            ],
             "x-enum-varnames": [
                 "ApprovalOrderStatusPending",
                 "ApprovalOrderStatusApproved",
@@ -6713,10 +6937,6 @@ const docTemplate = `{
                 "ApprovalOrderTypeDataset": "数据集类型",
                 "ApprovalOrderTypeJob": "任务类型"
             },
-            "x-enum-descriptions": [
-                "数据集类型",
-                "任务类型"
-            ],
             "x-enum-varnames": [
                 "ApprovalOrderTypeDataset",
                 "ApprovalOrderTypeJob"
@@ -6743,11 +6963,13 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "gpu",
-                "rdma"
+                "rdma",
+                "vgpu"
             ],
             "x-enum-varnames": [
                 "ResourceTypeGPU",
-                "ResourceTypeRDMA"
+                "ResourceTypeRDMA",
+                "ResourceTypeVGPU"
             ]
         },
         "github_com_raids-lab_crater_dao_model.DataType": {
@@ -6790,7 +7012,6 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Role": {
             "type": "integer",
-            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6806,7 +7027,6 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
-            "format": "int32",
             "enum": [
                 0,
                 1,
@@ -6818,12 +7038,6 @@ const docTemplate = `{
                 "StatusInactive": "Inactive status",
                 "StatusPending": "Pending status, not yet activated"
             },
-            "x-enum-descriptions": [
-                "",
-                "Pending status, not yet activated",
-                "Active status",
-                "Inactive status"
-            ],
             "x-enum-varnames": [
                 "_",
                 "StatusPending",
@@ -7218,8 +7432,7 @@ const docTemplate = `{
                 "gpuUtil": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "number",
-                        "format": "float32"
+                        "type": "number"
                     }
                 },
                 "haveGPU": {
@@ -7442,6 +7655,26 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.LinkGPUToVGPUReq": {
+            "type": "object",
+            "required": [
+                "vgpuResourceId"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "max": {
+                    "type": "integer"
+                },
+                "min": {
+                    "type": "integer"
+                },
+                "vgpuResourceId": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.LinkResourceReq": {
             "type": "object",
             "required": [
@@ -7649,6 +7882,23 @@ const docTemplate = `{
                 },
                 "weburl": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler.UpdateGPUVGPULinkReq": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "max": {
+                    "type": "integer"
+                },
+                "min": {
+                    "type": "integer"
+                },
+                "vgpuResourceId": {
+                    "type": "integer"
                 }
             }
         },
@@ -8241,11 +8491,6 @@ const docTemplate = `{
                         "DecimalExponent": "e.g., 12e6",
                         "DecimalSI": "e.g., 12M  (12 * 10^6)"
                     },
-                    "x-enum-descriptions": [
-                        "e.g., 12e6",
-                        "e.g., 12Mi (12 * 2^20)",
-                        "e.g., 12M  (12 * 10^6)"
-                    ],
                     "x-enum-varnames": [
                         "DecimalExponent",
                         "BinarySI",

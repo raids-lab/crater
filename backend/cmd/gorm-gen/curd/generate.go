@@ -37,6 +37,7 @@ func main() {
 		model.Alert{},
 		model.AITask{},
 		model.ResourceNetwork{},
+		model.ResourceVGPU{},
 		model.ImageUser{},
 		model.ImageAccount{},
 		model.CudaBaseImage{},
