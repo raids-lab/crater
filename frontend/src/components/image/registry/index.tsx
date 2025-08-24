@@ -21,6 +21,7 @@ import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import {
   AlertTriangle,
   CheckCheck,
+  DatabaseIcon,
   InfoIcon,
   PackagePlusIcon,
   RedoDotIcon,
@@ -81,6 +82,7 @@ import { logger } from '@/utils/loglevel'
 import { atomUserInfo } from '@/utils/store'
 
 import { ValidDialog } from '../images/valid-dialog'
+import { CudaBaseImageSheet } from './CudaBaseImageSheet'
 import { DockerfileSheet } from './DockerfileSheet'
 import { EnvdRawSheet } from './EnvdRawSheet'
 import { EnvdSheet } from './EnvdSheet'
@@ -118,6 +120,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openDockerfileSheet, setOpenDockerfileSheet] = useState(false)
   const [openEnvdSheet, setOpenEnvdSheet] = useState(false)
   const [openEnvdRawSheet, setOpenEnvdRawSheet] = useState(false)
+  const [openCudaBaseImageSheet, setOpenCudaBaseImageSheet] = useState(false)
   const [imagePackName, setImagePackName] = useState<string>('')
   const navigate = useNavigate()
   const [openCheckDialog, setCheckOpenDialog] = useState(false)
@@ -442,7 +445,14 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               cacheKey="imagepack"
             />
           </div>
-        ) : null}
+        ) : (
+          <div className="flex flex-row gap-3">
+            <Button onClick={() => setOpenCudaBaseImageSheet(true)} variant="default">
+              <DatabaseIcon />
+              导入CUDA Base镜像
+            </Button>
+          </div>
+        )}
       </DataTable>
       {!isAdminMode ? (
         <div>
@@ -500,6 +510,21 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
           />
         </div>
       ) : null}
+
+      {/* CUDA Base镜像管理Sheet - 只在管理员模式下显示 */}
+      {isAdminMode && (
+        <CudaBaseImageSheet
+          isOpen={openCudaBaseImageSheet}
+          onOpenChange={setOpenCudaBaseImageSheet}
+          title="CUDA Base镜像管理"
+          description="管理系统中的CUDA Base镜像列表"
+          className="sm:max-w-2xl"
+          closeSheet={() => {
+            setOpenCudaBaseImageSheet(false)
+          }}
+        />
+      )}
+
       <Dialog open={openCheckDialog} onOpenChange={setCheckOpenDialog}>
         <DialogContent>
           <ValidDialog
