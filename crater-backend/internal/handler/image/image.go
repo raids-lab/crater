@@ -951,6 +951,7 @@ func (mgr *ImagePackMgr) UserGetCudaBaseImages(c *gin.Context) {
 	cudaBaseImageList := []CudaBaseImage{}
 	for _, img := range cudaBaseImages {
 		cudaBaseImageList = append(cudaBaseImageList, CudaBaseImage{
+			ID:         img.ID,
 			Label:      img.Label,
 			ImageLabel: img.ImageLabel,
 			Value:      img.Value,
@@ -962,4 +963,92 @@ func (mgr *ImagePackMgr) UserGetCudaBaseImages(c *gin.Context) {
 		CudaBaseImages: cudaBaseImageList,
 	}
 	resputil.Success(c, resp)
+}
+
+// UserAddCudaBaseImage godoc
+//
+//	@Summary		添加CUDA基础镜像
+//	@Description	添加新的CUDA基础镜像到系统中
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	CudaBaseImageCreateRequest	true	"CUDA基础镜像信息"
+//	@Router			/v1/images/cudabaseimage [POST]
+func (mgr *ImagePackMgr) UserAddCudaBaseImage(c *gin.Context) {
+	req := &CudaBaseImageCreateRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		klog.Errorf("validate cuda base image create request failed, err %v", err)
+		resputil.BadRequestError(c, "validate failed")
+		return
+	}
+
+	// 检查 ImageLabel 是否已存在（由于有唯一索引）
+	cudaBaseImageQuery := query.CudaBaseImage
+	existingImage, _ := cudaBaseImageQuery.WithContext(c).
+		Where(cudaBaseImageQuery.ImageLabel.Eq(req.ImageLabel)).
+		First()
+	if existingImage != nil {
+		klog.Errorf("cuda base image with imageLabel %s already exists", req.ImageLabel)
+		resputil.Error(c, "image label already exists", resputil.NotSpecified)
+		return
+	}
+
+	// 创建新的 CudaBaseImage
+	newImage := &model.CudaBaseImage{
+		Label:      req.Label,
+		ImageLabel: req.ImageLabel,
+		Value:      req.Value,
+	}
+
+	if err := cudaBaseImageQuery.WithContext(c).Create(newImage); err != nil {
+		klog.Errorf("create cuda base image failed, err:%v", err)
+		resputil.Error(c, "create cuda base image failed", resputil.NotSpecified)
+		return
+	}
+
+	klog.Infof("cuda base image created successfully, id: %d, imageLabel: %s", newImage.ID, newImage.ImageLabel)
+	resputil.Success(c, "cuda base image created successfully")
+}
+
+// UserDeleteCudaBaseImage godoc
+//
+//	@Summary		删除CUDA基础镜像
+//	@Description	根据ID删除指定的CUDA基础镜像
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path	uint	true	"CUDA基础镜像ID"
+//	@Router			/v1/images/cudabaseimage/{id} [DELETE]
+func (mgr *ImagePackMgr) UserDeleteCudaBaseImage(c *gin.Context) {
+	req := &CudaBaseImageDeleteRequest{}
+	if err := c.ShouldBindUri(req); err != nil {
+		klog.Errorf("validate cuda base image delete request failed, err %v", err)
+		resputil.BadRequestError(c, "validate failed")
+		return
+	}
+
+	// 查询要删除的镜像是否存在
+	cudaBaseImageQuery := query.CudaBaseImage
+	existingImage, err := cudaBaseImageQuery.WithContext(c).
+		Where(cudaBaseImageQuery.ID.Eq(req.ID)).
+		First()
+	if err != nil {
+		klog.Errorf("cuda base image with id %d not found, err:%v", req.ID, err)
+		resputil.Error(c, "cuda base image not found", resputil.NotSpecified)
+		return
+	}
+
+	// 真正删除镜像数据（硬删除），而不是软删除
+	if _, err := cudaBaseImageQuery.WithContext(c).
+		Where(cudaBaseImageQuery.ID.Eq(req.ID)).
+		Unscoped().Delete(); err != nil {
+		klog.Errorf("delete cuda base image failed, id: %d, err:%v", req.ID, err)
+		resputil.Error(c, "delete cuda base image failed", resputil.NotSpecified)
+		return
+	}
+
+	klog.Infof("cuda base image deleted successfully, id: %d, imageLabel: %s", existingImage.ID, existingImage.ImageLabel)
+	resputil.Success(c, "cuda base image deleted successfully")
 }
