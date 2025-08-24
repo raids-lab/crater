@@ -804,7 +804,6 @@ func (mgr *APIServerMgr) GetPodContainers(c *gin.Context) {
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
 		if strings.Contains(err.Error(), "unknown namespace") {
 			// try to get the pod from the kube client
-			//nolint:govet // Ignore govet warning about shadowing err.
 			if podPtr, err := mgr.kubeClient.CoreV1().Pods(req.Namespace).Get(c, req.PodName, metav1.GetOptions{}); err != nil {
 				resputil.Error(c, err.Error(), resputil.NotSpecified)
 				return

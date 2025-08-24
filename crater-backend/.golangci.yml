@@ -37,7 +37,7 @@ linters:
       rules:
         logger:
           files:
-            - '!**/pkg/logutils/**.go'
+            - "!**/pkg/logutils/**.go"
           deny:
             - pkg: github.com/sirupsen/logrus
               desc: logging is allowed only by logutils.Log.
@@ -75,7 +75,6 @@ linters:
     govet:
       enable:
         - nilness
-        - shadow
       settings:
         printf:
           funcs:
@@ -130,35 +129,35 @@ linters:
       - linters:
           - staticcheck
         path: pkg/golinters/errcheck.go
-        text: 'SA1019: errCfg.Exclude is deprecated: use ExcludeFunctions instead'
+        text: "SA1019: errCfg.Exclude is deprecated: use ExcludeFunctions instead"
       - linters:
           - staticcheck
         path: pkg/commands/run.go
-        text: 'SA1019: lsc.Errcheck.Exclude is deprecated: use ExcludeFunctions instead'
+        text: "SA1019: lsc.Errcheck.Exclude is deprecated: use ExcludeFunctions instead"
       - linters:
           - staticcheck
         path: pkg/commands/run.go
-        text: 'SA1019: c.cfg.Run.ShowStats is deprecated: use Output.ShowStats instead.'
+        text: "SA1019: c.cfg.Run.ShowStats is deprecated: use Output.ShowStats instead."
       - path: pkg/golinters/govet.go
-        text: 'SA1019: cfg.CheckShadowing is deprecated: the linter should be enabled inside `Enable`.'
+        text: "SA1019: cfg.CheckShadowing is deprecated: the linter should be enabled inside `Enable`."
       - path: pkg/commands/config.go
-        text: 'SA1019: cfg.Run.UseDefaultSkipDirs is deprecated: use Issues.UseDefaultExcludeDirs instead.'
+        text: "SA1019: cfg.Run.UseDefaultSkipDirs is deprecated: use Issues.UseDefaultExcludeDirs instead."
       - linters:
           - staticcheck
         path: pkg/golinters/godot.go
-        text: 'SA1019: settings.CheckAll is deprecated: use `Scope` instead'
+        text: "SA1019: settings.CheckAll is deprecated: use `Scope` instead"
       - linters:
           - staticcheck
         path: pkg/golinters/gofumpt.go
-        text: 'SA1019: settings.LangVersion is deprecated: use the global `run.go` instead.'
+        text: "SA1019: settings.LangVersion is deprecated: use the global `run.go` instead."
       - linters:
           - staticcheck
         path: pkg/golinters/staticcheck_common.go
-        text: 'SA1019: settings.GoVersion is deprecated: use the global `run.go` instead.'
+        text: "SA1019: settings.GoVersion is deprecated: use the global `run.go` instead."
       - linters:
           - staticcheck
         path: pkg/lint/lintersdb/manager.go
-        text: 'SA1019: (.+).(GoVersion|LangVersion) is deprecated: use the global `run.go` instead.'
+        text: "SA1019: (.+).(GoVersion|LangVersion) is deprecated: use the global `run.go` instead."
       - linters:
           - gocritic
         path: pkg/golinters/unused.go
