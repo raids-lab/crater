@@ -67,6 +67,21 @@ export const resourceSchema = z.object({
         path: ['model'], // The path for the error message
       }
     ),
+  vgpu: z.object({
+    enabled: z.boolean().default(false),
+    models: z
+      .array(
+        z.object({
+          label: z.string().min(1, {
+            message: 'vGPU 模型名称不能为空',
+          }),
+          value: z.number().int().min(0, {
+            message: 'vGPU 数量不能小于 0',
+          }),
+        })
+      )
+      .optional(),
+  }),
 })
 
 export type ResourceSchema = z.infer<typeof resourceSchema>
@@ -78,6 +93,9 @@ export const defaultResource: ResourceSchema = {
     count: 0,
   },
   network: {
+    enabled: false,
+  },
+  vgpu: {
     enabled: false,
   },
 }
@@ -257,15 +275,18 @@ export const importFromJsonString = <T>(metadata: MetadataFormType, text: string
 }
 
 export const convertToResourceList = (resource: ResourceSchema): V1ResourceList => {
-  let k8sResource: V1ResourceList = {
+  const k8sResource: V1ResourceList = {
     cpu: `${resource.cpu}`,
     memory: `${resource.memory}Gi`,
   }
   if (resource.gpu.model && resource.gpu.count > 0) {
     if (resource.network.enabled && resource.network.model) {
-      // 作业同时申请 RDMA 和 GPU 时，不需要限制 CPU 和内存
-      k8sResource = {}
       k8sResource[resource.network.model] = '1'
+    }
+    if (resource.vgpu.enabled && resource.vgpu.models && resource.vgpu.models?.length > 0) {
+      resource.vgpu.models.forEach((model) => {
+        k8sResource[model.label] = `${model.value}`
+      })
     }
     k8sResource[resource.gpu.model] = `${resource.gpu.count}`
   }

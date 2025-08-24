@@ -123,6 +123,11 @@ const dataProcessor = (data: FormSchema) => {
       model: undefined,
     }
   }
+  if (!data.task.resource.vgpu) {
+    data.task.resource.vgpu = {
+      enabled: false,
+    }
+  }
   return data
 }
 
@@ -280,6 +285,10 @@ function RouteComponent() {
                   memoryPath="task.resource.memory"
                   gpuCountPath="task.resource.gpu.count"
                   gpuModelPath="task.resource.gpu.model"
+                  vgpuPath={{
+                    vgpuEnabled: 'task.resource.vgpu.enabled',
+                    vgpuModels: 'task.resource.vgpu.models',
+                  }}
                 />
                 <ImageFormField form={form} name="task.image" />
                 <FormField

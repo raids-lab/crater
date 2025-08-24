@@ -244,6 +244,16 @@ const dataProcessor = (data: FormSchema) => {
       model: undefined,
     }
   }
+  if (!data.ps.resource.vgpu) {
+    data.ps.resource.vgpu = {
+      enabled: false,
+    }
+  }
+  if (!data.worker.resource.vgpu) {
+    data.worker.resource.vgpu = {
+      enabled: false,
+    }
+  }
   return data
 }
 
@@ -485,6 +495,10 @@ function RouteComponent() {
                     rdmaEnabled: 'ps.resource.network.enabled',
                     rdmaLabel: 'ps.resource.network.model',
                   }}
+                  vgpuPath={{
+                    vgpuEnabled: 'ps.resource.vgpu.enabled',
+                    vgpuModels: 'ps.resource.vgpu.models',
+                  }}
                 />
                 <ImageFormField form={form} name="ps.image" />
                 <FormField
@@ -615,6 +629,10 @@ function RouteComponent() {
                   rdmaPath={{
                     rdmaEnabled: 'worker.resource.network.enabled',
                     rdmaLabel: 'worker.resource.network.model',
+                  }}
+                  vgpuPath={{
+                    vgpuEnabled: 'worker.resource.vgpu.enabled',
+                    vgpuModels: 'worker.resource.vgpu.models',
                   }}
                 />
                 <ImageFormField form={form} name="worker.image" />
