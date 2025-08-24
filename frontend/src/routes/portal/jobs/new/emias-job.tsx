@@ -122,6 +122,11 @@ const dataProcessor = (data: FormSchema) => {
       model: undefined,
     }
   }
+  if (!data.task.resource.vgpu) {
+    data.task.resource.vgpu = {
+      enabled: false,
+    }
+  }
   return data
 }
 

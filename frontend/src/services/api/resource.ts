@@ -27,8 +27,31 @@ export interface Resource {
   format: string
   priority: number
   label: string
-  type?: 'gpu' | 'rdma'
+  type?: 'gpu' | 'rdma' | 'vgpu'
   networks?: Resource[]
+}
+
+export interface ResourceVGPU {
+  ID: number
+  vgpuResourceId?: number
+  min?: number
+  max?: number
+  description?: string
+  vgpuResource?: Resource
+}
+
+export interface LinkGPUToVGPUReq {
+  vgpuResourceId?: number
+  min?: number
+  max?: number
+  description?: string
+}
+
+export interface UpdateGPUVGPULinkReq {
+  vgpuResourceId?: number
+  min?: number
+  max?: number
+  description?: string
 }
 
 export const apiResourceList = (withVendorDomain: boolean) => {
@@ -53,7 +76,7 @@ export const apiAdminResourceSync = () => {
 export const apiAdminResourceUpdate = (
   id: number,
   label?: string,
-  type?: 'gpu' | 'rdma' | 'default' | null
+  type?: 'gpu' | 'rdma' | 'default' | 'vgpu' | null
 ) => {
   return apiV1Put<IResponse<Resource>>(`admin/resources/${id}`, {
     label,
@@ -103,4 +126,35 @@ export const apiAdminResourceNetworkAdd = (id: number, rdmaId: number) => {
 // @Router /v1/admin/resources/{id}/networks/{networkId} [delete]
 export const apiAdminResourceNetworkDelete = (id: number, networkId: number) => {
   return apiV1Delete<IResponse<Resource>>(`admin/resources/${id}/networks/${networkId}`)
+}
+
+// VGPU Management APIs
+
+// @Router /v1/admin/resources/{id}/vgpu [post]
+export const apiAdminResourceVGPUAdd = (id: number, data: LinkGPUToVGPUReq) => {
+  return apiV1Post<IResponse<ResourceVGPU>>(`admin/resources/${id}/vgpu`, data)
+}
+
+// @Router /v1/admin/resources/{id}/vgpu [get]
+export const apiAdminResourceVGPUList = (id: number) => {
+  return apiV1Get<IResponse<ResourceVGPU[]>>(`admin/resources/${id}/vgpu`)
+}
+
+// @Router /v1/resources/{id}/vgpu [get]
+export const apiResourceVGPUList = (id: number) => {
+  return apiV1Get<IResponse<ResourceVGPU[]>>(`resources/${id}/vgpu`)
+}
+
+// @Router /v1/admin/resources/{id}/vgpu/{vgpuId} [put]
+export const apiAdminResourceVGPUUpdate = (
+  id: number,
+  vgpuId: number,
+  data: UpdateGPUVGPULinkReq
+) => {
+  return apiV1Put<IResponse<never>>(`admin/resources/${id}/vgpu/${vgpuId}`, data)
+}
+
+// @Router /v1/admin/resources/{id}/vgpu/{vgpuId} [delete]
+export const apiAdminResourceVGPUDelete = (id: number, vgpuId: number) => {
+  return apiV1Delete<IResponse<never>>(`admin/resources/${id}/vgpu/${vgpuId}`)
 }

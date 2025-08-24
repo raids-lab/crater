@@ -16,7 +16,10 @@ from typing import Dict, List, Set
 class TranslationAligner:
     """🔧 Main class for translation alignment operations"""
     
-    def __init__(self, base_dir: str = "/workspaces/crater-frontend"):
+    def __init__(self, base_dir: str = None):
+        # Use current working directory as default base_dir
+        if base_dir is None:
+            base_dir = os.getcwd()
         self.base_dir = Path(base_dir)
         self.src_dir = self.base_dir / "src"
         self.i18n_dir = self.base_dir / "src" / "i18n" / "locales"

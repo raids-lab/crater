@@ -108,14 +108,15 @@ const dataProcessor = (data: FormSchema) => {
   // 可以在这里进行数据转换
 
   // if rdma is enabled, set it to false
-  if (data.task.resource.network) {
-    data.task.resource.network.enabled = false
-    data.task.resource.network.model = undefined
-  }
   if (!data.task.resource.network) {
     data.task.resource.network = {
       enabled: false,
       model: undefined,
+    }
+  }
+  if (!data.task.resource.vgpu) {
+    data.task.resource.vgpu = {
+      enabled: false,
     }
   }
   return data
@@ -299,6 +300,10 @@ function RouteComponent() {
                   rdmaPath={{
                     rdmaEnabled: 'task.resource.network.enabled',
                     rdmaLabel: 'task.resource.network.model',
+                  }}
+                  vgpuPath={{
+                    vgpuEnabled: 'task.resource.vgpu.enabled',
+                    vgpuModels: 'task.resource.vgpu.models',
                   }}
                 />
                 <ImageFormField form={form} name="task.image" />

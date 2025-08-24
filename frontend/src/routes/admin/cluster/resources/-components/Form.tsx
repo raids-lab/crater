@@ -18,7 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PlusCircleIcon, XIcon } from 'lucide-react'
 import * as React from 'react'
-import { FC } from 'react'
+import { FC, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -57,10 +57,15 @@ import FormLabelMust from '@/components/form/FormLabelMust'
 
 import {
   Resource,
+  ResourceVGPU,
   apiAdminResourceNetworkAdd,
   apiAdminResourceNetworkDelete,
   apiAdminResourceNetworksList,
   apiAdminResourceUpdate,
+  apiAdminResourceVGPUAdd,
+  apiAdminResourceVGPUDelete,
+  apiAdminResourceVGPUList,
+  apiAdminResourceVGPUUpdate,
   apiResourceList,
 } from '@/services/api/resource'
 
@@ -156,7 +161,7 @@ interface UpdateResourceTypeFormProps {
 }
 
 const resourceTypeFormSchema = z.object({
-  type: z.enum(['default', 'gpu', 'rdma']),
+  type: z.enum(['default', 'gpu', 'rdma', 'vgpu']),
 })
 
 export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
@@ -221,6 +226,7 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
                       </SelectItem>
                       <SelectItem value="gpu">{t('updateResourceTypeForm.type.gpu')}</SelectItem>
                       <SelectItem value="rdma">{t('updateResourceTypeForm.type.rdma')}</SelectItem>
+                      <SelectItem value="vgpu">{t('updateResourceTypeForm.type.vgpu')}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormDescription>{t('updateResourceTypeForm.formDescription')}</FormDescription>
@@ -397,6 +403,356 @@ export const NetworkAssociationForm: FC<NetworkAssociationFormProps> = ({
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('networkAssociationForm.doneButton')}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// New component for VGPU Association
+interface VGPUAssociationFormProps {
+  gpuResource: Resource
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+const vgpuAssociationSchema = z.object({
+  vgpuResourceId: z.number().optional(),
+  min: z.number().min(1).optional(),
+  max: z.number().min(1).optional(),
+  description: z.string().optional(),
+})
+
+export const VGPUAssociationForm: FC<VGPUAssociationFormProps> = ({
+  gpuResource,
+  open,
+  onOpenChange,
+}) => {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [isEditing, setIsEditing] = useState<number | null>(null)
+
+  const form = useForm<z.infer<typeof vgpuAssociationSchema>>({
+    resolver: zodResolver(vgpuAssociationSchema),
+    defaultValues: {
+      vgpuResourceId: undefined,
+      min: undefined,
+      max: undefined,
+      description: '',
+    },
+  })
+
+  // Fetch all VGPU resources
+  const vgpuResourcesQuery = useQuery({
+    queryKey: ['resource', 'list', 'vgpu'],
+    queryFn: () => apiResourceList(false),
+    select: (res) => {
+      return res.data.filter((r) => r.type === 'vgpu')
+    },
+  })
+
+  // Fetch current VGPU associations
+  const currentVGPUQuery = useQuery({
+    queryKey: ['resource', 'vgpu', gpuResource.ID],
+    queryFn: () => apiAdminResourceVGPUList(gpuResource.ID),
+    select: (res) => res.data,
+  })
+
+  const { mutate: addVGPUAssociation, isPending: isAddPending } = useMutation({
+    mutationFn: (values: z.infer<typeof vgpuAssociationSchema>) => {
+      return apiAdminResourceVGPUAdd(gpuResource.ID, values)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['resource', 'vgpu', gpuResource.ID],
+      })
+      toast.success(t('vgpuAssociationForm.addSuccess'))
+      form.reset()
+    },
+  })
+
+  const { mutate: updateVGPUAssociation, isPending: isUpdatePending } = useMutation({
+    mutationFn: ({
+      vgpuId,
+      values,
+    }: {
+      vgpuId: number
+      values: z.infer<typeof vgpuAssociationSchema>
+    }) => {
+      return apiAdminResourceVGPUUpdate(gpuResource.ID, vgpuId, values)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['resource', 'vgpu', gpuResource.ID],
+      })
+      toast.success(t('vgpuAssociationForm.updateSuccess'))
+      setIsEditing(null)
+    },
+  })
+
+  const { mutate: removeVGPUAssociation, isPending: isDeletePending } = useMutation({
+    mutationFn: (vgpuId: number) => apiAdminResourceVGPUDelete(gpuResource.ID, vgpuId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['resource', 'vgpu', gpuResource.ID],
+      })
+      toast.success(t('vgpuAssociationForm.removeSuccess'))
+    },
+  })
+
+  const onSubmit = (values: z.infer<typeof vgpuAssociationSchema>) => {
+    if (isEditing) {
+      updateVGPUAssociation({ vgpuId: isEditing, values })
+    } else {
+      addVGPUAssociation(values)
+    }
+  }
+
+  const startEditing = (vgpu: ResourceVGPU) => {
+    setIsEditing(vgpu.ID)
+    form.reset({
+      vgpuResourceId: vgpu.vgpuResourceId,
+      min: vgpu.min,
+      max: vgpu.max,
+      description: vgpu.description,
+    })
+  }
+
+  const cancelEditing = () => {
+    setIsEditing(null)
+    form.reset()
+  }
+
+  const isPending = isAddPending || isUpdatePending || isDeletePending
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{t('vgpuAssociationForm.title')}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <h3 className="mb-2 text-sm font-medium">
+              {t('vgpuAssociationForm.gpuResourceLabel')}
+            </h3>
+            <Badge className="font-mono" variant="secondary">
+              {gpuResource.name}
+            </Badge>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-medium">
+              {t('vgpuAssociationForm.currentAssociationsLabel')}
+            </h3>
+            {currentVGPUQuery.isLoading ? (
+              <div className="text-muted-foreground text-sm">
+                {t('vgpuAssociationForm.loadingMessage')}
+              </div>
+            ) : currentVGPUQuery.data?.length === 0 ? (
+              <div className="text-muted-foreground text-sm">
+                {t('vgpuAssociationForm.noAssociationsMessage')}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {currentVGPUQuery.data?.map((vgpu) => (
+                  <div
+                    key={vgpu.ID}
+                    className="hover:bg-muted flex items-center justify-between rounded border p-3"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="font-mono">
+                          {vgpu.vgpuResource?.name}
+                        </Badge>
+                        {vgpu.vgpuResource?.label && (
+                          <span className="text-muted-foreground text-xs">
+                            {vgpu.vgpuResource.label}
+                          </span>
+                        )}
+                      </div>
+                      {(vgpu.min || vgpu.max || vgpu.description) && (
+                        <div className="text-muted-foreground text-xs">
+                          {vgpu.min && `Min: ${vgpu.min}`}
+                          {vgpu.min && vgpu.max && ' | '}
+                          {vgpu.max && `Max: ${vgpu.max}`}
+                          {(vgpu.min || vgpu.max) && vgpu.description && ' | '}
+                          {vgpu.description}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={isPending}
+                        onClick={() => startEditing(vgpu)}
+                      >
+                        {t('vgpuAssociationForm.editButton')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={isPending}
+                        onClick={() => removeVGPUAssociation(vgpu.ID)}
+                      >
+                        <XIcon className="size-4" />
+                        {t('vgpuAssociationForm.removeButton')}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-medium">
+              {isEditing
+                ? t('vgpuAssociationForm.editAssociationLabel')
+                : t('vgpuAssociationForm.addAssociationLabel')}
+            </h3>
+
+            {vgpuResourcesQuery.isLoading ? (
+              <div className="text-muted-foreground text-sm">
+                {t('vgpuAssociationForm.loadingMessage')}
+              </div>
+            ) : vgpuResourcesQuery.data?.length === 0 ? (
+              <div className="text-muted-foreground text-sm">
+                {t('vgpuAssociationForm.noVGPUResourcesMessage')}
+              </div>
+            ) : (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="vgpuResourceId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('vgpuAssociationForm.vgpuResourceLabel')}</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(Number(value))}
+                          value={field.value?.toString()}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={t('vgpuAssociationForm.selectVGPUPlaceholder')}
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {vgpuResourcesQuery.data?.map((vgpu) => (
+                              <SelectItem key={vgpu.ID} value={vgpu.ID.toString()}>
+                                <div>
+                                  <span className="font-mono">{vgpu.name}</span>
+                                  {vgpu.label && (
+                                    <span className="text-muted-foreground ml-2 text-xs">
+                                      ({vgpu.label})
+                                    </span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="min"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('vgpuAssociationForm.minLabel')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="1"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(e.target.value ? Number(e.target.value) : undefined)
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t('vgpuAssociationForm.minDescription')}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="max"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('vgpuAssociationForm.maxLabel')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="10"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(e.target.value ? Number(e.target.value) : undefined)
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t('vgpuAssociationForm.maxDescription')}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('vgpuAssociationForm.descriptionLabel')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('vgpuAssociationForm.descriptionPlaceholder')}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t('vgpuAssociationForm.descriptionDescription')}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2">
+                    {isEditing && (
+                      <Button type="button" variant="outline" onClick={cancelEditing}>
+                        {t('vgpuAssociationForm.cancelButton')}
+                      </Button>
+                    )}
+                    <Button type="submit" disabled={isPending}>
+                      {isEditing
+                        ? t('vgpuAssociationForm.updateButton')
+                        : t('vgpuAssociationForm.addButton')}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              {t('vgpuAssociationForm.doneButton')}
             </Button>
           </div>
         </div>

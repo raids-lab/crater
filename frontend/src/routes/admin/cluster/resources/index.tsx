@@ -19,7 +19,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { BoxIcon, NetworkIcon, RefreshCcwIcon, TagIcon, Trash2Icon } from 'lucide-react'
+import { BoxIcon, CpuIcon, NetworkIcon, RefreshCcwIcon, TagIcon, Trash2Icon } from 'lucide-react'
 import { type FC, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -53,6 +53,7 @@ import {
   Resource,
   apiAdminResourceDelete,
   apiAdminResourceSync,
+  apiAdminResourceVGPUList,
   apiResourceList,
   apiResourceNetworks,
 } from '@/services/api/resource'
@@ -60,7 +61,11 @@ import {
 import { formatBytes } from '@/utils/formatter'
 
 import { UpdateResourceForm } from './-components/Form'
-import { NetworkAssociationForm, UpdateResourceTypeForm } from './-components/Form'
+import {
+  NetworkAssociationForm,
+  UpdateResourceTypeForm,
+  VGPUAssociationForm,
+} from './-components/Form'
 
 export const Route = createFileRoute('/admin/cluster/resources/')({
   component: Resources,
@@ -93,12 +98,43 @@ const NetworksCell: FC<{ resourceId: number; resourceType?: string }> = ({
   )
 }
 
+// New component for VGPU associations cell
+const VGPUCell: FC<{ resourceId: number; resourceType?: string }> = ({
+  resourceId,
+  resourceType,
+}) => {
+  const vgpuQuery = useQuery({
+    queryKey: ['resource', 'vgpu', resourceId],
+    queryFn: () => apiAdminResourceVGPUList(resourceId),
+    enabled: resourceType === 'gpu',
+    select: (res) => res.data,
+  })
+
+  if (resourceType !== 'gpu' || !vgpuQuery.data?.length) {
+    return <></>
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {vgpuQuery.data.map((vgpu) => (
+        <Badge key={vgpu.ID} variant="outline" className="font-mono">
+          {vgpu.vgpuResource?.name || `VGPU-${vgpu.ID}`}
+          {vgpu.description && (
+            <span className="ml-1 text-xs opacity-75">({vgpu.description})</span>
+          )}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
 // New component for Actions cell
 const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
   const { t } = useTranslation()
   const [openLabelSheet, setOpenLabelSheet] = useState(false)
   const [openTypeSheet, setOpenTypeSheet] = useState(false)
   const [openNetworkSheet, setOpenNetworkSheet] = useState(false)
+  const [openVGPUSheet, setOpenVGPUSheet] = useState(false)
   const queryClient = useQueryClient()
 
   const { mutate: deleteResource } = useMutation({
@@ -137,6 +173,12 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
               <DropdownMenuItem onClick={() => setOpenNetworkSheet(true)}>
                 <NetworkIcon />
                 {t('resources.actions.associateNetworks')}
+              </DropdownMenuItem>
+            )}
+            {resource.type === 'gpu' && (
+              <DropdownMenuItem onClick={() => setOpenVGPUSheet(true)}>
+                <CpuIcon />
+                {t('resources.actions.associateVGPU')}
               </DropdownMenuItem>
             )}
             <AlertDialogTrigger asChild>
@@ -180,6 +222,13 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
           gpuResource={resource}
           open={openNetworkSheet}
           onOpenChange={setOpenNetworkSheet}
+        />
+      )}
+      {resource.type === 'gpu' && (
+        <VGPUAssociationForm
+          gpuResource={resource}
+          open={openVGPUSheet}
+          onOpenChange={setOpenVGPUSheet}
         />
       )}
     </>
@@ -235,7 +284,9 @@ function Resources() {
                 ? t('resources.type.gpu')
                 : type === 'rdma'
                   ? t('resources.type.rdma')
-                  : type}
+                  : type === 'vgpu'
+                    ? t('resources.type.vgpu')
+                    : type}
             </Badge>
           )
         },
@@ -247,6 +298,15 @@ function Resources() {
         ),
         cell: ({ row }) => (
           <NetworksCell resourceId={row.original.ID} resourceType={row.original.type} />
+        ),
+      },
+      {
+        id: 'vgpu',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t('resources.columns.vgpu')} />
+        ),
+        cell: ({ row }) => (
+          <VGPUCell resourceId={row.original.ID} resourceType={row.original.type} />
         ),
       },
       {
