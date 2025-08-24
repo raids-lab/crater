@@ -283,6 +283,13 @@ export interface GetUngrantedAccounts {
 }
 
 export interface CudaBaseImage {
+  id: number
+  imageLabel: string
+  label: string
+  value: string
+}
+
+export interface CudaBaseImageCreate {
   imageLabel: string
   label: string
   value: string
@@ -360,6 +367,17 @@ export const imageLinkRegex =
 
 export const imageNameRegex = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/
 export const imageTagRegex = /^(?=.{1,128}$)(?![-.])([a-zA-Z0-9_.+-]*)(?<![-.])$/
+
+// CUDA Base镜像相关正则表达式
+// imageLabel 用作镜像tag的一部分，遵循Docker tag规范
+// 允许字母数字、点、下划线、连字符，长度1-128字符，不能以点或连字符开头/结尾
+export const cudaImageLabelRegex = /^(?=.{1,128}$)(?![-.])([a-zA-Z0-9_.+-]*)(?<![-.])$/
+
+// value 是完整的镜像链接，包含registry地址、镜像名称和标签
+// 格式: [registry_host[:port]/]namespace/repository:tag
+// 例如: crater-harbor.act.buaa.edu.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04
+export const cudaImageValueRegex =
+  /^[a-zA-Z0-9.-]+(?::[0-9]+)?(?:\/[a-zA-Z0-9_.-]+)+:[a-zA-Z0-9_](?:[a-zA-Z0-9_.-]*[a-zA-Z0-9_])?$/
 
 export const dockerfileImageLinkRegex = /^FROM\s+(?:--platform=[^\s]+\s+)?([^\s#]+)/gim
 
@@ -463,3 +481,9 @@ export const apiUserGetUngrantedAccounts = (data: GetUngrantedAccounts) =>
 
 export const apiGetCudaBaseImages = () =>
   apiV1Get<IResponse<CudaBaseImageResponse>>('images/cudabaseimage')
+
+export const apiAddCudaBaseImage = (data: CudaBaseImageCreate) =>
+  apiV1Post<IResponse<string>>('images/cudabaseimage', data)
+
+export const apiDeleteCudaBaseImage = (id: number) =>
+  apiV1Delete<IResponse<string>>(`images/cudabaseimage/${id}`)
