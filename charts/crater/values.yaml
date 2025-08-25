@@ -1,6 +1,7 @@
 # depolyment configuration variables
 createNamespace: false
 imagePullSecrets: []
+httpsProxy: &httpsProxy 192.168.5.58:1080
 
 urls:
   host: "gpu.raids-lab.cn"
@@ -80,7 +81,8 @@ buildkitConfig:
       minFreeSpace: "10GB"
       reservedSpace: "10GB"
   generalConfig:
-    dockerconfigjson: "<MASKED>" # Docker认证配置已掩码    httpsProxy: 192.168.5.58:1080
+    dockerconfigjson: "<MASKED>" # Docker认证配置已掩码
+    buildkitHttpsProxy: *httpsProxy
     resources:
       requests:
         cpu: 8
@@ -123,7 +125,6 @@ backendConfig:
   serverAddr: null
   metricsAddr: null
   probeAddr: null
-  httpsProxy: null
   postgres:
     host: null
     port: null
@@ -157,6 +158,7 @@ backendConfig:
     admin: null
     adminPassword: null
   imageBuildTools:
+    backendHttpsProxy: *httpsProxy
     buildxImage: ""
     nerdctlImage: null
     envdImage: null

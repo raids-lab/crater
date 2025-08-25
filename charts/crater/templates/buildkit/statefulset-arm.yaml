@@ -80,7 +80,7 @@ spec:
               memory: {{ .Values.buildkitConfig.generalConfig.resources.limits.memory }}
           env:
             - name: HTTPS_PROXY
-              value: {{ .Values.backendConfig.httpsProxy }}
+              value: {{ .Values.buildkitConfig.generalConfig.buildkitHttpsProxy }}
       volumes:
         - name: config
           configMap:
