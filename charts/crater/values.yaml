@@ -60,7 +60,6 @@ web:
     host: gpu-grafana.raids-lab.cn
 
 # BuildKit configuration variables
-# BuildKit configuration variables
 buildkitConfig:
   amdConfig:
     enabled: true
@@ -124,6 +123,7 @@ backendConfig:
   serverAddr: null
   metricsAddr: null
   probeAddr: null
+  httpsProxy: null
   postgres:
     host: null
     port: null
