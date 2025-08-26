@@ -1,6 +1,10 @@
 # depolyment configuration variables
 createNamespace: false
 imagePullSecrets: []
+proxyConfig: &proxyConfig
+  httpsProxy: null
+  httpProxy: null
+  noProxy: null
 
 urls:
   host: "gpu.raids-lab.cn"
@@ -60,7 +64,6 @@ web:
     host: gpu-grafana.raids-lab.cn
 
 # BuildKit configuration variables
-# BuildKit configuration variables
 buildkitConfig:
   amdConfig:
     enabled: true
@@ -81,7 +84,9 @@ buildkitConfig:
       minFreeSpace: "10GB"
       reservedSpace: "10GB"
   generalConfig:
-    dockerconfigjson: "<MASKED>" # Docker认证配置已掩码    httpsProxy: 192.168.5.58:1080
+    dockerconfigjson: "<MASKED>" # Docker认证配置已掩码
+    buildkitProxyConfig: 
+      <<: *proxyConfig
     resources:
       requests:
         cpu: 8
@@ -157,6 +162,8 @@ backendConfig:
     admin: null
     adminPassword: null
   imageBuildTools:
+    backendProxyConfig:
+      <<: *proxyConfig
     buildxImage: ""
     nerdctlImage: null
     envdImage: null
