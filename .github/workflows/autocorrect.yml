@@ -63,6 +63,8 @@ jobs:
         uses: huacnlee/autocorrect-action@v2
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWDOG_REPORTER: github-pr-review
+          REVIEWDOG_LEVEL: warning
         with:
           reviewdog: true
           args: --lint
