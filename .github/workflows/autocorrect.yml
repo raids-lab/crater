@@ -18,7 +18,7 @@ on:
   pull_request_target:
     paths:
       - '.github/**'
-      - 'crater-website/src/**'        
+      - 'crater-website/src/**'
       - 'crater-website/content/**'
 
 jobs:
