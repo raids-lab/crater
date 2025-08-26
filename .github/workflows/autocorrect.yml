@@ -18,7 +18,7 @@ on:
   pull_request_target:
     paths:
       - '.github/**'
-      - 'crater-website/src/**'        
+      - 'crater-website/src/**'
       - 'crater-website/content/**'
 
 jobs:
@@ -35,8 +35,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
-      - name: AutoCorrect and Commit (for internal PRs)
+      - name: AutoCorrect and Fix (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: huacnlee/autocorrect-action@v2
         with:
@@ -51,20 +52,26 @@ jobs:
           commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
           commit_author: GitHub Actions <41898282+github-actions[bot]@users.noreply.github.com>
 
-      - name: Lint Check (for forked PRs)
+      - name: Get changed files (for forked PRs)
         if: github.event.pull_request.head.repo.full_name != github.repository
+        id: changed-files
+        run: |
+          echo "files=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} | xargs -0)" >> $GITHUB_OUTPUT
+
+      - name: Lint Changed Files (for forked PRs)
+        if: github.event.pull_request.head.repo.full_name != github.repository && steps.changed-files.outputs.files != ''
         id: lint
         uses: huacnlee/autocorrect-action@v2
         with:
-          args: --lint
+          args: --lint ${{ steps.changed-files.outputs.files }}
+        continue-on-error: true
 
       - name: Report with Reviewdog (for forked PRs)
-        if: failure() && steps.lint.conclusion == 'failure' && github.event.pull_request.head.repo.full_name != github.repository
+        if: |
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          steps.lint.outcome == 'failure'
         uses: huacnlee/autocorrect-action@v2
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REVIEWDOG_REPORTER: github-pr-review
-          REVIEWDOG_LEVEL: warning
         with:
           reviewdog: true
-          args: --lint
