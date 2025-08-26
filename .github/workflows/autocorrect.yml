@@ -65,6 +65,7 @@ jobs:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVIEWDOG_REPORTER: github-pr-review
           REVIEWDOG_LEVEL: warning
+          REVIEWDOG_FLAGS: -v
         with:
           reviewdog: true
           args: --lint
