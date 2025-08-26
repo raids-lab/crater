@@ -28,6 +28,7 @@ jobs:
 
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -52,6 +53,16 @@ jobs:
 
       - name: Lint Check (for forked PRs)
         if: github.event.pull_request.head.repo.full_name != github.repository
+        id: lint
         uses: huacnlee/autocorrect-action@v2
         with:
+          args: --lint
+
+      - name: Report with Reviewdog (for forked PRs)
+        if: failure() && steps.lint.conclusion == 'failure' && github.event.pull_request.head.repo.full_name != github.repository
+        uses: huacnlee/autocorrect-action@v2
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          reviewdog: true
           args: --lint
