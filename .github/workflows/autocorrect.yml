@@ -15,7 +15,7 @@
 name: AutoCorrect Website Files
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
       - '.github/**'
       - 'crater-website/src/**'        
@@ -31,7 +31,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout PR code
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
