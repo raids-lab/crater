@@ -1,7 +1,10 @@
 # depolyment configuration variables
 createNamespace: false
 imagePullSecrets: []
-httpsProxy: &httpsProxy null
+proxyConfig:
+  httpsProxy: &httpsProxy null
+  httpProxy: &httpProxy null
+  noProxy: &noProxy null
 
 urls:
   host: "gpu.raids-lab.cn"
