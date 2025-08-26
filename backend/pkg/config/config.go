@@ -70,6 +70,11 @@ type Config struct {
 
 	// image build tools
 	ImageBuildTools struct {
+		BackendProxyConfig struct {
+			HTTPSProxy string `json:"httpsProxy"`
+			HTTPProxy  string `json:"httpProxy"`
+			NoProxy    string `json:"noProxy"`
+		} `json:"backendProxyConfig"`
 		BuildxImage  string `json:"buildxImage"` // Image for buildx frontend
 		NerdctlImage string `json:"nerdctlImage"`
 		EnvdImage    string `json:"envdImage"`

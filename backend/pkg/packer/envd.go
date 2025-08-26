@@ -39,35 +39,49 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	backendHost := config.GetConfig().Host
 	// 构建完整的命令，先创建context，再执行build
 	cmd := fmt.Sprintf(`
-		envd context create \
-		--name buildkitd \
-		--builder tcp \
-		--builder-address %s:1234 \
-		--use && \
-		envd build --platform linux/amd64 --output %s
-	`, buildkitdAmdNameSpace, output)
+                envd context create \
+                --name buildkitd \
+                --builder tcp \
+                --builder-address %s:1234 \
+                --use && \
+                envd build --platform linux/amd64 --output %s
+        `, buildkitdAmdNameSpace, output)
 
 	setupCommands := []string{
 		"/bin/sh",
 		"-c",
 		cmd,
 	}
-
+	envVars := []corev1.EnvVar{
+		{
+			Name:  "DOCKER_CONFIG",
+			Value: "/.docker",
+		},
+		{
+			Name:  "NO_PROXY",
+			Value: fmt.Sprintf("$(NO_PROXY),%s,%s", buildkitdAmdNameSpace, backendHost),
+		},
+	}
+	httpsProxy := config.GetConfig().ImageBuildTools.BackendProxyConfig.HTTPSProxy
+	if httpsProxy != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "HTTPS_PROXY",
+			Value: httpsProxy,
+		})
+	}
+	httpProxy := config.GetConfig().ImageBuildTools.BackendProxyConfig.HTTPProxy
+	if httpProxy != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "HTTP_PROXY",
+			Value: httpProxy,
+		})
+	}
 	envdContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
 			Image: config.GetConfig().ImageBuildTools.EnvdImage,
 			Args:  setupCommands,
-			Env: []corev1.EnvVar{
-				{
-					Name:  "DOCKER_CONFIG",
-					Value: "/.docker",
-				},
-				{
-					Name:  "NO_PROXY",
-					Value: fmt.Sprintf("$(NO_PROXY),%s,%s", buildkitdAmdNameSpace, backendHost),
-				},
-			},
+			Env:   envVars,
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "harborcredits",
