@@ -22,6 +22,11 @@ type Config struct {
 	UserSpacePrefix    string `yaml:"userSpacePrefix"`
 	AccountSpacePrefix string `yaml:"accountSpacePrefix"`
 	PublicSpacePrefix  string `yaml:"publicSpacePrefix"`
+
+	Auth struct {
+		AccessTokenSecret  string `yaml:"accessTokenSecret"`
+		RefreshTokenSecret string `yaml:"refreshTokenSecret"`
+	} `yaml:"auth"`
 }
 
 var (

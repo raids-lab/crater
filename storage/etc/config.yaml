@@ -9,3 +9,6 @@ postgres:
 userSpacePrefix: your userSpacePrefix
 accountSpacePrefix: your accountSpacePrefix
 publicSpacePrefix: your publicSpacePrefix
+auth:
+  accessTokenSecret: null
+  refreshTokenSecret: null
