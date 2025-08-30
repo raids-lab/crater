@@ -1,43 +1,103 @@
-# depolyment configuration variables
-createNamespace: false
+# -- Namespace configuration for crater components
+# By default, crater components run in crater namespace, while jobs and images are in separate namespaces
+namespaces:
+  # -- Whether to create namespaces along with the deployment
+  create: true
+  # -- Namespace for running jobs
+  job: crater-workspace
+  # -- Namespace for building images
+  image: crater-images
+
+# -- Domain name or IP address that the server will bind to (Required)
+# Must be specified for the server to start
+host: crater.<your-domain>.com
+# -- Protocol for server communication
+protocol: https
+
+# -- First user configuration
+# When connecting to the database for the first time, creates the first user account with administrator privileges
+firstUser:
+  # -- Username for the first administrator user
+  username: "crater-admin"
+  # -- Password for the first administrator user (Please reset this password)
+  password: "<MASKED>"
+
+# -- Image configuration
+# -- Image pull policy ("IfNotPresent" | "Always", for development, use Always)
+imagePullPolicy: Always
+# -- Image pull secrets
 imagePullSecrets: []
-proxyConfig: &proxyConfig
-  httpsProxy: null
-  httpProxy: null
-  noProxy: null
-
-urls:
-  host: "gpu.raids-lab.cn"
-  grafanaHost: "gpu-grafana.raids-lab.cn"
-
+# -- Container images configuration
 images:
   backend:
+    # -- Backend service image repository
     repository: "ghcr.io/raids-lab/crater-backend"
-    tag: "sha-0566f23"
+    # -- Backend service image tag
+    tag: "latest"
   frontend:
+    # -- Frontend service image repository
     repository: "ghcr.io/raids-lab/crater-frontend"
-    tag: "sha-97420ef"
+    # -- Frontend service image tag
+    tag: "latest"
   storage:
+    # -- Storage server image repository
     repository: "ghcr.io/raids-lab/storage-server"
-    tag: "sha-7f72fd2"
+    # -- Storage server image tag
+    tag: "latest"
   cronjob:
-    repository: "crater-harbor.raids-lab.cn/crater/curl-jq"
-    tag: "v0"
+    # -- Cronjob image repository
+    repository: "docker.io/badouralix/curl-jq"
+    # -- Cronjob image tag
+    tag: "latest"
   grafanaProxy:
-    repository: "crater-harbor.raids-lab.cn/docker.io/library/nginx"
+    # -- Grafana proxy image repository
+    repository: "docker.io/library/nginx"
+    # -- Grafana proxy image tag
     tag: "1.27.3-bookworm"
   buildkit:
-    repository: "crater-harbor.raids-lab.cn/docker.io/moby/buildkit"
+    # -- Buildkit image repository for containerd-based builds
+    repository: "docker.io/moby/buildkit"
+    # -- Buildkit image tag
     tag: "v0.23.1"
+  nerdctl:
+    # -- Nerdctl image repository for containerd-based builds
+    repository: "ghcr.io/raids-lab/nerdctl-client"
+    # -- Nerdctl image tag
+    tag: "latest"
+  buildx:
+    # -- Buildx image repository for Docker Buildx multi-platform builds
+    repository: "ghcr.io/raids-lab/buildx-client"
+    # -- Buildx image tag
+    tag: "latest"
+  envd:
+    # -- Envd image repository for environment-based development builds
+    repository: "ghcr.io/raids-lab/envd-client"
+    # -- Envd image tag
+    tag: "latest"
 
+# -- Persistent Volume Claim configuration
+storage:
+  # -- Whether to create PVC
+  create: true
+  # -- Storage request size
+  request: 2Ti
+  # -- Storage class name (must support ReadWriteMany)
+  storageClass: "ceph-fs"
+  # -- PVC name
+  pvcName: "crater-rw-storage"
+
+# -- Node selector for all Deployments
+# Prevents control components from being scheduled to GPU worker nodes
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 
+# -- Pod tolerations
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
 
+# -- Pod affinity configuration
 affinity:
   nodeAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
@@ -49,188 +109,293 @@ affinity:
               values:
                 - "true"
 
-web:
-  migrate:
-    createMigrationJob: true
-    admin:
-      username: "crater-admin"
-      password: "<MASKED>" # 密码已掩码
-  ingress:
-    host: "gpu.raids-lab.cn"
-  grafana:
-    address: http://prometheus-grafana.monitoring
-    token: "<MASKED>" # Bearer 令牌已掩码
-    ancestor: https://gpu.raids-lab.cn
-    host: gpu-grafana.raids-lab.cn
+# -- Grafana proxy configuration
+# Only Grafana Pro has password-free login feature. We use Nginx proxy to support password-free login for Iframe
+grafanaProxy:
+  # -- Whether to enable Grafana proxy
+  enable: true
+  # -- Grafana service address in cluster
+  address: http://prometheus-grafana.monitoring
+  # -- Grafana access token (masked, please apply for read-only token in Grafana)
+  token: "<MASKED>"
+  # -- Domain name for exposing Grafana via Ingress
+  host: gpu-grafana.<your-domain>.com
 
-# BuildKit configuration variables
-buildkitConfig:
-  amdConfig:
-    enabled: true
-    replicas: 3
-    cache:
-      storageClass: "openebs-hostpath"
-      storageSize: 400Gi
-      maxUsedSpace: "400GB"
-      minFreeSpace: "50GB"
-      reservedSpace: "50GB"
-  armConfig:
-    enabled: false # Can only be true when ARM nodes exist.
-    replicas: 2
-    cache:
-      storageClass: "openebs-hostpath"
-      storageSize: 80Gi
-      maxUsedSpace: "80GB"
-      minFreeSpace: "10GB"
-      reservedSpace: "10GB"
-  generalConfig:
-    dockerconfigjson: "<MASKED>" # Docker认证配置已掩码
-    buildkitProxyConfig: 
-      <<: *proxyConfig
-    resources:
-      requests:
-        cpu: 8
-        memory: 24Gi
-      limits:
-        cpu: 16
-        memory: 48Gi
-
-# Frontend configuration variables
+# -- Frontend configuration
 frontendConfig:
+  # -- Frontend version
   version: "1.0.0"
   url:
-    host: "gpu.raids-lab.cn"
-    apiBase: "https://gpu.raids-lab.cn/api/"
-    apiVersion: "v1"
-    websiteBase: "https://raids-lab.github.io/crater/cn"
+    # -- Backend API prefix (not modifiable currently)
+    apiPrefix: "/api/v1"
+    # -- Documentation base URL
+    document: "https://raids-lab.github.io/crater/zh"
+  # -- Grafana dashboard configurations
+  # References: https://github.com/raids-lab/crater/tree/main/grafana-dashboards
   grafana:
     overview:
-      main: "https://gpu-grafana.raids-lab.cn/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
-      schedule: "https://gpu-grafana.raids-lab.cn/d/be9oh7yk24jy8f/crater-gpu-e8b083-e5baa6-e58f82-e88083"
-      network: "https://gpu-grafana.raids-lab.cn/d/8b7a8b326d7a6f1f04y7fh66368c67af/networking"
+      # -- Main overview dashboard URL
+      main: "/d/f33ade9f-821d-4e96-a7f2-eb16c8b9c447/838ffad"
+      # -- Schedule dashboard URL
+      schedule: "/d/be9oh7yk24jy8f/crater-gpu-e8b083-e5baa6-e58f82-e88083"
+      # -- Network dashboard URL
+      network: "/d/8b7a8b326d7a6f1f04y7fh66368c67af/networking"
     node:
-      basic: "https://gpu-grafana.raids-lab.cn/d/k8s_views_nodes/crater-node-basic-dashboard"
-      nvidia: "https://gpu-grafana.raids-lab.cn/d/nvidia-dcgm-dashboard/crater-node-nvidia-dashboard"
+      # -- Basic node dashboard URL
+      basic: "/d/k8s_views_nodes/crater-node-basic-dashboard"
+      # -- NVIDIA node dashboard URL
+      nvidia: "/d/nvidia-dcgm-dashboard/crater-node-nvidia-dashboard"
     job:
-      basic: "https://gpu-grafana.raids-lab.cn/d/R4ZPFfyIz/crater-job-basic-dashboard"
-      nvidia: "https://gpu-grafana.raids-lab.cn/d/2CDE0AC7/crater-job-nvidia-dashboard"
-      pod: "https://gpu-grafana.raids-lab.cn/d/MhnFUFLSz/crater-pod-dashboard"
+      # -- Basic job dashboard URL
+      basic: "/d/R4ZPFfyIz/crater-job-basic-dashboard"
+      # -- NVIDIA job dashboard URL
+      nvidia: "/d/2CDE0AC7/crater-job-nvidia-dashboard"
+      # -- Pod dashboard URL
+      pod: "/d/MhnFUFLSz/crater-pod-dashboard"
     user:
-      nvidia: "https://gpu-grafana.raids-lab.cn/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
-  featureFlags:
-    enableRegister: true
+      # -- User NVIDIA dashboard URL
+      nvidia: "/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
 
-# Backend configuration variables
+# -- Backend configuration
 backendConfig:
+  # -- Enable leader election for controller manager to ensure high availability
+  # Defaults to false if not specified
   enableLeaderElection: false
-  leaderElectionID: null
-  prometheusAPI: null
-  host: null
-  serverAddr: null
-  metricsAddr: null
-  probeAddr: null
-  postgres:
-    host: null
-    port: null
-    dbname: null
-    user: null
-    password: null
-    sslmode: null
-    TimeZone: null
-  auth:
-    accessTokenSecret: null
-    refreshTokenSecret: null
-  storage:
-    prefix:
-      user: null
-      account: null
-      public: null
-    rwxpvcName: null
-    roxpvcName: null
-  workspace:
-    namespace: null
-    imageNameSpace: null
-  secrets:
-    tlsSecretName: null
-    tlsForwardSecretName: null
-    imagePullSecretName: ""
-  imageRegistry:
-    server: null
-    user: null
-    password: null
-    project: null
-    admin: null
-    adminPassword: null
-  imageBuildTools:
-    backendProxyConfig:
-      <<: *proxyConfig
-    buildxImage: ""
-    nerdctlImage: null
-    envdImage: null
-  smtp:
-    host: null
-    port: null
-    user: null
-    password: null
-    notify: null
-  raidsLab:
-    ldap:
-      userName: null
-      password: null
-      address: null
-      searchDN: null
-    openAPI:
-      url: null
-      chameleonKey: null
-      accessToken: null
-    enable: false
-    uidServerURL: null
-  schedulerPlugins:
-    aijob:
-      enable: false
-      enableProfiling: true
-      profilingTimeout: 120
-    spjob:
-      enable: false
-      predictionServiceAddress: null
 
-# CronJob Config
+  # -- Network port that the server endpoint will listen on (Required)
+  # Must be specified for the server to start
+  port: :8088
+
+  # -- Endpoint URL for Prometheus API used for metrics and monitoring
+  # If not specified, Prometheus integration will be disabled
+  prometheusAPI: http://192.168.0.1:12345
+
+  # -- PostgreSQL database connection configuration (Required)
+  # All fields must be specified for database connectivity
+  postgres:
+    # -- PostgreSQL server hostname or IP address (Required)
+    # Must be reachable from the application
+    host: 192.168.0.1
+    # -- PostgreSQL server port number (Required)
+    # Typically 5432 for PostgreSQL
+    port: 6432
+    # -- Name of the database to connect to (Required)
+    # Database must exist and be accessible
+    dbname: crater
+    # -- Database username for authentication (Required)
+    # User must have appropriate permissions
+    user: postgres
+    # -- Database password for authentication (Required)
+    # Must match the specified user's password
+    password: <MASKED>
+    # -- SSL/TLS mode for database connection
+    # Defaults to "disable" if not specified
+    sslmode: disable
+    # -- Time zone for database connections
+    # Defaults to system time zone if not specified
+    TimeZone: Asia/Shanghai
+
+  # -- Authentication token configuration for JWT-based authentication (Required)
+  # Both token secrets must be specified for secure authentication
+  auth:
+    # -- Secret key used to sign JWT access tokens (Required)
+    # Must be a secure, randomly generated string
+    accessTokenSecret: <MASKED>
+    # -- Secret key used to sign JWT refresh tokens (Required)
+    # Must be a secure, randomly generated string
+    refreshTokenSecret: <MASKED>
+
+  # -- Persistent volume claim and path prefix configurations (Required)
+  # All PVC names and prefix paths must be specified
+  storage:
+    # -- Path prefixes for different types of storage locations (Required)
+    # All prefix paths must be specified
+    prefix:
+      # -- User prefix for user-specific storage paths (Required)
+      # Must be a valid path within the storage system
+      user: users
+      # -- Account prefix for account-related storage paths (Required)
+      # Must be a valid path within the storage system
+      account: accounts
+      # -- Public prefix for publicly accessible storage paths (Required)
+      # Must be a valid path within the storage system
+      public: public
+    pvc:
+      # -- Name of the ReadWriteMany Persistent Volume Claim for shared storage (Required)
+      # PVC must exist in the cluster with ReadWriteMany access mode
+      readWriteMany: crater-storage
+      # -- Name of the ReadOnlyMany Persistent Volume Claim for datasets and models
+      # It should be a link to the same underlying storage as ReadWriteMany
+      # If not specified, datasets and models will be mounted as read-write
+      readOnlyMany: crater-rox-storage
+
+  # -- Kubernetes secret names for various security components (Required)
+  # All secret names must correspond to existing Kubernetes secrets
+  secrets:
+    # -- Name of the Kubernetes secret containing TLS certificates for HTTPS (Required)
+    # Secret must contain 'tls.crt' and 'tls.key' keys
+    tlsSecretName: crater-tls-secret
+    # -- Name of the Kubernetes secret for TLS forwarding configuration (Required)
+    # Secret must contain appropriate forwarding certificates
+    tlsForwardSecretName: crater-tls-forward-secret
+    # -- Name of the Kubernetes secret for pulling container images from private registries
+    # If not specified, no image pull secret will be used
+    imagePullSecretName: ""
+
+  # -- Container registry configuration for image storage and building
+  # If Enable is false, registry functionality will be disabled
+  registry:
+    # -- Enable container registry integration
+    # Defaults to false if not specified
+    enable: true
+    # -- Configuration for Harbor container registry integration
+    # Required if Registry.Enable is true: All Harbor fields must be specified
+    harbor:
+      # -- Harbor registry server URL (Required)
+      # Must be a valid Harbor instance URL
+      server: harbor.example.com
+      # -- Admin username for Harbor authentication (Required)
+      # User must have appropriate permissions in Harbor
+      user: admin
+      # -- Admin password for Harbor authentication (Required)
+      # Must match the specified user's password
+      password: <MASKED>
+    # -- Configuration for container image building tools and proxies
+    # Required if Registry.Enable is true
+    buildTools:
+      # -- HTTP proxy settings for build environments
+      # If not specified, no proxy will be configured for builds
+      proxyConfig:
+        # -- HTTPS proxy URL for build environments
+        # If not specified, HTTPS traffic will not be proxied
+        httpsProxy: null
+        # -- HTTP proxy URL for build environments
+        # If not specified, HTTP traffic will not be proxied
+        httpProxy: null
+        # -- Comma-separated list of domains that should not be proxied
+        # If not specified, all traffic will go through the proxy
+        noProxy: null
+      # Container image references will be automatically populated from the top-level images section
+
+  # -- Configuration for email notifications via SMTP
+  # If Enable is false, email notifications will be disabled
+  smtp:
+    # -- Enable SMTP email functionality
+    # Defaults to false if not specified
+    enable: true
+    # -- SMTP server hostname or IP address (Required if Enable is true)
+    # Must be a valid SMTP server
+    host: mail.example.com
+    # -- SMTP server port number (Required if Enable is true)
+    # Typically 25, 465, or 587
+    port: 25
+    # -- Username for SMTP authentication (Required if Enable is true)
+    # Must be a valid SMTP user
+    user: example
+    # -- Password for SMTP authentication (Required if Enable is true)
+    # Must match the specified user's password
+    password: <MASKED>
+    # -- Default email address for system notifications (Required if Enable is true)
+    # Must be a valid email address
+    notify: example@example.com
+
+# -- Cronjob management strategy configuration
+# Job scheduling management strategies such as low utilization email reminders and cleanup, long-time usage email reminders and cleanup, etc.
 cronjobConfig:
-  USERNAME: "<MASKED>"
-  PASSWORD: "<MASKED>" # 密码已掩码
-  HOST: "gpu.raids-lab.cn"
+  # -- Job management tasks configuration
   jobs:
     lowGPUUtil:
+      # -- Schedule for low GPU utilization check
       schedule: "*/5 * * * *"
+      # -- Time range for monitoring (minutes)
       TIME_RANGE: "90"
+      # -- Wait time before action (minutes)
       WAIT_TIME: "30"
+      # -- GPU utilization threshold
       UTIL: "0"
     longTime:
+      # -- Schedule for long-time usage check
       schedule: "*/5 * * * *"
+      # -- Batch job maximum days
       BATCH_DAYS: "4"
+      # -- Interactive job maximum days
       INTERACTIVE_DAYS: "4"
     waitingJupyter:
+      # -- Schedule for waiting Jupyter check
       schedule: "*/5 * * * *"
+      # -- Jupyter wait time in minutes
       JUPYTER_WAIT_MINUTES: "5"
 
+# -- Image building pipeline configuration
+# Only fully available when you have self-hosted image registries like Harbor
+buildkitConfig:
+  # -- AMD architecture configuration
+  amdConfig:
+    # -- Enable AMD architecture builds
+    enabled: true
+    # -- Number of AMD build replicas
+    replicas: 3
+    # -- Cache configuration for AMD builds
+    cache:
+      # -- Storage class for AMD build cache
+      storageClass: "openebs-hostpath"
+      # -- Storage size for AMD build cache
+      storageSize: 400Gi
+      # -- Maximum used space for AMD build cache
+      maxUsedSpace: "400GB"
+      # -- Minimum free space for AMD build cache
+      minFreeSpace: "50GB"
+      # -- Reserved space for AMD build cache
+      reservedSpace: "50GB"
+  # -- ARM architecture configuration
+  armConfig:
+    # -- Enable ARM architecture builds (Can only be true when ARM nodes exist)
+    enabled: false
+    # -- Number of ARM build replicas
+    replicas: 2
+    # -- Cache configuration for ARM builds
+    cache:
+      # -- Storage class for ARM build cache
+      storageClass: "openebs-hostpath"
+      # -- Storage size for ARM build cache
+      storageSize: 80Gi
+      # -- Maximum used space for ARM build cache
+      maxUsedSpace: "80GB"
+      # -- Minimum free space for ARM build cache
+      minFreeSpace: "10GB"
+      # -- Reserved space for ARM build cache
+      reservedSpace: "10GB"
+  # -- General configuration for all architectures
+  generalConfig:
+    # -- Resource configuration
+    resources:
+      requests:
+        # -- CPU request
+        cpu: 8
+        # -- Memory request
+        memory: 24Gi
+      limits:
+        # -- CPU limit
+        cpu: 16
+        # -- Memory limit
+        memory: 48Gi
+
+# -- TLS certificate configuration for exposing services via Ingress
 # cert-manager configuration variables
 tls:
+  # -- Base certificate configuration (Standard mode, e.g., crater.example.com certificate)
   base:
-    enabled: false
-    cert: "<MASKED>" # 证书已掩码
-    key: "<MASKED>" # 私钥已掩码
+    # -- Whether to create base certificate
+    create: false
+    # -- Base certificate content (masked)
+    cert: "<MASKED>"
+    # -- Base certificate private key (masked)
+    key: "<MASKED>"
+  # -- Forward certificate configuration (Subdomain mode, e.g., xxx.crater.example.com certificate for exposing internal job services externally)
   forward:
-    enabled: false
-    cert: "<MASKED>" # 证书已掩码
-    key: "<MASKED>" # 私钥已掩码
-
-ssConfig:
-  content: "<MASKED>" # 敏感配置文件内容已掩码
-
-# pvc configuration variables
-storage:
-  create: false
-  request: 2Ti
-  storageClass: "rook-ceph-rbd"
-  rwName: "crater-rw-storage"
-  roName: "crater-ro-storage"
+    # -- Whether to create forward certificate
+    create: false
+    # -- Forward certificate content (masked)
+    cert: "<MASKED>"
+    # -- Forward certificate private key (masked)
+    key: "<MASKED>"

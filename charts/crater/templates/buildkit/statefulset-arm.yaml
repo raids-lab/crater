@@ -5,7 +5,7 @@ metadata:
   labels:
     app: buildkitd-arm
   name: buildkitd-arm
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.namespaces.image }}
 spec:
   serviceName: buildkitd-arm
   podManagementPolicy: Parallel
@@ -80,7 +80,7 @@ spec:
               memory: {{ .Values.buildkitConfig.generalConfig.resources.limits.memory }}
           env:
             - name: HTTPS_PROXY
-              value: {{ .Values.buildkitConfig.generalConfig.buildkitProxyConfig.httpsProxy }}
+              value: {{ .Values.backendConfig.registry.buildTools.proxyConfig.httpsProxy | quote }}
       volumes:
         - name: config
           configMap:
@@ -107,7 +107,7 @@ metadata:
   labels:
     app: buildkitd-arm
   name: buildkitd-arm
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.namespaces.image }}
 spec:
   ports:
     - port: 1234

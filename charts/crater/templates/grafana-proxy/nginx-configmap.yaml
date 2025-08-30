@@ -1,3 +1,4 @@
+{{- if .Values.grafanaProxy.enable }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -21,8 +22,8 @@ data:
         listen 80;
         server_name localhost;
         location / {
-          proxy_pass {{ .Values.web.grafana.address }};
-          proxy_set_header Authorization "{{ .Values.web.grafana.token }}";
+          proxy_pass {{ .Values.grafanaProxy.address }};
+          proxy_set_header Authorization "{{ .Values.grafanaProxy.token }}";
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -30,3 +31,4 @@ data:
         }
       }
     }
+{{- end }}

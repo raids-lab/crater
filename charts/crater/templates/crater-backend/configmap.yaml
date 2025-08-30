@@ -5,4 +5,4 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   config.yaml: |
-    {{ toYaml .Values.backendConfig | nindent 4 | trim }}
+{{ include "crater.backendConfig" . | nindent 4 }}

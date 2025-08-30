@@ -1,56 +1,79 @@
-# Crater 最小版本部署方案
+---
+title: 快速开始
+description: 部署 Crater 并使用
+---
 
 Crater 平台依赖 Kubernetes 集群进行运行，因此在部署前，需要准备一系列基础依赖组件。这些组件提供了监控、存储、网络、调度、镜像仓库等核心能力，确保平台能够正常启动与运行。
- 在最小化部署方案中，我们尽量只保留最核心、不可或缺的依赖，避免引入过多复杂性。最终确定的依赖包括：
 
-- **metrics-server**：用于收集节点和 Pod 的 CPU、内存等指标，支撑 HPA 等弹性伸缩能力。
+在最小化部署方案中，我们尽量只保留最核心、不可或缺的依赖，避免引入过多复杂性。最终确定的依赖包括：
+
 - **NVIDIA GPU Operator**：负责安装 GPU 驱动、设备插件和监控组件，确保 Crater 可以调度 GPU 任务。
-- **CloudNativePG (CNPG)**：提供高可用的 PostgreSQL 数据库服务，本方案中主要作为 Harbor 的外部数据库。
+- **Bitnami PostgreSQL**：不考虑高可用的 PostgreSQL 数据库服务，本方案中主要作为 Crater 的外部数据库。
 - **IngressClass (Ingress-Nginx)**：负责处理外部流量路由，将用户请求转发到集群内部服务。
 - **Volcano**：面向批处理和 AI 工作负载的调度框架，是 Crater 的作业调度核心。
 - **StorageClass (NFS)**：统一的分布式存储后端，为数据库和 Harbor 提供持久化存储能力。
-- **Harbor**：企业级镜像仓库，存放 Crater 前后端及依赖镜像，保证在离线/内网环境中也能顺利拉取。
 
 选择这些组件的原因在于：它们是 **Crater 平台最小可运行环境** 所需的关键支撑，没有它们，平台无法正常运作。而诸如 **Prometheus/Grafana 监控栈**、**MetalLB 负载均衡**、**OpenEBS 存储** 等功能更强但非必须的依赖，则被排除在最小版本之外，以降低部署门槛。
+
+## Installation
+
+### Install from GitHub Container Registry (Recommended)
+
+```bash
+# Add the Helm OCI repository
+helm registry login ghcr.io
+
+# Install the chart
+helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+
+# Or upgrade an existing installation
+helm upgrade crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+```
+
+### Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/raids-lab/crater.git
+cd crater/charts
+
+# Install the chart
+helm install crater crater/
+```
+
+## Configuration
+
+The chart can be configured using a values file. Create a `values.yaml` file with your specific configurations:
+
+```yaml
+# Example minimal configuration
+backendConfig:
+  postgres:
+    host: "your-postgres-host"
+    password: "your-password"
+  auth:
+    accessTokenSecret: "your-access-token-secret"
+    refreshTokenSecret: "your-refresh-token-secret"
+```
+
+Then install with your values:
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater --values values.yaml
+```
+
+如果想了解详细的配置含义，可以阅读 [配置说明](./chart.mdx)。
+
 
 ## 前置依赖部署
 
 | Component           | Purpose                          |
 | ------------------- | -------------------------------- |
-| metrics-server      | Metrics API for autoscaling      |
 | NVIDIA GPU Operator | GPU device plugin and monitoring |
-| CloudNativePG       | PostgreSQL database service      |
+| Bitnami PostgreSQL  | PostgreSQL database service      |
 | IngressClass        | Ingress traffic routing          |
 | Volcano             | Base job scheduling framework    |
 | StorageClass (NFS)  | Distributed storage backend      |
-| Harbor              | Container image registry         |
-
-### metrics-server
-
-metrics-server 是 Kubernetes 官方推荐的监控组件，主要收集节点和 Pod 的资源使用情况。虽然 Crater 本身不直接依赖，但 Kubernetes 的自动扩缩容机制（HPA、VPA）需要它才能工作。因此即便在最小部署版本中，仍然建议安装 metrics-server，以保证集群基本的可观测性。
-
-直接添加官方 Helm 仓库并安装：
-
-```bash
-# 添加 Helm 仓库
-helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
-helm repo add nvidia https://nvidia.github.io/gpu-operator
-
-# 更新本地仓库索引
-helm repo update
-```
-
-metrics-server 安装完成后验证可以执行 `top` 命令：
-
-```bash
-root@lxw-01:~# kubectl top node
-NAME     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
-lxw-01   139m         0%     2975Mi          4%        
-lxw-02   27m          0%     2907Mi          4%        
-lxw-03   32m          0%     4023Mi          6%        
-lxw-04   27m          0%     2477Mi          3%        
-lxw-05   16m          0%     2204Mi          3%       
-```
 
 ### IngressClass
 
@@ -318,86 +341,3 @@ Harbor 使用上面的 **NFS** 存储和 **CNPG 外部数据库**。
 
    默认用户：`admin`
     默认密码：在 `values.yaml` 中设置的 `harborAdminPassword`。
-
-## 最小版本部署 Helm value
-
-最小版本 `values.yaml` 的目标是：在**无域名、内网镜像仓库、NFS 存储、CNPG 外部数据库**的前提下，尽快把 Crater 跑起来。核心项含义如下：
-
-- `createNamespace`: 是否由 Chart 帮你创建命名空间。最小版通常在外部用 `kubectl create ns` 或 `--create-namespace` 控制，因此这里为 `false`。
-- `images.*`: 前后端镜像仓库与版本。使用了 Harbor 内网仓库以及确定性的 `sha256`（可避免 tag 漂移）。
-- `urls.host`: 集群对外访问入口（无域名时直接用节点 IP）。用于前端构建 URL、后端 Ingress 等。
-- `web.migrate.*`: 首次部署是否创建迁移 Job，以及后台管理员初始账密。
-- `web.ingress.host`: Ingress 对外主机名。最小版与 `urls.host` 一致（无域名）。
-- `frontendConfig.*`: 前端的运行时配置（API 地址、是否开放注册、对外站点链接等）。
-- `backendConfig.postgres.*`: 后端数据库连接。最小版接 CNPG 暴露的 RW 服务。
-- `backendConfig.auth.*`: 令牌密钥（access/refresh）。最小版先跑通，后续再旋转密钥。
-- `backendConfig.secrets.tlsSecretName`: 如不启用 TLS，为空即可。
-- `storage.*`: 读写与只读 PVC 的创建与绑定参数；最小版用 `nfs-client` 的 StorageClass。
-
-### 现状问题：模板未设默认值导致渲染/安装报错
-
-最小部署时经常会遇到 Helm 报错，是因为当前 **模板直接取字段而未加 `default` 或 `required`**（后续修复）：
-
-**空指针/不存在字段**
-
-- `executing "xxx.tmpl" at <.Values.web.ingress.host>: nil pointer evaluating interface {}.host`
-- `map has no entry for key "apiBase"` / `can't evaluate field apiBase in type interface {}`
-
-最小版本部署 Values.yaml 参考：
-
-
-```yaml
-createNamespace: false
-
-images:
-  backend:
-    repository: "crater-harbor.act.buaa.edu.cn/crater/web-backend"
-    tag: "sha256:775132295a70f97d6e8288adb83e03453a7a4df726084c9ccbbc5fe022b2eef2"
-  frontend:
-    repository: "crater-harbor.act.buaa.edu.cn/crater/web-frontend"
-    tag: "sha256:0503da66cb4438388c88483ba99b9eea0cf2ee70effc67e825c670ddfcc2cc63"
-
-urls:
-  host: "192.168.103.136"  # 节点IP，无域名时用IP
-
-web:
-  migrate:
-    createMigrationJob: true
-    admin:
-      username: "admin"
-      password: "admin"
-  ingress:
-    host: "192.168.103.136"  # 与urls.host一致
-
-frontendConfig:
-  version: "1.0.0"
-  url:
-    host: "192.168.103.136"
-    apiBase: "http://192.168.103.136/api/"
-    apiVersion: "v1"
-    websiteBase: "https://raids-lab.github.io/crater/cn"
-  featureFlags:
-    enableRegister: false
-
-backendConfig:
-  postgres:
-    host: harbor-pg-rw.cnpg-system.svc.cluster.local
-    port: 5432
-    dbname: registry
-    user: harbor
-    password: HarborDbPass!
-    sslmode: disable
-    TimeZone: Asia/Shanghai
-  auth:
-    accessTokenSecret: "admin"
-    refreshTokenSecret: "admin"
-  secrets:
-    tlsSecretName: "" # 不启用 TLS 可留空
-
-storage:
-  create: true
-  request: 100Gi
-  storageClass: "nfs-client"
-  rwName: "crater-rw-storage"
-  roName: "crater-ro-storage"
-```

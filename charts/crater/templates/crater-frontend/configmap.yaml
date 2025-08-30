@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: crater-web-frontend-config
+  name: crater-frontend-config
   namespace: {{ .Release.Namespace }}
   labels:
-    app: crater-web-frontend
+    app: crater-frontend
 data:
   config.json: |-
-    {{ .Values.frontendConfig | toJson }}
+    {{ include "crater.frontendConfig" . }}
