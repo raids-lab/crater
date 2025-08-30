@@ -257,7 +257,7 @@ func (p *PrometheusClient) QueryNodeRunningPodCount() map[string]int {
 	query := fmt.Sprintf(`count by (node) (
 	    kube_pod_status_phase{phase="Running"} * 
 		on(pod) group_left(node, created_by_kind) kube_pod_info{namespace=%q, created_by_kind=~".*Job.*"} == 1
-	)`, config.GetConfig().Workspace.Namespace)
+	)`, config.GetConfig().Namespaces.Job)
 	data, err := p.intMapQuery(query, "node")
 	if err != nil {
 		klog.Errorf("QueryNodeRunningPodCount error: %v", err)
@@ -353,7 +353,7 @@ func (p *PrometheusClient) QueryNodeGPUUtilInNS(namespace string) []NodeGPUUtil 
 }
 
 func (p *PrometheusClient) GetJobPodsList() map[string][]string {
-	query := fmt.Sprintf(`kube_pod_info{namespace=%q,created_by_kind="Job"}`, config.GetConfig().Workspace.Namespace)
+	query := fmt.Sprintf(`kube_pod_info{namespace=%q,created_by_kind="Job"}`, config.GetConfig().Namespaces.Job)
 	data, err := p.getJobPods(query)
 	if err != nil {
 		klog.Errorf("GetJobPodsList error: %v", err)

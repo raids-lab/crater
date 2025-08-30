@@ -201,7 +201,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 	shouldDeleteJob := false
 
 	job := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	if err := mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, job); err != nil {
 		if errors.IsNotFound(err) {
 			shouldDeleteRecord = true

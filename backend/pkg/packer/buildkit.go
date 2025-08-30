@@ -78,7 +78,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	// 判断archs字符串是否包含arm
 	appendArmCmd := ""
 	if strings.Contains(archs, "arm") {
-		buildkitdArmNameSpace := fmt.Sprintf("%s.%s", buildkitdArmName, config.GetConfig().Workspace.ImageNamespace)
+		buildkitdArmNameSpace := fmt.Sprintf("%s.%s", buildkitdArmName, config.GetConfig().Namespaces.Image)
 		appendArmCmd = fmt.Sprintf(`docker buildx create \
 		--name multi-platform-builder \
 		--append \
@@ -87,7 +87,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 		`, buildkitdArmNameSpace)
 	}
 
-	buildkitdAmdNameSpace := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Workspace.ImageNamespace)
+	buildkitdAmdNameSpace := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Namespaces.Image)
 	// 构建完整的命令
 	cmd := fmt.Sprintf(`
 		docker buildx create \
@@ -107,7 +107,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 	buildkitContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().ImageBuildTools.BuildxImage,
+			Image: config.GetConfig().Registry.BuildTools.Images.Buildx,
 			Args:  setupCommands,
 			Env: []corev1.EnvVar{
 				{

@@ -10,7 +10,6 @@ import (
 	docs "github.com/raids-lab/crater/docs"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/middleware"
-	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/constants"
 )
 
@@ -33,11 +32,7 @@ func Register(registerConfig *handler.RegisterConfig) *Backend {
 
 	// Swagger
 	// todo: DisablingWrapHandler https://github.com/swaggo/gin-swagger/blob/master/swagger.go#L205
-	if config.IsDebugMode() {
-		docs.SwaggerInfo.BasePath = "/"
-	} else {
-		docs.SwaggerInfo.BasePath = "/api"
-	}
+	docs.SwaggerInfo.BasePath = "/api"
 
 	s.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

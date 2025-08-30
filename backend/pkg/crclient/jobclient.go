@@ -269,7 +269,7 @@ func GenVolumeAndMountsFromAITask(task *model.AITask) ([]v1.Volume, []v1.VolumeM
 			Name: "personal-volume",
 			VolumeSource: v1.VolumeSource{
 				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-					ClaimName: config.GetConfig().Storage.RWXPVCName,
+					ClaimName: config.GetConfig().Storage.PVC.ReadWriteMany,
 				},
 			},
 		},

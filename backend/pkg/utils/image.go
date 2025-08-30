@@ -41,7 +41,7 @@ func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
 }
 
 func GenerateNewImageLinkForEnvdBuild(username, python, base, imageName, imageTag string) (newImageLink string, err error) {
-	registryServer := config.GetConfig().ImageRegistry.Server
+	registryServer := config.GetConfig().Registry.Harbor.Server
 	registryProject := fmt.Sprintf("user-%s", username)
 	if imageName == "" {
 		imageName = "envd"
@@ -58,7 +58,7 @@ func GenerateNewImageLinkForEnvdBuild(username, python, base, imageName, imageTa
 }
 
 func GenerateNewImageLinkForDockerfileBuild(imageLink, username, imageName, imageTag string) (newImageLink string, err error) {
-	registryServer := config.GetConfig().ImageRegistry.Server
+	registryServer := config.GetConfig().Registry.Harbor.Server
 	registryProject := fmt.Sprintf("user-%s", username)
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	if imageName == "" {

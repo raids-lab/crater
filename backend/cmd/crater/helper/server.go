@@ -62,7 +62,7 @@ func (sr *ServerRunner) StartServer(registerConfig *handler.RegisterConfig) {
 
 	// reference: https://gin-gonic.com/en/docs/examples/graceful-restart-or-stop
 	srv := &http.Server{
-		Addr:              sr.backendConfig.ServerAddr,
+		Addr:              sr.backendConfig.Port,
 		Handler:           backend,
 		ReadHeaderTimeout: readHeaderTimeout,
 	}

@@ -1,5 +1,20 @@
-KUBECONFIG_PATH := ${PWD}/kubeconfig
+KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
 CONFIG_FILE := ./etc/debug-config.yaml
+
+# 颜色定义
+RED := \033[31m
+GREEN := \033[32m
+YELLOW := \033[33m
+BLUE := \033[34m
+MAGENTA := \033[35m
+CYAN := \033[36m
+WHITE := \033[37m
+RESET := \033[0m
+
+ifeq ($(wildcard $(KUBECONFIG_PATH)),)
+$(warning KUBECONFIG file not found at: $(KUBECONFIG_PATH))
+$(warning Please ensure the kubeconfig file exists or set KUBECONFIG environment variable)
+endif
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
@@ -34,75 +49,101 @@ endef
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: setup
-setup: pre-commit golangci-lint goimports swaggo ## Setup development environment with all tools and hooks.
-	@echo "Development environment setup completed!"
+.PHONY: show-kubeconfig
+show-kubeconfig: ## Display current KUBECONFIG path
+	@echo "$(CYAN)KUBECONFIG environment variable:$(RESET) $(if $(KUBECONFIG),$(KUBECONFIG),$(YELLOW)Not set$(RESET))"
+	@echo "$(CYAN)Using KUBECONFIG path:$(RESET) $(KUBECONFIG_PATH)"
+	@if [ -f "$(KUBECONFIG_PATH)" ]; then \
+		echo "$(GREEN)✅ KUBECONFIG file exists$(RESET)"; \
+	else \
+		echo "$(RED)❌ KUBECONFIG file does NOT exist$(RESET)"; \
+	fi
+
+.PHONY: prepare
+prepare: ## Prepare development environment with updated configs
+	@echo "$(BLUE)Preparing development environment...$(RESET)"
+	@if [ ! -f .debug.env ]; then \
+		echo "$(YELLOW)Creating .debug.env file...$(RESET)"; \
+		echo 'CRATER_BE_PORT=:8088' > .debug.env; \
+		echo "$(GREEN)✅ .debug.env created successfully!$(RESET)"; \
+	else \
+		echo "$(GREEN)✅ .debug.env already exists$(RESET)"; \
+	fi
 
 ##@ Development
 
 .PHONY: fmt
 fmt:
-	@echo "Formatting code..."
+	@echo "$(BLUE)Formatting code...$(RESET)"
 	go fmt ./...
 
 .PHONY: vet
 vet: fmt ## Run go vet.
-	@echo "Running go vet..."
+	@echo "$(BLUE)Running go vet...$(RESET)"
 	go vet ./...
 
 .PHONY: imports
 imports: goimports ## Run goimports on all go files.
-	@echo "Running goimports..."
+	@echo "$(BLUE)Running goimports...$(RESET)"
 	$(GOIMPORTS) -w -local github.com/raids-lab/crater .
 
 # if $(GOIMPORTS) -l -local github.com/raids-lab/crater .go, then error
 .PHONY: import-check
 import-check: goimports ## Check if goimports is needed.
-	@echo "Running goimports..."
+	@echo "$(BLUE)Checking imports...$(RESET)"
 	@if [ -n "$$($(GOIMPORTS) -l -local github.com/raids-lab/crater .)" ]; then \
-		echo "goimports needs to be run, please run 'make imports'"; \
+		echo "$(RED)❌ goimports needs to be run, please run 'make imports'$(RESET)"; \
 		exit 1; \
+	else \
+		echo "$(GREEN)✅ Imports are properly formatted$(RESET)"; \
 	fi
 
 .PHONY: lint
 lint: fmt imports import-check golangci-lint ## Lint go files.
-	@echo "Linting go files..."
+	@echo "$(BLUE)Linting go files...$(RESET)"
 	$(GOLANGCI_LINT) run --timeout 5m
 
 .PHONY: curd
 curd: ## Generate Gorm CURD code.
-	@echo "Generating CURD code..."
+	@echo "$(MAGENTA)Generating CURD code...$(RESET)"
 	go run cmd/gorm-gen/curd/generate.go
+	@echo "$(GREEN)✅ CURD code generated successfully$(RESET)"
 
 .PHONY: migrate
 migrate: ## Migrate database.
-	@echo "Migrating database..."
+	@echo "$(MAGENTA)Migrating database...$(RESET)"
 	go run cmd/gorm-gen/models/migrate.go
+	@echo "$(GREEN)✅ Database migration completed$(RESET)"
 
 .PHONY: docs
 docs: swaggo ## Generate docs docs.
-	@echo "Generating swagger docs..."
+	@echo "$(MAGENTA)Generating swagger docs...$(RESET)"
 	$(SWAGGO) init -g cmd/crater/main.go -q --parseInternal --parseDependency
+	@echo "$(GREEN)✅ Swagger docs generated$(RESET)"
 
 .PHONY: run
-run: fmt docs imports pre-commit ## Run a controller from your host.
-	export KUBECONFIG="$(KUBECONFIG_PATH)" && \
-	go run cmd/crater/main.go --config-file "$(CONFIG_FILE)"
+run: prepare show-kubeconfig fmt docs imports pre-commit ## Run a controller from your host.
+	@echo "$(GREEN)🚀 Starting crater backend server...$(RESET)"
+	KUBECONFIG="$(KUBECONFIG_PATH)" go run cmd/crater/main.go
 
 .PHONY: pre-commit-check
 pre-commit-check: pre-commit ## Run pre-commit hook manually.
-	@echo "Running pre-commit hook..."
-	@$(GIT_HOOKS_DIR)/pre-commit && echo "Pre-commit hook completed successfully! You can now commit with confidence." || echo "Pre-commit hook failed! Please fix the issues and try again."
+	@echo "$(BLUE)Running pre-commit hook...$(RESET)"
+	@$(GIT_HOOKS_DIR)/pre-commit && echo "$(GREEN)✅ Pre-commit hook completed successfully! You can now commit with confidence.$(RESET)" || echo "$(RED)❌ Pre-commit hook failed! Please fix the issues and try again.$(RESET)"
 
 ##@ Build
 
 .PHONY: build
 build: fmt lint docs ## Build manager binary.
+	@echo "$(YELLOW)🔨 Building controller binary...$(RESET)"
 	go build -ldflags="-w -s" -o bin/controller cmd/crater/main.go
+	@echo "$(GREEN)✅ Controller binary built successfully: bin/controller$(RESET)"
 
 .PHONY: build-migrate
 build-migrate: fmt lint ## Build migration binary.
+	@echo "$(YELLOW)🔨 Building migration binary...$(RESET)"
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/migrate cmd/gorm-gen/models/migrate.go
+	@echo "$(GREEN)✅ Migration binary built successfully: bin/migrate$(RESET)"
 
 ##@ Development Tools
 

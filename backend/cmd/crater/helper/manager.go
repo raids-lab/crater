@@ -52,16 +52,11 @@ func (ms *ManagerSetup) CreateCRDManager() (manager.Manager, error) {
 	options := ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress: ms.backendConfig.MetricsAddr,
+			BindAddress: "0",
 		},
-		HealthProbeBindAddress: ms.backendConfig.ProbeAddr,
+		HealthProbeBindAddress: "0",
 		LeaderElection:         ms.backendConfig.EnableLeaderElection,
-		LeaderElectionID:       "0566f233.raids-lab.github.io",
-	}
-
-	if config.IsDebugMode() {
-		options.Metrics.BindAddress = "0"    // Disable metrics in debug mode
-		options.HealthProbeBindAddress = "0" // Disable health probes in debug mode
+		LeaderElectionID:       "0566f233.crater.raids-lab.github.io",
 	}
 
 	mgr, err := ctrl.NewManager(ms.kubeConfig, options)

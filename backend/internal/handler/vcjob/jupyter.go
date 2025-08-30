@@ -199,7 +199,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
-			Namespace:   config.GetConfig().Workspace.Namespace,
+			Namespace:   config.GetConfig().Namespaces.Job,
 			Labels:      labels,
 			Annotations: jobAnnotations,
 		},
@@ -324,7 +324,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	}
 
 	vcjob := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	if err = mgr.client.Get(c, client.ObjectKey{Name: req.JobName, Namespace: namespace}, vcjob); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return

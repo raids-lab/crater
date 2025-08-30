@@ -10,10 +10,7 @@ import (
 )
 
 type AuthInfo struct {
-	RegistryServer  string
-	RegistryUser    string
-	RegistryPass    string
-	RegistryProject string
+	RegistryServer string
 }
 
 type HarborClient struct {
@@ -22,22 +19,19 @@ type HarborClient struct {
 }
 
 func NewHarborClient() HarborClient {
-	harborConfig := config.GetConfig().ImageRegistry
+	harborConfig := config.GetConfig().Registry.Harbor
 	HarborAPIServer := fmt.Sprintf("https://%s/api/", harborConfig.Server)
 	restClient, err := haborapiv2.NewRESTClientForHost(
 		HarborAPIServer,
-		harborConfig.Admin,
-		harborConfig.AdminPassword,
+		harborConfig.User,
+		harborConfig.Password,
 		nil,
 	)
 	if err != nil {
 		klog.Errorf("establish harbor client failed, err: %+v", err)
 	}
 	authInfo := AuthInfo{
-		RegistryServer:  harborConfig.Server,
-		RegistryUser:    harborConfig.User,
-		RegistryPass:    harborConfig.Password,
-		RegistryProject: harborConfig.Project,
+		RegistryServer: harborConfig.Server,
 	}
 	return HarborClient{*restClient, authInfo}
 }

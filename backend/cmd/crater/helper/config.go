@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,7 @@ func (ci *ConfigInitializer) GetBackendConfig() *config.Config {
 
 // LoadDebugEnvironment 加载调试环境变量
 func (ci *ConfigInitializer) LoadDebugEnvironment() error {
-	if gin.Mode() != gin.DebugMode {
+	if !gin.IsDebugging() {
 		return nil
 	}
 
@@ -45,10 +46,14 @@ func (ci *ConfigInitializer) LoadDebugEnvironment() error {
 
 	be := os.Getenv("CRATER_BE_PORT")
 	if be == "" {
-		panic("CRATER_BE_PORT is not set")
+		return fmt.Errorf("CRATER_BE_PORT is not set in .debug.env")
 	}
 
-	ci.backendConfig.ServerAddr = ":" + be
+	if be[0] == ':' {
+		ci.backendConfig.Port = be
+	} else {
+		ci.backendConfig.Port = ":" + be
+	}
 
 	return nil
 }

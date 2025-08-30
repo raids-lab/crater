@@ -38,7 +38,7 @@ type AuthMgr struct {
 	name     string
 	client   *http.Client
 	req      *imrocreq.Client
-	openAPI  config.ACTOpenAPI
+	openAPI  config.RaidsLabOpenAPI
 	tokenMgr *util.TokenManager
 }
 

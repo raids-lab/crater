@@ -35,7 +35,7 @@ func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {
 
 func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
-	buildkitdAmdNameSpace := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Workspace.ImageNamespace)
+	buildkitdService := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Namespaces.Image)
 	backendHost := config.GetConfig().Host
 	// 构建完整的命令，先创建context，再执行build
 	cmd := fmt.Sprintf(`
@@ -45,7 +45,7 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
                 --builder-address %s:1234 \
                 --use && \
                 envd build --platform linux/amd64 --output %s
-        `, buildkitdAmdNameSpace, output)
+        `, buildkitdService, output)
 
 	setupCommands := []string{
 		"/bin/sh",
@@ -59,17 +59,17 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 		},
 		{
 			Name:  "NO_PROXY",
-			Value: fmt.Sprintf("$(NO_PROXY),%s,%s", buildkitdAmdNameSpace, backendHost),
+			Value: fmt.Sprintf("$(NO_PROXY),%s,%s", buildkitdService, backendHost),
 		},
 	}
-	httpsProxy := config.GetConfig().ImageBuildTools.BackendProxyConfig.HTTPSProxy
+	httpsProxy := config.GetConfig().Registry.BuildTools.ProxyConfig.HTTPSProxy
 	if httpsProxy != "" {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "HTTPS_PROXY",
 			Value: httpsProxy,
 		})
 	}
-	httpProxy := config.GetConfig().ImageBuildTools.BackendProxyConfig.HTTPProxy
+	httpProxy := config.GetConfig().Registry.BuildTools.ProxyConfig.HTTPProxy
 	if httpProxy != "" {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "HTTP_PROXY",
@@ -79,7 +79,7 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	envdContainer := []corev1.Container{
 		{
 			Name:  "buildkit",
-			Image: config.GetConfig().ImageBuildTools.EnvdImage,
+			Image: config.GetConfig().Registry.BuildTools.Images.Envd,
 			Args:  setupCommands,
 			Env:   envVars,
 			VolumeMounts: []corev1.VolumeMount{
