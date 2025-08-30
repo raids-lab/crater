@@ -1,4 +1,4 @@
-# ![crater](./crater-website/content/docs/admin/deployment/assets/icon.webp) Crater
+# ![crater](./crater-website/content/docs/admin/assets/icon.webp) Crater
 
 <table>
   <tr>
