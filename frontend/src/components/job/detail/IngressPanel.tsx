@@ -15,7 +15,6 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { ExternalLink, Plus, Trash2 } from 'lucide-react'
 import { GridIcon } from 'lucide-react'
 import { useState } from 'react'
@@ -56,8 +55,6 @@ import {
 import { apiCreatePodIngress, apiDeletePodIngress, apiGetPodIngresses } from '@/services/api/tool'
 import { PodIngressMgr } from '@/services/api/tool'
 
-import { configUrlHostAtom } from '@/utils/store/config'
-
 const ingressFormSchema = z.object({
   name: z
     .string()
@@ -76,7 +73,7 @@ interface IngressPanelProps {
 
 export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false)
-  const host = useAtomValue(configUrlHostAtom)
+  const host = window.location.host
 
   const ingressForm = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),

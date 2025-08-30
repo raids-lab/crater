@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { atom, createStore } from 'jotai'
+import { atom } from 'jotai'
 import { atomWithStorage, useResetAtom } from 'jotai/utils'
 
 import { IUserAttributes } from '@/services/api/admin/user'
 import { IUserContext } from '@/services/api/auth'
-
-export const store = createStore()
 
 /**
  * LocalStorage and Jotai Keys

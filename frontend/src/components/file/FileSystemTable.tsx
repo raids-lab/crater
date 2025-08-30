@@ -76,7 +76,7 @@ import useIsAdmin from '@/hooks/use-admin'
 
 import { atomBreadcrumb, atomUserContext } from '@/utils/store'
 import { ACCESS_TOKEN_KEY } from '@/utils/store'
-import { configUrlApiBaseAtom } from '@/utils/store/config'
+import { configAPIPrefixAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
@@ -116,7 +116,7 @@ interface SpacefileTableProps {
 }
 
 const FileActions = ({
-  apiBaseURL,
+  apiPrefix,
   deleteFile,
   moveFile,
   isDir,
@@ -124,7 +124,7 @@ const FileActions = ({
   path,
   canEdit,
 }: {
-  apiBaseURL: string
+  apiPrefix: string
   deleteFile: (path: string) => void
   moveFile: ({ fileData, path }: { fileData: MoveFile; path: string }) => void
   isDir: boolean
@@ -143,7 +143,7 @@ const FileActions = ({
           className="size-8 p-0 hover:text-sky-700"
           tooltipContent={t('fileActions.download.tooltip')}
           onClick={() => {
-            const baseUrl = new URL(apiBaseURL)
+            const baseUrl = new URL(apiPrefix)
             const fullPath = `ss/download${path ? (path.startsWith('/') ? path : '/' + path) : ''}/${name}`
             const url = new URL(fullPath, baseUrl)
             const link = url.toString()
@@ -302,7 +302,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   const navigate = useNavigate()
   const [dirName, setDirName] = useState<string>('')
   const setBreadcrumb = useSetAtom(atomBreadcrumb)
-  const apiBaseURL = useAtomValue(configUrlApiBaseAtom)
+  const apiPrefix = useAtomValue(configAPIPrefixAtom)
   const isAdmin = useIsAdmin()
   const router = useRouter()
 
@@ -569,7 +569,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
 
           return (
             <FileActions
-              apiBaseURL={apiBaseURL}
+              apiPrefix={apiPrefix}
               deleteFile={deleteFile}
               moveFile={moveFile}
               isDir={isdir}
@@ -581,7 +581,7 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
         },
       },
     ]
-  }, [apiBaseURL, deleteFile, moveFile, path, canEdit, t])
+  }, [apiPrefix, deleteFile, moveFile, path, canEdit, t])
 
   const nameColumn = useMemo<ColumnDef<FileItem>[]>(() => {
     return [

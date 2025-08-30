@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { getDefaultStore } from 'jotai'
+
 import { apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
-import { globalSettings, store } from '@/utils/store'
+import { globalSettings } from '@/utils/store'
 
 import { IResponse } from '../types'
 import { IUserAttributes } from './admin/user'
@@ -39,6 +41,7 @@ export interface QuotaResp {
   gpus: ResourceResp[]
 }
 
+const store = getDefaultStore()
 const { scheduler } = store.get(globalSettings)
 
 export const apiContextQuota = () => {

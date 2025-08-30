@@ -15,7 +15,6 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { Provider as JotaiProvider } from 'jotai'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 
@@ -25,7 +24,7 @@ import App from './app'
 import './i18n'
 import './index.css'
 import { logger } from './utils/loglevel'
-import { VITE_UI_THEME_KEY, store } from './utils/store'
+import { VITE_UI_THEME_KEY } from './utils/store'
 import { ThemeProvider } from './utils/theme'
 
 // TypeError: Failed to fetch dynamically imported module
@@ -61,18 +60,16 @@ enableMocking()
   .then(() => {
     ReactDOM.createRoot(document.getElementById('root')!).render(
       <React.StrictMode>
-        <JotaiProvider store={store}>
-          <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
-            <QueryClientProvider client={queryClient}>
-              <App queryClient={queryClient} />
-              <Toaster richColors closeButton />
-              {import.meta.env.MODE === 'development' &&
-                import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
-                  <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
-                )}
-            </QueryClientProvider>
-          </ThemeProvider>
-        </JotaiProvider>
+        <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
+          <QueryClientProvider client={queryClient}>
+            <App queryClient={queryClient} />
+            <Toaster richColors closeButton />
+            {import.meta.env.MODE === 'development' &&
+              import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
+                <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
+              )}
+          </QueryClientProvider>
+        </ThemeProvider>
       </React.StrictMode>
     )
   })

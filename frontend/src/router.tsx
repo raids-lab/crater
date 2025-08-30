@@ -9,6 +9,7 @@ export const router = createRouter({
     // will be passed down from App component
     auth: undefined!,
     queryClient: undefined!,
+    store: undefined!,
   },
 })
 

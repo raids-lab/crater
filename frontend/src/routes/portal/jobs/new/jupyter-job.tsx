@@ -67,7 +67,6 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
-import { configFeatureFlags } from '@/utils/store/config'
 
 export const Route = createFileRoute('/portal/jobs/new/jupyter-job')({
   validateSearch: publishValidateSearch,
@@ -128,7 +127,6 @@ function RouteComponent() {
   const [otherOpen, setOtherOpen] = useState(true)
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
-  const flags = useAtomValue(configFeatureFlags)
   const router = useRouter()
 
   const { mutate: createTask, isPending } = useMutation({
@@ -207,7 +205,6 @@ function RouteComponent() {
       return
     }
     if (
-      flags.alertLowCPURequest &&
       values.task.resource.gpu.count > 0 &&
       values.task.resource.cpu <= 2 &&
       values.task.resource.memory <= 4

@@ -25,7 +25,7 @@ import { Card } from '@/components/ui/card'
 import { ContainerInfo } from '@/services/api/tool'
 
 import { REFRESH_TOKEN_KEY } from '@/utils/store'
-import { configUrlApiBaseAtom, configVersionAtom } from '@/utils/store/config'
+import { configAPIPrefixAtom } from '@/utils/store/config'
 
 import {
   PodContainerDialog,
@@ -34,20 +34,14 @@ import {
 } from './PodContainerDialog'
 
 const buildWebSocketUrl = (
-  apiBaseUrl: string,
-  version: string,
+  apiPrefix: string,
   namespace: string,
   podName: string,
   containerName: string
 ) => {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
   const token = localStorage.getItem(REFRESH_TOKEN_KEY) || ''
-  const url = new URL(apiBaseUrl)
-  url.protocol = protocol
-  url.pathname =
-    url.pathname +
-    `${version}/namespaces/${namespace}/pods/${podName}/containers/${containerName}/terminal`
-  return url.toString() + `?token=${token}`
+  return `${protocol}://${window.location.host}${apiPrefix}/websocket/namespaces/${namespace}/pods/${podName}/containers/${containerName}/terminal?token=${token}`
 }
 
 // 发送终端大小变更消息
@@ -80,9 +74,7 @@ function TerminalCard({
   namespacedName: PodNamespacedName
   selectedContainer: ContainerInfo
 }) {
-  const apiBaseUrl = useAtomValue(configUrlApiBaseAtom)
-  const version = useAtomValue(configVersionAtom)
-
+  const apiPrefix = useAtomValue(configAPIPrefixAtom)
   const terminalRef = useRef<Terminal | null>(null)
   const xtermRef = useRef<HTMLDivElement>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -94,9 +86,6 @@ function TerminalCard({
   }, 300)
 
   useEffect(() => {
-    if (!apiBaseUrl || !version) {
-      return
-    }
     if (!selectedContainer.state.running || !xtermRef.current) {
       return
     }
@@ -119,8 +108,7 @@ function TerminalCard({
     fitAddon.fit() // 调整终端大小
 
     const wsUrl = buildWebSocketUrl(
-      apiBaseUrl,
-      version,
+      apiPrefix,
       namespacedName.namespace,
       namespacedName.name,
       selectedContainer.name
@@ -181,7 +169,7 @@ function TerminalCard({
       ws.close()
       terminal.dispose()
     }
-  }, [namespacedName, selectedContainer, debouncedSendResize, apiBaseUrl, version])
+  }, [namespacedName, selectedContainer, apiPrefix, debouncedSendResize])
 
   return (
     <Card className="overflow-hidden rounded-md bg-black p-1 md:col-span-2 xl:col-span-3 dark:border">

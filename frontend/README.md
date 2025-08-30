@@ -65,8 +65,13 @@ pnpm install
 Create `.env.development` with:
 
 ```env
-VITE_SERVER_PROXY_DOMAIN="http://localhost:8098/"
+VITE_SERVER_PROXY_BACKEND="http://localhost:8092/"
+VITE_SERVER_PROXY_STORAGE="http://localhost:7320/"
+
 VITE_USE_MSW=false  # Enable API mocking
+VITE_TANSTACK_QUERY_DEVTOOLS=true  # Enable React Query DevTools
+VITE_TANSTACK_ROUTER_DEVTOOLS=true  # Enable React Router DevTools
+
 PORT=5180           # Dev server port
 ```
 

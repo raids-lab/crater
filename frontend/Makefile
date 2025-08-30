@@ -32,7 +32,7 @@ prepare: ## 🔧 Prepare development environment with updated configs
 	@echo "$(BLUE)Preparing development environment...$(RESET)"
 	@if [ ! -f .env.development ]; then \
 		echo "$(YELLOW)Creating .env.development file...$(RESET)"; \
-		echo 'VITE_SERVER_PROXY_DOMAIN="http://localhost:8092/"' > .env.development; \
+		echo 'VITE_SERVER_PROXY_BACKEND="http://localhost:8092/"' > .env.development; \
 		echo 'VITE_SERVER_PROXY_STORAGE="http://localhost:7320/"' >> .env.development; \
 		echo 'VITE_USE_MSW=false  # Enable API mocking' >> .env.development; \
 		echo 'VITE_TANSTACK_QUERY_DEVTOOLS=true  # Enable React Query DevTools' >> .env.development; \
