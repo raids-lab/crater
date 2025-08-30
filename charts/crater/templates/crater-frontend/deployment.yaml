@@ -2,32 +2,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: crater-web-frontend
+  name: crater-frontend
   namespace: {{ .Release.Namespace }}
   labels:
-    app: crater-web-frontend
-  annotations:
-    checksum/config: {{ include (print $.Template.BasePath "/web-frontend/configmap.yaml") . | sha256sum }}
+    app: crater-frontend
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: crater-web-frontend
+      app: crater-frontend
   template:
     metadata:
       labels:
-        app: crater-web-frontend
+        app: crater-frontend
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/web-frontend/configmap.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/crater-frontend/configmap.yaml") . | sha256sum }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
       containers:
-        - name: crater-web-frontend-container
+        - name: crater-frontend-container
           image: {{ .Values.images.frontend.repository }}:{{ .Values.images.frontend.tag }}
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           ports:
             - containerPort: 80
           volumeMounts:
@@ -37,6 +35,6 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: crater-web-frontend-config
+            name: crater-frontend-config
       nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
       tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}

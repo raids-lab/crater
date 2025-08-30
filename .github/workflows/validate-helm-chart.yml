@@ -1,0 +1,71 @@
+# Copyright 2025 RAIDS Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Validate Helm Chart
+
+on:
+  pull_request:
+    paths:
+      - "charts/**"
+
+jobs:
+  validate-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
+      - name: Validate Chart Syntax
+        run: |
+          cd charts
+          helm lint crater/
+          helm template crater crater/ --dry-run
+
+      - name: Check Chart Version Update
+        run: |
+          # Get the chart version from the current branch
+          CURRENT_VERSION=$(helm show chart charts/crater/ | grep '^version:' | awk '{print $2}')
+          echo "Current chart version: $CURRENT_VERSION"
+
+          # Get the chart version from the base branch
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git checkout origin/${{ github.event.pull_request.base.ref }} -- charts/crater/Chart.yaml
+          BASE_VERSION=$(helm show chart charts/crater/ | grep '^version:' | awk '{print $2}')
+          echo "Base chart version: $BASE_VERSION"
+
+          # Reset to current branch
+          git checkout ${{ github.event.pull_request.head.ref }} -- charts/crater/Chart.yaml
+
+          # Compare versions using semver comparison
+          if [ "$CURRENT_VERSION" = "$BASE_VERSION" ]; then
+            echo "⚠️  Chart version has not been updated. Please increment the version in Chart.yaml"
+            echo "   Current version: $CURRENT_VERSION"
+            echo "   Please follow semantic versioning: https://semver.org/"
+            exit 1
+          else
+            echo "✅ Chart version has been updated from $BASE_VERSION to $CURRENT_VERSION"
+          fi
+
+      - name: Package Chart (Test)
+        run: |
+          cd charts
+          helm package crater/ --dry-run
+          echo "✅ Chart packaging test completed successfully"

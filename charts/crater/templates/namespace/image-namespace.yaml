@@ -1,8 +1,8 @@
-{{- if .Values.createNamespace }}
+{{- if .Values.namespaces.create }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  name: {{ .Values.namespaces.image }}
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
   annotations:

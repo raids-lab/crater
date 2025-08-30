@@ -1,4 +1,4 @@
-![crater](./crater-website/content/docs/admin/deployment/assets/icon.webp)
+# ![crater](./crater-website/content/docs/admin/deployment/assets/icon.webp) Crater
 
 <table>
   <tr>
@@ -22,8 +22,6 @@
     </td>
   </tr>
 </table>
-
-# About Crater
 
 **Crater** is a university-developed cluster management platform designed to provide users with an efficient and user-friendly solution for managing computing clusters. It offers unified scheduling and management of computing, storage, and other resources within a cluster, ensuring stable operation and optimal resource utilization.
 
@@ -63,75 +61,4 @@ For deploying Crater in a production or large-scale test environment, you can us
 
 ## Deployment (via Helm)
 
-Crater provides Helm charts for simple and configurable deployment.
-
-### 🔧 Prerequisites
-
-Make sure Helm is installed on your system:  
-📖 [https://helm.sh/docs/intro/install/](https://helm.sh/docs/intro/install/)
-
-Before deploying Crater, please make sure your Kubernetes cluster has the following dependencies installed. All components can be installed via Helm. We provide both official documentation links and local step-by-step guides.
-
-#### 📦 Cluster Resource Dependencies
-
-| Component           | Purpose                                  | Official Docs                                              | Local Guide                    |
-|---------------------|-------------------------------------------|------------------------------------------------------------|--------------------------------|
-| OpenEBS             | Persistent storage management CRDs        | [openebs.io](https://openebs.io/docs/quickstart-guide/installation)    | [openebs](https://raids-lab.github.io/crater/en/docs/admin/deployment/openebs/) |
-| CloudNativePG       | PostgreSQL database service               | [cloudnative-pg.io](https://cloudnative-pg.io/docs/)       | [cloudnative-pg](https://raids-lab.github.io/crater/en/docs/admin/deployment//cloudnative-pg/) |
-| Prometheus Stack    | Monitoring stack (Prometheus, Grafana)    | [prometheus-community](https://github.com/prometheus-community/helm-charts) | [prometheus](https://raids-lab.github.io/crater/en/docs/admin/deployment/prometheus/) |
-| metrics-server      | Metrics API for autoscaling               | [metrics-server](https://github.com/kubernetes-sigs/metrics-server) | [metrics-server](https://raids-lab.github.io/crater/en/docs/admin/deployment/metrics-server/) |
-| NVIDIA GPU Operator | GPU device plugin and monitoring          | [nvidia.com](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/overview.html) | [gpu-operator](https://raids-lab.github.io/crater/en/docs/admin/deployment/gpu-operator/) |
-
-#### 🌐 Networking & Routing
-
-| Component     | Purpose                             | Official Docs                                          | Local Guide                         |
-|---------------|--------------------------------------|--------------------------------------------------------|--------------------------------------|
-| MetalLB       | LoadBalancer support for bare metal  | [metallb.universe.tf](https://metallb.universe.tf/installation/) | [metallb](https://raids-lab.github.io/crater/en/docs/admin/deployment/metallb/) |
-| IngressClass  | Ingress traffic routing              | [kubernetes.io](https://kubernetes.io/docs/concepts/services-networking/ingress/) | [ingress](https://raids-lab.github.io/crater/en/docs/admin/deployment/ingress/) |
-
-#### 🧠 Scheduling & Orchestration
-
-| Component  | Purpose                                 | Official Docs                                              | Local Guide                        |
-|------------|------------------------------------------|------------------------------------------------------------|-------------------------------------|
-| Volcano    | Base job scheduling framework            | [volcano.sh](https://volcano.sh/en/docs/installation/)     | [volcano](https://raids-lab.github.io/crater/en/docs/admin/deployment/volcano/) |
-| Aische     | Crater's custom intelligent quota scheduler *(coming soon)* | *(To be released)*                                | *(Coming soon)*  |
-| Sparse     | Crater's custom sparse-aware scheduler *(coming soon)* | *(To be released)*                                  | *(Coming soon)* |
-
-#### 🗃️ Platform Services
-
-| Component     | Purpose                                | Official Docs                                                | Local Guide                         |
-|----------------|-----------------------------------------|--------------------------------------------------------------|--------------------------------------|
-| StorageClass (e.g. Ceph, NFS) | Distributed storage backend           | Varies by provider (e.g. [Rook-Ceph](https://rook.io/docs/rook/latest/)) | [storage](https://raids-lab.github.io/crater/en/docs/admin/deployment/storage/) |
-| Harbor         | Container image registry                | [goharbor.io](https://goharbor.io/docs/)                     | [harbor](https://raids-lab.github.io/crater/en/docs/admin/deployment/harbor/) |
-
-
-### 🚀 Quick Start
-
-```bash
-# Add Crater Helm repository (replace <repo-url> with actual URL)
-helm repo add crater <repo-url>
-helm repo update
-
-# Install Crater with default settings
-helm install crater crater/crater -n crater
-```
-### ✅ Verify Installation
-
-```bash
-kubectl get pods -n crater
-```
-
-### 🌐 Access the Dashboard
-
-If using a NodePort service:
-
-```bash
-kubectl get svc -n crater
-```
-Then visit http://NodeIP:NodePort in your browser.
-
-### 🛠️ Custom Configuration
-You can override default values with your own values.yaml file:
-```bash
-helm install crater crater/crater -f my-values.yaml
-```
+See [Deployment Guide](https://raids-lab.github.io/crater/zh/docs/admin/) for more details.

@@ -83,11 +83,6 @@ export function baseOptions(
         url: `/${lang}/docs/admin`,
         active: "nested-url",
       },
-      {
-        text: t('getStarted'),
-        icon: <ExternalLinkIcon />,
-        url: `https://raids-lab.github.io/crater/${lang}/docs/admin/deployment/overview/|||https://gpu.act.buaa.edu.cn/portal`,
-      },
     ],
     githubUrl: 'https://github.com/raids-lab/crater',
   };

@@ -1,3 +1,4 @@
+{{- if .Values.grafanaProxy.enable -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +23,7 @@ spec:
       containers:
       - name: nginx
         image: {{ .Values.images.grafanaProxy.repository }}:{{ .Values.images.grafanaProxy.tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
         ports:
         - containerPort: 80
         volumeMounts:
@@ -33,3 +34,4 @@ spec:
       - name: config-volume
         configMap:
           name: grafana-proxy-conf
+{{- end -}}

@@ -2,8 +2,8 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.backendConfig.workspace.rwxpvcName}}
-  namespace: {{ .Values.backendConfig.workspace.namespace}}
+  name: {{ .Values.storage.pvcName }}
+  namespace: {{ .Values.namespaces.job }}
   annotations:
     "helm.sh/resource-policy": keep
 spec:

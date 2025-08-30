@@ -1,6 +1,6 @@
 apiVersion: v2
 name: crater
-description: A Helm chart for Kubernetes
+description: A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -22,3 +22,22 @@ version: 0.1.0
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "1.0.0"
+
+# Additional metadata
+home: https://github.com/raids-lab/crater
+sources:
+  - https://github.com/raids-lab/crater
+keywords:
+  - ai
+  - machine-learning
+  - gpu
+  - kubernetes
+  - development-platform
+  - containerization
+maintainers:
+  - name: RAIDS Lab
+    url: https://github.com/raids-lab
+annotations:
+  org.opencontainers.image.source: https://github.com/raids-lab/crater
+  org.opencontainers.image.documentation: https://github.com/raids-lab/crater/blob/main/charts/crater/README.md
+  org.opencontainers.image.vendor: RAIDS Lab
