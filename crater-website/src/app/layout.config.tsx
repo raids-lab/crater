@@ -16,7 +16,7 @@
 
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { i18n } from "@/lib/i18n";
-import { BookKeyIcon, BookUserIcon, ExternalLinkIcon } from "lucide-react";
+import { BookKeyIcon, BookUserIcon } from "lucide-react";
 
 import { SVGProps, Ref, forwardRef } from "react";
 
