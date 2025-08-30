@@ -12,3 +12,9 @@ cd crater-frontend
 git fetch upstream
 git rebase upstream/main
 cd ..
+
+echo "Updating storage-server submodule..."
+cd storage-server
+git fetch upstream
+git rebase upstream/main
+cd ..
