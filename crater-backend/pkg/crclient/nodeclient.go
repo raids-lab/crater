@@ -226,7 +226,7 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 			podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
 			usedResources = utils.SumResources(usedResources, podResources)
 
-			if pod.Namespace == config.GetConfig().Workspace.Namespace {
+			if pod.Namespace == config.GetConfig().Namespaces.Job {
 				// 只计算特定命名空间的 pods
 				workloadCount++
 			}

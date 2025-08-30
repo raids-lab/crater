@@ -37,7 +37,7 @@ func init() {
 
 const AnnotationKeyTaskName = "crater.raids.io/task-name"
 
-var dlNamespace = config.GetConfig().Workspace.Namespace
+var dlNamespace = config.GetConfig().Namespaces.Job
 var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
 	corev1.PodFailed:    batch.Failed,
 	corev1.PodSucceeded: batch.Completed,

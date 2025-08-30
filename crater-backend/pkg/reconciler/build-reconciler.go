@@ -73,7 +73,7 @@ func (r *BuildKitReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 var (
-	ImageSpace = config.GetConfig().Workspace.ImageNamespace
+	ImageSpace = config.GetConfig().Namespaces.Image
 )
 
 //nolint:lll // kubebuilder rbac declares

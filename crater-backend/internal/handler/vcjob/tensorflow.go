@@ -152,7 +152,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
-			Namespace:   config.GetConfig().Workspace.Namespace,
+			Namespace:   config.GetConfig().Namespaces.Job,
 			Labels:      labels,
 			Annotations: jobAnnotations,
 		},

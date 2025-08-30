@@ -118,8 +118,11 @@ func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount
 	mount v1.VolumeMount, err error,
 ) {
 	// Get PVC names from config
-	rwxPVCName := config.GetConfig().Storage.RWXPVCName
-	roxPVCName := config.GetConfig().Storage.ROXPVCName
+	pvc := config.GetConfig().Storage.PVC
+	rwxPVCName, roxPVCName := pvc.ReadWriteMany, pvc.ReadWriteMany
+	if pvc.ReadOnlyMany != nil {
+		roxPVCName = *pvc.ReadOnlyMany
+	}
 
 	// Handle dataset type volumes - always read-only
 	if vm.Type == DataType {

@@ -1,69 +1,159 @@
+# Enable leader election for controller manager to ensure high availability
+# Optional: Defaults to false if not specified
 enableLeaderElection: false
-leaderElectionID: null
-prometheusAPI: null
-host: null
-serverAddr: null
-metricsAddr: null
-probeAddr: null
+
+# Network port that the server endpoint will listen on
+# Required: Must be specified for the server to start
+port: :8088
+
+# Endpoint URL for Prometheus API used for metrics and monitoring
+# Optional: If not specified, Prometheus integration will be disabled
+prometheusAPI: http://192.168.0.1:12345
+
+# Domain name or IP address that the server will bind to
+# Required: Must be specified for the server to start
+host: crater.example.com
+
+# PostgreSQL database connection configuration
+# Required: All fields must be specified for database connectivity
 postgres:
-  host: null
-  port: null
-  dbname: null
-  user: null
-  password: null
-  sslmode: null
-  TimeZone: null
+  # PostgreSQL server hostname or IP address
+  # Required: Must be reachable from the application
+  host: 192.168.0.1
+  # PostgreSQL server port number
+  # Required: Typically 5432 for PostgreSQL
+  port: 6432
+  # Name of the database to connect to
+  # Required: Database must exist and be accessible
+  dbname: crater
+  # Database username for authentication
+  # Required: User must have appropriate permissions
+  user: postgres
+  # Database password for authentication
+  # Required: Must match the specified user's password
+  password: <MASKED>
+  # SSL/TLS mode for database connection
+  # Optional: Defaults to "disable" if not specified
+  sslmode: disable
+  # Time zone for database connections
+  # Optional: Defaults to system time zone if not specified
+  TimeZone: Asia/Shanghai
+
+# Authentication token configuration for JWT-based authentication
+# Required: Both token secrets must be specified for secure authentication
 auth:
-  accessTokenSecret: null
-  refreshTokenSecret: null
+  # Secret key used to sign JWT access tokens
+  # Required: Must be a secure, randomly generated string
+  accessTokenSecret: <MASKED>
+  # Secret key used to sign JWT refresh tokens
+  # Required: Must be a secure, randomly generated string
+  refreshTokenSecret: <MASKED>
+
+# Persistent volume claim and path prefix configurations
+# Required: All PVC names and prefix paths must be specified
 storage:
+  # Path prefixes for different types of storage locations
+  # Required: All prefix paths must be specified
   prefix:
-    user: null
-    account: null
-    public: null
-  rwxpvcName: null
-  roxpvcName: null
-workspace:
-  namespace: null
-  imageNameSpace: null
+    # User prefix for user-specific storage paths
+    # Required: Must be a valid path within the storage system
+    user: users
+    # Account prefix for account-related storage paths
+    # Required: Must be a valid path within the storage system
+    account: accounts
+    # Public prefix for publicly accessible storage paths
+    # Required: Must be a valid path within the storage system
+    public: public
+  pvc:
+    # Name of the ReadWriteMany Persistent Volume Claim for shared storage
+    # Required: PVC must exist in the cluster with ReadWriteMany access mode
+    readWriteMany: crater-storage
+    # Name of the ReadOnlyMany Persistent Volume Claim for datasets and models
+    # It should be a link to the same underlying storage as ReadWriteMany
+    # Optional: If not specified, datasets and models will be mounted as read-write
+    readOnlyMany: crater-rox-storage
+
+# Kubernetes namespace configurations for different resources
+# Required: Both Job and Image namespaces must be specified
+namespaces:
+  # Job namespace where job resources will be created and managed
+  # Required: Must be a valid Kubernetes namespace
+  job: crater-workspace
+  # Image namespace where image resources will be stored and managed
+  # Required: Must be a valid Kubernetes namespace
+  image: crater-images
+
+# Kubernetes secret names for various security components
+# Required: All secret names must correspond to existing Kubernetes secrets
 secrets:
-  tlsSecretName: null
-  tlsForwardSecretName: null
-  imagePullSecretName: ''
-imageRegistry:
-  server: null
-  user: null
-  password: null
-  project: null
-  admin: null
-  adminPassword: null
-imageBuildTools:
-  buildxImage: ''
-  nerdctlImage: null
-  envdImage: null
+  # Name of the Kubernetes secret containing TLS certificates for HTTPS
+  # Required: Secret must contain 'tls.crt' and 'tls.key' keys
+  tlsSecretName: crater-tls-secret
+  # Name of the Kubernetes secret for TLS forwarding configuration
+  # Required: Secret must contain appropriate forwarding certificates
+  tlsForwardSecretName: crater-tls-forward-secret
+  # Name of the Kubernetes secret for pulling container images from private registries
+  # Optional: If not specified, no image pull secret will be used
+  imagePullSecretName: ""
+
+# Container registry configuration for image storage and building
+# Optional: If Enable is false, registry functionality will be disabled
+registry:
+  # Enable toggles container registry integration
+  # Optional: Defaults to false if not specified
+  enable: true
+  # Configuration for Harbor container registry integration
+  # Required if Registry.Enable is true: All Harbor fields must be specified
+  harbor:
+    # Harbor registry server URL
+    # Required: Must be a valid Harbor instance URL
+    server: harbor.example.com
+    # Username for Harbor authentication
+    # Required: User must have appropriate permissions in Harbor
+    user: admin
+    # Password for Harbor authentication
+    # Required: Must match the specified user's password
+    password: <MASKED>
+  # Configuration for container image building tools and proxies
+  # Required if Registry.Enable is true
+  buildTools:
+    # HTTP proxy settings for build environments
+    # Optional: If not specified, no proxy will be configured for builds
+    proxyConfig:
+      # HTTPS proxy URL for build environments
+      # Optional: If not specified, HTTPS traffic will not be proxied
+      httpsProxy: http://192.168.0.1:1080
+    # Container image references for various build tools
+    # Required if Registry.Enable is true
+    images:
+      # Buildx image for Docker Buildx multi-platform builds
+      # Required if Registry.Enable is true
+      buildx: ghcr.io/raids-lab/buildx-client:latest
+      # Nerdctl image for containerd-based builds
+      # Required if Registry.Enable is true
+      nerdctl: ghcr.io/raids-lab/envd-client:latest
+      # Envd image for environment-based development builds
+      # Required if Registry.Enable is true
+      envd: ghcr.io/raids-lab/nerdctl-client:latest
+
+# Configuration for email notifications via SMTP
+# Optional: If Enable is false, email notifications will be disabled
 smtp:
-  host: null
-  port: null
-  user: null
-  password: null
-  notify: null
-raidsLab:
-  ldap:
-    userName: null
-    password: null
-    address: null
-    searchDN: null
-  openAPI:
-    url: null
-    chameleonKey: null
-    accessToken: null
-  enable: false
-  uidServerURL: null
-schedulerPlugins:
-  aijob:
-    aijobEn: false
-    enableProfiling: true
-    profilingTimeout: 120
-  spjob:
-    spjobEn: false
-    predictionServiceAddress: null
+  # Enable toggles SMTP email functionality
+  # Optional: Defaults to false if not specified
+  enable: true
+  # SMTP server hostname or IP address
+  # Required if Enable is true: Must be a valid SMTP server
+  host: mail.example.com
+  # SMTP server port number
+  # Required if Enable is true: Typically 25, 465, or 587
+  port: 25
+  # Username for SMTP authentication
+  # Required if Enable is true: Must be a valid SMTP user
+  user: example
+  # Password for SMTP authentication
+  # Required if Enable is true: Must match the specified user's password
+  password: <MASKED>
+  # Default email address for system notifications
+  # Required if Enable is true: Must be a valid email address
+  notify: example@example.com

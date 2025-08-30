@@ -1,5 +1,8 @@
-# ![Crater Backend](./docs/image/icon.png) Crater Backend
-Crater is a Kubernetes-based GPU cluster management system providing a comprehensive solution for GPU resource orchestration.
+# Crater Backend
+
+Crater 是一个基于 Kubernetes 的异构集群管理系统，支持英伟达 GPU 等多种异构硬件。
+
+Crater Backend 是 Crater 的子系统，包含作业提交、作业生命周期管理、深度学习环境管理等功能。
 
 <table>
   <tr>
@@ -9,159 +12,180 @@ Crater is a Kubernetes-based GPU cluster management system providing a comprehen
     </td>
     <td align="center" width="45%">
       <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif"><br>
-      <em>Ray Job</em>
+      <em>Ray 任务</em>
     </td>
   </tr>
   <tr>
     <td align="center" width="45%">
       <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif"><br>
-      <em>Monitor</em>
+      <em>监控</em>
     </td>
     <td align="center" width="45%">
       <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif"><br>
-      <em>Models</em>
+      <em>模型</em>
     </td>
   </tr>
 </table>
 
-## 🚀 Run Crater Backend
+本文档为 Crater Backend 的开发指南，如果您希望安装或使用完整的 Crater 项目，您可以访问 [Crater 官方文档](https://raids-lab.github.io/crater/en/docs/admin/) 以了解更多。
 
-### Install Essential Software
+## 🚀 在本地运行 Crater Backend
 
-It is recommended to install the following software in the suggested versions.
+### 安装必要软件
 
-- **Go**: Version `v1.24.4` is recommended  
-  📖 [Go Installation Guide](https://go.dev/doc/install)
-- **Kubectl**: Version `v1.33` is recommended  
-  📖 [Kubectl Installation Guide](https://kubernetes.io/docs/tasks/tools/)
+建议安装以下软件及其推荐版本。
 
-Next, set the required environment variables.
+- **Go**: 推荐版本 `v1.24.4` 及以上：[Go 安装指南](https://go.dev/doc/install)
+- **Kubectl**: 推荐版本 `v1.33` 及以上：[Kubectl 安装指南](https://kubernetes.io/docs/tasks/tools/)
+
+接下来，您可能设置环境变量，以保证通过 `go install` 安装的程序可以直接运行。
 
 ```bash
 # Linux/macOS
 
-# Set GOROOT to your Go installation directory
-export GOROOT=/usr/local/go  # Change this path to your actual Go installation location
+# 将 GOROOT 设置为你的 Go 安装目录
+export GOROOT=/usr/local/go  # 将此路径更改为你实际的 Go 安装位置
 
-# Add Go to PATH
+# 将 Go 添加到 PATH
 export PATH=$PATH:$GOROOT/bin
-
-# Set proxy for Go
-export GOPROXY=https://goproxy.cn,direct
 ```
 
-You may add this into your shell config such as `.zshrc`.
+你可以将这些内容添加到你的 shell 配置文件中，例如 `.zshrc`。
 
-For Go proxy, you can also set with a single command running, instead of add a command into shell config.
+您可能还需要配置 Go 代理，可以通过运行单条命令来设置，而无需添加到 shell 配置中。
 
 ```bash
 go env -w GOPROXY=https://goproxy.cn,direct
 ```
 
-### Prepare Config Files
+### 准备配置文件
 
-To run the project, you also need to contact your administrator to obtain some configuration files.
+#### `kubeconfig`
 
+要运行项目，你至少需要有一个 Kubernetes 集群，并安装 Kubectl。
+
+对于测试或者学习环境，你可以通过 Kind、MiniKube 等开源项目，快速地获取一个集群。
+
+`kubeconfig` 是 Kubernetes 客户端和工具用来访问和管理 Kubernetes 集群的配置文件。它包含集群连接详细信息、用户凭据和上下文信息。
+
+Crater Backend 将优先尝试读取 `KUBECONFIG` 环境变量对应的 `kubeconfig`，如果不存在，则读取当前目录下的 `kubeconfig` 文件。
+
+```makefile
+# Makefile
+KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
 ```
-kubeconfig
-etc/debug-config.yaml
-.debug.env
-```
 
-Crater backend cannot run properly if any of these three files are missing.
+#### `./etc/debug-config.yaml`
 
-#### kubeconfig
+`etc/debug-config.yaml` 文件包含 Crater 后端服务的应用程序配置。此配置文件定义了各种设置，包括：
 
-`kubeconfig` is a configuration file used by Kubernetes clients and tools to access and manage your Kubernetes cluster. It contains cluster connection details, user credentials, and context information. Please obtain the correct `kubeconfig` file from your administrator to ensure proper access to the cluster.
+- **服务配置**: 服务器端口、指标端点和性能分析设置
+- **数据库连接**: PostgreSQL 连接参数和凭据
+- **工作区设置**: Kubernetes 命名空间、存储 PVC 和入口配置
+- **外部集成**: Raids Lab 系统认证（非 Raids Lab 环境不需要）、镜像仓库、SMTP 邮件通知服务等
+- **功能标志**: 调度器和作业类型启用设置
 
-#### debug-config.yaml
+你可以在 [`etc/example-config.yaml`](https://github.com/raids-lab/crater-backend/blob/main/etc/example-config.yaml) 中找到示例文件和对应的说明。
 
-The `etc/debug-config.yaml` file contains the application configuration for the Crater backend service. This configuration file defines various settings including:
+#### `.debug.env`
 
-- **Service Configuration**: Server ports, metrics endpoints, and profiling settings
-- **Database Connection**: PostgreSQL connection parameters and credentials
-- **Workspace Settings**: Kubernetes namespace, storage PVCs, and ingress configurations
-- **External Integrations**: ACT system authentication (no need for non-act environments), image registry, SMTP, and OpenAPI endpoints
-- **Feature Flags**: Scheduler and job type enablement settings
+当您运行 `make run` 命令时，我们将帮您创建 `.debug.env` 文件，该文件会被 git 忽略，可以存储个性化的配置。
 
-You can find an example in `etc/example-config.yaml`. 
-
-For adminstrator, you need to fill in relative values based on your deployment helm charts values, and provide it to your members.
-
-#### .debug.env
-
-The `.debug.env` file specifies the port numbers used by the services. If your team is developing on the same node, you need to coordinate to avoid port conflicts.
+目前内部只有一条配置，用于指定服务使用的端口号。如果你的团队在同一节点上进行开发，可以通过它协调，以避免端口冲突。
 
 ```env
-CRATER_BE_PORT=xxxx  # Backend
+CRATER_BE_PORT=:8088  # 后端端口
 ```
 
-CRATER_SS_TARGET is the destination address for forwarding requests to the storage service. If your development does not involve the storage service, you can **skip** setting this environment variable.
+在开发模式下，我们通过 Crater Frontend 的 Vite Server 进行服务的代理，因此您并不需要关心 CORS 等问题。
 
-### Run Crater Backend
+### 运行 Crater Backend
 
-After completing the above setup, you can run the project using the `make` command. If you don't have `make` installed yet, it is recommended to install it.
+完成上述设置后，你可以使用 `make` 命令运行项目。如果尚未安装 `make`，建议安装它。
 
 ```bash
 make run
 ```
 
-If the server is running and accessible at your configured port, you can open the Swagger UI to verify:
+如果服务器正在运行并可在你配置的端口访问，你可以打开 Swagger UI 进行验证：
 
 ```bash
-http://localhost:<your-backend-port>/swagger/index.html#/
+http://localhost:<你的后端端口>/swagger/index.html#/
 ```
 
 ![Swagger UI](./docs/image/swag.png)
 
-
-## 💻 Development Guide
-
-If you want to develop and contribute your code, you need to perform some additional steps on top of the above.
-
-### Development Tools
-
-The project uses swag to generate API documentation and golangci-lint for code style checking. Some hooks are also configured, but you don't need to install them manually. You can simply use the `make` command to install all required tools and hooks with one command.
+你可以运行 `make help` 命令，查看相关的完整命令：
 
 ```bash
-make setup
+➜  crater-backend git:(main) ✗ make help 
+
+Usage:
+  make <target>
+
+General
+  help                Display this help.
+  show-kubeconfig     Display current KUBECONFIG path
+  prepare             Prepare development environment with updated configs
+
+Development
+  vet                 Run go vet.
+  imports             Run goimports on all go files.
+  import-check        Check if goimports is needed.
+  lint                Lint go files.
+  curd                Generate Gorm CURD code.
+  migrate             Migrate database.
+  docs                Generate docs docs.
+  run                 Run a controller from your host.
+  pre-commit-check    Run pre-commit hook manually.
+
+Build
+  build               Build manager binary.
+  build-migrate       Build migration binary.
+
+Development Tools
+  golangci-lint       Install golangci-lint
+  goimports           Install goimports
+  swaggo              Install swaggo
+
+Git Hooks
+  pre-commit          Install git pre-commit hook.
 ```
 
-You don't have to run this command manually; the required tools will be installed into the `bin` directory by `make` when needed. 
+### 🛠️ 数据库代码生成（如果需要）
+项目使用 GORM Gen 为数据库 CRUD 操作生成样板代码。使用 Go Migrate 为对象生成数据库表。
 
-However, please note that `make` does not check the versions of tools you have already installed. If the project updates the versions of these tools, you need to delete your local copies and let `make` reinstall them for you.
+生成脚本和文档可以在以下位置找到：[`gorm_gen`](./cmd/gorm-gen/README.md)
 
-### 🛠️ Database Code Generation (If Needed)
-The project uses GORM Gen to generate boilerplate code for database CRUD operations.
+在修改数据库模型或模式定义后，请重新生成代码。
 
-Generation scripts and documentation can be found in: [`gorm_gen`](./cmd/gorm-gen/README.md)
+如果您是通过 Helm 安装的 Crater，部署新版本后将自动进行数据库迁移，相关的逻辑可以在 InitContainer 中找到。
 
-Please regenerate the code after modifying database models or schema definitions, while CI pipeline will automatically make database migrations.
+### 🐞 使用 VSCode 调试（如果需要）
 
-### Manual Check before commit (If Needed)
+你可以通过按 F5（启动调试）使用 VSCode 在调试模式下启动后端。你可以设置断点并交互式地单步执行代码。
 
-If you have completed the previous steps, some checks will be automatically performed by `git` before you commit. If these checks fail, your commit will be rejected. You can also manually trigger these checks with the following command.
-
-```bash
-make pre-commit-check
-```
-
-### 🐞 Debugging with VSCode (If Needed)
-
-You can start the backend in debug mode using VSCode by pressing F5 (Start Debugging). You can set breakpoints and step through the code interactively.
-
-Example launch configuration:
+示例启动配置：
 
 ```json
- {
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
             "name": "Debug Server",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/cmd/crater/main.go",
+            "cwd": "${workspaceFolder}",
             "env": {
-                "KUBECONFIG": "${workspaceFolder}/kubeconfig",
-                "CRATER_DEBUG_CONFIG_PATH": "${workspaceFolder}/etc/example-config.yaml",
+                "KUBECONFIG": "${env:HOME}/.kube/config",
+                "NO_PROXY": "k8s.cluster.master"
             }
         }
+    ]
+}
 ```

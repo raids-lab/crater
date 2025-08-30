@@ -174,7 +174,7 @@ func (mgr *OperationsMgr) allowRepeatAlert(c *gin.Context, job *model.Job, alert
 
 func (mgr *OperationsMgr) deleteVCjobInCluster(c *gin.Context, job *model.Job) error {
 	vcjob := &batch.Job{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	if err := mgr.client.Get(c, client.ObjectKey{Name: job.JobName, Namespace: namespace}, vcjob); err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func (mgr *OperationsMgr) getLowGPUUsageVCjobs(c *gin.Context, duration, gpuUtil
 }
 
 func (mgr *OperationsMgr) getLowGPUUsagePods(c *gin.Context, duration, gpuUtil int) []*v1.Pod {
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	querys := mgr.promClient.QueryNodeGPUUtilInNS(namespace)
 	podList := []*v1.Pod{}
 
@@ -512,7 +512,7 @@ func (mgr *OperationsMgr) deleteUnscheduledJupyterJobs(c *gin.Context, waitMinit
 
 		// delete job
 		vcjob := &batch.Job{}
-		namespace := config.GetConfig().Workspace.Namespace
+		namespace := config.GetConfig().Namespaces.Job
 		if err := mgr.client.Get(c, client.ObjectKey{Name: job.JobName, Namespace: namespace}, vcjob); err != nil {
 			klog.Errorf("Failed to get job %s: %v", job.JobName, err)
 			continue
@@ -532,7 +532,7 @@ func (mgr *OperationsMgr) deleteUnscheduledJupyterJobs(c *gin.Context, waitMinit
 // 如果VCJob还没有创建Pod，返回false
 // 所有Pod被schedule，返回true；否则返回false
 func (mgr *OperationsMgr) isJobscheduled(c *gin.Context, jobName string) bool {
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	pods, err := mgr.kubeClient.CoreV1().Pods(namespace).List(c, metav1.ListOptions{
 		// 目前仅考虑vcjob
 		LabelSelector: fmt.Sprintf("volcano.sh/job-name=%s", jobName),

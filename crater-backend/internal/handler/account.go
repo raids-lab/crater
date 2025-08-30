@@ -273,7 +273,7 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 
 	if err = mgr.client.Get(c, types.NamespacedName{
 		Name:      account.Name,
-		Namespace: config.GetConfig().Workspace.Namespace,
+		Namespace: config.GetConfig().Namespaces.Job,
 	}, &queue); err != nil {
 		resputil.Error(c, "Queue not found", resputil.NotSpecified)
 		return
@@ -491,7 +491,7 @@ const (
 func (mgr *AccountMgr) CreateVolcanoQueue(c *gin.Context, token *util.JWTMessage, queue *model.Account,
 	req *AccountCreateOrUpdateReq) error {
 	// Create a new queue, and set the user as the admin in user_queue
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	labels := map[string]string{
 		LabelKeyQueueCreatedBy: token.Username,
 	}
@@ -580,7 +580,7 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 
 func (mgr *AccountMgr) updateVolcanoQueue(c *gin.Context, queue *model.Account, req *AccountCreateOrUpdateReq) error {
 	vcQueue := &scheduling.Queue{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	err := mgr.client.Get(c, client.ObjectKey{Name: queue.Name, Namespace: namespace}, vcQueue)
 	if err != nil {
 		return err
@@ -687,7 +687,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 
 func (mgr *AccountMgr) DeleteQueue(c *gin.Context, qName string) error {
 	queue := &scheduling.Queue{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	err := mgr.client.Get(c, client.ObjectKey{Name: qName, Namespace: namespace}, queue)
 	if err != nil {
 		return err

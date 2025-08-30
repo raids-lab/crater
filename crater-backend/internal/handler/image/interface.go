@@ -90,7 +90,7 @@ func NewImagePackMgr(conf *handler.RegisterConfig) handler.Manager {
 }
 
 var (
-	UserNameSpace   = config.GetConfig().Workspace.ImageNamespace
+	UserNameSpace   = config.GetConfig().Namespaces.Image
 	ProjectIsPublic = true
 	//nolint:mnd // default project quota: 20GB
 	GBit = int64(math.Pow(2, 30))

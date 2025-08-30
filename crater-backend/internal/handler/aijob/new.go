@@ -33,7 +33,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	var req CreateTaskReq
 
 	req.TaskName = vcReq.Name
-	req.Namespace = config.GetConfig().Workspace.Namespace
+	req.Namespace = config.GetConfig().Namespaces.Job
 	req.UserName = token.AccountName
 	req.SLO = 1
 	req.TaskType = model.EmiasJupyterTask
@@ -168,7 +168,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 
 	token := interutil.GetToken(c)
 	req.TaskName = vcReq.Name
-	req.Namespace = config.GetConfig().Workspace.Namespace
+	req.Namespace = config.GetConfig().Namespaces.Job
 	req.UserName = token.AccountName
 	req.SLO = vcReq.SLO
 	req.TaskType = model.EmiasTrainingTask

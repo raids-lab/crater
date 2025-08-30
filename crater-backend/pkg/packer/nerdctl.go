@@ -21,7 +21,7 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 
 	jobMeta := metav1.ObjectMeta{
 		Name:      jobName,
-		Namespace: config.GetConfig().Workspace.ImageNamespace,
+		Namespace: config.GetConfig().Namespaces.Image,
 		Annotations: map[string]string{
 			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
 			AnnotationKeyImageLink:   data.ImageLink,
@@ -37,7 +37,7 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      jobName,
-				Namespace: config.GetConfig().Workspace.ImageNamespace,
+				Namespace: config.GetConfig().Namespaces.Image,
 			},
 			Spec: corev1.PodSpec{
 				Containers:    []corev1.Container{container},
@@ -88,7 +88,7 @@ func (b *imagePacker) generateSnapshotContainer(data *SnapshotReq) corev1.Contai
 
 	container := corev1.Container{
 		Name:    "build-image",
-		Image:   config.GetConfig().ImageBuildTools.NerdctlImage,
+		Image:   config.GetConfig().Registry.BuildTools.Images.Nerdctl,
 		Command: args,
 		VolumeMounts: []corev1.VolumeMount{
 			{

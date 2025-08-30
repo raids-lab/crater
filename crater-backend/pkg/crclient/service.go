@@ -129,7 +129,7 @@ func (s *serviceManagerImpl) CreateNodePort(
 		return "", 0, fmt.Errorf("port and ownerRef cannot be nil")
 	}
 	serviceName := fmt.Sprintf("np-%s-%s", username, uuid.New().String()[:5])
-	namespace := s.config.Workspace.Namespace
+	namespace := s.config.Namespaces.Job
 
 	labels := s.GenerateLabels(podSelector)
 
@@ -251,7 +251,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	if port == nil {
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
 	}
-	namespace := s.config.Workspace.Namespace
+	namespace := s.config.Namespaces.Job
 	labels := s.GenerateLabels(podSelector)
 
 	serviceName := fmt.Sprintf("svc-%s-%s", prefix, port.Name)
@@ -350,7 +350,7 @@ func (s *serviceManagerImpl) CreateIngress(
 	if port == nil {
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
 	}
-	namespace := s.config.Workspace.Namespace
+	namespace := s.config.Namespaces.Job
 	labels := s.GenerateLabels(podSelector)
 
 	randomPrefix := uuid.New().String()[:5]

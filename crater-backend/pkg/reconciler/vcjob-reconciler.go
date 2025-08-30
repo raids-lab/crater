@@ -133,7 +133,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			if record.ProfileData == nil {
 				podName := getPodNameFromJobTemplate(record.Attributes.Data())
 				profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-					Namespace: config.GetConfig().Workspace.Namespace,
+					Namespace: config.GetConfig().Namespaces.Job,
 					Name:      podName,
 				}, record.RunningTimestamp)
 				var info gen.ResultInfo
@@ -155,7 +155,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		// 作业被定时策略释放，进行性能数据收集
 		podName := getPodNameFromJobTemplate(record.Attributes.Data())
 		profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-			Namespace: config.GetConfig().Workspace.Namespace,
+			Namespace: config.GetConfig().Namespaces.Job,
 			Name:      podName,
 		}, record.RunningTimestamp)
 
@@ -311,7 +311,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
 			var pod v1.Pod
 			err := r.Get(ctx, types.NamespacedName{
-				Namespace: config.GetConfig().Workspace.Namespace,
+				Namespace: config.GetConfig().Namespaces.Job,
 				Name:      podName,
 			}, &pod)
 			if err != nil {

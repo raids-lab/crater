@@ -612,7 +612,7 @@ func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 	}
 
 	job := &aijobapi.AIJob{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName,
 		Namespace: namespace}, job); err != nil {
 		resputil.Success(c, nil)
@@ -665,7 +665,7 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 
 	// Get AIJob to check annotations
 	job := &aijobapi.AIJob{}
-	namespace := config.GetConfig().Workspace.Namespace
+	namespace := config.GetConfig().Namespaces.Job
 	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
