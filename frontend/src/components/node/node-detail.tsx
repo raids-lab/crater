@@ -32,6 +32,7 @@ import {
   MemoryStickIcon as Memory,
   NetworkIcon,
   ServerIcon,
+  TagIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -77,6 +78,7 @@ import { NamespacedName, PodNamespacedName } from '../codeblock/PodContainerDial
 import TooltipCopy from '../label/tooltop-copy'
 import DetailPage, { DetailPageCoreProps } from '../layout/detail-page'
 import PageTitle from '../layout/page-title'
+import { NodeAnnotations, NodeLabels, NodeTaints } from './node-mark'
 
 const formatLockDate = (timestamp?: string) => {
   const date = new Date(timestamp ?? Date.now())
@@ -551,6 +553,30 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
             />
           ),
           hidden: !gpuDetail?.haveGPU,
+        },
+        {
+          key: 'nodemark',
+          icon: TagIcon,
+          label: '节点标识',
+          subTabs: [
+            {
+              key: 'labels',
+              label: 'Labels',
+              children: <NodeLabels nodeName={nodeName} />,
+            },
+            {
+              key: 'annotations',
+              label: 'Annotations',
+              children: <NodeAnnotations nodeName={nodeName} />,
+            },
+            {
+              key: 'taints',
+              label: 'Taints',
+              children: <NodeTaints nodeName={nodeName} />,
+            },
+          ],
+          scrollable: true,
+          hidden: !isAdminView,
         },
       ]}
     />

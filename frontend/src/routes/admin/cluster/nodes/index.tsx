@@ -18,7 +18,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { BanIcon, Users, ZapIcon } from 'lucide-react'
+import { BanIcon, RotateCcw, Users, ZapIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -46,6 +46,10 @@ import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
 
 import {
+  CraterArmTaint,
+  IClusterNodeTaint,
+  INodeBriefInfo,
+  JoinTaint,
   NodeStatus,
   apiAddNodeTaint,
   apiDeleteNodeTaint,
@@ -58,6 +62,68 @@ import { logger } from '@/utils/loglevel'
 
 import AccountSelect from './-components/AccountList'
 
+// 恢复ARM污点Dialog组件
+interface RestoreArmTaintDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  armNodes: INodeBriefInfo[]
+  onConfirm: (nodeNames: string[]) => void
+}
+
+function RestoreArmTaintDialog({
+  open,
+  onOpenChange,
+  armNodes,
+  onConfirm,
+}: RestoreArmTaintDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>同步 ARM 污点</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-muted-foreground text-sm">
+            检测到以下 ARM 架构节点缺少污点，是否为这些节点添加{' '}
+            <code className="bg-muted mx-1 rounded px-1.5 py-0.5 text-xs">
+              {JoinTaint(CraterArmTaint)}
+            </code>{' '}
+            污点？
+          </p>
+
+          <div className="bg-muted/30 max-h-48 overflow-y-auto rounded-md border p-3">
+            <div className="space-y-2">
+              {armNodes.map((node, index) => (
+                <div
+                  key={index}
+                  className="bg-background flex items-center gap-2 rounded-sm px-3 py-2 text-sm"
+                >
+                  <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+                  <span className="font-mono">{node.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">取消</Button>
+          </DialogClose>
+          <Button
+            onClick={() => {
+              const nodeNames = armNodes.map((node) => node.name)
+              onConfirm(nodeNames)
+            }}
+          >
+            确认
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export const Route = createFileRoute('/admin/cluster/nodes/')({
   component: NodesForAdmin,
 })
@@ -69,6 +135,10 @@ function NodesForAdmin() {
   const [selectedAccount, setSelectedAccount] = useState('')
   const [selectedNode, setSelectedNode] = useState('')
   const [isOccupation, setIsOccupation] = useState(true)
+
+  // 恢复Arm污点相关状态
+  const [restoreArmDialogOpen, setRestoreArmDialogOpen] = useState(false)
+  const [armNodesToRestore, setArmNodesToRestore] = useState<INodeBriefInfo[]>([])
 
   const refetchTaskList = useCallback(async () => {
     try {
@@ -98,7 +168,13 @@ function NodesForAdmin() {
   )
 
   const { mutate: addNodeTaint } = useMutation({
-    mutationFn: apiAddNodeTaint,
+    mutationFn: ({
+      nodeName,
+      taintContent,
+    }: {
+      nodeName: string
+      taintContent: IClusterNodeTaint
+    }) => apiAddNodeTaint(nodeName, taintContent),
     onSuccess: async () => {
       await refetchTaskList()
       toast.success(t('nodeManagement.occupationSuccess'))
@@ -109,7 +185,13 @@ function NodesForAdmin() {
   })
 
   const { mutate: deleteNodeTaint } = useMutation({
-    mutationFn: apiDeleteNodeTaint,
+    mutationFn: ({
+      nodeName,
+      taintContent,
+    }: {
+      nodeName: string
+      taintContent: IClusterNodeTaint
+    }) => apiDeleteNodeTaint(nodeName, taintContent),
     onSuccess: async () => {
       await refetchTaskList()
       toast.success(t('nodeManagement.releaseSuccess'))
@@ -121,16 +203,57 @@ function NodesForAdmin() {
 
   const nodeQuery = useQuery(queryNodes())
 
+  // 批量恢复ARM污点的mutation
+  const { mutate: batchRestoreArmTaint } = useMutation({
+    mutationFn: async (nodeNames: string[]) => {
+      const promises = nodeNames.map((nodeName) => apiAddNodeTaint(nodeName, CraterArmTaint))
+      return Promise.all(promises)
+    },
+    onSuccess: async (_, nodeNames) => {
+      await refetchTaskList()
+      toast.success(`成功为 ${nodeNames.length} 个 ARM 节点恢复污点`)
+      setRestoreArmDialogOpen(false)
+      setArmNodesToRestore([])
+    },
+    onError: (error) => {
+      toast.error(`ARM 污点恢复失败: ${error.message}`)
+    },
+  })
+
+  // 检测需要恢复ARM污点的节点
+  const handleRestoreArmTaint = useCallback(() => {
+    if (!nodeQuery.data) {
+      toast.warning('节点数据尚未加载')
+      return
+    }
+
+    // 过滤出ARM64架构且没有ARM污点的节点
+    const armNodesWithoutTaint = nodeQuery.data.filter((node: INodeBriefInfo) => {
+      // 检查节点名称中是否包含arm相关信息 (简化判断逻辑)
+      const isArmArchitecture = node.arch.match('arm64')
+      const hasArmTaint = node.taints?.some((taint) => taint.startsWith(JoinTaint(CraterArmTaint)))
+      return isArmArchitecture && !hasArmTaint
+    })
+
+    if (armNodesWithoutTaint.length === 0) {
+      toast.info('没有发现需要恢复 ARM 污点的节点')
+      return
+    }
+
+    setArmNodesToRestore(armNodesWithoutTaint)
+    setRestoreArmDialogOpen(true)
+  }, [nodeQuery.data])
+
   const handleOccupation = useCallback(() => {
-    const taintcontent = `crater.raids.io/account=${selectedAccount}:NoSchedule`
-    const taint = {
-      name: selectedNode,
-      taint: taintcontent,
+    const taintContent: IClusterNodeTaint = {
+      key: 'crater.raids.io/account',
+      value: selectedAccount,
+      effect: 'NoSchedule',
     }
     if (isOccupation) {
-      addNodeTaint(taint)
+      addNodeTaint({ nodeName: selectedNode, taintContent })
     } else {
-      deleteNodeTaint(taint)
+      deleteNodeTaint({ nodeName: selectedNode, taintContent })
     }
     setOpen(false)
   }, [selectedAccount, selectedNode, isOccupation, addNodeTaint, deleteNodeTaint])
@@ -235,7 +358,18 @@ function NodesForAdmin() {
         query={nodeQuery}
         columns={columns}
         toolbarConfig={nodesToolbarConfig}
-      />
+      >
+        <div className="mb-4">
+          <Button
+            onClick={handleRestoreArmTaint}
+            variant="default"
+            className="flex items-center gap-2"
+          >
+            <RotateCcw className="h-4 w-4" />
+            同步 ARM 污点
+          </Button>
+        </div>
+      </DataTable>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -270,6 +404,16 @@ function NodesForAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 恢复ARM污点Dialog */}
+      <RestoreArmTaintDialog
+        open={restoreArmDialogOpen}
+        onOpenChange={setRestoreArmDialogOpen}
+        armNodes={armNodesToRestore}
+        onConfirm={(nodeNames) => {
+          batchRestoreArmTaint(nodeNames)
+        }}
+      />
     </>
   )
 }

@@ -14,10 +14,17 @@
  * limitations under the License.
  */
 import { linkOptions } from '@tanstack/react-router'
-import { LucideIcon } from 'lucide-react'
+import { ChevronDownIcon, LucideIcon } from 'lucide-react'
 import { motion } from 'motion/react'
-import { ReactNode, useEffect, useMemo, useRef } from 'react'
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -25,11 +32,18 @@ import useFixedLayout from '@/hooks/useFixedLayout'
 
 import { cn } from '@/lib/utils'
 
+interface DetailSubTabProps {
+  key: string
+  label: string
+  children: ReactNode
+}
+
 interface DetailTabProps {
   key: string
   icon?: LucideIcon
   label: string
-  children: ReactNode
+  children?: ReactNode
+  subTabs?: DetailSubTabProps[]
   scrollable?: boolean
   hidden?: boolean
 }
@@ -78,6 +92,8 @@ export default function DetailPage({
 }: DetailPageProps) {
   useFixedLayout()
 
+  const [selectedSubTab, setSelectedSubTab] = useState<Record<string, string>>({})
+
   const tabs = useMemo(() => {
     return rawTabs.filter((tab) => !tab.hidden)
   }, [rawTabs])
@@ -90,6 +106,23 @@ export default function DetailPage({
     }
     return currentTab === undefined || currentTab === '' ? tabs[0].key : currentTab
   }, [currentTab, tabs])
+
+  // 获取当前选中的子选项卡
+  const getCurrentSubTab = (tabKey: string) => {
+    const currentTabData = tabs.find((t) => t.key === tabKey)
+    if (!currentTabData?.subTabs || currentTabData.subTabs.length === 0) {
+      return null
+    }
+    return selectedSubTab[tabKey] || currentTabData.subTabs[0].key
+  }
+
+  // 设置子选项卡
+  const setSubTab = (tabKey: string, subTabKey: string) => {
+    setSelectedSubTab((prev) => ({
+      ...prev,
+      [tabKey]: subTabKey,
+    }))
+  }
 
   // 计算动画方向 - 基于从哪个 tab 切换过来
   const animationDirection = useMemo(() => {
@@ -128,12 +161,51 @@ export default function DetailPage({
       </div>
       <Tabs className="w-full grow overflow-hidden" value={tab} onValueChange={setCurrentTab}>
         <TabsList className="tabs-list-underline">
-          {tabs.map((tab) => (
-            <TabsTrigger key={tab.key} className="tabs-trigger-underline" value={tab.key}>
-              {tab.icon && <tab.icon className="size-4" />}
-              <p className="hidden md:block">{tab.label}</p>
-            </TabsTrigger>
-          ))}
+          {tabs.map((tabItem) => {
+            // 如果有子选项卡，渲染下拉菜单
+            if (tabItem.subTabs && tabItem.subTabs.length > 0) {
+              const currentSubTab = getCurrentSubTab(tabItem.key)
+
+              return (
+                <DropdownMenu key={tabItem.key}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="tabs-trigger-underline data-[state=active]:border-primary flex items-center gap-1 data-[state=active]:border-b-2"
+                      data-state={tab === tabItem.key ? 'active' : 'inactive'}
+                      onClick={() => setCurrentTab?.(tabItem.key)}
+                    >
+                      {tabItem.icon && <tabItem.icon className="size-4" />}
+                      <p className="hidden md:block">{tabItem.label}</p>
+                      <ChevronDownIcon className="size-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {tabItem.subTabs.map((subTab) => (
+                      <DropdownMenuItem
+                        key={subTab.key}
+                        onClick={() => {
+                          setCurrentTab?.(tabItem.key)
+                          setSubTab(tabItem.key, subTab.key)
+                        }}
+                        className={currentSubTab === subTab.key ? 'bg-accent' : ''}
+                      >
+                        {subTab.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
+            }
+
+            // 普通选项卡
+            return (
+              <TabsTrigger key={tabItem.key} className="tabs-trigger-underline" value={tabItem.key}>
+                {tabItem.icon && <tabItem.icon className="size-4" />}
+                <p className="hidden md:block">{tabItem.label}</p>
+              </TabsTrigger>
+            )
+          })}
         </TabsList>
         {tabs.map((tabItem) => (
           <TabsContent key={tabItem.key} value={tabItem.key} asChild>
@@ -160,14 +232,37 @@ export default function DetailPage({
                 duration: animationDirection === 'none' ? 0 : 1.2,
               }}
             >
-              {tabItem.scrollable ? (
-                <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
-                  {tabItem.children}
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-              ) : (
-                <div className="h-[calc(100vh_-_300px)] w-full">{tabItem.children}</div>
-              )}
+              {(() => {
+                // 如果有子选项卡，渲染对应的子选项卡内容
+                if (tabItem.subTabs && tabItem.subTabs.length > 0) {
+                  const currentSubTab = getCurrentSubTab(tabItem.key)
+                  const currentSubTabData = tabItem.subTabs.find((sub) => sub.key === currentSubTab)
+                  const content = currentSubTabData?.children || null
+
+                  if (tabItem.scrollable) {
+                    return (
+                      <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
+                        {content}
+                        <ScrollBar orientation="horizontal" />
+                      </ScrollArea>
+                    )
+                  } else {
+                    return <div className="h-[calc(100vh_-_300px)] w-full">{content}</div>
+                  }
+                }
+
+                // 普通选项卡内容
+                if (tabItem.scrollable) {
+                  return (
+                    <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
+                      {tabItem.children}
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  )
+                } else {
+                  return <div className="h-[calc(100vh_-_300px)] w-full">{tabItem.children}</div>
+                }
+              })()}
             </motion.div>
           </TabsContent>
         ))}
