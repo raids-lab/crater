@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: envd-jupyter-start-configmap
-  namespace: {{ .Values.backendConfig.workspace.namespace}}
+  namespace: {{ .Values.namespaces.job }}
 data:
   start.sh: |
     #!/bin/bash

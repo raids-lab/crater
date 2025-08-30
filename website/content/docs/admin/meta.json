@@ -1,5 +1,14 @@
 {
-  "pages": ["---简介---", "index", "..."],
+  "pages": [
+    "---安装部署---",
+    "quick-start",
+    "deployment",
+    "---进阶配置---",
+    "chart",
+    "more",
+    "---其他---",
+    "learning"
+  ],
   "title": "管理员指南",
   "root": true
 }

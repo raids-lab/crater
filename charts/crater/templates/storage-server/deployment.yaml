@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: webdav-deployment
-  namespace: {{ .Values.backendConfig.workspace.namespace}}
+  namespace: {{ .Values.namespaces.job }}
   labels:
     app: webdav-crater
 spec:
@@ -25,7 +25,7 @@ spec:
       containers:
         - name: webdav
           image: {{ .Values.images.storage.repository }}:{{ .Values.images.storage.tag }}
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           resources:
             limits:
               memory: 10Gi
@@ -44,7 +44,7 @@ spec:
       volumes:
         - name: mypvc
           persistentVolumeClaim:
-            claimName: {{ .Values.storage.rwName }}
+            claimName: {{ .Values.storage.pvcName }}
         - name: ss-conf
           configMap:
             name: ss-config

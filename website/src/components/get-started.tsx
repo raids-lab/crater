@@ -22,7 +22,7 @@ import { Link } from '@/i18n/navigation';
 
 export function GetStarted() {
   const t = useTranslations("GetStarted");
-  
+
 
   return (
     <section className="py-20 px-4 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
@@ -38,7 +38,7 @@ export function GetStarted() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <Link
-            href="/docs/admin/deployment/overview"
+            href="/docs/admin/"
             className="flex flex-col items-center bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow text-center"
           >
             <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg mb-4">

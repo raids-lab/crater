@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: buildkitd-config-arm
-  namespace: {{ .Values.backendConfig.workspace.imageNameSpace }}
+  namespace: {{ .Values.namespaces.image }}
 data:
   buildkitd.toml: |
     debug = true
