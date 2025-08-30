@@ -3,6 +3,7 @@ package crclient
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"strings"
 	"time"
 
@@ -101,18 +102,13 @@ func (s *serviceManagerImpl) GenerateLabels(podSelector map[string]string) map[s
 		LabelKeyTaskUser: podSelector[LabelKeyTaskUser],
 	}
 
-	// Adjust labels based on TaskType
 	taskType := podSelector[LabelKeyTaskType]
 	if taskType == string(CraterJobTypeTensorflow) || taskType == string(CraterJobTypePytorch) {
 		if index, ok := podSelector[LabelKeyTaskIndex]; ok {
 			labels[LabelKeyTaskIndex] = index
-		} else {
-			fmt.Printf("Warning: Missing %s in podSelector\n", LabelKeyTaskIndex)
 		}
 		if spec, ok := podSelector[LabelKeyTaskSpec]; ok {
 			labels[LabelKeyTaskSpec] = spec
-		} else {
-			fmt.Printf("Warning: Missing %s in podSelector\n", LabelKeyTaskSpec)
 		}
 	}
 
@@ -120,6 +116,8 @@ func (s *serviceManagerImpl) GenerateLabels(podSelector map[string]string) map[s
 }
 
 // CreateNodePort 实现
+//
+//nolint:gocyclo // Cyclomatic complexity is acceptable for this function
 func (s *serviceManagerImpl) CreateNodePort(
 	ctx context.Context,
 	ownerReferences []metav1.OwnerReference,
@@ -130,41 +128,70 @@ func (s *serviceManagerImpl) CreateNodePort(
 	if port == nil {
 		return "", 0, fmt.Errorf("port and ownerRef cannot be nil")
 	}
-	// 生成唯一的 Service 名称
 	serviceName := fmt.Sprintf("np-%s-%s", username, uuid.New().String()[:5])
 	namespace := s.config.Workspace.Namespace
 
-	// Determine labels based on job type
 	labels := s.GenerateLabels(podSelector)
 
-	// 创建 NodePort 类型的 Service
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            serviceName,
-			Namespace:       namespace,
-			OwnerReferences: ownerReferences,
-			Labels:          labels,
-			Annotations: map[string]string{
-				AnnotationKeyPortName: port.Name,
-			},
-		},
-		Spec: v1.ServiceSpec{
-			Ports:    []v1.ServicePort{*port},
-			Type:     v1.ServiceTypeNodePort,
-			Selector: podSelector,
-		},
-	}
+	const (
+		nodePortStart = 30000
+		nodePortEnd   = 32767
+	)
+	userPort := func(username string) int32 {
+		h := fnv.New32a()
+		h.Write([]byte(username))
+		nodePortStart32 := int32(nodePortStart)
+		portRange := uint32(nodePortEnd - nodePortStart + 1)
 
-	// 调用 Kubernetes API 创建 Service
-	if err = s.client.Create(ctx, svc); err != nil {
+		hashVal := h.Sum32() % portRange
+		return nodePortStart32 + int32(hashVal) // #nosec G115
+	}(username)
+
+	tryReserved := true
+	var svc *v1.Service
+	for {
+		svc = &v1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            serviceName,
+				Namespace:       namespace,
+				OwnerReferences: ownerReferences,
+				Labels:          labels,
+				Annotations: map[string]string{
+					AnnotationKeyPortName: port.Name,
+				},
+			},
+			Spec: v1.ServiceSpec{
+				Ports: []v1.ServicePort{
+					{
+						Name:       port.Name,
+						Protocol:   port.Protocol,
+						Port:       port.Port,
+						TargetPort: port.TargetPort,
+						NodePort:   0,
+					},
+				},
+				Type:     v1.ServiceTypeNodePort,
+				Selector: podSelector,
+			},
+		}
+		if tryReserved {
+			svc.Spec.Ports[0].NodePort = userPort
+		}
+		err = s.client.Create(ctx, svc)
+		if err == nil {
+			break
+		}
+		if tryReserved && strings.Contains(err.Error(), "provided port is already allocated") {
+			tryReserved = false
+			continue
+		}
 		return "", 0, fmt.Errorf("failed to create NodePort service: %w", err)
 	}
 
-	// 添加重试机制等待 Service 创建完成
 	var createdSvc v1.Service
 	err = wait.PollUntilContextTimeout(ctx, Poll, Timeout, false, func(ctx context.Context) (bool, error) {
 		if e := s.client.Get(ctx, types.NamespacedName{Name: serviceName, Namespace: namespace}, &createdSvc); e != nil {
-			return false, nil // 继续重试
+			return false, nil
 		}
 		return true, nil
 	})
@@ -173,10 +200,8 @@ func (s *serviceManagerImpl) CreateNodePort(
 		return "", 0, fmt.Errorf("failed to get created service after retries: %w", err)
 	}
 
-	// 获取分配的 NodePort
 	nodePort = createdSvc.Spec.Ports[0].NodePort
 
-	// 通过 podSelector 获取 Pod 列表
 	podList := &v1.PodList{}
 	if err = s.client.List(ctx, podList, client.InNamespace(namespace), client.MatchingLabels(podSelector)); err != nil {
 		return "", nodePort, fmt.Errorf("failed to list pods: %w", err)
@@ -186,7 +211,6 @@ func (s *serviceManagerImpl) CreateNodePort(
 		return "", nodePort, fmt.Errorf("no pods found matching selector")
 	}
 
-	// 获取第一个 Pod 的节点名称
 	pod := podList.Items[0]
 	nodeName := pod.Spec.NodeName
 
@@ -194,21 +218,17 @@ func (s *serviceManagerImpl) CreateNodePort(
 		return "", nodePort, fmt.Errorf("pod not assigned to a node yet")
 	}
 
-	// 只获取特定节点信息，而不是获取所有节点
 	node, err := s.kubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
 		return "", nodePort, fmt.Errorf("failed to get node %s: %w", nodeName, err)
 	}
 
-	// 首先尝试获取外部 IP
 	for _, addr := range node.Status.Addresses {
 		if addr.Type == v1.NodeExternalIP {
 			host = addr.Address
 			return host, nodePort, nil
 		}
 	}
-
-	// 如果没有外部 IP，获取 Internal IP
 	for _, addr := range node.Status.Addresses {
 		if addr.Type == v1.NodeInternalIP {
 			host = addr.Address
@@ -232,11 +252,8 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
 	}
 	namespace := s.config.Workspace.Namespace
-
-	// Generate labels
 	labels := s.GenerateLabels(podSelector)
 
-	// Create the ClusterIP service
 	serviceName := fmt.Sprintf("svc-%s-%s", prefix, port.Name)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -256,14 +273,11 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 		return "", fmt.Errorf("failed to create service: %w", err)
 	}
 
-	// Create the Ingress
 	ingressName := fmt.Sprintf("ing-%s-%s", prefix, port.Name)
 
-	// Ensure prefix starts with "/"
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
 	}
-
 	prefix = fmt.Sprintf("/ingress%s", prefix)
 
 	pathType := networkingv1.PathTypePrefix
@@ -320,7 +334,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 		return "", fmt.Errorf("failed to create ingress: %w", err)
 	}
 
-	ingressPath = fmt.Sprintf("https://%s%s", host, prefix) // Construct the full ingress path
+	ingressPath = fmt.Sprintf("https://%s%s", host, prefix)
 	return ingressPath, nil
 }
 
@@ -337,17 +351,11 @@ func (s *serviceManagerImpl) CreateIngress(
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
 	}
 	namespace := s.config.Workspace.Namespace
-
-	// Generate labels
 	labels := s.GenerateLabels(podSelector)
 
-	// 生成随机8位字符串作为子域名前缀
 	randomPrefix := uuid.New().String()[:5]
-
-	// 构建新的五级域名
 	subdomain := fmt.Sprintf("%s.%s", randomPrefix, host)
 
-	// Create the ClusterIP service
 	serviceName := fmt.Sprintf("svc-%s-%s-%s", username, randomPrefix, port.Name)
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -370,9 +378,7 @@ func (s *serviceManagerImpl) CreateIngress(
 		return "", fmt.Errorf("failed to create service: %w", err)
 	}
 
-	// Create the Ingress
 	ingressName := fmt.Sprintf("ing-%s-%s-%s", username, randomPrefix, port.Name)
-
 	pathType := networkingv1.PathTypePrefix
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -427,6 +433,6 @@ func (s *serviceManagerImpl) CreateIngress(
 		return "", fmt.Errorf("failed to create ingress: %w", err)
 	}
 
-	ingressPath = fmt.Sprintf("https://%s/", subdomain) // 构建完整的访问路径
+	ingressPath = fmt.Sprintf("https://%s/", subdomain)
 	return ingressPath, nil
 }
