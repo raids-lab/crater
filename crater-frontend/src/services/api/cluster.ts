@@ -88,10 +88,42 @@ export interface IClusterNodeGPU {
   gpuProduct: string
 }
 
-export interface IClusterNodeTaint {
-  name: string
-  taint: string
+export interface IClusterNodeLabel {
+  key: string
+  value: string
 }
+
+export interface IClusterNodeAnnotation {
+  key: string
+  value: string
+}
+
+export interface IClusterNodeTaint {
+  key: string
+  value: string
+  effect: string
+}
+
+export interface IClusterNodeMark {
+  labels: IClusterNodeLabel[]
+  annotations: IClusterNodeAnnotation[]
+  taints: IClusterNodeTaint[]
+}
+
+export enum TaintEffect {
+  NoSchedule = 'NoSchedule',
+  PreferNoSchedule = 'PreferNoSchedule',
+  NoExecute = 'NoExecute',
+}
+
+export const CraterArmTaint = {
+  key: 'crater.raids.io/architecture',
+  value: 'arm',
+  effect: TaintEffect.NoSchedule,
+}
+
+export const JoinTaint = (taint: IClusterNodeTaint) => `${taint.key}=${taint.value}:${taint.effect}`
+
 export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('nodes')
 
 export const apiGetNodeDetail = (name: string) =>
@@ -108,8 +140,25 @@ export const apiGetNodeGPU = (name: string) =>
 export const apichangeNodeScheduling = (name: string) =>
   apiV1Put<IResponse<string>>(`nodes/${name}`)
 
-export const apiAddNodeTaint = (nodetaint: IClusterNodeTaint) =>
-  apiV1Post<IResponse<string>>(`nodes/${nodetaint.name}/taint`, nodetaint)
+export const apiAddNodeTaint = (nodeName: string, taintContent: IClusterNodeTaint) =>
+  apiV1Post<IResponse<string>>(`admin/nodes/${nodeName}/taint`, taintContent)
 
-export const apiDeleteNodeTaint = (nodetaint: IClusterNodeTaint) =>
-  apiV1Delete<IResponse<string>>(`nodes/${nodetaint.name}/taint`, nodetaint)
+export const apiDeleteNodeTaint = (nodeName: string, taintContent: IClusterNodeTaint) =>
+  apiV1Delete<IResponse<string>>(`admin/nodes/${nodeName}/taint`, taintContent)
+
+export const apiAddNodeLabel = (nodeName: string, labelContent: IClusterNodeLabel) =>
+  apiV1Post<IResponse<string>>(`admin/nodes/${nodeName}/label`, labelContent)
+
+export const apiDeleteNodeLabel = (nodeName: string, labelContent: IClusterNodeLabel) =>
+  apiV1Delete<IResponse<string>>(`admin/nodes/${nodeName}/label`, labelContent)
+
+export const apiAddNodeAnnotation = (nodeName: string, annotationContent: IClusterNodeAnnotation) =>
+  apiV1Post<IResponse<string>>(`admin/nodes/${nodeName}/annotation`, annotationContent)
+
+export const apiDeleteNodeAnnotation = (
+  nodeName: string,
+  annotationContent: IClusterNodeAnnotation
+) => apiV1Delete<IResponse<string>>(`admin/nodes/${nodeName}/annotation`, annotationContent)
+
+export const apiGetNodeMark = (name: string) =>
+  apiV1Get<IResponse<IClusterNodeMark>>(`admin/nodes/${name}/mark`)
