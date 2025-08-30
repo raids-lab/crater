@@ -1,0 +1,89 @@
+# Copyright 2025 RAIDS Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Publish Helm Chart to GHCR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+  release:
+    types: [published]
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  REGISTRY: ghcr.io
+  REPOSITORY: raids-lab
+
+jobs:
+  publish-chart:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package and Push Helm Chart
+        run: |
+          # Navigate to charts directory
+          cd charts
+
+          # Package the chart
+          helm package crater/
+
+          # Get the chart version from Chart.yaml
+          CHART_VERSION=$(helm show chart crater/ | grep '^version:' | awk '{print $2}')
+          echo "Chart version: $CHART_VERSION"
+
+          # Push to GHCR OCI registry
+          helm push crater-${CHART_VERSION}.tgz oci://${{ env.REGISTRY }}/${{ env.REPOSITORY }}
+
+          echo "Successfully published Helm chart crater:${CHART_VERSION} to ${{ env.REGISTRY }}/${{ env.REPOSITORY }}"
+
+  cleanup-old-versions:
+    runs-on: ubuntu-latest
+    needs: publish-chart
+    if: success()
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Clean up old chart versions
+        uses: quartx-analytics/ghcr-cleaner@v1
+        with:
+          owner-type: org
+          token: ${{ secrets.PAT_TOKEN }}
+          repository-owner: ${{ github.repository_owner }}
+          package-name: crater
+          delete-untagged: true
+          keep-at-most: 10
+          skip-tags: latest
+        continue-on-error: true

@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: storage-server-ingress
-  namespace: {{ .Values.backendConfig.workspace.namespace}}
+  namespace: {{ .Values.namespaces.job }}
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "1000m"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -10,10 +10,10 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - {{ .Values.web.ingress.host }}
+        - {{ .Values.host }}
       secretName: crater-tls-secret
   rules:
-    - host: {{ .Values.web.ingress.host }}
+    - host: {{ .Values.host }}
       http:
         paths:
           - path: /api/ss

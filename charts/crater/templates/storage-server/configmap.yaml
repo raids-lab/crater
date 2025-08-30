@@ -2,7 +2,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: ss-config
-  namespace: {{ .Values.backendConfig.workspace.namespace}}
+  namespace: {{ .Values.namespaces.job }}
 data:
-  config.yaml: |
-    {{ .Values.ssConfig.content | nindent 4 | trim }}
+  config.yaml: {{ toYaml (include "crater.storageServerConfig" .) | nindent 2 | trim }}

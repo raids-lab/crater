@@ -1,49 +1,64 @@
+# Secret for admin credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: crater-admin-secret
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crater-backend
+type: Opaque
+data:
+  username: {{ .Values.firstUser.username | b64enc }}
+  password: {{ .Values.firstUser.password | b64enc }}
+---
 # deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: crater-web-backend
+  name: crater-backend
   namespace: {{ .Release.Namespace }}
   labels:
-    app: crater-web-backend
-  annotations:
-    checksum/config: {{ include (print $.Template.BasePath "/web-backend/configmap.yaml") . | sha256sum }}
+    app: crater-backend
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: crater-web-backend
+      app: crater-backend
   template:
     metadata:
       labels:
-        app: crater-web-backend
+        app: crater-backend
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/web-backend/configmap.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/crater-backend/configmap.yaml") . | sha256sum }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-      {{- if .Values.web.migrate.createMigrationJob }}
       initContainers:
         - name: migration
           image: {{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           command: ["./migrate"]
           env:
             - name: CRATER_ADMIN_USERNAME
-              value: {{ .Values.web.migrate.admin.username }}
+              valueFrom:
+                secretKeyRef:
+                  name: crater-admin-secret
+                  key: username
             - name: CRATER_ADMIN_PASSWORD
-              value: {{ .Values.web.migrate.admin.password }}
+              valueFrom:
+                secretKeyRef:
+                  name: crater-admin-secret
+                  key: password
           volumeMounts:
             - name: backend-conf
               mountPath: /etc/config/config.yaml
               subPath: config.yaml
-      {{- end }}
       containers:
-        - name: crater-web-backend-container
+        - name: crater-backend-container
           image: {{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
-          imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           command:
             - /controller
             - --config-file=/etc/config/config.yaml
@@ -65,16 +80,16 @@ spec:
           readinessProbe:
             httpGet:
               path: /healthz
-              port: 8088
+              port: {{ .Values.backendConfig.port }}
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /healthz
-              port: 8088
+              port: {{ .Values.backendConfig.port }}
             initialDelaySeconds: 30
             periodSeconds: 10
-      serviceAccountName: crater-web-backend
+      serviceAccountName: crater-backend
       volumes:
         - name: backend-conf
           configMap:
