@@ -20,21 +20,10 @@ interface ImportMetaEnv {
 
   // URLs
   readonly VITE_HOST: string
-  readonly VITE_SERVER_PROXY_DOMAIN: string
-  readonly VITE_SERVER_PROXY_PREFIX: string
+  readonly VITE_API_PRIFIX: string
+  readonly VITE_SERVER_PROXY_BACKEND: string
   readonly VITE_SERVER_PROXY_STORAGE: string
-  readonly VITE_WEBSITE_BASE_URL: string
-
-  // Grafana URLs
-  readonly VITE_GRAFANA_NODE: string
-  readonly VITE_GRAFANA_POD_MONITOR: string
-  readonly VITE_GRAFANA_JOB_MONITOR: string
-  readonly VITE_GRAFANA_JOB_GPU_MONITOR: string
-  readonly VITE_GRAFANA_GPU_DASHBOARD: string
-  readonly VITE_GRAFANA_USER_GPU_DASHBOARD: string
-  readonly VITE_GRAFANA_OVERVIEW: string
-  readonly VITE_GRAFANA_SCHEDULE: string
-  readonly VITE_GRAFANA_NETWORK: string
+  readonly VITE_DOCS_BASE_URL: string
 
   // Development
   readonly VITE_USE_MSW: string

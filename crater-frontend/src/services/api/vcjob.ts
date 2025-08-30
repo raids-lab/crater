@@ -13,17 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { getDefaultStore } from 'jotai'
 import { Event as KubernetesEvent } from 'kubernetes-types/core/v1'
 
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { V1ResourceList } from '@/utils/resource'
-import { globalJobUrl, store } from '@/utils/store'
+import { globalJobUrl } from '@/utils/store'
 
 import { IResponse } from '../types'
 import { ImageInfoResponse } from './imagepack'
 import { TerminatedState } from './tool'
 
+const store = getDefaultStore()
 const JOB_URL = store.get(globalJobUrl)
 
 export enum JobType {

@@ -1,10 +1,8 @@
 {
   "version": "1.0.0",
   "url": {
-    "host": "gpu.crater.example.io",
-    "apiBase": "https://gpu.crater.example.io/api/",
-    "apiVersion": "v1",
-    "websiteBase": "https://gpu.crater.example.io/website/cn"
+    "apiPrefix": "/api/v1",
+    "document": "https://raids-lab.github.io/crater/zh"
   },
   "grafana": {
     "overview": {
@@ -24,8 +22,5 @@
     "user": {
       "nvidia": "https://gpu-grafana.crater.example.io/d/user-nvidia-dcgm-dashboard/crater-user-nvidia-dashboard"
     }
-  },
-  "featureFlags": {
-    "enableRegister": true
   }
 }

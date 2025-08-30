@@ -17,10 +17,8 @@
 export interface AppConfig {
   version: string
   url: {
-    host: string
-    apiBase: string
-    apiVersion: string
-    websiteBase: string
+    apiPrefix: string
+    document: string
   }
   grafana: {
     overview: {
@@ -40,11 +38,5 @@ export interface AppConfig {
     user: {
       nvidia: string
     }
-  }
-  featureFlags: {
-    enableRegister: boolean
-    setDocsAsHome: boolean
-    alertLowCPURequest: boolean
-    enableMockServiceWorker: boolean
   }
 }

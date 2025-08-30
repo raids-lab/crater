@@ -1,7 +1,9 @@
+import { getDefaultStore } from 'jotai'
 import ky, { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
+import { configAPIPrefixAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import {
@@ -15,6 +17,11 @@ import {
 } from './error_code'
 import type { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from './types'
 
+const store = getDefaultStore()
+const apiPrefix = store.get(configAPIPrefixAtom)
+// /api/v1 => /api, remove the tail /v1
+const apiPrefixWithoutVersion = apiPrefix?.replace(/\/v1$/, '')
+
 // Token 刷新函数
 const refreshTokenFn = async (): Promise<string> => {
   const data: IRefresh = {
@@ -22,7 +29,7 @@ const refreshTokenFn = async (): Promise<string> => {
   }
 
   // 使用基本的 ky 实例避免循环调用
-  const basicClient = ky.create({ prefixUrl: '/api' })
+  const basicClient = ky.create({ prefixUrl: apiPrefixWithoutVersion })
 
   const response = await basicClient
     .post('auth/refresh', { json: data })
@@ -51,7 +58,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 // 创建 ky 实例
 export const apiClient = ky.create({
-  prefixUrl: '/api',
+  prefixUrl: apiPrefixWithoutVersion,
   retry: 0,
   timeout: 10000,
   hooks: {

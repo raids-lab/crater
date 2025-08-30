@@ -37,8 +37,6 @@ import NotFound from '@/components/placeholder/not-found'
 import { AuthMode } from '@/services/api/auth'
 import { queryAuthMode } from '@/services/query/auth'
 
-import useConfigLoader from '@/hooks/useConfigLoader'
-
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 import { useTheme } from '@/utils/theme'
 
@@ -76,7 +74,6 @@ export const Route = createFileRoute('/auth/')({
 })
 
 function LoginPage() {
-  useConfigLoader()
   const searchParams = Route.useSearch()
   const { auth } = Route.useRouteContext()
   const [showSignup, setShowSignup] = useState(false)

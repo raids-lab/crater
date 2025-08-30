@@ -24,8 +24,6 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { NavBreadcrumb } from '@/components/layout/app-breadcrumb'
 import { AppSidebar } from '@/components/sidebar/app-sidebar'
 
-import useConfigLoader from '@/hooks/useConfigLoader'
-
 import { atomFixedLayout, globalSettings } from '@/utils/store'
 
 import { cn } from '@/lib/utils'
@@ -42,7 +40,6 @@ interface AppLayoutProps {
 const AppLayout = ({ groups, rawPath, children }: AppLayoutProps) => {
   const fixedLayout = useAtomValue(atomFixedLayout)
   const scheduler = useAtomValue(globalSettings).scheduler
-  useConfigLoader()
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
