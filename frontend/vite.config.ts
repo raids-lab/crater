@@ -24,7 +24,7 @@ import { Plugin } from 'vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const backendUrl = env.VITE_SERVER_PROXY_BACKEND // http://xxx
-  const backendHost = new URL(backendUrl).host
+  const backendHost = backendUrl ? new URL(backendUrl).host : ''
 
   return {
     plugins: [
@@ -56,7 +56,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
         '/api': {
-          target: env.VITE_SERVER_PROXY_BACKEND,
+          target: backendUrl,
           changeOrigin: true,
         },
       },
