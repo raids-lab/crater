@@ -1,0 +1,403 @@
+# Crater 最小版本部署方案
+
+Crater 平台依赖 Kubernetes 集群进行运行，因此在部署前，需要准备一系列基础依赖组件。这些组件提供了监控、存储、网络、调度、镜像仓库等核心能力，确保平台能够正常启动与运行。
+ 在最小化部署方案中，我们尽量只保留最核心、不可或缺的依赖，避免引入过多复杂性。最终确定的依赖包括：
+
+- **metrics-server**：用于收集节点和 Pod 的 CPU、内存等指标，支撑 HPA 等弹性伸缩能力。
+- **NVIDIA GPU Operator**：负责安装 GPU 驱动、设备插件和监控组件，确保 Crater 可以调度 GPU 任务。
+- **CloudNativePG (CNPG)**：提供高可用的 PostgreSQL 数据库服务，本方案中主要作为 Harbor 的外部数据库。
+- **IngressClass (Ingress-Nginx)**：负责处理外部流量路由，将用户请求转发到集群内部服务。
+- **Volcano**：面向批处理和 AI 工作负载的调度框架，是 Crater 的作业调度核心。
+- **StorageClass (NFS)**：统一的分布式存储后端，为数据库和 Harbor 提供持久化存储能力。
+- **Harbor**：企业级镜像仓库，存放 Crater 前后端及依赖镜像，保证在离线/内网环境中也能顺利拉取。
+
+选择这些组件的原因在于：它们是 **Crater 平台最小可运行环境** 所需的关键支撑，没有它们，平台无法正常运作。而诸如 **Prometheus/Grafana 监控栈**、**MetalLB 负载均衡**、**OpenEBS 存储** 等功能更强但非必须的依赖，则被排除在最小版本之外，以降低部署门槛。
+
+## 前置依赖部署
+
+| Component           | Purpose                          |
+| ------------------- | -------------------------------- |
+| metrics-server      | Metrics API for autoscaling      |
+| NVIDIA GPU Operator | GPU device plugin and monitoring |
+| CloudNativePG       | PostgreSQL database service      |
+| IngressClass        | Ingress traffic routing          |
+| Volcano             | Base job scheduling framework    |
+| StorageClass (NFS)  | Distributed storage backend      |
+| Harbor              | Container image registry         |
+
+### metrics-server
+
+metrics-server 是 Kubernetes 官方推荐的监控组件，主要收集节点和 Pod 的资源使用情况。虽然 Crater 本身不直接依赖，但 Kubernetes 的自动扩缩容机制（HPA、VPA）需要它才能工作。因此即便在最小部署版本中，仍然建议安装 metrics-server，以保证集群基本的可观测性。
+
+直接添加官方 Helm 仓库并安装：
+
+```bash
+# 添加 Helm 仓库
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+helm repo add nvidia https://nvidia.github.io/gpu-operator
+
+# 更新本地仓库索引
+helm repo update
+```
+
+metrics-server 安装完成后验证可以执行 `top` 命令：
+
+```bash
+root@lxw-01:~# kubectl top node
+NAME     CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+lxw-01   139m         0%     2975Mi          4%        
+lxw-02   27m          0%     2907Mi          4%        
+lxw-03   32m          0%     4023Mi          6%        
+lxw-04   27m          0%     2477Mi          3%        
+lxw-05   16m          0%     2204Mi          3%       
+```
+
+### IngressClass
+
+在生产集群中，常见做法是结合负载均衡器（如 MetalLB）与 Ingress 控制器一起使用。但在最小部署场景中，我们仅需要一个基础的 **Ingress-Nginx 控制器** 即可，将外部请求路由到集群内部服务。这样避免了对底层网络插件或负载均衡功能的额外依赖。
+
+可直接通过 Helm 部署 Ingress-Nginx 控制器：
+
+```
+# 添加官方仓库
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+# 部署 ingress-nginx
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace
+```
+
+### Volcano
+
+Crater 的任务运行和调度依赖 Volcano 提供的批量计算调度能力。Volcano 针对 AI/大数据场景优化，支持队列、优先级、Gang 调度等特性。即使在最小部署环境中，Volcano 也是必不可少的核心组件，否则 Crater 无法调度和运行任务。
+
+### 部署命令
+
+```
+# 添加 Volcano repo
+helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
+helm repo update
+
+# 部署
+helm upgrade --install volcano volcano-sh/volcano \
+  --namespace volcano-system \
+  --create-namespace \
+  --version 1.10.0 \
+  -f volcano/values.yaml
+```
+
+value.yaml 配置参考  https://github.com/raids-lab/crater-backend/blob/main/deployments/volcano/values.yaml
+
+####  验证部署
+
+```
+kubectl get pods -n volcano-system
+```
+
+预期 Running 的组件：
+
+- `volcano-scheduler`
+
+- `volcano-controllers`
+
+- `volcano-admission`
+
+- `volcano-webhook`
+
+
+### StorageClass (NFS)
+
+NFS 提供分布式存储后端，Harbor 和 CNPG 的 PVC 都会依赖它。
+
+1. 在 NFS 服务器上创建目录并配置权限：
+
+   ```
+   mkdir -p /srv/nfs/k8s
+   chown -R 26:26 /srv/nfs/k8s
+   ```
+
+2. 编辑 `/etc/exports`，增加导出规则：
+
+   ```
+   /srv/nfs/k8s 192.168.103.0/24(rw,sync,no_subtree_check,no_root_squash)
+   ```
+
+3. 刷新导出：
+
+   ```
+   exportfs -rv
+   ```
+
+4. 在 K8s 集群部署 **nfs-subdir-external-provisioner**：
+
+   ```
+   helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+   helm repo update
+   helm install nfs-client nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+     --namespace nfs-provisioner --create-namespace \
+     --set nfs.server=192.168.103.136 \
+     --set nfs.path=/srv/nfs/k8s
+   ```
+
+5. 验证 StorageClass：
+
+   ```
+   kubectl get sc
+   ```
+
+   确认有 `nfs-client`，并且 `provisioner` 是 `nfs-subdir-external-provisioner`.
+
+------
+
+### CloudNativePG (CNPG)
+
+Kubernetes 的有状态组件（如数据库、镜像仓库）需要持久化存储支持。在最小部署版本中，我们选择 **NFS 作为统一的分布式存储后端**，因为它配置简单、兼容性好，而且无需额外部署复杂的存储系统（如 OpenEBS、Ceph）。
+ 通过 NFS 提供的 StorageClass，Harbor 和 CNPG 可以直接申请 PVC，实现持久化存储，而无需关心底层存储细节。这种方案特别适合轻量化和资源有限的环境。
+
+CNPG 作为 Harbor 外部数据库管理组件。
+
+1. 部署 Operator：
+
+   ```
+   helm repo add cnpg https://cloudnative-pg.github.io/charts
+   helm repo update
+   helm install cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace
+   ```
+
+2. 创建数据库用户密码 Secret：
+
+   ```
+   kubectl -n cnpg-system create secret generic harbor-db-password \
+     --from-literal=password='HarborDbPass!'
+   ```
+
+3. 定义数据库集群 (`harbor-pg.yaml`)：
+
+   ```
+   apiVersion: postgresql.cnpg.io/v1
+   kind: Cluster
+   metadata:
+     name: harbor-pg
+   spec:
+     instances: 1
+     imageName: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/cloudnative-pg/postgresql:15
+     storage:
+       size: 5Gi
+       storageClass: nfs-client
+     bootstrap:
+       initdb:
+         database: registry
+         owner: harbor
+         secret:
+           name: harbor-db-password
+           key: password
+   ```
+
+   ```
+   kubectl apply -f harbor-pg.yaml -n cnpg-system
+   ```
+
+4. 验证 CNPG：
+
+   ```
+   kubectl -n cnpg-system get pods
+   kubectl -n cnpg-system get svc | grep harbor-pg
+   ```
+
+   你应该看到：
+
+   - `harbor-pg-1` Pod Running
+   - `harbor-pg-rw` Service 提供 5432 端口
+
+5. 登录数据库测试：
+
+   ```
+   kubectl -n cnpg-system exec -it harbor-pg-1 -c postgres -- \
+     psql -h 127.0.0.1 -U harbor -d registry -W
+   ```
+
+------
+
+### 部署 Harbor
+
+Harbor 是 Crater 平台依赖的镜像仓库。在内网或离线环境下，公共镜像库（如 DockerHub、ghcr.io）常常不可达，因此必须通过私有仓库来存放 Crater 前后端及依赖镜像。
+ 选择 Harbor 的原因是它具备 **镜像管理、权限控制、安全扫描** 等企业级能力，同时和 Kubernetes 原生集成良好。在最小部署环境中，Harbor 只需要依赖 **NFS 存储** 与 **CNPG 外部数据库** 即可运行，不再额外依赖 Redis/Postgres 内置版本，简化了整体架构。
+ 这样不仅保证 Crater 的镜像可以本地化存储和分发，也为后续扩展（如多用户、多项目的镜像管理）提供了基础。
+
+Harbor 使用上面的 **NFS** 存储和 **CNPG 外部数据库**。
+
+1. 下载 Chart：
+
+   ```
+   helm repo add harbor https://helm.goharbor.io
+   helm repo update
+   helm pull harbor/harbor --untar --untardir ./charts
+   cd charts/harbor
+   ```
+
+2. 编辑 `values.yaml`，关键修改：
+
+   - 暴露方式 (NodePort)：
+
+     ```
+     expose:
+       type: nodePort
+       nodePort:
+         ports:
+           http:
+             port: 30002
+     externalURL: http://192.168.103.136:30002
+     ```
+
+   - 使用外部数据库：
+
+     ```
+     database:
+       type: external
+       external:
+         host: harbor-pg-rw.cnpg-system.svc
+         port: "5432"
+         username: harbor
+         coreDatabase: registry
+         existingSecret: harbor-db-password
+     ```
+
+   - 指定 PVC：
+
+     ```
+     persistence:
+       enabled: true
+       resourcePolicy: "keep"
+       persistentVolumeClaim:
+         registry:
+           existingClaim: harbor-registry
+           storageClass: nfs-client
+           size: 50Gi
+     ```
+
+   - 替换镜像源（需要准备的镜像如下表，可用华为云镜像替换）：
+
+| 组件                      | 仓库(repo)                      | tag       | 替换镜像                                                     |
+| ------------------------- | ------------------------------- | --------- | ------------------------------------------------------------ |
+| nginx                     | `goharbor/nginx-photon`         | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/nginx-photon:v2.12.0 |
+| portal                    | `goharbor/harbor-portal`        | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-portal:v2.12.0 |
+| core                      | `goharbor/harbor-core`          | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-core:v2.12.0 |
+| jobservice                | `goharbor/harbor-jobservice`    | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-jobservice:v2.12.0 |
+| registry（distribution）  | `goharbor/registry-photon`      | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/registry-photon:v2.12.0 |
+| registryctl               | `goharbor/harbor-registryctl`   | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-registryctl:v2.12.0 |
+| trivy-adapter             | `goharbor/trivy-adapter-photon` | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/trivy-adapter-photon:v2.12.1 |
+| database（内置 Postgres） | `goharbor/harbor-db`            | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-db:v2.12.0 |
+| redis（内置 Redis）       | `goharbor/redis-photon`         | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/redis-photon:v2.12.0 |
+| exporter                  | `goharbor/harbor-exporter`      | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-exporter:v2.12.0 |
+
+3. 部署 Harbor：
+
+   ```
+   helm install harbor . -n harbor-system --create-namespace -f values.yaml
+   ```
+
+4. 验证 Pod 状态：
+
+   ```
+   kubectl -n harbor-system get pods
+   ```
+
+   确认组件运行：
+
+   - `harbor-core` ✅
+   - `harbor-jobservice` ✅
+   - `harbor-portal`, `harbor-nginx`, `harbor-registry`, `harbor-redis`, `harbor-trivy` ✅
+
+5. 访问 Harbor：
+   打开浏览器访问
+
+   ```
+   http://192.168.103.136:30002
+   ```
+
+   默认用户：`admin`
+    默认密码：在 `values.yaml` 中设置的 `harborAdminPassword`。
+
+## 最小版本部署 Helm value
+
+最小版本 `values.yaml` 的目标是：在**无域名、内网镜像仓库、NFS 存储、CNPG 外部数据库**的前提下，尽快把 Crater 跑起来。核心项含义如下：
+
+- `createNamespace`: 是否由 Chart 帮你创建命名空间。最小版通常在外部用 `kubectl create ns` 或 `--create-namespace` 控制，因此这里为 `false`。
+- `images.*`: 前后端镜像仓库与版本。使用了 Harbor 内网仓库以及确定性的 `sha256`（可避免 tag 漂移）。
+- `urls.host`: 集群对外访问入口（无域名时直接用节点 IP）。用于前端构建 URL、后端 Ingress 等。
+- `web.migrate.*`: 首次部署是否创建迁移 Job，以及后台管理员初始账密。
+- `web.ingress.host`: Ingress 对外主机名。最小版与 `urls.host` 一致（无域名）。
+- `frontendConfig.*`: 前端的运行时配置（API 地址、是否开放注册、对外站点链接等）。
+- `backendConfig.postgres.*`: 后端数据库连接。最小版接 CNPG 暴露的 RW 服务。
+- `backendConfig.auth.*`: 令牌密钥（access/refresh）。最小版先跑通，后续再旋转密钥。
+- `backendConfig.secrets.tlsSecretName`: 如不启用 TLS，为空即可。
+- `storage.*`: 读写与只读 PVC 的创建与绑定参数；最小版用 `nfs-client` 的 StorageClass。
+
+### 现状问题：模板未设默认值导致渲染/安装报错
+
+最小部署时经常会遇到 Helm 报错，是因为当前 **模板直接取字段而未加 `default` 或 `required`**（后续修复）：
+
+**空指针/不存在字段**
+
+- `executing "xxx.tmpl" at <.Values.web.ingress.host>: nil pointer evaluating interface {}.host`
+- `map has no entry for key "apiBase"` / `can't evaluate field apiBase in type interface {}`
+
+最小版本部署 Values.yaml 参考：
+
+
+```yaml
+createNamespace: false
+
+images:
+  backend:
+    repository: "crater-harbor.act.buaa.edu.cn/crater/web-backend"
+    tag: "sha256:775132295a70f97d6e8288adb83e03453a7a4df726084c9ccbbc5fe022b2eef2"
+  frontend:
+    repository: "crater-harbor.act.buaa.edu.cn/crater/web-frontend"
+    tag: "sha256:0503da66cb4438388c88483ba99b9eea0cf2ee70effc67e825c670ddfcc2cc63"
+
+urls:
+  host: "192.168.103.136"  # 节点IP，无域名时用IP
+
+web:
+  migrate:
+    createMigrationJob: true
+    admin:
+      username: "admin"
+      password: "admin"
+  ingress:
+    host: "192.168.103.136"  # 与urls.host一致
+
+frontendConfig:
+  version: "1.0.0"
+  url:
+    host: "192.168.103.136"
+    apiBase: "http://192.168.103.136/api/"
+    apiVersion: "v1"
+    websiteBase: "https://raids-lab.github.io/crater/cn"
+  featureFlags:
+    enableRegister: false
+
+backendConfig:
+  postgres:
+    host: harbor-pg-rw.cnpg-system.svc.cluster.local
+    port: 5432
+    dbname: registry
+    user: harbor
+    password: HarborDbPass!
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+  auth:
+    accessTokenSecret: "admin"
+    refreshTokenSecret: "admin"
+  secrets:
+    tlsSecretName: "" # 不启用 TLS 可留空
+
+storage:
+  create: true
+  request: 100Gi
+  storageClass: "nfs-client"
+  rwName: "crater-rw-storage"
+  roName: "crater-ro-storage"
+```
