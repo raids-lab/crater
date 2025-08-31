@@ -39,7 +39,7 @@ Crater offers detailed monitoring data and logging capabilities, empowering user
 
 ---
 ## Overall Architecture
-![crater architecture](./crater-website/content/docs/admin/deployment/assets/architecture.webp)
+![crater architecture](./crater-website/content/docs/admin/assets/architecture.webp)
 
 ## Installation
 
