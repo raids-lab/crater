@@ -5,14 +5,26 @@ description: "A university-developed cluster management platform for intelligent
 
 ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-A Helm chart for Kubernetes
+A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
+
+**Homepage:** <https://github.com/raids-lab/crater>
+
+## Maintainers
+
+| Name | Email | Url |
+| ---- | ------ | --- |
+| RAIDS Lab |  | <https://github.com/raids-lab> |
+
+## Source Code
+
+* <https://github.com/raids-lab/crater/tree/main/charts/crater>
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"NotIn","values":["true"]}]},"weight":100}]}}` | Pod affinity configuration |
-| backendConfig | object | `{"auth":{"accessTokenSecret":"<MASKED>","refreshTokenSecret":"<MASKED>"},"enableLeaderElection":false,"port":":8088","postgres":{"TimeZone":"Asia/Shanghai","dbname":"crater","host":"192.168.0.1","password":"<MASKED>","port":6432,"sslmode":"disable","user":"postgres"},"prometheusAPI":"http://192.168.0.1:12345","registry":{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":true,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}},"secrets":{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"},"smtp":{"enable":true,"host":"mail.example.com","notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"},"storage":{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":"crater-rox-storage","readWriteMany":"crater-storage"}}}` | Backend configuration |
+| backendConfig | object | `{"auth":{"accessTokenSecret":"<MASKED>","refreshTokenSecret":"<MASKED>"},"enableLeaderElection":false,"port":":8088","postgres":{"TimeZone":"Asia/Shanghai","dbname":"crater","host":"192.168.0.1","password":"<MASKED>","port":6432,"sslmode":"disable","user":"postgres"},"prometheusAPI":"http://192.168.0.1:12345","registry":{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":true,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}},"secrets":{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"},"smtp":{"enable":true,"host":"mail.example.com","notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"},"storage":{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"}}}` | Backend configuration |
 | backendConfig.auth | object | `{"accessTokenSecret":"<MASKED>","refreshTokenSecret":"<MASKED>"}` | Authentication token configuration for JWT-based authentication (Required) Both token secrets must be specified for secure authentication |
 | backendConfig.auth.accessTokenSecret | string | `"<MASKED>"` | Secret key used to sign JWT access tokens (Required) Must be a secure, randomly generated string |
 | backendConfig.auth.refreshTokenSecret | string | `"<MASKED>"` | Secret key used to sign JWT refresh tokens (Required) Must be a secure, randomly generated string |
@@ -49,13 +61,13 @@ A Helm chart for Kubernetes
 | backendConfig.smtp.password | string | `"<MASKED>"` | Password for SMTP authentication (Required if Enable is true) Must match the specified user's password |
 | backendConfig.smtp.port | int | `25` | SMTP server port number (Required if Enable is true) Typically 25, 465, or 587 |
 | backendConfig.smtp.user | string | `"example"` | Username for SMTP authentication (Required if Enable is true) Must be a valid SMTP user |
-| backendConfig.storage | object | `{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":"crater-rox-storage","readWriteMany":"crater-storage"}}` | Persistent volume claim and path prefix configurations (Required) All PVC names and prefix paths must be specified |
+| backendConfig.storage | object | `{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"}}` | Persistent volume claim and path prefix configurations (Required) All PVC names and prefix paths must be specified |
 | backendConfig.storage.prefix | object | `{"account":"accounts","public":"public","user":"users"}` | Path prefixes for different types of storage locations (Required) All prefix paths must be specified |
 | backendConfig.storage.prefix.account | string | `"accounts"` | Account prefix for account-related storage paths (Required) Must be a valid path within the storage system |
 | backendConfig.storage.prefix.public | string | `"public"` | Public prefix for publicly accessible storage paths (Required) Must be a valid path within the storage system |
 | backendConfig.storage.prefix.user | string | `"users"` | User prefix for user-specific storage paths (Required) Must be a valid path within the storage system |
-| backendConfig.storage.pvc.readOnlyMany | string | `"crater-rox-storage"` | Name of the ReadOnlyMany Persistent Volume Claim for datasets and models It should be a link to the same underlying storage as ReadWriteMany If not specified, datasets and models will be mounted as read-write |
-| backendConfig.storage.pvc.readWriteMany | string | `"crater-storage"` | Name of the ReadWriteMany Persistent Volume Claim for shared storage (Required) PVC must exist in the cluster with ReadWriteMany access mode |
+| backendConfig.storage.pvc.readOnlyMany | string | `nil` | Name of the ReadOnlyMany Persistent Volume Claim for datasets and models It should be a link to the same underlying storage as ReadWriteMany If not specified, datasets and models will be mounted as read-write |
+| backendConfig.storage.pvc.readWriteMany | string | `"crater-rw-storage"` | Name of the ReadWriteMany Persistent Volume Claim for shared storage (Required) PVC must exist in the cluster with ReadWriteMany access mode |
 | buildkitConfig | object | `{"amdConfig":{"cache":{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"},"enabled":true,"replicas":3},"armConfig":{"cache":{"maxUsedSpace":"80GB","minFreeSpace":"10GB","reservedSpace":"10GB","storageClass":"openebs-hostpath","storageSize":"80Gi"},"enabled":false,"replicas":2},"generalConfig":{"resources":{"limits":{"cpu":16,"memory":"48Gi"},"requests":{"cpu":8,"memory":"24Gi"}}}}` | Image building pipeline configuration Only fully available when you have self-hosted image registries like Harbor |
 | buildkitConfig.amdConfig | object | `{"cache":{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"},"enabled":true,"replicas":3}` | AMD architecture configuration |
 | buildkitConfig.amdConfig.cache | object | `{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"}` | Cache configuration for AMD builds |
@@ -144,9 +156,9 @@ A Helm chart for Kubernetes
 | protocol | string | `"https"` | Protocol for server communication |
 | storage | object | `{"create":true,"pvcName":"crater-rw-storage","request":"2Ti","storageClass":"ceph-fs"}` | Persistent Volume Claim configuration |
 | storage.create | bool | `true` | Whether to create PVC |
-| storage.pvcName | string | `"crater-rw-storage"` | PVC name |
+| storage.pvcName | string | `"crater-rw-storage"` | PVC name (also used in backendConfig) |
 | storage.request | string | `"2Ti"` | Storage request size |
-| storage.storageClass | string | `"ceph-fs"` | Storage class name (must support ReadWriteMany) |
+| storage.storageClass | string | `"ceph-fs"` | Storage class name (e.g. cephfs, nfs, must support ReadWriteMany) |
 | tls | object | `{"base":{"cert":"<MASKED>","create":false,"key":"<MASKED>"},"forward":{"cert":"<MASKED>","create":false,"key":"<MASKED>"}}` | TLS certificate configuration for exposing services via Ingress cert-manager configuration variables |
 | tls.base | object | `{"cert":"<MASKED>","create":false,"key":"<MASKED>"}` | Base certificate configuration (Standard mode, e.g., crater.example.com certificate) |
 | tls.base.cert | string | `"<MASKED>"` | Base certificate content (masked) |
