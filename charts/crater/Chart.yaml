@@ -26,7 +26,7 @@ appVersion: "1.0.0"
 # Additional metadata
 home: https://github.com/raids-lab/crater
 sources:
-  - https://github.com/raids-lab/crater
+  - https://github.com/raids-lab/crater/tree/main/charts/crater
 keywords:
   - ai
   - machine-learning
