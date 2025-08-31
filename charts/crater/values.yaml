@@ -81,10 +81,10 @@ storage:
   create: true
   # -- Storage request size
   request: 2Ti
-  # -- Storage class name (must support ReadWriteMany)
+  # -- Storage class name (e.g. cephfs, nfs, must support ReadWriteMany)
   storageClass: "ceph-fs"
-  # -- PVC name
-  pvcName: "crater-rw-storage"
+  # -- PVC name (also used in backendConfig)
+  pvcName: &rwPvcName "crater-rw-storage"
 
 # -- Node selector for all Deployments
 # Prevents control components from being scheduled to GPU worker nodes
@@ -223,11 +223,11 @@ backendConfig:
     pvc:
       # -- Name of the ReadWriteMany Persistent Volume Claim for shared storage (Required)
       # PVC must exist in the cluster with ReadWriteMany access mode
-      readWriteMany: crater-storage
+      readWriteMany: *rwPvcName
       # -- Name of the ReadOnlyMany Persistent Volume Claim for datasets and models
       # It should be a link to the same underlying storage as ReadWriteMany
       # If not specified, datasets and models will be mounted as read-write
-      readOnlyMany: crater-rox-storage
+      readOnlyMany: null
 
   # -- Kubernetes secret names for various security components (Required)
   # All secret names must correspond to existing Kubernetes secrets
