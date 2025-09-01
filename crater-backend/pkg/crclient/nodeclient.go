@@ -93,6 +93,11 @@ type GPUInfo struct {
 	GPUProduct  string              `json:"gpuProduct"`
 }
 
+type NodeMarkInfo struct {
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Taints      []corev1.Taint    `json:"taints"`
+}
 type NodeClient struct {
 	client.Client
 	KubeClient       kubernetes.Interface
@@ -277,6 +282,7 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 	}
 	return nodeInfo, nil
 }
+
 func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name string) error {
 	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
@@ -286,87 +292,7 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name string) err
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return err
 }
-func stringToTaint(taintString string) (corev1.Taint, error) {
-	// 拆分字符串
-	parts := strings.Split(taintString, "=")
-	if len(parts) != 2 {
-		return corev1.Taint{}, fmt.Errorf("invalid taint format: %s", taintString)
-	}
 
-	key := parts[0]
-	valueEffect := strings.Split(parts[1], ":")
-	if len(valueEffect) != 2 {
-		return corev1.Taint{}, fmt.Errorf("invalid taint format: %s", taintString)
-	}
-
-	value := valueEffect[0]
-	effect := valueEffect[1]
-
-	// 创建 Taint 结构体
-	taint := corev1.Taint{
-		Key:    key,
-		Value:  value,
-		Effect: corev1.TaintEffect(effect),
-	}
-
-	return taint, nil
-}
-func (nc *NodeClient) AddNodetaint(ctx context.Context, name, taint string) error {
-	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	var Taint corev1.Taint
-	Taint, err1 := stringToTaint(taint)
-	if err1 != nil {
-		return err
-	}
-	// 检查污点是否已经存在
-	for _, existingTaint := range node.Spec.Taints {
-		if existingTaint.MatchTaint(&Taint) {
-			return fmt.Errorf("taint %v already exists on node %s", taint, name)
-		}
-	}
-	// 添加新的污点
-	node.Spec.Taints = append(node.Spec.Taints, Taint)
-
-	// 更新节点
-	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-	return err
-}
-func (nc *NodeClient) DeleteNodetaint(ctx context.Context, name, taint string) error {
-	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
-	var Taint corev1.Taint
-	Taint, err1 := stringToTaint(taint)
-	if err != nil {
-		return err
-	}
-	if err1 != nil {
-		return err
-	}
-	// 从现有污点列表中删除指定的污点
-	newTaints := []corev1.Taint{}
-	for _, existingTaint := range node.Spec.Taints {
-		if !existingTaint.MatchTaint(&Taint) {
-			newTaints = append(newTaints, existingTaint)
-		}
-	}
-	// 如果污点列表没有变化，则不需要更新
-	if len(newTaints) == len(node.Spec.Taints) {
-		return fmt.Errorf("taint %v not found on node %s", taint, name)
-	}
-	// 更新污点列表
-	node.Spec.Taints = newTaints
-	// 更新节点
-	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-	return err
-}
 func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
 	// Get Pods for the node, which is a costly operation
 	podList := &corev1.PodList{}
@@ -510,4 +436,144 @@ func (nc *NodeClient) GetLeastUsedGPUJobs(time, util int) []string {
 		}
 	}
 	return leastUsedJobs
+}
+
+// GetNodeMarks 获取指定节点的Labels、Annotations和Taints
+func (nc *NodeClient) GetNodeMarks(ctx context.Context, name string) (NodeMarkInfo, error) {
+	node := &corev1.Node{}
+	if err := nc.Get(ctx, client.ObjectKey{Name: name}, node); err != nil {
+		return NodeMarkInfo{}, err
+	}
+
+	nodeMarkInfo := NodeMarkInfo{
+		Labels:      node.Labels,
+		Annotations: node.Annotations,
+		Taints:      node.Spec.Taints,
+	}
+
+	return nodeMarkInfo, nil
+}
+
+// AddNodeLabel 添加节点标签
+func (nc *NodeClient) AddNodeLabel(ctx context.Context, nodeName, key, value string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if node.Labels == nil {
+		node.Labels = make(map[string]string)
+	}
+	node.Labels[key] = value
+
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
+}
+
+// DeleteNodeLabel 删除节点标签
+func (nc *NodeClient) DeleteNodeLabel(ctx context.Context, nodeName, key string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if node.Labels != nil {
+		delete(node.Labels, key)
+	}
+
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
+}
+
+// AddNodeAnnotation 添加节点注解
+func (nc *NodeClient) AddNodeAnnotation(ctx context.Context, nodeName, key, value string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+	node.Annotations[key] = value
+
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
+}
+
+// DeleteNodeAnnotation 删除节点注解
+func (nc *NodeClient) DeleteNodeAnnotation(ctx context.Context, nodeName, key string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if node.Annotations != nil {
+		delete(node.Annotations, key)
+	}
+
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
+}
+
+// AddNodeTaint 添加节点污点
+func (nc *NodeClient) AddNodeTaint(ctx context.Context, nodeName, key, value, effect string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	newTaint := corev1.Taint{
+		Key:    key,
+		Value:  value,
+		Effect: corev1.TaintEffect(effect),
+	}
+
+	// 检查污点是否已经存在
+	for _, existingTaint := range node.Spec.Taints {
+		if existingTaint.MatchTaint(&newTaint) {
+			return fmt.Errorf("taint %s=%s:%s already exists on node %s", key, value, effect, nodeName)
+		}
+	}
+
+	// 添加新的污点
+	node.Spec.Taints = append(node.Spec.Taints, newTaint)
+
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
+}
+
+// DeleteNodeTaint 删除节点污点
+func (nc *NodeClient) DeleteNodeTaint(ctx context.Context, nodeName, key, value, effect string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	targetTaint := corev1.Taint{
+		Key:    key,
+		Value:  value,
+		Effect: corev1.TaintEffect(effect),
+	}
+
+	// 从现有污点列表中删除指定的污点
+	newTaints := []corev1.Taint{}
+	found := false
+	for _, existingTaint := range node.Spec.Taints {
+		if !existingTaint.MatchTaint(&targetTaint) {
+			newTaints = append(newTaints, existingTaint)
+		} else {
+			found = true
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("taint %s=%s:%s not found on node %s", key, value, effect, nodeName)
+	}
+
+	// 更新污点列表
+	node.Spec.Taints = newTaints
+
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	return err
 }
