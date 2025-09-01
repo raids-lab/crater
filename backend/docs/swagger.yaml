@@ -315,6 +315,15 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.NodeMark'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
     properties:
       code:
@@ -665,15 +674,43 @@ definitions:
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
     type: object
+  internal_handler.NodeAnnotation:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_handler.NodeLabel:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_handler.NodeMark:
+    properties:
+      annotations:
+        items:
+          $ref: '#/definitions/internal_handler.NodeAnnotation'
+        type: array
+      labels:
+        items:
+          $ref: '#/definitions/internal_handler.NodeLabel'
+        type: array
+      taints:
+        items:
+          $ref: '#/definitions/internal_handler.NodeTaint'
+        type: array
+    type: object
   internal_handler.NodeTaint:
     properties:
-      name:
+      effect:
         type: string
-      taint:
+      key:
         type: string
-    required:
-    - name
-    - taint
+      value:
+        type: string
     type: object
   internal_handler.ProjectCreateResp:
     properties:
@@ -4813,6 +4850,79 @@ paths:
       summary: 更新节点调度状态
       tags:
       - 接口对应的标签
+  /v1/nodes/{name}/annotation:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定节点的注解
+      parameters:
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 注解信息（只需要key）
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.NodeAnnotation'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功删除注解
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 删除节点注解
+      tags:
+      - Node
+    post:
+      consumes:
+      - application/json
+      description: 为指定节点添加注解
+      parameters:
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 注解信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.NodeAnnotation'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功添加注解
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 添加节点注解
+      tags:
+      - Node
   /v1/nodes/{name}/gpu/:
     get:
       consumes:
@@ -4841,6 +4951,110 @@ paths:
       security:
       - Bearer: []
       summary: 获取GPU各节点的利用率
+      tags:
+      - Node
+  /v1/nodes/{name}/label:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定节点的标签
+      parameters:
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 标签信息（只需要key）
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.NodeLabel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功删除标签
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 删除节点标签
+      tags:
+      - Node
+    post:
+      consumes:
+      - application/json
+      description: 为指定节点添加标签
+      parameters:
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 标签信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.NodeLabel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功添加标签
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 添加节点标签
+      tags:
+      - Node
+  /v1/nodes/{name}/mark:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定节点的Labels、Annotations和Taints信息
+      parameters:
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回节点标记信息
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取节点标记信息
       tags:
       - Node
   /v1/nodes/{name}/pod/:
@@ -4877,11 +5091,16 @@ paths:
     delete:
       consumes:
       - application/json
-      description: 匹配是否存在该污点，存在则删除
+      description: 删除指定节点的污点
       parameters:
-      - description: 节点名称+污点
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 污点信息
         in: body
-        name: req
+        name: data
         required: true
         schema:
           $ref: '#/definitions/internal_handler.NodeTaint'
@@ -4889,30 +5108,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: 成功删除污点
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
         "400":
-          description: Request parameter error
+          description: 请求参数错误
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: Other errors
+          description: 其他错误
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 删除节点的污点
+      summary: 删除节点污点
       tags:
-      - 接口对应的标签
+      - Node
     post:
       consumes:
       - application/json
-      description: 通过nodeclient调用k8s接口添加节点污点
+      description: 为指定节点添加污点
       parameters:
-      - description: 节点名称+污点
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 污点信息
         in: body
-        name: req
+        name: data
         required: true
         schema:
           $ref: '#/definitions/internal_handler.NodeTaint'
@@ -4920,22 +5144,22 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: 成功添加污点
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
         "400":
-          description: Request parameter error
+          description: 请求参数错误
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: Other errors
+          description: 其他错误
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 添加节点污点
       tags:
-      - 接口对应的标签
+      - Node
   /v1/operations/add/locktime:
     put:
       consumes:

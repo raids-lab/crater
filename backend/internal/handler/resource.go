@@ -41,6 +41,7 @@ func (mgr *ResourceMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":id/vgpu", mgr.GetGPUVGPUResources)
 }
 
+//nolint:dupl // ignore duplicate code
 func (mgr *ResourceMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/sync", mgr.SyncResource)
 	g.PUT("/:id", mgr.UpdateResource) // 注意这里改为新的方法名
