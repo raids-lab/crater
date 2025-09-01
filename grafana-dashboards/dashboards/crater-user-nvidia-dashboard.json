@@ -582,7 +582,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "主机IP"
+              "options": "主机 IP"
             },
             "properties": [
               {
@@ -607,7 +607,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "GPU卡序号"
+              "options": "GPU 卡序号"
             },
             "properties": [
               {
@@ -661,7 +661,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "GPU使用率"
+              "options": "GPU 使用率"
             },
             "properties": [
               {
@@ -775,12 +775,12 @@
             },
             "renameByName": {
               "Hostname": "主机名",
-              "Value #A": "GPU使用率",
+              "Value #A": "GPU 使用率",
               "Value #B": "显存使用率",
               "exported_namespace": "NameSpace",
               "exported_pod": "Pod",
-              "gpu": "GPU卡序号",
-              "host_ip": "主机IP",
+              "gpu": "GPU 卡序号",
+              "host_ip": "主机 IP",
               "pod": "Pod"
             }
           }
@@ -791,10 +791,10 @@
             "include": {
               "names": [
                 "主机名",
-                "主机IP",
-                "GPU卡序号",
+                "主机 IP",
+                "GPU 卡序号",
                 "pod",
-                "GPU使用率",
+                "GPU 使用率",
                 "显存使用率"
               ]
             }
