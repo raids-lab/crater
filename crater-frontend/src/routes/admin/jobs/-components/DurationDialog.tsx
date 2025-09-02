@@ -20,7 +20,7 @@ import { useMutation } from '@tanstack/react-query'
 import { addHours, format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { CalendarClock, InfoIcon, Lock, UnlockIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -69,9 +69,19 @@ interface DurationDialogProps {
   setOpen: (open: boolean) => void
   onSuccess?: () => void
   setExtend?: boolean
+  defaultDays?: number
+  defaultHours?: number
 }
 
-export function DurationDialog({ jobs, open, setOpen, onSuccess, setExtend }: DurationDialogProps) {
+export function DurationDialog({
+  jobs,
+  open,
+  setOpen,
+  onSuccess,
+  setExtend,
+  defaultDays,
+  defaultHours,
+}: DurationDialogProps) {
   const { t } = useTranslation()
   const [expirationDate, setExpirationDate] = useState<Date | null>(null)
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
@@ -84,10 +94,71 @@ export function DurationDialog({ jobs, open, setOpen, onSuccess, setExtend }: Du
     resolver: zodResolver(getFormSchema(t)),
     defaultValues: {
       isPermanent: false,
-      days: 0,
-      hours: 0,
+      days: defaultDays ?? 0,
+      hours: defaultHours ?? 0,
     },
   })
+
+  // 先声明，避免“在赋值前使用了变量”
+  const calculateExpirationDate = useCallback(
+    (originExpiredTime: string | undefined, values: FormValues) => {
+      const { days, hours, isPermanent } = values
+
+      if (isPermanent) {
+        setExpirationDate(null)
+        return
+      }
+
+      if (days > 0 || hours > 0) {
+        const now = new Date()
+        let result = new Date(now)
+        if (originExpiredTime !== undefined && isExtendDialogOpen) {
+          result = new Date(originExpiredTime)
+        }
+        if (days > 0) result = addHours(result, days * 24)
+        if (hours > 0) result = addHours(result, hours)
+        setExpirationDate(result)
+      } else {
+        setExpirationDate(null)
+      }
+    },
+    [isExtendDialogOpen]
+  )
+
+  // 打开时用默认值重置，并展示表单值
+  useEffect(() => {
+    if (!open) return
+    const next = {
+      isPermanent: false,
+      days: defaultDays ?? 0,
+      hours: defaultHours ?? 0,
+    }
+    form.reset(next)
+  }, [open, defaultDays, defaultHours, form])
+
+  // 打开对话框时用默认值重置，并计算一次预览
+  useEffect(() => {
+    if (open) {
+      const days = defaultDays ?? 0
+      const hours = defaultHours ?? 0
+      form.reset({ isPermanent: false, days, hours })
+      setExpirationDate(null)
+      setTimeout(() => {
+        calculateExpirationDate(jobs[0]?.lockedTimestamp, {
+          isPermanent: false,
+          days,
+          hours,
+        } as FormValues)
+      }, 0)
+    }
+  }, [open, defaultDays, defaultHours, form, jobs, calculateExpirationDate])
+
+  const handleFieldChange = useCallback(() => {
+    setTimeout(() => {
+      const values = form.getValues()
+      calculateExpirationDate(jobs[0]?.lockedTimestamp, values)
+    }, 0)
+  }, [form, jobs, calculateExpirationDate])
 
   // Use React Query for lock mutation
   const lockMutation = useMutation({
@@ -134,45 +205,24 @@ export function DurationDialog({ jobs, open, setOpen, onSuccess, setExtend }: Du
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
+      const days = defaultDays ?? 0
+      const hours = defaultHours ?? 0
       form.reset({
         isPermanent: false,
-        days: 0,
-        hours: 0,
+        days,
+        hours,
       })
       setExpirationDate(null)
+      // 预览计算一次
+      setTimeout(() => {
+        calculateExpirationDate(jobs[0]?.lockedTimestamp, {
+          isPermanent: false,
+          days,
+          hours,
+        } as FormValues)
+      }, 0)
     }
-  }, [open, form])
-
-  // Calculate expiration date
-  const calculateExpirationDate = (originExpiredTime: string | undefined, values: FormValues) => {
-    const { days, hours, isPermanent } = values
-
-    if (isPermanent) {
-      setExpirationDate(null)
-      return
-    }
-
-    if (days > 0 || hours > 0) {
-      const now = new Date()
-      let result = new Date(now)
-      if (originExpiredTime !== undefined && isExtendDialogOpen) {
-        result = new Date(originExpiredTime)
-      }
-      if (days > 0) result = addHours(result, days * 24)
-      if (hours > 0) result = addHours(result, hours)
-      setExpirationDate(result)
-    } else {
-      setExpirationDate(null)
-    }
-  }
-
-  // Handle field changes
-  const handleFieldChange = () => {
-    setTimeout(() => {
-      const values = form.getValues()
-      calculateExpirationDate(jobs[0].lockedTimestamp, values)
-    }, 0)
-  }
+  }, [open, defaultDays, defaultHours, form, jobs, calculateExpirationDate])
 
   // Submit form
   async function onSubmit(values: FormValues) {
