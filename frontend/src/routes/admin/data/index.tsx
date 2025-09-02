@@ -159,7 +159,7 @@ function RouteComponent() {
       },
     },
     {
-      accessorKey: 'username',
+      accessorKey: 'nickname',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('adminDatasetTable.column.creator')} />
       ),
