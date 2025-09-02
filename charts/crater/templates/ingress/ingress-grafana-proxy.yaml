@@ -5,16 +5,20 @@ metadata:
   name: crater-grafana-proxy-ingress
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- if eq .Values.protocol "https" }}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    {{- end }}
     nginx.ingress.kubernetes.io/configuration-snippet: |
       more_set_headers "X-Frame-Options: ALLOW-FROM {{ include "crater.mainURL" . }}";
       more_set_headers "Content-Security-Policy: frame-ancestors {{ include "crater.mainURL" . }}";
 spec:
   ingressClassName: nginx
+  {{- if eq .Values.protocol "https" }}
   tls:
     - hosts:
         - {{ .Values.grafanaProxy.host }}
       secretName: crater-tls-secret
+  {{- end }}
   rules:
     - host: {{ .Values.grafanaProxy.host }}
       http:

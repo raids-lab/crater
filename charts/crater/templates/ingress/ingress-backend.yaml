@@ -5,13 +5,17 @@ metadata:
   name: crater-backend-ingress
   namespace: {{ .Release.Namespace }}
   annotations:
+    {{- if eq .Values.protocol "https" }}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    {{- end }}
 spec:
   ingressClassName: nginx
+  {{- if eq .Values.protocol "https" }}
   tls:
     - hosts:
         - {{ .Values.host }}
       secretName: crater-tls-secret
+  {{- end }}
   rules:
     - host: {{ .Values.host }}
       http:

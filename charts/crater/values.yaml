@@ -11,7 +11,7 @@ namespaces:
 # -- Domain name or IP address that the server will bind to (Required)
 # Must be specified for the server to start
 host: crater.<your-domain>.com
-# -- Protocol for server communication
+# -- Protocol for server communication ("http" or "https")
 protocol: https
 
 # -- First user configuration
