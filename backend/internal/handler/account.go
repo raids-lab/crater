@@ -836,20 +836,20 @@ func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("Get UserProject failed, detail: %v", err), resputil.NotSpecified)
 		return
 	} else {
-		var req UpdateUserProjectReq
-		if err = c.ShouldBindJSON(&req); err != nil {
+		var reqBody UpdateUserProjectReq
+		if err = c.ShouldBindJSON(&reqBody); err != nil {
 			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
 
 		var role, access uint64
 
-		if role, err = strconv.ParseUint(req.Role, 10, 64); err != nil {
+		if role, err = strconv.ParseUint(reqBody.Role, 10, 64); err != nil {
 			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
 
-		if access, err = strconv.ParseUint(req.AccessMode, 10, 64); err != nil {
+		if access, err = strconv.ParseUint(reqBody.AccessMode, 10, 64); err != nil {
 			resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
@@ -860,9 +860,9 @@ func (mgr *AccountMgr) UpdateUserProject(c *gin.Context) {
 		userQueue.AccessMode = model.AccessMode(access)
 
 		userQueue.Quota = datatypes.NewJSONType(model.QueueQuota{
-			Capability: req.Quota,
+			Capability: reqBody.Quota,
 		})
-		if _, err := uq.WithContext(c).Updates(userQueue); err != nil {
+		if _, err := uq.WithContext(c).Where(uq.AccountID.Eq(req.QueueID), uq.UserID.Eq(req.UserID)).Updates(userQueue); err != nil {
 			resputil.Error(c, fmt.Sprintf("update UserProject failed, detail: %v", err), resputil.NotSpecified)
 			return
 		}
