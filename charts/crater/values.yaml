@@ -10,17 +10,17 @@ namespaces:
 
 # -- Domain name or IP address that the server will bind to (Required)
 # Must be specified for the server to start
-host: crater.<your-domain>.com
+host: crater.example.com
 # -- Protocol for server communication ("http" or "https")
-protocol: https
+protocol: http
 
 # -- First user configuration
 # When connecting to the database for the first time, creates the first user account with administrator privileges
 firstUser:
   # -- Username for the first administrator user
   username: "crater-admin"
-  # -- Password for the first administrator user (Please reset this password)
-  password: "<MASKED>"
+  # -- Password for the first administrator user (Please reset this password, can not be only number)
+  password: "Masked@Password"
 
 # -- Image configuration
 # -- Image pull policy ("IfNotPresent" | "Always", for development, use Always)
@@ -77,13 +77,13 @@ images:
 
 # -- Persistent Volume Claim configuration
 storage:
-  # -- Whether to create PVC
+  # -- Whether to create PVC or use existing pvc.
   create: true
-  # -- Storage request size
-  request: 2Ti
-  # -- Storage class name (e.g. cephfs, nfs, must support ReadWriteMany)
-  storageClass: "ceph-fs"
-  # -- PVC name (also used in backendConfig)
+  # -- If create, Storage request size
+  request: 10Gi
+  # -- If create, Storage class name (e.g. cephfs, nfs, must support ReadWriteMany)
+  storageClass: "nfs"
+  # -- PVC name (existing or created, also used in backendConfig)
   pvcName: &rwPvcName "crater-rw-storage"
 
 # -- Node selector for all Deployments
@@ -113,13 +113,14 @@ affinity:
 # Only Grafana Pro has password-free login feature. We use Nginx proxy to support password-free login for Iframe
 grafanaProxy:
   # -- Whether to enable Grafana proxy
-  enable: true
+  enable: false
   # -- Grafana service address in cluster
   address: http://prometheus-grafana.monitoring
   # -- Grafana access token (masked, please apply for read-only token in Grafana)
   token: "<MASKED>"
   # -- Domain name for exposing Grafana via Ingress
-  host: gpu-grafana.<your-domain>.com
+  # Also used in frontend config even if grafanaProxy.enable is false
+  host: gpu-grafana.example.com
 
 # -- Frontend configuration
 frontendConfig:
@@ -175,19 +176,19 @@ backendConfig:
   postgres:
     # -- PostgreSQL server hostname or IP address (Required)
     # Must be reachable from the application
-    host: 192.168.0.1
+    host: crater-postgresql.crater-system.svc.cluster.local
     # -- PostgreSQL server port number (Required)
     # Typically 5432 for PostgreSQL
-    port: 6432
+    port: 5432
     # -- Name of the database to connect to (Required)
     # Database must exist and be accessible
-    dbname: crater
+    dbname: postgres
     # -- Database username for authentication (Required)
     # User must have appropriate permissions
     user: postgres
     # -- Database password for authentication (Required)
     # Must match the specified user's password
-    password: <MASKED>
+    password: <MUSTEDIT>
     # -- SSL/TLS mode for database connection
     # Defaults to "disable" if not specified
     sslmode: disable
@@ -200,10 +201,10 @@ backendConfig:
   auth:
     # -- Secret key used to sign JWT access tokens (Required)
     # Must be a secure, randomly generated string
-    accessTokenSecret: <MASKED>
+    accessTokenSecret: "example-access-token"
     # -- Secret key used to sign JWT refresh tokens (Required)
     # Must be a secure, randomly generated string
-    refreshTokenSecret: <MASKED>
+    refreshTokenSecret: "example-refresh-token"
 
   # -- Persistent volume claim and path prefix configurations (Required)
   # All PVC names and prefix paths must be specified
@@ -247,7 +248,7 @@ backendConfig:
   registry:
     # -- Enable container registry integration
     # Defaults to false if not specified
-    enable: true
+    enable: false
     # -- Configuration for Harbor container registry integration
     # Required if Registry.Enable is true: All Harbor fields must be specified
     harbor:
@@ -282,7 +283,7 @@ backendConfig:
   smtp:
     # -- Enable SMTP email functionality
     # Defaults to false if not specified
-    enable: true
+    enable: false
     # -- SMTP server hostname or IP address (Required if Enable is true)
     # Must be a valid SMTP server
     host: mail.example.com
@@ -332,7 +333,7 @@ buildkitConfig:
   # -- AMD architecture configuration
   amdConfig:
     # -- Enable AMD architecture builds
-    enabled: true
+    enabled: false
     # -- Number of AMD build replicas
     replicas: 3
     # -- Cache configuration for AMD builds
