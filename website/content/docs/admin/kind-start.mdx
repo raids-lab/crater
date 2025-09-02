@@ -1,0 +1,303 @@
+---
+title: 最小化部署
+description: 本文档将指导您使用 Kind 在本地快速搭建一个 Crater 环境。Crater 是一个基于 Kubernetes 的分布式训练平台，本指南将涵盖从创建 Kind 集群到部署 Crater 所需各组件的完整流程。
+---
+
+## 1. 环境准备
+
+### 1.1 安装 Kind
+
+<Callout type="info">
+参考文档：https://kind.sigs.k8s.io/docs/user/quick-start/
+</Callout>
+
+```bash
+# 安装 Kind
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+```
+
+<Callout type="info">
+    如果遇到权限问题，可以尝试使用 `sudo` 或将 Kind 移动到有写入权限的目录
+</Callout>
+
+### 1.2 安装 kubectl 和 Helm
+
+```bash
+# 安装 kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+
+# 安装 Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+## 2. 创建 Kind 集群
+
+### 2.1 创建集群配置文件
+
+<Callout type="info">
+参考文档：https://kind.sigs.k8s.io/docs/user/ingress/
+</Callout>
+
+```yaml
+# kind-cluster.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 8080
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 8443
+      protocol: TCP
+```
+
+<Callout type="info">
+    端口映射配置允许从主机访问集群内的服务，这对于 Ingress 控制器特别重要
+</Callout>
+
+### 2.2 创建集群
+
+```bash
+kind create cluster --config kind-cluster.yaml
+```
+
+**预期结果：**
+```
+Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.27.3) 🖼
+ ✓ Preparing nodes 📦 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+kubectl cluster-info --context kind-kind
+```
+
+## 3. 部署用于 Kind 集群的 Ingress-Nginx
+
+<Callout type="info">
+    参考文档：https://kind.sigs.k8s.io/docs/user/ingress/
+</Callout>
+
+```bash
+kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
+```
+
+**验证安装：**
+```bash
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+```
+
+## 4. 部署 PostgreSQL 数据库
+
+<Callout type="info">
+    参考文档：https://artifacthub.io/packages/helm/bitnami/postgresql
+</Callout>
+
+```bash
+# 创建命名空间
+kubectl create namespace crater-system
+
+# 设置当前命名空间上下文
+kubectl config set-context --current --namespace=crater-system
+
+# 添加 Bitnami Helm 仓库
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# 安装 PostgreSQL
+helm install crater-postgresql bitnami/postgresql -n crater-system
+```
+
+**获取数据库密码：**
+```bash
+export POSTGRES_PASSWORD=$(kubectl get secret --namespace crater-system crater-postgresql -o jsonpath="{.data.postgres-password}" | base64 -d)
+echo "数据库密码: $POSTGRES_PASSWORD"
+```
+
+<Callout type="info">
+    请妥善保存数据库密码，后续部署 Crater 时需要用到
+</Callout>
+
+## 5. 部署 Volcano 调度器
+
+<Callout type="info">
+    参考文档：https://volcano.sh/zh/docs/v1.11.0/installation/
+</Callout>
+
+```bash
+# 添加 Volcano Helm 仓库
+helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
+
+# 创建命名空间并安装 Volcano
+helm install volcano volcano-sh/volcano -n volcano-system --create-namespace
+```
+
+**验证安装：**
+```bash
+kubectl get pods -n volcano-system
+```
+
+**预期结果：**
+```
+NAME                                   READY   STATUS    RESTARTS   AGE
+volcano-admission-xxxxxxxxx-xxxxx     1/1     Running   0          1m
+volcano-controllers-xxxxxxxx-xxxxx    1/1     Running   0          1m
+volcano-scheduler-xxxxxxxx-xxxxx      1/1     Running   0          1m
+```
+
+## 6. 部署 NFS 存储
+
+<Callout type="info">
+    参考文档：https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
+</Callout>
+
+```bash
+# 添加 NFS Provisioner Helm 仓库
+helm repo add nfs-ganesha-server-and-external-provisioner https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
+
+# 安装 NFS Server Provisioner
+helm install nfs-provisioner nfs-ganesha-server-and-external-provisioner/nfs-server-provisioner -n nfs-system --create-namespace
+```
+
+**验证存储类：**
+```bash
+kubectl get storageclass
+```
+
+**预期结果：**
+```
+NAME   PROVISIONER                                       RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+nfs    cluster.local/nfs-provisioner-nfs-server-provisioner   Delete          Immediate           true                   1m
+```
+
+## 7. 部署 Crater
+
+### 7.1 获取 Crater Helm Chart 值文件
+
+```bash
+helm show values oci://ghcr.io/raids-lab/crater --version 0.1.0 > values.yaml
+```
+
+### 7.2 配置数据库连接
+
+编辑 `values.yaml` 文件，配置数据库连接信息：
+
+```yaml
+postgres:
+  host: crater-postgresql.crater-system.svc.cluster.local
+  port: 5432
+  dbname: postgres
+  user: postgres
+  password: "您的数据库密码"  # 替换为实际的密码
+  sslmode: disable
+  TimeZone: Asia/Shanghai
+```
+
+### 7.3 安装 Crater
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0 -n crater-system -f values.yaml
+```
+
+**验证安装：**
+```bash
+kubectl get pods -n crater-system
+```
+
+<Callout type="success">
+    如果所有 Pod 都处于 Running 状态，说明 Crater 环境已成功搭建！
+</Callout>
+
+## 8. 访问 Crater
+
+### 8.1 获取访问地址
+
+```bash
+kubectl get ingress -n crater-system
+```
+
+### 8.2 配置本地 hosts（如果需要）
+
+如果使用本地 Kind 集群，可能需要在 `/etc/hosts` 中添加映射：
+
+```
+127.0.0.1 crater.example.com
+```
+
+### 8.3 访问 Web 界面
+
+打开浏览器访问：`http://crater.example.com:8080`（或根据您的 Ingress 配置）
+
+## 9. 故障排除
+
+### 9.1 常见问题
+
+<Callout type="warn">
+    **问题：** Pod 无法启动或持续重启
+</Callout>
+
+**解决方案：**
+```bash
+# 查看 Pod 日志
+kubectl logs <pod-name> -n crater-system
+
+# 查看 Pod 详细信息
+kubectl describe pod <pod-name> -n crater-system
+```
+
+<Callout type="warn">
+    **问题：** 数据库连接失败
+</Callout>
+
+**解决方案：**
+```bash
+# 检查数据库服务状态
+kubectl get svc -n crater-system | grep postgres
+
+# 测试数据库连接
+kubectl run postgres-test --rm -it --image=postgres:13 --restart=Never -- \
+  psql -h crater-postgresql.crater-system.svc.cluster.local -U postgres
+```
+
+## 10. 清理环境
+
+```bash
+# 删除 Kind 集群
+kind delete cluster
+
+# 或者删除特定资源
+helm uninstall crater -n crater-system
+helm uninstall crater-postgresql -n crater-system
+helm uninstall volcano -n volcano-system
+helm uninstall nfs-provisioner -n nfs-system
+```
+
+<Callout type="warn">
+    删除集群会清除所有数据，请确保已备份重要数据
+</Callout>
+
+## 总结
+
+通过本指南，您已经成功在 Kind 集群上部署了一个完整的 Crater 环境，包括：
+
+- ✅ Kind Kubernetes 集群
+- ✅ Ingress-Nginx 控制器
+- ✅ PostgreSQL 数据库
+- ✅ Volcano 调度器
+- ✅ NFS 存储 provisioner
+- ✅ Crater 训练平台
+
+现在您可以开始使用 Crater 进行分布式训练任务了！如有任何问题，请参考各组件的官方文档或查看日志进行故障排除。
