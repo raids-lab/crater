@@ -41,7 +41,7 @@ jobs:
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: huacnlee/autocorrect-action@v2
         with:
-          args: --fix
+          args: --fix crater-website/src/** crater-website/messages/** crater-website/content/**
 
       - name: Commit changes (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
@@ -52,26 +52,37 @@ jobs:
           commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
           commit_author: GitHub Actions <41898282+github-actions[bot]@users.noreply.github.com>
 
-      - name: Get changed files (for forked PRs)
+      # --- Forked PR ---
+      - name: Get changed files in website dirs (for forked PRs)
         if: github.event.pull_request.head.repo.full_name != github.repository
         id: changed-files
         run: |
-          echo "files=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} | xargs -0)" >> $GITHUB_OUTPUT
+          files=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} -- 'crater-website/src/**' 'crater-website/content/**' 'crater-website/messages/**' | xargs -0)
+          if [ -n "$files" ]; then
+            echo "files_exist=true" >> $GITHUB_OUTPUT
+            echo "files=$files" >> $GITHUB_OUTPUT
+          else
+            echo "files_exist=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Create Lint and Report Script
+        if: steps.changed-files.outputs.files_exist == 'true'
+        run: |
+          cat << 'EOF' > ./lint_and_report.sh
+          #!/bin/sh
+          set -e
+          
+          echo "--- Running AutoCorrect and piping to Reviewdog ---"
+          autocorrect --lint --format rdjson ${{ steps.changed-files.outputs.files }} | reviewdog -f=rdjson -reporter=github-pr-review -level=warning
+          EOF
+          
+          chmod +x ./lint_and_report.sh
 
-      - name: Lint Changed Files (for forked PRs)
-        if: github.event.pull_request.head.repo.full_name != github.repository && steps.changed-files.outputs.files != ''
-        id: lint
-        uses: huacnlee/autocorrect-action@v2
-        with:
-          args: --lint ${{ steps.changed-files.outputs.files }}
-        continue-on-error: true
-
-      - name: Report with Reviewdog (for forked PRs)
-        if: |
-          github.event.pull_request.head.repo.full_name != github.repository &&
-          steps.lint.outcome == 'failure'
+      - name: Run Custom Script inside Action Container
+        if: steps.changed-files.outputs.files_exist == 'true'
         uses: huacnlee/autocorrect-action@v2
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          reviewdog: true
+          entrypoint: './lint_and_report.sh'
+          args: ''
