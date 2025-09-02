@@ -19,10 +19,11 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-      time: "21:00"  # UTC时间，对应北京时间凌晨5点
+      time: "17:00"  # UTC时间，对应北京时间凌晨1点
     open-pull-requests-limit: 5
     labels:
       - "dependabot"
     commit-message:
       prefix: "chore"
       include: "scope"
+    auto-merge: true
