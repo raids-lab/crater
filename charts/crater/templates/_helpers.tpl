@@ -85,9 +85,9 @@ Generate backend config with images from top-level images section
     "envd" (printf "%s:%s" .Values.images.envd.repository .Values.images.envd.tag)
   ) -}}
   {{- $_ := set $config.registry "buildTools" $buildTools -}}
-  {{- $_ := set $config "host" .Values.host -}}
-  {{- $_ := set $config "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image) -}}
 {{- end -}}
+{{- $_ := set $config "host" .Values.host -}}
+{{- $_ := set $config "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image) -}}
 {{- $config | toYaml -}}
 {{- end -}}
 
