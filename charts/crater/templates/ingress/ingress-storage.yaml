@@ -4,14 +4,18 @@ metadata:
   name: storage-server-ingress
   namespace: {{ .Values.namespaces.job }}
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "1000m"
+    {{- if eq .Values.protocol "https" }}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    {{- end }}
+    nginx.ingress.kubernetes.io/proxy-body-size: "1000m"
 spec:
   ingressClassName: nginx
+  {{- if eq .Values.protocol "https" }}
   tls:
     - hosts:
         - {{ .Values.host }}
       secretName: crater-tls-secret
+  {{- end }}
   rules:
     - host: {{ .Values.host }}
       http:
