@@ -21,6 +21,8 @@ import { useTranslation } from 'react-i18next'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+import { CopyableCommand } from '@/components/codeblock/CopyableCommand'
+
 import { cn } from '@/lib/utils'
 
 type BasicIframeProps = React.IframeHTMLAttributes<HTMLIFrameElement>
@@ -65,13 +67,9 @@ export const BasicIframe: FC<BasicIframeProps> = ({
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Info className="text-highlight-orange h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    {t('basicIframe.info.source')} {title}
-                  </span>
+                  <span className="text-sm font-medium">{t('basicIframe.info.source')}</span>
                 </div>
-                <p className="bg-muted/50 text-muted-foreground rounded p-2 font-mono text-xs break-all">
-                  {src}
-                </p>
+                <CopyableCommand label={title} isLink command={src || ''} />
               </div>
             </CardContent>
           </Card>

@@ -19,7 +19,7 @@ import { CopyButton } from '../button/copy-button'
 import TooltipLink from '../label/tooltip-link'
 
 interface CopyableCommandProps {
-  label: string
+  label?: string
   command: string
   isLink?: boolean
   isSensitive?: boolean
@@ -33,7 +33,7 @@ export function CopyableCommand({
 }: CopyableCommandProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-muted-foreground text-sm font-medium">{label}</span>
+      {label && <span className="text-muted-foreground text-sm font-medium">{label}</span>}
       <div className="bg-muted group relative flex flex-row items-center justify-between rounded-md p-2 dark:bg-slate-800/60">
         <div className="mr-2 flex-1 overflow-hidden">
           {isLink ? (
