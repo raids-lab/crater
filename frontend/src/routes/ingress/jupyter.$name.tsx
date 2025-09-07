@@ -1,8 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import ky, { HTTPError } from 'ky'
 import { ExternalLink, RefreshCw } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
+import { CopyableCommand } from '@/components/codeblock/CopyableCommand'
 import LogDialog from '@/components/codeblock/LogDialog'
 import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
 import JupyterIcon from '@/components/icon/JupyterIcon'
@@ -38,7 +39,8 @@ export const Route = createFileRoute('/ingress/jupyter/$name')({
         'Jupyter token is not available. Please check the job status or try again later.'
       )
     }
-    // try to check if connection to  Jupyter Notebook is ready
+
+    // try to check if connection to Jupyter Notebook is ready
     const url = `${data.fullURL}?token=${data.token}`
     try {
       await ky.get(url, { timeout: 5000 })
@@ -57,6 +59,7 @@ function Refresh() {
   const { name } = Route.useParams()
   const navigate = useNavigate()
   const [countdown, setCountdown] = useState(10)
+  const { data } = useQuery(queryJupyterToken(name ?? ''))
 
   // 自动重试倒计时
   useEffect(() => {
@@ -85,24 +88,26 @@ function Refresh() {
     <div className="from-primary to-highlight-violet via-highlight-emerald flex min-h-screen items-center justify-center bg-gradient-to-br">
       <Card className="mx-4 w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-orange-100">
+          <div className="mx-auto mb-4 flex size-8 items-center justify-center rounded-full">
             <JupyterIcon className="size-8" />
           </div>
-          <CardTitle className="text-xl">Jupyter 服务正在启动</CardTitle>
-          <CardDescription className="text-balance">请稍等片刻或手动刷新页面</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center text-sm text-gray-600">
+          <CardTitle className="text-xl">Jupyter 连接中...</CardTitle>
+          <CardDescription className="text-balance">
             页面将在 <span className="font-mono font-medium text-orange-600">{countdown}</span>{' '}
             秒后自动刷新
-          </div>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {data && data.urlWithToken && (
+            <CopyableCommand label={'Jupyter Lab'} isLink command={data.urlWithToken} />
+          )}
 
-          <div className="flex flex-col space-y-2">
-            <Button onClick={handleRefresh} className="w-full">
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 animate-spin" />
               立即刷新页面
             </Button>
-            <Button onClick={handleGoBack} variant="outline" className="w-full">
+            <Button onClick={handleGoBack} variant="outline">
               <ExternalLink className="h-4 w-4" />
               返回任务详情
             </Button>
@@ -126,21 +131,14 @@ function Jupyter() {
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
 
-  const { data: jupyterInfo } = useQuery(queryJupyterToken(name))
-
-  const url = useMemo(() => {
-    if (jupyterInfo) {
-      return `${jupyterInfo.fullURL}?token=${jupyterInfo.token}`
-    }
-    return ''
-  }, [jupyterInfo])
+  const { data: jupyterInfo } = useSuspenseQuery(queryJupyterToken(name ?? ''))
 
   // Convert JupyterIcon SVG to favicon and set as page icon
   // set title to jupyter base url
   useEffect(() => {
-    if (jupyterInfo?.baseURL) {
-      // Create SVG string from JupyterIcon
-      const svgString = `
+    if (!jupyterInfo) return
+    // Create SVG string from JupyterIcon
+    const svgString = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
           <path
             fill="#f57c00"
@@ -152,33 +150,32 @@ function Jupyter() {
         </svg>
       `
 
-      // Convert SVG to data URL
-      const svgBlob = new Blob([svgString], { type: 'image/svg+xml' })
-      const svgUrl = URL.createObjectURL(svgBlob)
+    // Convert SVG to data URL
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml' })
+    const svgUrl = URL.createObjectURL(svgBlob)
 
-      // Update favicon
-      let link = document.querySelector("link[rel='icon']") as HTMLLinkElement
-      if (!link) {
-        link = document.querySelector("link[rel='website icon']") as HTMLLinkElement
-      }
-      if (!link) {
-        link = document.createElement('link')
-        link.rel = 'icon'
-        document.head.appendChild(link)
-      }
-
-      link.href = svgUrl
-      link.type = 'image/svg+xml'
-
-      // Set page title
-      document.title = `${jupyterInfo.baseURL} - Crater Jupyter`
-
-      // Cleanup function to revoke object URL
-      return () => {
-        URL.revokeObjectURL(svgUrl)
-      }
+    // Update favicon
+    let link = document.querySelector("link[rel='icon']") as HTMLLinkElement
+    if (!link) {
+      link = document.querySelector("link[rel='website icon']") as HTMLLinkElement
     }
-  }, [jupyterInfo])
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'icon'
+      document.head.appendChild(link)
+    }
+
+    link.href = svgUrl
+    link.type = 'image/svg+xml'
+
+    // Set page title
+    document.title = `${name} - Crater Jupyter`
+
+    // Cleanup function to revoke object URL
+    return () => {
+      URL.revokeObjectURL(svgUrl)
+    }
+  }, [jupyterInfo, name])
 
   const { mutate: snapshot } = useMutation({
     mutationFn: (jobName: string) => apiJupyterSnapshot(jobName),
@@ -191,11 +188,15 @@ function Jupyter() {
   // drag the floating ball to show log dialog
   const [isDragging, setIsDragging] = useState(false)
 
+  if (!jupyterInfo) {
+    throw new Error('Jupyter info is not available')
+  }
+
   return (
     <div className="relative h-screen w-screen">
       <BasicIframe
         title="jupyter notebook"
-        src={url}
+        src={jupyterInfo.urlWithToken}
         className="absolute top-0 right-0 bottom-0 left-0 h-screen w-screen"
       />
       {/* Transparent overlay */}

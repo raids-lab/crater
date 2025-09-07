@@ -7,10 +7,13 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 export const queryJupyterToken = (name: string) =>
   queryOptions({
     queryKey: ['ingress', 'jupyter', name],
-    queryFn: () => apiJupyterTokenGet(name ?? '0'),
-    retry: 3,
-    retryDelay: 2000,
-    select: (res) => res.data,
+    queryFn: () => apiJupyterTokenGet(name),
+    select: ({ data }) => {
+      return {
+        ...data,
+        urlWithToken: data.token ? `${data.fullURL}?token=${data.token}` : undefined,
+      }
+    },
     enabled: !!name,
   })
 
