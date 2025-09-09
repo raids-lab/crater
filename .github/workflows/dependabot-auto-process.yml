@@ -12,28 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Auto Label Dependabot PRs
+# Dependabot Auto Label and Merge Workflow
+# 
+# This workflow automatically processes Dependabot PRs for submodule updates:
+# 1. Adds appropriate labels based on submodule type (backend/frontend/storage server)
+# 2. Enables auto-merge for the PR (GitHub will merge when all checks pass)
+#
+# Triggered when: Dependabot creates a new PR
+# Permissions: pull-requests: write, issues: write
+
+name: Dependabot Auto Label and Merge
 
 on:
   pull_request:
     types: [opened]
 
 jobs:
-  auto-label:
+  dependabot-auto-process:
     if: github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
       issues: write
+      contents: write
     steps:
-      - name: Auto Label Dependabot PRs
+      - name: Get Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v1.6.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          
+      - name: Add labels based on submodule type
         uses: actions/github-script@v7
         with:
           script: |
             const title = context.payload.pull_request.title;
             const labels = context.payload.pull_request.labels.map(label => label.name);
             
-            // 根据PR标题添加特定标签
+            // 根据PR标题添加特定标签（backend/frontend/storage server）
             if (title.includes('crater-backend')) {
               if (!labels.includes('backend')) {
                 await github.rest.issues.addLabels({
@@ -69,3 +85,9 @@ jobs:
                 console.log('Added storage server label to PR #' + context.payload.pull_request.number);
               }
             }
+            
+      - name: Enable auto-merge for submodule updates
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
