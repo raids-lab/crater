@@ -2,6 +2,7 @@ package aitaskctl
 
 import (
 	"context"
+	"fmt"
 
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
@@ -58,6 +59,47 @@ func CheckResourceListExceed(hard, used, requested v1.ResourceList) bool {
 		}
 	}
 	return false
+}
+
+func CheckJupyterLimitBeforeCreateJupyter(
+	c context.Context,
+	userID, accountID uint,
+) error {
+	uq := query.UserAccount
+	var userQueueQuota datatypes.JSONType[model.QueueQuota]
+	err := uq.WithContext(c).
+		Where(uq.UserID.Eq(userID)).
+		Where(uq.AccountID.Eq(accountID)).
+		Select(uq.Quota).
+		Scan(&userQueueQuota)
+	if err != nil {
+		return err
+	}
+
+	j := query.Job
+	jupyterCount, err := j.WithContext(c).
+		Where(j.UserID.Eq(userID)).
+		Where(j.AccountID.Eq(accountID)).
+		Where(j.JobType.Eq(string(model.JobTypeJupyter))).
+		Where(j.Status.In("Running", "Pending")).
+		Count()
+	if err != nil {
+		return err
+	}
+
+	maxJupyterCount := 1 // default 1 if not set
+	uqQuota := userQueueQuota.Data().Capability
+	if len(uqQuota) != 0 {
+		if v, ok := uqQuota[v1.ResourceName(model.JobTypeJupyter)]; ok {
+			maxJupyterCount = int(v.Value())
+		}
+	}
+
+	if jupyterCount >= int64(maxJupyterCount) {
+		return fmt.Errorf("jupyter 数量超过限制: %d", maxJupyterCount)
+	}
+
+	return nil
 }
 
 func CheckResourcesBeforeCreateJob(
