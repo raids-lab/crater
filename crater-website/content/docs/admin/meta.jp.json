@@ -1,8 +1,8 @@
 {
-  "root": true,
   "pages": [
     "---インストールと展開---",
     "quick-start",
+    "kind-start",
     "deployment",
     "---高度な設定---",
     "chart",
@@ -11,5 +11,6 @@
     "learning"
   ],
   "icon": "UserRoundCog",
-  "title": "管理者ガイド"
+  "title": "管理者ガイド",
+  "root": true
 }
