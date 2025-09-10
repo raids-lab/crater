@@ -1,42 +1,42 @@
 ---
-title: Harbor Deployment Guide
-description: Crater relies on an internal Harbor registry to support image building, storage, and secure distribution within the cluster. 
+title: Harbor 部署指南
+description: Crater 依赖于内部的 Harbor 镜像仓库，以支持集群内镜像的构建、存储和安全分发。
 
 ---
 
-## Deployment
+## 部署
 
-We recommend using the [official Harbor Helm Chart](https://github.com/goharbor/harbor-helm) for deployment. A basic example:
+我们建议使用 [官方 Harbor Helm Chart](https://github.com/goharbor/harbor-helm) 进行部署。一个基本示例：
 
 ```bash
 helm repo add harbor https://helm.goharbor.io
 helm pull harbor/harbor --version 1.14.0
-# Modify values.yaml as needed (see below)
+# 根据需要修改 values.yaml（见下文）
 helm install crater-harbor harbor/harbor -f values.yaml -n harbor-system --create-namespace
 ```
 
-## Note: Ensure that:
+## 注意事项：
 
-The domain name (e.g., crater-harbor.act.buaa.edu.cn) is resolvable within your cluster or internal DNS.
+确保域名（例如 crater-harbor.act.buaa.edu.cn）在您的集群或内部 DNS 中可解析。
 
-You have a valid TLS setup or set expose.tls.enabled=false for HTTP.
+您需要有效的 TLS 配置，或者将 expose.tls.enabled 设置为 false 以使用 HTTP。
 
-## Configuration Tips
-Set externalURL correctly in values.yaml:
+## 配置提示
+在 values.yaml 中正确设置 externalURL：
 ```yaml
 externalURL: https://crater-harbor.act.buaa.edu.cn
 ```
-Configure ingress with appropriate class (ingress-nginx) and hostname.
+配置 Ingress 使用适当的类（ingress-nginx）和主机名。
 
-Use internal certificates or disable TLS for testing:
+使用内部证书或在测试时禁用 TLS：
 ```yaml
 expose:
   tls:
     enabled: false
 ```
 
-## Image Pull Secrets
-To allow Crater components to pull images from Harbor:
+## 镜像拉取密钥
+为允许 Crater 组件从 Harbor 拉取镜像：
 ```bash
 kubectl create secret docker-registry crater-harbor-auth \
   --docker-server=crater-harbor.act.buaa.edu.cn \
@@ -44,25 +44,25 @@ kubectl create secret docker-registry crater-harbor-auth \
   --docker-password=<password> \
   -n <target-namespace>
 ```
-You can then reference this secret in your pod.spec.imagePullSecrets.
+然后您可以在 pod.spec.imagePullSecrets 中引用此密钥。
 
-## Harbor Projects Structure
-Projects are organized as follows:
-| Project       | Purpose                    |
-| ------------- | -------------------------- |
-| crater/base   | Base OS and utilities      |
-| crater/jobs   | User-submitted job images  |
-| crater/charts | Mirrors for Helm charts    |
-| crater/models | Large models for inference |
+## Harbor 项目结构
+项目结构如下所示：
+| 项目        | 目的                   |
+|------------|------------------------|
+| crater/base   | 基础操作系统和工具     |
+| crater/jobs   | 用户提交的作业镜像     |
+| crater/charts | Helm chart 的镜像      |
+| crater/models | 推理使用的大型模型     |
 
-## Integration with Crater
-Most system components (e.g., gpu-operator, ingress-nginx, prometheus) are preconfigured to use Harbor mirrors.
+## 与 Crater 集成
+大多数系统组件（例如 gpu-operator, ingress-nginx, prometheus）都预配置为使用 Harbor 镜像。
 
-The image path should look like:
+镜像路径应如下所示：
 ```ruby
 crater-harbor.act.buaa.edu.cn/crater/<component>:<tag>
 ```
-During Helm chart customization, update image.repository and imagePullSecrets.
+在 Helm chart 自定义过程中，请更新 image.repository 和 imagePullSecrets。
 
-## References
-* [Harbor Documentation](https://goharbor.io/docs/)
+## 参考资料
+* [Harbor 文档](https://goharbor.io/docs/)

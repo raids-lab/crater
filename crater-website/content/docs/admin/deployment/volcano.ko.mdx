@@ -1,0 +1,76 @@
+---
+title: Volcano 통합 가이드
+description: Crater가 여러 연구실의 GPU 자원 관리 및 분산 작업을 위해 Volcano 배치 스케줄러를 어떻게 사용하는지.
+---
+
+## 개요
+
+[Volcano](https://volcano.sh/en/)은 AI/ML 훈련, 대규모 데이터, 과학 계산과 같은 고성능 작업에 설계된 배치 스케줄링 시스템입니다. Crater에서는 여러 연구실과 사용자 간에 공정하고 예약 가능하게 GPU 스케줄링을 관리하기 위해 Volcano를 사용합니다.
+
+---
+
+## 왜 Volcano인가?
+
+Crater는 Volcano를 선택한 이유는 그의 풍부한 스케줄링 기능, 확장 가능한 플러그인 시스템, 그리고 **분산 훈련**, **공정한 자원 공유**, **작업 수준 제어**에 대한 네이티브 지원 때문입니다.
+
+Crater는 다음 Volcano 구성 요소를 활용합니다:
+
+- **Queue & Quota CRDs** – 연구실 간 세부적인 GPU 자원 할당
+- **Preemption (Capacity Plugin)** – 연구실 및 사용자 간 예약 스케줄링
+- **Job CRD & Plugins** – 분산 작업에 대한 네이티브 지원
+- **노드 순서, 작업 순서, 그룹 스케줄링** 등
+
+---
+
+## 연구실 중심의 큐 설계
+
+Crater는 여러 연구실이 GPU 클러스터를 공유하는 학술적 다중 테넌트 시나리오에 사용됩니다. 자원 공정성을 관리하기 위해 다음과 같은 방식을 사용합니다:
+
+- 각 연구실에 **`Queue`**를 생성합니다 (예: `lab-a`, `lab-b`)
+- 각 사용자는 해당 연구실의 큐에 할당됩니다
+- 대응하는 **`ResourceQuota`**는 연구실의 보장된 GPU 용량을 정의합니다
+- Volcano의 **`capacity` 플러그인**은 경쟁 상황 시 예약 정책을 강제합니다
+
+이 설계는 다음과 같은 장점을 제공합니다:
+
+- 연구실 간 **명확한 자원 경계**
+- **부드러운 할당량**으로 기회주의적 공유 가능
+- **우선순위 기반 예약**으로 자원 부족 방지
+
+---
+
+## 분산 작업 지원
+
+Crater는 Volcano의 [Job CRD](https://volcano.sh/en/docs/job-tutorial/)를 통해 다음과 같은 작업을 지원합니다:
+
+- 분산 PyTorch, TensorFlow 또는 MPI 작업
+- 그룹 스케줄링 및 작업 의존성
+- 작업 수명 주기 관리 (시작, 일시 중지, 삭제)
+
+또한 다음의 스케줄링 플러그인도 Volcano에서 활성화합니다:
+
+- `gang` – 동일한 작업의 Pod들이 함께 시작되도록 보장
+- `svc` – 분산 훈련을 위한 헤드리스 서비스 생성
+- `priority` – 사용자/작업 우선순위를 존중
+- `numa-aware` – 성능 민감 작업에 대한 선택적 기능
+
+---
+
+## VLLM 호환성
+
+현재 우리는 [vLLM](https://github.com/vllm-project/vllm) 추론 엔진을 Volcano에서 실행할 수 있도록 커스텀 `Job` CRD를 사용하여 조정하고 있습니다. 이를 통해 대규모 모델 추론을 통합된 스케줄링, 대기열, 할당량 제어를 갖춘 분산 작업으로 처리할 수 있습니다.
+
+---
+
+## LLaMA Factory 호환성
+
+우리는 또한 ACT Lab에서 개발한 또 다른 정밀 조정 프로젝트인 [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory)의 지원 확장을 적극적으로 진행하고 있습니다. 통합 작업은 Volcano의 `Job` CRD를 사용하여 분산 조정 작업을 가능하게 하며, GPU 토폴로지, 자원 할당량, 작업 조정에 대한 스케줄링 인식을 중심으로 진행됩니다.
+
+---
+
+## 설치 참고 사항
+
+Crater의 사전 구성된 값으로 Helm을 통해 Volcano를 설치하는 것을 추천합니다.
+
+📦 Helm 값: [`deployments/volcano/values.yaml`](../deployments/volcano/values.yaml)  
+📖 자세한 가이드: [`deployments/volcano/README.md`](../deployments/volcano/README.md)

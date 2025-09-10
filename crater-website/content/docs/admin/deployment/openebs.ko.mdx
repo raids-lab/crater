@@ -1,0 +1,39 @@
+---
+title: OpenEBS 배포 가이드
+description: OpenEBS는 Crater에서 Local PV HostPath 볼륨을 통해 로컬 지속 가능한 저장소를 관리하는 데 사용되어, 효율적인 노드 로컬 저장소 관리를 가능하게 합니다.
+---
+
+## 개요
+
+Crater는 **Kubernetes 노드**에서 **로컬 지속 가능한 저장소**를 관리하기 위해 **OpenEBS**에 의존합니다. 우리의 주요 목표는 다음과 같습니다:
+
+- **CRD 기반의 로컬 저장소 리소스 관리**를 활성화하여, Crater가 로컬 디스크를 선언적이고 첫 번째 등급의 리소스로 다루도록 합니다.
+- **OpenEBS Local PV HostPath**를 사용하여 노드 로컬 경로에서 직접 볼륨을 프로비저닝하여 예측 가능한 효율적인 데이터 로컬리티를 달성합니다.
+
+이 설정은 다음과 같은 워크로드에 이상적입니다:
+- 로컬 디스크에 대한 지연 시간이 중요합니다.
+- 저장소는 일시적이지만, 적절한 생명주기 및 정리가 필요합니다.
+- hostPath 마운트보다 Kubernetes 네이티브 볼륨 오브젝트를 선호합니다.
+
+## 왜 OpenEBS Local PV인가?
+
+OpenEBS는 여러 가지 저장소 엔진을 지원합니다. 우리는 다음과 같은 이유로 **Local PV 엔진**을 특별히 선택했습니다:
+
+- 외부 저장소 인프라가 필요 없습니다.
+- 노드 친화성 및 스케줄링 제약과 잘 작동합니다.
+- Kubernetes CRD를 통해 저장소 사용량 및 생명주기를 노출합니다.
+- PVC가 삭제될 때 볼륨을 자동으로 정리합니다.
+
+> 참고: 우리의 구성에서는 주로 `openebs-hostpath` 스토리지 클래스와 노드 로컬 경로(예: `/mnt/local-disks/`)를 사용하며, `hostPath`를 통해 액세스를 구성합니다.
+
+## 사전 조건
+
+- `kubectl` 및 `helm`이 설치되어 있습니다.
+- 로컬 디스크 마운트 경로(예: `/mnt/local-disks/`)에 노드 디렉토리가 사전에 생성되어 있습니다.
+
+## 설치
+
+Crater의 저장소 요구사항에 맞게 OpenEBS를 위한 맞춤형 Helm 구성 파일을 제공합니다.
+
+📦 Helm 값: [`deployments/openebs/values.yaml`](../deployments/openebs/values.yaml)  
+📖 자세한 가이드: [`deployments/openebs/README.md`](../deployments/openebs/README.md)

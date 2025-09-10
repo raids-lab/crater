@@ -1,0 +1,59 @@
+---
+title: Platform Access
+description: In order to use the ACT GPU platform, you must have an ACT account
+---
+
+In order to use the ACT GPU platform, you must have an ACT account. If you do not have an ACT account yet, please contact Professor Du Yingjie (Room G512, New Main Building, BUAA).
+
+## Apply for GPU Cluster Access Permissions
+
+<Callout>
+
+If you have previously applied for access to the Slurm GPU cluster, you can skip this step.
+
+</Callout>
+
+Log in to the [ACT Lab User Platform](https://user.act.buaa.edu.cn/), where you can book meeting rooms and apply for GPU cluster access, among other things.
+
+First, click on the avatar box in the top right corner to log in to the platform.
+
+Then, click on the "Lab" option in the top navigation bar, and then select "My Information."
+
+If you do not have access permissions to the GPU cluster, the interface you see should look like this:
+
+![GPU Cluster Access Permissions](./images/no-access-to-gpu.webp)
+
+Please click on "Apply for Usage Permissions," fill out the application form, and wait for the administrator (Professor Du Yingjie) to review it.
+
+## Activate Crater GPU Platform Account
+
+<Callout>
+
+You need to follow these steps to activate your account for the first time. Subsequent logins can be done directly on the Crater platform.
+
+</Callout>
+
+After successful activation, you can see a new GPU cluster access button under "Lab" -> "My Information."
+
+![New GPU Cluster Access Permissions](./images/new-access-to-gpu.webp)
+
+When logging in to the platform for the first time, you must activate your account through this button. After activation, your supervisor, research group, and other information will be synchronized to this platform.
+
+In subsequent logins, you can directly log in to the Crater platform using your ACT account.
+
+## Common Issues
+
+### 1. How to access the GPU cluster outside the lab?
+
+Download the client: https://vpn.buaa.edu.cn/portal,
+click on "Download Client" below the login box, and select the corresponding operating system in the pop-up window for download.
+
+### 2. Troubleshooting if you cannot connect to the VPN:
+
+Check if your local DNS resolution is correct;
+
+```
+dig vpn.act.buaa.edu.cn
+```
+
+If there are no results, you can use `219.224.171.1` instead of `vpn.act.buaa.edu.cn` for access;

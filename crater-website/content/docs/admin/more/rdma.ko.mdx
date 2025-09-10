@@ -1,0 +1,652 @@
+---
+title: "RDMA 지원"
+description: "RDMA"
+---
+
+> - [K8s test via Infiniband network - Adapters and Cables / InfiniBand/VPI Adapter Cards - NVIDIA Developer Forums](https://forums.developer.nvidia.com/t/k8s-test-via-infiniband-network/285610)
+> - [Running tightly coupled HPC/AI workloads with InfiniBand using NVIDIA Network Operator on AKS \| Microsoft Community Hub](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/running-tightly-coupled-hpcai-workloads-with-infiniband-using-nvidia-network-ope/4117209)
+> - [Basic Knowledge and Differences of RoCE, IB, and TCP Networks](https://support.huawei.com/enterprise/en/doc/EDOC1100203339)
+
+공식적으로 시작하기 전에 RDMA와 관련된 기본 지식을 보완하겠습니다:
+
+- **RDMA**: 운영체제 커널을 우회하는 네트워크 통신 기술로, 주요 기능은 네트워크 카드를 통해 원격 메모리에 직접 접근하여 전통적인 TCP/IP 프로토콜 스택의 데이터 복사 및 컨텍스트 전환 비용을 피하는 것입니다.
+- **NVIDIA GPU Direct**[^2]: GPU 메모리와 네트워크 카드의 DMA 엔진을 직접 연결하여 GPU가 원격 노드와 통신할 때 데이터를 InfiniBand 또는 RoCE 네트워크 카드를 통해 직접 전송할 수 있게 하며, 호스트 메모리를 통해 중계할 필요가 없습니다.
+- **네트워크 가상화**: Macvlan과 SR-IOV는 네트워크 가상화의 두 가지 일반적인 방법입니다. Macvlan은 컨테이너에 가상 네트워크 인터페이스를 생성하여 물리 네트워크에서 독립 장치처럼 표시할 수 있도록 합니다. SR-IOV는 물리 네트워크 카드의 하드웨어 가상화 기능을 활용하여 단일 물리 기능(PF)을 여러 가상 기능(VF)으로 나누고, 각 VF는 Pod에 직접 할당할 수 있습니다.
+- **기술 경로**: 현재 RDMA는 InfiniBand와 RoCE의 두 가지 주요 구현 방식[^6]이 있습니다. InfiniBand는 원생 RDMA 프로토콜을 지원하지만, 전용 스위치와 서브넷 관리자로 독립 네트워크를 구성해야 하므로 비용이 많이 들며, RoCEv2는 전통적인 이더넷 인프라를 기반으로 PFC 및 ECN 등의 흐름 제어 메커니즘을 통해 무손실 전송을 보장하며, 인터넷 회사에서 널리 사용되고 있습니다.
+
+우리 실험실에서는 InfiniBand 방식을 사용하고 있습니다. 따라서 먼저 관련 장비의 IB 정보를 확인해 보겠습니다:
+
+### 1. 단일 노드에서 InfiniBand 관련 정보 테스트
+
+먼저 호스트 머신에서 테스트를 수행합니다. 클라우드로 올라가기 전에 이 머신의 IB는 모두 통신이 가능했습니다:
+
+```bash
+$ ibdev2netdev
+mlx5_0 port 1 ==> ibxxxxxx0 (Up)
+mlx5_1 port 1 ==> ibxxxxxx1 (Up)
+
+$ ibstat
+CA 'mlx5_0'
+        Port 1:
+                Link layer: InfiniBand
+CA 'mlx5_1'
+        Port 1:
+                Link layer: InfiniBand
+```
+
+- **Up**: 해당 InfiniBand 포트가 성공적으로 활성화되었으며 네트워크와 연결된 상태를 나타냅니다
+- **Down**: 해당 InfiniBand 포트가 비활성화되었거나 네트워크 연결이 실패한 상태를 나타냅니다
+
+### 2. Ansible을 사용하여 노드의 네트워크 카드 일괄 확인
+
+그룹 분할:
+
+```toml
+[ib-v100]
+xx.xx.xx.[xx:xx]
+
+[ib-a100]
+xx.xx.xx.[xx:xx]
+```
+
+일괄 조회 스크립트 작성:
+
+```yaml
+---
+- name: Run ibdev2netdev on InfiniBand hosts
+  hosts: ib-v100,ib-a100
+  gather_facts: no
+
+  tasks:
+    - name: Execute ibdev2netdev command
+      ansible.builtin.command: ibdev2netdev
+      register: ibdev_output
+      changed_when: false
+
+    - name: Display ibdev2netdev output
+      ansible.builtin.debug:
+        var: ibdev_output.stdout_lines
+```
+
+반환값이 너무 길어 전체를 붙이지 않겠습니다. `ibdev2netdev`의 출력 결과를 보면 클러스터의 두 종류 노드의 InfiniBand 구성이 다르다는 것을 알 수 있습니다:
+
+#### V100 노드
+
+```
+mlx5_0 port 1 ==> ibxxxxxx0 (Up)
+mlx5_1 port 1 ==> ibxxxxxx1 (Up)
+```
+
+이 노드는 각각 하나의 이중 포트 IB 네트워크 카드가 있으며, 각 포트의 최대 전송률은 100Gbp/s이고, 각각 2대의 36포트 IB 스위치에 연결되어 있으며, 두 스위치 간에는 4개의 100Gbps 인터커넥트 라인이 있습니다.
+
+- 각 노드에는 두 개의 독립적인 InfiniBand 포트 (mlx5_0 및 mlx5_1)가 있습니다
+- 두 포트 모두 Up 상태입니다
+
+#### A100 노드
+
+```
+mlx5_0 port 1 ==> ibxxxx0 (Down/Up)
+mlx5_1 port 1 ==> ibxxxxx0 (Up/Down)
+mlx5_bond_0 port 1 ==> bond0 (Up)
+```
+
+이 머신은 각각 2개의 200Gbps IB 카드가 장착되어 있으며, 하나의 IB 스위치로 연결되어 있습니다. 그러나 모든 네트워크 카드가 통신 가능한 것은 아니며, 각 노드에서는 하나의 IB 카드만 스위치에 연결되어 있습니다.
+
+mlx5_bond_0은 이더넷 네트워크 카드이지만, Mellanox 제조사의 제품이기 때문에 나타나기도 합니다.
+
+Kubernetes에서 RDMA 장치 플러그인을 설치할 때는 네트워크 인터페이스 정보가 필요합니다.
+
+## Nvidia Network Operator 설치
+
+> [!quote] [Vanilla Kubernetes 클러스터에서 Network Operator 배포](https://docs.nvidia.com/networking/display/kubernetes2501/getting-started-kubernetes.html#network-operator-deployment-on-vanilla-kubernetes-cluster)
+
+현재 Kubernetes에서 RDMA를 통합하는 가장 권장되는 방법은 Nvidia Network Operator를 사용하는 것입니다. 공식 문서를 참조하여 먼저 Helm을 통해 Operator 주 프로그램을 설치합니다. 이후 RDMA 접속 방식은 어떤 것을 선택하든, 다시 하나의 CR을 배포하여 구현할 수 있습니다.
+
+먼저 Helm 저장소를 추가합니다:
+
+```bash
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+```
+
+다음으로 문서를 따라 `values.yaml`을 로컬에 다운로드합니다. 주로 NFD가 필요한지 여부와, 이미지를 국내에서 접근 가능한 이미지 주소로 교체하는지를 확인합니다.
+
+우리 클러스터에서는 이미 Nvidia GPU Operator가 설치되어 있으므로, NFD 옵션을 비활성화합니다.
+
+> [!warning]
+> Operator 설치 중 사용자 정의 리소스를 생성할 때 여러 파라미터가 제공되어야 하므로, 구성 파일을 사용하는 것이 좋습니다. CLI를 통해 파라미터를 오버라이드하는 것도 가능하지만, CLI 인수 사용보다는 구성 파일을 권장합니다.
+
+```bash
+helm show values nvidia/network-operator --version v25.1.0 > values.yaml
+```
+
+그 후 최신 버전 (v25.1.0)의 Nvidia Network Operator 프로그램을 설치합니다:
+
+```bash
+helm upgrade --install network-operator nvidia/network-operator \
+-n nvidia-network-operator \
+--create-namespace \
+--version v25.1.0 \
+-f ./values.yaml \
+--wait
+```
+
+설치 후, `nvidia-network-operator` 네임스페이스에 Operator의 Pod가 나타나며, RDMA는 아직 구성되지 않았습니다. 구체적인 전략을 결합해야 합니다.
+
+```bash
+$ kubectl get pods -l app.kubernetes.io/name=network-operator
+NAME                               READY   STATUS    RESTARTS      AGE
+network-operator-xxxxxxxx-xxxxx   1/1     Running   1 (22h ago)   26h
+```
+
+## `NicClusterPolicy` 설정
+
+초보자에게 이 문서는 매우 복잡합니다:
+
+Deployment Examples(배포 예시) 섹션에서 약 20가지의 배포 방법이 나와 있습니다. 그러면——
+
+1. 이 배포 방법들 간의 성능 차이는 어떻게 되나요?
+2. 자신에게 적합한 배포 방법은 어떻게 선택해야 하나요?
+3. 배포 후 Pod가 RDMA 및 기타 고성능 네트워크에 연결되도록 어떻게 해야 하나요?
+4. 컨테이너에서 RDMA 네트워크 테스트를 위해 최소한의 요구사항은 무엇인가요?
+5. 컨테이너에서 RDMA 네트워크를 테스트하는 방법은 무엇인가요?
+6. 일반적인 오류와 해결 방법은 무엇인가요?
+
+문서는 이러한 질문에 답하지 않아, 내 연구도 매우 어렵습니다. 현재 단계에서 이 질문들에 대한 이해와 참고 자료를 빠르게 요약해 보겠습니다:
+
+- **성능 차이**: [IPoIB (IP over InfiniBand) vs. RDMA 성능](https://serverfault.com/questions/876403/ipoib-ip-over-infiniband-vs-rdma-performance), 또한 Shared Device Plugin이 하나의 Pod만 리소스를 요청하는 경우 대역폭을 거의 채울 수 있으며, 여러 경우는 아직 테스트하지 않았습니다.
+- **배포 방법**: 현재 RDMA Shared Device Plugin 방식을 사용하고 있으며, V100에서 정상적으로 작동하고 있습니다. 하지만 이 방식이 집합된 네트워크 카드를 사용할 수 있는지 여부는 불확실하며, 이후 Host Network 모드로 전환할 수도 있습니다.
+- **리소스 요청**: 설치 후 일반적으로 노드에 RDMA 관련 리소스가 추가되며, 일부 경우에는 Annotations에 사용할 보조 네트워크(예: Multus 또는 Macvlan?)를 표시해야 할 수도 있습니다.
+- **최소 요구사항**: [RDMA 지원 여부 확인--머신러닝 플랫폼 - 화산 엔진](https://www.volcengine.com/docs/6459/119595)
+- **테스트 방법**: [RDMA 워크로드 및 GPU-Direct RDMA 워크로드를 실행하기 위한 클러스터 준비](https://github.com/Mellanox/network-operator/tree/master/example)
+- **오류 및 해결 방법**: 본문의 끝부분에서 확인 가능
+
+### 1. RDMA Shared Device Plugin 설정 시도
+
+> [!quote] [RDMA Shared Device Plugin에서 여러 리소스 사용하는 Network Operator 배포](https://docs.nvidia.com/networking/display/kubernetes2501/getting-started-kubernetes.html#network-operator-deployment-with-multiple-resources-in-rdma-shared-device-plugin)
+
+제 단일 클러스터에 두 가지 다른 IB 네트워크 (V100 및 A100)가 존재하므로, 문서에 언급된 Multiple Resources 설정 방법을 사용하여 각각 V100 및 A100의 포트를 지정하고, `rdma/rdma_v100` 및 `rdma/rdma_a100` 네트워크 리소스를 등록합니다.
+
+```yaml
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+spec:
+  ofedDriver:
+    image: doca-driver
+    repository: nvcr.io/nvidia/mellanox
+    version: 25.01-0.6.0.0-0
+    forcePrecompiled: false
+    imagePullSecrets: []
+    terminationGracePeriodSeconds: 300
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 20
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    upgradePolicy:
+      autoUpgrade: true
+      maxParallelUpgrades: 1
+      safeLoad: false
+      drain:
+        enable: true
+        force: true
+        podSelector: ""
+        timeoutSeconds: 300
+        deleteEmptyDir: true
+  rdmaSharedDevicePlugin:
+    # [map[ifNames:[ens1f0 ens1f1] name:rdma_shared_device_a] map[ifNames:[ens2f0 ens2f1] name:rdma_shared_device_b]]
+    repository: ghcr.io/mellanox
+    image: k8s-rdma-shared-dev-plugin
+    version: v1.5.2
+    imagePullSecrets: []
+    # 다음 구성은 직접 k8s-rdma-shared-device-plugin 구성으로 전달됩니다.
+    # 'devices'를 (RDMA 가능) 네트워크 장치 이름으로 교체합니다.
+    config: |
+      {
+        "configList": [
+          {
+            "resourceName": "rdma_v100",
+            "rdmaHcaMax": 63,
+            "selectors": {
+              "ifNames": ["ibxxxxxx0","ibxxxxxx1"],
+              "linkTypes": ["infiniband"]
+            }
+          },
+          {
+            "resourceName": "rdma_a100",
+            "rdmaHcaMax": 63,
+            "selectors": {
+              "ifNames": ["ibxxxx0","ibxxxxx0"],
+              "linkTypes": ["infiniband"]
+            }
+          }
+        ]
+      }
+```
+
+배포 완료 후, DaemonSets가 시작됩니다. NFD 기능 덕분에 IB 네트워크 카드(15b3)가 없는 노드에서는 설치되지 않습니다.
+
+```bash
+$ kg daemonset
+NAME                              DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                                                                                                                                                                                                                             AGE
+mofed-ubuntu22.04-xxxxxxxxx-ds   36        36        36      36           36          feature.node.kubernetes.io/kernel-version.full=5.15.0-134-generic,feature.node.kubernetes.io/pci-15b3.present=true,feature.node.kubernetes.io/system-os_release.ID=ubuntu,feature.node.kubernetes.io/system-os_release.VERSION_ID=22.04   24h
+rdma-shared-dp-ds                 36        36        36      36           36          feature.node.kubernetes.io/pci-15b3.present=true,network.nvidia.com/operator.mofed.wait=false
+```
+
+Nvidia Network Operator 설치는 Ofed 드라이버와 Device Plugin을 포함합니다. 전자는 특권이 필요하며, 호스트 머신의 IB 드라이버에 영향을 줄 수 있습니다. 제 테스트 과정에서 A100 노드의 IB 네트워크 카드에 많은 오류가 발생하여, 오류 로그가 시스템 디스크를 가득 채워 수시간 동안 서비스가 중단되었습니다.
+
+모든 Pod가 Running 상태가 되면, 노드에 추가된 리소스를 확인합니다:
+
+```bash
+$ kubectl get nodes -o json | jq -r '.items[] | {
+    name: .metadata.name,
+    "rdma/rdma_v100": .status.capacity["rdma/rdma_v100"]
+} | select(.["rdma/rdma_v100"] != null)'
+# 동일한 결과 생략
+{
+  "name": "xxx-v100-xx",
+  "rdma/rdma_v100": "63"
+}
+{
+  "name": "xxx-a100-xx",
+  "rdma/rdma_a100": "63"
+}
+```
+
+이제 RDMA Shared Device Plugin을 기반으로 한 설치 방법은 끝났습니다. 바이트댄의 화산 엔진의 일부 제품은 이 방식을 사용합니다.
+
+### 2. GPUDirect 워크로드 설정 시도 (실패)
+
+> [!quote] [GPUDirect 워크로드를 위한 Network Operator 배포](https://docs.nvidia.com/networking/display/kubernetes2501/getting-started-kubernetes.html#network-operator-deployment-for-gpudirect-workloads)
+
+이 섹션은 과정에서 실패한 시도를 기록한 것입니다. RDMA Shared Device Plugin의 후속 검증에 관심이 있다면 다음 섹션으로 건너뛸 수 있습니다.
+
+RDMA Shared Device Plugin(이하 방법 1)을 설정하는 과정에서 몇 가지 다른 문제가 발생하여 방법 1이 작동하지 않는다고 잘못 생각했으며, K8s RDMA Shared Dev Plugin 프로젝트의 토론 섹션에서는 다음과 같은 말이 나왔습니다[^3] (하지만 아래에 반례가 있음에도 불구하고 당시에는 통과시키지 못해, 이미 오래된 것이라고 생각했습니다):
+
+> [!quote] [Adrian Chiris](https://github.com/adrianchiris)
+>
+> 우리는 프로젝트의 README를 개선해야 합니다.
+>
+> 일반적으로 K8s와 함께 사용하는 방법은 Macvlan 또는 ipoib (또는 어떤 CNI든)와 같은 보조 네트워크 CNI를 사용하는 것입니다.
+> **K8s와 함께 사용하는 일반적인 방법은 Macvlan 또는 ipoib (또는 어떤 CNI든)와 같은 보조 네트워크 CNI를 사용하는 것입니다.**
+>
+> 우리는 지침과 예제를 업데이트해야 합니다.
+
+이후 문서를 다시 읽어보니 "GPUDirect 워크로드"라는 섹션이 있었습니다 (내 심중의 OS: 다른 설치 방법은 GPU 워크로드가 아니라는 의미인가요?).
+
+방법 1과 비교하여 이 방법은 DOCA 드라이버, SR-IOV Device Plugin, 보조 네트워크, Multus CNI, 컨테이너 네트워킹 플러그인, IPAM 플러그인을 설치해야 하며, Multus CNI는 Kubernetes에서 사용할 수 있는 보조 네트워크 CNI[^4]입니다.
+
+> [!quote]
+>
+> - **Multus**는 CNI(컨테이너 네트워크 인터페이스) 플러그인으로, 하나의 Kubernetes Pod에 여러 네트워크 카드를 삽입할 수 있어 더 유연한 네트워크 통신이 가능합니다. Flannel, Calico, Macvlan 등 여러 CNI 플러그인을 지원하며, 다른 네트워크 솔루션과도 잘 통합할 수 있습니다. 일부 경우, Pod가 여러 다른 네트워크에 동시에 연결되어야 할 수 있으며, Multus는 이러한 기능을 제공하여 Pod에 여러 네트워크 인터페이스를 제공하여 다양한 네트워크와 통신할 수 있게 합니다.
+> - **Whereabouts**는 IP 주소 관리 도구로, Pod에 자동으로 IP 주소를 할당하고 IP 주소 충돌을 방지할 수 있습니다. 전통적인 네트워크 구성에서는 각 호스트에 다른 IP 주소 범위를 수동으로 할당해야 했습니다. Whereabouts는 자동화된 IP 주소 할당 메커니즘을 통해 이 과정을 간소화하여, Kubernetes 클러스터에서 IP 주소를 관리하는 것을 더 효율적이고 신뢰성 있게 만듭니다. 이는 각 Pod에 고유한 IP 주소를 보장하며, 대규모 클러스터 환경에서도 IP 주소 중복을 효과적으로 피할 수 있도록 합니다.
+
+설치 시, 먼저 Nic Cluster Policy를 설치합니다:
+
+```yaml
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+spec:
+  ofedDriver:
+    image: doca-driver
+    repository: nvcr.io/nvidia/mellanox
+    version: 25.01-0.6.0.0-0
+    forcePrecompiled: false
+    imagePullSecrets: []
+    terminationGracePeriodSeconds: 300
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 20
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    upgradePolicy:
+      autoUpgrade: true
+      maxParallelUpgrades: 1
+      safeLoad: false
+      drain:
+        enable: true
+        force: true
+        podSelector: ""
+        timeoutSeconds: 300
+        deleteEmptyDir: true
+  sriovDevicePlugin:
+    image: sriov-network-device-plugin
+    repository: ghcr.io/k8snetworkplumbingwg
+    version: v3.9.0
+    imagePullSecrets: []
+    config: |
+      {
+        "resourceList": [
+          {
+            "resourcePrefix": "nvidia.com",
+            "resourceName": "hostdev",
+            "selectors": {
+              "vendors": ["15b3"],
+              "devices": [],
+              "drivers": [],
+              "pfNames": [],
+              "pciAddresses": [],
+              "rootDevices": [],
+              "linkTypes": [],
+              "isRdma": true
+            }
+          }
+        ]
+      }
+  secondaryNetwork:
+    cniPlugins:
+      image: plugins
+      repository: ghcr.io/k8snetworkplumbingwg
+      version: v1.5.0
+      imagePullSecrets: []
+    multus:
+      image: multus-cni
+      repository: ghcr.io/k8snetworkplumbingwg
+      version: v4.1.0
+      imagePullSecrets: []
+    ipamPlugin:
+      image: whereabouts
+      repository: ghcr.io/k8snetworkplumbingwg
+      version: v0.7.0
+      imagePullSecrets: []
+```
+
+그 후 Where Abouts의 할당 가능한 IP를 지정해야 하며, 현재 레이어 2 네트워크에서 사용 중인 IP와 중복되지 않도록 해야 합니다 (이 점은 Metal LB가 수행하는 작업과 유사합니다?). 따라서 먼저 스캔하여 사용되지 않은 작은 IP 범위를 선택했습니다.
+
+```yaml
+apiVersion: mellanox.com/v1alpha1
+kind: HostDeviceNetwork
+metadata:
+  name: hostdevice-net
+spec:
+  networkNamespace: "crater-workspace" # 워크로드가 있는 네임스페이스
+  resourceName: "hostdev"
+  ipam: |
+    {
+      "type": "whereabouts",
+      "datastore": "kubernetes",
+      "kubernetes": {
+        "kubeconfig": "/etc/cni/net.d/whereabouts.d/whereabouts.kubeconfig"
+      },
+      "range": "192.168.x.152/27",
+      "exclude": ["192.168.x.151/32"],
+      "log_file": "/var/log/whereabouts.log",
+      "log_level": "info"
+    }
+```
+
+설치 후, 노드에 `nvidia.com/hostdev` 유형의 리소스가 추가됩니다:
+
+```bash
+$ kubectl get nodes -o json | jq -r '.items[] | {
+    name: .metadata.name,
+    "nvidia.com/hostdev": .status.capacity["nvidia.com/hostdev"]
+} | select(.["nvidia.com/hostdev"] != null)'
+# 동일한 결과 생략
+{
+  "name": "xxx-v100-xx",
+  "nvidia.com/hostdev": "2"
+}
+{
+  "name": "xxx-a100-xx",
+  "nvidia.com/hostdev": "4"
+}
+```
+
+이 특수한 네트워크를 사용하기 위해 Pod를 제출할 때 Annotations도 추가해야 합니다:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testpod1
+  namespace: crater-workspace. # 이전에 지정한 네임스페이스
+  annotations:
+    k8s.v1.cni.cncf.io/networks: hostdevice-net
+spec:
+  containers:
+    - name: appcntr1
+      image: <image>
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"] # 이 것은 필수입니다
+      command:
+        - sh
+        - -c
+        - sleep inf # 공식 문서의 방식이므로 어떻게 테스트해야 할까요?
+      resources:
+        requests:
+          nvidia.com/hostdev: "1"
+          nvidia.com/gpu: "1"
+        limits:
+          nvidia.com/hostdev: "1"
+          nvidia.com/gpu: "1"
+```
+
+Pod에 진입한 후 `ifconfig` 명령어를 실행하면 `net1`이라는 이름의 네트워크 카드가 추가됩니다. 다음으로 어떻게 해야 할까요? Network Operator의 프로젝트 저장소에서 테스트 파일[^5]을 제공하지만, 명령어도 `sleep inf`입니다.
+
+나는 NCCL이 네트워크 카드를 지정해야 하는 것 같지만, 이후 RDMA Shared Device Plugin이 작동해 이후로 이 부분을 깊이 연구하지 않았습니다. 공식적으로 제 혼란을 제기하는 것도 좋은 선택일 수 있습니다.
+
+고정된 자원을 정리하려면 한 터미널에서 `kubectl proxy`를 시작할 수 있습니다:
+
+```shell
+$ kubectl proxy
+Starting to serve on 127.0.0.1:8001
+```
+
+다른 터미널에서 정리 스크립트를 실행하세요 (참고로 `/`은 `~1`로 이스케이프해야 합니다):
+
+```bash
+#!/bin/bash
+
+# 적어도 하나의 노드 이름이 제공되었는지 확인합니다
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 <node-name> [<node-name>...]"
+  exit 1
+fi
+
+# JSON 패치 데이터 준비
+PATCH_DATA=$(cat <<EOF
+[
+  {"op": "remove", "path": "/status/capacity/nvidia.com~1hostdev"}
+]
+EOF
+)
+
+# 제공된 각 노드 이름에 대해 반복합니다
+for NODE_NAME in "$@"
+do
+  # PATCH 요청 실행
+  curl --header "Content-Type: application/json-patch+json" \
+       --request PATCH \
+       --data "$PATCH_DATA" \
+       http://127.0.0.1:8001/api/v1/nodes/$NODE_NAME/status
+
+  echo "Patch 요청이 노드 $NODE_NAME에 전송되었습니다"
+done
+```
+
+노드 이름을 전달하고 정리합니다:
+
+```shell
+chmod +x ./patch_node_gpu.sh
+./patch_node_gpu.sh node1 node2
+```
+
+## RDMA 설치 검증
+
+이 섹션에서는 RDMA Shared Device Plugin 기반 방법으로 RDMA 설치를 어떻게 계속 검증하는지 설명합니다.
+
+### 1. RDMA를 지원하는 이미지 준비
+
+> [!quote] [이미지가 RDMA를 지원하는지 확인--머신러닝 플랫폼 - 화산 엔진](https://www.volcengine.com/docs/6459/119595)
+
+V100 기종을 위한 간단한 Dockerfile은 다음과 같을 수 있습니다:
+
+```dockerfile
+FROM xxx/envd:py3.12-ubuntu22.04-8978
+USER root
+
+# APT 패키지 설치
+RUN apt-get update && apt-get install -y \
+	infiniband-diags perftest ibverbs-providers libibumad3 \
+	libibverbs1 libnl-3-200 libnl-route-3-200 librdmacm1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Python 의존성은 지정되지 않았습니다
+```
+
+여기서 제 기본 이미지에는 일반적으로 사용되는 디버깅 툴킷, Python 및 CUDA 환경이 포함되어 있습니다. 주로 APT를 통해 InfiniBand 관련 라이브러리를 추가 설치합니다.
+
+이러한 라이브러리를 설치한 후, RDMA 리소스를 요청하지 않고 Pod를 시작하면 `ibstat`의 내용을 정상적으로 볼 수 있지만, 쓰기 시도와 같은 작업은 InfiniBand 또는 RoCE 장치가 없어 오류를 발생시킵니다.
+
+### 2. 단일 머신에서의 검증 방법
+
+먼저 RDMA 리소스를 요청하는 Pod를 시작해야 합니다:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rdma-test-pod-1
+spec:
+  containers:
+  - image: <image>
+    name: rdma-test-ctr
+    securityContext:
+      capabilities:
+        add: [ "IPC_LOCK" ]
+    resources:
+      limits:
+	    nvidia.com/v100: "4"
+        rdma/rdma_v100: "1"
+      requests:
+	    nvidia.com/v100: "4"
+        rdma/rdma_v100: "1"
+    command:
+    - sh
+    - -c
+    - |
+      sleep infinity
+```
+
+일반적인 GPU 리소스에 대해서는 모델에 따라 이름을 재명명했으며, 관련 자료는 이전의 기사에서 확인할 수 있습니다.
+
+컨테이너가 성공적으로 시작되면 컨테이너에 진입합니다:
+
+1. 다음과 같은 명령어를 입력합니다:
+
+```bash
+ib_write_bw -d mlx5_1 &
+```
+
+출력 예시는 다음과 같습니다:
+
+```shell
+$ ib_write_bw -d mlx5_1 &
+[1] 2457716
+root@xxx-01:~#
+************************************
+* Waiting for client to connect... *
+************************************
+```
+
+2. 동일한 머신에서 다음 명령어를 입력합니다:
+
+```plain
+ib_write_bw -d mlx5_1 127.0.0.1 --report_gbits
+```
+
+출력 예시는 다음과 같습니다:
+
+```shell
+$ ib_write_bw -d mlx5_1 127.0.0.1 --report_gbits
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_1
+---------------------------------------------------------------------------------------
+ Number of qps   : 1            Transport type : IB
+                    RDMA_Write BW Test
+ Connection type : RC           Using SRQ      : OFF
+ Dual-port       : OFF          Device         : mlx5_1
+ PCIe relax order: ON
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Mtu             : 4096[B]
+ Link type       : IB
+ Link type       : IB
+ Max inline data : 0[B]
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+ local address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+ local address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+ remote address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+ remote address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[Gb/sec]    BW average[Gb/sec]   MsgRate[Mpps]
+Conflicting CPU frequency values detected: 1000.000000 != 3013.932000. CPU Frequency is not max.
+ 65536      5000             94.72              94.71              0.180640
+---------------------------------------------------------------------------------------
+ 65536      5000             94.72              94.71              0.180640
+---------------------------------------------------------------------------------------
+[1]+  Done                    ib_write_bw -d mlx5_1
+```
+
+V100 RDMA 기종의 경우 대역폭 값(`BW peak`、`BW average`)은 `100Gb/s`에 가까워야 하며, A100 RDMA 기종은 `200Gb/s`에 가까워야 합니다. 이 조건을 충족하면 구성이 문제 없습니다. 출력이 없거나 오류가 발생하면 기종에 맞는 환경 구성 부분으로 돌아가 구성 항목을 누락했는지 확인하세요.
+
+### 3. 다중 머신에서의 검증 방법
+
+이전 섹션과 마찬가지로 두 개의 Pod를 각각 요청하고, 그 중 하나의 Pod의 Kubernetes 내부 IP를 기록한 후 명령어를 실행합니다:
+
+```bash
+# 서버 명령어
+ib_write_bw -a -F --report_gbits -q 2
+
+# 클라이언트 명령어
+ib_write_bw -a -F --report_gbits -q 2 <server-pod-default-network-IP>
+```
+
+대역폭 값도 `100Gb/s`에 가까워야 하며, 이는 다중 머신 간 연결이 문제 없다는 의미입니다.
+
+### 4. vLLM 다중 머신 분산 추론 실전
+
+마지막으로, 우리는 Volcano Job을 통해 vLLM 다중 머신 분산 추론 DeepSeek R1 Distill Qwen 32B 모델을 실제로 테스트했습니다. 우리의 모델은 PVC를 통해 마운트되어 있으며, 이미지는 Envd를 통해 제작되었습니다. vLLM은 특별히 제작된 CUDA 12.4를 설치하므로, 기본 이미지는 CUDA를 포함할 필요가 없습니다.
+
+```python
+# syntax=v1
+
+def build():
+    base(image="ubuntu:22.04",dev=True)
+    install.python(version="3.12")
+    install.apt_packages([
+        "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop",
+        "infiniband-diags", "perftest", "ibverbs-providers", "libibumad3",
+        "libibverbs1", "libnl-3-200", "libnl-route-3-200", "librdmacm1"
+    ])
+    config.pip_index(url = "https://pypi.tuna.tsinghua.edu

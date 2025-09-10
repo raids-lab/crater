@@ -1,0 +1,82 @@
+---
+title: ローカルイメージのアップロード ⬆️
+description: このドキュメントでは、プラットフォームからHarborへのアクセス資格情報を取得し、ローカルのDockerイメージをHarborレポジトリにアップロードする方法について説明します。
+---
+
+## 🔐 1. Harborへのアクセス資格情報を取得する
+
+### 🚀 1.1 プラットフォームへのログイン
+
+まず、プラットフォーム（例: Kubernetesクラスタ管理プラットフォーム、CI/CDプラットフォームなど）にログインし、Harborとの統合部分を見つけてください。
+
+![harbor](./img/harbor-user.png)
+
+### 🔑 1.2 アクセス資格情報を取得する
+
+プラットフォームのHarbor統合ページで以下の情報を確認できます:
+
+- **🌐 Harbor URL**: Harborレポジトリのアドレス。例: `https://harbor.example.com`。
+- **👤 ユーザー名**: あなたのHarborユーザー名。
+- **🔒 パスワード**: あなたのHarborパスワード。
+
+### 🔐 1.3 Harborへのログイン
+
+取得した資格情報を使用してHarborにログインします:
+
+```bash
+docker login crater-harbor.act.buaa.edu.cn -u <ユーザー名> -p <パスワード>
+```
+
+ログインに成功すると、`Login Succeeded`というメッセージが表示されます。✅
+
+## 📦 2. ローカルイメージをHarborレポジトリにアップロードする
+
+### 🏷️ 2.1 ローカルイメージをタグ付けする
+
+アップロードする前に、ローカルイメージをHarborレポジトリの命名規則に従ってタグ付けする必要があります。例:
+
+```bash
+docker tag local-image:tag harbor.example.com/project-name/repository-name:tag
+```
+
+- `local-image:tag`: あなたのローカルイメージの名前とタグ。
+- `harbor.example.com/project-name/repository-name:tag`: Harborレポジトリの完全なパス、プロジェクト名、リポジトリ名、タグを含む。
+
+各ユーザーのProject Nameは `user-{ACT ユーザー名}` です。💡
+
+### ⬆️ 2.2 イメージをHarborにプッシュする
+
+タグ付けしたイメージを `docker push` コマンドを使ってHarborレポジトリにプッシュします:
+
+```bash
+docker push harbor.example.com/project-name/repository-name:tag
+```
+
+プッシュに成功すると、Harborレポジトリにアップロードされたイメージが表示されます。✨
+
+## ✅ 3. イメージのアップロードを確認する
+
+### 🌐 3.1 Harbor Web UIへのログイン
+
+ブラウザを開き、HarborのWeb UI（例: `https://harbor.example.com`）にアクセスし、資格情報を使用してログインしてください。
+
+### 👀 3.2 イメージの確認
+
+対応するプロジェクトとリポジトリに移動し、アップロードしたイメージがレポジトリに正しく表示されているか確認してください。
+
+## ⚠️ 4. よくある質問
+
+### ❌ 4.1 ログインに失敗する
+
+- ユーザー名とパスワードが正しいか確認してください。
+- Harbor URLが正しいか、ネットワークでアクセス可能か確認してください。
+
+### ❌ 4.2 プッシュに失敗する
+
+- イメージのタグ付けしたパスが正しいか確認してください。
+- 指定されたプロジェクトとリポジトリにイメージをプッシュする権限があるか確認してください。
+
+## 📚 5. 参考資料
+
+- [Harbor公式ドキュメント](https://goharbor.io/docs/)
+- [Docker公式ドキュメント](https://docs.docker.com/)

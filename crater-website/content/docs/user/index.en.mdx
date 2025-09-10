@@ -1,0 +1,55 @@
+---
+title: User Guide
+description: Crater User Guide
+---
+
+import { DynamicLink } from "fumadocs-core/dynamic-link";
+
+## Platform Introduction
+
+Crater is a platform independently developed by BUAA, specifically designed for cluster management, providing users with an efficient and convenient solution for managing cluster resources. It can uniformly schedule and manage computing resources, storage resources, and more within the cluster, ensuring stable operation of the cluster and optimal utilization of resources.
+
+### Intuitive Interface Design
+
+Crater provides a simple and user-friendly interface, allowing users to easily complete various cluster management tasks through a graphical operation interface. For example, the resource dashboard can display real-time usage of cluster resources, including CPU utilization, memory usage, storage capacity, and other metrics.
+
+The job management interface presents currently running jobs, job queues, and job history records, making it convenient for users to check task statuses and perform operations at any time.
+
+![jobshow](./assets/jobshow.webp)
+
+### Efficient Resource Scheduling
+
+The platform uses intelligent resource scheduling algorithms to automatically assign the optimal resources to jobs based on factors such as job priority and resource requirements. For example, when multiple jobs simultaneously request resources, Crater can quickly analyze and allocate resources to the most urgent and critical tasks, improving overall execution efficiency.
+
+### Monitoring Functionality
+
+Detailed monitoring data and log records provide users with the basis to deeply understand the operation status of the cluster, facilitating fault diagnosis and performance optimization.
+
+![log_diagnosis](./assets/log_diagnosis.webp)
+
+## Table of Contents
+
+This manual can help cluster users learn how to access the platform, use interactive jobs and batch processing jobs, submit data, create images, and access VSCode extensions, among other functions.
+
+<Cards>
+  <Card href="/en/docs/user/quick-start/login" title="Platform Access">
+    Learn how to access the Crater platform within the laboratory
+  </Card>
+  <Card href="/en/docs/user/quick-start/interactive" title="Interactive Jobs">
+    Learn how to use interactive jobs
+  </Card>
+  <Card href="/en/docs/user/quick-start/batchprocess" title="Custom Jobs">
+    Learn how to use custom jobs
+  </Card>
+  <Card href="/en/docs/user/file/file" title="File System">
+    Learn how to use the file system
+  </Card>
+  <Card href="/en/docs/user/file/dataset" title="Datasets">
+    Learn how to use datasets
+  </Card>
+  <Card href="/en/docs/user/image/imagebuild" title="Image Creation">
+    Learn how to create images
+  </Card>
+</Cards>
+
+We hope this manual helps you make full use of the features of the cluster platform!

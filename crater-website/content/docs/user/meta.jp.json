@@ -1,0 +1,15 @@
+{
+  "root": true,
+  "pages": [
+    "---作業とサービス---",
+    "quick-start",
+    "---イメージとデータ---",
+    "image",
+    "...file",
+    "---その他---",
+    "toolbox",
+    "problems"
+  ],
+  "title": "ユーザー・ガイド",
+  "icon": "UserRound"
+}

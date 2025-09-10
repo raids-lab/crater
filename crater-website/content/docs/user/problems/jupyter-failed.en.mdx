@@ -1,0 +1,23 @@
+---
+title: Jupyter Lab Failed to Start
+description: Documentation for Jupyter Failed
+---
+
+<Callout title="TL;DR">
+  It is likely because you have previously configured Jupyter. Simply delete the `.jupyter` folder in your user directory.
+</Callout>
+
+## 1. Failed to Start Due to Hardcoded Jupyter Pem File
+
+Reported on December 25, 2024, the user's startup log is as follows:
+
+![pem](./img/pem.webp)
+
+The interactive job failed to start because the file `/home/LAB/{username}/mycert.pem` could not be found. This is because we synchronized the user's files from the old Slurm cluster. In the previous Slurm cluster, the user's home directory was `/home/LAB/{username}`, but it is now the more standard `/home/{username}`.
+
+Additionally, the user had previously configured Jupyter's TLS connection on the Slurm cluster, so the Jupyter configuration file in the `/home/{username}/.jupyter` folder contains a hardcoded path to the pem certificate.
+
+There are two solutions to this issue:
+
+1. Delete the `/home/{username}/.jupyter` folder
+2. Modify line 161 of the `jupyter_notebook_config.py` file to change the path to `$HOME/mycert.pem`

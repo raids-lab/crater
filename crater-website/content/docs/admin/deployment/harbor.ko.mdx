@@ -1,0 +1,68 @@
+---
+title: Harbor 배포 가이드
+description: Crater는 클러스터 내에서 이미지 빌드, 저장 및 보안 분배를 지원하기 위해 내부 Harbor 레지스트리를 사용합니다. 
+
+---
+
+## 배포
+
+배포에는 [공식 Harbor Helm Chart](https://github.com/goharbor/harbor-helm)를 사용하는 것을 추천합니다. 기본 예시:
+
+```bash
+helm repo add harbor https://helm.goharbor.io
+helm pull harbor/harbor --version 1.14.0
+# 필요에 따라 values.yaml을 수정하십시오 (아래 참조)
+helm install crater-harbor harbor/harbor -f values.yaml -n harbor-system --create-namespace
+```
+
+## 참고 사항: 확인할 점
+
+도메인 이름 (예: crater-harbor.act.buaa.edu.cn)이 클러스터 내부 또는 내부 DNS에서 해석될 수 있어야 합니다.
+
+유효한 TLS 설정이 있거나 HTTP를 위해 expose.tls.enabled=false를 설정해야 합니다.
+
+## 설정 팁
+values.yaml에서 externalURL을 올바르게 설정하십시오:
+```yaml
+externalURL: https://crater-harbor.act.buaa.edu.cn
+```
+적절한 클래스 (ingress-nginx) 및 호스트 이름을 갖춘 ingress를 구성하십시오.
+
+테스트를 위해 내부 인증서를 사용하거나 TLS를 비활성화하십시오:
+```yaml
+expose:
+  tls:
+    enabled: false
+```
+
+## 이미지 풀 시크릿
+Crater 구성 요소가 Harbor에서 이미지를 끌어오도록 허용하려면:
+```bash
+kubectl create secret docker-registry crater-harbor-auth \
+  --docker-server=crater-harbor.act.buaa.edu.cn \
+  --docker-username=<user> \
+  --docker-password=<password> \
+  -n <target-namespace>
+```
+그런 다음 이 시크릿을 pod.spec.imagePullSecrets에서 참조할 수 있습니다.
+
+## Harbor 프로젝트 구조
+프로젝트는 다음과 같이 구성됩니다:
+| 프로젝트       | 목적                    |
+| ------------- | -------------------------- |
+| crater/base   | 기본 OS 및 유틸리티      |
+| crater/jobs   | 사용자가 제출한 작업 이미지 |
+| crater/charts | Helm 차트의 미러         |
+| crater/models | 추론을 위한 대규모 모델  |
+
+## Crater와의 통합
+대부분의 시스템 구성 요소 (예: gpu-operator, ingress-nginx, prometheus)는 Harbor 미러를 사용하도록 사전 구성되어 있습니다.
+
+이미지 경로는 다음과 같아야 합니다:
+```ruby
+crater-harbor.act.buaa.edu.cn/crater/<component>:<tag>
+```
+Helm 차트 커스터마이징 시 image.repository 및 imagePullSecrets를 업데이트하십시오.
+
+## 참고 자료
+* [Harbor 문서](https://goharbor.io/docs/)

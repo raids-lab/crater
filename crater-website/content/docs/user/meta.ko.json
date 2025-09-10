@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "---과제 및 서비스---",
+    "quick-start",
+    "---이미지 및 데이터---",
+    "image",
+    "...file",
+    "---더 보기---",
+    "toolbox",
+    "problems"
+  ],
+  "title": "사용자 가이드",
+  "icon": "UserRound",
+  "root": true
+}

@@ -1,0 +1,74 @@
+---
+title: Prometheus Stack 配置ガイド
+description: kube-prometheus-stack は、Rook Ceph RBD ストレージバックエンドを用いて、GPU、ジョブライフサイクル、クラスターメトリクスを含む包括的な監視を提供します。
+---
+
+## 概要
+
+Crater は **kube-prometheus-stack** を使って、拡張性のある堅牢な監視ソリューションを提供します。以下についてリアルタイムおよび歴史的な可観測性を提供します:
+
+- クラスター リソース使用状況 (CPU、メモリ、GPU、ストレージ)
+- ジョブライフサイクルメトリクス
+- システムレベルのパフォーマンス指標
+- GPUの状態および利用率 (DCGM経由)
+- アプリケーション固有のカスタムメトリクス
+
+### 核心コンポーネント
+
+- **Prometheus**: メトリクスの収集およびアラートのための時系列データベース
+- **Grafana**: ダッシュボード可視化およびユーザー向けメトリクスパネル
+- **Alertmanager**: オプションのアラートルーティングシステム (デフォルトで無効)
+- **DCGM Exporter**: `gpu-operator` からGPUメトリクスをPrometheusにエクスポート
+- **metrics-server**: Kubernetes リソースメトリクス (CPU、メモリ) を提供
+
+Crater は **フロントエンドにGrafanaダッシュボードを直接統合**しており、プラットフォームUIを離れる必要なく、多様な洞察を提供します。
+
+---
+
+## ストレージバックエンド
+
+Prometheus の永続ストレージバックエンドとして **Rook Ceph RBD** を使用しています。
+
+これにより以下のことが保証されます:
+
+- 歴史的なメトリクスの高可用性および耐久性
+- 大規模な時系列データのインジェストに適したブロックレベルのパフォーマンス
+
+> 📌 Prometheus stack のインストール**前に**、`rook-ceph` が正しくインストールされ、`rook-ceph-rbd` StorageClass が利用可能であることを確認してください。
+
+---
+
+## 依存関係
+
+Craterの監視を完全に有効にするには、以下のコンポーネントを**まずインストールしてください**:
+
+| 依存関係          | 目的                                           | 参照                                                                 |
+|-------------------|------------------------------------------------|---------------------------------------------------------------------|
+| `rook-ceph-rbd`   | 永続ストレージバックエンド                       | [docs/rook-ceph.md](./rook-ceph.md)                                 |
+| `gpu-operator`    | DCGM Exporter (NVIDIA GPU メトリクス)           | [docs/gpu-operator.md](./gpu-operator.md)                           |
+| `metrics-server`  | 基本的なCPU/メモリリソースメトリクス            | [docs/metrics-server.md](./metrics-server.md)                       |
+
+---
+
+## Craterのカスタマイズ
+
+以下について、変更された `values.yaml` およびサブチャート設定を提供しています:
+
+- DCGMメトリクスのスクレイピングを有効化
+- Craterワークロードに関連するGrafanaダッシュボードの事前読み込み
+- Grafanaサービスタイプを `ClusterIP` に設定し、Crater管理のIngressを使用
+- Prometheusを長時間保持ウィンドウとカスタムストレージクラスで構成
+- イメージリポジトリおよびリポジトリパスの調整
+
+これらの設定をクラスターセットアップに合わせて確認・編集してください、以下を含む:
+
+- 🔁 **StorageClass**: `rook-ceph-rbd` に設定してください
+- 📦 **Image Repositories**: 必要に応じてローカル/プライベートリポジトリに合わせて設定してください
+
+---
+
+## インストール
+
+Craterの事前に設定された値を使用した公式のHelmチャートの使用を推奨します。
+
+📖 詳細ガイド: [`deployments/prometheus-stack/README.md`](../deployments/prometheus-stack/README.md)

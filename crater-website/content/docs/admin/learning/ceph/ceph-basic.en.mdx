@@ -1,0 +1,229 @@
+---
+title: "Rook-Ceph Practice Guide"
+description: "A beginner's guide to getting started with Rook-Ceph!"
+---
+
+> This guide is designed for individuals with no prior experience in Ceph or distributed storage, aiming to help you quickly understand and practically operate Rook-Ceph.
+
+## I. Background and Preliminary Concepts
+
+Before diving into Rook-Ceph, it's essential to understand two fundamental concepts: **Ceph** and **Rook-Ceph**. These represent the core capabilities of a distributed storage system and the automated management solution on Kubernetes, respectively.
+
+### 1. Ceph
+
+**Ceph is an open-source distributed storage system**, originally initiated by Sage Weil, aimed at solving data consistency, availability, and scalability issues in large-scale storage environments. Unlike traditional centralized storage solutions, Ceph does not rely on a single controller but is built on collaboration between peer nodes. The core design goals of Ceph include:
+
+* **High scalability**: Supports storage capacity growth from terabytes to petabytes;
+* **High availability and fault tolerance**: Ensures data remains accessible even when nodes fail, using replication or erasure coding mechanisms;
+* **Unified storage model**: Supports access to block devices (Block), object storage (Object), and file systems (File) simultaneously.
+
+A Ceph cluster mainly consists of the following core components:
+
+| Component                         | Description                                 |
+| ---------------------------- | ---------------------------------------- |
+| MON (Monitor)               | Maintains cluster status, health checks, and metadata services like leader election |
+| OSD (Object Storage Daemon) | Responsible for core functions like data reading/writing, replication, and recovery |
+| MGR (Manager)               | Provides monitoring, statistics, and plugin extension capabilities |
+| MDS (Metadata Server, optional) | Used for managing directory tree metadata when supporting file systems |
+
+A typical Ceph cluster usually needs at least 3 MONs to ensure safe leader election, and multiple OSDs are mounted on physical disks across nodes to collectively provide data storage capabilities.
+
+### 2. Rook-Ceph
+
+**Rook is a storage orchestrator (Operator) based on Kubernetes**, with the goal of **letting users manage storage systems as easily as managing Pods**. Rook-Ceph is one of the most mature and widely used backends, simplifying the deployment and management of Ceph on Kubernetes.
+
+Rook-Ceph abstracts the deployment and maintenance of Ceph into a set of Kubernetes custom resources (Custom Resources), including:
+
+| Custom Resource        | Description                         |
+| ----------------- | ---------------------------- |
+| `CephCluster`     | Represents a complete Ceph cluster declaration |
+| `CephBlockPool`   | Manages Ceph RBD block storage pools    |
+| `CephFilesystem`  | Manages Ceph file systems           |
+| `CephObjectStore` | Manages object storage buckets        |
+
+Through the Operator model, Rook achieves the lifecycle management of Ceph clusters, including deployment, upgrades, fault recovery, and scaling, significantly reducing the complexity of traditional Ceph installation processes.
+
+### 3. Using Ceph in Kubernetes
+
+Kubernetes natively does not provide true persistent storage. If a Pod's PVC (PersistentVolumeClaim) lacks a reliable backend, it cannot achieve high availability, cross-node access, or automatic recovery of storage. Ceph, especially Ceph integrated with Rook, fills this gap perfectly.
+
+* Reliable data persistence storage;
+* Elastic scalability;
+* Supports high availability block devices and shared file systems;
+* Native Kubernetes support for CSI plugins and dynamic StorageClass provisioning.
+
+Rook-Ceph can build a truly usable cloud-native storage solution.
+
+## II. Learning Path
+
+Ceph and Rook-Ceph involve a wide range of content, and for beginners, the biggest challenge in the early stages is not the lack of resources, but the fact that there are too many resources that are not systematic or progressive. To increase efficiency and avoid inefficient pitfalls, it's recommended to divide the learning path into three stages, focusing on building an understanding of relevant tools through practice.
+
+### 1. Phase One: Concept Building
+
+#### Recommended Resources
+
+- Official documentation: https://rook.github.io/docs/rook/latest-release/Getting-Started/intro/
+- Chinese introduction: Search for "Ceph Getting Started" on Bilibili
+- Querying terms with ChatGPT or similar
+
+#### Key Goals: Understand the design motivations and relationship between Ceph and Rook-Ceph, clarify the responsibilities of core components
+
+| Questions to Understand                                               | Recommended Questioning Style                                            | Why It's Important                                                   |
+| ------------------------------------------------------------ | ----------------------------------------------------------- | ------------------------------------------------------------ |
+| What problems did Ceph aim to solve?                            | Briefly introduce the fundamental differences between Ceph and traditional centralized storage systems. | Clarify the core idea of Ceph's distributed + fault-tolerant + decentralized nature. |
+| What is the relationship between Ceph and Rook-Ceph?                               | When using Rook-Ceph in Kubernetes, are you using Ceph? What role does Rook play?   | Understand the concept that Rook encapsulates Ceph's maintenance logic to avoid confusion between the two. |
+| What are the core components of Ceph? What do they do?                        | Explain the roles and interactions of MON, OSD, MGR, and MDS in Ceph.            | Clarify the entry points for all subsequent command operations and troubleshooting. |
+| What are RBD, object storage, and file systems? Which one is used in Kubernetes? | When using PVC in Kubernetes, is it using Ceph's block storage or other forms? | Clarify whether Ceph is block storage or involves other concepts like cloud disks. |
+| Why is Rook used to deploy Ceph in Kubernetes?                  | Can Ceph be directly deployed without Rook? What are the differences?            | Understand the differences between Kubernetes and traditional architectures, especially the concept of declarative resources. |
+
+### 2. Phase Two: Environment Familiarization
+
+#### Basic Goals
+
+- Learn to enter the toolbox in K8s, execute basic diagnostic and status commands;
+- Be able to read and understand the meaning of commands like `ceph status` and `osd tree`;
+- Initially learn to use `kubectl` to manage Rook resources.
+
+#### Key Goals: Understand the resources in the Rook-Ceph cluster after deployment, master the connection between the toolbox and K8s objects, and be able to perform basic queries independently.
+
+| Questions to Understand                                               | Recommended Questioning Style                                             | Why It's Important                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| How to enter the toolbox, and where exactly is it connected?                       | How is the `rook-ceph-tools` Pod connected to the Ceph cluster? Is it also running Ceph? | Avoid mistakenly thinking the toolbox is the Ceph itself rather than a remote client. |
+| What does the `HEALTH_WARN` in the output of `ceph status` mean? How to trace further? | What does `mon quorum lost` mean in `ceph health detail`?     | Each diagnostic output contains clues, and it's essential to know how to progressively locate issues. |
+| How does Ceph turn disks into storage resources? What's the relationship between OSD and hard disks?      | How are OSDs mapped to physical disks? Can multiple OSDs share a disk?        | Learn the logic for handling `ceph osd down` or disk failures in the future. |
+| What is a Pool in Ceph? Why does each PVC correspond to a Pool?              | Why do we need multiple Pools? What is the relationship between replica count and performance/capacity?   | Pools are units of partitioned resources, and without understanding them, performance optimization or disaster recovery strategies cannot be done. |
+| How is Kubernetes' StorageClass bound to Ceph's BlockPool? | From PVC to Ceph RBD, how are resources mapped layer by layer? Who creates the RBD?     | Clarify the control chain from K8s → Rook → Ceph, and analyze the data storage location and workload attribution. |
+
+### 3. Phase Three: Hands-on Practice
+
+#### Basic Goals
+
+- Master the basic operations for daily maintenance of a Ceph cluster;
+- Be able to complete the process from creating a storage pool to binding a PVC and running an application;
+- Be able to independently troubleshoot most common issues (at least identify the cause).
+
+#### Key Goals: Be able to create and manage Pools, RBDs, and PVCs, handle common errors, and understand the Rook upgrade and Ceph operation chain.
+
+| Questions to Understand                                  | Recommended Questioning Style                                                 | Why It's Important                                          |
+| ----------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------- |
+| How to determine if a specific RBD has been correctly created and bound to a PVC?  | How can I trace back from a PVC to the corresponding Ceph RBD name?                        | Learn to confirm that storage is correctly configured, especially when troubleshooting mounting failures.    |
+| How does the replica count setting of a Pool affect performance and fault tolerance?           | In a three-replica pool, will it always consume three times the space? What if only two machines are available? | Understanding the impact of Pool parameters on performance and capacity is a core skill for optimization.  |
+| How to recover after creating a snapshot? Does it affect the original data?          | Does the Ceph RBD snapshot rollback overwrite the original data? How to demonstrate the recovery operation?    | Snapshots are key tools for experiments/testing, often used to prevent accidental deletions. |
+| Why would the `rook-ceph-osd-xxx` pod fail? How to analyze? | If an OSD pod fails to start, how can we analyze the cause from logs or ceph commands?      | These types of issues frequently occur, and it's essential to master log diagnosis and hardware mapping logic.  |
+| What key metrics should be observed during a Rook upgrade?           | When upgrading from v1.14 to v1.15, which pods should be updated first, and which resources are immutable? | Learn to perform seamless upgrades and ensure no data loss.            |
+
+> **Tips**
+>
+> - Perform the complete process of creating → mounting → writing → deleting;
+> - Don't be afraid of trial and error, especially in test environments where you intentionally cause OSD down/MON failures;
+> - Let large models explain error messages and the purposes of CRD fields.
+
+## III. Common Commands
+
+### 1. Basic Information View and Health Checks
+
+| Operation                 | Command                       | Purpose Description                                        |
+| -------------------- | -------------------------- | ----------------------------------------------- |
+| Check overall health status     | `ceph -s` or `ceph status` | Ensure the cluster is in `HEALTH_OK` state; otherwise, analyze the warning content |
+| Check cluster space usage     | `ceph df`                  | Can determine which pool occupies the most space                    |
+| View all component versions     | `ceph versions`            | Verify if the versions are unified after an upgrade                          |
+| Check cluster host topology     | `ceph osd tree`            | Determine the distribution of OSDs, especially critical for identifying faulty nodes           |
+| View MON information        | `ceph mon dump`            | Validate quorum count and recovery requirements                    |
+| View cluster alarm details     | `ceph health detail`       | Get specific information and component localization for each alarm                |
+
+### 2. OSD Operations
+
+| Operation                  | Command                               | Purpose Description                    |
+| --------------------- | ---------------------------------- | --------------------------- |
+| View all OSD list     | `ceph osd ls`                      | Confirm OSD IDs               |
+| View OSD status         | `ceph osd stat`                    | Check if all OSDs are up/in      |
+| View detailed status of a specific OSD   | `ceph osd dump`                    | Often used to locate OSD in/out situations  |
+| Mark a specific OSD as offline       | `ceph osd out <id>`                | Use when planning to take a disk offline or maintain a node |
+| Bring a specific OSD back online        | `ceph osd in <id>`                 | Recover disk usage or recover from accidental operations    |
+| Manually mark an OSD as down | `ceph osd down <id>`               | Used for testing scenarios in fault recovery         |
+| Trigger OSD rebalancing       | `ceph osd reweight-by-utilization` | Used when data distribution is uneven          |
+
+### 3. Pool Management
+
+| Operation           | Command                                                         | Purpose Description                       |
+| -------------- | ------------------------------------------------------------ | ------------------------------ |
+| View existing pools  | `ceph osd pool ls`                                           | Quickly understand the current storage layout         |
+| View pool details   | `ceph osd pool get <pool> all`                               | Check replica count, encoding methods, etc.     |
+| Create a pool      | `ceph osd pool create mypool 128 128`                        | Try different pool sizes in the experimental environment    |
+| Delete a pool      | `ceph osd pool delete mypool mypool --yes-i-really-really-mean-it` | Use with caution, only for experimental environments       |
+| Set replica count to 3 | `ceph osd pool set mypool size 3`                            | Ensure data redundancy, but increase space consumption |
+
+### 4. RBD Operations Practice
+
+| Operation          | Command                                         | Purpose Description                            |
+| ------------- | -------------------------------------------- | ----------------------------------- |
+| Create an RBD image | `rbd create myrbd --size 1024 --pool mypool` | Create images in MB units, necessary before binding to PVC |
+| View images      | `rbd ls -p mypool`                           | Confirm if the image was successfully created                    |
+| Get image information  | `rbd info mypool/myrbd`                      | Check image size and usage status              |
+| Delete an image      | `rbd rm mypool/myrbd`                        | Clean up test images and release space            |
+| Create a snapshot      | `rbd snap create mypool/myrbd@snap1`         | Can be used for testing snapshot and recovery functions            |
+| Rollback a snapshot      | `rbd snap rollback mypool/myrbd@snap1`       | Simulate data recovery after accidental deletion                  |
+
+### 5. File System Operations (Available only after deploying MDS)
+
+| Operation             | Command                                       | Purpose Description                        |
+| ------------------ | ------------------------------------------ | ------------------------------- |
+| Create a file system     | `ceph fs new myfs myfs_metadata myfs_data` | Supports shared mounting similar to NFS         |
+| View all file systems    | `ceph fs ls`                               | Check if the file system is effective            |
+| View file system status  | `ceph fs status`                           | Check active MDS nodes and client connection counts |
+
+## IV. Practice Scenarios
+
+### 1. Scenario One: Create an Independent Data Volume for Large Model Training Services
+
+A laboratory has deployed a large model training service based on PyTorch. Each user wants to use an independent data storage volume mounted into the training container. As an administrator, you need to:
+
+1. Create a block storage pool named `ml-training-pool`, specifically for model training data;
+2. Bind this pool to a Kubernetes StorageClass for users to call in PVCs;
+3. Create a PVC and confirm that it has successfully bound and created the corresponding RBD image in the Ceph cluster;
+4. Use the toolbox to view the status, capacity, and other detailed information of this block device to confirm its availability.
+
+### 2. Scenario Two: Simulate Node Disk Failure and Ceph Data Rebalancing Process
+
+To simulate Ceph's fault tolerance in production environments, you need to simulate an abnormal offline event of an OSD node and observe whether Ceph's self-healing mechanism takes effect.
+
+1. Select an OSD from the existing cluster and mark it as `out`, simulating disk offline;
+2. Observe whether Ceph triggers data migration, rebalancing, and health status changes;
+3. View the changes in the OSD tree and cluster status, record the process of replica rebuilding and capacity redistribution;
+4. Simulate the repair of the fault and mark the OSD as `in`, observing the recovery process of the system.
+
+### 3. Scenario Three: Use Snapshots and Rollbacks to Protect and Recover Training Data
+
+Before large model training, you want to provide a recoverable snapshot for users' training data volumes to prevent accidental deletion. The scenario is as follows:
+
+1. Create a snapshot named `@pretrain` on the existing block storage volume (corresponding to PVC);
+2. Assume that the user accidentally deletes important training data or writes abnormal data midway;
+3. Use Ceph's snapshot rollback feature to restore this RBD volume to the pre-training snapshot state;
+4. Verify data consistency after the rollback and understand the impact of snapshots on system performance and capacity.
+
+### 4. Scenario Four: Deploy a Shared Volume to Support Distributed Training Log Collection
+
+The laboratory plans to conduct distributed training experiments, and multiple Pod instances need to write training logs to the same directory. You need to:
+
+1. Create a Ceph file system (CephFS) and provide POSIX interfaces through the MDS service;
+2. Configure a StorageClass that supports ReadWriteMany for multiple Pods to mount simultaneously;
+3. Create a PVC and mount it to multiple Pods, simulating a concurrent log writing scenario;
+4. Verify whether the written data is consistent and whether there are write conflicts or permission issues.
+
+### 5. Scenario Five: Simulate a Response Strategy for an Almost Full Storage Pool
+
+During peak times of dense task submissions, you discover that the remaining capacity of a certain Ceph block storage pool is about to be insufficient. You need to:
+
+1. Use the toolbox to view the usage rate and replica configuration of each Pool;
+2. Analyze which RBD images in the current Pool are idle or unbound, and consider cleaning up and reclaiming them;
+3. If the capacity is indeed insufficient, attempt to adjust the replica count of certain Pools from 3 to 2 (only for test scenarios);
+4. Evaluate expansion feasibility, add new nodes or OSDs, and observe whether the system automatically rebalances.
+
+### 6. Scenario Six: Clean Up Unused Images and Pools to Free Up Storage Space
+
+You find that there are multiple PVCs and their corresponding RBD images no longer in use in the cluster, and users have not manually cleaned them up. You need to:
+
+1. Confirm whether the Pods that these PVCs belong to have been deleted;
+2. Locate these PVCs' bound RBD images and confirm that they are no longer mounted;
+3. Use the toolbox to delete these images and clean up unused BlockPools (if no dependencies exist);
+4. Check the cluster's total capacity change again to ensure that the space has been successfully reclaimed.
