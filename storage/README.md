@@ -1,5 +1,7 @@
 #  Storage server
 
+Chinese Version : [README_CN.md](README_CN.md)
+
 Crater is a Kubernetes-based GPU cluster management system providing a comprehensive solution for GPU resource orchestration.
 
 
