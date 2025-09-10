@@ -1,8 +1,8 @@
 {
-  "root": true,
   "pages": [
     "---Installation and Deployment---",
     "quick-start",
+    "kind-start",
     "deployment",
     "---Advanced Configuration---",
     "chart",
@@ -11,5 +11,6 @@
     "learning"
   ],
   "icon": "UserRoundCog",
-  "title": "Administrator Guide"
+  "title": "Administrator Guide",
+  "root": true
 }

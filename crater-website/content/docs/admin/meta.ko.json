@@ -2,6 +2,7 @@
   "pages": [
     "---설치 및 배포---",
     "quick-start",
+    "kind-start",
     "deployment",
     "---고급 설정---",
     "chart",
