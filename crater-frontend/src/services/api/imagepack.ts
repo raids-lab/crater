@@ -233,6 +233,11 @@ export interface UpdateImageTag {
   tags: string[]
 }
 
+export interface UpdateImageArch {
+  id: number
+  archs: string[]
+}
+
 export interface UpdateTaskType {
   id: number
   taskType: JobType
@@ -454,6 +459,9 @@ export const apiGetHarborIP = () => apiV1Get<IResponse<HarborIPData>>('images/ha
 
 export const apiUserUpdateImageTags = (data: UpdateImageTag) =>
   apiV1Post<IResponse<string>>('images/tags', data)
+
+export const apiUserUpdateImageArchs = (data: UpdateImageArch) =>
+  apiV1Post<IResponse<string>>('images/arch', data)
 
 export const apiUserGetImageTemplate = (name: string) =>
   apiV1Get<IResponse<string>>(`images/template?name=${name}`)

@@ -265,14 +265,20 @@ function RouteComponent() {
         taskName: 'master',
         replicas: 1,
         resource: defaultResource,
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         ports: [],
       },
       worker: {
         taskName: 'worker',
         replicas: 1,
         resource: defaultResource,
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         ports: [],
       },
       volumeMounts: [

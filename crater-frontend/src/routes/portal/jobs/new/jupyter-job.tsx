@@ -169,7 +169,10 @@ function RouteComponent() {
         taskName: 'training',
         replicas: 1,
         resource: defaultResource,
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         shell: '',
         command: '',
         workingDir: `/home/${user?.name}`,

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
@@ -40,17 +40,17 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
-import Combobox from '@/components/form/Combobox'
 import { VolumeMountsCard } from '@/components/form/DataMountFormField'
 import { EnvFormCard } from '@/components/form/EnvFormField'
 import FormLabelMust from '@/components/form/FormLabelMust'
+import { ImageFormField } from '@/components/form/ImageFormField'
 import { OtherOptionsFormCard } from '@/components/form/OtherOptionsFormField'
 import { publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/CardTitle'
 import { ProgressBar } from '@/components/ui-custom/colorful-progress'
 
 import { IDlAnalyze, apiDlAnalyze } from '@/services/api/recommend/dlTask'
-import { JobType, apiJTaskImageList, apiJobTemplate, apiSparseCreate } from '@/services/api/vcjob'
+import { apiJobTemplate, apiSparseCreate } from '@/services/api/vcjob'
 
 import {
   VolumeMountType,
@@ -167,16 +167,6 @@ function RouteComponent() {
       router.history.back()
     },
   })
-  const imagesInfo = useQuery({
-    queryKey: ['jupyter', 'images'],
-    queryFn: () => apiJTaskImageList(JobType.Custom),
-    select: (res) => {
-      return res.data.images.map((item) => ({
-        value: item.imageLink,
-        label: item.imageLink,
-      }))
-    },
-  })
 
   // 1. Define your form.
   const form = useForm<FormSchema>({
@@ -202,7 +192,10 @@ function RouteComponent() {
             enabled: false,
           },
         },
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         command: '',
         workingDir: '/home/' + user?.name,
         ports: [],
@@ -226,6 +219,15 @@ function RouteComponent() {
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
       const jobInfo = JSON.parse(response.data)
+
+      // 处理 image 字段的兼容性
+      if (jobInfo.data.task?.image && typeof jobInfo.data.task.image === 'string') {
+        jobInfo.data.task.image = {
+          imageLink: jobInfo.data.task.image,
+          archs: [],
+        }
+      }
+
       form.reset(jobInfo.data)
 
       if (jobInfo.data.envs.length > 0) {
@@ -683,27 +685,7 @@ function RouteComponent() {
                   </div>
                 )}
               </div>
-              <FormField
-                control={form.control}
-                name="task.image"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      容器镜像
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Combobox
-                        items={imagesInfo.data ?? []}
-                        current={field.value}
-                        handleSelect={(value) => field.onChange(value)}
-                        formTitle="镜像"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <ImageFormField form={form} name="task.image" />
               <FormField
                 control={form.control}
                 name="task.command"
