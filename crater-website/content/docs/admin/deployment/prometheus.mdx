@@ -1,74 +1,75 @@
 ---
-title: Prometheus Stack Deployment Guide
-description: kube-prometheus-stack provides comprehensive monitoring including GPU, job lifecycle, and cluster metrics with Rook Ceph RBD storage backend.
----
-
-## Overview
-
-Crater relies on the **kube-prometheus-stack** to provide a robust and extensible monitoring solution. It powers real-time and historical observability for:
-
-- Cluster resource usage (CPU, memory, GPU, storage)
-- Job lifecycle metrics
-- System-level performance indicators
-- GPU health and utilization (via DCGM)
-- Application-specific custom metrics
-
-### Core Components
-
-- **Prometheus**: Time-series database for metrics collection and alerting
-- **Grafana**: Dashboard visualization and user-facing metrics panels
-- **Alertmanager**: Optional alert routing system (disabled by default)
-- **DCGM Exporter**: From `gpu-operator`, exports GPU metrics to Prometheus
-- **metrics-server**: Provides Kubernetes resource metrics (CPU, memory)
-
-Crater integrates Grafana dashboards **directly into its frontend**, providing users with multi-dimensional insights without leaving the platform UI.
+title: Prometheus Stack 部署指南
+description: kube-prometheus-stack 提供全面的监控功能，包括 GPU、作业生命周期和集群指标，并使用 Rook Ceph RBD 存储后端。
 
 ---
 
-## Storage Backend
+## 概述
 
-We use **Rook Ceph RBD** as the persistent storage backend for Prometheus.
+Crater 依赖 **kube-prometheus-stack** 提供一个强大且可扩展的监控解决方案。它为以下内容提供实时和历史的可观测性：
 
-This ensures:
+- 集群资源使用情况（CPU、内存、GPU、存储）
+- 作业生命周期指标
+- 系统级性能指标
+- GPU 健康状况和使用情况（通过 DCGM）
+- 应用程序特定的自定义指标
 
-- High availability and durability of historical metrics
-- Block-level performance suitable for large-scale time-series ingestion
+### 核心组件
 
-> 📌 Make sure `rook-ceph` is correctly installed and the `rook-ceph-rbd` StorageClass is available **before** installing Prometheus stack.
+- **Prometheus**: 用于指标收集和告警的时间序列数据库
+- **Grafana**: 仪表板可视化和面向用户的指标面板
+- **Alertmanager**: 可选的告警路由系统（默认禁用）
+- **DCGM Exporter**: 来自 `gpu-operator`，将 GPU 指标导出到 Prometheus
+- **metrics-server**: 提供 Kubernetes 资源指标（CPU、内存）
 
----
-
-## Dependencies
-
-To fully enable Crater monitoring, please ensure the following components are **installed first**:
-
-| Dependency         | Purpose                                           | Reference                                                                 |
-|--------------------|---------------------------------------------------|---------------------------------------------------------------------------|
-| `rook-ceph-rbd`    | Persistent storage backend                        | [docs/rook-ceph.md](./rook-ceph.md)                                       |
-| `gpu-operator`     | DCGM Exporter (NVIDIA GPU metrics)                | [docs/gpu-operator.md](./gpu-operator.md)                                 |
-| `metrics-server`   | Basic CPU/Memory resource metrics                 | [docs/metrics-server.md](./metrics-server.md)                             |
+Crater 将 Grafana 仪表板 **直接集成到其前端**，为用户提供多维洞察，而无需离开平台 UI。
 
 ---
 
-## Crater Customizations
+## 存储后端
 
-We provide modified `values.yaml` and subchart configurations for:
+我们使用 **Rook Ceph RBD** 作为 Prometheus 的持久存储后端。
 
-- Enabling DCGM metrics scraping
-- Preloading a set of Grafana dashboards relevant to Crater workloads
-- Setting Grafana service type to `ClusterIP` with Crater-managed ingress
-- Configuring Prometheus with a long retention window and custom storage class
-- Adjusting image registries and repository paths
+这确保了：
 
-Please review and edit these configurations to match your cluster setup, including:
+- 历史指标的高可用性和持久性
+- 适用于大规模时间序列摄入的块级性能
 
-- 🔁 **StorageClass**: Ensure it's set to `rook-ceph-rbd`
-- 📦 **Image Repositories**: Match your local/private registry if needed
+> 📌 确保在安装 Prometheus 栈 **之前** 正确安装了 `rook-ceph` 并且 `rook-ceph-rbd` StorageClass 可用。
 
 ---
 
-## Installation
+## 依赖项
 
-We recommend using the official Helm chart with Crater's preconfigured values.
- 
-📖 Detailed guide: [`deployments/prometheus-stack/README.md`](../deployments/prometheus-stack/README.md)
+为了完全启用 Crater 监控，请确保以下组件 **首先安装**：
+
+| 依赖项             | 目的                                           | 参考                                                                 |
+|--------------------|------------------------------------------------|----------------------------------------------------------------------|
+| `rook-ceph-rbd`    | 持久存储后端                                   | [docs/rook-ceph.md](./rook-ceph.md)                                 |
+| `gpu-operator`     | DCGM Exporter（NVIDIA GPU 指标）               | [docs/gpu-operator.md](./gpu-operator.md)                           |
+| `metrics-server`   | 基本 CPU/内存资源指标                          | [docs/metrics-server.md](./metrics-server.md)                       |
+
+---
+
+## Crater 自定义配置
+
+我们提供了修改后的 `values.yaml` 和子图表配置，用于：
+
+- 启用 DCGM 指标抓取
+- 预加载与 Crater 工作负载相关的 Grafana 仪表板集合
+- 将 Grafana 服务类型设置为 `ClusterIP` 并使用 Crater 管理的 Ingress
+- 使用长保留窗口和自定义存储类配置 Prometheus
+- 调整镜像仓库和仓库路径
+
+请检查并编辑这些配置以匹配您的集群设置，包括：
+
+- 🔁 **StorageClass**: 确保设置为 `rook-ceph-rbd`
+- 📦 **Image Repositories**: 如果需要，请匹配您的本地/私有仓库
+
+---
+
+## 安装
+
+我们建议使用带有 Crater 预配置值的官方 Helm 图表进行安装。
+
+📖 详细指南：[`deployments/prometheus-stack/README.md`](../deployments/prometheus-stack/README.md)

@@ -1,0 +1,29 @@
+---
+title: Users and Accounts
+description: As the number of users increases, we may refine the details regarding quotas.
+---
+
+During the closed beta phase, we have not yet opened the full quota capabilities for users and accounts. Currently, each user has no submission limits and is queued according to the FIFO rule, so you do not need to pay attention to this section.
+
+In the future, as the number of users increases, we may refine the details regarding quotas.
+
+<Mermaid
+  chart="
+flowchart TD;
+    subgraph User Interaction with the Platform;
+        User -->|Personal Identity Verification | Platform;
+        User --> Private Storage Space;
+        Private Storage Space -->|Supports Sharing | Other Users;
+    end;
+    subgraph User and Account Relationship;
+        User -->|Can Belong To | Account;
+        User -->|Default Join | Public Queue Account;
+        Account -->|Contains | User;
+        Public Queue Account -->|Lowest Priority | High Priority Account;
+        High Priority Account -->|Established When High Priority Needs Exist | User;
+        High Priority Account -->|Releases Space | Other High Priority Accounts;
+        Account -->|Sets Quota Limit | Account Storage Space;
+        Account Storage Space -->|Further Restricts | User Quota;
+    end;
+"
+/>

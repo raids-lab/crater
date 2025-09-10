@@ -1,80 +1,80 @@
 ---
-title: Storage Architecture
-description: Crater utilizes a hybrid storage architecture to address both high-performance local workloads and persistent shared data access across pods and nodes. This document outlines the storage solutions used in the cluster.
+title: 存储架构
+description: Crater 使用混合存储架构来应对高吞吐量的本地工作负载以及跨 Pod 和节点的持久共享数据访问。本文档概述了集群中使用的存储解决方案。
 ---
 
-## 1. Local Persistent Volumes (LocalPV via OpenEBS)
+## 1. 本地持久卷（通过 OpenEBS 的 LocalPV）
 
-We use [OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv) to manage node-local storage for workloads that require high throughput and data-locality.
+我们使用 [OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv) 来管理节点本地存储，适用于需要高吞吐量和数据本地性的工作负载。
 
-### Why LocalPV?
+### 为什么使用 LocalPV？
 
-- **CRD-Based Management**: Allows Kubernetes-native declarative management of local disks.
-- **Performance**: Data remains on the same node, minimizing network overhead.
-- **Use Case in Crater**:
-  - Job cache directories
-  - Local dataset staging areas
-  - Per-node inference or training scratch space
+- **基于 CRD 的管理**：允许使用 Kubernetes 原生的声明式管理本地磁盘。
+- **性能**：数据保留在同一节点上，从而减少网络开销。
+- **Crater 中的应用场景**：
+  - 作业缓存目录
+  - 本地数据集暂存区
+  - 每个节点的推理或训练临时空间
 
 ### StorageClass
 
-A dedicated `StorageClass` is configured for local disk provisioning. This class is referenced by other charts like:
-- `cloudnative-pg` for database storage
-- Distributed job outputs that do not require replication
+为本地磁盘分配配置了一个专用的 `StorageClass`。该类被以下图表引用：
+- `cloudnative-pg` 用于数据库存储
+- 不需要复制的分布式作业输出
 
-See: [`deployments/openebs`](../deployments/openebs)
-
----
-
-## 2. Shared Block Storage (Ceph RBD via Rook)
-
-For persistent, multi-node accessible volumes, Crater uses [Rook-Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html). RBD volumes are dynamically provisioned and support:
-
-- ReadWriteOnce access with migration support
-- Replication and failure recovery
-- Suitable for:
-  - Prometheus TSDB storage
-  - Crater internal services requiring persistence
-  - Datasets shared across nodes
-
-Ceph was selected due to its:
-
-- Kubernetes-native provisioning via Rook
-- Strong community support
-- Scalability and fault tolerance
-
-> 📌 Most of our stateful components such as Prometheus use Ceph RBD volumes via a custom `StorageClass`.
+参见：[`deployments/openebs`](../deployments/openebs)
 
 ---
 
-## Storage Usage Matrix
+## 2. 共享块存储（通过 Rook 的 Ceph RBD）
 
-| Component             | Type               | Storage Backend       | Notes                                  |
-|-----------------------|--------------------|----------------------|----------------------------------------|
-| PostgreSQL (Crater DB) | Persistent         | LocalPV (OpenEBS)    | High-speed, node-specific              |
-| Prometheus TSDB        | Persistent         | Ceph RBD (Rook)      | Multi-node, highly durable             |
-| User Jobs             | Ephemeral / Persistent | LocalPV / Ceph RBD | Based on configuration                 |
-| Grafana Dashboards     | Ephemeral / Persistent | Ceph RBD           | Optional, depending on dashboard config|
+对于需要跨多个节点访问的持久化卷，Crater 使用 [Rook-Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html)。RBD 卷动态分配并支持：
+
+- 支持迁移的 ReadWriteOnce 访问
+- 复制和故障恢复
+- 适用于：
+  - Prometheus TSDB 存储
+  - 需要持久化的 Crater 内部服务
+  - 跨节点共享的数据集
+
+选择 Ceph 的原因包括：
+
+- 通过 Rook 实现 Kubernetes 原生的分配
+- 强大的社区支持
+- 可扩展性和容错性
+
+> 📌 我们的大多数有状态组件（如 Prometheus）都通过自定义的 `StorageClass` 使用 Ceph RBD 卷。
 
 ---
 
-## Notes
+## 存储使用矩阵
 
-- Always ensure nodes offering LocalPV have labeled and mounted disk paths.
-- Ceph RBD requires pre-provisioned block storage devices on cluster nodes.
-- Use node affinity and tolerations with LocalPV to bind pods to correct storage locations.
-- See each chart’s documentation for the appropriate `StorageClass` override.
+| 组件             | 类型               | 存储后端         | 说明                                  |
+|------------------|--------------------|------------------|----------------------------------------|
+| PostgreSQL (Crater DB) | 持久化         | LocalPV (OpenEBS) | 高速，节点专用                         |
+| Prometheus TSDB        | 持久化         | Ceph RBD (Rook)   | 多节点，高度耐用                      |
+| 用户作业             | 临时 / 持久化     | LocalPV / Ceph RBD | 依据配置决定                           |
+| Grafana 仪表盘     | 临时 / 持久化     | Ceph RBD           | 可选，取决于仪表盘配置                |
 
 ---
 
-## Related Modules
+## 注意事项
+
+- 确保提供 LocalPV 的节点已打标签并挂载磁盘路径。
+- Ceph RBD 需要在集群节点上预先配置好块存储设备。
+- 使用节点亲和性和容忍性与 LocalPV 绑定 Pod 到正确的存储位置。
+- 查看每个图表的文档，以获取适当的 `StorageClass` 覆盖设置。
+
+---
+
+## 相关模块
 
 - [`openebs`](./openebs.md)
 - [`cloudnative-pg`](./cloudnative-pg.md)
 - [`prometheus`](./prometheus.md)
 
-## Installation
+## 安装
 
-We recommend leveraging NFS as the storage provisioner and using official Helm chart with Crater's preconfigured values.
- 
-📖 Detailed guide: [`deployments/nfs/README.md`](../deployments/nfs/README.md)
+我们建议使用 NFS 作为存储提供程序，并使用带有 Crater 预配置值的官方 Helm 图表。
+
+📖 详细指南：[`deployments/nfs/README.md`](../deployments/nfs/README.md)

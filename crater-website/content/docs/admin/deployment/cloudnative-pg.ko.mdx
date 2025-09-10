@@ -1,0 +1,50 @@
+---
+title: "CloudNativePG 배포 가이드"
+description: "CloudNativePG Operator와 OpenEBS 스토리지 사용하여 PostgreSQL을 Crater에 통합합니다."
+---
+
+## 개요
+
+Crater는 사용자 세션, 작업 메타데이터, 일정 상태 및 플랫폼 설정을 관리하기 위해 **PostgreSQL**을 백엔드 데이터베이스로 사용합니다.
+
+생산 환경 수준의, Kubernetes 네이티브 PostgreSQL 관리를 달성하기 위해 우리는 [CloudNativePG Operator](https://cloudnative-pg.io/)를 채택했습니다. 이는 다음과 같은 기능을 제공합니다:
+
+- CRDs를 통해 PostgreSQL 클러스터의 선언형 관리  
+- 자동 고가용성, 백업 및 장애 복구  
+- Kubernetes RBAC, 스토리지 및 일정과의 밀접한 통합
+
+우리의 배포는 **OpenEBS Local PV**를 사용하여 CloudNativePG와 스토리지를 통합하며, 이는 빠른 로컬 디스크 성능과 완전한 데이터 생명 주기 관리를 가능하게 합니다.
+
+## 왜 CloudNativePG인가요?
+
+우리는 CloudNativePG를 선택한 이유는 다음과 같습니다:
+
+- CNCF의 인큐베이팅 프로젝트로 강력한 커뮤니티 지원을 제공합니다.  
+- **PostgreSQL 구성**과 **Kubernetes 네이티브 오케스트레이션** 사이에 명확한 분리를 제공합니다.  
+- PostgreSQL 배포를 간소화하면서도 고급 튜닝을 위한 유연성을 유지합니다.
+
+Crater 스택에서 각 PostgreSQL 클러스터는 커스터마이즈된 `Cluster` 리소스로 정의되며, 운영자에 의해 제어됩니다.
+
+## 스토리지 설정
+
+데이터베이스는 OpenEBS Local PV를 기반으로 한 로컬 지속 스토리지를 사용합니다(자세한 내용은 [`openebs.md`](./openebs.md)를 참조하세요).
+
+이 설정은 다음과 같은 장점을 제공합니다:
+
+- 단일 노드 워크로드에 대한 높은 IOPS와 낮은 지연 시간  
+- 예측 가능한 노드 로컬 일정  
+- 명확하고 선언형의 볼륨 생명 주기 관리
+
+CloudNativePG를 설치하기 전에 OpenEBS Local PV가 설치되고 올바르게 작동하고 있는지 확인하십시오.
+
+## 사전 조건
+
+- `kubectl` 및 `helm`이 설치되어 있어야 합니다  
+- OpenEBS Local PV가 설치되어 있어야 합니다
+
+## 설치
+
+운영자 설치를 위한 맞춤형 Helm 구성 파일을 제공합니다.
+
+📦 Helm 값: [`deployments/cloudnative-pg/values.yaml`](../deployments/cloudnative-pg/values.yaml)  
+📖 상세 가이드: [`deployments/cloudnative-pg/README.md`](../deployments/cloudnative-pg/README.md)

@@ -1,0 +1,82 @@
+---
+title: Upload Local Image ⬆️
+description: This document will guide you on how to obtain Harbor access credentials through the platform and upload your local Docker image to the Harbor repository.
+---
+
+## 🔐 1. Obtain Harbor Access Credentials
+
+### 🚀 1.1 Log in to the Platform
+
+First, log in to your platform (e.g., Kubernetes cluster management platform, CI/CD platform, etc.), and locate the section integrated with Harbor.
+
+![harbor](./img/harbor-user.png)
+
+### 🔑 1.2 Obtain Access Credentials
+
+On the platform's Harbor integration page, you can find the following information:
+
+- **🌐 Harbor URL**: The address of the Harbor repository, for example `https://harbor.example.com`.
+- **👤 Username**: Your Harbor username.
+- **🔒 Password**: Your Harbor password.
+
+### 🔐 1.3 Log in to Harbor
+
+Use the obtained credentials to log in to Harbor:
+
+```bash
+docker login crater-harbor.act.buaa.edu.cn -u <username> -p <password>
+```
+
+After successful login, you will see the prompt `Login Succeeded`. ✅
+
+## 📦 2. Upload Local Image to Harbor Repository
+
+### 🏷️ 2.1 Tag the Local Image
+
+Before uploading, you need to tag the local image to comply with the naming conventions of the Harbor repository. For example:
+
+```bash
+docker tag local-image:tag harbor.example.com/project-name/repository-name:tag
+```
+
+- `local-image:tag`: Your local image name and tag.
+- `harbor.example.com/project-name/repository-name:tag`: The complete path of the Harbor repository, including the project name, repository name, and tag.
+
+Each user's Project Name is `user-{ACT username}`. 💡
+
+### ⬆️ 2.2 Push the Image to Harbor
+
+Use the `docker push` command to push the tagged image to the Harbor repository:
+
+```bash
+docker push harbor.example.com/project-name/repository-name:tag
+```
+
+After a successful push, you can see the uploaded image in the Harbor repository. ✨
+
+## ✅ 3. Verify Image Upload
+
+### 🌐 3.1 Log in to Harbor Web UI
+
+Open your browser and visit the Harbor Web UI (e.g., `https://harbor.example.com`), and log in using your credentials.
+
+### 👀 3.2 View the Image
+
+Navigate to the corresponding project and repository to confirm that your uploaded image is successfully displayed in the repository.
+
+## ⚠️ 4. Common Issues
+
+### ❌ 4.1 Login Failed
+
+- Ensure that the username and password are correct.
+- Check that the Harbor URL is correct and that the network can access it.
+
+### ❌ 4.2 Push Failed
+
+- Ensure that the path of the image tag is correct.
+- Check whether you have permission to push the image to the specified project and repository.
+
+## 📚 5. Reference Documents
+
+- [Harbor Official Documentation](https://goharbor.io/docs/)
+- [Docker Official Documentation](https://docs.docker.com/)

@@ -1,0 +1,47 @@
+---
+title: Image Backup 📦
+description: You can directly save the user's current changes as an image, making it convenient for future use.
+---
+
+## Image Backup
+
+When users install new Python packages within the Jupyter environment, these Python packages will be lost by default if the job is stopped.
+
+To address this, we provide an image backup feature, which allows you to directly save the user's current changes as an image, making it convenient for future use.
+
+<Callout>
+
+Since deep learning images are usually large, factors such as network conditions during the process can interfere, making it difficult to ensure the success rate of image backups. We still recommend that you try to create images through Dockerfile or low-code methods. We may impose limits:
+
+1. The total size of images that users can upload
+2. The number of image backups that users can perform (to save new ones, old ones must be deleted)
+
+Summary: We strongly recommend that you create images through Dockerfile or low-code methods!
+
+</Callout>
+
+### Starting Jupyter Example
+
+Please refer to [Interactive Jobs](../quick-start/interactive.md) to start Jupyter Lab.
+
+Afterwards, you may perform some operations within this container, such as installing a Pip package:
+
+```shell
+# Use the Aliyun Pip source
+sudo pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+
+# Install any package
+sudo pip install jieba
+```
+
+### Saving Changes Inside the Image
+
+On the Jupyter interactive page, find the floating ball with the Crater icon:
+
+![alt text](./img/floatball.png)
+
+Click to save the image and confirm.
+
+The Crater platform will redirect you to the image creation page, where you can view the specific progress of the image packaging task. After a successful operation, you will be able to see an image described as `Snapshot of XXXX` when selecting an image.
+
+![alt text](./img/snapshot.png)
