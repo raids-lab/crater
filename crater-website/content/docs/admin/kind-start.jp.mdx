@@ -5,7 +5,7 @@ description: このドキュメントでは、Kind を使用してローカル�
 
 ## 1. 環境準備
 
-### 1.1 Kindのインストール
+### 1.1 Kind のインストール
 
 <Callout type="info">
 参考ドキュメント：https://kind.sigs.k8s.io/docs/user/quick-start/
@@ -19,10 +19,10 @@ sudo mv ./kind /usr/local/bin/kind
 ```
 
 <Callout type="info">
-    パーミッションの問題が発生した場合は、`sudo`を使用するか、Kindを書き込み可能なディレクトリに移動してください。
+    パーミッションの問題が発生した場合は、`sudo` を使用するか、Kind を書き込み可能なディレクトリに移動してください。
 </Callout>
 
-### 1.2 kubectlとHelmのインストール
+### 1.2 kubectl と Helm のインストール
 
 ```bash
 # kubectlのインストール
@@ -34,7 +34,7 @@ sudo mv kubectl /usr/local/bin/
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-## 2. Kindクラスターの作成
+## 2. Kind クラスターの作成
 
 ### 2.1 クラスター構成ファイルの作成
 
@@ -59,7 +59,7 @@ nodes:
 ```
 
 <Callout type="info">
-    ポートマッピングの設定により、ホストからクラスター内のサービスにアクセスできるようになります。特にIngressコントローラーにおいて重要です。
+    ポートマッピングの設定により、ホストからクラスター内のサービスにアクセスできるようになります。特に Ingress コントローラーにおいて重要です。
 </Callout>
 
 ### 2.2 クラスターの作成
@@ -83,7 +83,7 @@ You can now use your cluster with:
 kubectl cluster-info --context kind-kind
 ```
 
-## 3. Kindクラスター用のIngress-Nginxのデプロイ
+## 3. Kind クラスター用の Ingress-Nginx のデプロイ
 
 <Callout type="info">
     参考ドキュメント：https://kind.sigs.k8s.io/docs/user/ingress/
@@ -101,7 +101,7 @@ kubectl wait --namespace ingress-nginx \
   --timeout=90s
 ```
 
-## 4. PostgreSQLデータベースのデプロイ
+## 4. PostgreSQL データベースのデプロイ
 
 <Callout type="info">
     参考ドキュメント：https://artifacthub.io/packages/helm/bitnami/postgresql
@@ -128,10 +128,10 @@ echo "データベースパスワード: $POSTGRES_PASSWORD"
 ```
 
 <Callout type="info">
-    データベースパスワードを適切に保存してください。後続のCraterのデプロイ時に必要になります。
+    データベースパスワードを適切に保存してください。後続の Crater のデプロイ時に必要になります。
 </Callout>
 
-## 5. Volcanoスケジューラのデプロイ
+## 5. Volcano スケジューラのデプロイ
 
 <Callout type="info">
     参考ドキュメント：https://volcano.sh/jp/docs/v1.11.0/installation/
@@ -158,7 +158,7 @@ volcano-controllers-xxxxxxxx-xxxxx    1/1     Running   0          1m
 volcano-scheduler-xxxxxxxx-xxxxx      1/1     Running   0          1m
 ```
 
-## 6. NFSストレージのデプロイ
+## 6. NFS ストレージのデプロイ
 
 <Callout type="info">
     参考ドキュメント：https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
@@ -183,9 +183,9 @@ NAME   PROVISIONER                                       RECLAIMPOLICY   VOLUMEB
 nfs    cluster.local/nfs-provisioner-nfs-server-provisioner   Delete          Immediate           true                   1m
 ```
 
-## 7. Craterのデプロイ
+## 7. Crater のデプロイ
 
-### 7.1 Crater Helm Chartの値ファイルの取得
+### 7.1 Crater Helm Chart の値ファイルの取得
 
 ```bash
 helm show values oci://ghcr.io/raids-lab/crater --version 0.1.0 > values.yaml
@@ -206,7 +206,7 @@ postgres:
   TimeZone: Asia/Shanghai
 ```
 
-### 7.3 Craterのインストール
+### 7.3 Crater のインストール
 
 ```bash
 helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0 -n crater-system -f values.yaml
@@ -218,10 +218,10 @@ kubectl get pods -n crater-system
 ```
 
 <Callout type="success">
-    すべてのPodがRunning状態であれば、Crater環境の構築は成功しています！
+    すべての Pod が Running 状態であれば、Crater 環境の構築は成功しています！
 </Callout>
 
-## 8. Craterへのアクセス
+## 8. Crater へのアクセス
 
 ### 8.1 アクセス先の取得
 
@@ -229,24 +229,24 @@ kubectl get pods -n crater-system
 kubectl get ingress -n crater-system
 ```
 
-### 8.2 ローカルhostsの設定（必要に応じて）
+### 8.2 ローカル hosts の設定（必要に応じて）
 
-ローカルのKindクラスターを使用する場合、`/etc/hosts`にマッピングを追加する必要があります：
+ローカルの Kind クラスターを使用する場合、`/etc/hosts`にマッピングを追加する必要があります：
 
 ```
 127.0.0.1 crater.example.com
 ```
 
-### 8.3 Webインターフェースへのアクセス
+### 8.3 Web インターフェースへのアクセス
 
-ブラウザでアクセスしてください：`http://crater.example.com:8080`（Ingressの設定に応じて変更可能）
+ブラウザでアクセスしてください：（Ingress の設定に応じて変更可能）��定に応じて変更可能）
 
 ## 9. トラブルシューティング
 
 ### 9.1 一般的な問題
 
 <Callout type="warn">
-    **問題：** Podが起動できない、または継続的に再起動する
+    **問題：** Pod が起動できない、または継続的に再起動する
 </Callout>
 
 **解決策：**
@@ -291,13 +291,13 @@ helm uninstall nfs-provisioner -n nfs-system
 
 ## 結論
 
-本ガイドに従って、Kindクラスター上に完全なCrater環境をデプロイしました。含まれる主なコンポーネントは以下の通りです：
+本ガイドに従って、Kind クラスター上に完全な Crater 環境をデプロイしました。含まれる主なコンポーネントは以下の通りです：
 
-- ✅ Kind Kubernetesクラスター
-- ✅ Ingress-Nginxコントローラー
-- ✅ PostgreSQLデータベース
-- ✅ Volcanoスケジューラ
-- ✅ NFSストレージプロビジョナー
-- ✅ Craterトレーニングプラットフォーム
+- ✅ Kind Kubernetes クラスター
+- ✅ Ingress-Nginx コントローラー
+- ✅ PostgreSQL データベース
+- ✅ Volcano スケジューラ
+- ✅ NFS ストレージプロビジョナー
+- ✅ Crater トレーニングプラットフォーム
 
-今や、Craterを使用して分散トレーニングタスクを開始できます！何か問題が発生した場合は、各コンポーネントの公式ドキュメントを参照し、ログを確認してトラブルシューティングを行ってください。
+今や、Crater を使用して分散トレーニングタスクを開始できます！何か問題が発生した場合は、各コンポーネントの公式ドキュメントを参照し、ログを確認してトラブルシューティングを行ってください。

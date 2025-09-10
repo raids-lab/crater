@@ -1,6 +1,6 @@
 ---
 title: 최소화 배포
-description: 본 문서는 Kind를 사용하여 로컬에서 Crater 환경을 빠르게 설정하는 방법을 안내합니다. Crater는 Kubernetes 기반의 분산 학습 플랫폼이며, 본 가이드는 Kind 클러스터 생성부터 Crater에 필요한 구성 요소 배포까지의 전체 과정을 다룹니다.
+description: 본 문서는 Kind 를 사용하여 로컬에서 Crater 환경을 빠르게 설정하는 방법을 안내합니다. Crater 는 Kubernetes 기반의 분산 학습 플랫폼이며, 본 가이드는 Kind 클러스터 생성부터 Crater 에 필요한 구성 요소 배포까지의 전체 과정을 다룹니다.
 ---
 
 ## 1. 환경 준비
@@ -19,7 +19,7 @@ sudo mv ./kind /usr/local/bin/kind
 ```
 
 <Callout type="info">
-    권한 문제 발생 시 `sudo` 사용 또는 Kind를 쓰기 가능한 디렉터리로 이동해 보세요
+    권한 문제 발생 시 `sudo` 사용 또는 Kind 를 쓰기 가능한 디렉터리로 이동해 보세요
 </Callout>
 
 ### 1.2 kubectl 및 Helm 설치
@@ -218,7 +218,7 @@ kubectl get pods -n crater-system
 ```
 
 <Callout type="success">
-    모든 Pod가 Running 상태이면 Crater 환경이 성공적으로 구성되었습니다!
+    모든 Pod 가 Running 상태이면 Crater 환경이 성공적으로 구성되었습니다!
 </Callout>
 
 ## 8. Crater 액세스
@@ -246,7 +246,7 @@ kubectl get ingress -n crater-system
 ### 9.1 일반적인 문제
 
 <Callout type="warn">
-    **문제:** Pod가 시작되지 않거나 지속적으로 재시작됨
+    **문제:** Pod 가 시작되지 않거나 지속적으로 재시작됨
 </Callout>
 
 **해결 방법:**
@@ -300,4 +300,4 @@ helm uninstall nfs-provisioner -n nfs-system
 - ✅ NFS 스토리지 프로비저너
 - ✅ Crater 학습 플랫폼
 
-이제 Crater를 사용하여 분산 학습 작업을 시작할 수 있습니다. 문제가 발생할 경우 각 구성 요소의 공식 문서나 로그 확인을 통해 문제 해결을 시도해 보세요.
+이제 Crater 를 사용하여 분산 학습 작업을 시작할 수 있습니다. 문제가 발생할 경우 각 구성 요소의 공식 문서나 로그 확인을 통해 문제 해결을 시도해 보세요.
