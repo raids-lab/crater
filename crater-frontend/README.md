@@ -58,7 +58,7 @@ Clone and initialize:
 
 ```bash
 git clone https://github.com/raids-lab/crater-frontend.git
-cd crater-web-frontend
+cd crater-frontend
 pnpm install
 ```
 
