@@ -108,8 +108,11 @@ export const taskSchema = z.object({
     message: '副本数不能小于 1',
   }),
   resource: resourceSchema.required(),
-  image: z.string().min(1, {
-    message: '容器镜像不能为空',
+  image: z.object({
+    imageLink: z.string().min(1, {
+      message: '容器镜像不能为空',
+    }),
+    archs: z.array(z.string()).default([]),
   }),
   shell: z.string().optional(),
   command: z.string().optional(),

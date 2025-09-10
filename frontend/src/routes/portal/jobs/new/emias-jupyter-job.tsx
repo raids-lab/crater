@@ -177,7 +177,10 @@ function RouteComponent() {
             memory: jobInfo.data.memory,
             gpu: jobInfo.data.gpu,
           },
-          image: jobInfo.data.image,
+          image:
+            typeof jobInfo.data.image === 'string'
+              ? { imageLink: jobInfo.data.image, archs: [] }
+              : jobInfo.data.image || { imageLink: '', archs: [] },
         },
         envs: jobInfo.data.envs || [],
         volumeMounts: jobInfo.data.volumeMounts || [],
@@ -216,7 +219,10 @@ function RouteComponent() {
         taskName: 'training',
         replicas: 1,
         resource: defaultResource,
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         shell: '',
         command: '',
         workingDir: `/home/${user?.name}`,

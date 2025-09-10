@@ -76,7 +76,6 @@ export const TagsDialog: FC<TagsDialogProps> = ({
     try {
       setIsSaving(true)
       await onSaveTags({ id, tags })
-      toast.success('标签保存成功')
     } catch (error) {
       toast.error('保存标签失败' + error)
     } finally {

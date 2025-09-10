@@ -36,6 +36,16 @@ export const queryBaseImages = (type?: JobType) => {
       const items = Array.from(
         new Map(res.data.images.map((item) => [item.imageLink, item])).values()
       )
+        // Filter out items with invalid or empty data
+        .filter(
+          (item) =>
+            item &&
+            item.imageLink &&
+            item.description &&
+            item.userInfo &&
+            item.userInfo.nickname &&
+            item.userInfo.username
+        )
         // Sort by creation time, newest first
         .sort((a, b) => {
           // Adjust the field name if needed based on your data structure
@@ -45,8 +55,7 @@ export const queryBaseImages = (type?: JobType) => {
           (item) =>
             ({
               value: item.imageLink,
-              label: `${item.description} (${item.imageLink})
-              [${item.userInfo.nickname} ${item.userInfo.username}]`,
+              label: `${item.description} (${item.imageLink}) [${item.userInfo.nickname} ${item.userInfo.username}]`,
               selectedLabel: item.description,
               detail: item,
               tags: item.tags,

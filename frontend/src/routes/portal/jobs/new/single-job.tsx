@@ -184,7 +184,10 @@ function RouteComponent() {
         taskName: 'training',
         replicas: 1,
         resource: defaultResource,
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         shell: '/crater-start.sh',
         command: '',
         workingDir: '/home/' + user?.name,

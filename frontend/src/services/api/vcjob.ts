@@ -312,10 +312,15 @@ export interface NodeSelectorRequirement {
   values?: string[]
 }
 
+export interface IImageBaseInfo {
+  imageLink: string
+  archs: string[]
+}
+
 export interface IJupyterCreate {
   name: string
   resource: V1ResourceList
-  image: string
+  image: IImageBaseInfo
   volumeMounts: VolumeMount[]
   envs: Env[]
   selectors?: NodeSelectorRequirement[]
@@ -347,7 +352,7 @@ export interface ITensorflowCreate {
     name: string
     replicas: number
     resource: V1ResourceList
-    image: string
+    image: IImageBaseInfo
     command?: string
     workingDir?: string
     ports: {

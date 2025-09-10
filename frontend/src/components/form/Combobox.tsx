@@ -20,7 +20,6 @@ import { Check, ChevronsUpDown } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -36,14 +35,20 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 import { cn } from '@/lib/utils'
 
-import { TagFilter, UseTagFilter } from './ImageFormField'
-
 export interface ComboboxItem<T> {
   label: string
   value: string
   selectedLabel?: string
   tags?: string[]
   detail?: T
+}
+
+// 通用过滤器接口
+export interface ComboboxFilter<T> {
+  id: string // 过滤器唯一标识
+  component: React.ReactNode // 过滤器UI组件
+  filterFn: (items: ComboboxItem<T>[]) => ComboboxItem<T>[] // 过滤函数
+  enabled?: boolean // 是否启用，默认true
 }
 
 type ComboboxProps<T> = React.HTMLAttributes<HTMLDivElement> & {
@@ -55,8 +60,7 @@ type ComboboxProps<T> = React.HTMLAttributes<HTMLDivElement> & {
   renderLabel?: (item: ComboboxItem<T>) => React.ReactNode
   className?: string
   useDialog?: boolean
-  tags?: string[] // Optional predefined tags
-  tagFilter?: React.ReactNode // Optional custom tag filter component
+  filters?: ComboboxFilter<T>[] // 通用过滤器数组
 }
 
 const getSelectedLabel = <T,>(items: ComboboxItem<T>[], current: string): string | undefined => {
@@ -73,20 +77,30 @@ function Combobox<T>({
   renderLabel,
   className,
   useDialog = false,
-  tags,
-  tagFilter,
+  filters = [],
 }: ComboboxProps<T>) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const { allTags, selectedTags, toggleTag, filterItemsByTags } = UseTagFilter(items, tags)
+
+  // 启用的过滤器
+  const enabledFilters = filters.filter((filter) => filter.enabled !== false)
 
   const filteredItems = useMemo(() => {
-    const tagFilteredItems = filterItemsByTags(items)
-    return tagFilteredItems.filter((item) => {
-      return searchQuery === '' || item.label.toLowerCase().includes(searchQuery.toLowerCase())
+    let result = items
+
+    // 应用所有启用的过滤器
+    enabledFilters.forEach((filter) => {
+      result = filter.filterFn(result)
     })
-  }, [items, searchQuery, filterItemsByTags])
+
+    // 应用搜索过滤
+    if (searchQuery) {
+      result = result.filter((item) => item.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    }
+
+    return result
+  }, [items, searchQuery, enabledFilters])
 
   const triggerButton = (
     <FormControl>
@@ -121,15 +135,21 @@ function Combobox<T>({
         onValueChange={setSearchQuery}
       />
 
-      {tagFilter ||
-        (allTags.length > 0 && (
-          <TagFilter tags={allTags} selectedTags={selectedTags} onTagToggle={toggleTag} />
-        ))}
+      {/* 渲染所有启用的过滤器组件 */}
+      {enabledFilters.length > 0 && (
+        <div>
+          {enabledFilters.map((filter, index) => (
+            <div key={filter.id} className={index > 0 ? 'border-t border-b' : ''}>
+              {filter.component}
+            </div>
+          ))}
+        </div>
+      )}
 
       <CommandList>
         <CommandEmpty>{t('combobox.noResults', { formTitle })}</CommandEmpty>
         <CommandGroup>
-          <div>
+          <div key={`items-${filteredItems.length}`}>
             {filteredItems.map((item) => (
               <CommandItem
                 value={item.label}
@@ -138,19 +158,10 @@ function Combobox<T>({
                   handleSelect(item.value)
                   setOpen(false)
                 }}
-                className="flex w-full flex-row items-center justify-between"
+                className="animate-in fade-in-0 flex w-full flex-row items-center justify-between duration-200"
               >
                 <div className="flex flex-col">
                   <div>{renderLabel ? renderLabel(item) : item.label}</div>
-                  {item.tags && item.tags.length > 0 && (
-                    <div className="mt-1 flex gap-1">
-                      {item.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <Check
                   className={cn(

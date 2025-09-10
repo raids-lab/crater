@@ -67,6 +67,7 @@ import {
   ImageLinkPair,
   ListImageResponse,
   UpdateDescription,
+  UpdateImageArch,
   UpdateImageTag,
   UpdateTaskType,
   apiUserChangeImageDescription,
@@ -74,6 +75,7 @@ import {
   apiUserChangeImageTaskType,
   apiUserDeleteImageList,
   apiUserListImage,
+  apiUserUpdateImageArchs,
   apiUserUpdateImageTags,
   getHeader,
 } from '@/services/api/imagepack'
@@ -85,7 +87,8 @@ import useIsAdmin from '@/hooks/use-admin'
 import { logger } from '@/utils/loglevel'
 import { atomUserInfo } from '@/utils/store'
 
-import { DeleteDialog } from './deleta-dialog'
+import { ArchDialog } from './arch-dialog'
+import { DeleteDialog } from './delete-dialog'
 import { RenameDialog } from './rename-dialog'
 import { ImageShareSheet } from './share-image-sheet'
 import { StatusDialog } from './status-dialog'
@@ -125,6 +128,7 @@ enum Dialogs {
   rename = 'rename',
   valid = 'valid',
   tags = 'tags',
+  arch = 'arch',
 }
 
 export const Component: FC = () => {
@@ -218,6 +222,14 @@ export const ImageListTable: FC<ImageListTableProps> = ({
     onSuccess: async () => {
       await refetchImagePackList()
       toast.success('镜像标签已更新')
+    },
+  })
+
+  const { mutate: updateImageArchs } = useMutation({
+    mutationFn: (data: { id: number; archs: string[] }) => apiUserUpdateImageArchs(data),
+    onSuccess: async () => {
+      await refetchImagePackList()
+      toast.success('镜像架构已更新')
     },
   })
   const columns: ColumnDef<ImageInfoResponse>[] = [
@@ -316,6 +328,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
             onChangeType={updateImageTaskType}
             isAdminMode={isAdminMode}
             onChangeTags={updateImageTags}
+            onChangeArchs={updateImageArchs}
           />
         )
       },
@@ -457,6 +470,7 @@ interface ActionsProps {
   onChangeType: (data: { id: number; taskType: JobType }) => void
   isAdminMode: boolean
   onChangeTags: (data: { id: number; tags: string[] }) => void
+  onChangeArchs: (data: { id: number; archs: string[] }) => void
 }
 
 const Actions: FC<ActionsProps> = ({
@@ -469,6 +483,7 @@ const Actions: FC<ActionsProps> = ({
   onChangeType,
   isAdminMode,
   onChangeTags,
+  onChangeArchs,
 }) => {
   const [openDialog, setOpenDialog] = useState(false)
   const [openShareSheet, setOpenShareSheet] = useState(false)
@@ -579,6 +594,16 @@ const Actions: FC<ActionsProps> = ({
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
+                setDialog(Dialogs.arch)
+                setOpenDialog(true)
+              }}
+            >
+              <SquareCheckBig className="text-indigo-600" />
+              设置架构
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={isDisabled}
+              onClick={() => {
                 setDialog(Dialogs.rename)
                 setOpenDialog(true)
               }}
@@ -640,6 +665,16 @@ const Actions: FC<ActionsProps> = ({
               description={imageInfo.description}
               onSaveTags={(updateData: UpdateImageTag) => {
                 onChangeTags(updateData)
+              }}
+            />
+          ) : dialog === Dialogs.arch ? (
+            <ArchDialog
+              initialArchs={imageInfo.archs}
+              imageID={imageInfo.ID}
+              imageLink={imageInfo.imageLink}
+              description={imageInfo.description}
+              onSaveArchs={(updateData: UpdateImageArch) => {
+                onChangeArchs(updateData)
               }}
             />
           ) : null}

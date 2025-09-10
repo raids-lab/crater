@@ -191,7 +191,10 @@ function RouteComponent() {
         taskName: 'training',
         replicas: 1,
         resource: defaultResource,
-        image: '',
+        image: {
+          imageLink: '',
+          archs: [],
+        },
         command: '',
         workingDir: '/home/' + user?.name,
         ports: [],
