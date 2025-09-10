@@ -847,5 +847,12 @@
   "ApprovalOrderTable.actions.menuLabel": "更多操作",
   "ApprovalOrderTable.actions.viewDetails": "查看详情",
   "ApprovalOrderTable.info.title": "审批工单",
-  "ApprovalOrderTable.info.description": "查看和管理与我相关的审批工单"
+  "ApprovalOrderTable.info.description": "查看和管理与我相关的审批工单",
+  "ApprovalOrderTable.toast.approveError": "批准失败，请重试",
+  "ApprovalOrderTable.toast.approveSuccess": "批准成功",
+  "ApprovalOrderTable.toast.jobNotFound": "工单未找到，可能已被处理",
+  "ApprovalOrderTable.toast.rejectError": "拒绝失败，请重试",
+  "ApprovalOrderTable.toast.rejectSuccess": "拒绝成功",
+  "common.error": "发生错误",
+  "common.loading": "加载中..."
 }
