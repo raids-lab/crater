@@ -1,39 +1,39 @@
 ---
-title: OpenEBS Deployment Guide
-description: OpenEBS is used in Crater for managing local persistent storage via Local PV HostPath volumes, enabling efficient node-local storage management.
+title: OpenEBS 部署指南
+description: OpenEBS 在 Crater 中用于通过 Local PV HostPath 卷管理本地持久存储，从而实现高效的节点本地存储管理。
 ---
 
-## Overview
+## 概述
 
-Crater relies on **OpenEBS** to manage **local persistent storage** across Kubernetes nodes. Our main goal is to:
+Crater 依赖 **OpenEBS** 来管理 Kubernetes 节点上的 **本地持久存储**。我们的主要目标是：
 
-- **Enable CRD-based management of local storage resources**, allowing Crater to treat local disks as first-class, declarative resources.
-- Use **OpenEBS Local PV HostPath** to provision volumes directly from node-local paths, achieving predictable and efficient data locality.
+- **通过 CRD 管理本地存储资源**，使 Crater 能够将本地磁盘视为一等的、声明式的资源。
+- 使用 **OpenEBS Local PV HostPath** 直接从节点本地路径中分配卷，从而实现可预测且高效的数据本地性。
 
-This setup is ideal for workloads like model serving or intermediate job caching, where:
-- Latency to local disk is critical.
-- Storage is short-lived but needs proper lifecycle and cleanup.
-- Kubernetes-native volume objects are preferred over hostPath mounts.
+这种设置非常适合如下工作负载，例如模型服务或中间作业缓存，其中：
+- 本地磁盘的延迟至关重要。
+- 存储是短暂的，但需要适当的生命周期和清理。
+- 优先使用 Kubernetes 原生卷对象而不是 hostPath 挂载。
 
-## Why OpenEBS Local PV?
+## 为什么选择 OpenEBS Local PV？
 
-OpenEBS supports multiple storage engines. We specifically choose the **Local PV** engine for the following reasons:
+OpenEBS 支持多种存储引擎。我们特别选择 **Local PV** 引擎，原因如下：
 
-- No need for external storage infrastructure.
-- Works well with node affinity and scheduling constraints.
-- Exposes storage usage and lifecycle through Kubernetes CRDs.
-- Supports cleanup of volumes automatically when PVCs are deleted.
+- 不需要外部存储基础设施。
+- 与节点亲和性和调度约束兼容良好。
+- 通过 Kubernetes CRDs 暴露存储使用情况和生命周期。
+- 当 PVC 被删除时，支持自动清理卷。
 
-> Note: In our configuration, we primarily use the `openebs-hostpath` storage class with node-local paths (e.g., `/mnt/local-disks/`), and configure access via `hostPath`.
+> 注意：在我们的配置中，我们主要使用 `openebs-hostpath` 存储类和节点本地路径（例如 `/mnt/local-disks/`），并通过 `hostPath` 进行访问配置。
 
-## Prerequisites
+## 先决条件
 
-- `kubectl` and `helm` installed
-- Node directories pre-created at the local disk mount path (e.g. `/mnt/local-disks/`)
+- 已安装 `kubectl` 和 `helm`
+- 在本地磁盘挂载路径（例如 `/mnt/local-disks/`）上预先创建节点目录
 
-## Installation
+## 安装
 
-We provide a customized Helm configuration for OpenEBS to suit Crater's storage needs.
+我们为 OpenEBS 提供了一个定制化的 Helm 配置，以满足 Crater 的存储需求。
 
-📦 Helm values: [`deployments/openebs/values.yaml`](../deployments/openebs/values.yaml)  
-📖 Detailed guide: [`deployments/openebs/README.md`](../deployments/openebs/README.md)
+📦 Helm 值：[`deployments/openebs/values.yaml`](../deployments/openebs/values.yaml)  
+📖 详细指南：[`deployments/openebs/README.md`](../deployments/openebs/README.md)

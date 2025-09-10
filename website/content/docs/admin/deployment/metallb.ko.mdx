@@ -1,0 +1,101 @@
+---
+title: MetalLB 배포 가이드
+description: MetalLB는 베어메탈 Kubernetes 클러스터에서 Layer 2 모드를 사용하여 내부 서비스 노출을 가능하게 하며, 사설 대학 네트워크에 이상적입니다.
+---
+
+## 개요
+
+[MetalLB](https://metallb.universe.tf/)는 베어메탈 Kubernetes 클러스터용 로드 밸런서 구현입니다. Crater에서 MetalLB는 **Layer 2 (L2) 모드**를 사용하여 **내부 서비스 노출**을 가능하게 하며, 노드들이 동일한 서브넷에 위치하고 직접 통신할 수 있는 환경 - 예를 들어 캠퍼스 인트라넷 - 에서 이상적입니다.
+
+Crater 클러스터는 **사설 대학 네트워크**에 배포되며, 모든 노드와 사용자 액세스 포인트가 공통의 Layer 2 도메인을 공유합니다. 따라서 MetalLB는 예약된 **내부 IP 주소 풀**에서 IP를 할당하도록 구성되어 있으며, 외부 클라우드 공급업체에 의존하지 않고 `LoadBalancer` 유형 서비스를 노출할 수 있도록 합니다.
+
+---
+
+## 주요 기능
+
+- **L2 (ARP/NDP) 모드** - 인트라넷 환경에서 간단하고 효과적입니다.
+- Kubernetes 서비스에 **정적 내부 IP**를 할당합니다.
+- Prometheus, Grafana, Harbor와 같은 서비스와 통합됩니다.
+
+---
+
+## 설치
+
+MetalLB는 공식 Helm 차트를 통해 설치됩니다.
+
+### 1. Helm 저장소 추가
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+```
+
+### 2. MetalLB 설치
+```bash
+helm upgrade --install metallb metallb/metallb -n metallb-system --version v0.14.8 --create-namespace
+```
+
+## 구성
+### 1. IPAddressPool 생성
+MetalLB가 서비스에 할당할 수 있는 가용 인트라넷 IP 풀을 구성합니다:
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: intranet-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.100.240-192.168.100.250  # 캠퍼스 서브넷 범위로 교체
+```
+
+### 2. L2 Advertisement 구성
+IP 풀에 대해 L2 방송 (ARP/NDP)을 활성화합니다:
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: intranet-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - intranet-pool
+```
+
+## 사용법
+설치가 완료되면, `LoadBalancer` 유형의 서비스는 구성된 풀에서 IP를 할당받습니다.
+
+예시:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-web
+  namespace: crater-system
+spec:
+  type: LoadBalancer
+  selector:
+    app: crater-ui
+  ports:
+    - port: 80
+      targetPort: 8080
+```
+
+MetalLB는 정의된 풀에서 IP (예: 192.168.100.241)를 자동으로 할당합니다.
+
+할당된 IP를 확인하려면 다음 명령을 사용할 수 있습니다:
+```bash
+kubectl get services -A -o wide
+```
+
+## 최고의 실천 방법
+DHCP 서버에서 주소 풀을 예약하거나, 수동으로 충돌을 피하십시오.
+
+모든 클러스터 노드가 동일한 L2 방송 도메인에 있어야 합니다.
+
+공용 인터넷에 서비스를 노출시키는 것은 피해야 합니다. 여기서 MetalLB는 캠퍼스 네트워크 내부에서만 사용됩니다.
+
+* Crater는 [IngressClass](./ingress.md)와 결합하여 통합 도메인 라우팅을 제공합니다. *
+
+# 참고자료
+* [MetalLB](https://metallb.universe.tf/)

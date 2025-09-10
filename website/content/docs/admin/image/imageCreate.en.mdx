@@ -1,0 +1,165 @@
+---
+title: Image Building 🛠️
+description: The image building feature under administrator privileges provides more powerful management and monitoring capabilities.
+---
+
+## 📋 Functional Overview
+
+The image building feature under administrator privileges provides platform administrators with comprehensive management and monitoring capabilities for all user image building tasks. Compared to the regular user image building feature, the administrator version has the following characteristics:
+
+- **🌐 Global View**: Can view and manage all users' image building tasks on the platform
+- **🚀 CUDA Base Image Management**: Exclusive management functionality for CUDA base image libraries
+- **🔐 Advanced Permission Control**: Has deletion and management permissions for all image building tasks
+- **📊 System Monitoring**: Can monitor the overall image building status and resource usage of the platform
+
+## 🚪 Accessing the Administrator Image Building Page
+
+Administrators can access the administrator image building page by selecting "Image Management" under the "Management" category in the sidebar, then choosing "Image Building".
+
+![Image](./img/admin-image-registry-homepage.png)
+
+On this page, you can see:
+- A list of all users' image building tasks 📋
+- Creator information for each task 👤
+- Image build status and progress 📈
+- Detailed information such as image size and build time 📊
+
+## ⚙️ Administrator Exclusive Features
+
+### 1. 🚀 CUDA Base Image Management
+
+Administrators have exclusive CUDA Base image management functionality, allowing them to add and manage basic CUDA images for platform users.
+
+Click the "Import CUDA Base Image" button at the top of the page to open the CUDA Base image management interface.
+
+![Image](./img/admin-cuda-base-image-management.png)
+
+In this interface, you can:
+
+#### 👀 View Existing CUDA Base Images
+- Display all configured CUDA Base images
+- Include the display name, version tag, and full address of the image
+- Each image has corresponding identification information
+
+#### ➕ Add New CUDA Base Images
+Fill in the following information to add a new CUDA Base image:
+
+**🏷️ Image Display Tag**
+- A friendly name for display in the user interface
+- For example: `CUDA 12.8.1`
+
+**🔖 Image Version Tag**
+- A unique tag used to identify the image in code
+- For example: `cu12.8.1`
+- Must be unique and not repeat existing tags
+- Can only contain letters, numbers, dots, underscores, and hyphens
+- Length limit is 1-128 characters
+- Cannot start or end with a dot or hyphen
+
+**🔗 Full Image Link**
+- The full image address
+- For example: `harbor.raids-lab.cn/nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04`
+- Must conform to the standard Docker image address format
+
+#### 🗑️ Delete CUDA Base Images
+- For CUDA Base images that are no longer needed, click the delete button to remove them
+- A confirmation prompt will appear before deletion to prevent accidental operations ⚠️
+
+### 2. 🌐 Global Image Building Task Management
+
+#### 👥 View All Users' Tasks
+Administrators can view all users' image building tasks on the platform, including:
+- Image description and link 📋
+- Supported architecture information 🏗️
+- Creator information 👤
+- Creation time 📅
+- Build status 📊
+- Image size 📦
+
+#### 📦 Batch Operation Functionality
+Administrators can perform batch operations on multiple image building tasks:
+
+**🗑️ Batch Delete**
+- Select multiple image building tasks
+- Can batch delete image creation tasks and their corresponding image links
+- Detailed confirmation information will be displayed before the operation
+
+![Image](./img/admin-batch-delete.png)
+
+**✅ Batch Validation**
+- Select multiple image links to check their validity
+- Can verify whether the image is available and accessible
+- After validation, you can choose to delete invalid images
+
+![Image](./img/admin-batch-validate.png)
+
+#### ⚙️ Individual Task Operations
+For each image building task, administrators can perform the following operations:
+
+**👀 View Details**
+- Click the image name or use the details menu to view full image building information
+- Includes build logs, Dockerfile content, and build configuration
+
+**📋 Clone Task**
+- Create a new build task based on an existing image building task
+- Supports cloning with different build methods:
+  - Python + CUDA Custom Build 🐍
+  - Build Based on Existing Image 📦
+  - Build Based on Dockerfile 🐳
+  - Build Based on Envd ⚡
+
+**🗑️ Delete Task**
+- Delete image building tasks that are no longer needed
+- The delete operation will also delete the corresponding image link
+
+## 📊 Image Building Status Monitoring
+
+### 📂 Status Categories
+Administrators can filter by status to view image building tasks in different states:
+- **⏳ Waiting**: The task has been submitted and is waiting to start building
+- **🔄 Building**: The image is currently being built
+- **✅ Success**: The image has been successfully built and is available
+- **❌ Failure**: An error occurred during the image building process
+
+### 📋 View Build Logs
+For any image building task, administrators can view detailed build logs:
+- Real-time build output 📺
+- Error message diagnosis 🔍
+- Build step tracking 📈
+
+![Image](./img/admin-build-logs.png)
+
+## 🔐 Permissions and Security Management
+
+### 👥 Cross-User Management
+- Administrators can delete any user's image building task
+- Can view all users' image build details
+- Has platform-level image management permissions
+
+### 📊 System Resource Monitoring
+- Monitor overall image storage usage on the platform
+- Manage project configurations in the Harbor image repository
+- Control user image building permissions and quotas
+
+## 💡 Best Practices
+
+### 🚀 CUDA Base Image Management Recommendations
+1. **📋 Standardize Versions**: Establish a unified naming convention for CUDA versions
+2. **🔄 Regular Updates**: Timely add new versions of CUDA images
+3. **🧹 Cleanup Mechanism**: Regularly clean up unused old versions of images
+4. **🧪 Test Verification**: Perform functional testing before adding new images
+
+### ⚙️ Task Management Recommendations
+1. **🧹 Regular Cleanup**: Clean up failed or expired image building tasks
+2. **📊 Resource Monitoring**: Monitor storage space usage
+3. **👥 User Guidance**: Help users solve problems during the image building process
+4. **📋 Log Analysis**: Diagnose common issues through build logs
+
+## ⚠️ Notes
+
+<Callout type="warning">
+1. Before deleting a CUDA Base image, ensure no users are using it for building
+2. Batch deletion operations cannot be undone, so operate with caution
+3. Administrator permissions are extensive; it is recommended to regularly check operation logs
+4. For user-uploaded custom images, it is recommended to perform security scans
+</Callout>

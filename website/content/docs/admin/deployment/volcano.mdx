@@ -1,76 +1,77 @@
 ---
-title: Volcano Integration Guide
-description: How Crater uses Volcano batch scheduler for multi-lab GPU resource management and distributed workloads.
----
-
-## Overview
-
-[Volcano](https://volcano.sh/en/) is a batch scheduling system designed for high-performance workloads such as AI/ML training, big data, and scientific computing. In Crater, Volcano is used to manage GPU scheduling across multiple labs and users in a fair and preemptive way.
+title: Volcano 集成指南
+description: Crater 如何使用 Volcano 批处理调度器进行多实验室 GPU 资源管理及分布式工作负载。
 
 ---
 
-## Why Volcano?
+## 概述
 
-We chose Volcano for Crater due to its rich scheduling capabilities, extensible plugin system, and native support for **distributed training**, **fair resource sharing**, and **job-level control**.
-
-Crater leverages the following Volcano components:
-
-- **Queue & Quota CRDs** – Fine-grained GPU resource allocation across labs
-- **Preemption (Capacity Plugin)** – Preemptive scheduling among labs and users
-- **Job CRD & Plugins** – Native support for distributed tasks
-- **Node ordering, job ordering, gang scheduling**, etc.
+[Volcano](https://volcano.sh/zh/) 是一个为高性能工作负载（如 AI/ML 训练、大数据和科学计算）设计的批处理调度系统。在 Crater 中，Volcano 以公平且抢占的方式管理多个实验室和用户之间的 GPU 调度。
 
 ---
 
-## Lab-Oriented Queue Design
+## 为什么选择 Volcano？
 
-Crater serves on an academic multi-tenant senario, where GPU clusters are shared by various research labs. To manage resource fairness:
+我们选择 Volcano 用于 Crater，是因为它丰富的调度功能、可扩展的插件系统，以及对 **分布式训练**、**公平资源共享** 和 **任务级控制** 的原生支持。
 
-- We create a **`Queue`** per lab (e.g., `lab-a`, `lab-b`)
-- Each user is assigned to their respective lab's queue
-- A corresponding **`ResourceQuota`** defines the lab’s guaranteed GPU capacity
-- Volcano's **`capacity` plugin** enforces preemption policies when contention occurs
+Crater 使用了以下 Volcano 组件：
 
-This design allows:
-
-- Clear **resource boundaries** between labs
-- **Soft quotas** that allow opportunistic sharing
-- **Priority-based preemption** to avoid resource starvation
+- **队列与配额 CRDs** – 在多个实验室之间实现细粒度的 GPU 资源分配
+- **抢占（容量插件）** – 在实验室和用户之间进行抢占式调度
+- **Job CRD 与插件** – 原生支持分布式任务
+- **节点排序、任务排序、组调度** 等
 
 ---
 
-## Support for Distributed Jobs
+## 面向实验室的队列设计
 
-Crater uses Volcano’s [Job CRD](https://volcano.sh/en/docs/job-tutorial/) to support:
+Crater 面向的是一个学术多租户场景，其中 GPU 集群由多个研究实验室共享。为了管理资源公平性：
 
-- Distributed PyTorch, TensorFlow, or MPI workloads
-- Gang scheduling and job dependencies
-- Lifecycle management (start, suspend, delete)
+- 我们为每个实验室创建一个 **`Queue`**（例如，`lab-a`、`lab-b`）
+- 每个用户被分配到其所属实验室的队列中
+- 相应的 **`ResourceQuota`** 定义了实验室的保证 GPU 容量
+- Volcano 的 **`capacity` 插件** 在发生资源争用时执行抢占策略
 
-We also enable the following scheduling plugins in Volcano:
+这种设计可以实现：
 
-- `gang` – Ensures pods in the same job start together
-- `svc` – Generates a headless service for distributed training
-- `priority` – Honors user/job priority
-- `numa-aware` – Optional, for performance-sensitive workloads
-
----
-
-## VLLM Compatibility
-
-We are currently adapting the [vLLM](https://github.com/vllm-project/vllm) inference engine to run under Volcano using custom `Job` CRDs. This allows us to treat large model inference as a distributed workload with integrated scheduling, queueing, and quota enforcement.
+- 实验室之间清晰的 **资源边界**
+- 允许机会性共享的 **软配额**
+- 避免资源饥饿的 **基于优先级的抢占**
 
 ---
 
-## LLaMA Factory Compatibility
+## 支持分布式任务
 
-We are also actively extending support for [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory), another fine-tuning project developed by ACT Lab. Integration efforts focus on enabling distributed fine-tuning jobs using Volcano's `Job` CRD, with scheduling awareness for GPU topology, resource quotas, and job orchestration.
+Crater 使用 Volcano 的 [Job CRD](https://volcano.sh/zh/docs/job-tutorial/) 支持：
+
+- 分布式 PyTorch、TensorFlow 或 MPI 工作负载
+- 组调度和任务依赖
+- 生命周期管理（启动、挂起、删除）
+
+我们还在 Volcano 中启用了以下调度插件：
+
+- `gang` – 确保同一任务中的 Pod 同时启动
+- `svc` – 为分布式训练生成无头服务
+- `priority` – 遵循用户/任务优先级
+- `numa-aware` – 可选，适用于对性能敏感的工作负载
 
 ---
 
-## Installation Notes
+## VLLM 兼容性
 
-We recommend installing Volcano via Helm with Crater’s preconfigured values.
+我们目前正在通过自定义的 `Job` CRDs 将 [vLLM](https://github.com/vllm-project/vllm) 推理引擎适配到 Volcano 下运行。这使我们能够将大型模型推理视为一个具有集成调度、排队和配额执行的分布式工作负载。
 
-📦 Helm values: [`deployments/volcano/values.yaml`](../deployments/volcano/values.yaml)  
-📖 Detailed guide: [`deployments/volcano/README.md`](../deployments/volcano/README.md)
+---
+
+## LLaMA Factory 兼容性
+
+我们还在积极扩展对 [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory) 的支持，这是 ACT Lab 开发的另一个微调项目。集成工作重点是使用 Volcano 的 `Job` CRD 启用分布式微调任务，并具备对 GPU 拓扑、资源配额和任务编排的调度感知能力。
+
+---
+
+## 安装说明
+
+我们建议通过 Helm 并使用 Crater 的预配置值来安装 Volcano。
+
+📦 Helm 值：[`deployments/volcano/values.yaml`](../deployments/volcano/values.yaml)  
+📖 详细指南：[`deployments/volcano/README.md`](../deployments/volcano/README.md)

@@ -1,13 +1,13 @@
 ---
-title: Ingress-NGINX Deployment Guide
-description: Crater uses the Ingress-NGINX controller to manage external access to services, acting as the primary ingress point for HTTP and HTTPS traffic.
+title: Ingress-NGINX 部署指南
+description: Crater 使用 Ingress-NGINX 控制器来管理服务的外部访问，作为 HTTP 和 HTTPS 流量的主要入口点。
 ---
 
-## Deployment
+## 部署
 
-### Option 1: Without LoadBalancer (e.g., Bare Metal or Dev Clusters)
+### 选项 1：不使用 LoadBalancer（例如裸金属或开发集群）
 
-In clusters where a LoadBalancer service type is not available, we recommend enabling `hostNetwork` mode.
+在不支持 LoadBalancer 服务类型的集群中，我们建议启用 `hostNetwork` 模式。
 
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -27,10 +27,10 @@ helm upgrade --install ingress-nginx ingress-nginx \
   --set "controller.tolerations="
 ```
 
-🔧 Adjust node selector, tolerations, and healthCheckHost to match your cluster node configuration.
+🔧 根据你的集群节点配置调整节点选择器、容忍度和 healthCheckHost。
 
-Option 2: With MetalLB (Recommended by Crater)
-In our production clusters, Crater uses MetalLB to allocate internal IPs in Layer 2 mode. The ingress controller is deployed as a LoadBalancer service that gets an internal IP.
+选项 2：使用 MetalLB（Crater 推荐）
+在我们的生产集群中，Crater 使用 MetalLB 在 Layer 2 模式下分配内部 IP。Ingress 控制器作为 LoadBalancer 服务部署，获得一个内部 IP。
 
 ```bash
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
@@ -42,31 +42,31 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.allowSnippetAnnotations=true
 ```
 
-📌 This config uses an internal IP from MetalLB’s pool and supports service discovery inside a trusted network (e.g., university intranet).
+📌 此配置使用 MetalLB 池中的一个内部 IP，并支持在受信任网络（例如大学内网）中的服务发现。
 
-You can verify the external IP assignment via:
+你可以通过以下命令验证外部 IP 的分配：
 ```bash
 kubectl get svc -n ingress-nginx
 ```
 
-Example:
+示例：
 
 ```bash
 NAME                       TYPE           EXTERNAL-IP       PORT(S)
 ingress-nginx-controller   LoadBalancer   192.168.100.243   80:31234/TCP,443:31235/TCP
 ```
 
-# Version Compatibility Note
-We currently **pin the Ingress-NGINX version to `4.11.3`**, since Crater’s ingress annotations are not yet compatible with versions ≥ `4.12.0`. Attempting to use newer versions will result in routing rewrite errors.
+# 版本兼容性说明
+我们目前 **将 Ingress-NGINX 版本固定为 `4.11.3`**，因为 Crater 的 Ingress 注解尚未与版本 ≥ `4.12.0` 兼容。尝试使用新版本将导致路由重写错误。
 
-# Uninstall
-To remove the ingress controller:
+# 卸载
+要移除 Ingress 控制器：
 
 ```bash
 helm uninstall ingress-nginx -n ingress-nginx
 ```
-# References
+# 参考资料
 
 * [Ingress-NGINX Helm Chart](https://github.com/kubernetes/ingress-nginx)
 
-* [Crater Compatibility Notes](../README.md)
+* [Crater 兼容性说明](../README.md)

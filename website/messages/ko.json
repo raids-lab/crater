@@ -1,0 +1,265 @@
+{
+  "Links": {
+    "userGuide": "사용자 가이드",
+    "adminGuide": "관리자 가이드",
+    "getStarted": "시작하기"
+  },
+  "Fumadocs": {
+    "search": "검색",
+    "searchNoResult": "결과가 없습니다",
+    "toc": "목차",
+    "tocNoHeadings": "제목이 없습니다",
+    "lastUpdate": "마지막 업데이트:",
+    "chooseLanguage": "언어 선택",
+    "nextPage": "다음 페이지",
+    "previousPage": "이전 페이지",
+    "chooseTheme": "테마 선택",
+    "editOnGithub": "GitHub에서 편집"
+  },
+  "HeroSection": {
+    "title": "Crater · 클라우드 네이티브 지능 컴퓨팅 플랫폼",
+    "descriptionLine1": "Kubernetes 기반의 머신러닝 일체화 솔루션",
+    "descriptionLine2": "오픈소스 생태계 통합으로 AI 훈련 및 서비스에 간편하고 효율적인 경험 제공",
+    "buttons": {
+      "getStarted": "시작하기",
+      "readDocs": "문서 읽기"
+    },
+    "altText": "Crater 플랫폼"
+  },
+  "Footer": {
+    "copyright": "© {year} Crater. 모든 권리 보유.",
+    "product": {
+      "title": "제품",
+      "features": "기능",
+      "pricing": "가격",
+      "caseStudies": "사례 연구"
+    },
+    "resources": {
+      "title": "자료",
+      "documentation": "문서",
+      "blog": "블로그",
+      "community": "커뮤니티"
+    },
+    "company": {
+      "title": "회사",
+      "aboutUs": "회사소개",
+      "contactUs": "문의하기",
+      "careers": "채용 정보"
+    }
+  },
+  "WhyChooseSection": {
+    "heading": "왜 선택해야 할까요",
+    "features": {
+      "platform": {
+        "title": "즉시 사용 가능한 딥러닝 플랫폼",
+        "description": "사용자가 컨테이너나 Kubernetes 지식을 갖지 않아도 되며, 직관적인 인터페이스를 제공하여 사용 난이도를 낮춥니다."
+      },
+      "openSource": {
+        "title": "오픈소스 강화로 벤더 잠금 방지",
+        "description": "Volcano/Fluid/Envd 등 오픈소스 프로젝트를 깊이 통합하여 K8s 생태계와 호환되며, 기술 독립성을 보장합니다."
+      },
+      "costOptimization": {
+        "title": "지능형 컴퓨팅 자원 공유로 비용 최적화",
+        "description": "사용자에게 인지되지 않는 간섭 감지 기반의 지능형 공유 일정 전략을 통해 GPU 자원 사용률을 12% 향상시킵니다."
+      }
+    }
+  },
+  "CoreCapabilities": {
+    "title": "핵심 역량",
+    "description": "Crater는 데이터 관리부터 모델 훈련까지, AI 워크플로우 요구사항을 일체화하여 해결하는 포괄적인 머신러닝 플랫폼 역량을 제공합니다.",
+    "cards": {
+      "dataManagement": {
+        "title": "데이터 관리",
+        "features": [
+          "Fluid로 가속화된 분산 캐시 시스템",
+          "세부적인 데이터 공유 메커니즘",
+          "지능형 데이터 전처리 파이프라인"
+        ]
+      },
+      "environmentSetup": {
+        "title": "환경 설정",
+        "features": [
+          "Docker를 알아야 할 필요 없이 사용 가능한 Envd 환경 템플릿",
+          "JupyterLab/VSCode 원격 개발 지원",
+          "환경 공유 및 빠른 재사용"
+        ]
+      },
+      "modelTraining": {
+        "title": "모델 훈련",
+        "features": [
+          "분산 훈련 프레임워크 지원",
+          "실시간 GPU 사용률 모니터링",
+          "훈련 작업 자동 일정"
+        ]
+      },
+      "performanceMonitoring": {
+        "title": "성능 모니터링",
+        "features": [
+          "실시간 손실 곡선 시각화",
+          "자원 사용 통계 보고서",
+          "훈련 진행 추적"
+        ]
+      },
+      "versionControl": {
+        "title": "버전 관리",
+        "features": [
+          "모델 버전 관리",
+          "실험 추적 및 비교",
+          "설정 기록"
+        ]
+      },
+      "modelDeployment": {
+        "title": "모델 배포",
+        "features": [
+          "일鍵 모델 서비스화",
+          "자동 확장 및 축소",
+          "API 관리 및 모니터링"
+        ]
+      }
+    }
+  },
+  "TechnicalAdvantages": {
+    "heading": "기술 우위",
+    "cards": {
+      "performance": {
+        "title": "고성능 컴퓨팅 아키텍처",
+        "description": "Kubernetes 기반의 고성능 컴퓨팅 아키텍처로 대규모 분산 학습 및 추론을 지원하고 GPU 클러스터의 계산 잠재력을 극대화합니다.",
+        "features": [
+          "최적화된 CUDA 가속 계산",
+          "고효율 메모리 관리 메커니즘",
+          "지능형 자원 스케줄링 알고리즘"
+        ]
+      },
+      "security": {
+        "title": "기업급 보안 보장",
+        "description": "포괄적인 보안 메커니즘을 제공하여 데이터 및 모델 자산을 보호하고 기업 수준의 보안 규정 준수를 충족합니다.",
+        "features": [
+          "세부적인 접근 제어",
+          "데이터 전송 암호화",
+          "감사 로그 및 규정 준수 보고서"
+        ]
+      },
+      "integration": {
+        "title": "오픈소스 생태계 통합",
+        "description": "주요 오픈소스 구성 요소와 깊이 통합되어 통일된 사용자 경험을 제공하며 기술의 조각화를 방지합니다.",
+        "features": [
+          "Volcano 작업 스케줄링 엔진",
+          "Fluid 데이터 가속 시스템",
+          "Envd 환경 관리 도구"
+        ]
+      },
+      "scalability": {
+        "title": "유연한 확장 능력",
+        "description": "모듈형 설계로 다양한 규모와 시나리오의 요구사항에 유연하게 확장할 수 있습니다.",
+        "features": [
+          "플러그인형 아키텍처",
+          "사용자 정의 워크플로우 지원",
+          "API 통합 능력"
+        ]
+      }
+    }
+  },
+  "CustomerScenarios": {
+    "heading": "적용 시나리오",
+    "subheading": "Crater는 다양한 유형의 조직에 맞춤형 솔루션을 제공하여 다양한 AI 컴퓨팅 요구사항을 충족합니다.",
+    "cards": {
+      "education": {
+        "title": "고등 교육 연구",
+        "description": "전통적인 Slurm 클러스터를 대체하여 개인적인 고성능 GPU 노드를 관리하고 더 친화적인 사용자 경험과 더 높은 자원 활용률을 제공합니다.",
+        "features": [
+          "다중 사용자 자원 격리",
+          "연구 프로젝트 관리",
+          "유연한 권한 제어"
+        ]
+      },
+      "enterprise": {
+        "title": "기업 AI 팀",
+        "description": "기업 AI 팀을 위해 일관된 개발 및 운영 환경을 제공하여 모델이 개발에서 배포까지의 전체 과정을 가속화합니다.",
+        "features": [
+          "DevOps 통합",
+          "모델 버전 관리",
+          "CI/CD 파이프라인"
+        ]
+      },
+      "cloudProvider": {
+        "title": "클라우드 서비스 제공자",
+        "description": "공개 클라우드 또는 사설 클라우드 AI 플랫폼 서비스를 구축하여 고객에게 유연하고 안전하며 효율적인 머신러닝 인프라를 제공합니다.",
+        "features": [
+          "다중 임차인 아키텍처",
+          "계량 및 요금제 시스템",
+          "서비스 수준 보장"
+        ]
+      }
+    }
+  },
+  "GetStarted": {
+    "heading": "Crater 사용 시작",
+    "subheading": "다음 자원을 통해 Crater를 신속히 이해하고 배포하여 클라우드 네이티브 AI 컴퓨팅 여정을 시작하세요.",
+    "cards": {
+      "docs": {
+        "title": "빠른 시작 가이드",
+        "description": "자세한 문서 및 튜토리얼로 Crater 플랫폼 사용을 신속히 시작할 수 있습니다."
+      },
+      "github": {
+        "title": "GitHub 저장소",
+        "description": "우리의 오픈소스 코드를 방문하여 커뮤니티 기여 및 토론에 참여하세요."
+      },
+      "contact": {
+        "title": "문의하기",
+        "description": "기술 지원을 받거나 기업용 배포 솔루션을 알아보세요."
+      }
+    }
+  },
+  "FaqSection": {
+    "heading": "자주 묻는 질문",
+    "faqs": {
+      "0": {
+        "question": "Crater는 OpenPAI / Kubeflow와 어떻게 다른가요?",
+        "answer": "Crater는 스케줄링, 데이터 및 환경 설정 구성 요소를 깊이 통합하여 생산 환경에 더 가까운 즉시 사용 가능한 경험을 제공합니다. OpenPAI 및 Kubeflow에 비해 Crater는 사용자 경험 및 자원 활용률에 더 중점을 두고 사용 난이도를 낮추면서도 높은 확장성을 유지합니다."
+      },
+      "1": {
+        "question": "사설 배포를 지원하나요?",
+        "answer": "네, Crater는 완전히 사설 배포를 지원하며, 물리 서버, VMware, OpenStack 및 주요 클라우드 제공업체의 Kubernetes 서비스에 배포할 수 있습니다. 우리는 완전한 배포 문서와 기술 지원을 제공하여 배포가 원활하게 진행되도록 보장합니다."
+      },
+      "2": {
+        "question": "데이터 보안은 어떻게 보장하나요?",
+        "answer": "Crater는 네트워크 분리, 접근 제어 및 데이터 암호화 등의 다단계 보안 메커니즘을 채택하여 데이터를 보호합니다. 모든 데이터 처리는 귀하의 사설 환경에서 수행되며 외부 서버로 업로드되지 않아 데이터 보안 및 프라이버시를 보장합니다."
+      },
+      "3": {
+        "question": "어떤 딥러닝 프레임워크를 지원하나요?",
+        "answer": "Crater는 PyTorch, TensorFlow, JAX, MXNet 등 주요 딥러닝 프레임워크를 지원합니다. 우리는 이러한 프레임워크의 사전 구성된 환경 템플릿을 제공하며, 필요에 따라 선택하고 맞춤화할 수 있습니다."
+      },
+      "4": {
+        "question": "자원 할당 관리를 어떻게 수행하나요?",
+        "answer": "Crater는 세부적인 자원 할당 관리 기능을 제공하며, 관리자는 사용자 그룹 또는 프로젝트에 따라 GPU, CPU, 메모리 등의 자원 사용 제한을 설정할 수 있습니다. 이로 인해 자원의 합리적인 배분과 사용이 보장됩니다."
+      },
+      "5": {
+        "question": "상업용 지원을 제공하나요?",
+        "answer": "네, 우리는 기업용 상업 지원 서비스를 제공하며, 기술 상담, 맞춤형 개발, 교육 및 7x24시간 고장 대응 등이 포함됩니다. 공식 채널을 통해 상세한 내용을 알아보실 수 있습니다."
+      }
+    }
+  },
+  "OramaSearch": {
+    "dictionary": {
+      "searchPlaceholder": "문서 검색...",
+      "chatPlaceholder": "AI 어시스턴트에게 질문하기...",
+      "noResultsFound": "결과를 찾을 수 없습니다",
+      "noResultsFoundFor": "에 대한",
+      "suggestionsTitle": "아마도 시도해볼 만한 것",
+      "seeAll": "모든 결과 보기",
+      "addMore": "더 보기",
+      "clearChat": "대화 초기화",
+      "errorMessage": "아이고! 검색 중 오류가 발생했습니다.",
+      "disclaimer": "AI가 생성한 답변은 항상 정확하지 않을 수 있습니다.",
+      "startYourSearch": "검색을 시작해보세요",
+      "initErrorSearch": "검색 서비스 초기화 실패",
+      "initErrorChat": "채팅 서비스 초기화 실패",
+      "chatButtonLabel": "AI 요약 받기"
+    },
+    "suggestions": [
+      "Pytorch job을 어떻게 시작하나요?",
+      "SSH 연결을 어떻게 하나요?",
+      "Crater에서 LLM 추론을 어떻게 하나요?"
+    ]
+  }
+}

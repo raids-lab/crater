@@ -1,50 +1,50 @@
 ---
-title: "CloudNativePG Deployment Guide"
-description: "Integrate PostgreSQL into Crater using the CloudNativePG Operator with OpenEBS storage."
+title: "CloudNativePG 部署指南"
+description: "使用 CloudNativePG Operator 和 OpenEBS 存储将 PostgreSQL 集成到 Crater 中。"
 ---
 
-## Overview
+## 概述
 
-Crater uses **PostgreSQL** as its backend database to manage user sessions, job metadata, scheduling state, and platform configurations.
+Crater 使用 **PostgreSQL** 作为其后端数据库，用于管理用户会话、任务元数据、调度状态和平台配置。
 
-To achieve production-grade, Kubernetes-native PostgreSQL management, we adopt the [CloudNativePG Operator](https://cloudnative-pg.io/), which provides:
+为了实现生产级、原生 Kubernetes 的 PostgreSQL 管理，我们采用了 [CloudNativePG Operator](https://cloudnative-pg.io/)，它提供了以下功能：
 
-- Declarative management of PostgreSQL clusters via CRDs  
-- Automated high-availability, backups, and failover  
-- Tight integration with Kubernetes RBAC, storage, and scheduling
+- 通过 CRD 声明式管理 PostgreSQL 集群  
+- 自动化高可用性、备份和故障转移  
+- 与 Kubernetes RBAC、存储和调度紧密集成
 
-Our deployment integrates CloudNativePG with **OpenEBS Local PV** for storage, enabling fast local-disk performance and complete data lifecycle management.
+我们的部署将 CloudNativePG 与 **OpenEBS 本地 PV** 集成用于存储，从而实现快速的本地磁盘性能和完整的数据生命周期管理。
 
-## Why CloudNativePG?
+## 为什么选择 CloudNativePG？
 
-We chose CloudNativePG because:
+我们选择 CloudNativePG 的原因包括：
 
-- It is a CNCF incubating project with strong community support.  
-- It provides a clean separation between **PostgreSQL configuration** and **Kubernetes-native orchestration**.  
-- It simplifies PostgreSQL deployment while remaining flexible for advanced tuning.
+- 它是 CNCF 孵化项目，拥有强大的社区支持。  
+- 它在 **PostgreSQL 配置** 和 **Kubernetes 原生编排** 之间提供了清晰的分离。  
+- 它简化了 PostgreSQL 的部署，同时保持对高级调优的灵活性。
 
-In the Crater stack, each PostgreSQL cluster is defined as a custom `Cluster` resource and controlled by the operator.
+在 Crater 栈中，每个 PostgreSQL 集群都作为自定义的 `Cluster` 资源进行定义，并由操作符控制。
 
-## Storage Configuration
+## 存储配置
 
-The database uses local persistent storage backed by OpenEBS Local PV (as described in [`openebs.md`](./openebs.md)).
+数据库使用 OpenEBS 本地 PV（如 [`openebs.md`](./openebs.md) 中所述）作为本地持久化存储。
 
-This setup provides:
+这种设置提供了以下优势：
 
-- High IOPS and low latency for single-node workloads  
-- Predictable node-local scheduling  
-- Clean and declarative volume lifecycle management
+- 对单节点工作负载提供高 IOPS 和低延迟  
+- 可预测的节点本地调度  
+- 清晰且声明式的卷生命周期管理
 
-Make sure OpenEBS Local PV is installed and functioning correctly before installing CloudNativePG.
+在安装 CloudNativePG 之前，请确保已正确安装并运行 OpenEBS 本地 PV。
 
-## Prerequisites
+## 先决条件
 
-- `kubectl` and `helm` installed  
-- OpenEBS Local PV installed
+- 已安装 `kubectl` 和 `helm`  
+- 已安装 OpenEBS 本地 PV
 
-## Installation
+## 安装
 
-We provide a tailored Helm configuration for the operator installation.
+我们为操作符安装提供了定制的 Helm 配置。
 
-📦 Helm values: [`deployments/cloudnative-pg/values.yaml`](../deployments/cloudnative-pg/values.yaml)  
-📖 Detailed guide: [`deployments/cloudnative-pg/README.md`](../deployments/cloudnative-pg/README.md)
+📦 Helm 值：[`deployments/cloudnative-pg/values.yaml`](../deployments/cloudnative-pg/values.yaml)  
+📖 详细指南：[`deployments/cloudnative-pg/README.md`](../deployments/cloudnative-pg/README.md)

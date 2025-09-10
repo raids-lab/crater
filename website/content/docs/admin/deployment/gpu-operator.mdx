@@ -1,26 +1,26 @@
 ---
-title: "NVIDIA GPU Operator Deployment Guide"
-description: "Enable GPU support in Kubernetes clusters using NVIDIA GPU Operator and integrate with Crater."
+title: "NVIDIA GPU Operator 部署指南"
+description: "使用 NVIDIA GPU Operator 在 Kubernetes 集群中启用 GPU 支持，并与 Crater 集成。"
 ---
 
-## Overview
+## 概述
 
-The **NVIDIA GPU Operator** automates the deployment and management of all necessary components to support GPUs in Kubernetes clusters.
+**NVIDIA GPU Operator** 自动部署和管理所有支持 Kubernetes 集群中 GPU 所需的组件。
 
-In Crater, it provides:
+在 Crater 中，它提供以下功能：
 
-- GPU driver installation  
-- NVIDIA container runtime setup  
-- `dcgm-exporter` for GPU monitoring (used by Prometheus stack)  
-- Smooth integration with Crater's job scheduling and GPU metrics display
+- GPU 驱动安装  
+- NVIDIA 容器运行时设置  
+- `dcgm-exporter` 用于 GPU 监控（由 Prometheus stack 使用）  
+- 与 Crater 的任务调度和 GPU 指标显示的平滑集成
 
-> Crater requires GPU Operator to ensure GPU jobs are correctly scheduled and monitored.
+> Crater 需要 GPU Operator 来确保 GPU 任务正确调度和监控。
 
 ---
 
-## Installation
+## 安装
 
-We recommend installing GPU Operator via Helm with Crater’s preconfigured values.
+我们建议通过 Helm 使用 Crater 预配置的值来安装 GPU Operator。
 
-📦 Helm values: [`deployments/gpu-operator/values.yaml`](../deployments/gpu-operator/values.yaml)  
-📖 Detailed guide: [`deployments/gpu-operator/README.md`](../deployments/gpu-operator/README.md)
+📦 Helm 值：[`deployments/gpu-operator/values.yaml`](../deployments/gpu-operator/values.yaml)  
+📖 详细指南：[`deployments/gpu-operator/README.md`](../deployments/gpu-operator/README.md)

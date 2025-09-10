@@ -1,0 +1,8 @@
+{
+  "position": 3,
+  "label": "External Access",
+  "link": {
+    "type": "generated-index",
+    "description": "This feature allows you to configure external access rules for services in your Kubernetes cluster. By using Ingress rules and NodePort rules, you can flexibly set external access paths and ports, making it easier for external users or applications to access services within the cluster. The following is a detailed introduction and usage example of this feature."
+  }
+}

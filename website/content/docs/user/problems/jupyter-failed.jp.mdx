@@ -1,0 +1,23 @@
+---
+title: Jupyter Lab の起動に失敗
+description: Jupyter のドキュメントが見つからない
+---
+
+<Callout title="TL;DR">
+  おそらく以前に Jupyter を設定していたため、ユーザーのフォルダ内の `.jupyter` フォルダを削除してください。
+</Callout>
+
+## 1. Jupyter Pem ファイルのハードコーディングにより起動に失敗
+
+2024年12月25日に報告されたユーザーの起動ログは以下の通りです:
+
+![pem](./img/pem.webp)
+
+インタラクティブなジョブの起動に失敗した理由は、`/home/LAB/{username}/mycert.pem` が見つからないためです。これは、ユーザーが以前の Slurm クラスターのファイルを同期していたためで、以前の Slurm クラスターではホームディレクトリが `/home/LAB/{username}` でした。現在ではより標準的な `/home/{username}` となっています。
+
+また、ユーザーが以前の Slurm クラスターで Jupyter の TLS 接続を設定していたため、`/home/{username}/.jupyter` フォルダ内の Jupyter 設定ファイルに pem 証明書のパスがハードコーディングされています。
+
+この問題の解決方法は以下の 2 通りがあります:
+
+1. `/home/{username}/.jupyter` フォルダを削除する
+2. `jupyter_notebook_config.py` ファイルの 161 行目を編集し、パスを `$HOME/mycert.pem` に変更する

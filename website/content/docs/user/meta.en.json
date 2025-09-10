@@ -1,0 +1,15 @@
+{
+  "root": true,
+  "pages": [
+    "---Tasks & Services---",
+    "quick-start",
+    "---Images & Data---",
+    "image",
+    "...file",
+    "---More---",
+    "toolbox",
+    "problems"
+  ],
+  "title": "User Guide",
+  "icon": "UserRound"
+}

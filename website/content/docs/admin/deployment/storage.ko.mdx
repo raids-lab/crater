@@ -1,0 +1,80 @@
+---
+title: 저장소 아키텍처
+description: Crater는 고성능 로컬 워크로드 및 Pod와 노드 간 지속 가능한 공유 데이터 액세스를 위해 하이브리드 저장소 아키텍처를 사용합니다. 이 문서는 클러스터에서 사용되는 저장소 솔루션에 대해 설명합니다.
+---
+
+## 1. 로컬 지속 가능 볼륨 (LocalPV via OpenEBS)
+
+[OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv)를 사용하여 고 스루풋과 데이터 로컬리티가 필요한 워크로드에 대한 노드 로컬 저장소를 관리합니다.
+
+### 왜 LocalPV인가?
+
+- **CRD 기반 관리**: Kubernetes 네이티브의 선언형 방식으로 로컬 디스크를 관리할 수 있습니다.
+- **성능**: 데이터는 동일한 노드에 남아 있어 네트워크 오버헤드를 최소화합니다.
+- **Crater의 사용 사례**:
+  - 작업 캐시 디렉터리
+  - 로컬 데이터세트 staging 영역
+  - 노드별 추론 또는 훈련 임시 공간
+
+### StorageClass
+
+로컬 디스크 프로비저닝을 위해 전용 `StorageClass`가 구성됩니다. 이 클래스는 다음 차트에서 참조됩니다:
+- `cloudnative-pg` 데이터베이스 저장소
+- 복제가 필요하지 않는 분산 작업 출력
+
+참조: [`deployments/openebs`](../deployments/openebs)
+
+---
+
+## 2. 공유 블록 저장소 (Ceph RBD via Rook)
+
+지속 가능한, 다노드 접근 가능한 볼륨을 위해 Crater는 [Rook-Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html)를 사용합니다. RBD 볼륨은 동적으로 프로비저닝되며 다음을 지원합니다:
+
+- 마이그레이션 지원을 통한 ReadWriteOnce 액세스
+- 복제 및 장애 복구
+- 다음에 적합합니다:
+  - Prometheus TSDB 저장소
+  - 지속성을 요구하는 Crater 내부 서비스
+  - 노드 간 공유되는 데이터세트
+
+Ceph는 다음 이유로 선택되었습니다:
+
+- Rook를 통한 Kubernetes 네이티브 프로비저닝
+- 강력한 커뮤니티 지원
+- 확장성과 고가용성
+
+> 📌 우리의 대부분의 상태 저장 구성 요소인 Prometheus는 사용자 정의 `StorageClass`를 통해 Ceph RBD 볼륨을 사용합니다.
+
+---
+
+## 저장소 사용 매트릭스
+
+| 구성 요소             | 유형               | 저장소 백엔드       | 설명                                   |
+|-----------------------|--------------------|----------------------|----------------------------------------|
+| PostgreSQL (Crater DB) | 지속 가능          | LocalPV (OpenEBS)    | 고속, 노드 특정                        |
+| Prometheus TSDB        | 지속 가능          | Ceph RBD (Rook)      | 다노드, 고도로 내구성 있는             |
+| 사용자 작업            | 일시적 / 지속 가능 | LocalPV / Ceph RBD   | 구성에 따라 다름                       |
+| Grafana 대시보드       | 일시적 / 지속 가능 | Ceph RBD             | 대시보드 구성에 따라 선택 가능         |
+
+---
+
+## 참고 사항
+
+- LocalPV를 제공하는 노드는 항상 라벨이 지정되고 마운트된 디스크 경로를 보장해야 합니다.
+- Ceph RBD는 클러스터 노드에서 사전에 프로비저닝된 블록 저장소 장치가 필요합니다.
+- LocalPV를 사용할 때 노드 애핀과 허용도를 사용하여 Pod이 올바른 저장소 위치에 결합되도록 해야 합니다.
+- 각 차트의 문서를 참조하여 적절한 `StorageClass` 오버라이드를 사용하십시오.
+
+---
+
+## 관련 모듈
+
+- [`openebs`](./openebs.md)
+- [`cloudnative-pg`](./cloudnative-pg.md)
+- [`prometheus`](./prometheus.md)
+
+## 설치
+
+NFS를 저장소 프로비저너로 사용하고 Crater의 사전 구성된 값과 함께 공식 Helm 차트를 사용하는 것을 권장합니다.
+ 
+📖 자세한 가이드: [`deployments/nfs/README.md`](../deployments/nfs/README.md)

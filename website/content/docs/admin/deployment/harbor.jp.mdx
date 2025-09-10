@@ -1,0 +1,68 @@
+---
+title: Harborのデプロイメントガイド
+description: Craterは、クラスター内でイメージのビルド、ストレージ、セキュアな配布をサポートするために、内部のHarborレジストリに依存しています。
+
+---
+
+## デプロイメント
+
+デプロイメントには[公式のHarbor Helm Chart](https://github.com/goharbor/harbor-helm)の使用をお勧めします。基本的な例:
+
+```bash
+helm repo add harbor https://helm.goharbor.io
+helm pull harbor/harbor --version 1.14.0
+# 必要に応じてvalues.yamlを編集してください（下記を参照）
+helm install crater-harbor harbor/harbor -f values.yaml -n harbor-system --create-namespace
+```
+
+## 注意: 以下の点を確認してください:
+
+ドメイン名（例: crater-harbor.act.buaa.edu.cn）はクラスターまたは内部DNS内で解決可能である必要があります。
+
+有効なTLS設定があるか、またはHTTPでの公開のためにexpose.tls.enabled=falseを設定している必要があります。
+
+## 設定のヒント
+values.yamlでexternalURLを正しく設定してください:
+```yaml
+externalURL: https://crater-harbor.act.buaa.edu.cn
+```
+適切なクラス（ingress-nginx）とホスト名を持つイングレスを設定してください。
+
+テスト用に内部証明書を使用するか、TLSを無効にしてください:
+```yaml
+expose:
+  tls:
+    enabled: false
+```
+
+## イメージプルシークレット
+CraterコンポーネントがHarborからイメージをプルできるようにするには:
+```bash
+kubectl create secret docker-registry crater-harbor-auth \
+  --docker-server=crater-harbor.act.buaa.edu.cn \
+  --docker-username=<user> \
+  --docker-password=<password> \
+  -n <target-namespace>
+```
+その後、このシークレットをpod.spec.imagePullSecretsで参照してください。
+
+## Harborプロジェクト構造
+プロジェクトは以下の通りに整理されています:
+| プロジェクト       | 目的                    |
+| ------------- | -------------------------- |
+| crater/base   | ベースOSとユーティリティ      |
+| crater/jobs   | ユーザーが送信したジョブイメージ |
+| crater/charts | Helmチャートのミラー        |
+| crater/models | 推論用の大規模モデル        |
+
+## Craterとの統合
+ほとんどのシステムコンポーネント（例: gpu-operator, ingress-nginx, prometheus）は、Harborミラーを使用するように事前に設定されています。
+
+イメージのパスは以下のようになります:
+```ruby
+crater-harbor.act.buaa.edu.cn/crater/<component>:<tag>
+```
+Helmチャートのカスタマイズ時にimage.repositoryとimagePullSecretsを更新してください。
+
+## 参考資料
+* [Harborドキュメント](https://goharbor.io/docs/)

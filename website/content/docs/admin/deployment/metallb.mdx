@@ -1,43 +1,43 @@
 ---
-title: MetalLB Deployment Guide
-description: MetalLB enables internal service exposure using Layer 2 mode for bare-metal Kubernetes clusters, ideal for private university networks.
+title: MetalLB 部署指南
+description: MetalLB 使用 Layer 2 模式为裸金属 Kubernetes 集群提供内部服务暴露，适用于私有大学网络。
 ---
 
-## Overview
+## 概述
 
-[MetalLB](https://metallb.universe.tf/) is a load-balancer implementation for bare-metal Kubernetes clusters. In Crater, it enables **internal service exposure** using **Layer 2 (L2) mode**, which is ideal for environments where nodes reside in the same subnet and can directly communicate—such as campus intranets.
+[MetalLB](https://metallb.universe.tf/) 是一个为裸金属 Kubernetes 集群实现的负载均衡器。在 Crater 中，它通过 **Layer 2 (L2) 模式** 实现 **内部服务暴露**，适用于节点位于同一子网并能够直接通信的环境，例如校园内网。
 
-Crater clusters are deployed in a **private university network**, where all nodes and user access points share a common Layer 2 domain. Hence, MetalLB is configured to allocate IPs from a reserved **internal IP address pool**, enabling services of type `LoadBalancer` to be exposed without relying on external cloud providers.
-
----
-
-## Key Features
-
-- **L2 (ARP/NDP) mode** — simple and effective for intranet environments.
-- Assigns **static internal IPs** to Kubernetes services.
-- Integrates with services like Prometheus, Grafana, and Harbor.
+Crater 集群部署在 **私有大学网络** 中，所有节点和用户接入点共享一个公共的 Layer 2 域。因此，MetalLB 配置为从保留的 **内部 IP 地址池** 分配 IP，使得 `LoadBalancer` 类型的服务可以在不依赖外部云提供商的情况下暴露。
 
 ---
 
-## Installation
+## 关键特性
 
-MetalLB is installed via the official Helm chart.
+- **L2 (ARP/NDP) 模式** — 适用于内网环境，简单且有效。
+- 为 Kubernetes 服务分配 **静态内部 IP**。
+- 与 Prometheus、Grafana 和 Harbor 等服务集成。
 
-### 1. Add Helm Repo
+---
+
+## 安装
+
+通过官方 Helm chart 安装 MetalLB。
+
+### 1. 添加 Helm 仓库
 
 ```bash
 helm repo add metallb https://metallb.github.io/metallb
 helm repo update
 ```
 
-### 2. Install MetalLB
+### 2. 安装 MetalLB
 ```bash
 helm upgrade --install metallb metallb/metallb -n metallb-system --version v0.14.8 --create-namespace
 ```
 
-## Configuration
-### 1. Create an IPAddressPool
-Configure a pool of available intranet IPs that MetalLB can assign to services:
+## 配置
+### 1. 创建 IPAddressPool
+配置 MetalLB 可以为服务分配的可用内网 IP 池：
 ```yaml
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
@@ -46,11 +46,11 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - 192.168.100.240-192.168.100.250  # Replace with your campus subnet range
+    - 192.168.100.240-192.168.100.250  # 请替换为你的校园子网范围
 ```
 
-### 2. Configure L2 Advertisement
-Enable L2 broadcasting (ARP/NDP) for the IP pool:
+### 2. 配置 L2 广播
+为 IP 池启用 L2 广播（ARP/NDP）：
 ```yaml
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
@@ -62,10 +62,10 @@ spec:
     - intranet-pool
 ```
 
-## Usage
-Once installed, services of type LoadBalancer will be assigned IPs from the configured pool.
+## 使用
+安装完成后，`LoadBalancer` 类型的服务将从配置的池中分配 IP。
 
-Example:
+示例：
 ```yaml
 apiVersion: v1
 kind: Service
@@ -81,21 +81,21 @@ spec:
       targetPort: 8080
 ```
 
-MetalLB will automatically assign an IP (e.g. 192.168.100.241) from the defined pool.
+MetalLB 会自动从定义的池中分配一个 IP（例如 192.168.100.241）。
 
-You can view assigned IPs with:
+你可以使用以下命令查看已分配的 IP：
 ```bash
 kubectl get services -A -o wide
 ```
 
-## Best Practices
-Reserve address pool in your DHCP server or avoid conflicts manually.
+## 最佳实践
+在 DHCP 服务器中保留地址池，或手动避免 IP 冲突。
 
-Ensure all cluster nodes are in the same L2 broadcast domain.
+确保所有集群节点都在同一个 L2 广播域中。
 
-Avoid exposing services to the public Internet—MetalLB here is used strictly within the campus network.
+避免将服务暴露到公共互联网 —— 此处 MetalLB 仅在校园网络内使用。
 
-* Crater combine with [IngressClass](./ingress.md) for unified domain routing. *
+* Crater 与 [IngressClass](./ingress.md) 结合使用以实现统一的域名路由。 *
 
-# References
+# 参考资料
 * [MetalLB](https://metallb.universe.tf/)
