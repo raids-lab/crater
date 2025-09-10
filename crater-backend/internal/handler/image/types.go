@@ -28,6 +28,7 @@ type (
 		Template    string   `json:"template"`
 		Archs       []string `json:"archs"`
 	}
+
 	CreateByEnvdRequest struct {
 		Description string            `json:"description"`
 		Envd        string            `json:"envd"`
@@ -137,6 +138,11 @@ type (
 
 	CudaBaseImageDeleteRequest struct {
 		ID uint `uri:"id" binding:"required"`
+	}
+
+	UpdateImageArchRequest struct {
+		ID    uint     `json:"id" binding:"required"`
+		Archs []string `json:"archs" binding:"required"`
 	}
 )
 

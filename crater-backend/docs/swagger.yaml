@@ -993,6 +993,18 @@ definitions:
     - label
     - value
     type: object
+  internal_handler_image.UpdateImageArchRequest:
+    properties:
+      archs:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+    required:
+    - archs
+    - id
+    type: object
   internal_handler_image.UpdateProjectQuotaRequest:
     properties:
       size:
@@ -1123,7 +1135,7 @@ definitions:
           $ref: '#/definitions/internal_handler_vcjob.Forward'
         type: array
       image:
-        type: string
+        $ref: '#/definitions/internal_handler_vcjob.ImageBaseInfo'
       name:
         type: string
       resource:
@@ -1168,6 +1180,15 @@ definitions:
     - _
     - IngressType
     - NodePortType
+  internal_handler_vcjob.ImageBaseInfo:
+    properties:
+      archs:
+        items:
+          type: string
+        type: array
+      imageLink:
+        type: string
+    type: object
   internal_handler_vcjob.JobTokenResp:
     properties:
       baseURL:
@@ -1823,6 +1844,26 @@ paths:
       summary: 管理员对用户分享数据集
       tags:
       - Dataset
+  /v1/admin/images/arch:
+    post:
+      consumes:
+      - application/json
+      description: 管理员模式下根据镜像ID更新镜像的架构列表
+      parameters:
+      - description: 更新镜像架构信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_image.UpdateImageArchRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 管理员更新镜像架构
+      tags:
+      - ImagePack
   /v1/admin/images/deletekaniko:
     post:
       consumes:
@@ -3686,6 +3727,26 @@ paths:
       security:
       - Bearer: []
       summary: 获取未被分享该镜像的账户
+      tags:
+      - ImagePack
+  /v1/images/arch:
+    post:
+      consumes:
+      - application/json
+      description: 根据镜像ID更新镜像的架构列表
+      parameters:
+      - description: 更新镜像架构信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_image.UpdateImageArchRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 更新镜像架构
       tags:
       - ImagePack
   /v1/images/available:
