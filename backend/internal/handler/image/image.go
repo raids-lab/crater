@@ -82,10 +82,10 @@ func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
 	var oldPublicImages []*model.Image
 	if oldPublicImages, err = imageQuery.WithContext(c).
 		Preload(query.Image.User).
-		Or(imageQuery.IsPublic).
+		Where(imageQuery.IsPublic.Is(true)).
 		Order(imageQuery.CreatedAt.Desc()).
 		Find(); err != nil {
-		klog.Errorf("fetch kaniko entity failed, err:%v", err)
+		klog.Errorf("fetch old public images failed, err:%v", err)
 	}
 	imageInfoList = mgr.processImageListResponse(oldPublicImages, model.Public, imageInfoList)
 	// 2. 获取公共镜像（ImageAccountID = 1）
@@ -521,22 +521,34 @@ func (mgr *ImagePackMgr) processImageListResponse(
 	imageInfos := []*ImageInfo{}
 	for i := range images {
 		image := images[i]
+
+		// 跳过无效数据
+		if image.ID == 0 || image.ImageLink == "" {
+			klog.Warningf("skipping invalid image data: ID=%d, ImageLink=%s", image.ID, image.ImageLink)
+			continue
+		}
+
 		archs := image.Archs.Data()
 		// TODO: remove temporary fix for empty archs
 		if image.Archs.Data() == nil {
 			archs = []string{"linux/amd64"}
 		}
+
+		// 处理用户信息为空的情况
+		userInfo := model.UserInfo{}
+		if image.User.ID != 0 {
+			userInfo.Username = image.User.Name
+			userInfo.Nickname = image.User.Nickname
+		}
+
 		imageInfo := &ImageInfo{
-			ID:          image.ID,
-			ImageLink:   image.ImageLink,
-			Description: image.Description,
-			CreatedAt:   image.CreatedAt,
-			IsPublic:    image.IsPublic,
-			TaskType:    image.TaskType,
-			UserInfo: model.UserInfo{
-				Username: image.User.Name,
-				Nickname: image.User.Nickname,
-			},
+			ID:               image.ID,
+			ImageLink:        image.ImageLink,
+			Description:      image.Description,
+			CreatedAt:        image.CreatedAt,
+			IsPublic:         image.IsPublic,
+			TaskType:         image.TaskType,
+			UserInfo:         userInfo,
 			Tags:             image.Tags.Data(),
 			Archs:            archs,
 			ImageBuildSource: image.ImageSource,
@@ -1051,4 +1063,69 @@ func (mgr *ImagePackMgr) UserDeleteCudaBaseImage(c *gin.Context) {
 
 	klog.Infof("cuda base image deleted successfully, id: %d, imageLabel: %s", existingImage.ID, existingImage.ImageLabel)
 	resputil.Success(c, "cuda base image deleted successfully")
+}
+
+// UserUpdateImageArch godoc
+//
+//	@Summary		更新镜像架构
+//	@Description	根据镜像ID更新镜像的架构列表
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	UpdateImageArchRequest	true	"更新镜像架构信息"
+//	@Router			/v1/images/arch [POST]
+func (mgr *ImagePackMgr) UserUpdateImageArch(c *gin.Context) {
+	req := &UpdateImageArchRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		klog.Errorf("validate update image arch request failed, err %v", err)
+		resputil.BadRequestError(c, "validate failed")
+		return
+	}
+
+	mgr.updateImageArch(c, false, req.ID, req.Archs)
+}
+
+// AdminUpdateImageArch godoc
+//
+//	@Summary		管理员更新镜像架构
+//	@Description	管理员模式下根据镜像ID更新镜像的架构列表
+//	@Tags			ImagePack
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body	UpdateImageArchRequest	true	"更新镜像架构信息"
+//	@Router			/v1/admin/images/arch [POST]
+func (mgr *ImagePackMgr) AdminUpdateImageArch(c *gin.Context) {
+	req := &UpdateImageArchRequest{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		klog.Errorf("validate update image arch request failed, err %v", err)
+		resputil.BadRequestError(c, "validate failed")
+		return
+	}
+
+	mgr.updateImageArch(c, true, req.ID, req.Archs)
+}
+
+func (mgr *ImagePackMgr) updateImageArch(c *gin.Context, isAdminMode bool, imageID uint, newArchs []string) {
+	imageQuery := query.Image
+	specifiedQuery := imageQuery.WithContext(c).Preload(imageQuery.User)
+
+	if !isAdminMode {
+		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
+	}
+
+	// 更新镜像的架构
+	archsJSON := datatypes.NewJSONType(newArchs)
+
+	if _, err := specifiedQuery.
+		Where(imageQuery.ID.Eq(imageID)).
+		Update(imageQuery.Archs, archsJSON); err != nil {
+		klog.Errorf("update image archs failed, id: %d, err:%v", imageID, err)
+		resputil.Error(c, "update image archs failed", resputil.NotSpecified)
+		return
+	}
+
+	klog.Infof("image archs updated successfully, id: %d, new archs: %v", imageID, newArchs)
+	resputil.Success(c, "image archs updated successfully")
 }

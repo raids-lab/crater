@@ -36,7 +36,7 @@ type (
 	CreateJupyterReq struct {
 		CreateJobCommon `json:",inline"`
 		Resource        v1.ResourceList `json:"resource"`
-		Image           string          `json:"image" binding:"required"`
+		Image           ImageBaseInfo   `json:"image" binding:"required"`
 	}
 )
 
@@ -95,7 +95,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 1.1 Configure jupyter images
-	if strings.Contains(req.Image, "jupyter") {
+	if strings.Contains(req.Image.ImageLink, "jupyter") {
 		commandSchema = "start.sh jupyter lab --allow-root " +
 			"--notebook-dir=/home/%s " +
 			"--NotebookApp.base_url=/ingress/%s/ " +
@@ -104,7 +104,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	} else {
 		var startScriptConfigMap string
 		var jupyterPath string
-		if strings.Contains(req.Image, "envd") {
+		if strings.Contains(req.Image.ImageLink, "envd") {
 			// 1.2 Configure envd images
 			startScriptConfigMap = "envd-jupyter-start-configmap"
 			jupyterPath = "/opt/conda/envs/envd/bin/jupyter"
@@ -145,9 +145,12 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		v1.EnvVar{Name: "CHOWN_HOME", Value: "1"},
 	)
 
-	// 3. TODO: Node Affinity for ARM64 Nodes
-	affinity := GenerateNodeAffinity(req.Selectors, req.Resource)
-	torelations := GenerateTaintTolerationsForAccount(token)
+	// 3. Node Affinity and Tolerations based on Architecture
+	baseAffinity := GenerateNodeAffinity(req.Selectors, req.Resource)
+	affinity := GenerateArchitectureNodeAffinity(req.Image, baseAffinity)
+
+	baseTolerations := GenerateTaintTolerationsForAccount(token)
+	tolerations := GenerateArchitectureTolerations(req.Image, baseTolerations)
 
 	// 4. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
@@ -169,13 +172,13 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
 		Affinity:         affinity,
-		Tolerations:      torelations,
+		Tolerations:      tolerations,
 		Volumes:          volumes,
 		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
 				Name:    string(CraterJobTypeJupyter),
-				Image:   req.Image,
+				Image:   req.Image.ImageLink,
 				Command: []string{"bash", "-c", command},
 				Resources: v1.ResourceRequirements{
 					Limits:   req.Resource,
@@ -199,6 +202,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		RestartPolicy:      v1.RestartPolicyNever,
 		EnableServiceLinks: ptr.To(false),
 	}
+
+	fmt.Printf("Affinity:\n %+v\n", podSpec.Affinity)
 
 	// 6. Create volcano job
 	job := batch.Job{

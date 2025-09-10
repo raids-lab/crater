@@ -232,8 +232,8 @@ func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 type (
 	CreateJupyterReq struct {
 		vcjob.CreateJobCommon `json:",inline"`
-		Resource              v1.ResourceList `json:"resource"`
-		Image                 string          `json:"image" binding:"required"`
+		Resource              v1.ResourceList     `json:"resource"`
+		Image                 vcjob.ImageBaseInfo `json:"image" binding:"required"`
 	}
 
 	CreateTaskReq struct {

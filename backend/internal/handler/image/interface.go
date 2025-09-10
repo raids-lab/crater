@@ -66,6 +66,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/cudabaseimage", mgr.UserGetCudaBaseImages)
 	g.POST("/cudabaseimage", mgr.UserAddCudaBaseImage)
 	g.DELETE("/cudabaseimage/:id", mgr.UserDeleteCudaBaseImage)
+	g.POST("/arch", mgr.UserUpdateImageArch)
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -77,6 +78,7 @@ func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/change/:id", mgr.AdminUpdateImagePublicStatus)
 	g.POST("/description", mgr.AdminChangeImageDescription)
 	g.POST("/tags", mgr.AdminChangeImageTags)
+	g.POST("/arch", mgr.AdminUpdateImageArch)
 }
 
 func NewImagePackMgr(conf *handler.RegisterConfig) handler.Manager {

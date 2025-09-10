@@ -28,7 +28,7 @@ type (
 		Name       string          `json:"name"`
 		Replicas   int32           `json:"replicas"`
 		Resource   v1.ResourceList `json:"resource"`
-		Image      string          `json:"image"`
+		Image      ImageBaseInfo   `json:"image"`
 		Shell      *string         `json:"shell"`
 		Command    *string         `json:"command"`
 		WorkingDir *string         `json:"workingDir"`
@@ -90,9 +90,9 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		return
 	}
 
-	// 2. TODO: Node Affinity for ARM64 Nodes
-	affinity := GenerateNodeAffinity(req.Selectors, jobResources)
-	tolerations := GenerateTaintTolerationsForAccount(token)
+	// 2. Node Affinity and Tolerations
+	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
+	baseTolerations := GenerateTaintTolerationsForAccount(token)
 	envs := GenerateEnvs(c, token, req.Envs)
 
 	// 3. Labels and Annotations
@@ -110,7 +110,12 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	minAvailable := int32(0)
 	for i := range req.Tasks {
 		task := &req.Tasks[i]
-		// 4.1. Generate ports
+
+		// 4.1. Generate architecture-specific affinity and tolerations for this task
+		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
+		taskTolerations := GenerateArchitectureTolerations(task.Image, baseTolerations)
+
+		// 4.2. Generate ports
 		ports := make([]v1.ContainerPort, len(task.Ports))
 		for j, port := range task.Ports {
 			ports[j] = v1.ContainerPort{
@@ -119,10 +124,10 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 				Protocol:      v1.ProtocolTCP,
 			}
 		}
-		// 4.2. Generate pod spec
-		podSpec := generatePodSpecForParallelJob(task, affinity, tolerations, volumes, volumeMounts, envs, ports)
+		// 4.3. Generate pod spec
+		podSpec := generatePodSpecForParallelJob(task, taskAffinity, taskTolerations, volumes, volumeMounts, envs, ports)
 
-		// 4.3. Create task spec
+		// 4.4. Create task spec
 		taskSpec := batch.TaskSpec{
 			Name:     task.Name,
 			Replicas: task.Replicas,

@@ -24,7 +24,7 @@ type (
 	CreateCustomReq struct {
 		CreateJobCommon `json:",inline"`
 		Resource        v1.ResourceList `json:"resource"`
-		Image           string          `json:"image" binding:"required"`
+		Image           ImageBaseInfo   `json:"image" binding:"required"`
 		Shell           *string         `json:"shell"`
 		Command         *string         `json:"command"`
 		WorkingDir      string          `json:"workingDir" binding:"required"`
@@ -172,8 +172,11 @@ func GenerateCustomPodSpec(
 		return podSpec, err
 	}
 
-	affinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
-	torelations := GenerateTaintTolerationsForAccount(token)
+	baseAffinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
+	affinity := GenerateArchitectureNodeAffinity(custom.Image, baseAffinity)
+	fmt.Printf("Affinity generated: %+v\n", affinity)
+	baseTolerations := GenerateTaintTolerationsForAccount(token)
+	tolerations := GenerateArchitectureTolerations(custom.Image, baseTolerations)
 	envs := GenerateEnvs(ctx, token, custom.Envs)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
@@ -185,13 +188,13 @@ func GenerateCustomPodSpec(
 
 	podSpec = v1.PodSpec{
 		Affinity:         affinity,
-		Tolerations:      torelations,
+		Tolerations:      tolerations,
 		Volumes:          volumes,
 		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
 				Name:       string(CraterJobTypeCustom),
-				Image:      custom.Image,
+				Image:      custom.Image.ImageLink,
 				WorkingDir: custom.WorkingDir,
 				Resources: v1.ResourceRequirements{
 					Limits:   custom.Resource,

@@ -157,7 +157,7 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 					Containers: []corev1.Container{
 						{
 							Name:  "sparse-recdl",
-							Image: req.Image,
+							Image: req.Image.ImageLink,
 							Resources: corev1.ResourceRequirements{
 								Limits: req.Resource,
 							},

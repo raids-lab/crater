@@ -49,6 +49,11 @@ const (
 	CraterJobTypeCustom     CraterJobType = "custom"
 )
 
+type ImageBaseInfo struct {
+	ImageLink string   `json:"imageLink"`
+	Archs     []string `json:"archs"`
+}
+
 func GenerateVolumeMounts(
 	c context.Context,
 	volumes []VolumeMount,
@@ -285,6 +290,110 @@ func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1
 	}
 }
 
+// ArchitectureType represents the architecture type of an image
+type ArchitectureType int
+
+const (
+	ArchTypeAMD ArchitectureType = iota
+	ArchTypeARM
+	ArchTypeMulti
+)
+
+// DetermineArchitectureType determines the architecture type based on the archs slice
+func DetermineArchitectureType(archs []string) ArchitectureType {
+	hasARM := false
+	hasAMD := false
+	for _, arch := range archs {
+		arch = strings.ToLower(arch)
+		if strings.Contains(arch, "arm") {
+			hasARM = true
+		} else if strings.Contains(arch, "amd") || strings.Contains(arch, "x86") {
+			hasAMD = true
+		}
+	}
+
+	if hasARM && hasAMD {
+		return ArchTypeMulti
+	} else if hasARM {
+		return ArchTypeARM
+	} else {
+		return ArchTypeAMD
+	}
+}
+
+// GenerateArchitectureTolerations generates tolerations based on image architecture
+func GenerateArchitectureTolerations(imageInfo ImageBaseInfo, baseTolerations []v1.Toleration) []v1.Toleration {
+	archType := DetermineArchitectureType(imageInfo.Archs)
+
+	// For AMD-only images, no additional tolerations needed
+	if archType == ArchTypeAMD {
+		return baseTolerations
+	}
+
+	// For ARM-only or Multi-arch images, add ARM toleration
+	armToleration := v1.Toleration{
+		Key:      "crater.raids.io/architecture",
+		Operator: v1.TolerationOpEqual,
+		Value:    "arm",
+		Effect:   v1.TaintEffectNoSchedule,
+	}
+
+	return append(baseTolerations, armToleration)
+}
+
+// GenerateArchitectureNodeAffinity generates node affinity based on image architecture
+func GenerateArchitectureNodeAffinity(imageInfo ImageBaseInfo, baseAffinity *v1.Affinity) *v1.Affinity {
+	archType := DetermineArchitectureType(imageInfo.Archs)
+	// For AMD-only or Multi-arch images, use base affinity
+	if archType == ArchTypeAMD || archType == ArchTypeMulti {
+		return baseAffinity
+	}
+
+	// For ARM-only images, add required node affinity for ARM nodes
+	armNodeSelector := v1.NodeSelectorRequirement{
+		Key:      "kubernetes.io/arch",
+		Operator: v1.NodeSelectorOpIn,
+		Values:   []string{"arm64"},
+	}
+
+	if baseAffinity == nil {
+		return &v1.Affinity{
+			NodeAffinity: &v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+					NodeSelectorTerms: []v1.NodeSelectorTerm{
+						{
+							MatchExpressions: []v1.NodeSelectorRequirement{armNodeSelector},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	// If baseAffinity exists, merge with ARM requirement
+	if baseAffinity.NodeAffinity == nil {
+		baseAffinity.NodeAffinity = &v1.NodeAffinity{}
+	}
+
+	if baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{
+			NodeSelectorTerms: []v1.NodeSelectorTerm{
+				{
+					MatchExpressions: []v1.NodeSelectorRequirement{armNodeSelector},
+				},
+			},
+		}
+	} else {
+		// Add ARM requirement to existing terms
+		for i := range baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms {
+			baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions =
+				append(baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions, armNodeSelector)
+		}
+	}
+
+	return baseAffinity
+}
+
 // GenerateEnvs generates environment variables for the pod
 // NB_USER: username
 // NB_GID: group ID
@@ -424,7 +533,7 @@ func generatePodSpecForParallelJob(
 		Containers: []v1.Container{
 			{
 				Name:  task.Name,
-				Image: task.Image,
+				Image: task.Image.ImageLink,
 				Resources: v1.ResourceRequirements{
 					Limits:   task.Resource,
 					Requests: task.Resource,

@@ -37,7 +37,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	req.UserName = token.AccountName
 	req.SLO = 1
 	req.TaskType = model.EmiasJupyterTask
-	req.Image = vcReq.Image
+	req.Image = vcReq.Image.ImageLink
 	req.ResourceRequest = vcReq.Resource
 
 	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
@@ -86,8 +86,12 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 		v1.EnvVar{Name: "CHOWN_HOME", Value: "1"},
 	)
 
-	// 3. TODO: Node Affinity for ARM64 Nodes
-	affinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
+	// 3. Node Affinity and Tolerations based on Architecture
+	baseAffinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
+	affinity := vcjob.GenerateArchitectureNodeAffinity(vcReq.Image, baseAffinity)
+
+	baseTolerations := []v1.Toleration{} // AIJob doesn't use account tolerations
+	tolerations := vcjob.GenerateArchitectureTolerations(vcReq.Image, baseTolerations)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {
@@ -99,6 +103,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	// 5. Create the pod spec
 	podSpec := v1.PodSpec{
 		Affinity:         affinity,
+		Tolerations:      tolerations,
 		Volumes:          volumes,
 		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
@@ -172,7 +177,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	req.UserName = token.AccountName
 	req.SLO = vcReq.SLO
 	req.TaskType = model.EmiasTrainingTask
-	req.Image = vcReq.Image
+	req.Image = vcReq.Image.ImageLink
 	req.ResourceRequest = vcReq.Resource
 	if vcReq.Command != nil {
 		req.Command = *vcReq.Command
@@ -181,11 +186,17 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 
 	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
 	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
-	podSpec.Affinity = vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
 		return
 	}
+
+	// Apply architecture-specific affinity and tolerations
+	baseAffinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
+	podSpec.Affinity = vcjob.GenerateArchitectureNodeAffinity(vcReq.Image, baseAffinity)
+
+	baseTolerations := podSpec.Tolerations
+	podSpec.Tolerations = vcjob.GenerateArchitectureTolerations(vcReq.Image, baseTolerations)
 
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
