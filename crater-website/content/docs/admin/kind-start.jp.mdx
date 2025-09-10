@@ -1,0 +1,303 @@
+---
+title: 最小化デプロイ
+description: このドキュメントでは、Kind を使用してローカルで Crater 環境を迅速に構築する方法をガイドします。Crater は Kubernetes ベースの分散トレーニングプラットフォームであり、本ガイドでは Kind クラスターの作成から Crater の必要な各コンポーネントのデプロイに至るまでの完全な手順をカバーしています。
+---
+
+## 1. 環境準備
+
+### 1.1 Kind のインストール
+
+<Callout type="info">
+参考ドキュメント：https://kind.sigs.k8s.io/docs/user/quick-start/
+</Callout>
+
+```bash
+# Kindのインストール
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+```
+
+<Callout type="info">
+    パーミッションの問題が発生した場合は、`sudo` を使用するか、Kind を書き込み可能なディレクトリに移動してください。
+</Callout>
+
+### 1.2 kubectl と Helm のインストール
+
+```bash
+# kubectlのインストール
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+
+# Helmのインストール
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+## 2. Kind クラスターの作成
+
+### 2.1 クラスター構成ファイルの作成
+
+<Callout type="info">
+参考ドキュメント：https://kind.sigs.k8s.io/docs/user/ingress/
+</Callout>
+
+```yaml
+# kind-cluster.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 8080
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 8443
+      protocol: TCP
+```
+
+<Callout type="info">
+    ポートマッピングの設定により、ホストからクラスター内のサービスにアクセスできるようになります。特に Ingress コントローラーにおいて重要です。
+</Callout>
+
+### 2.2 クラスターの作成
+
+```bash
+kind create cluster --config kind-cluster.yaml
+```
+
+**期待される結果：**
+```
+Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.27.3) 🖼
+ ✓ Preparing nodes 📦 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+kubectl cluster-info --context kind-kind
+```
+
+## 3. Kind クラスター用の Ingress-Nginx のデプロイ
+
+<Callout type="info">
+    参考ドキュメント：https://kind.sigs.k8s.io/docs/user/ingress/
+</Callout>
+
+```bash
+kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
+```
+
+**インストールの確認：**
+```bash
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+```
+
+## 4. PostgreSQL データベースのデプロイ
+
+<Callout type="info">
+    参考ドキュメント：https://artifacthub.io/packages/helm/bitnami/postgresql
+</Callout>
+
+```bash
+# 名前空間の作成
+kubectl create namespace crater-system
+
+# 現在の名前空間コンテキストの設定
+kubectl config set-context --current --namespace=crater-system
+
+# Bitnami Helmリポジトリの追加
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# PostgreSQLのインストール
+helm install crater-postgresql bitnami/postgresql -n crater-system
+```
+
+**データベースパスワードの取得：**
+```bash
+export POSTGRES_PASSWORD=$(kubectl get secret --namespace crater-system crater-postgresql -o jsonpath="{.data.postgres-password}" | base64 -d)
+echo "データベースパスワード: $POSTGRES_PASSWORD"
+```
+
+<Callout type="info">
+    データベースパスワードを適切に保存してください。後続の Crater のデプロイ時に必要になります。
+</Callout>
+
+## 5. Volcano スケジューラのデプロイ
+
+<Callout type="info">
+    参考ドキュメント：https://volcano.sh/jp/docs/v1.11.0/installation/
+</Callout>
+
+```bash
+# Volcano Helmリポジトリの追加
+helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
+
+# 名前空間の作成とVolcanoのインストール
+helm install volcano volcano-sh/volcano -n volcano-system --create-namespace
+```
+
+**インストールの確認：**
+```bash
+kubectl get pods -n volcano-system
+```
+
+**期待される結果：**
+```
+NAME                                   READY   STATUS    RESTARTS   AGE
+volcano-admission-xxxxxxxxx-xxxxx     1/1     Running   0          1m
+volcano-controllers-xxxxxxxx-xxxxx    1/1     Running   0          1m
+volcano-scheduler-xxxxxxxx-xxxxx      1/1     Running   0          1m
+```
+
+## 6. NFS ストレージのデプロイ
+
+<Callout type="info">
+    参考ドキュメント：https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
+</Callout>
+
+```bash
+# NFSプロビジョナーHelmリポジトリの追加
+helm repo add nfs-ganesha-server-and-external-provisioner https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
+
+# NFSサーバープロビジョナーのインストール
+helm install nfs-provisioner nfs-ganesha-server-and-external-provisioner/nfs-server-provisioner -n nfs-system --create-namespace
+```
+
+**ストレージクラスの確認：**
+```bash
+kubectl get storageclass
+```
+
+**期待される結果：**
+```
+NAME   PROVISIONER                                       RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+nfs    cluster.local/nfs-provisioner-nfs-server-provisioner   Delete          Immediate           true                   1m
+```
+
+## 7. Crater のデプロイ
+
+### 7.1 Crater Helm Chart の値ファイルの取得
+
+```bash
+helm show values oci://ghcr.io/raids-lab/crater --version 0.1.0 > values.yaml
+```
+
+### 7.2 データベース接続の設定
+
+`values.yaml`ファイルを編集して、データベース接続情報を設定します：
+
+```yaml
+postgres:
+  host: crater-postgresql.crater-system.svc.cluster.local
+  port: 5432
+  dbname: postgres
+  user: postgres
+  password: "データベースパスワード"  # 実際のパスワードに置き換えてください
+  sslmode: disable
+  TimeZone: Asia/Shanghai
+```
+
+### 7.3 Crater のインストール
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0 -n crater-system -f values.yaml
+```
+
+**インストールの確認：**
+```bash
+kubectl get pods -n crater-system
+```
+
+<Callout type="success">
+    すべての Pod が Running 状態であれば、Crater 環境の構築は成功しています！
+</Callout>
+
+## 8. Crater へのアクセス
+
+### 8.1 アクセス先の取得
+
+```bash
+kubectl get ingress -n crater-system
+```
+
+### 8.2 ローカル hosts の設定（必要に応じて）
+
+ローカルの Kind クラスターを使用する場合、`/etc/hosts`にマッピングを追加する必要があります：
+
+```
+127.0.0.1 crater.example.com
+```
+
+### 8.3 Web インターフェースへのアクセス
+
+ブラウザでアクセスしてください：（Ingress の設定に応じて変更可能）��定に応じて変更可能）
+
+## 9. トラブルシューティング
+
+### 9.1 一般的な問題
+
+<Callout type="warn">
+    **問題：** Pod が起動できない、または継続的に再起動する
+</Callout>
+
+**解決策：**
+```bash
+# Podログの確認
+kubectl logs <pod-name> -n crater-system
+
+# Podの詳細情報の確認
+kubectl describe pod <pod-name> -n crater-system
+```
+
+<Callout type="warn">
+    **問題：** データベース接続に失敗
+</Callout>
+
+**解決策：**
+```bash
+# データベースサービスの状態の確認
+kubectl get svc -n crater-system | grep postgres
+
+# データベース接続のテスト
+kubectl run postgres-test --rm -it --image=postgres:13 --restart=Never -- \
+  psql -h crater-postgresql.crater-system.svc.cluster.local -U postgres
+```
+
+## 10. 環境のクリーンアップ
+
+```bash
+# Kindクラスターの削除
+kind delete cluster
+
+# 特定のリソースの削除
+helm uninstall crater -n crater-system
+helm uninstall crater-postgresql -n crater-system
+helm uninstall volcano -n volcano-system
+helm uninstall nfs-provisioner -n nfs-system
+```
+
+<Callout type="warn">
+    クラスターの削除はすべてのデータを削除します。重要なデータはバックアップしてください。
+</Callout>
+
+## 結論
+
+本ガイドに従って、Kind クラスター上に完全な Crater 環境をデプロイしました。含まれる主なコンポーネントは以下の通りです：
+
+- ✅ Kind Kubernetes クラスター
+- ✅ Ingress-Nginx コントローラー
+- ✅ PostgreSQL データベース
+- ✅ Volcano スケジューラ
+- ✅ NFS ストレージプロビジョナー
+- ✅ Crater トレーニングプラットフォーム
+
+今や、Crater を使用して分散トレーニングタスクを開始できます！何か問題が発生した場合は、各コンポーネントの公式ドキュメントを参照し、ログを確認してトラブルシューティングを行ってください。

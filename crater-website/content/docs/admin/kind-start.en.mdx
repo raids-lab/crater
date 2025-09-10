@@ -1,0 +1,303 @@
+---
+title: Minimal Deployment
+description: This document will guide you through quickly setting up a Crater environment locally using Kind. Crater is a distributed training platform based on Kubernetes. This guide will cover the complete process from creating a Kind cluster to deploying all necessary components of Crater.
+---
+
+## 1. Environment Preparation
+
+### 1.1 Installing Kind
+
+<Callout type="info">
+Reference documentation: https://kind.sigs.k8s.io/docs/user/quick-start/
+</Callout>
+
+```bash
+# Install Kind
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+```
+
+<Callout type="info">
+If you encounter permission issues, you can try using `sudo` or move Kind to a directory with write permissions.
+</Callout>
+
+### 1.2 Installing kubectl and Helm
+
+```bash
+# Install kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+
+# Install Helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+```
+
+## 2. Creating a Kind Cluster
+
+### 2.1 Creating a Cluster Configuration File
+
+<Callout type="info">
+Reference documentation: https://kind.sigs.k8s.io/docs/user/ingress/
+</Callout>
+
+```yaml
+# kind-cluster.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 8080
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 8443
+      protocol: TCP
+```
+
+<Callout type="info">
+Port mapping configuration allows accessing services within the cluster from the host, which is especially important for the Ingress controller.
+</Callout>
+
+### 2.2 Creating the Cluster
+
+```bash
+kind create cluster --config kind-cluster.yaml
+```
+
+**Expected Output:**
+```
+Creating cluster "kind" ...
+ ✓ Ensuring node image (kindest/node:v1.27.3) 🖼
+ ✓ Preparing nodes 📦 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-kind"
+You can now use your cluster with:
+kubectl cluster-info --context kind-kind
+```
+
+## 3. Deploying Ingress-Nginx for the Kind Cluster
+
+<Callout type="info">
+Reference documentation: https://kind.sigs.k8s.io/docs/user/ingress/
+</Callout>
+
+```bash
+kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
+```
+
+**Verify the installation:**
+```bash
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=90s
+```
+
+## 4. Deploying PostgreSQL Database
+
+<Callout type="info">
+Reference documentation: https://artifacthub.io/packages/helm/bitnami/postgresql
+</Callout>
+
+```bash
+# Create namespace
+kubectl create namespace crater-system
+
+# Set current namespace context
+kubectl config set-context --current --namespace=crater-system
+
+# Add Bitnami Helm repository
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# Install PostgreSQL
+helm install crater-postgresql bitnami/postgresql -n crater-system
+```
+
+**Get the database password:**
+```bash
+export POSTGRES_PASSWORD=$(kubectl get secret --namespace crater-system crater-postgresql -o jsonpath="{.data.postgres-password}" | base64 -d)
+echo "Database password: $POSTGRES_PASSWORD"
+```
+
+<Callout type="info">
+Please keep the database password secure; it will be needed for subsequent Crater deployments.
+</Callout>
+
+## 5. Deploying Volcano Scheduler
+
+<Callout type="info">
+Reference documentation: https://volcano.sh/en/docs/v1.11.0/installation/
+</Callout>
+
+```bash
+# Add Volcano Helm repository
+helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
+
+# Create namespace and install Volcano
+helm install volcano volcano-sh/volcano -n volcano-system --create-namespace
+```
+
+**Verify the installation:**
+```bash
+kubectl get pods -n volcano-system
+```
+
+**Expected Output:**
+```
+NAME                                   READY   STATUS    RESTARTS   AGE
+volcano-admission-xxxxxxxxx-xxxxx     1/1     Running   0          1m
+volcano-controllers-xxxxxxxx-xxxxx    1/1     Running   0          1m
+volcano-scheduler-xxxxxxxx-xxxxx      1/1     Running   0          1m
+```
+
+## 6. Deploying NFS Storage
+
+<Callout type="info">
+Reference documentation: https://github.com/kubernetes-sigs/nfs-ganesha-server-and-external-provisioner
+</Callout>
+
+```bash
+# Add NFS Provisioner Helm repository
+helm repo add nfs-ganesha-server-and-external-provisioner https://kubernetes-sigs.github.io/nfs-ganesha-server-and-external-provisioner/
+
+# Install NFS Server Provisioner
+helm install nfs-provisioner nfs-ganesha-server-and-external-provisioner/nfs-server-provisioner -n nfs-system --create-namespace
+```
+
+**Verify StorageClass:**
+```bash
+kubectl get storageclass
+```
+
+**Expected Output:**
+```
+NAME   PROVISIONER                                       RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+nfs    cluster.local/nfs-provisioner-nfs-server-provisioner   Delete          Immediate           true                   1m
+```
+
+## 7. Deploying Crater
+
+### 7.1 Get Crater Helm Chart Values File
+
+```bash
+helm show values oci://ghcr.io/raids-lab/crater --version 0.1.0 > values.yaml
+```
+
+### 7.2 Configure Database Connection
+
+Edit the `values.yaml` file to configure the database connection information:
+
+```yaml
+postgres:
+  host: crater-postgresql.crater-system.svc.cluster.local
+  port: 5432
+  dbname: postgres
+  user: postgres
+  password: "your-database-password"  # Replace with your actual password
+  sslmode: disable
+  TimeZone: Asia/Shanghai
+```
+
+### 7.3 Install Crater
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0 -n crater-system -f values.yaml
+```
+
+**Verify the installation:**
+```bash
+kubectl get pods -n crater-system
+```
+
+<Callout type="success">
+If all Pods are in the Running state, it means the Crater environment has been successfully set up!
+</Callout>
+
+## 8. Accessing Crater
+
+### 8.1 Get Access Address
+
+```bash
+kubectl get ingress -n crater-system
+```
+
+### 8.2 Configure Local hosts (if needed)
+
+If you are using a local Kind cluster, you may need to add a mapping in `/etc/hosts`:
+
+```
+127.0.0.1 crater.example.com
+```
+
+### 8.3 Access the Web Interface
+
+Open your browser and visit: `http://crater.example.com:8080` (or according to your Ingress configuration)
+
+## 9. Troubleshooting
+
+### 9.1 Common Issues
+
+<Callout type="warn">
+**Issue:** Pods fail to start or keep restarting
+</Callout>
+
+**Solution:**
+```bash
+# Check Pod logs
+kubectl logs <pod-name> -n crater-system
+
+# Check Pod details
+kubectl describe pod <pod-name> -n crater-system
+```
+
+<Callout type="warn">
+**Issue:** Database connection failure
+</Callout>
+
+**Solution:**
+```bash
+# Check database service status
+kubectl get svc -n crater-system | grep postgres
+
+# Test database connection
+kubectl run postgres-test --rm -it --image=postgres:13 --restart=Never -- \
+  psql -h crater-postgresql.crater-system.svc.cluster.local -U postgres
+```
+
+## 10. Cleanup Environment
+
+```bash
+# Delete Kind cluster
+kind delete cluster
+
+# Or delete specific resources
+helm uninstall crater -n crater-system
+helm uninstall crater-postgresql -n crater-system
+helm uninstall volcano -n volcano-system
+helm uninstall nfs-provisioner -n nfs-system
+```
+
+<Callout type="warn">
+Deleting the cluster will clear all data, please ensure that important data has been backed up.
+</Callout>
+
+## Summary
+
+Through this guide, you have successfully deployed a complete Crater environment on a Kind cluster, including:
+
+- ✅ Kind Kubernetes cluster
+- ✅ Ingress-Nginx controller
+- ✅ PostgreSQL database
+- ✅ Volcano scheduler
+- ✅ NFS storage provisioner
+- ✅ Crater training platform
+
+Now you can start using Crater for distributed training tasks! If you encounter any issues, please refer to the official documentation for each component or check the logs for troubleshooting.
