@@ -1,0 +1,812 @@
+---
+title: "RDMA Support"
+description: "RDMA"
+---
+
+> - [K8s test via Infiniband network - Adapters and Cables / InfiniBand/VPI Adapter Cards - NVIDIA Developer Forums](https://forums.developer.nvidia.com/t/k8s-test-via-infiniband-network/285610)
+> - [Running tightly coupled HPC/AI workloads with InfiniBand using NVIDIA Network Operator on AKS \| Microsoft Community Hub](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/running-tightly-coupled-hpcai-workloads-with-infiniband-using-nvidia-network-ope/4117209)
+> - [Basic Knowledge and Differences of RoCE, IB, and TCP Networks](https://support.huawei.com/enterprise/en/doc/EDOC1100203339)
+
+Before officially starting, we first supplement some basic knowledge related to RDMA:
+
+- **RDMA**: A network communication technology that bypasses the operating system kernel. Its core lies in directly accessing remote memory through the network card, avoiding the data copying and context switching overhead of the traditional TCP/IP protocol stack.
+- **NVIDIA GPU Direct**[^2]: Achieves direct connection between GPU memory and the network card's DMA engine. When the GPU needs to communicate with a remote node, the data can be transmitted directly through InfiniBand or RoCE network cards, without going through the host memory as an intermediary.
+- **Network Virtualization**: Macvlan and SR-IOV are two common network virtualization solutions. Macvlan allows containers to create virtual network card interfaces, making them appear as independent devices on the physical network; while SR-IOV divides a single physical function (PF) of a physical network card into multiple virtual functions (VFs) through hardware virtualization capabilities. Each VF can be directly assigned to a Pod for use.
+- **Technical Path**: Currently, RDMA mainly has two implementation methods: InfiniBand and RoCE[^6]. InfiniBand natively supports the RDMA protocol, requiring a dedicated switch and subnet manager to build an independent network, which is costly; whereas RoCEv2 is based on traditional Ethernet infrastructure, using flow control mechanisms such as PFC and ECN to ensure lossless transmission, and is widely used by internet companies.
+
+Our laboratory adopts the InfiniBand solution. Therefore, we first check the IB information of the relevant devices:
+
+### 1. Testing InfiniBand-related information on a single node
+
+First, we conduct tests on the host machine. Before moving to the cloud, the IB on these machines was functional:
+
+```bash
+$ ibdev2netdev
+mlx5_0 port 1 ==> ibxxxxxx0 (Up)
+mlx5_1 port 1 ==> ibxxxxxx1 (Up)
+
+$ ibstat
+CA 'mlx5_0'
+        Port 1:
+                Link layer: InfiniBand
+CA 'mlx5_1'
+        Port 1:
+                Link layer: InfiniBand
+```
+
+- **Up**: Indicates that the InfiniBand port has been successfully activated and established a connection to the network.
+- **Down**: Indicates that the InfiniBand port is not activated or has not established a network connection.
+
+### 2. Using Ansible to batch check node network cards
+
+Group definition:
+
+```toml
+[ib-v100]
+xx.xx.xx.[xx:xx]
+
+[ib-a100]
+xx.xx.xx.[xx:xx]
+```
+
+Writing a batch query script:
+
+```yaml
+---
+- name: Run ibdev2netdev on InfiniBand hosts
+  hosts: ib-v100,ib-a100
+  gather_facts: no
+
+  tasks:
+    - name: Execute ibdev2netdev command
+      ansible.builtin.command: ibdev2netdev
+      register: ibdev_output
+      changed_when: false
+
+    - name: Display ibdev2netdev output
+      ansible.builtin.debug:
+        var: ibdev_output.stdout_lines
+```
+
+Since the return value is too long, I won't paste the complete output. From the output of `ibdev2netdev`, we can see that the InfiniBand configuration of the two types of nodes in the cluster is different:
+
+#### V100 Nodes
+
+```
+mlx5_0 port 1 ==> ibxxxxxx0 (Up)
+mlx5_1 port 1 ==> ibxxxxxx1 (Up)
+```
+
+Each of these nodes has a dual-port IB network card, with a maximum speed of 100Gbp/s for each port, connected to two 36-port IB switches, and the two switches are interconnected with four 100Gbps links.
+
+- Each node has two independent InfiniBand ports (mlx5_0 and mlx5_1)
+- Both ports are in the Up state.
+
+#### A100 Nodes
+
+```
+mlx5_0 port 1 ==> ibxxxx0 (Down/Up)
+mlx5_1 port 1 ==> ibxxxxx0 (Up/Down)
+mlx5_bond_0 port 1 ==> bond0 (Up)
+```
+
+Each of these machines has two 200Gbps IB cards, connected to an IB switch. However, not all network cards are functional; only one IB card on each node is connected to the switch via an IB cable.
+
+mlx5_bond_0 is an Ethernet network card, but it appears because it is also from Mellanox.
+
+Subsequently, when installing the RDMA device plugin in Kubernetes, we need the network interface information.
+
+## Installing Nvidia Network Operator
+
+> [!quote] [Network Operator Deployment on Vanilla Kubernetes Cluster](https://docs.nvidia.com/networking/display/kubernetes2501/getting-started-kubernetes.html#network-operator-deployment-on-vanilla-kubernetes-cluster)
+
+Currently, the most recommended way to integrate RDMA into Kubernetes is through the Nvidia Network Operator. Refer to the official documentation, first install the Operator main program using Helm. Subsequently, the specific RDMA access method will be implemented by deploying another CR.
+
+First, add the Helm repository:
+
+```bash
+helm repo add nvidia https://helm.ngc.nvidia.com/nvidia
+```
+
+Then follow the documentation to download `values.yaml` to the local machine. Mainly check if NFD needs to be turned off and replace the image with an image address accessible domestically.
+
+Since our cluster has already deployed the Nvidia GPU Operator, we choose to turn off the NFD option.
+
+> [!warning]
+> Since several parameters should be provided when creating custom resources during operator deployment, it is recommended to use a configuration file. While it is possible to override the parameters via CLI, we recommend to avoid the use of CLI arguments in favor of a configuration file.
+
+```bash
+helm show values nvidia/network-operator --version v25.1.0 > values.yaml
+```
+
+Then install the latest version (v25.1.0) of the Nvidia Network Operator program:
+
+```bash
+helm upgrade --install network-operator nvidia/network-operator \
+-n nvidia-network-operator \
+--create-namespace \
+--version v25.1.0 \
+-f ./values.yaml \
+--wait
+```
+
+After installation, the `nvidia-network-operator` namespace will have the Operator's Pod. At this point, RDMA is not yet configured, and it still needs to be combined with a specific policy.
+
+```bash
+$ kubectl get pods -l app.kubernetes.io/name=network-operator
+NAME                               READY   STATUS    RESTARTS      AGE
+network-operator-xxxxxxxx-xxxxx   1/1     Running   1 (22h ago)   26h
+```
+
+## Setting `NicClusterPolicy`
+
+For a beginner, the documentation here is really a bit obscure:
+
+As can be seen in the Deployment Examples (deployment examples) chapter, there are nearly 20 deployment methods. Then ——
+
+1. What are the performance differences among these deployment methods?
+2. How to choose a deployment method that suits your needs?
+3. After deployment, how to make the Pod access RDMA and other high-performance networks?
+4. What are the minimum requirements for running RDMA testing in containers?
+5. How to test RDMA networks in containers?
+6. What are the common errors and their solutions?
+
+The documentation does not answer these questions, so my exploration was also very difficult. First, I will quickly summarize my current understanding of these questions and reference materials:
+
+- **Performance Differences**: [IPoIB (IP over InfiniBand) vs. RDMA performance](https://serverfault.com/questions/876403/ipoib-ip-over-infiniband-vs-rdma-performance), in addition, Shared Device Plugin can achieve full bandwidth when only one Pod applies for resources; multiple cases have not been tested yet.
+- **Deployment Method**: Currently, the RDMA Shared Device Plugin method is used, and it runs normally on the V100. However, it is unclear whether this method can use aggregated network cards, and it may switch to Host Network mode in the future?
+- **Resource Application**: After installation, the node usually adds RDMA-related resources, and in some cases, it is necessary to mark the auxiliary network to be used in the Annotations (such as Multus or Macvlan?)
+- **Minimum Requirements**: [Verify if the image supports RDMA--Machine Learning Platform - Volcano Engine](https://www.volcengine.com/docs/6459/119595)
+- **How to Test**: [Prepare a cluster for running RDMA workloads and GPU-Direct RDMA workloads.](https://github.com/Mellanox/network-operator/tree/master/example)
+- **Errors and Solutions**: See the end of this article
+
+### 1. Attempt to configure RDMA Shared Device Plugin
+
+> [!quote] [Network Operator Deployment with Multiple Resources in RDMA Shared Device Plugin](https://docs.nvidia.com/networking/display/kubernetes2501/getting-started-kubernetes.html#network-operator-deployment-with-multiple-resources-in-rdma-shared-device-plugin)
+
+Since my single cluster contains two different IB networks (V100 and A100), I use the Multiple Resources configuration method mentioned in the documentation, specifying the ports of V100 and A100, and reporting the network resources `rdma/rdma_v100` and `rdma/rdma_a100`.
+
+```yaml
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+spec:
+  ofedDriver:
+    image: doca-driver
+    repository: nvcr.io/nvidia/mellanox
+    version: 25.01-0.6.0.0-0
+    forcePrecompiled: false
+    imagePullSecrets: []
+    terminationGracePeriodSeconds: 300
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 20
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    upgradePolicy:
+      autoUpgrade: true
+      maxParallelUpgrades: 1
+      safeLoad: false
+      drain:
+        enable: true
+        force: true
+        podSelector: ""
+        timeoutSeconds: 300
+        deleteEmptyDir: true
+  rdmaSharedDevicePlugin:
+    # [map[ifNames:[ens1f0 ens1f1] name:rdma_shared_device_a] map[ifNames:[ens2f0 ens2f1] name:rdma_shared_device_b]]
+    repository: ghcr.io/mellanox
+    image: k8s-rdma-shared-dev-plugin
+    version: v1.5.2
+    imagePullSecrets: []
+    # The config below directly propagates to k8s-rdma-shared-device-plugin configuration.
+    # Replace 'devices' with your (RDMA capable) netdevice name.
+    config: |
+      {
+        "configList": [
+          {
+            "resourceName": "rdma_v100",
+            "rdmaHcaMax": 63,
+            "selectors": {
+              "ifNames": ["ibxxxxxx0","ibxxxxxx1"],
+              "linkTypes": ["infiniband"]
+            }
+          },
+          {
+            "resourceName": "rdma_a100",
+            "rdmaHcaMax": 63,
+            "selectors": {
+              "ifNames": ["ibxxxx0","ibxxxxx0"],
+              "linkTypes": ["infiniband"]
+            }
+          }
+        ]
+      }
+```
+
+After deployment, notice that the DaemonSets are started. Thanks to the NFD function, it will not be installed on nodes without IB cards (15b3).
+
+```bash
+$ kg daemonset
+NAME                              DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                                                                                                                                                                                                                             AGE
+mofed-ubuntu22.04-xxxxxxxxx-ds   36        36        36      36           36          feature.node.kubernetes.io/kernel-version.full=5.15.0-134-generic,feature.node.kubernetes.io/pci-15b3.present=true,feature.node.kubernetes.io/system-os_release.ID=ubuntu,feature.node.kubernetes.io/system-os_release.VERSION_ID=22.04   24h
+rdma-shared-dp-ds                 36        36        36      36           36          feature.node.kubernetes.io/pci-15b3.present=true,network.nvidia.com/operator.mofed.wait=false
+```
+
+The installation of Nvidia Network Operator includes Ofed drivers and Device Plugin. The former requires privilege, which affects the IB driver on the host. During my testing, this led to a large number of errors on the IB card of an A100 node, the error logs filled the system disk, and interrupted the service for several hours.
+
+After all Pods are Running, verify whether new resources have been added to the nodes:
+
+```bash
+$ kubectl get nodes -o json | jq -r '.items[] | {
+    name: .metadata.name,
+    "rdma/rdma_v100": .status.capacity["rdma/rdma_v100"]
+} | select(.["rdma/rdma_v100"] != null)'
+# Omit the same results
+{
+  "name": "xxx-v100-xx",
+  "rdma/rdma_v100": "63"
+}
+{
+  "name": "xxx-a100-xx",
+  "rdma/rdma_a100": "63"
+}
+```
+
+At this point, the installation method based on the RDMA Shared Device Plugin has been completed. Some products in ByteDance's Volcano Engine seem to use this method.
+
+### 2. Attempt to configure GPUDirect Workloads (unsuccessful)
+
+> [!quote] [Network Operator Deployment for GPUDirect Workloads](https://docs.nvidia.com/networking/display/kubernetes2501/getting-started-kubernetes.html#network-operator-deployment-for-gpudirect-workloads)
+
+This section is mainly a record of the failed attempts during the process. If you are more interested in how to verify the RDMA Shared Device Plugin later, you can directly jump to the next section.
+
+During the configuration of the RDMA Shared Device Plugin (referred to as Method 1 for short), I encountered some other issues, which led me to mistakenly believe that the path of Method 1 was not viable. In the discussion area of the K8s RDMA Shared Dev Plugin project, someone also said the following[^3] (although there were counterexamples below, I didn't get it working at the time, and thought it was outdated):
+
+> [!quote] [Adrian Chiris](https://github.com/adrianchiris)
+>
+> We should improve the projects README.
+>
+> the general way to use it with k8s is utilizing secondary network CNI such as macvlan or ipoib (or any CNI essentially can create virtual interfaces on top of existing RDMA capable parent netdev)
+> **The general way to use it with k8s is to use a secondary network CNI, such as macvlan or ipoib (or any CNI essentially can create virtual interfaces on top of existing RDMA capable parent netdev)**
+>
+> we should update instructions and examples.
+
+So I read the documentation again and found a section called 「GPUDirect Workloads」 (inner OS: Are other installation methods not for GPU Workloads?)
+
+Compared to Method 1, this method requires installing the DOCA driver, SR-IOV Device Plugin, Secondary network, Multus CNI, Container Networking plugins, IPAM plugin, where Multus CNI is a secondary network CNI in Kubernetes[^4].
+
+> [!quote]
+>
+> - **Multus** is a CNI (container network interface) plugin that allows multiple network cards to be inserted into a Kubernetes Pod, thereby achieving more flexible network communication. It supports multiple CNI plugins, such as Flannel, Calico, Macvlan, etc., and can be well integrated with other network solutions. In some scenarios, it may be necessary for a Pod to connect to multiple different networks, and Multus can achieve this function, providing multiple network interfaces for the Pod, allowing it to communicate with different networks.
+> - **Whereabouts** is an IP address management tool that can automatically assign IP addresses to Pods and avoid IP address conflicts. In traditional network configurations, it may be necessary to manually assign different IP address ranges to each host to prevent IP address conflicts. Whereas Whereabouts simplifies this process through its automated IP address assignment mechanism, making IP address management in a Kubernetes cluster more efficient and reliable. It ensures that each Pod gets a unique IP address, even in large-scale cluster environments, effectively avoiding IP address duplication issues.
+
+During deployment, first install the Nic Cluster Policy:
+
+```yaml
+apiVersion: mellanox.com/v1alpha1
+kind: NicClusterPolicy
+metadata:
+  name: nic-cluster-policy
+spec:
+  ofedDriver:
+    image: doca-driver
+    repository: nvcr.io/nvidia/mellanox
+    version: 25.01-0.6.0.0-0
+    forcePrecompiled: false
+    imagePullSecrets: []
+    terminationGracePeriodSeconds: 300
+    startupProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 20
+    livenessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    upgradePolicy:
+      autoUpgrade: true
+      maxParallelUpgrades: 1
+      safeLoad: false
+      drain:
+        enable: true
+        force: true
+        podSelector: ""
+        timeoutSeconds: 300
+        deleteEmptyDir: true
+  sriovDevicePlugin:
+    image: sriov-network-device-plugin
+    repository: ghcr.io/k8snetworkplumbingwg
+    version: v3.9.0
+    imagePullSecrets: []
+    config: |
+      {
+        "resourceList": [
+          {
+            "resourcePrefix": "nvidia.com",
+            "resourceName": "hostdev",
+            "selectors": {
+              "vendors": ["15b3"],
+              "devices": [],
+              "drivers": [],
+              "pfNames": [],
+              "pciAddresses": [],
+              "rootDevices": [],
+              "linkTypes": [],
+              "isRdma": true
+            }
+          }
+        ]
+      }
+  secondaryNetwork:
+    cniPlugins:
+      image: plugins
+      repository: ghcr.io/k8snetworkplumbingwg
+      version: v1.5.0
+      imagePullSecrets: []
+    multus:
+      image: multus-cni
+      repository: ghcr.io/k8snetworkplumbingwg
+      version: v4.1.0
+      imagePullSecrets: []
+    ipamPlugin:
+      image: whereabouts
+      repository: ghcr.io/k8snetworkplumbingwg
+      version: v0.7.0
+      imagePullSecrets: []
+```
+
+Afterwards, we need to specify the assignable IP for Where Abouts, which cannot be repeated with the IP addresses currently in use under the current Layer 2 network (this is somewhat similar to what Metal LB does). Therefore, I first scanned and selected an unused small IP segment.
+
+```yaml
+apiVersion: mellanox.com/v1alpha1
+kind: HostDeviceNetwork
+metadata:
+  name: hostdevice-net
+spec:
+  networkNamespace: "crater-workspace" # Namespace where workloads are located
+  resourceName: "hostdev"
+  ipam: |
+    {
+      "type": "whereabouts",
+      "datastore": "kubernetes",
+      "kubernetes": {
+        "kubeconfig": "/etc/cni/net.d/whereabouts.d/whereabouts.kubeconfig"
+      },
+      "range": "192.168.x.152/27",
+      "exclude": ["192.168.x.151/32"],
+      "log_file": "/var/log/whereabouts.log",
+      "log_level": "info"
+    }
+```
+
+After successful installation, the nodes will have resources of type `nvidia.com/hostdev`:
+
+```bash
+$ kubectl get nodes -o json | jq -r '.items[] | {
+    name: .metadata.name,
+    "nvidia.com/hostdev": .status.capacity["nvidia.com/hostdev"]
+} | select(.["nvidia.com/hostdev"] != null)'
+# Omit the same results
+{
+  "name": "xxx-v100-xx",
+  "nvidia.com/hostdev": "2"
+}
+{
+  "name": "xxx-a100-xx",
+  "nvidia.com/hostdev": "4"
+}
+```
+
+To use this special network, we also need to add annotations when submitting the Pod:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testpod1
+  namespace: crater-workspace. # The namespace specified earlier
+  annotations:
+    k8s.v1.cni.cncf.io/networks: hostdevice-net
+spec:
+  containers:
+    - name: appcntr1
+      image: <image>
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        capabilities:
+          add: ["IPC_LOCK"] # This is required
+      command:
+        - sh
+        - -c
+        - sleep inf # The official documentation writes it this way, so how should I test?
+      resources:
+        requests:
+          nvidia.com/hostdev: "1"
+          nvidia.com/gpu: "1"
+        limits:
+          nvidia.com/hostdev: "1"
+          nvidia.com/gpu: "1"
+```
+
+After entering the Pod, running the `ifconfig` command, we find that a network card named `net1` has been added. However, what to do next? Although the project repository of Network Operator provides test files[^5], the commands are also `sleep inf`.
+
+I guess it might be that NCCL needs to specify the network card, etc. Since the RDMA Shared Device Plugin later ran through, I didn't further explore this part, maybe raising my confusion to the official is also a good choice.
+
+To clean up stale resources, you can start `kubectl proxy` in one terminal:
+
+```shell
+$ kubectl proxy
+Starting to serve on 127.0.0.1:8001
+```
+
+And in another terminal, run the cleanup script (note `/` needs to be escaped as `~1`):
+
+```bash
+#!/bin/bash
+
+# Check if at least one node name is provided
+if [ "$#" -lt 1 ]; then
+  echo "Usage: $0 <node-name> [<node-name>...]"
+  exit 1
+fi
+
+# Prepare the JSON patch data
+PATCH_DATA=$(cat <<EOF
+[
+  {"op": "remove", "path": "/status/capacity/nvidia.com~1hostdev"}
+]
+EOF
+)
+
+# Iterate over each node name provided as an argument
+for NODE_NAME in "$@"
+do
+  # Execute the PATCH request
+  curl --header "Content-Type: application/json-patch+json" \
+       --request PATCH \
+       --data "$PATCH_DATA" \
+       http://127.0.0.1:8001/api/v1/nodes/$NODE_NAME/status
+
+  echo "Patch request sent for node $NODE_NAME"
+done
+```
+
+Pass the node name and clean up:
+
+```shell
+chmod +x ./patch_node_gpu.sh
+./patch_node_gpu.sh node1 node2
+```
+
+## Verifying RDMA Installation
+
+In this section, we will introduce how to continue verifying the RDMA installation based on the RDMA Shared Device Plugin method.
+
+### 1. Preparing an RDMA-Supporting Image
+
+> [!quote] [Verify if the image supports RDMA--Machine Learning Platform - Volcano Engine](https://www.volcengine.com/docs/6459/119595)
+
+A simple Dockerfile suitable for the V100 machine may look like this:
+
+```dockerfile
+FROM xxx/envd:py3.12-ubuntu22.04-8978
+USER root
+
+# Install APT packages
+RUN apt-get update && apt-get install -y \
+	infiniband-diags perftest ibverbs-providers libibumad3 \
+	libibverbs1 libnl-3-200 libnl-route-3-200 librdmacm1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# No Python dependencies specified
+```
+
+Here, my base image already includes commonly used debugging toolkits, Python, and CUDA environments. Mainly through APT to continue installing libraries related to InfiniBand.
+
+After installing these libraries, if we start a Pod without requesting RDMA resources, we can normally see the content of `ibstat`, but if we try to perform write operations, it will report that there is no InfiniBand or RoCE device.
+
+### 2. Verification Method on a Single Machine
+
+First, we need to start a Pod that requests RDMA resources:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rdma-test-pod-1
+spec:
+  containers:
+  - image: <image>
+    name: rdma-test-ctr
+    securityContext:
+      capabilities:
+        add: [ "IPC_LOCK" ]
+    resources:
+      limits:
+	    nvidia.com/v100: "4"
+        rdma/rdma_v100: "1"
+      requests:
+	    nvidia.com/v100: "4"
+        rdma/rdma_v100: "1"
+    command:
+    - sh
+    - -c
+    - |
+      sleep infinity
+```
+
+For regular GPU resources, we have renamed them according to the model, and related information can be found in previous articles.
+
+After the container starts successfully, enter the container:
+
+1. Enter the following command:
+
+```bash
+ib_write_bw -d mlx5_1 &
+```
+
+Sample output:
+
+```shell
+$ ib_write_bw -d mlx5_1 &
+[1] 2457716
+root@xxx-01:~#
+************************************
+* Waiting for client to connect... *
+************************************
+```
+
+2. Enter the following command on the same machine:
+
+```plain
+ib_write_bw -d mlx5_1 127.0.0.1 --report_gbits
+```
+
+Sample output:
+
+```shell
+$ ib_write_bw -d mlx5_1 127.0.0.1 --report_gbits
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_1
+---------------------------------------------------------------------------------------
+ Number of qps   : 1            Transport type : IB
+                    RDMA_Write BW Test
+ Connection type : RC           Using SRQ      : OFF
+ Dual-port       : OFF          Device         : mlx5_1
+ PCIe relax order: ON
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Mtu             : 4096[B]
+ Link type       : IB
+ Link type       : IB
+ Max inline data : 0[B]
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+ local address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+ local address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+ remote address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+ remote address: LID 0xXX QPN 0xXXXX PSN 0xXXXXXX RKey 0xXXXXXX VAddr 0xXXXXXXXXXXXX
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[Gb/sec]    BW average[Gb/sec]   MsgRate[Mpps]
+Conflicting CPU frequency values detected: 1000.000000 != 3013.932000. CPU Frequency is not max.
+ 65536      5000             94.72              94.71              0.180640
+---------------------------------------------------------------------------------------
+ 65536      5000             94.72              94.71              0.180640
+---------------------------------------------------------------------------------------
+[1]+  Done                    ib_write_bw -d mlx5_1
+```
+
+For V100 RDMA machines, the bandwidth value (`BW peak`, `BW average`) should be close to `100Gb/s`, and for A100 RDMA machines, it should be close to `200Gb/s`. If it meets the requirements, it indicates that the configuration is correct. If there is no output or error, please go back to the section of configuring the environment according to the machine model and check for any missing configuration items.
+
+### 3. Verification Method on Multiple Machines
+
+Similar to the second section, apply for two Pods respectively and record the Kubernetes internal IP address of one of the Pods, then run the command:
+
+```bash
+# server cmd
+ib_write_bw -a -F --report_gbits -q 2
+
+# client cmd
+ib_write_bw -a -F --report_gbits -q 2 <server-pod-default-network-IP>
+```
+
+The bandwidth value is also close to `100Gb/s`, indicating that the connection between multiple machines is normal.
+
+### 4. vLLM Multi-Machine Distributed Inference Practice
+
+Finally, we tested running vLLM multi-machine distributed inference of the DeepSeek R1 Distill Qwen 32B model through Volcano Job. Our model is mounted through PVC, and the image is made through Envd. Since vLLM will install a custom CUDA 12.4, the base image does not need to contain CUDA.
+
+```python
+# syntax=v1
+
+def build():
+    base(image="ubuntu:22.04",dev=True)
+    install.python(version="3.12")
+    install.apt_packages([
+        "openssh-server", "build-essential", "iputils-ping", "net-tools", "htop",
+        "infiniband-diags", "perftest", "ibverbs-providers", "libibumad3",
+        "libibverbs1", "libnl-3-200", "libnl-route-3-200", "librdmacm1"
+    ])
+    config.pip_index(url = "https://pypi.tuna.tsinghua.edu.cn/simple")
+    install.python_packages(name = ["vllm"])
+    config.jupyter()
+```
+
+Afterwards, we started the Volcano Job:
+
+```yaml
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: vllm-rdma-test
+  namespace: crater-workspace
+spec:
+  maxRetry: 3
+  minAvailable: 2
+  plugins:
+    pytorch:
+      - --master=master
+      - --worker=worker
+      - --port=23456
+    svc: []
+  policies:
+    - action: RestartJob
+      event: PodEvicted
+  queue: default
+  schedulerName: volcano
+  tasks:
+    - maxRetry: 3
+      minAvailable: 1
+      name: master
+      policies:
+        - action: CompleteJob
+          event: TaskCompleted
+        - action: TerminateJob
+          event: PodFailed
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - command:
+                - sh
+                - -c
+                - |-
+                  ray start --head --port=6667 --disable-usage-stats;
+                  NCCL_DEBUG=TRACE python3 -m vllm.entrypoints.openai.api_server \
+                  --model=/models/DeepSeek-R1-Distill-Qwen-32B \
+                  --max-model-len 32768 \
+                  --tensor-parallel-size 4 \
+                  --pipeline-parallel-size 2 \
+                  --gpu-memory-utilization 0.90 \
+                  --max-num-seqs 128 \
+                  --trust-remote-code \
+                  --disable-custom-all-reduce \
+                  --port 6666 \
+                  --dtype=half;
+              image: xxx/envd-vllm:0.8.3-cu12.4-rdma-v1
+              name: master
+              resources:
+                limits:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+                requests:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+              securityContext:
+                capabilities:
+                  add:
+                    - IPC_LOCK
+                runAsGroup: 0
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /dev/shm
+                  name: crater-cache
+                - mountPath: /models/DeepSeek-R1-Distill-Qwen-32B
+                  name: crater-ro-storage
+                  readOnly: true
+                  subPath: LLM/deepseek/DeepSeek-R1-Distill-Qwen-32B
+              workingDir: /models
+          restartPolicy: Never
+          volumes:
+            - emptyDir:
+                medium: Memory
+              name: crater-cache
+            - name: crater-ro-storage
+              persistentVolumeClaim:
+                claimName: crater-ro-storage
+    - maxRetry: 3
+      minAvailable: 1
+      name: worker
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - command:
+                - sh
+                - -c
+                - |-
+                  ray start --address="$MASTER_ADDR:6667";
+                  sleep infinity;
+              image: xxx/envd-vllm:0.8.3-cu12.4-rdma-v1
+              name: worker
+              resources:
+                limits:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+                requests:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+              securityContext:
+                capabilities:
+                  add:
+                    - IPC_LOCK
+                runAsGroup: 0
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /dev/shm
+                  name: crater-cache
+                - mountPath: /models/DeepSeek-R1-Distill-Qwen-32B
+                  name: crater-ro-storage
+                  readOnly: true
+                  subPath: LLM/deepseek/DeepSeek-R1-Distill-Qwen-32B
+              workingDir: /models
+          restartPolicy: OnFailure
+          volumes:
+            - emptyDir:
+                medium: Memory
+              name: crater-cache
+            - name: crater-ro-storage
+              persistentVolumeClaim:
+                claimName: crater-ro-storage
+  ttlSecondsAfterFinished: 259200
+```
+
+According to the vLLM documentation on distributed inference[^7], we enabled `NCCL_DEBUG=TRACE`, and in the logs, we can see that NCCL used IB instead of Socket connections.
+
+During the inference process, Kubernetes also does not detect inter-machine communication traffic, indicating that our deployment has been successful.
+
+## Problem Records
+
+### 1. Connectivity Test Error
+
+```bash
+[host1] $ ib_read_bw -q 30
+
+************************************
+* Waiting for client to connect... *
+************************************
+---------------------------------------------------------------------------------------
+                    RDMA_Read BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 30           Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ CQ Moderation   : 1
+ Mtu             : 4096[B]

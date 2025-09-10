@@ -1,0 +1,72 @@
+---
+title: Ingress-NGINX 配置ガイド
+description: Crater は、Ingress-NGINX コントローラーを使用してサービスへの外部アクセスを管理し、HTTP および HTTPS トラフィックの主要なイングレスポイントとして機能します。
+---
+
+## 配置
+
+### オプション1: LoadBalancer なし (例: バーコードメタルまたは開発クラスター)
+
+LoadBalancer サービスタイプが利用できないクラスターでは、`hostNetwork` モードを有効にするのが推奨されます。
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm upgrade --install ingress-nginx ingress-nginx \
+  --repo https://kubernetes.github.io/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --version 4.11.3 \
+  --set controller.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
+  --set controller.admissionWebhooks.patch.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
+  --set controller.hostNetwork=true \
+  --set controller.dnsPolicy=ClusterFirstWithHostNet \
+  --set controller.healthCheckHost="10.109.80.4" \
+  --set 'controller.nodeSelector.kubernetes\.io/hostname=cnode1' \
+  --set "controller.tolerations="
+```
+
+🔧 ノードセレクター、トレレーション、healthCheckHost をクラスターのノード構成に合わせて調整してください。
+
+オプション2: MetalLB での使用 (Crater が推奨)
+我々のプロダクションクラスターでは、Crater は MetalLB を使用してレイヤー2モードで内部IPを割り当てています。Ingress コントローラーは、LoadBalancer サービスとしてデプロイされ、内部IPを取得します。
+
+```bash
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --version 4.11.3 \
+  --set controller.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
+  --set controller.admissionWebhooks.patch.image.registry="crater-harbor.act.buaa.edu.cn/registry.k8s.io" \
+  --set controller.allowSnippetAnnotations=true
+```
+
+📌 この設定は、MetalLB のプールから内部IPを使用し、信頼できるネットワーク内でのサービス発見 (例: 大学のインTRANET) をサポートします。
+
+外部IPの割り当てを確認するには:
+```bash
+kubectl get svc -n ingress-nginx
+```
+
+例:
+
+```bash
+NAME                       TYPE           EXTERNAL-IP       PORT(S)
+ingress-nginx-controller   LoadBalancer   192.168.100.243   80:31234/TCP,443:31235/TCP
+```
+
+# バージョン互換性に関する注意
+現在、Ingress-NGINX のバージョンを `4.11.3` に固定しています。なぜなら、Crater の Ingress アノテーションはバージョン `4.12.0` 以降との互換性がまだ確立されていないためです。新しいバージョンを使用しようとすると、ルーティングリライトエラーが発生します。
+
+# 解除
+Ingress コントローラーを削除するには:
+
+```bash
+helm uninstall ingress-nginx -n ingress-nginx
+```
+# 参考資料
+
+* [Ingress-NGINX Helm Chart](https://github.com/kubernetes/ingress-nginx)
+
+* [Crater 互換性に関するメモ](../README.md)

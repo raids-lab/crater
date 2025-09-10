@@ -1,0 +1,340 @@
+---
+title: 빠른 시작
+description: Crater 배포 및 사용
+---
+
+Crater 플랫폼은 Kubernetes 클러스터에 의존하여 작동하므로, 배포하기 전에 일련의 기본 의존성 구성 요소를 준비해야 합니다. 이러한 구성 요소는 모니터링, 저장소, 네트워크, 스케줄링, 이미지 저장소 등 핵심 기능을 제공하여 플랫폼이 정상적으로 시작되고 실행될 수 있도록 합니다.
+
+최소 배포 방식에서는 최소한의 핵심 구성 요소만 유지하고, 추가 복잡성을 최소화하려고 노력합니다. 최종적으로 결정된 의존성은 다음과 같습니다:
+
+- **NVIDIA GPU Operator**: GPU 드라이버, 장치 플러그인 및 모니터링 구성 요소를 설치하여 Crater가 GPU 작업을 스케줄링할 수 있도록 합니다.
+- **Bitnami PostgreSQL**: 고가용성을 고려하지 않은 PostgreSQL 데이터베이스 서비스로, 이 경우 Crater의 외부 데이터베이스로 사용됩니다.
+- **IngressClass (Ingress-Nginx)**: 외부 트래픽 라우팅을 처리하고, 사용자 요청을 클러스터 내부 서비스로 전달합니다.
+- **Volcano**: 배치 및 AI 워크로드를 위한 스케줄링 프레임워크로, Crater의 작업 스케줄링 핵심입니다.
+- **StorageClass (NFS)**: 데이터베이스 및 Harbor에 지속 가능한 저장을 위한 통합 분산 저장소 백엔드.
+
+이러한 구성 요소를 선택한 이유는 **Crater 플랫폼의 최소 실행 환경**에 필수적인 핵심 지원 구성 요소이기 때문입니다. **Prometheus/Grafana 모니터링 스택**, **MetalLB 로드 밸런서**, **OpenEBS 저장소** 등 기능은 더 강력하지만 필수적이지 않으므로 최소 버전에서는 제외되어 배포 장벽을 낮춥니다.
+
+## 설치
+
+### GitHub Container Registry에서 설치 (권장)
+
+```bash
+# Helm OCI 저장소 추가
+helm registry login ghcr.io
+
+# 차트 설치
+helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+
+# 기존 설치 업그레이드
+helm upgrade crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+```
+
+### 소스에서 설치
+
+```bash
+# 저장소 클론
+git clone https://github.com/raids-lab/crater.git
+cd crater/charts
+
+# 차트 설치
+helm install crater crater/
+```
+
+## 구성
+
+차트는 values 파일을 사용하여 구성할 수 있습니다. 특정 구성으로 `values.yaml` 파일을 생성하세요:
+
+```yaml
+# 예시 최소 구성
+backendConfig:
+  postgres:
+    host: "your-postgres-host"
+    password: "your-password"
+  auth:
+    accessTokenSecret: "your-access-token-secret"
+    refreshTokenSecret: "your-refresh-token-secret"
+```
+
+그런 다음 values 파일과 함께 설치합니다:
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater --values values.yaml
+```
+
+상세한 구성의 의미를 알고 싶다면 [구성 문서](../chart)를 참조하세요.
+
+## 사전 의존성 설치
+
+| 구성 요소           | 목적                              |
+| ------------------- | --------------------------------- |
+| NVIDIA GPU Operator | GPU 장치 플러그인 및 모니터링     |
+| Bitnami PostgreSQL  | PostgreSQL 데이터베이스 서비스     |
+| IngressClass        | Ingress 트래픽 라우팅             |
+| Volcano             | 기본 작업 스케줄링 프레임워크     |
+| StorageClass (NFS)  | 분산 저장소 백엔드                |
+
+### IngressClass
+
+생산 클러스터에서는 일반적으로 로드 밸런서(예: MetalLB)와 Ingress 컨트롤러를 함께 사용합니다. 그러나 최소 배포 시나리오에서는 단순한 **Ingress-Nginx 컨트롤러**만 필요합니다. 외부 요청을 클러스터 내부 서비스로 라우팅할 뿐이며, 이는 하위 네트워크 플러그인 또는 로드 밸런서 기능에 대한 추가 의존성을 피합니다.
+
+Helm을 통해 Ingress-Nginx 컨트롤러를 직접 설치할 수 있습니다:
+
+```
+# 공식 저장소 추가
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+# ingress-nginx 설치
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace
+```
+
+### Volcano
+
+Crater의 작업 실행 및 스케줄링은 Volcano가 제공하는 배치 컴퓨팅 스케줄링 기능에 의존합니다. Volcano는 AI/대규모 데이터 시나리오에 최적화되어 있으며, 대기열, 우선순위, Gang 스케줄링 등 기능을 지원합니다. 최소 배포 환경에서도 Volcano는 필수적인 핵심 구성 요소이며, 없으면 Crater는 작업을 스케줄링하거나 실행할 수 없습니다.
+
+### 설치 명령
+
+```
+# Volcano 저장소 추가
+helm repo add volcano-sh https://volcano-sh.github.io/helm-charts
+helm repo update
+
+# 설치
+helm upgrade --install volcano volcano-sh/volcano \
+  --namespace volcano-system \
+  --create-namespace \
+  --version 1.10.0 \
+  -f volcano/values.yaml
+```
+
+values.yaml 구성 참고: https://github.com/raids-lab/crater-backend/blob/main/deployments/volcano/values.yaml
+
+#### 설치 검증
+
+```
+kubectl get pods -n volcano-system
+```
+
+실행 중인 구성 요소:
+
+- `volcano-scheduler`
+
+- `volcano-controllers`
+
+- `volcano-admission`
+
+- `volcano-webhook`
+
+### StorageClass (NFS)
+
+NFS는 분산 저장소 백엔드를 제공하며, Harbor 및 CNPG의 PVC가 이에 의존합니다.
+
+1. NFS 서버에서 디렉터리 생성 및 권한 설정:
+
+   ```
+   mkdir -p /srv/nfs/k8s
+   chown -R 26:26 /srv/nfs/k8s
+   ```
+
+2. `/etc/exports` 파일 편집하여 내보내기 규칙 추가:
+
+   ```
+   /srv/nfs/k8s 192.168.103.0/24(rw,sync,no_subtree_check,no_root_squash)
+   ```
+
+3. 내보내기 갱신:
+
+   ```
+   exportfs -rv
+   ```
+
+4. K8s 클러스터에서 **nfs-subdir-external-provisioner** 설치:
+
+   ```
+   helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+   helm repo update
+   helm install nfs-client nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+     --namespace nfs-provisioner --create-namespace \
+     --set nfs.server=192.168.103.136 \
+     --set nfs.path=/srv/nfs/k8s
+   ```
+
+5. StorageClass 검증:
+
+   ```
+   kubectl get sc
+   ```
+
+   `nfs-client`가 존재하고 `provisioner`가 `nfs-subdir-external-provisioner`인지 확인하세요.
+
+------
+
+### CloudNativePG (CNPG)
+
+Kubernetes의 상태 기반 구성 요소(예: 데이터베이스, 이미지 저장소)는 지속 가능한 저장소 지원이 필요합니다. 최소 배포 버전에서는 **NFS를 통합 분산 저장소 백엔드로 선택**합니다. 왜냐하면 설정이 간단하고 호환성이 좋으며, OpenEBS, Ceph 등의 복잡한 저장소 시스템을 추가 설치할 필요가 없기 때문입니다. NFS를 통해 제공된 StorageClass를 통해 Harbor 및 CNPG는 PVC를 직접 요청하여 지속 가능한 저장소를 사용할 수 있으며, 하위 저장소 세부 사항에 대해 걱정할 필요가 없습니다. 이는 경량화 및 자원 제한된 환경에 특히 적합합니다.
+
+CNPG는 Harbor 외부 데이터베이스 관리 구성 요소입니다.
+
+1. Operator 설치:
+
+   ```
+   helm repo add cnpg https://cloudnative-pg.github.io/charts
+   helm repo update
+   helm install cnpg cnpg/cloudnative-pg --namespace cnpg-system --create-namespace
+   ```
+
+2. 데이터베이스 사용자 비밀번호 Secret 생성:
+
+   ```
+   kubectl -n cnpg-system create secret generic harbor-db-password \
+     --from-literal=password='HarborDbPass!'
+   ```
+
+3. 데이터베이스 클러스터 정의 (`harbor-pg.yaml`):
+
+   ```
+   apiVersion: postgresql.cnpg.io/v1
+   kind: Cluster
+   metadata:
+     name: harbor-pg
+   spec:
+     instances: 1
+     imageName: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/cloudnative-pg/postgresql:15
+     storage:
+       size: 5Gi
+       storageClass: nfs-client
+     bootstrap:
+       initdb:
+         database: registry
+         owner: harbor
+         secret:
+           name: harbor-db-password
+           key: password
+   ```
+
+   ```
+   kubectl apply -f harbor-pg.yaml -n cnpg-system
+   ```
+
+4. CNPG 검증:
+
+   ```
+   kubectl -n cnpg-system get pods
+   kubectl -n cnpg-system get svc | grep harbor-pg
+   ```
+
+   다음을 확인해야 합니다:
+
+   - `harbor-pg-1` Pod이 실행 중
+   - `harbor-pg-rw` 서비스가 5432 포트를 제공
+
+5. 데이터베이스에 로그인하여 테스트:
+
+   ```
+   kubectl -n cnpg-system exec -it harbor-pg-1 -c postgres -- \
+     psql -h 127.0.0.1 -U harbor -d registry -W
+   ```
+
+------
+
+### Harbor 설치
+
+Harbor는 Crater 플랫폼에 의존하는 이미지 저장소입니다. 내부망 또는 오프라인 환경에서는 공용 이미지 저장소(예: DockerHub, ghcr.io)에 접근할 수 없기 때문에, Crater의 전후단 및 의존 이미지를 저장하기 위해 사설 저장소가 필요합니다. Harbor를 선택한 이유는 **이미지 관리, 권한 제어, 보안 스캔** 등 기업 수준의 기능을 제공하면서 Kubernetes와 원적합하게 통합될 수 있기 때문입니다. 최소 배포 환경에서는 Harbor가 **NFS 저장소**와 **CNPG 외부 데이터베이스**만으로 실행될 수 있도록 Redis/Postgres 내장 버전을 제거하여 전체 아키텍처를 간소화합니다. 이는 Crater의 이미지가 로컬에서 저장되고 분산될 수 있도록 보장하면서, 향후 확장(예: 다중 사용자, 다중 프로젝트 이미지 관리)을 위한 기초를 제공합니다.
+
+Harbor는 위에서 설명한 **NFS** 저장소와 **CNPG 외부 데이터베이스**를 사용합니다.
+
+1. Chart 다운로드:
+
+   ```
+   helm repo add harbor https://helm.goharbor.io
+   helm repo update
+   helm pull harbor/harbor --untar --untardir ./charts
+   cd charts/harbor
+   ```
+
+2. `values.yaml` 편집, 주요 수정 사항:
+
+   - 노출 방식 (NodePort):
+
+     ```
+     expose:
+       type: nodePort
+       nodePort:
+         ports:
+           http:
+             port: 30002
+     externalURL: http://192.168.103.136:30002
+     ```
+
+   - 외부 데이터베이스 사용:
+
+     ```
+     database:
+       type: external
+       external:
+         host: harbor-pg-rw.cnpg-system.svc
+         port: "5432"
+         username: harbor
+         coreDatabase: registry
+         existingSecret: harbor-db-password
+     ```
+
+   - PVC 지정:
+
+     ```
+     persistence:
+       enabled: true
+       resourcePolicy: "keep"
+       persistentVolumeClaim:
+         registry:
+           existingClaim: harbor-registry
+           storageClass: nfs-client
+           size: 50Gi
+     ```
+
+   - 이미지 원본 변경 (필요한 이미지 아래 표, Huawei Cloud 이미지로 대체 가능):
+
+| 구성 요소                      | 저장소 (repo)                      | tag       | 대체 이미지                                                     |
+| ------------------------- | ------------------------------- | --------- | ------------------------------------------------------------ |
+| nginx                     | `goharbor/nginx-photon`         | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/nginx-photon:v2.12.0 |
+| portal                    | `goharbor/harbor-portal`        | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-portal:v2.12.0 |
+| core                      | `goharbor/harbor-core`          | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-core:v2.12.0 |
+| jobservice                | `goharbor/harbor-jobservice`    | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-jobservice:v2.12.0 |
+| registry（distribution）  | `goharbor/registry-photon`      | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/registry-photon:v2.12.0 |
+| registryctl               | `goharbor/harbor-registryctl`   | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-registryctl:v2.12.0 |
+| trivy-adapter             | `goharbor/trivy-adapter-photon` | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/trivy-adapter-photon:v2.12.1 |
+| database（내장 Postgres） | `goharbor/harbor-db`            | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-db:v2.12.0 |
+| redis（내장 Redis）       | `goharbor/redis-photon`         | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/redis-photon:v2.12.0 |
+| exporter                  | `goharbor/harbor-exporter`      | `v2.12.0` | swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/goharbor/harbor-exporter:v2.12.0 |
+
+3. Harbor 설치:
+
+   ```
+   helm install harbor . -n harbor-system --create-namespace -f values.yaml
+   ```
+
+4. Pod 상태 검증:
+
+   ```
+   kubectl -n harbor-system get pods
+   ```
+
+   실행 확인:
+
+   - `harbor-core` ✅
+   - `harbor-jobservice` ✅
+   - `harbor-portal`, `harbor-nginx`, `harbor-registry`, `harbor-redis`, `harbor-trivy` ✅
+
+5. Harbor 접근:
+
+   브라우저에서 다음 주소로 접근하세요.
+
+   ```
+   http://192.168.103.136:30002
+   ```
+
+   기본 사용자: `admin`
+
+   기본 비밀번호: `values.yaml`에서 설정한 `harborAdminPassword`

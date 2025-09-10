@@ -2,7 +2,6 @@
   "pages": [
     "---安装部署---",
     "quick-start",
-    "kind-start",
     "deployment",
     "---进阶配置---",
     "chart",

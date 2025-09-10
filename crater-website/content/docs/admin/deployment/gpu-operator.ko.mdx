@@ -1,0 +1,26 @@
+---
+title: "NVIDIA GPU Operator 배포 가이드"
+description: "NVIDIA GPU Operator를 사용하여 Kubernetes 클러스터에서 GPU 지원을 활성화하고 Crater와 통합합니다."
+---
+
+## 개요
+
+**NVIDIA GPU Operator**는 Kubernetes 클러스터에서 GPU를 지원하기 위해 필요한 모든 구성 요소의 배포 및 관리를 자동화합니다.
+
+Crater에서는 다음과 같은 기능을 제공합니다:
+
+- GPU 드라이버 설치  
+- NVIDIA 컨테이너 런타임 설정  
+- Prometheus 스택에 사용되는 GPU 모니터링을 위한 `dcgm-exporter`  
+- Crater의 작업 예약 및 GPU 메트릭 표시와의 원활한 통합
+
+> Crater는 GPU 작업이 올바르게 예약되고 모니터링되도록 GPU Operator가 필요합니다.
+
+---
+
+## 설치
+
+Crater의 사전 구성된 값으로 Helm을 통해 GPU Operator를 설치하는 것이 좋습니다.
+
+📦 Helm 값: [`deployments/gpu-operator/values.yaml`](../deployments/gpu-operator/values.yaml)  
+📖 상세 가이드: [`deployments/gpu-operator/README.md`](../deployments/gpu-operator/README.md)

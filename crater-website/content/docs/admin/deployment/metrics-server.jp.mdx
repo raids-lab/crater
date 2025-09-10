@@ -1,0 +1,42 @@
+---
+title: Metrics Server 配置ガイド
+description: metrics-server は、Crater におけるモニタリング、スケジューリング、フロントエンドの可視化のためにリアルタイムの CPU とメモリ使用量データを提供します。
+---
+
+## 概要
+
+`metrics-server` は Kubernetes 用の軽量でスケーラブルなリソース使用量メトリクスの集約ツールです。Crater プラットフォームでは、以下の用途に **リアルタイムの CPU とメモリ使用量データ** を提供します:
+
+- Pod および Node のリソースモニタリング
+- ジョブスケジューリングの決定
+- フロントエンドの可視化（例: ダッシュボード、使用状況統計）
+
+Metrics Server は、`kubectl top`、Horizontal Pod Autoscalers (HPA)、および Crater のジョブ管理 UI のような Kubernetes コンポーネントにとって **必須** です。
+
+---
+
+## 依存関係
+
+Kubernetes クラスターが完全に動作し、kubelet を介してノードコンポーネントと通信できる状態になってから、メトリクスサーバーをデプロイする必要があります。
+
+外部依存関係は必要ありませんが、以下の点を確認してください:
+
+- kubelet の `--read-only-port` または `--authentication-token-webhook` の設定が有効になっていること。
+- ご使用の Kubernetes バージョンが選択した metrics-server バージョンと互換性があること。
+
+---
+
+## Crater 特有の注意点
+
+- Crater は UI 上の **リアルタイムリソース表示** に `metrics-server` を使用しています。
+- ジョブの提出およびリソース予測モジュールは、これらの値を読み取ってスケジューリングの正確性を向上させることがあります。
+- Prometheus と補完的ですが、短命な Pod に対してより高速なサンプリングを提供します。
+
+---
+
+## インストール
+
+Crater の値を使用して公式の Helm チャートを推奨します。
+
+📦 Helm 値: [`deployments/metrics-server/values.yaml`](../deployments/metrics-server/values.yaml)  
+📖 詳細ガイド: [`deployments/metrics-server/README.md`](../deployments/metrics-server/README.md)

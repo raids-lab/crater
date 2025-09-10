@@ -1,0 +1,104 @@
+---
+title: MetalLB デプロイガイド
+description: MetalLB は、ノードが同じサブネットにあり、直接通信できる環境（キャンパスのイントラネットなど）で最適な、ベアメタル Kubernetes クラスター向けにレイヤ2モードを使用して内部サービスの公開を可能にするものです。これは、私立大学のネットワークに最適です。
+---
+
+## 概要
+
+[MetalLB](https://metallb.universe.tf/) は、ベアメタル Kubernetes クラスター用のロードバランサー実装です。Crater では、**レイヤ2 (L2) モード**を使用して **内部サービスの公開** を可能にし、ノードが同じサブネットにあり直接通信できる環境（例: キャンパスイントラネット）で最適です。
+
+Crater クラスターは、**私立大学のプライベートネットワーク**にデプロイされ、すべてのノードおよびユーザーのアクセスポイントが共通のレイヤ2ドメインを共有しています。そのため、MetalLB は予約された **内部IPアドレスプール** からIPを割り当て、クラウドプロバイダーに依存することなく `LoadBalancer` タイプのサービスを公開することが可能です。
+
+---
+
+## 主な特徴
+
+- **L2 (ARP/NDP) モード** — イントラネット環境で簡単かつ効果的です。
+- Kubernetes サービスに **静的な内部IP** を割り当てます。
+- Prometheus、Grafana、Harbor などのサービスと統合可能です。
+
+---
+
+## インストール
+
+MetalLB は公式の Helm チャートを通じてインストールされます。
+
+### 1. Helm リポジトリを追加
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+```
+
+### 2. MetalLB をインストール
+
+```bash
+helm upgrade --install metallb metallb/metallb -n metallb-system --version v0.14.8 --create-namespace
+```
+
+## 設定
+### 1. IPAddressPool を作成
+
+MetalLB がサービスに割り当て可能なイントラネットIPのプールを設定します：
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: intranet-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.100.240-192.168.100.250  # キャンパスサブネット範囲に置き換えてください
+```
+
+### 2. L2 公開設定
+
+IPプールに対するL2ブロードキャスト（ARP/NDP）を有効にします：
+```yaml
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: intranet-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - intranet-pool
+```
+
+## 使い方
+インストール後、`LoadBalancer` タイプのサービスは設定されたプールからIPを割り当てられます。
+
+例:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-web
+  namespace: crater-system
+spec:
+  type: LoadBalancer
+  selector:
+    app: crater-ui
+  ports:
+    - port: 80
+      targetPort: 8080
+```
+
+MetalLB は定義されたプールからIP（例: 192.168.100.241）を自動的に割り当てます。
+
+割り当てられたIPを確認するには:
+```bash
+kubectl get services -A -o wide
+```
+
+## 最適な実践
+DHCPサーバーでアドレスプールを予約するか、手動で衝突を避けるようにしてください。
+
+すべてのクラスターのノードが同じL2ブロードキャストドメイン内にあることを確認してください。
+
+クラスター外のインターネットにサービスを公開しないでください — ここではMetalLBはキャンパスネットワーク内で厳密に使用されます。
+
+* Crater は [IngressClass](./ingress.md) と組み合わせて統一ドメインルーティングが可能です。*
+
+# 参考文献
+* [MetalLB](https://metallb.universe.tf/)

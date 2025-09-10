@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "---설치 및 배포---",
+    "quick-start",
+    "deployment",
+    "---고급 설정---",
+    "chart",
+    "more",
+    "---기타---",
+    "learning"
+  ],
+  "icon": "UserRoundCog",
+  "title": "관리자 가이드",
+  "root": true
+}
