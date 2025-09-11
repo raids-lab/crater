@@ -14,13 +14,16 @@
 
 version: 2
 updates:
-  # 配置submodules更新
+  # Submodules updates - rely on workflow retry mechanism to handle concurrent issues
+  # See: https://github.com/raids-lab/crater/issues/126
+  # Note: Cannot separate gitsubmodule configs due to overlapping directories constraint
   - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:
       interval: "daily"
-      time: "17:00"  # UTC时间，对应北京时间凌晨1点
-    open-pull-requests-limit: 5
+      time: "01:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
     labels:
       - "dependabot"
     commit-message:
