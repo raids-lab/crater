@@ -87,7 +87,33 @@ jobs:
             }
             
       - name: Enable auto-merge for submodule updates
-        run: gh pr merge --auto --merge "$PR_URL"
+        run: |
+          # Enhanced retry mechanism with randomization to handle concurrent PR issues
+          # See: https://github.com/raids-lab/crater/issues/126
+          
+          # Random initial delay (0-60 seconds) to spread out concurrent workflows
+          INITIAL_DELAY=$((RANDOM % 61))
+          sleep $INITIAL_DELAY
+          
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          # Random base delay between 8-12 seconds
+          BASE_DELAY=$((8 + RANDOM % 5))
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if gh pr merge --auto --squash "$PR_URL"; then
+              exit 0
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                # Exponential backoff with random base delay: base_delay * 2^retry_count
+                RETRY_DELAY=$((BASE_DELAY * (2 ** RETRY_COUNT)))
+                sleep $RETRY_DELAY
+              else
+                exit 1
+              fi
+            fi
+          done
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
