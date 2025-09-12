@@ -452,6 +452,7 @@
   "navigation.jobManagement": "ジョブ管理",
   "navigation.jobTemplates": "ジョブテンプレート",
   "navigation.approvalOrder": "製造オーダの承認",
+  "navigation.myOrder": "私のオーダ",
   "navigation.jupyterLab": "Jupyter Lab",
   "navigation.memberManagement": "メンバー管理",
   "navigation.models": "モデル",

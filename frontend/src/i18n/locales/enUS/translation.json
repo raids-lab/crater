@@ -452,6 +452,7 @@
   "navigation.jobManagement": "Job",
   "navigation.jobTemplates": "Job Templates",
   "navigation.approvalOrder": "Approval Orders",
+  "navigation.myOrders": "My Orders",
   "navigation.jupyterLab": "Jupyter Lab",
   "navigation.memberManagement": "Member",
   "navigation.models": "Models",

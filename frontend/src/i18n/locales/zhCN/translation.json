@@ -452,6 +452,7 @@
   "navigation.jobManagement": "作业管理",
   "navigation.jobTemplates": "作业模板",
   "navigation.approvalOrder": "审批工单",
+  "navigation.myOrders": "我的工单",
   "navigation.jupyterLab": "Jupyter Lab",
   "navigation.memberManagement": "成员管理",
   "navigation.models": "模型",

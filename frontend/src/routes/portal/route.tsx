@@ -171,7 +171,7 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
               url: 'settings/user',
             },
             {
-              title: t('navigation.approvalOrder'),
+              title: t('navigation.myOrders'),
               url: 'settings/orders',
             },
           ],

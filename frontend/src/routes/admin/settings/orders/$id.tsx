@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
-import { getApprovalOrder } from '@/services/api/approvalorder'
+import { adminGetApprovalOrder } from '@/services/api/approvalorder'
 
 interface SearchParams {
   type?: string
@@ -38,7 +38,7 @@ function RouteComponent() {
 
   const query = useQuery({
     queryKey: ['admin', 'approvalorder', id],
-    queryFn: () => getApprovalOrder(Number(id)),
+    queryFn: () => adminGetApprovalOrder(Number(id)),
     select: (res) => res.data,
   })
 
