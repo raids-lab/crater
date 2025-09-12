@@ -16,7 +16,7 @@
 import { Link } from '@tanstack/react-router'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { ClockIcon, InfoIcon, RedoDotIcon, SquareIcon, Trash2Icon, XIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -36,10 +36,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
+import { DurationFields } from '@/components/form/DurationFields'
 import { getNewJobLink } from '@/components/job/new-job-button'
 import {
   AlertDialog,
@@ -68,34 +68,45 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
   }, [jobInfo.jobType])
 
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false)
-  const [extensionHours, setExtensionHours] = useState('')
   const [reason, setReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [duration, setDuration] = useState<{ days: number; hours: number; totalHours: number }>({
+    days: 0,
+    hours: 0,
+    totalHours: 0,
+  })
+
+  const handleDurationChange = useCallback(
+    (val: { days: number; hours: number; totalHours: number }) => setDuration(val),
+    []
+  )
+
+  const canExtend = jobStatus === JobStatus.Running
+
   const handleExtensionSubmit = async () => {
-    if (!extensionHours || !reason.trim()) {
+    if (!canExtend) {
+      toast.error('当前作业不是运行中，无法申请延时')
       return
     }
-
-    const hours = parseInt(extensionHours)
-    if (isNaN(hours) || hours < 1 || hours > 96) {
-      toast.error('延时时长必须在1-96小时之间')
+    const hours = duration.totalHours
+    if (hours < 1 || !reason.trim()) {
+      toast.error('延时时长必须至少为 1 小时，并填写申请原因')
       return
     }
 
     setIsSubmitting(true)
     try {
       await createApprovalOrder({
-        name: `${jobInfo.jobName}`,
+        name: jobInfo.jobName,
         type: 'job',
         status: 'Pending',
         approvalorderTypeID: 1,
         approvalorderReason: reason.trim(),
         approvalorderExtensionHours: hours,
       })
-
       setExtensionDialogOpen(false)
-      setExtensionHours('')
+      setDuration({ days: 0, hours: 0, totalHours: 0 })
       setReason('')
       toast.success('创建延时申请成功')
     } catch (error) {
@@ -129,14 +140,16 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
                 克隆
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <DialogTrigger asChild>
-                <button className="flex w-full items-center gap-2 px-2 py-1.5 text-sm">
-                  <ClockIcon className="text-highlight-blue size-4" />
-                  申请延时
-                </button>
-              </DialogTrigger>
-            </DropdownMenuItem>
+            {canExtend && (
+              <DropdownMenuItem asChild>
+                <DialogTrigger asChild>
+                  <button className="flex w-full items-center gap-2 px-2 py-1.5 text-sm">
+                    <ClockIcon className="text-highlight-blue size-4" />
+                    申请延时
+                  </button>
+                </DialogTrigger>
+              </DropdownMenuItem>
+            )}
             <AlertDialogTrigger asChild>
               <DropdownMenuItem className="group">
                 {jobStatus === JobStatus.NotStarted ? (
@@ -156,62 +169,73 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>申请作业延时</DialogTitle>
-            <DialogDescription>
-              为作业 "{jobInfo.jobName}" 申请延时，需要管理员审批。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="extensionHours" className="text-right">
-                延时时长
-              </Label>
-              <div className="col-span-3 flex items-center gap-2">
-                <Input
-                  id="extensionHours"
-                  type="number"
-                  min="1"
-                  max="96"
-                  step="1"
-                  placeholder="请输入小时数(1-96)"
-                  value={extensionHours}
-                  onChange={(e) => setExtensionHours(e.target.value)}
+        {canExtend && (
+          <DialogContent className="w-full sm:max-w-[760px] md:max-w-[880px]">
+            <DialogHeader>
+              <DialogTitle>申请作业延时</DialogTitle>
+              <DialogDescription>
+                为作业 “{jobInfo.jobName}” 申请延时，需要管理员审批。
+              </DialogDescription>
+
+              <div className="bg-muted/40 mt-4 rounded-md p-4">
+                <div className="text-foreground mb-2 text-sm font-semibold">清理规则</div>
+                <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-xs leading-relaxed">
+                  <li>
+                    如果申请了 GPU 资源，当过去 2 个小时 GPU 利用率为
+                    0，我们将尝试发送告警信息给用户，建议用户检查作业是否正常运行。若此后半小时 GPU
+                    利用率仍为 0，系统将释放作业占用的资源。
+                  </li>
+                  <li>
+                    当作业运行超过 4
+                    天，我们将尝试发送告警信息给用户，提醒用户作业运行时间过长；若此后一天内用户未联系管理员说明情况并锁定作业，系统将释放作业占用的资源。
+                  </li>
+                </ul>
+              </div>
+            </DialogHeader>
+
+            <div className="grid gap-6 py-6">
+              <div>
+                <Label className="mb-2 block text-sm">延长时间</Label>
+                <DurationFields
+                  value={{ days: duration.days, hours: duration.hours }}
+                  onChange={handleDurationChange}
+                  origin={null}
+                  showPreview={true}
                 />
-                <span className="text-muted-foreground text-sm">小时</span>
+              </div>
+
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="reason" className="pt-2 text-right">
+                  申请原因
+                </Label>
+                <Textarea
+                  id="reason"
+                  className="col-span-3 min-h-[96px] resize-y"
+                  placeholder="请说明申请延时的原因(必填)..."
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  rows={4}
+                />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label htmlFor="reason" className="pt-2 text-right">
-                申请原因
-              </Label>
-              <Textarea
-                id="reason"
-                className="col-span-3"
-                placeholder="请说明申请延时的原因(必填)..."
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setExtensionDialogOpen(false)}
-              disabled={isSubmitting}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={handleExtensionSubmit}
-              disabled={!extensionHours || !reason.trim() || isSubmitting}
-            >
-              {isSubmitting ? '提交中...' : '提交申请'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setExtensionDialogOpen(false)}
+                disabled={isSubmitting}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleExtensionSubmit}
+                disabled={isSubmitting || duration.totalHours < 1 || !reason.trim()}
+              >
+                {isSubmitting ? '提交中...' : '提交申请'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
 
         <AlertDialogContent>
           <AlertDialogHeader>

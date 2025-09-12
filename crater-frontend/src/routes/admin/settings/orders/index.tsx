@@ -50,6 +50,7 @@ import {
   approvalOrderStatuses,
   approvalOrderTypes,
 } from '@/components/badge/ApprovalorderBadge'
+import { getJobPhaseLabel } from '@/components/badge/JobPhaseBadge'
 import { TimeDistance } from '@/components/custom/TimeDistance'
 import UserLabel from '@/components/label/user-label'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -62,7 +63,12 @@ import {
   listApprovalOrders,
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
-import { type IJobInfo, apiAdminGetJobList } from '@/services/api/vcjob'
+import {
+  type IJobInfo,
+  JobPhase,
+  apiAdminGetJobDetail,
+  apiAdminGetJobList,
+} from '@/services/api/vcjob'
 
 import { atomUserInfo } from '@/utils/store'
 
@@ -94,6 +100,7 @@ function RouteComponent() {
   const [selectedOrder, setSelectedOrder] = useState<ApprovalOrder | null>(null)
   const [selectedJob, setSelectedJob] = useState<IJobInfo | null>(null)
   const [isDelayDialogOpen, setIsDelayDialogOpen] = useState(false)
+  const [isFetchingJob, setIsFetchingJob] = useState(false)
 
   const query = useQuery({
     queryKey: ['admin', 'approvalorders'],
@@ -168,15 +175,82 @@ function RouteComponent() {
     return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
   }, [selectedOrder])
 
-  // 仅弹出对话框，不直接更新工单
-  const handleApproveWithDelay = (order: ApprovalOrder) => {
-    const job = jobList?.find((j) => j.jobName === order.name)
-    if (job) {
+  const isRunningPhase = (phase: IJobInfo['status']) => {
+    const enumVal = JobPhase[phase as keyof typeof JobPhase]
+    if (enumVal !== undefined) return enumVal === JobPhase.Running
+    return String(phase).toLowerCase() === 'running'
+  }
+
+  const phaseLabel = (phase: IJobInfo['status']) => {
+    const enumVal = JobPhase[phase as keyof typeof JobPhase]
+    if (enumVal !== undefined) return getJobPhaseLabel(enumVal).label
+    return '未知'
+  }
+
+  // 仅弹出对话框，不直接更新工单（支持按需获取 + 状态校验）
+  const handleApproveWithDelay = async (order: ApprovalOrder) => {
+    const cached = jobList?.find((j) => j.jobName === order.name || j.name === order.name)
+    if (cached) {
+      if (!isRunningPhase(cached.status)) {
+        toast.error(`该作业当前状态为 ${phaseLabel(cached.status)}，无法延时（仅运行中可延时）`)
+        return
+      }
+      setSelectedOrder(order)
+      setSelectedJob(cached)
+      setIsDelayDialogOpen(true)
+      return
+    }
+
+    setIsFetchingJob(true)
+    try {
+      const detailRes = await apiAdminGetJobDetail(order.name)
+      const d = detailRes.data
+      if (!d) {
+        toast.error(t('ApprovalOrderTable.toast.jobNotFound'))
+        return
+      }
+      const job: IJobInfo = {
+        name: d.name || order.name,
+        jobName: d.jobName || d.name || order.name,
+        owner: d.username,
+        userInfo: d.userInfo,
+        jobType: d.jobType,
+        queue: d.queue,
+        status: JobPhase[d.status as keyof typeof JobPhase] ?? d.status, // 兼容字符串
+        createdAt: d.createdAt,
+        startedAt: d.startedAt,
+        completedAt: d.completedAt,
+        nodes: [],
+        locked: false,
+        permanentLocked: false,
+      }
+
+      if (!isRunningPhase(job.status)) {
+        toast.error(`该作业当前状态为 ${phaseLabel(job.status)}，无法延时（仅运行中可延时）`)
+        return
+      }
+
+      queryClient.setQueryData(
+        ['admin', 'tasklist', 'job', -1],
+        (old: { data?: IJobInfo[] } | undefined) => {
+          if (
+            old?.data &&
+            Array.isArray(old.data) &&
+            !old.data.find((j: IJobInfo) => j.jobName === job.jobName)
+          ) {
+            return { ...old, data: [...old.data, job] }
+          }
+          return old
+        }
+      )
+
       setSelectedOrder(order)
       setSelectedJob(job)
       setIsDelayDialogOpen(true)
-    } else {
+    } catch {
       toast.error(t('ApprovalOrderTable.toast.jobNotFound'))
+    } finally {
+      setIsFetchingJob(false)
     }
   }
 
@@ -321,14 +395,12 @@ function RouteComponent() {
                   <DropdownMenuItem
                     onClick={() => {
                       if (order.type === 'job') {
-                        // 一律先弹出延时对话框，成功后再把工单设为 Approved
                         handleApproveWithDelay(order)
                       } else {
-                        // 非 job 直接批准
                         approveOrder(order)
                       }
                     }}
-                    disabled={isApproving || isRejecting}
+                    disabled={isApproving || isRejecting || isFetchingJob}
                   >
                     <CheckIcon className="text-highlight-green" />
                     {order.type === 'job' ? '批准并延时' : '批准'}

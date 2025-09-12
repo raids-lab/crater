@@ -17,10 +17,7 @@
 // Modified code
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { addHours, format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
-import { CalendarClock, InfoIcon, Lock, UnlockIcon } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { InfoIcon, Lock, UnlockIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -37,15 +34,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form'
+
+import { DurationFields } from '@/components/form/DurationFields'
 
 import { IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
 
@@ -83,7 +74,6 @@ export function DurationDialog({
   defaultHours,
 }: DurationDialogProps) {
   const { t } = useTranslation()
-  const [expirationDate, setExpirationDate] = useState<Date | null>(null)
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
   const mixedState = !allLocked && !allUnlocked
@@ -99,66 +89,17 @@ export function DurationDialog({
     },
   })
 
-  // 先声明，避免“在赋值前使用了变量”
-  const calculateExpirationDate = useCallback(
-    (originExpiredTime: string | undefined, values: FormValues) => {
-      const { days, hours, isPermanent } = values
+  // Submit form
+  async function onSubmit(values: FormValues) {
+    const { isPermanent, days, hours } = values
 
-      if (isPermanent) {
-        setExpirationDate(null)
-        return
-      }
-
-      if (days > 0 || hours > 0) {
-        const now = new Date()
-        let result = new Date(now)
-        if (originExpiredTime !== undefined && isExtendDialogOpen) {
-          result = new Date(originExpiredTime)
-        }
-        if (days > 0) result = addHours(result, days * 24)
-        if (hours > 0) result = addHours(result, hours)
-        setExpirationDate(result)
-      } else {
-        setExpirationDate(null)
-      }
-    },
-    [isExtendDialogOpen]
-  )
-
-  // 打开时用默认值重置，并展示表单值
-  useEffect(() => {
-    if (!open) return
-    const next = {
-      isPermanent: false,
-      days: defaultDays ?? 0,
-      hours: defaultHours ?? 0,
+    if (!isPermanent && !(days > 0 || hours > 0)) {
+      toast.error(t('durationDialog.toast.noDuration'))
+      return
     }
-    form.reset(next)
-  }, [open, defaultDays, defaultHours, form])
 
-  // 打开对话框时用默认值重置，并计算一次预览
-  useEffect(() => {
-    if (open) {
-      const days = defaultDays ?? 0
-      const hours = defaultHours ?? 0
-      form.reset({ isPermanent: false, days, hours })
-      setExpirationDate(null)
-      setTimeout(() => {
-        calculateExpirationDate(jobs[0]?.lockedTimestamp, {
-          isPermanent: false,
-          days,
-          hours,
-        } as FormValues)
-      }, 0)
-    }
-  }, [open, defaultDays, defaultHours, form, jobs, calculateExpirationDate])
-
-  const handleFieldChange = useCallback(() => {
-    setTimeout(() => {
-      const values = form.getValues()
-      calculateExpirationDate(jobs[0]?.lockedTimestamp, values)
-    }, 0)
-  }, [form, jobs, calculateExpirationDate])
+    lockMutation.mutate(values)
+  }
 
   // Use React Query for lock mutation
   const lockMutation = useMutation({
@@ -201,40 +142,6 @@ export function DurationDialog({
       toast.error(t('durationDialog.toast.unlockError'))
     },
   })
-
-  // Reset form when dialog opens
-  useEffect(() => {
-    if (open) {
-      const days = defaultDays ?? 0
-      const hours = defaultHours ?? 0
-      form.reset({
-        isPermanent: false,
-        days,
-        hours,
-      })
-      setExpirationDate(null)
-      // 预览计算一次
-      setTimeout(() => {
-        calculateExpirationDate(jobs[0]?.lockedTimestamp, {
-          isPermanent: false,
-          days,
-          hours,
-        } as FormValues)
-      }, 0)
-    }
-  }, [open, defaultDays, defaultHours, form, jobs, calculateExpirationDate])
-
-  // Submit form
-  async function onSubmit(values: FormValues) {
-    const { isPermanent, days, hours } = values
-
-    if (!isPermanent && !(days > 0 || hours > 0)) {
-      toast.error(t('durationDialog.toast.noDuration'))
-      return
-    }
-
-    lockMutation.mutate(values)
-  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -291,9 +198,6 @@ export function DurationDialog({
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         onBlur={field.onBlur}
-                        onClick={() => {
-                          setTimeout(handleFieldChange, 0)
-                        }}
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
@@ -310,78 +214,18 @@ export function DurationDialog({
 
               {!form.watch('isPermanent') && (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="days"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('durationDialog.form.days.text')}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e)
-                                handleFieldChange()
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="hours"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('durationDialog.form.hours.text')}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="23"
-                              placeholder="0"
-                              {...field}
-                              onChange={(e) => {
-                                field.onChange(e)
-                                handleFieldChange()
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {expirationDate && (
-                    <Card className="border-dashed">
-                      <CardContent>
-                        <div className="text-muted-foreground flex items-center gap-2">
-                          <CalendarClock className="h-4 w-4" />
-                          <span>{t('durationDialog.form.expirationPreview')}</span>
-                        </div>
-                        <div className="mt-2">
-                          <p className="text-lg font-medium">
-                            {format(expirationDate, 'yyyy年MM月dd日 HH:mm', {
-                              locale: zhCN,
-                            })}
-                          </p>
-                          <p className="text-muted-foreground mt-1 text-sm">
-                            {t('durationDialog.form.currentTime')}:{' '}
-                            {format(new Date(), 'yyyy年MM月dd日 HH:mm', {
-                              locale: zhCN,
-                            })}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  <DurationFields
+                    value={{
+                      days: form.watch('days') ?? 0,
+                      hours: form.watch('hours') ?? 0,
+                    }}
+                    onChange={(val) => {
+                      form.setValue('days', val.days, { shouldValidate: true, shouldDirty: true })
+                      form.setValue('hours', val.hours, { shouldValidate: true, shouldDirty: true })
+                    }}
+                    origin={isExtendDialogOpen ? jobs[0]?.lockedTimestamp : null}
+                    showPreview={true}
+                  />
                 </>
               )}
 
