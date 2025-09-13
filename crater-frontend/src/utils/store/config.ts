@@ -67,8 +67,7 @@ export const apiGetConfig = async () => {
 }
 
 // 派生原子
-
-export const configAPIBaseAtom = atom((get) => get(configAtom).url.apiBase)
+export const configAPIBaseAtom = atom((get) => get(configAtom).url.apiBase || '')
 
 export const configAppVersionAtom = atom((get) => get(configAtom).version)
 
