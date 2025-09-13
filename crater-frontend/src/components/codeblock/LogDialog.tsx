@@ -36,7 +36,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { ContainerInfo, apiGetPodContainerLog } from '@/services/api/tool'
 
 import { logger } from '@/utils/loglevel'
-import { configAPIPrefixAtom } from '@/utils/store/config'
+import { configAPIBaseAtom } from '@/utils/store/config'
 
 import TooltipButton from '../button/tooltip-button'
 import LoadingCircleIcon from '../icon/LoadingCircleIcon'
@@ -75,7 +75,7 @@ export function LogCard({
   namespacedName: PodNamespacedName
   selectedContainer: ContainerInfo
 }) {
-  const apiPreifx = useAtomValue(configAPIPrefixAtom)
+  const apiBase = useAtomValue(configAPIBaseAtom)
   const queryClient = useQueryClient()
   const [tailLines, setTailLines] = useState(DEFAULT_TAIL_LINES)
   const [timestamps, setTimestamps] = useState(false)
@@ -121,7 +121,6 @@ export function LogCard({
   const { mutate: downloadAllLog } = useMutation({
     mutationFn: () =>
       apiGetPodContainerLog(namespacedName.namespace, namespacedName.name, selectedContainer.name, {
-        tailLines: undefined,
         timestamps: timestamps,
         follow: false,
         previous: false,
@@ -201,7 +200,7 @@ export function LogCard({
       stopStreaming()
     }
 
-    const url = `${apiPreifx}/namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream?timestamps=${timestamps}`
+    const url = `${apiBase}/api/v1/namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream?timestamps=${timestamps}`
 
     const eventSource = new EventSource(url)
     streamEventSource.current = eventSource

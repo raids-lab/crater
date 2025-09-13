@@ -25,7 +25,7 @@ import { Card } from '@/components/ui/card'
 import { ContainerInfo } from '@/services/api/tool'
 
 import { REFRESH_TOKEN_KEY } from '@/utils/store'
-import { configAPIPrefixAtom } from '@/utils/store/config'
+import { configAPIBaseAtom } from '@/utils/store/config'
 
 import {
   PodContainerDialog,
@@ -34,14 +34,14 @@ import {
 } from './PodContainerDialog'
 
 const buildWebSocketUrl = (
-  apiPrefix: string,
+  apiBase: string,
   namespace: string,
   podName: string,
   containerName: string
 ) => {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
   const token = localStorage.getItem(REFRESH_TOKEN_KEY) || ''
-  return `${protocol}://${window.location.host}${apiPrefix}/websocket/namespaces/${namespace}/pods/${podName}/containers/${containerName}/terminal?token=${token}`
+  return `${protocol}://${window.location.host}${apiBase}/api/v1/websocket/namespaces/${namespace}/pods/${podName}/containers/${containerName}/terminal?token=${token}`
 }
 
 // 发送终端大小变更消息
@@ -74,7 +74,7 @@ function TerminalCard({
   namespacedName: PodNamespacedName
   selectedContainer: ContainerInfo
 }) {
-  const apiPrefix = useAtomValue(configAPIPrefixAtom)
+  const apiBase = useAtomValue(configAPIBaseAtom)
   const terminalRef = useRef<Terminal | null>(null)
   const xtermRef = useRef<HTMLDivElement>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -108,7 +108,7 @@ function TerminalCard({
     fitAddon.fit() // 调整终端大小
 
     const wsUrl = buildWebSocketUrl(
-      apiPrefix,
+      apiBase,
       namespacedName.namespace,
       namespacedName.name,
       selectedContainer.name
@@ -169,7 +169,7 @@ function TerminalCard({
       ws.close()
       terminal.dispose()
     }
-  }, [namespacedName, selectedContainer, apiPrefix, debouncedSendResize])
+  }, [namespacedName, selectedContainer, apiBase, debouncedSendResize])
 
   return (
     <Card className="overflow-hidden rounded-md bg-black p-1 md:col-span-2 xl:col-span-3 dark:border">

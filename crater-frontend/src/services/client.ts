@@ -3,7 +3,7 @@ import ky, { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
-import { configAPIPrefixAtom } from '@/utils/store/config'
+import { configAPIBaseAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import {
@@ -18,9 +18,8 @@ import {
 import type { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from './types'
 
 const store = getDefaultStore()
-const apiPrefix = store.get(configAPIPrefixAtom)
-// /api/v1 => /api, remove the tail /v1
-const apiPrefixWithoutVersion = apiPrefix?.replace(/\/v1$/, '')
+const apiBase = store.get(configAPIBaseAtom)
+const baseURL = `${apiBase ?? ''}/api`
 
 // Token 刷新函数
 const refreshTokenFn = async (): Promise<string> => {
@@ -29,7 +28,7 @@ const refreshTokenFn = async (): Promise<string> => {
   }
 
   // 使用基本的 ky 实例避免循环调用
-  const basicClient = ky.create({ prefixUrl: apiPrefixWithoutVersion })
+  const basicClient = ky.create({ prefixUrl: baseURL })
 
   const response = await basicClient
     .post('auth/refresh', { json: data })
@@ -58,7 +57,7 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 // 创建 ky 实例
 export const apiClient = ky.create({
-  prefixUrl: apiPrefixWithoutVersion,
+  prefixUrl: baseURL,
   retry: 0,
   timeout: 10000,
   hooks: {
@@ -239,7 +238,7 @@ export const apiDelete = <T>(url: string, json?: unknown) =>
 /**
  * 支持上传进度的 PUT 请求
  */
-export const apiPutWithProgress = async <T>(
+export const apiXMLPut = async <T>(
   url: string,
   body: ArrayBuffer | Blob,
   onProgress?: (progressEvent: { loaded: number; total: number }) => void
@@ -248,8 +247,7 @@ export const apiPutWithProgress = async <T>(
     const xhr = new XMLHttpRequest()
 
     // 获取完整的 URL
-    const baseUrl = '/api'
-    const fullUrl = `${baseUrl}/${url}`
+    const fullUrl = `${baseURL}/${url}`
 
     xhr.open('PUT', fullUrl)
 
@@ -284,26 +282,6 @@ export const apiPutWithProgress = async <T>(
         // 处理错误响应
         try {
           const errorResponse = JSON.parse(xhr.responseText) as IErrorResponse
-
-          // 根据错误码进行处理
-          switch (errorResponse.code) {
-            case ERROR_TOKEN_INVALID:
-              window.location.href = '/auth'
-              break
-            case ERROR_INVALID_REQUEST:
-              showErrorToast(`请求参数有误, ${errorResponse.msg}`)
-              break
-            case ERROR_USER_NOT_ALLOWED:
-              showErrorToast('用户激活成功，但无关联账户，请联系平台管理员')
-              break
-            case ERROR_USER_EMAIL_NOT_VERIFIED:
-              showErrorToast('接收通知需要验证邮箱，请前往个人主页验证')
-              break
-            default:
-              showErrorToast(errorResponse.msg || '上传失败，请稍后重试')
-              break
-          }
-
           reject(new Error(errorResponse.msg || '上传失败'))
         } catch {
           reject(new Error('上传失败，请稍后重试'))
@@ -326,5 +304,78 @@ export const apiPutWithProgress = async <T>(
 
     // 发送请求
     xhr.send(body)
+  })
+}
+
+/**
+ * 支持下载进度的 GET 请求（使用 XMLHttpRequest）
+ */
+export const apiXMLDownload = async (
+  url: string,
+  filename: string,
+  onProgress?: (progressEvent: { loaded: number; total: number }) => void
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+
+    // 获取完整的 URL
+    const fullUrl = `${baseURL}/${url}`
+
+    xhr.open('GET', fullUrl)
+    xhr.responseType = 'blob'
+
+    // 设置认证头
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    }
+
+    // 监听下载进度
+    if (onProgress) {
+      xhr.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          onProgress({
+            loaded: e.loaded,
+            total: e.total,
+          })
+        }
+      })
+    }
+
+    // 处理响应
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const blob = xhr.response as Blob
+
+        const a = document.createElement('a')
+        a.style.display = 'none'
+        a.download = filename
+        a.href = URL.createObjectURL(blob)
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(a.href)
+        resolve()
+      } else {
+        // 处理错误响应
+        reject(new Error(`下载失败: ${xhr.statusText}`))
+      }
+    })
+
+    // 处理网络错误
+    xhr.addEventListener('error', () => {
+      reject(new Error('网络错误，请检查网络连接'))
+    })
+
+    // 处理超时
+    xhr.addEventListener('timeout', () => {
+      reject(new Error('下载超时，请稍后重试'))
+    })
+
+    // 设置超时时间
+    xhr.timeout = 600000 // 600秒超时（下载可能需要更长时间）
+
+    // 发送请求
+    xhr.send()
   })
 }

@@ -70,19 +70,20 @@ import { IAccount, apiAdminAccountList } from '@/services/api/account'
 import { AccessMode } from '@/services/api/auth'
 import { FileItem, MoveFile, apiFileDelete, apiMkdir, apiMoveFile } from '@/services/api/file'
 import { BaseUserInfo, apiGetBaseUserInfo } from '@/services/api/user'
+import { apiXMLDownload } from '@/services/client'
 import { IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
 
+import { FILE_SIZE_LIMITS, isFileSizeExceeded } from '@/utils/fileSize'
 import { atomBreadcrumb, atomUserContext } from '@/utils/store'
-import { ACCESS_TOKEN_KEY } from '@/utils/store'
-import { configAPIPrefixAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
 import TooltipButton from '../button/tooltip-button'
 import { Badge } from '../ui/badge'
+import { FileDownloadProgress } from './FileDownloadProgress'
 import { FileSelectDialog } from './FileSelectDialog'
 import FolderNavigation from './FolderNavigation'
 
@@ -116,183 +117,207 @@ interface SpacefileTableProps {
 }
 
 const FileActions = ({
-  apiPrefix,
   deleteFile,
   moveFile,
   isDir,
   name,
   path,
   canEdit,
+  size,
 }: {
-  apiPrefix: string
   deleteFile: (path: string) => void
   moveFile: ({ fileData, path }: { fileData: MoveFile; path: string }) => void
   isDir: boolean
   name: string
   path: string
   canEdit: boolean
+  size?: number
 }) => {
   const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
   const { t } = useTranslation()
+
+  const handleDownload = async () => {
+    // 检查文件大小限制
+    if (size && isFileSizeExceeded(size)) {
+      toast.error(t('fileDownload.fileSizeError', { maxSize: FILE_SIZE_LIMITS.MAX_FILE_SIZE_TEXT }))
+      return
+    }
+
+    setIsDownloading(true)
+    setDownloadProgress(0)
+    setIsProcessing(false)
+
+    try {
+      toast.info(t('fileDownload.inProgress'))
+      const downloadPath = `ss/download${path ? (path.startsWith('/') ? path : '/' + path) : ''}/${name}`
+
+      await apiXMLDownload(downloadPath, name, (progressEvent) => {
+        const { loaded, total } = progressEvent
+        const percentCompleted = Math.round((loaded * 100) / total)
+        setDownloadProgress(percentCompleted)
+
+        if (percentCompleted === 100) {
+          setIsProcessing(true)
+        }
+      })
+
+      toast.success(t('fileDownload.success'))
+    } catch (error) {
+      toast.error(
+        t('fileDownload.error', {
+          status: error instanceof Error ? error.message : '未知错误',
+        })
+      )
+    } finally {
+      setTimeout(() => {
+        setIsDownloading(false)
+        setIsProcessing(false)
+        setDownloadProgress(0)
+      }, 1000)
+    }
+  }
   return (
-    <div className="flex flex-row items-center justify-end space-x-1">
-      {/* 下载按钮（仅文件显示）*/}
-      {!isDir ? (
-        <TooltipButton
-          variant="outline"
-          className="size-8 p-0 hover:text-sky-700"
-          tooltipContent={t('fileActions.download.tooltip')}
-          onClick={() => {
-            const baseUrl = new URL(apiPrefix)
-            const fullPath = `ss/download${path ? (path.startsWith('/') ? path : '/' + path) : ''}/${name}`
-            const url = new URL(fullPath, baseUrl)
-            const link = url.toString()
-            const o = new XMLHttpRequest()
-            o.open('GET', link)
-            o.responseType = 'blob'
-            const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-            o.setRequestHeader('Authorization', 'Bearer ' + token)
-            o.onload = function () {
-              if (o.status == 200) {
-                const content = o.response as string
-                const a = document.createElement('a')
-                a.style.display = 'none'
-                a.download = name || ''
-                const blob = new Blob([content])
-                a.href = URL.createObjectURL(blob)
-                document.body.appendChild(a)
-                a.click()
-                document.body.removeChild(a)
-                toast.success(t('fileActions.download.success'))
-              } else {
-                toast.error(
-                  t('fileActions.download.error', {
-                    status: o.statusText,
-                  })
-                )
-              }
-            }
-            o.send()
-            toast.info(t('fileActions.download.inProgress'))
-          }}
-        >
-          <DownloadIcon className="size-4" />
-        </TooltipButton>
-      ) : (
-        <div className="size-8" />
-      )}
-      {/* 移动操作 （有读写权限显示）*/}
-      {canEdit ? (
-        <AlertDialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
-          <AlertDialogTrigger asChild>
-            <div>
-              <TooltipButton
-                className="hover:text-highlight-orange h-8 w-8 p-0"
-                variant="outline"
-                size="icon"
-                tooltipContent={t('fileActions.move.tooltip', {
-                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
-                })}
-              >
-                {isDir ? (
-                  <FolderOutputIcon size={16} strokeWidth={2} />
-                ) : (
-                  <FileOutputIcon size={16} strokeWidth={2} />
-                )}
-              </TooltipButton>
-            </div>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-lg">
-                {t('fileActions.move.title', {
-                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
-                })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                <div className="text-foreground font-medium">
-                  {t('fileActions.move.currentItem', {
+    <>
+      <div className="flex flex-row items-center justify-end space-x-1">
+        {/* 下载按钮（仅文件显示）*/}
+        {!isDir ? (
+          <TooltipButton
+            variant="outline"
+            className="size-8 p-0 hover:text-sky-700"
+            tooltipContent={t('fileActions.download.tooltip')}
+            disabled={isDownloading}
+            onClick={handleDownload}
+          >
+            <DownloadIcon className="size-4" />
+          </TooltipButton>
+        ) : (
+          <div className="size-8" />
+        )}
+        {/* 移动操作 （有读写权限显示）*/}
+        {canEdit ? (
+          <AlertDialog open={isMoveDialogOpen} onOpenChange={setIsMoveDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <div>
+                <TooltipButton
+                  className="hover:text-highlight-orange h-8 w-8 p-0"
+                  variant="outline"
+                  size="icon"
+                  tooltipContent={t('fileActions.move.tooltip', {
+                    type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
+                  })}
+                >
+                  {isDir ? (
+                    <FolderOutputIcon size={16} strokeWidth={2} />
+                  ) : (
+                    <FileOutputIcon size={16} strokeWidth={2} />
+                  )}
+                </TooltipButton>
+              </div>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-lg">
+                  {t('fileActions.move.title', {
+                    type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
+                  })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  <div className="text-foreground font-medium">
+                    {t('fileActions.move.currentItem', {
+                      name,
+                    })}
+                  </div>
+                  <p className="text-sm">{t('fileActions.move.description')}</p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                <AlertDialogAction asChild>
+                  <FileSelectDialog
+                    value=""
+                    handleSubmit={(item) => {
+                      setIsMoveDialogOpen(false)
+                      moveFile({
+                        fileData: {
+                          fileName: name,
+                          dst: item.id + '/' + name,
+                        },
+                        path: `${path}/${name}`,
+                      })
+                    }}
+                    isrw={true}
+                    title="选择要移动到的位置"
+                    disabled={false}
+                    allowSelectFile={!isDir}
+                  />
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <div className="size-8" />
+        )}
+        {/* 删除操作 （有读写权限显示）*/}
+        {canEdit ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <div>
+                <TooltipButton
+                  className="hover:text-destructive h-8 w-8 p-0"
+                  variant="outline"
+                  size="icon"
+                  tooltipContent={t('fileActions.delete.tooltip', {
+                    type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
+                  })}
+                >
+                  <Trash2 size={16} strokeWidth={2} />
+                </TooltipButton>
+              </div>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t('fileActions.delete.title', {
+                    type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
+                  })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('fileActions.delete.description', {
+                    type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
                     name,
                   })}
-                </div>
-                <p className="text-sm">{t('fileActions.move.description')}</p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction asChild>
-                <FileSelectDialog
-                  value=""
-                  handleSubmit={(item) => {
-                    setIsMoveDialogOpen(false)
-                    moveFile({
-                      fileData: {
-                        fileName: name,
-                        dst: item.id + '/' + name,
-                      },
-                      path: `${path}/${name}`,
-                    })
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => {
+                    deleteFile(path + '/' + name)
                   }}
-                  isrw={true}
-                  title="选择要移动到的位置"
-                  disabled={false}
-                  allowSelectFile={!isDir}
-                />
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      ) : (
-        <div className="size-8" />
+                >
+                  {t('common.delete')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <div className="size-8" />
+        )}
+      </div>
+
+      {/* 下载进度显示 */}
+      {(isDownloading || isProcessing) && (
+        <FileDownloadProgress
+          progress={downloadProgress}
+          isProcessing={isProcessing}
+          fileName={name}
+        />
       )}
-      {/* 删除操作 （有读写权限显示）*/}
-      {canEdit ? (
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <div>
-              <TooltipButton
-                className="hover:text-destructive h-8 w-8 p-0"
-                variant="outline"
-                size="icon"
-                tooltipContent={t('fileActions.delete.tooltip', {
-                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
-                })}
-              >
-                <Trash2 size={16} strokeWidth={2} />
-              </TooltipButton>
-            </div>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('fileActions.delete.title', {
-                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
-                })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t('fileActions.delete.description', {
-                  type: isDir ? t('fileActions.type.folder') : t('fileActions.type.file'),
-                  name,
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-              <AlertDialogAction
-                variant="destructive"
-                onClick={() => {
-                  deleteFile(path + '/' + name)
-                }}
-              >
-                {t('common.delete')}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      ) : (
-        <div className="size-8" />
-      )}
-    </div>
+    </>
   )
 }
 
@@ -302,7 +327,6 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
   const navigate = useNavigate()
   const [dirName, setDirName] = useState<string>('')
   const setBreadcrumb = useSetAtom(atomBreadcrumb)
-  const apiPrefix = useAtomValue(configAPIPrefixAtom)
   const isAdmin = useIsAdmin()
   const router = useRouter()
 
@@ -565,23 +589,23 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-          const { isdir, name } = row.original
+          const { isdir, name, size } = row.original
 
           return (
             <FileActions
-              apiPrefix={apiPrefix}
               deleteFile={deleteFile}
               moveFile={moveFile}
               isDir={isdir}
               name={name}
               path={path}
               canEdit={canEdit}
+              size={size}
             />
           )
         },
       },
     ]
-  }, [apiPrefix, deleteFile, moveFile, path, canEdit, t])
+  }, [deleteFile, moveFile, path, canEdit, t])
 
   const nameColumn = useMemo<ColumnDef<FileItem>[]>(() => {
     return [

@@ -23,7 +23,9 @@ import styled, { keyframes } from 'styled-components'
 
 import { Button } from '@/components/ui/button'
 
-import { apiPutWithProgress } from '@/services/client'
+import { apiXMLPut } from '@/services/client'
+
+import { FILE_SIZE_LIMITS, isFileSizeExceeded } from '@/utils/fileSize'
 
 const progressPulse = keyframes`
   0% { left: -50%; }
@@ -150,6 +152,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
     const { files } = event.currentTarget
     if (files && files.length) {
       const Files = Array.from(files)
+
+      // 检查文件大小限制
+      const oversizedFiles = Files.filter((file) => isFileSizeExceeded(file.size))
+
+      if (oversizedFiles.length > 0) {
+        toast.error(t('fileUpload.fileSizeError', { maxSize: FILE_SIZE_LIMITS.MAX_FILE_SIZE_TEXT }))
+        return
+      }
+
       handleUpload(Files)
     }
   }
@@ -165,7 +176,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ uploadPath, disabled }) => {
     const filedataBuffer = await Files[0].arrayBuffer()
 
     try {
-      await apiPutWithProgress(`ss/${uploadPath}/${filename}`, filedataBuffer, (progressEvent) => {
+      await apiXMLPut(`ss/${uploadPath}/${filename}`, filedataBuffer, (progressEvent) => {
         const loaded = progressEvent.loaded || 0
         const total = progressEvent.total || 1
         const percentCompleted = Math.round((loaded * 100) / total)
