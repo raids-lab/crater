@@ -63,12 +63,7 @@ import {
   listApprovalOrders,
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
-import {
-  type IJobInfo,
-  JobPhase,
-  apiAdminGetJobDetail,
-  apiAdminGetJobList,
-} from '@/services/api/vcjob'
+import { type IJobInfo, JobPhase, apiAdminGetJobList } from '@/services/api/vcjob'
 
 import { atomUserInfo } from '@/utils/store'
 
@@ -102,6 +97,9 @@ function RouteComponent() {
   const [isDelayDialogOpen, setIsDelayDialogOpen] = useState(false)
   const [isFetchingJob, setIsFetchingJob] = useState(false)
 
+  // 近 7 天窗口，避免 -1 带来的重负载
+  const JOB_DAYS_WINDOW = 7
+
   const query = useQuery({
     queryKey: ['admin', 'approvalorders'],
     queryFn: () => listApprovalOrders(),
@@ -113,9 +111,10 @@ function RouteComponent() {
 
   // 获取作业列表用于查找对应作业
   const { data: jobList } = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', -1],
-    queryFn: () => apiAdminGetJobList(-1),
+    queryKey: ['admin', 'tasklist', 'job', JOB_DAYS_WINDOW],
+    queryFn: () => apiAdminGetJobList(JOB_DAYS_WINDOW),
     select: (res) => res.data,
+    retry: 1,
   })
 
   const refetchOrders = () => {
@@ -189,7 +188,11 @@ function RouteComponent() {
 
   // 仅弹出对话框，不直接更新工单（支持按需获取 + 状态校验）
   const handleApproveWithDelay = async (order: ApprovalOrder) => {
-    const cached = jobList?.find((j) => j.jobName === order.name || j.name === order.name)
+    const findTarget = (list?: IJobInfo[]) =>
+      list?.find((j) => j.jobName === order.name || j.name === order.name)
+
+    // 先查缓存
+    const cached = findTarget(jobList)
     if (cached) {
       if (!isRunningPhase(cached.status)) {
         toast.error(`该作业当前状态为 ${phaseLabel(cached.status)}，无法延时（仅运行中可延时）`)
@@ -201,54 +204,61 @@ function RouteComponent() {
       return
     }
 
+    // 未命中缓存：优先扩大时间窗口（7 -> 14 -> 30 天）//目前没有管理员通过名称获取作业的接口先采用这种形式
     setIsFetchingJob(true)
     try {
-      const detailRes = await apiAdminGetJobDetail(order.name)
-      const d = detailRes.data
-      if (!d) {
-        toast.error(t('ApprovalOrderTable.toast.jobNotFound'))
-        return
-      }
-      const job: IJobInfo = {
-        name: d.name || order.name,
-        jobName: d.jobName || d.name || order.name,
-        owner: d.username,
-        userInfo: d.userInfo,
-        jobType: d.jobType,
-        queue: d.queue,
-        status: JobPhase[d.status as keyof typeof JobPhase] ?? d.status, // 兼容字符串
-        createdAt: d.createdAt,
-        startedAt: d.startedAt,
-        completedAt: d.completedAt,
-        nodes: [],
-        locked: false,
-        permanentLocked: false,
-      }
+      const tryDays = [JOB_DAYS_WINDOW, 14, 30]
+      let found: IJobInfo | undefined
+      let had502 = false
 
-      if (!isRunningPhase(job.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(job.status)}，无法延时（仅运行中可延时）`)
-        return
-      }
+      for (const d of tryDays) {
+        try {
+          const res = await apiAdminGetJobList(d)
+          const list = res.data ?? []
 
-      queryClient.setQueryData(
-        ['admin', 'tasklist', 'job', -1],
-        (old: { data?: IJobInfo[] } | undefined) => {
-          if (
-            old?.data &&
-            Array.isArray(old.data) &&
-            !old.data.find((j: IJobInfo) => j.jobName === job.jobName)
-          ) {
-            return { ...old, data: [...old.data, job] }
+          // 更新缓存，保持与 useQuery 相同的 queryKey
+          queryClient.setQueryData(['admin', 'tasklist', 'job', d], res)
+
+          const job = findTarget(list)
+          if (job) {
+            found = job
+            break
           }
-          return old
+        } catch (err) {
+          const status = (err as { response?: { status?: number } })?.response?.status
+          if (status === 502) {
+            had502 = true
+            continue
+          }
+          // 其它错误直接抛出
+          throw err
         }
-      )
+      }
+
+      if (!found) {
+        if (had502) {
+          toast.error('后端网关错误（502），请稍后重试或联系管理员扩大检索窗口')
+        } else {
+          toast.error('未找到对应作业，可能不在检索时间范围内')
+        }
+        return
+      }
+
+      if (!isRunningPhase(found.status)) {
+        toast.error(`该作业当前状态为 ${phaseLabel(found.status)}，无法延时（仅运行中可延时）`)
+        return
+      }
 
       setSelectedOrder(order)
-      setSelectedJob(job)
+      setSelectedJob(found)
       setIsDelayDialogOpen(true)
-    } catch {
-      toast.error(t('ApprovalOrderTable.toast.jobNotFound'))
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 502) {
+        toast.error('后端网关错误（502），请稍后重试')
+      } else {
+        toast.error('获取作业列表失败')
+      }
     } finally {
       setIsFetchingJob(false)
     }
