@@ -21,6 +21,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { InfoIcon } from 'lucide-react'
 import { ClockIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -74,7 +75,7 @@ function RouteComponent() {
               type="button"
               className="text-left break-all whitespace-normal underline-offset-4 hover:underline"
               title={`查看 ${row.getValue('name')} 详情`}
-              /*onClick={() => navigate({ to: `${row.original.id}` })}*/
+              onClick={() => toast.info('该功能正在开发中，敬请期待')}
             >
               {row.getValue('name')}
             </button>
@@ -135,7 +136,7 @@ function RouteComponent() {
               <DropdownMenuLabel className="text-muted-foreground text-xs">
                 {t('ApprovalOrderTable.actions.menuLabel')}
               </DropdownMenuLabel>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info('该功能正在开发中，敬请期待')}>
                 <InfoIcon className="text-highlight-emerald" />
                 {t('ApprovalOrderTable.actions.viewDetails')}
               </DropdownMenuItem>
