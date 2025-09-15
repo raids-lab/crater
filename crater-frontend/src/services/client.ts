@@ -7,6 +7,7 @@ import { configAPIBaseAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import {
+  ERROR_BACKEND,
   ERROR_INVALID_REQUEST,
   ERROR_NOT_SPECIFIED,
   ERROR_TOKEN_EXPIRED,
@@ -156,6 +157,9 @@ export async function apiRequest<T>(
             break
           case ERROR_USER_EMAIL_NOT_VERIFIED:
             showErrorToast('接收通知需要验证邮箱，请前往个人主页验证')
+            break
+          case ERROR_BACKEND:
+            showErrorToast(`${errorResponse.msg}`)
             break
           case ERROR_NOT_SPECIFIED:
             showErrorToast(error)

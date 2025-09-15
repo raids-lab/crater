@@ -30,4 +30,5 @@ export const ERROR_INVALID_CREDENTIALS: ErrorCode = 40106
 export const ERROR_USER_NOT_ALLOWED: ErrorCode = 40301
 export const ERROR_USER_EMAIL_NOT_VERIFIED: ErrorCode = 40302
 export const ERROR_SERVICE_SSHD_NOT_FOUND: ErrorCode = 40401
+export const ERROR_BACKEND: ErrorCode = 50001
 export const ERROR_NOT_SPECIFIED: ErrorCode = 99999
