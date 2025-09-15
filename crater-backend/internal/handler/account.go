@@ -12,6 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
@@ -64,6 +65,7 @@ func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("userIn/:aid", mgr.GetUserInProject)
 	g.GET("userOutOf/:aid", mgr.GetUserOutOfProject)
 	g.DELETE(":aid/:uid", mgr.DeleteUserProject)
+	g.PUT("userIn/:aid", mgr.PutUserInProject)
 }
 
 type (
@@ -923,6 +925,92 @@ func (mgr *AccountMgr) GetUserInProject(c *gin.Context) {
 	}
 
 	resputil.Success(c, resp)
+}
+
+type PutUserInProjectUriReq struct {
+	AccountId uint `uri:"aid" binding:"required"`
+}
+
+type PutUserInProjectReq struct {
+	UserId     uint                                  `json:"uid" binding:"required"`
+	Role       *string                               `json:"role"`
+	AccessMode *string                               `json:"accessmode" gorm:"access_mode"`
+	Quota      *datatypes.JSONType[model.QueueQuota] `json:"quota"`
+}
+
+type PutUserInProjectResp struct {
+	AccountId uint `json:"aid" binding:"required"`
+	UserId    uint `json:"uid" binding:"required"`
+}
+
+func (mgr *AccountMgr) PutUserInProject(c *gin.Context) {
+	uriReq := PutUserInProjectUriReq{}
+	req := &PutUserInProjectReq{}
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	if err := c.ShouldBindJSON(req); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	uq := query.UserAccount
+	var (
+		role, access uint64
+		err          error
+		updates      = make(map[string]any)
+	)
+	if req.Role != nil {
+		if role, err = strconv.ParseUint(*req.Role, 10, 8); err != nil {
+			resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+			return
+		}
+		updates["role"] = model.Role(uint8(role))
+	}
+	if req.AccessMode != nil {
+		if access, err = strconv.ParseUint(*req.AccessMode, 10, 8); err != nil {
+			resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+			return
+		}
+		updates["access_mode"] = model.AccessMode(uint8(access))
+	}
+	if req.Quota != nil {
+		validResourceFormat := "validate PutUserInProject parameters failed, detail: %s"
+		if err := checkResource(c, req.Quota.Data().Guaranteed); err != nil {
+			resputil.Error(c, fmt.Sprintf(validResourceFormat, err.Error()), resputil.NotSpecified)
+			return
+		}
+		if err := checkResource(c, req.Quota.Data().Deserved); err != nil {
+			resputil.Error(c, fmt.Sprintf(validResourceFormat, err.Error()), resputil.NotSpecified)
+			return
+		}
+		if err := checkResource(c, req.Quota.Data().Capability); err != nil {
+			resputil.Error(c, fmt.Sprintf(validResourceFormat, err.Error()), resputil.NotSpecified)
+			return
+		}
+		updates["quota"] = *req.Quota
+	}
+
+	_, err = uq.WithContext(c).Where(uq.AccountID.Eq(uriReq.AccountId), uq.UserID.Eq(req.UserId)).Updates(updates)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to create or update user in project, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	klog.Infof("user %d in account %d updated, data:%+v", req.UserId, uriReq.AccountId, updates)
+	ret := &PutUserInProjectResp{
+		AccountId: uriReq.AccountId,
+		UserId:    req.UserId,
+	}
+	resputil.Success(c, ret)
+}
+
+func checkResource(_ *gin.Context, ls v1.ResourceList) error {
+	for k, v := range ls {
+		if i, ok := v.AsInt64(); ok && i < 0 {
+			return fmt.Errorf("resource %s invalid, is %d", k, i)
+		}
+	}
+	return nil
 }
 
 // / GetUserOutOfProject godoc

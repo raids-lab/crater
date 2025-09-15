@@ -227,6 +227,7 @@ definitions:
     - 40301
     - 40302
     - 40401
+    - 50001
     - 99999
     type: integer
     x-enum-varnames:
@@ -241,6 +242,7 @@ definitions:
     - UserNotAllowed
     - UserEmailNotVerified
     - ServiceSshdNotFound
+    - ServiceError
     - NotSpecified
   github_com_raids-lab_crater_internal_resputil.Response-any:
     properties:

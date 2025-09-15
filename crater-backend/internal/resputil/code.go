@@ -27,6 +27,8 @@ const (
 	// Container related
 	ServiceSshdNotFound ErrorCode = 40401
 
+	ServiceError ErrorCode = 50001
+
 	// Indicates laziness of the developer
 	// Frontend will directly print the message without any translation
 	NotSpecified ErrorCode = 99999

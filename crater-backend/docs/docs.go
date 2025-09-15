@@ -7627,6 +7627,7 @@ const docTemplate = `{
                 40301,
                 40302,
                 40401,
+                50001,
                 99999
             ],
             "x-enum-varnames": [
@@ -7641,6 +7642,7 @@ const docTemplate = `{
                 "UserNotAllowed",
                 "UserEmailNotVerified",
                 "ServiceSshdNotFound",
+                "ServiceError",
                 "NotSpecified"
             ]
         },

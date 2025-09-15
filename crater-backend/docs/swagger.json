@@ -7619,6 +7619,7 @@
                 40301,
                 40302,
                 40401,
+                50001,
                 99999
             ],
             "x-enum-varnames": [
@@ -7633,6 +7634,7 @@
                 "UserNotAllowed",
                 "UserEmailNotVerified",
                 "ServiceSshdNotFound",
+                "ServiceError",
                 "NotSpecified"
             ]
         },
