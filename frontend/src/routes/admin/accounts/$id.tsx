@@ -63,7 +63,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import ResourceBadges from '@/components/badge/ResourceBadges'
+import CapacityBadges from '@/components/badge/CapacityBadges'
 import UserAccessBadge from '@/components/badge/UserAccessBadge'
 import UserRoleBadge, { userRoles } from '@/components/badge/UserRoleBadge'
 import SelectBox from '@/components/custom/SelectBox'
@@ -102,6 +102,8 @@ import {
 } from '@/services/api/account'
 import { queryAccountByID } from '@/services/query/account'
 
+import useIsAdmin from '@/hooks/use-admin'
+
 import Quota from './-components/account-quota'
 
 export const Route = createFileRoute('/admin/accounts/$id')({
@@ -131,9 +133,9 @@ const formSchema = z.object({
 
 function RouteComponent() {
   const { t } = useTranslation()
-  const id = Route.useParams().id
+  const aid = Route.useParams().id
   const queryClient = useQueryClient()
-  const pid = useMemo(() => Number(id), [id])
+  const pid = useMemo(() => Number(aid), [aid])
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
 
@@ -222,6 +224,9 @@ function RouteComponent() {
     setUsersOutOfProject(usersOutOfProjectData)
   }, [usersOutOfProjectData, isLoadingUsersOutOfProject])
 
+  const isAdmin = useIsAdmin()
+  const editable = isAdmin
+
   const columns = useMemo<ColumnDef<IUserInAccount>[]>(
     () => [
       {
@@ -272,7 +277,15 @@ function RouteComponent() {
           />
         ),
         cell: ({ row }) => {
-          return <ResourceBadges resources={row.original.quota.capability} />
+          // return <ResourceBadges resources={row.original.quota.capability} />
+          return (
+            <CapacityBadges
+              aid={Number(aid)}
+              uid={row.original.id}
+              quota={row.original.quota}
+              editable={editable}
+            />
+          )
         },
         enableSorting: false,
       },
@@ -383,7 +396,7 @@ function RouteComponent() {
         },
       },
     ],
-    [deleteUser, updateUser, t, accessModes]
+    [aid, editable, deleteUser, updateUser, t, accessModes]
   )
 
   const toolbarConfig: DataTableToolbarConfig = {
