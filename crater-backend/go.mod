@@ -5,7 +5,6 @@ go 1.24.0
 toolchain go1.24.4
 
 require (
-	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-gormigrate/gormigrate/v2 v2.1.4
 	github.com/go-ldap/ldap/v3 v3.4.8
@@ -30,7 +29,7 @@ require (
 	gorm.io/datatypes v1.2.6
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gen v0.3.27
-	gorm.io/gorm v1.30.0
+	gorm.io/gorm v1.31.0
 	gorm.io/plugin/dbresolver v1.6.0
 	k8s.io/api v0.33.2
 	k8s.io/apimachinery v0.33.2
@@ -39,6 +38,7 @@ require (
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/scheduler-plugins v0.31.8
+	sigs.k8s.io/yaml v1.4.0
 	volcano.sh/apis v1.12.1
 )
 
@@ -146,5 +146,4 @@ require (
 	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0 // indirect
-	sigs.k8s.io/yaml v1.4.0 // indirect
 )
