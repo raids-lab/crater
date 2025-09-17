@@ -87,7 +87,7 @@ func CheckJupyterLimitBeforeCreateJupyter(
 		return err
 	}
 
-	maxJupyterCount := 1 // default 1 if not set
+	maxJupyterCount := -1 // default -1 means no limit
 
 	ac := query.Account
 	var userDefaultQuota datatypes.JSONType[model.QueueQuota]
@@ -107,6 +107,11 @@ func CheckJupyterLimitBeforeCreateJupyter(
 		if v, ok := uqQuota[v1.ResourceName(model.JobTypeJupyter)]; ok {
 			maxJupyterCount = int(v.Value())
 		}
+	}
+
+	if maxJupyterCount == -1 {
+		// no limit
+		return nil
 	}
 
 	if jupyterCount >= int64(maxJupyterCount) {
