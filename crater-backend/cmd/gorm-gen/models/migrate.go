@@ -540,6 +540,21 @@ func main() {
 				return tx.Migrator().DropTable(&model.ResourceVGPU{})
 			},
 		},
+		{
+			ID: "202509171000",
+			Migrate: func(tx *gorm.DB) error {
+				type Account struct {
+					UserDefaultQuota datatypes.JSONType[model.QueueQuota] `gorm:"comment:账户中用户默认的资源配额模版"`
+				}
+				return tx.Migrator().AddColumn(&Account{}, "UserDefaultQuota")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Account struct {
+					UserDefaultQuota datatypes.JSONType[model.QueueQuota] `gorm:"comment:账户中用户默认的资源配额模版"`
+				}
+				return tx.Migrator().DropColumn(&Account{}, "UserDefaultQuota")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
