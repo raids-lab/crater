@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"time"
 
 	"encoding/json"
@@ -13,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -219,15 +221,44 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		return
 	}
 
-	// 2. 创建审批工单
+	// 2. 检查是否满足自动审批条件
+	autoApproved := false
+	autoApprovalReason := "whitout review，approved due to system"
+
+	canAutoApprove, err := mgr.checkAutoApprovalEligibility(c, token.UserID, &req)
+	if err != nil {
+		klog.Errorf("failed to check auto approval eligibility, userID: %d, err: %v", token.UserID, err)
+		resputil.Error(c, "failed to check recent orders", resputil.NotSpecified)
+		return
+	}
+
+	if canAutoApprove {
+		// 尝试锁定作业
+		if err := mgr.lockJobForApproval(c, req.Name, req.ExtensionHours); err != nil {
+			klog.Errorf("failed to lock job for auto approval, jobName: %s, err: %v", req.Name, err)
+			// 锁定失败时不进行自动审批，但继续创建工单
+		} else {
+			autoApproved = true
+		}
+	}
+
+	// 3. 创建审批工单
+	orderStatus := model.ApprovalOrderStatusPending
+	orderReason := req.Reason
+
+	if autoApproved {
+		orderStatus = model.ApprovalOrderStatusApproved
+		orderReason = autoApprovalReason
+	}
+
 	order := model.ApprovalOrder{
 		Name:   req.Name,
 		Type:   req.Type,
-		Status: model.ApprovalOrderStatusPending,
+		Status: orderStatus,
 		Content: datatypes.NewJSONType(model.ApprovalOrderContent{
 			ApprovalOrderTypeID:         req.TypeID,
 			ApprovalOrderExtensionHours: req.ExtensionHours,
-			ApprovalOrderReason:         req.Reason,
+			ApprovalOrderReason:         orderReason,
 		}),
 		CreatorID: token.UserID,
 	}
@@ -237,7 +268,13 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		resputil.Error(c, "failed to create approval order", resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, "create approvalorder successfully")
+
+	message := "create approvalorder successfully"
+	if autoApproved {
+		message = "create approvalorder successfully and auto-approved with job locked"
+	}
+
+	resputil.Success(c, message)
 }
 
 type UpdateApprovalOrder struct {
@@ -506,4 +543,76 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 	}
 
 	return resp
+}
+
+// checkAutoApprovalEligibility 检查是否满足自动审批条件
+func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID uint, req *ApprovalOrderreq) (bool, error) {
+	// 只有作业类型且延长时间小于12小时才可能自动审批
+	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours >= 12 {
+		return false, nil
+	}
+
+	// 查询该用户48小时内的所有工单
+	ao := query.ApprovalOrder
+	fortyEightHoursAgo := time.Now().Add(-48 * time.Hour)
+
+	recentOrders, err := ao.WithContext(c).
+		Where(ao.CreatorID.Eq(userID)).
+		Where(ao.CreatedAt.Gt(fortyEightHoursAgo)).
+		Find()
+
+	if err != nil {
+		return false, err
+	}
+
+	// 检查是否所有工单的ApprovalOrderReason都不为自动审批原因
+	autoApprovalReason := "whitout review，approved due to system"
+	for _, order := range recentOrders {
+		content := unmarshalApprovalOrderContent(order.Content)
+		if content.ApprovalOrderReason == autoApprovalReason {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
+
+// lockJobForApproval 为审批工单锁定作业
+func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, extensionHours uint) error {
+	jobDB := query.Job
+
+	// 查找作业
+	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).First()
+	if err != nil {
+		return err
+	}
+
+	// 检查是否已经永久锁定
+	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
+		return fmt.Errorf("job %s is already permanently locked", jobName)
+	}
+
+	// 检查延长小时数是否在合理范围内，防止整数溢出
+	const maxHours = 1440 // 两个月的小时数，作为合理的上限
+	if extensionHours > maxHours {
+		return fmt.Errorf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours)
+	}
+
+	// 计算锁定时间：基于当前锁定时间或当前时间 + 延长小时数
+	lockTime := utils.GetLocalTime()
+	if j.LockedTimestamp.After(utils.GetLocalTime()) {
+		lockTime = j.LockedTimestamp
+	}
+
+	// 安全地转换为 Duration，已经确保 extensionHours 在合理范围内
+	extensionDuration := time.Duration(extensionHours) * time.Hour
+	lockTime = lockTime.Add(extensionDuration)
+
+	// 更新作业锁定时间
+	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
+		return err
+	}
+
+	klog.Infof("auto-locked job %s until %s", jobName, lockTime.Format("2006-01-02 15:04:05"))
+	return nil
 }
