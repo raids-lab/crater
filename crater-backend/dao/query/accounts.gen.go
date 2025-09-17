@@ -37,6 +37,7 @@ func newAccount(db *gorm.DB, opts ...gen.DOOption) account {
 	_account.Space = field.NewString(tableName, "space")
 	_account.ExpiredAt = field.NewTime(tableName, "expired_at")
 	_account.Quota = field.NewField(tableName, "quota")
+	_account.UserDefaultQuota = field.NewField(tableName, "user_default_quota")
 	_account.UserAccounts = accountHasManyUserAccounts{
 		db: db.Session(&gorm.Session{}),
 
@@ -57,17 +58,18 @@ func newAccount(db *gorm.DB, opts ...gen.DOOption) account {
 type account struct {
 	accountDo accountDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	Name         field.String // 账户名称 (对应 Volcano Queue CRD)
-	Nickname     field.String // 账户别名 (用于显示)
-	Space        field.String // 账户空间绝对路径
-	ExpiredAt    field.Time   // 账户过期时间
-	Quota        field.Field  // 账户对应队列的资源配额
-	UserAccounts accountHasManyUserAccounts
+	ALL              field.Asterisk
+	ID               field.Uint
+	CreatedAt        field.Time
+	UpdatedAt        field.Time
+	DeletedAt        field.Field
+	Name             field.String // 账户名称 (对应 Volcano Queue CRD)
+	Nickname         field.String // 账户别名 (用于显示)
+	Space            field.String // 账户空间绝对路径
+	ExpiredAt        field.Time   // 账户过期时间
+	Quota            field.Field  // 账户对应队列的资源配额
+	UserDefaultQuota field.Field  // 账户中用户默认的资源配额模版
+	UserAccounts     accountHasManyUserAccounts
 
 	AccountDatasets accountHasManyAccountDatasets
 
@@ -95,6 +97,7 @@ func (a *account) updateTableName(table string) *account {
 	a.Space = field.NewString(table, "space")
 	a.ExpiredAt = field.NewTime(table, "expired_at")
 	a.Quota = field.NewField(table, "quota")
+	a.UserDefaultQuota = field.NewField(table, "user_default_quota")
 
 	a.fillFieldMap()
 
@@ -119,7 +122,7 @@ func (a *account) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *account) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 11)
+	a.fieldMap = make(map[string]field.Expr, 12)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt
@@ -129,6 +132,7 @@ func (a *account) fillFieldMap() {
 	a.fieldMap["space"] = a.Space
 	a.fieldMap["expired_at"] = a.ExpiredAt
 	a.fieldMap["quota"] = a.Quota
+	a.fieldMap["user_default_quota"] = a.UserDefaultQuota
 
 }
 
