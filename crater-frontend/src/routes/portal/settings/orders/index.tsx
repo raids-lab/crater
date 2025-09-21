@@ -81,7 +81,7 @@ function RouteComponent() {
             </button>
             {row.original.type === 'job' && Number(extHours) > 0 && (
               <div
-                title={`延时 ${extHours} 小时`}
+                title={`锁定 ${extHours} 小时`}
                 className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded px-2 py-1 text-xs"
               >
                 <ClockIcon className="h-3 w-3" />

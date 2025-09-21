@@ -32,7 +32,7 @@ export enum ApprovalOrderStatus {
 export const approvalOrderTypes = [
   {
     value: 'job',
-    label: '作业延时',
+    label: '作业锁定',
   },
   {
     value: 'dataset',
@@ -69,9 +69,9 @@ const getApprovalOrderTypeLabel = (
   switch (type) {
     case ApprovalOrderType.Job:
       return {
-        label: '作业延时',
+        label: '作业锁定',
         color: 'text-highlight-blue bg-highlight-blue/10',
-        description: '作业延时',
+        description: '作业锁定',
       }
     case ApprovalOrderType.Dataset:
       return {
@@ -81,9 +81,9 @@ const getApprovalOrderTypeLabel = (
       }
     default:
       return {
-        label: '作业延时',
+        label: '作业锁定',
         color: 'text-highlight-blue bg-highlight-blue/10',
-        description: '作业延时',
+        description: '作业锁定',
       }
   }
 }

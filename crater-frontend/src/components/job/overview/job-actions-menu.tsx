@@ -82,16 +82,17 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
     []
   )
 
-  const canExtend = jobStatus === JobStatus.Running
+  // 暂时隐藏申请锁定功能，工单审批功能不完善
+  const canExtend = false // jobStatus === JobStatus.Running
 
   const handleExtensionSubmit = async () => {
     if (!canExtend) {
-      toast.error('当前作业不是运行中，无法申请延时')
+      toast.error('当前作业不是运行中，无法申请锁定')
       return
     }
     const hours = duration.totalHours
     if (hours < 1 || !reason.trim()) {
-      toast.error('延时时长必须至少为 1 小时，并填写申请原因')
+      toast.error('锁定时长必须至少为 1 小时，并填写申请原因')
       return
     }
 
@@ -108,9 +109,9 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
       setExtensionDialogOpen(false)
       setDuration({ days: 0, hours: 0, totalHours: 0 })
       setReason('')
-      toast.success('创建延时申请成功')
+      toast.success('创建锁定申请成功')
     } catch (error) {
-      toast.error('创建延时申请失败:' + (error instanceof Error ? error.message : '未知错误'))
+      toast.error('创建锁定申请失败:' + (error instanceof Error ? error.message : '未知错误'))
     } finally {
       setIsSubmitting(false)
     }
@@ -145,7 +146,7 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
                 <DialogTrigger asChild>
                   <button className="flex w-full items-center gap-2 px-2 py-1.5 text-sm">
                     <ClockIcon className="text-highlight-blue size-4" />
-                    申请延时
+                    申请锁定
                   </button>
                 </DialogTrigger>
               </DropdownMenuItem>
@@ -172,9 +173,9 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
         {canExtend && (
           <DialogContent className="w-full sm:max-w-[760px] md:max-w-[880px]">
             <DialogHeader>
-              <DialogTitle>申请作业延时</DialogTitle>
+              <DialogTitle>申请作业锁定</DialogTitle>
               <DialogDescription>
-                为作业 “{jobInfo.jobName}” 申请延时，需要管理员审批。
+                为作业 “{jobInfo.jobName}” 申请锁定，需要管理员审批。
               </DialogDescription>
 
               <div className="bg-muted/40 mt-4 rounded-md p-4">
@@ -211,7 +212,7 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
                 <Textarea
                   id="reason"
                   className="col-span-3 min-h-[96px] resize-y"
-                  placeholder="请说明申请延时的原因(必填)..."
+                  placeholder="请说明申请锁定的原因(必填)..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={4}

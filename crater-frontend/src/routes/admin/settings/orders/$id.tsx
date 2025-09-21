@@ -15,8 +15,11 @@
  */
 // i18n-processed-v1.1.0
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { DatasetOrderDetail } from '@/components/approvalorder/DatasetOrderDetail'
 
 import { adminGetApprovalOrder } from '@/services/api/approvalorder'
 
@@ -35,12 +38,20 @@ function RouteComponent() {
   const { t } = useTranslation()
   const { id } = Route.useParams()
   const { type } = Route.useSearch()
+  const navigate = useNavigate()
 
   const query = useQuery({
     queryKey: ['admin', 'approvalorder', id],
     queryFn: () => adminGetApprovalOrder(Number(id)),
     select: (res) => res.data,
   })
+
+  // 当 type 为 job 且数据加载完成时，直接跳转到作业详情页面
+  useEffect(() => {
+    if (type === 'job' && query.data && !query.isLoading) {
+      navigate({ to: '/admin/jobs/$name', params: { name: query.data.name } })
+    }
+  }, [type, query.data, query.isLoading, navigate])
 
   if (query.isLoading) {
     return <div>{t('common.loading')}</div>
@@ -50,30 +61,33 @@ function RouteComponent() {
     return <div>{t('common.error')}</div>
   }
 
-  // 如果是 dataset 类型，显示空白页面
-  if (type === 'dataset') {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-muted-foreground text-lg font-medium">数据集工单详情</h2>
-          <p className="text-muted-foreground mt-2 text-sm">数据集工单详情页面开发中...</p>
-        </div>
-      </div>
-    )
+  const order = query.data
+
+  if (!order) {
+    return <div>工单不存在</div>
   }
 
-  // 对于 job 类型，显示完整详情
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">工单详情</h1>
-        <p className="text-muted-foreground">查看工单的详细信息</p>
-      </div>
+  // 根据工单类型渲染不同的详情组件
+  switch (type) {
+    case 'job':
+      // job 类型会在 useEffect 中跳转，这里只是防止闪烁的后备
+      return <div>{t('common.loading')}</div>
+    case 'dataset':
+      return <DatasetOrderDetail order={order} />
+    default:
+      // 兜底显示基本信息
+      return (
+        <div className="space-y-6 p-6">
+          <div>
+            <h1 className="text-2xl font-bold">工单详情</h1>
+            <p className="text-muted-foreground">查看工单的详细信息</p>
+          </div>
 
-      <div className="rounded-lg border p-6">
-        <h2 className="mb-4 text-lg font-semibold">详细信息</h2>
-        <pre className="overflow-auto text-sm">{JSON.stringify(query.data, null, 2)}</pre>
-      </div>
-    </div>
-  )
+          <div className="rounded-lg border p-6">
+            <h2 className="mb-4 text-lg font-semibold">详细信息</h2>
+            <pre className="overflow-auto text-sm">{JSON.stringify(order, null, 2)}</pre>
+          </div>
+        </div>
+      )
+  }
 }
