@@ -123,7 +123,7 @@ function RouteComponent() {
     })
   }
 
-  // 批准操作（仅用于无需延时的场景）
+  // 批准操作（仅用于无需锁定的场景）
   const { mutate: approveOrder, isPending: isApproving } = useMutation({
     mutationFn: async (order: ApprovalOrder) => {
       await updateApprovalOrder(order.id, {
@@ -168,7 +168,7 @@ function RouteComponent() {
     },
   })
 
-  // 选中工单的延时小时（只用 content.approvalorderExtensionHours，空按 0 处理）
+  // 选中工单的锁定小时（只用 content.approvalorderExtensionHours，空按 0 处理）
   const selectedExtHours = useMemo(() => {
     const n = Number(selectedOrder?.content?.approvalorderExtensionHours)
     return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
@@ -195,7 +195,7 @@ function RouteComponent() {
     const cached = findTarget(jobList)
     if (cached) {
       if (!isRunningPhase(cached.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(cached.status)}，无法延时（仅运行中可延时）`)
+        toast.error(`该作业当前状态为 ${phaseLabel(cached.status)}，无法锁定（仅运行中可锁定）`)
         return
       }
       setSelectedOrder(order)
@@ -245,7 +245,7 @@ function RouteComponent() {
       }
 
       if (!isRunningPhase(found.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(found.status)}，无法延时（仅运行中可延时）`)
+        toast.error(`该作业当前状态为 ${phaseLabel(found.status)}，无法锁定（仅运行中可锁定）`)
         return
       }
 
@@ -332,7 +332,7 @@ function RouteComponent() {
             </button>
             {row.original.type === 'job' && Number(extHours) > 0 && (
               <div
-                title={`延时 ${extHours} 小时`}
+                title={`锁定 ${extHours} 小时`}
                 className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded px-2 py-1 text-xs"
               >
                 <ClockIcon className="h-3 w-3" />
@@ -395,7 +395,14 @@ function RouteComponent() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
 
-              <DropdownMenuItem onClick={() => navigate({ to: `${order.id}` })}>
+              <DropdownMenuItem
+                onClick={() =>
+                  navigate({
+                    to: `${order.id}`,
+                    search: { type: order.type },
+                  })
+                }
+              >
                 <InfoIcon className="text-highlight-emerald" />
                 查看详情
               </DropdownMenuItem>
@@ -413,7 +420,7 @@ function RouteComponent() {
                     disabled={isApproving || isRejecting || isFetchingJob}
                   >
                     <CheckIcon className="text-highlight-green" />
-                    {order.type === 'job' ? '批准并延时' : '批准'}
+                    {order.type === 'job' ? '批准并锁定' : '批准'}
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
@@ -464,10 +471,10 @@ function RouteComponent() {
             icon: ListChecks,
           },
           {
-            title: '作业延时待审批',
+            title: '作业锁定待审批',
             value: pendingJobDelay,
             className: 'text-highlight-purple',
-            description: '类型为作业且申请了延时的待审批工单数',
+            description: '类型为作业且申请了锁定的待审批工单数',
             icon: Hourglass,
           },
           {
@@ -491,7 +498,7 @@ function RouteComponent() {
         columns={columns}
       />
 
-      {/* 延时锁定对话框 */}
+      {/* 锁定锁定对话框 */}
       {selectedJob && selectedOrder && (
         <DurationDialog
           key={`${selectedOrder.id}-${selectedExtHours}`} // 默认值变化时重建

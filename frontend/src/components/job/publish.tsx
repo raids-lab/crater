@@ -180,15 +180,15 @@ export function PublishConfigForm<T extends FieldValues>({
     <SandwichSheet
       isOpen={isOpen}
       onOpenChange={setIsOpen}
-      title={isUpdate ? '更新配置' : '分享配置'}
-      description={isUpdate ? '更新此配置文件' : '将此配置文件分享给其他用户'}
+      title={isUpdate ? '更新模板' : '创建模板'}
+      description={isUpdate ? '更新此模板' : '将此配置创建成模板分享给其他用户'}
       trigger={
         <TooltipButton
           variant="outline"
-          tooltipContent={isUpdate ? '更新已分享的配置' : '与平台用户共享，便于快速复现实验'}
+          tooltipContent={isUpdate ? '更新已分享的模板' : '与平台用户共享，便于快速复现实验'}
         >
           <Share2 />
-          {isUpdate ? '更新配置' : '分享配置'}
+          {isUpdate ? '更新模板' : '创建模板'}
         </TooltipButton>
       }
       className="sm:max-w-2xl"
@@ -209,7 +209,7 @@ export function PublishConfigForm<T extends FieldValues>({
                 }}
               >
                 <Share2 />
-                {isUpdate ? '更新配置' : '分享配置'}
+                {isUpdate ? '更新模板' : '创建模板'}
               </Button>
             }
           >
@@ -219,14 +219,14 @@ export function PublishConfigForm<T extends FieldValues>({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    配置名称
+                    模板名称
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
                   <FormDescription>
-                    给此配置文件起一个名字，将作为配置文件的标题显示
+                    给此模板文件起一个名字，将作为配置文件的标题显示
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -258,7 +258,7 @@ export function PublishConfigForm<T extends FieldValues>({
                   <FormControl>
                     <Textarea {...field} className="min-h-[200px]" />
                   </FormControl>
-                  <FormDescription>关于此配置的详细说明，支持 Markdown 格式</FormDescription>
+                  <FormDescription>关于模板的详细使用说明，支持 Markdown 格式</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
