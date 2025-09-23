@@ -58,6 +58,7 @@ import {
   VolumeMountType,
   convertToResourceList,
   defaultResource,
+  ensureImageCompatibility,
   envsSchema,
   exportToJsonString,
   forwardsSchema,
@@ -103,6 +104,12 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>
 
 const dataProcessor = (data: FormSchema) => {
+  // 处理镜像字段兼容性
+  data.task.image = ensureImageCompatibility(data.task.image) as {
+    imageLink: string
+    archs: string[]
+  }
+
   // 如果需要在不改变 MetadataFormJupyter 版本号的情况下，保持兼容性
   // 可以在这里进行数据转换
 

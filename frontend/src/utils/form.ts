@@ -277,6 +277,36 @@ export const importFromJsonString = <T>(metadata: MetadataFormType, text: string
   return jobInfo.data
 }
 
+// 简化的镜像字段兼容性处理函数
+// 直接处理传入的镜像字段引用，避免复杂的路径递归
+export const ensureImageCompatibility = (
+  imageField: unknown
+): { imageLink: string; archs: string[] } | unknown => {
+  // 如果镜像字段是字符串（旧格式），转换为新格式
+  if (typeof imageField === 'string') {
+    return {
+      imageLink: imageField,
+      archs: ['linux/amd64'],
+    }
+  }
+
+  // 如果是对象但缺少 archs 字段，添加默认值
+  if (
+    typeof imageField === 'object' &&
+    imageField !== null &&
+    'imageLink' in imageField &&
+    !('archs' in imageField)
+  ) {
+    return {
+      ...imageField,
+      archs: ['linux/amd64'],
+    }
+  }
+
+  // 已经是正确格式或者不是镜像对象，直接返回
+  return imageField
+}
+
 export const convertToResourceList = (resource: ResourceSchema): V1ResourceList => {
   const k8sResource: V1ResourceList = {
     cpu: `${resource.cpu}`,

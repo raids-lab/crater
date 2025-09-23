@@ -67,6 +67,7 @@ import {
   VolumeMountType,
   convertToResourceList,
   defaultResource,
+  ensureImageCompatibility,
   envsSchema,
   exportToJsonString,
   forwardsSchema,
@@ -107,6 +108,12 @@ const formSchema = z.object({
 type FormSchema = z.infer<typeof formSchema>
 
 const dataProcessor = (data: FormSchema) => {
+  // 处理镜像字段兼容性
+  data.task.image = ensureImageCompatibility(data.task.image) as {
+    imageLink: string
+    archs: string[]
+  }
+
   // 转换数据格式，确保forwards字段存在
   if (data.forwards === undefined || data.forwards === null) {
     data.forwards = []
