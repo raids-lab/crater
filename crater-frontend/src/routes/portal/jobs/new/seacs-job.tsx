@@ -55,6 +55,7 @@ import { apiJobTemplate, apiSparseCreate } from '@/services/api/vcjob'
 import {
   VolumeMountType,
   convertToResourceList,
+  ensureImageCompatibility,
   envsSchema,
   exportToJsonFile,
   forwardsSchema,
@@ -221,11 +222,9 @@ function RouteComponent() {
       const jobInfo = JSON.parse(response.data)
 
       // 处理 image 字段的兼容性
-      if (jobInfo.data.task?.image && typeof jobInfo.data.task.image === 'string') {
-        jobInfo.data.task.image = {
-          imageLink: jobInfo.data.task.image,
-          archs: [],
-        }
+      jobInfo.data.task.image = ensureImageCompatibility(jobInfo.data.task.image) as {
+        imageLink: string
+        archs: string[]
       }
 
       form.reset(jobInfo.data)
