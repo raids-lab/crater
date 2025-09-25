@@ -30,7 +30,7 @@ require (
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gen v0.3.27
 	gorm.io/gorm v1.31.0
-	gorm.io/plugin/dbresolver v1.6.0
+	gorm.io/plugin/dbresolver v1.6.2
 	k8s.io/api v0.33.2
 	k8s.io/apimachinery v0.33.2
 	k8s.io/client-go v0.33.2
