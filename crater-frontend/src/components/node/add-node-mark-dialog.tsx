@@ -40,7 +40,7 @@ import {
 
 import { TaintEffect } from '@/services/api/cluster'
 
-import FormLabelMust from '../form/FormLabelMust'
+import FormLabelMust from '../form/form-label-must'
 import { DialogType } from './node-mark'
 
 interface AddNodeMarkDialogProps {

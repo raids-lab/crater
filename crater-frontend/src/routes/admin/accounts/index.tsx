@@ -18,7 +18,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import SandwichSheet from '@/components/sheet/SandwichSheet'
+import SandwichSheet from '@/components/sheet/sandwich-sheet'
 
 import { IAccount } from '@/services/api/account'
 

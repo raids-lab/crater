@@ -26,7 +26,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 
-import ResourceBadges from '@/components/badge/ResourceBadges'
+import ResourceBadges from '@/components/badge/resource-badges'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'

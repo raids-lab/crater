@@ -20,16 +20,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
-import { CopyableCommand } from '@/components/codeblock/CopyableCommand'
-import LogDialog from '@/components/codeblock/LogDialog'
-import { NamespacedName } from '@/components/codeblock/PodContainerDialog'
-import JupyterIcon from '@/components/icon/JupyterIcon'
+import { CopyableCommand } from '@/components/codeblock/copyable-command'
+import LogDialog from '@/components/codeblock/log-dialog'
+import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
+import JupyterIcon from '@/components/icon/jupyter-icon'
 import BasicIframe from '@/components/layout/embed/basic-iframe'
 
 import { apiJupyterSnapshot } from '@/services/api/vcjob'
 import { queryJupyterToken } from '@/services/query/job'
 
-import FloatingBall from './-components/FloatingBall'
+import FloatingBall from './-components/floating-ball'
 
 export const Route = createFileRoute('/ingress/jupyter/$name')({
   loader: async ({ context: { queryClient }, params: { name } }) => {

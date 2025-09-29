@@ -42,8 +42,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
-import UserRoleBadge from '@/components/badge/UserRoleBadge'
-import UserStatusBadge from '@/components/badge/UserStatusBadge'
+import UserRoleBadge from '@/components/badge/user-role-badge'
+import UserStatusBadge from '@/components/badge/user-status-badge'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'

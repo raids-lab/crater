@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-import { CopyableCommand } from '@/components/codeblock/CopyableCommand'
+import { CopyableCommand } from '@/components/codeblock/copyable-command'
 
 import { cn } from '@/lib/utils'
 

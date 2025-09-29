@@ -42,7 +42,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import WarningAlert from '@/components/custom/WarningAlert'
+import WarningAlert from '@/components/custom/warning-alert'
 
 import { globalSettings } from '@/utils/store'
 

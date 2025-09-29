@@ -60,7 +60,7 @@ import { queryResources } from '@/services/query/resource'
 
 import { logger } from '@/utils/loglevel'
 
-import AccountSelect from './-components/AccountList'
+import AccountSelect from './-components/account-list'
 
 // 恢复ARM污点Dialog组件
 interface RestoreArmTaintDialogProps {

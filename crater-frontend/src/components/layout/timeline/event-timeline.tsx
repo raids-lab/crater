@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0 (no translatable strings)
 import { Event as KubernetesEvent } from 'kubernetes-types/core/v1'
 
-import TipBadge from '@/components/badge/TipBadge'
+import TipBadge from '@/components/badge/tip-badge'
 import {
   Timeline,
   TimelineBody,
@@ -29,7 +29,7 @@ import {
 
 import { cn } from '@/lib/utils'
 
-import { TimeDistance } from '../../custom/TimeDistance'
+import { TimeDistance } from '../../custom/time-distance'
 
 interface TimelineLayoutProps {
   items: KubernetesEvent[] // Replace any[] with the actual type of items.

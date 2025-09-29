@@ -31,8 +31,11 @@ import { SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import LoadableButton from '@/components/button/loadable-button'
-import SelectBox from '@/components/custom/SelectBox'
-import SandwichSheet, { SandwichLayout, SandwichSheetProps } from '@/components/sheet/SandwichSheet'
+import SelectBox from '@/components/custom/select-box'
+import SandwichSheet, {
+  SandwichLayout,
+  SandwichSheetProps,
+} from '@/components/sheet/sandwich-sheet'
 
 import {
   type ImageAccounts,

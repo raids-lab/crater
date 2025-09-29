@@ -40,16 +40,16 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
-import { VolumeMountsCard } from '@/components/form/DataMountFormField'
-import { EnvFormCard } from '@/components/form/EnvFormField'
-import FormLabelMust from '@/components/form/FormLabelMust'
-import { ImageFormField } from '@/components/form/ImageFormField'
-import { OtherOptionsFormCard } from '@/components/form/OtherOptionsFormField'
+import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
+import { EnvFormCard } from '@/components/form/env-form-field'
+import FormLabelMust from '@/components/form/form-label-must'
+import { ImageFormField } from '@/components/form/image-form-field'
+import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { publishValidateSearch } from '@/components/job/publish'
-import CardTitle from '@/components/label/CardTitle'
+import CardTitle from '@/components/label/card-title'
 import { ProgressBar } from '@/components/ui-custom/colorful-progress'
 
-import { IDlAnalyze, apiDlAnalyze } from '@/services/api/recommend/dlTask'
+import { IDlAnalyze, apiDlAnalyze } from '@/services/api/recommend/dl-task'
 import { apiJobTemplate, apiSparseCreate } from '@/services/api/vcjob'
 
 import {

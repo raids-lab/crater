@@ -63,12 +63,12 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import CapacityBadges from '@/components/badge/CapacityBadges'
-import UserAccessBadge from '@/components/badge/UserAccessBadge'
-import UserRoleBadge, { userRoles } from '@/components/badge/UserRoleBadge'
-import SelectBox from '@/components/custom/SelectBox'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import FormLabelMust from '@/components/form/FormLabelMust'
+import CapacityBadges from '@/components/badge/capacity-badges'
+import UserAccessBadge from '@/components/badge/user-access-badge'
+import UserRoleBadge, { userRoles } from '@/components/badge/user-role-badge'
+import SelectBox from '@/components/custom/select-box'
+import { TimeDistance } from '@/components/custom/time-distance'
+import FormLabelMust from '@/components/form/form-label-must'
 import UserLabel from '@/components/label/user-label'
 import DetailPage, {
   detailLinkOptions,

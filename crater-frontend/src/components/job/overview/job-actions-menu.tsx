@@ -39,7 +39,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
-import { DurationFields } from '@/components/form/DurationFields'
+import { DurationFields } from '@/components/form/duration-fields'
 import { getNewJobLink } from '@/components/job/new-job-button'
 import {
   AlertDialog,

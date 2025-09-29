@@ -38,8 +38,8 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
-import TipBadge from '@/components/badge/TipBadge'
-import { TimeDistance } from '@/components/custom/TimeDistance'
+import TipBadge from '@/components/badge/tip-badge'
+import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import Nothing from '@/components/placeholder/nothing'

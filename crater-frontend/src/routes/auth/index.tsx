@@ -30,8 +30,8 @@ import {
 } from '@/components/ui/alert-dialog'
 
 import DocsButton from '@/components/button/docs-button'
-import CraterIcon from '@/components/icon/CraterIcon'
-import CraterText from '@/components/icon/CraterText'
+import CraterIcon from '@/components/icon/crater-icon'
+import CraterText from '@/components/icon/crater-text'
 import NotFound from '@/components/placeholder/not-found'
 
 import { AuthMode } from '@/services/api/auth'
@@ -40,9 +40,9 @@ import { queryAuthMode } from '@/services/query/auth'
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 import { useTheme } from '@/utils/theme'
 
-import { ForgotPasswordForm } from './-components/ForgotPasswordForm'
-import { SignupForm } from './-components/SignupForm'
+import { ForgotPasswordForm } from './-components/forgot-password-form'
 import { LoginForm } from './-components/login-form'
+import { SignupForm } from './-components/signup-form'
 
 export const Route = createFileRoute('/auth/')({
   validateSearch: (search) => ({

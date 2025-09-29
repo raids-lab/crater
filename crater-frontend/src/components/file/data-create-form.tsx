@@ -33,10 +33,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 
-import { FileSelectDialog } from '@/components/file/FileSelectDialog'
-import FormLabelMust from '@/components/form/FormLabelMust'
-import { TagsInput } from '@/components/form/TagsInput'
-import { SandwichLayout } from '@/components/sheet/SandwichSheet'
+import { FileSelectDialog } from '@/components/file/file-select-dialog'
+import FormLabelMust from '@/components/form/form-label-must'
+import { TagsInput } from '@/components/form/tags-input'
+import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import { apiDatasetCreate } from '@/services/api/dataset'
 

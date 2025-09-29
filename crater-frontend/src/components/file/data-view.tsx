@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import DocsButton from '@/components/button/docs-button'
 import { DataCreateForm } from '@/components/file/data-create-form'
 import DataList from '@/components/layout/data-list'
-import SandwichSheet from '@/components/sheet/SandwichSheet'
+import SandwichSheet from '@/components/sheet/sandwich-sheet'
 
 import { IDataset } from '@/services/api/dataset'
 import { IResponse } from '@/services/types'

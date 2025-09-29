@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-import VisibilityBadge, { Visibility } from '@/components/badge/VisibilityBadge'
+import VisibilityBadge, { Visibility } from '@/components/badge/visibility-badge'
 
 import { cn } from '@/lib/utils'
 

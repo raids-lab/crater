@@ -60,12 +60,12 @@ import {
 
 import { formatBytes } from '@/utils/formatter'
 
-import { UpdateResourceForm } from './-components/Form'
+import { UpdateResourceForm } from './-components/form'
 import {
   NetworkAssociationForm,
   UpdateResourceTypeForm,
   VGPUAssociationForm,
-} from './-components/Form'
+} from './-components/form'
 
 export const Route = createFileRoute('/admin/cluster/resources/')({
   component: Resources,

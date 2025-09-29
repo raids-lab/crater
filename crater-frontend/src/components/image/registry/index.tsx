@@ -44,11 +44,11 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 
-import ImagePhaseBadge from '@/components/badge/ImagePhaseBadge'
+import ImagePhaseBadge from '@/components/badge/image-phase-badge'
 import DocsButton from '@/components/button/docs-button'
 import ListedButton from '@/components/button/listed-button'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import ImageLabel from '@/components/label/ImageLabel'
+import { TimeDistance } from '@/components/custom/time-distance'
+import ImageLabel from '@/components/label/image-label'
 import TooltipLink from '@/components/label/tooltip-link'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
@@ -82,12 +82,12 @@ import { logger } from '@/utils/loglevel'
 import { atomUserInfo } from '@/utils/store'
 
 import { ValidDialog } from '../images/valid-dialog'
-import { CudaBaseImageSheet } from './CudaBaseImageSheet'
-import { DockerfileSheet } from './DockerfileSheet'
-import { EnvdRawSheet } from './EnvdRawSheet'
-import { EnvdSheet } from './EnvdSheet'
-import { PipAptSheet } from './PipAptSheet'
-import { ProjectDetail } from './ProjectDetail'
+import { CudaBaseImageSheet } from './cuda-base-image-sheet'
+import { DockerfileSheet } from './dockerfile-sheet'
+import { EnvdRawSheet } from './envd-raw-sheet'
+import { EnvdSheet } from './envd-sheet'
+import { PipAptSheet } from './pip-apt-sheet'
+import { ProjectDetail } from './project-detail'
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {

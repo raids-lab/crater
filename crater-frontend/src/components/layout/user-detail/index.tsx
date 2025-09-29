@@ -20,13 +20,13 @@ import { useAtomValue } from 'jotai'
 import { Activity, Calendar, Database, GpuIcon, List, User, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import TipBadge from '@/components/badge/TipBadge'
+import TipBadge from '@/components/badge/tip-badge'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
-import LoginHeatmap from '@/components/layout/user-detail/LoginHeatmap'
-import RecentActivity from '@/components/layout/user-detail/RecentActivity'
-import RunningJobs from '@/components/layout/user-detail/RunningJobs'
-import SharedItems from '@/components/layout/user-detail/SharedItems'
+import LoginHeatmap from '@/components/layout/user-detail/login-heatmap'
+import RecentActivity from '@/components/layout/user-detail/recent-activity'
+import RunningJobs from '@/components/layout/user-detail/running-jobs'
+import SharedItems from '@/components/layout/user-detail/shared-items'
 
 import { Role } from '@/services/api/auth'
 import { apiGetUser } from '@/services/api/user'
@@ -35,8 +35,8 @@ import { getUserPseudonym } from '@/utils/pseudonym'
 import { globalHideUsername } from '@/utils/store'
 import { configGrafanaUserAtom } from '@/utils/store/config'
 
-import { TimeDistance } from '../../custom/TimeDistance'
-import { UserAvatar } from './UserAvatar'
+import { TimeDistance } from '../../custom/time-distance'
+import { UserAvatar } from './user-avatar'
 
 export default function UserDetail({ name, ...props }: DetailPageCoreProps & { name: string }) {
   const { t } = useTranslation()

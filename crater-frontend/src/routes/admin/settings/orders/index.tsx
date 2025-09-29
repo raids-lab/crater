@@ -33,11 +33,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-import { ApprovalOrderDataTable } from '@/components/approvalorder/ApprovalOrderDataTable'
+import { ApprovalOrderDataTable } from '@/components/approval-order/approval-order-data-table'
 import {
   type ApprovalOrderActionConfig,
   ApprovalOrderOperations,
-} from '@/components/approvalorder/ApprovalOrderOperations'
+} from '@/components/approval-order/approval-order-operations'
 import { SectionCards } from '@/components/metrics/section-cards'
 
 import {
@@ -47,11 +47,11 @@ import {
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
 
-import { useApprovalOrderLock } from '@/hooks/useApprovalOrderLock'
+import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
 
 import { atomUserInfo } from '@/utils/store'
 
-import { DurationDialog } from '../../jobs/-components/DurationDialog'
+import { DurationDialog } from '../../jobs/-components/duration-dialog'
 
 export const Route = createFileRoute('/admin/settings/orders/')({
   component: RouteComponent,

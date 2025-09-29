@@ -43,7 +43,7 @@ import { Form, FormControl, FormField, FormItem } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 
-import TipBadge from '@/components/badge/TipBadge'
+import TipBadge from '@/components/badge/tip-badge'
 
 import { apiJobScheduleAdmin, apiJobScheduleChangeAdmin } from '@/services/api/vcjob'
 

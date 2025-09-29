@@ -31,9 +31,12 @@ import {
 import { Input } from '@/components/ui/input'
 
 import LoadableButton from '@/components/button/loadable-button'
-import FormLabelMust from '@/components/form/FormLabelMust'
-import { TagsInput } from '@/components/form/TagsInput'
-import SandwichSheet, { SandwichLayout, SandwichSheetProps } from '@/components/sheet/SandwichSheet'
+import FormLabelMust from '@/components/form/form-label-must'
+import { TagsInput } from '@/components/form/tags-input'
+import SandwichSheet, {
+  SandwichLayout,
+  SandwichSheetProps,
+} from '@/components/sheet/sandwich-sheet'
 
 import {
   FetchAllUniqueImageTagObjects,
