@@ -21,6 +21,7 @@ import {
   BarChartBigIcon,
   CalendarIcon,
   CheckCircleIcon,
+  ClipboardListIcon,
   ClockIcon,
   CreditCardIcon,
   FileSlidersIcon,
@@ -89,6 +90,7 @@ import { getDaysDifference } from '@/utils/time'
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import { getNewJobLink } from '../new-job-button'
+import JobOrderList from './JobOrderList'
 import { PodTable } from './PodTable'
 import { SSHPortDialog } from './SSHPortDialog'
 
@@ -372,6 +374,13 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
               )}
             />
           ),
+          scrollable: true,
+        },
+        {
+          key: 'order',
+          icon: ClipboardListIcon,
+          label: '相关工单',
+          children: <JobOrderList jobName={data.jobName} />,
           scrollable: true,
         },
         {

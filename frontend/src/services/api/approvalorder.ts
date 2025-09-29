@@ -59,9 +59,15 @@ export const createApprovalOrder = (data: ApprovalOrderReq) => {
 export const updateApprovalOrder = (id: number, data: ApprovalOrderReq) => {
   return apiV1Put<IResponse<ApprovalOrder>>(`approvalorder/${id}`, data)
 }
+export const listApprovalOrdersbyName = (name: string) => {
+  return apiV1Get<IResponse<ApprovalOrder[]>>(`approvalorder/name/${name}`)
+}
 export const getApprovalOrder = (id: number) => {
   return apiV1Get<IResponse<ApprovalOrder>>(`approvalorder/${id}`)
 }
 export const adminGetApprovalOrder = (id: number) => {
   return apiV1Get<IResponse<ApprovalOrder>>(`admin/approvalorder/${id}`)
+}
+export const checkPendingApprovalOrder = () => {
+  return apiV1Put<IResponse<string>>('admin/approvalorder/check')
 }

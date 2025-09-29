@@ -18,6 +18,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { InfoIcon, Lock, UnlockIcon } from 'lucide-react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -88,6 +89,17 @@ export function DurationDialog({
       hours: defaultHours ?? 0,
     },
   })
+
+  // Update form values when props change
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        isPermanent: false,
+        days: defaultDays ?? 0,
+        hours: defaultHours ?? 0,
+      })
+    }
+  }, [open, defaultDays, defaultHours, form])
 
   // Submit form
   async function onSubmit(values: FormValues) {

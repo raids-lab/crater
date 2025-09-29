@@ -17,53 +17,37 @@
 // Modified code
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import type { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
-import {
-  CheckIcon,
-  ClockIcon,
-  Database,
-  Hourglass,
-  InfoIcon,
-  ListChecks,
-  MoreHorizontal,
-  XIcon,
-} from 'lucide-react'
+import { Database, Hourglass, ListChecks, RefreshCwIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
+import { ApprovalOrderDataTable } from '@/components/approvalorder/ApprovalOrderDataTable'
 import {
-  ApprovalOrderStatus,
-  ApprovalOrderStatusBadge,
-  ApprovalOrderType,
-  ApprovalOrderTypeBadge,
-  approvalOrderStatuses,
-  approvalOrderTypes,
-} from '@/components/badge/ApprovalorderBadge'
-import { getJobPhaseLabel } from '@/components/badge/JobPhaseBadge'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import UserLabel from '@/components/label/user-label'
+  type ApprovalOrderActionConfig,
+  ApprovalOrderOperations,
+} from '@/components/approvalorder/ApprovalOrderOperations'
 import { SectionCards } from '@/components/metrics/section-cards'
-import { DataTable } from '@/components/query-table'
-import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   type ApprovalOrder,
+  checkPendingApprovalOrder,
   listApprovalOrders,
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
-import { type IJobInfo, JobPhase, apiAdminGetJobList } from '@/services/api/vcjob'
+
+import { useApprovalOrderLock } from '@/hooks/useApprovalOrderLock'
 
 import { atomUserInfo } from '@/utils/store'
 
@@ -92,29 +76,38 @@ function RouteComponent() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
-  const [selectedOrder, setSelectedOrder] = useState<ApprovalOrder | null>(null)
-  const [selectedJob, setSelectedJob] = useState<IJobInfo | null>(null)
-  const [isDelayDialogOpen, setIsDelayDialogOpen] = useState(false)
-  const [isFetchingJob, setIsFetchingJob] = useState(false)
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
 
-  // 近 7 天窗口，避免 -1 带来的重负载
-  const JOB_DAYS_WINDOW = 7
+  // 使用锁定管理器 hook
+  const {
+    selectedOrder,
+    selectedJob,
+    selectedExtHours,
+    isDelayDialogOpen,
+    isFetchingJob,
+    handleApproveWithDelay,
+    handleDelaySuccess,
+    setIsDelayDialogOpen,
+  } = useApprovalOrderLock()
 
   const query = useQuery({
     queryKey: ['admin', 'approvalorders'],
     queryFn: () => listApprovalOrders(),
     select: (res) =>
-      [...(res.data ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
-  })
+      [...(res.data ?? [])].sort((a, b) => {
+        // 首先按状态排序：Pending > Approved > Rejected
+        const statusOrder = { Pending: 0, Approved: 1, Rejected: 2 }
+        const aOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 3
+        const bOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 3
 
-  // 获取作业列表用于查找对应作业
-  const { data: jobList } = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', JOB_DAYS_WINDOW],
-    queryFn: () => apiAdminGetJobList(JOB_DAYS_WINDOW),
-    select: (res) => res.data,
-    retry: 1,
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder
+        }
+
+        // 在同一状态内，按创建时间降序排列（最新的在前）
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }),
   })
 
   const refetchOrders = () => {
@@ -168,276 +161,78 @@ function RouteComponent() {
     },
   })
 
-  // 选中工单的锁定小时（只用 content.approvalorderExtensionHours，空按 0 处理）
-  const selectedExtHours = useMemo(() => {
-    const n = Number(selectedOrder?.content?.approvalorderExtensionHours)
-    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
-  }, [selectedOrder])
-
-  const isRunningPhase = (phase: IJobInfo['status']) => {
-    const enumVal = JobPhase[phase as keyof typeof JobPhase]
-    if (enumVal !== undefined) return enumVal === JobPhase.Running
-    return String(phase).toLowerCase() === 'running'
-  }
-
-  const phaseLabel = (phase: IJobInfo['status']) => {
-    const enumVal = JobPhase[phase as keyof typeof JobPhase]
-    if (enumVal !== undefined) return getJobPhaseLabel(enumVal).label
-    return '未知'
-  }
-
-  // 仅弹出对话框，不直接更新工单（支持按需获取 + 状态校验）
-  const handleApproveWithDelay = async (order: ApprovalOrder) => {
-    const findTarget = (list?: IJobInfo[]) =>
-      list?.find((j) => j.jobName === order.name || j.name === order.name)
-
-    // 先查缓存
-    const cached = findTarget(jobList)
-    if (cached) {
-      if (!isRunningPhase(cached.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(cached.status)}，无法锁定（仅运行中可锁定）`)
-        return
-      }
-      setSelectedOrder(order)
-      setSelectedJob(cached)
-      setIsDelayDialogOpen(true)
-      return
-    }
-
-    // 未命中缓存：优先扩大时间窗口（7 -> 14 -> 30 天）//目前没有管理员通过名称获取作业的接口先采用这种形式
-    setIsFetchingJob(true)
-    try {
-      const tryDays = [JOB_DAYS_WINDOW, 14, 30]
-      let found: IJobInfo | undefined
-      let had502 = false
-
-      for (const d of tryDays) {
-        try {
-          const res = await apiAdminGetJobList(d)
-          const list = res.data ?? []
-
-          // 更新缓存，保持与 useQuery 相同的 queryKey
-          queryClient.setQueryData(['admin', 'tasklist', 'job', d], res)
-
-          const job = findTarget(list)
-          if (job) {
-            found = job
-            break
-          }
-        } catch (err) {
-          const status = (err as { response?: { status?: number } })?.response?.status
-          if (status === 502) {
-            had502 = true
-            continue
-          }
-          // 其它错误直接抛出
-          throw err
-        }
-      }
-
-      if (!found) {
-        if (had502) {
-          toast.error('后端网关错误（502），请稍后重试或联系管理员扩大检索窗口')
-        } else {
-          toast.error('未找到对应作业，可能不在检索时间范围内')
-        }
-        return
-      }
-
-      if (!isRunningPhase(found.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(found.status)}，无法锁定（仅运行中可锁定）`)
-        return
-      }
-
-      setSelectedOrder(order)
-      setSelectedJob(found)
-      setIsDelayDialogOpen(true)
-    } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 502) {
-        toast.error('后端网关错误（502），请稍后重试')
-      } else {
-        toast.error('获取作业列表失败')
-      }
-    } finally {
-      setIsFetchingJob(false)
-    }
-  }
-
-  // DurationDialog 成功后再更新工单状态为 Approved
-  const handleDelaySuccess = async () => {
-    if (selectedOrder) {
-      await updateApprovalOrder(selectedOrder.id, {
-        name: selectedOrder.name,
-        type: selectedOrder.type,
-        status: 'Approved',
-        approvalorderTypeID: Number(selectedOrder.content.approvalorderTypeID) || 0,
-        approvalorderReason: String(selectedOrder.content.approvalorderReason || ''),
-        approvalorderExtensionHours: Number(selectedOrder.content.approvalorderExtensionHours) || 0,
-        reviewerID: user?.id || 0,
+  // 查看工单详情
+  const handleViewOrder = (order: ApprovalOrder) => {
+    const orderType = order.type
+    if (orderType === 'job') {
+      navigate({ to: '/admin/jobs/$name', params: { name: order.name } })
+    } else if (orderType === 'dataset') {
+      navigate({
+        to: `${order.id}`,
+        search: (prev) => ({ ...prev, type: 'dataset' }),
       })
-      toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-      refetchOrders()
     }
-    setIsDelayDialogOpen(false)
-    setSelectedOrder(null)
-    setSelectedJob(null)
   }
-  const toolbarConfig: DataTableToolbarConfig = {
-    globalSearch: {
-      enabled: true,
-    },
-    filterOptions: [
-      {
-        key: 'type',
-        title: t('ApprovalOrderTable.column.type'),
-        option: approvalOrderTypes,
+
+  // 创建操作配置
+  const createActionConfig = (order: ApprovalOrder): ApprovalOrderActionConfig => {
+    const isPending = order.status === 'Pending'
+
+    return {
+      view: {
+        show: true,
+        onClick: () =>
+          navigate({
+            to: `${order.id}`,
+            search: { type: order.type },
+          }),
       },
-      {
-        key: 'status',
-        title: t('ApprovalOrderTable.column.status'),
-        option: approvalOrderStatuses,
+      approve: {
+        show: isPending,
+        onClick: (order) => {
+          if (order.type === 'job') {
+            handleApproveWithDelay(order)
+          } else {
+            approveOrder(order)
+          }
+        },
+        label: order.type === 'job' ? '批准并锁定' : '批准',
+        disabled: () => isApproving || isRejecting || isFetchingJob,
       },
-    ],
-    getHeader: getHeader,
+      reject: {
+        show: isPending,
+        onClick: rejectOrder,
+        disabled: () => isApproving || isRejecting,
+      },
+    }
   }
-  const columns: ColumnDef<ApprovalOrder>[] = [
-    {
-      accessorKey: 'name',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.name')} />
-      ),
-      cell: ({ row }) => {
-        const extHours = row.original.content.approvalorderExtensionHours || 0
-        return (
-          <div className="relative flex items-center gap-2">
-            <button
-              type="button"
-              // 原来: "max-w-36 truncate text-left underline-offset-4 hover:underline"
-              className="text-left break-all whitespace-normal underline-offset-4 hover:underline"
-              title={`查看工单 ${row.getValue('name')} 详情`}
-              onClick={() => {
-                const orderType = row.original.type
-                if (orderType === 'job') {
-                  navigate({ to: '/admin/jobs/$name', params: { name: row.original.name } })
-                } else if (orderType === 'dataset') {
-                  navigate({
-                    to: `${row.original.id}`,
-                    search: (prev) => ({ ...prev, type: 'dataset' }),
-                  })
-                }
-              }}
-            >
-              {row.getValue('name')}
-            </button>
-            {row.original.type === 'job' && Number(extHours) > 0 && (
-              <div
-                title={`锁定 ${extHours} 小时`}
-                className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded px-2 py-1 text-xs"
-              >
-                <ClockIcon className="h-3 w-3" />
-                {extHours}h
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: 'nickname',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.creator')} />
-      ),
-      cell: ({ row }) => <UserLabel info={row.original.creator} />,
-    },
-    {
-      accessorKey: 'type',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.type')} />
-      ),
-      cell: ({ row }) => {
-        return <ApprovalOrderTypeBadge type={row.getValue<ApprovalOrderType>('type')} />
-      },
-    },
-    {
-      accessorKey: 'status',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.status')} />
-      ),
-      cell: ({ row }) => {
-        return <ApprovalOrderStatusBadge status={row.getValue<ApprovalOrderStatus>('status')} />
-      },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.createdAt')} />
-      ),
-      cell: ({ row }) => <TimeDistance date={row.getValue('createdAt')} />,
-      sortingFn: 'datetime',
-    },
-    {
-      id: 'actions',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.actions')} />
-      ),
-      cell: ({ row }) => {
-        const order = row.original
-        const isPending = order.status === 'Pending'
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">打开操作菜单</span>
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
 
-              <DropdownMenuItem
-                onClick={() =>
-                  navigate({
-                    to: `${order.id}`,
-                    search: { type: order.type },
-                  })
-                }
-              >
-                <InfoIcon className="text-highlight-emerald" />
-                查看详情
-              </DropdownMenuItem>
+  // 同步作业状态函数
+  const handleSyncJobStatus = async () => {
+    setSyncDialogOpen(true)
+  }
 
-              {isPending && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (order.type === 'job') {
-                        handleApproveWithDelay(order)
-                      } else {
-                        approveOrder(order)
-                      }
-                    }}
-                    disabled={isApproving || isRejecting || isFetchingJob}
-                  >
-                    <CheckIcon className="text-highlight-green" />
-                    {order.type === 'job' ? '批准并锁定' : '批准'}
-                  </DropdownMenuItem>
+  const handleConfirmSync = async () => {
+    setIsSyncing(true)
+    try {
+      const response = await checkPendingApprovalOrder()
 
-                  <DropdownMenuItem
-                    onClick={() => rejectOrder(order)}
-                    disabled={isApproving || isRejecting}
-                  >
-                    <XIcon className="text-destructive" />
-                    拒绝
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      },
-    },
-  ]
+      // 显示详细的同步结果
+      if (response.data) {
+        toast.success(response.data)
+      } else {
+        toast.success('同步作业状态完成')
+      }
+
+      // 刷新工单列表
+      queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
+    } catch (error) {
+      toast.error('同步作业状态失败: ' + (error instanceof Error ? error.message : '未知错误'))
+    } finally {
+      setIsSyncing(false)
+      setSyncDialogOpen(false)
+    }
+  }
 
   // 统计卡片数据
   const totalPending = useMemo(
@@ -487,16 +282,49 @@ function RouteComponent() {
         ]}
         className="lg:col-span-2"
       />
-      <DataTable
+      <ApprovalOrderDataTable
+        query={query}
+        storageKey="admin_approvalorder_management"
         info={{
           title: t('ApprovalOrderTable.info.title'),
           description: t('ApprovalOrderTable.info.description'),
         }}
-        toolbarConfig={toolbarConfig}
-        storageKey="portal_approvalorder_management"
-        query={query}
-        columns={columns}
-      />
+        showExtensionHours={true}
+        onNameClick={handleViewOrder}
+        getHeader={(key: string) => {
+          switch (key) {
+            case 'name':
+              return t('ApprovalOrderTable.column.name')
+            case 'type':
+              return t('ApprovalOrderTable.column.type')
+            case 'status':
+              return t('ApprovalOrderTable.column.status')
+            case 'creator':
+              return t('ApprovalOrderTable.column.creator')
+            case 'createdAt':
+              return t('ApprovalOrderTable.column.createdAt')
+            case 'actions':
+              return t('ApprovalOrderTable.column.actions')
+            default:
+              return key
+          }
+        }}
+        renderActions={(order) => (
+          <ApprovalOrderOperations order={order} config={createActionConfig(order)} />
+        )}
+      >
+        <div className="mb-4">
+          <Button
+            onClick={handleSyncJobStatus}
+            variant="default"
+            className="flex items-center gap-2"
+            disabled={isSyncing}
+          >
+            <RefreshCwIcon className="h-4 w-4" />
+            {isSyncing ? '同步中...' : '同步作业状态'}
+          </Button>
+        </div>
+      </ApprovalOrderDataTable>
 
       {/* 锁定锁定对话框 */}
       {selectedJob && selectedOrder && (
@@ -511,6 +339,30 @@ function RouteComponent() {
           defaultHours={selectedExtHours % 24}
         />
       )}
+
+      {/* 同步作业状态确认对话框 */}
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>同步作业状态</DialogTitle>
+            <DialogDescription>
+              此操作将检查所有待审批的作业工单，如果对应的作业已不在运行状态，将自动取消相应的工单。
+              <br />
+              <span className="text-muted-foreground mt-2 block text-sm">
+                系统会检查每个待审批工单对应的作业状态，确保工单的有效性。
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSyncDialogOpen(false)} disabled={isSyncing}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmSync} disabled={isSyncing}>
+              {isSyncing ? '同步中...' : '确定同步'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
