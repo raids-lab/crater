@@ -352,6 +352,40 @@
                 }
             }
         },
+        "/v1/admin/approvalorder/check": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "检查数据库中待审批且类型为job的工单，如果对应作业不在运行状态则将工单状态更新为canceled",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "检查待审批作业工单有效性",
+                "responses": {
+                    "200": {
+                        "description": "成功返回检查结果消息",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/approvalorder/{id}": {
             "get": {
                 "security": [
@@ -2571,6 +2605,61 @@
                     },
                     "400": {
                         "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/approvalorder/name/{name}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "通过名称获取所有同名审批工单（无需身份验证）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "通过名称获取审批工单",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工单名称",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回工单列表",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "工单不存在",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -7660,6 +7749,23 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/internal_handler.AccountResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.ApprovalOrderResp"
                     }
                 },
                 "msg": {

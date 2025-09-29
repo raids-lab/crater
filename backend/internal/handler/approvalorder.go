@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
 	"k8s.io/klog/v2"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -37,17 +38,139 @@ func (mgr *ApprovalOrderMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ApprovalOrderMgr) RegisterProtected(g *gin.RouterGroup) {
 	// RESTful 风格的路由设计
-	g.GET("", mgr.GetMyApprovalOrders)        // 获取我的审批工单列表
-	g.GET("/:id", mgr.GetApprovalOrder)       // 通过ID获取审批工单详情
-	g.POST("", mgr.CreateApprovalOrder)       // 创建审批工单
-	g.PUT("/:id", mgr.UpdateApprovalOrder)    // 更新审批工单
-	g.DELETE("/:id", mgr.DeleteApprovalOrder) // 删除审批工单
+	g.GET("", mgr.GetMyApprovalOrders)               // 获取我的审批工单列表
+	g.GET("/:id", mgr.GetApprovalOrder)              // 通过ID获取审批工单详情
+	g.POST("", mgr.CreateApprovalOrder)              // 创建审批工单
+	g.PUT("/:id", mgr.UpdateApprovalOrder)           // 更新审批工单
+	g.DELETE("/:id", mgr.DeleteApprovalOrder)        // 删除审批工单
+	g.GET("/name/:name", mgr.GetApprovalOrderByName) // 通过名字获取审批工单
 }
 
 func (mgr *ApprovalOrderMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 管理员接口
-	g.GET("", mgr.ListAllApprovalOrders)     // 获取所有审批工单
-	g.GET("/:id", mgr.GetApprovalOrderAdmin) // 管理员通过ID获取审批工单详情
+	g.GET("", mgr.ListAllApprovalOrders)                // 获取所有审批工单
+	g.GET("/:id", mgr.GetApprovalOrderAdmin)            // 管理员通过ID获取审批工单详情
+	g.PUT("/check", mgr.UpdateApprovalOrderByJobStatus) // 管理员检查待审批的作业锁定工单有效性
+}
+
+// swagger
+//
+//	@Summary		检查待审批作业工单有效性
+//	@Description	检查数据库中待审批且类型为job的工单，如果对应作业不在运行状态则将工单状态更新为canceled
+//	@Tags			approvalorder
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200 {object} resputil.Response[string] "成功返回检查结果消息"
+//	@Failure		500 {object} resputil.Response[any] "服务器错误"
+//	@Router			/v1/admin/approvalorder/check [put]
+func (mgr *ApprovalOrderMgr) UpdateApprovalOrderByJobStatus(c *gin.Context) {
+	klog.Infof("Starting to check pending job approval orders")
+
+	// 1. 查询所有待审批且类型为job的工单
+	ao := query.ApprovalOrder
+	pendingJobOrders, err := ao.WithContext(c).
+		Where(ao.Status.Eq(string(model.ApprovalOrderStatusPending))).
+		Where(ao.Type.Eq(string(model.ApprovalOrderTypeJob))).
+		Find()
+
+	if err != nil {
+		klog.Errorf("failed to query pending job approval orders, err: %v", err)
+		resputil.Error(c, "failed to query pending job orders", resputil.NotSpecified)
+		return
+	}
+
+	if len(pendingJobOrders) == 0 {
+		klog.Infof("no pending job approval orders found")
+		resputil.Success(c, "no pending job approval orders found")
+		return
+	}
+
+	// 2. 检查每个工单对应的作业状态
+	jobDB := query.Job
+	var canceledCount int
+
+	for _, order := range pendingJobOrders {
+		// 查询同名作业
+		job, err := jobDB.WithContext(c).
+			Where(jobDB.JobName.Eq(order.Name)).
+			First()
+
+		if err != nil {
+			// 如果作业不存在，将工单状态更新为取消
+			klog.Warningf("job not found for approval order, orderID: %d, jobName: %s, err: %v",
+				order.ID, order.Name, err)
+
+			if updateErr := mgr.cancelApprovalOrder(c, order.ID, "Job not found"); updateErr != nil {
+				klog.Errorf("failed to cancel approval order %d: %v", order.ID, updateErr)
+				continue
+			}
+
+			canceledCount++
+			continue
+		}
+
+		// 检查作业是否在运行状态
+		if !mgr.isJobRunning(job.Status) {
+			klog.Infof("job is not running, canceling approval order, orderID: %d, jobName: %s, jobStatus: %s",
+				order.ID, order.Name, job.Status)
+
+			reason := fmt.Sprintf("Job is not running (status: %s)", job.Status)
+			if updateErr := mgr.cancelApprovalOrder(c, order.ID, reason); updateErr != nil {
+				klog.Errorf("failed to cancel approval order %d: %v", order.ID, updateErr)
+				continue
+			}
+
+			canceledCount++
+		} else {
+			klog.V(2).Infof("job is running, keeping approval order active, orderID: %d, jobName: %s, jobStatus: %s",
+				order.ID, order.Name, job.Status)
+		}
+	}
+
+	klog.Infof("job approval order check completed, checked: %d, canceled: %d",
+		len(pendingJobOrders), canceledCount)
+
+	message := fmt.Sprintf("job approval order check completed: checked %d orders, canceled %d orders",
+		len(pendingJobOrders), canceledCount)
+	resputil.Success(c, message)
+}
+
+// cancelApprovalOrder 取消审批工单
+func (mgr *ApprovalOrderMgr) cancelApprovalOrder(c *gin.Context, orderID uint, reason string) error {
+	ao := query.ApprovalOrder
+
+	// 更新工单状态为取消，并添加备注说明原因
+	_, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID)).
+		Updates(map[string]any{
+			"status":       string(model.ApprovalOrderStatusCancelled),
+			"review_notes": reason,
+		})
+
+	if err != nil {
+		return fmt.Errorf("failed to update approval order status: %w", err)
+	}
+
+	return nil
+}
+
+// isJobRunning 判断作业是否在运行状态
+func (mgr *ApprovalOrderMgr) isJobRunning(jobStatus batch.JobPhase) bool {
+	// 根据volcano的JobPhase枚举值判断，运行状态包括：
+	// Running, Pending, Inqueue 等状态
+	runningStatuses := []batch.JobPhase{
+		"Running",
+		// 可以根据实际需要添加其他被认为是"运行"状态的状态
+	}
+
+	for _, status := range runningStatuses {
+		if jobStatus == status {
+			return true
+		}
+	}
+
+	return false
 }
 
 type ApprovalOrderResp struct {
@@ -472,6 +595,61 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrder(c *gin.Context) {
 
 	// 5. 转换为响应格式
 	result := convertToApprovalOrderResp(order)
+	resputil.Success(c, result)
+}
+
+type ApprovalOrderNameReq struct {
+	Name string `uri:"name" binding:"required"` // 工单名称
+}
+
+// swagger
+//
+//	@Summary		通过名称获取审批工单
+//	@Description	通过名称获取所有同名审批工单（无需身份验证）
+//	@Tags			approvalorder
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name path string true "工单名称"
+//	@Success		200	{object}	resputil.Response[[]ApprovalOrderResp]	"成功返回工单列表"
+//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		404	{object}	resputil.Response[any]	"工单不存在"
+//	@Failure		500	{object}	resputil.Response[any]	"服务器错误"
+//	@Router			/v1/approvalorder/name/{name} [get]
+func (mgr *ApprovalOrderMgr) GetApprovalOrderByName(c *gin.Context) {
+	// 1. 获取工单名称
+	var nameReq ApprovalOrderNameReq
+	if err := c.ShouldBindUri(&nameReq); err != nil {
+		klog.Errorf("failed to bind request parameters: %v", err)
+		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		return
+	}
+
+	// 2. 查询指定名称的所有工单（不验证身份）
+	ao := query.ApprovalOrder
+	orders, err := ao.WithContext(c).
+		Preload(ao.Creator).  // 预加载创建人信息
+		Preload(ao.Reviewer). // 预加载审批人信息（可能为空）
+		Where(ao.Name.Eq(nameReq.Name)).
+		Order(ao.CreatedAt.Desc()). // 按创建时间倒序排列，最新的在前
+		Find()
+
+	if err != nil {
+		klog.Errorf("failed to query approval orders by name, name: %s, err: %v", nameReq.Name, err)
+		resputil.Error(c, "failed to get approval orders", resputil.NotSpecified)
+		return
+	}
+
+	// 3. 检查是否找到工单
+	if len(orders) == 0 {
+		klog.Infof("no approval orders found for name: %s", nameReq.Name)
+		resputil.Error(c, "no approval orders found with this name", resputil.NotSpecified)
+		return
+	}
+
+	// 4. 转换为响应格式
+	result := convertToApprovalOrderResps(orders)
+	klog.Infof("found %d approval orders for name: %s", len(result), nameReq.Name)
 	resputil.Success(c, result)
 }
 
