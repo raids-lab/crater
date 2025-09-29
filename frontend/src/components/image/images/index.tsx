@@ -53,9 +53,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 
-import VisibilityBadge, { Visibility, visibilityTypes } from '@/components/badge/VisibilityBadge'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import ImageLabel from '@/components/label/ImageLabel'
+import VisibilityBadge, { Visibility, visibilityTypes } from '@/components/badge/visibility-badge'
+import { TimeDistance } from '@/components/custom/time-distance'
+import ImageLabel from '@/components/label/image-label'
 import TooltipLink from '@/components/label/tooltip-link'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'

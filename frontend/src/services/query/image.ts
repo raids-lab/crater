@@ -15,7 +15,7 @@
  */
 import { queryOptions } from '@tanstack/react-query'
 
-import { ComboboxItem } from '@/components/form/Combobox'
+import { ComboboxItem } from '@/components/form/combobox'
 
 import { ImageInfoResponse, apiUserGetKaniko } from '@/services/api/imagepack'
 import { JobType, apiJTaskImageList } from '@/services/api/vcjob'

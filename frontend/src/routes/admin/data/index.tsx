@@ -45,8 +45,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import DatasetTypeLabel, { DatasetType } from '@/components/badge/DatasetTybeBadge'
-import { TimeDistance } from '@/components/custom/TimeDistance'
+import DatasetTypeLabel, { DatasetType } from '@/components/badge/dataset-tybe-badge'
+import { TimeDistance } from '@/components/custom/time-distance'
 import TooltipLink from '@/components/label/tooltip-link'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'

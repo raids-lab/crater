@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import FileSystem from '@/components/file/FileSystemTable'
+import FileSystem from '@/components/file/file-system-table'
 
 import { apiGetFiles } from '@/services/api/file'
 

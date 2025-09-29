@@ -20,11 +20,11 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { ApprovalOrderDataTable } from '@/components/approvalorder/ApprovalOrderDataTable'
+import { ApprovalOrderDataTable } from '@/components/approval-order/approval-order-data-table'
 import {
   ApprovalOrderOperations,
   createViewOnlyConfig,
-} from '@/components/approvalorder/ApprovalOrderOperations'
+} from '@/components/approval-order/approval-order-operations'
 
 import { type ApprovalOrder, listMyApprovalOrder } from '@/services/api/approvalorder'
 

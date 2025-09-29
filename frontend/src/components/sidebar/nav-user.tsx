@@ -61,7 +61,7 @@ import { atomUserContext, atomUserInfo, globalHideUsername, globalLastView } fro
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 import { useTheme } from '@/utils/theme'
 
-import { UserAvatar } from '../layout/user-detail/UserAvatar'
+import { UserAvatar } from '../layout/user-detail/user-avatar'
 
 export function NavUser() {
   const website = useAtomValue(configUrlWebsiteBaseAtom)

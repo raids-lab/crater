@@ -47,12 +47,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import JobPhaseLabel, { jobPhases } from '@/components/badge/JobPhaseBadge'
-import JobTypeLabel, { jobTypes } from '@/components/badge/JobTypeBadge'
-import NodeBadges from '@/components/badge/NodeBadges'
-import ResourceBadges from '@/components/badge/ResourceBadges'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import { JobNameCell } from '@/components/label/JobNameLabel'
+import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
+import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
+import NodeBadges from '@/components/badge/node-badges'
+import ResourceBadges from '@/components/badge/resource-badges'
+import { TimeDistance } from '@/components/custom/time-distance'
+import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
@@ -74,7 +74,7 @@ import { JobPhase } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
 
-import { DurationDialog } from '../../../routes/admin/jobs/-components/DurationDialog'
+import { DurationDialog } from '../../../routes/admin/jobs/-components/duration-dialog'
 
 export type StatusValue =
   | 'Queueing'

@@ -42,11 +42,11 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
-import { FileSelectDialog } from '@/components/file/FileSelectDialog'
 import { DataFormSchema, dataFormSchema } from '@/components/file/data-create-form'
+import { FileSelectDialog } from '@/components/file/file-select-dialog'
 // 假设有更新接口
-import FormLabelMust from '@/components/form/FormLabelMust'
-import { TagsInput } from '@/components/form/TagsInput'
+import FormLabelMust from '@/components/form/form-label-must'
+import { TagsInput } from '@/components/form/tags-input'
 
 import { apiDatasetUpdate } from '@/services/api/dataset'
 

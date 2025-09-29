@@ -40,13 +40,13 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 
-import JobPhaseLabel from '@/components/badge/JobPhaseBadge'
-import JobTypeLabel from '@/components/badge/JobTypeBadge'
+import JobPhaseLabel from '@/components/badge/job-phase-badge'
+import JobTypeLabel from '@/components/badge/job-type-badge'
 import TooltipButton from '@/components/button/tooltip-button'
-import { CodeContent } from '@/components/codeblock/ConfigDialog'
-import { LazyContent } from '@/components/codeblock/Dialog'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import JupyterIcon from '@/components/icon/JupyterIcon'
+import { CodeContent } from '@/components/codeblock/config-dialog'
+import { LazyContent } from '@/components/codeblock/dialog'
+import { TimeDistance } from '@/components/custom/time-distance'
+import JupyterIcon from '@/components/icon/jupyter-icon'
 import PrefixLinkButton from '@/components/job/detail/job-link-button'
 import SimpleTooltip from '@/components/label/simple-tooltip'
 import UserLabel from '@/components/label/user-label'
@@ -81,7 +81,7 @@ import {
   getJobStateType,
 } from '@/services/api/vcjob'
 
-import useFixedLayout from '@/hooks/useFixedLayout'
+import useFixedLayout from '@/hooks/use-fixed-layout'
 
 import { hasNvidiaGPU } from '@/utils/resource'
 import { configGrafanaJobAtom } from '@/utils/store/config'
@@ -90,9 +90,9 @@ import { getDaysDifference } from '@/utils/time'
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import { getNewJobLink } from '../new-job-button'
-import JobOrderList from './JobOrderList'
-import { PodTable } from './PodTable'
-import { SSHPortDialog } from './SSHPortDialog'
+import JobOrderList from './job-order-list'
+import { PodTable } from './pod-table'
+import { SSHPortDialog } from './s-s-h-port-dialog'
 
 export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { jobName: string }) {
   useFixedLayout()

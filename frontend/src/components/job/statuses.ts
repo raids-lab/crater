@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { jobPhases } from '@/components/badge/JobPhaseBadge'
-import { jobTypes } from '@/components/badge/JobTypeBadge'
+import { jobPhases } from '@/components/badge/job-phase-badge'
+import { jobTypes } from '@/components/badge/job-type-badge'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 export const getHeader = (key: string): string => {

@@ -74,11 +74,11 @@ import useIsAdmin from '@/hooks/use-admin'
 import { atomUserInfo } from '@/utils/store'
 
 import TooltipButton from '../button/tooltip-button'
-import { TimeDistance } from '../custom/TimeDistance'
+import { TimeDistance } from '../custom/time-distance'
 import DetailTitle from '../layout/detail-title'
 import { DataTableColumnHeader } from '../query-table/column-header'
-import { FileSizeComponent } from './FileSize'
 import { DatasetUpdateForm } from './data-update-form'
+import { FileSizeComponent } from './file-size'
 
 interface SharedResourceTableProps extends DetailPageCoreProps {
   resourceType: 'model' | 'dataset' | 'sharefile'

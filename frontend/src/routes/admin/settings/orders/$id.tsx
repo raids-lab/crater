@@ -19,7 +19,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { DatasetOrderDetail } from '@/components/approvalorder/DatasetOrderDetail'
+import { DatasetOrderDetail } from '@/components/approval-order/dataset-order-detail'
 
 import { adminGetApprovalOrder } from '@/services/api/approvalorder'
 

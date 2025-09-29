@@ -40,8 +40,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
 import TooltipButton from '@/components/button/tooltip-button'
-import FormLabelMust from '@/components/form/FormLabelMust'
-import SandwichSheet, { SandwichLayout } from '@/components/sheet/SandwichSheet'
+import FormLabelMust from '@/components/form/form-label-must'
+import SandwichSheet, { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import { getJobTemplate } from '@/services/api/jobtemplate'
 import { createJobTemplate, updateJobTemplate } from '@/services/api/jobtemplate'

@@ -31,12 +31,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import JobPhaseLabel, { jobPhases } from '@/components/badge/JobPhaseBadge'
-import JobTypeLabel from '@/components/badge/JobTypeBadge'
-import ResourceBadges from '@/components/badge/ResourceBadges'
-import { TimeDistance } from '@/components/custom/TimeDistance'
+import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
+import JobTypeLabel from '@/components/badge/job-type-badge'
+import ResourceBadges from '@/components/badge/resource-badges'
+import { TimeDistance } from '@/components/custom/time-distance'
 import { getHeader } from '@/components/job/statuses'
-import { JobNameCell } from '@/components/label/JobNameLabel'
+import { JobNameCell } from '@/components/label/job-name-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'

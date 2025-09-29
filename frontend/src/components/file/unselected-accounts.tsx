@@ -25,7 +25,7 @@ import { DialogClose, DialogFooter } from '@/components/ui/dialog'
 import { QueueDataset, apiListQueuesNotInDataset } from '@/services/api/dataset'
 import { IResponse } from '@/services/types'
 
-import SelectBox from '../custom/SelectBox'
+import SelectBox from '../custom/select-box'
 
 interface QueueSelectProps {
   datasetId: number

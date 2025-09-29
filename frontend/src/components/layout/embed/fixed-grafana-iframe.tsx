@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 import { FC } from 'react'
 
-import useFixedLayout from '@/hooks/useFixedLayout'
+import useFixedLayout from '@/hooks/use-fixed-layout'
 
 import GrafanaIframe from './grafana-iframe'
 

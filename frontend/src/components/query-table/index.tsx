@@ -46,10 +46,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
-import LoadingCircleIcon from '@/components/icon/LoadingCircleIcon'
+import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
 import PageTitle from '@/components/layout/page-title'
 
-import usePaginationWithStorage from '@/hooks/usePaginationWithStorage'
+import usePaginationWithStorage from '@/hooks/use-pagination-with-storage'
 
 import { cn } from '@/lib/utils'
 

@@ -20,7 +20,7 @@ import { type FC, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-import NodeStatusBadge, { nodeStatuses } from '@/components/badge/NodeStatusBadge'
+import NodeStatusBadge, { nodeStatuses } from '@/components/badge/node-status-badge'
 import TooltipLink from '@/components/label/tooltip-link'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'

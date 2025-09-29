@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Visibility } from '@/components/badge/VisibilityBadge'
+import { Visibility } from '@/components/badge/visibility-badge'
 
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'

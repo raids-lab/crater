@@ -17,7 +17,7 @@ import { FC, ReactNode } from 'react'
 
 import { cn } from '@/lib/utils'
 
-import TipBadge from '../badge/TipBadge'
+import TipBadge from '../badge/tip-badge'
 import { CopyButton } from '../button/copy-button'
 
 interface PageTitleProps {
