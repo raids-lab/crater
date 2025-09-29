@@ -16,31 +16,15 @@
 // i18n-processed-v1.1.0
 // Modified code
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import type { ColumnDef } from '@tanstack/react-table'
-import { InfoIcon } from 'lucide-react'
-import { ClockIcon } from 'lucide-react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
+import { ApprovalOrderDataTable } from '@/components/approvalorder/ApprovalOrderDataTable'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-
-import {
-  ApprovalOrderStatus,
-  ApprovalOrderStatusBadge,
-  ApprovalOrderType,
-  ApprovalOrderTypeBadge,
-} from '@/components/badge/ApprovalorderBadge'
-import { TimeDistance } from '@/components/custom/TimeDistance'
-import { DataTable } from '@/components/query-table'
-import { DataTableColumnHeader } from '@/components/query-table/column-header'
+  ApprovalOrderOperations,
+  createViewOnlyConfig,
+} from '@/components/approvalorder/ApprovalOrderOperations'
 
 import { type ApprovalOrder, listMyApprovalOrder } from '@/services/api/approvalorder'
 
@@ -50,112 +34,68 @@ export const Route = createFileRoute('/portal/settings/orders/')({
 
 function RouteComponent() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const query = useQuery({
     queryKey: ['portal', 'approvalorders', 'me'],
     queryFn: () => listMyApprovalOrder(),
     select: (res) =>
-      [...(res.data ?? [])].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ),
+      [...(res.data ?? [])].sort((a, b) => {
+        // 先按状态排序：待审批 > 已批准 > 已拒绝
+        const statusOrder = { Pending: 0, Approved: 1, Rejected: 2, Canceled: 3 }
+        const statusDiff = (statusOrder[a.status] ?? 4) - (statusOrder[b.status] ?? 4)
+        if (statusDiff !== 0) return statusDiff
+
+        // 状态相同时按创建时间倒序排列（最新的在前）
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }),
   })
 
-  const columns: ColumnDef<ApprovalOrder>[] = [
-    {
-      accessorKey: 'name',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.name')} />
-      ),
-      cell: ({ row }) => {
-        const extHours = row.original.content.approvalorderExtensionHours || 0
-        return (
-          <div className="relative flex items-center">
-            {/* Use navigate for relative jump instead of typed Link to pattern */}
-            <button
-              type="button"
-              className="text-left break-all whitespace-normal underline-offset-4 hover:underline"
-              title={`查看 ${row.getValue('name')} 详情`}
-              onClick={() => toast.info('该功能正在开发中，敬请期待')}
-            >
-              {row.getValue('name')}
-            </button>
-            {row.original.type === 'job' && Number(extHours) > 0 && (
-              <div
-                title={`锁定 ${extHours} 小时`}
-                className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded px-2 py-1 text-xs"
-              >
-                <ClockIcon className="h-3 w-3" />
-                {extHours}h
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: 'type',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.type')} />
-      ),
-      cell: ({ row }) => {
-        return <ApprovalOrderTypeBadge type={row.getValue<ApprovalOrderType>('type')} />
-      },
-    },
-    {
-      accessorKey: 'status',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.status')} />
-      ),
-      cell: ({ row }) => {
-        return <ApprovalOrderStatusBadge status={row.getValue<ApprovalOrderStatus>('status')} />
-      },
-    },
-    {
-      accessorKey: 'createdAt',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.createdAt')} />
-      ),
-      cell: ({ row }) => <TimeDistance date={row.getValue('createdAt')} />,
-      sortingFn: 'datetime',
-    },
-    {
-      id: 'actions',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('ApprovalOrderTable.column.actions')} />
-      ),
-      cell: () => {
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">{t('ApprovalOrderTable.actions.menuTrigger')}</span>
-                <InfoIcon className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel className="text-muted-foreground text-xs">
-                {t('ApprovalOrderTable.actions.menuLabel')}
-              </DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => toast.info('该功能正在开发中，敬请期待')}>
-                <InfoIcon className="text-highlight-emerald" />
-                {t('ApprovalOrderTable.actions.viewDetails')}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )
-      },
-    },
-  ]
+  const handleViewOrder = (order: ApprovalOrder) => {
+    // 如果是作业类型的工单，跳转到作业详情页面
+    if (order.type === 'job') {
+      const jobName = order.name
+      toast.info(`正在跳转到作业: ${jobName}`)
+      navigate({ to: '/portal/jobs/detail/$name', params: { name: jobName } })
+    } else {
+      // 其他类型工单，显示待实现提示
+      toast.success('查看非作业类型工单功能待实现')
+    }
+  }
+
+  const actionConfig = createViewOnlyConfig(handleViewOrder)
+
+  const getHeader = (key: string): string => {
+    switch (key) {
+      case 'name':
+        return t('ApprovalOrderTable.column.name')
+      case 'type':
+        return t('ApprovalOrderTable.column.type')
+      case 'status':
+        return t('ApprovalOrderTable.column.status')
+      case 'creator':
+        return t('ApprovalOrderTable.column.creator')
+      case 'createdAt':
+        return t('ApprovalOrderTable.column.createdAt')
+      case 'actions':
+        return t('ApprovalOrderTable.column.actions')
+      default:
+        return key
+    }
+  }
 
   return (
-    <DataTable
+    <ApprovalOrderDataTable
+      query={query}
+      storageKey="portal_approvalorder_management"
       info={{
         title: t('ApprovalOrderTable.info.title'),
         description: t('ApprovalOrderTable.info.description'),
       }}
-      storageKey="portal_approvalorder_management"
-      query={query}
-      columns={columns}
+      showExtensionHours={true}
+      onNameClick={handleViewOrder}
+      getHeader={getHeader}
+      renderActions={(order) => <ApprovalOrderOperations order={order} config={actionConfig} />}
     />
   )
 }
