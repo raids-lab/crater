@@ -288,6 +288,8 @@ function NodesForAdmin() {
           const nodeId = row.original.name
           const nodeStatus = row.original.status
           const taints = row.original.taints
+          const unscheduleTaint =
+            taints?.some((t) => t === 'node.kubernetes.io/unschedulable=:NoSchedule') || false
           const occupiedaccount = taints
             ?.find((t) => t.startsWith('crater.raids.io/account'))
             ?.split('=')[1]
@@ -329,14 +331,14 @@ function NodesForAdmin() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
-                  {nodeStatus === NodeStatus.Ready ? (
-                    <BanIcon className="size-4" />
-                  ) : (
+                  {unscheduleTaint ? (
                     <ZapIcon className="size-4" />
+                  ) : (
+                    <BanIcon className="size-4" />
                   )}
-                  {nodeStatus === NodeStatus.Ready
-                    ? t('nodeManagement.disableScheduling')
-                    : t('nodeManagement.enableScheduling')}
+                  {unscheduleTaint
+                    ? t('nodeManagement.enableScheduling')
+                    : t('nodeManagement.disableScheduling')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
