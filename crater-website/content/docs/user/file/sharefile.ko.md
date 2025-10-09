@@ -1,6 +1,6 @@
 ---
 title: 파일 공유
-description: ShareFile에 대한 문서
+description: ShareFile 에 대한 문서
 icon: HomeIcon
 ---
 

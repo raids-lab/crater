@@ -80,7 +80,7 @@ helm install gpu-operator <your-path>/charts/gpu-operator \
 
 **主要镜像：**
 
-|组件|镜像|
+|组件 | 镜像|
 |---|---|
 |驱动容器|nvcr.io/nvidia/driver:525.125.06|
 |设备插件|nvcr.io/nvidia/k8s-device-plugin:v0.15.0|
@@ -97,7 +97,7 @@ nvidia-smi
 
 ---
 
-### 2.3 CloudNativePG（PostgreSQL Operator）
+### 2.3 CloudNativePG (PostgreSQL Operator)
 
 **功能：** 提供高可用 PostgreSQL 数据库。
 
@@ -217,7 +217,7 @@ helm install prometheus <your-path>/charts/kube-prometheus-stack \
 
 **主要镜像：**
 
-|组件|镜像|
+|组件 | 镜像|
 |---|---|
 |Prometheus|quay.io/prometheus/prometheus:v2.54.1|
 |Grafana|docker.io/grafana/grafana:10.4.1|
@@ -251,7 +251,7 @@ helm install volcano <your-path>/charts/volcano \
 
 **主要镜像：**
 
-|组件|镜像|
+|组件 | 镜像|
 |---|---|
 |Scheduler|volcano.sh/volcano-scheduler:v1.9.0|
 |Controller|volcano.sh/volcano-controllers:v1.9.0|
@@ -281,7 +281,7 @@ helm install metallb <your-path>/charts/metallb \
 
 **主要镜像：**
 
-|组件|镜像|
+|组件 | 镜像|
 |---|---|
 |Controller|quay.io/metallb/controller:v0.14.8|
 |Speaker|quay.io/metallb/speaker:v0.14.8|
@@ -303,7 +303,7 @@ EOF
 
 ---
 
-### 2.8 ingress-nginx（Ingress Controller）
+### 2.8 ingress-nginx (Ingress Controller)
 
 **功能：** 为 Crater 前端与 API 提供外部访问入口。
 
@@ -322,7 +322,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx \
 
 **主要镜像：**
 
-|组件|镜像|
+|组件 | 镜像|
 |---|---|
 |Controller|registry.k8s.io/ingress-nginx/controller:v1.9.6|
 |Admission Webhook|registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.0|
