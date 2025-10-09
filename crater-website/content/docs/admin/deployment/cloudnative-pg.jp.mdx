@@ -7,7 +7,7 @@ description: "Crater に OpenEBS ストレージを使用した CloudNativePG Op
 
 Crater はユーザー セッション、ジョブメタデータ、スケジューリング状態、プラットフォーム構成を管理するために、**PostgreSQL** をバックエンドデータベースとして使用しています。
 
-生産環境レベルでの Kubernetes ネイティブな PostgreSQL 管理を実現するために、[CloudNativePG Operator](https://cloudnative-pg.io/) を採用しています。これは以下を提供します:
+生産環境レベルでの Kubernetes ネイティブな PostgreSQL 管理を実現するために、[CloudNativePG Operator](https://cloudnative-pg.io/) を採用しています。これは以下を提供します：
 
 - CRD を用いた PostgreSQL クラスターの宣言的管理  
 - 自動的な高可用性、バックアップ、フェイルオーバー  
@@ -15,9 +15,9 @@ Crater はユーザー セッション、ジョブメタデータ、スケジュ
 
 当社のデプロイでは、CloudNativePG を **OpenEBS Local PV** と統合し、ストレージとして使用することで、高速なローカルディスク性能と完全なデータライフサイクル管理を実現しています。
 
-## なぜ CloudNativePG を選んだのか?
+## なぜ CloudNativePG を選んだのか？
 
-CloudNativePG を選んだ理由は以下の通りです:
+CloudNativePG を選んだ理由は以下の通りです：
 
 - CNCF 孵化プロジェクトであり、強いコミュニティサポートがあります。  
 - **PostgreSQL の構成** と **Kubernetes ネイティブなオーケストレーション** の間に明確な分離を提供します。  
@@ -29,7 +29,7 @@ Crater スタックでは、各 PostgreSQL クラスターはカスタム `Clust
 
 データベースは OpenEBS Local PV（[`openebs.md`](./openebs.md) に記載されているとおり）をバックエンドとして使用するローカル永続ストレージを使用しています。
 
-この構成により、以下の利点があります:
+この構成により、以下の利点があります：
 
 - 単一ノードワークロードに対して高 IOPS と低レイテンシを提供  
 - 予測可能なノードローカルスケジューリング  
@@ -46,5 +46,5 @@ CloudNativePG をインストールする前に、OpenEBS Local PV が正しく�
 
 オペレーターのインストール用にカスタマイズされた Helm 設定を提供しています。
 
-📦 Helm 値: [`deployments/cloudnative-pg/values.yaml`](../deployments/cloudnative-pg/values.yaml)  
-📖 詳細ガイド: [`deployments/cloudnative-pg/README.md`](../deployments/cloudnative-pg/README.md)
+📦 Helm 値：[`deployments/cloudnative-pg/values.yaml`](../deployments/cloudnative-pg/values.yaml)  
+📖 詳細ガイド：[`deployments/cloudnative-pg/README.md`](../deployments/cloudnative-pg/README.md)

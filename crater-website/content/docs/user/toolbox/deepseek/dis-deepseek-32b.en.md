@@ -42,7 +42,7 @@ NCCL_DEBUG=TRACE python3 -m vllm.entrypoints.openai.api_server \
 
 > Issue 1: ValueError: Bfloat16 is only supported on GPUs with compute capability of at least 8.0. Your Tesla V100-SXM2-32GB GPU has compute capability 7.0. You can use float16 instead by explicitly setting the dtype flag in CLI, for example: --dtype=half.
 
-Answer 1: Add the vLLM launch parameter --dtype=half. The main reason for this issue is that many acceleration operators cannot run on V100, which is a无奈 choice. Many high-performance operators have certain hardware limitations.
+Answer 1: Add the vLLM launch parameter --dtype=half. The main reason for this issue is that many acceleration operators cannot run on V100, which is a 无奈 choice. Many high-performance operators have certain hardware limitations.
 
 > Issue 2: How to estimate how much computing power is needed?
 

@@ -1,6 +1,6 @@
 ---
 title: Logger
-description: Loggerのドキュメンテーション
+description: Logger のドキュメンテーション
 ---
 
 # ロギングと診断
@@ -9,7 +9,7 @@ description: Loggerのドキュメンテーション
 
 ## ジョブに関連するイベント
 
-ジョブ詳細ページで「イベント」ボタンをクリックすると、過去1時間のイベントを確認できます。
+ジョブ詳細ページで「イベント」ボタンをクリックすると、過去 1 時間のイベントを確認できます。
 
 ![events](./image/events.webp)
 
