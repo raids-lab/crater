@@ -640,16 +640,13 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrderByName(c *gin.Context) {
 		return
 	}
 
-	// 3. 检查是否找到工单
+	// 3. 转换为响应格式（即使为空也返回空列表）
+	result := convertToApprovalOrderResps(orders)
 	if len(orders) == 0 {
 		klog.Infof("no approval orders found for name: %s", nameReq.Name)
-		resputil.Error(c, "no approval orders found with this name", resputil.NotSpecified)
-		return
+	} else {
+		klog.Infof("found %d approval orders for name: %s", len(result), nameReq.Name)
 	}
-
-	// 4. 转换为响应格式
-	result := convertToApprovalOrderResps(orders)
-	klog.Infof("found %d approval orders for name: %s", len(result), nameReq.Name)
 	resputil.Success(c, result)
 }
 
