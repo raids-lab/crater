@@ -1,21 +1,21 @@
 ---
-title: Volcano統合ガイド
-description: CraterがVolcanoバッチスケジューラを使用して、複数のラボのGPUリソース管理および分散ワークロードをどのように行うか。
+title: Volcano 統合ガイド
+description: Crater が Volcano バッチスケジューラを使用して、複数のラボの GPU リソース管理および分散ワークロードをどのように行うか。
 ---
 
 ## 概要
 
-[Volcano](https://volcano.sh/en/) は、AI/MLトレーニング、ビッグデータ、科学計算などの高パフォーマンスワークロード向けに設計されたバッチスケジューリングシステムです。Craterでは、Volcanoを使用して、複数のラボとユーザー間で公平かつプリエムティブな方法でGPUスケジューリングを管理します。
+[Volcano](https://volcano.sh/en/) は、AI/ML トレーニング、ビッグデータ、科学計算などの高パフォーマンスワークロード向けに設計されたバッチスケジューリングシステムです。Crater では、Volcano を使用して、複数のラボとユーザー間で公平かつプリエムティブな方法で GPU スケジューリングを管理します。
 
 ---
 
-## なぜVolcanoなのか？
+## なぜ Volcano なのか？
 
-Craterでは、Volcanoの豊富なスケジューリング機能、拡張性のあるプラグインシステム、そして **分散トレーニング**、 **公平なリソース共有**、 **ジョブレベルの制御** へのネイティブサポートがあるため、Volcanoを採用しました。
+Crater では、Volcano の豊富なスケジューリング機能、拡張性のあるプラグインシステム、そして **分散トレーニング**、 **公平なリソース共有**、 **ジョブレベルの制御** へのネイティブサポートがあるため、Volcano を採用しました。
 
-Craterは以下のVolcanoコンポーネントを活用しています：
+Crater は以下の Volcano コンポーネントを活用しています：
 
-- **Queue & Quota CRDs** – ラボ間での細かいGPUリソース割り当て
+- **Queue & Quota CRDs** – ラボ間での細かい GPU リソース割り当て
 - **Preemption (Capacity Plugin)** – ラボとユーザー間でのプリエムティブなスケジューリング
 - **Job CRD & Plugins** – 分散タスクへのネイティブサポート
 - **Node ordering, job ordering, gang scheduling** など
@@ -24,12 +24,12 @@ Craterは以下のVolcanoコンポーネントを活用しています：
 
 ## ラボ指向のキュー設計
 
-Craterは、さまざまな研究ラボがGPUクラスターを共有する学術的なマルチテナントシナリオを対象としています。リソースの公平性を管理するために以下を行います：
+Crater は、さまざまな研究ラボが GPU クラスターを共有する学術的なマルチテナントシナリオを対象としています。リソースの公平性を管理するために以下を行います：
 
 - 各ラボに対して **`Queue`** を作成します（例：`lab-a`, `lab-b`）
 - 各ユーザーはそれぞれのラボのキューに割り当てられます
-- 対応する **`ResourceQuota`** がラボの保証されたGPU容量を定義します
-- Volcanoの **`capacity` プラグイン** が競合が発生したときにプリエムションポリシーを実施します
+- 対応する **`ResourceQuota`** がラボの保証された GPU 容量を定義します
+- Volcano の **`capacity` プラグイン** が競合が発生したときにプリエムションポリシーを実施します
 
 この設計により以下が可能になります：
 
@@ -41,13 +41,13 @@ Craterは、さまざまな研究ラボがGPUクラスターを共有する学�
 
 ## 分散ジョブのサポート
 
-CraterはVolcanoの [Job CRD](https://volcano.sh/en/docs/job-tutorial/) を利用して以下をサポートしています：
+Crater は Volcano の [Job CRD](https://volcano.sh/en/docs/job-tutorial/) を利用して以下をサポートしています：
 
-- 分散PyTorch、TensorFlow、MPIワークロード
+- 分散 PyTorch、TensorFlow、MPI ワークロード
 - ガングスケジューリングとジョブ依存関係
 - ライフサイクル管理（開始、一時停止、削除）
 
-また、以下のスケジューリングプラグインをVolcanoで有効にしております：
+また、以下のスケジューリングプラグインを Volcano で有効にしております：
 
 - `gang` – 同じジョブ内のポッドを同時に開始します
 - `svc` – 分散トレーニング用にヘッドレスサービスを生成します
@@ -56,21 +56,21 @@ CraterはVolcanoの [Job CRD](https://volcano.sh/en/docs/job-tutorial/) を利�
 
 ---
 
-## VLLMとの互換性
+## VLLM との互換性
 
-現在、[vLLM](https://github.com/vllm-project/vllm) 推論エンジンをカスタムの `Job` CRD を用いてVolcano下で実行するように調整しています。これにより、大規模モデルの推論を、統合されたスケジューリング、キューイング、クォータ実行付きの分散ワークロードとして扱うことができます。
+現在、[vLLM](https://github.com/vllm-project/vllm) 推論エンジンをカスタムの `Job` CRD を用いて Volcano 下で実行するように調整しています。これにより、大規模モデルの推論を、統合されたスケジューリング、キューイング、クォータ実行付きの分散ワークロードとして扱うことができます。
 
 ---
 
-## LLaMA Factoryとの互換性
+## LLaMA Factory との互換性
 
-また、ACT Labが開発したもう一つのファインチューニングプロジェクトである [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory) へのサポート拡張にも積極的に取り組んでいます。統合の取り組みは、Volcanoの `Job` CRD を利用した分散ファインチューニングジョブの実行を可能にし、GPUトポロジ、リソースクォータ、ジョブオーケストレーションにおけるスケジューリング認識を実現することを目的としています。
+また、ACT Lab が開発したもう一つのファインチューニングプロジェクトである [LLaMA Factory](https://github.com/hiyouga/LLaMA-Factory) へのサポート拡張にも積極的に取り組んでいます。統合の取り組みは、Volcano の `Job` CRD を利用した分散ファインチューニングジョブの実行を可能にし、GPU トポロジ、リソースクォータ、ジョブオーケストレーションにおけるスケジューリング認識を実現することを目的としています。
 
 ---
 
 ## インストールに関する注意点
 
-Craterの事前に設定された値を使用してHelm経由でVolcanoをインストールすることを推奨します。
+Crater の事前に設定された値を使用して Helm 経由で Volcano をインストールすることを推奨します。
 
-📦 Helm値: [`deployments/volcano/values.yaml`](../deployments/volcano/values.yaml)  
-📖 詳細ガイド: [`deployments/volcano/README.md`](../deployments/volcano/README.md)
+📦 Helm 値：[`deployments/volcano/values.yaml`](../deployments/volcano/values.yaml)  
+📖 詳細ガイド：[`deployments/volcano/README.md`](../deployments/volcano/README.md)
