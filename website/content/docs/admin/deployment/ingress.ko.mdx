@@ -1,6 +1,6 @@
 ---
 title: Ingress-NGINX 배포 가이드
-description: Crater는 외부 서비스에 대한 접근을 관리하기 위해 Ingress-NGINX 컨트롤러를 사용하며, HTTP 및 HTTPS 트래픽의 주요 인그레스 포인트로 작동합니다.
+description: Crater 는 외부 서비스에 대한 접근을 관리하기 위해 Ingress-NGINX 컨트롤러를 사용하며, HTTP 및 HTTPS 트래픽의 주요 인그레스 포인트로 작동합니다.
 ---
 
 ## 배포
@@ -27,10 +27,10 @@ helm upgrade --install ingress-nginx ingress-nginx \
   --set "controller.tolerations="
 ```
 
-🔧 노드 선택자, 톨러레이션 및 healthCheckHost를 클러스터 노드 구성에 맞게 조정하세요.
+🔧 노드 선택자, 톨러레이션 및 healthCheckHost 를 클러스터 노드 구성에 맞게 조정하세요.
 
 ### 옵션 2: MetalLB 사용 (Crater 권장)
-생산 클러스터에서 Crater는 Layer 2 모드로 MetalLB를 사용하여 내부 IP를 할당합니다. 인그레스 컨트롤러는 MetalLB로부터 내부 IP를 할당받는 LoadBalancer 서비스로 배포됩니다.
+생산 클러스터에서 Crater 는 Layer 2 모드로 MetalLB 를 사용하여 내부 IP 를 할당합니다. 인그레스 컨트롤러는 MetalLB 로부터 내부 IP 를 할당받는 LoadBalancer 서비스로 배포됩니다.
 
 ```bash
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
@@ -42,7 +42,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.allowSnippetAnnotations=true
 ```
 
-📌 이 설정은 MetalLB의 IP 풀에서 내부 IP를 사용하며, 신뢰할 수 있는 네트워크(예: 대학 내부 네트워크) 내에서 서비스 발견을 지원합니다.
+📌 이 설정은 MetalLB 의 IP 풀에서 내부 IP 를 사용하며, 신뢰할 수 있는 네트워크 (예: 대학 내부 네트워크) 내에서 서비스 발견을 지원합니다.
 
 외부 IP 할당을 확인하려면 다음 명령을 사용할 수 있습니다:
 ```bash
@@ -57,7 +57,7 @@ ingress-nginx-controller   LoadBalancer   192.168.100.243   80:31234/TCP,443:312
 ```
 
 # 버전 호환성 참고
-현재 우리는 **Ingress-NGINX 버전을 `4.11.3`로 고정**하고 있습니다. 이는 Crater의 인그레스 애노테이션이 `4.12.0` 이상의 버전과 호환되지 않기 때문입니다. 더 높은 버전을 사용하려는 시도는 라우팅 재작성 오류를 일으킬 수 있습니다.
+현재 우리는 **Ingress-NGINX 버전을 `4.11.3`로 고정**하고 있습니다. 이는 Crater 의 인그레스 애노테이션이 `4.12.0` 이상의 버전과 호환되지 않기 때문입니다. 더 높은 버전을 사용하려는 시도는 라우팅 재작성 오류를 일으킬 수 있습니다.
 
 # 제거
 인그레스 컨트롤러를 제거하려면 다음 명령을 사용하세요:

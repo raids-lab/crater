@@ -1,6 +1,6 @@
 ---
 title: ファイルの共有
-description: ShareFileのドキュメンテーション
+description: ShareFile のドキュメンテーション
 icon: HomeIcon
 ---
 
@@ -20,7 +20,7 @@ icon: HomeIcon
 
 ![sharefile](./img/sharefile.webp)
 
-各共有ファイルにはいくつかの基本的な説明があり、右側には4つのボタンがあります。それは、削除、個人共有、アカウント共有、およびリネームです。これらの操作は、データセットの作成者である必要があります。
+各共有ファイルにはいくつかの基本的な説明があり、右側には 4 つのボタンがあります。それは、削除、個人共有、アカウント共有、およびリネームです。これらの操作は、データセットの作成者である必要があります。
 
 ![image-sharefiledetail](./img/sharefiledetail.webp)
 

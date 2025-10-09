@@ -1,12 +1,12 @@
 ---
-title: VSCode를 Jupyter 컨테이너에 연결
+title: VSCode 를 Jupyter 컨테이너에 연결
 
-description: 사용자가 Jupyter 작업을 생성한 후 VSCode를 통해 컨테이너 환경에 직접 연결할 수 있도록 지원하여 VSCode의 코드 자동 완성, 디버깅 기능 및 풍부한 플러그인 생태계를 활용함으로써 개발 효율성과 사용자 경험을 향상시킵니다.
+description: 사용자가 Jupyter 작업을 생성한 후 VSCode 를 통해 컨테이너 환경에 직접 연결할 수 있도록 지원하여 VSCode 의 코드 자동 완성, 디버깅 기능 및 풍부한 플러그인 생태계를 활용함으로써 개발 효율성과 사용자 경험을 향상시킵니다.
 ---
 
-# VSCode를 Jupyter 컨테이너에 연결
+# VSCode 를 Jupyter 컨테이너에 연결
 
-사용자가 Jupyter 작업을 생성한 후 VSCode를 통해 컨테이너 환경에 직접 연결할 수 있도록 지원하여 VSCode의 코드 자동 완성, 디버깅 기능 및 풍부한 플러그인 생태계를 활용함으로써 개발 효율성과 사용자 경험을 향상시킵니다.
+사용자가 Jupyter 작업을 생성한 후 VSCode 를 통해 컨테이너 환경에 직접 연결할 수 있도록 지원하여 VSCode 의 코드 자동 완성, 디버깅 기능 및 풍부한 플러그인 생태계를 활용함으로써 개발 효율성과 사용자 경험을 향상시킵니다.
 
 ## 로컬에서 공개키와 개인키 생성 확인
 
@@ -32,13 +32,13 @@ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 
 ![](./img/vscode-ssh/job.webp)
 
-"대화형 페이지"를 클릭하여 Jupyter Notebook으로 이동합니다.
+"대화형 페이지"를 클릭하여 Jupyter Notebook 으로 이동합니다.
 
 ![](./img/vscode-ssh/jupyter.webp)
 
 ## 컨테이너 내에서 SSHD 설치
 
-**SSHD (SSH Daemon)**: SSHD는 SSH 서비스의 데몬으로 지정된 포트에서 SSH 연결 요청을 수신하고 해당 서비스를 제공합니다. SSHD를 설치하고 실행함으로써 컨테이너는 SSH 프로토콜을 통해 원격 접근이 가능해집니다.
+**SSHD (SSH Daemon)**: SSHD 는 SSH 서비스의 데몬으로 지정된 포트에서 SSH 연결 요청을 수신하고 해당 서비스를 제공합니다. SSHD 를 설치하고 실행함으로써 컨테이너는 SSH 프로토콜을 통해 원격 접근이 가능해집니다.
 
 ### **OpenSSH 서버 설치**
 
@@ -55,7 +55,7 @@ sudo apt install -y openssh-server
 ps -ef | grep sshd
 ```
 
-또는 `service` 명령어를 사용하여 SSHD의 실행 상태를 확인하고 관리할 수 있습니다:
+또는 `service` 명령어를 사용하여 SSHD 의 실행 상태를 확인하고 관리할 수 있습니다:
 
 **service 명령어를 사용하여 ssh 서비스 재시작**
 
@@ -90,7 +90,7 @@ sudo netstat -tuln | grep 22
 
 ### SSH 무비밀 로그인 구성
 
-`authorized_keys`를 사용하여 무비밀 로그인을 구성할 수 있습니다. 개인 컴퓨터에서 생성한 공개 키(`id_rsa.pub`)를 서버에 업로드합니다(이전 섹션에서 설명한 것처럼).
+`authorized_keys`를 사용하여 무비밀 로그인을 구성할 수 있습니다. 개인 컴퓨터에서 생성한 공개 키 (`id_rsa.pub`) 를 서버에 업로드합니다 (이전 섹션에서 설명한 것처럼).
 
 - `.ssh` 폴더가 없으면 다음 명령어로 생성하고 적절한 권한을 설정합니다:
 
@@ -110,9 +110,9 @@ chmod 600 ~/.ssh/authorized_keys
 
 ## NodePort 규칙 설정
 
-외부 액세스 규칙에서 **NodePort 규칙**을 설정하여 서비스 포트를 노출시킬 수 있습니다. NodePort 포트를 사용하여 VSCode에서 Jupyter 컨테이너에 연결할 수 있습니다.
+외부 액세스 규칙에서 **NodePort 규칙**을 설정하여 서비스 포트를 노출시킬 수 있습니다. NodePort 포트를 사용하여 VSCode 에서 Jupyter 컨테이너에 연결할 수 있습니다.
 
-NodePort 규칙은 사용자가 클러스터 노드의 IP 주소와 지정된 포트 번호를 통해 서비스에 액세스할 수 있도록 허용합니다. Kubernetes는 서비스에 포트 범위 30000에서 32767 사이에 포트를 할당하고, 외부에서 해당 포트 번호를 통해 연결할 수 있도록 합니다.
+NodePort 규칙은 사용자가 클러스터 노드의 IP 주소와 지정된 포트 번호를 통해 서비스에 액세스할 수 있도록 허용합니다. Kubernetes 는 서비스에 포트 범위 30000 에서 32767 사이에 포트를 할당하고, 외부에서 해당 포트 번호를 통해 연결할 수 있도록 합니다.
 
 Jupyter 작업의 세부 정보 페이지에서 NodePort 규칙을 생성하십시오. 상세한 생성 절차는 [NodePort 액세스 규칙 설정](../toolbox/external-access/nodeport-rule.md)을 참조하십시오.
 
@@ -122,13 +122,13 @@ Jupyter 작업의 세부 정보 페이지에서 NodePort 규칙을 생성하십�
 
 - **컨테이너 포트 번호** (`containerPort`): **22** 포트를 선택하여 SSH 서비스에 사용합니다.
 - **클러스터 노드 주소** (`address`): 클러스터의 임의 노드 IP 주소, 여기서는 `192.168.5.30`입니다.
-- **할당된 NodePort 포트** (`nodePort`): Kubernetes는 서비스에 포트 범위 30000에서 32767 사이의 포트 번호를 자동으로 할당합니다. 여기서는 `32310`입니다.
+- **할당된 NodePort 포트** (`nodePort`): Kubernetes 는 서비스에 포트 범위 30000 에서 32767 사이의 포트 번호를 자동으로 할당합니다. 여기서는 `32310`입니다.
 
 ## VSCode 설정
 
 ### Remote-SSH 확장 설치
 
-VSCode에서 Remote-SSH 확장을 설치하려면 아래와 같이 수행합니다:
+VSCode 에서 Remote-SSH 확장을 설치하려면 아래와 같이 수행합니다:
 
 ![](./img/vscode-ssh/remote-ssh.webp)
 
@@ -156,6 +156,6 @@ User liuxw24
 - `Port`: 연결할 포트 번호, NodePort 규칙의 `NodePort 포트 번호`를 참조합니다. 예시에서는 `32310`입니다.
 - `User`: 사용자 이름입니다.
 
-설정이 완료되면 VSCode를 통해 NodePort로 Jupyter 컨테이너에 성공적으로 연결할 수 있습니다:
+설정이 완료되면 VSCode 를 통해 NodePort 로 Jupyter 컨테이너에 성공적으로 연결할 수 있습니다:
 
 ![](./img/vscode-ssh/connected.webp)
