@@ -90,16 +90,16 @@ func CheckJupyterLimitBeforeCreateJupyter(
 	maxJupyterCount := -1 // default -1 means no limit
 
 	ac := query.Account
-	var userDefaultQuota datatypes.JSONType[model.QueueQuota]
-	err = ac.WithContext(c).
+	account, err := ac.WithContext(c).
 		Where(ac.ID.Eq(accountID)).
-		Select(ac.UserDefaultQuota).
-		Scan(&userDefaultQuota)
+		First()
 	if err != nil {
 		return err
 	}
-	if v, ok := userDefaultQuota.Data().Capability[v1.ResourceName(model.JobTypeJupyter)]; ok {
-		maxJupyterCount = int(v.Value())
+	if account.UserDefaultQuota != nil {
+		if v, ok := account.UserDefaultQuota.Data().Capability[v1.ResourceName(model.JobTypeJupyter)]; ok {
+			maxJupyterCount = int(v.Value())
+		}
 	}
 
 	uqQuota := userQueueQuota.Data().Capability
