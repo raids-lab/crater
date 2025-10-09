@@ -5,7 +5,7 @@ description: "대학에서 개발한 지능형 클러스터 스케줄링 및 모
 
 ![버전: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![유형: 애플리케이션](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![앱버전: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
 
-Kubernetes를 위한 포괄적인 AI 개발 플랫폼으로, GPU 자원 관리, 컨테이너화된 개발 환경, 워크플로우 오케스트레이션 기능을 제공합니다.
+Kubernetes 를 위한 포괄적인 AI 개발 플랫폼으로, GPU 자원 관리, 컨테이너화된 개발 환경, 워크플로우 오케스트레이션 기능을 제공합니다.
 
 **홈페이지:** <https://github.com/raids-lab/crater>
 
@@ -28,47 +28,47 @@ Kubernetes를 위한 포괄적인 AI 개발 플랫폼으로, GPU 자원 관리, 
 | backendConfig.auth | object | `{"accessTokenSecret":"<MASKED>","refreshTokenSecret":"<MASKED>"}` | JWT 기반 인증을 위한 인증 토큰 설정 (필수) 보안 인증을 위해 두 토큰 비밀이 모두 지정되어야 합니다 |
 | backendConfig.auth.accessTokenSecret | string | `"<MASKED>"` | JWT 접근 토큰에 서명하는 비밀 키 (필수) 보안이 높고 무작위로 생성된 문자열이어야 합니다 |
 | backendConfig.auth.refreshTokenSecret | string | `"<MASKED>"` | JWT 리프레시 토큰에 서명하는 비밀 키 (필수) 보안이 높고 무작위로 생성된 문자열이어야 합니다 |
-| backendConfig.enableLeaderElection | bool | `false` | 컨트롤러 관리자에게 리더 선출을 활성화하여 고가용성을 보장합니다. 지정되지 않은 경우 기본값은 false입니다. |
+| backendConfig.enableLeaderElection | bool | `false` | 컨트롤러 관리자에게 리더 선출을 활성화하여 고가용성을 보장합니다. 지정되지 않은 경우 기본값은 false 입니다. |
 | backendConfig.port | string | `":8088"` | 서버 엔드포인트가 듣는 네트워크 포트 (필수) 서버가 시작되려면 반드시 지정되어야 합니다. |
 | backendConfig.postgres | object | `{"TimeZone":"Asia/Shanghai","dbname":"crater","host":"192.168.0.1","password":"<MASKED>","port":6432,"sslmode":"disable","user":"postgres"}` | PostgreSQL 데이터베이스 연결 설정 (필수) 모든 필드가 데이터베이스 연결을 위해 지정되어야 합니다. |
 | backendConfig.postgres.TimeZone | string | `"Asia/Shanghai"` | 데이터베이스 연결을 위한 시간대. 지정되지 않은 경우 시스템 시간대로 설정됩니다. |
 | backendConfig.postgres.dbname | string | `"crater"` | 연결할 데이터베이스 이름 (필수) 데이터베이스가 존재하고 접근 가능해야 합니다. |
 | backendConfig.postgres.host | string | `"192.168.0.1"` | PostgreSQL 서버의 호스트명 또는 IP 주소 (필수) 애플리케이션에서 접근 가능해야 합니다. |
 | backendConfig.postgres.password | string | `"<MASKED>"` | 인증을 위한 데이터베이스 비밀번호 (필수) 지정된 사용자의 비밀번호와 일치해야 합니다. |
-| backendConfig.postgres.port | int | `6432` | PostgreSQL 서버의 포트 번호 (필수) 일반적으로 PostgreSQL의 포트는 5432입니다. |
+| backendConfig.postgres.port | int | `6432` | PostgreSQL 서버의 포트 번호 (필수) 일반적으로 PostgreSQL 의 포트는 5432 입니다. |
 | backendConfig.postgres.sslmode | string | `"disable"` | 데이터베이스 연결을 위한 SSL/TLS 모드. 지정되지 않은 경우 기본값은 "disable"입니다. |
 | backendConfig.postgres.user | string | `"postgres"` | 인증을 위한 데이터베이스 사용자 이름 (필수) 사용자가 적절한 권한을 가져야 합니다. |
 | backendConfig.prometheusAPI | string | `"http://192.168.0.1:12345"` | 메트릭 및 모니터링을 위해 사용되는 Prometheus API 엔드포인트 URL. 지정되지 않은 경우 Prometheus 통합이 비활성화됩니다. |
-| backendConfig.registry | object | `{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":true,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}}` | 이미지 저장 및 빌드를 위한 컨테이너 레지스트리 설정. Enable이 false인 경우 레지스트리 기능이 비활성화됩니다. |
-| backendConfig.registry.buildTools | object | `{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}}` | 컨테이너 이미지 빌드 도구 및 프록시 설정. Registry.Enable이 true인 경우 필수입니다. |
+| backendConfig.registry | object | `{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":true,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}}` | 이미지 저장 및 빌드를 위한 컨테이너 레지스트리 설정. Enable 이 false 인 경우 레지스트리 기능이 비활성화됩니다. |
+| backendConfig.registry.buildTools | object | `{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}}` | 컨테이너 이미지 빌드 도구 및 프록시 설정. Registry.Enable 이 true 인 경우 필수입니다. |
 | backendConfig.registry.buildTools.proxyConfig | object | `{"httpProxy":null,"httpsProxy":null,"noProxy":null}` | 빌드 환경을 위한 HTTP 프록시 설정. 지정되지 않은 경우 빌드에 프록시가 구성되지 않습니다. |
 | backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `nil` | 빌드 환경을 위한 HTTP 프록시 URL. 지정되지 않은 경우 HTTP 트래픽이 프록시를 통해 전달되지 않습니다. |
 | backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `nil` | 빌드 환경을 위한 HTTPS 프록시 URL. 지정되지 않은 경우 HTTPS 트래픽이 프록시를 통해 전달되지 않습니다. |
 | backendConfig.registry.buildTools.proxyConfig.noProxy | string | `nil` | 프록시를 사용하지 않는 도메인 목록 (콤마로 구분). 지정되지 않은 경우 모든 트래픽은 프록시를 통해 전달됩니다. |
-| backendConfig.registry.enable | bool | `true` | 컨테이너 레지스트리 통합 활성화. 지정되지 않은 경우 기본값은 false입니다. |
-| backendConfig.registry.harbor | object | `{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}` | Harbor 컨테이너 레지스트리 통합 설정. Registry.Enable이 true인 경우 모든 Harbor 필드가 지정되어야 합니다. |
+| backendConfig.registry.enable | bool | `true` | 컨테이너 레지스트리 통합 활성화. 지정되지 않은 경우 기본값은 false 입니다. |
+| backendConfig.registry.harbor | object | `{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}` | Harbor 컨테이너 레지스트리 통합 설정. Registry.Enable 이 true 인 경우 모든 Harbor 필드가 지정되어야 합니다. |
 | backendConfig.registry.harbor.password | string | `"<MASKED>"` | Harbor 인증을 위한 관리자 비밀번호 (필수) 지정된 사용자의 비밀번호와 일치해야 합니다. |
-| backendConfig.registry.harbor.server | string | `"harbor.example.com"` | Harbor 레지스트리 서버 URL (필수) 유효한 Harbor 인스턴스 URL이어야 합니다. |
-| backendConfig.registry.harbor.user | string | `"admin"` | Harbor 인증을 위한 관리자 사용자 이름 (필수) 사용자가 Harbor에서 적절한 권한을 가져야 합니다. |
+| backendConfig.registry.harbor.server | string | `"harbor.example.com"` | Harbor 레지스트리 서버 URL (필수) 유효한 Harbor 인스턴스 URL 이어야 합니다. |
+| backendConfig.registry.harbor.user | string | `"admin"` | Harbor 인증을 위한 관리자 사용자 이름 (필수) 사용자가 Harbor 에서 적절한 권한을 가져야 합니다. |
 | backendConfig.secrets | object | `{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"}` | 다양한 보안 구성 요소를 위한 Kubernetes 비밀 이름 (필수) 모든 비밀 이름은 기존의 Kubernetes 비밀과 일치해야 합니다. |
 | backendConfig.secrets.imagePullSecretName | string | `""` | 프라이빗 레지스트리에서 컨테이너 이미지를 끌어오기 위한 Kubernetes 비밀 이름. 지정되지 않은 경우 이미지 끌어오기 비밀이 사용되지 않습니다. |
 | backendConfig.secrets.tlsForwardSecretName | string | `"crater-tls-forward-secret"` | TLS 전달 구성에 사용되는 Kubernetes 비밀 이름 (필수) 비밀에는 적절한 전달 인증서가 포함되어야 합니다. |
-| backendConfig.secrets.tlsSecretName | string | `"crater-tls-secret"` | HTTPS를 위한 TLS 인증서를 포함하는 Kubernetes 비밀 이름 (필수) 비밀에는 'tls.crt' 및 'tls.key' 키가 포함되어야 합니다. |
-| backendConfig.smtp | object | `{"enable":true,"host":"mail.example.com","notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"}` | SMTP를 통한 이메일 알림 설정. Enable이 false인 경우 이메일 알림이 비활성화됩니다. |
-| backendConfig.smtp.enable | bool | `true` | SMTP 이메일 기능 활성화. 지정되지 않은 경우 기본값은 false입니다. |
-| backendConfig.smtp.host | string | `"mail.example.com"` | SMTP 서버 호스트명 또는 IP 주소 (Enable이 true인 경우 필수) 유효한 SMTP 서버이어야 합니다. |
-| backendConfig.smtp.notify | string | `"example@example.com"` | 시스템 알림을 위한 기본 이메일 주소 (Enable이 true인 경우 필수) 유효한 이메일 주소이어야 합니다. |
-| backendConfig.smtp.password | string | `"<MASKED>"` | SMTP 인증을 위한 비밀번호 (Enable이 true인 경우 필수) 지정된 사용자의 비밀번호와 일치해야 합니다. |
-| backendConfig.smtp.port | int | `25` | SMTP 서버 포트 번호 (Enable이 true인 경우 필수) 일반적으로 25, 465, 또는 587입니다. |
-| backendConfig.smtp.user | string | `"example"` | SMTP 인증을 위한 사용자 이름 (Enable이 true인 경우 필수) 유효한 SMTP 사용자이어야 합니다. |
+| backendConfig.secrets.tlsSecretName | string | `"crater-tls-secret"` | HTTPS 를 위한 TLS 인증서를 포함하는 Kubernetes 비밀 이름 (필수) 비밀에는 'tls.crt' 및 'tls.key' 키가 포함되어야 합니다. |
+| backendConfig.smtp | object | `{"enable":true,"host":"mail.example.com","notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"}` | SMTP 를 통한 이메일 알림 설정. Enable 이 false 인 경우 이메일 알림이 비활성화됩니다. |
+| backendConfig.smtp.enable | bool | `true` | SMTP 이메일 기능 활성화. 지정되지 않은 경우 기본값은 false 입니다. |
+| backendConfig.smtp.host | string | `"mail.example.com"` | SMTP 서버 호스트명 또는 IP 주소 (Enable 이 true 인 경우 필수) 유효한 SMTP 서버이어야 합니다. |
+| backendConfig.smtp.notify | string | `"example@example.com"` | 시스템 알림을 위한 기본 이메일 주소 (Enable 이 true 인 경우 필수) 유효한 이메일 주소이어야 합니다. |
+| backendConfig.smtp.password | string | `"<MASKED>"` | SMTP 인증을 위한 비밀번호 (Enable 이 true 인 경우 필수) 지정된 사용자의 비밀번호와 일치해야 합니다. |
+| backendConfig.smtp.port | int | `25` | SMTP 서버 포트 번호 (Enable 이 true 인 경우 필수) 일반적으로 25, 465, 또는 587 입니다. |
+| backendConfig.smtp.user | string | `"example"` | SMTP 인증을 위한 사용자 이름 (Enable 이 true 인 경우 필수) 유효한 SMTP 사용자이어야 합니다. |
 | backendConfig.storage | object | `{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"}}` | 지속 가능한 볼륨 클레임 및 경로 접두사 설정 (필수) 모든 PVC 이름과 접두사 경로가 지정되어야 합니다. |
 | backendConfig.storage.prefix | object | `{"account":"accounts","public":"public","user":"users"}` | 다양한 유형의 저장소 위치에 대한 경로 접두사 (필수) 모든 접두사 경로가 지정되어야 합니다. |
 | backendConfig.storage.prefix.account | string | `"accounts"` | 계정 관련 저장소 경로의 접두사 (필수) 저장소 시스템 내부의 유효한 경로여야 합니다. |
 | backendConfig.storage.prefix.public | string | `"public"` | 공개적으로 접근 가능한 저장소 경로의 접두사 (필수) 저장소 시스템 내부의 유효한 경로여야 합니다. |
 | backendConfig.storage.prefix.user | string | `"users"` | 사용자별 저장소 경로의 접두사 (필수) 저장소 시스템 내부의 유효한 경로여야 합니다. |
-| backendConfig.storage.pvc.readOnlyMany | string | `nil` | 데이터셋 및 모델을 위한 ReadOnlyMany 지속 가능한 볼륨 클레임 이름. ReadWriteMany와 동일한 하위 저장소에 연결되어야 합니다. 지정되지 않은 경우 데이터셋 및 모델은 읽기-쓰기로 마운트됩니다. |
+| backendConfig.storage.pvc.readOnlyMany | string | `nil` | 데이터셋 및 모델을 위한 ReadOnlyMany 지속 가능한 볼륨 클레임 이름. ReadWriteMany 와 동일한 하위 저장소에 연결되어야 합니다. 지정되지 않은 경우 데이터셋 및 모델은 읽기 - 쓰기로 마운트됩니다. |
 | backendConfig.storage.pvc.readWriteMany | string | `"crater-rw-storage"` | 공유 저장소를 위한 ReadWriteMany 지속 가능한 볼륨 클레임 이름 (필수) 클러스터 내부에서 ReadWriteMany 액세스 모드로 존재해야 합니다. |
-| buildkitConfig | object | `{"amdConfig":{"cache":{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"},"enabled":true,"replicas":3},"armConfig":{"cache":{"maxUsedSpace":"80GB","minFreeSpace":"10GB","reservedSpace":"10GB","storageClass":"openebs-hostpath","storageSize":"80Gi"},"enabled":false,"replicas":2},"generalConfig":{"resources":{"limits":{"cpu":16,"memory":"48Gi"},"requests":{"cpu":8,"memory":"24Gi"}}}}` | 이미지 빌드 파이프라인 설정. Harbor와 같은 자체 호스팅 이미지 레지스트리가 있을 때만 완전히 사용 가능합니다. |
+| buildkitConfig | object | `{"amdConfig":{"cache":{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"},"enabled":true,"replicas":3},"armConfig":{"cache":{"maxUsedSpace":"80GB","minFreeSpace":"10GB","reservedSpace":"10GB","storageClass":"openebs-hostpath","storageSize":"80Gi"},"enabled":false,"replicas":2},"generalConfig":{"resources":{"limits":{"cpu":16,"memory":"48Gi"},"requests":{"cpu":8,"memory":"24Gi"}}}}` | 이미지 빌드 파이프라인 설정. Harbor 와 같은 자체 호스팅 이미지 레지스트리가 있을 때만 완전히 사용 가능합니다. |
 | buildkitConfig.amdConfig | object | `{"cache":{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"},"enabled":true,"replicas":3}` | AMD 아키텍처 설정 |
 | buildkitConfig.amdConfig.cache | object | `{"maxUsedSpace":"400GB","minFreeSpace":"50GB","reservedSpace":"50GB","storageClass":"openebs-hostpath","storageSize":"400Gi"}` | AMD 빌드에 대한 캐시 설정 |
 | buildkitConfig.amdConfig.cache.maxUsedSpace | string | `"400GB"` | AMD 빌드 캐시의 최대 사용 공간 |
@@ -121,11 +121,11 @@ Kubernetes를 위한 포괄적인 AI 개발 플랫폼으로, GPU 자원 관리, 
 | frontendConfig.url.apiPrefix | string | `"/api/v1"` | 백엔드 API 접두사 (현재 수정 불가) |
 | frontendConfig.url.document | string | `"https://raids-lab.github.io/crater/zh"` | 문서 기본 URL |
 | frontendConfig.version | string | `"1.0.0"` | 프론트엔드 버전 |
-| grafanaProxy | object | `{"address":"http://prometheus-grafana.monitoring","enable":true,"host":"gpu-grafana.<your-domain>.com","token":"<MASKED>"}` | Grafana 프록시 설정. Grafana Pro만 비밀번호 없는 로그인 기능을 제공합니다. 우리는 Nginx 프록시를 사용하여 Iframe을 위한 비밀번호 없는 로그인을 지원합니다. |
+| grafanaProxy | object | `{"address":"http://prometheus-grafana.monitoring","enable":true,"host":"gpu-grafana.<your-domain>.com","token":"<MASKED>"}` | Grafana 프록시 설정. Grafana Pro 만 비밀번호 없는 로그인 기능을 제공합니다. 우리는 Nginx 프록시를 사용하여 Iframe 을 위한 비밀번호 없는 로그인을 지원합니다. |
 | grafanaProxy.address | string | `"http://prometheus-grafana.monitoring"` | 클러스터 내부의 Grafana 서비스 주소 |
 | grafanaProxy.enable | bool | `true` | Grafana 프록시 활성화 여부 |
-| grafanaProxy.host | string | `"gpu-grafana.<your-domain>.com"` | Ingress를 통해 Grafana를 노출할 도메인 이름 |
-| grafanaProxy.token | string | `"<MASKED>"` | Grafana 접근 토큰 (마스킹됨, Grafana에서 읽기 전용 토큰을 신청해야 함) |
+| grafanaProxy.host | string | `"gpu-grafana.<your-domain>.com"` | Ingress 를 통해 Grafana 를 노출할 도메인 이름 |
+| grafanaProxy.token | string | `"<MASKED>"` | Grafana 접근 토큰 (마스킹됨, Grafana 에서 읽기 전용 토큰을 신청해야 함) |
 | host | string | `"crater.<your-domain>.com"` | 서버가 바인딩할 도메인 이름 또는 IP 주소 (필수) 서버가 시작되려면 반드시 지정되어야 합니다. |
 | imagePullPolicy | string | `"Always"` | 이미지 끌어오기 정책 ("IfNotPresent" | "Always", 개발 시에는 Always 사용) |
 | imagePullSecrets | list | `[]` | 이미지 끌어오기 비밀 |
@@ -156,10 +156,10 @@ Kubernetes를 위한 포괄적인 AI 개발 플랫폼으로, GPU 자원 관리, 
 | protocol | string | `"https"` | 서버 통신 프로토콜 |
 | storage | object | `{"create":true,"pvcName":"crater-rw-storage","request":"2Ti","storageClass":"ceph-fs"}` | 지속 가능한 볼륨 클레임 설정 |
 | storage.create | bool | `true` | PVC 생성 여부 |
-| storage.pvcName | string | `"crater-rw-storage"` | PVC 이름 (backendConfig에서도 사용됨) |
+| storage.pvcName | string | `"crater-rw-storage"` | PVC 이름 (backendConfig 에서도 사용됨) |
 | storage.request | string | `"2Ti"` | 저장 요청 크기 |
-| storage.storageClass | string | `"ceph-fs"` | 저장 클래스 이름 (예: cephfs, nfs, ReadWriteMany를 지원해야 함) |
-| tls | object | `{"base":{"cert":"<MASKED>","create":false,"key":"<MASKED>"},"forward":{"cert":"<MASKED>","create":false,"key":"<MASKED>"}}` | Ingress를 통해 서비스를 노출할 때 사용하는 TLS 인증서 설정 cert-manager 설정 변수 |
+| storage.storageClass | string | `"ceph-fs"` | 저장 클래스 이름 (예: cephfs, nfs, ReadWriteMany 를 지원해야 함) |
+| tls | object | `{"base":{"cert":"<MASKED>","create":false,"key":"<MASKED>"},"forward":{"cert":"<MASKED>","create":false,"key":"<MASKED>"}}` | Ingress 를 통해 서비스를 노출할 때 사용하는 TLS 인증서 설정 cert-manager 설정 변수 |
 | tls.base | object | `{"cert":"<MASKED>","create":false,"key":"<MASKED>"}` | 기본 인증서 설정 (표준 모드, 예: crater.example.com 인증서) |
 | tls.base.cert | string | `"<MASKED>"` | 기본 인증서 내용 (마스킹됨) |
 | tls.base.create | bool | `false` | 기본 인증서 생성 여부 |

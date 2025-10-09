@@ -5,7 +5,7 @@ description: Crater は、Ingress-NGINX コントローラーを使用してサ�
 
 ## 配置
 
-### オプション1: LoadBalancer なし (例: バーコードメタルまたは開発クラスター)
+### オプション 1: LoadBalancer なし (例：バーコードメタルまたは開発クラスター)
 
 LoadBalancer サービスタイプが利用できないクラスターでは、`hostNetwork` モードを有効にするのが推奨されます。
 
@@ -29,8 +29,8 @@ helm upgrade --install ingress-nginx ingress-nginx \
 
 🔧 ノードセレクター、トレレーション、healthCheckHost をクラスターのノード構成に合わせて調整してください。
 
-オプション2: MetalLB での使用 (Crater が推奨)
-我々のプロダクションクラスターでは、Crater は MetalLB を使用してレイヤー2モードで内部IPを割り当てています。Ingress コントローラーは、LoadBalancer サービスとしてデプロイされ、内部IPを取得します。
+オプション 2: MetalLB での使用 (Crater が推奨)
+我々のプロダクションクラスターでは、Crater は MetalLB を使用してレイヤー2 モードで内部 IP を割り当てています。Ingress コントローラーは、LoadBalancer サービスとしてデプロイされ、内部 IP を取得します。
 
 ```bash
 helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
@@ -42,14 +42,14 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --set controller.allowSnippetAnnotations=true
 ```
 
-📌 この設定は、MetalLB のプールから内部IPを使用し、信頼できるネットワーク内でのサービス発見 (例: 大学のインTRANET) をサポートします。
+📌 この設定は、MetalLB のプールから内部 IP を使用し、信頼できるネットワーク内でのサービス発見 (例：大学のイン TRANET) をサポートします。
 
-外部IPの割り当てを確認するには:
+外部 IP の割り当てを確認するには：
 ```bash
 kubectl get svc -n ingress-nginx
 ```
 
-例:
+例：
 
 ```bash
 NAME                       TYPE           EXTERNAL-IP       PORT(S)
@@ -60,7 +60,7 @@ ingress-nginx-controller   LoadBalancer   192.168.100.243   80:31234/TCP,443:312
 現在、Ingress-NGINX のバージョンを `4.11.3` に固定しています。なぜなら、Crater の Ingress アノテーションはバージョン `4.12.0` 以降との互換性がまだ確立されていないためです。新しいバージョンを使用しようとすると、ルーティングリライトエラーが発生します。
 
 # 解除
-Ingress コントローラーを削除するには:
+Ingress コントローラーを削除するには：
 
 ```bash
 helm uninstall ingress-nginx -n ingress-nginx

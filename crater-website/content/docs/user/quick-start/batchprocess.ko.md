@@ -6,7 +6,7 @@ description: PyTorch 손글씨 인식 GPU 훈련 작업 제출
 
 ## PyTorch 손글씨 인식 GPU 훈련 작업 제출
 
-Crater의 **단일 머신 배치 작업**은 특정 환경에서 주어진 명령어에 따라 실행되고 결과를 얻는 데 사용됩니다.
+Crater 의 **단일 머신 배치 작업**은 특정 환경에서 주어진 명령어에 따라 실행되고 결과를 얻는 데 사용됩니다.
 
 ## 코드 업로드
 
@@ -200,7 +200,7 @@ python train.py
 ```
 
 1. /mnt/mnist 폴더 열기
-2. python을 사용하여 train.py 실행
+2. python 을 사용하여 train.py 실행
 
 #### 주의사항
 
@@ -259,7 +259,7 @@ sleep 600;//프로그램을 10분간 일시 중지
 
 ## 작업 결과 저장
 
-이미지 공간의 현재 폴더에 저장된 내용은 사용자 공간의 원본 폴더에 저장됩니다. 예시 코드에서 실행 후 mnist_cnn.pt 파일이 train.py가 있는 원본 폴더 mnist에 저장됩니다.
+이미지 공간의 현재 폴더에 저장된 내용은 사용자 공간의 원본 폴더에 저장됩니다. 예시 코드에서 실행 후 mnist_cnn.pt 파일이 train.py 가 있는 원본 폴더 mnist 에 저장됩니다.
 
 ```
 torch.save(model.state_dict(), "mnist_cnn.pt")

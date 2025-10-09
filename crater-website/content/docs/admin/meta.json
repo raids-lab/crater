@@ -3,6 +3,7 @@
     "---安装部署---",
     "quick-start",
     "kind-start",
+    "deploy-on-cluster",
     "deployment",
     "---进阶配置---",
     "chart",

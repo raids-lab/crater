@@ -1,6 +1,6 @@
 ---
 title: 데이터셋
-description: Dataset에 대한 문서
+description: Dataset 에 대한 문서
 icon: HomeIcon
 ---
 

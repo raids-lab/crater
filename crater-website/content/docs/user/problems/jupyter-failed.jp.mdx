@@ -9,7 +9,7 @@ description: Jupyter のドキュメントが見つからない
 
 ## 1. Jupyter Pem ファイルのハードコーディングにより起動に失敗
 
-2024年12月25日に報告されたユーザーの起動ログは以下の通りです:
+2024 年 12 月 25 日に報告されたユーザーの起動ログは以下の通りです：
 
 ![pem](./img/pem.webp)
 
@@ -17,7 +17,7 @@ description: Jupyter のドキュメントが見つからない
 
 また、ユーザーが以前の Slurm クラスターで Jupyter の TLS 接続を設定していたため、`/home/{username}/.jupyter` フォルダ内の Jupyter 設定ファイルに pem 証明書のパスがハードコーディングされています。
 
-この問題の解決方法は以下の 2 通りがあります:
+この問題の解決方法は以下の 2 通りがあります：
 
 1. `/home/{username}/.jupyter` フォルダを削除する
 2. `jupyter_notebook_config.py` ファイルの 161 行目を編集し、パスを `$HOME/mycert.pem` に変更する
