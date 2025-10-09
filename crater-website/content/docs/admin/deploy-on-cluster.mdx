@@ -1,0 +1,563 @@
+---
+title: Crater 集群部署指南
+description: 本指南描述了 Crater 平台在生产级 Kubernetes 集群中的标准化部署流程，包含环境准备、依赖组件安装、核心服务部署及常见问题排查。
+---
+
+## 1. 环境与基础要求
+
+| 项目 | 说明 |
+| ---- | ---- |
+| 操作系统 | Ubuntu 22.04 |
+| Kubernetes | v1.31.x |
+| 容器运行时 | containerd 1.7.x |
+| Helm | v3.x |
+| 节点配置 | 控制节点 1 个，工作节点 ≥ 2 个 |
+| 网络要求 | 节点间需内网互通；至少一台节点可访问外网或配置代理 |
+
+示例：
+```bash
+kubectl get nodes -o wide
+````
+
+输出示例：
+
+```
+NAME       STATUS   ROLES           VERSION   INTERNAL-IP     OS-IMAGE
+node-1     Ready    control-plane   v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-2     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-3     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+```
+
+---
+
+## 2. 集群依赖组件安装
+
+Crater 平台依赖以下基础组件完成调度、监控、网络与存储功能。  
+本节包含各组件的安装命令及镜像信息。
+
+### 2.1 Metrics Server
+
+**功能：** 提供集群节点与 Pod 的 CPU、内存指标，用于 HPA 自动扩缩容。
+
+```bash
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
+helm repo update
+helm pull metrics-server/metrics-server --untar --destination <your-path>/charts
+
+helm install metrics-server <your-path>/charts/metrics-server \
+  -n kube-system --create-namespace
+```
+
+**镜像：**
+
+```
+registry.k8s.io/metrics-server/metrics-server:v0.8.0
+# 国内镜像可替换为：
+swr.cn-north-4.myhuaweicloud.com/ddn-k8s/registry.k8s.io/metrics-server/metrics-server:v0.8.0
+```
+
+验证：
+
+```bash
+kubectl get pods -n kube-system | grep metrics-server
+kubectl top nodes
+```
+
+---
+
+### 2.2 NVIDIA GPU Operator
+
+**功能：** 安装 GPU 驱动、设备插件及监控组件。
+
+```bash
+helm repo add nvidia https://nvidia.github.io/gpu-operator
+helm repo update
+helm pull nvidia/gpu-operator --untar --destination <your-path>/charts
+
+helm install gpu-operator <your-path>/charts/gpu-operator \
+  -n gpu-operator --create-namespace
+```
+
+**主要镜像：**
+
+|组件|镜像|
+|---|---|
+|驱动容器|nvcr.io/nvidia/driver:525.125.06|
+|设备插件|nvcr.io/nvidia/k8s-device-plugin:v0.15.0|
+|DCGM Exporter|nvcr.io/nvidia/dcgm-exporter:3.1.6-3.1.3-ubuntu22.04|
+|MIG Manager|nvcr.io/nvidia/mig-manager:0.6.0|
+|Node Feature Discovery|ghcr.io/kubernetes-sigs/node-feature-discovery:v0.16.1|
+
+验证：
+
+```bash
+kubectl get pods -n gpu-operator
+nvidia-smi
+```
+
+---
+
+### 2.3 CloudNativePG（PostgreSQL Operator）
+
+**功能：** 提供高可用 PostgreSQL 数据库。
+
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm repo update
+helm pull cnpg/cloudnative-pg --untar --destination <your-path>/charts
+
+helm install cnpg <your-path>/charts/cloudnative-pg \
+  -n cnpg-system --create-namespace
+```
+
+**镜像：**
+
+```
+ghcr.io/cloudnative-pg/postgresql:16.3
+ghcr.io/cloudnative-pg/cloudnative-pg:1.24.0
+```
+
+创建示例数据库集群：
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: crater-postgresql
+  namespace: cnpg-system
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+EOF
+```
+
+---
+
+### 2.4 NFS 存储系统
+
+**功能：** 提供共享存储（ReadWriteMany 模式），用于用户工作区与公共数据。
+
+#### 2.4.1 安装 NFS Server（可选）
+
+在一台具备持久磁盘的节点上执行：
+
+```bash
+sudo apt update
+sudo apt install -y nfs-kernel-server
+sudo mkdir -p /data/nfs
+sudo chown -R nobody:nogroup /data/nfs
+sudo chmod 777 /data/nfs
+
+echo "/data/nfs *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+sudo exportfs -a
+sudo systemctl enable --now nfs-server
+```
+
+验证：
+
+```bash
+showmount -e <your-node-ip>
+```
+
+#### 2.4.2 创建 NFS StorageClass
+
+在 Kubernetes 集群中执行：
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs
+provisioner: nfs-provisioner
+parameters:
+  archiveOnDelete: "false"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+EOF
+```
+
+#### 2.4.3 部署 NFS Provisioner
+
+```bash
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+helm repo update
+
+helm install nfs-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+  -n nfs-system --create-namespace \
+  --set nfs.server=<your-node-ip> \
+  --set nfs.path=/data/nfs \
+  --set storageClass.name=nfs \
+  --set storageClass.defaultClass=true
+```
+
+验证：
+
+```bash
+kubectl get pods -n nfs-system
+kubectl get sc
+```
+
+---
+
+### 2.5 Prometheus Stack
+
+**功能：** 集成 Prometheus、Grafana、Alertmanager 等监控组件。
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm pull prometheus-community/kube-prometheus-stack --untar --destination <your-path>/charts
+
+helm install prometheus <your-path>/charts/kube-prometheus-stack \
+  -n monitoring --create-namespace
+```
+
+**主要镜像：**
+
+|组件|镜像|
+|---|---|
+|Prometheus|quay.io/prometheus/prometheus:v2.54.1|
+|Grafana|docker.io/grafana/grafana:10.4.1|
+|Alertmanager|quay.io/prometheus/alertmanager:v0.27.0|
+|Node Exporter|quay.io/prometheus/node-exporter:v1.8.1|
+|Kube-State-Metrics|registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0|
+
+访问 Grafana：
+
+```bash
+kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
+# 浏览器访问 http://localhost:3000
+# 默认账号密码：admin / prom-operator
+```
+
+---
+
+### 2.6 Volcano 调度器
+
+**功能：** 提供 GPU 作业调度、队列管理、任务抢占等功能。
+
+```bash
+helm repo add volcano https://volcano-sh.github.io/helm-charts
+helm repo update
+helm pull volcano/volcano --untar --destination <your-path>/charts
+
+helm install volcano <your-path>/charts/volcano \
+  -n volcano-system --create-namespace \
+  -f <your-path>/volcano/values.yaml
+```
+
+**主要镜像：**
+
+|组件|镜像|
+|---|---|
+|Scheduler|volcano.sh/volcano-scheduler:v1.9.0|
+|Controller|volcano.sh/volcano-controllers:v1.9.0|
+|Admission|volcano.sh/volcano-admission:v1.9.0|
+|Webhook|volcano.sh/volcano-webhook:v1.9.0|
+
+验证：
+
+```bash
+kubectl get pods -n volcano-system
+```
+
+---
+
+### 2.7 MetalLB（裸机负载均衡）
+
+**功能：** 为裸机集群提供 LoadBalancer IP 支持。
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+helm pull metallb/metallb --untar --destination <your-path>/charts
+
+helm install metallb <your-path>/charts/metallb \
+  -n metallb-system --create-namespace
+```
+
+**主要镜像：**
+
+|组件|镜像|
+|---|---|
+|Controller|quay.io/metallb/controller:v0.14.8|
+|Speaker|quay.io/metallb/speaker:v0.14.8|
+
+示例地址池配置：
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-address-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - <your-ip-range>  # 示例：192.168.1.200-192.168.1.220
+EOF
+```
+
+---
+
+### 2.8 ingress-nginx（Ingress Controller）
+
+**功能：** 为 Crater 前端与 API 提供外部访问入口。
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace \
+  --version 4.11.3 \
+  --set controller.hostNetwork=true \
+  --set controller.dnsPolicy=ClusterFirstWithHostNet \
+  --set controller.healthCheckHost="<your-node-ip>" \
+  --set 'controller.nodeSelector.kubernetes\.io/hostname=node-2'
+```
+
+**主要镜像：**
+
+|组件|镜像|
+|---|---|
+|Controller|registry.k8s.io/ingress-nginx/controller:v1.9.6|
+|Admission Webhook|registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.0|
+
+验证：
+
+```bash
+kubectl get pods -n ingress-nginx -o wide
+kubectl get svc -n ingress-nginx -o wide
+```
+
+---
+
+## 3. Harbor 镜像仓库部署
+
+```bash
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+helm pull harbor/harbor --version 1.16.0 --untar
+```
+
+配置文件示例（`values.yaml`）：
+
+```yaml
+expose:
+  type: nodePort
+  tls:
+    enabled: false
+  nodePort:
+    ports:
+      http:
+        port: 30002
+externalURL: http://<your-node-ip>:30002
+harborAdminPassword: "<MUSTEDIT>"
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 50Gi
+```
+
+安装命令：
+
+```bash
+helm install harbor <your-path>/charts/harbor \
+  -n harbor-system --create-namespace \
+  -f <your-path>/harbor/values.yaml
+```
+
+访问地址：
+
+```
+http://<your-node-ip>:30002
+```
+
+---
+
+## 4. Crater 平台部署
+
+拉取 Chart：
+
+```bash
+helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+```
+
+Crater 平台的核心配置文件为 `values.yaml`。  
+该文件用于定义集群域名、数据库连接、监控服务地址、存储 PVC、以及 Harbor 等外部依赖的连接参数。
+
+在执行 `helm install` 之前，应根据以下说明修改相应字段。
+
+---
+
+### 4.1 基础信息
+
+```yaml
+# 平台访问域名
+host: crater.example.com
+
+# 协议类型，可选 "http" 或 "https"
+protocol: http
+
+# 初始化管理员账号
+firstUser:
+  username: crater-admin
+  password: <MUSTEDIT>
+````
+
+如已配置 Ingress 与域名解析，可使用真实域名（如 `crater.mycluster.local`）；  
+若仅测试环境，可填写控制节点 IP。
+
+---
+
+### 4.2 存储配置（NFS）
+
+由于集群已部署 NFS 共享存储系统，`storage` 段配置应指定对应的 StorageClass：
+
+```yaml
+storage:
+  create: true
+  request: 10Gi
+  storageClass: "nfs"          # 使用前面创建的 NFS StorageClass
+  pvcName: "crater-rw-storage" # 后端挂载的共享 PVC 名称
+```
+
+Crater 后端会自动挂载该 PVC 用于用户空间与公共目录（`users/`, `accounts/`, `public/`）。
+
+---
+
+### 4.3 PostgreSQL 数据库配置（CloudNativePG）
+
+Crater 使用 CloudNativePG 部署的数据库集群。  
+需要将数据库连接参数指向对应的服务：
+
+```yaml
+backendConfig:
+  postgres:
+    host: crater-postgresql.cnpg-system.svc.cluster.local  # CloudNativePG Cluster 的 Service 名称
+    port: 5432
+    dbname: postgres
+    user: postgres
+    password: <MUSTEDIT>
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+```
+
+> 说明：
+> 
+> - `host` 可通过 `kubectl get svc -n cnpg-system` 查询。
+>     
+> - 如果使用 CloudNativePG 的默认集群名为 `crater-postgresql`，则服务名应为：  
+>     `crater-postgresql-rw.cnpg-system.svc.cluster.local`。
+>     
+
+---
+
+### 4.4 监控系统配置（Prometheus Stack）
+
+Crater 后端通过 Prometheus API 获取 GPU 与作业指标。  
+应将 `backendConfig.prometheusAPI` 指向 `kube-prometheus-stack` 中的 Prometheus Service 地址：
+
+```yaml
+backendConfig:
+  prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+```
+
+可通过以下命令获取：
+
+```bash
+kubectl get svc -n monitoring | grep prometheus
+```
+
+Grafana 集成配置示例：
+
+```yaml
+grafanaProxy:
+  enable: true
+  address: http://prometheus-grafana.monitoring  # Grafana Service 名称
+  token: <MASKED>                                # Grafana 只读 API Token
+  host: gpu-grafana.example.com                  # 外部访问域名
+```
+
+---
+
+### 4.5 Harbor 镜像仓库配置（Registry）
+
+若集群内已部署 Harbor，可启用 Registry 集成功能。  
+启用后，Crater 可自动推送构建镜像到 Harbor 仓库。
+
+```yaml
+backendConfig:
+  registry:
+    enable: true
+    harbor:
+      server: harbor.example.com      # Harbor 的访问域名
+      user: admin                     # 管理员用户名
+      password: <MUSTEDIT>            # 管理员密码
+    buildTools:
+      proxyConfig:
+        httpProxy: null
+        httpsProxy: null
+        noProxy: null
+```
+
+> 若暂不启用 Harbor，可保持 `enable: false`。
+
+---
+
+### 4.6 Ingress 与 TLS 配置（ingress-nginx + cert-manager）
+
+Crater 默认通过 Ingress 暴露服务。  
+如集群启用了 `ingress-nginx` 并准备了证书，可在 `backendConfig.secrets` 中指定：
+
+```yaml
+backendConfig:
+  secrets:
+    tlsSecretName: crater-tls-secret
+    tlsForwardSecretName: crater-tls-forward-secret
+    imagePullSecretName: ""
+```
+
+对应的证书可通过以下命令创建：
+
+```bash
+kubectl create secret tls crater-tls-secret \
+  --cert=tls.crt --key=tls.key -n crater-system
+```
+
+如未启用 HTTPS，可保持默认值，协议仍为 HTTP。
+
+---
+
+### 4.7 部署命令
+
+确认修改完成后执行：
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater \
+  --version 0.1.0 \
+  -n crater-system \
+  -f values.yaml
+```
+
+验证：
+
+```bash
+kubectl get pods -n crater-system
+kubectl get ingress -n crater-system
+```
+
+访问地址：
+
+```
+http://crater.example.com
+```
+
+---
+
+本文档版本适用于 Crater v0.1.0 及以上版本。
