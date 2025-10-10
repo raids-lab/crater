@@ -194,7 +194,9 @@ function RouteComponent() {
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
                     {t('adminDatasetTable.actions.menuLabel')}
                   </DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => navigate({ to: `${DatasetInfo.id}` })}>
+                  <DropdownMenuItem
+                    onClick={() => navigate({ from: '/admin/data', to: `${DatasetInfo.id}` })}
+                  >
                     <InfoIcon className="text-highlight-emerald" />
                     {t('adminDatasetTable.actions.viewDetails')}
                   </DropdownMenuItem>
