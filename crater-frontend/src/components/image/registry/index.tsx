@@ -77,6 +77,8 @@ import {
 } from '@/services/api/imagepack'
 import { IResponse } from '@/services/types'
 
+import useIsAdmin from '@/hooks/use-admin'
+
 import { formatBytes } from '@/utils/formatter'
 import { logger } from '@/utils/loglevel'
 import { atomUserInfo } from '@/utils/store'
@@ -123,6 +125,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openCudaBaseImageSheet, setOpenCudaBaseImageSheet] = useState(false)
   const [imagePackName, setImagePackName] = useState<string>('')
   const navigate = useNavigate()
+  const isAdmin = useIsAdmin()
   const [openCheckDialog, setCheckOpenDialog] = useState(false)
   const user = useAtomValue(atomUserInfo)
   const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>([])
@@ -243,7 +246,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
                     操作
                   </DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => navigate({ to: `${kanikoInfo.imagepackName}` })}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Get current path prefix to ensure compatibility with user and admin environments
+                      const pathPrefix = isAdmin ? '/admin/env/registry' : '/portal/env/registry'
+                      navigate({ from: pathPrefix, to: `${kanikoInfo.imagepackName}` })
+                    }}
+                  >
                     <InfoIcon className="text-highlight-emerald" />
                     详情
                   </DropdownMenuItem>

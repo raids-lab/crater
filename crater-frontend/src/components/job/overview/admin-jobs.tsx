@@ -318,7 +318,7 @@ const AdminJobOverview = () => {
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
                       {t('adminJobOverview.actions.dropdown.title')}
                     </DropdownMenuLabel>
-                    <Link to={`${jobInfo.jobName}`}>
+                    <Link from="/admin/jobs" to={`${jobInfo.jobName}`}>
                       <DropdownMenuItem>
                         <InfoIcon className="text-highlight-emerald" />
                         {t('adminJobOverview.actions.dropdown.details')}
