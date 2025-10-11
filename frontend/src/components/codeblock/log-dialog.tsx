@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import {
   CalendarArrowDown,
   CalendarOff,
@@ -36,7 +35,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { ContainerInfo, apiGetPodContainerLog } from '@/services/api/tool'
 
 import { logger } from '@/utils/loglevel'
-import { configAPIBaseAtom } from '@/utils/store/config'
+import { ACCESS_TOKEN_KEY } from '@/utils/store'
 
 import TooltipButton from '../button/tooltip-button'
 import LoadingCircleIcon from '../icon/loading-circle-icon'
@@ -75,7 +74,6 @@ export function LogCard({
   namespacedName: PodNamespacedName
   selectedContainer: ContainerInfo
 }) {
-  const apiBase = useAtomValue(configAPIBaseAtom)
   const queryClient = useQueryClient()
   const [tailLines, setTailLines] = useState(DEFAULT_TAIL_LINES)
   const [timestamps, setTimestamps] = useState(false)
@@ -88,6 +86,7 @@ export function LogCard({
   const [streamingPaused, setStreamingPaused] = useState(false) // 新增：控制流是否暂停
   const [streamedLogs, setStreamedLogs] = useState<string[]>([]) // 新增：存储流式日志
   const streamEventSource = useRef<EventSource | null>(null) // 新增：SSE连接引用
+  const streamAbortController = useRef<AbortController | null>(null) // 新增：用于取消 fetch 请求
 
   const { data: logText, refetch } = useQuery({
     queryKey: [
@@ -195,43 +194,118 @@ export function LogCard({
   }
 
   // 添加启动和停止流式日志的函数
-  const startStreaming = () => {
-    if (streamEventSource.current) {
+  const startStreaming = async () => {
+    if (streamAbortController.current) {
       stopStreaming()
     }
 
-    const url = `${apiBase}/api/v1/namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream?timestamps=${timestamps}`
+    try {
+      const abortController = new AbortController()
+      streamAbortController.current = abortController
 
-    const eventSource = new EventSource(url)
-    streamEventSource.current = eventSource
+      // 构建流式日志的 URL
+      const baseUrl = `${import.meta.env.VITE_API_BASE || ''}/api/v1/namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream`
+      const params = new URLSearchParams({
+        timestamps: timestamps.toString(),
+      })
+      const url = `${baseUrl}?${params}`
 
-    eventSource.onmessage = (event) => {
-      try {
-        const logLine = decodeBase64ToUtf8(event.data)
-        setStreamedLogs((prev) => [...prev, logLine])
-        if (!streamingPaused && logAreaRef.current) {
-          logAreaRef.current.scrollIntoView(false)
-        }
-      } catch (error) {
-        logger.error('处理流式日志失败:', error)
+      // 获取认证 token
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+
+      // 使用原生 fetch 来处理流式响应
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/octet-stream',
+        },
+        signal: abortController.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-    }
 
-    eventSource.onerror = () => {
-      toast.error('流式日志连接中止，已自动切换到普通模式')
-      refetch()
-      stopStreaming()
-    }
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('无法获取响应流')
+      }
 
-    setStreaming(true)
+      setStreaming(true)
+
+      // 读取流数据
+      const decoder = new TextDecoder()
+      let buffer = '' // 用于处理不完整的行
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done || abortController.signal.aborted) {
+          break
+        }
+
+        // 解码数据并添加到缓冲区
+        buffer += decoder.decode(value, { stream: true })
+
+        // 按行分割数据
+        const lines = buffer.split('\n')
+        // 保留最后一个可能不完整的行
+        buffer = lines.pop() || ''
+
+        // 处理完整的行
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              // 后端发送的是 base64 编码的数据，直接解码
+              const logLine = decodeBase64ToUtf8(line.trim())
+              setStreamedLogs((prev) => [...prev, logLine])
+
+              // 自动滚动到底部（如果没有暂停）
+              if (!streamingPaused) {
+                setTimeout(() => {
+                  logAreaRef.current?.scrollIntoView(false)
+                }, 0)
+              }
+            } catch (error) {
+              logger.error('处理流式日志失败:', error, 'Line:', line)
+            }
+          }
+        }
+      }
+
+      // 处理最后可能剩余的数据
+      if (buffer.trim()) {
+        try {
+          const logLine = decodeBase64ToUtf8(buffer.trim())
+          setStreamedLogs((prev) => [...prev, logLine])
+        } catch (error) {
+          logger.error('处理最后一行日志失败:', error)
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        logger.error('流式日志连接失败:', error)
+        toast.error('流式日志连接失败，已自动切换到普通模式')
+        refetch()
+      }
+    } finally {
+      setStreaming(false)
+      streamAbortController.current = null
+    }
   }
 
   const stopStreaming = () => {
+    if (streamAbortController.current) {
+      streamAbortController.current.abort()
+      streamAbortController.current = null
+    }
     if (streamEventSource.current) {
       streamEventSource.current.close()
       streamEventSource.current = null
     }
     setStreaming(false)
+    setStreamedLogs([]) // 清空之前的日志
     setStreamingPaused(false)
   }
 
