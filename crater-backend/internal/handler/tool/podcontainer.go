@@ -1,12 +1,8 @@
 package tool
 
 import (
-	"bufio"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -109,16 +105,14 @@ func NewAPIServerMgr(conf *handler.RegisterConfig) handler.Manager {
 
 func (mgr *APIServerMgr) GetName() string { return mgr.name }
 
-func (mgr *APIServerMgr) RegisterPublic(g *gin.RouterGroup) {
-	// TODO(liyilong): 进行权限控制
-	g.GET(":namespace/pods/:name/containers/:container/log/stream", mgr.StreamPodContainerLog)
-}
+func (mgr *APIServerMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/events", mgr.GetPodEvents)
 
 	g.GET(":namespace/pods/:name/containers", mgr.GetPodContainers)
 	g.GET(":namespace/pods/:name/containers/:container/log", mgr.GetPodContainerLog)
+	g.GET(":namespace/pods/:name/containers/:container/log/stream", mgr.StreamPodContainerLog)
 
 	// New ingress routes
 	g.GET(":namespace/pods/:name/ingresses", mgr.GetPodIngresses)
@@ -129,68 +123,6 @@ func (mgr *APIServerMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":namespace/pods/:name/nodeports", mgr.GetPodNodeports)
 	g.POST(":namespace/pods/:name/nodeports", mgr.CreatePodNodeport)
 	g.DELETE(":namespace/pods/:name/nodeports", mgr.DeletePodNodeport)
-}
-
-// 实现流式日志函数
-func (mgr *APIServerMgr) StreamPodContainerLog(c *gin.Context) {
-	var req PodContainerLogURIReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	var param PodContainerLogQueryReq
-	if err := c.ShouldBindQuery(&param); err != nil {
-		c.String(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	// 设置SSE响应头
-	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
-
-	// 创建日志请求，强制设置Follow为true
-	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
-		Container:  req.ContainerName,
-		Follow:     true, // 强制为true
-		Timestamps: param.Timestamps,
-		TailLines:  param.TailLines,
-	})
-
-	// 使用流式方式获取日志
-	stream, err := logReq.Stream(c)
-	if err != nil {
-		c.SSEvent("error", fmt.Sprintf("获取日志流失败: %v", err))
-		c.Writer.Flush()
-		return
-	}
-	defer stream.Close()
-
-	// 设置连接关闭检测
-	ctx := c.Request.Context()
-	go func() {
-		<-ctx.Done()
-		stream.Close()
-	}()
-
-	// 读取并发送日志
-	reader := bufio.NewReader(stream)
-	for {
-		line, err := reader.ReadBytes('\n')
-		if err != nil {
-			if err != io.EOF {
-				c.SSEvent("error", fmt.Sprintf("读取日志出错: %v", err))
-			}
-			break
-		}
-
-		// 将日志行编码为base64并发送
-		encoded := base64.StdEncoding.EncodeToString(line)
-		c.SSEvent("message", encoded)
-		c.Writer.Flush()
-	}
 }
 
 // GetJobNameFromPod retrieves the job name from a pod's owner references
@@ -863,55 +795,6 @@ type (
 		Previous   bool   `form:"previous"`
 	}
 )
-
-// GetPodContainerLog godoc
-//
-//	@Summary		获取Pod容器日志
-//	@Description	获取Pod容器日志
-//	@Tags			Pod
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			namespace	path		string					true	"命名空间"
-//	@Param			name		path		string					true	"Pod名称"
-//	@Param			container	path		string					true	"容器名称"
-//	@Param			page		query		int						true	"页码"
-//	@Param			size		query		int						true	"每页数量"
-//	@Success		200			{object}	resputil.Response[any]	"Pod容器日志"
-//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
-//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
-//	@Router			/v1/namespaces/{namespace}/pods/{name}/containers/{container}/log [get]
-func (mgr *APIServerMgr) GetPodContainerLog(c *gin.Context) {
-	// Implementation for fetching and returning the pod container log
-	var req PodContainerLogURIReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	var param PodContainerLogQueryReq
-	if err := c.ShouldBindQuery(&param); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	// 获取指定 Pod 的日志请求
-	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
-		Container:  req.ContainerName,
-		Follow:     param.Follow,
-		TailLines:  param.TailLines,
-		Timestamps: param.Timestamps,
-		Previous:   param.Previous,
-	})
-
-	// 获取日志内容
-	logData, err := logReq.DoRaw(c)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to get log: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	resputil.Success(c, logData)
-}
 
 // GetPodEvents godoc
 //
