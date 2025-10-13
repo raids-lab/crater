@@ -1,0 +1,57 @@
+{{- if .Values.dbBackup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crater-db-backup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crater-db-backup
+spec:
+  timeZone: {{ .Values.dbBackup.timeZone }}
+  schedule: {{ .Values.dbBackup.schedule }}
+  successfulJobsHistoryLimit: {{ .Values.dbBackup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.dbBackup.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.dbBackup.backoffLimit }}
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pg-backup
+              image: {{ .Values.images.dbBackup.repository }}:{{ .Values.images.dbBackup.tag }}
+              command: ["/bin/bash", "/scripts/backup.sh"]
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+                - name: scripts-volume
+                  mountPath: /scripts
+                  readOnly: true
+              env:
+                # 从 backendConfig.postgres 传递数据库配置
+                - name: DB_HOST
+                  value: "{{ .Values.backendConfig.postgres.host }}"
+                - name: DB_PORT
+                  value: "{{ .Values.backendConfig.postgres.port }}"
+                - name: DB_NAME
+                  value: "{{ .Values.backendConfig.postgres.dbname }}"
+                - name: DB_USER
+                  value: "{{ .Values.backendConfig.postgres.user }}"
+                - name: DB_PASS
+                  value: "{{ .Values.backendConfig.postgres.password }}"
+                - name: TZ
+                  value: "{{ .Values.backendConfig.postgres.TimeZone }}"
+
+                # 备份配置（可被 ConfigMap 脚本读取）
+                - name: BACKUP_DIR
+                  value:  "{{ .Values.dbBackup.config.backupDir }}"
+                - name: RETENTION_COUNT
+                  value: "{{ .Values.dbBackup.config.retentionCount }}"
+          volumes:
+            - name: scripts-volume
+              configMap:
+                name: crater-cronjob-scripts
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: {{ .Values.dbBackup.config.pvcName }}
+{{- end }}

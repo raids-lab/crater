@@ -74,6 +74,11 @@ images:
     repository: "ghcr.io/raids-lab/envd-client"
     # -- Envd image tag
     tag: "latest"
+  dbBackup:
+    # -- DBBackup image repository
+    repository: "docker.io/library/postgres"
+    # -- DBBackup image tag
+    tag: "16.4"
 
 # -- Persistent Volume Claim configuration
 storage:
@@ -299,6 +304,47 @@ backendConfig:
     # -- Default email address for system notifications (Required if Enable is true)
     # Must be a valid email address
     notify: example@example.com
+
+# -- Backup configuratiton
+dbBackup:
+  # -- Whether to enable the database backup CronJob
+  enabled: true
+
+  # -- Cron schedule for running the backup job
+  # Default: runs daily at 02:00 AM (Shanghai time)
+  schedule: "0 2 * * *"
+
+  # -- Time zone used for cron scheduling
+  timeZone: Asia/Shanghai
+
+  # -- Number of successful jobs to retain in history
+  successfulJobsHistoryLimit: 3
+
+  # -- Number of failed jobs to retain in history
+  failedJobsHistoryLimit: 1
+
+  # -- Number of retries before marking the job as failed
+  backoffLimit: 3
+
+  # -- Internal configuration for backup behavior (can be overridden via ConfigMap in the future)
+  config:
+    # -- Whether to actually perform backup (can be used to disable logic without removing job)
+    enabled: true
+    # -- Whether to create PVC or use existing pvc.
+    createPVC: true
+    # -- If create, Storage request size
+    size: 10Gi
+    # -- If create, Storage class name (e.g. cephfs, nfs, must support ReadWriteMany)
+    storageClass: "nfs"
+    # -- PVC name (existing or created, also used in dbBackup)
+    pvcName: "pg-backup-pvc"
+    accessModes:
+      - ReadWriteMany
+    # -- Number of most recent backup files to retain
+    # Old backups beyond this number will be deleted during cleanup
+    retentionCount: 7
+
+    backupDir: /backups
 
 # -- Cronjob management strategy configuration
 # Job scheduling management strategies such as low utilization email reminders and cleanup, long-time usage email reminders and cleanup, etc.
