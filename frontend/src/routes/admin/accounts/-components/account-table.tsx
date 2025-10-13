@@ -69,7 +69,7 @@ const getHeader = (key: string): string => {
 
 const toolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    key: 'name',
+    key: 'nickname',
     placeholder: '搜索账户名称',
   },
   filterOptions: [],
