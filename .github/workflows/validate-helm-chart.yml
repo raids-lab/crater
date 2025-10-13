@@ -45,10 +45,13 @@ jobs:
           CURRENT_VERSION=$(helm show chart charts/crater/ | grep '^version:' | awk '{print $2}')
           echo "Current chart version: $CURRENT_VERSION"
 
+          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+          echo "Base branch: $BASE_BRANCH"
+          
           # Get the chart version from the base branch
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git checkout origin/${{ github.event.pull_request.base.ref }} -- charts/crater/Chart.yaml
-          BASE_VERSION=$(helm show chart charts/crater/ | grep '^version:' | awk '{print $2}')
+          git fetch origin "$BASE_BRANCH"
+          
+          BASE_VERSION=$(git show "origin/$BASE_BRANCH:charts/crater/Chart.yaml" | grep '^version:' | awk '{print $2}')
           echo "Base chart version: $BASE_VERSION"
 
           # Reset to current branch
