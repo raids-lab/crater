@@ -1,0 +1,24 @@
+{{- if .Values.dbBackup.enabled }}
+{{- if .Values.dbBackup.config.createPVC }}
+---
+# Source: crater/templates/pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.dbBackup.config.pvcName }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    {{- range .Values.dbBackup.config.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.dbBackup.config.size | quote }}
+  {{- with .Values.dbBackup.config.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
