@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { PencilIcon, TrashIcon, UserRoundIcon } from 'lucide-react'
 import { PlusCircleIcon } from 'lucide-react'
@@ -45,6 +45,12 @@ import {
 import { IAccount } from '@/services/api/account'
 import { apiAdminAccountList } from '@/services/api/account'
 import { apiProjectDelete } from '@/services/api/account'
+
+// Link Options for admin account navigation
+const adminAccountDetailLinkOptions = linkOptions({
+  to: '/admin/accounts/$id',
+  params: { id: '' },
+})
 
 const getHeader = (key: string): string => {
   switch (key) {
@@ -153,7 +159,7 @@ export const AccountTable = ({
         cell: ({ row }) => {
           return (
             <div className="flex flex-row items-center justify-center gap-1">
-              <Link to={'/admin/accounts/$id'} params={{ id: row.original.id.toString() }}>
+              <Link {...adminAccountDetailLinkOptions} params={{ id: row.original.id.toString() }}>
                 <Button
                   title={t('table.actions.manageUser')}
                   variant="outline"

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Link } from '@tanstack/react-router'
+import { Link, linkOptions } from '@tanstack/react-router'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { ClockIcon, InfoIcon, RedoDotIcon, SquareIcon, Trash2Icon, XIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
@@ -55,6 +55,13 @@ import {
 
 import { createApprovalOrder } from '@/services/api/approvalorder'
 import { IJobInfo, JobStatus, getJobStateType } from '@/services/api/vcjob'
+
+// Link Options for portal job navigation
+const portalJobDetailLinkOptions = linkOptions({
+  to: '/portal/jobs/detail/$name',
+  params: { name: '' },
+  search: { tab: '' },
+})
 
 interface JobActionsMenuProps {
   jobInfo: IJobInfo
@@ -130,7 +137,7 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
             <DropdownMenuItem asChild>
-              <Link to="/portal/jobs/detail/$name" params={{ name: jobInfo.jobName }}>
+              <Link {...portalJobDetailLinkOptions} params={{ name: jobInfo.jobName }}>
                 <InfoIcon className="text-highlight-emerald size-4" />
                 详情
               </Link>

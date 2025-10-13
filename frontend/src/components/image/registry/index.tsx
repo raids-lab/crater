@@ -248,9 +248,18 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => {
-                      // Get current path prefix to ensure compatibility with user and admin environments
-                      const pathPrefix = isAdmin ? '/admin/env/registry' : '/portal/env/registry'
-                      navigate({ from: pathPrefix, to: `${kanikoInfo.imagepackName}` })
+                      // Navigate to registry detail page using proper route structure
+                      if (isAdmin) {
+                        navigate({
+                          to: '/admin/env/registry/$name',
+                          params: { name: kanikoInfo.imagepackName },
+                        })
+                      } else {
+                        navigate({
+                          to: '/portal/env/registry/$name',
+                          params: { name: kanikoInfo.imagepackName },
+                        })
+                      }
                     }}
                   >
                     <InfoIcon className="text-highlight-emerald" />

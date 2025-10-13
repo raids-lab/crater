@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 // Modified code
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   CalendarIcon,
@@ -75,6 +75,13 @@ import { JobPhase } from '@/services/api/vcjob'
 import { logger } from '@/utils/loglevel'
 
 import { DurationDialog } from '../../../routes/admin/jobs/-components/duration-dialog'
+
+// Link Options for admin job navigation
+const adminJobDetailLinkOptions = linkOptions({
+  to: '/admin/jobs/$name',
+  params: { name: '' },
+  search: { tab: '' },
+})
 
 export type StatusValue =
   | 'Queueing'
@@ -318,7 +325,7 @@ const AdminJobOverview = () => {
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
                       {t('adminJobOverview.actions.dropdown.title')}
                     </DropdownMenuLabel>
-                    <Link from="/admin/jobs" to={`${jobInfo.jobName}`}>
+                    <Link {...adminJobDetailLinkOptions} params={{ name: jobInfo.jobName }}>
                       <DropdownMenuItem>
                         <InfoIcon className="text-highlight-emerald" />
                         {t('adminJobOverview.actions.dropdown.details')}

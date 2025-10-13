@@ -48,11 +48,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.nodeManagement'),
-              url: 'cluster/nodes',
+              url: '/admin/cluster/nodes',
             },
             {
               title: t('navigation.resourceManagement'),
-              url: 'cluster/resources',
+              url: '/admin/cluster/resources',
             },
           ],
         },
@@ -62,15 +62,15 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.gpuMonitoring'),
-              url: 'monitor/gpu',
+              url: '/admin/monitor/gpu',
             },
             {
               title: t('navigation.freeResources'),
-              url: 'monitor/idle',
+              url: '/admin/monitor/idle',
             },
             {
               title: t('navigation.networkMonitoring'),
-              url: 'monitor/network',
+              url: '/admin/monitor/network',
             },
           ],
         },
@@ -81,12 +81,12 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
       items: [
         {
           title: t('navigation.jobManagement'),
-          url: 'jobs',
+          url: '/admin/jobs',
           icon: FlaskConicalIcon,
         },
         {
           title: t('navigation.cronPolicy'),
-          url: 'cronjobs',
+          url: '/admin/cronjobs',
           icon: AlarmClockIcon,
         },
       ],
@@ -96,12 +96,12 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
       items: [
         {
           title: t('navigation.userManagement'),
-          url: 'users',
+          url: '/admin/users',
           icon: UserRoundIcon,
         },
         {
           title: t('navigation.accountManagement'),
-          url: 'accounts',
+          url: '/admin/accounts',
           icon: UsersRoundIcon,
         },
       ],
@@ -115,23 +115,23 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.imageCreation'),
-              url: 'env/registry',
+              url: '/admin/env/registry',
             },
             {
               title: t('navigation.imageList'),
-              url: 'env/images',
+              url: '/admin/env/images',
             },
           ],
         },
         {
           title: t('navigation.dataManagement'),
           icon: DatabaseIcon,
-          url: 'data',
+          url: '/admin/data',
         },
         {
           title: t('navigation.fileManagement'),
           icon: FolderIcon,
-          url: 'files',
+          url: '/admin/files',
         },
       ],
     },
@@ -141,11 +141,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
         {
           title: t('navigation.platformSettings'),
           icon: SettingsIcon,
-          url: 'settings',
+          url: '/admin/settings',
         },
         {
           title: t('navigation.approvalOrder'),
-          url: 'settings/orders',
+          url: '/admin/settings/orders',
           icon: ClipboardCheckIcon,
         },
       ],

@@ -63,7 +63,7 @@ export function AppSidebar({
           items: [
             {
               title: '成员管理',
-              url: 'account/member',
+              url: '/admin/account/member',
             },
           ],
         },

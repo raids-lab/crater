@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { Trash2Icon } from 'lucide-react'
@@ -61,6 +61,13 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import Quota from '../../../routes/portal/jobs/inter/-components/quota'
 import ListedNewJobButton from '../new-job-button'
+
+// Link Options for portal job navigation
+const portalJobDetailLinkOptions = linkOptions({
+  to: '/portal/jobs/detail/$name',
+  params: { name: '' },
+  search: { tab: '' },
+})
 
 export const priorities = [
   {
@@ -315,7 +322,7 @@ const ColocateOverview = () => {
                     操作
                   </DropdownMenuLabel>
                   <DropdownMenuItem asChild>
-                    <Link to="/portal/jobs/detail/$name" params={{ name: taskInfo.jobName }}>
+                    <Link {...portalJobDetailLinkOptions} params={{ name: taskInfo.jobName }}>
                       详情
                     </Link>
                   </DropdownMenuItem>
