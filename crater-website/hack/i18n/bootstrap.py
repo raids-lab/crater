@@ -171,6 +171,22 @@ def main(args):
             print("✅ 所有变更的文件都不属于任何已知文档家族，本次无需翻译。")
             sys.exit(0)
         print(f"  - 共 {len(doc_families)} 个文档家族受到影响。")
+    elif args.update_all:
+        # 模式 B: 全量同步模式 (--update-all)
+        print(f"\n🔄 运行模式：全量同步 (update-all)")
+        print(f"  - 将处理全部 {len(doc_families)} 个文档家族。")
+    else:
+        print(f"\n🔄 运行模式：默认 (只翻译新增)")
+        target_families = {
+            prefix: files_map for prefix, files_map in doc_families.items()
+            if len(files_map) < len(supported_locales)
+        }
+        doc_families = target_families
+        if not doc_families:
+            print("✅ 未找到任何仅有源语言的新增文件，无需操作。")
+            sys.exit(0)
+        print(f"  - 找到 {len(doc_families)} 个需要翻译的新增文档家族。")
+
 
     # --- 步骤 3: 遍历受影响的家族，智能执行翻译 ---
     for prefix, files_map in doc_families.items():
@@ -210,7 +226,10 @@ def main(args):
 
         # --- 3.2 识别需要创建和需要更新的目标 ---
         targets_to_create = [lang for lang in supported_locales if lang not in files_map]
-        targets_to_update = [lang for lang in supported_locales if lang in files_map and lang != source_of_truth_lang]
+        if args.update_all or args.changed_files:
+            targets_to_update = [lang for lang in supported_locales if lang in files_map and lang != source_of_truth_lang]
+        else:
+            targets_to_update = []
 
         # --- 3.3 执行翻译 ---
         # (A) 创建缺失的语言文件
@@ -253,11 +272,18 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="i18n 自动化翻译引导程序 (支持 Diff)")
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--changed-files", 
         type=str, 
         default="",
         help="一个用逗号分隔的、相对于项目根目录的变更文件路径列表。"
+    )
+    mode_group.add_argument(
+        "--update-all",
+        action='store_true',
+        default=False,
+        help="全量同步模式：强制检查并更新所有文档家族。"
     )
     parsed_args = parser.parse_args()
     main(parsed_args)
