@@ -1,0 +1,563 @@
+---
+title: 크레이터 클러스터 배포 가이드
+description: 본 가이드는 프로덕션급 Kubernetes 클러스터에서 크레이터 플랫폼의 표준화된 배포 프로세스를 설명하며, 환경 준비, 종속 컴포넌트 설치, 핵심 서비스 배포 및 일반적인 문제 해결 방법을 포함합니다.
+---
+
+## 1. 환경 및 기본 요구 사항
+
+| 항목 | 설명 |
+| ---- | ---- |
+| 운영 체제 | Ubuntu 22.04 |
+| Kubernetes | v1.31.x |
+| 컨테이너 런타임 | containerd 1.7.x |
+| Helm | v3.x |
+| 노드 구성 | 컨트롤 노드 1개, 워크 노드 ≥ 2개 |
+| 네트워크 요구 사항 | 노드 간 내부 네트워크 통신 가능; 최소 1대의 노드는 외부 인터넷 접근 또는 프록시 설정 가능 |
+
+예시:
+```bash
+kubectl get nodes -o wide
+```
+
+출력 예시:
+
+```
+NAME       STATUS   ROLES           VERSION   INTERNAL-IP     OS-IMAGE
+node-1     Ready    control-plane   v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-2     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-3     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+```
+
+---
+
+## 2. 클러스터 종속 컴포넌트 설치
+
+크레이터 플랫폼은 스케줄링, 모니터링, 네트워크 및 스토리지 기능을 완성하기 위해 아래의 기초 컴포넌트를 필요로 합니다.  
+본 절에서는 각 컴포넌트의 설치 명령어 및 이미지 정보를 제공합니다.
+
+### 2.1 Metrics Server
+
+**기능:** 클러스터 노드 및 파드의 CPU, 메모리 지표를 제공하여 HPA 자동 확장/축소 기능을 지원합니다.
+
+```bash
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
+helm repo update
+helm pull metrics-server/metrics-server --untar --destination <your-path>/charts
+
+helm install metrics-server <your-path>/charts/metrics-server \
+  -n kube-system --create-namespace
+```
+
+**이미지:**
+
+```
+registry.k8s.io/metrics-server/metrics-server:v0.8.0
+# 국내 이미지 사용 시 대체 가능:
+swr.cn-north-4.myhuaweicloud.com/ddn-k8s/registry.k8s.io/metrics-server/metrics-server:v0.8.0
+```
+
+검증:
+
+```bash
+kubectl get pods -n kube-system | grep metrics-server
+kubectl top nodes
+```
+
+---
+
+### 2.2 NVIDIA GPU Operator
+
+**기능:** GPU 드라이버, 장치 플러그인 및 모니터링 컴포넌트를 설치합니다.
+
+```bash
+helm repo add nvidia https://nvidia.github.io/gpu-operator
+helm repo update
+helm pull nvidia/gpu-operator --untar --destination <your-path>/charts
+
+helm install gpu-operator <your-path>/charts/gpu-operator \
+  -n gpu-operator --create-namespace
+```
+
+**주요 이미지:**
+
+| 컴포넌트 | 이미지 |
+|---|---|
+| 드라이버 컨테이너 | nvcr.io/nvidia/driver:525.125.06 |
+| 장치 플러그인 | nvcr.io/nvidia/k8s-device-plugin:v0.15.0 |
+| DCGM Exporter | nvcr.io/nvidia/dcgm-exporter:3.1.6-3.1.3-ubuntu22.04 |
+| MIG Manager | nvcr.io/nvidia/mig-manager:0.6.0 |
+| Node Feature Discovery | ghcr.io/kubernetes-sigs/node-feature-discovery:v0.16.1 |
+
+검증:
+
+```bash
+kubectl get pods -n gpu-operator
+nvidia-smi
+```
+
+---
+
+### 2.3 CloudNativePG (PostgreSQL Operator)
+
+**기능:** 고가용성 PostgreSQL 데이터베이스를 제공합니다.
+
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm repo update
+helm pull cnpg/cloudnative-pg --untar --destination <your-path>/charts
+
+helm install cnpg <your-path>/charts/cloudnative-pg \
+  -n cnpg-system --create-namespace
+```
+
+**이미지:**
+
+```
+ghcr.io/cloudnative-pg/postgresql:16.3
+ghcr.io/cloudnative-pg/cloudnative-pg:1.24.0
+```
+
+예시 데이터베이스 클러스터 생성:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: crater-postgresql
+  namespace: cnpg-system
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+EOF
+```
+
+---
+
+### 2.4 NFS 스토리지 시스템
+
+**기능:** 공유 스토리지(ReadWriteMany 모드) 제공, 사용자 작업 공간 및 공용 데이터에 사용.
+
+#### 2.4.1 NFS 서버 설치 (선택 사항)
+
+지속성 디스크를 갖춘 노드에서 실행:
+
+```bash
+sudo apt update
+sudo apt install -y nfs-kernel-server
+sudo mkdir -p /data/nfs
+sudo chown -R nobody:nogroup /data/nfs
+sudo chmod 777 /data/nfs
+
+echo "/data/nfs *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+sudo exportfs -a
+sudo systemctl enable --now nfs-server
+```
+
+검증:
+
+```bash
+showmount -e <your-node-ip>
+```
+
+#### 2.4.2 NFS StorageClass 생성
+
+Kubernetes 클러스터에서 실행:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs
+provisioner: nfs-provisioner
+parameters:
+  archiveOnDelete: "false"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+EOF
+```
+
+#### 2.4.3 NFS Provisioner 배포
+
+```bash
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+helm repo update
+
+helm install nfs-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+  -n nfs-system --create-namespace \
+  --set nfs.server=<your-node-ip> \
+  --set nfs.path=/data/nfs \
+  --set storageClass.name=nfs \
+  --set storageClass.defaultClass=true
+```
+
+검증:
+
+```bash
+kubectl get pods -n nfs-system
+kubectl get sc
+```
+
+---
+
+### 2.5 Prometheus 스택
+
+**기능:** Prometheus, Grafana, Alertmanager 등 모니터링 컴포넌트 통합.
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm pull prometheus-community/kube-prometheus-stack --untar --destination <your-path>/charts
+
+helm install prometheus <your-path>/charts/kube-prometheus-stack \
+  -n monitoring --create-namespace
+```
+
+**주요 이미지:**
+
+| 컴포넌트 | 이미지 |
+|---|---|
+| Prometheus | quay.io/prometheus/prometheus:v2.54.1 |
+| Grafana | docker.io/grafana/grafana:10.4.1 |
+| Alertmanager | quay.io/prometheus/alertmanager:v0.27.0 |
+| Node Exporter | quay.io/prometheus/node-exporter:v1.8.1 |
+| Kube-State-Metrics | registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0 |
+
+Grafana 접근:
+
+```bash
+kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
+# 브라우저에서 http://localhost:3000 접속
+# 기본 계정/비밀번호: admin / prom-operator
+```
+
+---
+
+### 2.6 Volcano 스케줄러
+
+**기능:** GPU 작업 스케줄링, 큐 관리, 작업 프리에임 등 기능 제공.
+
+```bash
+helm repo add volcano https://volcano-sh.github.io/helm-charts
+helm repo update
+helm pull volcano/volcano --untar --destination <your-path>/charts
+
+helm install volcano <your-path>/charts/volcano \
+  -n volcano-system --create-namespace \
+  -f <your-path>/volcano/values.yaml
+```
+
+**주요 이미지:**
+
+| 컴포넌트 | 이미지 |
+|---|---|
+| 스케줄러 | volcano.sh/volcano-scheduler:v1.9.0 |
+| 컨트롤러 | volcano.sh/volcano-controllers:v1.9.0 |
+| 어드미션 | volcano.sh/volcano-admission:v1.9.0 |
+| 웹훅 | volcano.sh/volcano-webhook:v1.9.0 |
+
+검증:
+
+```bash
+kubectl get pods -n volcano-system
+```
+
+---
+
+### 2.7 MetalLB (온프레미스 로드밸런서)
+
+**기능:** 온프레미스 클러스터에 LoadBalancer IP 지원 제공.
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+helm pull metallb/metallb --untar --destination <your-path>/charts
+
+helm install metallb <your-path>/charts/metallb \
+  -n metallb-system --create-namespace
+```
+
+**주요 이미지:**
+
+| 컴포넌트 | 이미지 |
+|---|---|
+| 컨트롤러 | quay.io/metallb/controller:v0.14.8 |
+| 스피커 | quay.io/metallb/speaker:v0.14.8 |
+
+예시 IP 풀 구성:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-address-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - <your-ip-range>  # 예: 192.168.1.200-192.168.1.220
+EOF
+```
+
+---
+
+### 2.8 ingress-nginx (Ingress 컨트롤러)
+
+**기능:** 크레이터 프론트엔드 및 API에 대한 외부 접근 경로 제공.
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace \
+  --version 4.11.3 \
+  --set controller.hostNetwork=true \
+  --set controller.dnsPolicy=ClusterFirstWithHostNet \
+  --set controller.healthCheckHost="<your-node-ip>" \
+  --set 'controller.nodeSelector.kubernetes\.io/hostname=node-2'
+```
+
+**주요 이미지:**
+
+| 컴포넌트 | 이미지 |
+|---|---|
+| 컨트롤러 | registry.k8s.io/ingress-nginx/controller:v1.9.6 |
+| 어드미션 웹훅 | registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.0 |
+
+검증:
+
+```bash
+kubectl get pods -n ingress-nginx -o wide
+kubectl get svc -n ingress-nginx -o wide
+```
+
+---
+
+## 3. Harbor 이미지 레지스트리 배포
+
+```bash
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+helm pull harbor/harbor --version 1.16.0 --untar
+```
+
+설정 파일 예시 (`values.yaml`):
+
+```yaml
+expose:
+  type: nodePort
+  tls:
+    enabled: false
+  nodePort:
+    ports:
+      http:
+        port: 30002
+externalURL: http://<your-node-ip>:30002
+harborAdminPassword: "<MUSTEDIT>"
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 50Gi
+```
+
+설치 명령어:
+
+```bash
+helm install harbor <your-path>/charts/harbor \
+  -n harbor-system --create-namespace \
+  -f <your-path>/harbor/values.yaml
+```
+
+접근 주소:
+
+```
+http://<your-node-ip>:30002
+```
+
+---
+
+## 4. 크레이터 플랫폼 배포
+
+Chart 가져오기:
+
+```bash
+helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+```
+
+크레이터 플랫폼의 핵심 설정 파일은 `values.yaml`입니다.  
+이 파일은 클러스터 도메인, 데이터베이스 연결, 모니터링 서비스 주소, 스토리지 PVC, 그리고 Harbor 등의 외부 종속성 연결 파라미터를 정의합니다.
+
+`helm install` 실행 전에 아래 설명에 따라 해당 필드를 수정해야 합니다.
+
+---
+
+### 4.1 기본 정보
+
+```yaml
+# 플랫폼 접근 도메인
+host: crater.example.com
+
+# 프로토콜 유형, "http" 또는 "https" 선택 가능
+protocol: http
+
+# 초기 관리자 계정
+firstUser:
+  username: crater-admin
+  password: <MUSTEDIT>
+```
+
+Ingress와 도메인 해석이 설정된 경우, 실제 도메인(예: `crater.mycluster.local`)을 사용할 수 있습니다.  
+테스트 환경인 경우, 컨트롤 노드 IP를 입력할 수 있습니다.
+
+---
+
+### 4.2 스토리지 구성 (NFS)
+
+클러스터에 NFS 공유 스토리지 시스템이 배포되었으므로, `storage` 섹션에서는 해당 StorageClass를 지정해야 합니다:
+
+```yaml
+storage:
+  create: true
+  request: 10Gi
+  storageClass: "nfs"          # 앞서 생성한 NFS StorageClass 사용
+  pvcName: "crater-rw-storage" # 백엔드 마운트용 공유 PVC 이름
+```
+
+크레이터 백엔드는 이 PVC를 자동으로 마운트하여 사용자 공간 및 공용 디렉터리(`users/`, `accounts/`, `public/`)에 사용합니다.
+
+---
+
+### 4.3 PostgreSQL 데이터베이스 구성 (CloudNativePG)
+
+크레이터는 CloudNativePG로 배포된 데이터베이스 클러스터를 사용합니다.  
+데이터베이스 연결 파라미터를 해당 서비스에 연결해야 합니다:
+
+```yaml
+backendConfig:
+  postgres:
+    host: crater-postgresql.cnpg-system.svc.cluster.local  # CloudNativePG 클러스터의 서비스 이름
+    port: 5432
+    dbname: postgres
+    user: postgres
+    password: <MUSTEDIT>
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+```
+
+> 설명:
+> 
+> - `host`는 `kubectl get svc -n cnpg-system` 명령으로 확인할 수 있습니다.
+>     
+> - CloudNativePG의 기본 클러스터 이름이 `crater-postgresql`인 경우, 서비스 이름은 다음과 같아야 합니다:  
+>     `crater-postgresql-rw.cnpg-system.svc.cluster.local`입니다.
+>     
+
+---
+
+### 4.4 모니터링 시스템 구성 (Prometheus 스택)
+
+크레이터 백엔드는 Prometheus API를 통해 GPU 및 작업 지표를 가져옵니다.  
+`backendConfig.prometheusAPI`를 `kube-prometheus-stack` 내 Prometheus 서비스 주소로 지정해야 합니다:
+
+```yaml
+backendConfig:
+  prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+```
+
+다음 명령어로 확인 가능:
+
+```bash
+kubectl get svc -n monitoring | grep prometheus
+```
+
+Grafana 통합 설정 예시:
+
+```yaml
+grafanaProxy:
+  enable: true
+  address: http://prometheus-grafana.monitoring  # Grafana 서비스 이름
+  token: <MASKED>                                # Grafana 읽기 전용 API 토큰
+  host: gpu-grafana.example.com                  # 외부 접근 도메인
+```
+
+---
+
+### 4.5 Harbor 이미지 레지스트리 구성 (Registry)
+
+클러스터 내에 Harbor가 배포된 경우, Registry 통합 기능을 활성화할 수 있습니다.  
+활성화 후 크레이터는 빌드된 이미지를 자동으로 Harbor 레지스트리에 푸시할 수 있습니다.
+
+```yaml
+backendConfig:
+  registry:
+    enable: true
+    harbor:
+      server: harbor.example.com      # Harbor 접근 도메인
+      user: admin                     # 관리자 사용자명
+      password: <MUSTEDIT>            # 관리자 비밀번호
+    buildTools:
+      proxyConfig:
+        httpProxy: null
+        httpsProxy: null
+        noProxy: null
+```
+
+> 임시로 Harbor를 사용하지 않는 경우, `enable: false`로 유지할 수 있습니다.
+
+---
+
+### 4.6 Ingress 및 TLS 구성 (ingress-nginx + cert-manager)
+
+크레이터는 기본적으로 Ingress를 통해 서비스를 노출합니다.  
+`ingress-nginx`가 활성화되고 인증서가 준비된 경우, `backendConfig.secrets`에서 다음과 같이 지정할 수 있습니다:
+
+```yaml
+backendConfig:
+  secrets:
+    tlsSecretName: crater-tls-secret
+    tlsForwardSecretName: crater-tls-forward-secret
+    imagePullSecretName: ""
+```
+
+해당 인증서는 다음 명령어로 생성할 수 있습니다:
+
+```bash
+kubectl create secret tls crater-tls-secret \
+  --cert=tls.crt --key=tls.key -n crater-system
+```
+
+HTTPS를 사용하지 않는 경우, 기본값을 유지하고 프로토콜은 여전히 HTTP로 유지됩니다.
+
+---
+
+### 4.7 배포 명령어
+
+수정 완료 후 실행:
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater \
+  --version 0.1.0 \
+  -n crater-system \
+  -f values.yaml
+```
+
+검증:
+
+```bash
+kubectl get pods -n crater-system
+kubectl get ingress -n crater-system
+```
+
+접근 주소:
+
+```
+http://crater.example.com
+```
+
+---
+
+이 문서 버전은 크레이터 v0.1.0 이상 버전과 호환됩니다.

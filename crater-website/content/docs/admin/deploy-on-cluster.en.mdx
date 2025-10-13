@@ -1,0 +1,562 @@
+---
+title: Crater Cluster Deployment Guide
+description: This guide outlines the standardized deployment process of the Crater platform on a production-grade Kubernetes cluster, including environment preparation, dependency component installation, core service deployment, and common troubleshooting.
+---
+
+## 1. Environment and Prerequisites
+
+| Item | Description |
+|------|-------------|
+| Operating System | Ubuntu 22.04 |
+| Kubernetes | v1.31.x |
+| Container Runtime | containerd 1.7.x |
+| Helm | v3.x |
+| Node Configuration | 1 control node, ≥ 2 worker nodes |
+| Network Requirements | Nodes must be互通 via internal network; at least one node must have external network access or proxy configuration |
+
+Example:
+```bash
+kubectl get nodes -o wide
+```
+
+Sample Output:
+
+```
+NAME       STATUS   ROLES           VERSION   INTERNAL-IP     OS-IMAGE
+node-1     Ready    control-plane   v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-2     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-3     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+```
+
+---
+
+## 2. Installation of Cluster Dependencies
+
+Crater platform relies on the following foundational components to enable scheduling, monitoring, networking, and storage functionality.  
+This section includes installation commands and image information for each component.
+
+### 2.1 Metrics Server
+
+**Function:** Provides CPU and memory metrics for nodes and pods, enabling HPA-based auto-scaling.
+
+```bash
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
+helm repo update
+helm pull metrics-server/metrics-server --untar --destination <your-path>/charts
+
+helm install metrics-server <your-path>/charts/metrics-server \
+  -n kube-system --create-namespace
+```
+
+**Images:**
+
+```
+registry.k8s.io/metrics-server/metrics-server:v0.8.0
+# For users in China, replace with:
+swr.cn-north-4.myhuaweicloud.com/ddn-k8s/registry.k8s.io/metrics-server/metrics-server:v0.8.0
+```
+
+Verification:
+
+```bash
+kubectl get pods -n kube-system | grep metrics-server
+kubectl top nodes
+```
+
+---
+
+### 2.2 NVIDIA GPU Operator
+
+**Function:** Installs GPU drivers, device plugins, and monitoring components.
+
+```bash
+helm repo add nvidia https://nvidia.github.io/gpu-operator
+helm repo update
+helm pull nvidia/gpu-operator --untar --destination <your-path>/charts
+
+helm install gpu-operator <your-path>/charts/gpu-operator \
+  -n gpu-operator --create-namespace
+```
+
+**Key Images:**
+
+| Component | Image |
+|---------|-------|
+| Driver Container | nvcr.io/nvidia/driver:525.125.06 |
+| Device Plugin | nvcr.io/nvidia/k8s-device-plugin:v0.15.0 |
+| DCGM Exporter | nvcr.io/nvidia/dcgm-exporter:3.1.6-3.1.3-ubuntu22.04 |
+| MIG Manager | nvcr.io/nvidia/mig-manager:0.6.0 |
+| Node Feature Discovery | ghcr.io/kubernetes-sigs/node-feature-discovery:v0.16.1 |
+
+Verification:
+
+```bash
+kubectl get pods -n gpu-operator
+nvidia-smi
+```
+
+---
+
+### 2.3 CloudNativePG (PostgreSQL Operator)
+
+**Function:** Provides high-availability PostgreSQL database services.
+
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm repo update
+helm pull cnpg/cloudnative-pg --untar --destination <your-path>/charts
+
+helm install cnpg <your-path>/charts/cloudnative-pg \
+  -n cnpg-system --create-namespace
+```
+
+**Images:**
+
+```
+ghcr.io/cloudnative-pg/postgresql:16.3
+ghcr.io/cloudnative-pg/cloudnative-pg:1.24.0
+```
+
+Create a sample database cluster:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: crater-postgresql
+  namespace: cnpg-system
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+EOF
+```
+
+---
+
+### 2.4 NFS Storage System
+
+**Function:** Provides shared storage (ReadWriteMany mode) for user workspaces and public data.
+
+#### 2.4.1 Install NFS Server (Optional)
+
+Run on a node with persistent disk:
+
+```bash
+sudo apt update
+sudo apt install -y nfs-kernel-server
+sudo mkdir -p /data/nfs
+sudo chown -R nobody:nogroup /data/nfs
+sudo chmod 777 /data/nfs
+
+echo "/data/nfs *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+sudo exportfs -a
+sudo systemctl enable --now nfs-server
+```
+
+Verification:
+
+```bash
+showmount -e <your-node-ip>
+```
+
+#### 2.4.2 Create NFS StorageClass
+
+Run in the Kubernetes cluster:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs
+provisioner: nfs-provisioner
+parameters:
+  archiveOnDelete: "false"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+EOF
+```
+
+#### 2.4.3 Deploy NFS Provisioner
+
+```bash
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+helm repo update
+
+helm install nfs-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+  -n nfs-system --create-namespace \
+  --set nfs.server=<your-node-ip> \
+  --set nfs.path=/data/nfs \
+  --set storageClass.name=nfs \
+  --set storageClass.defaultClass=true
+```
+
+Verification:
+
+```bash
+kubectl get pods -n nfs-system
+kubectl get sc
+```
+
+---
+
+### 2.5 Prometheus Stack
+
+**Function:** Integrates Prometheus, Grafana, Alertmanager, and other monitoring components.
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm pull prometheus-community/kube-prometheus-stack --untar --destination <your-path>/charts
+
+helm install prometheus <your-path>/charts/kube-prometheus-stack \
+  -n monitoring --create-namespace
+```
+
+**Key Images:**
+
+| Component | Image |
+|---------|-------|
+| Prometheus | quay.io/prometheus/prometheus:v2.54.1 |
+| Grafana | docker.io/grafana/grafana:10.4.1 |
+| Alertmanager | quay.io/prometheus/alertmanager:v0.27.0 |
+| Node Exporter | quay.io/prometheus/node-exporter:v1.8.1 |
+| Kube-State-Metrics | registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0 |
+
+Access Grafana:
+
+```bash
+kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
+# Access in browser: http://localhost:3000
+# Default credentials: admin / prom-operator
+```
+
+---
+
+### 2.6 Volcano Scheduler
+
+**Function:** Provides GPU job scheduling, queue management, and task preemption.
+
+```bash
+helm repo add volcano https://volcano-sh.github.io/helm-charts
+helm repo update
+helm pull volcano/volcano --untar --destination <your-path>/charts
+
+helm install volcano <your-path>/charts/volcano \
+  -n volcano-system --create-namespace \
+  -f <your-path>/volcano/values.yaml
+```
+
+**Key Images:**
+
+| Component | Image |
+|---------|-------|
+| Scheduler | volcano.sh/volcano-scheduler:v1.9.0 |
+| Controller | volcano.sh/volcano-controllers:v1.9.0 |
+| Admission | volcano.sh/volcano-admission:v1.9.0 |
+| Webhook | volcano.sh/volcano-webhook:v1.9.0 |
+
+Verification:
+
+```bash
+kubectl get pods -n volcano-system
+```
+
+---
+
+### 2.7 MetalLB (Bare-Metal Load Balancer)
+
+**Function:** Provides LoadBalancer IP support for bare-metal clusters.
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+helm pull metallb/metallb --untar --destination <your-path>/charts
+
+helm install metallb <your-path>/charts/metallb \
+  -n metallb-system --create-namespace
+```
+
+**Key Images:**
+
+| Component | Image |
+|---------|-------|
+| Controller | quay.io/metallb/controller:v0.14.8 |
+| Speaker | quay.io/metallb/speaker:v0.14.8 |
+
+Example IP address pool configuration:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-address-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - <your-ip-range>  # Example: 192.168.1.200-192.168.1.220
+EOF
+```
+
+---
+
+### 2.8 ingress-nginx (Ingress Controller)
+
+**Function:** Provides external access points for Crater frontend and API.
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace \
+  --version 4.11.3 \
+  --set controller.hostNetwork=true \
+  --set controller.dnsPolicy=ClusterFirstWithHostNet \
+  --set controller.healthCheckHost="<your-node-ip>" \
+  --set 'controller.nodeSelector.kubernetes\.io/hostname=node-2'
+```
+
+**Key Images:**
+
+| Component | Image |
+|---------|-------|
+| Controller | registry.k8s.io/ingress-nginx/controller:v1.9.6 |
+| Admission Webhook | registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.0 |
+
+Verification:
+
+```bash
+kubectl get pods -n ingress-nginx -o wide
+kubectl get svc -n ingress-nginx -o wide
+```
+
+---
+
+## 3. Harbor Registry Deployment
+
+```bash
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+helm pull harbor/harbor --version 1.16.0 --untar
+```
+
+Example configuration file (`values.yaml`):
+
+```yaml
+expose:
+  type: nodePort
+  tls:
+    enabled: false
+  nodePort:
+    ports:
+      http:
+        port: 30002
+externalURL: http://<your-node-ip>:30002
+harborAdminPassword: "<MUSTEDIT>"
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 50Gi
+```
+
+Installation command:
+
+```bash
+helm install harbor <your-path>/charts/harbor \
+  -n harbor-system --create-namespace \
+  -f <your-path>/harbor/values.yaml
+```
+
+Access URL:
+
+```
+http://<your-node-ip>:30002
+```
+
+---
+
+## 4. Crater Platform Deployment
+
+Pull the Helm Chart:
+
+```bash
+helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+```
+
+The core configuration file for the Crater platform is `values.yaml`.  
+This file defines cluster domain name, database connection, monitoring service addresses, storage PVCs, and connection parameters for external dependencies such as Harbor.
+
+Before running `helm install`, update the relevant fields according to the following instructions.
+
+---
+
+### 4.1 Basic Information
+
+```yaml
+# Platform access domain name
+host: crater.example.com
+
+# Protocol type: "http" or "https"
+protocol: http
+
+# Initial admin account
+firstUser:
+  username: crater-admin
+  password: <MUSTEDIT>
+```
+
+If Ingress and DNS are configured, use a real domain name (e.g., `crater.mycluster.local`).  
+For testing environments only, use the control node IP.
+
+---
+
+### 4.2 Storage Configuration (NFS)
+
+Since an NFS shared storage system has been deployed, the `storage` section should reference the corresponding StorageClass:
+
+```yaml
+storage:
+  create: true
+  request: 10Gi
+  storageClass: "nfs"          # Use the NFS StorageClass created earlier
+  pvcName: "crater-rw-storage" # Name of the shared PVC mounted behind
+```
+
+The Crater backend will automatically mount this PVC for user space and public directories (`users/`, `accounts/`, `public/`).
+
+---
+
+### 4.3 PostgreSQL Database Configuration (CloudNativePG)
+
+Crater uses a database cluster deployed via CloudNativePG.  
+Set the database connection parameters to point to the corresponding service:
+
+```yaml
+backendConfig:
+  postgres:
+    host: crater-postgresql.cnpg-system.svc.cluster.local  # Service name of CloudNativePG Cluster
+    port: 5432
+    dbname: postgres
+    user: postgres
+    password: <MUSTEDIT>
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+```
+
+> **Note:**
+> 
+> - The `host` can be found using `kubectl get svc -n cnpg-system`.
+> 
+> - If the default CloudNativePG cluster name is `crater-postgresql`, the service name should be:  
+>     `crater-postgresql-rw.cnpg-system.svc.cluster.local`.
+
+---
+
+### 4.4 Monitoring System Configuration (Prometheus Stack)
+
+Crater backend retrieves GPU and job metrics via the Prometheus API.  
+Set `backendConfig.prometheusAPI` to the Prometheus service address in `kube-prometheus-stack`:
+
+```yaml
+backendConfig:
+  prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+```
+
+Retrieve this address with:
+
+```bash
+kubectl get svc -n monitoring | grep prometheus
+```
+
+Grafana integration example:
+
+```yaml
+grafanaProxy:
+  enable: true
+  address: http://prometheus-grafana.monitoring  # Grafana service name
+  token: <MASKED>                                # Read-only Grafana API token
+  host: gpu-grafana.example.com                  # External access domain name
+```
+
+---
+
+### 4.5 Harbor Registry Configuration
+
+If Harbor is already deployed in the cluster, enable the Registry integration.  
+After enabling, Crater can automatically push built images to the Harbor registry.
+
+```yaml
+backendConfig:
+  registry:
+    enable: true
+    harbor:
+      server: harbor.example.com      # Harbor access domain name
+      user: admin                     # Admin username
+      password: <MUSTEDIT>            # Admin password
+    buildTools:
+      proxyConfig:
+        httpProxy: null
+        httpsProxy: null
+        noProxy: null
+```
+
+> If Harbor is not yet enabled, keep `enable: false`.
+
+---
+
+### 4.6 Ingress and TLS Configuration (ingress-nginx + cert-manager)
+
+Crater exposes services via Ingress by default.  
+If `ingress-nginx` is enabled and certificates are prepared, specify them in `backendConfig.secrets`:
+
+```yaml
+backendConfig:
+  secrets:
+    tlsSecretName: crater-tls-secret
+    tlsForwardSecretName: crater-tls-forward-secret
+    imagePullSecretName: ""
+```
+
+Create the certificate with:
+
+```bash
+kubectl create secret tls crater-tls-secret \
+  --cert=tls.crt --key=tls.key -n crater-system
+```
+
+If HTTPS is not enabled, keep the default values; the protocol remains HTTP.
+
+---
+
+### 4.7 Deployment Command
+
+After confirming all configurations:
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater \
+  --version 0.1.0 \
+  -n crater-system \
+  -f values.yaml
+```
+
+Verification:
+
+```bash
+kubectl get pods -n crater-system
+kubectl get ingress -n crater-system
+```
+
+Access URL:
+
+```
+http://crater.example.com
+```
+
+---
+
+This document applies to Crater v0.1.0 and above.
