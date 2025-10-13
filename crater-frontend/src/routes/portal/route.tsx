@@ -70,7 +70,7 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
       items: [
         {
           title: t('navigation.platformOverview'),
-          url: 'overview',
+          url: '/portal/overview',
           icon: SquareChartGanttIcon,
         },
         {
@@ -79,15 +79,15 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.gpuMonitoring'),
-              url: 'monitor/gpu',
+              url: '/portal/monitor/gpu',
             },
             {
               title: t('navigation.freeResources'),
-              url: 'monitor/idle',
+              url: '/portal/monitor/idle',
             },
             {
               title: t('navigation.networkMonitoring'),
-              url: 'monitor/network',
+              url: '/portal/monitor/network',
             },
           ],
         },
@@ -102,17 +102,17 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.customJobs'),
-              url: 'jobs/custom',
+              url: '/portal/jobs/custom',
             },
             {
               title: t('navigation.jupyterLab'),
-              url: 'jobs/inter',
+              url: '/portal/jobs/inter',
             },
           ],
         },
         {
           title: t('navigation.jobTemplates'),
-          url: 'templates',
+          url: '/portal/templates',
           icon: ShoppingBagIcon,
         },
       ],
@@ -126,11 +126,11 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.imageCreation'),
-              url: 'env/registry',
+              url: '/portal/env/registry',
             },
             {
               title: t('navigation.imageList'),
-              url: 'env/images',
+              url: '/portal/env/images',
             },
           ],
         },
@@ -140,22 +140,22 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.datasets'),
-              url: 'data/datasets',
+              url: '/portal/data/datasets',
             },
             {
               title: t('navigation.models'),
-              url: 'data/models',
+              url: '/portal/data/models',
             },
             {
               title: t('navigation.blocks'),
-              url: 'data/blocks',
+              url: '/portal/data/blocks',
             },
           ],
         },
         {
           title: t('navigation.fileManagement'),
           icon: FolderIcon,
-          url: 'files',
+          url: '/portal/files',
         },
       ],
     },
@@ -168,11 +168,11 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.userSettings'),
-              url: 'settings/user',
+              url: '/portal/settings/user',
             },
             {
               title: t('navigation.myOrders'),
-              url: 'settings/orders',
+              url: '/portal/settings/orders',
             },
           ],
         },

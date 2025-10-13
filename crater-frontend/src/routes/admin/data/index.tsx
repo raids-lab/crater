@@ -195,7 +195,12 @@ function RouteComponent() {
                     {t('adminDatasetTable.actions.menuLabel')}
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onClick={() => navigate({ from: '/admin/data', to: `${DatasetInfo.id}` })}
+                    onClick={() =>
+                      navigate({
+                        to: '/admin/data/$id',
+                        params: { id: DatasetInfo.id.toString() },
+                      })
+                    }
                   >
                     <InfoIcon className="text-highlight-emerald" />
                     {t('adminDatasetTable.actions.viewDetails')}

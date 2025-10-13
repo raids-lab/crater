@@ -33,7 +33,10 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const isSingleNode = nodes.length === 1
   const handleBadgeClick = () => {
     if (isSingleNode) {
-      navigate({ to: `/portal/overview/${nodes[0]}` })
+      navigate({
+        to: '/portal/overview/$node',
+        params: { node: nodes[0] },
+      })
     }
   }
 
@@ -77,7 +80,12 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                     <Button
                       variant="ghost"
                       className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1"
-                      onClick={() => navigate({ to: `/portal/overview/${node}` })}
+                      onClick={() =>
+                        navigate({
+                          to: '/portal/overview/$node',
+                          params: { node },
+                        })
+                      }
                     >
                       <InfoIcon className="mr-2 h-4 w-4" />
                       <span className="truncate font-normal">节点详情</span>
