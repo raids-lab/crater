@@ -67,5 +67,10 @@ jobs:
       - name: Package Chart (Test)
         run: |
           cd charts
-          helm package crater/ --dry-run
+          # 先通过 lint 校验 Chart 合法性（语法、依赖、模板等）
+          helm lint crater/ 
+          # 再执行打包（可选保留或删除文件）
+          helm package crater/
           echo "✅ Chart packaging test completed successfully"
+          # 可选：删除打包文件（仅测试用，不保留）
+          rm -f crater-*.tgz
