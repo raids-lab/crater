@@ -54,9 +54,6 @@ jobs:
           BASE_VERSION=$(git show "origin/$BASE_BRANCH:charts/crater/Chart.yaml" | grep '^version:' | awk '{print $2}')
           echo "Base chart version: $BASE_VERSION"
 
-          # Reset to current branch
-          git checkout ${{ github.event.pull_request.head.ref }} -- charts/crater/Chart.yaml
-
           # Compare versions using semver comparison
           if [ "$CURRENT_VERSION" = "$BASE_VERSION" ]; then
             echo "⚠️  Chart version has not been updated. Please increment the version in Chart.yaml"
