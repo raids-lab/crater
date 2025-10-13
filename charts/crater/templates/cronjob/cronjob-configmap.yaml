@@ -62,3 +62,41 @@ data:
       "http://${HOST}/api/v1/admin/operations/waiting/jupyter?waitMinitues=${JUPYTER_WAIT_MINUTES}" \
       -H 'accept: application/json' \
       -H "Authorization: Bearer ${accessToken}"
+  backup.sh: |-
+    #!/bin/bash
+    set -euo pipefail
+
+    BACKUP_DIR="${BACKUP_DIR:-/backups}"
+    RETENTION_COUNT="${RETENTION_COUNT:-7}"
+    TIMEZONE="${TZ:-Asia/Shanghai}"
+
+    export TZ="${TIMEZONE}"
+
+    DB_HOST="${DB_HOST}"
+    DB_PORT="${DB_PORT}"
+    DB_NAME="${DB_NAME}"
+    DB_USER="${DB_USER}"
+    DB_PASS="${DB_PASS}"
+
+    BACKUP_FILE="${BACKUP_DIR}/crater_$(date +%Y%m%d_%H%M%S).dump"
+    export PGPASSWORD="${DB_PASS}"
+    echo "$(date): Starting backup to ${BACKUP_FILE}"
+    pg_dump -v \
+      -h "${DB_HOST}" \
+      -p "${DB_PORT}" \
+      -U "${DB_USER}" \
+      -d "${DB_NAME}" \
+      -f "${BACKUP_FILE}"
+
+    if [ -s "${BACKUP_FILE}" ]; then
+      echo "$(date): Backup succeeded: $(ls -lh "${BACKUP_FILE}")"
+    else
+      echo "$(date): Backup FAILED" >&2
+      exit 1
+    fi
+
+    # 按时间排序，保留最新的 N 个文件
+    echo "$(date): Cleaning up old backups, keeping latest ${RETENTION_COUNT} files"
+    ls -t "${BACKUP_DIR}"/*.dump | tail -n +$((RETENTION_COUNT + 1)) | xargs -r rm -f
+
+    echo "$(date): Backup Cleanup completed"
