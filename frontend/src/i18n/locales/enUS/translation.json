@@ -427,6 +427,7 @@
   "navUser.switchTo": "Switch to ",
   "navUser.switchToAdminView": "Switch to admin view",
   "navUser.switchToUserView": "Switch to user view",
+  "navigation.aboutCrater": "About Crater",
   "navigation.accountFiles": "Account Files",
   "navigation.accountManagement": "Account",
   "navigation.admin": "Admin",
@@ -855,5 +856,15 @@
   "ApprovalOrderTable.toast.rejectError": "Rejection failed, please try again",
   "ApprovalOrderTable.toast.rejectSuccess": "Rejected successfully",
   "common.error": "An error occurred",
-  "common.loading": "Loading..."
+  "common.loading": "Loading...",
+  "about.title": "Version Information",
+  "about.description": "View current application version information",
+  "about.appName": "Crater",
+  "about.appDescription": "Cloud-Native AI Platform",
+  "about.frontendVersion": "Frontend Version",
+  "about.buildTime": "Build Time",
+  "about.commit": "Commit",
+  "about.developmentVersion": "Dev",
+  "about.unavailable": "Unavailable",
+  "about.copyright": "© 2025 Crater. All rights reserved"
 }

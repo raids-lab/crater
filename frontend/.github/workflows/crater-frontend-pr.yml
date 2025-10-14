@@ -34,9 +34,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set short SHA
-        id: set-short-sha
-        run: echo "short_sha=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+      - name: Set version variables
+        id: set-version
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          # PR builds are always development builds
+          APP_VERSION="$SHORT_SHA"
+          BUILD_TYPE="development"
+          
+          # Set outputs
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          
+          # Set environment variables
+          echo "VITE_APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "VITE_APP_COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_TYPE=$BUILD_TYPE" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          echo "HUSKY=0" >> $GITHUB_ENV
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -49,11 +67,6 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-
-      - name: Set env variables
-        run: |
-          sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${{ steps.set-short-sha.outputs.short_sha }}\"/" .env
-          echo "HUSKY=0" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pnpm install

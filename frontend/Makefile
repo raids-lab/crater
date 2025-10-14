@@ -38,6 +38,12 @@ prepare: ## 🔧 Prepare development environment with updated configs
 		echo 'VITE_TANSTACK_QUERY_DEVTOOLS=true  # Enable React Query DevTools' >> .env.development; \
 		echo 'VITE_TANSTACK_ROUTER_DEVTOOLS=true  # Enable React Router DevTools' >> .env.development; \
 		echo 'PORT=5180           # Dev server port' >> .env.development; \
+		echo '' >> .env.development; \
+		echo '# Version information (for development testing)' >> .env.development; \
+		echo 'VITE_APP_VERSION="dev-local"' >> .env.development; \
+		echo 'VITE_APP_COMMIT_SHA="1234567890abcdef"' >> .env.development; \
+		echo 'VITE_APP_BUILD_TYPE="development"' >> .env.development; \
+		echo "VITE_APP_BUILD_TIME=\"$$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" >> .env.development; \
 		echo "$(GREEN)✅ .env.development created successfully!$(RESET)"; \
 	else \
 		echo "$(GREEN)✅ .env.development already exists$(RESET)"; \

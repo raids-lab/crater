@@ -174,6 +174,10 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
               title: t('navigation.myOrders'),
               url: '/portal/settings/orders',
             },
+            {
+              title: t('navigation.aboutCrater'),
+              url: '/portal/settings/version',
+            },
           ],
         },
       ],

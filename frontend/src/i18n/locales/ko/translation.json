@@ -427,6 +427,7 @@
   "navUser.switchTo": "전환",
   "navUser.switchToAdminView": "관리자 뷰로 전환",
   "navUser.switchToUserView": "사용자 뷰로 전환",
+  "navigation.aboutCrater": "Crater 소개",
   "navigation.accountFiles": "계정 파일",
   "navigation.accountManagement": "계정 관리",
   "navigation.admin": "Admin",
@@ -854,5 +855,15 @@
   "ApprovalOrderTable.toast.rejectError": "거절 실패, 다시 시도해주세요",
   "ApprovalOrderTable.toast.rejectSuccess": "거절 성공",
   "common.error": "오류 발생",
-  "common.loading": "로딩 중..."
+  "common.loading": "로딩 중...",
+  "about.title": "버전 정보",
+  "about.description": "현재 애플리케이션 버전 정보를 확인합니다",
+  "about.appName": "Crater",
+  "about.appDescription": "클라우드 네이티브 AI 플랫폼",
+  "about.frontendVersion": "프론트엔드",
+  "about.buildTime": "빌드 시간",
+  "about.commit": "커밋",
+  "about.developmentVersion": "개발판",
+  "about.unavailable": "사용 불가",
+  "about.copyright": "© 2025 Crater. 모든 권리 보유"
 }
