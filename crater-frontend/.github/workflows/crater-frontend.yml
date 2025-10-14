@@ -28,25 +28,52 @@ on:
       - 'Makefile'
 
 env:
-  # 修改为 Docker Hub 配置
+  # Modified to use GHCR configuration
   REGISTRY: ghcr.io
-  # 设置您的 Docker Hub 用户名和仓库名
+  # Set your Docker Hub username and repository name
   IMAGE_REPO: raids-lab/crater-frontend
 
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
     outputs:
-      commit_short_sha: ${{ steps.set-short-sha.outputs.short_sha }}
+      app_version: ${{ steps.set-version.outputs.app_version }}
+      commit_sha: ${{ steps.set-version.outputs.commit_sha }}
+      build_type: ${{ steps.set-version.outputs.build_type }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Set short SHA
-        id: set-short-sha
-        run: echo "short_sha=${GITHUB_SHA:0:7}" >> $GITHUB_OUTPUT
+      - name: Set version variables
+        id: set-version
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          # Check if triggered by tag
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Tag trigger: use tag version (keep v prefix)
+            APP_VERSION="${{ github.ref_name }}"
+            BUILD_TYPE="release"
+          else
+            # Branch trigger: use commit SHA
+            APP_VERSION="$SHORT_SHA"
+            BUILD_TYPE="development"
+          fi
+          
+          # Set outputs
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          
+          # Set environment variables
+          echo "VITE_APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "VITE_APP_COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_TYPE=$BUILD_TYPE" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          echo "HUSKY=0" >> $GITHUB_ENV
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -59,11 +86,6 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-
-      - name: Set env variables
-        run: |
-          sed -i "s/VITE_APP_VERSION=\".*\"/VITE_APP_VERSION=\"${{ steps.set-short-sha.outputs.short_sha }}\"/" .env
-          echo "HUSKY=0" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pnpm install
@@ -93,15 +115,15 @@ jobs:
           name: dist
           path: dist/
 
-      # 设置 QEMU 支持多架构构建
+      # Set up QEMU for multi-architecture builds
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 创建构建器实例支持多平台
+      # Create builder instance for multi-platform support
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 登录 Docker Hub
+      # Log in to GHCR
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:

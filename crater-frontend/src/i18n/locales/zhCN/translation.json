@@ -434,6 +434,7 @@
   "navUser.switchTo": "切换为",
   "navUser.switchToAdminView": "切换至管理员视图",
   "navUser.switchToUserView": "切换至用户视图",
+  "navigation.aboutCrater": "关于Crater",
   "navigation.accountFiles": "账户文件",
   "navigation.accountManagement": "账户管理",
   "navigation.admin": "管理",
@@ -862,5 +863,15 @@
   "ApprovalOrderTable.toast.rejectError": "拒绝失败，请重试",
   "ApprovalOrderTable.toast.rejectSuccess": "拒绝成功",
   "common.error": "发生错误",
-  "common.loading": "加载中..."
+  "common.loading": "加载中...",
+  "about.title": "版本信息",
+  "about.description": "查看当前应用的版本信息",
+  "about.appName": "Crater",
+  "about.appDescription": "云原生智算平台",
+  "about.frontendVersion": "前端版本",
+  "about.buildTime": "构建时间",
+  "about.commit": "提交",
+  "about.developmentVersion": "开发版本",
+  "about.unavailable": "无法获取",
+  "about.copyright": "© 2025 Crater. 保留所有权利"
 }

@@ -34,6 +34,7 @@ import { Route as AdminDataIndexRouteImport } from './routes/admin/data/index'
 import { Route as AdminCronjobsIndexRouteImport } from './routes/admin/cronjobs/index'
 import { Route as AdminAccountsIndexRouteImport } from './routes/admin/accounts/index'
 import { Route as PortalUsersNameRouteImport } from './routes/portal/users/$name'
+import { Route as PortalSettingsVersionRouteImport } from './routes/portal/settings/version'
 import { Route as PortalSettingsUserRouteImport } from './routes/portal/settings/user'
 import { Route as PortalOverviewNodeRouteImport } from './routes/portal/overview/$node'
 import { Route as PortalMonitorNetworkRouteImport } from './routes/portal/monitor/network'
@@ -42,6 +43,7 @@ import { Route as PortalMonitorGpuRouteImport } from './routes/portal/monitor/gp
 import { Route as PortalFilesSplatRouteImport } from './routes/portal/files/$'
 import { Route as IngressJupyterNameRouteImport } from './routes/ingress/jupyter.$name'
 import { Route as AdminUsersNameRouteImport } from './routes/admin/users/$name'
+import { Route as AdminSettingsVersionRouteImport } from './routes/admin/settings/version'
 import { Route as AdminMonitorNetworkRouteImport } from './routes/admin/monitor/network'
 import { Route as AdminMonitorIdleRouteImport } from './routes/admin/monitor/idle'
 import { Route as AdminMonitorGpuRouteImport } from './routes/admin/monitor/gpu'
@@ -213,6 +215,11 @@ const PortalUsersNameRoute = PortalUsersNameRouteImport.update({
   path: '/$name',
   getParentRoute: () => PortalUsersRouteRoute,
 } as any)
+const PortalSettingsVersionRoute = PortalSettingsVersionRouteImport.update({
+  id: '/version',
+  path: '/version',
+  getParentRoute: () => PortalSettingsRouteRoute,
+} as any)
 const PortalSettingsUserRoute = PortalSettingsUserRouteImport.update({
   id: '/user',
   path: '/user',
@@ -252,6 +259,11 @@ const AdminUsersNameRoute = AdminUsersNameRouteImport.update({
   id: '/$name',
   path: '/$name',
   getParentRoute: () => AdminUsersRouteRoute,
+} as any)
+const AdminSettingsVersionRoute = AdminSettingsVersionRouteImport.update({
+  id: '/settings/version',
+  path: '/settings/version',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminMonitorNetworkRoute = AdminMonitorNetworkRouteImport.update({
   id: '/monitor/network',
@@ -520,6 +532,7 @@ export interface FileRoutesByFullPath {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
+  '/admin/settings/version': typeof AdminSettingsVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
@@ -528,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/portal/monitor/network': typeof PortalMonitorNetworkRoute
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/settings/user': typeof PortalSettingsUserRoute
+  '/portal/settings/version': typeof PortalSettingsVersionRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
@@ -582,6 +596,7 @@ export interface FileRoutesByTo {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
+  '/admin/settings/version': typeof AdminSettingsVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
@@ -590,6 +605,7 @@ export interface FileRoutesByTo {
   '/portal/monitor/network': typeof PortalMonitorNetworkRoute
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/settings/user': typeof PortalSettingsUserRoute
+  '/portal/settings/version': typeof PortalSettingsVersionRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts': typeof AdminAccountsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
@@ -663,6 +679,7 @@ export interface FileRoutesById {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
+  '/admin/settings/version': typeof AdminSettingsVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
@@ -671,6 +688,7 @@ export interface FileRoutesById {
   '/portal/monitor/network': typeof PortalMonitorNetworkRoute
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/settings/user': typeof PortalSettingsUserRoute
+  '/portal/settings/version': typeof PortalSettingsVersionRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
   '/admin/cronjobs/': typeof AdminCronjobsIndexRoute
@@ -745,6 +763,7 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
+    | '/admin/settings/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
     | '/portal/files/$'
@@ -753,6 +772,7 @@ export interface FileRouteTypes {
     | '/portal/monitor/network'
     | '/portal/overview/$node'
     | '/portal/settings/user'
+    | '/portal/settings/version'
     | '/portal/users/$name'
     | '/admin/accounts/'
     | '/admin/cronjobs'
@@ -807,6 +827,7 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
+    | '/admin/settings/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
     | '/portal/files/$'
@@ -815,6 +836,7 @@ export interface FileRouteTypes {
     | '/portal/monitor/network'
     | '/portal/overview/$node'
     | '/portal/settings/user'
+    | '/portal/settings/version'
     | '/portal/users/$name'
     | '/admin/accounts'
     | '/admin/cronjobs'
@@ -887,6 +909,7 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
+    | '/admin/settings/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
     | '/portal/files/$'
@@ -895,6 +918,7 @@ export interface FileRouteTypes {
     | '/portal/monitor/network'
     | '/portal/overview/$node'
     | '/portal/settings/user'
+    | '/portal/settings/version'
     | '/portal/users/$name'
     | '/admin/accounts/'
     | '/admin/cronjobs/'
@@ -1121,6 +1145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalUsersNameRouteImport
       parentRoute: typeof PortalUsersRouteRoute
     }
+    '/portal/settings/version': {
+      id: '/portal/settings/version'
+      path: '/version'
+      fullPath: '/portal/settings/version'
+      preLoaderRoute: typeof PortalSettingsVersionRouteImport
+      parentRoute: typeof PortalSettingsRouteRoute
+    }
     '/portal/settings/user': {
       id: '/portal/settings/user'
       path: '/user'
@@ -1176,6 +1207,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/$name'
       preLoaderRoute: typeof AdminUsersNameRouteImport
       parentRoute: typeof AdminUsersRouteRoute
+    }
+    '/admin/settings/version': {
+      id: '/admin/settings/version'
+      path: '/settings/version'
+      fullPath: '/admin/settings/version'
+      preLoaderRoute: typeof AdminSettingsVersionRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/monitor/network': {
       id: '/admin/monitor/network'
@@ -1625,6 +1663,7 @@ interface AdminRouteRouteChildren {
   AdminMonitorGpuRoute: typeof AdminMonitorGpuRoute
   AdminMonitorIdleRoute: typeof AdminMonitorIdleRoute
   AdminMonitorNetworkRoute: typeof AdminMonitorNetworkRoute
+  AdminSettingsVersionRoute: typeof AdminSettingsVersionRoute
   AdminCronjobsIndexRoute: typeof AdminCronjobsIndexRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
   AdminEnvImagesIndexRoute: typeof AdminEnvImagesIndexRoute
@@ -1644,6 +1683,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMonitorGpuRoute: AdminMonitorGpuRoute,
   AdminMonitorIdleRoute: AdminMonitorIdleRoute,
   AdminMonitorNetworkRoute: AdminMonitorNetworkRoute,
+  AdminSettingsVersionRoute: AdminSettingsVersionRoute,
   AdminCronjobsIndexRoute: AdminCronjobsIndexRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
   AdminEnvImagesIndexRoute: AdminEnvImagesIndexRoute,
@@ -1683,12 +1723,14 @@ const PortalSettingsOrdersRouteRouteWithChildren =
 interface PortalSettingsRouteRouteChildren {
   PortalSettingsOrdersRouteRoute: typeof PortalSettingsOrdersRouteRouteWithChildren
   PortalSettingsUserRoute: typeof PortalSettingsUserRoute
+  PortalSettingsVersionRoute: typeof PortalSettingsVersionRoute
   PortalSettingsIndexRoute: typeof PortalSettingsIndexRoute
 }
 
 const PortalSettingsRouteRouteChildren: PortalSettingsRouteRouteChildren = {
   PortalSettingsOrdersRouteRoute: PortalSettingsOrdersRouteRouteWithChildren,
   PortalSettingsUserRoute: PortalSettingsUserRoute,
+  PortalSettingsVersionRoute: PortalSettingsVersionRoute,
   PortalSettingsIndexRoute: PortalSettingsIndexRoute,
 }
 

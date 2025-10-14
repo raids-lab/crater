@@ -16,7 +16,11 @@
 
 /// <reference types="vite/client" />
 interface ImportMetaEnv {
+  // Version information
   readonly VITE_APP_VERSION: string
+  readonly VITE_APP_COMMIT_SHA: string
+  readonly VITE_APP_BUILD_TYPE: string
+  readonly VITE_APP_BUILD_TIME: string
 
   // URLs
   readonly VITE_HOST: string

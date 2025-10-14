@@ -427,6 +427,7 @@
   "navUser.switchTo": "切り替え",
   "navUser.switchToAdminView": "管理者ビューに切り替え",
   "navUser.switchToUserView": "ユーザービューに切り替え",
+  "navigation.aboutCrater": "Craterについて",
   "navigation.accountFiles": "アカウントファイル",
   "navigation.accountManagement": "アカウント管理",
   "navigation.admin": "管理",
@@ -855,5 +856,15 @@
   "ApprovalOrderTable.toast.rejectError": "拒否に失敗しました。再試行してください。",
   "ApprovalOrderTable.toast.rejectSuccess": "拒否に成功しました",
   "common.error": "エラーが発生しました",
-  "common.loading": "読み込み中..."
+  "common.loading": "読み込み中...",
+  "about.title": "バージョン情報",
+  "about.description": "現在のアプリケーションバージョン情報を表示",
+  "about.appName": "Crater",
+  "about.appDescription": "クラウドネイティブAIプラットフォーム",
+  "about.frontendVersion": "フロントエンド",
+  "about.buildTime": "ビルド時間",
+  "about.commit": "コミット",
+  "about.developmentVersion": "開発版",
+  "about.unavailable": "利用不可",
+  "about.copyright": "© 2025 Crater. 全著作権所有"
 }

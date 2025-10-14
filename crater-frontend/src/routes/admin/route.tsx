@@ -148,6 +148,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           url: '/admin/settings/orders',
           icon: ClipboardCheckIcon,
         },
+        {
+          title: t('navigation.aboutCrater'),
+          url: '/admin/settings/version',
+          icon: SettingsIcon,
+        },
       ],
     },
   ]
