@@ -869,6 +869,7 @@
   "about.appName": "Crater",
   "about.appDescription": "云原生智算平台",
   "about.frontendVersion": "前端版本",
+  "about.backendVersion": "后端版本",
   "about.buildTime": "构建时间",
   "about.commit": "提交",
   "about.developmentVersion": "开发版本",

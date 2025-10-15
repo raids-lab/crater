@@ -17,7 +17,7 @@ import { atom } from 'jotai'
 import { atomWithStorage, useResetAtom } from 'jotai/utils'
 
 import { IUserAttributes } from '@/services/api/admin/user'
-import { IUserContext } from '@/services/api/auth'
+import { IBackendVersionInfo, IUserContext } from '@/services/api/auth'
 
 /**
  * LocalStorage and Jotai Keys
@@ -50,6 +50,7 @@ export type UserInfo = IUserAttributes & {
 
 export const atomUserInfo = atom<UserInfo>()
 export const atomUserContext = atom<IUserContext>()
+export const atomBackendVersion = atom<IBackendVersionInfo>()
 
 /**
  * Remember the last view.

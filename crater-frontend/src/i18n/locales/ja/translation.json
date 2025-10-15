@@ -862,6 +862,7 @@
   "about.appName": "Crater",
   "about.appDescription": "クラウドネイティブAIプラットフォーム",
   "about.frontendVersion": "フロントエンド",
+  "about.backendVersion": "バックエンド",
   "about.buildTime": "ビルド時間",
   "about.commit": "コミット",
   "about.developmentVersion": "開発版",

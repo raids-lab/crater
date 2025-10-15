@@ -70,6 +70,7 @@ export interface IAuthResponse {
   refreshToken: string
   user: IUserAttributes
   context: IUserContext
+  version: IBackendVersionInfo
 }
 
 // 定义认证模式枚举
@@ -81,6 +82,14 @@ export enum AuthMode {
 export type ICheckResponse = {
   user: IUserAttributes
   context: IUserContext
+  version: IBackendVersionInfo
+}
+
+export type IBackendVersionInfo = {
+  appVersion: string
+  commitSHA: string
+  buildType: string
+  buildTime: string
 }
 
 export const apiSignup = async (user: ISignup) => {
