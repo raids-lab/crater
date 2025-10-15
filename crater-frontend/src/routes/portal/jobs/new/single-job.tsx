@@ -16,7 +16,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useRouter } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { LayoutGridIcon } from 'lucide-react'
@@ -144,7 +143,7 @@ function RouteComponent() {
   const searchParams = Route.useSearch()
   const [envOpen, setEnvOpen] = useState<boolean>(false)
   const [otherOpen, setOtherOpen] = useState<boolean>(true)
-  const router = useRouter()
+  const navigate = Route.useNavigate()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
   const { mutate: createTask, isPending } = useMutation({
@@ -178,7 +177,9 @@ function RouteComponent() {
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
       toast.success(`作业 ${jobName} 创建成功`)
-      router.history.back()
+      navigate({
+        to: '/portal/jobs/custom',
+      })
     },
   })
 

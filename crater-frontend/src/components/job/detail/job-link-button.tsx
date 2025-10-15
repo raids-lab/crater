@@ -53,8 +53,13 @@ const PrefixLinkButton = ({ names = [], prefixes = [], title = ' ' }: PrefixLink
   return (
     <ListedButton
       icon={<ExternalLink className="size-4" />}
-      renderTitle={(title) => `${title}`}
-      itemTitle="入口类型"
+      renderTitle={(title) => (
+        <div className="flex items-center gap-1">
+          访问
+          <span className="uppercase">{title}</span>
+        </div>
+      )}
+      itemTitle="外部访问"
       items={items}
       cacheKey={title}
     />

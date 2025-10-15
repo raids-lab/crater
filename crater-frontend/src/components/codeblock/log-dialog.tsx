@@ -85,7 +85,6 @@ export function LogCard({
   const [streaming, setStreaming] = useState(false) // 新增：控制是否处于流式模式
   const [streamingPaused, setStreamingPaused] = useState(false) // 新增：控制流是否暂停
   const [streamedLogs, setStreamedLogs] = useState<string[]>([]) // 新增：存储流式日志
-  const streamEventSource = useRef<EventSource | null>(null) // 新增：SSE连接引用
   const streamAbortController = useRef<AbortController | null>(null) // 新增：用于取消 fetch 请求
 
   const { data: logText, refetch } = useQuery({
@@ -233,6 +232,7 @@ export function LogCard({
       }
 
       setStreaming(true)
+      toast.info('流式日志连接成功')
 
       // 读取流数据
       const decoder = new TextDecoder()
@@ -286,7 +286,7 @@ export function LogCard({
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') {
         logger.error('流式日志连接失败:', error)
-        toast.error('流式日志连接失败，已自动切换到普通模式')
+        toast.error('流式日志连接已断开')
         refetch()
       }
     } finally {
@@ -299,10 +299,7 @@ export function LogCard({
     if (streamAbortController.current) {
       streamAbortController.current.abort()
       streamAbortController.current = null
-    }
-    if (streamEventSource.current) {
-      streamEventSource.current.close()
-      streamEventSource.current = null
+      toast.info('已停止流式日志')
     }
     setStreaming(false)
     setStreamedLogs([]) // 清空之前的日志
