@@ -1,6 +1,23 @@
 KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
 CONFIG_FILE := ./etc/debug-config.yaml
 
+# Version information for development builds
+# DEV_APP_VERSION ?= 1234567
+# DEV_COMMIT_SHA ?= 1234567890abcdef1234567890abcdef12345678
+# DEV_BUILD_TYPE ?= development
+# DEV_BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+# Version information for release builds
+DEV_APP_VERSION ?= v0.0.0
+DEV_COMMIT_SHA ?= 1234567890abcdef1234567890abcdef12345678
+DEV_BUILD_TYPE ?= release
+DEV_BUILD_TIME ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Version information flags
+VERSION_LDFLAGS := -X main.AppVersion=$(DEV_APP_VERSION) \
+                   -X main.CommitSHA=$(DEV_COMMIT_SHA) \
+                   -X main.BuildType=$(DEV_BUILD_TYPE) \
+                   -X main.BuildTime=$(DEV_BUILD_TIME)
+
 # 颜色定义
 RED := \033[31m
 GREEN := \033[32m
@@ -124,7 +141,7 @@ docs: swaggo ## Generate docs docs.
 .PHONY: run
 run: prepare show-kubeconfig fmt docs imports pre-commit ## Run a controller from your host.
 	@echo "$(GREEN)🚀 Starting crater backend server...$(RESET)"
-	KUBECONFIG="$(KUBECONFIG_PATH)" go run cmd/crater/main.go
+	KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
 pre-commit-check: pre-commit ## Run pre-commit hook manually.
@@ -136,7 +153,7 @@ pre-commit-check: pre-commit ## Run pre-commit hook manually.
 .PHONY: build
 build: fmt lint docs ## Build manager binary.
 	@echo "$(YELLOW)🔨 Building controller binary...$(RESET)"
-	go build -ldflags="-w -s" -o bin/controller cmd/crater/main.go
+	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/controller cmd/crater/main.go
 	@echo "$(GREEN)✅ Controller binary built successfully: bin/controller$(RESET)"
 
 .PHONY: build-migrate

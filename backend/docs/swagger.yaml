@@ -579,6 +579,8 @@ definitions:
         $ref: '#/definitions/internal_handler.AccountContext'
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
+      version:
+        $ref: '#/definitions/internal_handler.VersionInfo'
     type: object
   internal_handler.DatasetReq:
     properties:
@@ -891,6 +893,21 @@ definitions:
         description: 用户状态
       teacher:
         description: 导师
+        type: string
+    type: object
+  internal_handler.VersionInfo:
+    properties:
+      appVersion:
+        description: Application version (tag name or short SHA)
+        type: string
+      buildTime:
+        description: Build time in UTC
+        type: string
+      buildType:
+        description: Build type (release or development)
+        type: string
+      commitSHA:
+        description: Full commit SHA
         type: string
     type: object
   internal_handler.cancelSharedQueueReq:
@@ -1455,12 +1472,12 @@ paths:
     get:
       consumes:
       - application/json
-      description: 验证Authorization header中的Bearer token，返回用户信息和上下文
+      description: 验证Authorization header中的Bearer token，返回用户信息、上下文和版本信息
       produces:
       - application/json
       responses:
         "200":
-          description: token验证成功，返回用户信息和上下文
+          description: token验证成功，返回用户信息、上下文和版本信息
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp'
         "401":

@@ -22,7 +22,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "验证Authorization header中的Bearer token，返回用户信息和上下文",
+                "description": "验证Authorization header中的Bearer token，返回用户信息、上下文和版本信息",
                 "consumes": [
                     "application/json"
                 ],
@@ -35,7 +35,7 @@ const docTemplate = `{
                 "summary": "验证用户token并返回用户信息",
                 "responses": {
                     "200": {
-                        "description": "token验证成功，返回用户信息和上下文",
+                        "description": "token验证成功，返回用户信息、上下文和版本信息",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp"
                         }
@@ -8251,6 +8251,9 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
+                },
+                "version": {
+                    "$ref": "#/definitions/internal_handler.VersionInfo"
                 }
             }
         },
@@ -8721,6 +8724,27 @@ const docTemplate = `{
                 },
                 "teacher": {
                     "description": "导师",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.VersionInfo": {
+            "type": "object",
+            "properties": {
+                "appVersion": {
+                    "description": "Application version (tag name or short SHA)",
+                    "type": "string"
+                },
+                "buildTime": {
+                    "description": "Build time in UTC",
+                    "type": "string"
+                },
+                "buildType": {
+                    "description": "Build type (release or development)",
+                    "type": "string"
+                },
+                "commitSHA": {
+                    "description": "Full commit SHA",
                     "type": "string"
                 }
             }
