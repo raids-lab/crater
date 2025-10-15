@@ -15,8 +15,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ExternalLink, Plus, Trash2 } from 'lucide-react'
-import { GridIcon } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -37,23 +36,18 @@ import { Input } from '@/components/ui/input'
 
 import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
-import TooltipButton from '@/components/button/tooltip-button'
 import { PodNamespacedName } from '@/components/codeblock/pod-container-dialog'
 import FormLabelMust from '@/components/form/form-label-must'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui-custom/alert-dialog'
 
-import { apiCreatePodIngress, apiDeletePodIngress, apiGetPodIngresses } from '@/services/api/tool'
+import {
+  PodIngress,
+  apiCreatePodIngress,
+  apiDeletePodIngress,
+  apiGetPodIngresses,
+} from '@/services/api/tool'
 import { PodIngressMgr } from '@/services/api/tool'
+
+import { ExternalAccessItem, ExternalAccessList } from './external-access-list'
 
 const ingressFormSchema = z.object({
   name: z
@@ -73,7 +67,6 @@ interface IngressPanelProps {
 
 export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false)
-  const host = window.location.host
 
   const ingressForm = useForm<PodIngressMgr>({
     resolver: zodResolver(ingressFormSchema),
@@ -128,104 +121,45 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
     setIsEditIngressDialogOpen(true)
   }
 
-  const onSubmitIngress = (data: PodIngressMgr) => {
+  const onSubmitIngress = (data: PodIngress) => {
     if (namespacedName) {
       createIngressMutation(data)
     }
   }
 
-  const handleDeleteIngress = (data: PodIngressMgr) => {
+  const handleDeleteIngress = (data: PodIngress) => {
     if (namespacedName) {
       deleteIngressMutation(data)
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        {isLoading ? (
-          <div className="text-muted-foreground py-6 text-center">加载中...</div>
-        ) : !ingressList || ingressList.length === 0 ? (
-          <div className="text-muted-foreground text-center">
-            <div className="flex flex-col items-center justify-center pt-8">
-              <div className="bg-muted mb-4 rounded-full p-3">
-                <GridIcon className="h-6 w-6" />
-              </div>
-              <p className="select-none">暂无数据</p>
-            </div>
-          </div>
-        ) : (
-          ingressList.map((ingress) => (
-            <div
-              key={ingress.name}
-              className="bg-secondary flex items-center space-x-2 rounded-md p-3"
-            >
-              <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
-                <p>{ingress.name}</p>
-                <div className="text-muted-foreground flex flex-row text-xs">
-                  {ingress.port} → {ingress.prefix}
-                </div>
-              </div>
-              <TooltipButton
-                variant="ghost"
-                size="icon"
-                className="hover:text-primary"
-                onClick={() => {
-                  window.open(ingress.prefix, '_blank')
-                }}
-                tooltipContent="访问链接"
-              >
-                <ExternalLink className="size-4" />
-              </TooltipButton>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <TooltipButton
-                    variant="ghost"
-                    size="icon"
-                    className="hover:text-destructive"
-                    tooltipContent="删除"
-                    disabled={ingress.port === 8888 || isDeleting}
-                  >
-                    <Trash2 className="size-4" />
-                  </TooltipButton>
-                </AlertDialogTrigger>
-                {ingress.port !== 8888 && (
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        外部访问规则「{ingress.name}」<br />
-                        {ingress.port} → {host}
-                        {ingress.prefix}
-                        <br />
-                        将被删除，请谨慎操作。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={() => handleDeleteIngress(ingress)}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? '删除中...' : '删除'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                )}
-              </AlertDialog>
-            </div>
-          ))
-        )}
-      </div>
+  const renderIngressItem = (ingress: PodIngress) => {
+    return (
+      <ExternalAccessItem
+        key={ingress.name}
+        name={ingress.name}
+        port={ingress.port}
+        url={ingress.prefix}
+        isDeleting={isDeleting}
+        handleDeleteItem={() => handleDeleteIngress(ingress)}
+      />
+    )
+  }
 
-      <div className="flex justify-end gap-2">
-        <DocsButton title={'帮助文档'} url={`toolbox/external-access/ingress-rule`} />
-        <Button onClick={handleAddIngress} disabled={isCreating}>
-          <Plus className="mr-2 size-4" />
-          添加 Ingress 规则
-        </Button>
-      </div>
+  return (
+    <>
+      <ExternalAccessList
+        items={ingressList || []}
+        renderItem={renderIngressItem}
+        isLoading={isLoading}
+        docsButton={<DocsButton title={'帮助文档'} url={`toolbox/external-access/ingress-rule`} />}
+        addButton={
+          <Button onClick={handleAddIngress} disabled={isCreating}>
+            <Plus className="size-4" />
+            添加 Ingress 规则
+          </Button>
+        }
+      />
 
       <Dialog open={isEditIngressDialogOpen} onOpenChange={setIsEditIngressDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -235,6 +169,7 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
           <Form {...ingressForm}>
             <form
               onSubmit={(e) => {
+                //@ts-expect-error // ignore
                 void ingressForm.handleSubmit(onSubmitIngress)(e)
               }}
               className="space-y-4"
@@ -295,6 +230,6 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

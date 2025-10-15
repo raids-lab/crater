@@ -28,7 +28,7 @@ export type DataTableToolbarConfig = {
   filterOptions: readonly {
     key: string
     title: string
-    option: DataTableFacetedFilterOption[]
+    option?: DataTableFacetedFilterOption[]
     defaultValues?: string[]
   }[]
   getHeader: (key: string) => string

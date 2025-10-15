@@ -92,6 +92,15 @@ export const EventTimeline = ({ items }: TimelineLayoutProps) => {
                     })}
                   />
                 )}
+                {item.reportingComponent && (
+                  <TipBadge
+                    title={item.reportingComponent}
+                    className={cn({
+                      'bg-secondary text-secondary-foreground hover:bg-accent':
+                        item.type === 'Normal',
+                    })}
+                  />
+                )}
               </div>
               <p className="text-muted-foreground font-mono text-sm">{item.message}</p>
             </TimelineBody>

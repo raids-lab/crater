@@ -15,8 +15,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ExternalLink, Plus, Trash2 } from 'lucide-react'
-import { GridIcon } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -35,26 +34,20 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
-import { CopyButton } from '@/components/button/copy-button'
 import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
-import TooltipButton from '@/components/button/tooltip-button'
 import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
 import FormLabelMust from '@/components/form/form-label-must'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui-custom/alert-dialog'
 
-import { apiCreatePodNodeport, apiDeletePodNodeport, apiGetPodNodeports } from '@/services/api/tool'
+import {
+  PodNodeport,
+  apiCreatePodNodeport,
+  apiDeletePodNodeport,
+  apiGetPodNodeports,
+} from '@/services/api/tool'
 import { PodNodeportMgr } from '@/services/api/tool'
+
+import { ExternalAccessItem, ExternalAccessList } from './external-access-list'
 
 const nodeportFormSchema = z.object({
   name: z
@@ -125,103 +118,45 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
     setIsEditNodeportDialogOpen(true)
   }
 
-  const onSubmitNodeport = (data: PodNodeportMgr) => {
+  const onSubmitNodeport = (data: PodNodeport) => {
     if (namespacedName) {
       createNodeportMutation(data)
     }
   }
 
-  const handleDeleteNodeport = (data: PodNodeportMgr) => {
+  const handleDeleteNodeport = (data: PodNodeport) => {
     if (namespacedName) {
       deleteNodeportMutation(data)
     }
   }
 
+  const renderNodeportItem = (nodePort: PodNodeport) => {
+    return (
+      <ExternalAccessItem
+        key={nodePort.name}
+        name={nodePort.name}
+        port={nodePort.nodePort}
+        url={`${nodePort.address}:${nodePort.nodePort}`}
+        fullURL={`http://${nodePort.address}:${nodePort.nodePort}`}
+        isDeleting={isDeleting}
+        handleDeleteItem={() => handleDeleteNodeport(nodePort)}
+      />
+    )
+  }
+
   return (
     <>
-      <div className="space-y-4">
-        <div className="space-y-2">
-          {!nodeportList || nodeportList.length === 0 ? (
-            <div className="text-muted-foreground text-center">
-              <div className="flex flex-col items-center justify-center pt-8">
-                <div className="bg-muted mb-4 rounded-full p-3">
-                  <GridIcon className="h-6 w-6" />
-                </div>
-                <p className="select-none">暂无数据</p>
-              </div>
-            </div>
-          ) : (
-            nodeportList.map((nodeport) => (
-              <div
-                key={nodeport.name}
-                className="bg-secondary flex items-center space-x-2 rounded p-3"
-              >
-                <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
-                  <p>{nodeport.name}</p>
-                  <div className="text-muted-foreground flex flex-row text-xs">
-                    {nodeport.containerPort} → {nodeport.address}:{nodeport.nodePort}
-                  </div>
-                </div>
-
-                <TooltipButton
-                  variant="ghost"
-                  size="icon"
-                  className="hover:text-primary"
-                  onClick={() => {
-                    const url = `http://${nodeport.address}:${nodeport.nodePort}`
-                    window.open(url, '_blank')
-                  }}
-                  tooltipContent="访问链接"
-                >
-                  <ExternalLink className="size-4" />
-                </TooltipButton>
-                <CopyButton content={`${nodeport.address}:${nodeport.nodePort}`} />
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <TooltipButton
-                      variant="ghost"
-                      size="icon"
-                      className="hover:text-destructive"
-                      tooltipContent="删除"
-                      disabled={isDeleting}
-                    >
-                      <Trash2 className="size-4" />
-                    </TooltipButton>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>删除外部访问规则</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        外部访问规则「{nodeport.name}」<br />
-                        {nodeport.containerPort} → {nodeport.address}:{nodeport.nodePort}
-                        <br />
-                        将被删除，请谨慎操作。
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>取消</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={() => handleDeleteNodeport(nodeport)}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? '删除中...' : '删除'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="flex justify-end gap-2">
-          <DocsButton title={'帮助文档'} url={`toolbox/external-access/nodeport-rule`} />
+      <ExternalAccessList
+        items={nodeportList}
+        renderItem={renderNodeportItem}
+        docsButton={<DocsButton title={'帮助文档'} url={`toolbox/external-access/nodeport-rule`} />}
+        addButton={
           <Button onClick={handleAddNodeport} disabled={isCreating}>
-            <Plus className="mr-2 size-4" />
+            <Plus className="size-4" />
             添加 NodePort 规则
           </Button>
-        </div>
-      </div>
+        }
+      />
       <Dialog open={isEditNodeportDialogOpen} onOpenChange={setIsEditNodeportDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -230,6 +165,7 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
           <Form {...nodeportForm}>
             <form
               onSubmit={(e) => {
+                //@ts-expect-error // ignore
                 void nodeportForm.handleSubmit(onSubmitNodeport)(e)
               }}
               className="space-y-4"

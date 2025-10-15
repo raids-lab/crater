@@ -180,6 +180,10 @@ export const nodesToolbarConfig: DataTableToolbarConfig = {
       title: '状态',
       option: nodeStatuses,
     },
+    {
+      key: 'acceleratorModel',
+      title: '加速卡型号',
+    },
   ],
   getHeader: (x) => x,
 }

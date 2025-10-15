@@ -43,27 +43,13 @@ export const configAtom = atomWithStorage<AppConfig>(
 
 // 创建异步原子来加载配置
 export const apiGetConfig = async () => {
-  let config: AppConfig
   // 首先尝试从 config.json 读取配置
   const response = await fetch('/config.json')
   if (!response.ok) {
     throw new Error('Failed to load config')
   }
-  config = await response.json()
-
-  // 如果是开发环境，用环境变量覆盖部分配置
-  if (import.meta.env.MODE === 'development') {
-    config = {
-      ...config,
-      version: import.meta.env.VITE_APP_VERSION,
-      url: {
-        ...config.url,
-        document: import.meta.env.VITE_DOCS_BASE_URL,
-      },
-    } as AppConfig
-  }
-
-  return config
+  const config = await response.json()
+  return config as AppConfig
 }
 
 // 派生原子

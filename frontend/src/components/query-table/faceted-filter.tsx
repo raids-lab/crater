@@ -17,7 +17,7 @@
 import { Column } from '@tanstack/react-table'
 import { CheckIcon, ListFilter } from 'lucide-react'
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -45,14 +45,14 @@ export interface DataTableFacetedFilterOption {
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>
   title?: string
-  options: DataTableFacetedFilterOption[]
+  options?: DataTableFacetedFilterOption[]
   defaultValues?: string[]
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,
-  options,
+  options: rawOptions,
   defaultValues,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation()
@@ -65,6 +65,24 @@ export function DataTableFacetedFilter<TData, TValue>({
       column?.setFilterValue(defaultValues)
     }
   }, [defaultValues, column])
+
+  const options = useMemo(() => {
+    // 如果没有 Options，则从 facets 中生成
+    if (!rawOptions || rawOptions.length === 0) {
+      return facets
+        ? Array.from(facets.keys())
+            .filter((value) => !!value)
+            .map(
+              (value) =>
+                ({
+                  label: value,
+                  value,
+                }) as DataTableFacetedFilterOption
+            )
+        : []
+    }
+    return rawOptions
+  }, [facets, rawOptions])
 
   return (
     <Popover>
