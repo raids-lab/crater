@@ -117,15 +117,18 @@ export function SharedResourceTable({
         return t('sharedResource.dataset')
     }
   })()
+  const activeTab = props.currentTab || 'datasetinfo'
   const userDatasetData = useQuery({
     queryKey: ['data', 'userdataset', datasetId],
     queryFn: () => apiListUsersInDataset(datasetId),
     select: (res) => res.data,
+    enabled: activeTab === 'usershare',
   })
   const queueDatasetData = useQuery({
     queryKey: ['data', 'queuedataset', datasetId],
     queryFn: () => apiListQueuesInDataset(datasetId),
     select: (res) => res.data,
+    enabled: activeTab === 'accountshare',
   })
   const queryClient = useQueryClient()
   const [pathname, setPathname] = useState<string>('')
@@ -170,6 +173,7 @@ export function SharedResourceTable({
           }) ?? []
       )
     },
+    enabled: activeTab === 'datasetFiles',
   })
 
   const { mutate: cancelShareWithUser } = useMutation({
@@ -186,6 +190,8 @@ export function SharedResourceTable({
   const { mutate: deleteDataset } = useMutation({
     mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
     onSuccess: () => {
+      // 简化为：刷新列表 + 显式导航
+      void queryClient.invalidateQueries({ queryKey: ['data', 'mydataset'] })
       router.history.back()
       toast.success(t('sharedResource.deletedSuccess', { type: dataTypeLabel }))
     },
