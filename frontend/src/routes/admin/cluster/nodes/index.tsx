@@ -289,7 +289,7 @@ function NodesForAdmin() {
           const nodeStatus = row.original.status
           const taints = row.original.taints
           const unscheduleTaint =
-            taints?.some((t) => t === 'node.kubernetes.io/unschedulable=:NoSchedule') || false
+            taints?.some((t) => t === 'node.kubernetes.io/unschedulable:NoSchedule') || false
           const occupiedaccount = taints
             ?.find((t) => t.startsWith('crater.raids.io/account'))
             ?.split('=')[1]
