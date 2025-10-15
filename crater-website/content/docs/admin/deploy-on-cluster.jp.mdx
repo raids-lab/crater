@@ -97,7 +97,7 @@ nvidia-smi
 
 ---
 
-### 2.3 CloudNativePG（PostgreSQL Operator）
+### 2.3 CloudNativePG (PostgreSQL Operator)
 
 **機能：** 高可用性を実現する PostgreSQL データベースを提供します。
 
@@ -286,7 +286,7 @@ helm install metallb <your-path>/charts/metallb \
 | Controller | quay.io/metallb/controller:v0.14.8 |
 | Speaker | quay.io/metallb/speaker:v0.14.8 |
 
-例：IPアドレスプールの設定
+例：IP アドレスプールの設定
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -303,7 +303,7 @@ EOF
 
 ---
 
-### 2.8 ingress-nginx（Ingress Controller）
+### 2.8 ingress-nginx (Ingress Controller)
 
 **機能：** CraterのフロントエンドとAPIに外部アクセスのエントリポイントを提供します。
 
@@ -382,14 +382,14 @@ http://<your-node-ip>:30002
 
 ## 4. Crater プラットフォームのデプロイ
 
-Chartの取得：
+Chart の取得：
 
 ```bash
 helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
 ```
 
 Crater プラットフォームのコア設定ファイルは `values.yaml` です。  
-このファイルは、クラスタのドメイン名、データベース接続情報、監視サービスのアドレス、ストレージのPVC、およびHarborなどの外部依存関係の接続パラメータを定義します。
+このファイルは、クラスタのドメイン名、データベース接続情報、監視サービスのアドレス、ストレージの PVC、および Harbor などの外部依存関係の接続パラメータを定義します。
 
 `helm install` を実行する前に、以下の説明に従って対応するフィールドを編集してください。
 
@@ -410,36 +410,36 @@ firstUser:
   password: <MUSTEDIT>
 ````
 
-Ingress とドメインのDNS設定が完了している場合は、実際のドメイン（例：`crater.mycluster.local`）を使用できます。  
-テスト環境のみの場合は、コントロールノードのIPアドレスを入力してください。
+Ingress とドメインの DNS 設定が完了している場合は、実際のドメイン（例：`crater.mycluster.local`）を使用できます。  
+テスト環境のみの場合は、コントロールノードの IP アドレスを入力してください。
 
 ---
 
 ### 4.2 ストレージ設定（NFS）
 
-クラスタにNFS共有ストレージが既にデプロイされているため、`storage`セクションでは対応するStorageClassを指定します。
+クラスタに NFS 共有ストレージが既にデプロイされているため、`storage`セクションでは対応するStorageClassを指定します。
 
 ```yaml
 storage:
   create: true
   request: 10Gi
-  storageClass: "nfs"          # 前述で作成したNFS StorageClassを使用
-  pvcName: "crater-rw-storage" # 後続でマウントされる共有PVC名
+  storageClass: "nfs"          # 前述で作成した NFS StorageClass を使用
+  pvcName: "crater-rw-storage" # 後続でマウントされる共有 PVC 名
 ```
 
-Craterバックエンドは、このPVCを自動的にマウントし、ユーザー領域および共有ディレクトリ（`users/`, `accounts/`, `public/`）に使用します。
+Crater バックエンドは、この PVC を自動的にマウントし、ユーザー領域および共有ディレクトリ（`users/`, `accounts/`, `public/`）に使用します。
 
 ---
 
 ### 4.3 PostgreSQL データベース設定（CloudNativePG）
 
-CraterはCloudNativePGでデプロイされたデータベースクラスタを使用します。  
+Crater は CloudNativePG でデプロイされたデータベースクラスタを使用します。  
 データベース接続パラメータを対応するサービスに設定する必要があります。
 
 ```yaml
 backendConfig:
   postgres:
-    host: crater-postgresql.cnpg-system.svc.cluster.local  # CloudNativePGクラスタのService名
+    host: crater-postgresql.cnpg-system.svc.cluster.local  # CloudNativePG クラスタの Service 名
     port: 5432
     dbname: postgres
     user: postgres
@@ -452,7 +452,7 @@ backendConfig:
 > 
 > - `host` は `kubectl get svc -n cnpg-system` で確認可能です。
 >     
-> - CloudNativePGのデフォルトクラスタ名が `crater-postgresql` の場合、サービス名は以下の通りになります：
+> - CloudNativePG のデフォルトクラスタ名が `crater-postgresql` の場合、サービス名は以下の通りになります：
 >     `crater-postgresql-rw.cnpg-system.svc.cluster.local`。
 >     
 
@@ -460,7 +460,7 @@ backendConfig:
 
 ### 4.4 監視システム設定（Prometheus Stack）
 
-CraterバックエンドはPrometheus APIからGPUおよびジョブの指標を取得します。  
+Crater バックエンドは Prometheus API から GPU およびジョブの指標を取得します。  
 `backendConfig.prometheusAPI` を `kube-prometheus-stack` 内のPrometheus Serviceのアドレスに設定してください。
 
 ```yaml
@@ -474,13 +474,13 @@ backendConfig:
 kubectl get svc -n monitoring | grep prometheus
 ```
 
-Grafana統合の設定例：
+Grafana 統合の設定例：
 
 ```yaml
 grafanaProxy:
   enable: true
-  address: http://prometheus-grafana.monitoring  # Grafana Service名
-  token: <MASKED>                                # Grafanaの読み取り専用APIトークン
+  address: http://prometheus-grafana.monitoring  # Grafana Service 名
+  token: <MASKED>                                # Grafana の読み取り専用 API トークン
   host: gpu-grafana.example.com                  # 外部アクセス用ドメイン
 ```
 
@@ -488,15 +488,15 @@ grafanaProxy:
 
 ### 4.5 Harbor イメージレジストリ設定（Registry）
 
-クラスタ内にHarborが既にデプロイされている場合、Registry統合機能を有効化できます。  
-有効化すると、Craterは自動的にビルドしたイメージをHarborレジストリにプッシュできます。
+クラスタ内に Harbor が既にデプロイされている場合、Registry 統合機能を有効化できます。  
+有効化すると、Crater は自動的にビルドしたイメージを Harbor レジストリにプッシュできます。
 
 ```yaml
 backendConfig:
   registry:
     enable: true
     harbor:
-      server: harbor.example.com      # Harborのアクセスドメイン
+      server: harbor.example.com      # Harbor のアクセスドメイン
       user: admin                     # 管理者ユーザー名
       password: <MUSTEDIT>            # 管理者パスワード
     buildTools:
@@ -506,13 +506,13 @@ backendConfig:
         noProxy: null
 ```
 
-> 一時的にHarborを有効化しない場合、`enable: false` のままにしてください。
+> 一時的に Harbor を有効化しない場合、`enable: false` のままにしてください。
 
 ---
 
 ### 4.6 Ingress と TLS 設定（ingress-nginx + cert-manager）
 
-CraterはデフォルトでIngress経由でサービスを公開します。  
+Crater はデフォルトで Ingress 経由でサービスを公開します。  
 `ingress-nginx` が有効化されており、証明書が準備されている場合、`backendConfig.secrets` で以下のように指定できます：
 
 ```yaml
@@ -530,7 +530,7 @@ kubectl create secret tls crater-tls-secret \
   --cert=tls.crt --key=tls.key -n crater-system
 ```
 
-HTTPSを有効化しない場合、デフォルト値のままにしてください。プロトコルはHTTPのままです。
+HTTPS を有効化しない場合、デフォルト値のままにしてください。プロトコルは HTTP のままです。
 
 ---
 
