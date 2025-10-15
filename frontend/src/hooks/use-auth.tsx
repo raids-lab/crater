@@ -14,6 +14,7 @@ import {
   ACCESS_TOKEN_KEY,
   REFRESH_TOKEN_KEY,
   UserInfo,
+  atomBackendVersion,
   atomUserContext,
   atomUserInfo,
   globalLastView,
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const [user, setUser] = useAtom(atomUserInfo)
   const [context, setContext] = useAtom(atomUserContext)
+  const [, setBackendVersion] = useAtom(atomBackendVersion)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { resetAll } = useResetStore()
@@ -44,23 +46,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     apiCheckToken()
       .then(({ data }) => {
-        if (data == undefined) {
-          throw new Error('No auth data found')
+        if (data == undefined || data == null) {
+          // No auth data means user is not authenticated
+          logger.info('No auth data found, user not authenticated')
+          setUser(undefined)
+          setContext(undefined)
+          setBackendVersion(undefined)
+          setIsAuthenticated(false)
+          return
         }
+
+        // User is authenticated, set all data
         setUser({ ...data.user, space: data.context.space })
         setContext(data.context)
+        setBackendVersion(data.version)
         setIsAuthenticated(true)
       })
       .catch((error) => {
         logger.error('Failed to check auth token:', error)
         setUser(undefined)
         setContext(undefined)
+        setBackendVersion(undefined)
         setIsAuthenticated(false)
       })
       .finally(() => {
         setIsLoading(false)
       })
-  }, [setContext, setUser])
+  }, [setContext, setUser, setBackendVersion])
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -74,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
       setUser({ ...data.user, space: data.context.space })
       setContext(data.context)
+      setBackendVersion(data.version)
       setIsAuthenticated(true)
       return res
     })
@@ -86,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(REFRESH_TOKEN_KEY)
     setUser(undefined)
     setContext(undefined)
+    setBackendVersion(undefined)
     queryClient.clear()
     resetAll()
     toast.success(t('navUser.loggedOut'))

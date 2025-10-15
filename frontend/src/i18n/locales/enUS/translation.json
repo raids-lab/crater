@@ -862,6 +862,7 @@
   "about.appName": "Crater",
   "about.appDescription": "Cloud-Native AI Platform",
   "about.frontendVersion": "Frontend Version",
+  "about.backendVersion": "Backend Version",
   "about.buildTime": "Build Time",
   "about.commit": "Commit",
   "about.developmentVersion": "Dev",

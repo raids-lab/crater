@@ -861,6 +861,7 @@
   "about.appName": "Crater",
   "about.appDescription": "클라우드 네이티브 AI 플랫폼",
   "about.frontendVersion": "프론트엔드",
+  "about.backendVersion": "백엔드",
   "about.buildTime": "빌드 시간",
   "about.commit": "커밋",
   "about.developmentVersion": "개발판",
