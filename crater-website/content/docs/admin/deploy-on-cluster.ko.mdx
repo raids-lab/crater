@@ -11,8 +11,8 @@ description: 본 가이드는 프로덕션급 Kubernetes 클러스터에서 크�
 | Kubernetes | v1.31.x |
 | 컨테이너 런타임 | containerd 1.7.x |
 | Helm | v3.x |
-| 노드 구성 | 컨트롤 노드 1개, 워크 노드 ≥ 2개 |
-| 네트워크 요구 사항 | 노드 간 내부 네트워크 통신 가능; 최소 1대의 노드는 외부 인터넷 접근 또는 프록시 설정 가능 |
+| 노드 구성 | 컨트롤 노드 1 개, 워크 노드 ≥ 2 개 |
+| 네트워크 요구 사항 | 노드 간 내부 네트워크 통신 가능; 최소 1 대의 노드는 외부 인터넷 접근 또는 프록시 설정 가능 |
 
 예시:
 ```bash
@@ -410,8 +410,8 @@ firstUser:
   password: <MUSTEDIT>
 ```
 
-Ingress와 도메인 해석이 설정된 경우, 실제 도메인(예: `crater.mycluster.local`)을 사용할 수 있습니다.  
-테스트 환경인 경우, 컨트롤 노드 IP를 입력할 수 있습니다.
+Ingress 와 도메인 해석이 설정된 경우, 실제 도메인 (예: `crater.mycluster.local`)을 사용할 수 있습니다.  
+테스트 환경인 경우, 컨트롤 노드 IP 를 입력할 수 있습니다.
 
 ---
 
@@ -427,13 +427,13 @@ storage:
   pvcName: "crater-rw-storage" # 백엔드 마운트용 공유 PVC 이름
 ```
 
-크레이터 백엔드는 이 PVC를 자동으로 마운트하여 사용자 공간 및 공용 디렉터리(`users/`, `accounts/`, `public/`)에 사용합니다.
+크레이터 백엔드는 이 PVC 를 자동으로 마운트하여 사용자 공간 및 공용 디렉터리 (`users/`, `accounts/`, `public/`)에 사용합니다.
 
 ---
 
 ### 4.3 PostgreSQL 데이터베이스 구성 (CloudNativePG)
 
-크레이터는 CloudNativePG로 배포된 데이터베이스 클러스터를 사용합니다.  
+크레이터는 CloudNativePG 로 배포된 데이터베이스 클러스터를 사용합니다.  
 데이터베이스 연결 파라미터를 해당 서비스에 연결해야 합니다:
 
 ```yaml
@@ -452,7 +452,7 @@ backendConfig:
 > 
 > - `host`는 `kubectl get svc -n cnpg-system` 명령으로 확인할 수 있습니다.
 >     
-> - CloudNativePG의 기본 클러스터 이름이 `crater-postgresql`인 경우, 서비스 이름은 다음과 같아야 합니다:  
+> - CloudNativePG 의 기본 클러스터 이름이 `crater-postgresql`인 경우, 서비스 이름은 다음과 같아야 합니다:  
 >     `crater-postgresql-rw.cnpg-system.svc.cluster.local`입니다.
 >     
 
@@ -460,7 +460,7 @@ backendConfig:
 
 ### 4.4 모니터링 시스템 구성 (Prometheus 스택)
 
-크레이터 백엔드는 Prometheus API를 통해 GPU 및 작업 지표를 가져옵니다.  
+크레이터 백엔드는 Prometheus API 를 통해 GPU 및 작업 지표를 가져옵니다.  
 `backendConfig.prometheusAPI`를 `kube-prometheus-stack` 내 Prometheus 서비스 주소로 지정해야 합니다:
 
 ```yaml
@@ -488,7 +488,7 @@ grafanaProxy:
 
 ### 4.5 Harbor 이미지 레지스트리 구성 (Registry)
 
-클러스터 내에 Harbor가 배포된 경우, Registry 통합 기능을 활성화할 수 있습니다.  
+클러스터 내에 Harbor 가 배포된 경우, Registry 통합 기능을 활성화할 수 있습니다.  
 활성화 후 크레이터는 빌드된 이미지를 자동으로 Harbor 레지스트리에 푸시할 수 있습니다.
 
 ```yaml
@@ -506,13 +506,13 @@ backendConfig:
         noProxy: null
 ```
 
-> 임시로 Harbor를 사용하지 않는 경우, `enable: false`로 유지할 수 있습니다.
+> 임시로 Harbor 를 사용하지 않는 경우, `enable: false`로 유지할 수 있습니다.
 
 ---
 
 ### 4.6 Ingress 및 TLS 구성 (ingress-nginx + cert-manager)
 
-크레이터는 기본적으로 Ingress를 통해 서비스를 노출합니다.  
+크레이터는 기본적으로 Ingress 를 통해 서비스를 노출합니다.  
 `ingress-nginx`가 활성화되고 인증서가 준비된 경우, `backendConfig.secrets`에서 다음과 같이 지정할 수 있습니다:
 
 ```yaml
@@ -530,7 +530,7 @@ kubectl create secret tls crater-tls-secret \
   --cert=tls.crt --key=tls.key -n crater-system
 ```
 
-HTTPS를 사용하지 않는 경우, 기본값을 유지하고 프로토콜은 여전히 HTTP로 유지됩니다.
+HTTPS 를 사용하지 않는 경우, 기본값을 유지하고 프로토콜은 여전히 HTTP 로 유지됩니다.
 
 ---
 
