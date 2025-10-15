@@ -88,11 +88,34 @@ jobs:
         run: make docs
         shell: bash
 
+      - name: Set version variables
+        id: set-version
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          # Check if triggered by tag
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Tag trigger: use tag version (keep v prefix)
+            APP_VERSION="${{ github.ref_name }}"
+            BUILD_TYPE="release"
+          else
+            # Branch trigger: use commit SHA
+            APP_VERSION="$SHORT_SHA"
+            BUILD_TYPE="development"
+          fi
+          
+          # Set outputs
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
       - name: Build backend binaries
         run: |
           mkdir -p bin/${{ matrix.platform.image_platform }}
-          go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/migrate cmd/gorm-gen/models/migrate.go
-          go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/controller cmd/crater/main.go
+          go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/migrate cmd/gorm-gen/models/migrate.go
+          go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/controller cmd/crater/main.go
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.platform.goos }}

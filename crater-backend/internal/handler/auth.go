@@ -86,6 +86,7 @@ type (
 	CheckResp struct {
 		Context AccountContext      `json:"context"`
 		User    model.UserAttribute `json:"user"`
+		Version VersionInfo         `json:"version"`
 	}
 
 	AccountContext struct {
@@ -96,7 +97,32 @@ type (
 		AccessPublic model.AccessMode `json:"accessPublic"` // User access mode of the platform
 		Space        string           `json:"space"`        // User pvc subpath the platform
 	}
+
+	VersionInfo struct {
+		AppVersion string `json:"appVersion"` // Application version (tag name or short SHA)
+		CommitSHA  string `json:"commitSHA"`  // Full commit SHA
+		BuildType  string `json:"buildType"`  // Build type (release or development)
+		BuildTime  string `json:"buildTime"`  // Build time in UTC
+	}
 )
+
+// Global version information
+var globalVersionInfo VersionInfo
+
+// SetVersionInfo sets the global version information
+func SetVersionInfo(appVersion, commitSHA, buildType, buildTime string) {
+	globalVersionInfo = VersionInfo{
+		AppVersion: appVersion,
+		CommitSHA:  commitSHA,
+		BuildType:  buildType,
+		BuildTime:  buildTime,
+	}
+}
+
+// GetVersionInfo returns the global version information
+func GetVersionInfo() VersionInfo {
+	return globalVersionInfo
+}
 
 type AuthMode string
 
@@ -135,12 +161,12 @@ func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 // Check godoc
 //
 //	@Summary		验证用户token并返回用户信息
-//	@Description	验证Authorization header中的Bearer token，返回用户信息和上下文
+//	@Description	验证Authorization header中的Bearer token，返回用户信息、上下文和版本信息
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[CheckResp]	"token验证成功，返回用户信息和上下文"
+//	@Success		200	{object}	resputil.Response[CheckResp]	"token验证成功，返回用户信息、上下文和版本信息"
 //	@Failure		401	{object}	resputil.Response[any]			"token无效或已过期"
 //	@Failure		500	{object}	resputil.Response[any]			"服务器内部错误"
 //	@Router			/auth/check [get]
@@ -210,7 +236,8 @@ func (mgr *AuthMgr) Check(c *gin.Context) {
 			AccessPublic: publicAccessMode,
 			Space:        user.Space,
 		},
-		User: user.Attributes.Data(),
+		User:    user.Attributes.Data(),
+		Version: GetVersionInfo(),
 	}
 
 	resputil.Success(c, checkResponse)

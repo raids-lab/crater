@@ -21,6 +21,16 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/raids-lab/crater/cmd/crater/helper"
+	"github.com/raids-lab/crater/internal/handler"
+)
+
+// Version information injected at build time via ldflags
+// These variables will be overridden by Makefile VERSION_LDFLAGS
+var (
+	AppVersion string
+	CommitSHA  string
+	BuildType  string
+	BuildTime  string
 )
 
 // @title						Crater API
@@ -31,6 +41,23 @@ import (
 // @name						Authorization
 // @description					访问 /login 并获取 TOKEN 后，填入 'Bearer ${TOKEN}' 以访问受保护的接口
 func main() {
+	// Set version information with fallback defaults
+	// If ldflags didn't inject values, use development defaults
+	if AppVersion == "" {
+		AppVersion = "dev-local"
+	}
+	if CommitSHA == "" {
+		CommitSHA = "unknown"
+	}
+	if BuildType == "" {
+		BuildType = "development"
+	}
+	if BuildTime == "" {
+		BuildTime = "unknown"
+	}
+
+	handler.SetVersionInfo(AppVersion, CommitSHA, BuildType, BuildTime)
+
 	// Initialize configuration
 	configInit := helper.NewConfigInitializer()
 	backendConfig := configInit.GetBackendConfig()
