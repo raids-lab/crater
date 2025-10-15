@@ -67,7 +67,7 @@ kubectl top nodes
 
 ### 2.2 NVIDIA GPU Operator
 
-**機能：** GPUドライバ、デバイスプラグイン、モニタリングコンポーネントをインストールします。
+**機能：** GPU ドライバ、デバイスプラグイン、モニタリングコンポーネントをインストールします。
 
 ```bash
 helm repo add nvidia https://nvidia.github.io/gpu-operator
@@ -137,7 +137,7 @@ EOF
 
 ### 2.4 NFS ストレージシステム
 
-**機能：** 共有ストレージ（ReadWriteMany モード）を提供し、ユーザーの作業領域や共有データに使用します。
+**機能：** 共有ストレージ（ ReadWriteMany モード）を提供し、ユーザーの作業領域や共有データに使用します。
 
 #### 2.4.1 NFS Server のインストール（オプション）
 
@@ -237,7 +237,7 @@ kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
 
 ### 2.6 Volcano スケジューラ
 
-**機能：** GPUジョブスケジューリング、キュー管理、タスクのプレエンプションなどを提供します。
+**機能：** GPU ジョブスケジューリング、キュー管理、タスクのプレエンプションなどを提供します。
 
 ```bash
 helm repo add volcano https://volcano-sh.github.io/helm-charts
@@ -305,7 +305,7 @@ EOF
 
 ### 2.8 ingress-nginx (Ingress Controller)
 
-**機能：** CraterのフロントエンドとAPIに外部アクセスのエントリポイントを提供します。
+**機能：** Crate rのフロントエンドとAPIに外部アクセスのエントリポイントを提供します。
 
 ```bash
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -417,7 +417,7 @@ Ingress とドメインの DNS 設定が完了している場合は、実際の�
 
 ### 4.2 ストレージ設定（NFS）
 
-クラスタに NFS 共有ストレージが既にデプロイされているため、`storage`セクションでは対応するStorageClassを指定します。
+クラスタに NFS 共有ストレージが既にデプロイされているため、`storage` セクションでは対応するStorageClassを指定します。
 
 ```yaml
 storage:
@@ -461,7 +461,7 @@ backendConfig:
 ### 4.4 監視システム設定（Prometheus Stack）
 
 Crater バックエンドは Prometheus API から GPU およびジョブの指標を取得します。  
-`backendConfig.prometheusAPI` を `kube-prometheus-stack` 内のPrometheus Serviceのアドレスに設定してください。
+`backendConfig.prometheusAPI` を `kube-prometheus-stack` 内の Prometheus Service のアドレスに設定してください。
 
 ```yaml
 backendConfig:

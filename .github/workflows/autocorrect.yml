@@ -37,11 +37,21 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      - name: Get files to autocorrect (internal PRs)
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        id: internal_files
+        run: |
+          # 列出所有潜在文件，然后使用 grep -v 排除掉 *.*.mdx
+          # 注意：这里的 glob 模式要与 autocorrect 期望的一致
+          FILES=$(find crater-website/src crater-website/messages crater-website/content -type f -print0 | xargs -0 grep -E -v '(\.[^/.]+){1}\.mdx$' | tr '\n' ' ')
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
       - name: AutoCorrect and Fix (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
         uses: huacnlee/autocorrect-action@v2
         with:
-          args: --fix crater-website/src/** crater-website/messages/** crater-website/content/**
+          # 将过滤后的文件列表传递给 autocorrect
+          args: --fix ${{ steps.internal_files.outputs.files }}
 
       - name: Commit changes (for internal PRs)
         if: github.event.pull_request.head.repo.full_name == github.repository
@@ -57,12 +67,25 @@ jobs:
         if: github.event.pull_request.head.repo.full_name != github.repository
         id: changed-files
         run: |
-          files=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} -- 'crater-website/src/**' 'crater-website/content/**' 'crater-website/messages/**' | xargs -0)
-          if [ -n "$files" ]; then
-            echo "files_exist=true" >> $GITHUB_OUTPUT
-            echo "files=$files" >> $GITHUB_OUTPUT
+          # 获取变更的文件列表
+          ALL_CHANGED_FILES=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} -- 'crater-website/src/**' 'crater-website/content/**' 'crater-website/messages/**' | xargs -0)
+          
+          # 使用 grep -v 过滤掉 *.*.mdx 文件
+          # 注意：为了让 grep 能够正确处理空格和换行，我们使用 find 和 grep。
+          # 或者，更简单但可能内存占用稍高的方法是先将所有文件放入数组或临时文件。
+          # 这里假设 $ALL_CHANGED_FILES 已经是以空格分隔的文件列表
+          
+          if [ -n "$ALL_CHANGED_FILES" ]; then
+              # 将空格分隔的字符串转换为行分隔，然后用 grep 过滤
+              FILTERED_FILES=$(echo "$ALL_CHANGED_FILES" | tr ' ' '\n' | grep -E -v '(\.[^/.]+){1}\.mdx$' | tr '\n' ' ')
+              if [ -n "$FILTERED_FILES" ]; then
+                  echo "files_exist=true" >> $GITHUB_OUTPUT
+                  echo "files=$FILTERED_FILES" >> $GITHUB_OUTPUT
+              else
+                  echo "files_exist=false" >> $GITHUB_OUTPUT
+              fi
           else
-            echo "files_exist=false" >> $GITHUB_OUTPUT
+              echo "files_exist=false" >> $GITHUB_OUTPUT
           fi
           
       - name: Create Lint and Report Script
