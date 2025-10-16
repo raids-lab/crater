@@ -26,6 +26,7 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - 'Makefile'
+      - '.github/dependabot.yml'
 
 env:
   # Modified to use GHCR configuration

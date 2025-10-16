@@ -24,6 +24,7 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - 'Makefile'
+      - '.github/dependabot.yml'
 
 jobs:
   build-test:
