@@ -5,6 +5,8 @@ import time
 from collections import OrderedDict
 import re
 
+API_URL = "http://192.168.5.32:32006/v1/chat/completions"
+MODEL_PATH = "Qwen3-30B-A3B-Instruct-2507-Int8"  # 请按需修改
 MAX_RETRIES = 3
 
 # === 辅助函数: 展平 & 重建 JSON ===
@@ -44,13 +46,13 @@ def _unflatten_json(flat_json: dict, separator: str = '.') -> dict:
         d[parts[-1]] = value
     return nested_data
 
-def _call_llm_api(system_prompt: str, user_prompt: str, api_url: str, model_path: str) -> str | None:
+def _call_llm_api(system_prompt: str, user_prompt: str) -> str | None:
     """
     一个独立的函数，用于调用 vLLM API 并处理响应和错误。
     返回翻译后的文本，如果失败则返回 None。
     """
     payload = {
-        "model": model_path,
+        "model": MODEL_PATH,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
@@ -59,7 +61,7 @@ def _call_llm_api(system_prompt: str, user_prompt: str, api_url: str, model_path
         "temperature": 0.7
     }
     try:
-        response = requests.post(api_url, json=payload, timeout=720)
+        response = requests.post(API_URL, json=payload, timeout=720)
         response.raise_for_status()
         
         response_data = response.json()
@@ -93,7 +95,8 @@ def translate_files(
     source_language_full: str,
     target_languages: list[str],
     target_language_full: list[str],
-    write_to_existing_files: bool = False
+    write_to_existing_files: bool = False,
+    diff_content_map: dict[str, str] | None = None
 ) -> dict[str, str]:
     """
     使用本地 vLLM 服务翻译文件内容。
@@ -103,9 +106,6 @@ def translate_files(
     if not file_paths:
         return {}
 
-    # --- 1. 定义配置并确定模式 ---
-    api_url = "http://192.168.5.2:31049/v1/chat/completions"
-    model_path = "Qwen3-14B"
     is_incremental = len(file_paths) > 1
     
     if is_incremental and len(file_paths) != len(target_languages) + 1:
@@ -130,7 +130,7 @@ def translate_files(
         print(f"\n[*] --- 正在翻译为: {lang_full} ({lang_code}) ... ---")
 
         # --- 新增逻辑: 为增量模式加载现有目标文件内容 ---
-        existing_target_content = None
+        existing_target_content, target_file_path = None, None
         if is_incremental:
             target_file_path = file_paths[i + 1]
             try:
@@ -151,7 +151,6 @@ def translate_files(
                     
                     translated_json = _translate_json_chunks(
                         source_data, source_language_full, lang_full, 
-                        api_url, model_path,
                         existing_target_data=existing_target_data # 传入已存在的数据
                     )
                     original_ordered_keys = json.loads(source_content, object_pairs_hook=OrderedDict).keys()
@@ -167,10 +166,11 @@ def translate_files(
                     final_results[lang_code] = json.dumps(final_ordered_json, ensure_ascii=False, indent=2)
                 else:
                     # --- 策略 B: 处理普通文本/MDX 文件 ---
+                    modified_content = diff_content_map.get(source_file_path) if diff_content_map else None
                     translated_text = _translate_plain_text(
                         source_content, source_language_full, lang_full,
-                        api_url, model_path,
-                        existing_target_content=existing_target_content # 传入已存在的内容
+                        existing_target_content=existing_target_content, # 传入已存在的内容
+                        modified_content=modified_content # 传入 diff 内容 (如果有的话
                     )
                     if translated_text:
                         translated_text = translated_text.replace(f'/{source_language}/', f'/{lang_code}/')
@@ -181,6 +181,7 @@ def translate_files(
                     front_matter_pattern = re.compile(r'^---\s*\n(.*?)title:.*?\n---\s*\n', re.DOTALL)
                     if not front_matter_pattern.match(translated_text):
                         # 如果匹配失败 (返回 None)，则抛出一个 ValueError 异常，并提供清晰的错误信息。
+                        print(translated_text)
                         raise ValueError(f"译文缺少有效的 Front Matter（例如 '--- title: ... ---'）。")
     
                     final_results[lang_code] = translated_text
@@ -209,8 +210,6 @@ def _translate_json_chunks(
     source_data: dict, 
     source_lang_full: str, 
     target_lang_full: str, 
-    api_url: str, 
-    model_path: str,
     chunk_size: int = 50,
     existing_target_data: dict | None = None # 接收现有数据
 ) -> dict:
@@ -260,7 +259,7 @@ def _translate_json_chunks(
             chunk_json_str = json.dumps(chunk, ensure_ascii=False, indent=2)
             user_prompt = f"{chunk_json_str} /no_think"
 
-            translated_chunk_str = _call_llm_api(system_prompt, user_prompt, api_url, model_path)
+            translated_chunk_str = _call_llm_api(system_prompt, user_prompt)
             
             if translated_chunk_str:
                 try:
@@ -286,26 +285,37 @@ def _translate_plain_text(
     source_content: str, 
     source_lang_full: str, 
     target_lang_full: str, 
-    api_url: str, 
-    model_path: str,
-    existing_target_content: str | None = None # 接收现有内容
+    existing_target_content: str | None = None, # 接收现有内容
+    modified_content: str | None = None # 接收 diff 内容
 ) -> str:
     # --- 新增增量逻辑: 根据是否存在旧内容，选择不同的提示词 ---
     if existing_target_content:
-        print("[i] 检测到现有翻译，为MDX/文本文件启用增量更新模式。")
+        if modified_content:
+            print("[i] 检测到 Diff，启用基于 Diff 的精确更新模式。")
+            diff_system_prompt = f"和 {source_lang_full} 语言下的源文档的变更内容 (diff 格式) "
+            diff_prompt = ("源文档的变更内容 (diff 格式):\n"
+                "--- [START OF MODIFICATIONS] ---\n"
+                f"{modified_content}\n"
+                "--- [END OF MODIFICATIONS] ---\n\n"
+            )
+        else:
+            diff_system_prompt = ""
+            diff_prompt = ""
         system_prompt = (
             f"你是一个专业的、精通多种语言的翻译引擎，擅长处理文档更新。"
-            f"你的任务是：参考一份旧的 {target_lang_full} 翻译，将一份新的 {source_lang_full} 文档更新并翻译成 {target_lang_full}。"
+            f"你的任务是：参考一份旧的 {target_lang_full} 翻译{diff_system_prompt}，将一份新的 {source_lang_full} 文档更新并翻译成 {target_lang_full}。"
             f"请仔细比对新旧源文的差异，并在旧译文的基础上进行修改，以最小的变动完成更新，同时保持翻译风格和术语的一致性。"
             f"严格保持原始文档的格式，如 Markdown 语法、换行和段落结构。"
             f"只返回最终完整的、更新后的 {target_lang_full} 译文，不要添加任何额外的解释或评论。"
         )
+
         user_prompt = (
             f"这是最新的 {source_lang_full} 文档内容：\n"
             f"--- [START OF NEW SOURCE] ---\n"
             f"{source_content}\n"
             f"--- [END OF NEW SOURCE] ---\n\n"
-            f"这是之前对应的旧版 {target_lang_full} 翻译，请以此为基础进行更新：\n"
+            f"{diff_prompt}"
+            f"这是之前对应的旧版 {target_lang_full} 翻译，请以此为基础进行更新，尽量不要替换未修改内容：\n"
             f"--- [START OF OLD TRANSLATION] ---\n"
             f"{existing_target_content}\n"
             f"--- [END OF OLD TRANSLATION] ---\n"
@@ -321,54 +331,58 @@ def _translate_plain_text(
         )
         user_prompt = f"{source_content} /no_think"
     
-    translated_text = _call_llm_api(system_prompt, user_prompt, api_url, model_path)
+    translated_text = _call_llm_api(system_prompt, user_prompt)
     return translated_text if translated_text else ""
 
 
 # === 主执行块 (已修改以演示新功能) ===
 if __name__ == "__main__":
+    with open("./diff.diff", 'r', encoding='utf-8') as f:
+        modified_content = f.read()
     try:
 
-        # --- 示例 1: 更新现有的翻译文件 ---
+        # # --- 示例 1: 更新现有的翻译文件 ---
         print("\n" + "="*20 + " 示例 1: 更新现有的翻译文件 " + "="*20)
         full_trans_results = translate_files(
             file_paths=[
-                './zhCN/translation.json',  # 源文件（中文）
-                './enUS/translation.json',  # 现有的英文翻译文件
-                './ja/translation.json',   # 现有的日文翻译文件
-                './ko/translation.json'    # 现有的韩文翻译文件
+                'oh2.mdx',
+                'oh2.en.mdx',
+                'oh2.ja.mdx',
             ],
             source_language='zhCN',
             source_language_full='简体中文',
-            target_languages=['enUS', 'ja', 'ko'],
-            target_language_full=['English', '日本語', '한국어'],
+            target_languages=['enUS', 'ja'],
+            target_language_full=['English', '日本語'],
             write_to_existing_files=True # 启用写回现有文件
         )
 
 
 
         # --- 示例 2: 创建新的翻译文件 ---
-        source_file = 'example_data/source_zh.mdx'
-        target_files = [
-            'example_data/source_zh.en.mdx',
-            'example_data/source_zh.ja.mdx'
-        ]
-        for tf in target_files:
-            if os.path.exists(tf):
-                os.remove(tf)
-                print(f"[i] 删除现有目标文件以演示创建新文件: {tf}")
-                with open(tf, 'w', encoding='utf-8') as f:
-                    if tf.endswith('.json'):
-                        f.write('{}')
-        print("\n" + "="*20 + " 示例 2: 创建新的翻译文件 " + "="*20)
-        full_trans_results = translate_files(
-            file_paths=[source_file],
-            source_language='zh',
-            source_language_full='简体中文',
-            target_languages=['en', 'ja'],
-            target_language_full=['English', '日本語'],
-            write_to_existing_files=True
-        )
+        # source_file = './oh.mdx'
+        # target_files = [
+        #     './oh.en.mdx',
+        #     './oh.ja.mdx'
+        # ]
+        # for tf in target_files:
+        #     if os.path.exists(tf):
+        #         os.remove(tf)
+        #         print(f"[i] 删除现有目标文件以演示创建新文件: {tf}")
+        #     with open(tf, 'w', encoding='utf-8') as f:
+        #         if tf.endswith('.json'):
+        #             f.write('{}')
+        #         else:
+        #             f.write('')  # 创建空文件
+        # print("\n" + "="*20 + " 示例 2: 创建新的翻译文件 " + "="*20)
+        
+        # full_trans_results = translate_files(
+        #     file_paths=[source_file] + target_files,
+        #     source_language='zh',
+        #     source_language_full='简体中文',
+        #     target_languages=['en', 'ja'],
+        #     target_language_full=['English', '日本語'],
+        #     write_to_existing_files=True
+        # )
 
 
     except Exception as e:

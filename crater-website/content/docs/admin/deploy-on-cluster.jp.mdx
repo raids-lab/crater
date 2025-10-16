@@ -1,0 +1,563 @@
+---
+title: Crater クラスタのデプロイガイド
+description: 本ガイドは、生産環境用 Kubernetes クラスタにおける Crater プラットフォームの標準化デプロイ手順を説明します。環境準備、依存コンポーネントのインストール、コアサービスのデプロイ、および一般的な問題のトラブルシューティングをカバーしています。
+---
+
+## 1. 環境と基本要件
+
+| 項目 | 説明 |
+| ---- | ---- |
+| オペレーティングシステム | Ubuntu 22.04 |
+| Kubernetes | v1.31.x |
+| コンテナランタイム | containerd 1.7.x |
+| Helm | v3.x |
+| ノード構成 | コントロールノード 1 台、ワーカーノード ≥ 2 台 |
+| ネットワーク要件 | ノード間は内部ネットワークで通信可能であること；少なくとも 1 台のノードが外部ネットワークにアクセス可能、またはプロキシを設定すること |
+
+例：
+```bash
+kubectl get nodes -o wide
+````
+
+出力例：
+
+```
+NAME       STATUS   ROLES           VERSION   INTERNAL-IP     OS-IMAGE
+node-1     Ready    control-plane   v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-2     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+node-3     Ready    <none>          v1.31.2   <your-node-ip>  Ubuntu 22.04.5 LTS
+```
+
+---
+
+## 2. クラスタ依存コンポーネントのインストール
+
+Crater プラットフォームは、スケジューリング、監視、ネットワーク、ストレージ機能を実現するために以下の基本コンポーネントを必要とします。  
+本節では各コンポーネントのインストールコマンドおよびイメージ情報について記載します。
+
+### 2.1 Metrics Server
+
+**機能：** クラスタノードおよび Pod の CPU・メモリ指標を提供し、HPA（Horizontal Pod Autoscaler）による自動スケーリングを可能にします。
+
+```bash
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server
+helm repo update
+helm pull metrics-server/metrics-server --untar --destination <your-path>/charts
+
+helm install metrics-server <your-path>/charts/metrics-server \
+  -n kube-system --create-namespace
+```
+
+**イメージ：**
+
+```
+registry.k8s.io/metrics-server/metrics-server:v0.8.0
+# 国内向けの場合は以下に置き換える：
+swr.cn-north-4.myhuaweicloud.com/ddn-k8s/registry.k8s.io/metrics-server/metrics-server:v0.8.0
+```
+
+検証：
+
+```bash
+kubectl get pods -n kube-system | grep metrics-server
+kubectl top nodes
+```
+
+---
+
+### 2.2 NVIDIA GPU Operator
+
+**機能：** GPU ドライバ、デバイスプラグイン、モニタリングコンポーネントをインストールします。
+
+```bash
+helm repo add nvidia https://nvidia.github.io/gpu-operator
+helm repo update
+helm pull nvidia/gpu-operator --untar --destination <your-path>/charts
+
+helm install gpu-operator <your-path>/charts/gpu-operator \
+  -n gpu-operator --create-namespace
+```
+
+**主要イメージ：**
+
+| コンポーネント | イメージ |
+|---|---|
+| ドライバコンテナ | nvcr.io/nvidia/driver:525.125.06 |
+| デバイスプラグイン | nvcr.io/nvidia/k8s-device-plugin:v0.15.0 |
+| DCGM Exporter | nvcr.io/nvidia/dcgm-exporter:3.1.6-3.1.3-ubuntu22.04 |
+| MIG Manager | nvcr.io/nvidia/mig-manager:0.6.0 |
+| Node Feature Discovery | ghcr.io/kubernetes-sigs/node-feature-discovery:v0.16.1 |
+
+検証：
+
+```bash
+kubectl get pods -n gpu-operator
+nvidia-smi
+```
+
+---
+
+### 2.3 CloudNativePG (PostgreSQL Operator)
+
+**機能：** 高可用性を実現する PostgreSQL データベースを提供します。
+
+```bash
+helm repo add cnpg https://cloudnative-pg.github.io/charts
+helm repo update
+helm pull cnpg/cloudnative-pg --untar --destination <your-path>/charts
+
+helm install cnpg <your-path>/charts/cloudnative-pg \
+  -n cnpg-system --create-namespace
+```
+
+**イメージ：**
+
+```
+ghcr.io/cloudnative-pg/postgresql:16.3
+ghcr.io/cloudnative-pg/cloudnative-pg:1.24.0
+```
+
+例：データベースクラスタの作成
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: crater-postgresql
+  namespace: cnpg-system
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+EOF
+```
+
+---
+
+### 2.4 NFS ストレージシステム
+
+**機能：** 共有ストレージ（ ReadWriteMany モード）を提供し、ユーザーの作業領域や共有データに使用します。
+
+#### 2.4.1 NFS Server のインストール（オプション）
+
+永続ディスクを備えたノード上で実行：
+
+```bash
+sudo apt update
+sudo apt install -y nfs-kernel-server
+sudo mkdir -p /data/nfs
+sudo chown -R nobody:nogroup /data/nfs
+sudo chmod 777 /data/nfs
+
+echo "/data/nfs *(rw,sync,no_subtree_check,no_root_squash)" | sudo tee -a /etc/exports
+sudo exportfs -a
+sudo systemctl enable --now nfs-server
+```
+
+検証：
+
+```bash
+showmount -e <your-node-ip>
+```
+
+#### 2.4.2 NFS StorageClass の作成
+
+Kubernetes クラスタ内で実行：
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs
+provisioner: nfs-provisioner
+parameters:
+  archiveOnDelete: "false"
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+EOF
+```
+
+#### 2.4.3 NFS Provisioner のデプロイ
+
+```bash
+helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+helm repo update
+
+helm install nfs-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+  -n nfs-system --create-namespace \
+  --set nfs.server=<your-node-ip> \
+  --set nfs.path=/data/nfs \
+  --set storageClass.name=nfs \
+  --set storageClass.defaultClass=true
+```
+
+検証：
+
+```bash
+kubectl get pods -n nfs-system
+kubectl get sc
+```
+
+---
+
+### 2.5 Prometheus Stack
+
+**機能：** Prometheus、Grafana、Alertmanager などの監視コンポーネントを統合します。
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm pull prometheus-community/kube-prometheus-stack --untar --destination <your-path>/charts
+
+helm install prometheus <your-path>/charts/kube-prometheus-stack \
+  -n monitoring --create-namespace
+```
+
+**主要イメージ：**
+
+| コンポーネント | イメージ |
+|---|---|
+| Prometheus | quay.io/prometheus/prometheus:v2.54.1 |
+| Grafana | docker.io/grafana/grafana:10.4.1 |
+| Alertmanager | quay.io/prometheus/alertmanager:v0.27.0 |
+| Node Exporter | quay.io/prometheus/node-exporter:v1.8.1 |
+| Kube-State-Metrics | registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0 |
+
+Grafana へのアクセス：
+
+```bash
+kubectl port-forward svc/prometheus-grafana 3000:80 -n monitoring
+# ブラウザで http://localhost:3000 にアクセス
+# デフォルトのアカウントとパスワード：admin / prom-operator
+```
+
+---
+
+### 2.6 Volcano スケジューラ
+
+**機能：** GPU ジョブスケジューリング、キュー管理、タスクのプレエンプションなどを提供します。
+
+```bash
+helm repo add volcano https://volcano-sh.github.io/helm-charts
+helm repo update
+helm pull volcano/volcano --untar --destination <your-path>/charts
+
+helm install volcano <your-path>/charts/volcano \
+  -n volcano-system --create-namespace \
+  -f <your-path>/volcano/values.yaml
+```
+
+**主要イメージ：**
+
+| コンポーネント | イメージ |
+|---|---|
+| Scheduler | volcano.sh/volcano-scheduler:v1.9.0 |
+| Controller | volcano.sh/volcano-controllers:v1.9.0 |
+| Admission | volcano.sh/volcano-admission:v1.9.0 |
+| Webhook | volcano.sh/volcano-webhook:v1.9.0 |
+
+検証：
+
+```bash
+kubectl get pods -n volcano-system
+```
+
+---
+
+### 2.7 MetalLB（オンプレミスロードバランサー）
+
+**機能：** オンプレミスクラスタに LoadBalancer IP を提供します。
+
+```bash
+helm repo add metallb https://metallb.github.io/metallb
+helm repo update
+helm pull metallb/metallb --untar --destination <your-path>/charts
+
+helm install metallb <your-path>/charts/metallb \
+  -n metallb-system --create-namespace
+```
+
+**主要イメージ：**
+
+| コンポーネント | イメージ |
+|---|---|
+| Controller | quay.io/metallb/controller:v0.14.8 |
+| Speaker | quay.io/metallb/speaker:v0.14.8 |
+
+例：IP アドレスプールの設定
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-address-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - <your-ip-range>  # 例：192.168.1.200-192.168.1.220
+EOF
+```
+
+---
+
+### 2.8 ingress-nginx (Ingress Controller)
+
+**機能：** Crate rのフロントエンドとAPIに外部アクセスのエントリポイントを提供します。
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  -n ingress-nginx --create-namespace \
+  --version 4.11.3 \
+  --set controller.hostNetwork=true \
+  --set controller.dnsPolicy=ClusterFirstWithHostNet \
+  --set controller.healthCheckHost="<your-node-ip>" \
+  --set 'controller.nodeSelector.kubernetes\.io/hostname=node-2'
+```
+
+**主要イメージ：**
+
+| コンポーネント | イメージ |
+|---|---|
+| Controller | registry.k8s.io/ingress-nginx/controller:v1.9.6 |
+| Admission Webhook | registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.0 |
+
+検証：
+
+```bash
+kubectl get pods -n ingress-nginx -o wide
+kubectl get svc -n ingress-nginx -o wide
+```
+
+---
+
+## 3. Harbor イメージレジストリのデプロイ
+
+```bash
+helm repo add harbor https://helm.goharbor.io
+helm repo update
+helm pull harbor/harbor --version 1.16.0 --untar
+```
+
+設定ファイルの例（`values.yaml`）：
+
+```yaml
+expose:
+  type: nodePort
+  tls:
+    enabled: false
+  nodePort:
+    ports:
+      http:
+        port: 30002
+externalURL: http://<your-node-ip>:30002
+harborAdminPassword: "<MUSTEDIT>"
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      size: 50Gi
+```
+
+インストールコマンド：
+
+```bash
+helm install harbor <your-path>/charts/harbor \
+  -n harbor-system --create-namespace \
+  -f <your-path>/harbor/values.yaml
+```
+
+アクセス先：
+
+```
+http://<your-node-ip>:30002
+```
+
+---
+
+## 4. Crater プラットフォームのデプロイ
+
+Chart の取得：
+
+```bash
+helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+```
+
+Crater プラットフォームのコア設定ファイルは `values.yaml` です。  
+このファイルは、クラスタのドメイン名、データベース接続情報、監視サービスのアドレス、ストレージの PVC、および Harbor などの外部依存関係の接続パラメータを定義します。
+
+`helm install` を実行する前に、以下の説明に従って対応するフィールドを編集してください。
+
+---
+
+### 4.1 基本情報
+
+```yaml
+# プラットフォームのアクセスドメイン
+host: crater.example.com
+
+# プロトコルタイプ、"http" または "https" のいずれか
+protocol: http
+
+# 初期管理者アカウント
+firstUser:
+  username: crater-admin
+  password: <MUSTEDIT>
+````
+
+Ingress とドメインの DNS 設定が完了している場合は、実際のドメイン（例：`crater.mycluster.local`）を使用できます。  
+テスト環境のみの場合は、コントロールノードの IP アドレスを入力してください。
+
+---
+
+### 4.2 ストレージ設定（NFS）
+
+クラスタに NFS 共有ストレージが既にデプロイされているため、`storage` セクションでは対応するStorageClassを指定します。
+
+```yaml
+storage:
+  create: true
+  request: 10Gi
+  storageClass: "nfs"          # 前述で作成した NFS StorageClass を使用
+  pvcName: "crater-rw-storage" # 後続でマウントされる共有 PVC 名
+```
+
+Crater バックエンドは、この PVC を自動的にマウントし、ユーザー領域および共有ディレクトリ（`users/`, `accounts/`, `public/`）に使用します。
+
+---
+
+### 4.3 PostgreSQL データベース設定（CloudNativePG）
+
+Crater は CloudNativePG でデプロイされたデータベースクラスタを使用します。  
+データベース接続パラメータを対応するサービスに設定する必要があります。
+
+```yaml
+backendConfig:
+  postgres:
+    host: crater-postgresql.cnpg-system.svc.cluster.local  # CloudNativePG クラスタの Service 名
+    port: 5432
+    dbname: postgres
+    user: postgres
+    password: <MUSTEDIT>
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+```
+
+> 説明：
+> 
+> - `host` は `kubectl get svc -n cnpg-system` で確認可能です。
+>     
+> - CloudNativePG のデフォルトクラスタ名が `crater-postgresql` の場合、サービス名は以下の通りになります：
+>     `crater-postgresql-rw.cnpg-system.svc.cluster.local`。
+>     
+
+---
+
+### 4.4 監視システム設定（Prometheus Stack）
+
+Crater バックエンドは Prometheus API から GPU およびジョブの指標を取得します。  
+`backendConfig.prometheusAPI` を `kube-prometheus-stack` 内の Prometheus Service のアドレスに設定してください。
+
+```yaml
+backendConfig:
+  prometheusAPI: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+```
+
+以下のコマンドで取得できます：
+
+```bash
+kubectl get svc -n monitoring | grep prometheus
+```
+
+Grafana 統合の設定例：
+
+```yaml
+grafanaProxy:
+  enable: true
+  address: http://prometheus-grafana.monitoring  # Grafana Service 名
+  token: <MASKED>                                # Grafana の読み取り専用 API トークン
+  host: gpu-grafana.example.com                  # 外部アクセス用ドメイン
+```
+
+---
+
+### 4.5 Harbor イメージレジストリ設定（Registry）
+
+クラスタ内に Harbor が既にデプロイされている場合、Registry 統合機能を有効化できます。  
+有効化すると、Crater は自動的にビルドしたイメージを Harbor レジストリにプッシュできます。
+
+```yaml
+backendConfig:
+  registry:
+    enable: true
+    harbor:
+      server: harbor.example.com      # Harbor のアクセスドメイン
+      user: admin                     # 管理者ユーザー名
+      password: <MUSTEDIT>            # 管理者パスワード
+    buildTools:
+      proxyConfig:
+        httpProxy: null
+        httpsProxy: null
+        noProxy: null
+```
+
+> 一時的に Harbor を有効化しない場合、`enable: false` のままにしてください。
+
+---
+
+### 4.6 Ingress と TLS 設定（ingress-nginx + cert-manager）
+
+Crater はデフォルトで Ingress 経由でサービスを公開します。  
+`ingress-nginx` が有効化されており、証明書が準備されている場合、`backendConfig.secrets` で以下のように指定できます：
+
+```yaml
+backendConfig:
+  secrets:
+    tlsSecretName: crater-tls-secret
+    tlsForwardSecretName: crater-tls-forward-secret
+    imagePullSecretName: ""
+```
+
+対応する証明書は以下のコマンドで作成できます：
+
+```bash
+kubectl create secret tls crater-tls-secret \
+  --cert=tls.crt --key=tls.key -n crater-system
+```
+
+HTTPS を有効化しない場合、デフォルト値のままにしてください。プロトコルは HTTP のままです。
+
+---
+
+### 4.7 デプロイコマンド
+
+設定の変更が完了したら、以下のコマンドを実行します：
+
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater \
+  --version 0.1.0 \
+  -n crater-system \
+  -f values.yaml
+```
+
+検証：
+
+```bash
+kubectl get pods -n crater-system
+kubectl get ingress -n crater-system
+```
+
+アクセス先：
+
+```
+http://crater.example.com
+```
+
+---
+
+本ドキュメントのバージョンは、Crater v0.1.0 以降に対応しています。
