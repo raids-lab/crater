@@ -1,0 +1,230 @@
+# ==============================================================================
+#  Workflow: Smart Automatic i18n Translation (v4 - Production Ready)
+#
+#  Features:
+#  - Uses a dedicated GitHub App for secure, isolated authentication.
+#  - Prevents recursive workflow runs by checking the event sender.
+#  - Employs a "three-dot diff" to precisely identify PR-specific changes.
+# ==============================================================================
+
+name: Smart Automatic i18n Translation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'crater-website/content/docs/**'
+      - 'crater-website/messages/**'
+      - 'crater-website/src/i18n/config.ts'
+      - '.github/workflows/auto-translate.yml'
+
+jobs:
+  auto-translate:
+    # 顶级 if 条件只做基本的防循环
+    if: >-
+      !startsWith(github.event.head_commit.message, 'chore(i18n):') &&
+      !contains(github.event.head_commit.message, 'from feature/auto-translate-')
+
+    runs-on: self-hosted
+    steps:
+      - name: 🔐 Generate a token
+        id: generate-token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.PRIVATE_KEY }}
+
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate-token.outputs.token }}
+      
+      - name: Install GitHub CLI and jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+
+      # 新增步骤: 检查源 PR 是否有 'no-translation' 标签
+      - name: 🚦 Check for Ignore Label on Source PR
+        id: check-ignore-label
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          echo "Checking commit message for PR reference..."
+          # 从 'Merge pull request #123 from ...' 中提取 PR 号
+          PR_NUMBER=$(echo "${{ github.event.head_commit.message }}" | sed -n 's/Merge pull request #\([0-9]\+\).*/\1/p')
+          
+          if [[ -z "$PR_NUMBER" ]]; then
+            echo "Commit is not a merge commit, or PR number could not be extracted. Proceeding."
+            echo "should_ignore=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Found associated PR #$PR_NUMBER. Checking its labels..."
+          PR_LABELS=$(gh pr view $PR_NUMBER --json labels --jq '.labels.[].name')
+          
+          echo "PR labels: $PR_LABELS"
+          
+          if echo "$PR_LABELS" | grep -q -w "no-translation"; then
+            echo "PR #$PR_NUMBER has the 'no-translation' label. Stopping workflow."
+            echo "should_ignore=true" >> $GITHUB_OUTPUT
+          else
+            echo "No ignore label found. Proceeding."
+            echo "should_ignore=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 步骤 4: 智能过滤文件 (已大幅增强)
+      - name: ⚙️ Filter Files by Path, Commit History, and PR Labels
+        id: files-to-process
+        if: steps.check-ignore-label.outputs.should_ignore == 'false'
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          BASE_REF="${{ github.event.before }}"
+          HEAD_REF="${{ github.event.after }}"
+          
+          # 定义需要翻译的路径模式
+          TRANSLATION_PATHS_PATTERN="^crater-website/(content/docs/|messages/)"
+
+          # 1. 获取所有新增和修改的文件 (使用 -w 忽略空格)
+          ALL_CHANGED_FILES=$(git diff -w --name-only --diff-filter=AM --no-renames $BASE_REF...$HEAD_REF)
+
+          # 2. 仅保留在指定目录下的文件
+          FILTERED_FILES=$(echo "$ALL_CHANGED_FILES" | grep -E "$TRANSLATION_PATHS_PATTERN" || true)
+
+          if [[ -z "$FILTERED_FILES" ]]; then
+              echo "No files in translation paths were changed. Stopping."
+              echo "has_files=false" >> $GITHUB_OUTPUT
+              exit 0
+          fi
+
+          echo "Files within translation paths to consider:"
+          echo "${FILTERED_FILES}"
+
+          # 将过滤后的文件再次分为 Added 和 Modified
+          ADDED_FILES=$(echo "$FILTERED_FILES" | xargs -n1 git diff -w --name-only --diff-filter=A --no-renames $BASE_REF...$HEAD_REF --)
+          MODIFIED_FILES=$(echo "$FILTERED_FILES" | xargs -n1 git diff -w --name-only --diff-filter=M --no-renames $BASE_REF...$HEAD_REF --)
+          
+          FINAL_FILES_TO_PROCESS="$ADDED_FILES"
+          echo "Found added files (will always be translated):"
+          echo "${ADDED_FILES:-"None"}"
+
+          echo "Found modified files (checking PR labels):"
+          echo "${MODIFIED_FILES:-"None"}"
+          
+          # 3. 遍历已修改的文件，检查其来源 PR
+          for file in $MODIFIED_FILES; do
+            COMMIT_HASH=$(git log -1 -w --pretty=format:%H -- $file)
+            echo "  - File '$file' was last modified by commit $COMMIT_HASH"
+            PR_INFO=$(gh pr list --state merged --search "$COMMIT_HASH" --json number,labels -L 1)
+            
+            if [[ -z "$PR_INFO" || "$PR_INFO" == "[]" ]]; then
+              echo "    - Could not find an associated merged PR. Assuming direct push. Translating."
+              FINAL_FILES_TO_PROCESS=$(echo -e "$FINAL_FILES_TO_PROCESS\n$file")
+              continue
+            fi
+            
+            PR_NUMBER=$(echo "$PR_INFO" | jq -r '.[0].number')
+            echo "    - Associated with PR #$PR_NUMBER"
+            HAS_LABEL=$(echo "$PR_INFO" | jq '.[0].labels | map(.name) | contains(["run-translation"])')
+            
+            if [[ "$HAS_LABEL" == "true" ]]; then
+              echo "    - PR #$PR_NUMBER has the 'run-translation' label. Adding file to process list."
+              FINAL_FILES_TO_PROCESS=$(echo -e "$FINAL_FILES_TO_PROCESS\n$file")
+            else
+              echo "    - PR #$PR_NUMBER does NOT have the 'run-translation' label. Skipping."
+            fi
+          done
+
+          # 4. 清理并输出最终文件列表
+          FINAL_FILES_TO_PROCESS=$(echo "$FINAL_FILES_TO_PROCESS" | sed '/^$/d' | sort -u)
+
+          if [[ -z "$FINAL_FILES_TO_PROCESS" ]]; then
+            echo "No files to process after all filters. Workflow will stop."
+            echo "has_files=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "has_files=true" >> $GITHUB_OUTPUT
+          echo "Final list of files to process:"
+          echo "$FINAL_FILES_TO_PROCESS"
+          
+          # Diff 生成逻辑
+          mkdir -p .diff_cache
+          for file in $FINAL_FILES_TO_PROCESS; do
+            if echo "$MODIFIED_FILES" | grep -q -w "$file"; then
+              diff_filename=$(echo "$file" | tr '/' '_')
+              git diff -w --no-prefix $BASE_REF...$HEAD_REF -- "$file" > ".diff_cache/${diff_filename}.diff"
+              echo "  - Created diff for modified file: $file"
+            fi
+          done
+
+          FILES_TO_PROCESS_ARG=$(echo "$FINAL_FILES_TO_PROCESS" | tr '\n' ',' | sed 's/,$//')
+          echo "files=${FILES_TO_PROCESS_ARG}" >> $GITHUB_OUTPUT
+
+      # 步骤 5: 运行引导脚本
+      - name: 🚀 Run Translation Bootstrap Script
+        if: steps.files-to-process.outputs.has_files == 'true'
+        env:
+          # 将仓库根目录的绝对路径传递给 Python
+          REPO_ROOT: ${{ github.workspace }}
+        run: |
+          python crater-website/hack/i18n/bootstrap.py --changed-files "${{ steps.files-to-process.outputs.files }}"
+
+      # 步骤 6: 创建 PR (增加 if 条件)
+      - name: 🔒 [Setup] Isolate Git configuration
+        id: setup-git
+        if: steps.files-to-process.outputs.has_files == 'true'
+        run: |
+          echo "Saving current git credential helper..."
+          # 保存当前的凭据管理器设置。如果没有设置，则保存 "none" 字符串
+          CURRENT_HELPER=$(git config --global --get credential.helper || echo "none")
+          echo "saved_helper=$CURRENT_HELPER" >> $GITHUB_OUTPUT
+          
+          echo "Temporarily disabling credential helper for this job..."
+          # 先移除，再设置为空，确保覆盖所有情况
+          git config --global --unset credential.helper || true
+          git config --global credential.helper ""
+
+      # 步骤 6: 使用 App 身份创建包含翻译结果的 Pull Request (Execute)
+      - name: 🤖 Create Pull Request with Translations
+        # 增加一个 id，以便清理步骤可以引用它
+        id: create-pr
+        if: steps.files-to-process.outputs.has_files == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
+          # ... (你的所有其他参数都放在这里，保持不变)
+          commit-message: "chore(i18n): 自动同步多语言翻译"
+          title: "🌐 [Auto-Translate] 同步多语言文件"
+          body: |
+            由 **${{ secrets.APP_NAME }}** 机器人根据最新变更自动同步翻译。
+            
+            **触发事件:** `${{ github.event_name }}`
+            
+            *此 PR 只包含本次事件中独有的变更，已智能排除合并主干所引入的 commits。*
+          branch: "feature/auto-translate-${{ github.run_id }}"
+          delete-branch: true
+          labels: "i18n, automated"
+          author: ${{ secrets.APP_NAME }}[bot] <${{ secrets.APP_ID }}+${{ secrets.APP_NAME }}[bot]@users.noreply.github.com>
+          committer: ${{ secrets.APP_NAME }}[bot] <${{ secrets.APP_ID }}+${{ secrets.APP_NAME }}[bot]@users.noreply.github.com>
+
+      # 步骤 7: 恢复原始的 Git 配置 (Cleanup)
+      - name: 🧹 [Cleanup] Restore original Git configuration
+        # 关键！if: always() 确保无论 create-pr 步骤是成功、失败还是被取消，这个清理步骤都会运行
+        if: always() && steps.setup-git.outcome == 'success'
+        run: |
+          echo "Restoring original git credential helper..."
+          SAVED_HELPER="${{ steps.setup-git.outputs.saved_helper }}"
+          # 必须先移除我们设置的空帮助程序
+          git config --global --unset credential.helper || true
+          
+          if [[ "$SAVED_HELPER" != "none" ]]; then
+            echo "Restoring helper to: $SAVED_HELPER"
+            git config --global credential.helper "$SAVED_HELPER"
+          else
+            echo "No original helper to restore."
+          fi
+          echo "Git configuration restored."
