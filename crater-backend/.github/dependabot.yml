@@ -7,13 +7,13 @@ version: 2
 updates:
 - package-ecosystem: "github-actions"
   directory: "/"
-  schedule:
-    interval: weekly
+  # schedule:
+  #   interval: weekly
   labels:
   - "ok-to-test"
 - package-ecosystem: "gomod"
   directory: "/"
-  schedule:
-    interval: weekly
+  # schedule:
+  #   interval: weekly
   labels:
   - "ok-to-test"
