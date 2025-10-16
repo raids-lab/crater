@@ -19,6 +19,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'hack/**'
+      - '.github/dependabot.yml'
 
 env:
   REGISTRY: ghcr.io
