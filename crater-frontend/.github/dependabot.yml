@@ -7,16 +7,18 @@ version: 2
 updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
-    # schedule:
-    #   interval: weekly
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
     labels:
       - 'area/dependency'
       - 'release-note-none'
       - 'ok-to-test'
   - package-ecosystem: 'npm'
     directory: '/'
-    # schedule:
-    #   interval: weekly
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
     labels:
       - 'area/dependency'
       - 'release-note-none'
