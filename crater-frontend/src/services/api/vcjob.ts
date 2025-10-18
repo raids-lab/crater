@@ -442,3 +442,59 @@ export const apiJobScheduleAdmin = () => apiV1Get<IResponse<string>>('admin/oper
 
 export const apiJobScheduleChangeAdmin = (schedule: object) =>
   apiV1Put<IResponse<string>>('admin/operations/cronjob', schedule)
+
+// 作业清理
+export interface WaitingJupyterJobCancelReq {
+  waitMinutes: number
+}
+
+export interface CleanLongTimeReq {
+  batchDays?: number
+  interactiveDays?: number
+}
+
+export interface CleanLowGPUUsageReq {
+  timeRange: number
+  waitTime?: number
+  util?: number
+}
+
+export interface CleanupResult {
+  reminded: string[]
+  deleted: string[]
+}
+
+export const apiAdminWaitingJupyterJobCancel = (param: WaitingJupyterJobCancelReq) => {
+  const searchParams = new URLSearchParams({
+    waitMinitues: param.waitMinutes.toString(),
+  })
+  return apiV1Delete<IResponse<string[]>>(
+    `admin/operations/waiting/jupyter?${searchParams.toString()}`
+  )
+}
+
+export const apiAdminLongTimeRunningJobsCleanup = (param: CleanLongTimeReq) => {
+  const searchParams = new URLSearchParams()
+  if (param.batchDays !== undefined) {
+    searchParams.append('batchDays', param.batchDays.toString())
+  }
+  if (param.interactiveDays !== undefined) {
+    searchParams.append('interactiveDays', param.interactiveDays.toString())
+  }
+  return apiV1Delete<IResponse<CleanupResult>>(
+    `admin/operations/cleanup?${searchParams.toString()}`
+  )
+}
+
+export const apiAdminLowGPUUsageJobsCleanup = (param: CleanLowGPUUsageReq) => {
+  const searchParams = new URLSearchParams({
+    timeRange: param.timeRange.toString(),
+  })
+  if (param.waitTime !== undefined) {
+    searchParams.append('waitTime', param.waitTime.toString())
+  }
+  if (param.util !== undefined) {
+    searchParams.append('util', param.util.toString())
+  }
+  return apiV1Delete<IResponse<CleanupResult>>(`admin/operations/auto?${searchParams.toString()}`)
+}

@@ -45,7 +45,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 import TipBadge from '@/components/badge/tip-badge'
 
-import { apiJobScheduleAdmin, apiJobScheduleChangeAdmin } from '@/services/api/vcjob'
+import {
+  apiAdminLongTimeRunningJobsCleanup,
+  apiAdminLowGPUUsageJobsCleanup,
+  apiAdminWaitingJupyterJobCancel,
+  apiJobScheduleAdmin,
+  apiJobScheduleChangeAdmin,
+} from '@/services/api/vcjob'
 
 import { cn } from '@/lib/utils'
 
@@ -113,7 +119,6 @@ type FormValues = z.infer<ReturnType<typeof getFormSchema>>
 
 export default function CronPolicy({ className }: { className?: string }) {
   const { t } = useTranslation()
-  const [dryRunJobs, setDryRunJobs] = useState<string[]>([])
   const [loading, setLoading] = useState<boolean>(false)
 
   const formSchema = getFormSchema(t)
@@ -195,13 +200,107 @@ export default function CronPolicy({ className }: { className?: string }) {
     }
   }
 
-  const runJob = async () => {
-    const mockDryRunJobs = ['Job1', 'Job2', 'Job3']
-    setDryRunJobs(mockDryRunJobs)
-  }
+  const runJob = async () => {}
 
   const confirmJobRun = async () => {
-    setDryRunJobs([])
+    try {
+      const longTimeSuspend = form.getValues('cleanLongTime.suspend')
+      const lowGpuSuspend = form.getValues('cleanLowGpu.suspend')
+      const waitingJupyterSuspend = form.getValues('cleanWaitingJupyter.suspend')
+
+      const longTimeData = form.getValues('cleanLongTime.configs')
+      const lowGpuData = form.getValues('cleanLowGpu.configs')
+      const waitingJupyterData = form.getValues('cleanWaitingJupyter.configs')
+
+      const promises = []
+
+      if (!longTimeSuspend) {
+        promises.push(
+          apiAdminLongTimeRunningJobsCleanup({
+            batchDays: Number(longTimeData.BATCH_DAYS),
+            interactiveDays: Number(longTimeData.INTERACTIVE_DAYS),
+          })
+        )
+      } else {
+        promises.push(Promise.resolve(null))
+      }
+
+      if (!lowGpuSuspend) {
+        promises.push(
+          apiAdminLowGPUUsageJobsCleanup({
+            timeRange: Number(lowGpuData.TIME_RANGE),
+            util: Number(lowGpuData.UTIL),
+            waitTime: Number(lowGpuData.WAIT_TIME),
+          })
+        )
+      } else {
+        promises.push(Promise.resolve(null))
+      }
+
+      if (!waitingJupyterSuspend) {
+        promises.push(
+          apiAdminWaitingJupyterJobCancel({
+            waitMinutes: Number(waitingJupyterData.JUPYTER_WAIT_MINUTES),
+          })
+        )
+      } else {
+        promises.push(Promise.resolve(null))
+      }
+
+      const [longTimeRes, lowGpuRes, waitingJupyterRes] = await Promise.all(promises)
+
+      let deletedCount = 0
+      let remindedCount = 0
+
+      if (longTimeRes && longTimeRes.code === 0 && longTimeRes.data) {
+        if (Array.isArray(longTimeRes.data)) {
+          deletedCount += longTimeRes.data.length
+        } else {
+          const reminded = longTimeRes.data.reminded || []
+          const deleted = longTimeRes.data.deleted || []
+          remindedCount += reminded.length
+          deletedCount += deleted.length
+        }
+      }
+
+      if (lowGpuRes && lowGpuRes.code === 0 && lowGpuRes.data) {
+        if (Array.isArray(lowGpuRes.data)) {
+          deletedCount += lowGpuRes.data.length
+        } else {
+          const reminded = lowGpuRes.data.reminded || []
+          const deleted = lowGpuRes.data.deleted || []
+          remindedCount += reminded.length
+          deletedCount += deleted.length
+        }
+      }
+
+      if (waitingJupyterRes && waitingJupyterRes.code === 0 && waitingJupyterRes.data) {
+        if (Array.isArray(waitingJupyterRes.data)) {
+          deletedCount += waitingJupyterRes.data.length
+        } else {
+          const reminded = waitingJupyterRes.data.reminded || []
+          const deleted = waitingJupyterRes.data.deleted || []
+          remindedCount += reminded.length
+          deletedCount += deleted.length
+        }
+      }
+
+      const totalCount = deletedCount + remindedCount
+
+      if (totalCount === 0) {
+        toast.info(t('cronPolicy.noJobs'))
+      } else {
+        toast.success(
+          t('cronPolicy.cleanupSummary', {
+            total: totalCount,
+            deleted: deletedCount,
+            reminded: remindedCount,
+          })
+        )
+      }
+    } catch (error) {
+      toast.error(t('cronPolicy.runJobError') + error)
+    }
   }
 
   return (
@@ -458,18 +557,7 @@ export default function CronPolicy({ className }: { className?: string }) {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t('cronPolicy.confirmTitle')}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {dryRunJobs.length > 0 ? (
-                  <>
-                    {t('cronPolicy.jobsToDelete')}:<br />
-                    {dryRunJobs.map((job, index) => (
-                      <div key={index}>{job}</div>
-                    ))}
-                  </>
-                ) : (
-                  t('cronPolicy.noJobs')
-                )}
-              </AlertDialogDescription>
+              <AlertDialogDescription>{t('cronPolicy.confirmMessage')}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>{t('cronPolicy.cancel')}</AlertDialogCancel>
