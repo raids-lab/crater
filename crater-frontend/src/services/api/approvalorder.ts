@@ -30,7 +30,7 @@ export interface ApprovalOrder {
   type: string
   status: 'Pending' | 'Approved' | 'Rejected' | 'Canceled'
   content: Content
-  reviewerNotes: string
+  reviewNotes: string
   creator: IUserInfo
   reviewer: IUserInfo
   createdAt: string
@@ -43,6 +43,7 @@ export interface ApprovalOrderReq {
   approvalorderReason: string
   approvalorderExtensionHours: number
   reviewerID?: number
+  reviewNotes?: string
 }
 export const listApprovalOrders = () => {
   return apiV1Get<IResponse<ApprovalOrder[]>>('admin/approvalorder')

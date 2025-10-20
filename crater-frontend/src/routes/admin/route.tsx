@@ -136,7 +136,7 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
       ],
     },
     {
-      title: t('navigation.settings'),
+      title: t('navigation.more'),
       items: [
         {
           title: t('navigation.platformSettings'),

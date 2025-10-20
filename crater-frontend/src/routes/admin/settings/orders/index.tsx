@@ -32,6 +32,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 import { ApprovalOrderDataTable } from '@/components/approval-order/approval-order-data-table'
 import {
@@ -78,6 +80,9 @@ function RouteComponent() {
   const user = useAtomValue(atomUserInfo)
   const [syncDialogOpen, setSyncDialogOpen] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<ApprovalOrder | null>(null)
 
   // 使用锁定管理器 hook
   const {
@@ -141,7 +146,7 @@ function RouteComponent() {
 
   // 拒绝操作 mutation
   const { mutate: rejectOrder, isPending: isRejecting } = useMutation({
-    mutationFn: async (order: ApprovalOrder) => {
+    mutationFn: async ({ order, reason }: { order: ApprovalOrder; reason: string }) => {
       return updateApprovalOrder(order.id, {
         name: order.name,
         type: order.type,
@@ -150,14 +155,20 @@ function RouteComponent() {
         approvalorderReason: String(order.content.approvalorderReason || ''),
         approvalorderExtensionHours: Number(order.content.approvalorderExtensionHours) || 0,
         reviewerID: user?.id || 0,
+        reviewNotes: reason,
       })
     },
     onSuccess: () => {
       toast.success(t('ApprovalOrderTable.toast.rejectSuccess'))
       refetchOrders()
+      setRejectDialogOpen(false)
+      setRejectReason('')
+      setRejectTarget(null)
     },
-    onError: () => {
-      toast.error(t('ApprovalOrderTable.toast.rejectError'))
+    onError: (error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : t('ApprovalOrderTable.toast.rejectError')
+      toast.error(message)
     },
   })
 
@@ -165,7 +176,10 @@ function RouteComponent() {
   const handleViewOrder = (order: ApprovalOrder) => {
     const orderType = order.type
     if (orderType === 'job') {
-      navigate({ to: '/admin/jobs/$name', params: { name: order.name } })
+      navigate({
+        to: `${order.id}`,
+        search: (prev) => ({ ...prev, type: 'job' }),
+      })
     } else if (orderType === 'dataset') {
       navigate({
         to: `${order.id}`,
@@ -184,7 +198,10 @@ function RouteComponent() {
         onClick: () =>
           navigate({
             to: `${order.id}`,
-            search: { type: order.type },
+            search: (prev) => ({
+              ...prev,
+              type: order.type,
+            }),
           }),
       },
       approve: {
@@ -201,10 +218,26 @@ function RouteComponent() {
       },
       reject: {
         show: isPending,
-        onClick: rejectOrder,
+        onClick: (current) => {
+          setRejectTarget(current)
+          setRejectReason('')
+          setRejectDialogOpen(true)
+        },
         disabled: () => isApproving || isRejecting,
       },
     }
+  }
+
+  const handleRejectConfirm = () => {
+    if (!rejectTarget) {
+      toast.error('没有选中的工单')
+      return
+    }
+    if (!rejectReason.trim()) {
+      toast.error('请输入拒绝理由')
+      return
+    }
+    rejectOrder({ order: rejectTarget, reason: rejectReason.trim() })
   }
 
   // 同步作业状态函数
@@ -359,6 +392,45 @@ function RouteComponent() {
             </Button>
             <Button onClick={handleConfirmSync} disabled={isSyncing}>
               {isSyncing ? '同步中...' : '确定同步'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 拒绝工单对话框 */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>拒绝工单</DialogTitle>
+            <DialogDescription>
+              提供拒绝理由后提交，系统会将该工单标记为拒绝状态。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="reject-reason" className="text-right">
+                拒绝理由
+              </Label>
+              <Input
+                id="reject-reason"
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="请输入拒绝原因"
+                className="col-span-3"
+                disabled={isRejecting}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialogOpen(false)}
+              disabled={isRejecting}
+            >
+              取消
+            </Button>
+            <Button onClick={handleRejectConfirm} disabled={isRejecting}>
+              {isRejecting ? '提交中...' : '确认拒绝'}
             </Button>
           </DialogFooter>
         </DialogContent>

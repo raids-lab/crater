@@ -17,14 +17,27 @@
 // Modified code
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { LinkIcon } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 import { ApprovalOrderDataTable } from '@/components/approval-order/approval-order-data-table'
 import {
   ApprovalOrderOperations,
   createViewOnlyConfig,
 } from '@/components/approval-order/approval-order-operations'
+import { CopyButton } from '@/components/button/copy-button'
 
 import { type ApprovalOrder, listMyApprovalOrder } from '@/services/api/approvalorder'
 
@@ -35,6 +48,7 @@ export const Route = createFileRoute('/portal/settings/orders/')({
 function RouteComponent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [urgentApprovalOrder, setUrgentApprovalOrder] = useState<ApprovalOrder | null>(null)
 
   const query = useQuery({
     queryKey: ['portal', 'approvalorders', 'me'],
@@ -63,7 +77,32 @@ function RouteComponent() {
     }
   }
 
+  const handleGenerateLink = (order: ApprovalOrder) => {
+    setUrgentApprovalOrder(order)
+  }
+
   const actionConfig = createViewOnlyConfig(handleViewOrder)
+  if (actionConfig.custom) {
+    actionConfig.custom.push({
+      key: 'generate-link',
+      label: '生成审批链接',
+      icon: <LinkIcon className="size-4" />,
+      onClick: handleGenerateLink,
+      disabled: (order) => order.status !== 'Pending',
+      separator: true,
+    })
+  } else {
+    actionConfig.custom = [
+      {
+        key: 'generate-link',
+        label: '生成审批链接',
+        icon: <LinkIcon className="size-4" />,
+        onClick: handleGenerateLink,
+        disabled: (order) => order.status !== 'Pending',
+        separator: true,
+      },
+    ]
+  }
 
   const getHeader = (key: string): string => {
     switch (key) {
@@ -85,17 +124,42 @@ function RouteComponent() {
   }
 
   return (
-    <ApprovalOrderDataTable
-      query={query}
-      storageKey="portal_approvalorder_management"
-      info={{
-        title: t('ApprovalOrderTable.info.title'),
-        description: t('ApprovalOrderTable.info.description'),
-      }}
-      showExtensionHours={true}
-      onNameClick={handleViewOrder}
-      getHeader={getHeader}
-      renderActions={(order) => <ApprovalOrderOperations order={order} config={actionConfig} />}
-    />
+    <>
+      <ApprovalOrderDataTable
+        query={query}
+        storageKey="portal_approvalorder_management"
+        info={{
+          title: t('ApprovalOrderTable.info.title'),
+          description: t('ApprovalOrderTable.info.description'),
+        }}
+        showExtensionHours={true}
+        onNameClick={handleViewOrder}
+        getHeader={getHeader}
+        renderActions={(order) => <ApprovalOrderOperations order={order} config={actionConfig} />}
+      />
+      {urgentApprovalOrder && (
+        <Dialog open={!!urgentApprovalOrder} onOpenChange={() => setUrgentApprovalOrder(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>紧急审批提醒</DialogTitle>
+              <DialogDescription>
+                您的锁定申请已提交。如需紧急审批，请将以下链接发送给管理员。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-muted/40 my-4 flex items-center justify-between space-x-2 rounded-lg p-3">
+              <pre className="text-muted-foreground overflow-auto text-sm">
+                {`${window.location.origin}/admin/settings/orders/${urgentApprovalOrder.id}`}
+              </pre>
+              <CopyButton
+                content={`${window.location.origin}/admin/settings/orders/${urgentApprovalOrder.id}`}
+              />
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setUrgentApprovalOrder(null)}>关闭</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   )
 }

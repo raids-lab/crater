@@ -39,6 +39,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
+import { CopyButton } from '@/components/button/copy-button'
 import { DurationFields } from '@/components/form/duration-fields'
 import { getNewJobLink } from '@/components/job/new-job-button'
 import {
@@ -53,7 +54,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
-import { createApprovalOrder } from '@/services/api/approvalorder'
+import {
+  ApprovalOrder,
+  createApprovalOrder,
+  listMyApprovalOrder,
+} from '@/services/api/approvalorder'
 import { IJobInfo, JobStatus, getJobStateType } from '@/services/api/vcjob'
 
 // Link Options for portal job navigation
@@ -78,6 +83,9 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
   const [reason, setReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [urgentApprovalDialogOpen, setUrgentApprovalDialogOpen] = useState(false)
+  const [newlyCreatedOrder, setNewlyCreatedOrder] = useState<ApprovalOrder | null>(null)
+
   const [duration, setDuration] = useState<{ days: number; hours: number; totalHours: number }>({
     days: 0,
     hours: 0,
@@ -90,7 +98,7 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
   )
 
   // 暂时隐藏申请锁定功能，工单审批功能不完善
-  const canExtend = false // jobStatus === JobStatus.Running
+  const canExtend = true // jobStatus === JobStatus.Running
 
   const handleExtensionSubmit = async () => {
     if (!canExtend) {
@@ -117,6 +125,19 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
       setDuration({ days: 0, hours: 0, totalHours: 0 })
       setReason('')
       toast.success('创建锁定申请成功')
+
+      const myOrders = await listMyApprovalOrder()
+      const latestOrder = myOrders.data
+        .filter((order: ApprovalOrder) => order.name === jobInfo.jobName)
+        .sort(
+          (a: ApprovalOrder, b: ApprovalOrder) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0]
+
+      if (latestOrder && latestOrder.status === 'Pending') {
+        setNewlyCreatedOrder(latestOrder)
+        setUrgentApprovalDialogOpen(true)
+      }
     } catch (error) {
       toast.error('创建锁定申请失败:' + (error instanceof Error ? error.message : '未知错误'))
     } finally {
@@ -198,6 +219,10 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
                     天，我们将尝试发送告警信息给用户，提醒用户作业运行时间过长；若此后一天内用户未联系管理员说明情况并锁定作业，系统将释放作业占用的资源。
                   </li>
                 </ul>
+                <div className="text-foreground mb-2 text-sm font-semibold">自动审批规则</div>
+                <ul className="text-muted-foreground list-disc space-y-1 pl-5 text-xs leading-relaxed">
+                  <li>每隔2天，第一个小于12小时的作业锁定工单，系统会直接审批通过</li>
+                </ul>
               </div>
             </DialogHeader>
 
@@ -214,7 +239,7 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
 
               <div className="grid grid-cols-4 items-start gap-4">
                 <Label htmlFor="reason" className="pt-2 text-right">
-                  申请原因
+                  申请原因*
                 </Label>
                 <Textarea
                   id="reason"
@@ -275,6 +300,29 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </Dialog>
+      {newlyCreatedOrder && (
+        <Dialog open={urgentApprovalDialogOpen} onOpenChange={setUrgentApprovalDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>紧急审批提醒</DialogTitle>
+              <DialogDescription>
+                您的锁定申请已提交。如需紧急审批，请将以下链接发送给管理员。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="bg-muted/40 my-4 flex items-center justify-between space-x-2 rounded-lg p-3">
+              <pre className="text-muted-foreground overflow-auto text-sm">
+                {`${window.location.origin}/admin/settings/orders/${newlyCreatedOrder.id}`}
+              </pre>
+              <CopyButton
+                content={`${window.location.origin}/admin/settings/orders/${newlyCreatedOrder.id}`}
+              />
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setUrgentApprovalDialogOpen(false)}>关闭</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </AlertDialog>
   )
 }

@@ -30,7 +30,7 @@ export interface ApprovalOrderActionConfig {
     label?: string
     disabled?: (order: ApprovalOrder) => boolean
   }
-  custom?: Array<{
+  custom?: {
     key: string
     label: string
     icon?: ReactNode
@@ -38,7 +38,7 @@ export interface ApprovalOrderActionConfig {
     disabled?: (order: ApprovalOrder) => boolean
     variant?: 'default' | 'destructive'
     separator?: boolean
-  }>
+  }[]
 }
 
 export interface ApprovalOrderOperationsProps {
