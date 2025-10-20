@@ -367,7 +367,7 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 
 	// 3. 创建审批工单
 	orderStatus := model.ApprovalOrderStatusPending
-	orderReason := req.Reason
+	orderReason := ""
 
 	if autoApproved {
 		orderStatus = model.ApprovalOrderStatusApproved
@@ -381,9 +381,10 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		Content: datatypes.NewJSONType(model.ApprovalOrderContent{
 			ApprovalOrderTypeID:         req.TypeID,
 			ApprovalOrderExtensionHours: req.ExtensionHours,
-			ApprovalOrderReason:         orderReason,
+			ApprovalOrderReason:         req.Reason,
 		}),
-		CreatorID: token.UserID,
+		CreatorID:   token.UserID,
+		ReviewNotes: orderReason,
 	}
 
 	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
@@ -444,6 +445,14 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 	token := util.GetToken(c)
 	if token.UserID == 0 {
 		resputil.Error(c, "cannot get user id", resputil.NotSpecified)
+		return
+	}
+
+	// 权限检查：只有管理员才能将工单状态更新为“已批准”
+	if req.Status == model.ApprovalOrderStatusApproved && token.RolePlatform != model.RoleAdmin {
+		klog.Warningf("permission denied: user %d (role: %s) attempted to approve order %d",
+			token.UserID, token.RolePlatform, orderID.ID)
+		resputil.Error(c, "permission denied: only admins can approve orders", resputil.NotSpecified)
 		return
 	}
 
@@ -665,7 +674,22 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrderByName(c *gin.Context) {
 //	@Failure		500 {object} resputil.Response[any] "服务器错误"
 //	@Router			/v1/admin/approvalorder/{id} [get]
 func (mgr *ApprovalOrderMgr) GetApprovalOrderAdmin(c *gin.Context) {
-	// 1. 获取工单ID
+	// 1. 获取当前用户信息
+	token := util.GetToken(c)
+	if token.UserID == 0 {
+		resputil.Error(c, "can not get user ID", resputil.NotSpecified)
+		return
+	}
+
+	// 2. 权限检查：只有管理员才能查看
+	if token.RolePlatform != model.RoleAdmin {
+		klog.Warningf("permission denied: user %d (role: %s) attempted to access admin route",
+			token.UserID, token.RolePlatform)
+		resputil.Error(c, "permission denied", resputil.NotSpecified)
+		return
+	}
+
+	// 3. 获取工单ID
 	var orderID ApprovalOrderIDReq
 	if err := c.ShouldBindUri(&orderID); err != nil {
 		klog.Errorf("bind uri error: %v", err)
@@ -673,7 +697,7 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrderAdmin(c *gin.Context) {
 		return
 	}
 
-	// 2. 查询工单详情
+	// 4. 查询工单详情
 	ao := query.ApprovalOrder
 	order, err := ao.WithContext(c).
 		Preload(ao.Creator).
@@ -686,7 +710,7 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrderAdmin(c *gin.Context) {
 		return
 	}
 
-	// 3. 转换为响应格式
+	// 5. 转换为响应格式
 	result := convertToApprovalOrderResp(order)
 	resputil.Success(c, result)
 }
@@ -740,11 +764,10 @@ func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID
 		return false, err
 	}
 
-	// 检查是否所有工单的ApprovalOrderReason都不为自动审批原因
+	// 检查是否所有工单的ReviewNotes都不为自动审批原因
 	autoApprovalReason := "whitout review，approved due to system"
 	for _, order := range recentOrders {
-		content := unmarshalApprovalOrderContent(order.Content)
-		if content.ApprovalOrderReason == autoApprovalReason {
+		if order.ReviewNotes == autoApprovalReason {
 			return false, nil
 		}
 	}
