@@ -195,7 +195,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
   const orders = query.data ?? []
 
   if (orders.length === 0) {
-    return <div className="text-muted-foreground p-4 text-center">暂无相关工单</div>
+    return null
   }
 
   return (

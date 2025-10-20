@@ -163,7 +163,7 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
       title: t('sidebar.others'),
       items: [
         {
-          title: t('navigation.settings'),
+          title: t('navigation.more'),
           icon: SettingsIcon,
           items: [
             {
