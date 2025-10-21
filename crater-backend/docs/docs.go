@@ -3797,6 +3797,36 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/images/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据ID取消镜像制作任务；若任务状态为 Finished/Failed 则提示镜像制作已结束",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "取消镜像制作任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "镜像构建任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/v1/images/change": {
             "post": {
                 "security": [

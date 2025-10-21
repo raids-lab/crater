@@ -36,7 +36,6 @@ func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {
 func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	buildkitdService := fmt.Sprintf("%s.%s", buildkitdAmdName, config.GetConfig().Namespaces.Image)
-	backendHost := config.GetConfig().Host
 	// 构建完整的命令，先创建context，再执行build
 	cmd := fmt.Sprintf(`
                 envd context create \
@@ -57,10 +56,6 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 			Name:  "DOCKER_CONFIG",
 			Value: "/.docker",
 		},
-		{
-			Name:  "NO_PROXY",
-			Value: fmt.Sprintf("$(NO_PROXY),%s,%s", buildkitdService, backendHost),
-		},
 	}
 	httpsProxy := config.GetConfig().Registry.BuildTools.ProxyConfig.HTTPSProxy
 	if httpsProxy != "" {
@@ -74,6 +69,13 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  "HTTP_PROXY",
 			Value: httpProxy,
+		})
+	}
+	noProxy := config.GetConfig().Registry.BuildTools.ProxyConfig.NoProxy
+	if noProxy != "" {
+		envVars = append(envVars, corev1.EnvVar{
+			Name:  "NO_PROXY",
+			Value: fmt.Sprintf("$(NO_PROXY),%s", noProxy),
 		})
 	}
 	envdContainer := []corev1.Container{

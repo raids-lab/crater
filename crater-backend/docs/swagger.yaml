@@ -3873,6 +3873,25 @@ paths:
       summary: 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
       tags:
       - ImagePack
+  /v1/images/cancel:
+    post:
+      consumes:
+      - application/json
+      description: 根据ID取消镜像制作任务；若任务状态为 Finished/Failed 则提示镜像制作已结束
+      parameters:
+      - description: 镜像构建任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 取消镜像制作任务
+      tags:
+      - ImagePack
   /v1/images/change:
     post:
       consumes:
