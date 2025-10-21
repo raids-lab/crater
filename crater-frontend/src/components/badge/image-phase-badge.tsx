@@ -49,6 +49,12 @@ export const getImagePackStatusLabel = (status: ImagePackStatus): PhaseBadgeData
         color: 'text-highlight-red bg-highlight-red/20',
         description: '镜像包处理失败',
       }
+    case 'Canceled':
+      return {
+        label: '已取消',
+        color: 'text-amber-600 bg-amber-600/20',
+        description: '镜像构建已取消',
+      }
     default:
       return {
         label: '未知',

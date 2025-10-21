@@ -69,16 +69,17 @@ export default function ImageItem({ item }: { item: ComboboxItem<ImageInfoRespon
                   className={cn(
                     'inline-flex items-center gap-1 rounded border px-1.5 py-0 font-mono text-xs',
                     {
-                      'border-highlight-orange bg-highlight-orange text-highlight-orange dark:border-highlight-orange dark:bg-highlight-orange dark:text-highlight-orange':
+                      'border-orange-600 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-400':
                         isArm,
-                      'text-highlight-sky border-highlight-sky bg-blue-50 dark:bg-blue-950': !isArm,
+                      'border-sky-600 bg-blue-50 text-sky-600 dark:border-sky-500 dark:bg-blue-950 dark:text-sky-400':
+                        !isArm,
                     }
                   )}
                 >
                   <span
                     className={cn('size-1 rounded-full', {
-                      'bg-highlight-orange': isArm,
-                      'bg-highlight-sky': !isArm,
+                      'bg-orange-600 dark:bg-orange-400': isArm,
+                      'bg-sky-600 dark:bg-sky-400': !isArm,
                     })}
                   />
                   {archName}
