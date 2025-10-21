@@ -17,10 +17,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
-import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
+import { CopyIcon, EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import {
   AlertTriangle,
   CheckCheck,
+  CircleX,
   DatabaseIcon,
   InfoIcon,
   PackagePlusIcon,
@@ -72,6 +73,7 @@ import {
   ImagePackStatus,
   KanikoInfoResponse,
   ListKanikoResponse,
+  apiUserCancelKaniko,
   getHeader,
   imagepackStatuses,
 } from '@/services/api/imagepack'
@@ -153,6 +155,19 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
     onSuccess: async () => {
       await refetchImagePackList()
       toast.success('镜像已删除')
+    },
+  })
+
+  // 取消构建
+  const { mutate: cancelKaniko } = useMutation({
+    mutationFn: (id: number) => apiUserCancelKaniko(id),
+    onSuccess: async () => {
+      await refetchImagePackList()
+      toast.success('已取消构建任务')
+    },
+    onError: (err) => {
+      logger.error('取消镜像构建失败', err)
+      toast.error('取消失败，请稍后重试')
     },
   })
 
@@ -246,6 +261,27 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
                     操作
                   </DropdownMenuLabel>
+
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const text = kanikoInfo.imageLink ?? ''
+                      if (!text) {
+                        toast.error('没有可复制的链接')
+                        return
+                      }
+                      navigator.clipboard
+                        .writeText(text)
+                        .then(() => toast.success('镜像链接已复制'))
+                        .catch((err) => {
+                          logger.error('复制镜像链接失败', err)
+                          toast.error('复制失败，请手动复制')
+                        })
+                    }}
+                  >
+                    <CopyIcon className="text-highlight-blue size-4" />
+                    复制链接
+                  </DropdownMenuItem>
+
                   <DropdownMenuItem
                     onClick={() => {
                       // Navigate to registry detail page using proper route structure
@@ -266,6 +302,27 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     详情
                   </DropdownMenuItem>
 
+                  {/* 根据状态显示"取消"或"删除" */}
+                  {kanikoInfo.status === 'Finished' ||
+                  kanikoInfo.status === 'Failed' ||
+                  kanikoInfo.status === 'Canceled' ? (
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem>
+                        <Trash2Icon className="text-destructive" />
+                        删除
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        cancelKaniko(kanikoInfo.ID)
+                      }}
+                    >
+                      <CircleX className="size-4 text-amber-600" />
+                      取消
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem
                     onClick={() => {
                       setImagePackName(kanikoInfo.imagepackName)
@@ -285,13 +342,6 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     <RedoDotIcon className="text-highlight-purple size-4" />
                     克隆
                   </DropdownMenuItem>
-
-                  <AlertDialogTrigger asChild>
-                    <DropdownMenuItem>
-                      <Trash2Icon className="text-destructive" />
-                      删除
-                    </DropdownMenuItem>
-                  </AlertDialogTrigger>
                 </DropdownMenuContent>
               </DropdownMenu>
               <AlertDialogContent>

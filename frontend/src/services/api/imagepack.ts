@@ -126,7 +126,14 @@ export const getHeader = (key: string): string => {
   }
 }
 
-export type ImagePackStatus = 'Initial' | 'Pending' | 'Running' | 'Finished' | 'Failed' | ''
+export type ImagePackStatus =
+  | 'Initial'
+  | 'Pending'
+  | 'Running'
+  | 'Finished'
+  | 'Failed'
+  | 'Canceled'
+  | ''
 
 export enum ImagePackSource {
   Dockerfile = 'Dockerfile',
@@ -159,6 +166,10 @@ export const imagepackStatuses: {
   {
     value: 'Failed',
     label: '失败',
+  },
+  {
+    value: 'Canceled',
+    label: '已取消',
   },
 ]
 
@@ -416,6 +427,9 @@ export const apiUserCreateByEnvd = async (envdInfo: EnvdCreate) => {
 
 export const apiUserDeleteKaniko = (id: number) =>
   apiV1Delete<IResponse<string>>(`images/kaniko/${id}`)
+
+export const apiUserCancelKaniko = (id: number) =>
+  apiV1Post<IResponse<string>>('images/cancel', { id })
 
 export const apiUserDeleteKanikoList = (idList: number[]) =>
   apiV1Post<IResponse<string>>('images/deletekaniko', {
