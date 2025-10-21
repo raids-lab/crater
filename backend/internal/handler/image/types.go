@@ -51,7 +51,7 @@ type (
 	}
 
 	DeleteKanikoByIDRequest struct {
-		ID uint `uri:"id" binding:"required"`
+		ID uint `json:"id" binding:"required"`
 	}
 
 	DeleteKanikoByIDListRequest struct {

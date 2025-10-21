@@ -126,6 +126,7 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// 5. get the job status from k8s job
+	oldStatus := kaniko.Status
 	jobStatus := r.getJobBuildStatus(ctx, &job)
 
 	// 6. if buildkit job finished
@@ -152,14 +153,42 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		logger.Error(err, "kaniko record status updated failed")
 		return ctrl.Result{Requeue: true}, err
 	}
-	logger.Info(fmt.Sprintf("buildkit pod: %s , new stage: %s", job.Name, jobStatus))
+	logger.Info(fmt.Sprintf("buildkit pod: %s , now stage: %s, new stage: %s", job.Name, oldStatus, jobStatus))
 
 	return ctrl.Result{}, nil
 }
 
 func (r *BuildKitReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Job not found in k8s, maybe deleted by user or automatically deleted by k8s" + jobName)
+	logger.Info("Job not found in k8s, maybe deleted by user or automatically deleted by k8s: " + jobName)
+
+	k := query.Kaniko
+	kaniko, err := k.WithContext(ctx).Where(k.ImagePackName.Eq(jobName)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.Info("kaniko record not found in database, maybe already deleted: " + jobName)
+			return ctrl.Result{}, nil
+		}
+		// if fetch failed, it may be caused by database connection error
+		logger.Error(err, "unable to fetch kaniko record in database")
+		return ctrl.Result{Requeue: true}, err
+	}
+
+	// 如果数据库记录中，任务已经处于终止态，则无需更新状态
+	if kaniko.Status == model.BuildJobFinished ||
+		kaniko.Status == model.BuildJobFailed ||
+		kaniko.Status == model.BuildJobCanceled {
+		logger.Info("kaniko already in terminal state: " + string(kaniko.Status))
+		return ctrl.Result{}, nil
+	}
+
+	// Job 被删除但数据库状态还未终止，更新为 Canceled 状态
+	if err = r.updateKanikoStatus(ctx, kaniko, model.BuildJobCanceled); err != nil {
+		logger.Error(err, "failed to update kaniko status to canceled")
+		return ctrl.Result{Requeue: true}, err
+	}
+
+	logger.Info("updated kaniko status to canceled: " + jobName)
 	return ctrl.Result{}, nil
 }
 
@@ -267,6 +296,11 @@ func (r *BuildKitReconciler) getJobBuildStatus(ctx context.Context, job *batchv1
 		return model.BuildJobFinished
 	} else if job.Status.Failed == 1 {
 		return model.BuildJobFailed
+	}
+
+	// If job is terminating, return canceled status
+	if job.Status.Terminating != nil && *job.Status.Terminating > 0 {
+		return model.BuildJobCanceled
 	}
 
 	// If job is active, check pod status to determine if it's running or pending

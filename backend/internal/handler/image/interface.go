@@ -37,6 +37,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/dockerfile", mgr.UserCreateByDockerfile)
 	g.POST("/envd", mgr.UserCreateByEnvd)
 	g.DELETE("/kaniko/:id", mgr.DeleteKanikoByID)
+	g.POST("/cancel", mgr.UserCancelKanikoByID)
 
 	g.GET("/image", mgr.UserListImage)
 	g.POST("/image", mgr.UserUploadImage)
