@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import ky, { HTTPError } from 'ky'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +32,28 @@ import { queryJupyterToken } from '@/services/query/job'
 import FloatingBall from './-components/floating-ball'
 
 export const Route = createFileRoute('/ingress/jupyter/$name')({
+  loader: async ({ context: { queryClient }, params: { name } }) => {
+    const { data } = await queryClient.ensureQueryData(queryJupyterToken(name))
+    if (!data.token || data.token === '') {
+      throw new Error(
+        'Jupyter token is not available. Please check the job status or try again later.'
+      )
+    }
+
+    // try to check if connection to Jupyter Notebook is ready
+    const url = `${data.fullURL}/api/status?token=${data.token}`
+    if (import.meta.env.DEV) {
+      return
+    }
+    try {
+      await ky.get(url, { timeout: 5000 })
+    } catch (error) {
+      if (error instanceof HTTPError) {
+        throw new Error('Jupyter Notebook is not ready yet. Please try again later.')
+      }
+      throw error
+    }
+  },
   component: Jupyter,
   errorComponent: Refresh,
 })
@@ -78,8 +101,8 @@ function Refresh() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {data && data.urlWithToken && (
-            <CopyableCommand label={'Jupyter Lab'} isLink command={data.urlWithToken} />
+          {data && data.fullURL && (
+            <CopyableCommand label={'Jupyter Lab'} isLink command={data.fullURL} />
           )}
 
           <div className="grid grid-cols-2 gap-2">
@@ -176,8 +199,8 @@ function Jupyter() {
     <div className="relative h-screen w-screen">
       <BasicIframe
         title="jupyter notebook"
-        key={jupyterInfo.urlWithToken}
-        src={jupyterInfo.urlWithToken}
+        key={jupyterInfo.fullURL}
+        src={jupyterInfo.fullURL}
         className="absolute top-0 right-0 bottom-0 left-0 h-screen w-screen"
       />
       {/* Transparent overlay */}
