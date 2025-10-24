@@ -390,7 +390,6 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
-	fullURL = fmt.Sprintf("%s?token=%s", fullURL, jupyterToken)
 	resputil.Success(c, JobTokenResp{
 		BaseURL:   baseURL,
 		Token:     jupyterToken,
