@@ -41,7 +41,10 @@ export const Route = createFileRoute('/ingress/jupyter/$name')({
     }
 
     // try to check if connection to Jupyter Notebook is ready
-    const url = `${data.fullURL}?token=${data.token}`
+    const url = `${data.fullURL}/api/status`
+    if (import.meta.env.DEV) {
+      return
+    }
     try {
       await ky.get(url, { timeout: 5000 })
     } catch (error) {
@@ -196,6 +199,7 @@ function Jupyter() {
     <div className="relative h-screen w-screen">
       <BasicIframe
         title="jupyter notebook"
+        key={jupyterInfo.urlWithToken}
         src={jupyterInfo.urlWithToken}
         className="absolute top-0 right-0 bottom-0 left-0 h-screen w-screen"
       />
