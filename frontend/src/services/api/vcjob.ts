@@ -426,7 +426,6 @@ export const apiJupyterTokenGet = (jobName: string) =>
       token: string
       podName: string
       namespace: string
-      urlWithToken?: string
     }>
   >(`${JOB_URL}/${jobName}/token`)
 
