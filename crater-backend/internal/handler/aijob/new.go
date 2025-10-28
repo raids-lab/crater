@@ -86,12 +86,11 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 		v1.EnvVar{Name: "CHOWN_HOME", Value: "1"},
 	)
 
-	// 3. Node Affinity and Tolerations based on Architecture
+	// 3. Node Affinity and Tolerations
 	baseAffinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 	affinity := vcjob.GenerateArchitectureNodeAffinity(vcReq.Image, baseAffinity)
 
-	baseTolerations := []v1.Toleration{} // AIJob doesn't use account tolerations
-	tolerations := vcjob.GenerateArchitectureTolerations(vcReq.Image, baseTolerations)
+	tolerations := []v1.Toleration{} // AIJob doesn't use account tolerations
 
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {
@@ -191,12 +190,10 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 		return
 	}
 
-	// Apply architecture-specific affinity and tolerations
+	// Apply architecture-specific affinity
 	baseAffinity := vcjob.GenerateNodeAffinity(vcReq.Selectors, nil)
 	podSpec.Affinity = vcjob.GenerateArchitectureNodeAffinity(vcReq.Image, baseAffinity)
-
-	baseTolerations := podSpec.Tolerations
-	podSpec.Tolerations = vcjob.GenerateArchitectureTolerations(vcReq.Image, baseTolerations)
+	// Tolerations remain unchanged (from GenerateCustomPodSpec)
 
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username

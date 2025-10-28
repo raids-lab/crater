@@ -145,12 +145,11 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		v1.EnvVar{Name: "CHOWN_HOME", Value: "1"},
 	)
 
-	// 3. Node Affinity and Tolerations based on Architecture
+	// 3. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, req.Resource)
 	affinity := GenerateArchitectureNodeAffinity(req.Image, baseAffinity)
 
-	baseTolerations := GenerateTaintTolerationsForAccount(token)
-	tolerations := GenerateArchitectureTolerations(req.Image, baseTolerations)
+	tolerations := GenerateTaintTolerationsForAccount(token)
 
 	// 4. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(

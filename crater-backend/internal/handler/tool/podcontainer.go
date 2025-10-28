@@ -697,6 +697,7 @@ type (
 		Resources       v1.ResourceList   `json:"resources,omitempty"`
 		RestartCount    int32             `json:"restartCount"`
 		IsInitContainer bool              `json:"isInitContainer"`
+		Node            string            `json:"node"`
 	}
 
 	PodContainersResp struct {
@@ -763,6 +764,7 @@ func (mgr *APIServerMgr) GetPodContainers(c *gin.Context) {
 			Resources:       resourceRequestMap[cs.Name],
 			RestartCount:    cs.RestartCount,
 			IsInitContainer: true,
+			Node:            pod.Spec.NodeName,
 		}
 	}
 	for i := range pod.Status.ContainerStatuses {
@@ -774,6 +776,7 @@ func (mgr *APIServerMgr) GetPodContainers(c *gin.Context) {
 			Resources:       resourceRequestMap[cs.Name],
 			RestartCount:    cs.RestartCount,
 			IsInitContainer: false,
+			Node:            pod.Spec.NodeName,
 		}
 	}
 	resputil.Success(c, PodContainersResp{Containers: containers})

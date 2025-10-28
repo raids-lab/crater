@@ -75,9 +75,8 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	for i := range req.Tasks {
 		task := &req.Tasks[i]
 
-		// 4.1. Generate architecture-specific affinity and tolerations for this task
+		// 4.1. Generate architecture-specific affinity for this task
 		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
-		taskTolerations := GenerateArchitectureTolerations(task.Image, baseTolerations)
 
 		// 4.2. Generate ports
 		ports := make([]v1.ContainerPort, len(task.Ports))
@@ -93,7 +92,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		podSpec := generatePodSpecForParallelJob(
 			task,
 			taskAffinity,
-			taskTolerations,
+			baseTolerations,
 			volumes,
 			volumeMounts,
 			envs,

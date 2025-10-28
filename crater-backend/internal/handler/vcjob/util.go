@@ -321,77 +321,66 @@ func DetermineArchitectureType(archs []string) ArchitectureType {
 	}
 }
 
-// GenerateArchitectureTolerations generates tolerations based on image architecture
-func GenerateArchitectureTolerations(imageInfo ImageBaseInfo, baseTolerations []v1.Toleration) []v1.Toleration {
-	archType := DetermineArchitectureType(imageInfo.Archs)
-
-	// For AMD-only images, no additional tolerations needed
-	if archType == ArchTypeAMD {
-		return baseTolerations
-	}
-
-	// For ARM-only or Multi-arch images, add ARM toleration
-	armToleration := v1.Toleration{
-		Key:      "crater.raids.io/architecture",
-		Operator: v1.TolerationOpEqual,
-		Value:    "arm",
-		Effect:   v1.TaintEffectNoSchedule,
-	}
-
-	return append(baseTolerations, armToleration)
-}
-
 // GenerateArchitectureNodeAffinity generates node affinity based on image architecture
+// Rules:
+// - AMD64-only images: schedule only to amd64 nodes
+// - ARM64-only images: schedule only to arm64 nodes
+// - Multi-arch images (both AMD64 and ARM64): no architecture-specific affinity
 func GenerateArchitectureNodeAffinity(imageInfo ImageBaseInfo, baseAffinity *v1.Affinity) *v1.Affinity {
 	archType := DetermineArchitectureType(imageInfo.Archs)
-	// For AMD-only or Multi-arch images, use base affinity
-	if archType == ArchTypeAMD || archType == ArchTypeMulti {
+
+	// For multi-arch images, don't add architecture-specific affinity
+	if archType == ArchTypeMulti {
 		return baseAffinity
 	}
 
-	// For ARM-only images, add required node affinity for ARM nodes
-	armNodeSelector := v1.NodeSelectorRequirement{
-		Key:      "kubernetes.io/arch",
-		Operator: v1.NodeSelectorOpIn,
-		Values:   []string{"arm64"},
-	}
-
-	if baseAffinity == nil {
-		return &v1.Affinity{
-			NodeAffinity: &v1.NodeAffinity{
-				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
-					NodeSelectorTerms: []v1.NodeSelectorTerm{
-						{
-							MatchExpressions: []v1.NodeSelectorRequirement{armNodeSelector},
-						},
-					},
-				},
-			},
+	// Determine the architecture selector based on image type
+	var archSelector v1.NodeSelectorRequirement
+	if archType == ArchTypeARM {
+		archSelector = v1.NodeSelectorRequirement{
+			Key:      "kubernetes.io/arch",
+			Operator: v1.NodeSelectorOpIn,
+			Values:   []string{"arm64"},
+		}
+	} else { // ArchTypeAMD
+		archSelector = v1.NodeSelectorRequirement{
+			Key:      "kubernetes.io/arch",
+			Operator: v1.NodeSelectorOpIn,
+			Values:   []string{"amd64"},
 		}
 	}
 
-	// If baseAffinity exists, merge with ARM requirement
-	if baseAffinity.NodeAffinity == nil {
-		baseAffinity.NodeAffinity = &v1.NodeAffinity{}
+	// Create a deep copy of baseAffinity to avoid modifying the original
+	var newAffinity *v1.Affinity
+	if baseAffinity == nil {
+		newAffinity = &v1.Affinity{}
+	} else {
+		newAffinity = baseAffinity.DeepCopy()
 	}
 
-	if baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-		baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{
+	// Initialize NodeAffinity if needed
+	if newAffinity.NodeAffinity == nil {
+		newAffinity.NodeAffinity = &v1.NodeAffinity{}
+	}
+
+	// Add architecture requirement to required affinity
+	if newAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+		newAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &v1.NodeSelector{
 			NodeSelectorTerms: []v1.NodeSelectorTerm{
 				{
-					MatchExpressions: []v1.NodeSelectorRequirement{armNodeSelector},
+					MatchExpressions: []v1.NodeSelectorRequirement{archSelector},
 				},
 			},
 		}
 	} else {
-		// Add ARM requirement to existing terms
-		for i := range baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms {
-			baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions =
-				append(baseAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions, armNodeSelector)
+		// Add architecture requirement to all existing terms
+		for i := range newAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms {
+			newAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions =
+				append(newAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms[i].MatchExpressions, archSelector)
 		}
 	}
 
-	return baseAffinity
+	return newAffinity
 }
 
 // GenerateEnvs generates environment variables for the pod

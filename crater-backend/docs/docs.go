@@ -725,41 +725,6 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/v1/admin/images/deletekaniko": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "管理员模式下遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "管理员模式下根据IDList删除Kaniko entity",
-                "parameters": [
-                    {
-                        "description": "删除kaniko的IDList",
-                        "name": "IDList",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
         "/v1/admin/images/description": {
             "post": {
                 "security": [
@@ -847,6 +812,41 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/internal_handler_image.CreateKanikoRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/admin/images/remove": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "管理员模式下删除或取消镜像制作任务（批量）",
+                "parameters": [
+                    {
+                        "description": "镜像构建任务ID列表",
+                        "name": "idList",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
                         }
                     }
                 ],
@@ -3797,36 +3797,6 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/v1/images/cancel": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "根据ID取消镜像制作任务；若任务状态为 Finished/Failed 则提示镜像制作已结束",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "取消镜像制作任务",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "镜像构建任务ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {}
-            }
-        },
         "/v1/images/change": {
             "post": {
                 "security": [
@@ -3983,41 +3953,6 @@ const docTemplate = `{
                     {
                         "description": "删除镜像的ID",
                         "name": "ID",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/v1/images/deletekaniko": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "根据IDList删除Kaniko entity",
-                "parameters": [
-                    {
-                        "description": "删除kaniko的IDList",
-                        "name": "IDList",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -4352,38 +4287,6 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/v1/images/kaniko/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "根据ID更新Kaniko的状态为Deleted，起到删除的功能",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "根据ID删除Kaniko entity",
-                "parameters": [
-                    {
-                        "description": "删除镜像的ID",
-                        "name": "ID",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
         "/v1/images/podname": {
             "get": {
                 "security": [
@@ -4459,6 +4362,41 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/internal_handler_image.UpdateProjectQuotaRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/images/remove": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "删除或取消镜像制作任务（批量）",
+                "parameters": [
+                    {
+                        "description": "镜像构建任务ID列表",
+                        "name": "idList",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
                         }
                     }
                 ],
