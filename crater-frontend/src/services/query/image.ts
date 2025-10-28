@@ -26,6 +26,8 @@ export const queryBuildDetail = (name: string) =>
     queryFn: () => apiUserGetKaniko(`${name}`),
     select: (res) => res.data,
     enabled: !!name,
+    retry: false, // 镜像被删除后不重试
+    staleTime: 0, // 确保数据总是最新的
   })
 
 export const queryBaseImages = (type?: JobType) => {

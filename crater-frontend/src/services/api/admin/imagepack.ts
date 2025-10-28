@@ -16,12 +16,7 @@
 import { apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'
 
-import {
-  ListImageResponse,
-  ListKanikoResponse,
-  UpdateDescription,
-  UpdateTaskType,
-} from '../imagepack'
+import { ListImageResponse, ListKanikoResponse, UpdateDescription } from '../imagepack'
 
 export const apiAdminImagePublicStatusChange = async (id: number) => {
   const response = await apiV1Post<IResponse<string>>('admin/images/change', id)
@@ -48,6 +43,3 @@ export const apiAdminChangeImagePublicStatus = (id: number) =>
 
 export const apiAdminChangeImageDescription = (data: UpdateDescription) =>
   apiV1Post<IResponse<string>>('admin/images/description', data)
-
-export const apiAdminChangeImageTaskType = (data: UpdateTaskType) =>
-  apiV1Post<IResponse<string>>('admin/images/type', data)

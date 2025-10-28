@@ -230,7 +230,6 @@ export interface ImageUpload {
   imageName: string
   imageTag: string
   description: string
-  taskType: JobType
   tags: string[]
 }
 
@@ -247,11 +246,6 @@ export interface UpdateImageTag {
 export interface UpdateImageArch {
   id: number
   archs: string[]
-}
-
-export interface UpdateTaskType {
-  id: number
-  taskType: JobType
 }
 
 export interface ImageLinkPair {
@@ -309,17 +303,6 @@ export interface CudaBaseImageCreate {
   imageLabel: string
   label: string
   value: string
-}
-
-export const ImageTaskType = {
-  JupyterTask: 1, // Jupyter交互式任务
-  WebIDETask: 2, // Web IDE任务
-  TensorflowTask: 3, // Tensorflow任务
-  PytorchTask: 4, // Pytorch任务
-  RayTask: 5, // Ray任务
-  DeepSpeedTask: 6, // DeepSpeed任务
-  OpenMPITask: 7, // OpenMPI任务
-  UserDefineTask: 8, // 用户自定义任务
 }
 
 export const ImageDefaultTags = [
@@ -425,14 +408,8 @@ export const apiUserCreateByEnvd = async (envdInfo: EnvdCreate) => {
   return response.data
 }
 
-export const apiUserDeleteKaniko = (id: number) =>
-  apiV1Delete<IResponse<string>>(`images/kaniko/${id}`)
-
-export const apiUserCancelKaniko = (id: number) =>
-  apiV1Post<IResponse<string>>('images/cancel', { id })
-
-export const apiUserDeleteKanikoList = (idList: number[]) =>
-  apiV1Post<IResponse<string>>('images/deletekaniko', {
+export const apiUserRemoveKanikoList = (idList: number[]) =>
+  apiV1Post<IResponse<string>>('images/remove', {
     idList,
   })
 
@@ -462,9 +439,6 @@ export const apiUserGetQuota = () => apiV1Get<IResponse<ProjectDetailResponse>>(
 
 export const apiUserChangeImageDescription = (data: UpdateDescription) =>
   apiV1Post<IResponse<string>>('images/description', data)
-
-export const apiUserChangeImageTaskType = (data: UpdateTaskType) =>
-  apiV1Post<IResponse<string>>('images/type', data)
 
 export const apiUserCheckImageValid = (linkPairs: ImageLinkPairs) =>
   apiV1Post<IResponse<ImageLinkPairs>>('images/valid', linkPairs)

@@ -155,6 +155,8 @@ export const TableCellForm = ({
       >
         {shortenImageName(selectedContainer.image)}
       </p>
+      <p className="text-muted-foreground">节点</p>
+      <p className="col-span-2 font-mono">{selectedContainer.node}</p>
       {appendInfos?.map((info, index) => (
         <Fragment key={index}>
           <div className="text-muted-foreground">{info.title}</div>

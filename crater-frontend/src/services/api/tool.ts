@@ -26,6 +26,7 @@ export interface ContainerInfo {
   name: string
   image: string
   state: ContainerState
+  node: string
   resources?: Record<string, string>
   restartCount: number
   isInitContainer: boolean
