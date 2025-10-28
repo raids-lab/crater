@@ -12,7 +12,7 @@ function RouteComponent() {
   return (
     <KanikoListTable
       apiListKaniko={apiAdminListKaniko}
-      apiDeleteKanikoList={apiAdminDeleteKanikoList}
+      apiRemoveKanikoList={apiAdminDeleteKanikoList}
       isAdminMode={true}
     />
   )

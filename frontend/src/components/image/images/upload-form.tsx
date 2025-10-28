@@ -44,7 +44,6 @@ import {
   imageLinkRegex,
   parseImageLink,
 } from '@/services/api/imagepack'
-import { JobType } from '@/services/api/vcjob'
 
 const formSchema = z.object({
   imageLink: z
@@ -80,7 +79,6 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
         imageName: imageName,
         imageTag: imageTag,
         description: values.description,
-        taskType: JobType.Custom,
         tags: values.tags?.map((item) => item.value) ?? [],
       })
     },

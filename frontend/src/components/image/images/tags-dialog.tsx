@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Check, Loader2, Plus, X } from 'lucide-react'
-import { FC, useRef, useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Check, Loader2, X } from 'lucide-react'
+import { FC, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { z } from 'zod'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DialogClose,
@@ -26,9 +28,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+import { Form } from '@/components/ui/form'
 
-import { UpdateImageTag } from '@/services/api/imagepack'
+import { TagsInput } from '@/components/form/tags-input'
+
+import { ImageDefaultTags, UpdateImageTag } from '@/services/api/imagepack'
+
+const formSchema = z.object({
+  tags: z.array(
+    z.object({
+      value: z.string(),
+      label: z.string().optional(),
+    })
+  ),
+})
+
+type FormSchema = z.infer<typeof formSchema>
 
 interface TagsDialogProps {
   initialTags: string[]
@@ -45,36 +60,19 @@ export const TagsDialog: FC<TagsDialogProps> = ({
   imageLink,
   onSaveTags,
 }) => {
-  const [tags, setTags] = useState<string[]>(initialTags || [])
-  const [newTag, setNewTag] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  const handleAddTag = () => {
-    const trimmedTag = newTag.trim()
-    if (trimmedTag && !tags.includes(trimmedTag)) {
-      setTags([...tags, trimmedTag])
-      setNewTag('')
-      inputRef.current?.focus()
-    } else if (tags.includes(trimmedTag)) {
-      toast.info('标签已存在')
-    }
-  }
+  const form = useForm<FormSchema>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      tags: (initialTags || []).map((tag) => ({ value: tag, label: tag })),
+    },
+  })
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      handleAddTag()
-    }
-  }
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove))
-  }
-
-  const handleSave = async () => {
+  const handleSave = async (values: FormSchema) => {
     try {
       setIsSaving(true)
+      const tags = values.tags.map((tag) => tag.value)
       await onSaveTags({ id, tags })
     } catch (error) {
       toast.error('保存标签失败' + error)
@@ -84,70 +82,48 @@ export const TagsDialog: FC<TagsDialogProps> = ({
   }
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>标签管理</DialogTitle>
-      </DialogHeader>
-      <DialogDescription className="space-y-4 pt-2">
-        <div className="bg-muted/50 rounded-md px-4 py-3">
-          <p className="text-muted-foreground">{description}</p>
-          <p className="mt-1 font-medium break-all">『{imageLink}』</p>
-        </div>
-      </DialogDescription>
-      <div className="my-4 flex items-center space-x-2">
-        <Input
-          ref={inputRef}
-          value={newTag}
-          onChange={(e) => setNewTag(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="添加新标签..."
-          className="flex-1"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+        <DialogHeader>
+          <DialogTitle>标签管理</DialogTitle>
+        </DialogHeader>
+        <DialogDescription className="space-y-4 pt-2">
+          <div className="bg-muted/50 rounded-md px-4 py-3">
+            <p className="text-muted-foreground">{description}</p>
+            <p className="mt-1 font-medium break-all">『{imageLink}』</p>
+          </div>
+        </DialogDescription>
+
+        <TagsInput
+          form={form}
+          tagsPath="tags"
+          label="镜像标签"
+          description="为镜像添加标签，便于分类和搜索"
+          customTags={ImageDefaultTags}
         />
-        <Button onClick={handleAddTag} size="icon" disabled={!newTag.trim()}>
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
 
-      <div className="flex max-h-[200px] flex-wrap gap-2 overflow-y-auto">
-        {tags.length === 0 ? (
-          <p className="text-muted-foreground text-sm">暂无标签，请添加新标签</p>
-        ) : (
-          tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="group px-3 py-1.5 text-sm">
-              {tag}
-              <button
-                onClick={() => handleRemoveTag(tag)}
-                className="hover:bg-muted ml-2 rounded-full p-0.5 transition-colors"
-              >
-                <X className="h-3 w-3" />
-                <span className="sr-only">删除标签 {tag}</span>
-              </button>
-            </Badge>
-          ))
-        )}
-      </div>
-
-      <DialogFooter className="mt-4">
-        <DialogClose asChild>
-          <Button variant="outline">
-            <X />
-            取消
+        <DialogFooter className="mt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              <X />
+              取消
+            </Button>
+          </DialogClose>
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                确认
+              </>
+            )}
           </Button>
-        </DialogClose>
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              保存中...
-            </>
-          ) : (
-            <>
-              <Check className="h-4 w-4" />
-              确认
-            </>
-          )}
-        </Button>
-      </DialogFooter>
-    </>
+        </DialogFooter>
+      </form>
+    </Form>
   )
 }

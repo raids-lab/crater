@@ -22,7 +22,6 @@ import { ImageListTable } from '@/components/image/images'
 import {
   apiUserChangeImageDescription,
   apiUserChangeImagePublicStatus,
-  apiUserChangeImageTaskType,
   apiUserDeleteImageList,
   apiUserListImage,
 } from '@/services/api/imagepack'
@@ -43,7 +42,6 @@ function RouteComponent() {
       apiDeleteImageList={apiUserDeleteImageList}
       apiChangeImagePublicStatus={apiUserChangeImagePublicStatus}
       apiChangeImageDescription={apiUserChangeImageDescription}
-      apiChangeImageTaskType={apiUserChangeImageTaskType}
       isAdminMode={false}
     />
   )

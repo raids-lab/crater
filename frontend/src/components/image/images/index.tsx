@@ -28,7 +28,6 @@ import {
   ListTodo,
   Lock,
   SquareCheckBig,
-  Tag,
   Tags,
   Trash2Icon,
 } from 'lucide-react'
@@ -43,11 +42,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -69,17 +63,14 @@ import {
   UpdateDescription,
   UpdateImageArch,
   UpdateImageTag,
-  UpdateTaskType,
   apiUserChangeImageDescription,
   apiUserChangeImagePublicStatus,
-  apiUserChangeImageTaskType,
   apiUserDeleteImageList,
   apiUserListImage,
   apiUserUpdateImageArchs,
   apiUserUpdateImageTags,
   getHeader,
 } from '@/services/api/imagepack'
-import { JobType } from '@/services/api/vcjob'
 import { IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -138,7 +129,6 @@ export const Component: FC = () => {
       apiDeleteImageList={apiUserDeleteImageList}
       apiChangeImagePublicStatus={apiUserChangeImagePublicStatus}
       apiChangeImageDescription={apiUserChangeImageDescription}
-      apiChangeImageTaskType={apiUserChangeImageTaskType}
       isAdminMode={false}
     />
   )
@@ -149,7 +139,6 @@ interface ImageListTableProps {
   apiDeleteImageList: (idList: number[]) => Promise<IResponse<string>>
   apiChangeImagePublicStatus: (id: number) => Promise<IResponse<string>>
   apiChangeImageDescription: (data: UpdateDescription) => Promise<IResponse<string>>
-  apiChangeImageTaskType: (data: UpdateTaskType) => Promise<IResponse<string>>
   isAdminMode: boolean
 }
 
@@ -158,7 +147,6 @@ export const ImageListTable: FC<ImageListTableProps> = ({
   apiDeleteImageList,
   apiChangeImagePublicStatus,
   apiChangeImageDescription,
-  apiChangeImageTaskType,
   isAdminMode,
 }) => {
   const queryClient = useQueryClient()
@@ -207,13 +195,6 @@ export const ImageListTable: FC<ImageListTableProps> = ({
     onSuccess: async () => {
       await refetchImagePackList()
       toast.success('镜像描述已更新')
-    },
-  })
-  const { mutate: updateImageTaskType } = useMutation({
-    mutationFn: (data: { id: number; taskType: JobType }) => apiChangeImageTaskType(data),
-    onSuccess: async () => {
-      await refetchImagePackList()
-      toast.success('镜像类型已更新')
     },
   })
 
@@ -325,7 +306,6 @@ export const ImageListTable: FC<ImageListTableProps> = ({
             ]}
             onDeleteImageList={deleteUserImageList}
             userName={user?.name || ''}
-            onChangeType={updateImageTaskType}
             isAdminMode={isAdminMode}
             onChangeTags={updateImageTags}
             onChangeArchs={updateImageArchs}
@@ -467,7 +447,6 @@ interface ActionsProps {
   linkPairs: ImageLinkPair[]
   onDeleteImageList: (ids: number[]) => void
   userName: string
-  onChangeType: (data: { id: number; taskType: JobType }) => void
   isAdminMode: boolean
   onChangeTags: (data: { id: number; tags: string[] }) => void
   onChangeArchs: (data: { id: number; archs: string[] }) => void
@@ -480,7 +459,6 @@ const Actions: FC<ActionsProps> = ({
   linkPairs,
   onDeleteImageList,
   userName,
-  onChangeType,
   isAdminMode,
   onChangeTags,
   onChangeArchs,
@@ -551,36 +529,6 @@ const Actions: FC<ActionsProps> = ({
               <ListTodo className="text-green-600" />
               镜像分享
             </DropdownMenuItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger
-                disabled={isDisabled}
-                className={`${isDisabled ? 'cursor-not-allowed opacity-50 data-disabled:pointer-events-none' : ''} group`}
-              >
-                <Tag className="mr-2 size-4 text-cyan-600" />
-                更改类型
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={`${imageInfo.taskType}`}>
-                  {Object.keys(JobType).map((key) => (
-                    <DropdownMenuRadioItem
-                      key={key}
-                      value={key}
-                      disabled={[JobType.DeepSpeed, JobType.KubeRay, JobType.OpenMPI].includes(
-                        JobType[key as keyof typeof JobType]
-                      )}
-                      onClick={() =>
-                        onChangeType({
-                          id: imageInfo.ID,
-                          taskType: JobType[key as keyof typeof JobType],
-                        })
-                      }
-                    >
-                      {key}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
             <DropdownMenuItem
               disabled={isDisabled}
               onClick={() => {
