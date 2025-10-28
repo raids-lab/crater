@@ -60,95 +60,103 @@ func (mgr *ImagePackMgr) AdminListKaniko(c *gin.Context) {
 	resputil.Success(c, response)
 }
 
-// DeleteKanikoByID godoc
+// UserRemoveKanikoByID godoc
 //
-//	@Summary		根据ID删除Kaniko entity
-//	@Description	根据ID更新Kaniko的状态为Deleted，起到删除的功能
+//	@Summary		删除或取消镜像制作任务（批量）
+//	@Description	根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
 //	@Tags			ImagePack
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			ID	body	uint	true	"删除镜像的ID"
-//	@Router			/v1/images/kaniko/{id} [DELETE]
-func (mgr *ImagePackMgr) DeleteKanikoByID(c *gin.Context) {
-	token := util.GetToken(c)
+//	@Param			idList	body	[]uint	true	"镜像构建任务ID列表"
+//	@Router			/v1/images/remove [POST]
+func (mgr *ImagePackMgr) UserRemoveKanikoByID(c *gin.Context) {
 	var err error
-	var deleteKanikoRequest DeleteKanikoByIDRequest
-	if err = c.ShouldBindUri(&deleteKanikoRequest); err != nil {
-		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+	var removeKanikoListRequest DeleteKanikoByIDListRequest
+	if err = c.ShouldBindJSON(&removeKanikoListRequest); err != nil {
+		msg := fmt.Sprintf("validate remove parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
 	}
-	kanikoID := deleteKanikoRequest.ID
-	if isSuccess, errorMsg := mgr.deleteKanikoByID(c, false, kanikoID, token.UserID); isSuccess {
-		resputil.Success(c, "")
-	} else {
-		resputil.Error(c, errorMsg, resputil.NotSpecified)
-	}
-}
-
-// UserDeleteKanikoByIDList godoc
-//
-//	@Summary		根据IDList删除Kaniko entity
-//	@Description	遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
-//	@Tags			ImagePack
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			IDList	body	[]uint	true	"删除kaniko的IDList"
-//	@Router			/v1/images/deletekaniko [POST]
-func (mgr *ImagePackMgr) UserDeleteKanikoByIDList(c *gin.Context) {
-	var err error
-	var deleteKanikoListRequest DeleteKanikoByIDListRequest
-	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
-		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
-		resputil.BadRequestError(c, msg)
-		return
-	}
-	flag := mgr.deleteKanikoByIDList(c, true, deleteKanikoListRequest.IDList)
+	flag := mgr.removeKanikoByIDList(c, false, removeKanikoListRequest.IDList)
 	if flag {
 		resputil.Success(c, "")
 	} else {
-		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
+		resputil.Error(c, "failed to remove kaniko", resputil.NotSpecified)
 	}
 }
 
-// AdminDeleteKanikoByIDList godoc
+// AdminRemoveKanikoByIDList godoc
 //
-//	@Summary		管理员模式下根据IDList删除Kaniko entity
-//	@Description	管理员模式下遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
+//	@Summary		管理员模式下删除或取消镜像制作任务（批量）
+//	@Description	管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
 //	@Tags			ImagePack
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			IDList	body	[]uint	true	"删除kaniko的IDList"
-//	@Router			/v1/admin/images/deletekaniko [POST]
-func (mgr *ImagePackMgr) AdminDeleteKanikoByIDList(c *gin.Context) {
+//	@Param			idList	body	[]uint	true	"镜像构建任务ID列表"
+//	@Router			/v1/admin/images/remove [POST]
+func (mgr *ImagePackMgr) AdminRemoveKanikoByIDList(c *gin.Context) {
 	var err error
-	var deleteKanikoListRequest DeleteKanikoByIDListRequest
-	if err = c.ShouldBindJSON(&deleteKanikoListRequest); err != nil {
-		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
+	var removeKanikoListRequest DeleteKanikoByIDListRequest
+	if err = c.ShouldBindJSON(&removeKanikoListRequest); err != nil {
+		msg := fmt.Sprintf("validate remove parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
 	}
-	flag := mgr.deleteKanikoByIDList(c, true, deleteKanikoListRequest.IDList)
+	flag := mgr.removeKanikoByIDList(c, true, removeKanikoListRequest.IDList)
 	if flag {
 		resputil.Success(c, "")
 	} else {
-		resputil.Error(c, "failed to delete kaniko", resputil.NotSpecified)
+		resputil.Success(c, "remove kaniko encountered some errors")
 	}
 }
 
-func (mgr *ImagePackMgr) deleteKanikoByIDList(c *gin.Context, isAdminMode bool, kanikoIDList []uint) (isSuccess bool) {
+func (mgr *ImagePackMgr) removeKanikoByIDList(c *gin.Context, isAdminMode bool, kanikoIDList []uint) (isSuccess bool) {
 	flag := true
 	userID := util.GetToken(c).UserID
 	for _, kanikoID := range kanikoIDList {
-		if isSuccess, errorMsg := mgr.deleteKanikoByID(c, isAdminMode, kanikoID, userID); !isSuccess {
+		if isSuccess, errorMsg := mgr.removeKanikoByID(c, isAdminMode, kanikoID, userID); !isSuccess {
 			flag = false
-			klog.Errorf("delete kaniko failed, err:%v", errorMsg)
+			klog.Errorf("remove kaniko failed, err:%v", errorMsg)
 		}
 	}
 	return flag
+}
+
+// removeKanikoByID 统一的删除/取消接口：根据任务状态自动判断执行删除还是取消
+func (mgr *ImagePackMgr) removeKanikoByID(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (isSuccess bool, msg string) {
+	k := query.Kaniko
+
+	// 构造查询并进行权限过滤
+	kanikoQuery := k.WithContext(c)
+	if !isAdminMode {
+		kanikoQuery = kanikoQuery.Where(k.UserID.Eq(userID))
+	}
+
+	// 获取 Kaniko 记录
+	kaniko, err := kanikoQuery.Where(k.ID.Eq(kanikoID)).First()
+	if err != nil || kaniko == nil {
+		msg := fmt.Sprintf("kaniko not exist or have no permission %+v", err)
+		klog.Error(msg)
+		return false, msg
+	}
+
+	// 根据状态判断执行删除还是取消
+	if kaniko.Status == model.BuildJobFinished ||
+		kaniko.Status == model.BuildJobFailed ||
+		kaniko.Status == model.BuildJobCanceled {
+		// 任务已结束，执行删除操作
+		return mgr.deleteKanikoByID(c, isAdminMode, kanikoID, userID)
+	}
+
+	// 任务进行中，执行取消操作
+	// 删除对应的 Job
+	if err := mgr.imagePacker.DeleteJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
+		klog.Errorf("delete kaniko job failed! err:%v", err)
+	}
+
+	return true, ""
 }
 
 func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (isSuccess bool, errMsg string) {
@@ -189,70 +197,6 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 		}
 	}
 	return flag, errorMsg
-}
-
-// UserCancelKanikoByID godoc
-//
-//	@Summary		取消镜像制作任务
-//	@Description	根据ID取消镜像制作任务；若任务状态为 Finished/Failed 则提示镜像制作已结束
-//	@Tags			ImagePack
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			id	path	uint	true	"镜像构建任务ID"
-//	@Router			/v1/images/cancel [POST]
-func (mgr *ImagePackMgr) UserCancelKanikoByID(c *gin.Context) {
-	token := util.GetToken(c)
-	var req DeleteKanikoByIDRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		msg := fmt.Sprintf("validate cancel parameters failed, err %v", err)
-		resputil.BadRequestError(c, msg)
-		return
-	}
-
-	if ok, msg := mgr.cancelKanikoByID(c, false, req.ID, token.UserID); ok {
-		resputil.Success(c, "")
-	} else {
-		resputil.Error(c, msg, resputil.NotSpecified)
-	}
-}
-
-// cancelKanikoByID 取消镜像构建任务：任务已结束则提示，未结束则删除对应Job并将记录状态置为 Canceled
-func (mgr *ImagePackMgr) cancelKanikoByID(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (isSuccess bool, msg string) {
-	k := query.Kaniko
-
-	// 构造查询并进行权限过滤
-	kanikoQuery := k.WithContext(c)
-	if !isAdminMode {
-		kanikoQuery = kanikoQuery.Where(k.UserID.Eq(userID))
-	}
-
-	// 获取 Kaniko 记录
-	kaniko, err := kanikoQuery.Where(k.ID.Eq(kanikoID)).First()
-	if err != nil || kaniko == nil {
-		msg := fmt.Sprintf("kaniko not exist or have no permission %+v", err)
-		klog.Error(msg)
-		return false, msg
-	}
-
-	// 若任务已结束（Finished/Failed/Canceled），提示已结束
-	if kaniko.Status == model.BuildJobFinished || kaniko.Status == model.BuildJobFailed || kaniko.Status == model.BuildJobCanceled {
-		return false, "image build already ended"
-	}
-
-	// 删除对应的 Job（忽略错误，仅记录日志）
-	if err := mgr.imagePacker.DeleteJob(c, kaniko.ImagePackName, UserNameSpace); err != nil {
-		klog.Errorf("delete kaniko job failed! err:%v", err)
-	}
-
-	// 更新状态为 Canceled
-	// if _, err := k.WithContext(c).Where(k.ID.Eq(kanikoID)).Update(k.Status, model.BuildJobCanceled); err != nil {
-	// 	msg := fmt.Sprintf("update kaniko status to Canceled failed! err:%v", err)
-	// 	klog.Error(msg)
-	// 	return false, msg
-	// }
-
-	return true, ""
 }
 
 // GetKanikoByImagePackName godoc

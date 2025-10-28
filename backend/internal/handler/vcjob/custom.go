@@ -175,8 +175,7 @@ func GenerateCustomPodSpec(
 	baseAffinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 	affinity := GenerateArchitectureNodeAffinity(custom.Image, baseAffinity)
 	fmt.Printf("Affinity generated: %+v\n", affinity)
-	baseTolerations := GenerateTaintTolerationsForAccount(token)
-	tolerations := GenerateArchitectureTolerations(custom.Image, baseTolerations)
+	tolerations := GenerateTaintTolerationsForAccount(token)
 	envs := GenerateEnvs(ctx, token, custom.Envs)
 
 	imagePullSecrets := []v1.LocalObjectReference{}

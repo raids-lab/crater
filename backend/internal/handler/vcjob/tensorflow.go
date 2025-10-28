@@ -111,9 +111,8 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	for i := range req.Tasks {
 		task := &req.Tasks[i]
 
-		// 4.1. Generate architecture-specific affinity and tolerations for this task
+		// 4.1. Generate architecture-specific affinity for this task
 		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
-		taskTolerations := GenerateArchitectureTolerations(task.Image, baseTolerations)
 
 		// 4.2. Generate ports
 		ports := make([]v1.ContainerPort, len(task.Ports))
@@ -125,7 +124,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 			}
 		}
 		// 4.3. Generate pod spec
-		podSpec := generatePodSpecForParallelJob(task, taskAffinity, taskTolerations, volumes, volumeMounts, envs, ports)
+		podSpec := generatePodSpecForParallelJob(task, taskAffinity, baseTolerations, volumes, volumeMounts, envs, ports)
 
 		// 4.4. Create task spec
 		taskSpec := batch.TaskSpec{

@@ -1915,28 +1915,6 @@ paths:
       summary: 管理员更新镜像架构
       tags:
       - ImagePack
-  /v1/admin/images/deletekaniko:
-    post:
-      consumes:
-      - application/json
-      description: 管理员模式下遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
-      parameters:
-      - description: 删除kaniko的IDList
-        in: body
-        name: IDList
-        required: true
-        schema:
-          items:
-            type: integer
-          type: array
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 管理员模式下根据IDList删除Kaniko entity
-      tags:
-      - ImagePack
   /v1/admin/images/description:
     post:
       consumes:
@@ -1993,6 +1971,28 @@ paths:
       security:
       - Bearer: []
       summary: 创建ImagePack CRD和数据库kaniko entity
+      tags:
+      - ImagePack
+  /v1/admin/images/remove:
+    post:
+      consumes:
+      - application/json
+      description: 管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      parameters:
+      - description: 镜像构建任务ID列表
+        in: body
+        name: idList
+        required: true
+        schema:
+          items:
+            type: integer
+          type: array
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 管理员模式下删除或取消镜像制作任务（批量）
       tags:
       - ImagePack
   /v1/admin/images/tags:
@@ -3873,25 +3873,6 @@ paths:
       summary: 用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
       tags:
       - ImagePack
-  /v1/images/cancel:
-    post:
-      consumes:
-      - application/json
-      description: 根据ID取消镜像制作任务；若任务状态为 Finished/Failed 则提示镜像制作已结束
-      parameters:
-      - description: 镜像构建任务ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 取消镜像制作任务
-      tags:
-      - ImagePack
   /v1/images/change:
     post:
       consumes:
@@ -3996,28 +3977,6 @@ paths:
       security:
       - Bearer: []
       summary: 用户模式根据ID列表删除Image
-      tags:
-      - ImagePack
-  /v1/images/deletekaniko:
-    post:
-      consumes:
-      - application/json
-      description: 遍历列表，根据ID更新Kaniko的状态为Deleted，起到删除的功能
-      parameters:
-      - description: 删除kaniko的IDList
-        in: body
-        name: IDList
-        required: true
-        schema:
-          items:
-            type: integer
-          type: array
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 根据IDList删除Kaniko entity
       tags:
       - ImagePack
   /v1/images/description:
@@ -4221,26 +4180,6 @@ paths:
       summary: 创建ImagePack CRD和数据库Kaniko entity
       tags:
       - ImagePack
-  /v1/images/kaniko/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: 根据ID更新Kaniko的状态为Deleted，起到删除的功能
-      parameters:
-      - description: 删除镜像的ID
-        in: body
-        name: ID
-        required: true
-        schema:
-          type: integer
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 根据ID删除Kaniko entity
-      tags:
-      - ImagePack
   /v1/images/podname:
     get:
       consumes:
@@ -4290,6 +4229,28 @@ paths:
       security:
       - Bearer: []
       summary: 更新project的配额
+      tags:
+      - ImagePack
+  /v1/images/remove:
+    post:
+      consumes:
+      - application/json
+      description: 根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      parameters:
+      - description: 镜像构建任务ID列表
+        in: body
+        name: idList
+        required: true
+        schema:
+          items:
+            type: integer
+          type: array
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 删除或取消镜像制作任务（批量）
       tags:
       - ImagePack
   /v1/images/share:
