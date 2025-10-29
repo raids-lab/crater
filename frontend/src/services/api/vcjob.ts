@@ -497,3 +497,52 @@ export const apiAdminLowGPUUsageJobsCleanup = (param: CleanLowGPUUsageReq) => {
   }
   return apiV1Delete<IResponse<CleanupResult>>(`admin/operations/auto?${searchParams.toString()}`)
 }
+
+// Cronjob 执行记录
+export interface CronJobRecord {
+  id: number
+  createdAt: string
+  updatedAt: string
+  name: string
+  executeTime: string
+  status: string
+  message: string
+  jobData?: {
+    reminded?: string[]
+    deleted?: string[]
+  }
+}
+
+export interface CronJobRecordListReq {
+  name?: string[]
+  startTime?: string
+  endTime?: string
+  status?: string
+  pageNum: number
+  pageSize: number
+}
+
+export interface CronJobRecordListResp {
+  records: CronJobRecord[]
+  total: number
+}
+
+export const apiAdminCronJobNameList = () =>
+  apiV1Post<IResponse<string[]>>('admin/operations/cronjob/config/name')
+
+export const apiAdminCronJobRecordTimeRange = () =>
+  apiV1Post<IResponse<{ startTime: string; endTime: string }>>(
+    'admin/operations/cronjob/record/time'
+  )
+
+export const apiAdminCronJobRecordList = (param: CronJobRecordListReq) =>
+  apiV1Post<IResponse<CronJobRecordListResp>>('admin/operations/cronjob/record/list', param)
+
+export interface DeleteCronJobRecordsReq {
+  id?: number[]
+  startTime?: string
+  endTime?: string
+}
+
+export const apiAdminCronJobRecordDelete = (param: DeleteCronJobRecordsReq) =>
+  apiV1Post<IResponse<{ deleted: string }>>('admin/operations/cronjob/record/delete', param)
