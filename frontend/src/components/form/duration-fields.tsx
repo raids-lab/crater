@@ -35,10 +35,12 @@ export function DurationFields({
   const [days, setDays] = useState<number>(value?.days ?? 0)
   const [hours, setHours] = useState<number>(value?.hours ?? 0)
 
-  // 规范输入：天>=0，小时0-23
+  // 规范输入：天>=0&&<=4，小时0-23
   const normalized = useMemo(() => {
-    const d = Number.isFinite(days) && days > 0 ? Math.floor(days) : 0
+    let d = Number.isFinite(days) && days > 0 ? Math.floor(days) : 0
     let h = Number.isFinite(hours) && hours > 0 ? Math.floor(hours) : 0
+    if (d < 0) d = 0
+    if (d > 4) d = 4
     if (h > 23) h = 23
     if (h < 0) h = 0
     return { days: d, hours: h, totalHours: d * 24 + h }
@@ -83,9 +85,21 @@ export function DurationFields({
             id="duration-days"
             type="number"
             min="0"
+            max="4"
             placeholder="0"
             value={days}
             onChange={(e) => setDays(Number(e.target.value))}
+            onWheel={(e) => {
+              e.preventDefault()
+              const change = e.deltaY < 0 ? 1 : -1
+              setDays((prev) => {
+                const newValue = prev + change
+                if (newValue >= 0 && newValue <= 4) {
+                  return newValue
+                }
+                return prev
+              })
+            }}
           />
         </div>
         <div>
@@ -100,12 +114,22 @@ export function DurationFields({
             placeholder="0"
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
+            onWheel={(e) => {
+              e.preventDefault()
+              const change = e.deltaY < 0 ? 1 : -1
+              setHours((prev) => {
+                const newValue = prev + change
+                if (newValue >= 0 && newValue <= 23) {
+                  return newValue
+                }
+                return prev
+              })
+            }}
           />
         </div>
       </div>
 
       <div className="text-muted-foreground mt-4 text-xs">
-        合计时长：{normalized.totalHours} 小时
         {maxTotalHours ? `（上限建议：${maxTotalHours} 小时）` : null}
       </div>
 
