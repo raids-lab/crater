@@ -197,11 +197,23 @@ export const getNodeColumns = (
     {
       accessorKey: 'arch',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'架构'} />,
-      cell: ({ row }) => (
-        <Badge variant="outline" className="font-mono font-normal">
-          {row.getValue('arch')}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const arch = row.getValue<string>('arch')
+        const isArm = arch?.toLowerCase().includes('arm')
+        return (
+          <Badge
+            variant="outline"
+            className={cn('font-mono font-normal', {
+              'border-orange-600 bg-orange-50 text-orange-600 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-400':
+                isArm,
+              'border-sky-600 bg-blue-50 text-sky-600 dark:border-sky-500 dark:bg-blue-950 dark:text-sky-400':
+                !isArm,
+            })}
+          >
+            {arch}
+          </Badge>
+        )
+      },
     },
     {
       accessorKey: 'name',
