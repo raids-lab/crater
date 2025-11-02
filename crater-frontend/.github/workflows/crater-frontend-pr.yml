@@ -1,0 +1,77 @@
+# Copyright 2025 RAIDS Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: PR Build Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'hack/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'Makefile'
+      - '.github/dependabot.yml'
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set version variables
+        id: set-version
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          # PR builds are always development builds
+          APP_VERSION="$SHORT_SHA"
+          BUILD_TYPE="development"
+          
+          # Set outputs
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          
+          # Set environment variables
+          echo "VITE_APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "VITE_APP_COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_TYPE=$BUILD_TYPE" >> $GITHUB_ENV
+          echo "VITE_APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          echo "HUSKY=0" >> $GITHUB_ENV
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm build
+
