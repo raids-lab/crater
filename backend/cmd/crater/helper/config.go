@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
@@ -80,6 +81,14 @@ func (ci *ConfigInitializer) InitializeRegisterConfig() (*handler.RegisterConfig
 	prometheusClient := monitor.NewPrometheusClient(ci.backendConfig.PrometheusAPI)
 	registerConfig.PrometheusClient = prometheusClient
 
+	// init cron job manager
+	cronJobManager := cronjob.NewCronJobManager(
+		registerConfig.Client,
+		registerConfig.KubeClient,
+		prometheusClient,
+	)
+	registerConfig.CronJobManager = cronJobManager
+	go cronJobManager.SyncCronJob()
 	return registerConfig, nil
 }
 

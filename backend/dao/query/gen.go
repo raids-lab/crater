@@ -22,6 +22,8 @@ var (
 	AccountDataset  *accountDataset
 	Alert           *alert
 	ApprovalOrder   *approvalOrder
+	CronJobConfig   *cronJobConfig
+	CronJobRecord   *cronJobRecord
 	CudaBaseImage   *cudaBaseImage
 	Dataset         *dataset
 	Image           *image
@@ -45,6 +47,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	AccountDataset = &Q.AccountDataset
 	Alert = &Q.Alert
 	ApprovalOrder = &Q.ApprovalOrder
+	CronJobConfig = &Q.CronJobConfig
+	CronJobRecord = &Q.CronJobRecord
 	CudaBaseImage = &Q.CudaBaseImage
 	Dataset = &Q.Dataset
 	Image = &Q.Image
@@ -69,6 +73,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		AccountDataset:  newAccountDataset(db, opts...),
 		Alert:           newAlert(db, opts...),
 		ApprovalOrder:   newApprovalOrder(db, opts...),
+		CronJobConfig:   newCronJobConfig(db, opts...),
+		CronJobRecord:   newCronJobRecord(db, opts...),
 		CudaBaseImage:   newCudaBaseImage(db, opts...),
 		Dataset:         newDataset(db, opts...),
 		Image:           newImage(db, opts...),
@@ -94,6 +100,8 @@ type Query struct {
 	AccountDataset  accountDataset
 	Alert           alert
 	ApprovalOrder   approvalOrder
+	CronJobConfig   cronJobConfig
+	CronJobRecord   cronJobRecord
 	CudaBaseImage   cudaBaseImage
 	Dataset         dataset
 	Image           image
@@ -120,6 +128,8 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		AccountDataset:  q.AccountDataset.clone(db),
 		Alert:           q.Alert.clone(db),
 		ApprovalOrder:   q.ApprovalOrder.clone(db),
+		CronJobConfig:   q.CronJobConfig.clone(db),
+		CronJobRecord:   q.CronJobRecord.clone(db),
 		CudaBaseImage:   q.CudaBaseImage.clone(db),
 		Dataset:         q.Dataset.clone(db),
 		Image:           q.Image.clone(db),
@@ -153,6 +163,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		AccountDataset:  q.AccountDataset.replaceDB(db),
 		Alert:           q.Alert.replaceDB(db),
 		ApprovalOrder:   q.ApprovalOrder.replaceDB(db),
+		CronJobConfig:   q.CronJobConfig.replaceDB(db),
+		CronJobRecord:   q.CronJobRecord.replaceDB(db),
 		CudaBaseImage:   q.CudaBaseImage.replaceDB(db),
 		Dataset:         q.Dataset.replaceDB(db),
 		Image:           q.Image.replaceDB(db),
@@ -176,6 +188,8 @@ type queryCtx struct {
 	AccountDataset  IAccountDatasetDo
 	Alert           IAlertDo
 	ApprovalOrder   IApprovalOrderDo
+	CronJobConfig   ICronJobConfigDo
+	CronJobRecord   ICronJobRecordDo
 	CudaBaseImage   ICudaBaseImageDo
 	Dataset         IDatasetDo
 	Image           IImageDo
@@ -199,6 +213,8 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		AccountDataset:  q.AccountDataset.WithContext(ctx),
 		Alert:           q.Alert.WithContext(ctx),
 		ApprovalOrder:   q.ApprovalOrder.WithContext(ctx),
+		CronJobConfig:   q.CronJobConfig.WithContext(ctx),
+		CronJobRecord:   q.CronJobRecord.WithContext(ctx),
 		CudaBaseImage:   q.CudaBaseImage.WithContext(ctx),
 		Dataset:         q.Dataset.WithContext(ctx),
 		Image:           q.Image.WithContext(ctx),

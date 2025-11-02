@@ -8,6 +8,7 @@ import (
 
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
@@ -46,6 +47,8 @@ type RegisterConfig struct {
 
 	// ServiceManager 用于创建 Service 和 Ingress
 	ServiceManager crclient.ServiceManagerInterface
+
+	CronJobManager *cronjob.CronJobManager
 }
 
 // Registers is a slice of Manager Init functions.

@@ -42,6 +42,8 @@ func main() {
 		model.ImageAccount{},
 		model.CudaBaseImage{},
 		model.ApprovalOrder{},
+		model.CronJobRecord{},
+		model.CronJobConfig{},
 	)
 
 	// 执行并生成代码

@@ -1062,8 +1062,7 @@ definitions:
   internal_handler_operations.CronjobConfigs:
     properties:
       configs:
-        additionalProperties:
-          type: string
+        additionalProperties: {}
         type: object
       name:
         type: string
@@ -1071,6 +1070,8 @@ definitions:
         type: string
       suspend:
         type: boolean
+      type:
+        type: string
     type: object
   internal_handler_tool.PodIngress:
     properties:
@@ -2021,39 +2022,6 @@ paths:
       summary: 管理员更新镜像的任务类型
       tags:
       - ImagePack
-  /v1/admin/operations/cleanup:
-    delete:
-      consumes:
-      - application/json
-      description: Delete batch jobs older than 4 days and interactive jobs older
-        than 1 day
-      parameters:
-      - in: query
-        name: batchDays
-        type: integer
-      - in: query
-        name: interactiveDays
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: Cleanup jobs based on type and duration
-      tags:
-      - Operations
   /v1/admin/projects:
     get:
       consumes:
@@ -5310,42 +5278,6 @@ paths:
       summary: set LockTime of the job
       tags:
       - Operations
-  /v1/operations/auto:
-    delete:
-      consumes:
-      - application/json
-      description: check job list and delete not using gpu job
-      parameters:
-      - in: query
-        name: timeRange
-        required: true
-        type: integer
-      - in: query
-        name: util
-        type: integer
-      - in: query
-        name: waitTime
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: Auto delete not using gpu job list
-      tags:
-      - Operations
   /v1/operations/clear/locktime:
     put:
       consumes:
@@ -5446,36 +5378,6 @@ paths:
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       summary: set KeepWhenLowResourceUsage of the job to the opposite value
-      tags:
-      - Operations
-  /v1/operations/waiting/jupyter:
-    delete:
-      consumes:
-      - application/json
-      description: check pending jupyter jobs, delete if not scheduled
-      parameters:
-      - in: query
-        name: waitMinitues
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: Delete unscheduled jupyter jobs
       tags:
       - Operations
   /v1/operations/whitelist:

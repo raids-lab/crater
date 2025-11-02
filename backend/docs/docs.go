@@ -895,58 +895,6 @@ const docTemplate = `{
                 "responses": {}
             }
         },
-        "/v1/admin/operations/cleanup": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Delete batch jobs older than 4 days and interactive jobs older than 1 day",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Operations"
-                ],
-                "summary": "Cleanup jobs based on type and duration",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "name": "batchDays",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "interactiveDays",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "Request parameter error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "Other errors",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/admin/projects": {
             "get": {
                 "security": [
@@ -6055,64 +6003,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/operations/auto": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "check job list and delete not using gpu job",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Operations"
-                ],
-                "summary": "Auto delete not using gpu job list",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "name": "timeRange",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "name": "util",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "name": "waitTime",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "Request parameter error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "Other errors",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/operations/clear/locktime": {
             "put": {
                 "description": "clear LockTime of the job",
@@ -6250,54 +6140,6 @@ const docTemplate = `{
                     "Operations"
                 ],
                 "summary": "set KeepWhenLowResourceUsage of the job to the opposite value",
-                "responses": {
-                    "200": {
-                        "description": "Success",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "400": {
-                        "description": "Request parameter error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "Other errors",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/operations/waiting/jupyter": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "check pending jupyter jobs, delete if not scheduled",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Operations"
-                ],
-                "summary": "Delete unscheduled jupyter jobs",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "name": "waitMinitues",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "Success",
@@ -8948,9 +8790,7 @@ const docTemplate = `{
             "properties": {
                 "configs": {
                     "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                    "additionalProperties": {}
                 },
                 "name": {
                     "type": "string"
@@ -8960,6 +8800,9 @@ const docTemplate = `{
                 },
                 "suspend": {
                     "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },

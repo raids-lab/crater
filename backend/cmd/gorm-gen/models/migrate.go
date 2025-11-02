@@ -555,6 +555,78 @@ func main() {
 				return tx.Migrator().DropColumn(&Account{}, "UserDefaultQuota")
 			},
 		},
+		{
+			ID: "202510272300",
+			Migrate: func(tx *gorm.DB) error {
+				type CronJobRecord struct {
+					gorm.Model
+					Name        string                    `gorm:"type:varchar(128);not null;index;comment:Cronjob名称" json:"name"`
+					ExecuteTime time.Time                 `gorm:"not null;index;comment:执行时间" json:"executeTime"`
+					Status      model.CronJobRecordStatus `gorm:"type:varchar(128);not null;index;default:unknown;comment:执行状态" json:"status"`
+					Message     string                    `gorm:"type:text;comment:执行消息或错误信息" json:"message"`
+					JobData     datatypes.JSON            `gorm:"type:jsonb;comment:任务数据(包含提醒和删除的任务列表)" json:"jobData"`
+				}
+				return tx.Table("cron_job_records").Migrator().CreateTable(&CronJobRecord{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("cron_job_records")
+			},
+		},
+		{
+			ID: "202510202499",
+			Migrate: func(tx *gorm.DB) error {
+				type CronJobConfig struct {
+					gorm.Model
+					Name    string            `gorm:"type:varchar(128);not null;index;unique;comment:Cronjob配置名称" json:"name"`
+					Type    model.CronJobType `gorm:"type:varchar(128);not null;index;comment:Cronjob类型" json:"type"`
+					Spec    string            `gorm:"type:varchar(128);not null;index;comment:Cron调度规范" json:"spec"`
+					Suspend bool              `gorm:"not null;default:false;comment:是否暂停执行" json:"suspend"`
+					Config  datatypes.JSON    `gorm:"type:jsonb;comment:Cronjob配置数据" json:"config"`
+					EntryID int               `gorm:"type:int;comment:Cronjob标识ID" json:"entry_id"`
+				}
+				if err := tx.Table("cron_job_configs").Migrator().CreateTable(&CronJobConfig{}); err != nil {
+					return err
+				}
+
+				initialConfigs := []*CronJobConfig{
+					{
+						Name:    "clean-long-time-job",
+						Type:    model.CronJobTypeCleanerFunc,
+						Spec:    "*/5 * * * *",
+						Suspend: true,
+						Config:  datatypes.JSON(`{"batchDays": "4", "interactiveDays": 4}`),
+						EntryID: -1,
+					},
+					{
+						Name:    "clean-low-gpu-util-job",
+						Type:    model.CronJobTypeCleanerFunc,
+						Spec:    "*/5 * * * *",
+						Suspend: true,
+						Config:  datatypes.JSON(`{"util": 0, "waitTime": 30, "timeRange": 90}`),
+						EntryID: -1,
+					},
+					{
+						Name:    "clean-waiting-jupyter",
+						Type:    model.CronJobTypeCleanerFunc,
+						Spec:    "*/5 * * * *",
+						Suspend: true,
+						Config:  datatypes.JSON(`{"waitMinitues": 5}`),
+						EntryID: -1,
+					},
+				}
+
+				for _, config := range initialConfigs {
+					if err := tx.Where("name = ?", config.Name).FirstOrCreate(&config).Error; err != nil {
+						return err
+					}
+				}
+
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("cron_job_configs")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
