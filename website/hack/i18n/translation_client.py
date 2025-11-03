@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict
 import re
 
-API_URL = "http://192.168.5.32:32006/v1/chat/completions"
+API_URL = "http://127.0.0.1:8000/v1/chat/completions"
 MODEL_PATH = "Qwen3-30B-A3B-Instruct-2507-Int8"  # 请按需修改
 MAX_RETRIES = 3
 
