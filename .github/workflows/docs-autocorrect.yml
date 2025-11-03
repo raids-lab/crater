@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: AutoCorrect Website Files
+name: AutoCorrect Docs
 
 on:
   pull_request_target:
