@@ -1,0 +1,69 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/crater/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--config-file",
+                "${workspaceFolder}/etc/debug-config.yaml"
+            ],
+            "env": {
+                "KUBECONFIG": "${env:HOME}/.kube/config",
+                "NO_PROXY": "k8s.cluster.master"
+            }
+        },
+        {
+            "name": "ACT GPU Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/crater/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--config-file",
+                "${workspaceFolder}/etc/debug-config-actgpu.yaml"
+            ],
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig_act"
+            }
+        },
+        {
+            "name": "Little Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/crater/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--config-file",
+                "${workspaceFolder}/etc/debug-config-little.yaml"
+            ],
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig_little"
+            }
+        },
+        {
+            "name": "Ali Server",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/crater/main.go",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--config-file",
+                "${workspaceFolder}/etc/debug-config-ali.yaml"
+            ],
+            "env": {
+                "KUBECONFIG": "${workspaceFolder}/kubeconfig_ali"
+            }
+        }
+    ]
+}
