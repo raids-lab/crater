@@ -1,0 +1,72 @@
+{
+	// Place your web-backend workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
+	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
+	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
+	// Placeholders with the same ids are connected.
+	// Example:
+	// "Print to console": {
+	// 	"scope": "javascript,typescript",
+	// 	"prefix": "log",
+	// 	"body": [
+	// 		"console.log('$1');",
+	// 		"$2"
+	// 	],
+	// 	"description": "Log output to console"
+	// }
+	"Swagger": {
+		"prefix": "swa",
+		"body": [
+			"// ${1:函数名称} godoc",
+			"// @Summary ${2:函数功能摘要}",
+			"// @Description ${3:介绍函数的主要实现逻辑}",
+			"// @Tags ${4:接口对应的标签}",
+			"// @Accept json",
+			"// @Produce json",
+			"// @Security Bearer",
+			"// @Param ${5:参数名} ${6:参数类型 (query、body、path)} ${7:数据类型(string、int, uint, uint32, uint64、float32、bool、file、自定义结构体)} ${8:是否必填(true、false)} \"${9:参数描述}\"",
+			"// @Success 200 {object} resputil.Response[${10:返回值类型}] \"${11:成功返回值描述}\"",
+			"// @Failure 400 {object} resputil.Response[any] \"Request parameter error\"",
+			"// @Failure 500 {object} resputil.Response[any] \"Other errors\"",
+			"// @Router ${13:路由地址，路由变量用大括号括起来} [${14:HTTP方法 get/post/put/delete}]"
+		],
+		"description": "快速生成 Swagger 注释，使用 TAB 键切换光标位置"
+	},
+	"New Gin Handler": {
+		"prefix": "ngh",
+		"body": [
+			"package ${TM_DIRECTORY/(.*)\\\/(.+)$/$2/}",
+			"",
+			"import (",
+			"  \"github.com/gin-gonic/gin\"",
+			"",
+			"  \"github.com/raids-lab/crater/internal/handler\"",
+			")",
+			"",
+			"//nolint:gochecknoinits // This is the standard way to register a gin handler.",
+			"func init() {",
+			"  handler.Registers = append(handler.Registers, New${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr)",
+			"}",
+			"",
+			"type ${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr struct {",
+			"  name string",
+			"}",
+			"",
+			"func New${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr(_ handler.RegisterConfig) handler.Manager {",
+			"  return &${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr{",
+			"    name: \"${TM_FILENAME_BASE/(.*)/${1:/downcase}/}\",",
+			"}",
+			"}",
+			"",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) GetName() string { return mgr.name }",
+			"",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) RegisterPublic(_ *gin.RouterGroup) {}",
+			"",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) RegisterProtected(_ *gin.RouterGroup) {}",
+			"",
+			"func (mgr *${TM_FILENAME_BASE/(.*)/${1:/pascalcase}/}Mgr) RegisterAdmin(_ *gin.RouterGroup) {}"
+		],
+		"description": "New Gin Handler"
+	}
+}
