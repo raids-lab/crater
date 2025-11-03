@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Build Check
+name: Docs Build Check
 
 on:
   pull_request:
     paths:
-      - '.github/**'
-      - 'crater-website/src/**'
-      - 'crater-website/content/**'
-      - 'crater-website/package.json'
-      - 'crater-website/pnpm-lock.yaml'
+      - ".github/workflows/docs-build.yml"
+      - "crater-website/src/**"
+      - "crater-website/content/**"
+      - "crater-website/package.json"
+      - "crater-website/pnpm-lock.yaml"
 
 jobs:
   build:

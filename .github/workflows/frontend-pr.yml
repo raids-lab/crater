@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: PR Build Test
+name: Frontend PR Build Test
 
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'hack/**'
-      - 'docs/**'
-      - 'README.md'
-      - 'LICENSE'
-      - '.gitignore'
-      - 'Makefile'
-      - '.github/dependabot.yml'
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-pr.yml"
 
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -40,16 +38,16 @@ jobs:
         run: |
           COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA="${COMMIT_SHA:0:7}"
-          
+
           # PR builds are always development builds
           APP_VERSION="$SHORT_SHA"
           BUILD_TYPE="development"
-          
+
           # Set outputs
           echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
           echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
-          
+
           # Set environment variables
           echo "VITE_APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
           echo "VITE_APP_COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
@@ -67,11 +65,11 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: 'pnpm'
+          cache: "pnpm"
+          cache-dependency-path: "frontend/pnpm-lock.yaml"
 
       - name: Install dependencies
         run: pnpm install
 
       - name: Build project
         run: pnpm build
-
