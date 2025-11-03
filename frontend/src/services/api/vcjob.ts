@@ -518,8 +518,6 @@ export interface CronJobRecordListReq {
   startTime?: string
   endTime?: string
   status?: string
-  pageNum: number
-  pageSize: number
 }
 
 export interface CronJobRecordListResp {
