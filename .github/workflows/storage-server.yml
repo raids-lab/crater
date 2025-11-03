@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Storage Server Check Code Style, Build and Push Docker Image
+name: Storage Server Build
 
 on:
   push:
