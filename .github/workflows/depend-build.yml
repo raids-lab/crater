@@ -18,8 +18,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "backend/hack/depend-image-dockerfile/**"
       - ".github/workflows/depend-build.yml"
+      - "hack/depend-image-dockerfile/**"
 
 env:
   REGISTRY: ghcr.io
@@ -50,11 +50,11 @@ jobs:
         with:
           filters: |
             buildx-client:
-              - 'backend/hack/depend-image-dockerfile/buildx-client/**'
+              - 'hack/depend-image-dockerfile/buildx-client/**'
             envd-client:
-              - 'backend/hack/depend-image-dockerfile/envd-client/**'
+              - 'hack/depend-image-dockerfile/envd-client/**'
             nerdctl-client:
-              - 'backend/hack/depend-image-dockerfile/nerdctl-client/**'
+              - 'hack/depend-image-dockerfile/nerdctl-client/**'
 
   build-buildx-client:
     runs-on: ubuntu-latest
@@ -94,8 +94,8 @@ jobs:
       - name: Build and push buildx-client image
         uses: docker/build-push-action@v6
         with:
-          context: backend/hack/depend-image-dockerfile/${{ env.BUILDX_CLIENT }}
-          file: backend/hack/depend-image-dockerfile/${{ env.BUILDX_CLIENT }}/Dockerfile
+          context: hack/depend-image-dockerfile/${{ env.BUILDX_CLIENT }}
+          file: hack/depend-image-dockerfile/${{ env.BUILDX_CLIENT }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -139,8 +139,8 @@ jobs:
       - name: Build and push envd-client image
         uses: docker/build-push-action@v6
         with:
-          context: backend/hack/depend-image-dockerfile/${{ env.ENVD_CLIENT }}
-          file: backend/hack/depend-image-dockerfile/${{ env.ENVD_CLIENT }}/Dockerfile
+          context: hack/depend-image-dockerfile/${{ env.ENVD_CLIENT }}
+          file: hack/depend-image-dockerfile/${{ env.ENVD_CLIENT }}/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -184,8 +184,8 @@ jobs:
       - name: Build and push nerdctl-client image
         uses: docker/build-push-action@v6
         with:
-          context: backend/hack/depend-image-dockerfile/${{ env.NERDCTL_CLIENT }}
-          file: backend/hack/depend-image-dockerfile/${{ env.NERDCTL_CLIENT }}/Dockerfile
+          context: hack/depend-image-dockerfile/${{ env.NERDCTL_CLIENT }}
+          file: hack/depend-image-dockerfile/${{ env.NERDCTL_CLIENT }}/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
