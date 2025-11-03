@@ -111,8 +111,6 @@ export default function CronJobRecordsTable() {
       const res = await apiAdminCronJobRecordList({
         startTime: dateRange?.from?.toISOString(),
         endTime: dateRange?.to?.toISOString(),
-        pageNum: 1,
-        pageSize: 10000, // 获取所有记录，客户端分页
       })
       if (res.code === 0 && res.data) {
         return res.data.records || []
