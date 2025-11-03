@@ -14,10 +14,10 @@ on:
     branches:
       - main
     paths:
-      - 'crater-website/content/docs/**'
-      - 'crater-website/messages/**'
-      - 'crater-website/src/i18n/config.ts'
-      - '.github/workflows/auto-translate.yml'
+      - ".github/workflows/docs-auto-translate.yml"
+      - "crater-website/content/docs/**"
+      - "crater-website/messages/**"
+      - "crater-website/src/i18n/config.ts"
 
 jobs:
   auto-translate:
@@ -40,7 +40,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.generate-token.outputs.token }}
-      
+
       - name: Install GitHub CLI and jq
         run: |
           sudo apt-get update
@@ -55,7 +55,7 @@ jobs:
           echo "Checking commit message for PR reference..."
           # 从 'Merge pull request #123 from ...' 中提取 PR 号
           PR_NUMBER=$(echo "${{ github.event.head_commit.message }}" | sed -n 's/Merge pull request #\([0-9]\+\).*/\1/p')
-          
+
           if [[ -z "$PR_NUMBER" ]]; then
             echo "Commit is not a merge commit, or PR number could not be extracted. Proceeding."
             echo "should_ignore=false" >> $GITHUB_OUTPUT
@@ -64,9 +64,9 @@ jobs:
 
           echo "Found associated PR #$PR_NUMBER. Checking its labels..."
           PR_LABELS=$(gh pr view $PR_NUMBER --json labels --jq '.labels.[].name')
-          
+
           echo "PR labels: $PR_LABELS"
-          
+
           if echo "$PR_LABELS" | grep -q -w "no-translation"; then
             echo "PR #$PR_NUMBER has the 'no-translation' label. Stopping workflow."
             echo "should_ignore=true" >> $GITHUB_OUTPUT
@@ -84,7 +84,7 @@ jobs:
         run: |
           BASE_REF="${{ github.event.before }}"
           HEAD_REF="${{ github.event.after }}"
-          
+
           # 定义需要翻译的路径模式
           TRANSLATION_PATHS_PATTERN="^crater-website/(content/docs/|messages/)"
 
@@ -106,14 +106,14 @@ jobs:
           # 将过滤后的文件再次分为 Added 和 Modified
           ADDED_FILES=$(echo "$FILTERED_FILES" | xargs -n1 git diff -w --name-only --diff-filter=A --no-renames $BASE_REF...$HEAD_REF --)
           MODIFIED_FILES=$(echo "$FILTERED_FILES" | xargs -n1 git diff -w --name-only --diff-filter=M --no-renames $BASE_REF...$HEAD_REF --)
-          
+
           FINAL_FILES_TO_PROCESS="$ADDED_FILES"
           echo "Found added files (will always be translated):"
           echo "${ADDED_FILES:-"None"}"
 
           echo "Found modified files (checking PR labels):"
           echo "${MODIFIED_FILES:-"None"}"
-          
+
           # 3. 遍历已修改的文件，检查其来源 PR
           for file in $MODIFIED_FILES; do
             COMMIT_HASH=$(git log -1 -w --pretty=format:%H -- $file)
@@ -150,7 +150,7 @@ jobs:
           echo "has_files=true" >> $GITHUB_OUTPUT
           echo "Final list of files to process:"
           echo "$FINAL_FILES_TO_PROCESS"
-          
+
           # Diff 生成逻辑
           mkdir -p .diff_cache
           for file in $FINAL_FILES_TO_PROCESS; do
@@ -182,7 +182,7 @@ jobs:
           # 保存当前的凭据管理器设置。如果没有设置，则保存 "none" 字符串
           CURRENT_HELPER=$(git config --global --get credential.helper || echo "none")
           echo "saved_helper=$CURRENT_HELPER" >> $GITHUB_OUTPUT
-          
+
           echo "Temporarily disabling credential helper for this job..."
           # 先移除，再设置为空，确保覆盖所有情况
           git config --global --unset credential.helper || true
@@ -201,9 +201,9 @@ jobs:
           title: "🌐 [Auto-Translate] 同步多语言文件"
           body: |
             由 **${{ secrets.APP_NAME }}** 机器人根据最新变更自动同步翻译。
-            
+
             **触发事件:** `${{ github.event_name }}`
-            
+
             *此 PR 只包含本次事件中独有的变更，已智能排除合并主干所引入的 commits。*
           branch: "feature/auto-translate-${{ github.run_id }}"
           delete-branch: true
@@ -220,7 +220,7 @@ jobs:
           SAVED_HELPER="${{ steps.setup-git.outputs.saved_helper }}"
           # 必须先移除我们设置的空帮助程序
           git config --global --unset credential.helper || true
-          
+
           if [[ "$SAVED_HELPER" != "none" ]]; then
             echo "Restoring helper to: $SAVED_HELPER"
             git config --global credential.helper "$SAVED_HELPER"
