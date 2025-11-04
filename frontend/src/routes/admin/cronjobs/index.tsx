@@ -38,10 +38,10 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 
 import TipBadge from '@/components/badge/tip-badge'
 
@@ -328,9 +328,12 @@ export default function CronPolicy({ className }: { className?: string }) {
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            <Switch
+                              checked={!field.value}
+                              onCheckedChange={(checked) => field.onChange(!checked)}
+                            />
                           </FormControl>
-                          <span>{t('cronPolicy.suspend')}</span>
+                          <span>{t('cronPolicy.enable')}</span>
                         </FormItem>
                       )}
                     />
@@ -406,9 +409,12 @@ export default function CronPolicy({ className }: { className?: string }) {
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            <Switch
+                              checked={!field.value}
+                              onCheckedChange={(checked) => field.onChange(!checked)}
+                            />
                           </FormControl>
-                          <span>{t('cronPolicy.suspend')}</span>
+                          <span>{t('cronPolicy.enable')}</span>
                         </FormItem>
                       )}
                     />
@@ -505,9 +511,12 @@ export default function CronPolicy({ className }: { className?: string }) {
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            <Switch
+                              checked={!field.value}
+                              onCheckedChange={(checked) => field.onChange(!checked)}
+                            />
                           </FormControl>
-                          <span>{t('cronPolicy.suspend')}</span>
+                          <span>{t('cronPolicy.enable')}</span>
                         </FormItem>
                       )}
                     />

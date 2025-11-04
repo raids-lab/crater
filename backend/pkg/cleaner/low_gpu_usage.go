@@ -36,7 +36,6 @@ func CleanLowGPUUsageJobs(c context.Context, clients *Clients, req *CleanLowGPUU
 		err := errors.New("timeRange and waitTime must be greater than 0")
 		return nil, err
 	}
-
 	remindJobList, deletionJobList := cleanLowGPUUsageJobs(c, clients, req.TimeRange, req.WaitTime, req.Util)
 
 	ret := map[string][]string{
