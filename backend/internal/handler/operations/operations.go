@@ -57,6 +57,9 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/add/locktime", mgr.AddLockTime)
 	g.PUT("/clear/locktime", mgr.ClearLockTime)
 
+	g.POST("/clean/clean-low-gpu-usage-job", mgr.HandleLowGPUUsageJobs)
+	g.POST("/clean/clean-long-running-job", mgr.HandleLongTimeRunningJobs)
+	g.POST("/clean/clean-waiting-jupyter-job", mgr.HandleWaitingJupyterJobs)
 	g.POST("/cronjob/config/name", mgr.GetCronjobNames)
 	g.POST("/cronjob/record/time", mgr.GetCronjobRecordTimeRange)
 	g.POST("/cronjob/record/list", mgr.GetCronjobRecords)
