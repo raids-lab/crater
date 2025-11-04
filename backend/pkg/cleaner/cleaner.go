@@ -26,7 +26,7 @@ const (
 const (
 	CLEAN_LONG_TIME_RUNNING_JOB = "clean-long-time-job"
 	CLEAN_LOW_GPU_USAGE_JOB     = "clean-low-gpu-util-job"
-	CLEAN_WAITING_JUPYTER_JOB   = "clean-waiting-jupyter-job"
+	CLEAN_WAITING_JUPYTER_JOB   = "clean-waiting-jupyter"
 )
 
 // Clients 包含清理任务所需的所有客户端
