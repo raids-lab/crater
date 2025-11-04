@@ -16,8 +16,8 @@ const vendorColors: Record<string, string> = {
   'intel.com': 'bg-blue-600 ring-blue-600 text-white', // Intel 蓝色
   'qualcomm.com': 'bg-blue-500 ring-blue-500 text-white', // 高通蓝色
   'broadcom.com': 'bg-orange-600 ring-orange-600 text-white', // 博通橙色
-  'xilinx.com': 'bg-purple-600 text-white', // Xilinx 紫色
-  default: 'bg-gray-600 text-white', // 默认颜色
+  'xilinx.com': 'bg-purple-600 ring-purple-600 text-purple-600', // Xilinx 紫色
+  default: 'bg-gray-600 ring-gray-600 text-gray-600', // 默认颜色
 }
 
 function parseAcceleratorString(input: string): AcceleratorInfo {
