@@ -17,7 +17,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { CalendarIcon, CopyIcon, Trash2Icon } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DateRange } from 'react-day-picker'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -134,14 +134,17 @@ export default function CronJobRecordsTable() {
     })
   }
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success(t('cronJob.record.table.copySuccess'))
-    } catch (error) {
-      toast.error(t('cronJob.record.table.copyError') + error)
-    }
-  }
+  const copyToClipboard = useCallback(
+    async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text)
+        toast.success(t('cronJob.record.table.copySuccess'))
+      } catch (error) {
+        toast.error(t('cronJob.record.table.copyError') + error)
+      }
+    },
+    [t]
+  )
 
   const formatJobData = (jobData: unknown): string => {
     return JSON.stringify(jobData, undefined, 2)
@@ -284,7 +287,7 @@ export default function CronJobRecordsTable() {
         },
       },
     ]
-  }, [t])
+  }, [t, copyToClipboard])
 
   // 配置 Toolbar
   const toolbarConfig: DataTableToolbarConfig = {
