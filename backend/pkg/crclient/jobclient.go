@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +71,13 @@ func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname stri
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
+	
+	// generate date in yymmdd format
+	now := time.Now()
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, int(now.Month()), now.Day())
+	
+	// format: {taskName}-{date}-{taskID}
+	jobname = fmt.Sprintf("%s-%s-%d", taskName, dateStr, task.ID)
 	jobname = strings.ReplaceAll(jobname, "_", "-")
 	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
@@ -145,7 +152,13 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
+	
+	// generate date in yymmdd format
+	now := time.Now()
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, int(now.Month()), now.Day())
+	
+	// format: {taskName}-{date}-{taskID}
+	jobname = fmt.Sprintf("%s-%s-%d", taskName, dateStr, task.ID)
 	jobname = strings.ReplaceAll(jobname, "_", "-")
 	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))

@@ -2,6 +2,7 @@ package vcjob
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -79,8 +80,10 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		return
 	}
 
-	// Ingress base URL
-	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:6])
+	// Ingress base URL with date (YYMMDD format)
+	now := time.Now()
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, now.Month(), now.Day())
+	baseURL := fmt.Sprintf("%s-%s-%s", token.Username, dateStr, uuid.New().String()[:6])
 	jobName := fmt.Sprintf("tf-%s", baseURL)
 
 	// 1. Volume Mounts

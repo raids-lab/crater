@@ -5,6 +5,7 @@ import (
 	"log"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -79,8 +80,10 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// Ingress base URL
-	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
+	// Ingress base URL with date (YYMMDD format)
+	now := time.Now()
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, now.Month(), now.Day())
+	baseURL := fmt.Sprintf("%s-%s-%s", token.Username, dateStr, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)
 
 	// Command to start Jupyter
