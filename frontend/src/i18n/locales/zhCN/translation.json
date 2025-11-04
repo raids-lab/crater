@@ -223,6 +223,7 @@
   "cronPolicy.runJobSuccess": "立即清理执行成功",
   "cronPolicy.schedule": "执行计划",
   "cronPolicy.suspend": "暂停",
+  "cronPolicy.enable": "启用",
   "cronPolicy.timeRange": "时间范围（分钟，TIME_RANGE）",
   "cronPolicy.title": "定时策略",
   "cronPolicy.util": "利用率（UTIL）",

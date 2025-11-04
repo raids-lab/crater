@@ -25,6 +25,10 @@ func CleanWaitingJupyterJobs(c context.Context, clients *Clients, req *CancelWai
 		err := errors.New("invalid request")
 		return nil, err
 	}
+	if req.WaitMinitues <= 0 {
+		err := errors.New("waitMinitues must be greater than 0")
+		return nil, err
+	}
 	deletedJobs := deleteUnscheduledJupyterJobs(c, clients, req.WaitMinitues)
 	ret := map[string][]string{
 		"deleted": deletedJobs,

@@ -1,11 +1,16 @@
 #!/bin/sh
-if ! (make lint); then
-    echo "Lint fail!"
+if ! (cd backend && make lint); then
+    echo "Backend Lint fail!"
+    exit 1
+fi
+
+if ! (cd frontend && make lint); then
+    echo "Frontend Lint fail!"
     exit 1
 fi
 
 # generate swagger
-if ! (make docs); then
+if ! (cd backend && make docs); then
     echo "Make docs fail!"
     exit 1
 fi

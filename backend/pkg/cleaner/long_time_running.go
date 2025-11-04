@@ -25,14 +25,25 @@ func CleanLongTimeRunningJobs(c context.Context, clients *Clients, req *CleanLon
 		err := errors.New("invalid request")
 		return nil, err
 	}
-
-	batchJobTimeout := 4 * 24 * time.Hour
-	interactiveJobTimeout := 24 * time.Hour
+	var (
+		batchJobTimeout       time.Duration
+		interactiveJobTimeout time.Duration
+	)
 	if req.BatchDays != nil {
-		batchJobTimeout = time.Duration(*req.BatchDays) * 24 * time.Hour
+		batchDays := *req.BatchDays
+		if batchDays <= 0 {
+			err := errors.New("batchDays must be greater than 0")
+			return nil, err
+		}
+		batchJobTimeout = time.Duration(batchDays) * 24 * time.Hour
 	}
 	if req.InteractiveDays != nil {
-		interactiveJobTimeout = time.Duration(*req.InteractiveDays) * 24 * time.Hour
+		interactiveDays := *req.InteractiveDays
+		if interactiveDays <= 0 {
+			err := errors.New("interactiveDays must be greater than 0")
+			return nil, err
+		}
+		interactiveJobTimeout = time.Duration(interactiveDays) * 24 * time.Hour
 	}
 
 	defaultRemindTime := 24 * time.Hour
