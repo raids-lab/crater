@@ -81,20 +81,20 @@ func (ci *ConfigInitializer) InitializeRegisterConfig() (*handler.RegisterConfig
 	prometheusClient := monitor.NewPrometheusClient(ci.backendConfig.PrometheusAPI)
 	registerConfig.PrometheusClient = prometheusClient
 
-	// init cron job manager
-	cronJobManager := cronjob.NewCronJobManager(
-		registerConfig.Client,
-		registerConfig.KubeClient,
-		prometheusClient,
-	)
-	registerConfig.CronJobManager = cronJobManager
-	go cronJobManager.SyncCronJob()
 	return registerConfig, nil
 }
 
 // SetupManagerDependencies 设置管理器依赖项
 func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.RegisterConfig, mgr ctrl.Manager) {
 	registerConfig.Client = mgr.GetClient()
+
+	// init cron job manager
+	registerConfig.CronJobManager = cronjob.NewCronJobManager(
+		registerConfig.Client,
+		registerConfig.KubeClient,
+		registerConfig.PrometheusClient,
+	)
+	go registerConfig.CronJobManager.SyncCronJob()
 
 	// 初始化 ServiceManager
 	serviceManager := crclient.NewServiceManager(mgr.GetClient(), registerConfig.KubeClient)

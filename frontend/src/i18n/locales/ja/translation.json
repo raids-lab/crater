@@ -219,6 +219,7 @@
   "cronPolicy.runJob": "すぐにクリーンアップ",
   "cronPolicy.schedule": "実行スケジュール",
   "cronPolicy.suspend": "一時停止",
+  "cronPolicy.enable": "有効化",
   "cronPolicy.timeRange": "時間範囲（分、TIME_RANGE）",
   "cronPolicy.title": "スケジュールポリシー",
   "cronPolicy.util": "利用率（UTIL）",

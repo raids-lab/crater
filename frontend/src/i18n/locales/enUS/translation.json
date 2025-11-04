@@ -223,6 +223,7 @@
   "cronPolicy.runJobSuccess": "Immediate cleanup executed successfully",
   "cronPolicy.schedule": "Execution Plan",
   "cronPolicy.suspend": "Suspend",
+  "cronPolicy.enable": "Enable",
   "cronPolicy.timeRange": "Time Range (minutes, TIME_RANGE)",
   "cronPolicy.title": "Scheduled Policy",
   "cronPolicy.util": "Utilization (UTIL)",

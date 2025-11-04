@@ -219,6 +219,7 @@
   "cronPolicy.runJob": "즉시 정리",
   "cronPolicy.schedule": "실행 일정",
   "cronPolicy.suspend": "일시 중지",
+  "cronPolicy.enable": "활성화",
   "cronPolicy.timeRange": "시간 범위(분, TIME_RANGE)",
   "cronPolicy.title": "시간 조정 정책",
   "cronPolicy.util": "사용률 (UTIL)",
