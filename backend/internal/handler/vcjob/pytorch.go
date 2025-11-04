@@ -46,7 +46,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 
 	// base URL with date (YYMMDD format)
 	now := time.Now()
-	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, now.Month(), now.Day())
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%twoDigitYearDivisor, now.Month(), now.Day())
 	baseURL := fmt.Sprintf("%s-%s-%s", token.Username, dateStr, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("py-%s", baseURL)
 

@@ -28,9 +28,10 @@ import (
 )
 
 const (
-	ThreeDaySeconds    int32 = 259200
-	IngressLabelPrefix       = "ingress.crater.raids.io/" // Annotation Ingress Key
-	NodePortLabelKey         = "nodeport.crater.raids.io/"
+	ThreeDaySeconds     int32 = 259200
+	IngressLabelPrefix        = "ingress.crater.raids.io/" // Annotation Ingress Key
+	NodePortLabelKey          = "nodeport.crater.raids.io/"
+	twoDigitYearDivisor       = 100 // Used to get two-digit year from four-digit year
 )
 
 type (
@@ -82,7 +83,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	// Ingress base URL with date (YYMMDD format)
 	now := time.Now()
-	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, now.Month(), now.Day())
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%twoDigitYearDivisor, now.Month(), now.Day())
 	baseURL := fmt.Sprintf("%s-%s-%s", token.Username, dateStr, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("jupyter-%s", baseURL)
 

@@ -28,8 +28,9 @@ type JobControl struct {
 }
 
 const (
-	JupyterPort   = 8888
-	ServicePrefix = "svc-"
+	JupyterPort         = 8888
+	ServicePrefix       = "svc-"
+	twoDigitYearDivisor = 100 // Used to get two-digit year from four-digit year
 )
 
 func (c *JobControl) GetJobStatus(task *model.AITask) (aijobapi.JobPhase, error) {
@@ -71,11 +72,9 @@ func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname stri
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	
 	// generate date in yymmdd format
 	now := time.Now()
-	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, int(now.Month()), now.Day())
-	
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%twoDigitYearDivisor, int(now.Month()), now.Day())
 	// format: {taskName}-{date}-{taskID}
 	jobname = fmt.Sprintf("%s-%s-%d", taskName, dateStr, task.ID)
 	jobname = strings.ReplaceAll(jobname, "_", "-")
@@ -152,11 +151,9 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	
 	// generate date in yymmdd format
 	now := time.Now()
-	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, int(now.Month()), now.Day())
-	
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%twoDigitYearDivisor, int(now.Month()), now.Day())
 	// format: {taskName}-{date}-{taskID}
 	jobname = fmt.Sprintf("%s-%s-%d", taskName, dateStr, task.ID)
 	jobname = strings.ReplaceAll(jobname, "_", "-")

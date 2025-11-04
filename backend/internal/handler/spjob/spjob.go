@@ -36,7 +36,10 @@ func init() {
 	}
 }
 
-const AnnotationKeyTaskName = "crater.raids.io/task-name"
+const (
+	AnnotationKeyTaskName = "crater.raids.io/task-name"
+	twoDigitYearDivisor   = 100 // Used to get two-digit year from four-digit year
+)
 
 var dlNamespace = config.GetConfig().Namespaces.Job
 var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
@@ -130,7 +133,7 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 
 	// Ingress base URL with date (YYMMDD format)
 	now := time.Now()
-	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%100, now.Month(), now.Day())
+	dateStr := fmt.Sprintf("%02d%02d%02d", now.Year()%twoDigitYearDivisor, now.Month(), now.Day())
 	baseURL := fmt.Sprintf("%s-%s-%s", token.Username, dateStr, uuid.New().String()[:5])
 	jobName := fmt.Sprintf("sparse-%s", baseURL)
 
