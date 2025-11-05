@@ -36,6 +36,7 @@ export type KanikoInfoResponse = {
   description: string
   podName: string
   podNameSpace: string
+  nodeName: string
   userInfo: IUserInfo
   tags: string[]
   imagepackName: string

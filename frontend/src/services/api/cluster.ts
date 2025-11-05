@@ -116,12 +116,6 @@ export enum TaintEffect {
   NoExecute = 'NoExecute',
 }
 
-export const CraterArmTaint = {
-  key: 'crater.raids.io/architecture',
-  value: 'arm',
-  effect: TaintEffect.NoSchedule,
-}
-
 export const JoinTaint = (taint: IClusterNodeTaint) => `${taint.key}=${taint.value}:${taint.effect}`
 
 export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('nodes')
