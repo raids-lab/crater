@@ -38,7 +38,6 @@ import { cn } from '@/lib/utils'
 
 import AcceleratorBadge from '../badge/accelerator-badge'
 
-const KoordinatorDomain = 'koordinator.sh'
 
 // 资源使用情况计算结果接口
 export interface ResourceUsageInfo {
@@ -74,8 +73,7 @@ export function calculateResourceUsage(
           if (
             allocatable &&
             allocatable[accelerator] &&
-            allocatable[accelerator] !== '0' &&
-            !accelerator.includes(KoordinatorDomain)
+            allocatable[accelerator] !== '0'
           ) {
             resourceAllocatable = allocatable[accelerator]
             acceleratorName = accelerator
