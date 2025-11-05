@@ -873,6 +873,8 @@
   "userTable.roleUpdateSuccess": "User {{name}} permissions have been updated",
   "userTable.roles.0": "Regular User",
   "userTable.roles.1": "Administrator",
+  "userTable.roles.2": "User",
+  "userTable.roles.3": "Administrator",
   "userTable.selfDeleteError": "You cannot delete yourself. To delete, please log in with a different user.",
   "userTable.title": "User Management",
   "volumeMounts.addButton": "Add {{mountType}}",

@@ -880,6 +880,8 @@
   "userTable.roleUpdateSuccess": "用户 {{name}} 权限已更新",
   "userTable.roles.0": "普通用户",
   "userTable.roles.1": "管理员",
+  "userTable.roles.2": "用户",
+  "userTable.roles.3": "管理员",
   "userTable.selfDeleteError": "无法删除自己，如需删除请换个用户登录",
   "userTable.title": "用户管理",
   "volumeMounts.addButton": "添加 {{mountType}}",
