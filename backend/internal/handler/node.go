@@ -41,6 +41,13 @@ type NodeTaint struct {
 	Key    string `json:"key"`
 	Value  string `json:"value"`
 	Effect string `json:"effect"`
+	// 操作原因
+	Reason string `json:"reason"`
+}
+
+// 新增结构体用于禁止调度请求
+type NodeScheduleRequest struct {
+	Reason string `json:"reason"` // 操作原因
 }
 
 type NodeMark struct {
@@ -144,24 +151,32 @@ func (mgr *NodeMgr) GetNode(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			name	path		string						true	"节点名称"
+//	@Param			name	path		string	true	"节点名称"
+//	@Param			body	body		NodeScheduleRequest true	"请求体，包含 reason 字段"					true	"节点名称"
 //	@Success		200		{object}	resputil.Response[string]	"成功返回值"
 //	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
 //	@Failure		500		{object}	resputil.Response[any]		"其他错误"
 //	@Router			/v1/nodes/{name}  [put]
 func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
-	var req NodePodRequest
-	if err := c.ShouldBindUri(&req); err != nil {
+	var urlReq NodePodRequest
+	if err := c.ShouldBindUri(&urlReq); err != nil {
 		klog.Infof("Bind URI failed, err: %v", err)
 		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
 		return
 	}
-	err := mgr.nodeClient.UpdateNodeunschedule(c, req.Name)
+	var bodyReq NodeScheduleRequest
+	// 绑定 JSON body 获取 reason 字段
+	if err := c.ShouldBindJSON(&bodyReq); err != nil {
+		klog.Infof("Bind JSON failed, err: %v", err)
+		resputil.Error(c, "Invalid request body", resputil.NotSpecified)
+		return
+	}
+	err := mgr.nodeClient.UpdateNodeunschedule(c, urlReq.Name, bodyReq.Reason)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Update Node Unschedulable failed , err %v", err), resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", req.Name))
+	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", urlReq.Name))
 }
 
 // GetPodsForNode godoc
@@ -487,8 +502,7 @@ func (mgr *NodeMgr) AddNodeTaint(c *gin.Context) {
 		return
 	}
 
-	klog.Infof("Add Node Taint, name: %s, key: %s, value: %s, effect: %s", req.Name, taintReq.Key, taintReq.Value, taintReq.Effect)
-	err := mgr.nodeClient.AddNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect)
+	err := mgr.nodeClient.AddNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect, taintReq.Reason)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Add node taint failed, err %v", err), resputil.NotSpecified)
 		return

@@ -71,6 +71,13 @@ function NodesForAdmin() {
   const [selectedNode, setSelectedNode] = useState('')
   const [isOccupation, setIsOccupation] = useState(true)
 
+  // 占有原因、调度弹窗和原因
+  const [occupationReason, setOccupationReason] = useState('')
+  const [schedulingDialogOpen, setSchedulingDialogOpen] = useState(false)
+  const [schedulingNodeId, setSchedulingNodeId] = useState('')
+  const [schedulingIsCurrentlyUnschedule, setSchedulingIsCurrentlyUnschedule] = useState(false)
+  const [schedulingReason, setSchedulingReason] = useState('')
+
   const refetchTaskList = useCallback(async () => {
     try {
       await Promise.all([
@@ -84,16 +91,29 @@ function NodesForAdmin() {
   }, [queryClient])
 
   const handleNodeScheduling = useCallback(
-    (nodeId: string) => {
-      // 调用 mutation
-      apichangeNodeScheduling(nodeId)
-        .then(() => {
-          refetchTaskList()
-          toast.success(t('nodeManagement.operationSuccess'))
-        })
-        .catch((error) => {
+     async (nodeId: string, reason?: string) => {
+      try {
+        await apichangeNodeScheduling(nodeId, { reason })
+        await refetchTaskList()
+        toast.success(t('nodeManagement.operationSuccess'))
+      } catch (error: unknown) {
+        if (error instanceof Error) {
           toast.error(t('nodeManagement.operationFailed', { error: error.message }))
-        })
+        }
+      } finally {
+        setSchedulingDialogOpen(false)
+        setSchedulingNodeId('')
+        setSchedulingReason('')
+      }
+      // 调用 mutation
+      // apichangeNodeScheduling(nodeId)
+      //   .then(() => {
+      //     refetchTaskList()
+      //     toast.success(t('nodeManagement.operationSuccess'))
+      //   })
+      //   .catch((error) => {
+      //     toast.error(t('nodeManagement.operationFailed', { error: error.message }))
+      //   })
     },
     [refetchTaskList, t]
   )
@@ -139,14 +159,19 @@ function NodesForAdmin() {
       key: 'crater.raids.io/account',
       value: selectedAccount,
       effect: 'NoSchedule',
+      reason: occupationReason || '',
     }
     if (isOccupation) {
+      if (!occupationReason || occupationReason.trim() === '') {
+        toast.error('请填写占有原因')
+        return
+      }
       addNodeTaint({ nodeName: selectedNode, taintContent })
     } else {
       deleteNodeTaint({ nodeName: selectedNode, taintContent })
     }
     setOpen(false)
-  }, [selectedAccount, selectedNode, isOccupation, addNodeTaint, deleteNodeTaint])
+  }, [selectedAccount, selectedNode, isOccupation, occupationReason, addNodeTaint, deleteNodeTaint])
 
   const { getNicknameByName } = useAccountNameLookup()
 
@@ -220,7 +245,18 @@ function NodesForAdmin() {
                     {t('nodeManagement.accountOccupation')}
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSchedulingNodeId(nodeId)
+                    setSchedulingIsCurrentlyUnschedule(unscheduleTaint)
+                    if (unscheduleTaint) {
+                      handleNodeScheduling(nodeId, '')
+                      return
+                    }
+                    setSchedulingReason('')
+                    setSchedulingDialogOpen(true)
+                  }}
+                >
                   {unscheduleTaint ? (
                     <ZapIcon className="size-4" />
                   ) : (
@@ -263,6 +299,16 @@ function NodesForAdmin() {
           {isOccupation ? (
             <div className="grid w-full gap-4 py-4">
               <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
+              {/* 占有原因输入 */}
+              <div className="grid gap-1">
+                <label className="text-muted-foreground text-sm">占有原因</label>
+                <input
+                  value={occupationReason}
+                  onChange={(e) => setOccupationReason(e.target.value)}
+                  placeholder="请输入占有原因"
+                  className="rounded border px-2 py-1"
+                />
+              </div>
             </div>
           ) : (
             <div className="grid gap-4 py-4">
@@ -281,6 +327,43 @@ function NodesForAdmin() {
             </DialogClose>
             <Button variant="default" onClick={handleOccupation}>
               {t('nodeManagement.submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* 禁止调度确认 Diglog */}
+      <Dialog open={schedulingDialogOpen} onOpenChange={setSchedulingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {schedulingIsCurrentlyUnschedule ? '允许节点调度' : '禁止节点调度'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2 py-4">
+            <p className="text-muted-foreground text-sm">
+              {schedulingIsCurrentlyUnschedule
+                ? '将允许该节点接受新的 Pod 调度'
+                : '将禁止该节点接受新的 Pod 调度'}
+            </p>
+            <input
+              value={schedulingReason}
+              onChange={(e) => setSchedulingReason(e.target.value)}
+              placeholder="请输入原因"
+              className="rounded border px-2 py-1"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">取消</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                // 将 reason 作为 body 发送；handleNodeScheduling 已实现相应逻辑
+                handleNodeScheduling(schedulingNodeId, schedulingReason)
+              }}
+            >
+              确认
             </Button>
           </DialogFooter>
         </DialogContent>

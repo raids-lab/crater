@@ -1,0 +1,79 @@
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/.gitignore
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env.development
+
+# Python
+.venv
+
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin
+testbin/*
+Dockerfile.cross
+
+# Ignore developer-specific config
+etc/*
+# Do not ignore template
+!etc/example-config.yaml
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Kubernetes Generated files - skip generated files, except for vendored files
+
+!vendor/**/zz_generated.*
+# vendor/
+# editor and IDE paraphernalia
+.idea
+*.swp
+*.swo
+*~
+.cache
+.debug.env
+__debug_*
+
+# Kubernetes Config
+kubeconfig*
+
+# certs
+act.buaa.edu.cn
+act.buaa.edu.cn*
+gpu.act.buaa.edu.cn
+gpu.act.buaa.edu.cn*
+
+# statistic files
+*.csv

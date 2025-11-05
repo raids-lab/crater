@@ -48,6 +48,7 @@ type NodeBriefInfo struct {
 	Allocatable corev1.ResourceList      `json:"allocatable"`
 	Used        corev1.ResourceList      `json:"used"`
 	Workloads   int                      `json:"workloads"`
+	Annotations map[string]string        `json:"annotations"`
 }
 
 type Pod struct {
@@ -247,6 +248,7 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 			Allocatable: node.Status.Allocatable,
 			Used:        usedResources,
 			Workloads:   workloadCount,
+			Annotations: node.Annotations,
 		}
 	}
 
@@ -276,12 +278,29 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 	return nodeInfo, nil
 }
 
-func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name string) error {
+func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason string) error {
 	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
+
+	// 记录原状态
+	wasUnschedulable := node.Spec.Unschedulable
+	reasonKey := "crater.raids.io/unschedulable-reason"
+
+	// 切换节点的 Unschedulable 状态
 	node.Spec.Unschedulable = !node.Spec.Unschedulable
+
+	// 添加或删除注解，记录操作原因
+	if wasUnschedulable {
+		_, ok := node.Annotations[reasonKey]
+		if ok {
+			delete(node.Annotations, reasonKey)
+		}
+	} else if reason != "" {
+		node.Annotations[reasonKey] = reason
+	}
+
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return err
 }
@@ -510,7 +529,7 @@ func (nc *NodeClient) DeleteNodeAnnotation(ctx context.Context, nodeName, key st
 }
 
 // AddNodeTaint 添加节点污点
-func (nc *NodeClient) AddNodeTaint(ctx context.Context, nodeName, key, value, effect string) error {
+func (nc *NodeClient) AddNodeTaint(ctx context.Context, nodeName, key, value, effect, reason string) error {
 	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -531,6 +550,11 @@ func (nc *NodeClient) AddNodeTaint(ctx context.Context, nodeName, key, value, ef
 
 	// 添加新的污点
 	node.Spec.Taints = append(node.Spec.Taints, newTaint)
+
+	// 如果是账户独占，记录原因
+	if strings.HasPrefix(key, "crater.raids.io/account") && effect == "NoSchedule" {
+		node.Annotations["crater.raids.io/taint-reason-occupied"] = reason
+	}
 
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return err
@@ -566,6 +590,14 @@ func (nc *NodeClient) DeleteNodeTaint(ctx context.Context, nodeName, key, value,
 
 	// 更新污点列表
 	node.Spec.Taints = newTaints
+
+	// 如果删除的是账户独占污点，删除对应的注解
+	if strings.HasPrefix(key, "crater.raids.io/account") && effect == "NoSchedule" && node.Annotations != nil {
+		_, ok := node.Annotations["crater.raids.io/taint-reason-occupied"]
+		if ok {
+			delete(node.Annotations, "crater.raids.io/taint-reason-occupied")
+		}
+	}
 
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return err

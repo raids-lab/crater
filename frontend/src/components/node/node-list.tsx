@@ -301,9 +301,32 @@ export const getNodeColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={'状态'} />,
       cell: ({ row }) => {
         const status = row.getValue<string>('status')
+        const taints = row.original.taints || []
+        const annotations = row.original.annotations || {}
+        const unschedulableReason = annotations['crater.raids.io/unschedulable-reason']
+        const occupiedReason = annotations['crater.raids.io/taint-reason-occupied']
+
+        // 判断是否为不可调度（基于 taint 或 status 文本）
+        const isUnschedulable =
+          taints.some((t: string) => t.includes('node.kubernetes.io/unschedulable')) ||
+          String(status).toLowerCase().includes('unschedulable') ||
+          String(status).includes('不可调度')
+
+        let tooltipContent: string
+        if (status === NodeStatus.Occupied) {
+          // 已占用：显示 occupiedReason（如果存在），否则默认文案
+          tooltipContent = occupiedReason || '该节点处于账户独占状态'
+        } else if (isUnschedulable) {
+          // 不可调度：显示 unschedulableReason（如果存在），否则默认文案
+          tooltipContent = unschedulableReason || '该节点被标记为不可调度'
+        } else {
+          // 运行中：显示作业数或通用文案
+          tooltipContent = `${row.original.workloads ?? 0} 个作业正在运行`
+        }
+
         return (
           <div className="flex flex-row items-center justify-start gap-1">
-            <NodeStatusBadge status={status} />
+            <NodeStatusBadge status={status} reason={tooltipContent} />
             <Tooltip>
               <TooltipTrigger
                 className={cn(
