@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 
 import AcceleratorBadge from '../badge/accelerator-badge'
 
+
 // 资源使用情况计算结果接口
 export interface ResourceUsageInfo {
   usagePercent: number | null
@@ -67,13 +68,29 @@ export function calculateResourceUsage(
       break
     case 'accelerator':
       if (accelerators && accelerators.length > 0) {
+        // 首先尝试找非虚拟GPU资源
         for (const accelerator of accelerators) {
-          if (used && used[accelerator]) {
-            resourceUsed = used[accelerator]
-          }
-          if (allocatable && allocatable[accelerator]) {
+          if (
+            allocatable &&
+            allocatable[accelerator] &&
+            allocatable[accelerator] !== '0'
+          ) {
             resourceAllocatable = allocatable[accelerator]
             acceleratorName = accelerator
+            resourceUsed = used && used[accelerator] ? used[accelerator] : '0'
+            break
+          }
+        }
+
+        // 如果没找到物理GPU，再找虚拟GPU
+        if (!acceleratorName) {
+          for (const accelerator of accelerators) {
+            if (allocatable && allocatable[accelerator] && allocatable[accelerator] !== '0') {
+              resourceAllocatable = allocatable[accelerator]
+              acceleratorName = accelerator
+              resourceUsed = used && used[accelerator] ? used[accelerator] : '0'
+              break
+            }
           }
         }
       } else {
