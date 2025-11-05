@@ -46,7 +46,7 @@ except KeyError:
     print(f"✅ 本地测试: 找到仓库根目录: {REPO_ROOT}")
 
 # 动态地找到项目根目录
-PROJECT_ROOT = REPO_ROOT / 'crater-website'
+PROJECT_ROOT = REPO_ROOT / 'website'
 SCAN_DIRECTORIES = [
     PROJECT_ROOT / 'content' / 'docs',
     PROJECT_ROOT / 'messages'

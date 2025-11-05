@@ -5,7 +5,7 @@ GIT_ROOT="."
 cd "$GIT_ROOT" || exit 1
 
 # 定义您的网站内容目录（相对于 Git 仓库根目录）
-WEBSITE_CONTENT_DIR="crater-website"
+WEBSITE_CONTENT_DIR="website"
 
 echo "Running pre-commit hook for '$WEBSITE_CONTENT_DIR'..."
 
@@ -17,7 +17,7 @@ echo "Running pre-commit hook for '$WEBSITE_CONTENT_DIR'..."
 # 对于第一次提交，HEAD不存在，所以需要处理。
 # 简单起见，我们直接检查所有暂存文件，如果它们是新增的且是非webp图片。
 
-# 获取所有在 crater-website 目录下，在暂存区中标记为“新增”的文件路径
+# 获取所有在 website 目录下，在暂存区中标记为“新增”的文件路径
 # 对于首次提交 (HEAD 不存在)，git diff --cached 的行为是比较空树和暂存区。
 # 对于后续提交，它比较 HEAD 和暂存区。
 # 因此，'A' 状态的文件总是相对于 HEAD 是新增的。

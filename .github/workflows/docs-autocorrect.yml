@@ -18,8 +18,8 @@ on:
   pull_request_target:
     paths:
       - ".github/workflows/docs-autocorrect.yml"
-      - "crater-website/src/**"
-      - "crater-website/content/**"
+      - "website/src/**"
+      - "website/content/**"
 
 jobs:
   autocorrect:
@@ -43,7 +43,7 @@ jobs:
         run: |
           # 列出所有潜在文件，然后使用 grep -v 排除掉 *.*.mdx
           # 注意：这里的 glob 模式要与 autocorrect 期望的一致
-          FILES=$(find crater-website/src crater-website/messages crater-website/content -type f -print0 | xargs -0 grep -E -v '(\.[^/.]+){1}\.mdx$' | tr '\n' ' ')
+          FILES=$(find website/src website/messages website/content -type f -print0 | xargs -0 grep -E -v '(\.[^/.]+){1}\.mdx$' | tr '\n' ' ')
           echo "files=$FILES" >> $GITHUB_OUTPUT
 
       - name: AutoCorrect and Fix (for internal PRs)
@@ -68,7 +68,7 @@ jobs:
         id: changed-files
         run: |
           # 获取变更的文件列表
-          ALL_CHANGED_FILES=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} -- 'crater-website/src/**' 'crater-website/content/**' 'crater-website/messages/**' | xargs -0)
+          ALL_CHANGED_FILES=$(git diff --name-only -z --diff-filter=AM ${{ github.event.pull_request.base.sha }} -- 'website/src/**' 'website/content/**' 'website/messages/**' | xargs -0)
 
           # 使用 grep -v 过滤掉 *.*.mdx 文件
           # 注意：为了让 grep 能够正确处理空格和换行，我们使用 find 和 grep。

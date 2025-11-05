@@ -23,7 +23,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: crater-website-svc
+                name: website-svc
                 port:
                   number: 80
           - path: /

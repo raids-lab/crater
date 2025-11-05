@@ -1,4 +1,4 @@
-# ![crater](./crater-website/content/docs/admin/assets/icon.webp) Crater
+# ![crater](./website/content/docs/admin/assets/icon.webp) Crater
 
 <table>
   <tr>
@@ -39,7 +39,7 @@ Crater offers detailed monitoring data and logging capabilities, empowering user
 
 ---
 ## Overall Architecture
-![crater architecture](./crater-website/content/docs/admin/assets/architecture.webp)
+![crater architecture](./website/content/docs/admin/assets/architecture.webp)
 
 ## Installation
 

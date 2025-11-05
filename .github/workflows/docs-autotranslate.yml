@@ -15,9 +15,9 @@ on:
       - main
     paths:
       - ".github/workflows/docs-auto-translate.yml"
-      - "crater-website/content/docs/**"
-      - "crater-website/messages/**"
-      - "crater-website/src/i18n/config.ts"
+      - "website/content/docs/**"
+      - "website/messages/**"
+      - "website/src/i18n/config.ts"
 
 jobs:
   auto-translate:
@@ -86,7 +86,7 @@ jobs:
           HEAD_REF="${{ github.event.after }}"
 
           # 定义需要翻译的路径模式
-          TRANSLATION_PATHS_PATTERN="^crater-website/(content/docs/|messages/)"
+          TRANSLATION_PATHS_PATTERN="^website/(content/docs/|messages/)"
 
           # 1. 获取所有新增和修改的文件 (使用 -w 忽略空格)
           ALL_CHANGED_FILES=$(git diff -w --name-only --diff-filter=AM --no-renames $BASE_REF...$HEAD_REF)
@@ -171,7 +171,7 @@ jobs:
           # 将仓库根目录的绝对路径传递给 Python
           REPO_ROOT: ${{ github.workspace }}
         run: |
-          python crater-website/hack/i18n/bootstrap.py --changed-files "${{ steps.files-to-process.outputs.files }}"
+          python website/hack/i18n/bootstrap.py --changed-files "${{ steps.files-to-process.outputs.files }}"
 
       # 步骤 6: 创建 PR (增加 if 条件)
       - name: 🔒 [Setup] Isolate Git configuration

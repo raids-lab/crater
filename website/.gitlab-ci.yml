@@ -68,7 +68,7 @@ deploy_testing:
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:crater-cluster
-    - kubectl set image deployment/crater-website crater-website-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+    - kubectl set image deployment/website website-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
   dependencies:
@@ -81,7 +81,7 @@ deploy_main:
     entrypoint: [""]
   script:
     - kubectl config use-context raids/resource-scheduling/crater/web-frontend:actgpu-cluster
-    - kubectl set image deployment/crater-website crater-website-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
+    - kubectl set image deployment/website website-container=${HARBOR_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -n crater
   only:
     - main
   dependencies:

@@ -32,7 +32,7 @@ storage_image=$(kubectl get deploy webdav-deployment -n $WEBDAV_NAMESPACE -o jso
 echo "webdav 镜像：$storage_image"
 
 # 获取 document 当前使用的镜像
-document_image=$(kubectl get deploy crater-website -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[0].image}')
+document_image=$(kubectl get deploy website -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[0].image}')
 echo "document 镜像：$document_image"
 
 # 提取镜像的 tag（假设镜像名格式为 repository:tag）

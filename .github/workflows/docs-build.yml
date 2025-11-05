@@ -18,10 +18,10 @@ on:
   pull_request:
     paths:
       - ".github/workflows/docs-build.yml"
-      - "crater-website/src/**"
-      - "crater-website/content/**"
-      - "crater-website/package.json"
-      - "crater-website/pnpm-lock.yaml"
+      - "website/src/**"
+      - "website/content/**"
+      - "website/package.json"
+      - "website/pnpm-lock.yaml"
 
 jobs:
   build:
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: crater-website # Set working directory to the website folder
+        working-directory: website # Set working directory to the website folder
 
     steps:
       # 1. Checkout repository
@@ -51,7 +51,7 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
-          cache-dependency-path: "crater-website/pnpm-lock.yaml"
+          cache-dependency-path: "website/pnpm-lock.yaml"
 
       # 4. Install dependencies using pnpm
       - name: Install dependencies
