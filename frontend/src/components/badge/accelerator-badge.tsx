@@ -11,12 +11,13 @@ interface AcceleratorInfo {
 const vendorColors: Record<string, string> = {
   'nvidia.com': 'bg-[#75a031] ring-[#75a031] text-[#75a031]', // NVIDIA 绿色
   'huawei.com': 'bg-[#be2a34] ring-[#be2a34] text-[#be2a34]', // 华为红色
+  'iluvatar.com': 'bg-[#1e40af] ring-[#1e40af] text-[#1e40af]', // 天数智芯蓝色
   'amd.com': 'bg-red-500 ring-red-500 text-white', // AMD 红色
   'intel.com': 'bg-blue-600 ring-blue-600 text-white', // Intel 蓝色
   'qualcomm.com': 'bg-blue-500 ring-blue-500 text-white', // 高通蓝色
   'broadcom.com': 'bg-orange-600 ring-orange-600 text-white', // 博通橙色
-  'xilinx.com': 'bg-purple-600 text-white', // Xilinx 紫色
-  default: 'bg-gray-600 text-white', // 默认颜色
+  'xilinx.com': 'bg-purple-600 ring-purple-600 text-purple-600', // Xilinx 紫色
+  default: 'bg-gray-600 ring-gray-600 text-gray-600', // 默认颜色
 }
 
 function parseAcceleratorString(input: string): AcceleratorInfo {
