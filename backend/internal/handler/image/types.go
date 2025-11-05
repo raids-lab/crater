@@ -166,11 +166,13 @@ type (
 		Dockerfile    string            `json:"dockerfile"`
 		PodName       string            `json:"podName"`
 		PodNameSpace  string            `json:"podNameSpace"`
+		NodeName      string            `json:"nodeName"`
 	}
 
 	GetKanikoPodResponse struct {
 		PodName      string `json:"name"`
 		PodNameSpace string `json:"namespace"`
+		NodeName     string `json:"nodeName"`
 	}
 
 	ListAvailableImageResponse struct {
