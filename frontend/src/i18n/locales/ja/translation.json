@@ -825,6 +825,8 @@
   "userTable.roleUpdateSuccess": "ユーザー {{name}} の権限が更新されました",
   "userTable.roles.0": "一般ユーザー",
   "userTable.roles.1": "管理者",
+  "userTable.roles.2": "ユーザー",
+  "userTable.roles.3": "管理者",
   "userTable.selfDeleteError": "自分自身を削除することはできません。削除するには別のユーザーでログインしてください",
   "userTable.title": "ユーザー管理",
   "volumeMounts.addButton": "{{mountType}}を追加",

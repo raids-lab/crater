@@ -824,6 +824,8 @@
   "userTable.roleUpdateSuccess": "{{name}} 사용자의 권한이 업데이트되었습니다",
   "userTable.roles.0": "일반 사용자",
   "userTable.roles.1": "관리자",
+  "userTable.roles.2": "사용자",
+  "userTable.roles.3": "관리자",
   "userTable.selfDeleteError": "자신은 삭제할 수 없습니다. 삭제하려면 다른 사용자로 로그인해주세요",
   "userTable.title": "사용자 관리",
   "volumeMounts.addButton": "{{mountType}} 추가",
