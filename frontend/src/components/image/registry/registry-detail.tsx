@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 import ImagePhaseBadge from '@/components/badge/image-phase-badge'
+import NodeBadges from '@/components/badge/node-badges'
 import { CodeContent } from '@/components/codeblock/config-dialog'
 import DetailPageLog from '@/components/codeblock/detail-page-log'
 import { TimeDistance } from '@/components/custom/time-distance'
@@ -256,6 +257,12 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
                 namespace: kanikoInfo?.podNameSpace ?? '',
                 name: kanikoInfo?.podName ?? '',
               }}
+              appendInfos={[
+                {
+                  title: '节点',
+                  content: <NodeBadges nodes={[kanikoInfo?.nodeName]} />,
+                },
+              ]}
             />
           ),
           hidden: kanikoInfo?.podName === '',
