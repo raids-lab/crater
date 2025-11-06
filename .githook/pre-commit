@@ -1,0 +1,95 @@
+#!/bin/sh
+
+# Unified pre-commit hook that delegates checks to sub-projects
+# Only checks sub-projects with changed files
+
+# Ensure we're in the repository root directory
+# Git hooks are executed from the repository root, but we verify this
+if [ ! -d ".git" ] && [ ! -f ".git" ]; then
+    # Try to find .git directory by going up
+    GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+    if [ -n "$GIT_ROOT" ]; then
+        cd "$GIT_ROOT" || exit 1
+    fi
+fi
+
+# Get list of staged files
+STAGED_FILES=$(git diff --cached --name-only 2>/dev/null)
+
+# If no staged files, exit successfully
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+# Track if any checks were run
+CHECKS_RUN=0
+
+# Check if there are website-related changes
+if echo "$STAGED_FILES" | grep -q "^website/"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🌐 Website Checks"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if (cd website && make pre-commit-check); then
+        echo "✅ Website checks passed!"
+        CHECKS_RUN=1
+    else
+        echo "❌ Website checks failed!"
+        exit 1
+    fi
+fi
+
+# Check if there are frontend-related changes
+if echo "$STAGED_FILES" | grep -q "^frontend/"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🎨 Frontend Checks"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if (cd frontend && make pre-commit-check); then
+        echo "✅ Frontend checks passed!"
+        CHECKS_RUN=1
+    else
+        echo "❌ Frontend checks failed!"
+        exit 1
+    fi
+fi
+
+# Check if there are backend-related changes
+if echo "$STAGED_FILES" | grep -q "^backend/"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🔧 Backend Checks"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if (cd backend && make pre-commit-check); then
+        echo "✅ Backend checks passed!"
+        CHECKS_RUN=1
+    else
+        echo "❌ Backend checks failed!"
+        exit 1
+    fi
+fi
+
+# Check if there are storage-related changes
+if echo "$STAGED_FILES" | grep -q "^storage/"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "💾 Storage Checks"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if (cd storage && make pre-commit-check); then
+        echo "✅ Storage checks passed!"
+        CHECKS_RUN=1
+    else
+        echo "❌ Storage checks failed!"
+        exit 1
+    fi
+fi
+
+# Output final summary if any checks were run
+if [ $CHECKS_RUN -eq 1 ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✅ All checks passed!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+
+exit 0

@@ -102,6 +102,22 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 	@echo "$(YELLOW)Running ESLint...$(RESET)"
 	pnpm eslint .
 
+.PHONY: pre-commit-check
+pre-commit-check: ## Run pre-commit checks (lint and lint-staged).
+	@echo "$(BLUE)Running lint checks...$(RESET)"
+	@if ! pnpm run lint; then \
+		echo "$(RED)❌ Frontend lint failed!$(RESET)"; \
+		echo ""; \
+		echo "$(YELLOW)💡 If you see 'command not found' or 'Cannot find module' errors:$(RESET)"; \
+		echo "   Please run 'pnpm install' to install dependencies first."; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Running lint-staged...$(RESET)"
+	@if ! pnpm exec lint-staged; then \
+		echo "$(RED)❌ Frontend lint-staged failed!$(RESET)"; \
+		exit 1; \
+	fi
+
 .PHONY: lint-fix
 lint-fix: ## 🔧 Fix ESLint issues automatically
 	@echo "$(YELLOW)Running TypeScript checks...$(RESET)"

@@ -34,7 +34,6 @@ export default tseslint.config({
     '**/postcss.config.js',
     '**/tailwind.config.js',
     '**/vite.config.ts',
-    '**/commitlint.config.cjs',
     // shadcn
     'src/components/ui/*',
     'src/components/ui-custom/*',

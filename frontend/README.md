@@ -178,12 +178,7 @@ We welcome and appreciate contributions from the community! Here's how you can h
 
 ### ✍️ Commit Guidelines
 
-> [!NOTE]
-> This project uses **Husky** and **Commitlint** to enforce commit message conventions.
->
-> **Do not use GUI clients (GitHub Desktop, GitKraken, etc.) for committing code** as they may bypass our commit message validation hooks.
-
-Each commit message must follow this format:
+Each commit message should follow this format:
 
 ```
 type(scope): subject
