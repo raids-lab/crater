@@ -6,7 +6,7 @@
     "build": "next build",
     "dev": "next dev --turbo",
     "start": "next start",
-    "postinstall": "fumadocs-mdx && node ./scripts/install-git-hooks.mjs",
+    "postinstall": "fumadocs-mdx",
     "postbuild": "node .//scripts//post-build.mjs"
   },
   "dependencies": {

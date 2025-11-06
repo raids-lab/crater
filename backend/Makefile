@@ -139,14 +139,12 @@ docs: swaggo ## Generate docs docs.
 	@echo "$(GREEN)✅ Swagger docs generated$(RESET)"
 
 .PHONY: run
-run: prepare show-kubeconfig fmt docs imports pre-commit ## Run a controller from your host.
+run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host.
 	@echo "$(GREEN)🚀 Starting crater backend server...$(RESET)"
 	KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: pre-commit ## Run pre-commit hook manually.
-	@echo "$(BLUE)Running pre-commit hook...$(RESET)"
-	@$(GIT_HOOKS_DIR)/pre-commit && echo "$(GREEN)✅ Pre-commit hook completed successfully! You can now commit with confidence.$(RESET)" || echo "$(RED)❌ Pre-commit hook failed! Please fix the issues and try again.$(RESET)"
+pre-commit-check: lint docs ## Run pre-commit checks (lint and generate docs).
 
 ##@ Build
 
@@ -194,19 +192,3 @@ $(GOIMPORTS): $(LOCALBIN)
 swaggo: $(SWAGGO) ## Install swaggo
 $(SWAGGO): $(LOCALBIN)
 	$(call go-install-tool,$(SWAGGO),github.com/swaggo/swag/cmd/swag,$(SWAGGO_VERSION))
-
-##@ Git Hooks
-
-## Location to install git hooks to
-GIT_HOOKS_DIR ?= $(shell git rev-parse --git-path hooks)
-$(GIT_HOOKS_DIR):
-	@echo "Creating git hooks directory..."
-	@mkdir -p $(GIT_HOOKS_DIR)
-
-.PHONY: pre-commit
-pre-commit: $(GIT_HOOKS_DIR)/pre-commit ## Install git pre-commit hook.
-$(GIT_HOOKS_DIR)/pre-commit: $(GIT_HOOKS_DIR) .githook/pre-commit
-	@echo "Installing git pre-commit hook..."
-	@cp .githook/pre-commit $(GIT_HOOKS_DIR)/pre-commit
-	@chmod +x $(GIT_HOOKS_DIR)/pre-commit
-	@echo "Git pre-commit hook installed successfully!"
