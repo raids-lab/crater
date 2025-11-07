@@ -106,7 +106,7 @@ export default function VersionPage() {
               </span>
               {frontendCommitSha ? (
                 <a
-                  href={`https://github.com/raids-lab/crater-frontend/commit/${frontendCommitSha}`}
+                  href={`https://github.com/raids-lab/crater/commit/${frontendCommitSha}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -166,7 +166,7 @@ export default function VersionPage() {
               </span>
               {backendVersion?.commitSHA ? (
                 <a
-                  href={`https://github.com/raids-lab/crater-backend/commit/${backendVersion.commitSHA}`}
+                  href={`https://github.com/raids-lab/crater/commit/${backendVersion.commitSHA}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -192,7 +192,7 @@ export default function VersionPage() {
             <span>{t('about.copyright')}</span>
             <span>•</span>
             <a
-              href="https://github.com/raids-lab"
+              href="https://github.com/raids-lab/crater"
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
