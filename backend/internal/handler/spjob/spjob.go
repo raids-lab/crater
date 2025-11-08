@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +34,9 @@ func init() {
 	}
 }
 
-const AnnotationKeyTaskName = "crater.raids.io/task-name"
+const (
+	AnnotationKeyTaskName = "crater.raids.io/task-name"
+)
 
 var dlNamespace = config.GetConfig().Namespaces.Job
 var jobStatusMap = map[corev1.PodPhase]batch.JobPhase{
@@ -127,8 +128,8 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 		return
 	}
 
-	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	jobName := fmt.Sprintf("sparse-%s", baseURL)
+	// Generate job name with type prefix (RFC 1035 compliant)
+	jobName := craterUtils.GenerateJobName("sp", token.Username)
 
 	annotations := map[string]string{
 		AnnotationKeyTaskName: req.Name,

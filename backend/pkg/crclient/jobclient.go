@@ -18,6 +18,7 @@ import (
 
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	"github.com/raids-lab/crater/pkg/config"
+	craterUtils "github.com/raids-lab/crater/pkg/utils"
 )
 
 type JobControl struct {
@@ -70,7 +71,11 @@ func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname stri
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
+	// generate date in yymmdd format
+	dateStr := craterUtils.FormatDateYYMMDD(time.Now())
+	// format: {taskName}-{date}-{taskID}
+	jobname = fmt.Sprintf("%s-%s-%d", taskName, dateStr, task.ID)
+	// replace underscores to comply with DNS label requirements
 	jobname = strings.ReplaceAll(jobname, "_", "-")
 	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
@@ -145,7 +150,11 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 
 	// convert metadata to lower case
 	taskName := strings.ToLower(task.TaskName)
-	jobname = fmt.Sprintf("%s-%d", taskName, task.ID)
+	// generate date in yymmdd format
+	dateStr := craterUtils.FormatDateYYMMDD(time.Now())
+	// format: {taskName}-{date}-{taskID}
+	jobname = fmt.Sprintf("%s-%s-%d", taskName, dateStr, task.ID)
+	// replace underscores to comply with DNS label requirements
 	jobname = strings.ReplaceAll(jobname, "_", "-")
 	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
