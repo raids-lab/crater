@@ -40,6 +40,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 import { useAccountNameLookup } from '@/components/node/getaccountnickname'
 import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
@@ -71,6 +73,15 @@ function NodesForAdmin() {
   const [selectedNode, setSelectedNode] = useState('')
   const [isOccupation, setIsOccupation] = useState(true)
 
+  // 占有原因、调度弹窗和原因
+  const [occupationReason, setOccupationReason] = useState('')
+  const [occupationReasonError, setOccupationReasonError] = useState('')
+  const [schedulingDialogOpen, setSchedulingDialogOpen] = useState(false)
+  const [schedulingNodeId, setSchedulingNodeId] = useState('')
+  const [schedulingIsCurrentlyUnschedule, setSchedulingIsCurrentlyUnschedule] = useState(false)
+  const [schedulingReason, setSchedulingReason] = useState('')
+  const [schedulingReasonError, setSchedulingReasonError] = useState('')
+
   const refetchTaskList = useCallback(async () => {
     try {
       await Promise.all([
@@ -84,16 +95,21 @@ function NodesForAdmin() {
   }, [queryClient])
 
   const handleNodeScheduling = useCallback(
-    (nodeId: string) => {
-      // 调用 mutation
-      apichangeNodeScheduling(nodeId)
-        .then(() => {
-          refetchTaskList()
-          toast.success(t('nodeManagement.operationSuccess'))
-        })
-        .catch((error) => {
+     async (nodeId: string, reason?: string) => {
+      try {
+        await apichangeNodeScheduling(nodeId, { reason })
+        await refetchTaskList()
+        toast.success(t('nodeManagement.operationSuccess'))
+      } catch (error: unknown) {
+        if (error instanceof Error) {
           toast.error(t('nodeManagement.operationFailed', { error: error.message }))
-        })
+        }
+      } finally {
+        setSchedulingDialogOpen(false)
+        setSchedulingNodeId('')
+        setSchedulingReason('')
+        setSchedulingReasonError('')
+      }
     },
     [refetchTaskList, t]
   )
@@ -135,10 +151,19 @@ function NodesForAdmin() {
   const nodeQuery = useQuery(queryNodes())
 
   const handleOccupation = useCallback(() => {
+    // 在占有时验证原因
+    if (isOccupation) {
+      if (!occupationReason || occupationReason.trim() === '') {
+        setOccupationReasonError('请填写占有原因')
+        return
+      }
+    }
+
     const taintContent: IClusterNodeTaint = {
       key: 'crater.raids.io/account',
       value: selectedAccount,
       effect: 'NoSchedule',
+      reason: occupationReason || '',
     }
     if (isOccupation) {
       addNodeTaint({ nodeName: selectedNode, taintContent })
@@ -146,7 +171,9 @@ function NodesForAdmin() {
       deleteNodeTaint({ nodeName: selectedNode, taintContent })
     }
     setOpen(false)
-  }, [selectedAccount, selectedNode, isOccupation, addNodeTaint, deleteNodeTaint])
+    setOccupationReason('')
+    setOccupationReasonError('')
+  }, [selectedAccount, selectedNode, isOccupation, occupationReason, addNodeTaint, deleteNodeTaint])
 
   const { getNicknameByName } = useAccountNameLookup()
 
@@ -184,6 +211,9 @@ function NodesForAdmin() {
             ?.find((t) => t.startsWith('crater.raids.io/account'))
             ?.split('=')[1]
             .split(':')[0]
+          const occupiedAccountNickname = occupiedaccount
+            ? getNicknameByName(occupiedaccount) || occupiedaccount
+            : ''
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -201,7 +231,7 @@ function NodesForAdmin() {
                     onClick={() => {
                       setSelectedNode(nodeId)
                       setIsOccupation(false)
-                      setSelectedAccount(occupiedaccount || '')
+                      setSelectedAccount(occupiedAccountNickname)
                       setOpen(true)
                     }}
                   >
@@ -220,7 +250,18 @@ function NodesForAdmin() {
                     {t('nodeManagement.accountOccupation')}
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => handleNodeScheduling(nodeId)}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSchedulingNodeId(nodeId)
+                    setSchedulingIsCurrentlyUnschedule(unscheduleTaint)
+                    if (unscheduleTaint) {
+                      handleNodeScheduling(nodeId, '')
+                      return
+                    }
+                    setSchedulingReason('')
+                    setSchedulingDialogOpen(true)
+                  }}
+                >
                   {unscheduleTaint ? (
                     <ZapIcon className="size-4" />
                   ) : (
@@ -251,6 +292,7 @@ function NodesForAdmin() {
         columns={columns}
         toolbarConfig={nodesToolbarConfig}
       />
+      {/* 占有 / 释放 弹窗：在占有分支中增加 reason 输入 */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
@@ -262,7 +304,30 @@ function NodesForAdmin() {
           </DialogHeader>
           {isOccupation ? (
             <div className="grid w-full gap-4 py-4">
+              {/* 账号选择 */}
               <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
+              {/* 占有原因输入 */}
+              <div className="grid gap-2">
+                <Label htmlFor="occupation-reason" className="text-sm text-muted-foreground">
+                  占有原因
+                </Label>
+                <Input
+                  id="occupation-reason"
+                  value={occupationReason}
+                  onChange={(e) => {
+                    setOccupationReason(e.target.value)
+                    // 清除错误提示
+                    if (occupationReasonError) {
+                      setOccupationReasonError('')
+                    }
+                  }}
+                  placeholder="请输入占有原因"
+                  className={occupationReasonError ? 'border-red-500' : ''}
+                />
+                {occupationReasonError && (
+                  <p className="text-sm text-red-500">{occupationReasonError}</p>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid gap-4 py-4">
@@ -281,6 +346,63 @@ function NodesForAdmin() {
             </DialogClose>
             <Button variant="default" onClick={handleOccupation}>
               {t('nodeManagement.submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* 禁止调度确认 Diglog */}
+      <Dialog open={schedulingDialogOpen} onOpenChange={setSchedulingDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {schedulingIsCurrentlyUnschedule ? '允许节点调度' : '禁止节点调度'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <p className="text-muted-foreground text-sm">
+              {schedulingIsCurrentlyUnschedule
+                ? '将允许该节点接受新的 Pod 调度'
+                : '将禁止该节点接受新的 Pod 调度'}
+            </p>
+            {/* 禁止调度原因输入 */}
+            <div className="grid gap-2">
+              <Label htmlFor="scheduling-reason" className="text-sm text-muted-foreground">
+                原因
+              </Label>
+              <Input
+                id="scheduling-reason"
+                value={schedulingReason}
+                onChange={(e) => {
+                  setSchedulingReason(e.target.value)
+                  // 清除错误提示
+                  if (schedulingReasonError) {
+                    setSchedulingReasonError('')
+                  }
+                }}
+                placeholder="请输入原因"
+                className={schedulingReasonError ? 'border-red-500' : ''}
+              />
+              {schedulingReasonError && (
+                <p className="text-sm text-red-500">{schedulingReasonError}</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">取消</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                // 验证原因不得为空
+                if (!schedulingReason || schedulingReason.trim() === '') {
+                  setSchedulingReasonError('请填写禁止调度原因')
+                  return
+                }
+                // 将 reason 作为 body 发送；handleNodeScheduling 已实现相应逻辑
+                handleNodeScheduling(schedulingNodeId, schedulingReason)
+              }}
+            >
+              确认
             </Button>
           </DialogFooter>
         </DialogContent>
