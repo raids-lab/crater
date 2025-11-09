@@ -510,7 +510,6 @@ func (mgr *NodeMgr) AddNodeTaint(c *gin.Context) {
 	// 从 token 中获取用户名
 	token := util.GetToken(c)
 
-	// klog.Infof("Add Node Taint, name: %s, key: %s, value: %s, effect: %s", req.Name, taintReq.Key, taintReq.Value, taintReq.Effect)
 	err := mgr.nodeClient.AddNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect, taintReq.Reason, token.Username)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Add node taint failed, err %v", err), resputil.NotSpecified)
