@@ -44,6 +44,7 @@ export interface INodeBriefInfo {
   allocatable: V1ResourceList
   used: V1ResourceList
   workloads: number
+  annotations: Record<string, string>
 }
 export interface IClusterPodInfo {
   // from backend
@@ -102,6 +103,7 @@ export interface IClusterNodeTaint {
   key: string
   value: string
   effect: string
+  reason?: string
 }
 
 export interface IClusterNodeMark {
@@ -131,8 +133,8 @@ export const apiGetNodeGPU = (name: string) =>
   apiV1Get<IResponse<IClusterNodeGPU>>(`nodes/${name}/gpu`)
 
 // 改变节点的可调度状态
-export const apichangeNodeScheduling = (name: string) =>
-  apiV1Put<IResponse<string>>(`nodes/${name}`)
+export const apichangeNodeScheduling = (name: string, body?: { reason?: string }) =>
+  apiV1Put<IResponse<string>>(`nodes/${name}`, body)
 
 export const apiAddNodeTaint = (nodeName: string, taintContent: IClusterNodeTaint) =>
   apiV1Post<IResponse<string>>(`admin/nodes/${nodeName}/taint`, taintContent)

@@ -5457,6 +5457,15 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "请求体，包含 reason 字段",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.NodeScheduleRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -8272,6 +8281,15 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.NodeScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "description": "操作原因",
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.NodeTaint": {
             "type": "object",
             "properties": {
@@ -8279,6 +8297,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "key": {
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "操作原因",
                     "type": "string"
                 },
                 "value": {

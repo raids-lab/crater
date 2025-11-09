@@ -718,11 +718,20 @@ definitions:
           $ref: '#/definitions/internal_handler.NodeTaint'
         type: array
     type: object
+  internal_handler.NodeScheduleRequest:
+    properties:
+      reason:
+        description: 操作原因
+        type: string
+    type: object
   internal_handler.NodeTaint:
     properties:
       effect:
         type: string
       key:
+        type: string
+      reason:
+        description: 操作原因
         type: string
       value:
         type: string
@@ -4925,6 +4934,12 @@ paths:
         name: name
         required: true
         type: string
+      - description: 请求体，包含 reason 字段
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.NodeScheduleRequest'
       produces:
       - application/json
       responses:

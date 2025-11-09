@@ -93,8 +93,25 @@ const getNodeStatusLabel = (
   }
 }
 
-const NodeStatusBadge = ({ status }: { status: string }) => {
-  return <PhaseBadge phase={status} getPhaseLabel={getNodeStatusLabel} />
+// 修改点：支持传入可选的 reason 字段（比如来自 annotations）并在 badge 的 description 中显示。
+// 说明：PhaseBadge 会通过 getPhaseLabel(status) 获取 label/color/description，
+// 所以这里传入一个闭包 getPhaseLabel 用于在存在 reason 时覆盖 description。
+const NodeStatusBadge = ({ status, reason }: { status: string; reason?: string }) => {
+  // 本地的 getPhaseLabel 会基于原始映射生成结果，
+  // 当提供了 reason（非空）时，用 reason 覆盖 description 字段，确保悬浮/描述显示用户传入的原因文本。
+  const getPhaseLabel = (s: string) => {
+    const base = getNodeStatusLabel(s)
+    if (reason && typeof reason === 'string' && reason.trim() !== '') {
+      return {
+        ...base,
+        // 覆盖 description，显示传入的原因（去除前后空白）
+        description: reason.trim(),
+      }
+    }
+    return base
+  }
+
+  return <PhaseBadge phase={status} getPhaseLabel={getPhaseLabel} />
 }
 
 export default NodeStatusBadge
