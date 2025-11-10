@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -43,9 +42,10 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		return
 	}
 
-	// base URL
-	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	jobName := fmt.Sprintf("py-%s", baseURL)
+	// Generate job name with type prefix (RFC 1035 compliant)
+	jobName := utils.GenerateJobName("pyt", token.Username)
+	// baseURL for ingress paths (without type prefix)
+	baseURL := jobName[4:] // Remove "pyt-" prefix
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)

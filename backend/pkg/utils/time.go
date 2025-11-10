@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"fmt"
 	"time"
 
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/pkg/config"
 )
+
+const twoDigitYearDivisor = 100
 
 func GetLocalTime() time.Time {
 	timeZone := config.GetConfig().Postgres.TimeZone
@@ -30,4 +33,8 @@ func GetPermanentTime() time.Time {
 
 func IsPermanentTime(t time.Time) bool {
 	return t.Equal(GetPermanentTime())
+}
+
+func FormatDateYYMMDD(t time.Time) string {
+	return fmt.Sprintf("%02d%02d%02d", t.Year()%twoDigitYearDivisor, t.Month(), t.Day())
 }
