@@ -95,7 +95,7 @@ function NodesForAdmin() {
   }, [queryClient])
 
   const handleNodeScheduling = useCallback(
-     async (nodeId: string, reason?: string) => {
+    async (nodeId: string, reason?: string) => {
       try {
         await apichangeNodeScheduling(nodeId, { reason })
         await refetchTaskList()
@@ -277,7 +277,7 @@ function NodesForAdmin() {
         },
       },
     ],
-    [handleNodeScheduling, nodeColumns, t]
+    [handleNodeScheduling, nodeColumns, t, getNicknameByName]
   ) // 确保依赖项是稳定的
 
   return (
@@ -308,7 +308,7 @@ function NodesForAdmin() {
               <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
               {/* 占有原因输入 */}
               <div className="grid gap-2">
-                <Label htmlFor="occupation-reason" className="text-sm text-muted-foreground">
+                <Label htmlFor="occupation-reason" className="text-muted-foreground text-sm">
                   占有原因
                 </Label>
                 <Input
@@ -366,7 +366,7 @@ function NodesForAdmin() {
             </p>
             {/* 禁止调度原因输入 */}
             <div className="grid gap-2">
-              <Label htmlFor="scheduling-reason" className="text-sm text-muted-foreground">
+              <Label htmlFor="scheduling-reason" className="text-muted-foreground text-sm">
                 原因
               </Label>
               <Input
