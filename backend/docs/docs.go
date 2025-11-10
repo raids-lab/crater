@@ -7842,7 +7842,13 @@ const docTemplate = `{
                 "gpuCount": {
                     "type": "integer"
                 },
+                "gpuDriver": {
+                    "type": "string"
+                },
                 "gpuMemory": {
+                    "type": "string"
+                },
+                "kernelVersion": {
                     "type": "string"
                 },
                 "kubeletVersion": {

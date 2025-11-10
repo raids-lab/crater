@@ -24,6 +24,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -46,6 +47,7 @@ import { Label } from '@/components/ui/label'
 import { useAccountNameLookup } from '@/components/node/getaccountnickname'
 import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
+import { DataTableColumnHeader } from '@/components/query-table/column-header'
 
 import {
   IClusterNodeTaint,
@@ -95,7 +97,7 @@ function NodesForAdmin() {
   }, [queryClient])
 
   const handleNodeScheduling = useCallback(
-     async (nodeId: string, reason?: string) => {
+    async (nodeId: string, reason?: string) => {
       try {
         await apichangeNodeScheduling(nodeId, { reason })
         await refetchTaskList()
@@ -199,6 +201,41 @@ function NodesForAdmin() {
     () => [
       ...nodeColumns,
       {
+        accessorKey: 'gpuDriver',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t('nodeManagement.gpuDriver')} />
+        ),
+        cell: ({ row }) => {
+          const driver = row.getValue<string>('gpuDriver')
+          if (!driver) {
+            return <></>
+          }
+          return (
+            <Badge variant="outline" className="font-mono text-xs font-normal">
+              {driver}
+            </Badge>
+          )
+        },
+        enableSorting: true,
+      },
+      {
+        accessorKey: 'kernelVersion',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t('nodeManagement.kernelVersion')} />
+        ),
+        cell: ({ row }) => {
+          const version = row.getValue<string>('kernelVersion')
+          return version ? (
+            <Badge variant="outline" className="font-mono text-xs font-normal">
+              {version}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )
+        },
+        enableSorting: true,
+      },
+      {
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
@@ -277,7 +314,7 @@ function NodesForAdmin() {
         },
       },
     ],
-    [handleNodeScheduling, nodeColumns, t]
+    [handleNodeScheduling, nodeColumns, t, getNicknameByName]
   ) // 确保依赖项是稳定的
 
   return (
@@ -291,6 +328,9 @@ function NodesForAdmin() {
         query={nodeQuery}
         columns={columns}
         toolbarConfig={nodesToolbarConfig}
+        initialColumnVisibility={{
+          gpuDriver: false, // 默认隐藏加速卡驱动版本列
+        }}
       />
       {/* 占有 / 释放 弹窗：在占有分支中增加 reason 输入 */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -308,7 +348,7 @@ function NodesForAdmin() {
               <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
               {/* 占有原因输入 */}
               <div className="grid gap-2">
-                <Label htmlFor="occupation-reason" className="text-sm text-muted-foreground">
+                <Label htmlFor="occupation-reason" className="text-muted-foreground text-sm">
                   占有原因
                 </Label>
                 <Input
@@ -366,7 +406,7 @@ function NodesForAdmin() {
             </p>
             {/* 禁止调度原因输入 */}
             <div className="grid gap-2">
-              <Label htmlFor="scheduling-reason" className="text-sm text-muted-foreground">
+              <Label htmlFor="scheduling-reason" className="text-muted-foreground text-sm">
                 原因
               </Label>
               <Input
