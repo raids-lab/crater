@@ -21,11 +21,13 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenuLabel } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
+import useIsAdmin from '@/hooks/use-admin'
+
 import { cn } from '@/lib/utils'
 
 const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const navigate = useNavigate()
-  const location = useLocation()
+  const isAdminView = useIsAdmin()
 
   if (!nodes || nodes.length === 0 || nodes[0] === '') {
     return <></>
@@ -39,7 +41,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   const handleBadgeClick = () => {
     if (isSingleNode) {
       navigate({
-        to: nodeDetailPath,
+        to: isAdminView ? '/admin/cluster/nodes/$node' : '/portal/overview/$node',
         params: { node: nodes[0] },
       })
     }
@@ -87,7 +89,7 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
                       className="z-10 cursor-pointer justify-start bg-transparent px-2 py-1"
                       onClick={() =>
                         navigate({
-                          to: nodeDetailPath,
+                          to: isAdminView ? '/admin/cluster/nodes/$node' : '/portal/overview/$node',
                           params: { node },
                         })
                       }
