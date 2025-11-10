@@ -38,17 +38,19 @@ const (
 )
 
 type NodeBriefInfo struct {
-	Name        string                   `json:"name"`
-	Role        NodeRole                 `json:"role"`
-	Arch        string                   `json:"arch"`
-	Status      corev1.NodeConditionType `json:"status"`
-	Vendor      string                   `json:"vendor"`
-	Taints      []string                 `json:"taints"`
-	Capacity    corev1.ResourceList      `json:"capacity"`
-	Allocatable corev1.ResourceList      `json:"allocatable"`
-	Used        corev1.ResourceList      `json:"used"`
-	Workloads   int                      `json:"workloads"`
-	Annotations map[string]string        `json:"annotations"`
+	Name          string                   `json:"name"`
+	Role          NodeRole                 `json:"role"`
+	Arch          string                   `json:"arch"`
+	Status        corev1.NodeConditionType `json:"status"`
+	Vendor        string                   `json:"vendor"`
+	Taints        []string                 `json:"taints"`
+	Capacity      corev1.ResourceList      `json:"capacity"`
+	Allocatable   corev1.ResourceList      `json:"allocatable"`
+	Used          corev1.ResourceList      `json:"used"`
+	Workloads     int                      `json:"workloads"`
+	Annotations   map[string]string        `json:"annotations"`
+	KernelVersion string                   `json:"kernelVersion"`
+	GPUDriver     string                   `json:"gpuDriver"`
 }
 
 type Pod struct {
@@ -76,9 +78,11 @@ type ClusterNodeDetail struct {
 	Arch                    string                   `json:"arch"`
 	KubeletVersion          string                   `json:"kubeletVersion"`
 	ContainerRuntimeVersion string                   `json:"containerRuntimeVersion"`
+	KernelVersion           string                   `json:"kernelVersion"`
 	GPUMemory               string                   `json:"gpuMemory"`
 	GPUCount                int                      `json:"gpuCount"`
 	GPUArch                 string                   `json:"gpuArch"`
+	GPUDriver               string                   `json:"gpuDriver"`
 }
 
 type GPUInfo struct {
@@ -237,18 +241,26 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 			vendor = vendorLabel
 		}
 
+		// 获取 GPU 驱动版本
+		gpuDriver := ""
+		if driver, exists := node.Labels["nvidia.com/cuda.driver-version.full"]; exists {
+			gpuDriver = driver
+		}
+
 		nodeInfos[i] = NodeBriefInfo{
-			Name:        node.Name,
-			Role:        getNodeRole(node),
-			Arch:        node.Status.NodeInfo.Architecture,
-			Status:      getNodeStatus(node),
-			Vendor:      vendor,
-			Taints:      taintsToStringArray(node.Spec.Taints),
-			Capacity:    node.Status.Capacity,
-			Allocatable: node.Status.Allocatable,
-			Used:        usedResources,
-			Workloads:   workloadCount,
-			Annotations: node.Annotations,
+			Name:          node.Name,
+			Role:          getNodeRole(node),
+			Arch:          node.Status.NodeInfo.Architecture,
+			Status:        getNodeStatus(node),
+			Vendor:        vendor,
+			Taints:        taintsToStringArray(node.Spec.Taints),
+			Capacity:      node.Status.Capacity,
+			Allocatable:   node.Status.Allocatable,
+			Used:          usedResources,
+			Workloads:     workloadCount,
+			Annotations:   node.Annotations,
+			KernelVersion: node.Status.NodeInfo.KernelVersion,
+			GPUDriver:     gpuDriver,
 		}
 	}
 
@@ -260,6 +272,12 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 	node := &corev1.Node{}
 	if err := nc.Get(ctx, client.ObjectKey{Name: name}, node); err != nil {
 		return ClusterNodeDetail{}, err
+	}
+
+	// 获取 GPU 驱动版本
+	gpuDriver := ""
+	if driver, exists := node.Labels["nvidia.com/cuda.driver-version.full"]; exists {
+		gpuDriver = driver
 	}
 
 	nodeInfo := ClusterNodeDetail{
@@ -274,6 +292,8 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		Arch:                    node.Status.NodeInfo.Architecture,
 		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
+		KernelVersion:           node.Status.NodeInfo.KernelVersion,
+		GPUDriver:               gpuDriver,
 	}
 	return nodeInfo, nil
 }

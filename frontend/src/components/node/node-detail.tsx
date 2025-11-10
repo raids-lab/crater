@@ -504,6 +504,15 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
           title: t('nodeDetail.info.containerRuntime'),
           value: <span className="font-mono">{nodeDetail?.containerRuntimeVersion}</span>,
         },
+        ...(isAdminView && nodeDetail?.kernelVersion
+          ? [
+              {
+                icon: ServerIcon,
+                title: t('nodeDetail.info.kernelVersion'),
+                value: <span className="font-mono">{nodeDetail?.kernelVersion}</span>,
+              },
+            ]
+          : []),
       ]}
       tabs={[
         {

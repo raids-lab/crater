@@ -123,9 +123,9 @@ export default function DetailPage({
 
   return (
     <div className="flex h-full w-full flex-col space-y-6">
-      <div className="h-32 space-y-6">
+      <div className="min-h-32 space-y-6">
         {header}
-        <div className="text-muted-foreground grid grid-cols-3 gap-3 text-sm">
+        <div className="text-muted-foreground grid grid-cols-3 gap-3 pb-2 text-sm">
           {info.map((data, index) => (
             <div key={index} className={cn('flex items-center', data.className)}>
               <data.icon className="text-muted-foreground mr-1.5 size-4" />

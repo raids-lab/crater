@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useNavigate } from '@tanstack/react-router'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { InfoIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +32,10 @@ const NodeBadges = ({ nodes }: { nodes?: string[] }) => {
   if (!nodes || nodes.length === 0 || nodes[0] === '') {
     return <></>
   }
+
+  // 判断是否在管理员页面
+  const isAdminPage = location.pathname.startsWith('/admin')
+  const nodeDetailPath = isAdminPage ? '/admin/cluster/nodes/$node' : '/portal/overview/$node'
 
   const isSingleNode = nodes.length === 1
   const handleBadgeClick = () => {
