@@ -133,7 +133,7 @@ make install-hooks
 然后根据您要开发的组件配置相应的开发环境。详细的环境配置说明请参考各子模块的 README：
 
 - **后端开发环境**: 请参考 [后端开发指南](../../backend/README.md)
-- **前端开发环境**: 请参考 [前端开发指南](../../frontend/README.md)
+- **前端开发环境**: 请参考 [前端开发指南](../../frontend/README.zh-CN.md)
 - **存储服务开发环境**: 请参考 [存储服务开发指南](../../storage/README.md)
 - **文档网站开发环境**: 请参考 [文档网站开发指南](../../website/README.md)
 

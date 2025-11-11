@@ -24,6 +24,8 @@ import { IBackendVersionInfo, IUserContext } from '@/services/api/auth'
  */
 const LAST_VIEW_KEY = 'last_view'
 const SETTINGS_KEY = 'settings'
+const PRIVACY_ACCEPTED_KEY = 'privacy_accepted' // 新增：隐私政策同意状态
+
 export const ACCESS_TOKEN_KEY = 'access_token'
 export const REFRESH_TOKEN_KEY = 'refresh_token'
 export const VITE_UI_THEME_KEY = 'vite_ui_theme'
@@ -66,6 +68,19 @@ export const globalSettings = atomWithStorage(
     scheduler: 'volcano' as 'volcano' | 'colocate' | 'sparse',
     hideUsername: false,
   },
+  undefined,
+  {
+    getOnInit: true,
+  }
+)
+
+/**
+ * 是否已在当前浏览器同意隐私政策
+ * true 表示用户已在本设备上确认过，登录页可默认勾选
+ */
+export const atomPrivacyAccepted = atomWithStorage<boolean>(
+  PRIVACY_ACCEPTED_KEY,
+  false,
   undefined,
   {
     getOnInit: true,

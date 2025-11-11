@@ -57,8 +57,8 @@ For other IDEs, manually configure:
 Clone and initialize:
 
 ```bash
-git clone https://github.com/raids-lab/crater-frontend.git
-cd crater-frontend
+git clone https://github.com/YOUR_USERNAME/crater.git
+cd crater/frontend
 pnpm install
 ```
 
