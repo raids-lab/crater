@@ -16,8 +16,30 @@ fi
 # Get list of staged files
 STAGED_FILES=$(git diff --cached --name-only 2>/dev/null)
 
-# If no staged files, exit successfully
+# If no staged files, check if there are modified files
 if [ -z "$STAGED_FILES" ]; then
+    # Check if there are any modified files (not staged)
+    MODIFIED_FILES=$(git diff --name-only 2>/dev/null)
+    if [ -n "$MODIFIED_FILES" ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  Warning: No staged files found, but there are modified files"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Please stage your files first using 'git add' before committing."
+        echo ""
+        echo "Modified files:"
+        echo "$MODIFIED_FILES" | sed 's/^/  - /'
+        echo ""
+        echo "💡 Tip: You can also run checks directly in sub-project directories:"
+        echo "   cd frontend && make pre-commit-check"
+        echo "   cd backend && make pre-commit-check"
+        echo "   cd storage && make pre-commit-check"
+        echo "   cd website && make pre-commit-check"
+        echo ""
+        exit 0
+    fi
+    # No staged files and no modified files, exit successfully
     exit 0
 fi
 
@@ -89,6 +111,13 @@ if [ $CHECKS_RUN -eq 1 ]; then
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "✅ All checks passed!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+else
+    # No checks were run, but there are staged files
+    # This means staged files are not in any monitored sub-project directory
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✅ No checks to run"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 fi
 
