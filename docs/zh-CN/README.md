@@ -152,7 +152,26 @@ make install-hooks
 
 ```bash
 # 在仓库根目录执行，会检查所有修改的目录
+# 注意：必须先使用 'git add' 暂存文件，然后才能运行此命令
+# 钩子只会检查暂存的文件来决定需要检查哪些子项目
+git add <your-files>
 make pre-commit-check
+```
+
+或者，您也可以直接在子项目目录中运行检查，这会检查该项目的所有文件（不仅仅是暂存的文件）：
+
+```bash
+# 检查前端（检查 frontend/ 中的所有文件）
+cd frontend && make pre-commit-check
+
+# 检查后端（检查 backend/ 中的所有文件）
+cd backend && make pre-commit-check
+
+# 检查存储服务（检查 storage/ 中的所有文件）
+cd storage && make pre-commit-check
+
+# 检查文档网站（检查 website/ 中的所有文件）
+cd website && make pre-commit-check
 ```
 
 这样可以提前发现问题并修复，避免在提交时被钩子阻止。

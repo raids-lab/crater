@@ -151,7 +151,26 @@ Before committing, you can use the following command to run checks in advance to
 
 ```bash
 # Execute in the repository root directory, will check all modified directories
+# Note: You must first stage files with 'git add' before running this command
+# The hook only checks staged files to determine which sub-projects to check
+git add <your-files>
 make pre-commit-check
+```
+
+Alternatively, you can run checks directly in sub-project directories, which will check all files in that project (not just staged files):
+
+```bash
+# Check frontend (checks all files in frontend/)
+cd frontend && make pre-commit-check
+
+# Check backend (checks all files in backend/)
+cd backend && make pre-commit-check
+
+# Check storage (checks all files in storage/)
+cd storage && make pre-commit-check
+
+# Check website (checks all files in website/)
+cd website && make pre-commit-check
 ```
 
 This helps you discover and fix issues early, avoiding being blocked by hooks during commit.
