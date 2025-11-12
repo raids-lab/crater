@@ -3,7 +3,6 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,14 +14,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 )
 
-type CronjobConfigs struct {
-	Name     string         `json:"name"`
-	Type     string         `json:"type"`
-	Schedule string         `json:"schedule"`
-	Suspend  bool           `json:"suspend"`
-	Configs  map[string]any `json:"configs"`
-}
-
 // UpdateCronjobConfig godoc
 //
 //	@Summary		Update cronjob config
@@ -31,39 +22,41 @@ type CronjobConfigs struct {
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			use	body		CronjobConfigs			true	"CronjobConfigs"
+//	@Param			use	body		model.CronJobConfig			true	"CronjobConfig"
 //	@Success		200	{object}	resputil.Response[any]	"Success"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/operations/cronjob [put]
 func (mgr *OperationsMgr) UpdateCronjobConfig(c *gin.Context) {
-	var req CronjobConfigs
+	var req model.CronJobConfig
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
 		return
 	}
-
 	var (
 		jobTypePtr *model.CronJobType
 		specPtr    *string
+		statusPtr  *model.CronJobConfigStatus
 		configPtr  *string
 	)
 	if req.Type != "" {
-		jobTypePtr = ptr.To(model.CronJobType(req.Type))
+		jobTypePtr = ptr.To(req.Type)
 	}
-	if req.Schedule != "" {
-		specPtr = ptr.To(req.Schedule)
+	if req.Spec != "" {
+		specPtr = ptr.To(req.Spec)
 	}
-
-	if len(req.Configs) > 0 {
-		configJson, err := json.Marshal(req.Configs)
+	if req.Status != "" {
+		statusPtr = ptr.To(req.Status)
+	}
+	if len(req.Config) > 0 {
+		configJson, err := json.Marshal(req.Config)
 		if err != nil {
-			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.ServiceError)
 		}
 		configPtr = ptr.To(string(configJson))
 	}
-	if err := mgr.cronJobManager.UpdateJobConfig(c, req.Name, jobTypePtr, specPtr, &req.Suspend, configPtr); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+	if err := mgr.cronJobManager.UpdateJobConfig(c, req.Name, jobTypePtr, specPtr, statusPtr, configPtr); err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
 	resputil.Success(c, "Successfully update cronjob config")
@@ -82,36 +75,68 @@ func (mgr *OperationsMgr) UpdateCronjobConfig(c *gin.Context) {
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/operations/cronjob [get]
 func (mgr *OperationsMgr) GetCronjobConfigs(c *gin.Context) {
-	jobs, err := mgr.cronJobManager.GetAllCronJobs(c)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-	configs := lo.Map(jobs, func(job *model.CronJobConfig, _ int) CronjobConfigs {
-		config := make(map[string]any)
-		if err := json.Unmarshal(job.Config, &config); err != nil {
-			config = map[string]any{}
-		}
-		ret := CronjobConfigs{
-			Name:     job.Name,
-			Type:     string(job.Type),
-			Schedule: job.Spec,
-			Suspend:  job.GetSuspend(),
-			Configs:  config,
-		}
-		return ret
-	})
-	resputil.Success(c, configs)
-}
-
-func (mgr *OperationsMgr) GetCronjobNames(c *gin.Context) {
-	names, err := mgr.cronJobManager.GetCronjobNames(c)
+	configs, err := mgr.cronJobManager.GetCronjobConfigs(
+		c, nil, nil, nil, nil,
+	)
 	if err != nil {
 		klog.Error(err)
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
+	resputil.Success(c, map[string]any{
+		"configs": configs,
+		"total":   len(configs),
+	})
+}
+
+func (mgr *OperationsMgr) GetCronjobNames(c *gin.Context) {
+	configs, err := mgr.cronJobManager.GetCronjobConfigs(
+		c, nil, nil, nil, nil,
+	)
+	if err != nil {
+		klog.Error(err)
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+	names := lo.Map(configs, func(item *model.CronJobConfig, _ int) string {
+		return item.Name
+	})
 	resputil.Success(c, names)
+}
+
+type GetCronjobConfigStatusReq struct {
+	Name []string `json:"name" form:"name"`
+}
+
+type GetCronjobConfigStatusRespItem struct {
+	Name    string                    `json:"name"`
+	Status  model.CronJobConfigStatus `json:"status"`
+	EntryID int                       `json:"entry_id"`
+}
+
+func (mgr *OperationsMgr) GetCronjobConfigStatus(c *gin.Context) {
+	req := &GetCronjobConfigStatusReq{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		klog.Error(err)
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+	configs, err := mgr.cronJobManager.GetCronjobConfigs(
+		c, req.Name, nil, nil, nil,
+	)
+	if err != nil {
+		klog.Error(err)
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+	status := lo.SliceToMap(configs, func(item *model.CronJobConfig) (string, *GetCronjobConfigStatusRespItem) {
+		return item.Name, &GetCronjobConfigStatusRespItem{
+			Name:    item.Name,
+			Status:  item.Status,
+			EntryID: item.EntryID,
+		}
+	})
+	resputil.Success(c, status)
 }
 
 func (mgr *OperationsMgr) GetCronjobRecordTimeRange(c *gin.Context) {
@@ -138,11 +163,11 @@ func (cm *OperationsMgr) GetCronjobRecords(c *gin.Context) {
 	req := &GetCronJobRecordsReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Error(err)
-		c.JSON(http.StatusBadRequest, err.Error())
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
 		return
 	}
 
-	records, total, err := cm.cronJobManager.GetCronjobRecords(
+	records, err := cm.cronJobManager.GetCronjobRecords(
 		c,
 		req.Name,
 		req.StartTime,
@@ -157,7 +182,6 @@ func (cm *OperationsMgr) GetCronjobRecords(c *gin.Context) {
 
 	resputil.Success(c, map[string]any{
 		"records": records,
-		"total":   total,
 	})
 }
 
@@ -190,4 +214,29 @@ func (cm *OperationsMgr) DeleteCronjobRecords(c *gin.Context) {
 	resputil.Success(c, map[string]string{
 		"deleted": fmt.Sprintf("%d", deleted),
 	})
+}
+
+type GetLastCronjobRecordReq struct {
+	Name      []string   `json:"name"`
+	Status    *string    `json:"status"`
+	StartTime *time.Time `json:"startTime"`
+	EndTime   *time.Time `json:"endTime"`
+}
+
+func (cm *OperationsMgr) GetLastCronjobRecord(c *gin.Context) {
+	req := &GetLastCronjobRecordReq{}
+	if err := c.ShouldBindJSON(req); err != nil {
+		klog.Error(err)
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+
+	records, err := cm.cronJobManager.GetLastCronjobRecord(c, req.Name, req.Status, req.StartTime, req.EndTime)
+	if err != nil {
+		klog.Error(err)
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	resputil.Success(c, records)
 }

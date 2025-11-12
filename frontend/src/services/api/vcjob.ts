@@ -437,7 +437,40 @@ export const apiJupyterSnapshot = (jobName: string) =>
 export const apiOpenSSH = (jobName: string) =>
   apiV1Post<IResponse<SSHInfo>>(`${JOB_URL}/${jobName}/ssh`)
 
-export const apiJobScheduleAdmin = () => apiV1Get<IResponse<string>>('admin/operations/cronjob')
+// CronJob 状态枚举
+export enum CronJobConfigStatus {
+  Unknown = 'unknown',
+  Suspended = 'suspended',
+  Idle = 'idle',
+  Running = 'running',
+}
+
+export type CronJobConfigStatusType = `${CronJobConfigStatus}`
+
+export const CRONJOB_CONFIG_STATUSES = [
+  CronJobConfigStatus.Unknown,
+  CronJobConfigStatus.Suspended,
+  CronJobConfigStatus.Idle,
+  CronJobConfigStatus.Running,
+] as const
+
+export interface CronJobConfig {
+  name: string
+  type: string
+  spec: string
+  config: object
+  lastExecuteTime: string
+  status: CronJobConfigStatusType
+  entry_id: number
+}
+
+export interface CronJobConfigListResp {
+  configs: CronJobConfig[]
+  total: number
+}
+
+export const apiJobScheduleAdmin = () =>
+  apiV1Get<IResponse<CronJobConfigListResp>>('admin/operations/cronjob')
 
 export const apiJobScheduleChangeAdmin = (schedule: object) =>
   apiV1Put<IResponse<string>>('admin/operations/cronjob', schedule)
@@ -508,7 +541,6 @@ export interface CronJobRecordListReq {
 
 export interface CronJobRecordListResp {
   records: CronJobRecord[]
-  total: number
 }
 
 export const apiAdminCronJobNameList = () =>
@@ -530,3 +562,19 @@ export interface DeleteCronJobRecordsReq {
 
 export const apiAdminCronJobRecordDelete = (param: DeleteCronJobRecordsReq) =>
   apiV1Post<IResponse<{ deleted: string }>>('admin/operations/cronjob/record/delete', param)
+
+// Cronjob 配置状态
+export interface GetCronjobConfigStatusReq {
+  name: string[]
+}
+
+export interface GetCronjobConfigStatusRespItem {
+  name: string
+  status: CronJobConfigStatusType
+  entry_id: number
+}
+
+export type GetCronjobConfigStatusResp = Record<string, GetCronjobConfigStatusRespItem>
+
+export const apiAdminCronJobConfigStatus = (param: GetCronjobConfigStatusReq) =>
+  apiV1Post<IResponse<GetCronjobConfigStatusResp>>('admin/operations/cronjob/config/status', param)

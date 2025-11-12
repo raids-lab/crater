@@ -35,8 +35,8 @@ func newCronJobConfig(db *gorm.DB, opts ...gen.DOOption) cronJobConfig {
 	_cronJobConfig.Name = field.NewString(tableName, "name")
 	_cronJobConfig.Type = field.NewString(tableName, "type")
 	_cronJobConfig.Spec = field.NewString(tableName, "spec")
-	_cronJobConfig.Suspend = field.NewBool(tableName, "suspend")
 	_cronJobConfig.Config = field.NewField(tableName, "config")
+	_cronJobConfig.Status = field.NewString(tableName, "status")
 	_cronJobConfig.EntryID = field.NewInt(tableName, "entry_id")
 
 	_cronJobConfig.fillFieldMap()
@@ -55,8 +55,8 @@ type cronJobConfig struct {
 	Name      field.String // Cronjob配置名称
 	Type      field.String // Cronjob类型
 	Spec      field.String // Cron调度规范
-	Suspend   field.Bool   // 是否暂停执行
 	Config    field.Field  // Cronjob配置数据
+	Status    field.String // 执行状态
 	EntryID   field.Int    // Cronjob标识ID
 
 	fieldMap map[string]field.Expr
@@ -81,8 +81,8 @@ func (c *cronJobConfig) updateTableName(table string) *cronJobConfig {
 	c.Name = field.NewString(table, "name")
 	c.Type = field.NewString(table, "type")
 	c.Spec = field.NewString(table, "spec")
-	c.Suspend = field.NewBool(table, "suspend")
 	c.Config = field.NewField(table, "config")
+	c.Status = field.NewString(table, "status")
 	c.EntryID = field.NewInt(table, "entry_id")
 
 	c.fillFieldMap()
@@ -120,8 +120,8 @@ func (c *cronJobConfig) fillFieldMap() {
 	c.fieldMap["name"] = c.Name
 	c.fieldMap["type"] = c.Type
 	c.fieldMap["spec"] = c.Spec
-	c.fieldMap["suspend"] = c.Suspend
 	c.fieldMap["config"] = c.Config
+	c.fieldMap["status"] = c.Status
 	c.fieldMap["entry_id"] = c.EntryID
 }
 

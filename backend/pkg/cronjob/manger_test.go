@@ -46,24 +46,24 @@ func TestCronJob(t *testing.T) {
 		PatchConvey("prepareUpdateConfig", t, func() {
 			manager := NewCronJobManager(nil, nil, nil)
 			cur := &model.CronJobConfig{
-				Name:    "test",
-				Type:    model.CronJobTypeCleanerFunc,
-				Spec:    "0 0 * * *",
-				Suspend: ptr.To(false),
-				Config:  datatypes.JSON(`{"test": "test"}`),
+				Name:   "test",
+				Type:   model.CronJobTypeCleanerFunc,
+				Spec:   "0 0 * * *",
+				Status: model.CronJobConfigStatusIdle,
+				Config: datatypes.JSON(`{"test": "test"}`),
 			}
 			update := manager.prepareUpdateConfig(
 				cur,
 				ptr.To(model.CronJobTypeCleanerFunc),
 				ptr.To("1 1 * * *"),
-				ptr.To(true),
+				ptr.To(model.CronJobConfigStatusSuspended),
 				ptr.To(`{"test": "test"}`),
 			)
 			So(update, ShouldNotBeNil)
 			So(update.Name, ShouldEqual, "test")
 			So(update.Type, ShouldEqual, model.CronJobTypeCleanerFunc)
 			So(update.Spec, ShouldEqual, "1 1 * * *")
-			So(*update.Suspend, ShouldEqual, true)
+			So(update.Status, ShouldEqual, model.CronJobConfigStatusSuspended)
 			So(update.Config, ShouldEqual, datatypes.JSON(`{"test": "test"}`))
 		})
 	})

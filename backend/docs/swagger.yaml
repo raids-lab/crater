@@ -96,6 +96,49 @@ definitions:
     - ResourceTypeGPU
     - ResourceTypeRDMA
     - ResourceTypeVGPU
+  github_com_raids-lab_crater_dao_model.CronJobConfig:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      entry_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      spec:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfigStatus'
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobType'
+      updatedAt:
+        type: string
+    type: object
+  github_com_raids-lab_crater_dao_model.CronJobConfigStatus:
+    enum:
+    - unknown
+    - suspended
+    - idle
+    - running
+    type: string
+    x-enum-varnames:
+    - CronJobConfigStatusUnknown
+    - CronJobConfigStatusSuspended
+    - CronJobConfigStatusIdle
+    - CronJobConfigStatusRunning
+  github_com_raids-lab_crater_dao_model.CronJobType:
+    enum:
+    - cleaner_function
+    type: string
+    x-enum-varnames:
+    - CronJobTypeCleanerFunc
   github_com_raids-lab_crater_dao_model.DataType:
     enum:
     - dataset
@@ -482,6 +525,14 @@ definitions:
             type: string
           type: array
         type: object
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
     type: object
   internal_handler.AccountContext:
     properties:
@@ -1071,20 +1122,6 @@ definitions:
         type: array
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
-    type: object
-  internal_handler_operations.CronjobConfigs:
-    properties:
-      configs:
-        additionalProperties: {}
-        type: object
-      name:
-        type: string
-      schedule:
-        type: string
-      suspend:
-        type: boolean
-      type:
-        type: string
     type: object
   internal_handler_tool.PodIngress:
     properties:
@@ -5350,12 +5387,12 @@ paths:
       - application/json
       description: Update one cronjob config
       parameters:
-      - description: CronjobConfigs
+      - description: CronjobConfig
         in: body
         name: use
         required: true
         schema:
-          $ref: '#/definitions/internal_handler_operations.CronjobConfigs'
+          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfig'
       produces:
       - application/json
       responses:

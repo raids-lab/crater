@@ -226,6 +226,7 @@
   "cronPolicy.enable": "Enable",
   "cronPolicy.timeRange": "Time Range (minutes, TIME_RANGE)",
   "cronPolicy.title": "Scheduled Policy",
+  "cronPolicy.updating": "Updating...",
   "cronPolicy.util": "Utilization (UTIL)",
   "cronPolicy.waitTime": "Wait time (WAIT_TIME, minutes)",
   "cronJob.record.table.recordsTitle": "Scheduled Job Records",

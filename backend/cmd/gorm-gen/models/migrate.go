@@ -627,6 +627,60 @@ func main() {
 				return tx.Migrator().DropTable("cron_job_configs")
 			},
 		},
+		{
+			ID: "202511061031",
+			Migrate: func(tx *gorm.DB) error {
+				type CronJobConfig struct {
+					Suspend *bool                     `gorm:"not null;default:false;comment:是否暂停执行" json:"suspend"`
+					Status  model.CronJobConfigStatus `gorm:"type:varchar(128);index;default:unknown;comment:执行状态" json:"status"`
+				}
+				if err := tx.Migrator().AddColumn(&CronJobConfig{}, "Status"); err != nil {
+					return err
+				}
+				// suspend == true -> suspended
+				if err := tx.Model(&CronJobConfig{}).
+					Where("suspend = ?", true).
+					Update("status", model.CronJobConfigStatusSuspended).Error; err != nil {
+					return err
+				}
+				// suspend == false -> idle
+				if err := tx.Model(&CronJobConfig{}).
+					Where("suspend = ?", false).
+					Update("status", model.CronJobConfigStatusIdle).Error; err != nil {
+					return err
+				}
+
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type CronJobConfig struct {
+					Status model.CronJobConfigStatus `gorm:"type:varchar(128);index;default:unknown;comment:执行状态" json:"status"`
+				}
+				return tx.Migrator().DropColumn(&CronJobConfig{}, "Status")
+			},
+		},
+		{
+			ID: "202511101503",
+			Migrate: func(tx *gorm.DB) error {
+				type CronJobConfig struct {
+					Suspend *bool `gorm:"not null;default:true;comment:是否暂停执行" json:"suspend"`
+				}
+				if err := tx.Migrator().DropColumn(&CronJobConfig{}, "Suspend"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type CronJobConfig struct {
+					Suspend *bool `gorm:"not null;default:true;comment:是否暂停执行" json:"suspend"`
+				}
+				if err := tx.Migrator().AddColumn(&CronJobConfig{}, "Suspend"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

@@ -61,6 +61,7 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/clean/clean-long-running-job", mgr.HandleLongTimeRunningJobs)
 	g.POST("/clean/clean-waiting-jupyter-job", mgr.HandleWaitingJupyterJobs)
 	g.POST("/cronjob/config/name", mgr.GetCronjobNames)
+	g.POST("/cronjob/config/status", mgr.GetCronjobConfigStatus)
 	g.POST("/cronjob/record/time", mgr.GetCronjobRecordTimeRange)
 	g.POST("/cronjob/record/list", mgr.GetCronjobRecords)
 	g.POST("/cronjob/record/delete", mgr.DeleteCronjobRecords)

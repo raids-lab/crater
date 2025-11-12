@@ -6105,12 +6105,12 @@ const docTemplate = `{
                 "summary": "Update cronjob config",
                 "parameters": [
                     {
-                        "description": "CronjobConfigs",
+                        "description": "CronjobConfig",
                         "name": "use",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler_operations.CronjobConfigs"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfig"
                         }
                     }
                 ],
@@ -7369,6 +7369,68 @@ const docTemplate = `{
                 "ResourceTypeVGPU"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.CronJobConfig": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "entry_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spec": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfigStatus"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CronJobType"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_dao_model.CronJobConfigStatus": {
+            "type": "string",
+            "enum": [
+                "unknown",
+                "suspended",
+                "idle",
+                "running"
+            ],
+            "x-enum-varnames": [
+                "CronJobConfigStatusUnknown",
+                "CronJobConfigStatusSuspended",
+                "CronJobConfigStatusIdle",
+                "CronJobConfigStatusRunning"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.CronJobType": {
+            "type": "string",
+            "enum": [
+                "cleaner_function"
+            ],
+            "x-enum-varnames": [
+                "CronJobTypeCleanerFunc"
+            ]
+        },
         "github_com_raids-lab_crater_dao_model.DataType": {
             "type": "string",
             "enum": [
@@ -7919,6 +7981,18 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
                 }
             }
         },
@@ -8810,27 +8884,6 @@ const docTemplate = `{
                 },
                 "taskType": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
-                }
-            }
-        },
-        "internal_handler_operations.CronjobConfigs": {
-            "type": "object",
-            "properties": {
-                "configs": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "name": {
-                    "type": "string"
-                },
-                "schedule": {
-                    "type": "string"
-                },
-                "suspend": {
-                    "type": "boolean"
-                },
-                "type": {
-                    "type": "string"
                 }
             }
         },
