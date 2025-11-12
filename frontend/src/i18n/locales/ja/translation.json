@@ -222,6 +222,7 @@
   "cronPolicy.enable": "有効化",
   "cronPolicy.timeRange": "時間範囲（分、TIME_RANGE）",
   "cronPolicy.title": "スケジュールポリシー",
+  "cronPolicy.updating": "更新中...",
   "cronPolicy.util": "利用率（UTIL）",
   "cronPolicy.waitTime": "待機時間（WAIT_TIME、分）",
   "dataTable.ascending": "昇順",

@@ -222,6 +222,7 @@
   "cronPolicy.enable": "활성화",
   "cronPolicy.timeRange": "시간 범위(분, TIME_RANGE)",
   "cronPolicy.title": "시간 조정 정책",
+  "cronPolicy.updating": "업데이트 중...",
   "cronPolicy.util": "사용률 (UTIL)",
   "cronPolicy.waitTime": "대기 시간(WAIT_TIME, 분)",
   "dataTable.ascending": "오름차순",
