@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as LogsFullscreenRouteImport } from './routes/logs/fullscreen'
 import { Route as PortalUsersRouteRouteImport } from './routes/portal/users/route'
 import { Route as PortalTemplatesRouteRouteImport } from './routes/portal/templates/route'
 import { Route as PortalSettingsRouteRouteImport } from './routes/portal/settings/route'
@@ -120,6 +121,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const LogsFullscreenRoute = LogsFullscreenRouteImport.update({
+  id: '/logs/fullscreen',
+  path: '/logs/fullscreen',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PortalUsersRouteRoute = PortalUsersRouteRouteImport.update({
   id: '/users',
@@ -518,6 +524,7 @@ export interface FileRoutesByFullPath {
   '/portal/settings': typeof PortalSettingsRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
   '/portal/users': typeof PortalUsersRouteRouteWithChildren
+  '/logs/fullscreen': typeof LogsFullscreenRoute
   '/admin/': typeof AdminIndexRoute
   '/auth': typeof AuthIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -591,6 +598,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/logs/fullscreen': typeof LogsFullscreenRoute
   '/admin': typeof AdminIndexRoute
   '/auth': typeof AuthIndexRoute
   '/portal': typeof PortalIndexRoute
@@ -666,6 +674,7 @@ export interface FileRoutesById {
   '/portal/settings': typeof PortalSettingsRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
   '/portal/users': typeof PortalUsersRouteRouteWithChildren
+  '/logs/fullscreen': typeof LogsFullscreenRoute
   '/admin/': typeof AdminIndexRoute
   '/auth/': typeof AuthIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -751,6 +760,7 @@ export interface FileRouteTypes {
     | '/portal/settings'
     | '/portal/templates'
     | '/portal/users'
+    | '/logs/fullscreen'
     | '/admin/'
     | '/auth'
     | '/portal/'
@@ -824,6 +834,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/logs/fullscreen'
     | '/admin'
     | '/auth'
     | '/portal'
@@ -898,6 +909,7 @@ export interface FileRouteTypes {
     | '/portal/settings'
     | '/portal/templates'
     | '/portal/users'
+    | '/logs/fullscreen'
     | '/admin/'
     | '/auth/'
     | '/portal/'
@@ -974,6 +986,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   PortalRouteRoute: typeof PortalRouteRouteWithChildren
+  LogsFullscreenRoute: typeof LogsFullscreenRoute
   AuthIndexRoute: typeof AuthIndexRoute
   IngressJupyterNameRoute: typeof IngressJupyterNameRoute
 }
@@ -1021,6 +1034,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/logs/fullscreen': {
+      id: '/logs/fullscreen'
+      path: '/logs/fullscreen'
+      fullPath: '/logs/fullscreen'
+      preLoaderRoute: typeof LogsFullscreenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/portal/users': {
       id: '/portal/users'
@@ -1926,6 +1946,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   PortalRouteRoute: PortalRouteRouteWithChildren,
+  LogsFullscreenRoute: LogsFullscreenRoute,
   AuthIndexRoute: AuthIndexRoute,
   IngressJupyterNameRoute: IngressJupyterNameRoute,
 }
