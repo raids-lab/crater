@@ -55,7 +55,7 @@ import {
 
 import { cn } from '@/lib/utils'
 
-import CronJobRecordsTable from './cronjob-records-table'
+import CronJobRecordsTable from './-components/cronjob-records-table'
 
 export const Route = createFileRoute('/admin/cronjobs/')({
   component: CronPolicy,
@@ -117,7 +117,7 @@ const getFormSchema = (t: (key: string) => string) =>
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>
 
-export default function CronPolicy({ className }: { className?: string }) {
+function CronPolicy({ className }: { className?: string }) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState<boolean>(false)
 

@@ -2,13 +2,12 @@
 
 Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，本仓库为其前端项目，主要用于提供：算力编排、作业管理、监控可视化、模型与数据集管理等一体化 Web 控制台。
 
-
 ## 🛠️ 环境准备
 
 > [!NOTE]
 > 请先安装 **Node.js** 和 **pnpm**：
 >
-> * Node.js 官方下载：[https://nodejs.org/en/download](https://nodejs.org/en/download)
+> - Node.js 官方下载：[https://nodejs.org/en/download](https://nodejs.org/en/download)
 
 推荐使用 [nvm](https://github.com/nvm-sh/nvm) 管理 Node.js 版本，便于在不同项目间切换。
 
@@ -35,9 +34,9 @@ pnpm -v  # 推荐 v10.x 或更高
 
 请手动配置（建议）：
 
-* Prettier：统一代码风格
-* ESLint：静态代码检查
-* Tailwind CSS IntelliSense：Tailwind 类名智能提示
+- Prettier：统一代码风格
+- ESLint：静态代码检查
+- Tailwind CSS IntelliSense：Tailwind 类名智能提示
 
 ---
 
@@ -51,31 +50,7 @@ pnpm install
 
 ---
 
-### 3. 开发环境配置
-
-在项目根目录创建 `.env.development` 文件，示例如下：
-
-```env
-VITE_SERVER_PROXY_BACKEND="http://localhost:8092/"
-VITE_SERVER_PROXY_STORAGE="http://localhost:7320/"
-
-VITE_USE_MSW=false                 # 是否启用 MSW 接口 Mock
-VITE_TANSTACK_QUERY_DEVTOOLS=true  # 开启 React Query DevTools
-VITE_TANSTACK_ROUTER_DEVTOOLS=true # 开启 TanStack Router DevTools
-
-PORT=5180                          # 本地开发端口
-```
-
-说明：
-
-* `VITE_SERVER_PROXY_BACKEND`：后端 API 网关地址
-* `VITE_SERVER_PROXY_STORAGE`：对象存储 / 文件服务地址
-* 将 `VITE_USE_MSW` 设为 `true` 可启用本地 Mock（见后文）
-* DevTools 配置用于开发调试，可按需关闭
-
----
-
-### 4. 启动开发服务器
+### 3. 启动开发服务器
 
 ```bash
 make run
@@ -87,29 +62,35 @@ make run
 http://localhost:5180
 ```
 
+说明：
+
+- `VITE_SERVER_PROXY_BACKEND`：后端 API 网关地址
+- `VITE_SERVER_PROXY_STORAGE`：对象存储 / 文件服务地址
+- 将 `VITE_USE_MSW` 设为 `true` 可启用本地 Mock（见后文）
+- DevTools 配置用于开发调试，可按需关闭
+
 ---
 
 ## 🚀 核心技术栈
 
 Crater Frontend 基于现代 React 技术栈构建，主要包括：
 
-* **语言**：TypeScript
-* **框架**：React 19
-* **状态管理**：Jotai
-* **数据请求**：TanStack Query v5
-* **样式**：Tailwind CSS
-* **UI 组件库**：
-
-  * `shadcn/ui`：Headless + Tailwind 风格组件
-  * `Flowbite`：Tailwind 模板与组件
-  * `TanStack Table`：Headless 表格组件（适配复杂表格场景）
+- **语言**：TypeScript
+- **框架**：React 19
+- **状态管理**：Jotai
+- **数据请求**：TanStack Query v5
+- **样式**：Tailwind CSS
+- **UI 组件库**：
+  - `shadcn/ui`：Headless + Tailwind 风格组件
+  - `Flowbite`：Tailwind 模板与组件
+  - `TanStack Table`：Headless 表格组件（适配复杂表格场景）
 
 整体设计遵循：
 
-* 组件化、可重用
-* 类型安全
-* 与后端 API 解耦
-* 易于扩展、适配不同集群与业务场景
+- 组件化、可重用
+- 类型安全
+- 与后端 API 解耦
+- 易于扩展、适配不同集群与业务场景
 
 ---
 
@@ -126,9 +107,8 @@ Crater Frontend 基于现代 React 技术栈构建，主要包括：
    ```
 
 2. 在 `src/mocks/handlers.ts` 中编写或扩展接口 Mock 逻辑：
-
-   * 可根据后端接口路径定义对应的 `rest.get/post/put/delete` 等处理函数
-   * 建议按模块拆分，保持 Mock 代码可维护
+   - 可根据后端接口路径定义对应的 `rest.get/post/put/delete` 等处理函数
+   - 建议按模块拆分，保持 Mock 代码可维护
 
 ---
 
@@ -167,7 +147,7 @@ done
 
 Crater 的 Helm Chart 仓库：
 
-* `https://github.com/raids-lab/crater`
+- `https://github.com/raids-lab/crater`
 
 部署步骤（简要）：
 
@@ -201,22 +181,20 @@ src/
 
 约定建议：
 
-* 页面逻辑尽量保持轻量，将通用逻辑抽离到 `hooks/` 与 `lib/`
-* API 调用统一经由 `services/` 管理，便于切换后端实现或添加鉴权逻辑
-* 组件拆分遵循「UI 与业务解耦」原则，提升复用性
+- 页面逻辑尽量保持轻量，将通用逻辑抽离到 `hooks/` 与 `lib/`
+- API 调用统一经由 `services/` 管理，便于切换后端实现或添加鉴权逻辑
+- 组件拆分遵循「UI 与业务解耦」原则，提升复用性
 
 ---
 
 ## 🐛 已知问题
 
 1. **暗色模式下浏览器自动填充样式异常**
-
-   * 表单在深色主题下，浏览器自动填充可能会出现白色背景。
-   * 参考：TailwindCSS 讨论帖 [TailwindCSS#8679](https://github.com/tailwindlabs/tailwindcss/discussions/8679)
-   * 如遇类似问题，可在全局样式中对 `:-webkit-autofill` 进行覆盖。
+   - 表单在深色主题下，浏览器自动填充可能会出现白色背景。
+   - 参考：TailwindCSS 讨论帖 [TailwindCSS#8679](https://github.com/tailwindlabs/tailwindcss/discussions/8679)
+   - 如遇类似问题，可在全局样式中对 `:-webkit-autofill` 进行覆盖。
 
 ---
-
 
 ---
 
@@ -238,17 +216,17 @@ docs(readme): update contribution guidelines
 
 可用 `type`：
 
-* `feat`：新功能
-* `fix`：缺陷修复
-* `docs`：文档更新
-* `style`：代码风格调整（不影响逻辑）
-* `refactor`：重构（无新功能或修复）
-* `test`：测试相关
-* `chore`：构建、依赖、脚本等非业务代码调整
+- `feat`：新功能
+- `fix`：缺陷修复
+- `docs`：文档更新
+- `style`：代码风格调整（不影响逻辑）
+- `refactor`：重构（无新功能或修复）
+- `test`：测试相关
+- `chore`：构建、依赖、脚本等非业务代码调整
 
 `scope`（可选）用于标记影响范围：
 
-* 示例：`portal`、`admin`、`ui`、`api` 等
+- 示例：`portal`、`admin`、`ui`、`api` 等
 
 ---
 
@@ -256,9 +234,8 @@ docs(readme): update contribution guidelines
 
 提交 Issue 时请尽量提供完整信息，便于快速定位问题：
 
-* 复现步骤（Step by Step）
-* 期望行为与实际行为
-* 截图或录屏（如果适用）
-* 浏览器信息（如：Chrome 版本）、操作系统、分辨率等环境信息
-* 如与后端交互相关，可附上接口返回示例（脱敏后）
-
+- 复现步骤（Step by Step）
+- 期望行为与实际行为
+- 截图或录屏（如果适用）
+- 浏览器信息（如：Chrome 版本）、操作系统、分辨率等环境信息
+- 如与后端交互相关，可附上接口返回示例（脱敏后）
