@@ -2,13 +2,13 @@ package tool
 
 import (
 	"bufio"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -35,11 +35,12 @@ func (mgr *APIServerMgr) StreamPodContainerLog(c *gin.Context) {
 		return
 	}
 
-	// 设置流式响应头
-	c.Header("Content-Type", "application/octet-stream")
+	// 设置流式响应头 - 返回纯文本流
+	c.Header("Content-Type", "text/plain; charset=utf-8")
 	c.Header("Transfer-Encoding", "chunked")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Header("X-Content-Type-Options", "nosniff")
 
 	// 创建日志请求，强制设置Follow为true
 	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
@@ -64,22 +65,31 @@ func (mgr *APIServerMgr) StreamPodContainerLog(c *gin.Context) {
 		stream.Close()
 	}()
 
-	// 读取并发送日志
+	// 直接转发日志流，不进行编码
+	// 使用 io.Copy 进行高效的流式传输
+	flusher, ok := c.Writer.(interface{ Flush() })
+	if !ok {
+		klog.Error("streaming unsupported")
+		return
+	}
+
+	// 按行读取并立即发送，保持流式特性
 	reader := bufio.NewReader(stream)
 	for {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			if err != io.EOF {
-				// 发送错误信息（可选）
-				fmt.Fprintf(c.Writer, "ERROR: %v\n", err)
+				klog.Errorf("Error reading log stream: %v", err)
 			}
 			break
 		}
 
-		// 将日志行编码为base64并添加换行符，方便前端解析
-		encoded := base64.StdEncoding.EncodeToString(line)
-		_, _ = c.Writer.WriteString(encoded + "\n")
-		c.Writer.Flush()
+		// 直接写入原始日志行
+		if _, writeErr := c.Writer.Write(line); writeErr != nil {
+			klog.Errorf("Error writing to response: %v", writeErr)
+			break
+		}
+		flusher.Flush()
 	}
 }
 

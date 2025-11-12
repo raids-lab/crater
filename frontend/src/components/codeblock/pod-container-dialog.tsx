@@ -318,18 +318,10 @@ export function PodContainerDialog({
         className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] gap-5 sm:max-w-full"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => {
-          // 当类型为 shell 时，阻止 ESC 关闭对话框
           if (type === 'shell') {
             e.preventDefault()
           }
         }}
-        // onPointerDownOutside={(e) => {
-        //   // 当类型为 shell 时，阻止点击外部关闭对话框
-        //   if (type === "shell") {
-        //     toast.warning("请使用右上角关闭按钮，手动关闭终端");
-        //     e.preventDefault();
-        //   }
-        // }}
       >
         <DialogHeader>
           <DialogTitle className="flex flex-row items-center gap-1.5 font-semibold">
