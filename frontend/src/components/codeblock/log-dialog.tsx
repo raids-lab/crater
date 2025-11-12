@@ -25,7 +25,7 @@ import {
 import { Pause, Play, PlayCircle, Square } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import useResizeObserver from 'use-resize-observer'
+import { useResizeObserver } from 'usehooks-ts'
 import { useCopyToClipboard } from 'usehooks-ts'
 
 import { Button } from '@/components/ui/button'
@@ -79,7 +79,11 @@ export function LogCard({
   const [timestamps, setTimestamps] = useState(false)
   const [copied, setCopied] = useState(false)
   const [, copy] = useCopyToClipboard()
-  const { ref: refRoot, width, height } = useResizeObserver()
+  const refRoot = useRef<HTMLDivElement | null>(null)
+  // usehooks-ts expects a RefObject<HTMLElement>, cast is safe for HTMLDivElement
+  const { width = 0, height = 0 } = useResizeObserver({
+    ref: refRoot as React.RefObject<HTMLElement>,
+  })
   const logAreaRef = useRef<HTMLDivElement>(null)
 
   const [streaming, setStreaming] = useState(false) // 新增：控制是否处于流式模式

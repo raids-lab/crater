@@ -18,9 +18,9 @@
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ChevronRight, FileDigitIcon, FolderIcon, type LucideIcon } from 'lucide-react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import useResizeObserver from 'use-resize-observer'
+import { useResizeObserver } from 'usehooks-ts'
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
@@ -103,7 +103,10 @@ const Tree = ({
         }) ?? [],
   })
 
-  const { ref: refRoot, width, height } = useResizeObserver()
+  const refRoot = useRef<HTMLDivElement | null>(null)
+  const { width = 0, height = 0 } = useResizeObserver({
+    ref: refRoot as React.RefObject<HTMLElement>,
+  })
 
   return (
     <div ref={refRoot} className={cn('overflow-hidden', className)}>
