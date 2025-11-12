@@ -153,6 +153,8 @@ export function LoginForm({
         space: data.context.space,
       })
       setAccount(data.context)
+      // 清除 GitHub Star 卡片关闭状态，每次登录都显示
+      localStorage.removeItem('github-star-card-dismissed')
       toast.success(
         `你好，${data.context.rolePlatform ? '系统管理员' : '用户'}${data.user.nickname}`
       )

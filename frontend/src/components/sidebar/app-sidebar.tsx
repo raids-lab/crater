@@ -25,6 +25,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 
+import { GitHubStarCard } from '@/components/layout/github-star-card'
 import { NavGroup } from '@/components/sidebar/nav-main'
 import { NavUser } from '@/components/sidebar/nav-user'
 import { TeamSwitcher } from '@/components/sidebar/team-switcher'
@@ -94,6 +95,9 @@ export function AppSidebar({
         ))}
       </SidebarContent>
       <SidebarFooter>
+        <div className="px-2 pb-2">
+          <GitHubStarCard />
+        </div>
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
