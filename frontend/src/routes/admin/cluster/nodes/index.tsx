@@ -330,6 +330,7 @@ function NodesForAdmin() {
         toolbarConfig={nodesToolbarConfig}
         initialColumnVisibility={{
           gpuDriver: false, // 默认隐藏加速卡驱动版本列
+          kernelVersion: false,
         }}
       />
       {/* 占有 / 释放 弹窗：在占有分支中增加 reason 输入 */}

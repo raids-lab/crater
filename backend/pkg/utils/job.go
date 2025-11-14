@@ -38,5 +38,3 @@ func GenerateJobName(typePrefix, username string) string {
 
 	return jobName
 }
-
-// GenerateJobBaseURL generates base URL for jobs (backward compatibility)

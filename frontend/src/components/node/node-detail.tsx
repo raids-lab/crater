@@ -28,6 +28,7 @@ import {
   GaugeIcon,
   GpuIcon,
   Grid,
+  InfoIcon,
   Layers,
   MemoryStickIcon as Memory,
   NetworkIcon,
@@ -78,6 +79,7 @@ import { NamespacedName, PodNamespacedName } from '../codeblock/pod-container-di
 import TooltipCopy from '../label/tooltop-copy'
 import DetailPage, { DetailPageCoreProps } from '../layout/detail-page'
 import PageTitle from '../layout/page-title'
+import NodeInfoTab from './node-info-tab'
 import { NodeAnnotations, NodeLabels, NodeTaints } from './node-mark'
 
 const formatLockDate = (timestamp?: string) => {
@@ -506,6 +508,14 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
         },
       ]}
       tabs={[
+        {
+          key: 'info',
+          icon: InfoIcon,
+          label: t('nodeDetail.tabs.nodeInfo'),
+          children: <NodeInfoTab nodeDetail={nodeDetail} gpuDetail={gpuDetail} />,
+          scrollable: true,
+          hidden: !isAdminView,
+        },
         {
           key: 'pods',
           icon: BoxIcon,

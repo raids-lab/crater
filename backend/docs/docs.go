@@ -7892,8 +7892,14 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
+                "allocatable": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
                 "arch": {
                     "type": "string"
+                },
+                "capacity": {
+                    "$ref": "#/definitions/v1.ResourceList"
                 },
                 "containerRuntimeVersion": {
                     "type": "string"
