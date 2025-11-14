@@ -62,10 +62,10 @@ const ingressFormSchema = z.object({
 
 interface IngressPanelProps {
   namespacedName: PodNamespacedName
-  jobName: string
+  jobType?: string
 }
 
-export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
+export const IngressPanel = ({ namespacedName, jobType }: IngressPanelProps) => {
   const [isEditIngressDialogOpen, setIsEditIngressDialogOpen] = useState(false)
 
   const ingressForm = useForm<PodIngressMgr>({
@@ -128,12 +128,22 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
   }
 
   const handleDeleteIngress = (data: PodIngress) => {
-    if (namespacedName) {
-      deleteIngressMutation(data)
+    if (namespacedName && data.name && data.port) {
+      // 转换为 PodIngressMgr 格式，只包含 name 和 port
+      const ingressMgr: PodIngressMgr = {
+        name: data.name,
+        port: data.port,
+      }
+      deleteIngressMutation(ingressMgr)
+    } else {
+      toast.error('删除失败：数据不完整')
     }
   }
 
   const renderIngressItem = (ingress: PodIngress) => {
+    // 检查是否是 Jupyter 作业的默认 notebook 规则（名称为 notebook 且端口为 8888）
+    const isJupyterDefaultRule =
+      jobType === 'jupyter' && ingress.name === 'notebook' && ingress.port === 8888
     return (
       <ExternalAccessItem
         key={ingress.name}
@@ -142,6 +152,10 @@ export const IngressPanel = ({ namespacedName }: IngressPanelProps) => {
         url={ingress.prefix}
         isDeleting={isDeleting}
         handleDeleteItem={() => handleDeleteIngress(ingress)}
+        isDeleteDisabled={isJupyterDefaultRule}
+        deleteDisabledReason={
+          isJupyterDefaultRule ? 'Jupyter 作业的默认 notebook 规则不能删除' : undefined
+        }
       />
     )
   }
