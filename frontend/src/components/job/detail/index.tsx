@@ -321,7 +321,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           key: 'base',
           icon: LayoutGridIcon,
           label: '基本信息',
-          children: <PodTable jobName={jobName} userName={data.username} />,
+          children: <PodTable jobName={jobName} userName={data.username} jobType={data.jobType} />,
           scrollable: true,
           hidden: jobStatus === JobStatus.MetadataOnly || isCompletedOver3Days,
         },

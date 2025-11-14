@@ -92,10 +92,7 @@ export const apiDeletePodIngress = (
   namespace: string,
   podName: string,
   ingressMgr: PodIngressMgr
-) =>
-  apiV1Delete<IResponse<string>>(`namespaces/${namespace}/pods/${podName}/ingresses`, {
-    data: ingressMgr,
-  })
+) => apiV1Delete<IResponse<string>>(`namespaces/${namespace}/pods/${podName}/ingresses`, ingressMgr)
 
 export interface PodNodeport {
   name: string
@@ -128,6 +125,4 @@ export const apiDeletePodNodeport = (
   podName: string,
   nodeportMgr: PodNodeportMgr
 ) =>
-  apiV1Delete<IResponse<string>>(`namespaces/${namespace}/pods/${podName}/nodeports`, {
-    data: nodeportMgr,
-  })
+  apiV1Delete<IResponse<string>>(`namespaces/${namespace}/pods/${podName}/nodeports`, nodeportMgr)

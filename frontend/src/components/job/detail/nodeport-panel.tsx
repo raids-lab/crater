@@ -125,8 +125,15 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
   }
 
   const handleDeleteNodeport = (data: PodNodeport) => {
-    if (namespacedName) {
-      deleteNodeportMutation(data)
+    if (namespacedName && data.name && data.containerPort) {
+      // 转换为 PodNodeportMgr 格式，只包含 name 和 containerPort
+      const nodeportMgr: PodNodeportMgr = {
+        name: data.name,
+        containerPort: data.containerPort,
+      }
+      deleteNodeportMutation(nodeportMgr)
+    } else {
+      toast.error('删除失败：数据不完整')
     }
   }
 
@@ -135,7 +142,7 @@ export function NodeportPanel({ namespacedName }: NodeportPanelProps) {
       <ExternalAccessItem
         key={nodePort.name}
         name={nodePort.name}
-        port={nodePort.nodePort}
+        port={nodePort.containerPort}
         url={`${nodePort.address}:${nodePort.nodePort}`}
         fullURL={`http://${nodePort.address}:${nodePort.nodePort}`}
         isDeleting={isDeleting}

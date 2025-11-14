@@ -66,6 +66,8 @@ export const ExternalAccessItem = ({
   fullURL,
   isDeleting,
   handleDeleteItem,
+  isDeleteDisabled,
+  deleteDisabledReason,
 }: {
   name: string
   port: number
@@ -73,9 +75,11 @@ export const ExternalAccessItem = ({
   fullURL?: string
   isDeleting?: boolean
   handleDeleteItem: () => void
+  isDeleteDisabled?: boolean
+  deleteDisabledReason?: string
 }) => (
-  <div className="bg-sidebar/75 flex items-center space-x-2 rounded-md border p-3">
-    <div className="ml-2 flex grow flex-col items-start justify-start gap-0.5">
+  <div className="bg-sidebar/75 flex min-w-0 items-center space-x-2 rounded-md border p-3">
+    <div className="ml-2 flex min-w-0 grow flex-col items-start justify-start gap-0.5">
       <div className="flex flex-row items-center justify-start gap-2">
         <p className="font-semibold">{name}</p>
         <TipBadge
@@ -87,7 +91,9 @@ export const ExternalAccessItem = ({
           }
         />
       </div>
-      <div className="text-muted-foreground flex flex-row font-mono text-xs">{url}</div>
+      <div className="text-muted-foreground flex w-full flex-row font-mono text-xs break-all">
+        {url}
+      </div>
     </div>
     <TooltipButton
       variant="ghost"
@@ -107,8 +113,8 @@ export const ExternalAccessItem = ({
           variant="ghost"
           size="icon"
           className="hover:text-destructive"
-          tooltipContent="删除"
-          disabled={isDeleting}
+          tooltipContent={isDeleteDisabled ? deleteDisabledReason || '删除已禁用' : '删除'}
+          disabled={isDeleting || isDeleteDisabled}
         >
           <Trash2 className="size-4" />
         </TooltipButton>
@@ -125,7 +131,11 @@ export const ExternalAccessItem = ({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>取消</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={handleDeleteItem} disabled={isDeleting}>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={handleDeleteItem}
+            disabled={isDeleting || isDeleteDisabled}
+          >
             {isDeleting ? '删除中...' : '删除'}
           </AlertDialogAction>
         </AlertDialogFooter>
