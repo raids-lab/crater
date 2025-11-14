@@ -79,6 +79,8 @@ type ClusterNodeDetail struct {
 	KubeletVersion          string                   `json:"kubeletVersion"`
 	ContainerRuntimeVersion string                   `json:"containerRuntimeVersion"`
 	KernelVersion           string                   `json:"kernelVersion"`
+	Capacity                corev1.ResourceList      `json:"capacity"`
+	Allocatable             corev1.ResourceList      `json:"allocatable"`
 	GPUMemory               string                   `json:"gpuMemory"`
 	GPUCount                int                      `json:"gpuCount"`
 	GPUArch                 string                   `json:"gpuArch"`
@@ -293,6 +295,8 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 		KernelVersion:           node.Status.NodeInfo.KernelVersion,
+		Capacity:                node.Status.Capacity,
+		Allocatable:             node.Status.Allocatable,
 		GPUDriver:               gpuDriver,
 	}
 	return nodeInfo, nil
