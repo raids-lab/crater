@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-etc/config.yaml
+storage/etc/config.yaml
 
 # Editor directories and files
 .vscode/*
