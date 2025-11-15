@@ -771,60 +771,69 @@ func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 }
 
 func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload, modelDirName string) string {
-	revOpt := ""
-	if download.Revision != "" {
-		// Shell 转义，防止特殊字符注入
-		revOpt = fmt.Sprintf("--revision %q", download.Revision)
-	}
-
 	// 清华源配置
 	pypiMirror := "https://pypi.tuna.tsinghua.edu.cn/simple"
 	trustedHost := "--trusted-host pypi.tuna.tsinghua.edu.cn"
 
 	var installCmd, downloadCommand string
 	if download.Source == model.ModelSourceHuggingFace {
-		// 指定最低版本确保功能可用
-		installCmd = fmt.Sprintf("pip install -U 'huggingface_hub>=0.23.0' -i %s %s",
-			pypiMirror, trustedHost)
+		// 1. 安装 huggingface_hub
+		installCmd = fmt.Sprintf(
+			"pip install -U 'huggingface_hub>=0.23.0' -i %s %s",
+			pypiMirror, trustedHost,
+		)
 
-		cliCmd := "python -m huggingface_hub"
+		// 2. 用 Python API snapshot_download，而不是 huggingface-cli
+		downloadCommand = fmt.Sprintf(`
+python - << 'PY'
+import os
+from huggingface_hub import snapshot_download
 
-		// 对模型名称进行 Shell 转义
-		modelName := fmt.Sprintf("%q", download.Name)
+repo_id = %q
+revision = %q
 
-		if revOpt != "" {
-			downloadCommand = fmt.Sprintf(`%s download --resume-download %s %s --local-dir "$OUT_DIR" --local-dir-use-symlinks False`,
-				cliCmd, modelName, revOpt)
-		} else {
-			downloadCommand = fmt.Sprintf(`%s download --resume-download %s --local-dir "$OUT_DIR" --local-dir-use-symlinks False`,
-				cliCmd, modelName)
-		}
+kwargs = {
+    "repo_id": repo_id,
+    "local_dir": os.environ["OUT_DIR"],
+    "local_dir_use_symlinks": False,
+    "resume_download": True,
+}
+if revision:
+    kwargs["revision"] = revision
+
+snapshot_download(**kwargs)
+PY
+`, download.Name, download.Revision)
 	} else {
-		// ModelScope 安装
-		installCmd = fmt.Sprintf("pip install -q 'modelscope>=1.14.0' -i %s %s",
-			pypiMirror, trustedHost)
+		// ModelScope 这块可以沿用原来的 CLI 方式
+		installCmd = fmt.Sprintf(
+			"pip install -q modelscope -i %s %s",
+			pypiMirror, trustedHost,
+		)
 
-		modelName := fmt.Sprintf("%q", download.Name)
-
-		// ModelScope 的 revision 参数位置可能不同
-		if revOpt != "" {
-			downloadCommand = fmt.Sprintf(`modelscope download --model %s %s --local_dir "$OUT_DIR"`,
-				modelName, revOpt)
+		modelName := download.Name
+		if download.Revision != "" {
+			downloadCommand = fmt.Sprintf(
+				`modelscope download --model %s --revision %s --local_dir "$OUT_DIR"`,
+				modelName, download.Revision,
+			)
 		} else {
-			downloadCommand = fmt.Sprintf(`modelscope download --model %s --local_dir "$OUT_DIR"`,
-				modelName)
+			downloadCommand = fmt.Sprintf(
+				`modelscope download --model %s --local_dir "$OUT_DIR"`,
+				modelName,
+			)
 		}
 	}
 
-	// 原有进度监控脚本保持不变...
+	// 进度监控脚本（保持你原来的逻辑）
 	progressScript := `
 monitor_progress() {
     while true; do
-	if [ -d "$OUT_DIR" ]; then
-	    CURRENT_SIZE=$(du -sb "$OUT_DIR" 2>/dev/null | cut -f1 || echo 0)
-	    echo "[PROGRESS] downloaded_bytes=$CURRENT_SIZE"
-	fi
-	sleep 5
+        if [ -d "$OUT_DIR" ]; then
+            CURRENT_SIZE=$(du -sb "$OUT_DIR" 2>/dev/null | cut -f1 || echo 0)
+            echo "[PROGRESS] downloaded_bytes=$CURRENT_SIZE"
+        fi
+        sleep 5
     done
 }
 monitor_progress &
@@ -834,16 +843,20 @@ trap "kill $MONITOR_PID 2>/dev/null || true" EXIT
 
 	return fmt.Sprintf(`
 set -euo pipefail
-export HF_ENDPOINT=https://hf-mirror.com 
+export HF_ENDPOINT=https://hf-mirror.com
 OUT_DIR="/data/%s"
+export OUT_DIR
 mkdir -p "$OUT_DIR"
 echo "Downloading model: %s from %s to $OUT_DIR"
 
-# 安装依赖（使用清华源）
+# 安装依赖
 echo "Installing dependencies from Tsinghua mirror..."
 %s
 
-export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+# 确保 Python 包路径可用
+export PYTHONPATH="${PYTHONPATH:-}:/usr/local/lib/python3.11/site-packages"
+# 确保 PATH 包含 pip 安装的二进制目录（尽管我们现在不用 CLI 了，保留无妨）
+export PATH="/usr/local/bin:/root/.local/bin:$PATH"
 
 %s
 
