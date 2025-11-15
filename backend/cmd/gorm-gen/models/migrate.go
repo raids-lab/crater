@@ -681,6 +681,46 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202511131200",
+			Migrate: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					gorm.Model
+					Name            string `gorm:"type:varchar(512);not null;uniqueIndex:idx_download_unique,priority:1;comment:模型/数据集名称"`
+					Source          string `gorm:"type:varchar(32);not null;default:modelscope;uniqueIndex:idx_download_unique,priority:2;comment:下载来源"`
+					Category        string `gorm:"type:varchar(32);not null;default:model;uniqueIndex:idx_download_unique,priority:3;comment:类别(模型/数据集)"`
+					Revision        string `gorm:"type:varchar(128);uniqueIndex:idx_download_unique,priority:4;comment:版本/分支/commit"`
+					Path            string `gorm:"type:varchar(512);not null;comment:实际下载路径"`
+					SizeBytes       int64  `gorm:"default:0;comment:文件总大小(字节)"`
+					DownloadedBytes int64  `gorm:"default:0;comment:已下载大小(字节)"`
+					DownloadSpeed   string `gorm:"type:varchar(32);comment:下载速度(如: 10MB/s)"`
+					Status          string `gorm:"type:varchar(32);not null;default:Pending;comment:下载状态"`
+					Message         string `gorm:"type:text;comment:状态消息(错误信息等)"`
+					JobName         string `gorm:"type:varchar(256);comment:K8s Job名称"`
+					CreatorID       uint   `gorm:"not null;comment:首个发起下载的用户ID"`
+					ReferenceCount  int    `gorm:"default:0;comment:引用计数"`
+				}
+				return tx.Migrator().CreateTable(&ModelDownload{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("model_downloads")
+			},
+		},
+		{
+			ID: "202511131210",
+			Migrate: func(tx *gorm.DB) error {
+				type UserModelDownload struct {
+					ID              uint      `gorm:"primaryKey"`
+					UserID          uint      `gorm:"not null;uniqueIndex:idx_user_download,priority:1"`
+					ModelDownloadID uint      `gorm:"not null;uniqueIndex:idx_user_download,priority:2"`
+					CreatedAt       time.Time `gorm:"comment:用户添加此下载的时间"`
+				}
+				return tx.Migrator().CreateTable(&UserModelDownload{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("user_model_downloads")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -704,6 +744,8 @@ func main() {
 			&model.ApprovalOrder{},
 			&model.ResourceNetwork{},
 			&model.ResourceVGPU{},
+			&model.ModelDownload{},
+			&model.UserModelDownload{},
 		)
 		if err != nil {
 			return err

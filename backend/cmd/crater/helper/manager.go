@@ -170,6 +170,18 @@ func (ms *ManagerSetup) setupImagePacker(mgr manager.Manager, registerConfig *ha
 	}
 	registerConfig.ImagePacker = packer.GetImagePackerMgr(mgr.GetClient())
 	registerConfig.ImageRegistry = imageRegistry
+
+	// Setup model download reconciler
+	modelDownloadReconciler := reconciler.NewModelDownloadReconciler(
+		mgr.GetClient(),
+		registerConfig.KubeClient,
+		mgr.GetScheme(),
+	)
+	err = modelDownloadReconciler.SetupWithManager(mgr)
+	if err != nil {
+		return fmt.Errorf("unable to set up model download controller: %w", err)
+	}
+
 	return nil
 }
 

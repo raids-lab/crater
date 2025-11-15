@@ -58,6 +58,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   onSelectChange?: (item: TreeDataItem | undefined) => void
   className?: string
   isrw?: boolean
+  isAdmin?: boolean
 }
 
 const Tree = ({
@@ -65,6 +66,7 @@ const Tree = ({
   initialSlelectedItemId,
   onSelectChange,
   isrw,
+  isAdmin = false,
   className,
   ...props
 }: TreeProps & {
@@ -87,20 +89,32 @@ const Tree = ({
   const { data } = useQuery({
     queryKey: ['directory', 'list', isrw],
     queryFn: () => (isrw ? apiGetRWFiles('') : apiGetFiles('')),
-    select: (res) =>
-      res.data
-        ?.map((r) => {
-          return {
-            name: r.name,
-            modifytime: r.modifytime,
-            isdir: r.isdir,
-            size: r.size,
-            sys: r.sys,
-          }
-        })
-        .sort((a, b) => {
-          return a.name.localeCompare(b.name)
-        }) ?? [],
+    select: (res) => {
+      const items =
+        res.data
+          ?.map((r) => {
+            return {
+              name: r.name,
+              modifytime: r.modifytime,
+              isdir: r.isdir,
+              size: r.size,
+              sys: r.sys,
+            }
+          })
+          .sort((a, b) => {
+            return a.name.localeCompare(b.name)
+          }) ?? []
+
+      // 如果指定了isAdmin为false,过滤掉非public目录
+      if (isAdmin === false) {
+        return items.filter((item) => item.name === 'public')
+      }
+      // 如果不是管理员,过滤掉 public 目录
+      if (!isAdmin) {
+        return items.filter((item) => item.name !== 'public')
+      }
+      return items
+    },
   })
 
   const refRoot = useRef<HTMLDivElement | null>(null)
@@ -121,6 +135,7 @@ const Tree = ({
                 data={item}
                 ref={ref}
                 isrw={isrw}
+                isAdmin={isAdmin}
                 selectedItemId={selectedItemId}
                 handleSelectChange={handleSelectChange}
               />
