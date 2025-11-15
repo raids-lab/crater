@@ -773,24 +773,51 @@ func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload, modelDirName string) string {
 	revOpt := ""
 	if download.Revision != "" {
-		revOpt = fmt.Sprintf("--revision %s", download.Revision)
+		// Shell 转义，防止特殊字符注入
+		revOpt = fmt.Sprintf("--revision %q", download.Revision)
 	}
 
-	// 安装依赖和下载命令
+	// 清华源配置
+	pypiMirror := "https://pypi.tuna.tsinghua.edu.cn/simple"
+	trustedHost := "--trusted-host pypi.tuna.tsinghua.edu.cn"
+
 	var installCmd, downloadCommand string
 	if download.Source == model.ModelSourceHuggingFace {
-		// 安装 huggingface-hub 并下载
-		installCmd = "pip install -q huggingface-hub"
-		downloadCommand = fmt.Sprintf(`huggingface-cli download %s %s --local-dir "$OUT_DIR"`, download.Name, revOpt)
+		// 指定最低版本确保功能可用
+		installCmd = fmt.Sprintf("pip install -U 'huggingface_hub>=0.23.0' -i %s %s",
+			pypiMirror, trustedHost)
+
+		cliCmd := "python -m huggingface_hub"
+
+		// 对模型名称进行 Shell 转义
+		modelName := fmt.Sprintf("%q", download.Name)
+
+		if revOpt != "" {
+			downloadCommand = fmt.Sprintf(`%s download --resume-download %s %s --local-dir "$OUT_DIR" --local-dir-use-symlinks False`,
+				cliCmd, modelName, revOpt)
+		} else {
+			downloadCommand = fmt.Sprintf(`%s download --resume-download %s --local-dir "$OUT_DIR" --local-dir-use-symlinks False`,
+				cliCmd, modelName)
+		}
 	} else {
-		// 安装 modelscope 并下载
-		installCmd = "pip install -q modelscope"
-		downloadCommand = fmt.Sprintf(`modelscope download --model %s %s --local_dir "$OUT_DIR"`, download.Name, revOpt)
+		// ModelScope 安装
+		installCmd = fmt.Sprintf("pip install -q 'modelscope>=1.14.0' -i %s %s",
+			pypiMirror, trustedHost)
+
+		modelName := fmt.Sprintf("%q", download.Name)
+
+		// ModelScope 的 revision 参数位置可能不同
+		if revOpt != "" {
+			downloadCommand = fmt.Sprintf(`modelscope download --model %s %s --local_dir "$OUT_DIR"`,
+				modelName, revOpt)
+		} else {
+			downloadCommand = fmt.Sprintf(`modelscope download --model %s --local_dir "$OUT_DIR"`,
+				modelName)
+		}
 	}
 
-	// 添加进度监控脚本
+	// 原有进度监控脚本保持不变...
 	progressScript := `
-# 后台进程:每5秒报告一次进度
 monitor_progress() {
     while true; do
 	if [ -d "$OUT_DIR" ]; then
@@ -800,25 +827,23 @@ monitor_progress() {
 	sleep 5
     done
 }
-
-# 启动进度监控
 monitor_progress &
 MONITOR_PID=$!
-
-# 捕获退出信号,停止监控
 trap "kill $MONITOR_PID 2>/dev/null || true" EXIT
 `
 
 	return fmt.Sprintf(`
 set -euo pipefail
-export HF_ENDPOINT=https://hf-mirror.com
+export HF_ENDPOINT=https://hf-mirror.com 
 OUT_DIR="/data/%s"
 mkdir -p "$OUT_DIR"
 echo "Downloading model: %s from %s to $OUT_DIR"
 
-# 安装依赖
-echo "Installing dependencies..."
+# 安装依赖（使用清华源）
+echo "Installing dependencies from Tsinghua mirror..."
 %s
+
+export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
 
 %s
 
@@ -827,7 +852,6 @@ START_TIME=$(date +%%s)
 %s
 END_TIME=$(date +%%s)
 
-# 停止进度监控
 kill $MONITOR_PID 2>/dev/null || true
 
 echo "Download completed successfully"
