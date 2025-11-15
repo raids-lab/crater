@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-storage/etc/config.yaml
-
 # Editor directories and files
 .vscode/*
 !.vscode/.gitignore
@@ -70,3 +68,4 @@ kubeconfig*
 
 # statistic files
 *.csv
+storage/etc/config.yaml
