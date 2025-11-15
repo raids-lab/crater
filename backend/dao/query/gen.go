@@ -16,28 +16,30 @@ import (
 )
 
 var (
-	Q               = new(Query)
-	AITask          *aITask
-	Account         *account
-	AccountDataset  *accountDataset
-	Alert           *alert
-	ApprovalOrder   *approvalOrder
-	CronJobConfig   *cronJobConfig
-	CronJobRecord   *cronJobRecord
-	CudaBaseImage   *cudaBaseImage
-	Dataset         *dataset
-	Image           *image
-	ImageAccount    *imageAccount
-	ImageUser       *imageUser
-	Job             *job
-	Jobtemplate     *jobtemplate
-	Kaniko          *kaniko
-	Resource        *resource
-	ResourceNetwork *resourceNetwork
-	ResourceVGPU    *resourceVGPU
-	User            *user
-	UserAccount     *userAccount
-	UserDataset     *userDataset
+	Q                 = new(Query)
+	AITask            *aITask
+	Account           *account
+	AccountDataset    *accountDataset
+	Alert             *alert
+	ApprovalOrder     *approvalOrder
+	CronJobConfig     *cronJobConfig
+	CronJobRecord     *cronJobRecord
+	CudaBaseImage     *cudaBaseImage
+	Dataset           *dataset
+	Image             *image
+	ImageAccount      *imageAccount
+	ImageUser         *imageUser
+	Job               *job
+	Jobtemplate       *jobtemplate
+	Kaniko            *kaniko
+	ModelDownload     *modelDownload
+	Resource          *resource
+	ResourceNetwork   *resourceNetwork
+	ResourceVGPU      *resourceVGPU
+	User              *user
+	UserAccount       *userAccount
+	UserDataset       *userDataset
+	UserModelDownload *userModelDownload
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -57,93 +59,101 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Job = &Q.Job
 	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
+	ModelDownload = &Q.ModelDownload
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
 	ResourceVGPU = &Q.ResourceVGPU
 	User = &Q.User
 	UserAccount = &Q.UserAccount
 	UserDataset = &Q.UserDataset
+	UserModelDownload = &Q.UserModelDownload
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:              db,
-		AITask:          newAITask(db, opts...),
-		Account:         newAccount(db, opts...),
-		AccountDataset:  newAccountDataset(db, opts...),
-		Alert:           newAlert(db, opts...),
-		ApprovalOrder:   newApprovalOrder(db, opts...),
-		CronJobConfig:   newCronJobConfig(db, opts...),
-		CronJobRecord:   newCronJobRecord(db, opts...),
-		CudaBaseImage:   newCudaBaseImage(db, opts...),
-		Dataset:         newDataset(db, opts...),
-		Image:           newImage(db, opts...),
-		ImageAccount:    newImageAccount(db, opts...),
-		ImageUser:       newImageUser(db, opts...),
-		Job:             newJob(db, opts...),
-		Jobtemplate:     newJobtemplate(db, opts...),
-		Kaniko:          newKaniko(db, opts...),
-		Resource:        newResource(db, opts...),
-		ResourceNetwork: newResourceNetwork(db, opts...),
-		ResourceVGPU:    newResourceVGPU(db, opts...),
-		User:            newUser(db, opts...),
-		UserAccount:     newUserAccount(db, opts...),
-		UserDataset:     newUserDataset(db, opts...),
+		db:                db,
+		AITask:            newAITask(db, opts...),
+		Account:           newAccount(db, opts...),
+		AccountDataset:    newAccountDataset(db, opts...),
+		Alert:             newAlert(db, opts...),
+		ApprovalOrder:     newApprovalOrder(db, opts...),
+		CronJobConfig:     newCronJobConfig(db, opts...),
+		CronJobRecord:     newCronJobRecord(db, opts...),
+		CudaBaseImage:     newCudaBaseImage(db, opts...),
+		Dataset:           newDataset(db, opts...),
+		Image:             newImage(db, opts...),
+		ImageAccount:      newImageAccount(db, opts...),
+		ImageUser:         newImageUser(db, opts...),
+		Job:               newJob(db, opts...),
+		Jobtemplate:       newJobtemplate(db, opts...),
+		Kaniko:            newKaniko(db, opts...),
+		ModelDownload:     newModelDownload(db, opts...),
+		Resource:          newResource(db, opts...),
+		ResourceNetwork:   newResourceNetwork(db, opts...),
+		ResourceVGPU:      newResourceVGPU(db, opts...),
+		User:              newUser(db, opts...),
+		UserAccount:       newUserAccount(db, opts...),
+		UserDataset:       newUserDataset(db, opts...),
+		UserModelDownload: newUserModelDownload(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	AITask          aITask
-	Account         account
-	AccountDataset  accountDataset
-	Alert           alert
-	ApprovalOrder   approvalOrder
-	CronJobConfig   cronJobConfig
-	CronJobRecord   cronJobRecord
-	CudaBaseImage   cudaBaseImage
-	Dataset         dataset
-	Image           image
-	ImageAccount    imageAccount
-	ImageUser       imageUser
-	Job             job
-	Jobtemplate     jobtemplate
-	Kaniko          kaniko
-	Resource        resource
-	ResourceNetwork resourceNetwork
-	ResourceVGPU    resourceVGPU
-	User            user
-	UserAccount     userAccount
-	UserDataset     userDataset
+	AITask            aITask
+	Account           account
+	AccountDataset    accountDataset
+	Alert             alert
+	ApprovalOrder     approvalOrder
+	CronJobConfig     cronJobConfig
+	CronJobRecord     cronJobRecord
+	CudaBaseImage     cudaBaseImage
+	Dataset           dataset
+	Image             image
+	ImageAccount      imageAccount
+	ImageUser         imageUser
+	Job               job
+	Jobtemplate       jobtemplate
+	Kaniko            kaniko
+	ModelDownload     modelDownload
+	Resource          resource
+	ResourceNetwork   resourceNetwork
+	ResourceVGPU      resourceVGPU
+	User              user
+	UserAccount       userAccount
+	UserDataset       userDataset
+	UserModelDownload userModelDownload
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:              db,
-		AITask:          q.AITask.clone(db),
-		Account:         q.Account.clone(db),
-		AccountDataset:  q.AccountDataset.clone(db),
-		Alert:           q.Alert.clone(db),
-		ApprovalOrder:   q.ApprovalOrder.clone(db),
-		CronJobConfig:   q.CronJobConfig.clone(db),
-		CronJobRecord:   q.CronJobRecord.clone(db),
-		CudaBaseImage:   q.CudaBaseImage.clone(db),
-		Dataset:         q.Dataset.clone(db),
-		Image:           q.Image.clone(db),
-		ImageAccount:    q.ImageAccount.clone(db),
-		ImageUser:       q.ImageUser.clone(db),
-		Job:             q.Job.clone(db),
-		Jobtemplate:     q.Jobtemplate.clone(db),
-		Kaniko:          q.Kaniko.clone(db),
-		Resource:        q.Resource.clone(db),
-		ResourceNetwork: q.ResourceNetwork.clone(db),
-		ResourceVGPU:    q.ResourceVGPU.clone(db),
-		User:            q.User.clone(db),
-		UserAccount:     q.UserAccount.clone(db),
-		UserDataset:     q.UserDataset.clone(db),
+		db:                db,
+		AITask:            q.AITask.clone(db),
+		Account:           q.Account.clone(db),
+		AccountDataset:    q.AccountDataset.clone(db),
+		Alert:             q.Alert.clone(db),
+		ApprovalOrder:     q.ApprovalOrder.clone(db),
+		CronJobConfig:     q.CronJobConfig.clone(db),
+		CronJobRecord:     q.CronJobRecord.clone(db),
+		CudaBaseImage:     q.CudaBaseImage.clone(db),
+		Dataset:           q.Dataset.clone(db),
+		Image:             q.Image.clone(db),
+		ImageAccount:      q.ImageAccount.clone(db),
+		ImageUser:         q.ImageUser.clone(db),
+		Job:               q.Job.clone(db),
+		Jobtemplate:       q.Jobtemplate.clone(db),
+		Kaniko:            q.Kaniko.clone(db),
+		ModelDownload:     q.ModelDownload.clone(db),
+		Resource:          q.Resource.clone(db),
+		ResourceNetwork:   q.ResourceNetwork.clone(db),
+		ResourceVGPU:      q.ResourceVGPU.clone(db),
+		User:              q.User.clone(db),
+		UserAccount:       q.UserAccount.clone(db),
+		UserDataset:       q.UserDataset.clone(db),
+		UserModelDownload: q.UserModelDownload.clone(db),
 	}
 }
 
@@ -157,78 +167,84 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:              db,
-		AITask:          q.AITask.replaceDB(db),
-		Account:         q.Account.replaceDB(db),
-		AccountDataset:  q.AccountDataset.replaceDB(db),
-		Alert:           q.Alert.replaceDB(db),
-		ApprovalOrder:   q.ApprovalOrder.replaceDB(db),
-		CronJobConfig:   q.CronJobConfig.replaceDB(db),
-		CronJobRecord:   q.CronJobRecord.replaceDB(db),
-		CudaBaseImage:   q.CudaBaseImage.replaceDB(db),
-		Dataset:         q.Dataset.replaceDB(db),
-		Image:           q.Image.replaceDB(db),
-		ImageAccount:    q.ImageAccount.replaceDB(db),
-		ImageUser:       q.ImageUser.replaceDB(db),
-		Job:             q.Job.replaceDB(db),
-		Jobtemplate:     q.Jobtemplate.replaceDB(db),
-		Kaniko:          q.Kaniko.replaceDB(db),
-		Resource:        q.Resource.replaceDB(db),
-		ResourceNetwork: q.ResourceNetwork.replaceDB(db),
-		ResourceVGPU:    q.ResourceVGPU.replaceDB(db),
-		User:            q.User.replaceDB(db),
-		UserAccount:     q.UserAccount.replaceDB(db),
-		UserDataset:     q.UserDataset.replaceDB(db),
+		db:                db,
+		AITask:            q.AITask.replaceDB(db),
+		Account:           q.Account.replaceDB(db),
+		AccountDataset:    q.AccountDataset.replaceDB(db),
+		Alert:             q.Alert.replaceDB(db),
+		ApprovalOrder:     q.ApprovalOrder.replaceDB(db),
+		CronJobConfig:     q.CronJobConfig.replaceDB(db),
+		CronJobRecord:     q.CronJobRecord.replaceDB(db),
+		CudaBaseImage:     q.CudaBaseImage.replaceDB(db),
+		Dataset:           q.Dataset.replaceDB(db),
+		Image:             q.Image.replaceDB(db),
+		ImageAccount:      q.ImageAccount.replaceDB(db),
+		ImageUser:         q.ImageUser.replaceDB(db),
+		Job:               q.Job.replaceDB(db),
+		Jobtemplate:       q.Jobtemplate.replaceDB(db),
+		Kaniko:            q.Kaniko.replaceDB(db),
+		ModelDownload:     q.ModelDownload.replaceDB(db),
+		Resource:          q.Resource.replaceDB(db),
+		ResourceNetwork:   q.ResourceNetwork.replaceDB(db),
+		ResourceVGPU:      q.ResourceVGPU.replaceDB(db),
+		User:              q.User.replaceDB(db),
+		UserAccount:       q.UserAccount.replaceDB(db),
+		UserDataset:       q.UserDataset.replaceDB(db),
+		UserModelDownload: q.UserModelDownload.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	AITask          IAITaskDo
-	Account         IAccountDo
-	AccountDataset  IAccountDatasetDo
-	Alert           IAlertDo
-	ApprovalOrder   IApprovalOrderDo
-	CronJobConfig   ICronJobConfigDo
-	CronJobRecord   ICronJobRecordDo
-	CudaBaseImage   ICudaBaseImageDo
-	Dataset         IDatasetDo
-	Image           IImageDo
-	ImageAccount    IImageAccountDo
-	ImageUser       IImageUserDo
-	Job             IJobDo
-	Jobtemplate     IJobtemplateDo
-	Kaniko          IKanikoDo
-	Resource        IResourceDo
-	ResourceNetwork IResourceNetworkDo
-	ResourceVGPU    IResourceVGPUDo
-	User            IUserDo
-	UserAccount     IUserAccountDo
-	UserDataset     IUserDatasetDo
+	AITask            IAITaskDo
+	Account           IAccountDo
+	AccountDataset    IAccountDatasetDo
+	Alert             IAlertDo
+	ApprovalOrder     IApprovalOrderDo
+	CronJobConfig     ICronJobConfigDo
+	CronJobRecord     ICronJobRecordDo
+	CudaBaseImage     ICudaBaseImageDo
+	Dataset           IDatasetDo
+	Image             IImageDo
+	ImageAccount      IImageAccountDo
+	ImageUser         IImageUserDo
+	Job               IJobDo
+	Jobtemplate       IJobtemplateDo
+	Kaniko            IKanikoDo
+	ModelDownload     IModelDownloadDo
+	Resource          IResourceDo
+	ResourceNetwork   IResourceNetworkDo
+	ResourceVGPU      IResourceVGPUDo
+	User              IUserDo
+	UserAccount       IUserAccountDo
+	UserDataset       IUserDatasetDo
+	UserModelDownload IUserModelDownloadDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		AITask:          q.AITask.WithContext(ctx),
-		Account:         q.Account.WithContext(ctx),
-		AccountDataset:  q.AccountDataset.WithContext(ctx),
-		Alert:           q.Alert.WithContext(ctx),
-		ApprovalOrder:   q.ApprovalOrder.WithContext(ctx),
-		CronJobConfig:   q.CronJobConfig.WithContext(ctx),
-		CronJobRecord:   q.CronJobRecord.WithContext(ctx),
-		CudaBaseImage:   q.CudaBaseImage.WithContext(ctx),
-		Dataset:         q.Dataset.WithContext(ctx),
-		Image:           q.Image.WithContext(ctx),
-		ImageAccount:    q.ImageAccount.WithContext(ctx),
-		ImageUser:       q.ImageUser.WithContext(ctx),
-		Job:             q.Job.WithContext(ctx),
-		Jobtemplate:     q.Jobtemplate.WithContext(ctx),
-		Kaniko:          q.Kaniko.WithContext(ctx),
-		Resource:        q.Resource.WithContext(ctx),
-		ResourceNetwork: q.ResourceNetwork.WithContext(ctx),
-		ResourceVGPU:    q.ResourceVGPU.WithContext(ctx),
-		User:            q.User.WithContext(ctx),
-		UserAccount:     q.UserAccount.WithContext(ctx),
-		UserDataset:     q.UserDataset.WithContext(ctx),
+		AITask:            q.AITask.WithContext(ctx),
+		Account:           q.Account.WithContext(ctx),
+		AccountDataset:    q.AccountDataset.WithContext(ctx),
+		Alert:             q.Alert.WithContext(ctx),
+		ApprovalOrder:     q.ApprovalOrder.WithContext(ctx),
+		CronJobConfig:     q.CronJobConfig.WithContext(ctx),
+		CronJobRecord:     q.CronJobRecord.WithContext(ctx),
+		CudaBaseImage:     q.CudaBaseImage.WithContext(ctx),
+		Dataset:           q.Dataset.WithContext(ctx),
+		Image:             q.Image.WithContext(ctx),
+		ImageAccount:      q.ImageAccount.WithContext(ctx),
+		ImageUser:         q.ImageUser.WithContext(ctx),
+		Job:               q.Job.WithContext(ctx),
+		Jobtemplate:       q.Jobtemplate.WithContext(ctx),
+		Kaniko:            q.Kaniko.WithContext(ctx),
+		ModelDownload:     q.ModelDownload.WithContext(ctx),
+		Resource:          q.Resource.WithContext(ctx),
+		ResourceNetwork:   q.ResourceNetwork.WithContext(ctx),
+		ResourceVGPU:      q.ResourceVGPU.WithContext(ctx),
+		User:              q.User.WithContext(ctx),
+		UserAccount:       q.UserAccount.WithContext(ctx),
+		UserDataset:       q.UserDataset.WithContext(ctx),
+		UserModelDownload: q.UserModelDownload.WithContext(ctx),
 	}
 }
 

@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+etc/config.yaml
+
 # Editor directories and files
 .vscode/*
 !.vscode/.gitignore

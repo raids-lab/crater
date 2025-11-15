@@ -317,6 +317,17 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.ModelDownloadResp'
+        type: array
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
     properties:
       code:
@@ -368,6 +379,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.LoginResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.ModelDownloadResp'
       msg:
         type: string
     type: object
@@ -637,6 +657,23 @@ definitions:
       version:
         $ref: '#/definitions/internal_handler.VersionInfo'
     type: object
+  internal_handler.CreateDownloadReq:
+    properties:
+      category:
+        enum:
+        - model
+        - dataset
+        type: string
+      name:
+        type: string
+      revision:
+        type: string
+      source:
+        type: string
+    required:
+    - category
+    - name
+    type: object
   internal_handler.DatasetReq:
     properties:
       describe:
@@ -743,6 +780,37 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
+    type: object
+  internal_handler.ModelDownloadResp:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      creatorId:
+        type: integer
+      id:
+        type: integer
+      jobName:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      path:
+        type: string
+      referenceCount:
+        type: integer
+      revision:
+        type: string
+      sizeBytes:
+        type: integer
+      source:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
     type: object
   internal_handler.NodeAnnotation:
     properties:
@@ -2072,6 +2140,46 @@ paths:
       summary: 管理员更新镜像的任务类型
       tags:
       - ImagePack
+  /v1/admin/models/downloads:
+    get:
+      consumes:
+      - application/json
+      description: 管理员查看所有用户的模型下载任务
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 管理员获取所有模型下载任务
+      tags:
+      - ModelDownload
+  /v1/admin/models/downloads/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 管理员删除任意用户的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 管理员删除模型下载任务
+      tags:
+      - ModelDownload
   /v1/admin/projects:
     get:
       consumes:
@@ -4499,6 +4607,184 @@ paths:
       summary: 更新作业模板
       tags:
       - jobtemplate
+  /v1/models/download:
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的模型下载任务
+      parameters:
+      - description: 下载请求
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateDownloadReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 创建模型下载任务
+      tags:
+      - ModelDownload
+  /v1/models/downloads:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的所有模型下载任务
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 获取用户的模型下载任务列表
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的模型下载任务记录
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 删除模型下载任务
+      tags:
+      - ModelDownload
+    get:
+      consumes:
+      - application/json
+      description: 根据 ID 获取模型下载任务详情
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 获取单个模型下载任务详情
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/logs:
+    get:
+      consumes:
+      - application/json
+      description: 获取模型下载任务的实时日志
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 获取模型下载任务的 Pod 日志
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/pause:
+    post:
+      consumes:
+      - application/json
+      description: 暂停正在进行的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 暂停下载任务
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/resume:
+    post:
+      consumes:
+      - application/json
+      description: 恢复已暂停的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 恢复下载任务
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/retry:
+    post:
+      consumes:
+      - application/json
+      description: 重新提交失败的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 重试失败的下载任务
+      tags:
+      - ModelDownload
   /v1/namespaces/{namespace}/pods/{name}/containers:
     get:
       consumes:

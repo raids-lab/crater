@@ -895,6 +895,71 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/admin/models/downloads": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员查看所有用户的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "管理员获取所有模型下载任务",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/downloads/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员删除任意用户的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "管理员删除模型下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/projects": {
             "get": {
                 "security": [
@@ -4715,6 +4780,293 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/models/download": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "创建一个新的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "创建模型下载任务",
+                "parameters": [
+                    {
+                        "description": "下载请求",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.CreateDownloadReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户的所有模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "获取用户的模型下载任务列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据 ID 获取模型下载任务详情",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "获取单个模型下载任务详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除指定的模型下载任务记录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "删除模型下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/logs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取模型下载任务的实时日志",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "获取模型下载任务的 Pod 日志",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/pause": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "暂停正在进行的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "暂停下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/resume": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "恢复已暂停的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "恢复下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/retry": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "重新提交失败的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "重试失败的下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/namespaces/{namespace}/pods/{name}/containers": {
             "get": {
                 "security": [
@@ -7662,6 +8014,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.ModelDownloadResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail": {
             "type": "object",
             "properties": {
@@ -7740,6 +8109,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.LoginResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ModelDownloadResp"
                 },
                 "msg": {
                     "type": "string"
@@ -8156,6 +8539,31 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.CreateDownloadReq": {
+            "type": "object",
+            "required": [
+                "category",
+                "name"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "model",
+                        "dataset"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.DatasetReq": {
             "type": "object",
             "required": [
@@ -8313,6 +8721,53 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
+                }
+            }
+        },
+        "internal_handler.ModelDownloadResp": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "creatorId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "referenceCount": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "string"
+                },
+                "sizeBytes": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },

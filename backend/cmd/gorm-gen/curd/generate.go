@@ -44,6 +44,8 @@ func main() {
 		model.ApprovalOrder{},
 		model.CronJobRecord{},
 		model.CronJobConfig{},
+		model.ModelDownload{},
+		model.UserModelDownload{},
 	)
 
 	// 执行并生成代码
