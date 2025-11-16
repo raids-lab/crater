@@ -82,11 +82,12 @@ func MoveDatasetOrModel(c *gin.Context) {
 		return
 	}
 	var dest string
-	if dataset.Type == model.DataTypeModel {
+	switch dataset.Type {
+	case model.DataTypeModel:
 		dest = model.ModelPrefix
-	} else if dataset.Type == model.DataTypeDataset {
+	case model.DataTypeDataset:
 		dest = model.DatasetPrefix
-	} else {
+	default:
 		response.Error(c, "The type of dataset is incorrect", response.NotSpecified)
 		return
 	}
