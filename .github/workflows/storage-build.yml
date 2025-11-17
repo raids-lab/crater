@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Storage Server Build
+name: Storage Build
 
 on:
   push:
     branches: [main]
     paths:
       - "storage/**"
-      - ".github/workflows/storage-server.yml"
+      - ".github/workflows/storage-build.yml"
     tags:
       - "v*.*.*"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_REPO: raids-lab/storage-server
-  GOLANGCI_LINT_VERSION: v1.61.0
+  # Golang-lint version
+  GOLANGCI_LINT_VERSION: v2.2.1
 
 jobs:
   lint:
@@ -36,14 +37,14 @@ jobs:
         working-directory: storage
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version-file: "storage/go.mod"
+          go-version-file: "storage/go.mod" # get Go version from go.mod
 
       - name: Download dependencies
         run: |
@@ -52,18 +53,10 @@ jobs:
           go mod download
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --print-issued-lines=false --out-format code-climate:gl-code-quality-report.json,line-number
           working-directory: storage
-
-      - name: Upload code quality report
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-quality-report
-          path: storage/gl-code-quality-report.json
-          retention-days: 7
 
   build_storage_server:
     runs-on: ubuntu-latest
@@ -83,12 +76,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: "storage/go.mod"
 
@@ -98,10 +91,33 @@ jobs:
           go env -w GOPROXY=https://goproxy.cn,direct
           go mod download
 
+      - name: Set version variables
+        id: set-version
+        run: |
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          # Check if triggered by tag
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Tag trigger: use tag version (keep v prefix)
+            APP_VERSION="${{ github.ref_name }}"
+            BUILD_TYPE="release"
+          else
+            # Branch trigger: use commit SHA
+            APP_VERSION="$SHORT_SHA"
+            BUILD_TYPE="development"
+          fi
+
+          # Set outputs
+          echo "app_version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "commit_sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_OUTPUT
+
       - name: Build storage server binaries
         run: |
           mkdir -p bin/${{ matrix.platform.image_platform }}
-          go build -ldflags="-w -s" -o bin/${{ matrix.platform.image_platform }}/storage-server main.go
+          go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/storage-server main.go
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.platform.goos }}
@@ -121,10 +137,10 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download all platform binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: storage/bin/
 
@@ -174,3 +190,4 @@ jobs:
           delete-untagged: true
           keep-at-most: 2
           skip-tags: v*
+
