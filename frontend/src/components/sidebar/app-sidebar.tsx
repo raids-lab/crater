@@ -31,8 +31,6 @@ import { NavGroup } from '@/components/sidebar/nav-main'
 import { NavUser } from '@/components/sidebar/nav-user'
 import { TeamSwitcher } from '@/components/sidebar/team-switcher'
 
-import { Role } from '@/services/api/auth'
-
 import useIsAdmin from '@/hooks/use-admin'
 
 import { atomUserContext } from '@/utils/store'
@@ -63,12 +61,11 @@ export function AppSidebar({
   const isAdminView = useIsAdmin()
   const accountInfo = useAtomValue(atomUserContext)
 
-  // 特殊规则，当当前账户为其他账户时，且当前用户的权限是账户管理员，且当前处于用户模式时，添加账户管理菜单
+  // Special rule: when current account is not default account and in user view, add account management menu
   const filteredGroups = useMemo(() => {
     if (
       !isAdminView &&
       accountInfo?.queue !== 'default' &&
-      accountInfo?.roleQueue === Role.Admin &&
       groups.length > 0 &&
       groups[groups.length - 1].items.length > 0 &&
       groups[groups.length - 1].items[0].title !== '账户管理'
@@ -80,7 +77,7 @@ export function AppSidebar({
           items: [
             {
               title: '成员管理',
-              url: '/admin/account/member',
+              url: '/portal/account/member',
             },
           ],
         },
@@ -88,9 +85,9 @@ export function AppSidebar({
       ]
       return groups
     }
-    // revert
+    // Revert: remove account management menu if in admin view or default account
     if (
-      (isAdminView || accountInfo?.queue === 'default' || accountInfo?.roleQueue !== Role.Admin) &&
+      (isAdminView || accountInfo?.queue === 'default') &&
       groups.length > 0 &&
       groups[groups.length - 1].items.length > 0 &&
       groups[groups.length - 1].items[0].title === '账户管理'

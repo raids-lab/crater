@@ -19,6 +19,7 @@ import { Route as PortalUsersRouteRouteImport } from './routes/portal/users/rout
 import { Route as PortalTemplatesRouteRouteImport } from './routes/portal/templates/route'
 import { Route as PortalSettingsRouteRouteImport } from './routes/portal/settings/route'
 import { Route as PortalOverviewRouteRouteImport } from './routes/portal/overview/route'
+import { Route as PortalAccountRouteRouteImport } from './routes/portal/account/route'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
 import { Route as AdminJobsRouteRouteImport } from './routes/admin/jobs/route'
 import { Route as AdminDataRouteRouteImport } from './routes/admin/data/route'
@@ -41,6 +42,7 @@ import { Route as PortalMonitorNetworkRouteImport } from './routes/portal/monito
 import { Route as PortalMonitorIdleRouteImport } from './routes/portal/monitor/idle'
 import { Route as PortalMonitorGpuRouteImport } from './routes/portal/monitor/gpu'
 import { Route as PortalFilesSplatRouteImport } from './routes/portal/files/$'
+import { Route as PortalAccountMemberRouteImport } from './routes/portal/account/member'
 import { Route as IngressJupyterNameRouteImport } from './routes/ingress/jupyter.$name'
 import { Route as AdminUsersNameRouteImport } from './routes/admin/users/$name'
 import { Route as AdminSettingsVersionRouteImport } from './routes/admin/settings/version'
@@ -141,6 +143,11 @@ const PortalSettingsRouteRoute = PortalSettingsRouteRouteImport.update({
 const PortalOverviewRouteRoute = PortalOverviewRouteRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalAccountRouteRoute = PortalAccountRouteRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => PortalRouteRoute,
 } as any)
 const AdminUsersRouteRoute = AdminUsersRouteRouteImport.update({
@@ -252,6 +259,11 @@ const PortalFilesSplatRoute = PortalFilesSplatRouteImport.update({
   id: '/files/$',
   path: '/files/$',
   getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalAccountMemberRoute = PortalAccountMemberRouteImport.update({
+  id: '/member',
+  path: '/member',
+  getParentRoute: () => PortalAccountRouteRoute,
 } as any)
 const IngressJupyterNameRoute = IngressJupyterNameRouteImport.update({
   id: '/ingress/jupyter/$name',
@@ -528,6 +540,7 @@ export interface FileRoutesByFullPath {
   '/admin/data': typeof AdminDataRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
+  '/portal/account': typeof PortalAccountRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
   '/portal/settings': typeof PortalSettingsRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
@@ -556,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/version': typeof AdminSettingsVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
+  '/portal/account/member': typeof PortalAccountMemberRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
   '/portal/monitor/gpu': typeof PortalMonitorGpuRoute
   '/portal/monitor/idle': typeof PortalMonitorIdleRoute
@@ -607,6 +621,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/portal/account': typeof PortalAccountRouteRouteWithChildren
   '/admin': typeof AdminIndexRoute
   '/auth': typeof AuthIndexRoute
   '/portal': typeof PortalIndexRoute
@@ -622,6 +637,7 @@ export interface FileRoutesByTo {
   '/admin/settings/version': typeof AdminSettingsVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
+  '/portal/account/member': typeof PortalAccountMemberRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
   '/portal/monitor/gpu': typeof PortalMonitorGpuRoute
   '/portal/monitor/idle': typeof PortalMonitorIdleRoute
@@ -680,6 +696,7 @@ export interface FileRoutesById {
   '/admin/data': typeof AdminDataRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
+  '/portal/account': typeof PortalAccountRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
   '/portal/settings': typeof PortalSettingsRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
@@ -708,6 +725,7 @@ export interface FileRoutesById {
   '/admin/settings/version': typeof AdminSettingsVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
+  '/portal/account/member': typeof PortalAccountMemberRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
   '/portal/monitor/gpu': typeof PortalMonitorGpuRoute
   '/portal/monitor/idle': typeof PortalMonitorIdleRoute
@@ -767,6 +785,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/jobs'
     | '/admin/users'
+    | '/portal/account'
     | '/portal/overview'
     | '/portal/settings'
     | '/portal/templates'
@@ -795,6 +814,7 @@ export interface FileRouteTypes {
     | '/admin/settings/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
+    | '/portal/account/member'
     | '/portal/files/$'
     | '/portal/monitor/gpu'
     | '/portal/monitor/idle'
@@ -846,6 +866,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/portal/account'
     | '/admin'
     | '/auth'
     | '/portal'
@@ -861,6 +882,7 @@ export interface FileRouteTypes {
     | '/admin/settings/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
+    | '/portal/account/member'
     | '/portal/files/$'
     | '/portal/monitor/gpu'
     | '/portal/monitor/idle'
@@ -918,6 +940,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/jobs'
     | '/admin/users'
+    | '/portal/account'
     | '/portal/overview'
     | '/portal/settings'
     | '/portal/templates'
@@ -946,6 +969,7 @@ export interface FileRouteTypes {
     | '/admin/settings/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
+    | '/portal/account/member'
     | '/portal/files/$'
     | '/portal/monitor/gpu'
     | '/portal/monitor/idle'
@@ -1074,6 +1098,13 @@ declare module '@tanstack/react-router' {
       path: '/overview'
       fullPath: '/portal/overview'
       preLoaderRoute: typeof PortalOverviewRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/account': {
+      id: '/portal/account'
+      path: '/account'
+      fullPath: '/portal/account'
+      preLoaderRoute: typeof PortalAccountRouteRouteImport
       parentRoute: typeof PortalRouteRoute
     }
     '/admin/users': {
@@ -1229,6 +1260,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/files/$'
       preLoaderRoute: typeof PortalFilesSplatRouteImport
       parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/account/member': {
+      id: '/portal/account/member'
+      path: '/member'
+      fullPath: '/portal/account/member'
+      preLoaderRoute: typeof PortalAccountMemberRouteImport
+      parentRoute: typeof PortalAccountRouteRoute
     }
     '/ingress/jupyter/$name': {
       id: '/ingress/jupyter/$name'
@@ -1750,6 +1788,17 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface PortalAccountRouteRouteChildren {
+  PortalAccountMemberRoute: typeof PortalAccountMemberRoute
+}
+
+const PortalAccountRouteRouteChildren: PortalAccountRouteRouteChildren = {
+  PortalAccountMemberRoute: PortalAccountMemberRoute,
+}
+
+const PortalAccountRouteRouteWithChildren =
+  PortalAccountRouteRoute._addFileChildren(PortalAccountRouteRouteChildren)
+
 interface PortalOverviewRouteRouteChildren {
   PortalOverviewNodeRoute: typeof PortalOverviewNodeRoute
   PortalOverviewIndexRoute: typeof PortalOverviewIndexRoute
@@ -1921,6 +1970,7 @@ const PortalJobsNewRouteRouteWithChildren =
   PortalJobsNewRouteRoute._addFileChildren(PortalJobsNewRouteRouteChildren)
 
 interface PortalRouteRouteChildren {
+  PortalAccountRouteRoute: typeof PortalAccountRouteRouteWithChildren
   PortalOverviewRouteRoute: typeof PortalOverviewRouteRouteWithChildren
   PortalSettingsRouteRoute: typeof PortalSettingsRouteRouteWithChildren
   PortalTemplatesRouteRoute: typeof PortalTemplatesRouteRouteWithChildren
@@ -1942,6 +1992,7 @@ interface PortalRouteRouteChildren {
 }
 
 const PortalRouteRouteChildren: PortalRouteRouteChildren = {
+  PortalAccountRouteRoute: PortalAccountRouteRouteWithChildren,
   PortalOverviewRouteRoute: PortalOverviewRouteRouteWithChildren,
   PortalSettingsRouteRoute: PortalSettingsRouteRouteWithChildren,
   PortalTemplatesRouteRoute: PortalTemplatesRouteRouteWithChildren,

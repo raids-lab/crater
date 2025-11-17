@@ -36,12 +36,11 @@ func AuthProtected() gin.HandlerFunc {
 			return
 		}
 
-		// 如果查询方法不是 GET (e.g. POST, PUT, DELETE), 从数据库中校验权限
+		// If query method is not GET (e.g. POST, PUT, DELETE), validate permissions from database
 		if c.Request.Method != "GET" {
 			u := query.User
-			uq := query.UserAccount
 
-			// check platform role
+			// Check platform role
 			user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 			if err != nil {
 				resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.TokenInvalid)
@@ -54,16 +53,22 @@ func AuthProtected() gin.HandlerFunc {
 				return
 			}
 
-			userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(token.AccountID)).First()
-			if err != nil {
-				resputil.HTTPError(c, http.StatusUnauthorized, "UserQueue not found", resputil.TokenInvalid)
-				c.Abort()
-				return
-			}
-			if userQueue.Role != token.RoleAccount || userQueue.AccessMode != token.AccountAccessMode {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Queue role not match", resputil.TokenInvalid)
-				c.Abort()
-				return
+			// Skip account-level permission check for /api/v1/auth/switch endpoint
+			// This endpoint is used to refresh tokens when permissions change, so it should be allowed
+			// even if the current token's account permissions are outdated
+			if c.Request.URL.Path != "/api/v1/auth/switch" {
+				uq := query.UserAccount
+				userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(token.AccountID)).First()
+				if err != nil {
+					resputil.HTTPError(c, http.StatusUnauthorized, "UserQueue not found", resputil.TokenInvalid)
+					c.Abort()
+					return
+				}
+				if userQueue.Role != token.RoleAccount || userQueue.AccessMode != token.AccountAccessMode {
+					resputil.HTTPError(c, http.StatusUnauthorized, "Queue role not match", resputil.TokenInvalid)
+					c.Abort()
+					return
+				}
 			}
 		}
 
