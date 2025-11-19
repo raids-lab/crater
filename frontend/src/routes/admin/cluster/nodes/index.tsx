@@ -17,6 +17,7 @@
 // Modified code
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { BanIcon, Users, ZapIcon } from 'lucide-react'
 import { useState } from 'react'
@@ -24,6 +25,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Badge } from '@/components/ui/badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -68,7 +70,7 @@ export const Route = createFileRoute('/admin/cluster/nodes/')({
 })
 
 function NodesForAdmin() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState('')
@@ -83,6 +85,9 @@ function NodesForAdmin() {
   const [schedulingIsCurrentlyUnschedule, setSchedulingIsCurrentlyUnschedule] = useState(false)
   const [schedulingReason, setSchedulingReason] = useState('')
   const [schedulingReasonError, setSchedulingReasonError] = useState('')
+
+  // 常用的禁止调度原因
+  const commonSchedulingReasons = ['内核/驱动升级', 'GPU 驱动升级', 'GPU 故障']
 
   const refetchTaskList = useCallback(async () => {
     try {
@@ -192,10 +197,28 @@ function NodesForAdmin() {
   )
 
   // 生成稳定的列定义
-  const nodeColumns = useMemo(
-    () => getNodeColumns((name: string) => getNicknameByName(name) || '', resources, true),
-    [getNicknameByName, resources] // 依赖项确保列定义稳定
-  )
+  const nodeColumns = useMemo(() => {
+    // 获取当前语言对应的 date-fns locale
+    const getDateLocale = (): Locale => {
+      switch (i18n.language) {
+        case 'en':
+          return enUS
+        case 'ja':
+          return ja
+        case 'ko':
+          return ko
+        default:
+          return zhCN
+      }
+    }
+
+    return getNodeColumns(
+      (name: string) => getNicknameByName(name) || '',
+      resources,
+      true,
+      getDateLocale()
+    )
+  }, [getNicknameByName, resources, i18n.language]) // 依赖项确保列定义稳定
 
   const columns = useMemo(
     () => [
@@ -243,11 +266,11 @@ function NodesForAdmin() {
           const nodeStatus = row.original.status
           const taints = row.original.taints
           const unscheduleTaint =
-            taints?.some((t) => t === 'node.kubernetes.io/unschedulable:NoSchedule') || false
-          const occupiedaccount = taints
-            ?.find((t) => t.startsWith('crater.raids.io/account'))
-            ?.split('=')[1]
-            .split(':')[0]
+            taints?.some(
+              (t) => t.key === 'node.kubernetes.io/unschedulable' && t.effect === 'NoSchedule'
+            ) || false
+          const occupiedTaint = taints?.find((t) => t.key === 'crater.raids.io/account')
+          const occupiedaccount = occupiedTaint?.value
           const occupiedAccountNickname = occupiedaccount
             ? getNicknameByName(occupiedaccount) || occupiedaccount
             : ''
@@ -314,7 +337,7 @@ function NodesForAdmin() {
         },
       },
     ],
-    [handleNodeScheduling, nodeColumns, t, getNicknameByName]
+    [handleNodeScheduling, getNicknameByName, nodeColumns, t]
   ) // 确保依赖项是稳定的
 
   return (
@@ -346,7 +369,10 @@ function NodesForAdmin() {
           {isOccupation ? (
             <div className="grid w-full gap-4 py-4">
               {/* 账号选择 */}
-              <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
+              <div className="grid gap-2">
+                <Label className="text-muted-foreground text-sm">账户</Label>
+                <AccountSelect value={selectedAccount} onChange={setSelectedAccount} />
+              </div>
               {/* 占有原因输入 */}
               <div className="grid gap-2">
                 <Label htmlFor="occupation-reason" className="text-muted-foreground text-sm">
@@ -400,11 +426,6 @@ function NodesForAdmin() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <p className="text-muted-foreground text-sm">
-              {schedulingIsCurrentlyUnschedule
-                ? '将允许该节点接受新的 Pod 调度'
-                : '将禁止该节点接受新的 Pod 调度'}
-            </p>
             {/* 禁止调度原因输入 */}
             <div className="grid gap-2">
               <Label htmlFor="scheduling-reason" className="text-muted-foreground text-sm">
@@ -425,6 +446,26 @@ function NodesForAdmin() {
               />
               {schedulingReasonError && (
                 <p className="text-sm text-red-500">{schedulingReasonError}</p>
+              )}
+              {/* 常用原因快捷按钮 */}
+              {!schedulingIsCurrentlyUnschedule && (
+                <div className="flex gap-2 overflow-x-auto pt-2 pb-1">
+                  {commonSchedulingReasons.map((reason) => (
+                    <Badge
+                      key={reason}
+                      variant="outline"
+                      className="shrink-0 cursor-pointer border-orange-600 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-400 dark:hover:bg-orange-900"
+                      onClick={() => {
+                        setSchedulingReason(reason)
+                        if (schedulingReasonError) {
+                          setSchedulingReasonError('')
+                        }
+                      }}
+                    >
+                      {reason}
+                    </Badge>
+                  ))}
+                </div>
               )}
             </div>
           </div>

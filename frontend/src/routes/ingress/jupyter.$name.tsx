@@ -26,7 +26,7 @@ import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
 import JupyterIcon from '@/components/icon/jupyter-icon'
 import BasicIframe from '@/components/layout/embed/basic-iframe'
 
-import { apiJupyterSnapshot } from '@/services/api/vcjob'
+import { apiJobSnapshot } from '@/services/api/vcjob'
 import { queryJupyterToken } from '@/services/query/job'
 
 import FloatingBall from './-components/floating-ball'
@@ -181,7 +181,7 @@ function Jupyter() {
   }, [jupyterInfo, name])
 
   const { mutate: snapshot } = useMutation({
-    mutationFn: (jobName: string) => apiJupyterSnapshot(jobName),
+    mutationFn: (jobName: string) => apiJobSnapshot(jobName),
     onSuccess: () => {
       toast.success(t('jupyter.snapshot.success'))
       navigate({ to: '/portal/env/registry' })

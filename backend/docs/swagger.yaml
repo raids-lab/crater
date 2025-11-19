@@ -6444,6 +6444,38 @@ paths:
       summary: 获取任务的Pod列表
       tags:
       - VolcanoJob
+  /v1/vcjobs/{name}/snapshot:
+    post:
+      consumes:
+      - application/json
+      description: Create nerdctl docker commit to snapshot the job container (supports
+        Jupyter and Custom job types)
+      parameters:
+      - description: Job Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create a snapshot of the job container
+      tags:
+      - VolcanoJob
   /v1/vcjobs/{name}/ssh:
     post:
       consumes:
@@ -6629,37 +6661,6 @@ paths:
       security:
       - Bearer: []
       summary: Create a Jupyter job
-      tags:
-      - VolcanoJob
-  /v1/vcjobs/jupyter/{name}/snapshot:
-    post:
-      consumes:
-      - application/json
-      description: Create nerdctl docker commit to snapshot the jupyter notebook
-      parameters:
-      - description: Job Name
-        in: path
-        name: name
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Success
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: Create a snapshot of the jupyter notebook
       tags:
       - VolcanoJob
   /v1/vcjobs/tensorflow:
