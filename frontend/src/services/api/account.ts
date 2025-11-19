@@ -130,6 +130,28 @@ export const apiUserOutOfProjectList = (pid: number) =>
 export const apiUpdateUserOutOfProjectList = (user: IUserInAccountUpdateReq) =>
   apiV1Put<IResponse<IUserInAccountUpdateResp>>(`admin/accounts/userIn/${user.aid}`, user)
 
+// User-level APIs (for account admins, not platform admins)
+export const apiUserAddAccountMember = async (aid: number, user: IUserInAccountCreate) =>
+  apiV1Post<IResponse<IUserInAccount>>(`accounts/${aid}/users/${user.id}`, {
+    role: user.role,
+    accessmode: user.accessmode,
+  })
+
+export const apiUserUpdateAccountMember = async (aid: number, user: IUserInAccountCreate) =>
+  apiV1Post<IResponse<IUserInAccount>>(`accounts/${aid}/users/${user.id}/update`, {
+    role: user.role,
+    accessmode: user.accessmode,
+  })
+
+export const apiUserRemoveAccountMember = async (aid: number, user: IUserInAccountCreate) =>
+  apiV1Delete<IResponse<IUserInAccount>>(`accounts/${aid}/users/${user.id}`)
+
+export const apiUserListAccountMembers = (aid: number) =>
+  apiV1Get<IResponse<IUserInAccount[]>>(`accounts/${aid}/users`)
+
+export const apiUserListUsersOutOfAccount = (aid: number) =>
+  apiV1Get<IResponse<IUserInAccount[]>>(`accounts/${aid}/users/out`)
+
 export const apiAccountQuotaGet = (pid: number) => {
   return apiV1Get<IResponse<QuotaResp>>(`admin/accounts/${pid}/quota`)
 }
@@ -138,5 +160,5 @@ export const apiAccountGet = (pid: number) => {
   return apiV1Get<IResponse<IAccount>>(`admin/accounts/${pid}`)
 }
 export const apiAccountGetByName = (name: string) => {
-  return apiV1Get<IResponse<IAccount>>(`accounts/${name}`)
+  return apiV1Get<IResponse<IAccount>>(`accounts/by-name/${name}`)
 }

@@ -1,4 +1,6 @@
 definitions:
+  datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota:
+    type: object
   github_com_raids-lab_crater_dao_model.AccessMode:
     enum:
     - 0
@@ -406,6 +408,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.ProjectCreateResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.PutUserInProjectResp'
       msg:
         type: string
     type: object
@@ -867,6 +878,29 @@ definitions:
     properties:
       id:
         type: integer
+    type: object
+  internal_handler.PutUserInProjectReq:
+    properties:
+      accessmode:
+        type: string
+      quota:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota'
+      role:
+        type: string
+      uid:
+        type: integer
+    required:
+    - uid
+    type: object
+  internal_handler.PutUserInProjectResp:
+    properties:
+      aid:
+        type: integer
+      uid:
+        type: integer
+    required:
+    - aid
+    - uid
     type: object
   internal_handler.SharedQueueReq:
     properties:
@@ -1703,7 +1737,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: 连接用户账户表和账户表，获取用户的所有账户的摘要信息
+      description: Join user_account and account tables to get summary info of all
+        user's accounts
       produces:
       - application/json
       responses:
@@ -1721,10 +1756,255 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取用户的所有账户
+      summary: Get all accounts for user
       tags:
       - Project
-  /v1/accounts/{name}:
+  /v1/accounts/{aid}/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users in account (requires user to be in account)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account entries
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - user not in account
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get users in account
+      tags:
+      - Project
+  /v1/accounts/{aid}/users/{uid}:
+    delete:
+      consumes:
+      - application/json
+      description: Account admin removes user from account
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns removed username and account name
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Remove user from account (account admin)
+      tags:
+      - Project
+    post:
+      consumes:
+      - application/json
+      description: Account admin adds user to account
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: Role and access mode
+        in: body
+        name: req
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns added username and account name
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Add user to account (account admin)
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      description: Account admin batch updates user-account relationship (partial
+        update)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: Update data
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.PutUserInProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Batch update user-account relationship (account admin)
+      tags:
+      - Project
+  /v1/accounts/{aid}/users/{uid}/update:
+    post:
+      consumes:
+      - application/json
+      description: Account admin updates user information in account
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: Role and access mode
+        in: body
+        name: req
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns updated username and account name
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Update user in account (account admin)
+      tags:
+      - Project
+  /v1/accounts/{aid}/users/out:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users not in account (requires user to be in account)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account entries
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - user not in account
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get users not in account
+      tags:
+      - Project
+  /v1/accounts/by-name/{name}:
     get:
       consumes:
       - application/json
@@ -2188,7 +2468,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取所有账户的摘要信息，支持筛选条件、分页和排序
+      description: Get summary info of all accounts, supports filtering, pagination
+        and sorting
       parameters:
       - description: 部分匹配账户名称
         in: query
@@ -2235,7 +2516,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取所有账户
+      summary: Get all accounts
       tags:
       - Project
   /v1/admin/projects/{aid}:
@@ -2306,7 +2587,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 创建一个userproject
+      description: Create a user-account relationship
       parameters:
       - description: uid
         in: path
@@ -2318,7 +2599,7 @@ paths:
         name: aid
         required: true
         type: integer
-      - description: 权限角色
+      - description: Role and access mode
         in: body
         name: req
         required: true
@@ -2327,7 +2608,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 返回添加的用户名和队列名
+          description: Returns added username and account name
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2340,14 +2621,14 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 向账户中添加用户
+      summary: Add user to account
       tags:
       - Project
   /v1/admin/projects/update/{aid}/{uid}:
     delete:
       consumes:
       - application/json
-      description: 删除对应userQueue条目
+      description: Delete user-account relationship
       parameters:
       - description: uid
         in: path
@@ -2376,13 +2657,13 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 删除账户用户
+      summary: Remove user from account
       tags:
       - Project
     post:
       consumes:
       - application/json
-      description: 创建一个userQueue条目
+      description: Update a user-account relationship
       parameters:
       - description: uid
         in: path
@@ -2394,7 +2675,7 @@ paths:
         name: aid
         required: true
         type: integer
-      - description: 权限角色
+      - description: Role and access mode
         in: body
         name: req
         required: true
@@ -2403,7 +2684,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 返回添加的用户名和队列名
+          description: Returns added username and account name
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2416,14 +2697,14 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 更新账户用户
+      summary: Update user in account
       tags:
       - Project
   /v1/admin/projects/userIn/{aid}:
     get:
       consumes:
       - application/json
-      description: sql查询-join
+      description: SQL query with join
       parameters:
       - description: aid
         in: path
@@ -2434,7 +2715,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: userQueue条目
+          description: User account entries
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2447,14 +2728,50 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取账户下的用户
+      summary: Get users in account
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      description: Batch update user-account relationship (partial update)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: 更新数据
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.PutUserInProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新结果
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Batch update user-account relationship
       tags:
       - Project
   /v1/admin/projects/userOutOf/{aid}:
     get:
       consumes:
       - application/json
-      description: sql查询-subquery
+      description: SQL query with subquery
       parameters:
       - description: aid
         in: path
@@ -2465,7 +2782,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: userQueue条目
+          description: User account entries
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2478,7 +2795,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取账户外的用户
+      summary: Get users not in account
       tags:
       - Project
   /v1/admin/resources/{id}:

@@ -80,7 +80,6 @@ func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/:name/gpu", mgr.ListNodeGPUInfo)
 }
 
-//nolint:dupl // ignore duplicate code
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
 	g.GET("/:name/pods", mgr.GetPodsForNode)

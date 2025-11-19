@@ -183,7 +183,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "连接用户账户表和账户表，获取用户的所有账户的摘要信息",
+                "description": "Join user_account and account tables to get summary info of all user's accounts",
                 "consumes": [
                     "application/json"
                 ],
@@ -193,7 +193,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取用户的所有账户",
+                "summary": "Get all accounts for user",
                 "responses": {
                     "200": {
                         "description": "成功返回值描述",
@@ -216,7 +216,7 @@
                 }
             }
         },
-        "/v1/accounts/{name}": {
+        "/v1/accounts/by-name/{name}": {
             "get": {
                 "security": [
                     {
@@ -257,6 +257,383 @@
                     },
                     "500": {
                         "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get list of users in account (requires user to be in account)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Get users in account",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User account entries",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - user not in account",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users/out": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get list of users not in account (requires user to be in account)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Get users not in account",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User account entries",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - user not in account",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin batch updates user-account relationship (partial update)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Batch update user-account relationship (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.PutUserInProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Update result",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin adds user to account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Add user to account (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role and access mode",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns added username and account name",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin removes user from account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Remove user from account (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns removed username and account name",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users/{uid}/update": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin updates user information in account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Update user in account (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role and access mode",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns updated username and account name",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -959,7 +1336,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "获取所有账户的摘要信息，支持筛选条件、分页和排序",
+                "description": "Get summary info of all accounts, supports filtering, pagination and sorting",
                 "consumes": [
                     "application/json"
                 ],
@@ -969,7 +1346,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取所有账户",
+                "summary": "Get all accounts",
                 "parameters": [
                     {
                         "type": "string",
@@ -1041,7 +1418,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "创建一个userproject",
+                "description": "Create a user-account relationship",
                 "consumes": [
                     "application/json"
                 ],
@@ -1051,7 +1428,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "向账户中添加用户",
+                "summary": "Add user to account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1068,7 +1445,7 @@
                         "required": true
                     },
                     {
-                        "description": "权限角色",
+                        "description": "Role and access mode",
                         "name": "req",
                         "in": "body",
                         "required": true,
@@ -1077,7 +1454,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "返回添加的用户名和队列名",
+                        "description": "Returns added username and account name",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -1104,7 +1481,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "创建一个userQueue条目",
+                "description": "Update a user-account relationship",
                 "consumes": [
                     "application/json"
                 ],
@@ -1114,7 +1491,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "更新账户用户",
+                "summary": "Update user in account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1131,7 +1508,7 @@
                         "required": true
                     },
                     {
-                        "description": "权限角色",
+                        "description": "Role and access mode",
                         "name": "req",
                         "in": "body",
                         "required": true,
@@ -1140,7 +1517,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "返回添加的用户名和队列名",
+                        "description": "Returns added username and account name",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -1165,7 +1542,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "删除对应userQueue条目",
+                "description": "Delete user-account relationship",
                 "consumes": [
                     "application/json"
                 ],
@@ -1175,7 +1552,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "删除账户用户",
+                "summary": "Remove user from account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1221,7 +1598,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "sql查询-join",
+                "description": "SQL query with join",
                 "consumes": [
                     "application/json"
                 ],
@@ -1231,7 +1608,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取账户下的用户",
+                "summary": "Get users in account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1243,9 +1620,65 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "userQueue条目",
+                        "description": "User account entries",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Batch update user-account relationship (partial update)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Batch update user-account relationship",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新数据",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.PutUserInProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新结果",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp"
                         }
                     },
                     "400": {
@@ -1270,7 +1703,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "sql查询-subquery",
+                "description": "SQL query with subquery",
                 "consumes": [
                     "application/json"
                 ],
@@ -1280,7 +1713,7 @@
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取账户外的用户",
+                "summary": "Get users not in account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1292,7 +1725,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "userQueue条目",
+                        "description": "User account entries",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -7590,6 +8023,9 @@
         }
     },
     "definitions": {
+        "datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota": {
+            "type": "object"
+        },
         "github_com_raids-lab_crater_dao_model.AccessMode": {
             "type": "integer",
             "format": "int32",
@@ -8143,6 +8579,20 @@
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.PutUserInProjectResp"
                 },
                 "msg": {
                     "type": "string"
@@ -8845,6 +9295,41 @@
             "type": "object",
             "properties": {
                 "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.PutUserInProjectReq": {
+            "type": "object",
+            "required": [
+                "uid"
+            ],
+            "properties": {
+                "accessmode": {
+                    "type": "string"
+                },
+                "quota": {
+                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.PutUserInProjectResp": {
+            "type": "object",
+            "required": [
+                "aid",
+                "uid"
+            ],
+            "properties": {
+                "aid": {
+                    "type": "integer"
+                },
+                "uid": {
                     "type": "integer"
                 }
             }
