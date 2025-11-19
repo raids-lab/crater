@@ -192,14 +192,6 @@ func getNodeCondition(node *corev1.Node) corev1.NodeConditionType {
 	return NodeStatusUnknown // 如果没有任何条件为 True，则视为就绪
 }
 
-func taintsToStringArray(taints []corev1.Taint) []string {
-	var taintStrings []string
-	for _, taint := range taints {
-		taintStrings = append(taintStrings, taint.ToString())
-	}
-	return taintStrings
-}
-
 func taintsToString(taints []corev1.Taint) string {
 	var taintStrings []string
 	for _, taint := range taints {
