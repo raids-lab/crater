@@ -18,9 +18,9 @@
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ChevronRight, FileDigitIcon, FolderIcon, type LucideIcon } from 'lucide-react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import useResizeObserver from 'use-resize-observer'
+import { useResizeObserver } from 'usehooks-ts'
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
@@ -58,6 +58,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   onSelectChange?: (item: TreeDataItem | undefined) => void
   className?: string
   isrw?: boolean
+  isAdmin?: boolean
 }
 
 const Tree = ({
@@ -65,6 +66,7 @@ const Tree = ({
   initialSlelectedItemId,
   onSelectChange,
   isrw,
+  isAdmin = false,
   className,
   ...props
 }: TreeProps & {
@@ -87,23 +89,38 @@ const Tree = ({
   const { data } = useQuery({
     queryKey: ['directory', 'list', isrw],
     queryFn: () => (isrw ? apiGetRWFiles('') : apiGetFiles('')),
-    select: (res) =>
-      res.data
-        ?.map((r) => {
-          return {
-            name: r.name,
-            modifytime: r.modifytime,
-            isdir: r.isdir,
-            size: r.size,
-            sys: r.sys,
-          }
-        })
-        .sort((a, b) => {
-          return a.name.localeCompare(b.name)
-        }) ?? [],
+    select: (res) => {
+      const items =
+        res.data
+          ?.map((r) => {
+            return {
+              name: r.name,
+              modifytime: r.modifytime,
+              isdir: r.isdir,
+              size: r.size,
+              sys: r.sys,
+            }
+          })
+          .sort((a, b) => {
+            return a.name.localeCompare(b.name)
+          }) ?? []
+
+      // 如果指定了isAdmin为false,过滤掉非public目录
+      if (isAdmin === false) {
+        return items.filter((item) => item.name === 'public')
+      }
+      // 如果不是管理员,过滤掉 public 目录
+      if (!isAdmin) {
+        return items.filter((item) => item.name !== 'public')
+      }
+      return items
+    },
   })
 
-  const { ref: refRoot, width, height } = useResizeObserver()
+  const refRoot = useRef<HTMLDivElement | null>(null)
+  const { width = 0, height = 0 } = useResizeObserver({
+    ref: refRoot as React.RefObject<HTMLElement>,
+  })
 
   return (
     <div ref={refRoot} className={cn('overflow-hidden', className)}>
@@ -118,6 +135,7 @@ const Tree = ({
                 data={item}
                 ref={ref}
                 isrw={isrw}
+                isAdmin={isAdmin}
                 selectedItemId={selectedItemId}
                 handleSelectChange={handleSelectChange}
               />

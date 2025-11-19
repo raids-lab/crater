@@ -25,7 +25,7 @@ env:
   GOLANGCI_LINT_VERSION: v2.2.1
 
 jobs:
-  lint:
+  backend-lint-check:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,9 +53,9 @@ jobs:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           working-directory: backend
 
-  build_backend_test:
+  backend-build-check:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: backend-lint-check
     defaults:
       run:
         working-directory: backend

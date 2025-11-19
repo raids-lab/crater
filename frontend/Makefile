@@ -18,7 +18,7 @@ help: ## 💡 Display this help message
 	@echo "$(CYAN)🌋 Crater Frontend Development Commands$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)📋 Prerequisites:$(RESET)"
-	@echo "  • Backend API server should be running on http://localhost:8092/"
+	@echo "  • Backend API server should be running on http://localhost:8088/"
 	@echo "  • Storage server should be running on http://localhost:7320/"
 	@echo "  • Run 'make backend-help' for backend startup instructions"
 	@echo ""
@@ -32,7 +32,7 @@ prepare: ## 🔧 Prepare development environment with updated configs
 	@echo "$(BLUE)Preparing development environment...$(RESET)"
 	@if [ ! -f .env.development ]; then \
 		echo "$(YELLOW)Creating .env.development file...$(RESET)"; \
-		echo 'VITE_SERVER_PROXY_BACKEND="http://localhost:8092/"' > .env.development; \
+		echo 'VITE_SERVER_PROXY_BACKEND="http://localhost:8088/"' > .env.development; \
 		echo 'VITE_SERVER_PROXY_STORAGE="http://localhost:7320/"' >> .env.development; \
 		echo 'VITE_USE_MSW=false  # Enable API mocking' >> .env.development; \
 		echo 'VITE_TANSTACK_QUERY_DEVTOOLS=true  # Enable React Query DevTools' >> .env.development; \
@@ -150,10 +150,10 @@ generate: ## 🛠️ Generate error codes from backend
 backend-help: ## ❓ Show backend server startup instructions
 	@echo "$(CYAN)🚀 Backend Server Startup Instructions$(RESET)"
 	@echo ""
-	@echo "$(YELLOW)1. API Backend Server (Port 8092):$(RESET)"
+	@echo "$(YELLOW)1. API Backend Server (Port 8088):$(RESET)"
 	@echo "   • Navigate to your backend directory"
 	@echo "   • Run: $(GREEN)make run$(RESET) or $(GREEN)go run main.go$(RESET)"
-	@echo "   • Ensure it's accessible at: $(BLUE)http://localhost:8092/$(RESET)"
+	@echo "   • Ensure it's accessible at: $(BLUE)http://localhost:8088/$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)2. Storage Server (Port 7320):$(RESET)"
 	@echo "   • Navigate to your storage service directory"
@@ -161,7 +161,7 @@ backend-help: ## ❓ Show backend server startup instructions
 	@echo "   • Ensure it's accessible at: $(BLUE)http://localhost:7320/$(RESET)"
 	@echo ""
 	@echo "$(YELLOW)3. Verify Services:$(RESET)"
-	@echo "   • API Backend: $(GREEN)curl http://localhost:8092/health$(RESET)"
+	@echo "   • API Backend: $(GREEN)curl http://localhost:8088/health$(RESET)"
 	@echo "   • Storage Server: $(GREEN)curl http://localhost:7320/health$(RESET)"
 	@echo ""
 	@echo "$(CYAN)💡 Tips:$(RESET)"

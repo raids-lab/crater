@@ -69,6 +69,7 @@ interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElem
   briefChildren?: React.ReactNode
   withI18n?: boolean
   className?: string
+  initialColumnVisibility?: VisibilityState
 }
 
 export function DataTable<TData, TValue>({
@@ -82,10 +83,11 @@ export function DataTable<TData, TValue>({
   briefChildren,
   withI18n = false,
   className,
+  initialColumnVisibility = {},
 }: DataTableProps<TData, TValue>) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility)
   const [columnFilters, setColumnFilters] = useLocalStorage<ColumnFiltersState>(
     `${storageKey}-column-filters`,
     []

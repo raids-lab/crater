@@ -15,11 +15,12 @@
  */
 // i18n-processed-v1.1.0
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { isValidCron } from 'cron-validator'
 import { t } from 'i18next'
 import { AlarmClockIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -43,9 +44,13 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 
+import CronJobStatusBadge from '@/components/badge/cronjob-status-badge'
 import TipBadge from '@/components/badge/tip-badge'
+import LoadableButton from '@/components/button/loadable-button'
 
 import {
+  CronJobConfigStatus,
+  apiAdminCronJobConfigStatus,
   apiAdminLongTimeRunningJobsCleanup,
   apiAdminLowGPUUsageJobsCleanup,
   apiAdminWaitingJupyterJobCancel,
@@ -55,27 +60,20 @@ import {
 
 import { cn } from '@/lib/utils'
 
-import CronJobRecordsTable from './cronjob-records-table'
+import CronJobRecordsTable from './-components/cronjob-records-table'
 
 export const Route = createFileRoute('/admin/cronjobs/')({
   component: CronPolicy,
   loader: () => ({ crumb: t('navigation.cronPolicy') }),
 })
 
-interface Job {
-  name: string
-  suspend?: boolean
-  schedule?: string
-  configs?: Record<string, number | string | boolean>
-}
-
 // Moved Zod schema to component
 const getCronErrorMessage = (t: (key: string) => string) => t('cronPolicy.invalidCron')
 
 const getCleanLongTimeSchema = (t: (key: string) => string) =>
   z.object({
-    suspend: z.boolean(),
-    schedule: z.string().refine((value) => isValidCron(value), {
+    status: z.nativeEnum(CronJobConfigStatus),
+    spec: z.string().refine((value) => isValidCron(value), {
       message: getCronErrorMessage(t),
     }),
     configs: z.object({
@@ -86,8 +84,8 @@ const getCleanLongTimeSchema = (t: (key: string) => string) =>
 
 const getCleanLowGpuSchema = (t: (key: string) => string) =>
   z.object({
-    suspend: z.boolean(),
-    schedule: z.string().refine((value) => isValidCron(value), {
+    status: z.nativeEnum(CronJobConfigStatus),
+    spec: z.string().refine((value) => isValidCron(value), {
       message: getCronErrorMessage(t),
     }),
     configs: z.object({
@@ -99,8 +97,8 @@ const getCleanLowGpuSchema = (t: (key: string) => string) =>
 
 const getCleanWaitingJupyterSchema = (t: (key: string) => string) =>
   z.object({
-    suspend: z.boolean(),
-    schedule: z.string().refine((value) => isValidCron(value), {
+    status: z.nativeEnum(CronJobConfigStatus),
+    spec: z.string().refine((value) => isValidCron(value), {
       message: getCronErrorMessage(t),
     }),
     configs: z.object({
@@ -117,96 +115,185 @@ const getFormSchema = (t: (key: string) => string) =>
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>
 
-export default function CronPolicy({ className }: { className?: string }) {
+function CronPolicy({ className }: { className?: string }) {
   const { t } = useTranslation()
   const [loading, setLoading] = useState<boolean>(false)
+  const [jobStatuses, setJobStatuses] = useState<{
+    cleanLongTime?: string
+    cleanLowGpu?: string
+    cleanWaitingJupyter?: string
+  }>({})
 
   const formSchema = getFormSchema(t)
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   })
 
-  useEffect(() => {
-    async function loadJobSchedule() {
-      setLoading(true)
-      try {
-        const res = await apiJobScheduleAdmin()
-        const detail = res.data
-        if (detail) {
-          const jobs = Array.isArray(detail) ? detail : []
-          const formData: FormValues = {
-            cleanLongTime:
-              jobs.find((job: Job) => job.name === 'clean-long-time-job') ||
-              form.getValues('cleanLongTime'),
-            cleanLowGpu:
-              jobs.find((job: Job) => job.name === 'clean-low-gpu-util-job') ||
-              form.getValues('cleanLowGpu'),
-            cleanWaitingJupyter:
-              jobs.find((job: Job) => job.name === 'clean-waiting-jupyter') ||
-              form.getValues('cleanWaitingJupyter'),
-          }
-          form.reset(formData)
-        } else {
-          toast.error(t('cronPolicy.loadError') + res.msg)
-        }
-      } catch (error) {
-        toast.error(t('cronPolicy.loadError') + error)
-      } finally {
-        setLoading(false)
+  // 定期获取任务状态(每3秒)
+  const statusQuery = useQuery({
+    queryKey: ['admin', 'cronjob', 'status'],
+    queryFn: async () => {
+      const res = await apiAdminCronJobConfigStatus({
+        name: ['clean-long-time-job', 'clean-low-gpu-util-job', 'clean-waiting-jupyter'],
+      })
+      if (res.code === 0 && res.data) {
+        return res.data
       }
+      return {}
+    },
+    refetchInterval: 5000,
+    enabled: !loading,
+  })
+
+  // 更新状态到组件状态
+  useEffect(() => {
+    if (statusQuery.data) {
+      setJobStatuses({
+        cleanLongTime: statusQuery.data['clean-long-time-job']?.status,
+        cleanLowGpu: statusQuery.data['clean-low-gpu-util-job']?.status,
+        cleanWaitingJupyter: statusQuery.data['clean-waiting-jupyter']?.status,
+      })
     }
-    loadJobSchedule()
+  }, [statusQuery.data])
+
+  const loadJobSchedule = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await apiJobScheduleAdmin()
+      const detail = res.data
+      if (detail) {
+        const jobs = detail.configs || []
+        // 将 CronJobConfig 转换为表单格式
+        const cleanLongTime = jobs.find((job) => job.name === 'clean-long-time-job')
+        const cleanLowGpu = jobs.find((job) => job.name === 'clean-low-gpu-util-job')
+        const cleanWaitingJupyter = jobs.find((job) => job.name === 'clean-waiting-jupyter')
+
+        const formData: FormValues = {
+          cleanLongTime: cleanLongTime
+            ? {
+                status: cleanLongTime.status as CronJobConfigStatus,
+                spec: cleanLongTime.spec,
+                configs: cleanLongTime.config as {
+                  batchDays: number
+                  interactiveDays: number
+                },
+              }
+            : form.getValues('cleanLongTime'),
+          cleanLowGpu: cleanLowGpu
+            ? {
+                status: cleanLowGpu.status as CronJobConfigStatus,
+                spec: cleanLowGpu.spec,
+                configs: cleanLowGpu.config as {
+                  timeRange: number
+                  util: number
+                  waitTime: number
+                },
+              }
+            : form.getValues('cleanLowGpu'),
+          cleanWaitingJupyter: cleanWaitingJupyter
+            ? {
+                status: cleanWaitingJupyter.status as CronJobConfigStatus,
+                spec: cleanWaitingJupyter.spec,
+                configs: cleanWaitingJupyter.config as {
+                  waitMinitues: number
+                },
+              }
+            : form.getValues('cleanWaitingJupyter'),
+        }
+        form.reset(formData)
+      } else {
+        toast.error(t('cronPolicy.loadError') + res.msg)
+      }
+    } catch (error) {
+      toast.error(t('cronPolicy.loadError') + error)
+    } finally {
+      setLoading(false)
+    }
   }, [form, t])
 
-  const onSubmitLongTime = async () => {
-    const data = form.getValues('cleanLongTime')
-    try {
-      const res = await apiJobScheduleChangeAdmin(data)
-      if (res.code === 0) {
-        toast.success(t('cronPolicy.longTimeSuccess'))
-      } else {
-        toast.error(t('cronPolicy.longTimeError') + res.msg)
-      }
-    } catch (error) {
-      toast.error(t('cronPolicy.longTimeError') + error)
-    }
-  }
+  useEffect(() => {
+    loadJobSchedule()
+  }, [loadJobSchedule])
 
-  const onSubmitLowGpu = async () => {
-    const data = form.getValues('cleanLowGpu')
-    try {
-      const res = await apiJobScheduleChangeAdmin(data)
-      if (res.code === 0) {
-        toast.success(t('cronPolicy.lowGpuSuccess'))
-      } else {
-        toast.error(t('cronPolicy.lowGpuError') + res.msg)
+  // Mutation for updating clean long-time job
+  const { mutate: updateLongTimeJob, isPending: isLongTimeUpdating } = useMutation({
+    mutationFn: async () => {
+      const data = form.getValues('cleanLongTime')
+      const res = await apiJobScheduleChangeAdmin({
+        name: 'clean-long-time-job',
+        status: data.status,
+        spec: data.spec,
+        config: data.configs,
+      })
+      if (res.code !== 0) {
+        throw new Error(res.msg)
       }
-    } catch (error) {
-      toast.error(t('cronPolicy.lowGpuError') + error)
-    }
-  }
+      return { res, status: data.status }
+    },
+    onSuccess: () => {
+      toast.success(t('cronPolicy.longTimeSuccess'))
+      statusQuery.refetch()
+    },
+    onError: (error: Error) => {
+      toast.error(t('cronPolicy.longTimeError') + error.message)
+    },
+  })
 
-  const onSubmitWaitingJupyter = async () => {
-    const data = form.getValues('cleanWaitingJupyter')
-    try {
-      const res = await apiJobScheduleChangeAdmin(data)
-      if (res.code === 0) {
-        toast.success(t('cronPolicy.jupyterSuccess'))
-      } else {
-        toast.error(t('cronPolicy.jupyterError') + res.msg)
+  // Mutation for updating clean low GPU job
+  const { mutate: updateLowGpuJob, isPending: isLowGpuUpdating } = useMutation({
+    mutationFn: async () => {
+      const data = form.getValues('cleanLowGpu')
+      const res = await apiJobScheduleChangeAdmin({
+        name: 'clean-low-gpu-util-job',
+        status: data.status,
+        spec: data.spec,
+        config: data.configs,
+      })
+      if (res.code !== 0) {
+        throw new Error(res.msg)
       }
-    } catch (error) {
-      toast.error(t('cronPolicy.jupyterError') + error)
-    }
-  }
+      return { res, status: data.status }
+    },
+    onSuccess: () => {
+      toast.success(t('cronPolicy.lowGpuSuccess'))
+      statusQuery.refetch()
+    },
+    onError: (error: Error) => {
+      toast.error(t('cronPolicy.lowGpuError') + error.message)
+    },
+  })
+
+  // Mutation for updating clean waiting jupyter job
+  const { mutate: updateWaitingJupyterJob, isPending: isWaitingJupyterUpdating } = useMutation({
+    mutationFn: async () => {
+      const data = form.getValues('cleanWaitingJupyter')
+      const res = await apiJobScheduleChangeAdmin({
+        name: 'clean-waiting-jupyter',
+        status: data.status,
+        spec: data.spec,
+        config: data.configs,
+      })
+      if (res.code !== 0) {
+        throw new Error(res.msg)
+      }
+      return { res, status: data.status }
+    },
+    onSuccess: () => {
+      toast.success(t('cronPolicy.jupyterSuccess'))
+      statusQuery.refetch()
+    },
+    onError: (error: Error) => {
+      toast.error(t('cronPolicy.jupyterError') + error.message)
+    },
+  })
 
   const runJob = async () => {}
 
   const confirmJobRun = async () => {
     try {
-      const longTimeSuspend = form.getValues('cleanLongTime.suspend')
-      const lowGpuSuspend = form.getValues('cleanLowGpu.suspend')
-      const waitingJupyterSuspend = form.getValues('cleanWaitingJupyter.suspend')
+      const longTimeStatus = form.getValues('cleanLongTime.status')
+      const lowGpuStatus = form.getValues('cleanLowGpu.status')
+      const waitingJupyterStatus = form.getValues('cleanWaitingJupyter.status')
 
       const longTimeData = form.getValues('cleanLongTime.configs')
       const lowGpuData = form.getValues('cleanLowGpu.configs')
@@ -214,7 +301,7 @@ export default function CronPolicy({ className }: { className?: string }) {
 
       const promises = []
 
-      if (!longTimeSuspend) {
+      if (longTimeStatus !== CronJobConfigStatus.Suspended) {
         promises.push(
           apiAdminLongTimeRunningJobsCleanup({
             batchDays: Number(longTimeData.batchDays),
@@ -225,7 +312,7 @@ export default function CronPolicy({ className }: { className?: string }) {
         promises.push(Promise.resolve(null))
       }
 
-      if (!lowGpuSuspend) {
+      if (lowGpuStatus !== CronJobConfigStatus.Suspended) {
         promises.push(
           apiAdminLowGPUUsageJobsCleanup({
             timeRange: Number(lowGpuData.timeRange),
@@ -237,7 +324,7 @@ export default function CronPolicy({ className }: { className?: string }) {
         promises.push(Promise.resolve(null))
       }
 
-      if (!waitingJupyterSuspend) {
+      if (waitingJupyterStatus !== CronJobConfigStatus.Suspended) {
         promises.push(
           apiAdminWaitingJupyterJobCancel({
             waitMinutes: Number(waitingJupyterData.waitMinitues),
@@ -320,17 +407,26 @@ export default function CronPolicy({ className }: { className?: string }) {
             <Form {...form}>
               <div className="space-y-8 p-4">
                 <div className="rounded-md border p-4">
-                  <h3 className="mb-4 font-semibold">{t('cronPolicy.longTimeTitle')}</h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="font-semibold">{t('cronPolicy.longTimeTitle')}</h3>
+                    {jobStatuses.cleanLongTime && (
+                      <CronJobStatusBadge status={jobStatuses.cleanLongTime} />
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-4">
                     <FormField
                       control={form.control}
-                      name="cleanLongTime.suspend"
+                      name="cleanLongTime.status"
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
                             <Switch
-                              checked={!field.value}
-                              onCheckedChange={(checked) => field.onChange(!checked)}
+                              checked={field.value !== CronJobConfigStatus.Suspended}
+                              onCheckedChange={(checked) =>
+                                field.onChange(
+                                  checked ? CronJobConfigStatus.Idle : CronJobConfigStatus.Suspended
+                                )
+                              }
                             />
                           </FormControl>
                           <span>{t('cronPolicy.enable')}</span>
@@ -339,7 +435,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     />
                     <FormField
                       control={form.control}
-                      name="cleanLongTime.schedule"
+                      name="cleanLongTime.spec"
                       render={({ field, fieldState }) => (
                         <FormItem className="flex flex-col">
                           <label className="text-sm">{t('cronPolicy.schedule')}</label>
@@ -394,24 +490,38 @@ export default function CronPolicy({ className }: { className?: string }) {
                     />
                   </div>
                   <div className="mt-4">
-                    <Button variant="secondary" onClick={form.handleSubmit(onSubmitLongTime)}>
+                    <LoadableButton
+                      variant="secondary"
+                      isLoading={isLongTimeUpdating}
+                      isLoadingText={t('cronPolicy.updating')}
+                      onClick={() => updateLongTimeJob()}
+                    >
                       {t('cronPolicy.longTimeUpdate')}
-                    </Button>
+                    </LoadableButton>
                   </div>
                 </div>
 
                 <div className="rounded-md border p-4">
-                  <h3 className="mb-4 font-semibold">{t('cronPolicy.lowGpuTitle')}</h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="font-semibold">{t('cronPolicy.lowGpuTitle')}</h3>
+                    {jobStatuses.cleanLowGpu && (
+                      <CronJobStatusBadge status={jobStatuses.cleanLowGpu} />
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-4">
                     <FormField
                       control={form.control}
-                      name="cleanLowGpu.suspend"
+                      name="cleanLowGpu.status"
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
                             <Switch
-                              checked={!field.value}
-                              onCheckedChange={(checked) => field.onChange(!checked)}
+                              checked={field.value !== CronJobConfigStatus.Suspended}
+                              onCheckedChange={(checked) =>
+                                field.onChange(
+                                  checked ? CronJobConfigStatus.Idle : CronJobConfigStatus.Suspended
+                                )
+                              }
                             />
                           </FormControl>
                           <span>{t('cronPolicy.enable')}</span>
@@ -420,7 +530,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     />
                     <FormField
                       control={form.control}
-                      name="cleanLowGpu.schedule"
+                      name="cleanLowGpu.spec"
                       render={({ field, fieldState }) => (
                         <FormItem className="flex flex-col">
                           <label className="text-sm">{t('cronPolicy.schedule')}</label>
@@ -496,24 +606,38 @@ export default function CronPolicy({ className }: { className?: string }) {
                     />
                   </div>
                   <div className="mt-4">
-                    <Button variant="secondary" onClick={form.handleSubmit(onSubmitLowGpu)}>
+                    <LoadableButton
+                      variant="secondary"
+                      isLoading={isLowGpuUpdating}
+                      isLoadingText={t('cronPolicy.updating')}
+                      onClick={() => updateLowGpuJob()}
+                    >
                       {t('cronPolicy.lowGpuUpdate')}
-                    </Button>
+                    </LoadableButton>
                   </div>
                 </div>
 
                 <div className="rounded-md border p-4">
-                  <h3 className="mb-4 font-semibold">{t('cronPolicy.jupyterTitle')}</h3>
+                  <div className="mb-4 flex items-center gap-2">
+                    <h3 className="font-semibold">{t('cronPolicy.jupyterTitle')}</h3>
+                    {jobStatuses.cleanWaitingJupyter && (
+                      <CronJobStatusBadge status={jobStatuses.cleanWaitingJupyter} />
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-4">
                     <FormField
                       control={form.control}
-                      name="cleanWaitingJupyter.suspend"
+                      name="cleanWaitingJupyter.status"
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
                             <Switch
-                              checked={!field.value}
-                              onCheckedChange={(checked) => field.onChange(!checked)}
+                              checked={field.value !== CronJobConfigStatus.Suspended}
+                              onCheckedChange={(checked) =>
+                                field.onChange(
+                                  checked ? CronJobConfigStatus.Idle : CronJobConfigStatus.Suspended
+                                )
+                              }
                             />
                           </FormControl>
                           <span>{t('cronPolicy.enable')}</span>
@@ -522,7 +646,7 @@ export default function CronPolicy({ className }: { className?: string }) {
                     />
                     <FormField
                       control={form.control}
-                      name="cleanWaitingJupyter.schedule"
+                      name="cleanWaitingJupyter.spec"
                       render={({ field, fieldState }) => (
                         <FormItem className="flex flex-col">
                           <label className="text-sm">{t('cronPolicy.schedule')}</label>
@@ -557,9 +681,14 @@ export default function CronPolicy({ className }: { className?: string }) {
                     />
                   </div>
                   <div className="mt-4">
-                    <Button variant="secondary" onClick={form.handleSubmit(onSubmitWaitingJupyter)}>
+                    <LoadableButton
+                      variant="secondary"
+                      isLoading={isWaitingJupyterUpdating}
+                      isLoadingText={t('cronPolicy.updating')}
+                      onClick={() => updateWaitingJupyterJob()}
+                    >
                       {t('cronPolicy.jupyterUpdate')}
-                    </Button>
+                    </LoadableButton>
                   </div>
                 </div>
               </div>

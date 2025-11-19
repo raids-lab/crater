@@ -191,7 +191,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "连接用户账户表和账户表，获取用户的所有账户的摘要信息",
+                "description": "Join user_account and account tables to get summary info of all user's accounts",
                 "consumes": [
                     "application/json"
                 ],
@@ -201,7 +201,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取用户的所有账户",
+                "summary": "Get all accounts for user",
                 "responses": {
                     "200": {
                         "description": "成功返回值描述",
@@ -224,7 +224,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/accounts/{name}": {
+        "/v1/accounts/by-name/{name}": {
             "get": {
                 "security": [
                     {
@@ -265,6 +265,383 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get list of users in account (requires user to be in account)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Get users in account",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User account entries",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - user not in account",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users/out": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get list of users not in account (requires user to be in account)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Get users not in account",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User account entries",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - user not in account",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin batch updates user-account relationship (partial update)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Batch update user-account relationship (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update data",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.PutUserInProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Update result",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin adds user to account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Add user to account (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role and access mode",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns added username and account name",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin removes user from account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Remove user from account (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns removed username and account name",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/accounts/{aid}/users/{uid}/update": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Account admin updates user information in account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Update user in account (account admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role and access mode",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {}
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns updated username and account name",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - not account admin",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -895,6 +1272,71 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/admin/models/downloads": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员查看所有用户的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "管理员获取所有模型下载任务",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/models/downloads/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员删除任意用户的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "管理员删除模型下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/projects": {
             "get": {
                 "security": [
@@ -902,7 +1344,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取所有账户的摘要信息，支持筛选条件、分页和排序",
+                "description": "Get summary info of all accounts, supports filtering, pagination and sorting",
                 "consumes": [
                     "application/json"
                 ],
@@ -912,7 +1354,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取所有账户",
+                "summary": "Get all accounts",
                 "parameters": [
                     {
                         "type": "string",
@@ -984,7 +1426,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "创建一个userproject",
+                "description": "Create a user-account relationship",
                 "consumes": [
                     "application/json"
                 ],
@@ -994,7 +1436,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "向账户中添加用户",
+                "summary": "Add user to account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1011,7 +1453,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "权限角色",
+                        "description": "Role and access mode",
                         "name": "req",
                         "in": "body",
                         "required": true,
@@ -1020,7 +1462,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "返回添加的用户名和队列名",
+                        "description": "Returns added username and account name",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -1047,7 +1489,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "创建一个userQueue条目",
+                "description": "Update a user-account relationship",
                 "consumes": [
                     "application/json"
                 ],
@@ -1057,7 +1499,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "更新账户用户",
+                "summary": "Update user in account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1074,7 +1516,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "权限角色",
+                        "description": "Role and access mode",
                         "name": "req",
                         "in": "body",
                         "required": true,
@@ -1083,7 +1525,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "返回添加的用户名和队列名",
+                        "description": "Returns added username and account name",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -1108,7 +1550,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "删除对应userQueue条目",
+                "description": "Delete user-account relationship",
                 "consumes": [
                     "application/json"
                 ],
@@ -1118,7 +1560,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "删除账户用户",
+                "summary": "Remove user from account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1164,7 +1606,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "sql查询-join",
+                "description": "SQL query with join",
                 "consumes": [
                     "application/json"
                 ],
@@ -1174,7 +1616,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取账户下的用户",
+                "summary": "Get users in account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1186,9 +1628,65 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "userQueue条目",
+                        "description": "User account entries",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Batch update user-account relationship (partial update)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "Batch update user-account relationship",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "aid",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新数据",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.PutUserInProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新结果",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp"
                         }
                     },
                     "400": {
@@ -1213,7 +1711,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "sql查询-subquery",
+                "description": "SQL query with subquery",
                 "consumes": [
                     "application/json"
                 ],
@@ -1223,7 +1721,7 @@ const docTemplate = `{
                 "tags": [
                     "Project"
                 ],
-                "summary": "获取账户外的用户",
+                "summary": "Get users not in account",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1235,7 +1733,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "userQueue条目",
+                        "description": "User account entries",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -4715,6 +5213,293 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/models/download": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "创建一个新的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "创建模型下载任务",
+                "parameters": [
+                    {
+                        "description": "下载请求",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.CreateDownloadReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户的所有模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "获取用户的模型下载任务列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据 ID 获取模型下载任务详情",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "获取单个模型下载任务详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除指定的模型下载任务记录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "删除模型下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/logs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取模型下载任务的实时日志",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "获取模型下载任务的 Pod 日志",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/pause": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "暂停正在进行的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "暂停下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/resume": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "恢复已暂停的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "恢复下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/models/downloads/{id}/retry": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "重新提交失败的模型下载任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ModelDownload"
+                ],
+                "summary": "重试失败的下载任务",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "下载任务ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/namespaces/{namespace}/pods/{name}/containers": {
             "get": {
                 "security": [
@@ -6105,12 +6890,12 @@ const docTemplate = `{
                 "summary": "Update cronjob config",
                 "parameters": [
                     {
-                        "description": "CronjobConfigs",
+                        "description": "CronjobConfig",
                         "name": "use",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler_operations.CronjobConfigs"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfig"
                         }
                     }
                 ],
@@ -7246,6 +8031,9 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota": {
+            "type": "object"
+        },
         "github_com_raids-lab_crater_dao_model.AccessMode": {
             "type": "integer",
             "format": "int32",
@@ -7367,6 +8155,68 @@ const docTemplate = `{
                 "ResourceTypeGPU",
                 "ResourceTypeRDMA",
                 "ResourceTypeVGPU"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.CronJobConfig": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "entry_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "spec": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfigStatus"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CronJobType"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_dao_model.CronJobConfigStatus": {
+            "type": "string",
+            "enum": [
+                "unknown",
+                "suspended",
+                "idle",
+                "running"
+            ],
+            "x-enum-varnames": [
+                "CronJobConfigStatusUnknown",
+                "CronJobConfigStatusSuspended",
+                "CronJobConfigStatusIdle",
+                "CronJobConfigStatusRunning"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.CronJobType": {
+            "type": "string",
+            "enum": [
+                "cleaner_function"
+            ],
+            "x-enum-varnames": [
+                "CronJobTypeCleanerFunc"
             ]
         },
         "github_com_raids-lab_crater_dao_model.DataType": {
@@ -7600,6 +8450,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.ModelDownloadResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail": {
             "type": "object",
             "properties": {
@@ -7684,6 +8551,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ModelDownloadResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark": {
             "type": "object",
             "properties": {
@@ -7706,6 +8587,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ProjectCreateResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.PutUserInProjectResp"
                 },
                 "msg": {
                     "type": "string"
@@ -7830,8 +8725,14 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
+                "allocatable": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
                 "arch": {
                     "type": "string"
+                },
+                "capacity": {
+                    "$ref": "#/definitions/v1.ResourceList"
                 },
                 "containerRuntimeVersion": {
                     "type": "string"
@@ -7842,7 +8743,13 @@ const docTemplate = `{
                 "gpuCount": {
                     "type": "integer"
                 },
+                "gpuDriver": {
+                    "type": "string"
+                },
                 "gpuMemory": {
+                    "type": "string"
+                },
+                "kernelVersion": {
                     "type": "string"
                 },
                 "kubeletVersion": {
@@ -7913,6 +8820,18 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
                 }
             }
         },
@@ -8076,6 +8995,31 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.CreateDownloadReq": {
+            "type": "object",
+            "required": [
+                "category",
+                "name"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "model",
+                        "dataset"
+                    ]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.DatasetReq": {
             "type": "object",
             "required": [
@@ -8236,6 +9180,53 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.ModelDownloadResp": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "creatorId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "referenceCount": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "string"
+                },
+                "sizeBytes": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.NodeAnnotation": {
             "type": "object",
             "properties": {
@@ -8312,6 +9303,41 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.PutUserInProjectReq": {
+            "type": "object",
+            "required": [
+                "uid"
+            ],
+            "properties": {
+                "accessmode": {
+                    "type": "string"
+                },
+                "quota": {
+                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.PutUserInProjectResp": {
+            "type": "object",
+            "required": [
+                "aid",
+                "uid"
+            ],
+            "properties": {
+                "aid": {
+                    "type": "integer"
+                },
+                "uid": {
                     "type": "integer"
                 }
             }
@@ -8804,27 +9830,6 @@ const docTemplate = `{
                 },
                 "taskType": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
-                }
-            }
-        },
-        "internal_handler_operations.CronjobConfigs": {
-            "type": "object",
-            "properties": {
-                "configs": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "name": {
-                    "type": "string"
-                },
-                "schedule": {
-                    "type": "string"
-                },
-                "suspend": {
-                    "type": "boolean"
-                },
-                "type": {
-                    "type": "string"
                 }
             }
         },

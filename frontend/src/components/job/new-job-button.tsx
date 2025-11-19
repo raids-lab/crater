@@ -96,7 +96,7 @@ const ListedNewJobButton = ({ mode }: { mode: 'inter' | 'custom' | 'all' }) => {
   return (
     <ListedButton
       icon={<PlusCircleIcon className="size-4" />}
-      renderTitle={(title) => `${t('jobs.new.action')}${title}`}
+      renderTitle={(title) => `${t('jobs.new.action')}${title || ''}`}
       itemTitle="作业类型"
       items={items}
       cacheKey={mode}

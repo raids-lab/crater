@@ -45,6 +45,7 @@ import PodIngressDialog from './ingress'
 interface PodTableProps {
   jobName: string
   userName: string
+  jobType?: string
 }
 
 const getHeader = (key: string): string => {
@@ -150,7 +151,7 @@ const PodInfo = ({
   )
 }
 
-export const PodTable = ({ jobName, userName }: PodTableProps) => {
+export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
   const [showLog, setShowLog] = useState<NamespacedName>()
   const [showTerminal, setShowTerminal] = useState<NamespacedName>()
   const [showIngress, setShowIngress] = useState<NamespacedName>()
@@ -329,7 +330,7 @@ export const PodTable = ({ jobName, userName }: PodTableProps) => {
         namespacedName={showIngress}
         setNamespacedName={setShowIngress}
         userName={userName}
-        jobName={jobName}
+        jobType={jobType}
       />
       <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
         <SheetContent className="sm:max-w-4xl">

@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 // Reference: https://github.com/kubesphere/console/blob/master/packages/shared/src/stores/pod.ts#L187
-import useResizeObserver from 'use-resize-observer'
+import { useRef } from 'react'
+import { useResizeObserver } from 'usehooks-ts'
 
 import { Card } from '@/components/ui/card'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
@@ -43,7 +44,10 @@ export function CodeContent({
   className?: string
   moreActions?: React.ReactNode
 }) {
-  const { ref: refRoot, width, height } = useResizeObserver()
+  const refRoot = useRef<HTMLDivElement | null>(null)
+  const { width = 0, height = 0 } = useResizeObserver({
+    ref: refRoot as React.RefObject<HTMLElement>,
+  })
 
   return (
     <Card

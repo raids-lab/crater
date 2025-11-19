@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -65,9 +64,10 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
-	// base URL
-	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
-	jobName := fmt.Sprintf("single-%s", baseURL)
+	// Generate job name with type prefix (RFC 1035 compliant)
+	jobName := utils.GenerateJobName("sg", token.Username)
+	// baseURL for ingress paths (without type prefix)
+	baseURL := jobName[3:] // Remove "sg-" prefix
 
 	// 4. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(

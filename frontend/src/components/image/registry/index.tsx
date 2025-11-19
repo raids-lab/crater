@@ -484,7 +484,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             <DocsButton title="查看文档" url="image/imageCreate" />
             <ListedButton
               icon={<PackagePlusIcon />}
-              renderTitle={(title) => title}
+              renderTitle={(title) => title || '构建镜像'}
               itemTitle="构建方式"
               items={[
                 {

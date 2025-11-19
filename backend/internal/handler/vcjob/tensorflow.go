@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -79,9 +78,10 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		return
 	}
 
-	// Ingress base URL
-	baseURL := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:6])
-	jobName := fmt.Sprintf("tf-%s", baseURL)
+	// Generate job name with type prefix (RFC 1035 compliant)
+	jobName := utils.GenerateJobName("tf", token.Username)
+	// baseURL for ingress paths (without type prefix)
+	baseURL := jobName[3:] // Remove "tf-" prefix
 
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)

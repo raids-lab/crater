@@ -45,6 +45,8 @@ export interface INodeBriefInfo {
   used: V1ResourceList
   workloads: number
   annotations: Record<string, string>
+  kernelVersion?: string
+  gpuDriver?: string
 }
 export interface IClusterPodInfo {
   // from backend
@@ -73,6 +75,10 @@ export interface IClusterNodeDetail {
   arch: string
   kubeletVersion: string
   containerRuntimeVersion: string
+  kernelVersion?: string
+  capacity?: V1ResourceList
+  allocatable?: V1ResourceList
+  gpuDriver?: string
 }
 
 // GPU 信息接口定义

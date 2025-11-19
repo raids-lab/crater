@@ -11,8 +11,6 @@ ENV TZ=Asia/Shanghai
 
 COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/storage-server .
 
-COPY ./etc /etc 
-
 RUN chmod +x storage-server
 
 EXPOSE 7320 

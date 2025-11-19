@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -35,6 +36,15 @@ func (mgr *APIServerMgr) StreamPodContainerLog(c *gin.Context) {
 		return
 	}
 
+	actualPodName := req.PodName
+
+	pods, err := mgr.kubeClient.CoreV1().Pods(req.Namespace).List(c, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", req.PodName),
+	})
+	if err == nil && len(pods.Items) > 0 {
+		actualPodName = pods.Items[0].Name
+	}
+
 	// 设置流式响应头
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Transfer-Encoding", "chunked")
@@ -42,7 +52,7 @@ func (mgr *APIServerMgr) StreamPodContainerLog(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 
 	// 创建日志请求，强制设置Follow为true
-	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
+	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(actualPodName, &v1.PodLogOptions{
 		Container:  req.ContainerName,
 		Follow:     true, // 强制为true
 		Timestamps: param.Timestamps,
@@ -113,8 +123,16 @@ func (mgr *APIServerMgr) GetPodContainerLog(c *gin.Context) {
 		return
 	}
 
+	actualPodName := req.PodName
+	pods, err := mgr.kubeClient.CoreV1().Pods(req.Namespace).List(c, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", req.PodName),
+	})
+	if err == nil && len(pods.Items) > 0 {
+		actualPodName = pods.Items[0].Name
+	}
+
 	// 获取指定 Pod 的日志请求
-	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(req.PodName, &v1.PodLogOptions{
+	logReq := mgr.kubeClient.CoreV1().Pods(req.Namespace).GetLogs(actualPodName, &v1.PodLogOptions{
 		Container:  req.ContainerName,
 		Follow:     param.Follow,
 		TailLines:  param.TailLines,

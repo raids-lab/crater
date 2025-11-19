@@ -26,33 +26,43 @@ interface BasicLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
   tooltip: ReactNode
 }
 
-const BasicLinkComponent = ({ name, tooltip, className, ...props }: BasicLinkProps) => {
-  return (
-    <TooltipProvider delayDuration={50}>
-      <Tooltip>
-        {props.href?.startsWith('http') ? (
+const BasicLinkComponent = React.forwardRef<HTMLAnchorElement, BasicLinkProps>(
+  ({ name, tooltip, className, ...props }, ref) => {
+    return (
+      <TooltipProvider delayDuration={50}>
+        <Tooltip>
           <TooltipTrigger asChild>
-            <a
-              className={cn('hover:text-primary font-normal no-underline', className)}
-              target="_blank"
-              rel="noopener noreferrer"
-              {...props}
-            >
-              {name}
-            </a>
+            {props.href?.startsWith('http') ? (
+              <a
+                ref={ref}
+                className={cn(
+                  'hover:text-primary cursor-pointer font-normal no-underline',
+                  className
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                {...props}
+              >
+                {name}
+              </a>
+            ) : (
+              <a
+                ref={ref}
+                {...props}
+                className={cn('hover:text-primary cursor-pointer font-normal', className)}
+              >
+                {name}
+              </a>
+            )}
           </TooltipTrigger>
-        ) : (
-          <TooltipTrigger>
-            <a {...props} className={cn('hover:text-primary font-normal', className)}>
-              {name}
-            </a>
-          </TooltipTrigger>
-        )}
-        <TooltipContent>{tooltip}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
+          <TooltipContent>{tooltip}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+)
+
+BasicLinkComponent.displayName = 'BasicLinkComponent'
 
 const CreatedLinkComponent = createLink(BasicLinkComponent)
 

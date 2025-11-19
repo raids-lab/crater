@@ -2,7 +2,6 @@ package cronjob
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +43,13 @@ func (cm *CronJobManager) AddCronJob(
 func (cm *CronJobManager) newCronJobFunc(jobName string, jobType model.CronJobType, jobConfig datatypes.JSON) (cron.FuncJob, error) {
 	switch jobType {
 	case model.CronJobTypeCleanerFunc:
-		return cleaner.GetWrapCleanerFunc(jobName, cm.cleanerClients, jobConfig)
+		f, err := cleaner.GetCleanerFunc(jobName, cm.cleanerClients, jobConfig)
+		if err != nil {
+			err := fmt.Errorf("newCronJobFunc failed to get cleaner func: %w", err)
+			klog.Error(err)
+			return nil, err
+		}
+		return WrapFunc(jobName, f), nil
 	default:
 		return nil, fmt.Errorf("unsupported cron job type: %s", jobType)
 	}
@@ -56,7 +61,7 @@ func (cm *CronJobManager) UpdateJobConfig(
 	name string,
 	jobType *model.CronJobType,
 	spec *string,
-	suspend *bool,
+	status *model.CronJobConfigStatus,
 	config *string,
 ) error {
 	cm.cronMutex.Lock()
@@ -74,15 +79,15 @@ func (cm *CronJobManager) UpdateJobConfig(
 			return err
 		}
 
-		update = cm.prepareUpdateConfig(cur, jobType, spec, suspend, config)
+		update = cm.prepareUpdateConfig(cur, jobType, spec, status, config)
 
 		// Handle suspend state transition
-		if suspend != nil && cm.shouldSuspendJob(cur.GetSuspend(), *suspend) {
+		if status != nil && cm.shouldSuspendJob(cur.IsSuspended(), *status == model.CronJobConfigStatusSuspended) {
 			return cm.updateSuspendedJobConfig(tx, name, cur, update)
 		}
 
 		// Handle active job (not suspended)
-		if suspend != nil && !(*suspend) {
+		if status != nil && *status != model.CronJobConfigStatusSuspended {
 			return cm.updateActiveJobConfig(ctx, tx, name, cur, update)
 		}
 
@@ -111,15 +116,15 @@ func (cm *CronJobManager) prepareUpdateConfig(
 	cur *model.CronJobConfig,
 	jobType *model.CronJobType,
 	spec *string,
-	suspend *bool,
+	status *model.CronJobConfigStatus,
 	config *string,
 ) *model.CronJobConfig {
 	update := &model.CronJobConfig{
-		Name:    cur.Name,
-		Type:    cur.Type,
-		Spec:    cur.Spec,
-		Suspend: cur.Suspend,
-		Config:  cur.Config,
+		Name:   cur.Name,
+		Type:   cur.Type,
+		Spec:   cur.Spec,
+		Config: cur.Config,
+		Status: cur.Status,
 	}
 	if jobType != nil {
 		update.Type = *jobType
@@ -127,8 +132,8 @@ func (cm *CronJobManager) prepareUpdateConfig(
 	if spec != nil && *spec != "" {
 		update.Spec = *spec
 	}
-	if suspend != nil {
-		update.Suspend = suspend
+	if status != nil {
+		update.Status = *status
 	}
 	if config != nil && *config != "" {
 		update.Config = datatypes.JSON(*config)
@@ -150,6 +155,7 @@ func (cm *CronJobManager) updateSuspendedJobConfig(
 ) error {
 	curEntryID := cur.EntryID
 	update.EntryID = -1
+	update.Status = model.CronJobConfigStatusSuspended
 	if err := tx.Model(cur).Where(query.CronJobConfig.Name.Eq(name)).Updates(update).Error; err != nil {
 		err := fmt.Errorf("CronJobManager.updateSuspendedJobConfig failed to update cron job config for job %s: %w", name, err)
 		klog.Error(err)
@@ -167,7 +173,7 @@ func (cm *CronJobManager) updateActiveJobConfig(
 	cur *model.CronJobConfig,
 	update *model.CronJobConfig,
 ) error {
-	if cur.GetSuspend() {
+	if cur.IsSuspended() {
 		if cm.jobNeedsUpdate(cur, update) {
 			cm.cron.Remove(cron.EntryID(cur.EntryID))
 		}
@@ -179,6 +185,7 @@ func (cm *CronJobManager) updateActiveJobConfig(
 		return err
 	}
 	update.EntryID = int(entryID)
+	update.Status = model.CronJobConfigStatusIdle
 	if err := tx.Model(cur).Where(query.CronJobConfig.Name.Eq(name)).Updates(update).Error; err != nil {
 		err := fmt.Errorf("DB failed to update cron job config for job %s: %w", name, err)
 		cm.cron.Remove(entryID)
@@ -212,8 +219,9 @@ func (cm *CronJobManager) SyncCronJob() {
 	defer cm.cronMutex.Unlock()
 	cm.cron.Start()
 	err := db.Transaction(func(tx *gorm.DB) error {
+		// 加载所有未暂停的job
 		var configs []*model.CronJobConfig
-		if err := db.Where(query.CronJobConfig.Suspend.Is(false)).Find(&configs).Error; err != nil {
+		if err := db.Where(query.CronJobConfig.Status.Neq(string(model.CronJobConfigStatusSuspended))).Find(&configs).Error; err != nil {
 			err := fmt.Errorf("CronJobManager.SyncCronJob: failed to load cron job configs: %w", err)
 			klog.Error(err)
 			return nil
@@ -227,16 +235,22 @@ func (cm *CronJobManager) SyncCronJob() {
 				klog.Error(err)
 				continue
 			}
+
+			// 更新entry_id和status
+			updates := model.CronJobConfig{
+				Status:  model.CronJobConfigStatusIdle,
+				EntryID: conf.EntryID,
+			}
 			if int(entryID) != conf.EntryID {
-				err := tx.
-					Model(&model.CronJobConfig{}).
-					Where(query.CronJobConfig.Name.Eq(conf.Name)).
-					Update("entry_id", int(entryID)).
-					Error
-				if err != nil {
-					err := fmt.Errorf("DB failed to update entry_id for job %s: %w", conf.Name, err)
-					klog.Error(err)
-				}
+				updates.EntryID = int(entryID)
+			}
+
+			if err := tx.
+				Model(&model.CronJobConfig{}).
+				Where(query.CronJobConfig.Name.Eq(conf.Name)).
+				Updates(updates).Error; err != nil {
+				err := fmt.Errorf("DB failed to update job %s: %w", conf.Name, err)
+				klog.Error(err)
 			}
 		}
 		return nil
@@ -246,15 +260,6 @@ func (cm *CronJobManager) SyncCronJob() {
 		klog.Error(err)
 	}
 	klog.Info("CronJobManager.SyncCronJob: cron scheduler started")
-}
-
-// GetAllCronJobs retrieves all cron job configurations from database
-func (cm *CronJobManager) GetAllCronJobs(ctx context.Context) ([]*model.CronJobConfig, error) {
-	var configs []*model.CronJobConfig
-	if err := query.GetDB().WithContext(ctx).Find(&configs).Error; err != nil {
-		return nil, err
-	}
-	return configs, nil
 }
 
 // StopCron stops the cron scheduler

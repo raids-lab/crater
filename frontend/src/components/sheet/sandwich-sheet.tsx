@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 import { HelpCircleIcon } from 'lucide-react'
-import { ReactNode } from 'react'
-import useResizeObserver from 'use-resize-observer'
+import { ReactNode, useRef } from 'react'
+import { useResizeObserver } from 'usehooks-ts'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -91,7 +91,10 @@ export const SandwichLayout = ({
   children: ReactNode
   footer?: ReactNode
 }) => {
-  const { ref: refRoot, width, height } = useResizeObserver()
+  const refRoot = useRef<HTMLDivElement | null>(null)
+  const { width = 0, height = 0 } = useResizeObserver({
+    ref: refRoot as React.RefObject<HTMLElement>,
+  })
   return (
     <div className="h-screen">
       <div

@@ -1,4 +1,6 @@
 definitions:
+  datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota:
+    type: object
   github_com_raids-lab_crater_dao_model.AccessMode:
     enum:
     - 0
@@ -96,6 +98,49 @@ definitions:
     - ResourceTypeGPU
     - ResourceTypeRDMA
     - ResourceTypeVGPU
+  github_com_raids-lab_crater_dao_model.CronJobConfig:
+    properties:
+      config:
+        items:
+          type: integer
+        type: array
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      entry_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      spec:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfigStatus'
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobType'
+      updatedAt:
+        type: string
+    type: object
+  github_com_raids-lab_crater_dao_model.CronJobConfigStatus:
+    enum:
+    - unknown
+    - suspended
+    - idle
+    - running
+    type: string
+    x-enum-varnames:
+    - CronJobConfigStatusUnknown
+    - CronJobConfigStatusSuspended
+    - CronJobConfigStatusIdle
+    - CronJobConfigStatusRunning
+  github_com_raids-lab_crater_dao_model.CronJobType:
+    enum:
+    - cleaner_function
+    type: string
+    x-enum-varnames:
+    - CronJobTypeCleanerFunc
   github_com_raids-lab_crater_dao_model.DataType:
     enum:
     - dataset
@@ -274,6 +319,17 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.ModelDownloadResp'
+        type: array
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
     properties:
       code:
@@ -328,6 +384,15 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.ModelDownloadResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark:
     properties:
       code:
@@ -343,6 +408,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.ProjectCreateResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.PutUserInProjectResp'
       msg:
         type: string
     type: object
@@ -422,15 +496,23 @@ definitions:
     properties:
       address:
         type: string
+      allocatable:
+        $ref: '#/definitions/v1.ResourceList'
       arch:
         type: string
+      capacity:
+        $ref: '#/definitions/v1.ResourceList'
       containerRuntimeVersion:
         type: string
       gpuArch:
         type: string
       gpuCount:
         type: integer
+      gpuDriver:
+        type: string
       gpuMemory:
+        type: string
+      kernelVersion:
         type: string
       kubeletVersion:
         type: string
@@ -478,6 +560,14 @@ definitions:
             type: string
           type: array
         type: object
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
     type: object
   internal_handler.AccountContext:
     properties:
@@ -581,6 +671,23 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
       version:
         $ref: '#/definitions/internal_handler.VersionInfo'
+    type: object
+  internal_handler.CreateDownloadReq:
+    properties:
+      category:
+        enum:
+        - model
+        - dataset
+        type: string
+      name:
+        type: string
+      revision:
+        type: string
+      source:
+        type: string
+    required:
+    - category
+    - name
     type: object
   internal_handler.DatasetReq:
     properties:
@@ -689,6 +796,37 @@ definitions:
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
     type: object
+  internal_handler.ModelDownloadResp:
+    properties:
+      category:
+        type: string
+      createdAt:
+        type: string
+      creatorId:
+        type: integer
+      id:
+        type: integer
+      jobName:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      path:
+        type: string
+      referenceCount:
+        type: integer
+      revision:
+        type: string
+      sizeBytes:
+        type: integer
+      source:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   internal_handler.NodeAnnotation:
     properties:
       key:
@@ -740,6 +878,29 @@ definitions:
     properties:
       id:
         type: integer
+    type: object
+  internal_handler.PutUserInProjectReq:
+    properties:
+      accessmode:
+        type: string
+      quota:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota'
+      role:
+        type: string
+      uid:
+        type: integer
+    required:
+    - uid
+    type: object
+  internal_handler.PutUserInProjectResp:
+    properties:
+      aid:
+        type: integer
+      uid:
+        type: integer
+    required:
+    - aid
+    - uid
     type: object
   internal_handler.SharedQueueReq:
     properties:
@@ -1067,20 +1228,6 @@ definitions:
         type: array
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
-    type: object
-  internal_handler_operations.CronjobConfigs:
-    properties:
-      configs:
-        additionalProperties: {}
-        type: object
-      name:
-        type: string
-      schedule:
-        type: string
-      suspend:
-        type: boolean
-      type:
-        type: string
     type: object
   internal_handler_tool.PodIngress:
     properties:
@@ -1590,7 +1737,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: 连接用户账户表和账户表，获取用户的所有账户的摘要信息
+      description: Join user_account and account tables to get summary info of all
+        user's accounts
       produces:
       - application/json
       responses:
@@ -1608,10 +1756,255 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取用户的所有账户
+      summary: Get all accounts for user
       tags:
       - Project
-  /v1/accounts/{name}:
+  /v1/accounts/{aid}/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users in account (requires user to be in account)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account entries
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - user not in account
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get users in account
+      tags:
+      - Project
+  /v1/accounts/{aid}/users/{uid}:
+    delete:
+      consumes:
+      - application/json
+      description: Account admin removes user from account
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns removed username and account name
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Remove user from account (account admin)
+      tags:
+      - Project
+    post:
+      consumes:
+      - application/json
+      description: Account admin adds user to account
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: Role and access mode
+        in: body
+        name: req
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns added username and account name
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Add user to account (account admin)
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      description: Account admin batch updates user-account relationship (partial
+        update)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: Update data
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.PutUserInProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Update result
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Batch update user-account relationship (account admin)
+      tags:
+      - Project
+  /v1/accounts/{aid}/users/{uid}/update:
+    post:
+      consumes:
+      - application/json
+      description: Account admin updates user information in account
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: integer
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: Role and access mode
+        in: body
+        name: req
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns updated username and account name
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - not account admin
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Update user in account (account admin)
+      tags:
+      - Project
+  /v1/accounts/{aid}/users/out:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users not in account (requires user to be in account)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account entries
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden - user not in account
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get users not in account
+      tags:
+      - Project
+  /v1/accounts/by-name/{name}:
     get:
       consumes:
       - application/json
@@ -2031,11 +2424,52 @@ paths:
       summary: 管理员更新镜像的任务类型
       tags:
       - ImagePack
+  /v1/admin/models/downloads:
+    get:
+      consumes:
+      - application/json
+      description: 管理员查看所有用户的模型下载任务
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 管理员获取所有模型下载任务
+      tags:
+      - ModelDownload
+  /v1/admin/models/downloads/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 管理员删除任意用户的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 管理员删除模型下载任务
+      tags:
+      - ModelDownload
   /v1/admin/projects:
     get:
       consumes:
       - application/json
-      description: 获取所有账户的摘要信息，支持筛选条件、分页和排序
+      description: Get summary info of all accounts, supports filtering, pagination
+        and sorting
       parameters:
       - description: 部分匹配账户名称
         in: query
@@ -2082,7 +2516,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取所有账户
+      summary: Get all accounts
       tags:
       - Project
   /v1/admin/projects/{aid}:
@@ -2153,7 +2587,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 创建一个userproject
+      description: Create a user-account relationship
       parameters:
       - description: uid
         in: path
@@ -2165,7 +2599,7 @@ paths:
         name: aid
         required: true
         type: integer
-      - description: 权限角色
+      - description: Role and access mode
         in: body
         name: req
         required: true
@@ -2174,7 +2608,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 返回添加的用户名和队列名
+          description: Returns added username and account name
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2187,14 +2621,14 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 向账户中添加用户
+      summary: Add user to account
       tags:
       - Project
   /v1/admin/projects/update/{aid}/{uid}:
     delete:
       consumes:
       - application/json
-      description: 删除对应userQueue条目
+      description: Delete user-account relationship
       parameters:
       - description: uid
         in: path
@@ -2223,13 +2657,13 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 删除账户用户
+      summary: Remove user from account
       tags:
       - Project
     post:
       consumes:
       - application/json
-      description: 创建一个userQueue条目
+      description: Update a user-account relationship
       parameters:
       - description: uid
         in: path
@@ -2241,7 +2675,7 @@ paths:
         name: aid
         required: true
         type: integer
-      - description: 权限角色
+      - description: Role and access mode
         in: body
         name: req
         required: true
@@ -2250,7 +2684,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 返回添加的用户名和队列名
+          description: Returns added username and account name
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2263,14 +2697,14 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 更新账户用户
+      summary: Update user in account
       tags:
       - Project
   /v1/admin/projects/userIn/{aid}:
     get:
       consumes:
       - application/json
-      description: sql查询-join
+      description: SQL query with join
       parameters:
       - description: aid
         in: path
@@ -2281,7 +2715,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: userQueue条目
+          description: User account entries
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2294,14 +2728,50 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取账户下的用户
+      summary: Get users in account
+      tags:
+      - Project
+    put:
+      consumes:
+      - application/json
+      description: Batch update user-account relationship (partial update)
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: 更新数据
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.PutUserInProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新结果
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Batch update user-account relationship
       tags:
       - Project
   /v1/admin/projects/userOutOf/{aid}:
     get:
       consumes:
       - application/json
-      description: sql查询-subquery
+      description: SQL query with subquery
       parameters:
       - description: aid
         in: path
@@ -2312,7 +2782,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: userQueue条目
+          description: User account entries
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -2325,7 +2795,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取账户外的用户
+      summary: Get users not in account
       tags:
       - Project
   /v1/admin/resources/{id}:
@@ -4458,6 +4928,184 @@ paths:
       summary: 更新作业模板
       tags:
       - jobtemplate
+  /v1/models/download:
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的模型下载任务
+      parameters:
+      - description: 下载请求
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateDownloadReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 创建模型下载任务
+      tags:
+      - ModelDownload
+  /v1/models/downloads:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的所有模型下载任务
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 获取用户的模型下载任务列表
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的模型下载任务记录
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 删除模型下载任务
+      tags:
+      - ModelDownload
+    get:
+      consumes:
+      - application/json
+      description: 根据 ID 获取模型下载任务详情
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 获取单个模型下载任务详情
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/logs:
+    get:
+      consumes:
+      - application/json
+      description: 获取模型下载任务的实时日志
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 获取模型下载任务的 Pod 日志
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/pause:
+    post:
+      consumes:
+      - application/json
+      description: 暂停正在进行的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 暂停下载任务
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/resume:
+    post:
+      consumes:
+      - application/json
+      description: 恢复已暂停的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 恢复下载任务
+      tags:
+      - ModelDownload
+  /v1/models/downloads/{id}/retry:
+    post:
+      consumes:
+      - application/json
+      description: 重新提交失败的模型下载任务
+      parameters:
+      - description: 下载任务ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
+      security:
+      - Bearer: []
+      summary: 重试失败的下载任务
+      tags:
+      - ModelDownload
   /v1/namespaces/{namespace}/pods/{name}/containers:
     get:
       consumes:
@@ -5346,12 +5994,12 @@ paths:
       - application/json
       description: Update one cronjob config
       parameters:
-      - description: CronjobConfigs
+      - description: CronjobConfig
         in: body
         name: use
         required: true
         schema:
-          $ref: '#/definitions/internal_handler_operations.CronjobConfigs'
+          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobConfig'
       produces:
       - application/json
       responses:

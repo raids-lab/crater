@@ -29,7 +29,7 @@ export default function PodIngressDialog({
   namespacedName,
   setNamespacedName,
   userName,
-  jobName,
+  jobType,
 }: PodIngressDialogProps) {
   const [isOpen, setIsOpen] = useNamespacedState(namespacedName, setNamespacedName)
   const [activeTab, setActiveTab] = useState<'ingress' | 'nodeport'>('ingress')
@@ -65,7 +65,7 @@ export default function PodIngressDialog({
               style={{ display: activeTab === "ingress" ? "block" : "none" }}
             >
               {namespacedName && (
-                <IngressPanel namespacedName={namespacedName} jobName={jobName} />
+                <IngressPanel namespacedName={namespacedName} jobType={jobType} />
               )}
             </TabsContent>
 

@@ -15,16 +15,18 @@
  */
 // i18n-processed-v1.1.0
 import { useQuery } from '@tanstack/react-query'
-import { linkOptions } from '@tanstack/react-router'
-import { BotIcon, DatabaseZapIcon, PackageIcon, PlusIcon } from 'lucide-react'
+import { Link, linkOptions } from '@tanstack/react-router'
+import { BotIcon, DatabaseZapIcon, DownloadIcon, PackageIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 
 import DocsButton from '@/components/button/docs-button'
+import ListedButton from '@/components/button/listed-button'
 import { DataCreateForm } from '@/components/file/data-create-form'
 import DataList from '@/components/layout/data-list'
+import { ModelDownloadDialog } from '@/components/model/model-download-dialog'
 import SandwichSheet from '@/components/sheet/sandwich-sheet'
 
 import { IDataset } from '@/services/api/dataset'
@@ -69,6 +71,7 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
   const sourceTitle = sourceType ? sourceTypeMap[sourceType] : sourceTypeMap.dataset
 
   const [openSheet, setOpenSheet] = useState(false)
+  const [openModelDownloadSheet, setOpenModelDownloadSheet] = useState(false)
 
   return (
     <DataList
@@ -87,49 +90,104 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
       title={sourceTitle}
       mainArea={(item) => {
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className={`bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg p-1`}
+              className={`bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg p-2`}
             >
               {sourceTitle === '模型' ? (
-                <BotIcon />
+                <BotIcon className="size-6" />
               ) : sourceTitle === '数据集' ? (
-                <DatabaseZapIcon />
+                <DatabaseZapIcon className="size-6" />
               ) : (
-                <PackageIcon />
+                <PackageIcon className="size-6" />
               )}
             </div>
             <TooltipLink
               {...getLinkOptions(sourceType || 'dataset')}
               params={{ id: `${item.id}` }}
-              name={<p className="text-left">{item.name}</p>}
+              name={<p className="max-w-[400px] truncate text-left font-semibold">{item.name}</p>}
               tooltip={`查看${sourceTitle}详情`}
-              className="font-semibold"
+              className="min-w-0"
             />
           </div>
         )
       }}
       actionArea={
         <div className="flex flex-row gap-3">
+          {sourceType === 'model' && (
+            <Link to="/portal/data/models/downloads">
+              <Button variant="outline" className="min-w-fit">
+                <DownloadIcon className="size-4" />
+                查看下载记录
+              </Button>
+            </Link>
+          )}
           <DocsButton
             title={t('dataView.docsButtonTitle', { sourceTitle })}
             url={`file/${sourceType}`}
           />
-          <SandwichSheet
-            isOpen={openSheet}
-            onOpenChange={setOpenSheet}
-            title={t('dataView.createTitle', { sourceTitle })}
-            description={t('dataView.createDescription', { sourceTitle })}
-            trigger={
-              <Button className="min-w-fit">
-                <PlusIcon />
-                {t('dataView.addButton', { sourceTitle })}
-              </Button>
-            }
-            className="sm:max-w-3xl"
-          >
-            <DataCreateForm closeSheet={() => setOpenSheet(false)} type={sourceType} />
-          </SandwichSheet>
+          {sourceType === 'model' ? (
+            <ListedButton
+              icon={<PlusIcon />}
+              renderTitle={(title) => title || t('dataView.addButton', { sourceTitle })}
+              itemTitle="操作"
+              cacheKey="model-action"
+              items={[
+                {
+                  key: 'add',
+                  title: t('dataView.addButton', { sourceTitle }),
+                  action: () => {
+                    setOpenSheet(true)
+                  },
+                },
+                {
+                  key: 'download',
+                  title: '下载模型',
+                  action: () => {
+                    setOpenModelDownloadSheet(true)
+                  },
+                },
+              ]}
+            />
+          ) : (
+            <SandwichSheet
+              isOpen={openSheet}
+              onOpenChange={setOpenSheet}
+              title={t('dataView.createTitle', { sourceTitle })}
+              description={t('dataView.createDescription', { sourceTitle })}
+              trigger={
+                <Button className="min-w-fit">
+                  <PlusIcon />
+                  {t('dataView.addButton', { sourceTitle })}
+                </Button>
+              }
+              className="sm:max-w-3xl"
+            >
+              <DataCreateForm closeSheet={() => setOpenSheet(false)} type={sourceType} />
+            </SandwichSheet>
+          )}
+          {sourceType === 'model' && (
+            <>
+              <SandwichSheet
+                isOpen={openSheet}
+                onOpenChange={setOpenSheet}
+                title={t('dataView.createTitle', { sourceTitle })}
+                description={t('dataView.createDescription', { sourceTitle })}
+                className="sm:max-w-3xl"
+              >
+                <DataCreateForm closeSheet={() => setOpenSheet(false)} type={sourceType} />
+              </SandwichSheet>
+              <SandwichSheet
+                isOpen={openModelDownloadSheet}
+                onOpenChange={setOpenModelDownloadSheet}
+                title="下载模型"
+                description="从 ModelScope 或 HuggingFace 下载模型文件到您的文件系统"
+                className="sm:max-w-3xl"
+              >
+                <ModelDownloadDialog closeSheet={() => setOpenModelDownloadSheet(false)} />
+              </SandwichSheet>
+            </>
+          )}
         </div>
       }
     />

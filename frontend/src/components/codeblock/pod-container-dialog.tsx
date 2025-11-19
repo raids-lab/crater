@@ -58,7 +58,7 @@ export interface PodIngressDialogProps {
   namespacedName: NamespacedName
   setNamespacedName: (namespacedName: NamespacedName) => void
   userName: string
-  jobName: string
+  jobType?: string
 }
 
 export function ContainerSelect({
