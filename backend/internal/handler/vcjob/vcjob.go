@@ -79,7 +79,9 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
 	g.GET(":name/token", mgr.GetJobToken)
-	g.POST("jupyter/:name/snapshot", mgr.CreateJupyterSnapshot)
+
+	// snapshot - 通用作业快照功能，适用于 Jupyter 和 Custom 类型作业
+	g.POST(":name/snapshot", mgr.CreateJupyterSnapshot)
 
 	// training
 	g.POST("training", mgr.CreateTrainingJob)
