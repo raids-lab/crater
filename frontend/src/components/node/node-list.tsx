@@ -274,16 +274,9 @@ export const getNodeColumns = (
           <div className="flex flex-row items-center justify-start gap-1">
             {/* 如果有账户信息，显示一个单独的提示 */}
             {status === NodeStatus.Occupied && accountInfo ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="destructive" className="font-mono font-normal">
-                    {accountInfo}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs font-medium">该节点处于账户独占状态</p>
-                </TooltipContent>
-              </Tooltip>
+              <Badge variant="destructive" className="font-mono font-normal">
+                {accountInfo}
+              </Badge>
             ) : (
               <Badge
                 variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
@@ -386,7 +379,7 @@ export const getNodeColumns = (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <NodeStatusBadge status={status} />
+                  <NodeStatusBadge status={status} disableTooltip={true} />
                 </span>
               </TooltipTrigger>
               <TooltipContent>{tooltipContent}</TooltipContent>
