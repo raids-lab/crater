@@ -379,7 +379,7 @@ export const getNodeColumns = (
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <NodeStatusBadge status={status} disableTooltip={true} />
+                  <NodeStatusBadge status={status} disableDefaultTooltip={true} />
                 </span>
               </TooltipTrigger>
               <TooltipContent>{tooltipContent}</TooltipContent>

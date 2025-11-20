@@ -27,18 +27,18 @@ export interface PhaseBadgeData {
 interface PhaseBadgeProps<T> {
   phase: T
   getPhaseLabel: (phase: T) => PhaseBadgeData
-  disableTooltip?: boolean
+  disableDefaultTooltip?: boolean
 }
 
 export const PhaseBadge = <T,>({
   phase,
   getPhaseLabel,
-  disableTooltip = false,
+  disableDefaultTooltip = false,
 }: PhaseBadgeProps<T>) => {
   const data = getPhaseLabel(phase)
 
   // 如果禁用 tooltip,直接返回 badge
-  if (disableTooltip) {
+  if (disableDefaultTooltip) {
     return (
       <Badge className={cn('border-none', data.color)} variant="outline">
         <div>{data.label}</div>
