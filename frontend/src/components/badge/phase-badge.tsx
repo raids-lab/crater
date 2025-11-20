@@ -27,10 +27,24 @@ export interface PhaseBadgeData {
 interface PhaseBadgeProps<T> {
   phase: T
   getPhaseLabel: (phase: T) => PhaseBadgeData
+  disableDefaultTooltip?: boolean
 }
 
-export const PhaseBadge = <T,>({ phase, getPhaseLabel }: PhaseBadgeProps<T>) => {
+export const PhaseBadge = <T,>({
+  phase,
+  getPhaseLabel,
+  disableDefaultTooltip = false,
+}: PhaseBadgeProps<T>) => {
   const data = getPhaseLabel(phase)
+
+  // 如果禁用 tooltip,直接返回 badge
+  if (disableDefaultTooltip) {
+    return (
+      <Badge className={cn('border-none', data.color)} variant="outline">
+        <div>{data.label}</div>
+      </Badge>
+    )
+  }
 
   return (
     <TooltipProvider delayDuration={100}>
