@@ -493,20 +493,13 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 		return
 	}
 
-	// Prepare tolerations so the snapshot job can schedule on nodes that are
-	// user-occupied or marked unschedulable.
-	// We need to tolerate ANY account occupation (not just current user's account)
-	// because the snapshot job must run on the same node as the target pod,
-	// which may be occupied by any account.
 	tolerations := []v1.Toleration{
 		{
-			// Tolerate any account occupation taint
 			Key:      "crater.raids.io/account",
 			Operator: v1.TolerationOpExists,
 			Effect:   v1.TaintEffectNoSchedule,
 		},
 		{
-			// Tolerate unschedulable nodes
 			Key:      "node.kubernetes.io/unschedulable",
 			Operator: v1.TolerationOpExists,
 			Effect:   v1.TaintEffectNoSchedule,
