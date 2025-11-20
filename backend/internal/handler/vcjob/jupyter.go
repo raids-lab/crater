@@ -400,8 +400,8 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 
 // CreateJupyterSnapshot godoc
 //
-//	@Summary		Create a snapshot of the jupyter notebook
-//	@Description	Create nerdctl docker commit to snapshot the jupyter notebook
+//	@Summary		Create a snapshot of the job container
+//	@Description	Create nerdctl docker commit to snapshot the job container (supports Jupyter and Custom job types)
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
@@ -410,7 +410,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 //	@Success		200		{object}	resputil.Response[JobTokenResp]	"Success"
 //	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]			"Other errors"
-//	@Router			/v1/vcjobs/jupyter/{name}/snapshot [post]
+//	@Router			/v1/vcjobs/{name}/snapshot [post]
 func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -477,7 +477,17 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 
 	// generate image link
 	currentImageName := pod.Spec.Containers[0].Image
-	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(currentImageName, token.Username, "", "")
+	// 根据作业类型设置镜像名前缀
+	var imageNamePrefix string
+	switch job.JobType {
+	case model.JobTypeJupyter:
+		imageNamePrefix = "jupyter"
+	case model.JobTypeCustom:
+		imageNamePrefix = "custom"
+	default:
+		imageNamePrefix = "snapshot"
+	}
+	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(currentImageName, token.Username, imageNamePrefix, "")
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return

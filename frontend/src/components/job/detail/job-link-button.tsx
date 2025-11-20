@@ -62,6 +62,7 @@ const PrefixLinkButton = ({ names = [], prefixes = [], title = ' ' }: PrefixLink
       itemTitle="外部访问"
       items={items}
       cacheKey={title}
+      variant="secondary"
     />
   )
 }

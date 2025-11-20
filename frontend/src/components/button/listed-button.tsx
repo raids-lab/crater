@@ -29,6 +29,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 
+import { cn } from '@/lib/utils'
+
 export interface SplitButtonItem {
   key: string
   title: string
@@ -42,9 +44,17 @@ interface SplitButtonProps {
   itemTitle: string
   items: SplitButtonItem[]
   cacheKey: string
+  variant?: 'primary' | 'secondary'
 }
 
-const ListedButton = ({ icon, renderTitle, itemTitle, items, cacheKey }: SplitButtonProps) => {
+const ListedButton = ({
+  icon,
+  renderTitle,
+  itemTitle,
+  items,
+  cacheKey,
+  variant = 'primary',
+}: SplitButtonProps) => {
   const [position, setPosition] = useLocalStorage(`split-button-${cacheKey}`, items[0].key)
 
   useEffect(() => {
@@ -58,9 +68,21 @@ const ListedButton = ({ icon, renderTitle, itemTitle, items, cacheKey }: SplitBu
   }, [items, position, setPosition])
 
   return (
-    <div className="bg-primary hover:bg-primary/90 flex h-9 w-fit items-center rounded-md transition-colors">
+    <div
+      className={cn(
+        'flex h-9 w-fit items-center rounded-md transition-colors',
+        variant === 'secondary'
+          ? 'bg-secondary hover:bg-secondary/80'
+          : 'bg-primary hover:bg-primary/90'
+      )}
+    >
       <Button
-        className="text-primary-foreground hover:text-primary-foreground cursor-pointer rounded-r-none pr-3 capitalize shadow-none hover:bg-transparent dark:hover:bg-transparent"
+        className={cn(
+          'cursor-pointer rounded-r-none pr-3 capitalize shadow-none hover:bg-transparent dark:hover:bg-transparent',
+          variant === 'secondary'
+            ? 'text-secondary-foreground hover:text-secondary-foreground'
+            : 'text-primary-foreground hover:text-primary-foreground'
+        )}
         variant="ghost"
         onClick={() => items.find((item) => item.key === position)?.action()}
       >
@@ -71,10 +93,18 @@ const ListedButton = ({ icon, renderTitle, itemTitle, items, cacheKey }: SplitBu
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            className="text-primary-foreground cursor-pointer rounded-l-none pr-3 pl-2 shadow-none hover:bg-transparent focus:ring-0 dark:hover:bg-transparent"
+            className={cn(
+              'cursor-pointer rounded-l-none pr-3 pl-2 shadow-none hover:bg-transparent focus:ring-0 dark:hover:bg-transparent',
+              variant === 'secondary' ? 'text-secondary-foreground' : 'text-primary-foreground'
+            )}
             variant="ghost"
           >
-            <ChevronDownIcon className="text-primary-foreground size-4" />
+            <ChevronDownIcon
+              className={cn(
+                'size-4',
+                variant === 'secondary' ? 'text-secondary-foreground' : 'text-primary-foreground'
+              )}
+            />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" alignOffset={-5} className="w-[200px]" forceMount>

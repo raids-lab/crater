@@ -30,12 +30,14 @@ import {
   HistoryIcon,
   LayoutGridIcon,
   RedoDotIcon,
+  SaveIcon,
   SquareIcon,
   Trash2Icon,
   UserRoundIcon,
   XIcon,
 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -79,6 +81,7 @@ import {
   apiJobGetEvent,
   apiJobGetPods,
   apiJobGetYaml,
+  apiJobSnapshot,
   getJobStateType,
 } from '@/services/api/vcjob'
 
@@ -100,6 +103,8 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   const navigate = useNavigate()
   const router = useRouter()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
+  const { t } = useTranslation()
+  const [isSnapshotOpen, setIsSnapshotOpen] = useState(false)
 
   // 获取作业详情
   const { data, isLoading } = useQuery({
@@ -160,6 +165,14 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     },
   })
 
+  const { mutate: snapshot } = useMutation({
+    mutationFn: (jobName: string) => apiJobSnapshot(jobName),
+    onSuccess: () => {
+      toast.success(t('jupyter.snapshot.success'))
+      navigate({ to: '/portal/env/registry' })
+    },
+  })
+
   const showGPUDashboard = useMemo(() => {
     if (!data) {
       return false
@@ -205,7 +218,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                 <SSHPortDialog jobName={jobName} userName={data.username} />
               )}
             {data.jobType === JobType.Jupyter && data.status === JobPhase.Running && (
-              <SimpleTooltip tooltip="打开 Jupyter Lab">
+              <SimpleTooltip tooltip="打开新页面以 Jupyter Lab 访问容器">
                 <Button variant="secondary" className="cursor-pointer" asChild>
                   <Link to="/ingress/jupyter/$name" params={{ name: data.jobName }} target="_blank">
                     <JupyterIcon className="size-4" />
@@ -214,6 +227,35 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                 </Button>
               </SimpleTooltip>
             )}
+            {(data.jobType === JobType.Jupyter || data.jobType === JobType.Custom) &&
+              data.status === JobPhase.Running && (
+                <SimpleTooltip tooltip="将当前运行的容器快照保存为私有镜像">
+                  <Button
+                    variant="secondary"
+                    className="cursor-pointer"
+                    onClick={() => setIsSnapshotOpen(true)}
+                  >
+                    <SaveIcon className="size-4" />
+                    保存镜像
+                  </Button>
+                </SimpleTooltip>
+              )}
+            <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t('jupyter.snapshot.title')}</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t('jupyter.snapshot.description')}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t('jupyter.snapshot.cancel')}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => snapshot(jobName)}>
+                    {t('jupyter.snapshot.save')}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 {jobStatus === JobStatus.NotStarted ? (

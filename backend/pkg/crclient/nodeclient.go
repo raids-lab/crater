@@ -23,6 +23,29 @@ const (
 	VCJOBKIND       = "Job"
 )
 
+// formatOperatorInfo 格式化操作员信息为 "昵称(@用户名)" 形式
+func formatOperatorInfo(ctx context.Context, username string) string {
+	if username == "" {
+		return ""
+	}
+
+	// 查询用户昵称 (注意: username来自token,应该查询User表而不是Account表)
+	q := query.User
+	user, err := q.WithContext(ctx).Where(q.Name.Eq(username)).First()
+	if err != nil {
+		// 如果查询失败，返回用户名
+		return username
+	}
+
+	// 返回 "昵称(@用户名)" 格式
+	nickname := user.Nickname
+	if nickname == "" {
+		nickname = username
+	}
+
+	return fmt.Sprintf("%s(@%s)", nickname, username)
+}
+
 type NodeRole string
 
 const (
@@ -43,7 +66,7 @@ type NodeBriefInfo struct {
 	Arch          string                   `json:"arch"`
 	Status        corev1.NodeConditionType `json:"status"`
 	Vendor        string                   `json:"vendor"`
-	Taints        []string                 `json:"taints"`
+	Taints        []corev1.Taint           `json:"taints"`
 	Capacity      corev1.ResourceList      `json:"capacity"`
 	Allocatable   corev1.ResourceList      `json:"allocatable"`
 	Used          corev1.ResourceList      `json:"used"`
@@ -169,14 +192,6 @@ func getNodeCondition(node *corev1.Node) corev1.NodeConditionType {
 	return NodeStatusUnknown // 如果没有任何条件为 True，则视为就绪
 }
 
-func taintsToStringArray(taints []corev1.Taint) []string {
-	var taintStrings []string
-	for _, taint := range taints {
-		taintStrings = append(taintStrings, taint.ToString())
-	}
-	return taintStrings
-}
-
 func taintsToString(taints []corev1.Taint) string {
 	var taintStrings []string
 	for _, taint := range taints {
@@ -255,7 +270,7 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 			Arch:          node.Status.NodeInfo.Architecture,
 			Status:        getNodeStatus(node),
 			Vendor:        vendor,
-			Taints:        taintsToStringArray(node.Spec.Taints),
+			Taints:        node.Spec.Taints,
 			Capacity:      node.Status.Capacity,
 			Allocatable:   node.Status.Allocatable,
 			Used:          usedResources,
@@ -331,7 +346,7 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, op
 			node.Annotations[reasonKey] = reason
 		}
 		if operator != "" {
-			node.Annotations[operatorKey] = operator
+			node.Annotations[operatorKey] = formatOperatorInfo(ctx, operator)
 		}
 	}
 
@@ -574,10 +589,12 @@ func (nc *NodeClient) AddNodeTaint(ctx context.Context, nodeName, key, value, ef
 		node.Annotations = make(map[string]string)
 	}
 
+	now := metav1.Now()
 	newTaint := corev1.Taint{
-		Key:    key,
-		Value:  value,
-		Effect: corev1.TaintEffect(effect),
+		Key:       key,
+		Value:     value,
+		Effect:    corev1.TaintEffect(effect),
+		TimeAdded: &now,
 	}
 
 	// 检查污点是否已经存在
@@ -596,7 +613,7 @@ func (nc *NodeClient) AddNodeTaint(ctx context.Context, nodeName, key, value, ef
 			node.Annotations["crater.raids.io/taint-reason-occupied"] = reason
 		}
 		if operator != "" {
-			node.Annotations["crater.raids.io/taint-operator-occupied"] = operator
+			node.Annotations["crater.raids.io/taint-operator-occupied"] = formatOperatorInfo(ctx, operator)
 		}
 	}
 
