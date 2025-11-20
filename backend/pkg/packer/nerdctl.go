@@ -43,6 +43,8 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 				Containers:    []corev1.Container{container},
 				Volumes:       volumes,
 				RestartPolicy: corev1.RestartPolicyNever,
+				// Allow caller to pass tolerations so snapshot job can be scheduled on tainted nodes
+				Tolerations: data.Tolerations,
 				Affinity: ptr.To(corev1.Affinity{
 					NodeAffinity: ptr.To(corev1.NodeAffinity{
 						RequiredDuringSchedulingIgnoredDuringExecution: ptr.To(corev1.NodeSelector{

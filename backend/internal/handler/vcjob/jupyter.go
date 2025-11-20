@@ -493,6 +493,19 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 		return
 	}
 
+	tolerations := []v1.Toleration{
+		{
+			Key:      "crater.raids.io/account",
+			Operator: v1.TolerationOpExists,
+			Effect:   v1.TaintEffectNoSchedule,
+		},
+		{
+			Key:      "node.kubernetes.io/unschedulable",
+			Operator: v1.TolerationOpExists,
+			Effect:   v1.TaintEffectNoSchedule,
+		},
+	}
+
 	err = mgr.imagePacker.CreateFromSnapshot(c, &packer.SnapshotReq{
 		UserID:        token.UserID,
 		Namespace:     vcjob.Namespace,
@@ -502,6 +515,7 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 		Description:   fmt.Sprintf("Snapshot of %s", job.JobName),
 		ImageLink:     imageLink,
 		BuildSource:   model.Snapshot,
+		Tolerations:   tolerations,
 	})
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)

@@ -3,6 +3,7 @@ package packer
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -40,6 +41,8 @@ type SnapshotReq struct {
 	Registry      *ImageRegistrySecret // If nil, use default registry
 	ImageLink     string
 	BuildSource   model.BuildSource
+	// Tolerations to apply to the snapshot job's PodSpec. Optional.
+	Tolerations []corev1.Toleration
 }
 
 type EnvdReq struct {
