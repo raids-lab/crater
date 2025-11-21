@@ -477,17 +477,7 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 
 	// generate image link
 	currentImageName := pod.Spec.Containers[0].Image
-	// 根据作业类型设置镜像名前缀
-	var imageNamePrefix string
-	switch job.JobType {
-	case model.JobTypeJupyter:
-		imageNamePrefix = "jupyter"
-	case model.JobTypeCustom:
-		imageNamePrefix = "custom"
-	default:
-		imageNamePrefix = "snapshot"
-	}
-	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(currentImageName, token.Username, imageNamePrefix, "")
+	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(currentImageName, token.Username, "", "")
 	if err != nil {
 		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
 		return
