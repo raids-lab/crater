@@ -1,7 +1,6 @@
 package cronjob
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -173,10 +172,8 @@ func (cm *CronJobManager) updateActiveJobConfig(
 	cur *model.CronJobConfig,
 	update *model.CronJobConfig,
 ) error {
-	if cur.IsSuspended() {
-		if cm.jobNeedsUpdate(cur, update) {
-			cm.cron.Remove(cron.EntryID(cur.EntryID))
-		}
+	if !cur.IsSuspended() && cur.EntryID > 0 {
+		cm.cron.Remove(cron.EntryID(cur.EntryID))
 	}
 	entryID, err := cm.AddCronJob(ctx, name, update.Spec, update.Type, update.Config)
 	if err != nil {
@@ -193,23 +190,6 @@ func (cm *CronJobManager) updateActiveJobConfig(
 		return err
 	}
 	return nil
-}
-
-// jobNeedsUpdate checks if job configuration has changed
-func (cm *CronJobManager) jobNeedsUpdate(
-	cur *model.CronJobConfig,
-	update *model.CronJobConfig,
-) bool {
-	if cur.Type != update.Type {
-		return true
-	}
-	if cur.Spec != update.Spec {
-		return true
-	}
-	if update.Config != nil && !bytes.Equal(cur.Config, update.Config) {
-		return true
-	}
-	return false
 }
 
 // SyncCronJob synchronizes cron jobs from database and starts the scheduler
