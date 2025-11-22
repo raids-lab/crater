@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
@@ -83,10 +82,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// baseURL for ingress paths (without type prefix)
 	baseURL := jobName[4:] // Remove "jpt-" prefix
 
-	// Command to start Jupyter
-	var commandSchema string
-	var command string
-
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
 	if err != nil {
@@ -94,47 +89,37 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	// 1.1 Configure jupyter images
-	if strings.Contains(req.Image.ImageLink, "jupyter") {
-		commandSchema = "start.sh jupyter lab --allow-root " +
-			"--notebook-dir=/home/%s " +
-			"--NotebookApp.base_url=/ingress/%s/ " +
-			"--ResourceUseDisplay.track_cpu_percent=True"
-		command = fmt.Sprintf(commandSchema, token.Username, baseURL)
-	} else {
-		var startScriptConfigMap string
-		var jupyterPath string
-		if strings.Contains(req.Image.ImageLink, "envd") {
-			// 1.2 Configure envd images
-			startScriptConfigMap = "envd-jupyter-start-configmap"
-			jupyterPath = "/opt/conda/envs/envd/bin/jupyter"
-		} else {
-			// 1.3 Configure NGC images
-			startScriptConfigMap = "jupyter-start-configmap"
-			jupyterPath = "jupyter"
-		}
-		volumes = append(volumes, v1.Volume{
-			Name: "bash-script-volume",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: startScriptConfigMap,
-					},
-					//nolint:mnd // 0755 is the default mode
-					DefaultMode: ptr.To(int32(0755)),
+	// Add unified start script volume
+	volumes = append(volumes, v1.Volume{
+		Name: "unified-start-script",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: "unified-jupyter-start-configmap",
 				},
+				//nolint:mnd // 0755 is the default mode
+				DefaultMode: ptr.To(int32(0755)),
 			},
-		})
-		volumeMounts = append(volumeMounts, v1.VolumeMount{
-			Name:      "bash-script-volume",
-			MountPath: "/usr/bin/start.sh",
-			ReadOnly:  true,
-			SubPath:   "start.sh",
-		})
+		},
+	})
+	volumeMounts = append(volumeMounts, v1.VolumeMount{
+		Name:      "unified-start-script",
+		MountPath: "/usr/local/bin/unified-start.sh",
+		ReadOnly:  true,
+		SubPath:   "unified-start.sh",
+	})
 
-		commandSchema = "/usr/bin/start.sh %s lab --ip=0.0.0.0 --no-browser --allow-root " +
-			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/ "
-		command = fmt.Sprintf(commandSchema, jupyterPath, token.Username, baseURL)
+	// Unified jupyter start command
+	jupyterCommand := fmt.Sprintf(
+		"jupyter lab --ip=0.0.0.0 --no-browser --allow-root "+
+			"--notebook-dir=/home/%s --NotebookApp.base_url=/ingress/%s/ "+
+			"--ResourceUseDisplay.track_cpu_percent=True",
+		token.Username, baseURL)
+
+	commandArgs := []string{
+		"/bin/bash",
+		"-c",
+		fmt.Sprintf("/usr/local/bin/unified-start.sh %s", jupyterCommand),
 	}
 
 	// 2. Env Vars
@@ -178,7 +163,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			{
 				Name:    string(CraterJobTypeJupyter),
 				Image:   req.Image.ImageLink,
-				Command: []string{"bash", "-c", command},
+				Command: commandArgs,
 				Resources: v1.ResourceRequirements{
 					Limits:   req.Resource,
 					Requests: req.Resource,

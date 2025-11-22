@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unified-jupyter-start-configmap
+  namespace: {{ .Values.namespaces.job }}
+data:
+  unified-start.sh: |
+    #!/bin/bash
+    set -e
+
+    # Logging function
+    _log() {
+        echo "[setting up] $@"
+    }
+
+    # _log "Starting with args: $@"
+
+    # Detect Jupyter installation path
+    detect_jupyter_path() {
+        if [ -x "/opt/conda/envs/envd/bin/jupyter" ]; then
+            echo "/opt/conda/envs/envd/bin/jupyter"
+        elif [ -x "/opt/conda/bin/jupyter" ]; then
+            echo "/opt/conda/bin/jupyter"
+        elif [ -x "/usr/local/bin/jupyter" ]; then
+            echo "/usr/local/bin/jupyter"
+        elif command -v jupyter >/dev/null 2>&1; then
+            command -v jupyter
+        else
+            echo ""
+        fi
+    }
+
+    JUPYTER_PATH=$(detect_jupyter_path)
+    if [ -n "${JUPYTER_PATH}" ]; then
+        _log "→ Jupyter: ${JUPYTER_PATH}"
+        
+        # Add envd bin to PATH for root user if it's envd jupyter
+        if [ "${JUPYTER_PATH}" = "/opt/conda/envs/envd/bin/jupyter" ]; then
+            if [[ ":${PATH}:" != *":/opt/conda/envs/envd/bin:"* ]]; then
+                export PATH="/opt/conda/envs/envd/bin:${PATH}"
+                _log "→ Added /opt/conda/envs/envd/bin to PATH"
+            fi
+        fi
+    else
+        _log "⚠ Jupyter not found"
+    fi
+
+    # Set PYTHONUSERBASE based on Jupyter path
+    if [ -z "${PYTHONUSERBASE}" ]; then
+        if [ -n "${JUPYTER_PATH}" ]; then
+            # Extract the directory containing bin/ (e.g., /opt/conda/envs/envd from /opt/conda/envs/envd/bin/jupyter)
+            export PYTHONUSERBASE="${JUPYTER_PATH%/bin/*}"
+            _log "→ PYTHONUSERBASE: ${PYTHONUSERBASE}"
+        fi
+    fi
+
+    # Detect available shell (priority: zsh > bash > sh)
+    detect_shell() {
+        if command -v zsh >/dev/null 2>&1 && [ -f "/bin/zsh" ]; then
+            echo "/bin/zsh"
+        elif command -v bash >/dev/null 2>&1 && [ -f "/bin/bash" ]; then
+            echo "/bin/bash"
+        else
+            echo "/bin/sh"
+        fi
+    }
+
+    DEFAULT_SHELL=$(detect_shell)
+    _log "→ Shell: ${DEFAULT_SHELL}"
+
+    # Setup user with proper UID/GID
+    setup_user() {
+        # Check if target user already exists
+        if id "${NB_USER}" &>/dev/null; then
+            _log "→ User ${NB_USER} already exists"
+        else
+            # Create new user
+            groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
+            useradd --no-log-init --home "/home/${NB_USER}" --shell "${DEFAULT_SHELL}" \
+                      --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
+            _log "→ Created user: ${NB_USER} (${NB_UID}:${NB_GID})"
+        fi
+        
+        # Ensure home directory exists and has correct ownership
+        if [ ! -d "/home/${NB_USER}" ]; then
+            mkdir -p "/home/${NB_USER}"
+        fi
+        chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+        
+        # Create .zshrc if shell is zsh and file doesn't exist
+        if [ "${DEFAULT_SHELL}" = "/bin/zsh" ] && [ ! -f "/home/${NB_USER}/.zshrc" ]; then
+            touch "/home/${NB_USER}/.zshrc"
+            chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}/.zshrc"
+        fi
+    }
+
+    # Setup sudo access
+    setup_sudo() {
+        if [ ! -d "/etc/sudoers.d" ]; then
+            mkdir -p "/etc/sudoers.d"
+        fi
+        
+        local sudoers_file="/etc/sudoers.d/added-by-start-script"
+        if [ ! -f "${sudoers_file}" ]; then
+            touch "${sudoers_file}"
+        fi
+        
+        # Check if entry already exists to avoid duplicates
+        if ! grep -q "^${NB_USER} ALL=(ALL) NOPASSWD:ALL" "${sudoers_file}" 2>/dev/null; then
+            echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" >> "${sudoers_file}"
+            _log "→ Sudo: enabled"
+        fi
+    }
+
+    # Execute setup
+    setup_user
+    setup_sudo
+
+    _log "→ Starting as ${NB_USER}"
+
+    # Execute command as target user
+    # Use env to explicitly set environment variables to avoid sudo env_reset issues
+    exec sudo --preserve-env=PATH,PYTHONPATH,PYTHONUSERBASE,LD_LIBRARY_PATH --set-home --user "${NB_USER}" \
+        env PATH="${PATH}" \
+        LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+        PYTHONPATH="${PYTHONPATH:-}" \
+        PYTHONUSERBASE="${PYTHONUSERBASE}" \
+        "$@"
