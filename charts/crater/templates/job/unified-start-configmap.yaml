@@ -171,20 +171,57 @@ data:
         # Handle jovyan rename first if applicable
         handle_jovyan_rename
         
-        # Check if user already exists
+        # Check if target user already exists
         if id "${NB_USER}" &>/dev/null; then
-            # Update UID/GID if they don't match
+            # Target user exists, try to update UID/GID if they don't match
             if [ "${NB_UID}" != "$(id -u "${NB_USER}")" ] || [ "${NB_GID}" != "$(id -g "${NB_USER}")" ]; then
+                # Try to update, but don't fail if it doesn't work
                 groupmod -o -g "${NB_GID}" "${NB_GROUP:-${NB_USER}}" 2>&1 || \
-                    groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
-                usermod -u "${NB_UID}" -g "${NB_GID}" "${NB_USER}" 2>&1
+                    groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}" 2>&1 || true
+                usermod -u "${NB_UID}" -g "${NB_GID}" "${NB_USER}" 2>&1 || true
+                _log "→ User: ${NB_USER} ($(id -u "${NB_USER}"):$(id -g "${NB_USER}"))"
+            else
                 _log "→ User: ${NB_USER} (${NB_UID}:${NB_GID})"
             fi
         else
-            groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
-            useradd --no-log-init --home "/home/${NB_USER}" --shell "${DEFAULT_SHELL}" \
-                    --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
-            _log "→ Created user: ${NB_USER} (${NB_UID}:${NB_GID})"
+            # Target user doesn't exist, check if UID is already taken by another user
+            existing_user=$(getent passwd "${NB_UID}" | cut -d: -f1 || true)
+            if [ -n "${existing_user}" ] && [ "${existing_user}" != "${NB_USER}" ]; then
+                # UID exists but with different username, rename it to target username
+                _log "→ Renaming existing user '${existing_user}' (UID ${NB_UID}) to '${NB_USER}'"
+                
+                # Get existing user's group name
+                existing_group=$(id -gn "${existing_user}" 2>/dev/null || echo "${existing_user}")
+                
+                # Rename the user
+                usermod -d "/home/${NB_USER}" -l "${NB_USER}" "${existing_user}" 2>&1 || true
+                
+                # Rename the group if it matches the old username
+                if [ "${existing_group}" = "${existing_user}" ]; then
+                    groupmod -n "${NB_USER}" "${existing_group}" 2>&1 || true
+                fi
+                
+                # Move home directory if needed
+                if [ -d "/home/${existing_user}" ] && [ ! -d "/home/${NB_USER}" ]; then
+                    mv "/home/${existing_user}" "/home/${NB_USER}" 2>&1 || true
+                fi
+                
+                _log "→ User renamed: ${existing_user} -> ${NB_USER} (${NB_UID}:${NB_GID})"
+            else
+                # Try to create new user
+                if groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}" 2>&1 && \
+                useradd --no-log-init --home "/home/${NB_USER}" --shell "${DEFAULT_SHELL}" \
+                        --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}" 2>&1; then
+                    _log "→ Created user: ${NB_USER} (${NB_UID}:${NB_GID})"
+                else
+                    # User creation failed, check if user exists now (race condition)
+                    if id "${NB_USER}" &>/dev/null; then
+                        _log "→ User: ${NB_USER} exists ($(id -u "${NB_USER}"):$(id -g "${NB_USER}"))"
+                    else
+                        _log "⚠ Failed to create user ${NB_USER}, but will attempt to continue"
+                    fi
+                fi
+            fi
         fi
         
         # Ensure home directory exists
