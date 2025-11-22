@@ -42,7 +42,6 @@ export const FileSelectDialog = ({
   allowSelectFile = true,
   isrw = false,
   title,
-  isAdmin = false,
 }: {
   value?: string
   handleSubmit: (path: TreeDataItem) => void
@@ -50,7 +49,6 @@ export const FileSelectDialog = ({
   allowSelectFile?: boolean
   isrw?: boolean
   title?: string
-  isAdmin?: boolean
 }) => {
   const { t } = useTranslation()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -101,7 +99,6 @@ export const FileSelectDialog = ({
               <Tree
                 className="h-full w-full shrink-0"
                 isrw={isrw}
-                isAdmin={isAdmin}
                 onSelectChange={(item) => {
                   setContent(item)
                 }}

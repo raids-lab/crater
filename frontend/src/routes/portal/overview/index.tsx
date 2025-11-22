@@ -16,9 +16,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
+import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
 import { ClockIcon, FlaskConicalIcon, GpuIcon, UsersRoundIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import JobPhaseLabel, { getJobPhaseLabel, jobPhases } from '@/components/badge/job-phase-badge'
 import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
@@ -75,9 +77,25 @@ const toolbarConfig: DataTableToolbarConfig = {
 }
 
 function Overview() {
+  const { i18n } = useTranslation()
   const userInfo = useAtomValue(atomUserInfo)
   const nodeQuery = useQuery(queryNodes(true))
   const { getNicknameByName } = useAccountNameLookup()
+
+  // 获取当前语言对应的 date-fns locale
+  const getDateLocale = useCallback((): Locale => {
+    switch (i18n.language) {
+      case 'en':
+        return enUS
+      case 'ja':
+        return ja
+      case 'ko':
+        return ko
+      default:
+        return zhCN
+    }
+  }, [i18n.language])
+
   const jobColumns = useMemo<ColumnDef<IJobInfo>[]>(
     () => [
       {
@@ -385,7 +403,8 @@ function Overview() {
         columns={getNodeColumns(
           getNicknameByName,
           resourcesQuery.data?.map((r) => r.name),
-          false
+          false,
+          getDateLocale()
         )}
         toolbarConfig={nodesToolbarConfig}
       />

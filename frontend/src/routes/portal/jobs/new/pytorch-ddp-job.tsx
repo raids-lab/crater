@@ -304,6 +304,7 @@ function RouteComponent() {
       nodeSelector: {
         enable: false,
       },
+      forwards: [],
     },
   })
 
@@ -351,11 +352,15 @@ function RouteComponent() {
     createTask(values)
   }
 
+  const onInvalid = () => {
+    toast.error(`表单验证失败，请检查填写内容`)
+  }
+
   return (
     <>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(onSubmit)}
+          onSubmit={form.handleSubmit(onSubmit, onInvalid)}
           className="grid flex-1 items-start gap-4 md:gap-x-6 lg:grid-cols-3"
         >
           <PageTitle

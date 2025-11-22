@@ -429,9 +429,14 @@ export const apiJupyterTokenGet = (jobName: string) =>
     }>
   >(`${JOB_URL}/${jobName}/token`)
 
-// @Router /v1/vcjobs/jupyter/{name}/snapshot [post]
-export const apiJupyterSnapshot = (jobName: string) =>
-  apiV1Post<IResponse<string>>(`${JOB_URL}/jupyter/${jobName}/snapshot`)
+// 保存作业快照（适用于 Jupyter 和 Custom 类型作业）
+// @Router /v1/vcjobs/{name}/snapshot [post]
+export const apiJobSnapshot = (jobName: string) =>
+  apiV1Post<IResponse<string>>(`${JOB_URL}/${jobName}/snapshot`)
+
+// 为了向后兼容，保留旧名称但标记为 deprecated
+/** @deprecated 请使用 apiJobSnapshot 代替 */
+export const apiJupyterSnapshot = apiJobSnapshot
 
 // 开启 SSH 端口
 export const apiOpenSSH = (jobName: string) =>

@@ -39,7 +39,7 @@ export interface INodeBriefInfo {
   arch: string
   status: NodeStatus
   vendor: string
-  taints: string[]
+  taints: IClusterNodeTaint[]
   capacity: V1ResourceList
   allocatable: V1ResourceList
   used: V1ResourceList
@@ -110,6 +110,7 @@ export interface IClusterNodeTaint {
   value: string
   effect: string
   reason?: string
+  timeAdded?: string
 }
 
 export interface IClusterNodeMark {

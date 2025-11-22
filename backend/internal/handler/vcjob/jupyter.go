@@ -385,8 +385,8 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 
 // CreateJupyterSnapshot godoc
 //
-//	@Summary		Create a snapshot of the jupyter notebook
-//	@Description	Create nerdctl docker commit to snapshot the jupyter notebook
+//	@Summary		Create a snapshot of the job container
+//	@Description	Create nerdctl docker commit to snapshot the job container (supports Jupyter and Custom job types)
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
@@ -395,7 +395,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 //	@Success		200		{object}	resputil.Response[JobTokenResp]	"Success"
 //	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]			"Other errors"
-//	@Router			/v1/vcjobs/jupyter/{name}/snapshot [post]
+//	@Router			/v1/vcjobs/{name}/snapshot [post]
 func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -468,6 +468,19 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 		return
 	}
 
+	tolerations := []v1.Toleration{
+		{
+			Key:      "crater.raids.io/account",
+			Operator: v1.TolerationOpExists,
+			Effect:   v1.TaintEffectNoSchedule,
+		},
+		{
+			Key:      "node.kubernetes.io/unschedulable",
+			Operator: v1.TolerationOpExists,
+			Effect:   v1.TaintEffectNoSchedule,
+		},
+	}
+
 	err = mgr.imagePacker.CreateFromSnapshot(c, &packer.SnapshotReq{
 		UserID:        token.UserID,
 		Namespace:     vcjob.Namespace,
@@ -477,6 +490,7 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 		Description:   fmt.Sprintf("Snapshot of %s", job.JobName),
 		ImageLink:     imageLink,
 		BuildSource:   model.Snapshot,
+		Tolerations:   tolerations,
 	})
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
