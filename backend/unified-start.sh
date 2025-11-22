@@ -1,0 +1,344 @@
+#!/bin/bash
+set -e
+
+# Unified start script for Jupyter containers
+# Fully compatible with official jupyter/docker-stacks start.sh
+# Automatically detects execution strategy based on jupyter installation path
+
+# Logging function
+_log() {
+    if [[ "$*" == "ERROR:"* ]] || [[ "$*" == "WARNING:"* ]] || [[ "${JUPYTER_DOCKER_STACKS_QUIET}" == "" ]]; then
+        echo "$@"
+    fi
+}
+
+_log "Unified start script initialized with args:" "$@"
+
+# Helper function to unset explicit env vars
+unset_explicit_env_vars() {
+    if [ -n "${JUPYTER_ENV_VARS_TO_UNSET}" ]; then
+        for env_var_to_unset in $(echo "${JUPYTER_ENV_VARS_TO_UNSET}" | tr ',' ' '); do
+            _log "Unset ${env_var_to_unset} due to JUPYTER_ENV_VARS_TO_UNSET"
+            unset "${env_var_to_unset}"
+        done
+        unset JUPYTER_ENV_VARS_TO_UNSET
+    fi
+}
+
+# Detect Jupyter installation path and determine execution strategy
+detect_jupyter_path() {
+    # Priority order: envd > standard conda > local install
+    if [ -x "/opt/conda/envs/envd/bin/jupyter" ]; then
+        echo "/opt/conda/envs/envd/bin/jupyter"
+    elif [ -x "/opt/conda/bin/jupyter" ]; then
+        echo "/opt/conda/bin/jupyter"
+    elif [ -x "/usr/local/bin/jupyter" ]; then
+        echo "/usr/local/bin/jupyter"
+    elif command -v jupyter >/dev/null 2>&1; then
+        command -v jupyter
+    else
+        _log "WARNING: jupyter not found in any standard location"
+        echo ""
+    fi
+}
+
+JUPYTER_PATH=$(detect_jupyter_path)
+if [ -n "${JUPYTER_PATH}" ]; then
+    _log "→ Jupyter: ${JUPYTER_PATH}"
+else
+    _log "⚠ Jupyter not found"
+fi
+
+# Determine execution strategy based on Jupyter path
+case "${JUPYTER_PATH}" in
+    "/opt/conda/bin/jupyter")
+        EXEC_STRATEGY="Jupyter Official"
+        DEFAULT_SHELL="/bin/bash"
+        ENABLE_SSH="no"
+        ENABLE_HOOKS="yes"
+        ENABLE_START_NOTEBOOK_HOOKS="yes"
+        PYTHONUSERBASE_DEFAULT=""
+        SUPPORT_JOVYAN_RENAME="yes"
+        CONDA_DIR="/opt/conda"
+        ;;
+    "/opt/conda/envs/envd/bin/jupyter")
+        EXEC_STRATEGY="Envd"
+        DEFAULT_SHELL="/bin/zsh"
+        ENABLE_SSH="no"
+        ENABLE_HOOKS="no"
+        ENABLE_START_NOTEBOOK_HOOKS="no"
+        PYTHONUSERBASE_DEFAULT="/opt/conda/envs/envd"
+        SUPPORT_JOVYAN_RENAME="no"
+        CONDA_DIR="/opt/conda/envs/envd"
+        ;;
+    "/usr/local/bin/jupyter")
+        EXEC_STRATEGY="NVIDIA Provided"
+        DEFAULT_SHELL="/bin/bash"
+        ENABLE_SSH="yes"
+        ENABLE_HOOKS="yes"
+        ENABLE_START_NOTEBOOK_HOOKS="yes"
+        PYTHONUSERBASE_DEFAULT="/usr/local"
+        SUPPORT_JOVYAN_RENAME="no"
+        CONDA_DIR=""
+        ;;
+    *)
+        EXEC_STRATEGY="auto"
+        DEFAULT_SHELL="/bin/bash"
+        ENABLE_SSH="no"
+        ENABLE_HOOKS="no"
+        ENABLE_START_NOTEBOOK_HOOKS="no"
+        PYTHONUSERBASE_DEFAULT=""
+        SUPPORT_JOVYAN_RENAME="no"
+        CONDA_DIR=""
+        _log "WARNING: Using fallback 'auto' strategy - jupyter path not recognized"
+        ;;
+esac
+
+_log "→ Strategy: ${EXEC_STRATEGY}"
+
+# Default to starting bash if no command was specified
+if [ $# -eq 0 ]; then
+    cmd=("bash")
+else
+    cmd=("$@")
+fi
+
+# Replace 'jupyter' with full path to avoid command resolution issues
+if [ -n "${JUPYTER_PATH}" ]; then
+    if [ "${cmd[0]}" = "jupyter" ]; then
+        cmd[0]="${JUPYTER_PATH}"
+        _log "→ Command: ${cmd[0]} ${cmd[1]}"
+    elif [ "${cmd[0]}" = "python3" ] || [ "${cmd[0]}" = "python" ]; then
+        if [ "${cmd[1]}" = "lab" ] || [ "${cmd[1]}" = "notebook" ] || [ "${cmd[1]}" = "server" ]; then
+            cmd[0]="${JUPYTER_PATH}"
+            _log "→ Command: ${cmd[0]} ${cmd[1]} (fixed from ${cmd[0]})"
+        fi
+    fi
+fi
+
+# Run start-notebook.d hooks (before user setup)
+# NOTE: This hook will run as the user the container was started with!
+run_start_notebook_hooks() {
+    if [[ "${ENABLE_START_NOTEBOOK_HOOKS}" == "yes" ]]; then
+        if [ -f "/usr/local/bin/run-hooks.sh" ] && [ -d "/usr/local/bin/start-notebook.d" ]; then
+            # shellcheck disable=SC1091
+            source /usr/local/bin/run-hooks.sh /usr/local/bin/start-notebook.d || true
+            _log "start-notebook.d hooks executed"
+        fi
+    fi
+}
+
+# Execute hooks before any user setup
+run_start_notebook_hooks
+
+# If not running as root, execute command directly
+if [ "$(id -u)" != 0 ]; then
+    _log "→ Exec as current user"
+    unset_explicit_env_vars
+    exec "${cmd[@]}"
+fi
+
+# ========== ROOT USER OPERATIONS ==========
+
+# Handle jovyan user rename (official Jupyter images)
+handle_jovyan_rename() {
+    if [[ "${SUPPORT_JOVYAN_RENAME}" != "yes" ]]; then
+        return
+    fi
+
+    if id jovyan &>/dev/null; then
+        if [[ "${NB_USER}" != "jovyan" ]]; then
+            usermod -d "/home/${NB_USER}" -l "${NB_USER}" jovyan 2>&1 | grep -v "no changes" || true
+            groupmod -n "${NB_USER}" jovyan 2>&1 || true
+            _log "→ Renamed jovyan to ${NB_USER}"
+        fi
+    elif ! id -u "${NB_USER}" &>/dev/null; then
+        _log "ERROR: Neither jovyan nor ${NB_USER} exists, and not running as root to create it"
+        exit 1
+    fi
+}
+
+# Setup user with proper UID/GID
+setup_user() {
+    # Handle jovyan rename first if applicable
+    handle_jovyan_rename
+    
+    # Check if user already exists
+    if id "${NB_USER}" &>/dev/null; then
+        # Update UID/GID if they don't match
+        if [ "${NB_UID}" != "$(id -u "${NB_USER}")" ] || [ "${NB_GID}" != "$(id -g "${NB_USER}")" ]; then
+            groupmod -o -g "${NB_GID}" "${NB_GROUP:-${NB_USER}}" 2>&1 || \
+                groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
+            usermod -u "${NB_UID}" -g "${NB_GID}" "${NB_USER}" 2>&1
+            _log "→ User: ${NB_USER} (${NB_UID}:${NB_GID})"
+        fi
+    else
+        groupadd --force --gid "${NB_GID}" --non-unique "${NB_GROUP:-${NB_USER}}"
+        useradd --no-log-init --home "/home/${NB_USER}" --shell "${DEFAULT_SHELL}" \
+                --uid "${NB_UID}" --gid "${NB_GID}" --groups 100 "${NB_USER}"
+        _log "→ Created user: ${NB_USER} (${NB_UID}:${NB_GID})"
+    fi
+    
+    # Ensure home directory exists
+    if [ ! -d "/home/${NB_USER}" ]; then
+        mkdir -p "/home/${NB_USER}"
+    fi
+    
+    # Handle home directory move/symlink for jovyan rename
+    if [[ "${SUPPORT_JOVYAN_RENAME}" == "yes" ]] && [[ "${NB_USER}" != "jovyan" ]]; then
+        if [[ ! -e "/home/${NB_USER}" ]]; then
+            if [[ -d /home/jovyan ]]; then
+                mv /home/jovyan "/home/${NB_USER}"
+            fi
+        fi
+        # Update current directory if needed
+        if [[ "${PWD}/" == "/home/jovyan/"* ]]; then
+            new_wd="/home/${NB_USER}/${PWD:13}"
+            cd "${new_wd}" || exit 1
+        fi
+    fi
+    
+    # Create shell config file for zsh if needed
+    if [[ "${DEFAULT_SHELL}" == "/bin/zsh" ]]; then
+        if [ ! -f "/home/${NB_USER}/.zshrc" ]; then
+            touch "/home/${NB_USER}/.zshrc"
+            chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}/.zshrc"
+        fi
+    fi
+}
+
+# Change ownership of home directory
+chown_home() {
+    if [[ "${CHOWN_HOME}" == "1" || "${CHOWN_HOME}" == "yes" ]]; then
+        # shellcheck disable=SC2086
+        chown ${CHOWN_HOME_OPTS} "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+    elif [[ "${CHOWN_HOME}" == "0" || "${CHOWN_HOME}" == "no" ]]; then
+        return
+    else
+        # Default behavior for official Jupyter images
+        if [[ "${SUPPORT_JOVYAN_RENAME}" == "yes" ]]; then
+            chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+        fi
+    fi
+}
+
+# Change ownership of additional directories
+chown_extra() {
+    if [ -n "${CHOWN_EXTRA}" ]; then
+        for extra_dir in $(echo "${CHOWN_EXTRA}" | tr ',' ' '); do
+            # shellcheck disable=SC2086
+            chown ${CHOWN_EXTRA_OPTS} "${NB_UID}:${NB_GID}" "${extra_dir}"
+        done
+    fi
+}
+
+# Setup sudo access
+setup_sudo() {
+    if [[ "${GRANT_SUDO}" == "1" || "${GRANT_SUDO}" == "yes" ]]; then
+        if [ ! -d "/etc/sudoers.d" ]; then
+            mkdir -p "/etc/sudoers.d"
+        fi
+        
+        local sudoers_file="/etc/sudoers.d/added-by-start-script"
+        if [ ! -f "${sudoers_file}" ]; then
+            touch "${sudoers_file}"
+        fi
+        
+        # Check if the entry already exists to avoid duplicates
+        if ! grep -q "^${NB_USER} ALL=(ALL) NOPASSWD:ALL" "${sudoers_file}" 2>/dev/null; then
+            echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" >>"${sudoers_file}"
+        fi
+        
+        # Update secure_path for conda if CONDA_DIR is set
+        if [ -n "${CONDA_DIR}" ]; then
+            sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"${CONDA_DIR}/bin:\1\"#" \
+                /etc/sudoers | grep secure_path >/etc/sudoers.d/path 2>/dev/null || true
+        fi
+        
+        _log "→ Sudo: enabled"
+    fi
+}
+
+# Start SSH service
+start_ssh_service() {
+    if [[ "${ENABLE_SSH}" == "yes" ]]; then
+        if command -v service >/dev/null 2>&1; then
+            if service --status-all 2>&1 | grep -q 'ssh'; then
+                service ssh restart >/dev/null 2>&1
+                _log "→ SSH: started"
+            fi
+        fi
+    fi
+}
+
+# Setup Python environment
+setup_python_env() {
+    export XDG_CACHE_HOME="/home/${NB_USER}/.cache"
+    
+    if [ -z "${PYTHONUSERBASE}" ]; then
+        if [ -n "${PYTHONUSERBASE_DEFAULT}" ]; then
+            export PYTHONUSERBASE="${PYTHONUSERBASE_DEFAULT}"
+        fi
+    fi
+    
+    if [ -n "${CONDA_DIR}" ]; then
+        export CONDA_DIR="${CONDA_DIR}"
+    fi
+}
+
+# Run before-notebook.d hooks (after user setup, before command execution)
+run_before_notebook_hooks() {
+    if [[ "${ENABLE_HOOKS}" == "yes" ]]; then
+        if [ -f "/usr/local/bin/run-hooks.sh" ] && [ -d "/usr/local/bin/before-notebook.d" ]; then
+            # shellcheck disable=SC1091
+            source /usr/local/bin/run-hooks.sh /usr/local/bin/before-notebook.d || true
+        fi
+    fi
+}
+
+# Main execution flow
+main() {
+    # Setup user and ensure correct UID/GID
+    setup_user
+    
+    # Change ownership of home and extra directories
+    chown_home
+    chown_extra
+    
+    # Setup sudo access
+    setup_sudo
+    
+    # Update Python environment
+    setup_python_env
+    
+    # Start SSH service if needed
+    start_ssh_service
+    
+    # Run before-notebook hooks
+    run_before_notebook_hooks
+    
+    # Unset explicit environment variables
+    unset_explicit_env_vars
+    
+    # Final verification: ensure cmd[0] uses full path
+    if [ -n "${JUPYTER_PATH}" ]; then
+        if [ "${cmd[0]}" = "jupyter" ] || [ "${cmd[0]}" = "python3" ] || [ "${cmd[0]}" = "python" ]; then
+            cmd[0]="${JUPYTER_PATH}"
+        fi
+    fi
+    
+    _log "→ Starting: ${cmd[0]} ${cmd[1]:-}"
+    
+    # Execute command as target user with full jupyter path
+    exec sudo --preserve-env --set-home --user "${NB_USER}" \
+        LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}" \
+        PATH="${PATH}" \
+        PYTHONPATH="${PYTHONPATH:-}" \
+        PYTHONUSERBASE="${PYTHONUSERBASE:-}" \
+        XDG_CACHE_HOME="${XDG_CACHE_HOME}" \
+        CONDA_DIR="${CONDA_DIR:-}" \
+        "${cmd[@]}"
+}
+
+# Run main function
+main
