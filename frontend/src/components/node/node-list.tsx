@@ -214,7 +214,7 @@ export const getNodeColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={'架构'} />,
       cell: ({ row }) => {
         const arch = row.getValue<string>('arch')
-        const isArm = arch?.toLowerCase().includes('arm')
+        const isArm = arch?.toLowerCase()?.includes('arm') ?? false
         return (
           <Badge
             variant="outline"
