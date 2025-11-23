@@ -104,6 +104,7 @@ type ClusterNodeDetail struct {
 	KernelVersion           string                   `json:"kernelVersion"`
 	Capacity                corev1.ResourceList      `json:"capacity"`
 	Allocatable             corev1.ResourceList      `json:"allocatable"`
+	Used                    corev1.ResourceList      `json:"used"`
 	GPUMemory               string                   `json:"gpuMemory"`
 	GPUCount                int                      `json:"gpuCount"`
 	GPUArch                 string                   `json:"gpuArch"`
@@ -291,6 +292,21 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		return ClusterNodeDetail{}, err
 	}
 
+	// 获取节点上的所有 Pods（用于计算已使用资源）
+	podList := &corev1.PodList{}
+	usedResources := make(corev1.ResourceList)
+	if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(node.Name)); err != nil {
+		klog.Errorf("Failed to get pods for node %s: %v", node.Name, err)
+		// 继续处理，但 usedResources 为空
+	} else {
+		// 计算节点上所有 Pods 使用的资源
+		for j := range podList.Items {
+			pod := &podList.Items[j]
+			podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
+			usedResources = utils.SumResources(usedResources, podResources)
+		}
+	}
+
 	// 获取 GPU 驱动版本
 	gpuDriver := ""
 	if driver, exists := node.Labels["nvidia.com/cuda.driver-version.full"]; exists {
@@ -312,6 +328,7 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		KernelVersion:           node.Status.NodeInfo.KernelVersion,
 		Capacity:                node.Status.Capacity,
 		Allocatable:             node.Status.Allocatable,
+		Used:                    usedResources,
 		GPUDriver:               gpuDriver,
 	}
 	return nodeInfo, nil
