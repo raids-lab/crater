@@ -78,6 +78,7 @@ export interface IClusterNodeDetail {
   kernelVersion?: string
   capacity?: V1ResourceList
   allocatable?: V1ResourceList
+  used?: V1ResourceList
   gpuDriver?: string
 }
 

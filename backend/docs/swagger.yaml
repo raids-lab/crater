@@ -530,6 +530,8 @@ definitions:
         type: string
       time:
         type: string
+      used:
+        $ref: '#/definitions/v1.ResourceList'
     type: object
   github_com_raids-lab_crater_pkg_crclient.GPUInfo:
     properties:

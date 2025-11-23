@@ -8775,6 +8775,9 @@ const docTemplate = `{
                 },
                 "time": {
                     "type": "string"
+                },
+                "used": {
+                    "$ref": "#/definitions/v1.ResourceList"
                 }
             }
         },

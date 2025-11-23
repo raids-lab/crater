@@ -29,6 +29,8 @@ import { Card, CardContent } from '@/components/ui/card'
 
 import { IClusterNodeDetail, IClusterNodeGPU } from '@/services/api/cluster'
 
+import { convertKResourceToResource } from '@/utils/resource'
+
 type NodeInfoTabProps = {
   nodeDetail?: IClusterNodeDetail
   gpuDetail?: IClusterNodeGPU
@@ -39,14 +41,35 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
 
   if (!nodeDetail) return null
 
-  // 解析资源信息
-  const cpuCount = nodeDetail.capacity?.cpu || '-'
-  const memoryCapacity = nodeDetail.capacity?.memory
-    ? `${(parseFloat(nodeDetail.capacity.memory) / (1024 * 1024 * 1024)).toFixed(2)} GB`
-    : '-'
-  const diskCapacity = nodeDetail.capacity?.['ephemeral-storage']
-    ? `${(parseFloat(nodeDetail.capacity['ephemeral-storage']) / (1024 * 1024 * 1024)).toFixed(2)} GB`
-    : '-'
+  // 处理 Kubernetes 资源格式（如 "32Gi", "100Mi" 等）
+  // CPU 核心数（已使用和总量分开显示）
+  const cpuUsedValue = nodeDetail.used?.cpu
+    ? convertKResourceToResource('cpu', nodeDetail.used.cpu)
+    : undefined
+  const cpuUsed = cpuUsedValue !== undefined ? cpuUsedValue.toFixed(2) : '-'
+
+  const cpuCapacityValue = nodeDetail.capacity?.cpu
+    ? convertKResourceToResource('cpu', nodeDetail.capacity.cpu)
+    : undefined
+  const cpuCapacity = cpuCapacityValue !== undefined ? cpuCapacityValue.toFixed(2) : '-'
+
+  // 内存容量（已使用/总容量格式）
+  const memoryUsedGi = nodeDetail.used?.memory
+    ? convertKResourceToResource('memory', nodeDetail.used.memory)
+    : undefined
+  const memoryCapacityGi = nodeDetail.capacity?.memory
+    ? convertKResourceToResource('memory', nodeDetail.capacity.memory)
+    : undefined
+  const memoryDisplay =
+    memoryUsedGi !== undefined && memoryCapacityGi !== undefined
+      ? `${memoryUsedGi.toFixed(2)} / ${memoryCapacityGi.toFixed(2)} GB`
+      : '-'
+
+  // 磁盘容量（只显示总容量）
+  const diskCapacityGi = nodeDetail.capacity?.['ephemeral-storage']
+    ? convertKResourceToResource('memory', nodeDetail.capacity['ephemeral-storage'])
+    : undefined
+  const diskCapacity = diskCapacityGi !== undefined ? `${diskCapacityGi.toFixed(2)} GB` : '-'
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -58,16 +81,16 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
             <div className="flex items-center justify-between">
               <div className="text-muted-foreground flex items-center gap-2">
                 <Memory className="size-4" />
-                <span>{t('nodeDetail.info.totalMemory')}</span>
+                <span>{t('nodeDetail.info.memory')}</span>
               </div>
               <Badge variant="outline" className="font-mono text-xs">
-                {memoryCapacity}
+                {memoryDisplay}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
               <div className="text-muted-foreground flex items-center gap-2">
                 <HardDriveIcon className="size-4" />
-                <span>{t('nodeDetail.info.totalDisk')}</span>
+                <span>{t('nodeDetail.info.diskCapacity')}</span>
               </div>
               <Badge variant="outline" className="font-mono text-xs">
                 {diskCapacity}
@@ -103,10 +126,19 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
             <div className="flex items-center justify-between">
               <div className="text-muted-foreground flex items-center gap-2">
                 <CpuIcon className="size-4" />
+                <span>{t('nodeDetail.info.cpuUsed')}</span>
+              </div>
+              <Badge variant="outline" className="font-mono text-xs">
+                {cpuUsed}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="text-muted-foreground flex items-center gap-2">
+                <CpuIcon className="size-4" />
                 <span>{t('nodeDetail.info.cpuCount')}</span>
               </div>
               <Badge variant="outline" className="font-mono text-xs">
-                {cpuCount}
+                {cpuCapacity}
               </Badge>
             </div>
           </div>

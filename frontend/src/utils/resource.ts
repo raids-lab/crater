@@ -46,6 +46,9 @@ export const convertKResourceToResource = (key: string, value?: string): number 
         return parseInt(value.replace('Gi', ''))
       } else if (value.includes('Ti')) {
         return parseInt(value.replace('Ti', '')) * 1024
+      } else if (/^\d+$/.test(value)) {
+        // Pure number, treat as bytes, convert to GiB
+        return parseInt(value) / 1024 / 1024 / 1024
       } else {
         showErrorToast(`Invalid memory ${value} with unrecognized unit`)
         return 0
