@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README_CN.md)
+
 # Crater存储服务
 
 Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供 GPU 资源编排的全面解决方案。
@@ -6,17 +8,19 @@ Crater 是一个基于 Kubernetes 的 GPU 集群管理系统，提供 GPU 资源
 
 在开始开发之前，请确保您的环境已安装以下工具：
 
-- **Go**：推荐版本 `v1.25.0`  
+- **Go**：推荐版本 `v1.25.4`  
   📖 [Go 安装指南](https://go.dev/doc/install)
 
-- **Kubectl**：推荐版本 `v1.22.1`  
+- **Kubectl**：推荐版本 `v1.33`  
   📖 [Kubectl 安装指南](https://kubernetes.io/docs/tasks/tools/)
+
+具体的安装方法，请参照后端仓库 [README](../backend/README.md)。
 
 ### 📐 代码风格与检查
 
-本项目使用 [`golangci-lint`](https://golangci-lint.run/) 来强制执行 Go 代码约定和最佳实践。为避免手动运行，我们建议设置 Git 预提交钩子，以便在每次提交前自动检查代码。
+本项目使用 [`golangci-lint`](https://golangci-lint.run/) 来强制执行 Go 代码约定和最佳实践。为避免手动运行，我们在 Makefile 中添加了 `pre-commit-check` 目标来执行相关操作，这个目标将会被 Crater 主仓库的 Git 预提交钩子使用。要安装这个钩子，请参阅 Crater 主仓库 [README](../docs/zh-CN/README.md)。
 
-安装后，您可能需要将 GOPATH 添加到系统 PATH 中，以便在终端中使用 golangci-lint。例如，在 Linux 上：
+本仓库的 `pre-commit-check` 目标优先使用后端仓库中安装的 golangci-lint，如果不可用，则会尝试使用您本地安装的 golangci-lint。您可以通过以下命令来在本地安装它（**不推荐**），在 Linux 上：
 
 ```bash
 # 检查您的 GOPATH
@@ -26,29 +30,15 @@ go env GOPATH
 # 将路径添加到 .bashrc 或 .zshrc
 export PATH="/Users/your-username/go/bin:$PATH"
 
+# 二进制文件将会被安装到 $(go env GOPATH)/bin/golangci-lint
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.6.2
+
 # 重新加载 shell 并验证
 golangci-lint --version
 # golangci-lint has version 1.64.8
 ```
 
-#### 设置 Git 预提交钩子
-
-将 `.githook/pre-commit` 脚本复制到您的 Git 钩子目录并使其可执行：
-
-**Linux/macOS：**
-```bash
-cp .githook/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
-
-Windows：
-
-* 将脚本复制到 .git/hooks/pre-commit
-* 如果需要，将脚本中的 golangci-lint 替换为 golangci-lint.exe，或将其适配为 .bat 文件。
-
-设置钩子后，golangci-lint 将在每次提交前自动对暂存文件运行。
-
-#### 🛠️ 数据库代码生成
+### 🛠️ 数据库代码生成
 本项目使用 GORM Gen 来生成数据库 CRUD 操作的样板代码。
 
 生成脚本和文档可在以下位置找到：[ `gorm_gen`](./cmd/gorm-gen/README.md)
@@ -67,7 +57,7 @@ go mod download
 
 ---
 
-### 🧑‍💻 本地开发
+### 🧑‍💻 本地运行
 
 > 适用于快速测试和开发阶段。
 
