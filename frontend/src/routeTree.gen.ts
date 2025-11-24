@@ -93,7 +93,9 @@ import { Route as AdminSettingsOrdersIdRouteImport } from './routes/admin/settin
 import { Route as AdminEnvRegistryNameRouteImport } from './routes/admin/env/registry/$name'
 import { Route as AdminClusterNodesNodeRouteImport } from './routes/admin/cluster/nodes/$node'
 import { Route as PortalDataModelsDownloadsIndexRouteImport } from './routes/portal/data/models/downloads/index'
+import { Route as PortalDataDatasetsDownloadsIndexRouteImport } from './routes/portal/data/datasets/downloads/index'
 import { Route as PortalDataModelsDownloadsIdRouteImport } from './routes/portal/data/models/downloads/$id'
+import { Route as PortalDataDatasetsDownloadsIdRouteImport } from './routes/portal/data/datasets/downloads/$id'
 
 const PortalRouteRoute = PortalRouteRouteImport.update({
   id: '/portal',
@@ -525,11 +527,23 @@ const PortalDataModelsDownloadsIndexRoute =
     path: '/downloads/',
     getParentRoute: () => PortalDataModelsRouteRoute,
   } as any)
+const PortalDataDatasetsDownloadsIndexRoute =
+  PortalDataDatasetsDownloadsIndexRouteImport.update({
+    id: '/downloads/',
+    path: '/downloads/',
+    getParentRoute: () => PortalDataDatasetsRouteRoute,
+  } as any)
 const PortalDataModelsDownloadsIdRoute =
   PortalDataModelsDownloadsIdRouteImport.update({
     id: '/downloads/$id',
     path: '/downloads/$id',
     getParentRoute: () => PortalDataModelsRouteRoute,
+  } as any)
+const PortalDataDatasetsDownloadsIdRoute =
+  PortalDataDatasetsDownloadsIdRouteImport.update({
+    id: '/downloads/$id',
+    path: '/downloads/$id',
+    getParentRoute: () => PortalDataDatasetsRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -616,7 +630,9 @@ export interface FileRoutesByFullPath {
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
   '/portal/settings/orders/': typeof PortalSettingsOrdersIndexRoute
+  '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
+  '/portal/data/datasets/downloads': typeof PortalDataDatasetsDownloadsIndexRoute
   '/portal/data/models/downloads': typeof PortalDataModelsDownloadsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -684,7 +700,9 @@ export interface FileRoutesByTo {
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
   '/portal/settings/orders': typeof PortalSettingsOrdersIndexRoute
+  '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
+  '/portal/data/datasets/downloads': typeof PortalDataDatasetsDownloadsIndexRoute
   '/portal/data/models/downloads': typeof PortalDataModelsDownloadsIndexRoute
 }
 export interface FileRoutesById {
@@ -772,7 +790,9 @@ export interface FileRoutesById {
   '/portal/jobs/custom/': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter/': typeof PortalJobsInterIndexRoute
   '/portal/settings/orders/': typeof PortalSettingsOrdersIndexRoute
+  '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
+  '/portal/data/datasets/downloads/': typeof PortalDataDatasetsDownloadsIndexRoute
   '/portal/data/models/downloads/': typeof PortalDataModelsDownloadsIndexRoute
 }
 export interface FileRouteTypes {
@@ -861,7 +881,9 @@ export interface FileRouteTypes {
     | '/portal/jobs/custom'
     | '/portal/jobs/inter'
     | '/portal/settings/orders/'
+    | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
+    | '/portal/data/datasets/downloads'
     | '/portal/data/models/downloads'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -929,7 +951,9 @@ export interface FileRouteTypes {
     | '/portal/jobs/custom'
     | '/portal/jobs/inter'
     | '/portal/settings/orders'
+    | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
+    | '/portal/data/datasets/downloads'
     | '/portal/data/models/downloads'
   id:
     | '__root__'
@@ -1016,7 +1040,9 @@ export interface FileRouteTypes {
     | '/portal/jobs/custom/'
     | '/portal/jobs/inter/'
     | '/portal/settings/orders/'
+    | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
+    | '/portal/data/datasets/downloads/'
     | '/portal/data/models/downloads/'
   fileRoutesById: FileRoutesById
 }
@@ -1618,12 +1644,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalDataModelsDownloadsIndexRouteImport
       parentRoute: typeof PortalDataModelsRouteRoute
     }
+    '/portal/data/datasets/downloads/': {
+      id: '/portal/data/datasets/downloads/'
+      path: '/downloads'
+      fullPath: '/portal/data/datasets/downloads'
+      preLoaderRoute: typeof PortalDataDatasetsDownloadsIndexRouteImport
+      parentRoute: typeof PortalDataDatasetsRouteRoute
+    }
     '/portal/data/models/downloads/$id': {
       id: '/portal/data/models/downloads/$id'
       path: '/downloads/$id'
       fullPath: '/portal/data/models/downloads/$id'
       preLoaderRoute: typeof PortalDataModelsDownloadsIdRouteImport
       parentRoute: typeof PortalDataModelsRouteRoute
+    }
+    '/portal/data/datasets/downloads/$id': {
+      id: '/portal/data/datasets/downloads/$id'
+      path: '/downloads/$id'
+      fullPath: '/portal/data/datasets/downloads/$id'
+      preLoaderRoute: typeof PortalDataDatasetsDownloadsIdRouteImport
+      parentRoute: typeof PortalDataDatasetsRouteRoute
     }
   }
 }
@@ -1885,12 +1925,17 @@ const PortalDataBlocksRouteRouteWithChildren =
 interface PortalDataDatasetsRouteRouteChildren {
   PortalDataDatasetsIdRoute: typeof PortalDataDatasetsIdRoute
   PortalDataDatasetsIndexRoute: typeof PortalDataDatasetsIndexRoute
+  PortalDataDatasetsDownloadsIdRoute: typeof PortalDataDatasetsDownloadsIdRoute
+  PortalDataDatasetsDownloadsIndexRoute: typeof PortalDataDatasetsDownloadsIndexRoute
 }
 
 const PortalDataDatasetsRouteRouteChildren: PortalDataDatasetsRouteRouteChildren =
   {
     PortalDataDatasetsIdRoute: PortalDataDatasetsIdRoute,
     PortalDataDatasetsIndexRoute: PortalDataDatasetsIndexRoute,
+    PortalDataDatasetsDownloadsIdRoute: PortalDataDatasetsDownloadsIdRoute,
+    PortalDataDatasetsDownloadsIndexRoute:
+      PortalDataDatasetsDownloadsIndexRoute,
   }
 
 const PortalDataDatasetsRouteRouteWithChildren =

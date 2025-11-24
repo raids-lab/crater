@@ -186,7 +186,9 @@ export function ModelDownloadsPage() {
           <DataTableColumnHeader column={column} title={getHeader('category')} />
         ),
         cell: ({ row }) => (
-          <span className="text-sm">{row.original.category === 'model' ? '模型' : '数据集'}</span>
+          <span className="text-sm">
+            {(row.original as ModelDownload).category === 'model' ? '模型' : '数据集'}
+          </span>
         ),
       },
       {
