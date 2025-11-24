@@ -4958,7 +4958,12 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取当前用户的所有模型下载任务
+      description: 获取当前用户的所有模型下载任务,可通过category参数过滤
+      parameters:
+      - description: '过滤类别: model 或 dataset'
+        in: query
+        name: category
+        type: string
       produces:
       - application/json
       responses:

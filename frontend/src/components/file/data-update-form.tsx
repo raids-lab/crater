@@ -103,7 +103,7 @@ export function DatasetUpdateForm({ type, initialData, onSuccess }: UpdateFormPr
         editable: !values.readOnly,
       }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['data', 'mydataset'] })
+      queryClient.invalidateQueries({ queryKey: ['data', type ?? 'dataset'] })
       toast.success(t('dataset.toast.success', { name: variables.datasetName }))
       setIsOpen(false)
       onSuccess?.()

@@ -5259,7 +5259,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取当前用户的所有模型下载任务",
+                "description": "获取当前用户的所有模型下载任务,可通过category参数过滤",
                 "consumes": [
                     "application/json"
                 ],
@@ -5270,6 +5270,14 @@ const docTemplate = `{
                     "ModelDownload"
                 ],
                 "summary": "获取用户的模型下载任务列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "过滤类别: model 或 dataset",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

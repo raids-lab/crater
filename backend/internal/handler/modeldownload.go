@@ -25,7 +25,11 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 )
 
-const defaultDownloadLogTailLines int64 = 1000
+const (
+	defaultDownloadLogTailLines int64 = 1000
+	CategoryModel                     = "model"
+	CategoryDataset                   = "dataset"
+)
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -238,15 +242,18 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 // ListDownloads godoc
 //
 //	@Summary		获取用户的模型下载任务列表
-//	@Description	获取当前用户的所有模型下载任务
+//	@Description	获取当前用户的所有模型下载任务,可通过category参数过滤
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
+//	@Param			category	query		string	false	"过滤类别: model 或 dataset"
 //	@Success		200	{object}	resputil.Response[[]ModelDownloadResp]
 //	@Router			/v1/models/downloads [GET]
 func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 	token := util.GetToken(c)
+	category := c.Query("category") // 获取可选的 category 参数
+
 	q := query.ModelDownload
 	qUserDownload := query.UserModelDownload
 
@@ -271,11 +278,16 @@ func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 		return
 	}
 
+	// 构建查询条件
+	queryBuilder := q.WithContext(c).Where(q.ID.In(downloadIDs...))
+
+	// 如果指定了 category,添加过滤条件
+	if category != "" && (category == CategoryModel || category == CategoryDataset) {
+		queryBuilder = queryBuilder.Where(q.Category.Eq(string(model.DownloadCategory(category))))
+	}
+
 	// 查询所有下载详情
-	downloads, err := q.WithContext(c).
-		Where(q.ID.In(downloadIDs...)).
-		Order(q.CreatedAt.Desc()).
-		Find()
+	downloads, err := queryBuilder.Order(q.CreatedAt.Desc()).Find()
 	if err != nil {
 		klog.Errorf("list downloads failed: %v", err)
 		resputil.Error(c, "list downloads failed", resputil.NotSpecified)
@@ -765,8 +777,12 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 }
 
 func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
-	// 使用官方 Python 镜像,在运行时安装所需的包
-	// 这样可以避免架构不匹配的问题
+	// 优先使用配置文件中的镜像
+	if img := config.GetConfig().ModelDownload.Image; img != "" {
+		return img
+	}
+	// 使用官方 Python 镜像作为默认值
+	// 本地部署可通过配置文件指定内网镜像
 	return "python:3.11-slim"
 }
 
@@ -784,6 +800,14 @@ func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload,
 		)
 
 		// 2. 用 Python API snapshot_download，而不是 huggingface-cli
+		// 根据类别设置 repo_type
+		var repoType string
+		if download.Category == model.DownloadCategoryDataset {
+			repoType = "dataset"
+		} else {
+			repoType = "model"
+		}
+
 		downloadCommand = fmt.Sprintf(`
 python - << 'PY'
 import os
@@ -791,9 +815,11 @@ from huggingface_hub import snapshot_download
 
 repo_id = %q
 revision = %q
+repo_type = %q
 
 kwargs = {
     "repo_id": repo_id,
+    "repo_type": repo_type,
     "local_dir": os.environ["OUT_DIR"],
     "local_dir_use_symlinks": False,
     "resume_download": True,
@@ -803,7 +829,7 @@ if revision:
 
 snapshot_download(**kwargs)
 PY
-`, download.Name, download.Revision)
+`, download.Name, download.Revision, repoType)
 	} else {
 		// ModelScope 这块可以沿用原来的 CLI 方式
 		installCmd = fmt.Sprintf(
@@ -811,16 +837,24 @@ PY
 			pypiMirror, trustedHost,
 		)
 
+		// 根据类别选择下载参数
+		var resourceFlag string
+		if download.Category == model.DownloadCategoryDataset {
+			resourceFlag = "--dataset"
+		} else {
+			resourceFlag = "--model"
+		}
+
 		modelName := download.Name
 		if download.Revision != "" {
 			downloadCommand = fmt.Sprintf(
-				`modelscope download --model %s --revision %s --local_dir "$OUT_DIR"`,
-				modelName, download.Revision,
+				`modelscope download %s %s --revision %s --local_dir "$OUT_DIR"`,
+				resourceFlag, modelName, download.Revision,
 			)
 		} else {
 			downloadCommand = fmt.Sprintf(
-				`modelscope download --model %s --local_dir "$OUT_DIR"`,
-				modelName,
+				`modelscope download %s %s --local_dir "$OUT_DIR"`,
+				resourceFlag, modelName,
 			)
 		}
 	}
@@ -907,11 +941,10 @@ func isValidModelName(name string) bool {
 }
 
 func sanitizeModelName(name string) string {
-	// 将 owner/model-name 转换为 owner-model-name
-	safe := strings.ReplaceAll(name, "/", "-")
-	// 移除其他特殊字符
-	pattern := regexp.MustCompile(`[^A-Za-z0-9_.-]`)
-	return pattern.ReplaceAllString(safe, "")
+	// 保留 / 以支持 owner/model-name 目录结构
+	// 只移除其他特殊字符
+	pattern := regexp.MustCompile(`[^A-Za-z0-9_./-]`)
+	return pattern.ReplaceAllString(name, "")
 }
 
 func convertDownloadToResp(d *model.ModelDownload) ModelDownloadResp {

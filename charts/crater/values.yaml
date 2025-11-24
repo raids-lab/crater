@@ -172,6 +172,14 @@ backendConfig:
   # Must be specified for the server to start
   port: :8088
 
+  # -- Model download functionality configurations
+  modelDownload:
+    # -- Container image used for model download jobs
+    # Can be customized for local deployments with network restrictions
+    # Default: python:3.11-slim (public Docker Hub)
+    # Internal deployment uses: crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim
+    image: "crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim"
+
   # -- Endpoint URL for Prometheus API used for metrics and monitoring
   # If not specified, Prometheus integration will be disabled
   prometheusAPI: http://192.168.0.1:12345
