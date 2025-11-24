@@ -190,8 +190,8 @@ export function SharedResourceTable({
   const { mutate: deleteDataset } = useMutation({
     mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
     onSuccess: () => {
-      // 简化为：刷新列表 + 显式导航
-      void queryClient.invalidateQueries({ queryKey: ['data', 'mydataset'] })
+      // 刷新对应类型的列表 + 显式导航
+      void queryClient.invalidateQueries({ queryKey: ['data', resourceType] })
       router.history.back()
       toast.success(t('sharedResource.deletedSuccess', { type: dataTypeLabel }))
     },

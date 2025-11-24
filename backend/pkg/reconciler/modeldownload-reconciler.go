@@ -366,30 +366,66 @@ func formatSpeed(bytesPerSec int64) string {
 }
 
 func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, download *model.ModelDownload) error {
-	// Create a dataset record for the downloaded model
+	// Create a dataset record for the downloaded model or dataset
 	qDataset := query.Dataset
 	qUserDataset := query.UserDataset
 	qAccountDataset := query.AccountDataset
 
-	// Check if dataset already exists for this model
+	// 根据 category 确定数据类型
+	var dataType model.DataType
+	var resourceLabel string
+	if download.Category == model.DownloadCategoryDataset {
+		dataType = model.DataTypeDataset
+		resourceLabel = "数据集"
+	} else {
+		dataType = model.DataTypeModel
+		resourceLabel = "模型"
+	}
+
+	// Check if dataset already exists for this resource (check by name only, regardless of type)
+	// This prevents creating duplicate records with different types
 	existingDataset, _ := qDataset.WithContext(ctx).
-		Where(qDataset.Name.Eq(download.Name), qDataset.Type.Eq(string(model.DataTypeModel))).
+		Where(qDataset.Name.Eq(download.Name)).
 		First()
 
 	if existingDataset != nil {
-		klog.V(logVerboseLevelDebug).Infof("Dataset already exists for model %s (dataset ID: %d)", download.Name, existingDataset.ID)
+		// If exists but type is different, update it to the correct type
+		if existingDataset.Type != dataType {
+			klog.Warningf("Dataset %s exists with wrong type %s, updating to %s", download.Name, existingDataset.Type, dataType)
+			_, err := qDataset.WithContext(ctx).
+				Where(qDataset.ID.Eq(existingDataset.ID)).
+				Update(qDataset.Type, dataType)
+			if err != nil {
+				klog.Errorf("Failed to update dataset type: %v", err)
+			}
+			// Also update the description
+			_, _ = qDataset.WithContext(ctx).
+				Where(qDataset.ID.Eq(existingDataset.ID)).
+				Update(qDataset.Describe, fmt.Sprintf("从 %s 下载的%s",
+					map[model.ModelSource]string{model.ModelSourceModelScope: "ModelScope", model.ModelSourceHuggingFace: "HuggingFace"}[download.Source],
+					resourceLabel))
+		}
+		klog.V(logVerboseLevelDebug).Infof("Dataset already exists for %s %s (dataset ID: %d)", resourceLabel, download.Name, existingDataset.ID)
 		return nil
 	}
 
 	// 将前端路径(如public/222/...)转换为物理路径(如sugon-gpu-incoming/222/...)用于存储访问
 	datasetURL := r.convertToPhysicalPath(download.Path)
 
+	// 根据来源格式化描述信息
+	var sourceLabel string
+	if download.Source == model.ModelSourceModelScope {
+		sourceLabel = "ModelScope"
+	} else {
+		sourceLabel = "HuggingFace"
+	}
+
 	// Create dataset record
 	dataset := &model.Dataset{
 		Name:     download.Name,
 		URL:      datasetURL,
-		Describe: fmt.Sprintf("从 %s 下载的模型", download.Source),
-		Type:     model.DataTypeModel,
+		Describe: fmt.Sprintf("从 %s 下载的%s", sourceLabel, resourceLabel),
+		Type:     dataType,
 		UserID:   download.CreatorID,
 		Extra: datatypes.NewJSONType(model.ExtraContent{
 			Tags:     []string{string(download.Source), "auto-download"},
@@ -420,7 +456,7 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 		// Don't fail if public association fails
 	}
 
-	klog.Infof("Created dataset for model %s (dataset ID: %d)", download.Name, dataset.ID)
+	klog.Infof("Created dataset for %s %s (dataset ID: %d)", resourceLabel, download.Name, dataset.ID)
 	return nil
 }
 

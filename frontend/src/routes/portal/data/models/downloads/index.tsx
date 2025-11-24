@@ -18,5 +18,5 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ModelDownloadsPage } from '@/components/model/model-downloads-page'
 
 export const Route = createFileRoute('/portal/data/models/downloads/')({
-  component: ModelDownloadsPage,
+  component: () => <ModelDownloadsPage category="model" />,
 })

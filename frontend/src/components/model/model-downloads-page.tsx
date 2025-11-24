@@ -74,14 +74,18 @@ const toolbarConfig = {
   getHeader,
 }
 
-export function ModelDownloadsPage() {
+interface ModelDownloadsPageProps {
+  category?: 'model' | 'dataset'
+}
+
+export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
   const queryClient = useQueryClient()
 
   const query = useQuery({
-    queryKey: ['model-downloads'],
+    queryKey: ['model-downloads', category],
     queryFn: async () => {
       try {
-        const res = await apiListModelDownloads()
+        const res = await apiListModelDownloads(category)
         return Array.isArray(res.data) ? res.data : []
       } catch (error) {
         logger.error('Failed to fetch model downloads:', error)
@@ -139,8 +143,12 @@ export function ModelDownloadsPage() {
     mutationFn: apiDeleteModelDownload,
     onSuccess: async () => {
       await refetchDownloads()
-      // 同时刷新模型列表
-      await queryClient.invalidateQueries({ queryKey: ['data', 'mydataset'] })
+      // 同时刷新对应的列表(模型或数据集)
+      if (category === 'dataset') {
+        await queryClient.invalidateQueries({ queryKey: ['data', 'dataset'] })
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ['data', 'model'] })
+      }
       toast.success('删除成功')
     },
     onError: (error: unknown) => {
@@ -299,13 +307,21 @@ export function ModelDownloadsPage() {
     [pauseDownload, resumeDownload, retryDownload, deleteDownload]
   )
 
+  const pageInfo =
+    category === 'dataset'
+      ? {
+          title: '数据集下载管理',
+          description: '查看和管理从 ModelScope 或 HuggingFace 下载的数据集',
+        }
+      : {
+          title: '模型下载管理',
+          description: '查看和管理从 ModelScope 或 HuggingFace 下载的模型',
+        }
+
   return (
     <DataTable
-      info={{
-        title: '模型下载管理',
-        description: '查看和管理从 ModelScope 或 HuggingFace 下载的模型',
-      }}
-      storageKey="model-downloads"
+      info={pageInfo}
+      storageKey={category === 'dataset' ? 'dataset-downloads' : 'model-downloads'}
       query={query}
       columns={columns}
       toolbarConfig={toolbarConfig}
@@ -326,13 +342,13 @@ export function ModelDownloadsPage() {
       ]}
     >
       <div className="flex flex-row gap-3">
-        <Link to="/portal/data/models">
+        <Link to={category === 'dataset' ? '/portal/data/datasets' : '/portal/data/models'}>
           <Button variant="outline" size="sm">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            返回模型列表
+            {category === 'dataset' ? '返回数据集列表' : '返回模型列表'}
           </Button>
         </Link>
-        <DocsButton title="查看文档" url="file/model" />
+        <DocsButton title="查看文档" url={category === 'dataset' ? 'file/dataset' : 'file/model'} />
       </div>
     </DataTable>
   )

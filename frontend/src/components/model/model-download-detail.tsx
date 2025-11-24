@@ -68,7 +68,7 @@ import { logger } from '@/utils/loglevel'
 
 export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
   useFixedLayout()
-  const { id } = useParams({ from: '/portal/data/models/downloads/$id' })
+  const { id } = useParams({ strict: false })
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -135,7 +135,12 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['modelDownloads'] })
       toast.success('删除成功')
-      navigate({ to: '/portal/data/models/downloads' })
+      // 根据 category 返回对应页面
+      const returnPath =
+        download?.category === 'dataset'
+          ? '/portal/data/datasets/downloads'
+          : '/portal/data/models/downloads'
+      navigate({ to: returnPath })
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
@@ -177,7 +182,14 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
           <div className="flex flex-row gap-3">
             <Button
               variant="outline"
-              onClick={() => navigate({ to: '/portal/data/models/downloads' })}
+              onClick={() =>
+                navigate({
+                  to:
+                    download.category === 'dataset'
+                      ? '/portal/data/datasets/downloads'
+                      : '/portal/data/models/downloads',
+                })
+              }
             >
               <ArrowLeft className="size-4" />
               返回列表

@@ -99,7 +99,7 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
       }),
     onSuccess: async (_, { datasetName }) => {
       await queryClient.invalidateQueries({
-        queryKey: ['data', 'mydataset'],
+        queryKey: ['data', type ?? 'dataset'],
       })
       toast.success(`${dataTypeLabel} ${datasetName} 创建成功`)
       closeSheet()

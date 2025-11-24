@@ -55,9 +55,13 @@ const formSchema = z.object({
 
 interface ModelDownloadDialogProps {
   closeSheet: () => void
+  defaultCategory?: 'model' | 'dataset'
 }
 
-export function ModelDownloadDialog({ closeSheet }: ModelDownloadDialogProps) {
+export function ModelDownloadDialog({
+  closeSheet,
+  defaultCategory = 'model',
+}: ModelDownloadDialogProps) {
   const queryClient = useQueryClient()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -66,7 +70,7 @@ export function ModelDownloadDialog({ closeSheet }: ModelDownloadDialogProps) {
       name: '',
       revision: '',
       source: 'modelscope',
-      category: 'model',
+      category: defaultCategory,
     },
   })
 
@@ -79,9 +83,11 @@ export function ModelDownloadDialog({ closeSheet }: ModelDownloadDialogProps) {
 
   const { mutate, status } = useMutation({
     mutationFn: (data: CreateModelDownloadReq) => apiCreateModelDownload(data),
-    onSuccess: (response) => {
-      // 如果后端返回了消息（如"资源已存在"），显示该消息；否则显示默认消息
-      const message = response.msg || '已提交模型下载任务'
+    onSuccess: (response, variables) => {
+      // 如果后端返回了消息（如"资源已存在"），显示该消息；否则根据类别显示默认消息
+      const defaultMessage =
+        variables.category === 'dataset' ? '已提交数据集下载任务' : '已提交模型下载任务'
+      const message = response.msg || defaultMessage
       toast.success(message)
       queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
       closeSheet()
@@ -142,27 +148,12 @@ export function ModelDownloadDialog({ closeSheet }: ModelDownloadDialogProps) {
             )}
           />
 
-          <FormField
-            name="category"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>类别</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择类别" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="model">模型</SelectItem>
-                    <SelectItem value="dataset">数据集</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-y-2">
+            <FormLabel>类别</FormLabel>
+            <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
+              {defaultCategory === 'dataset' ? '数据集' : '模型'}
+            </div>
+          </div>
 
           <FormField
             name="name"
