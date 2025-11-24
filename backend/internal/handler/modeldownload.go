@@ -721,7 +721,7 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: func() *int32 { i := int32(2); return &i }(),
+			BackoffLimit: func() *int32 { i := int32(0); return &i }(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -739,12 +739,12 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 							Args:    []string{downloadCmd},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("500m"),
-									corev1.ResourceMemory: resource.MustParse("1Gi"),
+									corev1.ResourceCPU:    resource.MustParse("1"),
+									corev1.ResourceMemory: resource.MustParse("2Gi"),
 								},
 								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("2"),
-									corev1.ResourceMemory: resource.MustParse("4Gi"),
+									corev1.ResourceCPU:    resource.MustParse("3"),
+									corev1.ResourceMemory: resource.MustParse("6Gi"),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
