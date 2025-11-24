@@ -130,18 +130,15 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
 
   const handleViewOrder = (order: ApprovalOrder) => {
     // 首先显示一个提示，确认点击被触发
-    toast.info(`正在跳转到作业: ${order.name}`)
-
-    // 既然普通用户只能看到自己作业的工单，那么所有工单都应该跳转到作业详情
-    const jobName = order.name
+    toast.info(`正在跳转到工单: ${order.name}`)
 
     try {
       if (isAdmin) {
         // 管理员跳转到管理员作业详情页面
-        navigate({ to: '/admin/jobs/$name', params: { name: jobName } })
+        navigate({ to: `admin/more/orders/${order.id}` })
       } else {
         // 普通用户跳转到门户作业详情页面
-        navigate({ to: '/portal/jobs/detail/$name', params: { name: jobName } })
+        navigate({ to: `/portal/more/orders/${order.id}` })
       }
     } catch (error) {
       toast.error(`导航错误: ${error}`)

@@ -20,7 +20,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { LinkIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -41,7 +40,7 @@ import { CopyButton } from '@/components/button/copy-button'
 
 import { type ApprovalOrder, listMyApprovalOrder } from '@/services/api/approvalorder'
 
-export const Route = createFileRoute('/portal/settings/orders/')({
+export const Route = createFileRoute('/portal/more/orders/')({
   component: RouteComponent,
 })
 
@@ -66,15 +65,10 @@ function RouteComponent() {
   })
 
   const handleViewOrder = (order: ApprovalOrder) => {
-    // 如果是作业类型的工单，跳转到作业详情页面
-    if (order.type === 'job') {
-      const jobName = order.name
-      toast.info(`正在跳转到作业: ${jobName}`)
-      navigate({ to: '/portal/jobs/detail/$name', params: { name: jobName } })
-    } else {
-      // 其他类型工单，显示待实现提示
-      toast.success('查看非作业类型工单功能待实现')
-    }
+    navigate({
+      to: '/portal/more/orders/$id',
+      params: { id: String(order.id) },
+    })
   }
 
   const handleGenerateLink = (order: ApprovalOrder) => {
@@ -85,7 +79,7 @@ function RouteComponent() {
   if (actionConfig.custom) {
     actionConfig.custom.push({
       key: 'generate-link',
-      label: '生成审批链接',
+      label: '复制审批链接',
       icon: <LinkIcon className="size-4" />,
       onClick: handleGenerateLink,
       disabled: (order) => order.status !== 'Pending',
@@ -95,7 +89,7 @@ function RouteComponent() {
     actionConfig.custom = [
       {
         key: 'generate-link',
-        label: '生成审批链接',
+        label: '复制审批链接',
         icon: <LinkIcon className="size-4" />,
         onClick: handleGenerateLink,
         disabled: (order) => order.status !== 'Pending',
@@ -148,10 +142,10 @@ function RouteComponent() {
             </DialogHeader>
             <div className="bg-muted/40 my-4 flex items-center justify-between space-x-2 rounded-lg p-3">
               <pre className="text-muted-foreground overflow-auto text-sm">
-                {`${window.location.origin}/admin/settings/orders/${urgentApprovalOrder.id}`}
+                {`${window.location.origin}/admin/more/orders/${urgentApprovalOrder.id}`}
               </pre>
               <CopyButton
-                content={`${window.location.origin}/admin/settings/orders/${urgentApprovalOrder.id}`}
+                content={`${window.location.origin}/admin/more/orders/${urgentApprovalOrder.id}`}
               />
             </div>
             <DialogFooter>

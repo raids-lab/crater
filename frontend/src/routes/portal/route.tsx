@@ -168,15 +168,15 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           items: [
             {
               title: t('navigation.userSettings'),
-              url: '/portal/settings/user',
+              url: '/portal/more/user',
             },
             {
               title: t('navigation.myOrders'),
-              url: '/portal/settings/orders',
+              url: '/portal/more/orders',
             },
             {
               title: t('navigation.aboutCrater'),
-              url: '/portal/settings/version',
+              url: '/portal/more/version',
             },
           ],
         },

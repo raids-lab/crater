@@ -219,10 +219,10 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
             </div>
             <div className="bg-muted/40 my-4 flex items-center justify-between space-x-2 rounded-lg p-3">
               <pre className="text-muted-foreground overflow-auto text-sm">
-                {`${window.location.origin}/admin/settings/orders/${newlyCreatedOrder.id}`}
+                {`${window.location.origin}/admin/more/orders/${newlyCreatedOrder.id}`}
               </pre>
               <CopyButton
-                content={`${window.location.origin}/admin/settings/orders/${newlyCreatedOrder.id}`}
+                content={`${window.location.origin}/admin/more/orders/${newlyCreatedOrder.id}`}
               />
             </div>
             <div className="flex justify-end">

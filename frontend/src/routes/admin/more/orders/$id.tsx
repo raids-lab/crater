@@ -22,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -49,7 +50,7 @@ import { DurationDialog } from '../../jobs/-components/duration-dialog'
 
 const DETAIL_QUERY_KEY = ['admin', 'approvalorder'] as const
 
-export const Route = createFileRoute('/admin/settings/orders/$id')({
+export const Route = createFileRoute('/admin/more/orders/$id')({
   component: RouteComponent,
   loader: async ({ params }) => ({ crumb: params.id }),
 })
@@ -250,20 +251,38 @@ function RouteComponent() {
             label: '详情',
             icon: FileText,
             children: (
-              <div className="space-y-4 p-4">
-                <div className="rounded-lg border p-4">
-                  <h3 className="mb-2 text-lg font-semibold">申请内容</h3>
-                  <p>申请原因: {order.content?.approvalorderReason}</p>
-                  {order.content?.approvalorderExtensionHours > 0 && (
-                    <p>延长时间: {order.content.approvalorderExtensionHours} 小时</p>
-                  )}
-                </div>
-                {order.reviewNotes && order.reviewNotes.trim() && (
-                  <div className="rounded-lg border p-4">
-                    <h3 className="mb-2 text-lg font-semibold">审核备注</h3>
-                    <p>{order.reviewNotes}</p>
-                  </div>
-                )}
+              <div className="grid gap-4 p-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">申请内容</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-muted-foreground text-sm">申请原因</span>
+                      <p className="font-medium">{order.content?.approvalorderReason || '-'}</p>
+                    </div>
+                    {order.content?.approvalorderExtensionHours > 0 && (
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="text-muted-foreground text-sm">延长时间</span>
+                        <span className="font-medium">
+                          {order.content.approvalorderExtensionHours} 小时
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">审核信息</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-muted-foreground text-sm">审核备注</span>
+                      <p className="text-sm">{order.reviewNotes || '暂无备注'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             ),
           },

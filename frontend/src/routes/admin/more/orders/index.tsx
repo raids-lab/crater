@@ -55,7 +55,7 @@ import { atomUserInfo } from '@/utils/store'
 
 import { DurationDialog } from '../../jobs/-components/duration-dialog'
 
-export const Route = createFileRoute('/admin/settings/orders/')({
+export const Route = createFileRoute('/admin/more/orders/')({
   component: RouteComponent,
 })
 export const getHeader = (key: string): string => {

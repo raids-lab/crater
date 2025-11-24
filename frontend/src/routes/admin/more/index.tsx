@@ -46,7 +46,7 @@ import WarningAlert from '@/components/custom/warning-alert'
 
 import { globalSettings } from '@/utils/store'
 
-export const Route = createFileRoute('/admin/settings/')({
+export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
   loader: () => ({ crumb: t('navigation.platformSettings') }),
 })

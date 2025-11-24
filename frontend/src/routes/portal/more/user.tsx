@@ -88,7 +88,7 @@ function getFormSchema(t: (key: string) => string) {
   })
 }
 
-export const Route = createFileRoute('/portal/settings/user')({
+export const Route = createFileRoute('/portal/more/user')({
   component: RouteComponent,
 })
 
