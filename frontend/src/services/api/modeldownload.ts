@@ -43,8 +43,11 @@ export interface ModelDownload {
 export const apiCreateModelDownload = (data: CreateModelDownloadReq) =>
   apiV1Post<IResponse<ModelDownload>>('model-download/models/download', data)
 
-export const apiListModelDownloads = () =>
-  apiV1Get<IResponse<ModelDownload[]>>('model-download/models/downloads')
+export const apiListModelDownloads = (category?: 'model' | 'dataset') =>
+  apiV1Get<IResponse<ModelDownload[]>>(
+    'model-download/models/downloads',
+    category ? { searchParams: { category } } : undefined
+  )
 
 export const apiGetModelDownload = (id: number) =>
   apiV1Get<IResponse<ModelDownload>>(`model-download/models/downloads/${id}`)

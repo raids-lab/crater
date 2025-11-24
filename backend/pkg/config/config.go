@@ -131,6 +131,14 @@ type Config struct {
 		ImagePullSecretName string `json:"imagePullSecretName"`
 	}
 
+	// ModelDownload contains configurations for model download functionality.
+	// Optional: If not specified, default values will be used.
+	ModelDownload struct {
+		// Image is the container image used for model download jobs.
+		// Optional: Defaults to "crater-harbor.act.buaa.edu.cn/docker.io/python:3.11-slim" if not specified.
+		Image string `json:"image"`
+	} `json:"modelDownload"`
+
 	// Registry contains container registry configuration for image storage and building.
 	// Optional: If Enable is false, registry functionality will be disabled.
 	Registry struct {
@@ -474,6 +482,13 @@ func (c *Config) PrintConfig() {
 	}
 	klog.Infof("Storage Prefixes: User=%s, Account=%s, Public=%s",
 		c.Storage.Prefix.User, c.Storage.Prefix.Account, c.Storage.Prefix.Public)
+
+	// Model Download
+	if c.ModelDownload.Image != "" {
+		klog.Infof("Model Download Image: %s", c.ModelDownload.Image)
+	} else {
+		klog.Info("Model Download Image: <default: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim>")
+	}
 
 	// Secrets
 	klog.Infof("TLS Secrets: %s, %s", c.Secrets.TLSSecretName, c.Secrets.TLSForwardSecretName)
