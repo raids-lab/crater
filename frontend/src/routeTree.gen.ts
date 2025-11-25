@@ -19,6 +19,7 @@ import { Route as PortalUsersRouteRouteImport } from './routes/portal/users/rout
 import { Route as PortalTemplatesRouteRouteImport } from './routes/portal/templates/route'
 import { Route as PortalOverviewRouteRouteImport } from './routes/portal/overview/route'
 import { Route as PortalMoreRouteRouteImport } from './routes/portal/more/route'
+import { Route as PortalMoreRouteRouteImport } from './routes/portal/more/route'
 import { Route as PortalAccountRouteRouteImport } from './routes/portal/account/route'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
 import { Route as AdminJobsRouteRouteImport } from './routes/admin/jobs/route'
@@ -28,6 +29,7 @@ import { Route as PortalUsersIndexRouteImport } from './routes/portal/users/inde
 import { Route as PortalTemplatesIndexRouteImport } from './routes/portal/templates/index'
 import { Route as PortalOverviewIndexRouteImport } from './routes/portal/overview/index'
 import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
+import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminMoreIndexRouteImport } from './routes/admin/more/index'
 import { Route as AdminJobsIndexRouteImport } from './routes/admin/jobs/index'
@@ -36,6 +38,8 @@ import { Route as AdminCronjobsIndexRouteImport } from './routes/admin/cronjobs/
 import { Route as AdminAccountsIndexRouteImport } from './routes/admin/accounts/index'
 import { Route as PortalUsersNameRouteImport } from './routes/portal/users/$name'
 import { Route as PortalOverviewNodeRouteImport } from './routes/portal/overview/$node'
+import { Route as PortalMoreVersionRouteImport } from './routes/portal/more/version'
+import { Route as PortalMoreUserRouteImport } from './routes/portal/more/user'
 import { Route as PortalMoreVersionRouteImport } from './routes/portal/more/version'
 import { Route as PortalMoreUserRouteImport } from './routes/portal/more/user'
 import { Route as PortalMonitorNetworkRouteImport } from './routes/portal/monitor/network'
@@ -633,7 +637,7 @@ export interface FileRoutesByFullPath {
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
   '/portal/more/orders/': typeof PortalMoreOrdersIndexRoute
-  '/portal/settings/orders/': typeof PortalSettingsOrdersIndexRoute
+  '/portal/more/orders/': typeof PortalMoreOrdersIndexRoute
   '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
   '/portal/data/datasets/downloads': typeof PortalDataDatasetsDownloadsIndexRoute
@@ -705,7 +709,7 @@ export interface FileRoutesByTo {
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
   '/portal/more/orders': typeof PortalMoreOrdersIndexRoute
-  '/portal/settings/orders': typeof PortalSettingsOrdersIndexRoute
+  '/portal/more/orders': typeof PortalMoreOrdersIndexRoute
   '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
   '/portal/data/datasets/downloads': typeof PortalDataDatasetsDownloadsIndexRoute
@@ -797,7 +801,7 @@ export interface FileRoutesById {
   '/portal/jobs/custom/': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter/': typeof PortalJobsInterIndexRoute
   '/portal/more/orders/': typeof PortalMoreOrdersIndexRoute
-  '/portal/settings/orders/': typeof PortalSettingsOrdersIndexRoute
+  '/portal/more/orders/': typeof PortalMoreOrdersIndexRoute
   '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
   '/portal/data/datasets/downloads/': typeof PortalDataDatasetsDownloadsIndexRoute
@@ -890,7 +894,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/custom'
     | '/portal/jobs/inter'
     | '/portal/more/orders/'
-    | '/portal/settings/orders/'
+    | '/portal/more/orders/'
     | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
     | '/portal/data/datasets/downloads'
@@ -962,7 +966,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/custom'
     | '/portal/jobs/inter'
     | '/portal/more/orders'
-    | '/portal/settings/orders'
+    | '/portal/more/orders'
     | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
     | '/portal/data/datasets/downloads'
@@ -1053,7 +1057,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/custom/'
     | '/portal/jobs/inter/'
     | '/portal/more/orders/'
-    | '/portal/settings/orders/'
+    | '/portal/more/orders/'
     | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
     | '/portal/data/datasets/downloads/'

@@ -135,10 +135,10 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
     try {
       if (isAdmin) {
         // 管理员跳转到管理员作业详情页面
-        navigate({ to: `admin/more/orders/${order.id}` })
+        navigate({ to: '/admin/more/orders/$id', params: { id: String(order.id) } })
       } else {
         // 普通用户跳转到门户作业详情页面
-        navigate({ to: `/portal/more/orders/${order.id}` })
+        navigate({ to: '/portal/more/orders/$id', params: { id: String(order.id) } })
       }
     } catch (error) {
       toast.error(`导航错误: ${error}`)
