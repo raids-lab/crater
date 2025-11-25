@@ -18,7 +18,7 @@ import { t } from 'i18next'
 
 import VersionPage from '@/components/version/VersionPage'
 
-export const Route = createFileRoute('/portal/settings/version')({
+export const Route = createFileRoute('/admin/more/version')({
   component: RouteComponent,
   loader: () => {
     return {

@@ -1,11 +1,11 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 
-export const Route = createFileRoute('/portal/settings')({
+export const Route = createFileRoute('/portal/more/orders')({
   component: RouteComponent,
   loader: () => {
     return {
-      crumb: t('navigation.userSettings'),
+      crumb: t('navigation.approvalOrder'),
     }
   },
 })

@@ -1,7 +1,7 @@
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 
-export const Route = createFileRoute('/portal/settings/orders')({
+export const Route = createFileRoute('/admin/more/orders')({
   component: RouteComponent,
   loader: () => {
     return {

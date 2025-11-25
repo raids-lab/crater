@@ -141,16 +141,16 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
         {
           title: t('navigation.platformSettings'),
           icon: SettingsIcon,
-          url: '/admin/settings',
+          url: '/admin/more',
         },
         {
           title: t('navigation.approvalOrder'),
-          url: '/admin/settings/orders',
+          url: '/admin/more/orders',
           icon: ClipboardCheckIcon,
         },
         {
           title: t('navigation.aboutCrater'),
-          url: '/admin/settings/version',
+          url: '/admin/more/version',
           icon: SettingsIcon,
         },
       ],

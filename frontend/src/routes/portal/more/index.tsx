@@ -1,6 +1,6 @@
 import { Navigate, createFileRoute } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/portal/settings/')({
+export const Route = createFileRoute('/portal/more/')({
   component: RouteComponent,
 })
 

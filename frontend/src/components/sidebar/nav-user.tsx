@@ -143,7 +143,7 @@ export function NavUser() {
             )}
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link to="/portal/settings/user">
+                <Link to="/portal/more/user">
                   <BadgeCheck />
                   {t('navUser.personalPage')}
                 </Link>

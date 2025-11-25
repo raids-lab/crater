@@ -137,7 +137,7 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <SandwichLayout footer={<Button type="submit">提交数据集</Button>}>
+        <SandwichLayout footer={<Button type="submit">提交{dataTypeLabel}</Button>}>
           <FormField
             control={form.control}
             name="datasetName"
