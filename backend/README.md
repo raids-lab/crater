@@ -35,10 +35,30 @@ Crater Backend 是 Crater 的子系统，包含作业提交、作业生命周期
 
 建议安装以下软件及其推荐版本。
 
-- **Go**: 推荐版本 `v1.24.4` 及以上：[Go 安装指南](https://go.dev/doc/install)
-- **Kubectl**: 推荐版本 `v1.33` 及以上：[Kubectl 安装指南](https://kubernetes.io/docs/tasks/tools/)
+- **gvm**: 非必需，推荐版本 `v1.0.22`: [gvm - GitHub](https://github.com/moovweb/gvm)
+- **Kubectl**: 必需，推荐版本 `v1.33`: [Kubectl 安装指南](https://kubernetes.io/docs/tasks/tools/)
 
-接下来，您可能设置环境变量，以保证通过 `go install` 安装的程序可以直接运行。
+gvm 用于方便快捷地安装多个 Go 版本，并在它们之间灵活切换。使用 gvm 能够让您快速安装 Crater 所使用的 Go，并在 Go 版本升级时快速切换。
+
+您可以使用以下命令安装 gvm：
+
+```bash
+# Linux/macOS
+bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+```
+
+在 gvm 安装成功后，您可以在后端目录（即 `go.mod` 所在的目录）中使用如下命令快速安装对应的 Go 版本。
+
+```bash
+# Linux/macOS
+gvm applymod
+```
+
+当然，您也可以不使用 gvm，而是直接安装 Go。
+
+- **Go**: 推荐版本 `v1.25.4`: [Go 安装指南](https://go.dev/doc/install)
+
+这种情况下，您可能还需要设置环境变量，以保证通过 `go install` 安装的程序可以直接运行。
 
 ```bash
 # Linux/macOS
@@ -52,7 +72,7 @@ export PATH=$PATH:$GOROOT/bin
 
 你可以将这些内容添加到你的 shell 配置文件中，例如 `.zshrc`。
 
-您可能还需要配置 Go 代理，可以通过运行单条命令来设置，而无需添加到 shell 配置中。
+无论您以何种方式安装 Go，您可能还需要配置 Go 代理，可以通过运行单条命令来设置，而无需添加到 shell 配置中。
 
 ```bash
 go env -w GOPROXY=https://goproxy.cn,direct
@@ -152,7 +172,8 @@ Git Hooks
   pre-commit          Install git pre-commit hook.
 ```
 
-### 🛠️ 数据库代码生成（如果需要）
+## 🛠️ 数据库代码生成（如果需要）
+
 项目使用 GORM Gen 为数据库 CRUD 操作生成样板代码。使用 Go Migrate 为对象生成数据库表。
 
 生成脚本和文档可以在以下位置找到：[`gorm_gen`](./cmd/gorm-gen/README.md)
@@ -161,7 +182,7 @@ Git Hooks
 
 如果您是通过 Helm 安装的 Crater，部署新版本后将自动进行数据库迁移，相关的逻辑可以在 InitContainer 中找到。
 
-### 🐞 使用 VSCode 调试（如果需要）
+## 🐞 使用 VSCode 调试（如果需要）
 
 你可以通过按 F5（启动调试）使用 VSCode 在调试模式下启动后端。你可以设置断点并交互式地单步执行代码。
 
