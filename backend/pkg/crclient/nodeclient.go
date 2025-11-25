@@ -416,6 +416,111 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 	return pods, nil
 }
 
+// detectGPUCountFromAllocatable 从节点的 Allocatable 资源中检测 GPU 数量
+func detectGPUCountFromAllocatable(node *corev1.Node) int {
+	// 优先从 Allocatable 获取 GPU 数量
+	if quantity, ok := node.Status.Allocatable["nvidia.com/gpu"]; ok {
+		return int(quantity.Value())
+	}
+
+	// 如果没找到，尝试遍历 Allocatable 寻找其他加速卡资源 (如 MIG, AMD, Hygon 等)
+	for resName, quantity := range node.Status.Allocatable {
+		name := string(resName)
+		if strings.HasPrefix(name, "nvidia.com/") ||
+			strings.HasPrefix(name, "amd.com/") ||
+			strings.HasPrefix(name, "hygon.com/") {
+			val := int(quantity.Value())
+			if val > 0 {
+				return val // 找到一个即停止，假设一个节点主要使用一种加速卡
+			}
+		}
+	}
+	return 0
+}
+
+// populateGPUInfoFromLabels 从节点标签填充 GPU 信息
+func populateGPUInfoFromLabels(gpuInfo *GPUInfo, node *corev1.Node) error {
+	gpuCountValue, ok := node.Labels["nvidia.com/gpu.count"]
+	if !ok {
+		return nil
+	}
+
+	// 如果 Allocatable 中没有找到 GPU 数量，则尝试从标签中获取
+	if gpuInfo.GPUCount == 0 {
+		gpuCount := 0
+		_, err := fmt.Sscanf(gpuCountValue, "%d", &gpuCount)
+		if err != nil {
+			return err
+		}
+		gpuInfo.GPUCount = gpuCount
+		if gpuInfo.GPUCount > 0 {
+			gpuInfo.HaveGPU = true
+		}
+	}
+
+	gpuInfo.GPUMemory = node.Labels["nvidia.com/gpu.memory"]
+	gpuInfo.GPUArch = node.Labels["nvidia.com/gpu.family"]
+	gpuInfo.GPUDriver = node.Labels["nvidia.com/cuda.driver-version.full"]
+	gpuInfo.CudaVersion = node.Labels["nvidia.com/cuda.runtime-version.full"]
+	gpuInfo.GPUProduct = node.Labels["nvidia.com/gpu.product"]
+	return nil
+}
+
+// populateGPUUtilFromPrometheus 从 Prometheus 查询填充 GPU 使用率和 Job 关联
+func (nc *NodeClient) populateGPUUtilFromPrometheus(gpuInfo *GPUInfo, nodeName string) {
+	jobPodsList := nc.PrometheusClient.GetJobPodsList()
+	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
+	for i := 0; i < len(gpuUtilMap); i++ {
+		gpuUtil := &gpuUtilMap[i]
+		if gpuUtil.Hostname != nodeName {
+			continue
+		}
+		gpuInfo.GPUUtil[gpuUtil.Gpu] = gpuUtil.Util
+		// 如果gpuUtil.pod在jobPodsList的value中，则将jobPodsList中的job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
+		curPod := gpuUtil.Pod
+		for job, pods := range jobPodsList {
+			for _, pod := range pods {
+				if curPod == pod {
+					gpuInfo.RelateJobs[gpuUtil.Gpu] = append(gpuInfo.RelateJobs[gpuUtil.Gpu], job)
+					break
+				}
+			}
+		}
+	}
+}
+
+// calculateTotalUsedGPU 计算节点上所有 Pods 使用的 GPU 资源总量
+func calculateTotalUsedGPU(podList *corev1.PodList) int {
+	totalUsedGPU := 0
+	for j := range podList.Items {
+		pod := &podList.Items[j]
+		podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
+		for resName, quantity := range podResources {
+			resNameStr := string(resName)
+			if strings.HasPrefix(resNameStr, "nvidia.com/") ||
+				strings.HasPrefix(resNameStr, "amd.com/") ||
+				strings.HasPrefix(resNameStr, "hygon.com/") {
+				totalUsedGPU += int(quantity.Value())
+			}
+		}
+	}
+	return totalUsedGPU
+}
+
+// markK8sAllocatedGPUs 标记从 Kubernetes 分配但没有 Job 关联的 GPU
+func markK8sAllocatedGPUs(gpuInfo *GPUInfo, totalUsedGPU int) {
+	if totalUsedGPU <= 0 || gpuInfo.GPUCount <= 0 {
+		return
+	}
+	for i := 0; i < totalUsedGPU && i < gpuInfo.GPUCount; i++ {
+		gpuId := fmt.Sprintf("%d", i)
+		// 如果该GPU没有Job关联，添加特殊标记表示已从Kubernetes分配
+		if jobs, exists := gpuInfo.RelateJobs[gpuId]; !exists || len(jobs) == 0 {
+			gpuInfo.RelateJobs[gpuId] = []string{"__k8s_allocated__"}
+		}
+	}
+}
+
 func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 	var nodes corev1.NodeList
 
@@ -438,51 +543,38 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 		GPUProduct:  "",
 	}
 
-	// 首先查询当前节点是否有GPU
+	// 查找目标节点并填充 GPU 信息
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
 		if node.Name != name {
 			continue
 		}
-		gpuCountValue, ok := node.Labels["nvidia.com/gpu.count"]
-		if ok {
-			gpuCount := 0
-			_, err := fmt.Sscanf(gpuCountValue, "%d", &gpuCount)
-			if err != nil {
-				return GPUInfo{}, err
-			}
-			gpuInfo.GPUCount = gpuCount
+
+		// 从 Allocatable 检测 GPU 数量
+		gpuInfo.GPUCount = detectGPUCountFromAllocatable(node)
+		if gpuInfo.GPUCount > 0 {
 			gpuInfo.HaveGPU = true
-			gpuInfo.GPUMemory = node.Labels["nvidia.com/gpu.memory"]
-			gpuInfo.GPUArch = node.Labels["nvidia.com/gpu.family"]
-			gpuInfo.GPUDriver = node.Labels["nvidia.com/cuda.driver-version.full"]
-			gpuInfo.CudaVersion = node.Labels["nvidia.com/cuda.runtime-version.full"]
-			gpuInfo.GPUProduct = node.Labels["nvidia.com/gpu.product"]
-			break
 		}
+
+		// 从标签填充 GPU 信息
+		if err := populateGPUInfoFromLabels(&gpuInfo, node); err != nil {
+			return GPUInfo{}, err
+		}
+		break
 	}
 
-	// 使用PrometheusClient查询当前节点上的GPU使用率
-	jobPodsList := nc.PrometheusClient.GetJobPodsList()
-	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
-	for i := 0; i < len(gpuUtilMap); i++ {
-		gpuUtil := &gpuUtilMap[i]
-		if gpuUtil.Hostname == name {
-			gpuInfo.GPUUtil[gpuUtil.Gpu] = gpuUtil.Util
-			// 如果gpuUtil.pod在jobPodsList的value中，则将jobPodsList中的job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
-			curPod := gpuUtil.Pod
-			for job, pods := range jobPodsList {
-				// 确认curPod是否在pods中
-				for _, pod := range pods {
-					if curPod == pod {
-						// 将job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
-						gpuInfo.RelateJobs[gpuUtil.Gpu] = append(gpuInfo.RelateJobs[gpuUtil.Gpu], job)
-						break
-					}
-				}
-			}
-		}
+	// 从 Prometheus 查询 GPU 使用率和 Job 关联
+	nc.populateGPUUtilFromPrometheus(&gpuInfo, name)
+
+	// 获取节点上的所有 Pods，计算实际使用的 GPU 资源
+	podList := &corev1.PodList{}
+	if err := nc.List(context.Background(), podList, indexer.MatchingPodsByNodeName(name)); err != nil {
+		klog.Errorf("Failed to get pods for node %s: %v", name, err)
+	} else {
+		totalUsedGPU := calculateTotalUsedGPU(podList)
+		markK8sAllocatedGPUs(&gpuInfo, totalUsedGPU)
 	}
+
 	return gpuInfo, nil
 }
 
