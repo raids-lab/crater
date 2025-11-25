@@ -22,7 +22,7 @@ on:
       - ".github/workflows/storage-pr.yml"
 
 env:
-  GOLANGCI_LINT_VERSION: v2.2.1
+  GOLANGCI_LINT_VERSION: v2.6.2
 
 jobs:
   storage-lint-check:

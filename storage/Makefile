@@ -34,14 +34,25 @@ clean:
 .PHONY: pre-commit-check
 pre-commit-check: ## Run pre-commit checks (golangci-lint).
 	@echo "Checking if golangci-lint is available..."
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
-		echo "❌ Error: golangci-lint is not installed or not in PATH"; \
-		echo "   Please install golangci-lint: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0"; \
+	@GOLANGCI_LINT=""; \
+	if [ -f "../backend/bin/golangci-lint" ]; then \
+		GOLANGCI_LINT="../backend/bin/golangci-lint"; \
+		echo "Using golangci-lint from backend repository: $$GOLANGCI_LINT"; \
+	elif command -v golangci-lint >/dev/null 2>&1; then \
+		GOLANGCI_LINT="golangci-lint"; \
+		echo "Using golangci-lint from system PATH"; \
+	fi; \
+	if [ -z "$$GOLANGCI_LINT" ]; then \
+		echo "❌ Error: golangci-lint is not found"; \
+		echo ""; \
+		echo "Please install golangci-lint using one of the following methods:"; \
+		echo "  1. Install in backend repository: cd ../backend && make golangci-lint"; \
+		echo "  2. Install locally (see storage/README.md for details) (not recommended):"; \
 		exit 1; \
-	fi
-	@echo "Running golangci-lint..."
-	@if ! golangci-lint run --fix; then \
+	fi; \
+	echo "Running golangci-lint..."; \
+	if ! $$GOLANGCI_LINT run --fix; then \
 		echo "❌ Storage lint failed!"; \
 		exit 1; \
-	fi
-	@echo "✅ Storage checks passed!"
+	fi; \
+	echo "✅ Storage checks passed!"
