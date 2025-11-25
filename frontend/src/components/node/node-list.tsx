@@ -47,6 +47,47 @@ export interface ResourceUsageInfo {
   acceleratorName?: string
 }
 
+// 多GPU类型信息接口
+export interface MultiGPUInfo {
+  acceleratorName: string
+  usagePercent: number
+  displayValue: string
+}
+
+// 从节点中提取所有GPU类型的辅助函数
+export function extractAllGPUTypes(
+  allocatable?: V1ResourceList,
+  used?: V1ResourceList,
+  accelerators?: string[]
+): MultiGPUInfo[] {
+  if (!accelerators || !allocatable) {
+    return []
+  }
+
+  const gpuInfoList: MultiGPUInfo[] = []
+
+  for (const accelerator of accelerators) {
+    const allocatableValue = allocatable[accelerator]
+    if (allocatableValue && allocatableValue !== '0') {
+      const usedValue = convertKResourceToResource('accelerator', used?.[accelerator] || '0') || 0
+      const allocValue = convertKResourceToResource('accelerator', allocatableValue) || 0
+
+      if (allocValue > 0) {
+        const usagePercent = (usedValue / allocValue) * 100
+        const displayValue = `${betterResourceQuantity('accelerator', usedValue)}/${betterResourceQuantity('accelerator', allocValue, true)}`
+
+        gpuInfoList.push({
+          acceleratorName: accelerator,
+          usagePercent,
+          displayValue,
+        })
+      }
+    }
+  }
+
+  return gpuInfoList
+}
+
 // 计算资源使用情况的帮助函数
 export function calculateResourceUsage(
   resourceKey: 'cpu' | 'memory' | 'accelerator',
@@ -168,6 +209,61 @@ export const UsageCell: FC<{
       </p>
       <ProgressBar percent={usagePercent} className="h-1 w-full" />
       <p className="text-muted-foreground pt-1 font-mono text-xs">{displayValue}</p>
+    </div>
+  )
+}
+
+// 多GPU使用率显示组件
+export const MultiGPUUsageCell: FC<{
+  used?: V1ResourceList
+  allocatable?: V1ResourceList
+  accelerators?: string[]
+}> = ({ used, allocatable, accelerators }) => {
+  const gpuInfoList = useMemo(() => {
+    return extractAllGPUTypes(allocatable, used, accelerators)
+  }, [accelerators, allocatable, used])
+
+  if (gpuInfoList.length === 0) {
+    return <></>
+  }
+
+  return (
+    <div className="flex flex-col items-start justify-center gap-2">
+      {gpuInfoList.map((gpuInfo, index) => (
+        <div key={index} className="w-20">
+          <p className={progressTextColor(gpuInfo.usagePercent)}>
+            {gpuInfo.usagePercent.toFixed(1)}
+            <span className="ml-0.5">%</span>
+          </p>
+          <ProgressBar percent={gpuInfo.usagePercent} className="h-1 w-full" />
+          <p className="text-muted-foreground pt-1 font-mono text-xs">{gpuInfo.displayValue}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// 多GPU型号显示组件 - 与使用率行对应
+export const MultiGPUModelCell: FC<{
+  used?: V1ResourceList
+  allocatable?: V1ResourceList
+  accelerators?: string[]
+}> = ({ used, allocatable, accelerators }) => {
+  const gpuInfoList = useMemo(() => {
+    return extractAllGPUTypes(allocatable, used, accelerators)
+  }, [accelerators, allocatable, used])
+
+  if (gpuInfoList.length === 0) {
+    return <></>
+  }
+
+  return (
+    <div className="flex flex-col items-start justify-center gap-2">
+      {gpuInfoList.map((gpuInfo, index) => (
+        <div key={index} className="flex h-[52px] items-center">
+          <AcceleratorBadge acceleratorString={gpuInfo.acceleratorName} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -440,53 +536,51 @@ export const getNodeColumns = (
       accessorKey: 'accelerator',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'加速卡'} />,
       cell: ({ row }) => (
-        <UsageCell
+        <MultiGPUUsageCell
           used={row.original.used}
           allocatable={row.original.allocatable}
-          capacity={row.original.capacity}
-          resourceKey="accelerator"
           accelerators={accelerators}
         />
       ),
       sortingFn: (rowA, rowB) => {
-        const a = getResourceUsagePercent(
-          'accelerator',
-          rowA.original.used,
+        // 对于多GPU节点，使用平均使用率进行排序
+        const gpuListA = extractAllGPUTypes(
           rowA.original.allocatable,
+          rowA.original.used,
           accelerators
         )
-        const b = getResourceUsagePercent(
-          'accelerator',
-          rowB.original.used,
+        const gpuListB = extractAllGPUTypes(
           rowB.original.allocatable,
+          rowB.original.used,
           accelerators
         )
-        return a - b
+
+        const avgA =
+          gpuListA.length > 0
+            ? gpuListA.reduce((sum, gpu) => sum + gpu.usagePercent, 0) / gpuListA.length
+            : 0
+        const avgB =
+          gpuListB.length > 0
+            ? gpuListB.reduce((sum, gpu) => sum + gpu.usagePercent, 0) / gpuListB.length
+            : 0
+
+        return avgA - avgB
       },
     },
     {
       accessorKey: 'acceleratorModel',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'加速卡型号'} />,
-      cell: ({ row }) => {
-        const usageInfo = calculateResourceUsage(
-          'accelerator',
-          row.original.used,
-          row.original.allocatable,
-          accelerators
-        )
-        if (!usageInfo.acceleratorName) {
-          return <></>
-        }
-        return <AcceleratorBadge acceleratorString={usageInfo.acceleratorName} />
-      },
+      cell: ({ row }) => (
+        <MultiGPUModelCell
+          used={row.original.used}
+          allocatable={row.original.allocatable}
+          accelerators={accelerators}
+        />
+      ),
       accessorFn: (row) => {
-        const usageInfo = calculateResourceUsage(
-          'accelerator',
-          row.used,
-          row.allocatable,
-          accelerators
-        )
-        return usageInfo.acceleratorName
+        const gpuInfoList = extractAllGPUTypes(row.allocatable, row.used, accelerators)
+        // 返回所有GPU类型，用逗号分隔，用于搜索和筛选
+        return gpuInfoList.map((info) => info.acceleratorName).join(',')
       },
       enableSorting: true,
     },
