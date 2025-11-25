@@ -418,20 +418,24 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 
 // detectGPUCountFromAllocatable 从节点的 Allocatable 资源中检测 GPU 数量
 func detectGPUCountFromAllocatable(node *corev1.Node) int {
-	// 优先从 Allocatable 获取 GPU 数量
-	if quantity, ok := node.Status.Allocatable["nvidia.com/gpu"]; ok {
-		return int(quantity.Value())
-	}
-
-	// 如果没找到，尝试遍历 Allocatable 寻找其他加速卡资源 (如 MIG, AMD, Hygon 等)
 	for resName, quantity := range node.Status.Allocatable {
-		name := string(resName)
-		if strings.HasPrefix(name, "nvidia.com/") ||
-			strings.HasPrefix(name, "amd.com/") ||
-			strings.HasPrefix(name, "hygon.com/") {
+		resourceName := string(resName)
+		split := strings.Split(resourceName, "/")
+		var vendorDomain string
+		var resourceType string
+		if len(split) == 2 {
+			vendorDomain = split[0] // 如 "nvidia.com"
+			resourceType = split[1] // 如 "gpu"
+		} else {
+			vendorDomain = ""
+			resourceType = split[0]
+		}
+
+		// 目前只检测 NVIDIA 的 GPU 资源
+		if vendorDomain == "nvidia.com" && resourceType == "gpu" {
 			val := int(quantity.Value())
 			if val > 0 {
-				return val // 找到一个即停止，假设一个节点主要使用一种加速卡
+				return val
 			}
 		}
 	}
