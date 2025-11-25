@@ -74,6 +74,7 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
   const [openDownloadSheet, setOpenDownloadSheet] = useState(false)
 
   const filteredData = data.data?.filter((dataset) => dataset.type === sourceType) || []
+  const isShareFile = sourceType === 'sharefile'
 
   return (
     <DataList
@@ -114,44 +115,53 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
       }}
       actionArea={
         <div className="flex flex-row gap-3">
-          <Link
-            to={
-              sourceType === 'model'
-                ? '/portal/data/models/downloads'
-                : '/portal/data/datasets/downloads'
-            }
-          >
-            <Button variant="outline" className="min-w-fit">
-              <DownloadIcon className="size-4" />
-              查看下载记录
-            </Button>
-          </Link>
+          {!isShareFile && (
+            <Link
+              to={
+                sourceType === 'model'
+                  ? '/portal/data/models/downloads'
+                  : '/portal/data/datasets/downloads'
+              }
+            >
+              <Button variant="outline" className="min-w-fit">
+                <DownloadIcon className="size-4" />
+                查看下载记录
+              </Button>
+            </Link>
+          )}
           <DocsButton
             title={t('dataView.docsButtonTitle', { sourceTitle })}
             url={`file/${sourceType}`}
           />
-          <ListedButton
-            icon={<PlusIcon />}
-            renderTitle={(title) => title || t('dataView.addButton', { sourceTitle })}
-            itemTitle="操作"
-            cacheKey={`${sourceType}-action`}
-            items={[
-              {
-                key: 'download',
-                title: sourceType === 'model' ? '下载模型' : '下载数据集',
-                action: () => {
-                  setOpenDownloadSheet(true)
+          {isShareFile ? (
+            <Button onClick={() => setOpenSheet(true)}>
+              <PlusIcon className="size-4" />
+              {t('dataView.addButton', { sourceTitle })}
+            </Button>
+          ) : (
+            <ListedButton
+              icon={<PlusIcon />}
+              renderTitle={(title) => title || t('dataView.addButton', { sourceTitle })}
+              itemTitle="操作"
+              cacheKey={`${sourceType}-action`}
+              items={[
+                {
+                  key: 'download',
+                  title: sourceType === 'model' ? '下载模型' : '下载数据集',
+                  action: () => {
+                    setOpenDownloadSheet(true)
+                  },
                 },
-              },
-              {
-                key: 'add',
-                title: t('dataView.addButton', { sourceTitle }),
-                action: () => {
-                  setOpenSheet(true)
+                {
+                  key: 'add',
+                  title: t('dataView.addButton', { sourceTitle }),
+                  action: () => {
+                    setOpenSheet(true)
+                  },
                 },
-              },
-            ]}
-          />
+              ]}
+            />
+          )}
           <SandwichSheet
             isOpen={openSheet}
             onOpenChange={setOpenSheet}
@@ -161,22 +171,24 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
           >
             <DataCreateForm closeSheet={() => setOpenSheet(false)} type={sourceType} />
           </SandwichSheet>
-          <SandwichSheet
-            isOpen={openDownloadSheet}
-            onOpenChange={setOpenDownloadSheet}
-            title={sourceType === 'model' ? '下载模型' : '下载数据集'}
-            description={
-              sourceType === 'model'
-                ? '从 ModelScope 或 HuggingFace 下载模型到您的文件系统'
-                : '从 ModelScope 或 HuggingFace 下载数据集到您的文件系统'
-            }
-            className="sm:max-w-3xl"
-          >
-            <ModelDownloadDialog
-              closeSheet={() => setOpenDownloadSheet(false)}
-              defaultCategory={sourceType as 'model' | 'dataset'}
-            />
-          </SandwichSheet>
+          {!isShareFile && (
+            <SandwichSheet
+              isOpen={openDownloadSheet}
+              onOpenChange={setOpenDownloadSheet}
+              title={sourceType === 'model' ? '下载模型' : '下载数据集'}
+              description={
+                sourceType === 'model'
+                  ? '从 ModelScope 或 HuggingFace 下载模型到您的文件系统'
+                  : '从 ModelScope 或 HuggingFace 下载数据集到您的文件系统'
+              }
+              className="sm:max-w-3xl"
+            >
+              <ModelDownloadDialog
+                closeSheet={() => setOpenDownloadSheet(false)}
+                defaultCategory={sourceType as 'model' | 'dataset'}
+              />
+            </SandwichSheet>
+          )}
         </div>
       }
     />

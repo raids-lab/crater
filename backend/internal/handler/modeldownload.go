@@ -97,15 +97,90 @@ type ModelDownloadResp struct {
 
 // CreateDownload godoc
 //
-//	@Summary		创建模型下载任务
-//	@Description	创建一个新的模型下载任务
-//	@Tags			ModelDownload
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			data	body		CreateDownloadReq		true	"下载请求"
-//	@Success		200		{object}	resputil.Response[ModelDownloadResp]
-//	@Router			/v1/models/download [POST]
+// getOrCreateDownload 在事务中获取或创建下载任务
+func (mgr *ModelDownloadMgr) getOrCreateDownload(
+	c *gin.Context, req CreateDownloadReq, token util.JWTMessage,
+	source model.ModelSource, category model.DownloadCategory, downloadPath, revision string,
+) (*model.ModelDownload, bool, error) {
+	db := query.Use(query.GetDB())
+	var download *model.ModelDownload
+	var isNewDownload bool
+
+	err := db.Transaction(func(tx *query.Query) error {
+		txQ := tx.ModelDownload
+		txQUserDownload := tx.UserModelDownload
+
+		// 关联用户与下载记录的辅助闭包
+		associateUser := func(downloadRecord *model.ModelDownload) error {
+			userDownload, _ := txQUserDownload.WithContext(c).
+				Where(txQUserDownload.UserID.Eq(token.UserID), txQUserDownload.ModelDownloadID.Eq(downloadRecord.ID)).First()
+			if userDownload == nil {
+				if err := txQUserDownload.WithContext(c).Create(&model.UserModelDownload{
+					UserID: token.UserID, ModelDownloadID: downloadRecord.ID}); err != nil {
+					return fmt.Errorf("create association failed: %w", err)
+				}
+				_, _ = txQ.WithContext(c).Where(txQ.ID.Eq(downloadRecord.ID)).UpdateSimple(txQ.ReferenceCount.Add(1))
+			}
+			return nil
+		}
+
+		// 查询下载成功的记录
+		existingDownload, _ := txQ.WithContext(c).
+			Where(txQ.Name.Eq(req.Name), txQ.Source.Eq(string(source)),
+				txQ.Category.Eq(string(category)), txQ.Revision.Eq(revision),
+				txQ.Status.Eq(string(model.ModelDownloadStatusReady))).First()
+
+		if existingDownload != nil {
+			if err := associateUser(existingDownload); err != nil {
+				return err
+			}
+			download, isNewDownload = existingDownload, false
+			return nil
+		}
+
+		// 查询正在进行的下载
+		ongoingDownload, _ := txQ.WithContext(c).
+			Where(txQ.Name.Eq(req.Name), txQ.Source.Eq(string(source)), txQ.Category.Eq(string(category)),
+				txQ.Revision.Eq(revision), txQ.Status.In(string(model.ModelDownloadStatusPending),
+					string(model.ModelDownloadStatusDownloading))).First()
+
+		if ongoingDownload != nil {
+			if err := associateUser(ongoingDownload); err != nil {
+				return err
+			}
+			download, isNewDownload = ongoingDownload, false
+			return nil
+		}
+
+		// 创建新的下载任务
+		newDownload := &model.ModelDownload{
+			Name: req.Name, Source: source, Category: category, Revision: revision, Path: downloadPath,
+			Status: model.ModelDownloadStatusPending, JobName: fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8]),
+			CreatorID: token.UserID, ReferenceCount: 1,
+		}
+		if err := txQ.WithContext(c).Create(newDownload); err != nil {
+			return fmt.Errorf("create download failed: %w", err)
+		}
+		if err := txQUserDownload.WithContext(c).Create(&model.UserModelDownload{
+			UserID: token.UserID, ModelDownloadID: newDownload.ID}); err != nil {
+			return fmt.Errorf("create association failed: %w", err)
+		}
+		download, isNewDownload = newDownload, true
+		return nil
+	})
+
+	return download, isNewDownload, err
+}
+
+// @Summary		创建模型下载任务
+// @Description	创建一个新的模型下载任务
+// @Tags			ModelDownload
+// @Accept			json
+// @Produce		json
+// @Security		Bearer
+// @Param			data	body		CreateDownloadReq		true	"下载请求"
+// @Success		200		{object}	resputil.Response[ModelDownloadResp]
+// @Router			/v1/models/download [POST]
 func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	var req CreateDownloadReq
 	token := util.GetToken(c)
@@ -141,87 +216,37 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	}
 	downloadPath := filepath.Join(basePath, safeName)
 
-	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
+	// 在事务中获取或创建下载任务
+	download, isNewDownload, err := mgr.getOrCreateDownload(c, req, token, source, category, downloadPath, req.Revision)
+	if err != nil {
+		klog.Errorf("get or create download failed: %v", err)
+		resputil.Error(c, "处理下载请求失败", resputil.NotSpecified)
+		return
+	}
 
-	revision := req.Revision
-	existingDownload, _ := q.WithContext(c).
-		Where(q.Name.Eq(req.Name), q.Source.Eq(string(source)), q.Category.Eq(string(category)), q.Revision.Eq(revision)).
-		First()
-
-	if existingDownload != nil {
-		// 检查当前用户是否已关联此下载
-		userDownload, _ := qUserDownload.WithContext(c).
-			Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(existingDownload.ID)).
-			First()
-
-		if userDownload != nil {
-			// 用户已有此下载,返回成功并提示位置
-			resp := convertDownloadToResp(existingDownload)
-			// 在响应中添加友好提示（前端可以通过特殊字段识别）
+	// 如果是已存在的下载（Ready 或 Ongoing）
+	if !isNewDownload {
+		resp := convertDownloadToResp(download)
+		if download.Status == model.ModelDownloadStatusReady {
 			c.JSON(http.StatusOK, gin.H{
 				"code": resputil.OK,
 				"data": resp,
-				"msg":  fmt.Sprintf("该资源已存在于您的下载列表中，位置: %s", existingDownload.Path),
+				"msg":  fmt.Sprintf("该资源已下载完成，位置: %s", download.Path),
 			})
-			return
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"code": resputil.OK,
+				"data": resp,
+				"msg":  "该资源正在下载中，已将您加入共享列表",
+			})
 		}
-
-		// 用户没有此下载,创建关联并增加引用计数
-		newUserDownload := &model.UserModelDownload{
-			UserID:          token.UserID,
-			ModelDownloadID: existingDownload.ID,
-		}
-		if err := qUserDownload.WithContext(c).Create(newUserDownload); err != nil {
-			klog.Errorf("create user-download association failed: %v", err)
-			resputil.Error(c, "create download association failed", resputil.NotSpecified)
-			return
-		}
-
-		// 增加引用计数
-		_, _ = q.WithContext(c).Where(q.ID.Eq(existingDownload.ID)).UpdateSimple(q.ReferenceCount.Add(1))
-
-		resputil.Success(c, convertDownloadToResp(existingDownload))
-		return
-	}
-
-	// 不存在,创建新的下载任务
-	jobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
-
-	download := &model.ModelDownload{
-		Name:           req.Name,
-		Source:         source,
-		Category:       category,
-		Revision:       revision,
-		Path:           downloadPath,
-		Status:         model.ModelDownloadStatusPending,
-		JobName:        jobName,
-		CreatorID:      token.UserID,
-		ReferenceCount: 1,
-	}
-
-	if err := q.WithContext(c).Create(download); err != nil {
-		klog.Errorf("create model download record failed: %v", err)
-		resputil.Error(c, "create download record failed", resputil.NotSpecified)
-		return
-	}
-
-	// 创建用户关联
-	userDownload := &model.UserModelDownload{
-		UserID:          token.UserID,
-		ModelDownloadID: download.ID,
-	}
-	if err := qUserDownload.WithContext(c).Create(userDownload); err != nil {
-		klog.Errorf("create user-download association failed: %v", err)
-		// 删除刚创建的download记录
-		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Delete()
-		resputil.Error(c, "create download association failed", resputil.NotSpecified)
 		return
 	}
 
 	// 提交 K8s Job
 	if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
+		q := query.ModelDownload
 		//nolint:gofmt // gofmt incorrectly formats this map literal
 		updates := map[string]interface{}{
 			"status":  model.ModelDownloadStatusFailed,
@@ -234,6 +259,7 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	}
 
 	// 更新状态为 Downloading
+	q := query.ModelDownload
 	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Update(q.Status, model.ModelDownloadStatusDownloading)
 
 	resputil.Success(c, convertDownloadToResp(download))
