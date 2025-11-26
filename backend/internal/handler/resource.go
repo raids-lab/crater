@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -105,46 +106,23 @@ type (
 	}
 )
 
-// SyncResource godoc
-//
-//	@Summary		Get allocatable resources from the Kubernetes cluster and update the database
-//	@Description	This API will get the allocatable resources from the Kubernetes cluster
-//	@Tags			Resource
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[any]	"Success"
-//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
-//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
-//	@Router			/v1/admin/resources/sync [post]
-func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
-	nodes, err := mgr.kubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list nodes: %v", err), resputil.NotSpecified)
-		return
-	}
+// collectResourceQuantities collects resource quantities from all nodes
+func (mgr *ResourceMgr) collectResourceQuantities(nodes *v1.NodeList) map[string]quantity {
+	resourceQuantities := make(map[string]quantity)
 
-	// Create a map to store the resource quantities
-	reourceQuantities := make(map[string]quantity)
-
-	// Iterate over each node to get capacities: .status.allocatable
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
-		// Get the allocatable resources of the node
 		resources := node.Status.Allocatable
 		for key, value := range resources {
-			// Get the label value
 			resourceName := key.String()
-			// Get the number of quantities
-			// Add the quantity to the map
-			if q, ok := reourceQuantities[resourceName]; ok {
+			if q, ok := resourceQuantities[resourceName]; ok {
 				q.Total.Add(value)
 				if value.Cmp(q.Max) > 0 {
 					q.Max = value
 				}
-				reourceQuantities[resourceName] = q
+				resourceQuantities[resourceName] = q
 			} else {
-				reourceQuantities[resourceName] = quantity{
+				resourceQuantities[resourceName] = quantity{
 					Total: value,
 					Max:   value,
 				}
@@ -152,80 +130,101 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 		}
 	}
 
-	// Batch process: Get all resources (including soft-deleted) first
-	r := query.Resource
-	allResources, err := r.WithContext(c).Unscoped().Find()
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list all resources: %v", err), resputil.NotSpecified)
-		return
-	}
+	return resourceQuantities
+}
 
+// getAllResources retrieves all resources (including soft-deleted) from DB
+func (mgr *ResourceMgr) getAllResources(c *gin.Context) ([]*model.Resource, error) {
+	r := query.Resource
+	return r.WithContext(c).Unscoped().Find()
+}
+
+// prepareBatchOperations prepares batch create, update, and delete operations
+func (mgr *ResourceMgr) prepareBatchOperations(
+	resourceQuantities map[string]quantity,
+	allResources []*model.Resource,
+) (resourcesToCreate, resourcesToUpdate []*model.Resource, resourcesToDelete []uint) {
 	// Create a map of existing resources for quick lookup
 	existingResourcesMap := make(map[string]*model.Resource)
 	for i := range allResources {
 		existingResourcesMap[allResources[i].ResourceName] = allResources[i]
 	}
 
-	// Prepare batch operations
-	var resourcesToCreate []*model.Resource
-	var resourcesToUpdate []*model.Resource
-	var resourcesToDelete []uint
-
 	// Process each resource from the cluster
-	for resourceName, quantity := range reourceQuantities {
+	for resourceName, quantity := range resourceQuantities {
+		q := quantity // Create a copy to get pointer
 		if existingResource, exists := existingResourcesMap[resourceName]; exists {
-			// Check if update is needed (only update if values changed or resource was deleted)
-			needsUpdate := existingResource.DeletedAt.Valid ||
-				existingResource.Amount != quantity.Total.Value() ||
-				existingResource.AmountSingleMax != quantity.Max.Value()
-
-			if needsUpdate {
-				// Create a copy for update
-				updatedResource := *existingResource
-				updatedResource.Amount = quantity.Total.Value()
-				updatedResource.AmountSingleMax = quantity.Max.Value()
-				updatedResource.DeletedAt = gorm.DeletedAt{} // Restore if soft-deleted
-				resourcesToUpdate = append(resourcesToUpdate, &updatedResource)
+			if mgr.needsResourceUpdate(existingResource, &q) {
+				updatedResource := mgr.createUpdatedResource(existingResource, &q)
+				resourcesToUpdate = append(resourcesToUpdate, updatedResource)
 			}
 		} else {
-			// Resource doesn't exist in DB, prepare to create it
-			// Parse resource name: "nvidia.com/gpu" -> vendorDomain="nvidia.com", resourceType="gpu"
-			split := strings.Split(resourceName, "/")
-			var resourceType, label string
-			vendorDomain := new(string)
-			if len(split) == 2 {
-				*vendorDomain = split[0]
-				resourceType = split[1]
-				label = resourceType
-			} else {
-				vendorDomain = nil
-				resourceType = split[0]
-				label = resourceType
-			}
-
-			newResource := &model.Resource{
-				ResourceName:    resourceName,
-				VendorDomain:    vendorDomain,
-				ResourceType:    resourceType,
-				Amount:          quantity.Total.Value(),
-				AmountSingleMax: quantity.Max.Value(),
-				Format:          string(quantity.Max.Format),
-				Label:           label,
-			}
+			newResource := mgr.createNewResource(resourceName, &q)
 			resourcesToCreate = append(resourcesToCreate, newResource)
 		}
 	}
 
 	// Find resources to delete (exist in DB but not in cluster)
 	for _, resource := range allResources {
-		if _, exists := reourceQuantities[resource.ResourceName]; !exists && !resource.DeletedAt.Valid {
-			// This resource doesn't exist in the cluster anymore
+		if _, exists := resourceQuantities[resource.ResourceName]; !exists && !resource.DeletedAt.Valid {
 			resourcesToDelete = append(resourcesToDelete, resource.ID)
 		}
 	}
 
-	// Execute all operations in a transaction for better performance
-	err = query.Q.Transaction(func(tx *query.Query) error {
+	return resourcesToCreate, resourcesToUpdate, resourcesToDelete
+}
+
+// needsResourceUpdate checks if a resource needs to be updated
+func (mgr *ResourceMgr) needsResourceUpdate(existingResource *model.Resource, q *quantity) bool {
+	return existingResource.DeletedAt.Valid ||
+		existingResource.Amount != q.Total.Value() ||
+		existingResource.AmountSingleMax != q.Max.Value()
+}
+
+// createUpdatedResource creates an updated resource copy
+func (mgr *ResourceMgr) createUpdatedResource(existingResource *model.Resource, q *quantity) *model.Resource {
+	updatedResource := *existingResource
+	updatedResource.Amount = q.Total.Value()
+	updatedResource.AmountSingleMax = q.Max.Value()
+	updatedResource.DeletedAt = gorm.DeletedAt{}
+	return &updatedResource
+}
+
+// createNewResource creates a new resource from resourceName and quantity
+func (mgr *ResourceMgr) createNewResource(resourceName string, q *quantity) *model.Resource {
+	split := strings.Split(resourceName, "/")
+	var resourceType, label string
+	vendorDomain := new(string)
+
+	if len(split) == 2 {
+		*vendorDomain = split[0]
+		resourceType = split[1]
+		label = resourceType
+	} else {
+		vendorDomain = nil
+		resourceType = split[0]
+		label = resourceType
+	}
+
+	return &model.Resource{
+		ResourceName:    resourceName,
+		VendorDomain:    vendorDomain,
+		ResourceType:    resourceType,
+		Amount:          q.Total.Value(),
+		AmountSingleMax: q.Max.Value(),
+		Format:          string(q.Max.Format),
+		Label:           label,
+	}
+}
+
+// executeBatchOperations executes batch create, update, and delete operations in a transaction
+func (mgr *ResourceMgr) executeBatchOperations(
+	c *gin.Context,
+	resourcesToCreate []*model.Resource,
+	resourcesToUpdate []*model.Resource,
+	resourcesToDelete []uint,
+) error {
+	return query.Q.Transaction(func(tx *query.Query) error {
 		txR := tx.Resource.WithContext(c)
 
 		// Batch update resources
@@ -235,7 +234,6 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 				"amount_single_max": resource.AmountSingleMax,
 			}
 
-			// If it was soft-deleted, restore it
 			if resource.DeletedAt.Valid {
 				updates["deleted_at"] = nil
 			}
@@ -263,7 +261,43 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 
 		return nil
 	})
+}
 
+// SyncResource godoc
+//
+//	@Summary		Get allocatable resources from the Kubernetes cluster and update the database
+//	@Description	This API will get the allocatable resources from the Kubernetes cluster
+//	@Tags			Resource
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[any]	"Success"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/admin/resources/sync [post]
+func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
+	nodes, err := mgr.kubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list nodes: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// Collect resource quantities from nodes
+	resourceQuantities := mgr.collectResourceQuantities(nodes)
+
+	// Get all resources from DB
+	allResources, err := mgr.getAllResources(c)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list all resources: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	// Prepare batch operations
+	resourcesToCreate, resourcesToUpdate, resourcesToDelete := mgr.prepareBatchOperations(
+		resourceQuantities, allResources)
+
+	// Execute all operations in a transaction
+	err = mgr.executeBatchOperations(c, resourcesToCreate, resourcesToUpdate, resourcesToDelete)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to sync resources: %v", err), resputil.NotSpecified)
 		return
