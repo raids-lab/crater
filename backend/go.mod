@@ -1,6 +1,8 @@
 module github.com/raids-lab/crater
 
-go 1.25.4
+go 1.24.0
+
+toolchain go1.24.5
 
 require (
 	github.com/bytedance/mockey v1.2.15

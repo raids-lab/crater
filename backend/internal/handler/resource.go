@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -151,26 +152,44 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 		}
 	}
 
-	// Update the database with the latest information
+	// Batch process: Get all resources (including soft-deleted) first
 	r := query.Resource
-	for resourceName, quantity := range reourceQuantities {
-		info, ierr := r.WithContext(c).Where(r.ResourceName.Eq(resourceName)).
-			Updates(map[string]any{
-				"amount":            quantity.Total.Value(),
-				"amount_single_max": quantity.Max.Value(),
-			})
-		if ierr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to update resource: %v", ierr), resputil.NotSpecified)
-			return
-		}
-		if info.RowsAffected == 0 {
-			// if resourceName like "nvidia.com/gpu",
-			// then vendorDomain = "nvidia.com", resourceType = "gpu", label = "gpu"
+	allResources, err := r.WithContext(c).Unscoped().Find()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list all resources: %v", err), resputil.NotSpecified)
+		return
+	}
 
-			// 1. try to split resourceName by "/"
-			// 2. if split result length is 2, then vendorDomain = split[0], resourceType = split[1]
-			// 3. if split result length is 1, then vendorDomain = "", resourceType = split[0]
-			// 4. label = resourceType
+	// Create a map of existing resources for quick lookup
+	existingResourcesMap := make(map[string]*model.Resource)
+	for i := range allResources {
+		existingResourcesMap[allResources[i].ResourceName] = allResources[i]
+	}
+
+	// Prepare batch operations
+	var resourcesToCreate []*model.Resource
+	var resourcesToUpdate []*model.Resource
+	var resourcesToDelete []uint
+
+	// Process each resource from the cluster
+	for resourceName, quantity := range reourceQuantities {
+		if existingResource, exists := existingResourcesMap[resourceName]; exists {
+			// Check if update is needed (only update if values changed or resource was deleted)
+			needsUpdate := existingResource.DeletedAt.Valid ||
+				existingResource.Amount != quantity.Total.Value() ||
+				existingResource.AmountSingleMax != quantity.Max.Value()
+
+			if needsUpdate {
+				// Create a copy for update
+				updatedResource := *existingResource
+				updatedResource.Amount = quantity.Total.Value()
+				updatedResource.AmountSingleMax = quantity.Max.Value()
+				updatedResource.DeletedAt = gorm.DeletedAt{} // Restore if soft-deleted
+				resourcesToUpdate = append(resourcesToUpdate, &updatedResource)
+			}
+		} else {
+			// Resource doesn't exist in DB, prepare to create it
+			// Parse resource name: "nvidia.com/gpu" -> vendorDomain="nvidia.com", resourceType="gpu"
 			split := strings.Split(resourceName, "/")
 			var resourceType, label string
 			vendorDomain := new(string)
@@ -184,7 +203,7 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 				label = resourceType
 			}
 
-			newResource := model.Resource{
+			newResource := &model.Resource{
 				ResourceName:    resourceName,
 				VendorDomain:    vendorDomain,
 				ResourceType:    resourceType,
@@ -193,30 +212,61 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 				Format:          string(quantity.Max.Format),
 				Label:           label,
 			}
-
-			if createErr := r.WithContext(c).Create(&newResource); createErr != nil {
-				resputil.Error(c, fmt.Sprintf("failed to create resource: %v", createErr), resputil.NotSpecified)
-				return
-			}
+			resourcesToCreate = append(resourcesToCreate, newResource)
 		}
 	}
 
-	// Delete resources that no longer exist in the cluster
-	allResources, err := r.WithContext(c).Find()
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list all resources: %v", err), resputil.NotSpecified)
-		return
-	}
-
+	// Find resources to delete (exist in DB but not in cluster)
 	for _, resource := range allResources {
-		if _, exists := reourceQuantities[resource.ResourceName]; !exists {
-			// This resource doesn't exist in the cluster anymore, permanently delete it from database
-			_, err := r.WithContext(c).Where(r.ID.Eq(resource.ID)).Unscoped().Delete()
-			if err != nil {
-				resputil.Error(c, fmt.Sprintf("failed to delete resource: %v", err), resputil.NotSpecified)
-				return
+		if _, exists := reourceQuantities[resource.ResourceName]; !exists && !resource.DeletedAt.Valid {
+			// This resource doesn't exist in the cluster anymore
+			resourcesToDelete = append(resourcesToDelete, resource.ID)
+		}
+	}
+
+	// Execute all operations in a transaction for better performance
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		txR := tx.Resource.WithContext(c)
+
+		// Batch update resources
+		for _, resource := range resourcesToUpdate {
+			updates := map[string]any{
+				"amount":            resource.Amount,
+				"amount_single_max": resource.AmountSingleMax,
+			}
+
+			// If it was soft-deleted, restore it
+			if resource.DeletedAt.Valid {
+				updates["deleted_at"] = nil
+			}
+
+			_, updateErr := txR.Unscoped().Where(tx.Resource.ID.Eq(resource.ID)).Updates(updates)
+			if updateErr != nil {
+				return fmt.Errorf("failed to update resource %s: %v", resource.ResourceName, updateErr)
 			}
 		}
+
+		// Batch create new resources
+		if len(resourcesToCreate) > 0 {
+			if createErr := txR.Create(resourcesToCreate...); createErr != nil {
+				return fmt.Errorf("failed to create resources: %v", createErr)
+			}
+		}
+
+		// Batch delete resources
+		if len(resourcesToDelete) > 0 {
+			_, deleteErr := txR.Where(tx.Resource.ID.In(resourcesToDelete...)).Unscoped().Delete()
+			if deleteErr != nil {
+				return fmt.Errorf("failed to delete resources: %v", deleteErr)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to sync resources: %v", err), resputil.NotSpecified)
+		return
 	}
 
 	resputil.Success(c, nil)
