@@ -142,8 +142,10 @@ export const IngressPanel = ({ namespacedName, jobType }: IngressPanelProps) => 
 
   const renderIngressItem = (ingress: PodIngress) => {
     // 检查是否是 Jupyter 作业的默认 notebook 规则（名称为 notebook 且端口为 8888）
-    const isJupyterDefaultRule =
-      jobType === 'jupyter' && ingress.name === 'notebook' && ingress.port === 8888
+    // 或 WebIDE 作业的默认 webide 规则（名称为 webide 且端口为 8888）
+    const isDeleteDisabled =
+      (jobType === 'jupyter' && ingress.name === 'notebook' && ingress.port === 8888) ||
+      (jobType === 'webide' && ingress.name === 'webide' && ingress.port === 8888)
     return (
       <ExternalAccessItem
         key={ingress.name}
@@ -152,9 +154,9 @@ export const IngressPanel = ({ namespacedName, jobType }: IngressPanelProps) => 
         url={ingress.prefix}
         isDeleting={isDeleting}
         handleDeleteItem={() => handleDeleteIngress(ingress)}
-        isDeleteDisabled={isJupyterDefaultRule}
+        isDeleteDisabled={isDeleteDisabled}
         deleteDisabledReason={
-          isJupyterDefaultRule ? 'Jupyter 作业的默认 notebook 规则不能删除' : undefined
+          isDeleteDisabled ? 'Jupyter 作业的默认 notebook 规则不能删除' : undefined
         }
       />
     )

@@ -74,6 +74,16 @@ type ServiceManagerInterface interface {
 		host, username string,
 	) (ingressPath string, err error)
 
+	// CreateNamedIngress 创建一个 ClusterIP 类型的 Service，并创建 Ingress，并指定名称
+	CreateNamedIngress(
+		ctx context.Context,
+		ownerReferences []metav1.OwnerReference,
+		podSelector map[string]string,
+		port *v1.ServicePort,
+		host, username string,
+		randomPrefix string,
+	) (ingressPath string, err error)
+
 	// GenerateLabels based on TaskType
 	GenerateLabels(podSelector map[string]string) map[string]string
 }
@@ -339,13 +349,14 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 }
 
 // CreateIngress 实现
-func (s *serviceManagerImpl) CreateIngress(
+func (s *serviceManagerImpl) CreateNamedIngress(
 	ctx context.Context,
 	ownerReferences []metav1.OwnerReference,
 	podSelector map[string]string,
 	port *v1.ServicePort,
 	host,
 	username string,
+	randomPrefix string,
 ) (ingressPath string, err error) {
 	if port == nil {
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
@@ -353,7 +364,6 @@ func (s *serviceManagerImpl) CreateIngress(
 	namespace := s.config.Namespaces.Job
 	labels := s.GenerateLabels(podSelector)
 
-	randomPrefix := uuid.New().String()[:5]
 	subdomain := fmt.Sprintf("%s.%s", randomPrefix, host)
 
 	serviceName := fmt.Sprintf("svc-%s-%s-%s", username, randomPrefix, port.Name)
@@ -435,4 +445,17 @@ func (s *serviceManagerImpl) CreateIngress(
 
 	ingressPath = fmt.Sprintf("https://%s/", subdomain)
 	return ingressPath, nil
+}
+
+// CreateIngress 实现
+func (s *serviceManagerImpl) CreateIngress(
+	ctx context.Context,
+	ownerReferences []metav1.OwnerReference,
+	podSelector map[string]string,
+	port *v1.ServicePort,
+	host,
+	username string,
+) (ingressPath string, err error) {
+	randomPrefix := uuid.New().String()[:5]
+	return s.CreateNamedIngress(ctx, ownerReferences, podSelector, port, host, username, randomPrefix)
 }

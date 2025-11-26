@@ -31,7 +31,7 @@ import { JobNameCell } from '@/components/label/job-name-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 
-import { JobPhase, apiJobBatchList, apiJobDelete } from '@/services/api/vcjob'
+import { JobPhase, apiJobBatchList, apiJobDelete, isInteracitveJob } from '@/services/api/vcjob'
 import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
@@ -46,7 +46,7 @@ const VolcanoOverview = () => {
   const batchQuery = useQuery({
     queryKey: ['job', 'batch'],
     queryFn: apiJobBatchList,
-    select: (res) => res.data.filter((task) => task.jobType !== JobType.Jupyter),
+    select: (res) => res.data.filter((task) => !isInteracitveJob(task.jobType)),
     refetchInterval: REFETCH_INTERVAL,
   })
 

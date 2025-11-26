@@ -189,30 +189,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	log.Printf("Ingress created at path: %s", ingressPath)
 
 	// create forward ing rules in template
-	//nolint:dupl // TODO: refactor to reduce duplicate code
-	for _, forward := range req.Forwards {
-		port := &v1.ServicePort{
-			Name:       forward.Name,
-			Port:       forward.Port,
-			TargetPort: intstr.FromInt(int(forward.Port)),
-			Protocol:   v1.ProtocolTCP,
-		}
-
-		ingressPath, err := mgr.serviceManager.CreateIngress(
-			c,
-			[]metav1.OwnerReference{
-				*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
-			},
-			labels,
-			port,
-			config.GetConfig().Host,
-			token.Username,
-		)
-		if err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to create ingress for %s: %v", forward.Name, err), resputil.NotSpecified)
-			return
-		}
-		fmt.Printf("Ingress created for %s at path: %s\n", forward.Name, ingressPath)
+	if err := mgr.CreateForwardIngresses(c, &job, req.Forwards, labels, token.Username); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
 	}
 
 	resputil.Success(c, job)

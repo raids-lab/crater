@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { InfoIcon, LogsIcon, Save } from 'lucide-react'
+import { InfoIcon, KeyRoundIcon, LogsIcon, Save } from 'lucide-react'
 import { motion, useMotionValue } from 'motion/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,11 +30,13 @@ export default function FloatingBall({
   handleShowLog,
   handleShowDetail,
   handleSnapshot,
+  handleShowToken,
   setIsDragging,
 }: {
   handleShowLog: () => void
   handleSnapshot: () => void
   handleShowDetail: () => void
+  handleShowToken?: () => void
   setIsDragging: (isDragging: boolean) => void
 }) {
   const { t } = useTranslation()
@@ -73,6 +75,14 @@ export default function FloatingBall({
                 {t('floatingBall.tooltip.operations')}
               </DropdownMenuLabel>
               {/* 按钮 */}
+              <Button
+                variant="ghost"
+                className="justify-start px-2 py-1 font-normal"
+                onClick={handleShowToken}
+              >
+                <KeyRoundIcon className="text-highlight-emerald" />
+                {t('floatingBall.tooltip.viewAccessToken')}
+              </Button>
               <Button
                 variant="ghost"
                 className="justify-start px-2 py-1 font-normal"
