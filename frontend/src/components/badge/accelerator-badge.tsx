@@ -11,6 +11,7 @@ interface AcceleratorInfo {
 const vendorColors: Record<string, string> = {
   'nvidia.com': 'bg-[#75a031] ring-[#75a031] text-[#75a031]', // NVIDIA 绿色
   'huawei.com': 'bg-[#be2a34] ring-[#be2a34] text-[#be2a34]', // 华为红色
+  'cambricon.com': 'bg-[#0052D9] ring-[#0052D9] text-[#0052D9]', // 寒武纪蓝色
   'iluvatar.com': 'bg-[#1e40af] ring-[#1e40af] text-[#1e40af]', // 天数智芯蓝色
   'amd.com': 'bg-red-500 ring-red-500 text-white', // AMD 红色
   'intel.com': 'bg-blue-600 ring-blue-600 text-white', // Intel 蓝色
