@@ -242,14 +242,14 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 
 			_, updateErr := txR.Unscoped().Where(tx.Resource.ID.Eq(resource.ID)).Updates(updates)
 			if updateErr != nil {
-				return fmt.Errorf("failed to update resource %s: %v", resource.ResourceName, updateErr)
+				return fmt.Errorf("failed to update resource %s: %w", resource.ResourceName, updateErr)
 			}
 		}
 
 		// Batch create new resources
 		if len(resourcesToCreate) > 0 {
 			if createErr := txR.Create(resourcesToCreate...); createErr != nil {
-				return fmt.Errorf("failed to create resources: %v", createErr)
+				return fmt.Errorf("failed to create resources: %w", createErr)
 			}
 		}
 
@@ -257,7 +257,7 @@ func (mgr *ResourceMgr) SyncResource(c *gin.Context) {
 		if len(resourcesToDelete) > 0 {
 			_, deleteErr := txR.Where(tx.Resource.ID.In(resourcesToDelete...)).Unscoped().Delete()
 			if deleteErr != nil {
-				return fmt.Errorf("failed to delete resources: %v", deleteErr)
+				return fmt.Errorf("failed to delete resources: %w", deleteErr)
 			}
 		}
 
