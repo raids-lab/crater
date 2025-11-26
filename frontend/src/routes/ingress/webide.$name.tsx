@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import ky, { HTTPError } from 'ky'
 import { ExternalLink, RefreshCw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -43,29 +42,17 @@ export const Route = createFileRoute('/ingress/webide/$name')({
     const { data } = await queryClient.ensureQueryData(queryWebIDEToken(name))
     if (!data.token || data.token === '') {
       throw new Error(
-        'Jupyter token is not available. Please check the job status or try again later.'
+        'WebIDE token is not available. Please check the job status or try again later.'
       )
-    }
-
-    // try to check if connection to WebIDE Notebook is ready
-    const url = `${data.fullURL}/api/status?token=${data.token}`
-    if (import.meta.env.DEV) {
-      return
-    }
-    try {
-      await ky.get(url, { timeout: 5000 })
-    } catch (error) {
-      if (error instanceof HTTPError) {
-        throw new Error('WebIDE Notebook is not ready yet. Please try again later.')
-      }
-      throw error
     }
   },
   component: WebIDE,
-  errorComponent: Refresh,
+  errorComponent: () => (
+    <Refresh icon={<CodeServerIcon className="text-primary size-8" />} title={'Code Server'} />
+  ),
 })
 
-function Refresh() {
+export function Refresh({ icon, title }: { icon: ReactNode; title: string }) {
   const { name } = Route.useParams()
   const navigate = useNavigate()
   const [countdown, setCountdown] = useState(10)
@@ -99,18 +86,16 @@ function Refresh() {
       <Card className="mx-4 w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex size-8 items-center justify-center rounded-full">
-            <CodeServerIcon className="text-primary size-8" />
+            {icon}
           </div>
-          <CardTitle className="text-xl">WebIDE 连接中...</CardTitle>
+          <CardTitle className="text-xl">{title} 连接中...</CardTitle>
           <CardDescription className="text-balance">
             页面将在 <span className="font-mono font-medium text-orange-600">{countdown}</span>{' '}
             秒后自动刷新
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {data && data.fullURL && (
-            <CopyableCommand label={'WebIDE Lab'} isLink command={data.fullURL} />
-          )}
+          {data && data.fullURL && <CopyableCommand label={title} isLink command={data.fullURL} />}
 
           <div className="grid grid-cols-2 gap-2">
             <Button onClick={handleRefresh}>
