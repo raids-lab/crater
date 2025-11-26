@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -204,63 +203,239 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	// 设置分类
 	category := model.DownloadCategory(req.Category)
 
-	// 生成安全的路径名
-	safeName := sanitizeModelName(req.Name)
+	q := query.ModelDownload
+	revision := req.Revision
 
-	// 根据category自动确定下载路径: public/Models/ 或 public/Datasets/
-	var basePath string
-	if category == model.DownloadCategoryModel {
-		basePath = "public/Models"
-	} else {
-		basePath = "public/Datasets"
-	}
-	downloadPath := filepath.Join(basePath, safeName)
+	// Retry loop to handle race conditions
+	maxRetries := 3
+	for i := 0; i < maxRetries; i++ {
+		// 1. Check if download exists (including soft-deleted)
+		existingDownload, _ := q.WithContext(c).Unscoped().
+			Where(q.Name.Eq(req.Name), q.Source.Eq(string(source)), q.Category.Eq(string(category)), q.Revision.Eq(revision)).
+			First()
 
-	// 在事务中获取或创建下载任务
-	download, isNewDownload, err := mgr.getOrCreateDownload(c, req, token, source, category, downloadPath, req.Revision)
-	if err != nil {
-		klog.Errorf("get or create download failed: %v", err)
-		resputil.Error(c, "处理下载请求失败", resputil.NotSpecified)
-		return
-	}
-
-	// 如果是已存在的下载（Ready 或 Ongoing）
-	if !isNewDownload {
-		resp := convertDownloadToResp(download)
-		if download.Status == model.ModelDownloadStatusReady {
-			c.JSON(http.StatusOK, gin.H{
-				"code": resputil.OK,
-				"data": resp,
-				"msg":  fmt.Sprintf("该资源已下载完成，位置: %s", download.Path),
-			})
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"code": resputil.OK,
-				"data": resp,
-				"msg":  "该资源正在下载中，已将您加入共享列表",
-			})
+		if existingDownload != nil {
+			// 如果记录被软删除了，进行恢复
+			if existingDownload.DeletedAt.Valid {
+				mgr.restoreDeletedDownload(c, existingDownload, token)
+				return
+			}
+			mgr.handleExistingDownload(c, existingDownload, token)
+			return
 		}
+
+		// 生成安全的路径名
+		safeName := sanitizeModelName(req.Name)
+
+		// 根据category自动确定下载路径: public/Models/ 或 public/Datasets/
+		var basePath string
+		if category == model.DownloadCategoryModel {
+			basePath = "public/Models"
+		} else {
+			basePath = "public/Datasets"
+		}
+		downloadPath := filepath.Join(basePath, safeName)
+
+		// 不存在,创建新的下载任务
+		jobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
+
+		download := &model.ModelDownload{
+			Name:           req.Name,
+			Source:         source,
+			Category:       category,
+			Revision:       revision,
+			Path:           downloadPath,
+			Status:         model.ModelDownloadStatusPending,
+			JobName:        jobName,
+			CreatorID:      token.UserID,
+			ReferenceCount: 1,
+		}
+
+		// 使用事务确保原子性
+		err := query.Q.Transaction(func(tx *query.Query) error {
+			if err := tx.ModelDownload.WithContext(c).Create(download); err != nil {
+				return err
+			}
+
+			// 创建用户关联
+			userDownload := &model.UserModelDownload{
+				UserID:          token.UserID,
+				ModelDownloadID: download.ID,
+			}
+			if err := tx.UserModelDownload.WithContext(c).Create(userDownload); err != nil {
+				return err
+			}
+			return nil
+		})
+
+		if err != nil {
+			// 检查是否是唯一键冲突（并发导致），如果是则重试
+			if strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "unique constraint") {
+				continue
+			}
+			klog.Errorf("create download transaction failed: %v", err)
+			resputil.Error(c, "create download failed", resputil.NotSpecified)
+			return
+		}
+
+		// 提交 K8s Job (事务提交后执行)
+		if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
+			klog.Errorf("submit download job failed: %v", err)
+			//nolint:gofmt // gofmt incorrectly formats this map literal
+			updates := map[string]interface{}{
+				"status":  model.ModelDownloadStatusFailed,
+				"message": fmt.Sprintf("submit job failed: %v", err),
+			}
+			_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
+
+			resputil.Error(c, "submit download job failed", resputil.NotSpecified)
+			return
+		}
+
+		// 更新状态为 Downloading
+		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Update(q.Status, model.ModelDownloadStatusDownloading)
+
+		resputil.Success(c, convertDownloadToResp(download))
 		return
 	}
 
-	// 提交 K8s Job
-	if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
-		klog.Errorf("submit download job failed: %v", err)
-		q := query.ModelDownload
+	resputil.Error(c, "system busy, please try again later", resputil.NotSpecified)
+}
+
+func (mgr *ModelDownloadMgr) restoreDeletedDownload(c *gin.Context, download *model.ModelDownload, token util.JWTMessage) {
+	q := query.ModelDownload
+	qUserDownload := query.UserModelDownload
+
+	// 1. 恢复 ModelDownload
+	//nolint:gofmt // gofmt incorrectly formats this map literal
+	updates := map[string]interface{}{
+		"deleted_at": nil,
+	}
+
+	// 如果之前的状态是失败，则重新开始下载
+	shouldRestart := download.Status == model.ModelDownloadStatusFailed
+	if shouldRestart {
+		jobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
+		updates["status"] = model.ModelDownloadStatusDownloading
+		updates["message"] = ""
+		updates["job_name"] = jobName
+
+		download.JobName = jobName
+		download.Status = model.ModelDownloadStatusDownloading
+	}
+
+	if _, err := q.WithContext(c).Unscoped().Where(q.ID.Eq(download.ID)).Updates(updates); err != nil {
+		klog.Errorf("restore download record failed: %v", err)
+		resputil.Error(c, "restore download record failed", resputil.NotSpecified)
+		return
+	}
+
+	// 2. 确保 UserModelDownload 存在
+	existingUserDownload, _ := qUserDownload.WithContext(c).
+		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(download.ID)).
+		First()
+
+	if existingUserDownload == nil {
+		// 创建新关联
+		newUserDownload := &model.UserModelDownload{
+			UserID:          token.UserID,
+			ModelDownloadID: download.ID,
+		}
+		if err := qUserDownload.WithContext(c).Create(newUserDownload); err != nil {
+			klog.Errorf("create user-download association failed: %v", err)
+			resputil.Error(c, "create download association failed", resputil.NotSpecified)
+			return
+		}
+	}
+
+	// 3. 重新计算引用计数
+	count, _ := qUserDownload.WithContext(c).Where(qUserDownload.ModelDownloadID.Eq(download.ID)).Count()
+	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).UpdateSimple(q.ReferenceCount.Value(int(count)))
+	download.ReferenceCount = int(count)
+
+	// 如果需要重启任务
+	if shouldRestart {
+		if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
+			klog.Errorf("submit download job failed: %v", err)
+			// 更新为失败状态
+			//nolint:gofmt // gofmt incorrectly formats this map literal
+			updates := map[string]interface{}{
+				"status":  model.ModelDownloadStatusFailed,
+				"message": fmt.Sprintf("submit job failed: %v", err),
+			}
+			_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
+			resputil.Error(c, "submit download job failed", resputil.NotSpecified)
+			return
+		}
+	}
+
+	resputil.Success(c, convertDownloadToResp(download))
+}
+
+func (mgr *ModelDownloadMgr) handleExistingDownload(c *gin.Context, download *model.ModelDownload, token util.JWTMessage) {
+	q := query.ModelDownload
+	qUserDownload := query.UserModelDownload
+
+	// 如果任务处于失败状态，自动尝试重启任务
+	if download.Status == model.ModelDownloadStatusFailed {
+		jobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
+
+		// 更新状态为 Downloading
 		//nolint:gofmt // gofmt incorrectly formats this map literal
 		updates := map[string]interface{}{
-			"status":  model.ModelDownloadStatusFailed,
-			"message": fmt.Sprintf("submit job failed: %v", err),
+			"status":   model.ModelDownloadStatusDownloading,
+			"message":  "",
+			"job_name": jobName,
 		}
-		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
 
-		resputil.Error(c, "submit download job failed", resputil.NotSpecified)
+		if _, err := q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates); err == nil {
+			// 更新内存对象以便后续返回正确状态
+			download.Status = model.ModelDownloadStatusDownloading
+			download.Message = ""
+			download.JobName = jobName
+
+			// 提交 Job
+			if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
+				klog.Errorf("auto-restart download job failed: %v", err)
+				// 如果提交失败，回滚状态
+				//nolint:gofmt // gofmt incorrectly formats this map literal
+				failUpdates := map[string]interface{}{
+					"status":  model.ModelDownloadStatusFailed,
+					"message": fmt.Sprintf("auto-restart failed: %v", err),
+				}
+				_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(failUpdates)
+
+				download.Status = model.ModelDownloadStatusFailed
+				download.Message = fmt.Sprintf("auto-restart failed: %v", err)
+			}
+		}
+	}
+
+	// 检查当前用户是否已关联此下载
+	userDownload, _ := qUserDownload.WithContext(c).
+		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(download.ID)).
+		First()
+
+	if userDownload != nil {
+		// 用户已有此下载,返回成功并提示位置
+		resp := convertDownloadToResp(download)
+		resputil.SuccessWithMessage(c, resp, fmt.Sprintf("该资源已存在于您的下载列表中，位置: %s", download.Path))
 		return
 	}
 
-	// 更新状态为 Downloading
-	q := query.ModelDownload
-	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Update(q.Status, model.ModelDownloadStatusDownloading)
+	// 用户没有此下载,创建关联并增加引用计数
+	newUserDownload := &model.UserModelDownload{
+		UserID:          token.UserID,
+		ModelDownloadID: download.ID,
+	}
+	if err := qUserDownload.WithContext(c).Create(newUserDownload); err != nil {
+		klog.Errorf("create user-download association failed: %v", err)
+		resputil.Error(c, "create download association failed", resputil.NotSpecified)
+		return
+	}
+
+	// 增加引用计数
+	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).UpdateSimple(q.ReferenceCount.Add(1))
 
 	resputil.Success(c, convertDownloadToResp(download))
 }
@@ -928,6 +1103,11 @@ END_TIME=$(date +%%s)
 kill $MONITOR_PID 2>/dev/null || true
 
 echo "Download completed successfully"
+
+# 修改权限，使得所有人都可以读取 (目录755, 文件644)
+echo "Changing permissions for $OUT_DIR..."
+chmod -R 755 "$OUT_DIR" || echo "Warning: Failed to change permissions"
+
 SIZE=$(du -sb "$OUT_DIR" | cut -f1)
 DURATION=$((END_TIME - START_TIME))
 if [ $DURATION -gt 0 ]; then
