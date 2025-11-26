@@ -43,6 +43,7 @@ import { Route as PortalMonitorIdleRouteImport } from './routes/portal/monitor/i
 import { Route as PortalMonitorGpuRouteImport } from './routes/portal/monitor/gpu'
 import { Route as PortalFilesSplatRouteImport } from './routes/portal/files/$'
 import { Route as PortalAccountMemberRouteImport } from './routes/portal/account/member'
+import { Route as IngressWebideNameRouteImport } from './routes/ingress/webide.$name'
 import { Route as IngressJupyterNameRouteImport } from './routes/ingress/jupyter.$name'
 import { Route as AdminUsersNameRouteImport } from './routes/admin/users/$name'
 import { Route as AdminMoreVersionRouteImport } from './routes/admin/more/version'
@@ -78,6 +79,7 @@ import { Route as AdminEnvImagesIndexRouteImport } from './routes/admin/env/imag
 import { Route as AdminClusterResourcesIndexRouteImport } from './routes/admin/cluster/resources/index'
 import { Route as AdminClusterNodesIndexRouteImport } from './routes/admin/cluster/nodes/index'
 import { Route as PortalMoreOrdersIdRouteImport } from './routes/portal/more/orders/$id'
+import { Route as PortalJobsNewWebideJobRouteImport } from './routes/portal/jobs/new/webide-job'
 import { Route as PortalJobsNewTensorflowPsJobRouteImport } from './routes/portal/jobs/new/tensorflow-ps-job'
 import { Route as PortalJobsNewSingleJobRouteImport } from './routes/portal/jobs/new/single-job'
 import { Route as PortalJobsNewSeacsJobRouteImport } from './routes/portal/jobs/new/seacs-job'
@@ -268,6 +270,11 @@ const PortalAccountMemberRoute = PortalAccountMemberRouteImport.update({
   path: '/member',
   getParentRoute: () => PortalAccountRouteRoute,
 } as any)
+const IngressWebideNameRoute = IngressWebideNameRouteImport.update({
+  id: '/ingress/webide/$name',
+  path: '/ingress/webide/$name',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IngressJupyterNameRoute = IngressJupyterNameRouteImport.update({
   id: '/ingress/jupyter/$name',
   path: '/ingress/jupyter/$name',
@@ -445,6 +452,11 @@ const PortalMoreOrdersIdRoute = PortalMoreOrdersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PortalMoreOrdersRouteRoute,
 } as any)
+const PortalJobsNewWebideJobRoute = PortalJobsNewWebideJobRouteImport.update({
+  id: '/webide-job',
+  path: '/webide-job',
+  getParentRoute: () => PortalJobsNewRouteRoute,
+} as any)
 const PortalJobsNewTensorflowPsJobRoute =
   PortalJobsNewTensorflowPsJobRouteImport.update({
     id: '/tensorflow-ps-job',
@@ -585,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
+  '/ingress/webide/$name': typeof IngressWebideNameRoute
   '/portal/account/member': typeof PortalAccountMemberRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
   '/portal/monitor/gpu': typeof PortalMonitorGpuRoute
@@ -619,6 +632,7 @@ export interface FileRoutesByFullPath {
   '/portal/jobs/new/seacs-job': typeof PortalJobsNewSeacsJobRoute
   '/portal/jobs/new/single-job': typeof PortalJobsNewSingleJobRoute
   '/portal/jobs/new/tensorflow-ps-job': typeof PortalJobsNewTensorflowPsJobRoute
+  '/portal/jobs/new/webide-job': typeof PortalJobsNewWebideJobRoute
   '/portal/more/orders/$id': typeof PortalMoreOrdersIdRoute
   '/admin/cluster/nodes/': typeof AdminClusterNodesIndexRoute
   '/admin/cluster/resources/': typeof AdminClusterResourcesIndexRoute
@@ -656,6 +670,7 @@ export interface FileRoutesByTo {
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
+  '/ingress/webide/$name': typeof IngressWebideNameRoute
   '/portal/account/member': typeof PortalAccountMemberRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
   '/portal/monitor/gpu': typeof PortalMonitorGpuRoute
@@ -690,6 +705,7 @@ export interface FileRoutesByTo {
   '/portal/jobs/new/seacs-job': typeof PortalJobsNewSeacsJobRoute
   '/portal/jobs/new/single-job': typeof PortalJobsNewSingleJobRoute
   '/portal/jobs/new/tensorflow-ps-job': typeof PortalJobsNewTensorflowPsJobRoute
+  '/portal/jobs/new/webide-job': typeof PortalJobsNewWebideJobRoute
   '/portal/more/orders/$id': typeof PortalMoreOrdersIdRoute
   '/admin/cluster/nodes': typeof AdminClusterNodesIndexRoute
   '/admin/cluster/resources': typeof AdminClusterResourcesIndexRoute
@@ -747,6 +763,7 @@ export interface FileRoutesById {
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
+  '/ingress/webide/$name': typeof IngressWebideNameRoute
   '/portal/account/member': typeof PortalAccountMemberRoute
   '/portal/files/$': typeof PortalFilesSplatRoute
   '/portal/monitor/gpu': typeof PortalMonitorGpuRoute
@@ -781,6 +798,7 @@ export interface FileRoutesById {
   '/portal/jobs/new/seacs-job': typeof PortalJobsNewSeacsJobRoute
   '/portal/jobs/new/single-job': typeof PortalJobsNewSingleJobRoute
   '/portal/jobs/new/tensorflow-ps-job': typeof PortalJobsNewTensorflowPsJobRoute
+  '/portal/jobs/new/webide-job': typeof PortalJobsNewWebideJobRoute
   '/portal/more/orders/$id': typeof PortalMoreOrdersIdRoute
   '/admin/cluster/nodes/': typeof AdminClusterNodesIndexRoute
   '/admin/cluster/resources/': typeof AdminClusterResourcesIndexRoute
@@ -839,6 +857,7 @@ export interface FileRouteTypes {
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
+    | '/ingress/webide/$name'
     | '/portal/account/member'
     | '/portal/files/$'
     | '/portal/monitor/gpu'
@@ -873,6 +892,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new/seacs-job'
     | '/portal/jobs/new/single-job'
     | '/portal/jobs/new/tensorflow-ps-job'
+    | '/portal/jobs/new/webide-job'
     | '/portal/more/orders/$id'
     | '/admin/cluster/nodes/'
     | '/admin/cluster/resources/'
@@ -910,6 +930,7 @@ export interface FileRouteTypes {
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
+    | '/ingress/webide/$name'
     | '/portal/account/member'
     | '/portal/files/$'
     | '/portal/monitor/gpu'
@@ -944,6 +965,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new/seacs-job'
     | '/portal/jobs/new/single-job'
     | '/portal/jobs/new/tensorflow-ps-job'
+    | '/portal/jobs/new/webide-job'
     | '/portal/more/orders/$id'
     | '/admin/cluster/nodes'
     | '/admin/cluster/resources'
@@ -1000,6 +1022,7 @@ export interface FileRouteTypes {
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
+    | '/ingress/webide/$name'
     | '/portal/account/member'
     | '/portal/files/$'
     | '/portal/monitor/gpu'
@@ -1034,6 +1057,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new/seacs-job'
     | '/portal/jobs/new/single-job'
     | '/portal/jobs/new/tensorflow-ps-job'
+    | '/portal/jobs/new/webide-job'
     | '/portal/more/orders/$id'
     | '/admin/cluster/nodes/'
     | '/admin/cluster/resources/'
@@ -1060,6 +1084,7 @@ export interface RootRouteChildren {
   PortalRouteRoute: typeof PortalRouteRouteWithChildren
   AuthIndexRoute: typeof AuthIndexRoute
   IngressJupyterNameRoute: typeof IngressJupyterNameRoute
+  IngressWebideNameRoute: typeof IngressWebideNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1301,6 +1326,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/account/member'
       preLoaderRoute: typeof PortalAccountMemberRouteImport
       parentRoute: typeof PortalAccountRouteRoute
+    }
+    '/ingress/webide/$name': {
+      id: '/ingress/webide/$name'
+      path: '/ingress/webide/$name'
+      fullPath: '/ingress/webide/$name'
+      preLoaderRoute: typeof IngressWebideNameRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/ingress/jupyter/$name': {
       id: '/ingress/jupyter/$name'
@@ -1546,6 +1578,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/more/orders/$id'
       preLoaderRoute: typeof PortalMoreOrdersIdRouteImport
       parentRoute: typeof PortalMoreOrdersRouteRoute
+    }
+    '/portal/jobs/new/webide-job': {
+      id: '/portal/jobs/new/webide-job'
+      path: '/webide-job'
+      fullPath: '/portal/jobs/new/webide-job'
+      preLoaderRoute: typeof PortalJobsNewWebideJobRouteImport
+      parentRoute: typeof PortalJobsNewRouteRoute
     }
     '/portal/jobs/new/tensorflow-ps-job': {
       id: '/portal/jobs/new/tensorflow-ps-job'
@@ -2013,6 +2052,7 @@ interface PortalJobsNewRouteRouteChildren {
   PortalJobsNewSeacsJobRoute: typeof PortalJobsNewSeacsJobRoute
   PortalJobsNewSingleJobRoute: typeof PortalJobsNewSingleJobRoute
   PortalJobsNewTensorflowPsJobRoute: typeof PortalJobsNewTensorflowPsJobRoute
+  PortalJobsNewWebideJobRoute: typeof PortalJobsNewWebideJobRoute
 }
 
 const PortalJobsNewRouteRouteChildren: PortalJobsNewRouteRouteChildren = {
@@ -2023,6 +2063,7 @@ const PortalJobsNewRouteRouteChildren: PortalJobsNewRouteRouteChildren = {
   PortalJobsNewSeacsJobRoute: PortalJobsNewSeacsJobRoute,
   PortalJobsNewSingleJobRoute: PortalJobsNewSingleJobRoute,
   PortalJobsNewTensorflowPsJobRoute: PortalJobsNewTensorflowPsJobRoute,
+  PortalJobsNewWebideJobRoute: PortalJobsNewWebideJobRoute,
 }
 
 const PortalJobsNewRouteRouteWithChildren =
@@ -2082,6 +2123,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRouteRoute: PortalRouteRouteWithChildren,
   AuthIndexRoute: AuthIndexRoute,
   IngressJupyterNameRoute: IngressJupyterNameRoute,
+  IngressWebideNameRoute: IngressWebideNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

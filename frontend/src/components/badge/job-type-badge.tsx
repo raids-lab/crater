@@ -56,6 +56,12 @@ const getJobTypeLabel = (
         color: 'text-highlight-amber bg-highlight-amber/10',
         description: 'Jupyter 交互式作业',
       }
+    case JobType.WebIDE:
+      return {
+        label: 'WebIDE',
+        color: 'text-highlight-sky bg-highlight-sky/10',
+        description: 'Web IDE 作业',
+      }
     case JobType.Tensorflow:
       return {
         label: 'Tensorflow',

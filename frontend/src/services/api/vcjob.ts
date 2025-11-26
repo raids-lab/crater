@@ -30,12 +30,21 @@ const JOB_URL = store.get(globalJobUrl)
 
 export enum JobType {
   Jupyter = 'jupyter',
+  WebIDE = 'webide',
   Pytorch = 'pytorch',
   Tensorflow = 'tensorflow',
   Custom = 'custom',
   KubeRay = 'kuberay',
   DeepSpeed = 'deepspeed',
   OpenMPI = 'openmpi',
+}
+
+export const isInteracitveJob = (jobType: JobType) => {
+  return jobType === JobType.Jupyter || jobType === JobType.WebIDE
+}
+
+export const isSingleJob = (jobType: JobType) => {
+  return jobType === JobType.Jupyter || jobType === JobType.WebIDE || jobType === JobType.Custom
 }
 
 export interface IJobInfo {
@@ -304,6 +313,14 @@ export interface Env {
   value: string
 }
 
+export interface JupyterTokenInfo {
+  baseURL: string
+  fullURL: string
+  token: string
+  podName: string
+  namespace: string
+}
+
 export type NodeSelectorOperator = 'In' | 'NotIn' | 'Exists' | 'DoesNotExist' | 'Gt' | 'Lt'
 
 export interface NodeSelectorRequirement {
@@ -371,6 +388,9 @@ export interface ITensorflowCreate {
 export const apiJupyterCreate = (task: IJupyterCreate) =>
   apiV1Post<IResponse<string>>(`${JOB_URL}/jupyter`, task)
 
+export const apiWebIDECreate = (task: IJupyterCreate) =>
+  apiV1Post<IResponse<string>>(`${JOB_URL}/webide`, task)
+
 export const apiTrainingCreate = (task: ITrainingCreate) =>
   apiV1Post<IResponse<string>>(`${JOB_URL}/training`, task)
 
@@ -418,16 +438,11 @@ export const apiJobTemplate = (jobName: string) =>
 export const apiJTaskImageList = (imageTaskType: string) =>
   apiV1Get<IResponse<{ images: ImageInfoResponse[] }>>(`images/available?type=${imageTaskType}`)
 
+export const apiWebIDETokenGet = (jobName: string) =>
+  apiV1Get<IResponse<JupyterTokenInfo>>(`${JOB_URL}/${jobName}/secret`)
+
 export const apiJupyterTokenGet = (jobName: string) =>
-  apiV1Get<
-    IResponse<{
-      baseURL: string
-      fullURL: string
-      token: string
-      podName: string
-      namespace: string
-    }>
-  >(`${JOB_URL}/${jobName}/token`)
+  apiV1Get<IResponse<JupyterTokenInfo>>(`${JOB_URL}/${jobName}/token`)
 
 // 保存作业快照（适用于 Jupyter 和 Custom 类型作业）
 // @Router /v1/vcjobs/{name}/snapshot [post]

@@ -31,7 +31,7 @@ const PrefixLinkButton = ({ names = [], prefixes = [], title = ' ' }: PrefixLink
       Array.isArray(names) && Array.isArray(prefixes)
         ? names
             .map((name, idx) => ({ name, prefix: prefixes[idx] }))
-            .filter((item) => item.name !== 'notebook')
+            .filter((item) => item.name !== 'notebook' && item.name !== 'webide')
         : [],
     [names, prefixes]
   )

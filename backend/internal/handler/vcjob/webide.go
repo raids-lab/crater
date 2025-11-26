@@ -66,6 +66,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 	jobName := utils.GenerateJobName("vsc", token.Username)
 	// baseURL for ingress paths (without type prefix)
 	baseURL := jobName[4:] // Remove "vsc-" prefix
+	randomSuffix := fmt.Sprintf("%s-%d", jobName[len(jobName)-5:], token.UserID)
 
 	// Unified jupyter start command
 	webideCommand := fmt.Sprintf("code-server --bind-addr 0.0.0.0:%d", JupyterPort)
@@ -152,7 +153,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		Protocol:   v1.ProtocolTCP,
 	}
 
-	ingressPath, err := mgr.serviceManager.CreateIngress(
+	ingressPath, err := mgr.serviceManager.CreateNamedIngress(
 		c,
 		[]metav1.OwnerReference{
 			*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
@@ -161,6 +162,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		port,
 		config.GetConfig().Host,
 		token.Username,
+		randomSuffix,
 	)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to create ingress: %v", err), resputil.NotSpecified)
@@ -228,12 +230,13 @@ func (mgr *VolcanojobMgr) GetWebIDESecret(c *gin.Context) {
 	}
 
 	baseURL := vcjob.Labels[crclient.LabelKeyBaseURL]
+	randomPrefix := fmt.Sprintf("%s-%d", req.JobName[len(req.JobName)-5:], token.UserID)
 
 	podName, _ := getPodNameAndLabelFromJob(vcjob)
 
 	// Construct the full URL directly
 	host := config.GetConfig().Host
-	fullURL := fmt.Sprintf("https://%s/ingress/%s", host, token.Username)
+	fullURL := fmt.Sprintf("https://%s.%s", randomPrefix, host)
 
 	// Check if password has been cached in the job annotations
 	password, ok := vcjob.Annotations[AnnotationKeyWebIDE]
@@ -251,7 +254,7 @@ func (mgr *VolcanojobMgr) GetWebIDESecret(c *gin.Context) {
 	// Fetch the password from the pod
 	// Command: cat /home/<username>/.config/code-server/config.yaml
 	cmd := []string{"cat", fmt.Sprintf("/home/%s/.config/code-server/config.yaml", token.Username)}
-	output, err := mgr.execCommandInPod(c, namespace, podName, string(CraterJobTypeJupyter), cmd)
+	output, err := mgr.execCommandInPod(c, namespace, podName, string(CraterJobTypeWebIDE), cmd)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to exec command in pod: %v", err), resputil.NotSpecified)
 		return
