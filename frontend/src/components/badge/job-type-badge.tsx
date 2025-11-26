@@ -23,6 +23,10 @@ export const jobTypes = [
     label: 'Custom',
   },
   {
+    value: 'webide',
+    label: 'WebIDE',
+  },
+  {
     value: 'jupyter',
     label: 'Jupyter',
   },
