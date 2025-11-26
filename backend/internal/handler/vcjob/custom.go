@@ -204,6 +204,9 @@ func GenerateCustomPodSpec(
 				SecurityContext: &v1.SecurityContext{
 					RunAsUser:  ptr.To(int64(0)),
 					RunAsGroup: ptr.To(int64(0)),
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{"IPC_LOCK"},
+					},
 				},
 				TerminationMessagePath:   "/dev/termination-log",
 				TerminationMessagePolicy: v1.TerminationMessageReadFile,

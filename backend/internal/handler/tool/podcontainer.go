@@ -169,8 +169,13 @@ func (mgr *APIServerMgr) GetPodIngresses(c *gin.Context) {
 	// Fetch the pod
 	var pod v1.Pod
 	if err := mgr.client.Get(c, client.ObjectKey{Namespace: req.Namespace, Name: req.PodName}, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+		if apierrors.IsNotFound(err) {
+			resputil.Success(c, PodIngressResp{Ingresses: []PodIngress{}})
+			return
+		} else {
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			return
+		}
 	}
 
 	// Extract relevant labels for filtering

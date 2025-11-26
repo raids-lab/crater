@@ -61,7 +61,7 @@ func CheckResourceListExceed(hard, used, requested v1.ResourceList) bool {
 	return false
 }
 
-func CheckJupyterLimitBeforeCreateJupyter(
+func CheckInteractiveLimitBeforeCreate(
 	c context.Context,
 	userID, accountID uint,
 ) error {
