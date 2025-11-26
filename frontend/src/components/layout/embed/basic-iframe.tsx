@@ -78,11 +78,11 @@ export const BasicIframe: FC<BasicIframeProps> = ({
     )
   }
 
-  // 生产模式或禁用占位图时显示正常的 iframe
   return (
     <iframe
       src={src}
       title={title}
+      allow="clipboard-read; clipboard-write"
       className={cn('h-full w-full rounded-xl border-none', className)}
       {...iframeProps}
     />
