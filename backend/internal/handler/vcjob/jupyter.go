@@ -60,7 +60,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	if err := aitaskctl.CheckJupyterLimitBeforeCreateJupyter(c, token.UserID, token.AccountID); err != nil {
+	if err := aitaskctl.CheckInteractiveLimitBeforeCreate(c, token.UserID, token.AccountID); err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
@@ -82,33 +82,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	// baseURL for ingress paths (without type prefix)
 	baseURL := jobName[4:] // Remove "jpt-" prefix
 
-	// 1. Volume Mounts
-	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// Add unified start script volume
-	volumes = append(volumes, v1.Volume{
-		Name: "unified-start-script",
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: "unified-jupyter-start-configmap",
-				},
-				//nolint:mnd // 0755 is the default mode
-				DefaultMode: ptr.To(int32(0755)),
-			},
-		},
-	})
-	volumeMounts = append(volumeMounts, v1.VolumeMount{
-		Name:      "unified-start-script",
-		MountPath: "/usr/local/bin/unified-start.sh",
-		ReadOnly:  true,
-		SubPath:   "unified-start.sh",
-	})
-
 	// Unified jupyter start command
 	jupyterCommand := fmt.Sprintf(
 		"jupyter lab --ip=0.0.0.0 --no-browser --allow-root "+
@@ -122,20 +95,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		fmt.Sprintf("/usr/local/bin/unified-start.sh %s", jupyterCommand),
 	}
 
-	// 2. Env Vars
-	envs := GenerateEnvs(c, token, req.Envs)
-	envs = append(
-		envs,
-		v1.EnvVar{Name: "GRANT_SUDO", Value: "1"},
-		v1.EnvVar{Name: "CHOWN_HOME", Value: "1"},
-	)
-
-	// 3. Node Affinity and Tolerations
-	baseAffinity := GenerateNodeAffinity(req.Selectors, req.Resource)
-	affinity := GenerateArchitectureNodeAffinity(req.Image, baseAffinity)
-
-	tolerations := GenerateTaintTolerationsForAccount(token)
-
 	// 4. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
 		CraterJobTypeJupyter,
@@ -146,50 +105,24 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		req.AlertEnabled,
 	)
 
-	imagePullSecrets := []v1.LocalObjectReference{}
-	if config.GetConfig().Secrets.ImagePullSecretName != "" {
-		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
-			Name: config.GetConfig().Secrets.ImagePullSecretName,
-		})
-	}
-
 	// 5. Create the pod spec
-	podSpec := v1.PodSpec{
-		Affinity:         affinity,
-		Tolerations:      tolerations,
-		Volumes:          volumes,
-		ImagePullSecrets: imagePullSecrets,
-		Containers: []v1.Container{
-			{
-				Name:    string(CraterJobTypeJupyter),
-				Image:   req.Image.ImageLink,
-				Command: commandArgs,
-				Resources: v1.ResourceRequirements{
-					Limits:   req.Resource,
-					Requests: req.Resource,
-				},
-				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
-
-				Env: envs,
-				Ports: []v1.ContainerPort{
-					{ContainerPort: JupyterPort, Name: "notebook", Protocol: v1.ProtocolTCP},
-				},
-				SecurityContext: &v1.SecurityContext{
-					RunAsUser:  ptr.To(int64(0)),
-					RunAsGroup: ptr.To(int64(0)),
-				},
-				TerminationMessagePath:   "/dev/termination-log",
-				TerminationMessagePolicy: v1.TerminationMessageReadFile,
-				VolumeMounts:             volumeMounts,
-			},
-		},
-		RestartPolicy:      v1.RestartPolicyNever,
-		EnableServiceLinks: ptr.To(false),
+	podSpec, err := generateInteractivePodSpec(
+		c,
+		token,
+		&req.CreateJobCommon,
+		req.Resource,
+		req.Image,
+		commandArgs,
+		JupyterPort,
+		string(CraterJobTypeJupyter),
+	)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
 	}
-
-	fmt.Printf("Affinity:\n %+v\n", podSpec.Affinity)
 
 	// 6. Create volcano job
+	//nolint:dupl // TODO: refactor to reduce duplicate code
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -256,7 +189,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	log.Printf("Ingress created at path: %s", ingressPath)
 
 	// create forward ing rules in template
-	//nolint:dupl // ignore duplicate code
+	//nolint:dupl // TODO: refactor to reduce duplicate code
 	for _, forward := range req.Forwards {
 		port := &v1.ServicePort{
 			Name:       forward.Name,
@@ -294,7 +227,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			jobName	path		string							true	"Job Name"
-//	@Success		200		{object}	resputil.Response[JobTokenResp]	"Success"
+//	@Success		200		{object}	resputil.Response[JupyterTokenResp]	"Success"
 //	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]			"Other errors"
 //	@Router			/v1/vcjobs/{name}/token [get]
@@ -342,7 +275,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	// Check if jupyter token has been cached in the job annotations
 	jupyterToken, ok := vcjob.Annotations[AnnotationKeyJupyter]
 	if ok {
-		resputil.Success(c, JobTokenResp{
+		resputil.Success(c, JupyterTokenResp{
 			BaseURL:   baseURL,
 			Token:     jupyterToken,
 			FullURL:   fullURL,
@@ -374,7 +307,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 		return
 	}
 
-	resputil.Success(c, JobTokenResp{
+	resputil.Success(c, JupyterTokenResp{
 		BaseURL:   baseURL,
 		Token:     jupyterToken,
 		FullURL:   fullURL,
@@ -392,7 +325,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			name	path		string							true	"Job Name"
-//	@Success		200		{object}	resputil.Response[JobTokenResp]	"Success"
+//	@Success		200		{object}	resputil.Response[JupyterTokenResp]	"Success"
 //	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]			"Other errors"
 //	@Router			/v1/vcjobs/{name}/snapshot [post]
