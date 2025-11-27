@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/indexer"
@@ -111,17 +112,34 @@ type ClusterNodeDetail struct {
 	GPUDriver               string                   `json:"gpuDriver"`
 }
 
+// GPUDeviceInfo 表示一种类型的 GPU 设备信息
+type GPUDeviceInfo struct {
+	ResourceName   string `json:"resourceName"`   // 资源名称，如 "nvidia.com/gpu"
+	Label          string `json:"label"`          // 显示名称（从数据库获取，如 "NVIDIA GPU"）
+	Product        string `json:"product"`        // 具体型号（从节点标签获取，如 "Tesla V100"，可选）
+	VendorDomain   string `json:"vendorDomain"`   // 供应商域名，如 "nvidia.com"
+	Count          int    `json:"count"`          // 数量
+	Memory         string `json:"memory"`         // 显存
+	Arch           string `json:"arch"`           // 架构
+	Driver         string `json:"driver"`         // 驱动版本
+	RuntimeVersion string `json:"runtimeVersion"` // 运行时版本（CUDA/ROCm 等）
+}
+
+// GPUInfo 节点的 GPU 信息（支持多种类型的 GPU）
 type GPUInfo struct {
-	Name        string              `json:"name"`
-	HaveGPU     bool                `json:"haveGPU"`
-	GPUCount    int                 `json:"gpuCount"`
-	GPUUtil     map[string]float32  `json:"gpuUtil"`
-	RelateJobs  map[string][]string `json:"relateJobs"`
-	GPUMemory   string              `json:"gpuMemory"`
-	GPUArch     string              `json:"gpuArch"`
-	GPUDriver   string              `json:"gpuDriver"`
-	CudaVersion string              `json:"cudaVersion"`
-	GPUProduct  string              `json:"gpuProduct"`
+	Name       string              `json:"name"`
+	HaveGPU    bool                `json:"haveGPU"`
+	GPUCount   int                 `json:"gpuCount"`   // 总 GPU 数量
+	GPUDevices []GPUDeviceInfo     `json:"gpuDevices"` // 多种类型的 GPU 设备列表
+	GPUUtil    map[string]float32  `json:"gpuUtil"`
+	RelateJobs map[string][]string `json:"relateJobs"`
+
+	// 以下字段保留用于向后兼容（取第一个 GPU 设备的信息）
+	GPUMemory   string `json:"gpuMemory"`
+	GPUArch     string `json:"gpuArch"`
+	GPUDriver   string `json:"gpuDriver"`
+	CudaVersion string `json:"cudaVersion"`
+	GPUProduct  string `json:"gpuProduct"`
 }
 
 type NodeMarkInfo struct {
@@ -416,6 +434,155 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 	return pods, nil
 }
 
+// getGPUResourcesFromDB 从数据库获取所有 GPU 类型的资源列表
+func getGPUResourcesFromDB(ctx context.Context) ([]*model.Resource, error) {
+	r := query.Resource
+	gpuResources, err := r.WithContext(ctx).
+		Where(r.Type.Eq(string(model.ResourceTypeGPU))).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+	return gpuResources, nil
+}
+
+// detectGPUDevicesFromAllocatable 从节点的 Allocatable 资源中检测所有类型的 GPU 设备
+func detectGPUDevicesFromAllocatable(node *corev1.Node) []GPUDeviceInfo {
+	var devices []GPUDeviceInfo
+
+	// 从数据库查询所有 GPU 类型的资源
+	gpuResources, err := getGPUResourcesFromDB(context.Background())
+	if err != nil {
+		klog.Errorf("Failed to query GPU resources from database: %v", err)
+		return devices
+	}
+
+	// 遍历数据库中的 GPU 资源，匹配节点的 Allocatable 资源
+	for _, gpuResource := range gpuResources {
+		if quantity, ok := node.Status.Allocatable[corev1.ResourceName(gpuResource.ResourceName)]; ok {
+			count := int(quantity.Value())
+			if count > 0 {
+				vendorDomain := ""
+				if gpuResource.VendorDomain != nil {
+					vendorDomain = *gpuResource.VendorDomain
+				}
+
+				devices = append(devices, GPUDeviceInfo{
+					ResourceName: gpuResource.ResourceName,
+					Label:        gpuResource.Label, // 从数据库获取显示名称
+					VendorDomain: vendorDomain,
+					Count:        count,
+				})
+			}
+		}
+	}
+	return devices
+}
+
+// populateGPUDeviceDetailsFromLabels 从节点标签填充每个 GPU 设备的详细信息
+func populateGPUDeviceDetailsFromLabels(devices []GPUDeviceInfo, node *corev1.Node) []GPUDeviceInfo {
+	for i := range devices {
+		device := &devices[i]
+		resourceName := device.ResourceName
+
+		// 重置设备信息，确保不会使用之前设备的值
+		device.Product = ""
+		device.Memory = ""
+		device.Arch = ""
+		device.Driver = ""
+		device.RuntimeVersion = ""
+
+		// 根据 ResourceName 确定应该读取哪个厂商的标签
+		switch {
+		case strings.HasPrefix(resourceName, "nvidia.com/"):
+			device.Product = node.Labels["nvidia.com/gpu.product"]
+			device.Memory = node.Labels["nvidia.com/gpu.memory"]
+			device.Arch = node.Labels["nvidia.com/gpu.family"]
+			device.Driver = node.Labels["nvidia.com/cuda.driver-version.full"]
+			device.RuntimeVersion = node.Labels["nvidia.com/cuda.runtime-version.full"]
+		case strings.HasPrefix(resourceName, "amd.com/"):
+			device.Product = node.Labels["amd.com/gpu.product"]
+			device.Memory = node.Labels["amd.com/gpu.memory"]
+			device.Arch = node.Labels["amd.com/gpu.family"]
+			device.Driver = node.Labels["amd.com/gpu.driver-version"]
+			device.RuntimeVersion = node.Labels["amd.com/rocm.version"]
+		case strings.HasPrefix(resourceName, "hygon.com/"):
+			device.Product = node.Labels["hygon.com/gpu.product"]
+			device.Memory = node.Labels["hygon.com/gpu.memory"]
+			device.Arch = node.Labels["hygon.com/gpu.family"]
+			device.Driver = node.Labels["hygon.com/gpu.driver-version"]
+			device.RuntimeVersion = node.Labels["hygon.com/gpu.runtime-version"]
+		}
+
+		// 如果节点标签中没有 Product，使用数据库的 Label 作为默认值
+		if device.Product == "" {
+			device.Product = device.Label
+		}
+	}
+	return devices
+}
+
+// calculateGPUResourceUsedCount 计算每个 GPU 资源类型的已使用数量
+func calculateGPUResourceUsedCount(podList *corev1.PodList, filterPodPhase bool) map[string]int {
+	// 从数据库查询所有 GPU 类型的资源
+	gpuResources, err := getGPUResourcesFromDB(context.Background())
+	if err != nil {
+		klog.Errorf("Failed to query GPU resources from database: %v", err)
+		return make(map[string]int)
+	}
+
+	// 构建所有 GPU 资源名称集合
+	gpuResourceNames := make(map[string]bool)
+	for _, gpuResource := range gpuResources {
+		gpuResourceNames[gpuResource.ResourceName] = true
+	}
+
+	// 统计每个 GPU 资源类型的已使用数量
+	gpuResourceUsedCount := make(map[string]int)
+	for j := range podList.Items {
+		pod := &podList.Items[j]
+		// 如果 filterPodPhase 为 true，只处理运行中的 Pod
+		if filterPodPhase {
+			if pod.Status.Phase != corev1.PodPending && pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodUnknown {
+				continue
+			}
+		}
+		podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
+		for resName, quantity := range podResources {
+			resNameStr := string(resName)
+			if gpuResourceNames[resNameStr] {
+				gpuResourceUsedCount[resNameStr] += int(quantity.Value())
+			}
+		}
+	}
+	return gpuResourceUsedCount
+}
+
+// markK8sAllocatedGPUsFromPods 根据 Pod 资源请求标记从 Kubernetes 分配的 GPU
+func markK8sAllocatedGPUsFromPods(gpuInfo *GPUInfo, podList *corev1.PodList) {
+	if gpuInfo.GPUCount <= 0 || len(podList.Items) == 0 {
+		return
+	}
+
+	// 统计每个 GPU 资源类型的已使用数量（只处理运行中的 Pod）
+	gpuResourceUsedCount := calculateGPUResourceUsedCount(podList, true)
+
+	// 根据 GPU 设备类型和已使用数量，标记对应的 GPU
+	currentGPUIndex := 0
+	for i := range gpuInfo.GPUDevices {
+		device := &gpuInfo.GPUDevices[i]
+		usedCount := gpuResourceUsedCount[device.ResourceName]
+		if usedCount > 0 {
+			// 标记该设备类型的前 usedCount 个 GPU
+			for j := 0; j < usedCount && j < device.Count; j++ {
+				gpuId := fmt.Sprintf("%d", currentGPUIndex+j)
+				gpuInfo.RelateJobs[gpuId] = []string{"__k8s_allocated__"}
+			}
+		}
+		currentGPUIndex += device.Count
+	}
+}
+
 func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 	var nodes corev1.NodeList
 
@@ -429,6 +596,7 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 		Name:        name,
 		HaveGPU:     false,
 		GPUCount:    0,
+		GPUDevices:  []GPUDeviceInfo{},
 		GPUUtil:     make(map[string]float32),
 		RelateJobs:  make(map[string][]string),
 		GPUMemory:   "",
@@ -438,51 +606,49 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 		GPUProduct:  "",
 	}
 
-	// 首先查询当前节点是否有GPU
+	// 查找目标节点并填充 GPU 信息
 	for i := range nodes.Items {
 		node := &nodes.Items[i]
 		if node.Name != name {
 			continue
 		}
-		gpuCountValue, ok := node.Labels["nvidia.com/gpu.count"]
-		if ok {
-			gpuCount := 0
-			_, err := fmt.Sscanf(gpuCountValue, "%d", &gpuCount)
-			if err != nil {
-				return GPUInfo{}, err
-			}
-			gpuInfo.GPUCount = gpuCount
-			gpuInfo.HaveGPU = true
-			gpuInfo.GPUMemory = node.Labels["nvidia.com/gpu.memory"]
-			gpuInfo.GPUArch = node.Labels["nvidia.com/gpu.family"]
-			gpuInfo.GPUDriver = node.Labels["nvidia.com/cuda.driver-version.full"]
-			gpuInfo.CudaVersion = node.Labels["nvidia.com/cuda.runtime-version.full"]
-			gpuInfo.GPUProduct = node.Labels["nvidia.com/gpu.product"]
-			break
+
+		// 从 Allocatable 检测所有类型的 GPU 设备
+		gpuInfo.GPUDevices = detectGPUDevicesFromAllocatable(node)
+
+		// 从标签填充每个 GPU 设备的详细信息
+		gpuInfo.GPUDevices = populateGPUDeviceDetailsFromLabels(gpuInfo.GPUDevices, node)
+
+		// 计算总 GPU 数量
+		for i := range gpuInfo.GPUDevices {
+			gpuInfo.GPUCount += gpuInfo.GPUDevices[i].Count
 		}
+
+		if gpuInfo.GPUCount > 0 {
+			gpuInfo.HaveGPU = true
+		}
+
+		// 向后兼容：如果有 GPU 设备，将第一个设备的信息填充到旧字段
+		if len(gpuInfo.GPUDevices) > 0 {
+			firstDevice := gpuInfo.GPUDevices[0]
+			gpuInfo.GPUProduct = firstDevice.Product
+			gpuInfo.GPUMemory = firstDevice.Memory
+			gpuInfo.GPUArch = firstDevice.Arch
+			gpuInfo.GPUDriver = firstDevice.Driver
+			gpuInfo.CudaVersion = firstDevice.RuntimeVersion
+		}
+
+		break
 	}
 
-	// 使用PrometheusClient查询当前节点上的GPU使用率
-	jobPodsList := nc.PrometheusClient.GetJobPodsList()
-	gpuUtilMap := nc.PrometheusClient.QueryNodeGPUUtil()
-	for i := 0; i < len(gpuUtilMap); i++ {
-		gpuUtil := &gpuUtilMap[i]
-		if gpuUtil.Hostname == name {
-			gpuInfo.GPUUtil[gpuUtil.Gpu] = gpuUtil.Util
-			// 如果gpuUtil.pod在jobPodsList的value中，则将jobPodsList中的job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
-			curPod := gpuUtil.Pod
-			for job, pods := range jobPodsList {
-				// 确认curPod是否在pods中
-				for _, pod := range pods {
-					if curPod == pod {
-						// 将job加入gpuInfo.RelateJobs[gpuUtil.Gpu]
-						gpuInfo.RelateJobs[gpuUtil.Gpu] = append(gpuInfo.RelateJobs[gpuUtil.Gpu], job)
-						break
-					}
-				}
-			}
-		}
+	// 只基于 Kubernetes 资源请求判断分配状态，确保与节点列表一致
+	podList := &corev1.PodList{}
+	if err := nc.List(context.Background(), podList, indexer.MatchingPodsByNodeName(name)); err != nil {
+		klog.Errorf("Failed to get pods for node %s: %v", name, err)
+	} else {
+		markK8sAllocatedGPUsFromPods(&gpuInfo, podList)
 	}
+
 	return gpuInfo, nil
 }
 

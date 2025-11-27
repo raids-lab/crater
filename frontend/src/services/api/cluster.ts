@@ -83,12 +83,26 @@ export interface IClusterNodeDetail {
 }
 
 // GPU 信息接口定义
+export interface IGPUDeviceInfo {
+  resourceName: string
+  label: string
+  product: string
+  vendorDomain: string
+  count: number
+  memory: string
+  arch: string
+  driver: string
+  runtimeVersion: string
+}
+
 export interface IClusterNodeGPU {
   name: string
   haveGPU: boolean
   gpuCount: number
+  gpuDevices: IGPUDeviceInfo[]
   gpuUtil: Record<string, number>
   relateJobs: string[]
+  // 以下字段保留用于向后兼容（取第一个 GPU 设备的信息）
   gpuMemory: string
   gpuArch: string
   gpuDriver: string
