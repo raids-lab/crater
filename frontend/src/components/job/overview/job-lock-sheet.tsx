@@ -1,36 +1,43 @@
-import { useCallback, useState } from 'react'
-// 使用本地 state 管理单行原因输入
+/**
+ * Copyright 2025 RAIDS Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+import { useQuery } from '@tanstack/react-query'
+import { ClockIcon } from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 
 import { CopyButton } from '@/components/button/copy-button'
 import { DurationFields } from '@/components/form/duration-fields'
 import FormLabelMust from '@/components/form/form-label-must'
-// TagsInput removed in favor of ReasonInput
-
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
+import SandwichSheet, { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import {
   ApprovalOrder,
   createApprovalOrder,
   listMyApprovalOrder,
 } from '@/services/api/approvalorder'
-
-interface ExtensionRequestDialogProps {
-  jobName: string
-  trigger?: React.ReactNode
-}
+import { NodeStatus } from '@/services/api/cluster'
+import { IJobInfo } from '@/services/api/vcjob'
+import { queryNodes } from '@/services/query/node'
 
 const ExtensionMarkdown = `
 ## 清理规则
@@ -41,8 +48,13 @@ const ExtensionMarkdown = `
 - 每隔2天，第一个小于12小时的作业锁定工单，系统会直接审批通过
 `
 
-export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRequestDialogProps) {
-  const [open, setOpen] = useState(false)
+interface JobLockSheetProps {
+  isOpen: boolean
+  onOpenChange: (open: boolean) => void
+  jobName: string
+}
+
+export const JobLockSheet = ({ isOpen, onOpenChange, jobName }: JobLockSheetProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [urgentOpen, setUrgentOpen] = useState(false)
   const [newlyCreatedOrder, setNewlyCreatedOrder] = useState<ApprovalOrder | null>(null)
@@ -51,22 +63,16 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
     hours: 0,
     totalHours: 0,
   })
-
-  // 使用受控 Input 管理单行原因（简化，不用 react-hook-form）
   const [reason, setReason] = useState('')
+
+  const commonReasons = ['模型训练尚未结束', '需要保留环境进行调试', '等待数据处理']
 
   const handleDurationChange = useCallback(
     (val: { days: number; hours: number; totalHours: number }) => setDuration(val),
     []
   )
 
-  const canExtend = true
-
   const handleSubmit = async () => {
-    if (!canExtend) {
-      toast.error('当前作业不是运行中，无法申请锁定')
-      return
-    }
     const hours = duration.totalHours
     if (!reason || reason.trim().length === 0) {
       toast.error('请填写申请原因')
@@ -79,10 +85,8 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
 
     setIsSubmitting(true)
     try {
-      // 使用单字符串原因（由单行 Input 提供）
       const reasonString = reason.trim()
 
-      // 重复检测：检查当前用户对该 job 是否已有相同标题或相同 reason 的待审批工单
       try {
         const myOrdersResp = await listMyApprovalOrder()
         const duplicates = (myOrdersResp.data || []).filter(
@@ -100,7 +104,6 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
           }
         }
       } catch (err) {
-        // 如果重复检测失败，不阻止提交，但记录日志
         // eslint-disable-next-line no-console
         console.warn('重复检测失败', err)
       }
@@ -113,7 +116,7 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
         approvalorderReason: reasonString,
         approvalorderExtensionHours: hours,
       })
-      setOpen(false)
+      onOpenChange(false)
       setDuration({ days: 0, hours: 0, totalHours: 0 })
       setReason('')
       toast.success('创建锁定申请成功')
@@ -139,23 +142,31 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        {trigger ? (
-          <DialogTrigger asChild>{trigger}</DialogTrigger>
-        ) : (
-          <DialogTrigger asChild>
-            <button className="flex w-full items-center gap-2 px-2 py-1.5 text-sm">申请锁定</button>
-          </DialogTrigger>
-        )}
-        <DialogContent className="w-full sm:max-w-[760px] md:max-w-[880px]">
-          <DialogHeader>
-            <DialogTitle>申请作业锁定</DialogTitle>
-            <DialogDescription>为作业 “{jobName}” 申请锁定，需要管理员审批。</DialogDescription>
-
-            <div className="bg-muted/40 mt-4 rounded-md p-4">
-              <MarkdownRenderer>{ExtensionMarkdown}</MarkdownRenderer>
-            </div>
-          </DialogHeader>
+      <SandwichSheet
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        title="申请作业锁定"
+        description={`为作业 “${jobName}” 申请锁定，需要管理员审批。`}
+        className="w-full sm:w-[25vw] sm:max-w-none sm:min-w-[600px]"
+      >
+        <SandwichLayout
+          footer={
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+                取消
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || duration.totalHours < 1 || !reason.trim()}
+              >
+                {isSubmitting ? '提交中...' : '提交申请'}
+              </Button>
+            </>
+          }
+        >
+          <div className="bg-muted/40 mt-4 rounded-md p-4">
+            <MarkdownRenderer>{ExtensionMarkdown}</MarkdownRenderer>
+          </div>
 
           <div className="grid gap-6 py-6">
             <div>
@@ -174,7 +185,6 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
             </div>
 
             <div>
-              {/* 申请原因（垂直布局）：使用 TagsInput 支持预设与自由输入 */}
               <div className="mb-2">
                 <div className="text-sm font-medium">
                   申请原因
@@ -189,24 +199,25 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
                   value={reason}
                   onChange={(e) => setReason((e.target as HTMLInputElement).value)}
                   className="w-full"
+                  placeholder="请输入申请原因"
                 />
+                <div className="flex gap-2 overflow-x-auto pt-2 pb-1">
+                  {commonReasons.map((r) => (
+                    <Badge
+                      key={r}
+                      variant="outline"
+                      className="shrink-0 cursor-pointer border-orange-600 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-400 dark:hover:bg-orange-900"
+                      onClick={() => setReason(r)}
+                    >
+                      {r}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
-              取消
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || duration.totalHours < 1 || !reason.trim()}
-            >
-              {isSubmitting ? '提交中...' : '提交申请'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </SandwichLayout>
+      </SandwichSheet>
 
       {newlyCreatedOrder && (
         <Dialog open={urgentOpen} onOpenChange={setUrgentOpen}>
@@ -232,5 +243,45 @@ export default function ExtensionRequestDialog({ jobName, trigger }: ExtensionRe
         </Dialog>
       )}
     </>
+  )
+}
+
+interface JobLockMenuItemProps {
+  jobInfo: IJobInfo
+  onLock: () => void
+}
+
+export const JobLockMenuItem = ({ jobInfo, onLock }: JobLockMenuItemProps) => {
+  const { data: nodes } = useQuery(queryNodes())
+
+  const areNodesReady = useMemo(() => {
+    if (!jobInfo.nodes || jobInfo.nodes.length === 0) return true
+    if (!nodes) return true
+
+    const jobNodes = nodes.filter((node) => jobInfo.nodes.includes(node.name))
+    if (jobNodes.length === 0) return true
+
+    return jobNodes.every((node) => node.status === NodeStatus.Ready)
+  }, [jobInfo.nodes, nodes])
+
+  const handleLockClick = (e: React.MouseEvent) => {
+    if (!areNodesReady) {
+      e.preventDefault()
+      toast.error('作业所在节点未在正常运行，暂不支持锁定作业')
+    } else {
+      onLock()
+    }
+  }
+
+  return (
+    <DropdownMenuItem
+      onClick={handleLockClick}
+      className={!areNodesReady ? 'cursor-not-allowed opacity-50' : ''}
+    >
+      <div className="flex w-full items-center gap-2">
+        <ClockIcon className="text-highlight-blue size-4" />
+        申请锁定
+      </div>
+    </DropdownMenuItem>
   )
 }
