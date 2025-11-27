@@ -514,7 +514,6 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
           label: t('nodeDetail.tabs.nodeInfo'),
           children: <NodeInfoTab nodeDetail={nodeDetail} gpuDetail={gpuDetail} />,
           scrollable: true,
-          hidden: !isAdminView,
         },
         {
           key: 'pods',

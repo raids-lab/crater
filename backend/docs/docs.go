@@ -8789,6 +8789,47 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_pkg_crclient.GPUDeviceInfo": {
+            "type": "object",
+            "properties": {
+                "arch": {
+                    "description": "架构",
+                    "type": "string"
+                },
+                "count": {
+                    "description": "数量",
+                    "type": "integer"
+                },
+                "driver": {
+                    "description": "驱动版本",
+                    "type": "string"
+                },
+                "label": {
+                    "description": "显示名称（从数据库获取，如 \"NVIDIA GPU\"）",
+                    "type": "string"
+                },
+                "memory": {
+                    "description": "显存",
+                    "type": "string"
+                },
+                "product": {
+                    "description": "具体型号（从节点标签获取，如 \"Tesla V100\"，可选）",
+                    "type": "string"
+                },
+                "resourceName": {
+                    "description": "资源名称，如 \"nvidia.com/gpu\"",
+                    "type": "string"
+                },
+                "runtimeVersion": {
+                    "description": "运行时版本（CUDA/ROCm 等）",
+                    "type": "string"
+                },
+                "vendorDomain": {
+                    "description": "供应商域名，如 \"nvidia.com\"",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_pkg_crclient.GPUInfo": {
             "type": "object",
             "properties": {
@@ -8799,12 +8840,21 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gpuCount": {
+                    "description": "总 GPU 数量",
                     "type": "integer"
+                },
+                "gpuDevices": {
+                    "description": "多种类型的 GPU 设备列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUDeviceInfo"
+                    }
                 },
                 "gpuDriver": {
                     "type": "string"
                 },
                 "gpuMemory": {
+                    "description": "以下字段保留用于向后兼容（取第一个 GPU 设备的信息）",
                     "type": "string"
                 },
                 "gpuProduct": {

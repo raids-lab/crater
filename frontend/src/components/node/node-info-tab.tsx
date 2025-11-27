@@ -72,27 +72,11 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
     ? convertKResourceToResource('memory', nodeDetail.capacity['ephemeral-storage'])
     : undefined
 
-  // GPU 分配情况计算
-  const gpuUtil = gpuDetail?.gpuUtil || {}
-  const gpuTotalCount = gpuDetail?.gpuCount || 0
+  // GPU 分配情况计算（只基于 Kubernetes 资源请求，与节点列表保持一致）
   const relateJobs = gpuDetail?.relateJobs
   const relateJobsMap: Record<string, string[]> = Array.isArray(relateJobs)
     ? {}
     : (relateJobs as unknown as Record<string, string[]>) || {}
-
-  // 统计已使用的GPU数量
-  const gpuUtilMap = new Map<string, boolean>()
-  Object.entries(gpuUtil).forEach(([gpuId, util]) => {
-    if (util > 0) gpuUtilMap.set(gpuId, true)
-  })
-  Object.entries(relateJobsMap).forEach(([gpuId, jobs]) => {
-    if (jobs?.length > 0) {
-      const hasRealJob = jobs.some((job) => job !== '__k8s_allocated__')
-      const hasK8sAllocation = jobs.includes('__k8s_allocated__')
-      if (hasRealJob || hasK8sAllocation) gpuUtilMap.set(gpuId, true)
-    }
-  })
-  const gpuUsedCount = gpuUtilMap.size
 
   const CHART_COLORS = {
     used: 'var(--primary)',
@@ -237,131 +221,162 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
       </Card>
 
       {gpuDetail?.haveGPU && (
-        <Card className="md:col-span-2">
-          <CardContent className="py-2.4 px-6">
-            <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-              <Zap className="size-4" />
-              {t('nodeDetail.info.acceleratorInfo')}
-            </h3>
+        <div className="space-y-4 md:col-span-2">
+          {gpuDetail.gpuDevices?.map((device, deviceIdx) => {
+            // 计算该设备类型的 GPU ID 范围
+            // 假设 GPU 按设备类型顺序编号：第一个设备类型从 0 开始，第二个从第一个的 count 开始，以此类推
+            let gpuStartIdx = 0
+            for (let i = 0; i < deviceIdx; i++) {
+              gpuStartIdx += gpuDetail.gpuDevices?.[i]?.count || 0
+            }
+            const gpuEndIdx = gpuStartIdx + device.count
 
-            <div className="flex flex-col gap-8 lg:flex-row">
-              <div className="flex-1 space-y-6">
-                <div>
-                  <div className="flex items-center gap-3 rounded-md bg-slate-950 px-4 py-3 text-white shadow-sm dark:bg-slate-800 dark:text-slate-100">
-                    <div className="flex size-8 items-center justify-center rounded bg-white/10 dark:bg-white/20">
-                      <Zap className="size-4 fill-yellow-400 text-yellow-400" />
-                    </div>
-                    <span className="text-lg font-semibold tracking-tight">
-                      {gpuDetail.gpuProduct}
-                    </span>
-                  </div>
-                </div>
+            // 计算该设备类型的已分配/未分配数量
+            // 只基于 Kubernetes 资源请求判断（__k8s_allocated__ 标记），与节点列表保持一致
+            let deviceUsedCount = 0
+            for (let i = gpuStartIdx; i < gpuEndIdx; i++) {
+              const gpuId = i.toString()
+              const jobs = relateJobsMap[gpuId] || []
+              // 只检查是否有 __k8s_allocated__ 标记（来自 Kubernetes 资源请求）
+              const isAllocated = jobs.includes('__k8s_allocated__')
+              if (isAllocated) {
+                deviceUsedCount++
+              }
+            }
+            const deviceUnusedCount = device.count - deviceUsedCount
 
-                <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                  {[
-                    {
-                      icon: Cable,
-                      label: t('nodeDetail.gpu.driverVersion'),
-                      value: gpuDetail.gpuDriver,
-                    },
-                    {
-                      icon: ActivityIcon,
-                      label: `CUDA ${t('nodeDetail.info.version')}`,
-                      value: gpuDetail.cudaVersion,
-                    },
-                    {
-                      icon: ServerIcon,
-                      label: t('nodeDetail.gpu.memory'),
-                      value: `${parseInt(gpuDetail.gpuMemory) / 1024} GB`,
-                    },
-                    {
-                      icon: CpuIcon,
-                      label: t('nodeDetail.gpu.architecture'),
-                      value: gpuDetail.gpuArch,
-                    },
-                  ].map(({ icon: Icon, label, value }, idx) => (
-                    <div key={idx} className="col-span-1">
-                      <div className="flex items-center">
-                        <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
-                          <Icon className="size-4" />
-                          <span>{label}</span>
+            return (
+              <Card key={deviceIdx}>
+                <CardContent className="py-2.4 px-6">
+                  <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
+                    <Zap className="size-4" />
+                    {t('nodeDetail.info.acceleratorInfo')} - {device.label.toUpperCase()}
+                  </h3>
+
+                  <div className="flex flex-col gap-8 lg:flex-row">
+                    <div className="flex-1 space-y-6">
+                      <div>
+                        <div className="flex items-center gap-5 rounded-md bg-slate-950 px-4 py-3 text-white shadow-sm dark:bg-slate-800 dark:text-slate-100">
+                          <div className="flex size-8 items-center justify-center rounded bg-white/10 dark:bg-white/20">
+                            <Zap className="size-4 fill-yellow-400 text-yellow-400" />
+                          </div>
+                          <span className="text-lg font-semibold tracking-tight">
+                            {device.product}
+                          </span>
                         </div>
-                        <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
-                          {value}
-                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                        {[
+                          {
+                            icon: Cable,
+                            label: t('nodeDetail.gpu.driverVersion'),
+                            value: device.driver || '-',
+                          },
+                          {
+                            icon: ActivityIcon,
+                            label: device.vendorDomain?.includes('nvidia')
+                              ? `CUDA ${t('nodeDetail.info.version')}`
+                              : device.vendorDomain?.includes('amd')
+                                ? `ROCm ${t('nodeDetail.info.version')}`
+                                : t('nodeDetail.info.version'),
+                            value: device.runtimeVersion || '-',
+                          },
+                          {
+                            icon: ServerIcon,
+                            label: t('nodeDetail.gpu.memory'),
+                            value: device.memory ? `${parseInt(device.memory) / 1024} GB` : '-',
+                          },
+                          {
+                            icon: CpuIcon,
+                            label: t('nodeDetail.gpu.architecture'),
+                            value: device.arch || '-',
+                          },
+                        ].map(({ icon: Icon, label, value }, idx) => (
+                          <div key={idx} className="col-span-1">
+                            <div className="flex items-center">
+                              <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
+                                <Icon className="size-4" />
+                                <span>{label}</span>
+                              </div>
+                              <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
+                                {value}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="flex-1 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-                    {t('nodeDetail.gpu.allocationStatus')}
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge
-                      variant="outline"
-                      className="border-primary/20 bg-primary/10 text-primary h-5 px-2 text-[10px]"
-                    >
-                      {t('nodeDetail.gpu.allocatedCount', { count: gpuUsedCount })}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="border-border bg-muted text-muted-foreground h-5 px-2 text-[10px]"
-                    >
-                      {t('nodeDetail.gpu.unallocatedCount', {
-                        count: gpuTotalCount - gpuUsedCount,
-                      })}
-                    </Badge>
-                  </div>
-                </div>
+                    <div className="flex-1 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                          {t('nodeDetail.gpu.allocationStatus')}
+                        </div>
+                        <div className="flex gap-2">
+                          <Badge
+                            variant="outline"
+                            className="border-primary/20 bg-primary/10 text-primary h-5 px-2 text-[10px]"
+                          >
+                            {t('nodeDetail.gpu.allocatedCount', { count: deviceUsedCount })}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="border-border bg-muted text-muted-foreground h-5 px-2 text-[10px]"
+                          >
+                            {t('nodeDetail.gpu.unallocatedCount', {
+                              count: deviceUnusedCount,
+                            })}
+                          </Badge>
+                        </div>
+                      </div>
 
-                <div
-                  className={cn(
-                    'gap-3',
-                    gpuTotalCount < 4
-                      ? 'flex flex-wrap'
-                      : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
-                  )}
-                >
-                  {Array.from({ length: gpuTotalCount }).map((_, i) => {
-                    const gpuId = i.toString()
-                    const jobs = relateJobsMap[gpuId] || []
-                    const isAllocated =
-                      jobs.some((job) => job !== '__k8s_allocated__') ||
-                      jobs.includes('__k8s_allocated__')
-
-                    return (
                       <div
-                        key={gpuId}
                         className={cn(
-                          'group bg-card relative flex flex-col items-center justify-between gap-3 rounded-lg border p-3 shadow-sm transition-all hover:shadow-md',
-                          gpuTotalCount < 4 && 'w-[calc((100%-0.75rem*3)/4)]'
+                          'gap-3',
+                          device.count < 4
+                            ? 'flex flex-wrap'
+                            : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
                         )}
                       >
-                        <div
-                          className={`rounded-full p-2 ${isAllocated ? 'bg-primary/10' : 'bg-muted'}`}
-                        >
-                          <Zap
-                            className={`size-4 ${isAllocated ? 'text-primary fill-primary' : 'text-muted-foreground'}`}
-                          />
-                        </div>
-                        <div className="text-muted-foreground font-mono text-xs font-medium">
-                          GPU-{gpuId}
-                        </div>
-                        <div
-                          className={`h-1 w-8 rounded-full transition-colors ${isAllocated ? 'bg-primary' : 'bg-muted-foreground/50'}`}
-                        />
+                        {Array.from({ length: device.count }).map((_, i) => {
+                          const gpuId = (gpuStartIdx + i).toString()
+                          const jobs = relateJobsMap[gpuId] || []
+                          // 只基于 Kubernetes 资源请求判断（__k8s_allocated__ 标记），与节点列表保持一致
+                          const isAllocated = jobs.includes('__k8s_allocated__')
+
+                          return (
+                            <div
+                              key={gpuId}
+                              className={cn(
+                                'group bg-card relative flex flex-col items-center justify-between gap-3 rounded-lg border p-3 shadow-sm transition-all hover:shadow-md',
+                                device.count < 4 && 'w-[calc((100%-0.75rem*3)/4)]'
+                              )}
+                            >
+                              <div
+                                className={`rounded-full p-2 ${isAllocated ? 'bg-primary/10' : 'bg-muted'}`}
+                              >
+                                <Zap
+                                  className={`size-4 ${isAllocated ? 'text-primary fill-primary' : 'text-muted-foreground'}`}
+                                />
+                              </div>
+                              <div className="text-muted-foreground font-mono text-xs font-medium">
+                                GPU-{gpuId}
+                              </div>
+                              <div
+                                className={`h-1 w-8 rounded-full transition-colors ${isAllocated ? 'bg-primary' : 'bg-muted-foreground/50'}`}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       )}
     </div>
   )
