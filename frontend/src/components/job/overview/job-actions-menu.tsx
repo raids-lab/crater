@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 import { Link, linkOptions } from '@tanstack/react-router'
-import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { ClockIcon, InfoIcon, RedoDotIcon, SquareIcon, Trash2Icon, XIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import {
+  EllipsisVerticalIcon as DotsHorizontalIcon,
+  InfoIcon,
+  RedoDotIcon,
+  SquareIcon,
+  Trash2Icon,
+  XIcon,
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -27,8 +33,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import ExtensionRequestDialog from '@/components/job/extension-request-dialog'
 import { getNewJobLink } from '@/components/job/new-job-button'
+import { JobLockMenuItem, JobLockSheet } from '@/components/job/overview/job-lock-sheet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +62,7 @@ interface JobActionsMenuProps {
 }
 
 export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
+  const [isLockSheetOpen, setIsLockSheetOpen] = useState(false)
   const jobStatus = getJobStateType(jobInfo.status)
   const option = useMemo(() => {
     return getNewJobLink(jobInfo.jobType)
@@ -64,11 +71,13 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
   // 暂时隐藏申请锁定功能，工单审批功能不完善
   const canExtend = true // jobStatus === JobStatus.Running
 
-  // extension request logic moved to ExtensionRequestDialog
-
   return (
     <AlertDialog>
-      {/* Dialog wrapper removed; ExtensionRequestDialog manages its own dialog state */}
+      <JobLockSheet
+        isOpen={isLockSheetOpen}
+        onOpenChange={setIsLockSheetOpen}
+        jobName={jobInfo.jobName}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -91,17 +100,7 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
             </Link>
           </DropdownMenuItem>
           {canExtend && jobStatus === JobStatus.Running && (
-            <DropdownMenuItem asChild>
-              <ExtensionRequestDialog
-                jobName={jobInfo.jobName}
-                trigger={
-                  <button className="flex w-full items-center gap-2 px-2 py-1.5 text-sm">
-                    <ClockIcon className="text-highlight-blue size-4" />
-                    申请锁定
-                  </button>
-                }
-              />
-            </DropdownMenuItem>
+            <JobLockMenuItem jobInfo={jobInfo} onLock={() => setIsLockSheetOpen(true)} />
           )}
           <AlertDialogTrigger asChild>
             <DropdownMenuItem className="group">
@@ -121,8 +120,6 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
           </AlertDialogTrigger>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* ExtensionRequestDialog 替代内联 DialogContent */}
 
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -153,7 +150,6 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
-      {/* urgent dialog handled inside ExtensionRequestDialog */}
     </AlertDialog>
   )
 }

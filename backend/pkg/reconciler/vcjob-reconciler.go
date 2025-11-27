@@ -113,6 +113,9 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if k8serrors.IsNotFound(err) {
+		// Cancel approval orders immediately as job is missing from K8s
+		r.cancelPendingApprovalOrders(ctx, req.Name, "job not found in cluster")
+
 		// set job status to deleted
 		var record *model.Job
 		record, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).First()
@@ -232,7 +235,31 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{Requeue: true}, err
 	}
 
+	// Check if job is finished and cancel pending approval orders
+	isJobActive := job.Status.State.Phase == batch.Running ||
+		job.Status.State.Phase == batch.Pending
+
+	if !isJobActive {
+		r.cancelPendingApprovalOrders(ctx, job.Name, fmt.Sprintf("job is not running (status: %s), order is canceled", job.Status.State.Phase))
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func (r *VcJobReconciler) cancelPendingApprovalOrders(ctx context.Context, jobName, reason string) {
+	ao := query.ApprovalOrder
+	_, err := ao.WithContext(ctx).
+		Where(
+			ao.Name.Eq(jobName),
+			ao.Status.Eq(string(model.ApprovalOrderStatusPending)),
+			ao.Type.Eq(string(model.ApprovalOrderTypeJob)),
+		).Updates(map[string]any{
+		"status":       string(model.ApprovalOrderStatusCancelled),
+		"review_notes": reason,
+	})
+	if err != nil {
+		r.log.Error(err, "failed to cancel approval order", "job", jobName)
+	}
 }
 
 func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch.Job) (*model.Job, error) {
