@@ -181,7 +181,9 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
 
   const { mutate: updateType, isPending } = useMutation({
     mutationFn: (values: z.infer<typeof resourceTypeFormSchema>) => {
-      return apiAdminResourceUpdate(current.ID, current.label, values.type)
+      // When type is 'default', pass null to clear the type in the backend
+      const type = values.type === 'default' ? null : values.type
+      return apiAdminResourceUpdate(current.ID, current.label, type)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['resource', 'list'] })
@@ -194,9 +196,6 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
   })
 
   function onSubmit(values: z.infer<typeof resourceTypeFormSchema>) {
-    if (values.type === 'default') {
-      return
-    }
     updateType(values)
   }
 
