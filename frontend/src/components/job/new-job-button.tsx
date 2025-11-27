@@ -28,6 +28,12 @@ export const linkJupyterJob = linkOptions({
   label: t('jobs.new.jupyterJob'),
 })
 
+export const linkWebIDEJob = linkOptions({
+  to: '/portal/jobs/new/webide-job',
+  search: { fromJob: '', fromTemplate: 0 },
+  label: t('jobs.new.webIDEJob'),
+})
+
 export const linkPyTorchDDPJob = linkOptions({
   to: '/portal/jobs/new/pytorch-ddp-job',
   search: { fromJob: '', fromTemplate: 0 },
@@ -46,7 +52,7 @@ export const linkSingleJob = linkOptions({
   label: t('jobs.new.singleJob'),
 })
 
-export const interOptions = [linkJupyterJob]
+export const interOptions = [linkJupyterJob, linkWebIDEJob]
 
 export const customOptions = [linkPyTorchDDPJob, linkTensorFlowPSJob, linkSingleJob]
 

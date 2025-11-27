@@ -10,6 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/utils/ptr"
@@ -46,6 +48,7 @@ const (
 	CraterJobTypeTensorflow CraterJobType = "tensorflow"
 	CraterJobTypePytorch    CraterJobType = "pytorch"
 	CraterJobTypeJupyter    CraterJobType = "jupyter"
+	CraterJobTypeWebIDE     CraterJobType = "webide"
 	CraterJobTypeCustom     CraterJobType = "custom"
 )
 
@@ -654,4 +657,130 @@ func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, baseUR
 		AnnotationKeyUser:     token.Username,
 	}
 	return labels, jobAnnotations, podAnnotations
+}
+
+// generateInteractivePodSpec generates the pod spec for interactive jobs (Jupyter, WebIDE)
+func generateInteractivePodSpec(
+	c context.Context,
+	token util.JWTMessage,
+	req *CreateJobCommon,
+	resource v1.ResourceList,
+	image ImageBaseInfo,
+	command []string,
+	port int32,
+	containerName string,
+) (v1.PodSpec, error) {
+	// 1. Volume Mounts
+	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
+	if err != nil {
+		return v1.PodSpec{}, err
+	}
+
+	// Add unified start script volume
+	volumes = append(volumes, v1.Volume{
+		Name: "unified-start-script",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: "unified-jupyter-start-configmap",
+				},
+				//nolint:mnd // 0755 is the default mode
+				DefaultMode: ptr.To(int32(0755)),
+			},
+		},
+	})
+	volumeMounts = append(volumeMounts, v1.VolumeMount{
+		Name:      "unified-start-script",
+		MountPath: "/usr/local/bin/unified-start.sh",
+		ReadOnly:  true,
+		SubPath:   "unified-start.sh",
+	})
+
+	// 2. Env Vars
+	envs := GenerateEnvs(c, token, req.Envs)
+
+	// 3. Node Affinity and Tolerations
+	baseAffinity := GenerateNodeAffinity(req.Selectors, resource)
+	affinity := GenerateArchitectureNodeAffinity(image, baseAffinity)
+
+	tolerations := GenerateTaintTolerationsForAccount(token)
+
+	imagePullSecrets := []v1.LocalObjectReference{}
+	if config.GetConfig().Secrets.ImagePullSecretName != "" {
+		imagePullSecrets = append(imagePullSecrets, v1.LocalObjectReference{
+			Name: config.GetConfig().Secrets.ImagePullSecretName,
+		})
+	}
+
+	podSpec := v1.PodSpec{
+		Affinity:         affinity,
+		Tolerations:      tolerations,
+		Volumes:          volumes,
+		ImagePullSecrets: imagePullSecrets,
+		Containers: []v1.Container{
+			{
+				Name:    containerName,
+				Image:   image.ImageLink,
+				Command: command,
+				Resources: v1.ResourceRequirements{
+					Limits:   resource,
+					Requests: resource,
+				},
+				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
+
+				Env: envs,
+				Ports: []v1.ContainerPort{
+					{ContainerPort: port, Name: containerName, Protocol: v1.ProtocolTCP},
+				},
+				SecurityContext: &v1.SecurityContext{
+					RunAsUser:  ptr.To(int64(0)),
+					RunAsGroup: ptr.To(int64(0)),
+					Capabilities: &v1.Capabilities{
+						Add: []v1.Capability{"IPC_LOCK"},
+					},
+				},
+				TerminationMessagePath:   "/dev/termination-log",
+				TerminationMessagePolicy: v1.TerminationMessageReadFile,
+				VolumeMounts:             volumeMounts,
+			},
+		},
+		RestartPolicy:         v1.RestartPolicyNever,
+		EnableServiceLinks:    ptr.To(false),
+		ShareProcessNamespace: ptr.To(true),
+	}
+	return podSpec, nil
+}
+
+// CreateForwardIngresses creates ingress rules for forwarded ports
+func (mgr *VolcanojobMgr) CreateForwardIngresses(
+	c context.Context,
+	job *batch.Job,
+	forwards []Forward,
+	labels map[string]string,
+	username string,
+) error {
+	for _, forward := range forwards {
+		port := &v1.ServicePort{
+			Name:       forward.Name,
+			Port:       forward.Port,
+			TargetPort: intstr.FromInt(int(forward.Port)),
+			Protocol:   v1.ProtocolTCP,
+		}
+
+		ingressPath, err := mgr.serviceManager.CreateIngress(
+			c,
+			[]metav1.OwnerReference{
+				*metav1.NewControllerRef(job, batch.SchemeGroupVersion.WithKind("Job")),
+			},
+			labels,
+			port,
+			config.GetConfig().Host,
+			username,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create ingress for %s: %w", forward.Name, err)
+		}
+		fmt.Printf("Ingress created for %s at path: %s\n", forward.Name, ingressPath)
+	}
+	return nil
 }

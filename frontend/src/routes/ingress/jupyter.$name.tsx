@@ -1,7 +1,6 @@
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import ky, { HTTPError } from 'ky'
-import { ExternalLink, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -16,11 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
-import { CopyableCommand } from '@/components/codeblock/copyable-command'
 import LogDialog from '@/components/codeblock/log-dialog'
 import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
 import JupyterIcon from '@/components/icon/jupyter-icon'
@@ -30,6 +26,7 @@ import { apiJobSnapshot } from '@/services/api/vcjob'
 import { queryJupyterToken } from '@/services/query/job'
 
 import FloatingBall from './-components/floating-ball'
+import { Refresh } from './webide.$name'
 
 export const Route = createFileRoute('/ingress/jupyter/$name')({
   loader: async ({ context: { queryClient }, params: { name } }) => {
@@ -55,75 +52,8 @@ export const Route = createFileRoute('/ingress/jupyter/$name')({
     }
   },
   component: Jupyter,
-  errorComponent: Refresh,
+  errorComponent: () => <Refresh icon={<JupyterIcon className="size-8" />} title={'Jupyter Lab'} />,
 })
-
-function Refresh() {
-  const { name } = Route.useParams()
-  const navigate = useNavigate()
-  const [countdown, setCountdown] = useState(10)
-  const { data } = useQuery(queryJupyterToken(name ?? ''))
-
-  // 自动重试倒计时
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          window.location.reload()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  const handleRefresh = () => {
-    window.location.reload()
-  }
-
-  const handleGoBack = () => {
-    navigate({ to: '/portal/jobs/detail/$name', params: { name } })
-  }
-
-  return (
-    <div className="from-primary to-highlight-violet via-highlight-emerald flex min-h-screen items-center justify-center bg-gradient-to-br">
-      <Card className="mx-4 w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex size-8 items-center justify-center rounded-full">
-            <JupyterIcon className="size-8" />
-          </div>
-          <CardTitle className="text-xl">Jupyter 连接中...</CardTitle>
-          <CardDescription className="text-balance">
-            页面将在 <span className="font-mono font-medium text-orange-600">{countdown}</span>{' '}
-            秒后自动刷新
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {data && data.fullURL && (
-            <CopyableCommand label={'Jupyter Lab'} isLink command={data.fullURL} />
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              立即刷新页面
-            </Button>
-            <Button onClick={handleGoBack} variant="outline">
-              <ExternalLink className="h-4 w-4" />
-              返回任务详情
-            </Button>
-          </div>
-
-          <div className="text-center text-xs text-gray-500">
-            如果长时间无法访问，请检查任务状态或联系管理员
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
 
 function Jupyter() {
   const { t } = useTranslation()

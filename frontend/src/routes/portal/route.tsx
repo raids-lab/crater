@@ -105,7 +105,7 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
               url: '/portal/jobs/custom',
             },
             {
-              title: t('navigation.jupyterLab'),
+              title: t('navigation.interacitveJobs'),
               url: '/portal/jobs/inter',
             },
           ],

@@ -7561,6 +7561,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/webide": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a WebIDE job",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Create a WebIDE job",
+                "parameters": [
+                    {
+                        "description": "Create WebIDE Job Request",
+                        "name": "CreateJupyterReq",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_vcjob.CreateJupyterReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/{name}": {
             "delete": {
                 "security": [
@@ -7792,6 +7843,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/{name}/secret": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get the password of the WebIDE job by reading config file in the pod",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get the password of the WebIDE job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/{name}/snapshot": {
             "post": {
                 "security": [
@@ -7823,7 +7923,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Success",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp"
                         }
                     },
                     "400": {
@@ -7970,7 +8070,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Success",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp"
                         }
                     },
                     "400": {
@@ -8699,14 +8799,14 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp": {
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp": {
             "type": "object",
             "properties": {
                 "code": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
                 },
                 "data": {
-                    "$ref": "#/definitions/internal_handler_vcjob.JobTokenResp"
+                    "$ref": "#/definitions/internal_handler_vcjob.JupyterTokenResp"
                 },
                 "msg": {
                     "type": "string"
@@ -10108,7 +10208,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler_vcjob.JobTokenResp": {
+        "internal_handler_vcjob.JupyterTokenResp": {
             "type": "object",
             "properties": {
                 "baseURL": {

@@ -29,6 +29,7 @@ import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import DocsButton from '@/components/button/docs-button'
 import { TimeDistance } from '@/components/custom/time-distance'
+import CodeServerIcon from '@/components/icon/code-server-icon'
 import JupyterIcon from '@/components/icon/jupyter-icon'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
@@ -38,19 +39,22 @@ import SimpleTooltip from '@/components/label/simple-tooltip'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 
-import { JobPhase, apiJobDelete, apiJobInteractiveList } from '@/services/api/vcjob'
+import {
+  JobPhase,
+  apiJobDelete,
+  apiJobInteractiveList,
+  isInteracitveJob,
+} from '@/services/api/vcjob'
 import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
-import Quota from './-components/quota'
-
 export const Route = createFileRoute('/portal/jobs/inter/')({
   loader: () => {
     return {
-      crumb: t('navigation.jupyterLab'),
+      crumb: t('navigation.interacitveJobs'),
     }
   },
   component: RouteComponent,
@@ -62,7 +66,7 @@ function RouteComponent() {
   const interactiveQuery = useQuery({
     queryKey: ['job', 'interactive'],
     queryFn: apiJobInteractiveList,
-    select: (res) => res.data.filter((task) => task.jobType === JobType.Jupyter),
+    select: (res) => res.data.filter((task) => isInteracitveJob(task.jobType)),
     refetchInterval: REFETCH_INTERVAL,
   })
 
@@ -176,7 +180,7 @@ function RouteComponent() {
             <div className="flex flex-row space-x-1">
               {shouldDisable ? (
                 <div className="h-8 w-8" />
-              ) : (
+              ) : jobInfo.jobType === JobType.Jupyter ? (
                 <SimpleTooltip tooltip="打开 Jupyter Lab">
                   <Button
                     variant="ghost"
@@ -194,6 +198,24 @@ function RouteComponent() {
                     </Link>
                   </Button>
                 </SimpleTooltip>
+              ) : (
+                <SimpleTooltip tooltip="打开 Code Server">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={shouldDisable}
+                    className="text-primary hover:bg-primary/10 hover:text-primary/90 h-8 w-8"
+                    asChild
+                  >
+                    <Link
+                      to="/ingress/webide/$name"
+                      params={{ name: jobInfo.jobName }}
+                      target="_blank"
+                    >
+                      <CodeServerIcon className="size-4" />
+                    </Link>
+                  </Button>
+                </SimpleTooltip>
               )}
               <JobActionsMenu jobInfo={jobInfo} onDelete={deleteTask} />
             </div>
@@ -207,7 +229,7 @@ function RouteComponent() {
   return (
     <DataTable
       info={{
-        title: 'Jupyter Lab',
+        title: t('navigation.interacitveJobs'),
         description: '提供开箱即用的 Jupyter Lab， 可用于测试、调试等',
       }}
       storageKey="portal_job_interactive"
@@ -231,7 +253,6 @@ function RouteComponent() {
           isDanger: true,
         },
       ]}
-      briefChildren={<Quota />}
     >
       <div className="flex flex-row gap-3">
         <DocsButton title="查看文档" url="quick-start/interactive" />

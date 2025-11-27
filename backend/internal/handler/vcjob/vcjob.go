@@ -76,12 +76,19 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/event", mgr.GetJobEvents)
 	g.PUT(":name/alert", mgr.ToggleAlertState)
 
+	// open ssh
+	g.POST(":name/ssh", mgr.OpenSSH)
+
+	// snapshot - 通用作业快照功能，适用于 Jupyter 和 Custom 类型作业
+	g.POST(":name/snapshot", mgr.CreateJupyterSnapshot)
+
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)
 	g.GET(":name/token", mgr.GetJobToken)
 
-	// snapshot - 通用作业快照功能，适用于 Jupyter 和 Custom 类型作业
-	g.POST(":name/snapshot", mgr.CreateJupyterSnapshot)
+	// webide
+	g.POST("webide", mgr.CreateWebIDEJob)
+	g.GET(":name/secret", mgr.GetWebIDESecret)
 
 	// training
 	g.POST("training", mgr.CreateTrainingJob)
@@ -91,9 +98,6 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 	// pytorch
 	g.POST("pytorch", mgr.CreatePytorchJob)
-
-	// open ssh
-	g.POST(":name/ssh", mgr.OpenSSH)
 }
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -108,7 +112,8 @@ const (
 	AnnotationKeyUser         = "crater.raids.io/user"          // 用户名，以小写字母开头
 	AnnotationKeyTaskName     = "crater.raids.io/task-name"     // 任务名称（可能是中文）
 	AnnotationKeyTaskTemplate = "crater.raids.io/task-template" // 任务模板
-	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token" // Jupyter token 缓存
+	AnnotationKeyJupyter      = "crater.raids.io/jupyter-token" // Jupyter token cache
+	AnnotationKeyWebIDE       = "crater.raids.io/webide-token"  // WebIDE token cache
 	AnnotationKeyAlertEnabled = "crater.raids.io/alert-enabled" // 是否开启告警
 	AnnotationKeySSHEnabled   = "crater.raids.io/ssh-enabled"   // SSH 缓存，格式为 "ip:port"
 
@@ -126,7 +131,7 @@ type (
 		JobName string `uri:"name" binding:"required"`
 	}
 
-	JobTokenResp struct {
+	JupyterTokenResp struct {
 		BaseURL   string `json:"baseURL"`
 		Token     string `json:"token"`
 		PodName   string `json:"podName"`

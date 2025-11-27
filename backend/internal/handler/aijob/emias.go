@@ -680,7 +680,7 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 	const AnnotationKeyJupyter = "jupyter.token"
 	jupyterToken, ok := job.Annotations[AnnotationKeyJupyter]
 	if ok {
-		resputil.Success(c, vcjob.JobTokenResp{
+		resputil.Success(c, vcjob.JupyterTokenResp{
 			BaseURL:   baseURL,
 			Token:     jupyterToken,
 			FullURL:   fullURL,
@@ -717,7 +717,7 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 		klog.Errorf("Failed to update job annotations: %v", err)
 	}
 
-	resputil.Success(c, vcjob.JobTokenResp{
+	resputil.Success(c, vcjob.JupyterTokenResp{
 		BaseURL:   baseURL,
 		Token:     jupyterToken,
 		FullURL:   fullURL,

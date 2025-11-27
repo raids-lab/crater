@@ -270,8 +270,7 @@ func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batch
 
 			// Calculate speed if we have previous data
 			q := query.ModelDownload
-			//nolint:gofmt // gofmt incorrectly formats this map literal
-			updates := map[string]interface{}{
+			updates := map[string]any{
 				"downloaded_bytes": downloadedBytes,
 			}
 
@@ -314,8 +313,7 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 		sizeBytes, _ := strconv.ParseInt(matches[1], 10, 64)
 
 		q := query.ModelDownload
-		//nolint:gofmt // gofmt incorrectly formats this map literal
-		updates := map[string]interface{}{
+		updates := map[string]any{
 			"size_bytes":       sizeBytes,
 			"downloaded_bytes": sizeBytes,
 		}
@@ -384,6 +382,7 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 
 	// Check if dataset already exists for this resource (check by name only, regardless of type)
 	// This prevents creating duplicate records with different types
+	// First check for non-deleted records
 	existingDataset, _ := qDataset.WithContext(ctx).
 		Where(qDataset.Name.Eq(download.Name)).
 		First()
@@ -409,9 +408,6 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 		return nil
 	}
 
-	// 将前端路径(如public/222/...)转换为物理路径(如sugon-gpu-incoming/222/...)用于存储访问
-	datasetURL := r.convertToPhysicalPath(download.Path)
-
 	// 根据来源格式化描述信息
 	var sourceLabel string
 	if download.Source == model.ModelSourceModelScope {
@@ -419,6 +415,36 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 	} else {
 		sourceLabel = "HuggingFace"
 	}
+
+	// Check for soft-deleted records
+	softDeletedDataset, _ := qDataset.WithContext(ctx).Unscoped().
+		Where(qDataset.Name.Eq(download.Name), qDataset.DeletedAt.IsNotNull()).
+		First()
+
+	if softDeletedDataset != nil {
+		// Restore the soft-deleted dataset
+		klog.Infof("Restoring soft-deleted dataset for %s %s (dataset ID: %d)", resourceLabel, download.Name, softDeletedDataset.ID)
+		_, err := qDataset.WithContext(ctx).Unscoped().
+			Where(qDataset.ID.Eq(softDeletedDataset.ID)).
+			Update(qDataset.DeletedAt, nil)
+		if err != nil {
+			return fmt.Errorf("failed to restore soft-deleted dataset: %w", err)
+		}
+
+		// Update type and description if needed
+		updates := map[string]any{
+			"type":     dataType,
+			"describe": fmt.Sprintf("从 %s 下载的%s", sourceLabel, resourceLabel),
+		}
+		_, _ = qDataset.WithContext(ctx).
+			Where(qDataset.ID.Eq(softDeletedDataset.ID)).
+			Updates(updates)
+
+		return nil
+	}
+
+	// 将前端路径(如public/222/...)转换为物理路径(如sugon-gpu-incoming/222/...)用于存储访问
+	datasetURL := r.convertToPhysicalPath(download.Path)
 
 	// Create dataset record
 	dataset := &model.Dataset{

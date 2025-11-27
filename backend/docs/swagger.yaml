@@ -474,12 +474,12 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp:
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp:
     properties:
       code:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
-        $ref: '#/definitions/internal_handler_vcjob.JobTokenResp'
+        $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
       msg:
         type: string
     type: object
@@ -1415,7 +1415,7 @@ definitions:
       imageLink:
         type: string
     type: object
-  internal_handler_vcjob.JobTokenResp:
+  internal_handler_vcjob.JupyterTokenResp:
     properties:
       baseURL:
         type: string
@@ -6488,6 +6488,38 @@ paths:
       summary: 获取任务的Pod列表
       tags:
       - VolcanoJob
+  /v1/vcjobs/{name}/secret:
+    get:
+      consumes:
+      - application/json
+      description: Get the password of the WebIDE job by reading config file in the
+        pod
+      parameters:
+      - description: Job Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get the password of the WebIDE job
+      tags:
+      - VolcanoJob
   /v1/vcjobs/{name}/snapshot:
     post:
       consumes:
@@ -6506,7 +6538,7 @@ paths:
         "200":
           description: Success
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp'
         "400":
           description: Request parameter error
           schema:
@@ -6599,7 +6631,7 @@ paths:
         "200":
           description: Success
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JobTokenResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp'
         "400":
           description: Request parameter error
           schema:
@@ -6767,6 +6799,38 @@ paths:
       security:
       - Bearer: []
       summary: Create a training job
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/webide:
+    post:
+      consumes:
+      - application/json
+      description: Create a WebIDE job
+      parameters:
+      - description: Create WebIDE Job Request
+        in: body
+        name: CreateJupyterReq
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_vcjob.CreateJupyterReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create a WebIDE job
       tags:
       - VolcanoJob
 securityDefinitions:
