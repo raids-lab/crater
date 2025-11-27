@@ -48,6 +48,7 @@ import TooltipButton from '@/components/button/tooltip-button'
 import { CodeContent } from '@/components/codeblock/config-dialog'
 import { LazyContent } from '@/components/codeblock/dialog'
 import { TimeDistance } from '@/components/custom/time-distance'
+import CodeServerIcon from '@/components/icon/code-server-icon'
 import JupyterIcon from '@/components/icon/jupyter-icon'
 import PrefixLinkButton from '@/components/job/detail/job-link-button'
 import SimpleTooltip from '@/components/label/simple-tooltip'
@@ -83,6 +84,7 @@ import {
   apiJobGetYaml,
   apiJobSnapshot,
   getJobStateType,
+  isSingleJob,
 } from '@/services/api/vcjob'
 
 import useFixedLayout from '@/hooks/use-fixed-layout'
@@ -136,7 +138,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   }, [podQuery.data])
 
   // ingress 查询依赖 namespace 和 podName，且 enabled 依赖 podQuery.isSuccess
-  const { data: ingressList = [] } = useQuery({
+  const { data: ingressList } = useQuery({
     queryKey: ['ingresses', namespace, podName],
     queryFn: async () => {
       if (!namespace || !podName) return []
@@ -148,12 +150,12 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
 
   // 用 useMemo 缓存 ingressNames 和 ingressPrefixes，避免不必要的计算
   const ingressNames = useMemo(
-    () => (Array.isArray(ingressList) ? ingressList.map((ing: { name: string }) => ing.name) : []),
+    () => ingressList?.map((ing: { name: string }) => ing.name) ?? [],
     [ingressList]
   )
+
   const ingressPrefixes = useMemo(
-    () =>
-      Array.isArray(ingressList) ? ingressList.map((ing: { prefix: string }) => ing.prefix) : [],
+    () => ingressList?.map((ing: { prefix: string }) => ing.prefix) ?? [],
     [ingressList]
   )
 
@@ -208,115 +210,136 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           description={data.jobName}
           descriptionCopiable
         >
-          <div className="flex flex-row gap-3">
-            {(data.jobType === JobType.Jupyter || data.jobType === JobType.Custom) &&
-              data.status === JobPhase.Running && (
-                <PrefixLinkButton names={ingressNames} prefixes={ingressPrefixes} />
+          {
+            <div className="flex flex-row gap-3">
+              {data.status === JobPhase.Running && (
+                <>
+                  {isSingleJob(data.jobType) && (
+                    <PrefixLinkButton names={ingressNames} prefixes={ingressPrefixes} />
+                  )}
+                  {isSingleJob(data.jobType) && (
+                    <SSHPortDialog jobName={jobName} userName={data.username} />
+                  )}
+                  {isSingleJob(data.jobType) && (
+                    <SimpleTooltip tooltip="将当前运行的容器快照保存为私有镜像">
+                      <Button
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() => setIsSnapshotOpen(true)}
+                      >
+                        <SaveIcon className="size-4" />
+                        保存镜像
+                      </Button>
+                    </SimpleTooltip>
+                  )}
+                  {data.jobType === JobType.Jupyter && (
+                    <SimpleTooltip tooltip="打开新页面以 Jupyter Lab 访问容器">
+                      <Button variant="secondary" className="cursor-pointer" asChild>
+                        <Link
+                          to="/ingress/jupyter/$name"
+                          params={{ name: data.jobName }}
+                          target="_blank"
+                        >
+                          <JupyterIcon className="size-4" />
+                          Jupyter Lab
+                        </Link>
+                      </Button>
+                    </SimpleTooltip>
+                  )}
+                  {data.jobType === JobType.WebIDE && (
+                    <SimpleTooltip tooltip="打开新页面以 Code Server 访问容器">
+                      <Button variant="secondary" className="cursor-pointer" asChild>
+                        <Link
+                          to="/ingress/webide/$name"
+                          params={{ name: data.jobName }}
+                          target="_blank"
+                        >
+                          <CodeServerIcon className="text-primary size-4" />
+                          Code Server
+                        </Link>
+                      </Button>
+                    </SimpleTooltip>
+                  )}
+                </>
               )}
-            {(data.jobType === JobType.Jupyter || data.jobType === JobType.Custom) &&
-              data.status === JobPhase.Running && (
-                <SSHPortDialog jobName={jobName} userName={data.username} />
-              )}
-            {data.jobType === JobType.Jupyter && data.status === JobPhase.Running && (
-              <SimpleTooltip tooltip="打开新页面以 Jupyter Lab 访问容器">
-                <Button variant="secondary" className="cursor-pointer" asChild>
-                  <Link to="/ingress/jupyter/$name" params={{ name: data.jobName }} target="_blank">
-                    <JupyterIcon className="size-4" />
-                    Jupyter Lab
-                  </Link>
-                </Button>
-              </SimpleTooltip>
-            )}
-            {(data.jobType === JobType.Jupyter || data.jobType === JobType.Custom) &&
-              data.status === JobPhase.Running && (
-                <SimpleTooltip tooltip="将当前运行的容器快照保存为私有镜像">
-                  <Button
-                    variant="secondary"
-                    className="cursor-pointer"
-                    onClick={() => setIsSnapshotOpen(true)}
-                  >
-                    <SaveIcon className="size-4" />
-                    保存镜像
-                  </Button>
-                </SimpleTooltip>
-              )}
-            <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{t('jupyter.snapshot.title')}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {t('jupyter.snapshot.description')}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>{t('jupyter.snapshot.cancel')}</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => snapshot(jobName)}>
-                    {t('jupyter.snapshot.save')}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                {jobStatus === JobStatus.NotStarted ? (
-                  <Button
-                    title="取消作业"
-                    className="bg-highlight-orange hover:bg-highlight-orange/90 cursor-pointer"
-                  >
-                    <XIcon className="size-4" />
-                    取消作业
-                  </Button>
-                ) : jobStatus === JobStatus.Running ? (
-                  <Button
-                    title="停止作业"
-                    className="bg-highlight-orange hover:bg-highlight-orange/90 cursor-pointer"
-                  >
-                    <SquareIcon className="size-4" />
-                    停止作业
-                  </Button>
-                ) : (
-                  <Button variant="destructive" title="删除作业" className="cursor-pointer">
-                    <Trash2Icon className="size-4" />
-                    删除作业
-                  </Button>
-                )}
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {jobStatus === JobStatus.NotStarted
-                      ? '取消作业'
-                      : jobStatus === JobStatus.Running
-                        ? '停止作业'
-                        : '删除作业'}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    作业 {data.name} 将
-                    {jobStatus === JobStatus.NotStarted
-                      ? '取消，是否放弃排队？'
-                      : jobStatus === JobStatus.Running
-                        ? '停止，请确认已经保存好所需数据。'
-                        : '删除，所有数据将被清理。'}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => {
-                      deleteJTask()
-                    }}
-                  >
-                    {jobStatus === JobStatus.NotStarted
-                      ? '确认'
-                      : jobStatus === JobStatus.Running
-                        ? '停止'
-                        : '删除'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+              <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('jupyter.snapshot.title')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('jupyter.snapshot.description')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('jupyter.snapshot.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => snapshot(jobName)}>
+                      {t('jupyter.snapshot.save')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  {jobStatus === JobStatus.NotStarted ? (
+                    <Button
+                      title="取消作业"
+                      className="bg-highlight-orange hover:bg-highlight-orange/90 cursor-pointer"
+                    >
+                      <XIcon className="size-4" />
+                      取消作业
+                    </Button>
+                  ) : jobStatus === JobStatus.Running ? (
+                    <Button
+                      title="停止作业"
+                      className="bg-highlight-orange hover:bg-highlight-orange/90 cursor-pointer"
+                    >
+                      <SquareIcon className="size-4" />
+                      停止作业
+                    </Button>
+                  ) : (
+                    <Button variant="destructive" title="删除作业" className="cursor-pointer">
+                      <Trash2Icon className="size-4" />
+                      删除作业
+                    </Button>
+                  )}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {jobStatus === JobStatus.NotStarted
+                        ? '取消作业'
+                        : jobStatus === JobStatus.Running
+                          ? '停止作业'
+                          : '删除作业'}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      作业 {data.name} 将
+                      {jobStatus === JobStatus.NotStarted
+                        ? '取消，是否放弃排队？'
+                        : jobStatus === JobStatus.Running
+                          ? '停止，请确认已经保存好所需数据。'
+                          : '删除，所有数据将被清理。'}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>取消</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        deleteJTask()
+                      }}
+                    >
+                      {jobStatus === JobStatus.NotStarted
+                        ? '确认'
+                        : jobStatus === JobStatus.Running
+                          ? '停止'
+                          : '删除'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          }
         </PageTitle>
       }
       info={[

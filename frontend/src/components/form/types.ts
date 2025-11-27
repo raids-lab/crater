@@ -31,6 +31,11 @@ export const MetadataFormJupyter: MetadataFormType = {
   type: 'jupyter',
 }
 
+export const MetadataFormWebIDE: MetadataFormType = {
+  version: '20251126',
+  type: 'webide',
+}
+
 export const MetadataFormCustom: MetadataFormType = {
   version: '20250317',
   type: 'custom',
