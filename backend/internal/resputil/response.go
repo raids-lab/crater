@@ -35,11 +35,6 @@ func Success(c *gin.Context, data any) {
 	wrapResponse(c, "", data, OK)
 }
 
-// SuccessWithMessage sends a successful response to the client with the provided data and message.
-func SuccessWithMessage(c *gin.Context, data any, msg string) {
-	wrapResponse(c, msg, data, OK)
-}
-
 // Error sends an error response to the client with the specified message and error code.
 func Error(c *gin.Context, msg string, errorCode ErrorCode) {
 	wrapResponse(c, msg, nil, errorCode)

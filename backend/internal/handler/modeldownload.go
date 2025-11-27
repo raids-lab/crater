@@ -342,9 +342,9 @@ func (mgr *ModelDownloadMgr) handleExistingDownload(c *gin.Context, download *mo
 		First()
 
 	if userDownload != nil {
-		// 用户已有此下载,返回成功并提示位置
+		// 用户已有此下载,返回成功
 		resp := convertDownloadToResp(download)
-		resputil.SuccessWithMessage(c, resp, fmt.Sprintf("该资源已存在于您的下载列表中，位置: %s", download.Path))
+		resputil.Success(c, resp)
 		return
 	}
 
