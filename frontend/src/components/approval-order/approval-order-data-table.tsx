@@ -112,6 +112,7 @@ export function ApprovalOrderDataTable({
               title={`查看工单 ${row.getValue('name')} 详情`}
               onClick={() => onNameClick?.(row.original)}
             >
+              <span className="mr-2">工单 {row.original.id}:</span>
               {row.getValue('name')}
             </button>
             {showExtensionHours && row.original.type === 'job' && Number(extHours) > 0 && (
