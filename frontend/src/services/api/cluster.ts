@@ -47,6 +47,7 @@ export interface INodeBriefInfo {
   annotations: Record<string, string>
   kernelVersion?: string
   gpuDriver?: string
+  address?: string
 }
 export interface IClusterPodInfo {
   // from backend
