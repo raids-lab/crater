@@ -75,6 +75,7 @@ type NodeBriefInfo struct {
 	Annotations   map[string]string        `json:"annotations"`
 	KernelVersion string                   `json:"kernelVersion"`
 	GPUDriver     string                   `json:"gpuDriver"`
+	Address       string                   `json:"address"`
 }
 
 type Pod struct {
@@ -234,6 +235,15 @@ func getNodeRole(node *corev1.Node) NodeRole {
 	return NodeRoleWorker
 }
 
+// getNodeIP 提取节点IP地址，与节点详情页保持一致
+// 优先使用第一个地址（与当前详情页实现一致）
+func getNodeIP(node *corev1.Node) string {
+	if len(node.Status.Addresses) == 0 {
+		return ""
+	}
+	return node.Status.Addresses[0].Address
+}
+
 // ListNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	var nodes corev1.NodeList
@@ -283,6 +293,9 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 			gpuDriver = driver
 		}
 
+		// 获取节点IP地址
+		nodeIP := getNodeIP(node)
+
 		nodeInfos[i] = NodeBriefInfo{
 			Name:          node.Name,
 			Role:          getNodeRole(node),
@@ -297,6 +310,7 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 			Annotations:   node.Annotations,
 			KernelVersion: node.Status.NodeInfo.KernelVersion,
 			GPUDriver:     gpuDriver,
+			Address:       nodeIP,
 		}
 	}
 
@@ -331,13 +345,16 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		gpuDriver = driver
 	}
 
+	// 获取节点IP地址（使用统一的提取逻辑）
+	nodeIP := getNodeIP(node)
+
 	nodeInfo := ClusterNodeDetail{
 		Name:                    node.Name,
 		Role:                    string(getNodeRole(node)),
 		Status:                  getNodeStatus(node),
 		Taint:                   taintsToString(node.Spec.Taints),
 		Time:                    node.CreationTimestamp.String(),
-		Address:                 node.Status.Addresses[0].Address,
+		Address:                 nodeIP,
 		Os:                      node.Status.NodeInfo.OperatingSystem,
 		OsVersion:               node.Status.NodeInfo.OSImage,
 		Arch:                    node.Status.NodeInfo.Architecture,

@@ -24,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 import NodeStatusBadge, { nodeStatuses } from '@/components/badge/node-status-badge'
 import TooltipLink from '@/components/label/tooltip-link'
+import TooltipCopy from '@/components/label/tooltop-copy'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import { ProgressBar, progressTextColor } from '@/components/ui-custom/colorful-progress'
@@ -337,6 +338,17 @@ export const getNodeColumns = (
           tooltip={`查看 ${row.original.name} 节点详情`}
         />
       ),
+    },
+    {
+      accessorKey: 'address',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={'IP地址'} />,
+      cell: ({ row }) => {
+        const address = row.getValue<string>('address')
+        if (!address) {
+          return <span className="font-mono">-</span>
+        }
+        return <TooltipCopy name={address} className="font-mono" />
+      },
     },
     {
       accessorKey: 'role',
