@@ -102,7 +102,8 @@ export interface IClusterNodeGPU {
   gpuCount: number
   gpuDevices: IGPUDeviceInfo[]
   gpuUtil: Record<string, number>
-  relateJobs: string[]
+  // GPU ID 到作业名称列表的映射，如 { "0": ["job-1"], "1": ["job-2"] }
+  relateJobs: Record<string, string[]>
   // 以下字段保留用于向后兼容（取第一个 GPU 设备的信息）
   gpuMemory: string
   gpuArch: string

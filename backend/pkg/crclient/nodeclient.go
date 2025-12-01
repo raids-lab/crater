@@ -464,11 +464,11 @@ func getGPUResourcesFromDB(ctx context.Context) ([]*model.Resource, error) {
 }
 
 // detectGPUDevicesFromAllocatable 从节点的 Allocatable 资源中检测所有类型的 GPU 设备
-func detectGPUDevicesFromAllocatable(node *corev1.Node) []GPUDeviceInfo {
+func detectGPUDevicesFromAllocatable(ctx context.Context, node *corev1.Node) []GPUDeviceInfo {
 	var devices []GPUDeviceInfo
 
 	// 从数据库查询所有 GPU 类型的资源
-	gpuResources, err := getGPUResourcesFromDB(context.Background())
+	gpuResources, err := getGPUResourcesFromDB(ctx)
 	if err != nil {
 		klog.Errorf("Failed to query GPU resources from database: %v", err)
 		return devices
@@ -539,71 +539,167 @@ func populateGPUDeviceDetailsFromLabels(devices []GPUDeviceInfo, node *corev1.No
 	return devices
 }
 
-// calculateGPUResourceUsedCount 计算每个 GPU 资源类型的已使用数量
-func calculateGPUResourceUsedCount(podList *corev1.PodList, filterPodPhase bool) map[string]int {
-	// 从数据库查询所有 GPU 类型的资源
-	gpuResources, err := getGPUResourcesFromDB(context.Background())
-	if err != nil {
-		klog.Errorf("Failed to query GPU resources from database: %v", err)
-		return make(map[string]int)
+// getJobNameFromPod 从 Pod 的 OwnerReference 获取作业名称
+func getJobNameFromPod(pod *corev1.Pod) string {
+	if len(pod.OwnerReferences) == 0 {
+		return pod.Name
 	}
-
-	// 构建所有 GPU 资源名称集合
-	gpuResourceNames := make(map[string]bool)
-	for _, gpuResource := range gpuResources {
-		gpuResourceNames[gpuResource.ResourceName] = true
-	}
-
-	// 统计每个 GPU 资源类型的已使用数量
-	gpuResourceUsedCount := make(map[string]int)
-	for j := range podList.Items {
-		pod := &podList.Items[j]
-		// 如果 filterPodPhase 为 true，只处理运行中的 Pod
-		if filterPodPhase {
-			if pod.Status.Phase != corev1.PodPending && pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodUnknown {
-				continue
-			}
-		}
-		podResources := utils.CalculateRequsetsByContainers(pod.Spec.Containers)
-		for resName, quantity := range podResources {
-			resNameStr := string(resName)
-			if gpuResourceNames[resNameStr] {
-				gpuResourceUsedCount[resNameStr] += int(quantity.Value())
-			}
-		}
-	}
-	return gpuResourceUsedCount
+	return pod.OwnerReferences[0].Name
 }
 
-// markK8sAllocatedGPUsFromPods 根据 Pod 资源请求标记从 Kubernetes 分配的 GPU
-func markK8sAllocatedGPUsFromPods(gpuInfo *GPUInfo, podList *corev1.PodList) {
+// isPodRunning 判断 Pod 是否处于运行状态
+func isPodRunning(pod *corev1.Pod) bool {
+	return pod.Status.Phase == corev1.PodPending ||
+		pod.Status.Phase == corev1.PodRunning ||
+		pod.Status.Phase == corev1.PodUnknown
+}
+
+// buildPodNameToJobNameMap 构建 Pod 名称到作业名称的映射（只处理运行中的 Pod）
+func buildPodNameToJobNameMap(podList *corev1.PodList) map[string]string {
+	podToJob := make(map[string]string)
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if !isPodRunning(pod) {
+			continue
+		}
+		podToJob[pod.Name] = getJobNameFromPod(pod)
+	}
+	return podToJob
+}
+
+// isMonitoringPod 判断是否为监控类 Pod（不是真正使用 GPU 的作业）
+func isMonitoringPod(podName, namespace string) bool {
+	monitoringKeywords := []string{"dcgm-exporter", "node-exporter", "prometheus", "grafana", "gpu-operator", "device-plugin"}
+	monitoringNamespaces := []string{"gpu-operator", "monitoring", "prometheus", "kube-system", "nvidia-gpu-operator"}
+
+	podNameLower := strings.ToLower(podName)
+	for _, keyword := range monitoringKeywords {
+		if strings.Contains(podNameLower, keyword) {
+			return true
+		}
+	}
+
+	namespaceLower := strings.ToLower(namespace)
+	for _, ns := range monitoringNamespaces {
+		if namespaceLower == ns {
+			return true
+		}
+	}
+	return false
+}
+
+// markGPUAllocationsWithPrometheus 使用 Prometheus 数据标记 GPU 分配情况
+func (nc *NodeClient) markGPUAllocationsWithPrometheus(gpuInfo *GPUInfo, podToJob map[string]string) bool {
+	if nc.PrometheusClient == nil {
+		return false
+	}
+
+	gpuPodMapping := nc.PrometheusClient.QueryNodeGPUPodMapping(gpuInfo.Name)
+	if len(gpuPodMapping) == 0 {
+		return false
+	}
+
+	jobNamespace := config.GetConfig().Namespaces.Job
+
+	for gpuId := range gpuPodMapping {
+		gpuUtil := gpuPodMapping[gpuId]
+		podName, podNamespace := gpuUtil.Pod, gpuUtil.Namespace
+		if podName == "" {
+			continue
+		}
+
+		// 过滤监控类 Pod 和非作业命名空间的 Pod
+		if isMonitoringPod(podName, podNamespace) {
+			continue
+		}
+		if podNamespace != "" && podNamespace != jobNamespace {
+			continue
+		}
+
+		// 获取作业名称
+		jobName := podToJob[podName]
+		if jobName == "" {
+			jobName = nc.PrometheusClient.GetPodOwner(podName)
+			if jobName == "" {
+				jobName = podName
+			}
+		}
+
+		// 设置 GPU 关联的作业（避免重复）
+		if jobs := gpuInfo.RelateJobs[gpuId]; len(jobs) == 0 || jobs[len(jobs)-1] != jobName {
+			gpuInfo.RelateJobs[gpuId] = append(gpuInfo.RelateJobs[gpuId], jobName)
+		}
+		gpuInfo.GPUUtil[gpuId] = gpuUtil.Util
+	}
+
+	return true
+}
+
+// markK8sAllocatedGPUsFromPods 根据 Pod 资源请求标记 GPU 分配（Prometheus 不可用时的回退方案）
+func markK8sAllocatedGPUsFromPods(ctx context.Context, gpuInfo *GPUInfo, podList *corev1.PodList, podToJob map[string]string) {
 	if gpuInfo.GPUCount <= 0 || len(podList.Items) == 0 {
 		return
 	}
 
-	// 统计每个 GPU 资源类型的已使用数量（只处理运行中的 Pod）
-	gpuResourceUsedCount := calculateGPUResourceUsedCount(podList, true)
+	gpuResources, err := getGPUResourcesFromDB(ctx)
+	if err != nil {
+		klog.Errorf("Failed to query GPU resources from database: %v", err)
+		return
+	}
 
-	// 根据 GPU 设备类型和已使用数量，标记对应的 GPU
-	currentGPUIndex := 0
+	// 构建 GPU 资源名称集合
+	gpuResourceNames := make(map[string]bool)
+	for _, res := range gpuResources {
+		gpuResourceNames[res.ResourceName] = true
+	}
+
+	// 统计每种 GPU 资源类型的分配情况
+	type allocation struct {
+		jobName string
+		count   int
+	}
+	allocations := make(map[string][]allocation)
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		if !isPodRunning(pod) {
+			continue
+		}
+
+		for resName, quantity := range utils.CalculateRequsetsByContainers(pod.Spec.Containers) {
+			resNameStr := string(resName)
+			if !gpuResourceNames[resNameStr] || quantity.Value() <= 0 {
+				continue
+			}
+
+			jobName := podToJob[pod.Name]
+			if jobName == "" {
+				jobName = pod.Name
+			}
+			allocations[resNameStr] = append(allocations[resNameStr], allocation{jobName, int(quantity.Value())})
+		}
+	}
+
+	// 按资源类型顺序分配 GPU ID
+	gpuIndex := 0
 	for i := range gpuInfo.GPUDevices {
 		device := &gpuInfo.GPUDevices[i]
-		usedCount := gpuResourceUsedCount[device.ResourceName]
-		if usedCount > 0 {
-			// 标记该设备类型的前 usedCount 个 GPU
-			for j := 0; j < usedCount && j < device.Count; j++ {
-				gpuId := fmt.Sprintf("%d", currentGPUIndex+j)
-				gpuInfo.RelateJobs[gpuId] = []string{"__k8s_allocated__"}
+		allocated := 0
+
+		for _, alloc := range allocations[device.ResourceName] {
+			for j := 0; j < alloc.count && allocated < device.Count; j++ {
+				gpuInfo.RelateJobs[fmt.Sprintf("%d", gpuIndex+allocated)] = []string{alloc.jobName}
+				allocated++
 			}
 		}
-		currentGPUIndex += device.Count
+		gpuIndex += device.Count
 	}
 }
 
-func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
+func (nc *NodeClient) GetNodeGPUInfo(ctx context.Context, name string) (GPUInfo, error) {
 	var nodes corev1.NodeList
 
-	err := nc.List(context.Background(), &nodes)
+	err := nc.List(ctx, &nodes)
 	if err != nil {
 		return GPUInfo{}, err
 	}
@@ -631,7 +727,7 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 		}
 
 		// 从 Allocatable 检测所有类型的 GPU 设备
-		gpuInfo.GPUDevices = detectGPUDevicesFromAllocatable(node)
+		gpuInfo.GPUDevices = detectGPUDevicesFromAllocatable(ctx, node)
 
 		// 从标签填充每个 GPU 设备的详细信息
 		gpuInfo.GPUDevices = populateGPUDeviceDetailsFromLabels(gpuInfo.GPUDevices, node)
@@ -658,12 +754,20 @@ func (nc *NodeClient) GetNodeGPUInfo(name string) (GPUInfo, error) {
 		break
 	}
 
-	// 只基于 Kubernetes 资源请求判断分配状态，确保与节点列表一致
+	// 获取节点上的所有 Pod
 	podList := &corev1.PodList{}
-	if err := nc.List(context.Background(), podList, indexer.MatchingPodsByNodeName(name)); err != nil {
+	if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(name)); err != nil {
 		klog.Errorf("Failed to get pods for node %s: %v", name, err)
-	} else {
-		markK8sAllocatedGPUsFromPods(&gpuInfo, podList)
+		return gpuInfo, nil
+	}
+
+	// 构建 Pod 名称到作业名称的映射
+	podToJob := buildPodNameToJobNameMap(podList)
+
+	// 优先尝试使用 Prometheus 获取真实的 GPU 分配情况
+	if !nc.markGPUAllocationsWithPrometheus(&gpuInfo, podToJob) {
+		// Prometheus 不可用时，回退到基于 K8s 资源请求的方式，处理非英伟达加速卡的情况
+		markK8sAllocatedGPUsFromPods(ctx, &gpuInfo, podList, podToJob)
 	}
 
 	return gpuInfo, nil

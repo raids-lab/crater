@@ -13,7 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { ActivityIcon, Cable, CpuIcon, HardDriveIcon, ServerIcon, Zap } from 'lucide-react'
+import {
+  ActivityIcon,
+  Cable,
+  CpuIcon,
+  HardDriveIcon,
+  MemoryStick,
+  ServerIcon,
+  Zap,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cell, Label, Pie, PieChart, ResponsiveContainer } from 'recharts'
 
@@ -21,6 +30,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
+import AcceleratorBadge from '@/components/badge/accelerator-badge'
 
 import { IClusterNodeDetail, IClusterNodeGPU } from '@/services/api/cluster'
 
@@ -35,10 +47,19 @@ type NodeInfoTabProps = {
 
 export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
   const { t } = useTranslation()
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
+
+  useEffect(() => {
+    if (nodeDetail?.used?.cpu !== undefined && nodeDetail?.capacity?.cpu !== undefined) {
+      const timer = setTimeout(() => setIsDataLoaded(true), 50)
+      return () => clearTimeout(timer)
+    } else {
+      setIsDataLoaded(false)
+    }
+  }, [nodeDetail?.used?.cpu, nodeDetail?.capacity?.cpu])
 
   if (!nodeDetail) return null
 
-  // CPU 资源计算
   const cpuUsedValue = nodeDetail.used?.cpu
     ? convertKResourceToResource('cpu', nodeDetail.used.cpu)
     : undefined
@@ -50,12 +71,17 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
     cpuUsedValue !== undefined && cpuCapacityValue !== undefined && cpuCapacityValue > 0
       ? Math.round((cpuUsedValue / cpuCapacityValue) * 100)
       : 0
-  const cpuChartData = [
-    { name: 'Used', value: cpuUsedValue || 0 },
-    { name: 'Free', value: Math.max(0, (cpuCapacityValue || 0) - (cpuUsedValue || 0)) },
-  ]
 
-  // 内存资源计算
+  const cpuChartData = isDataLoaded
+    ? [
+        { name: 'Used', value: cpuUsedValue || 0 },
+        { name: 'Free', value: Math.max(0, (cpuCapacityValue || 0) - (cpuUsedValue || 0)) },
+      ]
+    : [
+        { name: 'Used', value: 0 },
+        { name: 'Free', value: cpuCapacityValue || 0 },
+      ]
+
   const memoryUsedGi = nodeDetail.used?.memory
     ? convertKResourceToResource('memory', nodeDetail.used.memory)
     : undefined
@@ -72,11 +98,8 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
     ? convertKResourceToResource('memory', nodeDetail.capacity['ephemeral-storage'])
     : undefined
 
-  // GPU 分配情况计算（只基于 Kubernetes 资源请求，与节点列表保持一致）
-  const relateJobs = gpuDetail?.relateJobs
-  const relateJobsMap: Record<string, string[]> = Array.isArray(relateJobs)
-    ? {}
-    : (relateJobs as unknown as Record<string, string[]>) || {}
+  // GPU ID 到作业名称列表的映射
+  const relateJobsMap: Record<string, string[]> = gpuDetail?.relateJobs || {}
 
   const CHART_COLORS = {
     used: 'var(--primary)',
@@ -95,16 +118,23 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <div className="text-muted-foreground flex items-center gap-2">
-                  <ServerIcon className="size-3.5" />
+                  <MemoryStick className="size-3.5" />
                   <span>{t('nodeDetail.info.memoryCapacity')}</span>
                 </div>
-                <span className="font-mono font-medium">
-                  {memoryUsedGi !== undefined && memoryCapacityGi !== undefined
-                    ? `${memoryUsedGi.toFixed(2)} / ${memoryCapacityGi.toFixed(2)} GB`
-                    : memoryCapacityGi !== undefined
-                      ? `- / ${memoryCapacityGi.toFixed(2)} GB`
-                      : '-'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-medium">
+                    {memoryUsedGi !== undefined && memoryCapacityGi !== undefined
+                      ? `${memoryUsedGi.toFixed(2)} / ${memoryCapacityGi.toFixed(2)} GB`
+                      : memoryCapacityGi !== undefined
+                        ? `- / ${memoryCapacityGi.toFixed(2)} GB`
+                        : '-'}
+                  </span>
+                  {memoryPercentage > 0 && (
+                    <span className="text-muted-foreground font-mono text-[10px]">
+                      ({memoryPercentage.toFixed(1)}%)
+                    </span>
+                  )}
+                </div>
               </div>
               <Progress value={memoryPercentage} className="h-1.5" />
             </div>
@@ -146,47 +176,57 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
             {t('nodeDetail.info.cpuInfo')}
           </h3>
           <div className="flex items-center justify-between">
-            <div className="relative h-[100px] w-[100px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={cpuChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={30}
-                    outerRadius={45}
-                    startAngle={90}
-                    endAngle={-270}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    <Cell fill={CHART_COLORS.used} />
-                    <Cell fill={CHART_COLORS.free} />
-                    <Label
-                      content={({ viewBox }) => {
-                        if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                          return (
-                            <text
-                              x={viewBox.cx}
-                              y={viewBox.cy}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                            >
-                              <tspan
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative h-[100px] w-[100px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={cpuChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={45}
+                      startAngle={90}
+                      endAngle={-270}
+                      dataKey="value"
+                      stroke="none"
+                      isAnimationActive={isDataLoaded}
+                      animationBegin={0}
+                      animationDuration={800}
+                    >
+                      <Cell fill={CHART_COLORS.used} />
+                      <Cell fill={CHART_COLORS.free} />
+                      <Label
+                        content={({ viewBox }) => {
+                          if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                            return (
+                              <text
                                 x={viewBox.cx}
                                 y={viewBox.cy}
-                                className="fill-foreground text-lg font-bold"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
                               >
-                                {cpuPercentage}%
-                              </tspan>
-                            </text>
-                          )
-                        }
-                      }}
-                    />
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={viewBox.cy}
+                                  className="fill-foreground text-lg font-bold"
+                                >
+                                  {cpuPercentage}%
+                                </tspan>
+                              </text>
+                            )
+                          }
+                        }}
+                      />
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {cpuUsedValue !== undefined && cpuCapacityValue !== undefined && (
+                <div className="text-muted-foreground font-mono text-[10px]">
+                  {cpuUsedValue.toFixed(2)} / {cpuCapacityValue.toFixed(2)} Cores
+                </div>
+              )}
             </div>
             <div className="flex flex-1 flex-col justify-center gap-4 pl-6">
               <div className="grid grid-cols-2 gap-4">
@@ -223,22 +263,17 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
       {gpuDetail?.haveGPU && (
         <div className="space-y-4 md:col-span-2">
           {gpuDetail.gpuDevices?.map((device, deviceIdx) => {
-            // 计算该设备类型的 GPU ID 范围
-            // 假设 GPU 按设备类型顺序编号：第一个设备类型从 0 开始，第二个从第一个的 count 开始，以此类推
             let gpuStartIdx = 0
             for (let i = 0; i < deviceIdx; i++) {
               gpuStartIdx += gpuDetail.gpuDevices?.[i]?.count || 0
             }
             const gpuEndIdx = gpuStartIdx + device.count
 
-            // 计算该设备类型的已分配/未分配数量
-            // 只基于 Kubernetes 资源请求判断（__k8s_allocated__ 标记），与节点列表保持一致
             let deviceUsedCount = 0
             for (let i = gpuStartIdx; i < gpuEndIdx; i++) {
               const gpuId = i.toString()
               const jobs = relateJobsMap[gpuId] || []
-              // 只检查是否有 __k8s_allocated__ 标记（来自 Kubernetes 资源请求）
-              const isAllocated = jobs.includes('__k8s_allocated__')
+              const isAllocated = jobs.length > 0
               if (isAllocated) {
                 deviceUsedCount++
               }
@@ -256,12 +291,10 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                   <div className="flex flex-col gap-8 lg:flex-row">
                     <div className="flex-1 space-y-6">
                       <div>
-                        <div className="flex items-center gap-5 rounded-md bg-slate-950 px-4 py-3 text-white shadow-sm dark:bg-slate-800 dark:text-slate-100">
-                          <div className="flex size-8 items-center justify-center rounded bg-white/10 dark:bg-white/20">
-                            <Zap className="size-4 fill-yellow-400 text-yellow-400" />
-                          </div>
+                        <div className="bg-muted text-foreground flex items-center gap-5 rounded-md px-4 py-3 shadow-sm">
+                          <AcceleratorBadge acceleratorString={device.resourceName} />
                           <span className="text-lg font-semibold tracking-tight">
-                            {device.product}
+                            {device.product?.toUpperCase()}
                           </span>
                         </div>
                       </div>
@@ -283,7 +316,7 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                             value: device.runtimeVersion || '-',
                           },
                           {
-                            icon: ServerIcon,
+                            icon: MemoryStick,
                             label: t('nodeDetail.gpu.memory'),
                             value: device.memory ? `${parseInt(device.memory) / 1024} GB` : '-',
                           },
@@ -342,15 +375,17 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                         {Array.from({ length: device.count }).map((_, i) => {
                           const gpuId = (gpuStartIdx + i).toString()
                           const jobs = relateJobsMap[gpuId] || []
-                          // 只基于 Kubernetes 资源请求判断（__k8s_allocated__ 标记），与节点列表保持一致
-                          const isAllocated = jobs.includes('__k8s_allocated__')
+                          const isAllocated = jobs.length > 0
+                          const displayJobs = jobs.filter((job) => !job.startsWith('__'))
+                          const hasDisplayJobs = displayJobs.length > 0
 
-                          return (
+                          const gpuCard = (
                             <div
                               key={gpuId}
                               className={cn(
-                                'group bg-card relative flex flex-col items-center justify-between gap-3 rounded-lg border p-3 shadow-sm transition-all hover:shadow-md',
-                                device.count < 4 && 'w-[calc((100%-0.75rem*3)/4)]'
+                                'group bg-card relative flex flex-col items-center justify-center gap-2 rounded-lg border p-3 shadow-sm transition-all hover:shadow-md',
+                                device.count < 4 && 'w-[calc((100%-0.75rem*3)/4)]',
+                                isAllocated && 'border-primary/30'
                               )}
                             >
                               <div
@@ -363,11 +398,27 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                               <div className="text-muted-foreground font-mono text-xs font-medium">
                                 GPU-{gpuId}
                               </div>
-                              <div
-                                className={`h-1 w-8 rounded-full transition-colors ${isAllocated ? 'bg-primary' : 'bg-muted-foreground/50'}`}
-                              />
                             </div>
                           )
+
+                          if (hasDisplayJobs) {
+                            return (
+                              <Tooltip key={gpuId}>
+                                <TooltipTrigger asChild>{gpuCard}</TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  <div className="space-y-0.5">
+                                    {displayJobs.map((job, idx) => (
+                                      <div key={idx} className="text-xs">
+                                        {job}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            )
+                          }
+
+                          return gpuCard
                         })}
                       </div>
                     </div>

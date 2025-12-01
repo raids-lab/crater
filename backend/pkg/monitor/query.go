@@ -352,6 +352,29 @@ func (p *PrometheusClient) QueryNodeGPUUtilInNS(namespace string) []NodeGPUUtil 
 	return data
 }
 
+// QueryNodeGPUPodMapping queries the GPU-Pod mapping for a specific node
+// Returns a map where key is GPU ID and value is NodeGPUUtil containing pod info
+func (p *PrometheusClient) QueryNodeGPUPodMapping(nodeName string) map[string]NodeGPUUtil {
+	// Query DCGM metrics for the specific node using Hostname label
+	expression := fmt.Sprintf("DCGM_FI_DEV_GPU_UTIL{Hostname=%q}", nodeName)
+	data, err := p.getNodeGPUUtil(expression)
+	if err != nil {
+		klog.Infof("QueryNodeGPUPodMapping error for node %s: %v", nodeName, err)
+		return nil
+	}
+
+	// Build GPU ID -> NodeGPUUtil mapping
+	gpuPodMapping := make(map[string]NodeGPUUtil)
+	for i := range data {
+		gpuUtil := &data[i]
+		if gpuUtil.Gpu != "" {
+			gpuPodMapping[gpuUtil.Gpu] = *gpuUtil
+		}
+	}
+
+	return gpuPodMapping
+}
+
 func (p *PrometheusClient) GetJobPodsList() map[string][]string {
 	query := fmt.Sprintf(`kube_pod_info{namespace=%q,created_by_kind="Job"}`, config.GetConfig().Namespaces.Job)
 	data, err := p.getJobPods(query)
