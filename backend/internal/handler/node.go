@@ -233,7 +233,7 @@ func (mgr *NodeMgr) ListNodeGPUInfo(c *gin.Context) {
 	}
 
 	klog.Infof("List Node GPU Util, name: %s", req.Name)
-	gpuInfo, err := mgr.nodeClient.GetNodeGPUInfo(req.Name)
+	gpuInfo, err := mgr.nodeClient.GetNodeGPUInfo(c.Request.Context(), req.Name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get nodes GPU failed, err %v", err), resputil.NotSpecified)
 		return

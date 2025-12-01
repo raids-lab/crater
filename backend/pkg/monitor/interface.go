@@ -22,6 +22,10 @@ type PrometheusInterface interface {
 	// QueryNodeGPUUtil queries the GPU utilization of a node in namespace
 	QueryNodeGPUUtilInNS(namespace string) []NodeGPUUtil
 
+	// QueryNodeGPUPodMapping queries the GPU-Pod mapping for a specific node
+	// Returns a map where key is GPU ID and value is NodeGPUUtil containing pod info
+	QueryNodeGPUPodMapping(nodeName string) map[string]NodeGPUUtil
+
 	// QueryNodeAllocatedCPU queries the allocated CPU of each node
 	QueryNodeAllocatedCPU() map[string]float32
 
