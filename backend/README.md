@@ -1,8 +1,10 @@
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 # Crater Backend
 
-Crater 是一个基于 Kubernetes 的异构集群管理系统，支持英伟达 GPU 等多种异构硬件。
+Crater is a Kubernetes-based heterogeneous cluster management system that supports various heterogeneous hardware such as NVIDIA GPUs.
 
-Crater Backend 是 Crater 的子系统，包含作业提交、作业生命周期管理、深度学习环境管理等功能。
+Crater Backend is a subsystem of Crater, including job submission, job lifecycle management, deep learning environment management, and other features.
 
 <table>
   <tr>
@@ -12,83 +14,83 @@ Crater Backend 是 Crater 的子系统，包含作业提交、作业生命周期
     </td>
     <td align="center" width="45%">
       <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif"><br>
-      <em>Ray 任务</em>
+      <em>Ray Job</em>
     </td>
   </tr>
   <tr>
     <td align="center" width="45%">
       <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif"><br>
-      <em>监控</em>
+      <em>Monitor</em>
     </td>
     <td align="center" width="45%">
       <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif"><br>
-      <em>模型</em>
+      <em>Models</em>
     </td>
   </tr>
 </table>
 
-本文档为 Crater Backend 的开发指南，如果您希望安装或使用完整的 Crater 项目，您可以访问 [Crater 官方文档](https://raids-lab.github.io/crater/en/docs/admin/) 以了解更多。
+This document is the development guide for Crater Backend. If you want to install or use the complete Crater project, you can visit the [Crater Official Documentation](https://raids-lab.github.io/crater/en/docs/admin/) for more information.
 
-## 🚀 在本地运行 Crater Backend
+## 🚀 Running Crater Backend Locally
 
-### 安装必要软件
+### Installing Required Software
 
-建议安装以下软件及其推荐版本。
+The following software and recommended versions are suggested.
 
-- **gvm**: 非必需，推荐版本 `v1.0.22`: [gvm - GitHub](https://github.com/moovweb/gvm)
-- **Kubectl**: 必需，推荐版本 `v1.33`: [Kubectl 安装指南](https://kubernetes.io/docs/tasks/tools/)
+- **gvm**: Optional, recommended version `v1.0.22`: [gvm - GitHub](https://github.com/moovweb/gvm)
+- **Kubectl**: Required, recommended version `v1.33`: [Kubectl Installation Guide](https://kubernetes.io/docs/tasks/tools/)
 
-gvm 用于方便快捷地安装多个 Go 版本，并在它们之间灵活切换。使用 gvm 能够让您快速安装 Crater 所使用的 Go，并在 Go 版本升级时快速切换。
+gvm is used to easily and quickly install multiple Go versions and switch between them flexibly. Using gvm allows you to quickly install the Go version used by Crater and switch quickly when upgrading Go versions.
 
-您可以使用以下命令安装 gvm：
+You can install gvm using the following command:
 
 ```bash
 # Linux/macOS
 bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
 ```
 
-在 gvm 安装成功后，您可以在后端目录（即 `go.mod` 所在的目录）中使用如下命令快速安装对应的 Go 版本。
+After gvm is successfully installed, you can quickly install the corresponding Go version in the backend directory (i.e., the directory where `go.mod` is located) using the following command:
 
 ```bash
 # Linux/macOS
 gvm applymod
 ```
 
-当然，您也可以不使用 gvm，而是直接安装 Go。
+Of course, you can also install Go directly without using gvm.
 
-- **Go**: 推荐版本 `v1.25.4`: [Go 安装指南](https://go.dev/doc/install)
+- **Go**: Recommended version `v1.25.4`: [Go Installation Guide](https://go.dev/doc/install)
 
-这种情况下，您可能还需要设置环境变量，以保证通过 `go install` 安装的程序可以直接运行。
+In this case, you may also need to set environment variables to ensure that programs installed via `go install` can run directly.
 
 ```bash
 # Linux/macOS
 
-# 将 GOROOT 设置为你的 Go 安装目录
-export GOROOT=/usr/local/go  # 将此路径更改为你实际的 Go 安装位置
+# Set GOROOT to your Go installation directory
+export GOROOT=/usr/local/go  # Change this path to your actual Go installation location
 
-# 将 Go 添加到 PATH
+# Add Go to PATH
 export PATH=$PATH:$GOROOT/bin
 ```
 
-你可以将这些内容添加到你的 shell 配置文件中，例如 `.zshrc`。
+You can add these contents to your shell configuration file, such as `.zshrc`.
 
-无论您以何种方式安装 Go，您可能还需要配置 Go 代理，可以通过运行单条命令来设置，而无需添加到 shell 配置中。
+Regardless of how you install Go, you may also need to configure the Go proxy, which can be set by running a single command without adding it to the shell configuration.
 
 ```bash
 go env -w GOPROXY=https://goproxy.cn,direct
 ```
 
-### 准备配置文件
+### Preparing Configuration Files
 
 #### `kubeconfig`
 
-要运行项目，你至少需要有一个 Kubernetes 集群，并安装 Kubectl。
+To run the project, you need at least one Kubernetes cluster and have Kubectl installed.
 
-对于测试或者学习环境，你可以通过 Kind、MiniKube 等开源项目，快速地获取一个集群。
+For testing or learning environments, you can quickly obtain a cluster through open-source projects such as Kind, MiniKube, etc.
 
-`kubeconfig` 是 Kubernetes 客户端和工具用来访问和管理 Kubernetes 集群的配置文件。它包含集群连接详细信息、用户凭据和上下文信息。
+`kubeconfig` is a configuration file used by Kubernetes clients and tools to access and manage Kubernetes clusters. It contains cluster connection details, user credentials, and context information.
 
-Crater Backend 将优先尝试读取 `KUBECONFIG` 环境变量对应的 `kubeconfig`，如果不存在，则读取当前目录下的 `kubeconfig` 文件。
+Crater Backend will first try to read the `kubeconfig` corresponding to the `KUBECONFIG` environment variable. If it doesn't exist, it will read the `kubeconfig` file in the current directory.
 
 ```makefile
 # Makefile
@@ -97,45 +99,45 @@ KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
 
 #### `./etc/debug-config.yaml`
 
-`etc/debug-config.yaml` 文件包含 Crater 后端服务的应用程序配置。此配置文件定义了各种设置，包括：
+The `etc/debug-config.yaml` file contains the application configuration for the Crater backend service. This configuration file defines various settings, including:
 
-- **服务配置**: 服务器端口、指标端点和性能分析设置
-- **数据库连接**: PostgreSQL 连接参数和凭据
-- **工作区设置**: Kubernetes 命名空间、存储 PVC 和入口配置
-- **外部集成**: Raids Lab 系统认证（非 Raids Lab 环境不需要）、镜像仓库、SMTP 邮件通知服务等
-- **功能标志**: 调度器和作业类型启用设置
+- **Service Configuration**: Server port, metrics endpoints, and profiling settings
+- **Database Connection**: PostgreSQL connection parameters and credentials
+- **Workspace Settings**: Kubernetes namespaces, storage PVCs, and ingress configuration
+- **External Integrations**: Raids Lab system authentication (not required for non-Raids Lab environments), image registry, SMTP email notification service, etc.
+- **Feature Flags**: Scheduler and job type enablement settings昂
 
-你可以在 [`etc/example-config.yaml`](https://github.com/raids-lab/crater-backend/blob/main/etc/example-config.yaml) 中找到示例文件和对应的说明。
+You can find example files and corresponding descriptions in [`etc/example-config.yaml`](https://github.com/raids-lab/crater-backend/blob/main/etc/example-config.yaml).
 
 #### `.debug.env`
 
-当您运行 `make run` 命令时，我们将帮您创建 `.debug.env` 文件，该文件会被 git 忽略，可以存储个性化的配置。
+When you run the `make run` command, we will help you create a `.debug.env` file, which will be ignored by git and can store personalized configuration.
 
-目前内部只有一条配置，用于指定服务使用的端口号。如果你的团队在同一节点上进行开发，可以通过它协调，以避免端口冲突。
+Currently, it only contains one configuration to specify the port number used by the service. If your team is developing on the same node, you can coordinate through it to avoid port conflicts.
 
 ```env
-CRATER_BE_PORT=:8088  # 后端端口
+CRATER_BE_PORT=:8088  # Backend port
 ```
 
-在开发模式下，我们通过 Crater Frontend 的 Vite Server 进行服务的代理，因此您并不需要关心 CORS 等问题。
+In development mode, we proxy the service through Crater Frontend's Vite Server, so you don't need to worry about CORS and other issues.
 
-### 运行 Crater Backend
+### Running Crater Backend
 
-完成上述设置后，你可以使用 `make` 命令运行项目。如果尚未安装 `make`，建议安装它。
+After completing the above setup, you can use the `make` command to run the project. If `make` is not yet installed, it is recommended to install it.
 
 ```bash
 make run
 ```
 
-如果服务器正在运行并可在你配置的端口访问，你可以打开 Swagger UI 进行验证：
+If the server is running and accessible on your configured port, you can open Swagger UI for verification:
 
 ```bash
-http://localhost:<你的后端端口>/swagger/index.html#/
+http://localhost:<your backend port>/swagger/index.html#/
 ```
 
 ![Swagger UI](./docs/image/swag.png)
 
-你可以运行 `make help` 命令，查看相关的完整命令：
+You can run the `make help` command to view the complete list of related commands:
 
 ```bash
 ➜  crater-backend git:(main) ✗ make help 
@@ -172,41 +174,57 @@ Git Hooks
   pre-commit          Install git pre-commit hook.
 ```
 
-## 🛠️ 数据库代码生成（如果需要）
+## 🛠️ Database Code Generation (If Needed)
 
-项目使用 GORM Gen 为数据库 CRUD 操作生成样板代码。使用 Go Migrate 为对象生成数据库表。
+The project uses GORM Gen to generate boilerplate code for database CRUD operations. Go Migrate is used to generate database tables for objects.
 
-生成脚本和文档可以在以下位置找到：[`gorm_gen`](./cmd/gorm-gen/README.md)
+Generation scripts and documentation can be found at: [`gorm_gen`](./cmd/gorm-gen/README.md)
 
-在修改数据库模型或模式定义后，请重新生成代码。
+After modifying database models or schema definitions, please regenerate the code.
 
-如果您是通过 Helm 安装的 Crater，部署新版本后将自动进行数据库迁移，相关的逻辑可以在 InitContainer 中找到。
+If you installed Crater via Helm, database migration will be performed automatically after deploying a new version. The related logic can be found in InitContainer.
 
-## 🐞 使用 VSCode 调试（如果需要）
+## 🐞 Debugging with VSCode (If Needed)
 
-你可以通过按 F5（启动调试）使用 VSCode 在调试模式下启动后端。你可以设置断点并交互式地单步执行代码。
+You can use VSCode to start the backend in debug mode by pressing F5 (Start Debugging). You can set breakpoints and interactively step through the code.
 
-示例启动配置：
+### Quick Start
+
+The project has provided a pre-configured debug launch configuration in the root directory `.vscode/launch.json`. You only need to:
+
+1. Open the project root directory in VSCode (`crater`, the root directory containing `backend` and `frontend`)
+2. Set breakpoints (click on the left side of the line number)
+3. Press `F5` to start debugging and select the "Backend Debug Server" configuration
+
+> This debug configuration was migrated from the original backend repository (`backend/.vscode/launch.json`) to the project root directory. If you need to use the original debug configuration, you can directly open the `backend` directory in VSCode and use the configuration in `backend/.vscode/launch.json`.
+
+### Debug Configuration Explanation
+
+The `.vscode/launch.json` in the project root directory contains the following configuration:
 
 ```json
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Server",
+            "name": "Backend Debug Server",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/crater/main.go",
-            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/backend/cmd/crater/main.go",
+            "cwd": "${workspaceFolder}/backend",
             "env": {
-                "KUBECONFIG": "${env:HOME}/.kube/config",
+                "KUBECONFIG": "${workspaceFolder}/backend/kubeconfig",
                 "NO_PROXY": "k8s.cluster.master"
             }
         }
     ]
 }
 ```
+
+Where:
+
+- **`cwd`**: Set to `${workspaceFolder}/backend`, which ensures the program can correctly find configuration files with relative paths (such as `./etc/debug-config.yaml`)
+- **`program`**: Main program entry file, pointing to `backend/cmd/crater/main.go`
+- **Automatic Configuration File Discovery**: The program automatically searches for `./etc/debug-config.yaml` in debug mode (relative to `cwd`), **no need** to pass `--config-file` parameter through `args`
+- **`KUBECONFIG`**: Uses the `kubeconfig` configuration file in the backend repository to connect to the cluster
