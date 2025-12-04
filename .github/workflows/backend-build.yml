@@ -44,7 +44,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: "backend/go.mod" # get Go version from go.mod
+          go-version-file: "backend/go.mod"
+          cache-dependency-path: backend/go.sum # get Go version from go.mod
 
       - name: Download dependencies
         run: |
@@ -84,6 +85,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "backend/go.mod"
+          cache-dependency-path: backend/go.sum
 
       - name: Download dependencies
         run: |
