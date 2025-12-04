@@ -62,6 +62,8 @@ export const getNewJobLink = (jobType: JobType) => {
   switch (jobType) {
     case JobType.Jupyter:
       return linkJupyterJob
+    case JobType.WebIDE:
+      return linkWebIDEJob
     case JobType.Custom:
       return linkSingleJob
     case JobType.Tensorflow:

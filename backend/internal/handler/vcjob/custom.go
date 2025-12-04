@@ -99,6 +99,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 			MaxRetry:                1,
 			SchedulerName:           VolcanoSchedulerName,
 			Queue:                   token.AccountName,
+			Plugins:                 volcanoPlugins,
 			Policies: []batch.LifecyclePolicy{
 				{
 					Action: bus.RestartJobAction,
