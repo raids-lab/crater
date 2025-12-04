@@ -45,6 +45,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "storage/go.mod" # get Go version from go.mod
+          cache-dependency-path: storage/go.sum
 
       - name: Download dependencies
         run: |
@@ -84,6 +85,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "storage/go.mod"
+          cache-dependency-path: storage/go.sum
 
       - name: Download dependencies
         run: |
