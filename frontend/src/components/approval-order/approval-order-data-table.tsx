@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { UseQueryResult } from '@tanstack/react-query'
+import { UseQueryResult, useQuery } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
-import { ClockIcon } from 'lucide-react'
-import { ReactNode } from 'react'
+import { AlertTriangle, ClockIcon } from 'lucide-react'
+import { ReactNode, useMemo } from 'react'
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import {
   ApprovalOrderStatusBadge,
@@ -24,6 +26,9 @@ import {
   approvalOrderStatuses,
   approvalOrderTypes,
 } from '@/components/badge/approvalorder-badge'
+import NodeBadges from '@/components/badge/node-badges'
+import NodeStatusBadge from '@/components/badge/node-status-badge'
+import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
@@ -31,6 +36,9 @@ import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import { type ApprovalOrder } from '@/services/api/approvalorder'
+import { NodeStatus } from '@/services/api/cluster'
+import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
+import { queryNodes } from '@/services/query/node'
 
 export interface ApprovalOrderDataTableProps {
   query: UseQueryResult<ApprovalOrder[]>
@@ -46,6 +54,114 @@ export interface ApprovalOrderDataTableProps {
   children?: ReactNode
 }
 
+// 提取公共的 Pod 查询 Hook
+const useJobPods = (order: ApprovalOrder) => {
+  return useQuery({
+    queryKey: ['job', 'detail', order.name, 'pods'],
+    queryFn: () => apiJobGetPods(order.name),
+    select: (res) => res.data,
+    enabled: order.type === 'job' && order.status === 'Pending',
+    staleTime: 1000 * 60, // 1分钟缓存
+  })
+}
+
+const JobNameWithWarning = ({
+  order,
+  showExtensionHours,
+  onNameClick,
+  pods,
+  nodes,
+}: {
+  order: ApprovalOrder
+  showExtensionHours: boolean
+  onNameClick?: (order: ApprovalOrder) => void
+  pods?: PodDetail[]
+  nodes?: { name: string; status: NodeStatus }[]
+}) => {
+  const extHours = showExtensionHours ? order.content.approvalorderExtensionHours || 0 : 0
+
+  const abnormalNodes = useMemo(() => {
+    if (order.type !== 'job' || order.status !== 'Pending') return []
+    if (!pods || pods.length === 0) return []
+    if (!nodes) return []
+
+    const podNodeNames = pods.map((pod) => pod.nodename).filter(Boolean)
+    if (podNodeNames.length === 0) return []
+
+    const jobNodes = nodes.filter((node) => podNodeNames.includes(node.name))
+    if (jobNodes.length === 0) return []
+
+    return jobNodes.filter((node) => node.status !== NodeStatus.Ready)
+  }, [order.type, order.status, pods, nodes])
+
+  const resources = pods?.[0]?.resource
+  const nodeNames = pods?.map((p) => p.nodename).filter(Boolean)
+  const uniqueNodes = Array.from(new Set(nodeNames))
+
+  return (
+    <div className="relative flex items-center gap-2">
+      <button
+        type="button"
+        className="text-left break-all whitespace-normal underline-offset-4 hover:underline"
+        title={`查看工单 ${order.name} 详情`}
+        onClick={() => onNameClick?.(order)}
+      >
+        <span className="mr-2">工单 {order.id}:</span>
+        {order.name}
+      </button>
+      {showExtensionHours && order.type === 'job' && Number(extHours) > 0 && (
+        <div
+          title={`锁定 ${extHours} 小时`}
+          className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded px-2 py-1 text-xs"
+        >
+          <ClockIcon className="h-3 w-3" />
+          {extHours}h
+        </div>
+      )}
+      {order.type === 'job' && order.status === 'Pending' && (
+        <>
+          <ResourceBadges resources={resources} />
+          <NodeBadges nodes={uniqueNodes} />
+        </>
+      )}
+      {abnormalNodes.length > 0 && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="text-destructive cursor-help">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="flex flex-col gap-2 p-1">
+                <div className="font-semibold">节点状态异常:</div>
+                {abnormalNodes.map((node) => (
+                  <div key={node.name} className="flex items-center justify-between gap-4">
+                    <span>{node.name}</span>
+                    <NodeStatusBadge status={node.status} />
+                  </div>
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
+  )
+}
+
+// 包装组件，负责获取数据并分发给子组件
+const JobInfoWrapper = ({
+  order,
+  children,
+}: {
+  order: ApprovalOrder
+  children: (props: { pods?: PodDetail[]; isLoading: boolean }) => ReactNode
+}) => {
+  const { data: pods, isLoading } = useJobPods(order)
+  return <>{children({ pods, isLoading })}</>
+}
+
 export function ApprovalOrderDataTable({
   query,
   storageKey,
@@ -56,6 +172,9 @@ export function ApprovalOrderDataTable({
   renderActions,
   children,
 }: ApprovalOrderDataTableProps) {
+  // 在顶层获取节点信息，避免每行重复请求
+  const { data: nodes } = useQuery(queryNodes())
+
   const defaultGetHeader = (key: string): string => {
     switch (key) {
       case 'name':
@@ -100,33 +219,19 @@ export function ApprovalOrderDataTable({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={(getHeader || defaultGetHeader)('name')} />
       ),
-      cell: ({ row }) => {
-        const extHours = showExtensionHours
-          ? row.original.content.approvalorderExtensionHours || 0
-          : 0
-        return (
-          <div className="relative flex items-center gap-2">
-            <button
-              type="button"
-              className="text-left break-all whitespace-normal underline-offset-4 hover:underline"
-              title={`查看工单 ${row.getValue('name')} 详情`}
-              onClick={() => onNameClick?.(row.original)}
-            >
-              <span className="mr-2">工单 {row.original.id}:</span>
-              {row.getValue('name')}
-            </button>
-            {showExtensionHours && row.original.type === 'job' && Number(extHours) > 0 && (
-              <div
-                title={`锁定 ${extHours} 小时`}
-                className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded px-2 py-1 text-xs"
-              >
-                <ClockIcon className="h-3 w-3" />
-                {extHours}h
-              </div>
-            )}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <JobInfoWrapper order={row.original}>
+          {({ pods }) => (
+            <JobNameWithWarning
+              order={row.original}
+              showExtensionHours={showExtensionHours}
+              onNameClick={onNameClick}
+              pods={pods}
+              nodes={nodes}
+            />
+          )}
+        </JobInfoWrapper>
+      ),
     },
     {
       accessorKey: 'nickname',

@@ -115,8 +115,9 @@ function RouteComponent() {
           key: 'detail',
           label: '详情',
           icon: FileText,
+          scrollable: true,
           children: (
-            <div className="grid gap-4 p-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">申请内容</CardTitle>
