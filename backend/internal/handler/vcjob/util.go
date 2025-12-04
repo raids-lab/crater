@@ -34,6 +34,15 @@ const (
 	DataType
 )
 
+var (
+	volcanoPlugins = map[string][]string{
+		"svc": {
+			"--publish-not-ready-addresses=false",
+			"--disable-network-policy=false",
+		},
+	}
+)
+
 type ForwardType uint
 
 const (

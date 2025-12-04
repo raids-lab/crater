@@ -135,6 +135,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
+			Plugins:                 volcanoPlugins,
 			SchedulerName:           VolcanoSchedulerName,
 			Queue:                   token.AccountName,
 			Policies: []batch.LifecyclePolicy{
