@@ -80,7 +80,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST(":name/ssh", mgr.OpenSSH)
 
 	// snapshot - 通用作业快照功能，适用于 Jupyter 和 Custom 类型作业
-	g.POST(":name/snapshot", mgr.CreateJupyterSnapshot)
+	g.POST(":name/snapshot", mgr.CreateSnapshot)
 
 	// jupyter
 	g.POST("jupyter", mgr.CreateJupyterJob)

@@ -84,8 +84,11 @@ func (b *imagePacker) generateSnapshotContainer(data *SnapshotReq) corev1.Contai
 		"--pod-name", data.PodName,
 		"--container-name", data.ContainerName,
 		"--image-url", data.ImageLink,
-		// 如有需要，可添加 "--size-limit" 参数
-		"--size-limit", "30",
+	}
+
+	// For non-admin users, add size limit argument
+	if !data.IsAdmin {
+		args = append(args, "--size-limit", "40") // 40 GiB
 	}
 
 	container := corev1.Container{
@@ -111,16 +114,6 @@ func (b *imagePacker) generateSnapshotContainer(data *SnapshotReq) corev1.Contai
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: ptr.To(true),
 		},
-		// Resources: corev1.ResourceRequirements{
-		// 	Limits: corev1.ResourceList{
-		// 		corev1.ResourceCPU:    resource.MustParse(cpuLimit),
-		// 		corev1.ResourceMemory: resource.MustParse(memoryLimit),
-		// 	},
-		// 	Requests: corev1.ResourceList{
-		// 		corev1.ResourceCPU:    resource.MustParse(cpuRequest),
-		// 		corev1.ResourceMemory: resource.MustParse(memoryRequest),
-		// 	},
-		// },
 	}
 
 	return container

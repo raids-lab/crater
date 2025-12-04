@@ -33,6 +33,7 @@ type BuildKitReq struct {
 
 type SnapshotReq struct {
 	UserID        uint
+	IsAdmin       bool
 	Namespace     string
 	PodName       string
 	ContainerName string
