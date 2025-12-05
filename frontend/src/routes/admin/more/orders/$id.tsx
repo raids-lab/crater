@@ -33,6 +33,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+import { ApprovalOrderStatusBadge } from '@/components/badge/approvalorder-badge'
 import NodeStatusBadge from '@/components/badge/node-status-badge'
 import ResourceBadges from '@/components/badge/resource-badges'
 import DetailPage from '@/components/layout/detail-page'
@@ -177,6 +178,17 @@ function RouteComponent() {
     return order.creator.nickname || order.creator.username || '-'
   }, [order])
 
+  const reviewerName = useMemo(() => {
+    if (!order) return '-'
+    const hasReviewer = order.reviewer && order.reviewer.username
+
+    if (order.status !== 'Pending' && !hasReviewer) {
+      return '系统'
+    }
+
+    return hasReviewer ? order.reviewer.nickname || order.reviewer.username : '-'
+  }, [order])
+
   const detailButtonText = useMemo(() => {
     if (!order) return ''
     if (order.type === 'job') return '查看作业详情'
@@ -259,7 +271,11 @@ function RouteComponent() {
         }
         info={[
           { title: '类型', icon: Type, value: order.type },
-          { title: '状态', icon: CheckCircle, value: order.status },
+          {
+            title: '状态',
+            icon: CheckCircle,
+            value: <ApprovalOrderStatusBadge status={order.status} />,
+          },
           { title: '创建者', icon: User, value: creatorName },
           {
             title: '创建时间',
@@ -339,12 +355,22 @@ function RouteComponent() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">审核信息</CardTitle>
+                    <CardTitle className="text-lg">审核进度</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-sm">当前状态</span>
+                      <span className="font-medium">
+                        <ApprovalOrderStatusBadge status={order.status} />
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-sm">审核人</span>
+                      <span className="font-medium">{reviewerName}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 border-t pt-2">
                       <span className="text-muted-foreground text-sm">审核备注</span>
-                      <p className="text-sm">{order.reviewNotes || '暂无备注'}</p>
+                      <p className="text-sm">{order.reviewNotes || '暂无'}</p>
                     </div>
                   </CardContent>
                 </Card>

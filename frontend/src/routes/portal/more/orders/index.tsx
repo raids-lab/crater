@@ -107,7 +107,10 @@ function RouteComponent() {
       case 'status':
         return t('ApprovalOrderTable.column.status')
       case 'creator':
+      case 'nickname':
         return t('ApprovalOrderTable.column.creator')
+      case 'reviewer':
+        return t('ApprovalOrderTable.column.reviewer')
       case 'createdAt':
         return t('ApprovalOrderTable.column.createdAt')
       case 'actions':

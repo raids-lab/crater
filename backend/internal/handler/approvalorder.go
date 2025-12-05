@@ -369,6 +369,7 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 	orderStatus := model.ApprovalOrderStatusPending
 	orderReason := ""
 
+	// 如果满足自动审批条件，则将工单状态设置为已批准,并添加备注
 	if autoApproved {
 		orderStatus = model.ApprovalOrderStatusApproved
 		orderReason = autoApprovalReason

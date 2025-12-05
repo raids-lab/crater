@@ -44,18 +44,26 @@ export const approvalOrderStatuses = [
   {
     value: 'Pending',
     label: '待审批',
+    color: 'text-highlight-orange bg-highlight-orange/10',
+    description: '工单等待审批中',
   },
   {
     value: 'Approved',
     label: '已批准',
+    color: 'text-highlight-green bg-highlight-green/10',
+    description: '工单已获得批准',
   },
   {
     value: 'Rejected',
     label: '已拒绝',
+    color: 'text-highlight-red bg-highlight-red/10',
+    description: '工单已被拒绝',
   },
   {
     value: 'Canceled',
     label: '已取消',
+    color: 'text-highlight-gray bg-highlight-gray/10',
+    description: '工单已取消',
   },
 ]
 
@@ -89,43 +97,20 @@ const getApprovalOrderTypeLabel = (
 }
 
 const getApprovalOrderStatusLabel = (
-  status: ApprovalOrderStatus
+  status: string
 ): {
   label: string
   color: string
   description: string
 } => {
-  switch (status) {
-    case ApprovalOrderStatus.Pending:
-      return {
-        label: '待审批',
-        color: 'text-highlight-orange bg-highlight-orange/10',
-        description: '待审批',
-      }
-    case ApprovalOrderStatus.Approved:
-      return {
-        label: '已批准',
-        color: 'text-highlight-green bg-highlight-green/10',
-        description: '已批准',
-      }
-    case ApprovalOrderStatus.Rejected:
-      return {
-        label: '已拒绝',
-        color: 'text-highlight-red bg-highlight-red/10',
-        description: '已拒绝',
-      }
-    case ApprovalOrderStatus.Canceled:
-      return {
-        label: '已取消',
-        color: 'text-highlight-gray bg-highlight-gray/10',
-        description: '已取消',
-      }
-    default:
-      return {
-        label: '待审批',
-        color: 'text-highlight-orange bg-highlight-orange/10',
-        description: '待审批',
-      }
+  const foundStatus = approvalOrderStatuses.find((s) => s.value === status)
+  if (foundStatus) {
+    return foundStatus
+  }
+  return {
+    label: '未知',
+    color: 'text-highlight-slate bg-highlight-slate/20',
+    description: '未知状态',
   }
 }
 
@@ -133,7 +118,7 @@ export const ApprovalOrderTypeBadge = ({ type }: { type: ApprovalOrderType }) =>
   return <PhaseBadge phase={type} getPhaseLabel={getApprovalOrderTypeLabel} />
 }
 
-export const ApprovalOrderStatusBadge = ({ status }: { status: ApprovalOrderStatus }) => {
+export const ApprovalOrderStatusBadge = ({ status }: { status: string }) => {
   return <PhaseBadge phase={status} getPhaseLabel={getApprovalOrderStatusLabel} />
 }
 
