@@ -63,6 +63,13 @@ export interface IClusterPodInfo {
   lockedTimestamp?: string
   // added by frontend
   type?: string
+  // 管理员接口返回的字段
+  userName?: string
+  userID?: number
+  userRealName?: string
+  accountName?: string
+  accountID?: number
+  accountRealName?: string
 }
 
 export interface IClusterNodeDetail {
@@ -151,6 +158,9 @@ export const apiGetNodeDetail = (name: string) =>
 
 export const apiGetNodePods = (name: string) =>
   apiV1Get<IResponse<IClusterPodInfo[]>>(`nodes/${name}/pods`)
+
+export const apiAdminGetNodePods = (name: string) =>
+  apiV1Get<IResponse<IClusterPodInfo[]>>(`admin/nodes/${name}/pods`)
 
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>

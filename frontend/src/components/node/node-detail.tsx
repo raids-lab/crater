@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query'
-import { ColumnDef } from '@tanstack/react-table'
+import { useNavigate } from '@tanstack/react-router'
+import { Column, ColumnDef, Row } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
@@ -36,7 +37,7 @@ import {
   TagIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,7 +51,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import PodPhaseLabel, { podPhases } from '@/components/badge/pod-phase-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
@@ -61,6 +61,7 @@ import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   IClusterPodInfo,
+  apiAdminGetNodePods,
   apiGetNodeDetail,
   apiGetNodeGPU,
   apiGetNodePods,
@@ -76,6 +77,7 @@ import TipBadge from '../badge/tip-badge'
 import TooltipButton from '../button/tooltip-button'
 import LogDialog from '../codeblock/log-dialog'
 import { NamespacedName, PodNamespacedName } from '../codeblock/pod-container-dialog'
+import SimpleTooltip from '../label/simple-tooltip'
 import TooltipCopy from '../label/tooltop-copy'
 import DetailPage, { DetailPageCoreProps } from '../layout/detail-page'
 import PageTitle from '../layout/page-title'
@@ -166,6 +168,8 @@ const getHeader = (name: string, t: (key: string) => string): string => {
       return t('nodeDetail.table.headers.type')
     case 'name':
       return t('nodeDetail.table.headers.name')
+    case 'userName':
+      return t('nodeDetail.table.headers.userName')
     case 'status':
       return t('nodeDetail.table.headers.status')
     case 'createTime':
@@ -181,7 +185,8 @@ const getColumns = (
   isAdminView: boolean,
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
   handleShowMonitor: (pod: IClusterPodInfo) => void,
-  t: (key: string) => string
+  t: (key: string) => string,
+  navigate: ReturnType<typeof useNavigate>
 ): ColumnDef<IClusterPodInfo>[] => [
   {
     accessorKey: 'type',
@@ -223,55 +228,179 @@ const getColumns = (
       const permanentLocked = row.original.permanentLocked
       const lockedTimestamp = row.original.lockedTimestamp
 
-      // 檢查是否有 Job 類型的 ownerReference
+      // 从 ownerReference 获取作业名称
       const jobOwner = row.original.ownerReference?.find((owner) => owner.kind === 'Job')
-      const displayName = jobOwner ? jobOwner.name : podName
-      const subtitle = jobOwner ? podName : undefined
+      const jobName = jobOwner?.name
+      const hasJobName = !!jobName
 
       return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <TooltipButton
-                name={displayName}
-                tooltipContent={t('nodeDetail.tooltip.viewMonitor')}
-                className="text-foreground hover:text-primary cursor-pointer px-0 font-mono hover:no-underline has-[>svg]:px-0"
-                variant="link"
-                onClick={() => handleShowMonitor(row.original)}
-              >
-                <div className="flex flex-col items-start">
-                  <span>{displayName}</span>
-                  {subtitle && <span className="text-muted-foreground text-xs">{subtitle}</span>}
+        <div className="flex flex-col items-start gap-0 pt-1">
+          {hasJobName ? (
+            // 有作业名称时，显示作业名称和 Pod 名称
+            <>
+              {/* 作业名称和锁图标使用同一个 tooltip */}
+              {isAdminView ? (
+                <SimpleTooltip
+                  tooltip={
+                    <div className="flex flex-row items-center justify-between gap-1.5">
+                      <p className="text-xs">{t('nodeDetail.tooltip.viewJobDetail')}</p>
+                      {locked && (
+                        <TipBadge
+                          title={
+                            permanentLocked
+                              ? t('nodeDetail.status.permanentLocked')
+                              : t('nodeDetail.status.lockedUntil').replace(
+                                  '{{time}}',
+                                  formatLockDate(lockedTimestamp)
+                                )
+                          }
+                          className="text-primary bg-primary-foreground z-10"
+                        />
+                      )}
+                    </div>
+                  }
+                >
+                  <div className="flex flex-row items-center leading-none">
+                    <span
+                      onClick={() =>
+                        navigate({
+                          to: '/admin/jobs/$name',
+                          params: { name: jobName },
+                        })
+                      }
+                      className="text-foreground hover:text-primary cursor-pointer px-0 font-mono leading-none hover:no-underline"
+                    >
+                      {jobName}
+                    </span>
+                    {locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
+                  </div>
+                </SimpleTooltip>
+              ) : (
+                <div className="flex flex-row items-center leading-none">
+                  <span className="text-foreground font-mono leading-none">{jobName}</span>
+                  {locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
                 </div>
-                {locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
-              </TooltipButton>
-            </TooltipTrigger>
-            {locked && (
-              <TooltipContent side="top">
-                <div className="flex flex-row items-center justify-between gap-1.5">
-                  <p className="text-xs">
-                    {t('nodeDetail.tooltip.viewMonitorFor').replace('{{podName}}', podName)}
-                  </p>
-                  <TipBadge
-                    title={
-                      permanentLocked
-                        ? t('nodeDetail.status.permanentLocked')
-                        : t('nodeDetail.status.lockedUntil').replace(
-                            '{{time}}',
-                            formatLockDate(lockedTimestamp)
-                          )
-                    }
-                    className="text-primary bg-primary-foreground z-10"
-                  />
-                </div>
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+              )}
+              {/* Pod 名称使用 SimpleTooltip + span，与归属列保持一致 */}
+              <SimpleTooltip tooltip={t('nodeDetail.tooltip.viewMonitor')}>
+                <span
+                  className="text-muted-foreground hover:text-primary -mt-0.5 cursor-pointer font-mono text-xs leading-none hover:no-underline"
+                  onClick={() => handleShowMonitor(row.original)}
+                >
+                  {podName}
+                </span>
+              </SimpleTooltip>
+            </>
+          ) : (
+            // 没有作业名称时，Pod 名称使用 TooltipButton（没有作业名称时不会有锁定状态）
+            <TooltipButton
+              name={podName}
+              tooltipContent={t('nodeDetail.tooltip.viewMonitor')}
+              className="text-foreground hover:text-primary cursor-pointer px-0 font-mono hover:no-underline has-[>svg]:px-0"
+              variant="link"
+              onClick={() => handleShowMonitor(row.original)}
+            >
+              {podName}
+            </TooltipButton>
+          )}
+        </div>
       )
     },
     enableSorting: false,
   },
+  // 管理员视图：用户列
+  ...(isAdminView
+    ? [
+        {
+          accessorKey: 'userName',
+          header: ({ column }: { column: Column<IClusterPodInfo> }) => (
+            <DataTableColumnHeader column={column} title={getHeader('userName', t)} />
+          ),
+          cell: ({ row }: { row: Row<IClusterPodInfo> }) => {
+            const userName = row.original.userName
+            const userID = row.original.userID
+            const userRealName = row.original.userRealName
+            const accountName = row.original.accountName
+            const accountID = row.original.accountID
+            const accountRealName = row.original.accountRealName
+
+            // 仅当是用户作业时才显示用户和账户信息（后端只在用户作业时设置 userName）
+            if (userName) {
+              return (
+                <div className="flex flex-col items-start gap-0 pt-1">
+                  {/* 用户信息 */}
+                  {userID && userRealName ? (
+                    <SimpleTooltip
+                      tooltip={
+                        <p>
+                          <Trans
+                            i18nKey="nodeDetail.tooltip.viewUserInfo"
+                            values={{ userName, userRealName }}
+                            components={{ 1: <span className="mx-0.5 font-mono" /> }}
+                          />
+                        </p>
+                      }
+                    >
+                      <div className="flex flex-row items-center leading-none">
+                        <span
+                          onClick={() =>
+                            navigate({
+                              to: '/admin/users/$name',
+                              params: { name: userRealName },
+                            })
+                          }
+                          className="text-foreground hover:text-primary cursor-pointer px-0 font-mono leading-none hover:no-underline"
+                        >
+                          {userName}
+                        </span>
+                      </div>
+                    </SimpleTooltip>
+                  ) : (
+                    <div className="flex flex-row items-center leading-none">
+                      <span className="text-foreground font-mono leading-none">{userName}</span>
+                    </div>
+                  )}
+                  {/* 账户信息 */}
+                  {accountName && accountID ? (
+                    <SimpleTooltip
+                      tooltip={
+                        <p>
+                          <Trans
+                            i18nKey="nodeDetail.tooltip.manageAccount"
+                            values={{ accountName, accountRealName }}
+                            components={{ 1: <span className="mx-0.5 font-mono" /> }}
+                          />
+                        </p>
+                      }
+                    >
+                      <span
+                        onClick={() =>
+                          navigate({
+                            to: '/admin/accounts/$id',
+                            params: { id: accountID.toString() },
+                          })
+                        }
+                        className="text-muted-foreground hover:text-primary -mt-0.5 cursor-pointer font-mono text-xs leading-none hover:no-underline"
+                      >
+                        {accountName}
+                      </span>
+                    </SimpleTooltip>
+                  ) : accountName ? (
+                    <span className="text-muted-foreground -mt-0.5 font-mono text-xs leading-none">
+                      {accountName}
+                    </span>
+                  ) : null}
+                </div>
+              )
+            }
+
+            // 其他情况不显示
+            return null
+          },
+          enableSorting: false,
+        },
+      ]
+    : []),
   {
     accessorKey: 'status',
     header: ({ column }) => (
@@ -362,6 +491,7 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
   const [showMonitor, setShowMonitor] = useState(false)
   const [grafanaUrl, setGrafanaUrl] = useState<string>(grafanaJob.pod)
   const { t } = useTranslation()
+  const navigate = useNavigate()
 
   const { data: nodeDetail } = useQuery({
     queryKey: ['nodes', nodeName, 'detail'],
@@ -376,9 +506,11 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
     select: (res) => res.data,
   })
 
+  const isAdminView = useIsAdmin()
   const podsQuery = useQuery({
-    queryKey: ['nodes', nodeName, 'pods'],
-    queryFn: () => apiGetNodePods(`${nodeName}`),
+    queryKey: ['nodes', nodeName, 'pods', isAdminView],
+    queryFn: () =>
+      isAdminView ? apiAdminGetNodePods(`${nodeName}`) : apiGetNodePods(`${nodeName}`),
     select: (res) =>
       res.data
         ?.sort((a, b) => a.name.localeCompare(b.name))
@@ -390,8 +522,6 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
         }),
     enabled: !!nodeName,
   })
-
-  const isAdminView = useIsAdmin()
   const columns = useMemo(
     () =>
       getColumns(
@@ -403,9 +533,10 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
           )
           setShowMonitor(true)
         },
-        t
+        t,
+        navigate
       ),
-    [nodeName, grafanaJob, isAdminView, t]
+    [nodeName, grafanaJob, isAdminView, t, navigate]
   )
 
   const scheduler = useAtomValue(globalSettings).scheduler
