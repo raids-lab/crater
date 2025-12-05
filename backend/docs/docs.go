@@ -15,6 +15,55 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/nodes/{name}/pods": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取节点Pod信息，包含作业和用户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Node"
+                ],
+                "summary": "获取节点Pod信息（管理员）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "节点名称",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/check": {
             "get": {
                 "security": [
@@ -8524,6 +8573,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_AccountResp": {
             "type": "object",
             "properties": {
@@ -8981,6 +9047,68 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "github_com_raids-lab_crater_pkg_crclient.Pod": {
+            "type": "object",
+            "properties": {
+                "accountID": {
+                    "description": "账户ID（用于跳转）",
+                    "type": "integer"
+                },
+                "accountName": {
+                    "description": "账户昵称（用于显示）",
+                    "type": "string"
+                },
+                "accountRealName": {
+                    "description": "账户真实名称（用于tooltip）",
+                    "type": "string"
+                },
+                "createTime": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "lockedTimestamp": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "ownerReference": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.OwnerReference"
+                    }
+                },
+                "permanentLocked": {
+                    "type": "boolean"
+                },
+                "resources": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "status": {
+                    "$ref": "#/definitions/v1.PodPhase"
+                },
+                "userID": {
+                    "description": "用户ID（用于跳转）",
+                    "type": "integer"
+                },
+                "userName": {
+                    "description": "管理员接口返回的字段（omitempty 表示字段为空时不序列化）",
+                    "type": "string"
+                },
+                "userRealName": {
+                    "description": "用户真实名称（用于tooltip）",
+                    "type": "string"
                 }
             }
         },
@@ -10433,6 +10561,52 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "v1.OwnerReference": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "API version of the referent.",
+                    "type": "string"
+                },
+                "blockOwnerDeletion": {
+                    "description": "If true, AND if the owner has the \"foregroundDeletion\" finalizer, then\nthe owner cannot be deleted from the key-value store until this\nreference is removed.\nSee https://kubernetes.io/docs/concepts/architecture/garbage-collection/#foreground-deletion\nfor how the garbage collector interacts with this field and enforces the foreground deletion.\nDefaults to false.\nTo set this field, a user needs \"delete\" permission of the owner,\notherwise 422 (Unprocessable Entity) will be returned.\n+optional",
+                    "type": "boolean"
+                },
+                "controller": {
+                    "description": "If true, this reference points to the managing controller.\n+optional",
+                    "type": "boolean"
+                },
+                "kind": {
+                    "description": "Kind of the referent.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "UID of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.PodPhase": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed",
+                "Unknown"
+            ],
+            "x-enum-varnames": [
+                "PodPending",
+                "PodRunning",
+                "PodSucceeded",
+                "PodFailed",
+                "PodUnknown"
+            ]
         },
         "v1.ResourceFieldSelector": {
             "type": "object",

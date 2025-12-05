@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -82,7 +83,7 @@ func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
-	g.GET("/:name/pods", mgr.GetPodsForNode)
+	g.GET("/:name/pods", mgr.AdminGetPodsForNode)
 	g.GET("/:name/gpu", mgr.ListNodeGPUInfo)
 	g.GET("/:name/mark", mgr.GetNodeMarks)
 	g.POST("/:name/label", mgr.AddNodeLabel)
@@ -183,6 +184,24 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", urlReq.Name))
 }
 
+// handleGetPods 通用的 Pod 获取处理函数
+func (mgr *NodeMgr) handleGetPods(c *gin.Context, fetcher func(context.Context, string) ([]crclient.Pod, error), actionLog string) {
+	var req NodePodRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		klog.Infof("Bind URI failed, err: %v", err)
+		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
+		return
+	}
+
+	klog.Infof("%s, name: %s", actionLog, req.Name)
+	pods, err := fetcher(c, req.Name)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, pods)
+}
+
 // GetPodsForNode godoc
 //
 //	@Summary		获取节点Pod信息
@@ -197,20 +216,24 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 //	@Failure		500		{object}	resputil.Response[any]	"其他错误"
 //	@Router			/v1/nodes/{name}/pod/ [get]
 func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
-	var req NodePodRequest
-	if err := c.ShouldBindUri(&req); err != nil {
-		klog.Infof("Bind URI failed, err: %v", err)
-		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
-		return
-	}
+	mgr.handleGetPods(c, mgr.nodeClient.GetPodsForNode, "Node List Pod")
+}
 
-	klog.Infof("Node List Pod, name: %s", req.Name)
-	pods, err := mgr.nodeClient.GetPodsForNode(c, req.Name)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, pods)
+// AdminGetPodsForNode godoc
+//
+//	@Summary		获取节点Pod信息（管理员）
+//	@Description	获取节点Pod信息，包含作业和用户信息
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"节点名称"
+//	@Success		200		{object}	resputil.Response[[]crclient.Pod]	"成功返回值描述"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/admin/nodes/{name}/pods [get]
+func (mgr *NodeMgr) AdminGetPodsForNode(c *gin.Context) {
+	mgr.handleGetPods(c, mgr.nodeClient.AdminGetPodsForNode, "Admin Node List Pod")
 }
 
 // ListNodeGPUUtil godoc

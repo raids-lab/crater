@@ -89,6 +89,13 @@ type Pod struct {
 	Locked          bool                    `json:"locked"`
 	PermanentLocked bool                    `json:"permanentLocked"`
 	LockedTimestamp metav1.Time             `json:"lockedTimestamp"`
+	// 管理员接口返回的字段（omitempty 表示字段为空时不序列化）
+	UserName        string `json:"userName,omitempty"`        // 用户昵称（用于显示）
+	UserID          uint   `json:"userID,omitempty"`          // 用户ID（用于跳转）
+	UserRealName    string `json:"userRealName,omitempty"`    // 用户真实名称（用于tooltip）
+	AccountName     string `json:"accountName,omitempty"`     // 账户昵称（用于显示）
+	AccountID       uint   `json:"accountID,omitempty"`       // 账户ID（用于跳转）
+	AccountRealName string `json:"accountRealName,omitempty"` // 账户真实名称（用于tooltip）
 }
 
 type ClusterNodeDetail struct {
@@ -406,11 +413,20 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, op
 	return err
 }
 
-func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
-	// Get Pods for the node, which is a costly operation
+// getPodsForNode 获取节点上的 Pod 列表（内部辅助方法）
+func (nc *NodeClient) getPodsForNode(ctx context.Context, nodeName string) (*corev1.PodList, error) {
 	podList := &corev1.PodList{}
 	if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(nodeName)); err != nil {
 		klog.Errorf("Failed to get pods for node %s: %v", nodeName, err)
+		return nil, err
+	}
+	return podList, nil
+}
+
+func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
+	// Get Pods for the node, which is a costly operation
+	podList, err := nc.getPodsForNode(ctx, nodeName)
+	if err != nil {
 		return nil, err
 	}
 
@@ -446,6 +462,79 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 		pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())
 		pods[i].PermanentLocked = utils.IsPermanentTime(job.LockedTimestamp)
 		pods[i].LockedTimestamp = metav1.NewTime(job.LockedTimestamp)
+	}
+
+	return pods, nil
+}
+
+// AdminGetPodsForNode 获取节点上的 Pod 列表（管理员接口）
+// 返回包含作业和用户信息的 Pod 列表
+func (nc *NodeClient) AdminGetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
+	podList, err := nc.getPodsForNode(ctx, nodeName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize the return value
+	pods := make([]Pod, len(podList.Items))
+	jobDB := query.Job
+	jobNamespace := config.GetConfig().Namespaces.Job
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+
+		pods[i] = Pod{
+			Name:            pod.Name,
+			Namespace:       pod.Namespace,
+			IP:              pod.Status.PodIP,
+			CreateTime:      pod.CreationTimestamp,
+			Status:          pod.Status.Phase,
+			OwnerReference:  pod.OwnerReferences,
+			Resources:       utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+			Locked:          false,
+			LockedTimestamp: metav1.Time{},
+		}
+
+		// 如果是 crater 作业命名空间中的 VolcanoJob Pod，查询作业和用户信息
+		if pod.Namespace == jobNamespace && len(pod.OwnerReferences) > 0 {
+			for _, owner := range pod.OwnerReferences {
+				if owner.Kind != VCJOBKIND || owner.APIVersion != VCJOBAPIVERSION {
+					continue
+				}
+
+				job, err := jobDB.WithContext(ctx).
+					Preload(jobDB.User).
+					Preload(jobDB.Account).
+					Where(jobDB.JobName.Eq(owner.Name)).
+					First()
+				if err != nil {
+					klog.Errorf("Get job %s failed, err: %v", owner.Name, err)
+					break
+				}
+
+				// 用户信息
+				pods[i].UserID = job.UserID
+				pods[i].UserRealName = job.User.Name
+				pods[i].UserName = job.User.Nickname
+				if pods[i].UserName == "" {
+					pods[i].UserName = job.User.Name
+				}
+
+				// 账户信息
+				pods[i].AccountID = job.AccountID
+				pods[i].AccountRealName = job.Account.Name
+				pods[i].AccountName = job.Account.Nickname
+				if pods[i].AccountName == "" {
+					pods[i].AccountName = job.Account.Name
+				}
+
+				// 检查锁定状态
+				pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())
+				pods[i].PermanentLocked = utils.IsPermanentTime(job.LockedTimestamp)
+				pods[i].LockedTimestamp = metav1.NewTime(job.LockedTimestamp)
+				break
+			}
+		}
 	}
 
 	return pods, nil
