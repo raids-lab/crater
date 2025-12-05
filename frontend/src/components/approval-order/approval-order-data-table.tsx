@@ -21,6 +21,7 @@ import { ReactNode, useMemo } from 'react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import {
+  ApprovalOrderStatus,
   ApprovalOrderStatusBadge,
   ApprovalOrderTypeBadge,
   approvalOrderStatuses,
@@ -60,7 +61,7 @@ const useJobPods = (order: ApprovalOrder) => {
     queryKey: ['job', 'detail', order.name, 'pods'],
     queryFn: () => apiJobGetPods(order.name),
     select: (res) => res.data,
-    enabled: order.type === 'job' && order.status === 'Pending',
+    enabled: order.type === 'job' && order.status === ApprovalOrderStatus.Pending,
     staleTime: 1000 * 60, // 1分钟缓存
   })
 }
@@ -81,7 +82,7 @@ const JobNameWithWarning = ({
   const extHours = showExtensionHours ? order.content.approvalorderExtensionHours || 0 : 0
 
   const abnormalNodes = useMemo(() => {
-    if (order.type !== 'job' || order.status !== 'Pending') return []
+    if (order.type !== 'job' || order.status !== ApprovalOrderStatus.Pending) return []
     if (!pods || pods.length === 0) return []
     if (!nodes) return []
 
@@ -118,7 +119,7 @@ const JobNameWithWarning = ({
           {extHours}h
         </div>
       )}
-      {order.type === 'job' && order.status === 'Pending' && (
+      {order.type === 'job' && order.status === ApprovalOrderStatus.Pending && (
         <>
           <ResourceBadges resources={resources} />
           <NodeBadges nodes={uniqueNodes} />
@@ -185,6 +186,8 @@ export function ApprovalOrderDataTable({
         return '状态'
       case 'creator':
         return '申请人'
+      case 'reviewer':
+        return '审核人'
       case 'createdAt':
         return '创建于'
       case 'actions':
@@ -234,11 +237,29 @@ export function ApprovalOrderDataTable({
       ),
     },
     {
-      accessorKey: 'nickname',
+      accessorKey: 'creator',
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={(getHeader || defaultGetHeader)('creator')} />
       ),
       cell: ({ row }) => <UserLabel info={row.original.creator} />,
+    },
+    {
+      accessorKey: 'reviewer',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          column={column}
+          title={(getHeader || defaultGetHeader)('reviewer')}
+        />
+      ),
+      cell: ({ row }) => {
+        const { status, reviewer } = row.original
+        const hasReviewer = reviewer && reviewer.username
+
+        if (status !== ApprovalOrderStatus.Pending && !hasReviewer) {
+          return <span className="truncate text-sm font-normal">系统</span>
+        }
+        return hasReviewer ? <UserLabel info={reviewer} /> : null
+      },
     },
     {
       accessorKey: 'type',
@@ -289,6 +310,7 @@ export function ApprovalOrderDataTable({
       storageKey={storageKey}
       query={query}
       columns={columns}
+      initialColumnVisibility={{ reviewer: false }}
     >
       {children}
     </DataTable>
