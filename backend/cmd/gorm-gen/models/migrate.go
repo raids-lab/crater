@@ -746,6 +746,8 @@ func main() {
 			&model.ResourceVGPU{},
 			&model.ModelDownload{},
 			&model.UserModelDownload{},
+			&model.CronJobConfig{},
+			&model.CronJobRecord{},
 		)
 		if err != nil {
 			return err
@@ -821,6 +823,40 @@ func main() {
 	Name: %s
 	Password: %s
 		`, name, password)
+
+		// 5. create initial cronjob configs
+		initialCronJobConfigs := []*model.CronJobConfig{
+			{
+				Name:    "clean-long-time-job",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"batchDays": 4, "interactiveDays": 4}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "clean-low-gpu-util-job",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"util": 0, "waitTime": 30, "timeRange": 90}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "clean-waiting-jupyter",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"waitMinitues": 5}`),
+				EntryID: -1,
+			},
+		}
+
+		for _, config := range initialCronJobConfigs {
+			if err := tx.Where("name = ?", config.Name).FirstOrCreate(&config).Error; err != nil {
+				return err
+			}
+		}
 
 		return nil
 	})
