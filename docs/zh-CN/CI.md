@@ -187,7 +187,7 @@ QEMU 通过 CPU 模拟实现跨平台构建，允许在 amd64 架构的构建机
   id: meta
   uses: docker/metadata-action@v5
   with:
-    images: ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}
+    images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}
     tags: |
       type=ref,event=branch
       type=semver,pattern={{version}}
@@ -197,7 +197,7 @@ QEMU 通过 CPU 模拟实现跨平台构建，允许在 amd64 架构的构建机
       type=sha
 ```
 
-`images` 参数指定镜像的基础名称，由 `${{ env.REGISTRY }}` 和 `${{ env.IMAGE_REPO }}` 组成，完整的镜像地址将在下一节"镜像推送与清理"中详细说明。
+`images` 参数指定镜像的基础名称，由 `${{ env.REGISTRY }}`、`${{ env.REPOSITORY }}` 和 `${{ env.IMAGE_NAME }}` 组成，完整的镜像地址将在下一节"镜像推送与清理"中详细说明。
 
 `tags` 参数下的每一行都是一个独立的标签生成规则，这些规则会根据触发条件并行生成对应的标签。例如，当创建版本标签 `v1.2.3` 时，会同时生成多个标签：`v1.2.3`、`1.2`、`1` 和 SHA 标签；当推送到 main 分支时，会生成 `main`、`latest` 和 SHA 标签。
 
@@ -213,7 +213,7 @@ QEMU 通过 CPU 模拟实现跨平台构建，允许在 amd64 架构的构建机
 
 ### 镜像推送与清理
 
-镜像构建完成后，需要推送到镜像仓库并清理旧镜像以控制存储空间。镜像推送使用 GHCR（GitHub Container Registry）作为仓库，完整的镜像地址格式为 `${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}`，即 `ghcr.io/raids-lab/crater-backend`、`ghcr.io/raids-lab/crater-frontend` 和 `ghcr.io/raids-lab/storage-server`。
+镜像构建完成后，需要推送到镜像仓库并清理旧镜像以控制存储空间。镜像推送使用 GHCR（GitHub Container Registry）作为仓库，完整的镜像地址格式为 `${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}`，即 `ghcr.io/raids-lab/crater-backend`、`ghcr.io/raids-lab/crater-frontend` 和 `ghcr.io/raids-lab/storage-server`。
 
 推送前需要先登录到 GHCR，配置如下：
 
