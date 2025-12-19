@@ -73,6 +73,16 @@ export const apiAdminGetJobList = (days: number) =>
 export const apiAdminGetJobDetail = (jobName: string) =>
   apiV1Get<IResponse<IJupyterDetail>>(`admin/${JOB_URL}/${jobName}/detail`)
 
+export const apiAdminGetUserJobList = (username: string, days: number = 30) =>
+  apiV1Get<IResponse<IJobInfo[]>>(`admin/${JOB_URL}/user/${username}`, {
+    searchParams: { days },
+  })
+
+export const apiGetUserJobs = (username: string, days: number = 30) =>
+  apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/user/${username}`, {
+    searchParams: { days },
+  })
+
 export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/all`)
 
 export enum JobPhase {

@@ -51,6 +51,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 
+import { UserAvatar } from '@/components/user/user-avatar'
+
 import { Role } from '@/services/api/auth'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -60,8 +62,6 @@ import { getUserPseudonym } from '@/utils/pseudonym'
 import { atomUserContext, atomUserInfo, globalHideUsername, globalLastView } from '@/utils/store'
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 import { useTheme } from '@/utils/theme'
-
-import { UserAvatar } from '../layout/user-detail/user-avatar'
 
 export function NavUser() {
   const website = useAtomValue(configUrlWebsiteBaseAtom)
