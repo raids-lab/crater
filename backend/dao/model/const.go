@@ -92,4 +92,13 @@ const (
 	LongTimeJobDeletedAlert            // 长时间作业删除通知
 )
 
+type ReviewStatus uint8
+
+const (
+	_                     ReviewStatus = iota // 零值，被忽略
+	ReviewStatusPending                       // 待审核
+	ReviewStatusConfirmed                     // 已确认
+	ReviewStatusIgnored                       // 已忽略
+)
+
 //go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType,ImageSourceType,AlertType -output=const_string.go
