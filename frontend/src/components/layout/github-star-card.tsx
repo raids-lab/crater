@@ -51,45 +51,46 @@ export function GitHubStarCard() {
   }
 
   if (isDismissed) return null
-
-  return (
-    <div className="bg-card hover:border-primary/40 group relative rounded-lg border p-3 shadow-sm transition-colors">
-      <button
-        onClick={handleDismiss}
-        className="focus:ring-ring absolute top-1.5 right-1.5 rounded-sm opacity-0 transition-opacity group-hover:opacity-70 hover:opacity-100 focus:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none"
-        aria-label="关闭"
-      >
-        <XIcon className="h-3.5 w-3.5" />
-      </button>
-
-      <div className="flex flex-col gap-2.5">
-        <div className="flex items-start gap-2 pr-5">
-          <div className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
-            <GithubIcon className="text-primary h-4 w-4" />
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <h3 className="text-xs leading-tight font-semibold">Star Crater</h3>
-            <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
-              支持我们的开源项目
-            </p>
-          </div>
-        </div>
-
-        <a
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-sidebar text-forground hover:bg-sidebar/90 focus:ring-ring flex w-full items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
-        >
-          <StarIcon className="h-3.5 w-3.5" />
-          <span>Star on GitHub</span>
-          {starCount !== null && starCount !== undefined && (
-            <span className="bg-background/20 ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
-              {starCount}
-            </span>
-          )}
-        </a>
-      </div>
-    </div>
-  )
+  return null
 }
+//   return (
+//     <div className="bg-card hover:border-primary/40 group relative rounded-lg border p-3 shadow-sm transition-colors">
+//       <button
+//         onClick={handleDismiss}
+//         className="focus:ring-ring absolute top-1.5 right-1.5 rounded-sm opacity-0 transition-opacity group-hover:opacity-70 hover:opacity-100 focus:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+//         aria-label="关闭"
+//       >
+//         <XIcon className="h-3.5 w-3.5" />
+//       </button>
+
+//       <div className="flex flex-col gap-2.5">
+//         <div className="flex items-start gap-2 pr-5">
+//           <div className="bg-primary/10 flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+//             <GithubIcon className="text-primary h-4 w-4" />
+//           </div>
+//           <div className="flex-1 overflow-hidden">
+//             <h3 className="text-xs leading-tight font-semibold">Star Crater</h3>
+//             <p className="text-muted-foreground mt-0.5 text-[11px] leading-snug">
+//               支持我们的开源项目
+//             </p>
+//           </div>
+//         </div>
+
+//         <a
+//           href={GITHUB_URL}
+//           target="_blank"
+//           rel="noopener noreferrer"
+//           className="bg-sidebar text-forground hover:bg-sidebar/90 focus:ring-ring flex w-full items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
+//         >
+//           <StarIcon className="h-3.5 w-3.5" />
+//           <span>Star on GitHub</span>
+//           {starCount !== null && starCount !== undefined && (
+//             <span className="bg-background/20 ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+//               {starCount}
+//             </span>
+//           )}
+//         </a>
+//       </div>
+//     </div>
+//   )
+// }

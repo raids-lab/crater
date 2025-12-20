@@ -348,7 +348,7 @@ export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
             {category === 'dataset' ? '返回数据集列表' : '返回模型列表'}
           </Button>
         </Link>
-        <DocsButton title="查看文档" url={category === 'dataset' ? 'file/dataset' : 'file/model'} />
+        {/* <DocsButton title="查看文档" url={category === 'dataset' ? 'file/dataset' : 'file/model'} /> */}
       </div>
     </DataTable>
   )

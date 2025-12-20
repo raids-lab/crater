@@ -129,10 +129,10 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
               </Button>
             </Link>
           )}
-          <DocsButton
+          {/* <DocsButton
             title={t('dataView.docsButtonTitle', { sourceTitle })}
             url={`file/${sourceType}`}
-          />
+          /> */}
           {isShareFile ? (
             <Button onClick={() => setOpenSheet(true)}>
               <PlusIcon className="size-4" />

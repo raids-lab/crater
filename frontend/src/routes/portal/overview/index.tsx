@@ -322,7 +322,7 @@ function Overview() {
           className="lg:col-span-2"
         >
           <div className="flex flex-row gap-3">
-            <DocsButton title="平台文档" url="" />
+            {/* <DocsButton title="平台文档" url="" /> */}
             <ListedNewJobButton mode="all" />
           </div>
         </PageTitle>

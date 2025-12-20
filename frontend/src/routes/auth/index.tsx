@@ -43,6 +43,7 @@ import { useTheme } from '@/utils/theme'
 import { ForgotPasswordForm } from './-components/forgot-password-form'
 import { LoginForm } from './-components/login-form'
 import { SignupForm } from './-components/signup-form'
+import logo from './-components/logo.png'
 
 export const Route = createFileRoute('/auth/')({
   validateSearch: (search) => ({
@@ -96,7 +97,7 @@ function LoginPage() {
   // 处理忘记密码按钮点击
   const handleForgotPasswordClick = () => {
     if (currentMode === AuthMode.ACT) {
-      toast.info('请联系 G512 杜英杰老师')
+      toast.info('请联系杨兰老师')
     } else {
       setShowForgotPassword(true)
       setShowSignup(false)
@@ -123,14 +124,15 @@ function LoginPage() {
               className="flex h-14 w-full flex-row items-center justify-center text-white"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
-              <CraterIcon className="mr-1.5 h-8 w-8" />
-              <CraterText className="h-4" />
+              {/*<CraterIcon className="mr-1.5 h-16 w-16" />*/}
+              <img src={logo} alt="Logo" className="mr-2 h-18 w-28" />
+              {/*<CraterText className="h-4" />*/}
             </button>
           </div>
           {/* 底部版权信息 */}
           <div className="absolute bottom-10 left-10 z-20">
             <blockquote className="space-y-2">
-              <footer className="text-sm text-white/80">Copyright @ ACT RAIDS Lab</footer>
+              <footer className="text-sm text-white/80">Copyright @ CHINA UNICOM</footer>
             </blockquote>
           </div>
           {/* 中间文字内容 */}
@@ -139,16 +141,16 @@ function LoginPage() {
               <h1 className="mb-4 text-5xl leading-tight font-semibold">
                 <span className="dark:text-primary">欢迎体验</span>
                 <br />
-                异构云资源混合调度
+                反诈大模型
                 <br />
-                与智能运维平台
+                可视平台
               </h1>
-              <DocsButton
+              {/*<DocsButton
                 variant="ghost"
                 className="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/85 dark:hover:text-primary-foreground bg-white text-black hover:bg-slate-200 hover:text-black"
                 title="平台文档"
-                url=""
-              />
+                url="https://github.com/ltservice1330/crater/"
+              />*/}
             </div>
           </div>
         </div>

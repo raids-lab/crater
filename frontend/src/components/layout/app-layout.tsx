@@ -88,7 +88,7 @@ const AppLayout = ({ groups, rawPath, children }: AppLayoutProps) => {
         >
           {children}
         </motion.div>
-        <WhatsNewDialog />
+        {/* <WhatsNewDialog /> */}
       </SidebarInset>
     </SidebarProvider>
   )

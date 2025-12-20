@@ -99,7 +99,7 @@ function RouteComponent() {
       }}
       actionArea={
         <div className="flex flex-row gap-3">
-          <DocsButton title={'作业模板文档'} url="quick-start/jobtemplate" />
+          {/* <DocsButton title={'作业模板文档'} url="quick-start/jobtemplate" /> */}
         </div>
       }
     />

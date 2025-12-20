@@ -188,7 +188,7 @@ const VolcanoOverview = () => {
       ]}
     >
       <div className="flex flex-row gap-3">
-        <DocsButton title="查看文档" url="quick-start/batchprocess" />
+        {/* <DocsButton title="查看文档" url="quick-start/batchprocess" /> */}
         <ListedNewJobButton mode="custom" />
       </div>
     </DataTable>

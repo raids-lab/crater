@@ -481,7 +481,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       >
         {!isAdminMode ? (
           <div className="flex flex-row gap-3">
-            <DocsButton title="查看文档" url="image/imageCreate" />
+            {/* <DocsButton title="查看文档" url="image/imageCreate" /> */}
             <ListedButton
               icon={<PackagePlusIcon />}
               renderTitle={(title) => title || '构建镜像'}
