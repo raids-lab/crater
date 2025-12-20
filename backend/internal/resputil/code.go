@@ -6,7 +6,8 @@ const (
 	OK ErrorCode = 0
 
 	// General
-	InvalidRequest ErrorCode = 40001
+	InvalidRequest     ErrorCode = 40001
+	BusinessLogicError ErrorCode = 40002
 
 	// Token
 	TokenExpired ErrorCode = 40101

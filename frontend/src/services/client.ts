@@ -8,6 +8,7 @@ import { showErrorToast } from '@/utils/toast'
 
 import {
   ERROR_BACKEND,
+  ERROR_BUSINESSLOFGIC_ERROR,
   ERROR_INVALID_REQUEST,
   ERROR_NOT_SPECIFIED,
   ERROR_TOKEN_EXPIRED,
@@ -145,9 +146,15 @@ export async function apiRequest<T>(
       try {
         const errorResponse = await error.response.json<IErrorResponse>()
 
+        // 🔥 【关键修改】将解析后的数据挂载到 error 对象上
+        // 这样上层组件通过 error.data 就能拿到后端返回的 { code, msg }
+        Object.assign(error, { data: errorResponse })
+
         // 根据错误码进行不同处理
         switch (errorResponse.code) {
           case ERROR_TOKEN_INVALID:
+            break
+          case ERROR_BUSINESSLOFGIC_ERROR:
             break
           case ERROR_INVALID_REQUEST:
             showErrorToast(`请求参数有误, ${errorResponse.msg}`)
@@ -159,7 +166,8 @@ export async function apiRequest<T>(
             showErrorToast('接收通知需要验证邮箱，请前往个人主页验证')
             break
           case ERROR_BACKEND:
-            showErrorToast(`${errorResponse.msg}`)
+            // 确保后端返回了 msg
+            showErrorToast(errorResponse.msg || '后端服务异常')
             break
           case ERROR_NOT_SPECIFIED:
             showErrorToast(error)
@@ -173,14 +181,18 @@ export async function apiRequest<T>(
 
         throw error
       } catch (parseError) {
-        // 如果解析失败，使用默认错误消息
+        // 如果解析 JSON 失败（比如后端返回了 HTML 或者空），抛出原始错误
         if (parseError instanceof HTTPError) {
           throw parseError
         }
-        toast.error(errorMessage, {
-          description: error.message || '请求失败，请稍后重试',
-        })
-        throw new Error(errorMessage)
+        // 如果是上面的 JSON 解析动作本身报错，或者 switch 里的逻辑报错
+        // 这里的处理可以保持原样，或者稍微优化
+        if (error instanceof HTTPError) {
+          toast.error(errorMessage, {
+            description: error.message || '请求失败，请稍后重试',
+          })
+        }
+        throw error
       }
     }
 

@@ -5,7 +5,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -26,9 +28,12 @@ type OperationsMgr struct {
 
 	// cron
 	cronJobManager *cronjob.CronJobManager
+	configService  *service.ConfigService
 }
 
 func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
+	q := query.Q
+	configService := service.NewConfigService(q)
 	instance := &OperationsMgr{
 		name:           "operations",
 		client:         conf.Client,
@@ -37,6 +42,7 @@ func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
 		taskService:    aitaskctl.NewDBService(),
 		taskController: conf.AITaskCtrl,
 		cronJobManager: conf.CronJobManager,
+		configService:  configService,
 	}
 	return instance
 }

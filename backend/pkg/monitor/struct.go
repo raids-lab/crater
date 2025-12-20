@@ -115,3 +115,13 @@ type PodUtil struct {
 	GPUMemMax      float32 `json:"gpu_mem_max"`
 	CPUMemMax      float32 `json:"cpu_mem_max"`
 }
+
+type GpuAnalysisMetrics struct {
+	// GPU 利用率指标 (%)
+	GpuUtilAvg    float32 `json:"gpuUtilAvg"`    // 平均利用率
+	GpuUtilStdDev float32 `json:"gpuUtilStdDev"` // 利用率标准差 (衡量稳定性)
+
+	// GPU 显存使用指标 (MB)
+	GpuMemUsedAvg    float32 `json:"gpuMemUsedAvg"`    // 平均已用显存
+	GpuMemUsedStdDev float32 `json:"gpuMemUsedStdDev"` // 已用显存标准差 (衡量稳定性)
+}

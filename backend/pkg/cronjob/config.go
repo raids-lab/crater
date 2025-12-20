@@ -14,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/cleaner"
+	"github.com/raids-lab/crater/pkg/patrol"
 )
 
 // AddCronJob adds a cron job to the scheduler based on job type
@@ -45,6 +46,14 @@ func (cm *CronJobManager) newCronJobFunc(jobName string, jobType model.CronJobTy
 		f, err := cleaner.GetCleanerFunc(jobName, cm.cleanerClients, jobConfig)
 		if err != nil {
 			err := fmt.Errorf("newCronJobFunc failed to get cleaner func: %w", err)
+			klog.Error(err)
+			return nil, err
+		}
+		return WrapFunc(jobName, f), nil
+	case model.CronJobTypePatrolFunc:
+		f, err := patrol.GetPatrolFunc(jobName, cm.patrolClients, jobConfig)
+		if err != nil {
+			err := fmt.Errorf("newCronJobFunc failed to get patrol func: %w", err)
 			klog.Error(err)
 			return nil, err
 		}

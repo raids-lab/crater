@@ -46,6 +46,8 @@ func main() {
 		model.CronJobConfig{},
 		model.ModelDownload{},
 		model.UserModelDownload{},
+		model.GpuAnalysis{},
+		model.SystemConfig{},
 	)
 
 	// 执行并生成代码

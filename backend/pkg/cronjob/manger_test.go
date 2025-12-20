@@ -14,7 +14,7 @@ import (
 
 func TestCronJob(t *testing.T) {
 	t.Run("newCronJobFunc", func(t *testing.T) {
-		manager := NewCronJobManager(nil, nil, nil)
+		manager := NewCronJobManager(nil, nil, nil, nil)
 		PatchConvey("newCronJobFunc", t, func() {
 			jobName := cleaner.CLEAN_LONG_TIME_RUNNING_JOB
 			jobConfig := datatypes.JSON(`{"batchDays": 4, "interactiveDays": 4}`)
@@ -44,7 +44,7 @@ func TestCronJob(t *testing.T) {
 
 	t.Run("prepareUpdateConfig", func(t *testing.T) {
 		PatchConvey("prepareUpdateConfig", t, func() {
-			manager := NewCronJobManager(nil, nil, nil)
+			manager := NewCronJobManager(nil, nil, nil, nil)
 			cur := &model.CronJobConfig{
 				Name:   "test",
 				Type:   model.CronJobTypeCleanerFunc,

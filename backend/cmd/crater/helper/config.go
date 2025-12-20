@@ -11,6 +11,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -88,11 +89,21 @@ func (ci *ConfigInitializer) InitializeRegisterConfig() (*handler.RegisterConfig
 func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.RegisterConfig, mgr ctrl.Manager) {
 	registerConfig.Client = mgr.GetClient()
 
+	cfgService := service.NewConfigService(query.Q)
+	gpuAnalysisService := service.NewGpuAnalysisService(
+		query.Q,
+		registerConfig.KubeConfig, // 在 InitializeRegisterConfig 中已初始化
+		registerConfig.KubeClient, // 在 InitializeRegisterConfig 中已初始化
+		registerConfig.PrometheusClient.(*monitor.PrometheusClient), // 在 InitializeRegisterConfig 中已初始化
+		cfgService,
+	)
+
 	// init cron job manager
 	registerConfig.CronJobManager = cronjob.NewCronJobManager(
 		registerConfig.Client,
 		registerConfig.KubeClient,
 		registerConfig.PrometheusClient,
+		gpuAnalysisService,
 	)
 	go registerConfig.CronJobManager.SyncCronJob()
 
