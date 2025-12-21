@@ -64,29 +64,31 @@ export function DataTableToolbar<TData>({
     <div className="flex items-center justify-between">
       <div className="flex flex-row items-center space-x-2">
         {children}
-        <div className="relative ml-auto h-9 flex-1 md:grow-0">
-          <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
-          {globalSearch?.enabled && (
-            <Input
-              placeholder={
-                globalSearch.placeholder ?? t('dataTableToolbar.globalSearchPlaceholder')
-              }
-              value={table.getState().globalFilter || ''}
-              onChange={(event) => table.setGlobalFilter(event.target.value)}
-              className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
-            />
-          )}
-          {filterInput && (
-            <Input
-              placeholder={filterInput.placeholder}
-              value={(table.getColumn(filterInput.key)?.getFilterValue() as string) ?? ''}
-              onChange={(event) =>
-                table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
-              }
-              className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
-            />
-          )}
-        </div>
+        {(globalSearch?.enabled || filterInput) && (
+          <div className="relative ml-auto h-9 flex-1 md:grow-0">
+            <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
+            {globalSearch?.enabled && (
+              <Input
+                placeholder={
+                  globalSearch.placeholder ?? t('dataTableToolbar.globalSearchPlaceholder')
+                }
+                value={table.getState().globalFilter || ''}
+                onChange={(event) => table.setGlobalFilter(event.target.value)}
+                className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
+              />
+            )}
+            {filterInput && (
+              <Input
+                placeholder={filterInput.placeholder}
+                value={(table.getColumn(filterInput.key)?.getFilterValue() as string) ?? ''}
+                onChange={(event) =>
+                  table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
+                }
+                className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
+              />
+            )}
+          </div>
+        )}
         {filterOptions.map(
           (filterOption) =>
             table.getColumn(filterOption.key) && (

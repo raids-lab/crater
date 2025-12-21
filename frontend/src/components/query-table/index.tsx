@@ -58,7 +58,7 @@ import { DataTableToolbar, DataTableToolbarConfig } from './toolbar'
 
 interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   info?: {
-    title: string
+    title?: string
     description: string
   }
   storageKey: string
@@ -207,24 +207,26 @@ export function DataTable<TData, TValue>({
                 <>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={columns.length} className="h-60">
+                      <TableCell colSpan={table.getAllColumns().length} className="h-60">
                         <LoadingCircleIcon />
                       </TableCell>
                     </TableRow>
                   ) : (
-                    <TableCell
-                      colSpan={columns.length}
-                      className="text-muted-foreground/85 h-60 text-center hover:bg-transparent"
-                    >
-                      <div className="flex flex-col items-center justify-center py-16">
-                        <div className="bg-muted mb-4 rounded-full p-3">
-                          <GridIcon className="h-6 w-6" />
+                    <TableRow>
+                      <TableCell
+                        colSpan={table.getAllColumns().length}
+                        className="text-muted-foreground/85 h-60 text-center hover:bg-transparent"
+                      >
+                        <div className="flex flex-col items-center justify-center py-16">
+                          <div className="bg-muted mb-4 rounded-full p-3">
+                            <GridIcon className="h-6 w-6" />
+                          </div>
+                          <p className="select-none">
+                            {withI18n ? t('dataTable.noData') : '暂无数据'}
+                          </p>
                         </div>
-                        <p className="select-none">
-                          {withI18n ? t('dataTable.noData') : '暂无数据'}
-                        </p>
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    </TableRow>
                   )}
                 </>
               )}

@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { t } from 'i18next'
+
 import { jobPhases } from '@/components/badge/job-phase-badge'
 import { jobTypes } from '@/components/badge/job-type-badge'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
@@ -20,29 +22,31 @@ import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 export const getHeader = (key: string): string => {
   switch (key) {
     case 'id':
-      return '序号'
+      return t('jobs.headers.id')
     case 'name':
-      return '名称'
+      return t('jobs.headers.jobName')
     case 'jobType':
-      return '类型'
+      return t('jobs.headers.jobType')
+    case 'queue':
+      return t('jobs.headers.queue')
     case 'owner':
-      return '用户'
+      return t('jobs.headers.owner')
     case 'status':
-      return '状态'
+      return t('jobs.headers.status')
     case 'nodes':
-      return '节点'
+      return t('jobs.headers.nodes')
     case 'resources':
-      return '资源'
+      return t('jobs.headers.resources')
     case 'priority':
-      return '优先级'
+      return t('jobs.headers.priority')
     case 'profileStatus':
-      return '分析状态'
+      return t('jobs.headers.profileStatus')
     case 'createdAt':
-      return '创建于'
+      return t('jobs.headers.createdAt')
     case 'startedAt':
-      return '开始于'
+      return t('jobs.headers.startedAt')
     case 'completedAt':
-      return '结束于'
+      return t('jobs.headers.completedAt')
     default:
       return key
   }
@@ -50,18 +54,18 @@ export const getHeader = (key: string): string => {
 
 export const jobToolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: '搜索作业名称',
+    placeholder: t('jobs.toolbar.searchPlaceholder'),
     key: 'name',
   },
   filterOptions: [
     {
       key: 'jobType',
-      title: '类型',
+      title: t('jobs.filters.jobType'),
       option: jobTypes,
     },
     {
       key: 'status',
-      title: '状态',
+      title: t('jobs.filters.status'),
       option: jobPhases,
     },
   ],

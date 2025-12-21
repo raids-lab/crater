@@ -65,8 +65,9 @@ func (mgr *VolcanojobMgr) GetName() string { return mgr.name }
 func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("", mgr.GetUserJobs)
+	g.GET("", mgr.GetSelfJobs)
 	g.GET("all", mgr.GetAllJobsInDays)
+	g.GET("user/:username", mgr.GetUserJobsInDays)
 	g.DELETE(":name", mgr.DeleteJob)
 
 	g.GET(":name/detail", mgr.GetJobDetail)
@@ -102,8 +103,9 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobsInDays)
+	g.GET("user/:username", mgr.GetUserJobsInDays)
 	// delete job
-	g.DELETE(":name", mgr.DeleteJobForAdmin)
+	g.DELETE(":name", mgr.AdminDeleteJob)
 }
 
 const (
@@ -256,7 +258,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 	resputil.Success(c, nil)
 }
 
-// DeleteJobForAdmin godoc
+// AdminDeleteJob godoc
 //
 //	@Summary		Admin delete the job
 //	@Description	管理员删除用户作业
@@ -269,7 +271,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 //	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/admin/vcjobs/{name} [delete]
-func (mgr *VolcanojobMgr) DeleteJobForAdmin(c *gin.Context) {
+func (mgr *VolcanojobMgr) AdminDeleteJob(c *gin.Context) {
 	mgr.deleteJob(c)
 }
 
@@ -313,7 +315,7 @@ type (
 	}
 )
 
-// GetUserJobs godoc
+// GetSelfJobs godoc
 //
 //	@Summary		Get the jobs of the user
 //	@Description	Get the jobs of the user by client-go
@@ -325,7 +327,7 @@ type (
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs [get]
-func (mgr *VolcanojobMgr) GetUserJobs(c *gin.Context) {
+func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 	token := util.GetToken(c)
 
 	// TODO: add indexer to list jobs by user
@@ -391,6 +393,80 @@ func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
 
 	jobList := convertJobResp(jobs)
 
+	resputil.Success(c, jobList)
+}
+
+// GetUserJobsInDays godoc
+//
+//	@Summary		Get jobs of a specific user within days
+//	@Description	Get job list of a specific user within specified days. Both users and administrators can call this API.
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			username	path		string					true	"Username"
+//	@Param			days		query		int						false	"Number of days to look back, default is 30, -1 for all"	default(30)
+//	@Success		200			{object}	resputil.Response[any]	"User's Job List"
+//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403			{object}	resputil.Response[any]	"Forbidden - insufficient permissions"
+//	@Failure		404			{object}	resputil.Response[any]	"User not found"
+//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Router			/v1/vcjobs/user/{username} [get]
+func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
+	// Get username from path parameter
+	username := c.Param("username")
+	if username == "" {
+		resputil.BadRequestError(c, "username is required")
+		return
+	}
+
+	// Get days from query parameter
+	type QueryParams struct {
+		Days int `form:"days"`
+	}
+
+	var req QueryParams
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	// Use default value of 30 days
+	days := 30
+	if req.Days > 0 {
+		days = req.Days
+	}
+
+	// Get target user information
+	u := query.User
+	targetUser, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.NotSpecified)
+		return
+	}
+
+	// Permission check:
+	// Both users and administrators can view jobs of any user
+	// No additional permission check needed beyond authentication
+
+	// Query jobs
+	j := query.Job
+	q := j.WithContext(c).Preload(j.Account).Preload(j.User).Where(j.UserID.Eq(targetUser.ID))
+
+	// Apply time filter if days is not -1
+	if req.Days != -1 {
+		now := time.Now()
+		lookbackPeriod := now.AddDate(0, 0, -days)
+		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
+	}
+
+	jobs, err := q.Find()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	jobList := convertJobResp(jobs)
 	resputil.Success(c, jobList)
 }
 
