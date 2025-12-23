@@ -25,7 +25,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_REPO: raids-lab/storage-server
+  REPOSITORY: raids-lab
+  IMAGE_NAME: storage-server
   # Golang-lint version
   GOLANGCI_LINT_VERSION: v2.6.2
 
@@ -45,6 +46,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "storage/go.mod" # get Go version from go.mod
+          cache-dependency-path: storage/go.sum
 
       - name: Download dependencies
         run: |
@@ -84,6 +86,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "storage/go.mod"
+          cache-dependency-path: storage/go.sum
 
       - name: Download dependencies
         run: |
@@ -161,7 +164,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}
+          images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -186,7 +189,7 @@ jobs:
           owner-type: org # or user
           token: ${{ secrets.PAT_TOKEN  }}
           repository-owner: ${{ github.repository_owner }}
-          package-name: storage-server
+          package-name: ${{ env.IMAGE_NAME }}
           delete-untagged: true
           keep-at-most: 2
           skip-tags: v*

@@ -13,10 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { DurationDialog } from '@/routes/admin/jobs/-components/duration-dialog'
 import { Link, linkOptions } from '@tanstack/react-router'
-import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { ClockIcon, InfoIcon, RedoDotIcon, SquareIcon, Trash2Icon, XIcon } from 'lucide-react'
-import { useMemo } from 'react'
+import {
+  EllipsisVerticalIcon as DotsHorizontalIcon,
+  InfoIcon,
+  LockIcon,
+  RedoDotIcon,
+  SquareIcon,
+  Trash2Icon,
+  UnlockIcon,
+  XIcon,
+} from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -27,8 +37,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import ExtensionRequestDialog from '@/components/job/extension-request-dialog'
 import { getNewJobLink } from '@/components/job/new-job-button'
+import { JobLockMenuItem, JobLockSheet } from '@/components/job/overview/job-lock-sheet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,12 +60,30 @@ const portalJobDetailLinkOptions = linkOptions({
   search: { tab: '' },
 })
 
+// Link Options for admin job navigation
+const adminJobDetailLinkOptions = linkOptions({
+  to: '/admin/jobs/$name',
+  params: { name: '' },
+  search: { tab: '' },
+})
+
 interface JobActionsMenuProps {
   jobInfo: IJobInfo
   onDelete: (jobName: string) => void
+  isAdminView?: boolean
+  onLockSuccess?: () => void
 }
 
-export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
+export const JobActionsMenu = ({
+  jobInfo,
+  onDelete,
+  isAdminView = false,
+  onLockSuccess,
+}: JobActionsMenuProps) => {
+  const { t } = useTranslation()
+  const [isLockSheetOpen, setIsLockSheetOpen] = useState(false)
+  const [isLockDialogOpen, setIsLockDialogOpen] = useState(false)
+  const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false)
   const jobStatus = getJobStateType(jobInfo.status)
   const option = useMemo(() => {
     return getNewJobLink(jobInfo.jobType)
@@ -64,96 +92,182 @@ export const JobActionsMenu = ({ jobInfo, onDelete }: JobActionsMenuProps) => {
   // 暂时隐藏申请锁定功能，工单审批功能不完善
   const canExtend = true // jobStatus === JobStatus.Running
 
-  // extension request logic moved to ExtensionRequestDialog
+  // Admin view: handle lock/unlock
+  const handleLockClick = useCallback(() => {
+    setIsLockDialogOpen(true)
+  }, [])
+
+  const handleExtendClick = useCallback(() => {
+    setIsExtendDialogOpen(true)
+  }, [])
+
+  const handleLockSuccess = useCallback(() => {
+    setIsLockDialogOpen(false)
+    setIsExtendDialogOpen(false)
+    onLockSuccess?.()
+  }, [onLockSuccess])
+
+  // Determine detail link based on view
+  const detailLinkOptions = isAdminView ? adminJobDetailLinkOptions : portalJobDetailLinkOptions
+  const shouldStop = jobInfo.status !== 'Deleted' && jobInfo.status !== 'Freed'
+
+  // Admin view: only show lock button for Running or Pending (NotStarted) jobs
+  const isPending = jobInfo.status === 'Pending' || jobStatus === JobStatus.NotStarted
+  const canLockInAdminView = isAdminView && (jobStatus === JobStatus.Running || isPending)
 
   return (
-    <AlertDialog>
-      {/* Dialog wrapper removed; ExtensionRequestDialog manages its own dialog state */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">操作</span>
-            <DotsHorizontalIcon className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
-          <DropdownMenuItem asChild>
-            <Link {...portalJobDetailLinkOptions} params={{ name: jobInfo.jobName }}>
-              <InfoIcon className="text-highlight-emerald size-4" />
-              详情
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link {...option} search={{ fromJob: jobInfo.jobName }}>
-              <RedoDotIcon className="text-highlight-purple size-4" />
-              克隆
-            </Link>
-          </DropdownMenuItem>
-          {canExtend && jobStatus === JobStatus.Running && (
+    <>
+      <AlertDialog>
+        <JobLockSheet
+          isOpen={isLockSheetOpen}
+          onOpenChange={setIsLockSheetOpen}
+          jobName={jobInfo.jobName}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">{t('jobs.actions.dropdown.ariaLabel')}</span>
+              <DotsHorizontalIcon className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
+              {t('jobs.actions.dropdown.title')}
+            </DropdownMenuLabel>
             <DropdownMenuItem asChild>
-              <ExtensionRequestDialog
-                jobName={jobInfo.jobName}
-                trigger={
-                  <button className="flex w-full items-center gap-2 px-2 py-1.5 text-sm">
-                    <ClockIcon className="text-highlight-blue size-4" />
-                    申请锁定
-                  </button>
-                }
-              />
+              <Link {...detailLinkOptions} params={{ name: jobInfo.jobName }}>
+                <InfoIcon className="text-highlight-emerald size-4" />
+                {isAdminView
+                  ? t('adminJobOverview.actions.dropdown.details')
+                  : t('jobs.actions.dropdown.details')}
+              </Link>
             </DropdownMenuItem>
-          )}
-          <AlertDialogTrigger asChild>
-            <DropdownMenuItem className="group">
-              {jobStatus === JobStatus.NotStarted ? (
-                <XIcon className="text-highlight-orange size-4" />
-              ) : jobStatus === JobStatus.Running ? (
-                <SquareIcon className="text-highlight-orange size-4" />
-              ) : (
-                <Trash2Icon className="text-destructive size-4" />
-              )}
-              {jobStatus === JobStatus.NotStarted
-                ? '取消'
-                : jobStatus === JobStatus.Running
-                  ? '停止'
-                  : '删除'}
-            </DropdownMenuItem>
-          </AlertDialogTrigger>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {!isAdminView && (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link {...option} search={{ fromJob: jobInfo.jobName }}>
+                    <RedoDotIcon className="text-highlight-purple size-4" />
+                    {t('jobs.actions.dropdown.clone')}
+                  </Link>
+                </DropdownMenuItem>
+                {canExtend && jobStatus === JobStatus.Running && (
+                  <JobLockMenuItem jobInfo={jobInfo} onLock={() => setIsLockSheetOpen(true)} />
+                )}
+              </>
+            )}
+            {isAdminView && canLockInAdminView && (
+              <>
+                <DropdownMenuItem
+                  onClick={handleLockClick}
+                  title={t('adminJobOverview.actions.dropdown.lockTitle')}
+                >
+                  {jobInfo.locked ? (
+                    <UnlockIcon className="text-highlight-purple size-4" />
+                  ) : (
+                    <LockIcon className="text-highlight-purple size-4" />
+                  )}
+                  {jobInfo.locked
+                    ? t('adminJobOverview.actions.dropdown.unlock')
+                    : t('adminJobOverview.actions.dropdown.lock')}
+                </DropdownMenuItem>
+                {jobInfo.locked && (
+                  <DropdownMenuItem
+                    onClick={handleExtendClick}
+                    title={t('adminJobOverview.actions.dropdown.lockTitle')}
+                  >
+                    <LockIcon className="text-highlight-purple size-4" />
+                    {t('adminJobOverview.actions.dropdown.extend')}
+                  </DropdownMenuItem>
+                )}
+              </>
+            )}
+            <AlertDialogTrigger asChild>
+              <DropdownMenuItem className="group">
+                {isAdminView ? (
+                  shouldStop ? (
+                    <SquareIcon className="text-highlight-orange size-4" />
+                  ) : (
+                    <Trash2Icon className="text-destructive size-4" />
+                  )
+                ) : jobStatus === JobStatus.NotStarted ? (
+                  <XIcon className="text-highlight-orange size-4" />
+                ) : jobStatus === JobStatus.Running ? (
+                  <SquareIcon className="text-highlight-orange size-4" />
+                ) : (
+                  <Trash2Icon className="text-destructive size-4" />
+                )}
+                {isAdminView
+                  ? shouldStop
+                    ? t('adminJobOverview.actions.dropdown.stop')
+                    : t('adminJobOverview.actions.dropdown.delete')
+                  : jobStatus === JobStatus.NotStarted
+                    ? t('jobs.actions.dropdown.cancel')
+                    : jobStatus === JobStatus.Running
+                      ? t('jobs.actions.dropdown.stop')
+                      : t('jobs.actions.dropdown.delete')}
+              </DropdownMenuItem>
+            </AlertDialogTrigger>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      {/* ExtensionRequestDialog 替代内联 DialogContent */}
-
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {jobStatus === JobStatus.NotStarted
-              ? '取消作业'
-              : jobStatus === JobStatus.Running
-                ? '停止作业'
-                : '删除作业'}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            作业 {jobInfo.name} 将
-            {jobStatus === JobStatus.NotStarted
-              ? '取消，是否放弃排队？'
-              : jobStatus === JobStatus.Running
-                ? '停止，请确认已经保存好所需数据。'
-                : '删除，所有数据将被清理。'}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>取消</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={() => onDelete(jobInfo.jobName)}>
-            {jobStatus === JobStatus.NotStarted
-              ? '确认'
-              : jobStatus === JobStatus.Running
-                ? '停止'
-                : '删除'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-      {/* urgent dialog handled inside ExtensionRequestDialog */}
-    </AlertDialog>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isAdminView
+                ? shouldStop
+                  ? t('adminJobOverview.dialog.stop.title')
+                  : t('adminJobOverview.dialog.delete.title')
+                : jobStatus === JobStatus.NotStarted
+                  ? t('jobs.dialog.cancel.title')
+                  : jobStatus === JobStatus.Running
+                    ? t('jobs.dialog.stop.title')
+                    : t('jobs.dialog.delete.title')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAdminView
+                ? shouldStop
+                  ? t('adminJobOverview.dialog.stop.description', { name: jobInfo?.name })
+                  : t('adminJobOverview.dialog.delete.description', { name: jobInfo?.name })
+                : jobStatus === JobStatus.NotStarted
+                  ? t('jobs.dialog.cancel.description', { name: jobInfo.name })
+                  : jobStatus === JobStatus.Running
+                    ? t('jobs.dialog.stop.description', { name: jobInfo.name })
+                    : t('jobs.dialog.delete.description', { name: jobInfo.name })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('jobs.actions.dropdown.cancel')}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => onDelete(jobInfo.jobName)}>
+              {isAdminView
+                ? shouldStop
+                  ? t('adminJobOverview.dialog.stop.action')
+                  : t('adminJobOverview.dialog.delete.action')
+                : jobStatus === JobStatus.NotStarted
+                  ? t('jobs.dialog.cancel.action')
+                  : jobStatus === JobStatus.Running
+                    ? t('jobs.actions.dropdown.stop')
+                    : t('jobs.actions.dropdown.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {isAdminView && (
+        <>
+          <DurationDialog
+            jobs={[jobInfo]}
+            open={isLockDialogOpen}
+            setOpen={setIsLockDialogOpen}
+            onSuccess={handleLockSuccess}
+          />
+          <DurationDialog
+            jobs={[jobInfo]}
+            open={isExtendDialogOpen}
+            setOpen={setIsExtendDialogOpen}
+            onSuccess={handleLockSuccess}
+            setExtend={true}
+          />
+        </>
+      )}
+    </>
   )
 }

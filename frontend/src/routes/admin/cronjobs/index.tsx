@@ -48,6 +48,8 @@ import CronJobStatusBadge from '@/components/badge/cronjob-status-badge'
 import TipBadge from '@/components/badge/tip-badge'
 import LoadableButton from '@/components/button/loadable-button'
 
+// [新增] 引入获取 GPU 分析功能状态的 API
+import { apiAdminGetGpuAnalysisStatus } from '@/services/api/system-config'
 import {
   CronJobConfigStatus,
   apiAdminCronJobConfigStatus,
@@ -106,11 +108,23 @@ const getCleanWaitingJupyterSchema = (t: (key: string) => string) =>
     }),
   })
 
+// ADDED: Schema for the new GPU analysis job
+const getTriggerGpuAnalysisSchema = (t: (key: string) => string) =>
+  z.object({
+    status: z.nativeEnum(CronJobConfigStatus),
+    spec: z.string().refine((value) => isValidCron(value), {
+      message: getCronErrorMessage(t),
+    }),
+    configs: z.object({}), // This job has an empty config
+  })
+
 const getFormSchema = (t: (key: string) => string) =>
   z.object({
     cleanLongTime: getCleanLongTimeSchema(t),
     cleanLowGpu: getCleanLowGpuSchema(t),
     cleanWaitingJupyter: getCleanWaitingJupyterSchema(t),
+    // ADDED: Add the new schema to the main form schema
+    triggerGpuAnalysis: getTriggerGpuAnalysisSchema(t),
   })
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>
@@ -122,19 +136,37 @@ function CronPolicy({ className }: { className?: string }) {
     cleanLongTime?: string
     cleanLowGpu?: string
     cleanWaitingJupyter?: string
+    // ADDED: State for the new job's status
+    triggerGpuAnalysis?: string
   }>({})
+
+  // [新增] 像代码2一样，获取 GPU 分析功能的开启状态
+  const { data: gpuStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'gpu-status'],
+    queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
+    staleTime: 1000 * 60 * 5, // 缓存5分钟
+  })
+
+  // [新增] 判断是否开启，用于条件渲染
+  const showGpuAnalysis = gpuStatus?.enabled ?? false
 
   const formSchema = getFormSchema(t)
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   })
 
-  // 定期获取任务状态(每3秒)
+  // 定期获取任务状态(每5秒)
   const statusQuery = useQuery({
     queryKey: ['admin', 'cronjob', 'status'],
     queryFn: async () => {
       const res = await apiAdminCronJobConfigStatus({
-        name: ['clean-long-time-job', 'clean-low-gpu-util-job', 'clean-waiting-jupyter'],
+        // ADDED: Request status for the new job as well
+        name: [
+          'clean-long-time-job',
+          'clean-low-gpu-util-job',
+          'clean-waiting-jupyter',
+          'trigger-gpu-analysis-job',
+        ],
       })
       if (res.code === 0 && res.data) {
         return res.data
@@ -152,6 +184,8 @@ function CronPolicy({ className }: { className?: string }) {
         cleanLongTime: statusQuery.data['clean-long-time-job']?.status,
         cleanLowGpu: statusQuery.data['clean-low-gpu-util-job']?.status,
         cleanWaitingJupyter: statusQuery.data['clean-waiting-jupyter']?.status,
+        // ADDED: Update the state with the new job's status
+        triggerGpuAnalysis: statusQuery.data['trigger-gpu-analysis-job']?.status,
       })
     }
   }, [statusQuery.data])
@@ -167,6 +201,8 @@ function CronPolicy({ className }: { className?: string }) {
         const cleanLongTime = jobs.find((job) => job.name === 'clean-long-time-job')
         const cleanLowGpu = jobs.find((job) => job.name === 'clean-low-gpu-util-job')
         const cleanWaitingJupyter = jobs.find((job) => job.name === 'clean-waiting-jupyter')
+        // ADDED: Find the new job from the API response
+        const triggerGpuAnalysis = jobs.find((job) => job.name === 'trigger-gpu-analysis-job')
 
         const formData: FormValues = {
           cleanLongTime: cleanLongTime
@@ -199,6 +235,14 @@ function CronPolicy({ className }: { className?: string }) {
                 },
               }
             : form.getValues('cleanWaitingJupyter'),
+          // ADDED: Populate form data for the new job
+          triggerGpuAnalysis: triggerGpuAnalysis
+            ? {
+                status: triggerGpuAnalysis.status as CronJobConfigStatus,
+                spec: triggerGpuAnalysis.spec,
+                configs: triggerGpuAnalysis.config,
+              }
+            : form.getValues('triggerGpuAnalysis'),
         }
         form.reset(formData)
       } else {
@@ -284,6 +328,30 @@ function CronPolicy({ className }: { className?: string }) {
     },
     onError: (error: Error) => {
       toast.error(t('cronPolicy.jupyterError') + error.message)
+    },
+  })
+
+  // ADDED: Mutation for the new GPU analysis job
+  const { mutate: updateGpuAnalysisJob, isPending: isGpuAnalysisUpdating } = useMutation({
+    mutationFn: async () => {
+      const data = form.getValues('triggerGpuAnalysis')
+      const res = await apiJobScheduleChangeAdmin({
+        name: 'trigger-gpu-analysis-job',
+        status: data.status,
+        spec: data.spec,
+        config: data.configs,
+      })
+      if (res.code !== 0) {
+        throw new Error(res.msg)
+      }
+      return { res, status: data.status }
+    },
+    onSuccess: () => {
+      toast.success(t('cronPolicy.gpuAnalysisSuccess')) // You'll need to add this translation
+      statusQuery.refetch()
+    },
+    onError: (error: Error) => {
+      toast.error(t('cronPolicy.gpuAnalysisError') + error.message) // And this one
     },
   })
 
@@ -406,6 +474,7 @@ function CronPolicy({ className }: { className?: string }) {
           ) : (
             <Form {...form}>
               <div className="space-y-8 p-4">
+                {/* Clean Long Time Job */}
                 <div className="rounded-md border p-4">
                   <div className="mb-4 flex items-center gap-2">
                     <h3 className="font-semibold">{t('cronPolicy.longTimeTitle')}</h3>
@@ -501,6 +570,7 @@ function CronPolicy({ className }: { className?: string }) {
                   </div>
                 </div>
 
+                {/* Clean Low GPU Job */}
                 <div className="rounded-md border p-4">
                   <div className="mb-4 flex items-center gap-2">
                     <h3 className="font-semibold">{t('cronPolicy.lowGpuTitle')}</h3>
@@ -617,6 +687,7 @@ function CronPolicy({ className }: { className?: string }) {
                   </div>
                 </div>
 
+                {/* Clean Waiting Jupyter Job */}
                 <div className="rounded-md border p-4">
                   <div className="mb-4 flex items-center gap-2">
                     <h3 className="font-semibold">{t('cronPolicy.jupyterTitle')}</h3>
@@ -691,6 +762,66 @@ function CronPolicy({ className }: { className?: string }) {
                     </LoadableButton>
                   </div>
                 </div>
+
+                {/* [修改] 使用 showGpuAnalysis 变量进行条件渲染 */}
+                {showGpuAnalysis && (
+                  <div className="rounded-md border p-4">
+                    <div className="mb-4 flex items-center gap-2">
+                      <h3 className="font-semibold">{t('cronPolicy.gpuAnalysisTitle')}</h3>
+                      {jobStatuses.triggerGpuAnalysis && (
+                        <CronJobStatusBadge status={jobStatuses.triggerGpuAnalysis} />
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      <FormField
+                        control={form.control}
+                        name="triggerGpuAnalysis.status"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch
+                                checked={field.value !== CronJobConfigStatus.Suspended}
+                                onCheckedChange={(checked) =>
+                                  field.onChange(
+                                    checked
+                                      ? CronJobConfigStatus.Idle
+                                      : CronJobConfigStatus.Suspended
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <span>{t('cronPolicy.enable')}</span>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="triggerGpuAnalysis.spec"
+                        render={({ field, fieldState }) => (
+                          <FormItem className="flex flex-col">
+                            <label className="text-sm">{t('cronPolicy.schedule')}</label>
+                            <FormControl>
+                              <Input className="mt-1 font-mono" {...field} />
+                            </FormControl>
+                            {fieldState.error && (
+                              <p className="text-xs text-red-500">{fieldState.error.message}</p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <LoadableButton
+                        variant="secondary"
+                        isLoading={isGpuAnalysisUpdating}
+                        isLoadingText={t('cronPolicy.updating')}
+                        onClick={() => updateGpuAnalysisJob()}
+                      >
+                        {t('cronPolicy.gpuAnalysisUpdate')}
+                      </LoadableButton>
+                    </div>
+                  </div>
+                )}
               </div>
             </Form>
           )}

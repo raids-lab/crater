@@ -74,9 +74,9 @@ type modelDownload struct {
 	CreatedAt       field.Time
 	UpdatedAt       field.Time
 	DeletedAt       field.Field
-	Name            field.String // 模型/数据集名称
-	Source          field.String // 下载来源
-	Category        field.String // 类别(模型/数据集)
+	Name            field.String
+	Source          field.String
+	Category        field.String
 	Revision        field.String // 版本/分支/commit
 	Path            field.String // 实际下载路径
 	SizeBytes       field.Int64  // 文件总大小(字节)

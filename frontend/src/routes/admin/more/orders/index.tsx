@@ -18,7 +18,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { Database, Hourglass, ListChecks, RefreshCwIcon } from 'lucide-react'
+import { Database, Hourglass, ListChecks } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -44,7 +44,6 @@ import { SectionCards } from '@/components/metrics/section-cards'
 
 import {
   type ApprovalOrder,
-  checkPendingApprovalOrder,
   listApprovalOrders,
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
@@ -78,9 +77,8 @@ function RouteComponent() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
-  const [syncDialogOpen, setSyncDialogOpen] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+
   const [rejectReason, setRejectReason] = useState('')
   const [rejectTarget, setRejectTarget] = useState<ApprovalOrder | null>(null)
 
@@ -240,34 +238,8 @@ function RouteComponent() {
     rejectOrder({ order: rejectTarget, reason: rejectReason.trim() })
   }
 
-  // 同步作业状态函数
-  const handleSyncJobStatus = async () => {
-    setSyncDialogOpen(true)
-  }
-
-  const handleConfirmSync = async () => {
-    setIsSyncing(true)
-    try {
-      const response = await checkPendingApprovalOrder()
-
-      // 显示详细的同步结果
-      if (response.data) {
-        toast.success(response.data)
-      } else {
-        toast.success('同步作业状态完成')
-      }
-
-      // 刷新工单列表
-      queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
-    } catch (error) {
-      toast.error('同步作业状态失败: ' + (error instanceof Error ? error.message : '未知错误'))
-    } finally {
-      setIsSyncing(false)
-      setSyncDialogOpen(false)
-    }
-  }
-
   // 统计卡片数据
+
   const totalPending = useMemo(
     () => (query.data ?? []).filter((o) => o.status === 'Pending').length,
     [query.data]
@@ -333,7 +305,10 @@ function RouteComponent() {
             case 'status':
               return t('ApprovalOrderTable.column.status')
             case 'creator':
+            case 'nickname':
               return t('ApprovalOrderTable.column.creator')
+            case 'reviewer':
+              return t('ApprovalOrderTable.column.reviewer')
             case 'createdAt':
               return t('ApprovalOrderTable.column.createdAt')
             case 'actions':
@@ -345,19 +320,7 @@ function RouteComponent() {
         renderActions={(order) => (
           <ApprovalOrderOperations order={order} config={createActionConfig(order)} />
         )}
-      >
-        <div className="mb-4">
-          <Button
-            onClick={handleSyncJobStatus}
-            variant="default"
-            className="flex items-center gap-2"
-            disabled={isSyncing}
-          >
-            <RefreshCwIcon className="h-4 w-4" />
-            {isSyncing ? '同步中...' : '同步作业状态'}
-          </Button>
-        </div>
-      </ApprovalOrderDataTable>
+      />
 
       {/* 锁定锁定对话框 */}
       {selectedJob && selectedOrder && (
@@ -373,35 +336,12 @@ function RouteComponent() {
         />
       )}
 
-      {/* 同步作业状态确认对话框 */}
-      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>同步作业状态</DialogTitle>
-            <DialogDescription>
-              此操作将检查所有待审批的作业工单，如果对应的作业已不在运行状态，将自动取消相应的工单。
-              <br />
-              <span className="text-muted-foreground mt-2 block text-sm">
-                系统会检查每个待审批工单对应的作业状态，确保工单的有效性。
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSyncDialogOpen(false)} disabled={isSyncing}>
-              取消
-            </Button>
-            <Button onClick={handleConfirmSync} disabled={isSyncing}>
-              {isSyncing ? '同步中...' : '确定同步'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* 拒绝工单对话框 */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>拒绝工单</DialogTitle>
+
             <DialogDescription>
               提供拒绝理由后提交，系统会将该工单标记为拒绝状态。
             </DialogDescription>

@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+import { ApprovalOrderStatusBadge } from '@/components/badge/approvalorder-badge'
 import DetailPage from '@/components/layout/detail-page'
 
 import { getApprovalOrder } from '@/services/api/approvalorder'
@@ -54,8 +55,14 @@ function RouteComponent() {
   }, [order])
 
   const reviewerName = useMemo(() => {
-    if (!order?.reviewer) return '等待指派'
-    return order.reviewer.nickname || order.reviewer.username || '-'
+    if (!order) return '-'
+    const hasReviewer = order.reviewer && order.reviewer.username
+
+    if (order.status !== 'Pending' && !hasReviewer) {
+      return '系统'
+    }
+
+    return hasReviewer ? order.reviewer.nickname || order.reviewer.username : '-'
   }, [order])
 
   const detailButtonText = useMemo(() => {
@@ -101,7 +108,11 @@ function RouteComponent() {
       }
       info={[
         { title: '类型', icon: Type, value: order.type },
-        { title: '状态', icon: CheckCircle, value: order.status },
+        {
+          title: '状态',
+          icon: CheckCircle,
+          value: <ApprovalOrderStatusBadge status={order.status} />,
+        },
         { title: '创建者', icon: User, value: creatorName },
         { title: '审核人', icon: UserCheck, value: reviewerName },
         {
@@ -115,8 +126,9 @@ function RouteComponent() {
           key: 'detail',
           label: '详情',
           icon: FileText,
+          scrollable: true,
           children: (
-            <div className="grid gap-4 p-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">申请内容</CardTitle>
@@ -144,7 +156,9 @@ function RouteComponent() {
                 <CardContent className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">当前状态</span>
-                    <span className="font-medium">{order.status}</span>
+                    <span className="font-medium">
+                      <ApprovalOrderStatusBadge status={order.status} />
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground text-sm">审核人</span>

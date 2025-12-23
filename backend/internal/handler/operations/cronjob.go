@@ -12,6 +12,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/pkg/patrol"
 )
 
 // UpdateCronjobConfig godoc
@@ -55,6 +56,17 @@ func (mgr *OperationsMgr) UpdateCronjobConfig(c *gin.Context) {
 		}
 		configPtr = ptr.To(string(configJson))
 	}
+
+	if req.Name == patrol.TRIGGER_GPU_ANALYSIS_JOB && req.Status != "" && req.Status != model.CronJobConfigStatusSuspended {
+		isFeatureEnabled := mgr.configService.IsGpuAnalysisEnabled(c.Request.Context())
+		if !isFeatureEnabled {
+			// 如果主功能是关闭的，则禁止启用定时任务，并返回错误
+			errMsg := "Cannot enable the GPU analysis cron job because the main GPU analysis feature is disabled in system settings."
+			resputil.Error(c, errMsg, resputil.InvalidRequest)
+			return
+		}
+	}
+
 	if err := mgr.cronJobManager.UpdateJobConfig(c, req.Name, jobTypePtr, specPtr, statusPtr, configPtr); err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return

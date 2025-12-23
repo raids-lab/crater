@@ -187,7 +187,7 @@ After building, images are tagged with multiple labels to help users select appr
   id: meta
   uses: docker/metadata-action@v5
   with:
-    images: ${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}
+    images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}
     tags: |
       type=ref,event=branch
       type=semver,pattern={{version}}
@@ -197,7 +197,7 @@ After building, images are tagged with multiple labels to help users select appr
       type=sha
 ```
 
-The `images` parameter specifies the base name of the image, composed of `${{ env.REGISTRY }}` and `${{ env.IMAGE_REPO }}`. The complete image address will be detailed in the next section "Image Push & Cleanup".
+The `images` parameter specifies the base name of the image, composed of `${{ env.REGISTRY }}`, `${{ env.REPOSITORY }}`, and `${{ env.IMAGE_NAME }}`. The complete image address will be detailed in the next section "Image Push & Cleanup".
 
 Each line under the `tags` parameter is an independent tag generation rule, and these rules generate corresponding tags in parallel based on trigger conditions. For example, when creating version tag `v1.2.3`, multiple tags are generated simultaneously: `v1.2.3`, `1.2`, `1`, and SHA tag; when pushing to the main branch, `main`, `latest`, and SHA tags are generated.
 
@@ -213,7 +213,7 @@ Tag rule parameter descriptions:
 
 ### Image Push & Cleanup
 
-After image building is complete, images need to be pushed to the image registry and old images cleaned up to control storage space. Image pushing uses GHCR (GitHub Container Registry) as the repository. The complete image address format is `${{ env.REGISTRY }}/${{ env.IMAGE_REPO }}`, i.e., `ghcr.io/raids-lab/crater-backend`, `ghcr.io/raids-lab/crater-frontend`, and `ghcr.io/raids-lab/storage-server`.
+After image building is complete, images need to be pushed to the image registry and old images cleaned up to control storage space. Image pushing uses GHCR (GitHub Container Registry) as the repository. The complete image address format is `${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}`, i.e., `ghcr.io/raids-lab/crater-backend`, `ghcr.io/raids-lab/crater-frontend`, and `ghcr.io/raids-lab/storage-server`.
 
 Before pushing, you need to log in to GHCR with the following configuration:
 

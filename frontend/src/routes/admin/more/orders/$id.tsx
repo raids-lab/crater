@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { CheckCircle, Clock, FileText, Type, User } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -33,6 +33,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+import { ApprovalOrderStatusBadge } from '@/components/badge/approvalorder-badge'
+import NodeStatusBadge from '@/components/badge/node-status-badge'
+import ResourceBadges from '@/components/badge/resource-badges'
 import DetailPage from '@/components/layout/detail-page'
 
 import {
@@ -41,6 +44,8 @@ import {
   adminGetApprovalOrder,
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
+import { apiJobGetPods } from '@/services/api/vcjob'
+import { queryNodes } from '@/services/query/node'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
 
@@ -70,6 +75,24 @@ function RouteComponent() {
     },
     enabled: orderId > 0,
   })
+
+  // Fetch nodes
+  const { data: allNodes } = useQuery(queryNodes())
+
+  // Fetch pods if it's a job and pending
+  const { data: pods, isLoading: isPodsLoading } = useQuery({
+    queryKey: ['job', 'detail', order?.name, 'pods'],
+    queryFn: () => apiJobGetPods(order!.name),
+    select: (res) => res.data,
+    enabled: !!order && order.type === 'job' && order.status === 'Pending',
+    staleTime: 1000 * 60,
+  })
+
+  const resources = pods?.[0]?.resource
+  const nodeNames = useMemo(
+    () => Array.from(new Set(pods?.map((p) => p.nodename).filter(Boolean) || [])),
+    [pods]
+  )
 
   const {
     selectedOrder,
@@ -155,6 +178,17 @@ function RouteComponent() {
     return order.creator.nickname || order.creator.username || '-'
   }, [order])
 
+  const reviewerName = useMemo(() => {
+    if (!order) return '-'
+    const hasReviewer = order.reviewer && order.reviewer.username
+
+    if (order.status !== 'Pending' && !hasReviewer) {
+      return '系统'
+    }
+
+    return hasReviewer ? order.reviewer.nickname || order.reviewer.username : '-'
+  }, [order])
+
   const detailButtonText = useMemo(() => {
     if (!order) return ''
     if (order.type === 'job') return '查看作业详情'
@@ -237,7 +271,11 @@ function RouteComponent() {
         }
         info={[
           { title: '类型', icon: Type, value: order.type },
-          { title: '状态', icon: CheckCircle, value: order.status },
+          {
+            title: '状态',
+            icon: CheckCircle,
+            value: <ApprovalOrderStatusBadge status={order.status} />,
+          },
           { title: '创建者', icon: User, value: creatorName },
           {
             title: '创建时间',
@@ -250,8 +288,51 @@ function RouteComponent() {
             key: 'detail',
             label: '详情',
             icon: FileText,
+            scrollable: true,
             children: (
-              <div className="grid gap-4 p-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {order.type === 'job' && order.status === 'Pending' && (
+                  <Card className="md:col-span-2">
+                    <CardHeader>
+                      <CardTitle className="text-lg">作业资源详情</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-muted-foreground text-sm">申请资源</span>
+                        {isPodsLoading ? (
+                          <div className="bg-muted h-6 w-24 animate-pulse rounded"></div>
+                        ) : (
+                          <ResourceBadges resources={resources} />
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <span className="text-muted-foreground text-sm">所在节点</span>
+                        {isPodsLoading ? (
+                          <div className="bg-muted h-6 w-24 animate-pulse rounded"></div>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {nodeNames.map((nodeName) => {
+                              const nodeInfo = allNodes?.find((n) => n.name === nodeName)
+                              return (
+                                <div key={nodeName} className="flex items-center gap-2">
+                                  <Link
+                                    to="/admin/cluster/nodes/$node"
+                                    params={{ node: nodeName }}
+                                    className="hover:underline"
+                                  >
+                                    {nodeName}
+                                  </Link>
+                                  {nodeInfo && <NodeStatusBadge status={nodeInfo.status} />}
+                                </div>
+                              )
+                            })}
+                            {nodeNames.length === 0 && <span>-</span>}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">申请内容</CardTitle>
@@ -274,12 +355,22 @@ function RouteComponent() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">审核信息</CardTitle>
+                    <CardTitle className="text-lg">审核进度</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-sm">当前状态</span>
+                      <span className="font-medium">
+                        <ApprovalOrderStatusBadge status={order.status} />
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-sm">审核人</span>
+                      <span className="font-medium">{reviewerName}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 border-t pt-2">
                       <span className="text-muted-foreground text-sm">审核备注</span>
-                      <p className="text-sm">{order.reviewNotes || '暂无备注'}</p>
+                      <p className="text-sm">{order.reviewNotes || '暂无'}</p>
                     </div>
                   </CardContent>
                 </Card>

@@ -19,6 +19,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
 import { Trash2Icon } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,7 @@ export const Route = createFileRoute('/portal/jobs/inter/')({
 })
 
 function RouteComponent() {
+  const { t: translate } = useTranslation()
   const queryClient = useQueryClient()
 
   const interactiveQuery = useQuery({
@@ -90,7 +92,7 @@ function RouteComponent() {
     mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList()
-      toast.success('操作成功')
+      toast.success(translate('jobs.successMessage'))
     },
   })
 
@@ -238,10 +240,12 @@ function RouteComponent() {
       toolbarConfig={jobToolbarConfig}
       multipleHandlers={[
         {
-          title: (rows) => `停止或删除 ${rows.length} 个作业`,
+          title: (rows) => translate('jobs.handlers.stopOrDeleteTitle', { count: rows.length }),
           description: (rows) => (
             <>
-              作业 {rows.map((row) => row.original.name).join(', ')} 将被停止或删除，确认要继续吗？
+              {translate('jobs.handlers.stopOrDeleteDescription', {
+                jobs: rows.map((row) => row.original.name).join(', '),
+              })}
             </>
           ),
           icon: <Trash2Icon className="text-destructive" />,

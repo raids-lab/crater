@@ -15,6 +15,55 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/nodes/{name}/pods": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取节点Pod信息，包含作业和用户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Node"
+                ],
+                "summary": "获取节点Pod信息（管理员）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "节点名称",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/check": {
             "get": {
                 "security": [
@@ -1063,6 +1112,277 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/gpu-analysis": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按创建时间降序列出所有 GPU 分析记录，并附带关联作业的类型、资源和节点信息",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GpuAnalysis"
+                ],
+                "summary": "列出所有 GPU 分析记录（包含作业信息）",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/gpu-analysis/trigger": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "用于测试和演示。提供 Pod 的 namespace 和 name 来启动一次完整的两阶段分析。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GpuAnalysis"
+                ],
+                "summary": "手动触发对单个 Pod 的 GPU 分析",
+                "parameters": [
+                    {
+                        "description": "Pod 信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.TriggerAnalysisReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "分析成功，返回创建的分析记录",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "分析过程中发生错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/gpu-analysis/trigger/all-jobs": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "此接口会查找所有符合条件的运行中 Job，并将它们加入后台分析队列。接口会立即返回，分析将在后台异步进行。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GpuAnalysis"
+                ],
+                "summary": "触发对所有运行中 Job 的异步 GPU 分析",
+                "responses": {
+                    "200": {
+                        "description": "成功，返回入队的 Job 数量",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TriggerAllJobsAnalysisResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误或队列已满",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/gpu-analysis/trigger/job": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "提供 Job 的 name 来启动一次完整的分析。如果该 Job 已有分析记录，则更新；否则创建新记录。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GpuAnalysis"
+                ],
+                "summary": "手动触发对单个 Job 的 GPU 分析",
+                "parameters": [
+                    {
+                        "description": "Job 信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.TriggerJobAnalysisReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "分析成功，返回创建或更新后的分析记录",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "分析过程中发生错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/gpu-analysis/{id}/confirm-stop": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "将分析记录标记为“已确认”，并立即停止（删除）对应的 Volcano Job。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GpuAnalysis"
+                ],
+                "summary": "确认占卡并停止作业",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "分析记录ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "操作成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "操作失败",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/gpu-analysis/{id}/review": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员在前端审核后，调用此接口将记录标记为“已确认占卡”或“已忽略”",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "GpuAnalysis"
+                ],
+                "summary": "更新管理员对分析记录的审核状态",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "分析记录ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "新的审核状态",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateReviewStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -2323,6 +2643,177 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/system-config/gpu-analysis": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "查询当前系统是否开启了自动 GPU 资源滥用检测",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "获取 GPU 分析功能开关状态",
+                "responses": {
+                    "200": {
+                        "description": "开关状态",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_GpuAnalysisStatusResp"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "开启或关闭 GPU 检测。注意：尝试开启时，系统会强制检查 LLM 连接，如果连接不通，将无法开启。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "设置 GPU 分析功能开关",
+                "parameters": [
+                    {
+                        "description": "开关设置",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SetGpuAnalysisStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "设置成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "LLM连接检查失败，无法开启",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/system-config/llm": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前系统配置的 LLM BaseURL, ModelName。出于安全考虑，API Key 可能会被脱敏显示。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "获取 LLM 配置信息",
+                "responses": {
+                    "200": {
+                        "description": "配置信息",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新 LLM 的连接信息。如果 validate 为 true，会尝试连接 /check 接口，失败则不保存。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "更新 LLM 配置",
+                "parameters": [
+                    {
+                        "description": "配置信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateLLMConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误或校验失败",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "清空 LLM 配置（BaseURL, Key, Model）并强制关闭 GPU 分析功能",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "重置 LLM 配置",
+                "responses": {
+                    "200": {
+                        "description": "重置成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -7561,6 +8052,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/user/{username}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get job list of a specific user within specified days. Both users and administrators can call this API.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get jobs of a specific user within days",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Number of days to look back, default is 30, -1 for all",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User's Job List",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient permissions",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/webide": {
             "post": {
                 "security": [
@@ -8139,7 +8698,13 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "datatypes.JSONType-array_string": {
+            "type": "object"
+        },
         "datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota": {
+            "type": "object"
+        },
+        "datatypes.JSONType-v1_ResourceList": {
             "type": "object"
         },
         "github_com_raids-lab_crater_dao_model.AccessMode": {
@@ -8321,10 +8886,12 @@ const docTemplate = `{
         "github_com_raids-lab_crater_dao_model.CronJobType": {
             "type": "string",
             "enum": [
-                "cleaner_function"
+                "cleaner_function",
+                "patrol_function"
             ],
             "x-enum-varnames": [
-                "CronJobTypeCleanerFunc"
+                "CronJobTypeCleanerFunc",
+                "CronJobTypePatrolFunc"
             ]
         },
         "github_com_raids-lab_crater_dao_model.DataType": {
@@ -8339,6 +8906,71 @@ const docTemplate = `{
                 "DataTypeModel",
                 "DataTypeShareFile"
             ]
+        },
+        "github_com_raids-lab_crater_dao_model.GpuAnalysis": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "description": "采集到的原始数据",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "自动追踪的时间戳",
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "historicalMetrics": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "jobID": {
+                    "type": "integer"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "llmversion": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "phase1LLMReason": {
+                    "type": "string"
+                },
+                "phase1Score": {
+                    "description": "LLM 分析结果",
+                    "type": "integer"
+                },
+                "phase2LLMReason": {
+                    "type": "string"
+                },
+                "phase2Score": {
+                    "type": "integer"
+                },
+                "podName": {
+                    "description": "原始 Kubernetes 信息",
+                    "type": "string"
+                },
+                "reviewStatus": {
+                    "description": "管理状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ReviewStatus"
+                        }
+                    ]
+                },
+                "userID": {
+                    "type": "integer"
+                },
+                "userName": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_raids-lab_crater_dao_model.JobType": {
             "type": "string",
@@ -8363,6 +8995,34 @@ const docTemplate = `{
                 "JobTypeDeepSpeed",
                 "JobTypeOpenMPI",
                 "JobTypeCustom"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.ReviewStatus": {
+            "type": "integer",
+            "format": "int32",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-comments": {
+                "ReviewStatusConfirmed": "已确认",
+                "ReviewStatusIgnored": "已忽略",
+                "ReviewStatusPending": "待审核",
+                "_": "零值，被忽略"
+            },
+            "x-enum-descriptions": [
+                "零值，被忽略",
+                "待审核",
+                "已确认",
+                "已忽略"
+            ],
+            "x-enum-varnames": [
+                "_",
+                "ReviewStatusPending",
+                "ReviewStatusConfirmed",
+                "ReviewStatusIgnored"
             ]
         },
         "github_com_raids-lab_crater_dao_model.Role": {
@@ -8484,6 +9144,7 @@ const docTemplate = `{
             "enum": [
                 0,
                 40001,
+                40002,
                 40101,
                 40102,
                 40103,
@@ -8499,6 +9160,7 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "OK",
                 "InvalidRequest",
+                "BusinessLogicError",
                 "TokenExpired",
                 "TokenInvalid",
                 "MustRegister",
@@ -8519,6 +9181,23 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
                 },
                 "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod"
+                    }
+                },
                 "msg": {
                     "type": "string"
                 }
@@ -8558,6 +9237,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.GpuAnalysisWithJobInfo"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp": {
             "type": "object",
             "properties": {
@@ -8569,6 +9265,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/internal_handler.ModelDownloadResp"
                     }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
                 },
                 "msg": {
                     "type": "string"
@@ -8639,6 +9349,34 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.DeleteProjectResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_GpuAnalysisStatusResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.GpuAnalysisStatusResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.LLMConfigResp"
                 },
                 "msg": {
                     "type": "string"
@@ -8723,6 +9461,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.TokenReq"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TriggerAllJobsAnalysisResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.TriggerAllJobsAnalysisResponse"
                 },
                 "msg": {
                     "type": "string"
@@ -9014,6 +9766,68 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_pkg_crclient.Pod": {
+            "type": "object",
+            "properties": {
+                "accountID": {
+                    "description": "账户ID（用于跳转）",
+                    "type": "integer"
+                },
+                "accountName": {
+                    "description": "账户昵称（用于显示）",
+                    "type": "string"
+                },
+                "accountRealName": {
+                    "description": "账户真实名称（用于tooltip）",
+                    "type": "string"
+                },
+                "createTime": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "lockedTimestamp": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "ownerReference": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.OwnerReference"
+                    }
+                },
+                "permanentLocked": {
+                    "type": "boolean"
+                },
+                "resources": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "status": {
+                    "$ref": "#/definitions/v1.PodPhase"
+                },
+                "userID": {
+                    "description": "用户ID（用于跳转）",
+                    "type": "integer"
+                },
+                "userName": {
+                    "description": "管理员接口返回的字段（omitempty 表示字段为空时不序列化）",
+                    "type": "string"
+                },
+                "userRealName": {
+                    "description": "用户真实名称（用于tooltip）",
+                    "type": "string"
+                }
+            }
+        },
         "gorm.DeletedAt": {
             "type": "object",
             "properties": {
@@ -9274,6 +10088,97 @@ const docTemplate = `{
                 "ReadWrite"
             ]
         },
+        "internal_handler.GpuAnalysisStatusResp": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.GpuAnalysisWithJobInfo": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "description": "采集到的原始数据",
+                    "type": "string"
+                },
+                "createdAt": {
+                    "description": "自动追踪的时间戳",
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
+                "historicalMetrics": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "jobID": {
+                    "type": "integer"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "jobType": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
+                },
+                "llmversion": {
+                    "type": "string"
+                },
+                "lockedTimestamp": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "nodes": {
+                    "$ref": "#/definitions/datatypes.JSONType-array_string"
+                },
+                "phase1LLMReason": {
+                    "type": "string"
+                },
+                "phase1Score": {
+                    "description": "LLM 分析结果",
+                    "type": "integer"
+                },
+                "phase2LLMReason": {
+                    "type": "string"
+                },
+                "phase2Score": {
+                    "type": "integer"
+                },
+                "podName": {
+                    "description": "原始 Kubernetes 信息",
+                    "type": "string"
+                },
+                "resources": {
+                    "$ref": "#/definitions/datatypes.JSONType-v1_ResourceList"
+                },
+                "reviewStatus": {
+                    "description": "管理状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ReviewStatus"
+                        }
+                    ]
+                },
+                "status": {
+                    "$ref": "#/definitions/volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase"
+                },
+                "userID": {
+                    "type": "integer"
+                },
+                "userName": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.JobTemplateReq": {
             "type": "object",
             "required": [
@@ -9291,6 +10196,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "template": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.LLMConfigResp": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "modelName": {
                     "type": "string"
                 }
             }
@@ -9533,6 +10452,14 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.SetGpuAnalysisStatusReq": {
+            "type": "object",
+            "properties": {
+                "enable": {
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_handler.SharedQueueReq": {
             "type": "object",
             "required": [
@@ -9591,6 +10518,43 @@ const docTemplate = `{
                 },
                 "userId": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.TriggerAllJobsAnalysisResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "queuedJobs": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.TriggerAnalysisReq": {
+            "type": "object",
+            "required": [
+                "namespace",
+                "podName"
+            ],
+            "properties": {
+                "namespace": {
+                    "type": "string"
+                },
+                "podName": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.TriggerJobAnalysisReq": {
+            "type": "object",
+            "required": [
+                "jobName"
+            ],
+            "properties": {
+                "jobName": {
+                    "type": "string"
                 }
             }
         },
@@ -9706,6 +10670,28 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.UpdateLLMConfigReq": {
+            "type": "object",
+            "required": [
+                "baseUrl",
+                "modelName"
+            ],
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "modelName": {
+                    "type": "string"
+                },
+                "validate": {
+                    "description": "是否立即校验连接",
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_handler.UpdateResourceReq": {
             "type": "object",
             "properties": {
@@ -9714,6 +10700,22 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.CraterResourceType"
+                }
+            }
+        },
+        "internal_handler.UpdateReviewStatusReq": {
+            "type": "object",
+            "required": [
+                "reviewStatus"
+            ],
+            "properties": {
+                "reviewStatus": {
+                    "minimum": 1,
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ReviewStatus"
+                        }
+                    ]
                 }
             }
         },
@@ -10440,6 +11442,52 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.OwnerReference": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "API version of the referent.",
+                    "type": "string"
+                },
+                "blockOwnerDeletion": {
+                    "description": "If true, AND if the owner has the \"foregroundDeletion\" finalizer, then\nthe owner cannot be deleted from the key-value store until this\nreference is removed.\nSee https://kubernetes.io/docs/concepts/architecture/garbage-collection/#foreground-deletion\nfor how the garbage collector interacts with this field and enforces the foreground deletion.\nDefaults to false.\nTo set this field, a user needs \"delete\" permission of the owner,\notherwise 422 (Unprocessable Entity) will be returned.\n+optional",
+                    "type": "boolean"
+                },
+                "controller": {
+                    "description": "If true, this reference points to the managing controller.\n+optional",
+                    "type": "boolean"
+                },
+                "kind": {
+                    "description": "Kind of the referent.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "UID of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.PodPhase": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed",
+                "Unknown"
+            ],
+            "x-enum-varnames": [
+                "PodPending",
+                "PodRunning",
+                "PodSucceeded",
+                "PodFailed",
+                "PodUnknown"
+            ]
+        },
         "v1.ResourceFieldSelector": {
             "type": "object",
             "properties": {
@@ -10483,6 +11531,33 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
+        },
+        "volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Aborting",
+                "Aborted",
+                "Running",
+                "Restarting",
+                "Completing",
+                "Completed",
+                "Terminating",
+                "Terminated",
+                "Failed"
+            ],
+            "x-enum-varnames": [
+                "Pending",
+                "Aborting",
+                "Aborted",
+                "Running",
+                "Restarting",
+                "Completing",
+                "Completed",
+                "Terminating",
+                "Terminated",
+                "Failed"
+            ]
         }
     },
     "securityDefinitions": {

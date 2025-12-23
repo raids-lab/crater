@@ -69,6 +69,3 @@ export const getApprovalOrder = (id: number) => {
 export const adminGetApprovalOrder = (id: number) => {
   return apiV1Get<IResponse<ApprovalOrder>>(`admin/approvalorder/${id}`)
 }
-export const checkPendingApprovalOrder = () => {
-  return apiV1Put<IResponse<string>>('admin/approvalorder/check')
-}

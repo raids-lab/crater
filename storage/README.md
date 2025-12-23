@@ -41,13 +41,56 @@ golangci-lint --version
 # golangci-lint has version 2.6.2
 ```
 
-### 🛠️ Database Code Generation
+### 🛠️ Database Development Guide
 
-This project uses GORM Gen to generate boilerplate code for database CRUD operations.
+The project uses **GORM** as the ORM framework, manages database version migrations through **gormigrate**, and automatically generates type-safe CRUD code using **GORM Gen**.
 
-Generation scripts and documentation can be found in: [`gorm_gen`](./cmd/gorm-gen/README.md)
+#### Core Concepts
 
-Please regenerate the code after modifying database models or schema definitions, while CI pipeline will automatically make database migrations.
+- **Model Definition** (`dao/model/*.go`): Defines Go structs corresponding to database tables
+- **Migration Scripts** (`cmd/gorm-gen/models/migrate.go`): Records database structure change history, supporting versioned migrations and rollbacks
+- **Query Code Generation** (`cmd/gorm-gen/curd/generate.go`): Automatically generates type-safe database operation code based on model definitions
+
+#### Database Change Development Workflow
+
+When you need to modify the database structure (such as adding fields, creating new tables, etc.), please follow this workflow:
+
+1. **Modify Model Definition**: Modify the corresponding struct definition in `dao/model/*.go`, adding or modifying fields and their GORM tags.
+
+2. **Write Migration Script**: Add a new migration item to the migration list in `cmd/gorm-gen/models/migrate.go`. The migration ID uses a timestamp format `YYYYMMDDHHmm` (year, month, day, hour, minute), for example `202512091200`, ensuring uniqueness and guaranteeing execution in chronological order. Each migration item needs to include `Migrate` (upgrade) and `Rollback` (rollback) functions.
+
+3. **Execute Database Migration**: Run the following command to apply changes to the database:
+   ```bash
+   go run cmd/gorm-gen/models/migrate.go
+   ```
+   This command checks executed migration records, executes all unexecuted migrations in order, and updates the migration record table. Migrations are idempotent, so repeated execution will not cause errors. If the database is brand new, the migration script will first execute `InitSchema` to create all tables and initialize default data (such as default accounts).
+
+4. **Generate CRUD Code**: Run the following command to generate or update `dao/query/*.gen.go` files based on the latest model definitions:
+   ```bash
+   go run cmd/gorm-gen/curd/generate.go
+   ```
+   This command reads all model definitions and generates type-safe query methods.
+
+5. **Write Business Code**: Use the generated `query` methods to operate on the database in business logic.
+
+#### Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `go run cmd/gorm-gen/models/migrate.go` | Execute database migration, applying model changes to the database |
+| `go run cmd/gorm-gen/curd/generate.go` | Generate database CRUD operation code |
+
+#### Important Notes
+
+1. **Migration Order**: Migrations are executed in ID order, ensure timestamps are incremental
+2. **Team Collaboration**: After pulling code, if you see updates to `migrate.go`, remember to run the migration command
+3. **Rollback with Caution**: Before rolling back in production, be sure to backup data
+4. **First Deployment**: If the database is brand new, the migration script will automatically create all tables and initialize default data
+5. **Database Connection**: Before executing migrations and code generation, please ensure the database connection configuration in `migrate.go` and `generate.go` is correct, or connect to the database in the cluster through port forwarding
+
+#### Related Documentation
+
+Generation scripts and detailed documentation can be found at: [`cmd/gorm-gen/README`](./cmd/gorm-gen/README)
 
 ### Project Configuration
 

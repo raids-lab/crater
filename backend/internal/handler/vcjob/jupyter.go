@@ -135,6 +135,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
+			Plugins:                 volcanoPlugins,
 			SchedulerName:           VolcanoSchedulerName,
 			Queue:                   token.AccountName,
 			Policies: []batch.LifecyclePolicy{
@@ -295,7 +296,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 	})
 }
 
-// CreateJupyterSnapshot godoc
+// CreateSnapshot godoc
 //
 //	@Summary		Create a snapshot of the job container
 //	@Description	Create nerdctl docker commit to snapshot the job container (supports Jupyter and Custom job types)
@@ -308,7 +309,7 @@ func (mgr *VolcanojobMgr) GetJobToken(c *gin.Context) {
 //	@Failure		400		{object}	resputil.Response[any]			"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]			"Other errors"
 //	@Router			/v1/vcjobs/{name}/snapshot [post]
-func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
+func (mgr *VolcanojobMgr) CreateSnapshot(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -395,6 +396,7 @@ func (mgr *VolcanojobMgr) CreateJupyterSnapshot(c *gin.Context) {
 
 	err = mgr.imagePacker.CreateFromSnapshot(c, &packer.SnapshotReq{
 		UserID:        token.UserID,
+		IsAdmin:       token.RolePlatform == model.RoleAdmin,
 		Namespace:     vcjob.Namespace,
 		PodName:       pod.Name,
 		ContainerName: containerName,

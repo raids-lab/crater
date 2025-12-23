@@ -19,6 +19,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { Trash2Icon } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -69,76 +70,76 @@ const portalJobDetailLinkOptions = linkOptions({
   search: { tab: '' },
 })
 
-export const priorities = [
+const getPriorities = (t: (key: string) => string) => [
   {
-    label: '高',
+    label: t('jobs.priority.high'),
     value: 'high',
     className: 'text-highlight-amber border-highlight-amber bg-highlight-amber/20',
   },
   {
-    label: '低',
+    label: t('jobs.priority.low'),
     value: 'low',
     className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
 ]
 
-export const profilingStatuses = [
+const getProfilingStatuses = (t: (key: string) => string) => [
   {
     value: '0',
-    label: '未分析',
+    label: t('jobs.profileStatus.notAnalyzed'),
     className: 'text-highlight-purple border-highlight-purple bg-highlight-purple/20',
   },
   {
     value: '1',
-    label: '待分析',
+    label: t('jobs.profileStatus.pending'),
     className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
   {
     value: '2',
-    label: '分析中',
+    label: t('jobs.profileStatus.analyzing'),
     className: 'text-highlight-sky border-highlight-sky bg-highlight-sky/20',
   },
   {
     value: '3',
-    label: '已分析',
+    label: t('jobs.profileStatus.analyzed'),
     className: 'text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20',
   },
   {
     value: '4',
-    label: '失败',
+    label: t('jobs.profileStatus.failed'),
     className: 'text-highlight-red border-highlight-red bg-highlight-red/20',
   },
   {
     value: '5',
-    label: '跳过',
+    label: t('jobs.profileStatus.skipped'),
     className: 'text-highlight-slate border-highlight-slate bg-highlight-slate/20',
   },
 ]
 
-const toolbarConfig: DataTableToolbarConfig = {
+const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig => ({
   filterInput: {
-    placeholder: '搜索名称',
+    placeholder: t('jobs.toolbar.searchName'),
     key: 'title',
   },
   filterOptions: [
     {
       key: 'status',
-      title: '作业状态',
+      title: t('jobs.toolbar.status'),
       option: jobPhases,
     },
     {
       key: 'priority',
-      title: '优先级',
-      option: priorities,
+      title: t('jobs.toolbar.priority'),
+      option: getPriorities(t),
     },
     {
       key: 'profileStatus',
-      title: '分析状态',
-      option: profilingStatuses,
+      title: t('jobs.toolbar.profileStatus'),
+      option: getProfilingStatuses(t),
     },
   ],
   getHeader: getHeader,
-}
+})
 
 interface ColocateJobInfo extends IJobInfo {
   id: number
@@ -147,6 +148,7 @@ interface ColocateJobInfo extends IJobInfo {
 }
 
 const ColocateOverview = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const batchQuery = useQuery({
@@ -168,7 +170,7 @@ const ColocateOverview = () => {
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
     } catch (error) {
-      logger.error('更新查询失败', error)
+      logger.error(t('jobs.toast.refetchFailed'), error)
     }
   }
 
@@ -176,9 +178,12 @@ const ColocateOverview = () => {
     mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList()
-      toast.success('作业已删除')
+      toast.success(t('jobs.toast.deleted'))
     },
   })
+
+  const priorities = useMemo(() => getPriorities(t), [t])
+  const profilingStatuses = useMemo(() => getProfilingStatuses(t), [t])
 
   const batchColumns = useMemo<ColumnDef<ColocateJobInfo>[]>(
     () => [
@@ -259,7 +264,7 @@ const ColocateOverview = () => {
           if (row.getValue<string>('status') === 'Succeeded') {
             profiling = {
               value: '3',
-              label: '已分析',
+              label: t('jobs.profileStatus.analyzed'),
               className: 'text-highlight-emerald border-highlight-emerald bg-highlight-emerald/20',
             }
           }
@@ -313,38 +318,38 @@ const ColocateOverview = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">操作</span>
+                    <span className="sr-only">{t('jobs.actions.dropdown.ariaLabel')}</span>
                     <DotsHorizontalIcon className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    操作
+                    {t('jobs.actions.dropdown.title')}
                   </DropdownMenuLabel>
                   <DropdownMenuItem asChild>
                     <Link {...portalJobDetailLinkOptions} params={{ name: taskInfo.jobName }}>
-                      详情
+                      {t('jobs.actions.dropdown.details')}
                     </Link>
                   </DropdownMenuItem>
                   <AlertDialogTrigger asChild>
-                    <DropdownMenuItem>删除</DropdownMenuItem>
+                    <DropdownMenuItem>{t('jobs.actions.dropdown.delete')}</DropdownMenuItem>
                   </AlertDialogTrigger>
                 </DropdownMenuContent>
               </DropdownMenu>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>删除作业</AlertDialogTitle>
+                  <AlertDialogTitle>{t('jobs.dialog.delete.title')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    作业「{taskInfo?.name}」将不再可见，请谨慎操作。
+                    {t('jobs.dialog.delete.description.hidden', { name: taskInfo?.name })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogCancel>{t('jobs.actions.dropdown.cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     variant="destructive"
                     onClick={() => deleteTask(taskInfo.id.toString())}
                   >
-                    删除
+                    {t('jobs.actions.dropdown.delete')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -353,27 +358,28 @@ const ColocateOverview = () => {
         },
       },
     ],
-    [deleteTask]
+    [deleteTask, t, priorities, profilingStatuses]
   )
 
   return (
     <>
       <DataTable
         info={{
-          title: '自定义作业',
-          description: '使用自定义作业进行训练、推理等任务',
+          title: t('jobs.customJobs.title'),
+          description: t('jobs.customJobs.description'),
         }}
         storageKey="portal_aijob_batch"
         query={batchQuery}
         columns={batchColumns}
-        toolbarConfig={toolbarConfig}
+        toolbarConfig={getToolbarConfig(t)}
         multipleHandlers={[
           {
-            title: (rows) => `停止或删除 ${rows.length} 个作业`,
+            title: (rows) => t('jobs.handlers.stopOrDeleteTitle', { count: rows.length }),
             description: (rows) => (
               <>
-                作业 {rows.map((row) => row.original.name).join(', ')}{' '}
-                将被停止或删除，确认要继续吗？
+                {t('jobs.handlers.stopOrDeleteDescription', {
+                  jobs: rows.map((row) => row.original.name).join(', '),
+                })}
               </>
             ),
             icon: <Trash2Icon className="text-destructive" />,

@@ -721,6 +721,39 @@ func main() {
 				return tx.Migrator().DropTable("user_model_downloads")
 			},
 		},
+		{
+			ID: "202512061528",
+			Migrate: func(tx *gorm.DB) error {
+				type SystemConfig struct {
+					Key   string `gorm:"primarykey;size:100;comment:配置项的键"`
+					Value string `gorm:"type:text;comment:配置项的值"`
+				}
+				type GpuAnalysis struct {
+					ID                uint `gorm:"primarykey"`
+					CreatedAt         time.Time
+					DeletedAt         gorm.DeletedAt     `gorm:"index;comment:软删除时间戳"` // 必须显式定义为 gorm.DeletedAt
+					JobID             uint               `gorm:"index;comment:关联的作业ID，用于跳转，但不设外键约束"`
+					JobName           string             `gorm:"index;comment:关联的作业名称 (冗余字段，用于显示)"`
+					UserID            uint               `gorm:"index;comment:关联的用户ID，用于统计"`
+					UserName          string             `gorm:"comment:提交作业的用户名 (冗余字段，用于显示)"`
+					PodName           string             `gorm:"index;comment:被分析的Pod名称"`
+					Namespace         string             `gorm:"comment:Pod所在的命名空间"`
+					Phase1Score       int                `gorm:"comment:基于监控数据的初步评分"`
+					Phase2Score       int                `gorm:"comment:结合脚本内容的二次评分"`
+					Phase1LLMReason   string             `gorm:"type:text;comment:LLM给出的初步分析理由"`
+					Phase2LLMReason   string             `gorm:"type:text;comment:LLM给出的二次分析理由"`
+					LLMVersion        string             `gorm:"size:100;comment:使用的LLM模型版本"`
+					Command           string             `gorm:"type:text;comment:GPU进程的启动命令"`
+					ScriptContent     string             `gorm:"type:text;comment:获取到的脚本内容" json:"-"`
+					HistoricalMetrics string             `gorm:"type:text;comment:用于分析的历史指标摘要(JSON格式)"`
+					ReviewStatus      model.ReviewStatus `gorm:"default:1;comment:审核状态 (1: Pending, 2: Confirmed, 3: Ignored)"`
+				}
+				return tx.Migrator().CreateTable(&GpuAnalysis{}, &SystemConfig{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&model.GpuAnalysis{}, &model.SystemConfig{})
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -746,6 +779,10 @@ func main() {
 			&model.ResourceVGPU{},
 			&model.ModelDownload{},
 			&model.UserModelDownload{},
+			&model.CronJobConfig{},
+			&model.CronJobRecord{},
+			&model.GpuAnalysis{},
+			&model.SystemConfig{},
 		)
 		if err != nil {
 			return err
@@ -821,6 +858,40 @@ func main() {
 	Name: %s
 	Password: %s
 		`, name, password)
+
+		// 5. create initial cronjob configs
+		initialCronJobConfigs := []*model.CronJobConfig{
+			{
+				Name:    "clean-long-time-job",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"batchDays": 4, "interactiveDays": 4}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "clean-low-gpu-util-job",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"util": 0, "waitTime": 30, "timeRange": 90}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "clean-waiting-jupyter",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"waitMinitues": 5}`),
+				EntryID: -1,
+			},
+		}
+
+		for _, config := range initialCronJobConfigs {
+			if err := tx.Where("name = ?", config.Name).FirstOrCreate(&config).Error; err != nil {
+				return err
+			}
+		}
 
 		return nil
 	})
