@@ -37,8 +37,9 @@ import { TreeDataItem } from '@/components/file/lazy-file-tree'
 
 import { ImageDefaultArchs } from '@/services/api/imagepack'
 
-import { TagsInput } from './tags-input'
 import { VolumeMountType } from '@/utils/form'
+
+import { TagsInput } from './tags-input'
 
 export function ImageSettingsFormCard<T extends FieldValues>({
   form,
@@ -192,7 +193,7 @@ function VolumeMountsSection<T extends FieldValues>({
             <button
               type="button"
               onClick={() => volumeMountRemove(index)}
-              className="absolute right-2 top-2 rounded-sm opacity-70 transition-opacity hover:opacity-100"
+              className="absolute top-2 right-2 rounded-sm opacity-70 transition-opacity hover:opacity-100"
             >
               <XIcon className="size-4" />
             </button>
@@ -254,7 +255,7 @@ function VolumeMountsSection<T extends FieldValues>({
               type: VolumeMountType.FileType,
               subPath: '',
               mountPath: '',
-            } as any)
+            } as never)
           }
         >
           <CirclePlus className="size-4" />
