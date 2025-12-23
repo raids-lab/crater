@@ -104,6 +104,15 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 
 .PHONY: pre-commit-check
 pre-commit-check: ## Run pre-commit checks (lint and lint-staged).
+	@echo "$(BLUE)Formatting translation files...$(RESET)"
+	@if python3 hack/format_translation.py; then \
+		echo "$(BLUE)Staging formatted translation files...$(RESET)"; \
+		git add -u -- src/i18n/ 2>/dev/null || true; \
+		echo "$(GREEN)✅ Translation files formatted and staged$(RESET)"; \
+	else \
+		echo "$(RED)❌ Translation file formatting failed!$(RESET)"; \
+		exit 1; \
+	fi
 	@echo "$(BLUE)Running lint checks...$(RESET)"
 	@if ! pnpm run lint; then \
 		echo "$(RED)❌ Frontend lint failed!$(RESET)"; \
