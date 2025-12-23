@@ -104,6 +104,14 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 
 .PHONY: pre-commit-check
 pre-commit-check: ## Run pre-commit checks (lint and lint-staged).
+	@echo "$(BLUE)Checking translation file format...$(RESET)"
+	@if ! python3 hack/format_translation.py --check; then \
+		echo ""; \
+		echo "$(RED)❌ Translation files are not properly formatted!$(RESET)"; \
+		echo ""; \
+		echo "$(YELLOW)💡 Please run '$(GREEN)make format-translation$(RESET)$(YELLOW)' to format them.$(RESET)"; \
+		exit 1; \
+	fi
 	@echo "$(BLUE)Running lint checks...$(RESET)"
 	@if ! pnpm run lint; then \
 		echo "$(RED)❌ Frontend lint failed!$(RESET)"; \
@@ -134,6 +142,16 @@ type-check: ## 📝 Run TypeScript type checking
 format: ## ✨ Format code with Prettier
 	@echo "$(MAGENTA)Formatting code with Prettier...$(RESET)"
 	pnpm prettier --write .
+
+.PHONY: format-translation
+format-translation: ## 🌐 Format translation files
+	@echo "$(BLUE)Formatting translation files...$(RESET)"
+	@if python3 hack/format_translation.py; then \
+		echo "$(GREEN)✅ Translation files formatted$(RESET)"; \
+	else \
+		echo "$(RED)❌ Translation file formatting failed!$(RESET)"; \
+		exit 1; \
+	fi
 
 .PHONY: test
 test: ## 🧪 Run tests

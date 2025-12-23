@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import argparse
 
 def flatten_json(y, prefix=''):
     out = {}
@@ -12,8 +13,16 @@ def flatten_json(y, prefix=''):
         out[prefix] = y
     return out
 
-def process_folder(folder_path):
+def format_translation_content(data):
+    """格式化翻译内容，返回格式化后的 JSON 字符串"""
+    flat = flatten_json(data)
+    # Sort in ascending order
+    sorted_result = dict(sorted(flat.items()))
+    return json.dumps(sorted_result, ensure_ascii=False, indent=2)
+
+def process_folder(folder_path, check_only=False):
     processed_files = []
+    failed_files = []
     
     for root, dirs, files in os.walk(folder_path):
         for file in files:
@@ -22,24 +31,45 @@ def process_folder(folder_path):
                 relative_path = os.path.relpath(file_path, folder_path)
                 
                 with open(file_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    flat = flatten_json(data)
-                    # Sort in ascending order
-                    sorted_result = dict(sorted(flat.items()))
+                    original_content = f.read()
+                    data = json.loads(original_content)
                 
-                # Write back to the original file
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    json.dump(sorted_result, f, ensure_ascii=False, indent=2)
+                formatted_content = format_translation_content(data)
                 
-                processed_files.append(relative_path)
+                if check_only:
+                    # 检查模式：比较格式化后的内容
+                    # 使用 strip() 去除末尾空白行的差异
+                    if original_content.strip() != formatted_content.strip():
+                        failed_files.append(relative_path)
+                    processed_files.append(relative_path)
+                else:
+                    # 格式化模式：写回文件
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(formatted_content)
+                    processed_files.append(relative_path)
     
-    return processed_files
+    return processed_files, failed_files
 
 if __name__ == "__main__":
-    folder = "src/i18n"
-    processed_files = process_folder(folder)
+    parser = argparse.ArgumentParser(description='Format translation JSON files')
+    parser.add_argument('--check', action='store_true',
+                       help='Check if files are formatted correctly without modifying them')
+    args = parser.parse_args()
     
-    # Log processed files
-    print(f"Processed and updated {len(processed_files)} translation.json file(s):")
-    for file_path in processed_files:
-        print(f"  - {file_path}")
+    folder = "src/i18n"
+    processed_files, failed_files = process_folder(folder, check_only=args.check)
+    
+    if args.check:
+        if failed_files:
+            print(f"❌ {len(failed_files)} translation file(s) are not properly formatted:")
+            for file_path in failed_files:
+                print(f"  - {file_path}")
+            print("\nPlease run 'python3 hack/format_translation.py' to format them.")
+            sys.exit(1)
+        else:
+            print(f"✅ All {len(processed_files)} translation file(s) are properly formatted!")
+    else:
+        # Log processed files
+        print(f"Processed and updated {len(processed_files)} translation.json file(s):")
+        for file_path in processed_files:
+            print(f"  - {file_path}")
