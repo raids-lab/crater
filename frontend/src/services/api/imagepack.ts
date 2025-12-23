@@ -212,6 +212,11 @@ export interface DockerfileCreate {
   template: string
   buildSource: ImagePackSource
   archs: string[]
+  volumeMounts?: {
+    type: number
+    subPath: string
+    mountPath: string
+  }[]
 }
 
 export interface EnvdCreate {

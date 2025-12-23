@@ -12,14 +12,19 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 )
 
 func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq) error {
-	buildkitContainer := b.generateBuildKitContainer(data)
-	volumes := b.generateVolumes(data.JobName)
+	// Generate volumes and volumeMounts from request
+	volumes, volumeMounts, err := b.generateVolumesAndMounts(c, data)
+	if err != nil {
+		return fmt.Errorf("failed to generate volumes and mounts: %w", err)
+	}
+
+	buildkitContainer := b.generateBuildKitContainer(data, volumeMounts)
 	var configMap *corev1.ConfigMap
-	var err error
 	if configMap, err = b.createDockerfileConfigMap(c, data); err != nil {
 		return err
 	}
@@ -35,7 +40,10 @@ func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq)
 	return nil
 }
 
-func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
+// generateVolumesAndMounts generates both volumes and volumeMounts based on the request
+// It reuses the resolveVolumeMount logic from vcjob package
+func (b *imagePacker) generateVolumesAndMounts(c context.Context, data *BuildKitReq) ([]corev1.Volume, []corev1.VolumeMount, error) {
+	// Initialize default volumes
 	volumes := []corev1.Volume{
 		{
 			Name: "workspace",
@@ -62,16 +70,54 @@ func (b *imagePacker) generateVolumes(jobName string) []corev1.Volume {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: jobName,
+						Name: data.JobName,
 					},
 				},
 			},
 		},
 	}
-	return volumes
+
+	// Initialize default volumeMounts for buildkit container
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "harborcredits",
+			MountPath: "/.docker/config.json",
+			SubPath:   "config.json",
+			ReadOnly:  true,
+		},
+		{
+			Name:      "configmap-volume",
+			MountPath: "/workspace",
+			ReadOnly:  true,
+		},
+	}
+
+	// Process user-defined volume mounts
+	if len(data.VolumeMounts) > 0 {
+		pvcMap := make(map[string]bool) // Avoid duplicate PVC creation
+
+		for _, vm := range data.VolumeMounts {
+			// Reuse resolveVolumeMount logic from vcjob
+			volumeMount, err := util.ResolveVolumeMount(c, data.Token, vm, util.ImageCreate)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to resolve volume mount %s: %w", vm.MountPath, err)
+			}
+
+			// Add PVC volume if not already created
+			if !pvcMap[volumeMount.Name] {
+				volumes = append(volumes, util.CreateVolume(volumeMount.Name))
+				pvcMap[volumeMount.Name] = true
+			}
+
+			// Add volume mount
+			volumeMounts = append(volumeMounts, volumeMount)
+		}
+	}
+
+	return volumes, volumeMounts, nil
 }
 
-func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Container {
+func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq, volumeMounts []corev1.VolumeMount) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	archs := strings.Join(data.Archs, ",")
 
@@ -115,19 +161,7 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq) []corev1.Cont
 					Value: "/.docker",
 				},
 			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "harborcredits",
-					MountPath: "/.docker/config.json",
-					SubPath:   "config.json", // 只挂载文件，不覆盖目录
-					ReadOnly:  true,
-				},
-				{
-					Name:      "configmap-volume",
-					MountPath: "/workspace",
-					ReadOnly:  true,
-				},
-			},
+			VolumeMounts: volumeMounts,
 		},
 	}
 	return buildkitContainer
@@ -194,6 +228,9 @@ func (b *imagePacker) createJob(
 	jobMeta := metav1.ObjectMeta{
 		Name:      data.JobName,
 		Namespace: data.Namespace,
+		Labels: map[string]string{
+			"app": "image-create",
+		},
 		Annotations: map[string]string{
 			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
 			AnnotationKeyImageLink:   data.ImageLink,
@@ -229,6 +266,23 @@ func (b *imagePacker) createJob(
 				EnableServiceLinks: ptr.To(false),
 				NodeSelector: map[string]string{
 					"kubernetes.io/arch": "amd64",
+				},
+				Affinity: &corev1.Affinity{
+					NodeAffinity: &corev1.NodeAffinity{
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+							{
+								Weight: 40,
+								Preference: corev1.NodeSelectorTerm{
+									MatchExpressions: []corev1.NodeSelectorRequirement{
+										{
+											Key:      "nvidia.com/gpu.present",
+											Operator: corev1.NodeSelectorOpDoesNotExist,
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

@@ -8827,6 +8827,36 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_util.VolumeMount": {
+            "type": "object",
+            "properties": {
+                "datasetID": {
+                    "type": "integer"
+                },
+                "mountPath": {
+                    "type": "string"
+                },
+                "subPath": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeType"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_util.VolumeType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "_",
+                "FileType",
+                "DataType"
+            ]
+        },
         "github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail": {
             "type": "object",
             "properties": {
@@ -9838,6 +9868,12 @@ const docTemplate = `{
                 },
                 "template": {
                     "type": "string"
+                },
+                "volumeMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
+                    }
                 }
             }
         },
@@ -10151,7 +10187,7 @@ const docTemplate = `{
                 "volumeMounts": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_handler_vcjob.VolumeMount"
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
                     }
                 }
             }
@@ -10227,36 +10263,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "internal_handler_vcjob.VolumeMount": {
-            "type": "object",
-            "properties": {
-                "datasetID": {
-                    "type": "integer"
-                },
-                "mountPath": {
-                    "type": "string"
-                },
-                "subPath": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/internal_handler_vcjob.VolumeType"
-                }
-            }
-        },
-        "internal_handler_vcjob.VolumeType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2
-            ],
-            "x-enum-varnames": [
-                "_",
-                "FileType",
-                "DataType"
-            ]
         },
         "resource.Quantity": {
             "type": "object",
