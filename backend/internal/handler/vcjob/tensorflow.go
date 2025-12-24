@@ -10,11 +10,13 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
+	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
 type (
@@ -66,9 +68,18 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	for i := range len(req.Tasks) {
 		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[i].Resource)
 	}
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID, jobResources)
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
+		return
+	}
+
+	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, token.AccountID); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to ensure account queue exists: %v", err), resputil.NotSpecified)
+		return
+	}
+	if err := vcqueue.EnsureUserQueueExists(c, mgr.client, token, token.AccountID, token.UserID); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to ensure user queue exists: %v", err), resputil.NotSpecified)
 		return
 	}
 
@@ -152,6 +163,10 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		tasks[i] = taskSpec
 	}
 
+	queueName := token.AccountName
+	if token.AccountID != model.DefaultAccountID {
+		queueName = vcqueue.GetUserQueueName(token.AccountID, token.UserID)
+	}
 	// 5. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -174,7 +189,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 					Event:  bus.PodEvictedEvent,
 				},
 			},
-			Queue: token.AccountName,
+			Queue: queueName,
 			Tasks: tasks,
 		},
 	}

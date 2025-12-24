@@ -15,6 +15,7 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +31,15 @@ import {
 } from '@/services/api/account'
 import { IResponse } from '@/services/types'
 
+type CapacityBadgesProps = {
+  aid: number
+  uid: number
+  role: string
+  accessmode: string
+  quota?: IQuota
+  editable: boolean
+}
+
 export default function CapacityBadges({
   aid,
   uid,
@@ -37,7 +47,8 @@ export default function CapacityBadges({
   accessmode,
   quota,
   editable,
-}: IUserInAccountUpdateReq & { editable: boolean }) {
+}: CapacityBadgesProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const { mutate: updateCapacity, isPending } = useMutation<
@@ -49,10 +60,10 @@ export default function CapacityBadges({
       apiUpdateUserOutOfProjectList({ aid, uid, role, accessmode, quota }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['account', aid, 'users'] })
-      toast.success('User updated')
+      toast.success(t('capacity.update.success'))
     },
     onError: () => {
-      toast.error('Update user failed')
+      toast.error(t('capacity.update.failed'))
       queryClient.invalidateQueries({ queryKey: ['account', aid, 'users'] })
     },
   })
@@ -75,14 +86,9 @@ export default function CapacityBadges({
       const next = { ...capabilityRef.current, [key]: value }
       setCapability(next)
 
-      const quotaUpdate: IQuota = {
-        guaranteed: quota?.guaranteed,
-        deserved: quota?.deserved,
-        capability: next,
-      }
-      updateCapacity({ aid, uid, role, accessmode, quota: quotaUpdate })
+      updateCapacity({ aid, uid, role, accessmode, quota: next })
     },
-    [aid, uid, role, accessmode, quota?.guaranteed, quota?.deserved, updateCapacity]
+    [aid, uid, role, accessmode, updateCapacity]
   )
 
   // 使用本地状态进行展示，确保立即刷新
@@ -144,13 +150,15 @@ export default function CapacityBadges({
           <Badge
             className="hover:bg-primary hover:text-primary-foreground cursor-pointer font-mono select-none"
             variant="secondary"
-            title="Click to edit resource"
+            title={t('capacity.badge.clickToEdit')}
           >
             {display}
           </Badge>
         </PopoverTrigger>
         <PopoverContent className="w-64 space-y-3 p-4">
-          <h4 className="font-medium">Configure {displayKey.toUpperCase()}</h4>
+          <h4 className="font-medium">
+            {t('capacity.configure.title', { resource: displayKey.toUpperCase() })}
+          </h4>
           <div className="flex items-center gap-2">
             <Input
               type="text"
@@ -165,7 +173,7 @@ export default function CapacityBadges({
             disabled={!editValue || editValue === value || isPending}
             onClick={handleSave}
           >
-            Save
+            {t('common.save')}
           </Button>
         </PopoverContent>
       </Popover>
@@ -175,7 +183,7 @@ export default function CapacityBadges({
   return (
     <div className="flex flex-col flex-wrap gap-1 lg:flex-row">
       {sortedEntries.map(([rawKey, rawValue]) => {
-        const displayKey = rawKey.includes('/') ? rawKey.split('/').slice(1).join('') : rawKey
+        const displayKey = rawKey.includes('/') ? (rawKey.split('/').pop() ?? rawKey) : rawKey
         return (
           <CapacityBadge
             key={rawKey}

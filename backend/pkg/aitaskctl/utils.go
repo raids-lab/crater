@@ -124,7 +124,6 @@ func CheckInteractiveLimitBeforeCreate(
 func CheckResourcesBeforeCreateJob(
 	c context.Context,
 	userID, accountID uint,
-	createResources v1.ResourceList,
 ) (exceededResources []v1.ResourceName) {
 	uq := query.UserAccount
 	var userQueueQuota datatypes.JSONType[model.QueueQuota]
@@ -154,23 +153,5 @@ func CheckResourcesBeforeCreateJob(
 		return exceededResources
 	}
 
-	uqQuota := userQueueQuota.Data().Capability
-	if len(uqQuota) == 0 {
-		return exceededResources
-	}
-
-	JobQuota := v1.ResourceList{}
-
-	for _, jobResource := range jobResources {
-		JobQuota = AddResourceList(JobQuota, jobResource.Resources.Data())
-	}
-
-	JobQuota = AddResourceList(JobQuota, createResources)
-
-	for k, usedValue := range JobQuota {
-		if hardValue := uqQuota[k]; usedValue.Cmp(hardValue) == 1 {
-			exceededResources = append(exceededResources, k)
-		}
-	}
 	return exceededResources
 }

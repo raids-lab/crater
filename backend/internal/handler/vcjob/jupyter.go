@@ -22,6 +22,7 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
+	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
 const (
@@ -51,6 +52,8 @@ type (
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/jupyter [post]
+//
+//nolint:dupl //TODO: refactor similar code with CreateWebIDEJob
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -64,10 +67,18 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
-
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID, req.Resource)
+	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.ServiceError)
+		return
+	}
+
+	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, token.AccountID); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to ensure account queue exists: %v", err), resputil.NotSpecified)
+		return
+	}
+	if err := vcqueue.EnsureUserQueueExists(c, mgr.client, token, token.AccountID, token.UserID); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to ensure user queue exists: %v", err), resputil.NotSpecified)
 		return
 	}
 
@@ -121,8 +132,11 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
+	queueName := token.AccountName
+	if token.AccountID != model.DefaultAccountID {
+		queueName = vcqueue.GetUserQueueName(token.AccountID, token.UserID)
+	}
 	// 6. Create volcano job
-	//nolint:dupl // TODO: refactor to reduce duplicate code
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        jobName,
@@ -137,7 +151,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 			MaxRetry:                1,
 			Plugins:                 volcanoPlugins,
 			SchedulerName:           VolcanoSchedulerName,
-			Queue:                   token.AccountName,
+			Queue:                   queueName,
 			Policies: []batch.LifecyclePolicy{
 				{
 					Action: bus.RestartJobAction,
