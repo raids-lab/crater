@@ -49,6 +49,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Check translation file format
+        run: python3 hack/format_translation.py --check
+
       - name: Run lint
         run: pnpm run lint
 
