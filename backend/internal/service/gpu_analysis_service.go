@@ -28,7 +28,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/prompts"
 	"github.com/raids-lab/crater/pkg/prompts/gpu_analysis"
@@ -44,23 +43,6 @@ const (
 	psColumnNum          = 5                  // ps 命令输出的列数
 	maxScriptLength      = 15000
 )
-
-// LLMRequestPayload 定义了发送给 LLM 的请求体结构
-type LLMRequestPayload struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	// 为了确保返回JSON，可以添加 response_format
-	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
-}
-
-type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type ResponseFormat struct {
-	Type string `json:"type"` // e.g., "json_object"
-}
 
 // LLMResponse 定义了我们期望 LLM 返回的 JSON 结构
 // 【新增】: 为第一阶段专门设计的 Response 结构
@@ -268,35 +250,6 @@ func (s *GpuAnalysisService) startAnalysisWorker() {
 		time.Sleep(SleepBetweenRetries)
 	}
 	klog.Info("GPU analysis worker has stopped.") // 正常情况下不应执行到这里
-}
-
-func (s *GpuAnalysisService) RunDetectionCycle() {
-	ctx := context.Background()
-	klog.Info("Starting GPU abuse detection cycle...")
-	jobNamespace := config.GetConfig().Namespaces.Job
-	pods, err := s.kubeClient.CoreV1().Pods(jobNamespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		klog.Errorf("Failed to list pods: %v", err)
-		return
-	}
-	for i := range pods.Items {
-		pod := pods.Items[i]
-		go s.processPodForCron(ctx, &pod)
-	}
-	klog.Info("GPU abuse detection cycle finished.")
-}
-
-func (s *GpuAnalysisService) processPodForCron(ctx context.Context, pod *v1.Pod) {
-	// 定时任务需要严格的筛选
-	if !s.isPodEligibleForAnalysis(ctx, pod) {
-		return
-	}
-	klog.Infof("Pod [%s] is eligible for cron analysis. Starting.", pod.Name)
-	// 调用核心分析逻辑，并忽略返回值，因为是后台任务
-	_, err := s.performFullAnalysis(ctx, pod)
-	if err != nil {
-		klog.Errorf("Error during cron analysis for pod %s: %v", pod.Name, err)
-	}
 }
 
 // =================================================================
@@ -679,42 +632,6 @@ func (s *GpuAnalysisService) extractScriptPathFromCommand(command string) string
 		return matches[1]
 	}
 	return ""
-}
-
-func (s *GpuAnalysisService) isPodEligibleForAnalysis(ctx context.Context, pod *v1.Pod) bool {
-	if pod.Status.Phase != v1.PodRunning {
-		return false
-	}
-	if pod.Status.StartTime == nil || time.Since(pod.Status.StartTime.Time) < PodAnalysisMinAge {
-		return false
-	}
-	if !s.hasGpuResourceInSpec(pod) {
-		return false
-	}
-	jobName, ok := pod.Labels["volcano.sh/job-name"]
-	if !ok || jobName == "" {
-		return false
-	}
-	job, err := s.q.Job.WithContext(ctx).Where(s.q.Job.JobName.Eq(jobName)).First()
-	if err == nil {
-		if !job.LockedTimestamp.IsZero() && time.Now().Before(job.LockedTimestamp) {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *GpuAnalysisService) hasGpuResourceInSpec(pod *v1.Pod) bool {
-	for i := range pod.Spec.Containers {
-		container := &pod.Spec.Containers[i]
-		if _, ok := container.Resources.Limits["nvidia.com/gpu"]; ok {
-			return true
-		}
-		if _, ok := container.Resources.Requests["nvidia.com/gpu"]; ok {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *GpuAnalysisService) execCommandInPod(

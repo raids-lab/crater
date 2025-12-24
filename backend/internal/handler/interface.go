@@ -6,6 +6,7 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -49,6 +50,9 @@ type RegisterConfig struct {
 	ServiceManager crclient.ServiceManagerInterface
 
 	CronJobManager *cronjob.CronJobManager
+
+	ConfigService      *service.ConfigService
+	GpuAnalysisService *service.GpuAnalysisService
 }
 
 // Registers is a slice of Manager Init functions.
