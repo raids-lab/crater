@@ -5,7 +5,6 @@ import (
 
 	"strings"
 
-	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -23,17 +22,10 @@ type SystemConfigMgr struct {
 }
 
 func NewSystemConfigMgr(conf *RegisterConfig) Manager {
-	// 复用 query 单例
-	q := query.Q
-	// 初始化 ConfigService (会自动执行播种逻辑)
-	configService := service.NewConfigService(q)
-	cronjobManager := conf.CronJobManager
-	configService.SetCronJobManager(cronjobManager)
-
 	return &SystemConfigMgr{
 		name:           "system-config",
-		service:        configService,
-		cronjobManager: cronjobManager,
+		service:        conf.ConfigService,
+		cronjobManager: conf.CronJobManager,
 	}
 }
 

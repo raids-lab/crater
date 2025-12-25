@@ -89,22 +89,25 @@ func (ci *ConfigInitializer) InitializeRegisterConfig() (*handler.RegisterConfig
 func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.RegisterConfig, mgr ctrl.Manager) {
 	registerConfig.Client = mgr.GetClient()
 
-	cfgService := service.NewConfigService(query.Q)
-	gpuAnalysisService := service.NewGpuAnalysisService(
+	registerConfig.ConfigService = service.NewConfigService(query.Q)
+
+	registerConfig.GpuAnalysisService = service.NewGpuAnalysisService(
 		query.Q,
-		registerConfig.KubeConfig, // 在 InitializeRegisterConfig 中已初始化
-		registerConfig.KubeClient, // 在 InitializeRegisterConfig 中已初始化
-		registerConfig.PrometheusClient.(*monitor.PrometheusClient), // 在 InitializeRegisterConfig 中已初始化
-		cfgService,
+		registerConfig.KubeConfig,
+		registerConfig.KubeClient,
+		registerConfig.PrometheusClient.(*monitor.PrometheusClient),
+		registerConfig.ConfigService,
 	)
 
-	// init cron job manager
 	registerConfig.CronJobManager = cronjob.NewCronJobManager(
 		registerConfig.Client,
 		registerConfig.KubeClient,
 		registerConfig.PrometheusClient,
-		gpuAnalysisService,
+		registerConfig.GpuAnalysisService,
 	)
+
+	registerConfig.ConfigService.SetCronJobManager(registerConfig.CronJobManager)
+
 	go registerConfig.CronJobManager.SyncCronJob()
 
 	// 初始化 ServiceManager

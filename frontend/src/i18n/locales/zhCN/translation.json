@@ -261,6 +261,7 @@
   "cronPolicy.confirmMessage": "您确定要执行立即清理操作吗？这将根据当前配置清理符合条件的作业（已暂停的策略将被跳过）。",
   "cronPolicy.confirmTitle": "作业清理确认",
   "cronPolicy.enable": "启用",
+  "cronPolicy.gpuAnalysisSuccess": "GPU 违规占用检测更新成功",
   "cronPolicy.gpuAnalysisTitle": "GPU 违规占用检测",
   "cronPolicy.gpuAnalysisUpdate": "更新 GPU 违规占用检测策略",
   "cronPolicy.interactiveDays": "交互式任务运行天数（INTERACTIVE_DAYS）",

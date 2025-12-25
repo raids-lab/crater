@@ -22,7 +22,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/config" // 需要引入 config 获取 namespace
-	"github.com/raids-lab/crater/pkg/monitor"
 )
 
 //nolint:gochecknoinits // init is used to register handler routes
@@ -38,27 +37,11 @@ type GpuAnalysisMgr struct {
 }
 
 func NewGpuAnalysisMgr(conf *RegisterConfig) Manager {
-	q := query.Q
-	promClient, ok := conf.PrometheusClient.(*monitor.PrometheusClient)
-	if !ok {
-		panic("PrometheusClient in RegisterConfig is not of type *monitor.PrometheusClient")
-	}
-
-	configService := service.NewConfigService(q)
-
-	gpuAnalysisService := service.NewGpuAnalysisService(
-		q,
-		conf.KubeConfig,
-		conf.KubeClient,
-		promClient,
-		configService,
-	)
-
 	return &GpuAnalysisMgr{
 		name:          "gpu-analysis",
-		client:        conf.Client, // [新增] 初始化 client
-		service:       gpuAnalysisService,
-		configService: configService,
+		client:        conf.Client,
+		service:       conf.GpuAnalysisService,
+		configService: conf.ConfigService,
 	}
 }
 
