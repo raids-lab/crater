@@ -285,13 +285,19 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	q := query.Account
 
 	// get user and queue
-	user, err := u.WithContext(ctx).Where(u.Name.Eq(job.Labels[crclient.LabelKeyTaskUser])).First()
+	userName := job.Labels[crclient.LabelKeyTaskUser]
+	user, err := u.WithContext(ctx).Where(u.Name.Eq(userName)).First()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get user %s: %w", job.Labels[crclient.LabelKeyTaskUser], err)
+		return nil, fmt.Errorf("unable to get user %s: %w", userName, err)
 	}
-	queue, err := q.WithContext(ctx).Where(q.Name.Eq(job.Spec.Queue)).First()
+	accountName := job.Labels[crclient.LalbeKeyTaskAccount]
+	queue, err := q.WithContext(ctx).Where(q.Name.Eq(accountName)).First()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get queue %s: %w", job.Spec.Queue, err)
+		// fallback to job.Spec.Queue
+		queue, err = q.WithContext(ctx).Where(q.Name.Eq(job.Spec.Queue)).First()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get queue %s and %s: %w", accountName, job.Spec.Queue, err)
+		}
 	}
 
 	// receive alert email or not

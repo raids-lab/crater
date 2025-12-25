@@ -84,9 +84,9 @@ export interface IUserInAccountCreate {
 export interface IUserInAccountUpdateReq {
   aid: number
   uid: number
-  role?: string
-  accessmode?: string
-  quota?: IQuota
+  role: string
+  accessmode: string
+  quota?: Record<string, string>
 }
 
 export interface IUserInAccountUpdateResp {
@@ -128,7 +128,11 @@ export const apiUserOutOfProjectList = (pid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userOutOf/${pid}`)
 
 export const apiUpdateUserOutOfProjectList = (user: IUserInAccountUpdateReq) =>
-  apiV1Put<IResponse<IUserInAccountUpdateResp>>(`admin/accounts/userIn/${user.aid}`, user)
+  apiV1Post<IResponse<IUserInAccountUpdateResp>>(`admin/accounts/update/${user.aid}/${user.uid}`, {
+    role: user.role,
+    accessmode: user.accessmode,
+    quota: user.quota,
+  })
 
 // User-level APIs (for account admins, not platform admins)
 export const apiUserAddAccountMember = async (aid: number, user: IUserInAccountCreate) =>
