@@ -18,6 +18,8 @@ dist-ssr
 !.vscode/extensions.json
 !.vscode/launch.json
 .idea
+.zed
+.trae
 .DS_Store
 *.suo
 *.ntvs*

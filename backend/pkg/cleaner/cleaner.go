@@ -24,6 +24,7 @@ const (
 	CLEAN_LONG_TIME_RUNNING_JOB = "clean-long-time-job"
 	CLEAN_LOW_GPU_USAGE_JOB     = "clean-low-gpu-util-job"
 	CLEAN_WAITING_JUPYTER_JOB   = "clean-waiting-jupyter"
+	CLEAN_WAITING_CUSTOM_JOB    = "clean-waiting-custom"
 )
 
 // Clients 包含清理任务所需的所有客户端
@@ -56,14 +57,21 @@ func GetCleanerFunc(jobName string, clients *Clients, jobConfig datatypes.JSON) 
 		}
 
 	case CLEAN_WAITING_JUPYTER_JOB:
-		req := &CancelWaitingJupyterJobsRequest{}
+		req := &CancelWaitingJobsRequest{}
 		if err := json.Unmarshal(jobConfig, req); err != nil {
 			return nil, err
 		}
 		f = func(ctx context.Context) (any, error) {
-			return CleanWaitingJupyterJobs(ctx, clients, req)
+			return CleanWaitingJobs(ctx, clients, req)
 		}
-
+	case CLEAN_WAITING_CUSTOM_JOB:
+		req := &CancelWaitingJobsRequest{}
+		if err := json.Unmarshal(jobConfig, req); err != nil {
+			return nil, err
+		}
+		f = func(ctx context.Context) (any, error) {
+			return CleanWaitingJobs(ctx, clients, req)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported cleaner job name: %s", jobName)
 	}

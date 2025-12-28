@@ -57,7 +57,7 @@ import {
 
 import CronJobRecordStatus from './cronjob-record-status'
 
-export default function CronJobRecordsTable() {
+export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobNames?: string[] }) {
   const { t } = useTranslation()
 
   // 定义状态选项（使用 i18n）
@@ -116,6 +116,12 @@ export default function CronJobRecordsTable() {
         return res.data.records || []
       }
       throw new Error(res.msg || t('cronPolicy.recordsLoadError'))
+    },
+    select: (data) => {
+      if (filteredJobNames && filteredJobNames.length > 0) {
+        return data.filter((record) => filteredJobNames.includes(record.name))
+      }
+      return data
     },
     refetchInterval: 30000, // 每30秒自动刷新
   })
