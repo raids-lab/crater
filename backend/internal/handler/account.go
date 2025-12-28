@@ -1274,10 +1274,13 @@ func (mgr *AccountMgr) updateUserAccount(
 			return nil
 		}
 
-		queueName := vcqueue.GetUserQueueName(accountID, userID)
+		if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
+			return fmt.Errorf("failed to ensure account queue exists: %w", err)
+		}
 		if err := vcqueue.EnsureUserQueueExists(c, mgr.client, token, accountID, userID); err != nil {
 			return fmt.Errorf("failed to ensure user queue exists: %w", err)
 		}
+		queueName := vcqueue.GetUserQueueName(accountID, userID)
 		if err := vcqueue.UpdateQueue(c, mgr.client, queueName, model.QueueQuota{
 			Capability: finalQuota,
 		}); err != nil {
@@ -1287,10 +1290,7 @@ func (mgr *AccountMgr) updateUserAccount(
 		return nil
 	})
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // deleteUserAccount deletes user-account relationship
