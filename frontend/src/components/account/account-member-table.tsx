@@ -15,12 +15,17 @@
  */
 // i18n-processed-v1.1.0
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { EllipsisVerticalIcon as DotsHorizontalIcon, UserRoundPlusIcon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  CirclePlusIcon,
+  EllipsisVerticalIcon as DotsHorizontalIcon,
+  UserRoundPlusIcon,
+  XIcon,
+} from 'lucide-react'
+import { type ChangeEvent, type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -51,6 +56,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -88,6 +94,7 @@ import {
   apiAddUser,
   apiRemoveUser,
   apiUpdateUser,
+  apiUpdateUserOutOfProjectList,
   apiUserAddAccountMember,
   apiUserInProjectList,
   apiUserListAccountMembers,
@@ -362,6 +369,8 @@ export function AccountMemberTable({
             <CapacityBadges
               aid={accountId}
               uid={row.original.id}
+              role={row.original.role}
+              accessmode={row.original.accessmode}
               quota={row.original.quota}
               editable={editable}
             />
@@ -373,134 +382,42 @@ export function AccountMemberTable({
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-          const user = row.original
           if (!editable) {
             return null
           }
-
           return (
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-8 w-8 p-0"
-                    title={t('accountDetail.table.actions.moreOptions')}
-                  >
-                    <DotsHorizontalIcon className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    {t('accountDetail.table.actions.operations')}
-                  </DropdownMenuLabel>
-                  {!isDefaultAccount && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        {t('accountDetail.table.actions.role')}
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        <DropdownMenuRadioGroup value={`${user.role}`}>
-                          {userRoles.map((role) => (
-                            <DropdownMenuRadioItem
-                              key={role.value}
-                              value={`${role.value}`}
-                              onClick={() => {
-                                // Check if user is demoting themselves from admin to user in non-admin view
-                                const isSelfDemotion =
-                                  !isAdminView &&
-                                  currentUser?.id === user.id &&
-                                  currentAccountContext?.roleQueue === Role.Admin &&
-                                  user.role === Role.Admin.toString() &&
-                                  role.value === Role.User.toString()
-
-                                if (isSelfDemotion) {
-                                  // Show confirmation dialog
-                                  setPendingRoleUpdate({
-                                    user: {
-                                      id: user.id,
-                                      name: user.name,
-                                      role: role.value,
-                                      accessmode: user.accessmode,
-                                    },
-                                    newRole: role.value,
-                                  })
-                                } else {
-                                  // Direct update
-                                  updateUser({
-                                    id: user.id,
-                                    name: user.name,
-                                    role: role.value,
-                                    accessmode: user.accessmode,
-                                  })
-                                }
-                              }}
-                            >
-                              {role.label}
-                            </DropdownMenuRadioItem>
-                          ))}
-                        </DropdownMenuRadioGroup>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      {t('accountDetail.table.actions.permissions')}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup value={`${user.accessmode}`}>
-                        {accessModes.map((accessmode) => (
-                          <DropdownMenuRadioItem
-                            key={accessmode.value}
-                            value={`${accessmode.value}`}
-                            onClick={() =>
-                              updateUser({
-                                id: user.id,
-                                name: user.name,
-                                role: user.role,
-                                accessmode: accessmode.value,
-                              })
-                            }
-                            disabled={isDefaultAccount && !isAdminView}
-                          >
-                            {accessmode.label}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  {!isDefaultAccount && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => {
-                          // Set pending user for deletion dialog
-                          setPendingDeleteUser(user)
-                        }}
-                      >
-                        {t('accountDetail.table.actions.delete')}
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <ActionsCell
+              user={row.original}
+              accountId={accountId}
+              t={t}
+              updateUser={updateUser}
+              setPendingRoleUpdate={setPendingRoleUpdate}
+              setPendingDeleteUser={setPendingDeleteUser}
+              accessModes={accessModes}
+              isDefaultAccount={isDefaultAccount}
+              isAdminView={isAdminView}
+              currentUser={currentUser as { id: number } | null}
+              currentAccountContext={
+                currentAccountContext as unknown as { roleQueue?: string } | null
+              }
+            />
           )
         },
       },
     ],
     [
       accountId,
+
+      t,
       editable,
       updateUser,
-      t,
+      setPendingRoleUpdate,
+      setPendingDeleteUser,
       accessModes,
+      isDefaultAccount,
       isAdminView,
       currentUser,
       currentAccountContext,
-      setPendingRoleUpdate,
-      setPendingDeleteUser,
-      isDefaultAccount,
     ]
   )
 
@@ -524,9 +441,387 @@ export function AccountMemberTable({
     getHeader: getHeader,
   }
 
-  const [openSheet, setOpenSheet] = useState(false)
+  return (
+    <div className="space-y-4">
+      <RoleUpdateConfirmDialog
+        user={pendingRoleUpdate?.user ?? null}
+        onConfirm={() => {
+          if (pendingRoleUpdate) {
+            const { user, newRole } = pendingRoleUpdate
+            updateUser({
+              id: user.id,
+              name: user.name,
+              role: newRole,
+              accessmode: user.accessmode,
+            })
+            setPendingRoleUpdate(null)
+          }
+        }}
+        onCancel={() => setPendingRoleUpdate(null)}
+      />
 
-  // 1. Define your form.
+      <DeleteUserConfirmDialog
+        user={pendingDeleteUser ?? null}
+        onConfirm={() => {
+          if (pendingDeleteUser) {
+            deleteUser(pendingDeleteUser)
+            setPendingDeleteUser(null)
+          }
+        }}
+        onCancel={() => setPendingDeleteUser(null)}
+      />
+
+      <DataTable
+        key={`${accountId}-${accountUsersQuery.data?.length}`}
+        columns={columns as ColumnDef<unknown>[]}
+        query={accountUsersQuery as UseQueryResult<unknown[], Error>}
+        storageKey={storageKey}
+        toolbarConfig={toolbarConfig}
+      >
+        {editable && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <UserRoundPlusIcon className="mr-2 size-4" />
+                {t('accountDetail.addUser')}
+              </Button>
+            </DialogTrigger>
+            <AddMemberDialog
+              accountId={accountId}
+              onAddMembers={(users) => {
+                addUser(users)
+              }}
+              usersOutOfProject={usersOutOfProject}
+              accessModes={accessModes}
+            />
+          </Dialog>
+        )}
+      </DataTable>
+    </div>
+  )
+}
+
+interface ActionsCellProps {
+  user: IUserInAccount
+  accountId: number
+  t: (key: string) => string
+  updateUser: (user: IUserInAccountCreate) => void
+  setPendingRoleUpdate: (update: { user: IUserInAccountCreate; newRole: string } | null) => void
+  setPendingDeleteUser: (user: IUserInAccountCreate | null) => void
+  accessModes: Array<{ label: string; value: string }>
+  isDefaultAccount: boolean
+  isAdminView: boolean
+  currentUser: { id: number } | null
+  currentAccountContext: { roleQueue?: string } | null
+}
+
+const ActionsCell: FC<ActionsCellProps> = ({
+  user,
+  accountId,
+  t,
+  updateUser,
+  setPendingRoleUpdate,
+  setPendingDeleteUser,
+  accessModes,
+  isDefaultAccount,
+  isAdminView,
+  currentUser,
+  currentAccountContext,
+}) => {
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+
+  const buildResourcesFromQuota = (q: IUserInAccount['quota']) => {
+    const keys = new Set<string>()
+    if (q?.capability) Object.keys(q.capability).forEach((k) => keys.add(k))
+    if (keys.size === 0)
+      return [
+        { name: 'cpu', capability: '' },
+        { name: 'memory', capability: '' },
+      ]
+    return Array.from(keys).map((k) => ({
+      name: k,
+      capability: q?.capability?.[k] ?? '',
+    }))
+  }
+
+  const [resources, setResources] = useState(() => buildResourcesFromQuota(user.quota))
+  useEffect(() => {
+    if (quotaDialogOpen) {
+      setResources(buildResourcesFromQuota(user.quota))
+    }
+  }, [quotaDialogOpen, user.quota])
+
+  const queryClient = useQueryClient()
+  const { mutate: updateQuota, isPending: isQuotaPending } = useMutation({
+    mutationFn: (quota: Record<string, string>) =>
+      apiUpdateUserOutOfProjectList({
+        aid: accountId,
+        uid: user.id,
+        role: user.role,
+        accessmode: user.accessmode,
+        quota,
+      }),
+    onSuccess: async () => {
+      toast.success(t('accountDetail.toast.updated'))
+      setQuotaDialogOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ['account', accountId, 'users'] })
+    },
+    onError: () => {
+      toast.error(t('accountDetail.toast.updateFailed') || '配额更新失败')
+    },
+  })
+
+  const addResource = () => setResources((r) => [...r, { name: '', capability: '' }])
+
+  const removeResource = (idx: number) => setResources((r) => r.filter((_, i) => i !== idx))
+
+  const onSaveQuota = () => {
+    const capability: Record<string, string> = {}
+    resources.forEach((res) => {
+      if (res.capability !== undefined && res.capability !== '')
+        capability[res.name] = String(res.capability)
+    })
+    updateQuota(capability)
+  }
+
+  return (
+    <div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">{t('accountDetail.table.actions.moreOptions')}</span>
+            <DotsHorizontalIcon className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel className="text-muted-foreground text-xs">
+            {t('accountDetail.table.actions.operations')}
+          </DropdownMenuLabel>
+          {!isDefaultAccount && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                {t('accountDetail.table.actions.role')}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup value={`${user.role}`}>
+                  {userRoles.map((role) => (
+                    <DropdownMenuRadioItem
+                      key={role.value}
+                      value={`${role.value}`}
+                      onClick={() => {
+                        const isSelfDemotion =
+                          !isAdminView &&
+                          currentUser?.id === user.id &&
+                          currentAccountContext?.roleQueue === Role.Admin.toString() &&
+                          user.role === Role.Admin.toString() &&
+                          role.value === Role.User.toString()
+
+                        if (isSelfDemotion) {
+                          setPendingRoleUpdate({
+                            user: {
+                              id: user.id,
+                              name: user.name,
+                              role: role.value,
+                              accessmode: user.accessmode,
+                            },
+                            newRole: role.value,
+                          })
+                        } else {
+                          updateUser({
+                            id: user.id,
+                            name: user.name,
+                            role: role.value,
+                            accessmode: user.accessmode,
+                          })
+                        }
+                      }}
+                    >
+                      {role.label}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              {t('accountDetail.table.actions.permissions')}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuRadioGroup value={`${user.accessmode}`}>
+                {accessModes.map((accessmode) => (
+                  <DropdownMenuRadioItem
+                    key={accessmode.value}
+                    value={`${accessmode.value}`}
+                    onClick={() =>
+                      updateUser({
+                        id: user.id,
+                        name: user.name,
+                        role: user.role,
+                        accessmode: accessmode.value,
+                      })
+                    }
+                    disabled={isDefaultAccount && !isAdminView}
+                  >
+                    {accessmode.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuItem onClick={() => setQuotaDialogOpen(true)}>
+            {t('accountDetail.table.actions.editQuota')}
+          </DropdownMenuItem>
+          {!isDefaultAccount && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setPendingDeleteUser(user)
+                }}
+              >
+                {t('accountDetail.table.actions.delete')}
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {quotaDialogOpen && (
+        <Dialog open={quotaDialogOpen} onOpenChange={setQuotaDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t('accountForm.quotaLabel')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {resources.map((res, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <Input
+                    value={res.name}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setResources((r) =>
+                        r.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x))
+                      )
+                    }
+                    className="w-32 font-mono"
+                    placeholder={t('accountForm.resourceName')}
+                  />
+                  <Input
+                    type="text"
+                    placeholder={t('accountForm.capabilityPlaceholder')}
+                    value={res.capability}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setResources((r) =>
+                        r.map((x, i) => (i === idx ? { ...x, capability: e.target.value } : x))
+                      )
+                    }
+                    className="font-mono"
+                  />
+                  <Button size="icon" variant="outline" onClick={() => removeResource(idx)}>
+                    <XIcon className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="secondary" onClick={addResource}>
+                <CirclePlusIcon className="size-4" />
+                {t('accountForm.addQuotaButton')}
+              </Button>
+              <p className="text-muted-foreground">{t('accountForm.quotaDescription')}</p>
+            </div>
+            <DialogFooter>
+              <Button onClick={onSaveQuota} disabled={isQuotaPending}>
+                {t('accountDetail.form.save')}
+              </Button>
+              <DialogClose asChild>
+                <Button variant="outline">{t('accountDetail.form.cancel')}</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  )
+}
+
+interface RoleUpdateConfirmDialogProps {
+  user: IUserInAccountCreate | null
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+const RoleUpdateConfirmDialog: FC<RoleUpdateConfirmDialogProps> = ({
+  user,
+  onConfirm,
+  onCancel,
+}) => {
+  const { t } = useTranslation()
+
+  return (
+    <AlertDialog open={user !== null} onOpenChange={(open) => !open && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('accountDetail.dialog.title.confirmSelfDemotion')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('accountDetail.dialog.description.confirmSelfDemotion')}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>
+            {t('accountDetail.dialog.cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            {t('accountDetail.dialog.confirm')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+interface DeleteUserConfirmDialogProps {
+  user: IUserInAccountCreate | null
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+const DeleteUserConfirmDialog: FC<DeleteUserConfirmDialogProps> = ({
+  user,
+  onConfirm,
+  onCancel,
+}) => {
+  const { t } = useTranslation()
+
+  return (
+    <AlertDialog open={user !== null} onOpenChange={(open) => !open && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('accountDetail.dialog.title.deleteUser')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('accountDetail.dialog.description.deleteUser', { name: user?.name })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>
+            {t('accountDetail.dialog.cancel')}
+          </AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+            {t('accountDetail.dialog.delete')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+interface AddMemberDialogProps {
+  accountId: number
+  onAddMembers: (users: IUserInAccountCreate[]) => void
+  usersOutOfProject: IUserInAccount[]
+  accessModes: Array<{ label: string; value: string }>
+}
+
+function AddMemberDialog({ onAddMembers, usersOutOfProject }: AddMemberDialogProps) {
+  const { t } = useTranslation()
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -536,9 +831,7 @@ export function AccountMemberTable({
     },
   })
 
-  // 2. Define a submit handler.
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Handle multiple user additions
     const usersToAdd = values.userIds.map((userId) => {
       const user = usersOutOfProject.find((u) => u.id.toString() === userId)
       return {
@@ -550,11 +843,10 @@ export function AccountMemberTable({
       }
     })
 
-    addUser(usersToAdd)
-    setOpenSheet(false)
+    onAddMembers(usersToAdd)
+    form.reset()
   }
 
-  // Convert user list to SelectBox format
   const userOptions = useMemo(
     () =>
       usersOutOfProject.map((user) => ({
@@ -566,236 +858,98 @@ export function AccountMemberTable({
   )
 
   return (
-    <>
-      {/* Confirmation dialog for self-demotion */}
-      <AlertDialog
-        open={pendingRoleUpdate !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingRoleUpdate(null)
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t('accountDetail.dialog.title.confirmSelfDemotion')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('accountDetail.dialog.description.confirmSelfDemotion')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingRoleUpdate(null)}>
-              {t('accountDetail.dialog.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (pendingRoleUpdate) {
-                  updateUser(pendingRoleUpdate.user)
-                  setPendingRoleUpdate(null)
-                }
-              }}
-            >
-              {t('accountDetail.dialog.confirm')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Unified confirmation dialog for all deletions */}
-      <AlertDialog
-        open={pendingDeleteUser !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPendingDeleteUser(null)
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingDeleteUser
-                ? (() => {
-                    const isSelfDeletion =
-                      !isAdminView &&
-                      currentUser?.id === pendingDeleteUser.id &&
-                      currentAccountContext?.queue &&
-                      currentAccountContext.queue !== 'default'
-                    return isSelfDeletion
-                      ? t('accountDetail.dialog.title.confirmSelfDeletion')
-                      : t('accountDetail.dialog.title.deleteUser')
-                  })()
-                : t('accountDetail.dialog.title.deleteUser')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingDeleteUser
-                ? (() => {
-                    const isSelfDeletion =
-                      !isAdminView &&
-                      currentUser?.id === pendingDeleteUser.id &&
-                      currentAccountContext?.queue &&
-                      currentAccountContext.queue !== 'default'
-                    if (!isAdminView && isSelfDeletion) {
-                      // User view deleting themselves: special message
-                      return t('accountDetail.dialog.description.confirmSelfDeletion')
-                    }
-                    // Admin view or user view deleting others: use same message
-                    return t('accountDetail.dialog.description.deleteUser', {
-                      name: pendingDeleteUser?.name,
-                    })
-                  })()
-                : ''}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPendingDeleteUser(null)}>
-              {t('accountDetail.dialog.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (pendingDeleteUser) {
-                  deleteUser(pendingDeleteUser)
-                  setPendingDeleteUser(null)
-                }
-              }}
-            >
-              {t('accountDetail.dialog.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <DataTable
-        storageKey={storageKey}
-        query={accountUsersQuery}
-        columns={columns}
-        toolbarConfig={toolbarConfig}
-      >
-        {editable && !isDefaultAccount && (
-          <Dialog open={openSheet} onOpenChange={setOpenSheet}>
-            <DialogTrigger asChild>
-              <Button className="h-8">
-                <UserRoundPlusIcon className="size-4" />
-                {t('accountDetail.addUser')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('accountDetail.addUser')}</DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="userIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {t('accountDetail.form.user')}
-                          <FormLabelMust />
-                        </FormLabel>
-                        <FormControl>
-                          <SelectBox
-                            options={userOptions}
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder={t('accountDetail.form.selectUser')}
-                            inputPlaceholder={t('accountDetail.form.searchUser')}
-                            emptyPlaceholder={t('accountDetail.form.noUsersFound')}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {t('accountDetail.form.selectUsersToAdd')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>{t('accountDetail.addUser')}</DialogTitle>
+      </DialogHeader>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="userIds"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {t('accountDetail.form.user')}
+                  <FormLabelMust />
+                </FormLabel>
+                <FormControl>
+                  <SelectBox
+                    options={userOptions}
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={t('accountDetail.form.selectUser')}
+                    inputPlaceholder={t('accountDetail.form.searchUser')}
+                    emptyPlaceholder={t('accountDetail.form.noUsersFound')}
                   />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {t('accountDetail.form.role')}
-                          <FormLabelMust />
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full" id="role">
-                              <SelectValue placeholder="Select users" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value="2">
-                                {t('accountDetail.form.userRole.normal')}
-                              </SelectItem>
-                              <SelectItem value="3">
-                                {t('accountDetail.form.userRole.admin')}
-                              </SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>{t('accountDetail.form.roleDescription')}</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="accessmode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {t('accountDetail.form.access')}
-                          <FormLabelMust />
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="w-full" id="accessmode">
-                              <SelectValue placeholder="Select users" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectItem value="2">
-                                {t('accountDetail.form.access.readOnly')}
-                              </SelectItem>
-                              <SelectItem value="3">
-                                {t('accountDetail.form.access.readWrite')}
-                              </SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          {t('accountDetail.form.accessDescription')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">{t('accountDetail.form.cancel')}</Button>
-                    </DialogClose>
-                    <Button type="submit">{t('accountDetail.form.add')}</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        )}
-      </DataTable>
-    </>
+                </FormControl>
+                <FormDescription>{t('accountDetail.form.selectUsersToAdd')}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {t('accountDetail.form.role')}
+                  <FormLabelMust />
+                </FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value.toString()}>
+                  <FormControl>
+                    <SelectTrigger className="w-full" id="role">
+                      <SelectValue placeholder="Select users" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="2">{t('accountDetail.form.userRole.normal')}</SelectItem>
+                      <SelectItem value="3">{t('accountDetail.form.userRole.admin')}</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FormDescription>{t('accountDetail.form.roleDescription')}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="accessmode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {t('accountDetail.form.access')}
+                  <FormLabelMust />
+                </FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value.toString()}>
+                  <FormControl>
+                    <SelectTrigger className="w-full" id="accessmode">
+                      <SelectValue placeholder="Select users" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value="2">{t('accountDetail.form.access.readOnly')}</SelectItem>
+                      <SelectItem value="3">{t('accountDetail.form.access.readWrite')}</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FormDescription>{t('accountDetail.form.accessDescription')}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">{t('accountDetail.form.cancel')}</Button>
+            </DialogClose>
+            <Button type="submit">{t('accountDetail.form.add')}</Button>
+          </DialogFooter>
+        </form>
+      </Form>
+    </DialogContent>
   )
 }

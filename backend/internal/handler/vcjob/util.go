@@ -486,9 +486,10 @@ func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, baseUR
 	podAnnotations map[string]string,
 ) {
 	labels = map[string]string{
-		crclient.LabelKeyTaskType: string(jobType),
-		crclient.LabelKeyTaskUser: token.Username,
-		crclient.LabelKeyBaseURL:  baseURL,
+		crclient.LabelKeyTaskType:    string(jobType),
+		crclient.LabelKeyTaskUser:    token.Username,
+		crclient.LabelKeyBaseURL:     baseURL,
+		crclient.LalbeKeyTaskAccount: token.AccountName,
 	}
 	jobAnnotations = map[string]string{
 		AnnotationKeyTaskName:     taskName,

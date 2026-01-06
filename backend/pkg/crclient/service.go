@@ -30,9 +30,10 @@ const (
 )
 
 const (
-	LabelKeyBaseURL  = "crater.raids.io/base-url"
-	LabelKeyTaskType = "crater.raids.io/task-type"
-	LabelKeyTaskUser = "crater.raids.io/task-user"
+	LabelKeyBaseURL     = "crater.raids.io/base-url"
+	LabelKeyTaskType    = "crater.raids.io/task-type"
+	LabelKeyTaskUser    = "crater.raids.io/task-user"
+	LalbeKeyTaskAccount = "crater.raids.io/task-account"
 
 	AnnotationKeyPortName = "crater.raids.io/port-name" // Annotation key for port name
 
