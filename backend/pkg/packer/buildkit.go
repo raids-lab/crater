@@ -18,12 +18,12 @@ import (
 
 func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq) error {
 	// Generate volumes and volumeMounts from request
-	volumes, volumeMounts, err := b.generateVolumesAndMounts(c, data)
+	volumes, volumeMounts, buildContext, err := b.generateVolumesAndMounts(c, data)
 	if err != nil {
 		return fmt.Errorf("failed to generate volumes and mounts: %w", err)
 	}
 
-	buildkitContainer := b.generateBuildKitContainer(data, volumeMounts)
+	buildkitContainer := b.generateBuildKitContainer(data, volumeMounts, buildContext)
 	var configMap *corev1.ConfigMap
 	if configMap, err = b.createDockerfileConfigMap(c, data); err != nil {
 		return err
@@ -42,7 +42,12 @@ func (b *imagePacker) CreateFromDockerfile(c context.Context, data *BuildKitReq)
 
 // generateVolumesAndMounts generates both volumes and volumeMounts based on the request
 // It reuses the resolveVolumeMount logic from vcjob package
-func (b *imagePacker) generateVolumesAndMounts(c context.Context, data *BuildKitReq) ([]corev1.Volume, []corev1.VolumeMount, error) {
+func (b *imagePacker) generateVolumesAndMounts(c context.Context, data *BuildKitReq) (
+	[]corev1.Volume,
+	[]corev1.VolumeMount,
+	map[string]string,
+	error,
+) {
 	// Initialize default volumes
 	volumes := []corev1.Volume{
 		{
@@ -91,16 +96,16 @@ func (b *imagePacker) generateVolumesAndMounts(c context.Context, data *BuildKit
 			ReadOnly:  true,
 		},
 	}
-
+	buildContext := make(map[string]string)
 	// Process user-defined volume mounts
 	if len(data.VolumeMounts) > 0 {
 		pvcMap := make(map[string]bool) // Avoid duplicate PVC creation
 
-		for _, vm := range data.VolumeMounts {
+		for i, vm := range data.VolumeMounts {
 			// Reuse resolveVolumeMount logic from vcjob
 			volumeMount, err := util.ResolveVolumeMount(c, data.Token, vm, util.ImageCreate)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to resolve volume mount %s: %w", vm.MountPath, err)
+				return nil, nil, nil, fmt.Errorf("failed to resolve volume mount %s: %w", vm.MountPath, err)
 			}
 
 			// Add PVC volume if not already created
@@ -111,13 +116,18 @@ func (b *imagePacker) generateVolumesAndMounts(c context.Context, data *BuildKit
 
 			// Add volume mount
 			volumeMounts = append(volumeMounts, volumeMount)
+			buildContext[fmt.Sprintf("project%d", i)] = volumeMount.MountPath
 		}
 	}
 
-	return volumes, volumeMounts, nil
+	return volumes, volumeMounts, buildContext, nil
 }
 
-func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq, volumeMounts []corev1.VolumeMount) []corev1.Container {
+func (b *imagePacker) generateBuildKitContainer(
+	data *BuildKitReq,
+	volumeMounts []corev1.VolumeMount,
+	buildContext map[string]string,
+) []corev1.Container {
 	output := fmt.Sprintf("type=image,name=%s,push=true", data.ImageLink)
 	archs := strings.Join(data.Archs, ",")
 
@@ -141,8 +151,14 @@ func (b *imagePacker) generateBuildKitContainer(data *BuildKitReq, volumeMounts 
 		--node amd-node \
 		--driver remote tcp://%s:1234 && \
 		%s	docker buildx use multi-platform-builder && \
-		docker buildx build --progress plain --platform %s --file /workspace/Dockerfile --output %s /workspace
+		docker buildx build --progress plain --platform %s \
+		--file /workspace/Dockerfile --output %s \
+		--build-context project=/data/home/user/ \
 	`, buildkitdAmdNameSpace, appendArmCmd, archs, output)
+	for key, value := range buildContext {
+		cmd += fmt.Sprintf(" --build-context %s=%s", key, value)
+	}
+	cmd += " /workspace"
 
 	setupCommands := []string{
 		"/bin/sh",
