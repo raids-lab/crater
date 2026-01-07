@@ -624,6 +624,27 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_util.VolumeMount:
+    properties:
+      datasetID:
+        type: integer
+      mountPath:
+        type: string
+      subPath:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeType'
+    type: object
+  github_com_raids-lab_crater_internal_util.VolumeType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - _
+    - FileType
+    - DataType
   github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail:
     properties:
       address:
@@ -1463,6 +1484,10 @@ definitions:
         type: array
       template:
         type: string
+      volumeMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
+        type: array
     type: object
   internal_handler_image.CreateByEnvdRequest:
     properties:
@@ -1671,7 +1696,7 @@ definitions:
         type: string
       volumeMounts:
         items:
-          $ref: '#/definitions/internal_handler_vcjob.VolumeMount'
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
         type: array
     required:
     - image
@@ -1725,27 +1750,6 @@ definitions:
       token:
         type: string
     type: object
-  internal_handler_vcjob.VolumeMount:
-    properties:
-      datasetID:
-        type: integer
-      mountPath:
-        type: string
-      subPath:
-        type: string
-      type:
-        $ref: '#/definitions/internal_handler_vcjob.VolumeType'
-    type: object
-  internal_handler_vcjob.VolumeType:
-    enum:
-    - 0
-    - 1
-    - 2
-    type: integer
-    x-enum-varnames:
-    - _
-    - FileType
-    - DataType
   resource.Quantity:
     properties:
       Format:

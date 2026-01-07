@@ -143,13 +143,6 @@ type (
 )
 
 type (
-	VolumeMount struct {
-		Type      VolumeType `json:"type"`
-		DatasetID uint       `json:"datasetID"`
-		SubPath   string     `json:"subPath"`
-		MountPath string     `json:"mountPath"`
-	}
-
 	DatasetMount struct {
 		DatasetID uint   `json:"datasetID"`
 		MountPath string `json:"mountPath"`
@@ -163,7 +156,7 @@ type (
 
 	CreateJobCommon struct {
 		Name          string                       `json:"name" binding:"required"`
-		VolumeMounts  []VolumeMount                `json:"volumeMounts,omitempty"`
+		VolumeMounts  []util.VolumeMount           `json:"volumeMounts,omitempty"`
 		DatasetMounts []DatasetMount               `json:"datasetMounts,omitempty"`
 		Envs          []v1.EnvVar                  `json:"envs,omitempty"`
 		Selectors     []v1.NodeSelectorRequirement `json:"selectors,omitempty"`

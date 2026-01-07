@@ -76,17 +76,18 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 		return
 	}
 	buildData := &DockerfileBuildData{
-		Description: req.Description,
-		Dockerfile:  req.Dockerfile,
-		ImageName:   req.ImageName,
-		ImageTag:    req.ImageTag,
-		BaseImage:   baseImage,
-		UserName:    token.Username,
-		UserID:      token.UserID,
-		Tags:        req.Tags,
-		Template:    req.Template,
-		BuildSource: model.Dockerfile,
-		Archs:       req.Archs,
+		Description:  req.Description,
+		Dockerfile:   req.Dockerfile,
+		ImageName:    req.ImageName,
+		ImageTag:     req.ImageTag,
+		BaseImage:    baseImage,
+		UserName:     token.Username,
+		UserID:       token.UserID,
+		Tags:         req.Tags,
+		Template:     req.Template,
+		BuildSource:  model.Dockerfile,
+		Archs:        req.Archs,
+		VolumeMounts: req.VolumeMounts,
 	}
 	mgr.buildFromDockerfile(c, buildData)
 }
@@ -230,6 +231,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 		resputil.Error(c, "create harbor project failed", resputil.NotSpecified)
 		return
 	}
+	token := util.GetToken(c)
 	imagepackName := fmt.Sprintf("%s-%s", data.UserName, uuid.New().String()[:5])
 	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(data.BaseImage, data.UserName, data.ImageName, data.ImageTag)
 	if err != nil {
@@ -250,6 +252,8 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 		Template:     data.Template,
 		BuildSource:  data.BuildSource,
 		Archs:        data.Archs,
+		VolumeMounts: data.VolumeMounts,
+		Token:        token,
 	}
 
 	if err := mgr.imagePacker.CreateFromDockerfile(c, buildkitData); err != nil {

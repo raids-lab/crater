@@ -73,7 +73,7 @@ func (r *BuildKitReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 var (
-	ImageSpace = config.GetConfig().Namespaces.Image
+	ImageSpace = config.GetConfig().Namespaces.Job
 )
 
 //nolint:lll // kubebuilder rbac declares
@@ -113,23 +113,29 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 	}
 
-	// 2. fetch kaniko record from database
+	// 2. Check if this is an image-create job, ignore other jobs
+	if job.Labels == nil || job.Labels["app"] != "image-create" {
+		logger.V(1).Info("Ignoring job without app=image-create label", "job", job.Name)
+		return ctrl.Result{}, nil
+	}
+
+	// 3. fetch kaniko record from database
 	kaniko, err := k.WithContext(ctx).Preload(k.User).Where(k.ImagePackName.Eq(job.Name)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// 3. if kaniko record not found, then create a new one.
+			// 4. if kaniko record not found, then create a new one.
 			return r.handleRecordNotFound(ctx, &job)
 		}
-		// 4. if fetch failed, it may be caused by database connection error.
+		// 5. if fetch failed, it may be caused by database connection error.
 		logger.Error(err, "unable to fetch kaniko record in database")
 		return ctrl.Result{Requeue: true}, err
 	}
 
-	// 5. get the job status from k8s job
+	// 6. get the job status from k8s job
 	oldStatus := kaniko.Status
 	jobStatus := r.getJobBuildStatus(ctx, &job)
 
-	// 6. if buildkit job finished
+	// 7. if buildkit job finished
 	if jobStatus == model.BuildJobFinished && kaniko.Status != model.BuildJobFinished {
 		var size int64
 		size, err = r.imageRegistry.GetImageSize(ctx, kaniko.ImageLink)
@@ -137,12 +143,12 @@ func (r *BuildKitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			logger.Error(err, "get image size failed")
 			return ctrl.Result{Requeue: true}, err
 		}
-		// 7. update kaniko record size
+		// 8. update kaniko record size
 		if err = r.updateKanikoSize(ctx, kaniko, size); err != nil {
 			logger.Error(err, "kaniko record size updated failed")
 			return ctrl.Result{Requeue: true}, err
 		}
-		// 8. create image record
+		// 9. create image record
 		if err = r.createImageRecord(ctx, kaniko); err != nil {
 			logger.Error(err, "create image record failed")
 			return ctrl.Result{Requeue: true}, err

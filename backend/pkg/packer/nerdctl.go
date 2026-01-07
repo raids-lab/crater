@@ -21,7 +21,10 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 
 	jobMeta := metav1.ObjectMeta{
 		Name:      jobName,
-		Namespace: config.GetConfig().Namespaces.Image,
+		Namespace: config.GetConfig().Namespaces.Job,
+		Labels: map[string]string{
+			"app": "image-create",
+		},
 		Annotations: map[string]string{
 			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
 			AnnotationKeyImageLink:   data.ImageLink,
@@ -37,7 +40,7 @@ func (b *imagePacker) CreateFromSnapshot(c context.Context, data *SnapshotReq) e
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      jobName,
-				Namespace: config.GetConfig().Namespaces.Image,
+				Namespace: config.GetConfig().Namespaces.Job,
 			},
 			Spec: corev1.PodSpec{
 				Containers:    []corev1.Container{container},
