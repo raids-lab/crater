@@ -34,6 +34,12 @@ func TestCronJob(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(jobFunc, ShouldNotBeNil)
 
+			jobName = cleaner.CLEAN_WAITING_CUSTOM_JOB
+			jobConfig = datatypes.JSON(`{"waitMinitues": 5}`)
+			jobFunc, err = manager.newCronJobFunc(jobName, model.CronJobTypeCleanerFunc, jobConfig)
+			So(err, ShouldBeNil)
+			So(jobFunc, ShouldNotBeNil)
+
 			jobName = "unknown"
 			jobConfig = datatypes.JSON(`{"unknown": "unknown"}`)
 			jobFunc, err = manager.newCronJobFunc(jobName, model.CronJobTypeCleanerFunc, jobConfig)

@@ -48,9 +48,19 @@ func (mgr *OperationsMgr) HandleLongTimeRunningJobs(c *gin.Context) {
 func (mgr *OperationsMgr) HandleWaitingJupyterJobs(c *gin.Context) {
 	mgr.handleCleanerRequest(
 		c,
-		&cleaner.CancelWaitingJupyterJobsRequest{},
+		&cleaner.CancelWaitingJobsRequest{},
 		func(ctx *gin.Context, clients *cleaner.Clients, req any) (any, error) {
-			return cleaner.CleanWaitingJupyterJobs(ctx, clients, req.(*cleaner.CancelWaitingJupyterJobsRequest))
+			return cleaner.CleanWaitingJobs(ctx, clients, req.(*cleaner.CancelWaitingJobsRequest))
+		},
+	)
+}
+
+func (mgr *OperationsMgr) HandleWaitingCustomJobs(c *gin.Context) {
+	mgr.handleCleanerRequest(
+		c,
+		&cleaner.CancelWaitingJobsRequest{},
+		func(ctx *gin.Context, clients *cleaner.Clients, req any) (any, error) {
+			return cleaner.CleanWaitingJobs(ctx, clients, req.(*cleaner.CancelWaitingJobsRequest))
 		},
 	)
 }

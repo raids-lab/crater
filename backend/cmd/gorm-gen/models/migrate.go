@@ -754,6 +754,41 @@ func main() {
 				return tx.Migrator().DropTable(&model.GpuAnalysis{}, &model.SystemConfig{})
 			},
 		},
+		{
+			ID: "202512261300",
+			Migrate: func(tx *gorm.DB) error {
+				config := &model.CronJobConfig{
+					Name:    "clean-waiting-custom",
+					Type:    model.CronJobTypeCleanerFunc,
+					Spec:    "*/5 * * * *",
+					Status:  model.CronJobConfigStatusSuspended,
+					Config:  datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["custom"]}`),
+					EntryID: -1,
+				}
+				if err := tx.Where("name = ?", config.Name).FirstOrCreate(&config).Error; err != nil {
+					return err
+				}
+
+				// 2. Update clean-waiting-jupyter
+				if err := tx.Model(&model.CronJobConfig{}).
+					Where("name = ?", "clean-waiting-jupyter").
+					Update("config", datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["jupyter"]}`)).Error; err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Unscoped().Where("name = ?", "clean-waiting-custom").Delete(&model.CronJobConfig{}).Error; err != nil {
+					return err
+				}
+				if err := tx.Model(&model.CronJobConfig{}).
+					Where("name = ?", "clean-waiting-jupyter").
+					Update("config", datatypes.JSON(`{"waitMinitues": 5}`)).Error; err != nil {
+					return err
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -882,7 +917,15 @@ func main() {
 				Type:    model.CronJobTypeCleanerFunc,
 				Spec:    "*/5 * * * *",
 				Status:  model.CronJobConfigStatusSuspended,
-				Config:  datatypes.JSON(`{"waitMinitues": 5}`),
+				Config:  datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["jupyter"]}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "clean-waiting-custom",
+				Type:    model.CronJobTypeCleanerFunc,
+				Spec:    "*/5 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["custom"]}`),
 				EntryID: -1,
 			},
 		}
