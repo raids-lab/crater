@@ -20,7 +20,7 @@ func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {
 	if configMap, err = b.createEnvdConfigMap(c, data); err != nil {
 		return err
 	}
-	volumes := b.generateEnvdVolumes(data.JobName)
+	volumes := b.generateVolumes(data.JobName)
 	var job *batchv1.Job
 	if job, err = b.createEnvdJob(c, data, envdContainer, volumes); err != nil {
 		return err
@@ -31,42 +31,6 @@ func (b *imagePacker) CreateFromEnvd(c context.Context, data *EnvdReq) error {
 	}
 
 	return nil
-}
-
-// generateEnvdVolumes generates volumes for envd build (simplified version without user mounts)
-func (b *imagePacker) generateEnvdVolumes(jobName string) []corev1.Volume {
-	return []corev1.Volume{
-		{
-			Name: "workspace",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: "harborcredits",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: harborCreditSecretName,
-					Items: []corev1.KeyToPath{
-						{
-							Key:  ".dockerconfigjson",
-							Path: "config.json",
-						},
-					},
-				},
-			},
-		},
-		{
-			Name: "configmap-volume",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: jobName,
-					},
-				},
-			},
-		},
-	}
 }
 
 func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
@@ -161,9 +125,6 @@ func (b *imagePacker) createEnvdJob(
 	jobMeta := metav1.ObjectMeta{
 		Name:      data.JobName,
 		Namespace: data.Namespace,
-		Labels: map[string]string{
-			"app": "image-create",
-		},
 		Annotations: map[string]string{
 			AnnotationKeyUserID:      fmt.Sprint(data.UserID),
 			AnnotationKeyImageLink:   data.ImageLink,
@@ -189,23 +150,6 @@ func (b *imagePacker) createEnvdJob(
 				EnableServiceLinks: ptr.To(false),
 				NodeSelector: map[string]string{
 					"kubernetes.io/arch": "amd64",
-				},
-				Affinity: &corev1.Affinity{
-					NodeAffinity: &corev1.NodeAffinity{
-						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
-							{
-								Weight: 40,
-								Preference: corev1.NodeSelectorTerm{
-									MatchExpressions: []corev1.NodeSelectorRequirement{
-										{
-											Key:      "nvidia.com/gpu.present",
-											Operator: corev1.NodeSelectorOpDoesNotExist,
-										},
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		},

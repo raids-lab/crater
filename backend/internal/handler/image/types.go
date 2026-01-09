@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/internal/util"
 )
 
 type (
@@ -21,14 +20,13 @@ type (
 	}
 
 	CreateByDockerfileRequest struct {
-		Description  string             `json:"description"`
-		Dockerfile   string             `json:"dockerfile"`
-		ImageName    string             `json:"name"`
-		ImageTag     string             `json:"tag"`
-		Tags         []string           `json:"tags"`
-		Template     string             `json:"template"`
-		Archs        []string           `json:"archs"`
-		VolumeMounts []util.VolumeMount `json:"volumeMounts,omitempty"`
+		Description string   `json:"description"`
+		Dockerfile  string   `json:"dockerfile"`
+		ImageName   string   `json:"name"`
+		ImageTag    string   `json:"tag"`
+		Tags        []string `json:"tags"`
+		Template    string   `json:"template"`
+		Archs       []string `json:"archs"`
 	}
 
 	CreateByEnvdRequest struct {
@@ -269,7 +267,6 @@ type (
 		Template     string
 		BuildSource  model.BuildSource
 		Archs        []string
-		VolumeMounts []util.VolumeMount
 	}
 
 	EnvdBuildData struct {
