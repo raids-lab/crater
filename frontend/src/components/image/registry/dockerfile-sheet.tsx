@@ -108,33 +108,6 @@ const dockerfileFormSchema = z.object({
       })
     )
     .min(1, '至少选择一个架构'),
-  volumeMounts: z
-    .array(
-      z.object({
-        type: z.number().int(),
-        subPath: z.string().min(1, {
-          message: '挂载源不能为空',
-        }),
-        mountPath: z
-          .string()
-          .min(1, {
-            message: '挂载点路径不能为空',
-          })
-          .refine((value) => value.startsWith('/'), {
-            message: '路径需以单个斜杠 `/` 开头',
-          })
-          .refine((value) => !value.includes('..'), {
-            message: '禁止使用相对路径 `..`',
-          })
-          .refine((value) => !value.includes('//'), {
-            message: '避免使用多个连续的斜杠 `//`',
-          })
-          .refine((value) => value !== '/', {
-            message: '禁止挂载到根目录 `/`',
-          }),
-      })
-    )
-    .optional(),
 })
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>
@@ -162,7 +135,6 @@ function DockerfileSheetContent({
       imageTag: '',
       tags: [],
       imageArchs: [{ value: 'linux/amd64' }],
-      volumeMounts: [],
     },
   })
 
@@ -177,11 +149,6 @@ function DockerfileSheetContent({
         template: exportToJsonString(MetadataFormDockerfile, values),
         buildSource: ImagePackSource.Dockerfile,
         archs: values.imageArchs?.map((item) => item.value) ?? [],
-        volumeMounts: values.volumeMounts?.map((item) => ({
-          type: item.type,
-          subPath: item.subPath,
-          mountPath: item.mountPath,
-        })),
       }),
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
@@ -293,7 +260,6 @@ function DockerfileSheetContent({
             imageNamePath="imageName"
             imageTagPath="imageTag"
             imageBuildArchPath="imageArchs"
-            volumeMountsPath="volumeMounts"
           />
         </SandwichLayout>
       </form>
