@@ -16,29 +16,13 @@
 // i18n-processed-v1.1.0
 // Modified code
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
-import {
-  CalendarIcon,
-  EllipsisVerticalIcon,
-  InfoIcon,
-  LockIcon,
-  SquareIcon,
-  Trash2Icon,
-  UnlockIcon,
-} from 'lucide-react'
+import { t } from 'i18next'
+import { CalendarIcon, LockIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -52,22 +36,12 @@ import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
+import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui-custom/alert-dialog'
 
 import { IJobInfo, JobType, apiAdminGetJobList, apiJobDeleteForAdmin } from '@/services/api/vcjob'
 import { JobPhase } from '@/services/api/vcjob'
@@ -75,13 +49,6 @@ import { JobPhase } from '@/services/api/vcjob'
 import { logger } from '@/utils/loglevel'
 
 import { DurationDialog } from '../../../routes/admin/jobs/-components/duration-dialog'
-
-// Link Options for admin job navigation
-const adminJobDetailLinkOptions = linkOptions({
-  to: '/admin/jobs/$name',
-  params: { name: '' },
-  search: { tab: '' },
-})
 
 export type StatusValue =
   | 'Queueing'
@@ -96,25 +63,25 @@ export type StatusValue =
 export const getHeader = (key: string): string => {
   switch (key) {
     case 'jobName':
-      return '名称'
+      return t('jobs.headers.jobName')
     case 'jobType':
-      return '类型'
+      return t('jobs.headers.jobType')
     case 'queue':
-      return '账户'
+      return t('jobs.headers.queue')
     case 'owner':
-      return '用户'
+      return t('jobs.headers.owner')
     case 'status':
-      return '状态'
+      return t('jobs.headers.status')
     case 'createdAt':
-      return '创建于'
+      return t('jobs.headers.createdAt')
     case 'startedAt':
-      return '开始于'
+      return t('jobs.headers.startedAt')
     case 'completedAt':
-      return '完成于'
+      return t('jobs.headers.completedAt')
     case 'nodes':
-      return '节点'
+      return t('jobs.headers.nodes')
     case 'resources':
-      return '资源'
+      return t('jobs.headers.resources')
     default:
       return key
   }
@@ -135,12 +102,12 @@ const AdminJobOverview = () => {
     filterOptions: [
       {
         key: 'jobType',
-        title: t('adminJobOverview.filters.jobType'),
+        title: t('jobs.filters.jobType'),
         option: jobTypes,
       },
       {
         key: 'status',
-        title: t('adminJobOverview.filters.status'),
+        title: t('jobs.filters.status'),
         option: jobPhases,
       },
     ],
@@ -171,43 +138,33 @@ const AdminJobOverview = () => {
     mutationFn: apiJobDeleteForAdmin,
     onSuccess: async () => {
       await refetchTaskList()
-      toast.success(t('adminJobOverview.successMessage'))
+      toast.success(t('jobs.successMessage'))
     },
   })
-
-  const handleClick = useCallback((jobInfo: IJobInfo) => {
-    setSelectedJobs([jobInfo])
-    setIsLockDialogOpen(true)
-  }, [])
-
-  const handleClickToExtend = useCallback((jobInfo: IJobInfo) => {
-    setSelectedJobs([jobInfo])
-    setIsExtendDialogOpen(true)
-  }, [])
 
   const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
     const getHeader = (key: string): string => {
       switch (key) {
         case 'jobName':
-          return t('adminJobOverview.headers.jobName')
+          return t('jobs.headers.jobName')
         case 'jobType':
-          return t('adminJobOverview.headers.jobType')
+          return t('jobs.headers.jobType')
         case 'queue':
-          return t('adminJobOverview.headers.queue')
+          return t('jobs.headers.queue')
         case 'owner':
-          return t('adminJobOverview.headers.owner')
+          return t('jobs.headers.owner')
         case 'status':
-          return t('adminJobOverview.headers.status')
+          return t('jobs.headers.status')
         case 'createdAt':
-          return t('adminJobOverview.headers.createdAt')
+          return t('jobs.headers.createdAt')
         case 'startedAt':
-          return t('adminJobOverview.headers.startedAt')
+          return t('jobs.headers.startedAt')
         case 'completedAt':
-          return t('adminJobOverview.headers.completedAt')
+          return t('jobs.headers.completedAt')
         case 'nodes':
-          return t('adminJobOverview.headers.nodes')
+          return t('jobs.headers.nodes')
         case 'resources':
-          return t('adminJobOverview.headers.resources')
+          return t('jobs.headers.resources')
         default:
           return key
       }
@@ -308,101 +265,18 @@ const AdminJobOverview = () => {
         enableHiding: false,
         cell: ({ row }) => {
           const jobInfo = row.original
-          const shouldStop = jobInfo.status !== 'Deleted' && jobInfo.status !== 'Freed'
           return (
-            <div className="flex flex-row space-x-1">
-              <AlertDialog>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">
-                        {t('adminJobOverview.actions.dropdown.ariaLabel')}
-                      </span>
-                      <EllipsisVerticalIcon className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel className="text-muted-foreground text-xs">
-                      {t('adminJobOverview.actions.dropdown.title')}
-                    </DropdownMenuLabel>
-                    <Link {...adminJobDetailLinkOptions} params={{ name: jobInfo.jobName }}>
-                      <DropdownMenuItem>
-                        <InfoIcon className="text-highlight-emerald" />
-                        {t('adminJobOverview.actions.dropdown.details')}
-                      </DropdownMenuItem>
-                    </Link>
-                    <DropdownMenuItem
-                      onClick={() => handleClick(jobInfo)}
-                      title={t('adminJobOverview.actions.dropdown.lockTitle')}
-                    >
-                      {row.original.locked ? (
-                        <UnlockIcon className="text-highlight-purple" />
-                      ) : (
-                        <LockIcon className="text-highlight-purple" />
-                      )}
-                      {row.original.locked
-                        ? t('adminJobOverview.actions.dropdown.unlock')
-                        : t('adminJobOverview.actions.dropdown.lock')}
-                    </DropdownMenuItem>
-                    {row.original.locked && (
-                      <DropdownMenuItem
-                        onClick={() => handleClickToExtend(jobInfo)}
-                        title={t('adminJobOverview.actions.dropdown.lockTitle')}
-                      >
-                        <LockIcon className="text-highlight-purple" />
-                        {t('adminJobOverview.actions.dropdown.extend')}
-                      </DropdownMenuItem>
-                    )}
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem className="group">
-                        {shouldStop ? (
-                          <SquareIcon className="text-highlight-orange" />
-                        ) : (
-                          <Trash2Icon className="text-destructive" />
-                        )}
-                        {shouldStop
-                          ? t('adminJobOverview.actions.dropdown.stop')
-                          : t('adminJobOverview.actions.dropdown.delete')}
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {shouldStop
-                        ? t('adminJobOverview.dialog.stop.title')
-                        : t('adminJobOverview.dialog.delete.title')}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {shouldStop
-                        ? t('adminJobOverview.dialog.stop.description', {
-                            name: jobInfo?.name,
-                          })
-                        : t('adminJobOverview.dialog.delete.description', {
-                            name: jobInfo?.name,
-                          })}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t('adminJobOverview.dialog.cancel')}</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      onClick={() => deleteTask(jobInfo.jobName)}
-                    >
-                      {shouldStop
-                        ? t('adminJobOverview.dialog.stop.action')
-                        : t('adminJobOverview.dialog.delete.action')}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+            <JobActionsMenu
+              jobInfo={jobInfo}
+              onDelete={deleteTask}
+              isAdminView={true}
+              onLockSuccess={refetchTaskList}
+            />
           )
         },
       },
     ]
-  }, [deleteTask, handleClick, handleClickToExtend, t])
+  }, [deleteTask, refetchTaskList, t])
 
   return (
     <>
@@ -418,12 +292,12 @@ const AdminJobOverview = () => {
         multipleHandlers={[
           {
             title: (rows) =>
-              t('adminJobOverview.handlers.stopOrDeleteTitle', {
+              t('jobs.handlers.stopOrDeleteTitle', {
                 count: rows.length,
               }),
             description: (rows) => (
               <>
-                {t('adminJobOverview.handlers.stopOrDeleteDescription', {
+                {t('jobs.handlers.stopOrDeleteDescription', {
                   jobs: rows.map((row) => row.original.name).join(', '),
                 })}
               </>
@@ -472,15 +346,15 @@ const AdminJobOverview = () => {
             {[7, 14, 30, 90, -1].map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
                 {pageSize === -1
-                  ? t('adminJobOverview.select.all')
-                  : t('adminJobOverview.select.recentDays', { days: pageSize })}
+                  ? t('jobs.select.all')
+                  : t('jobs.select.recentDays', { days: pageSize })}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </DataTable>
 
-      {/* Duration Dialog for locking/unlocking jobs */}
+      {/* Duration Dialog for locking/unlocking jobs (batch operation) */}
       <DurationDialog
         jobs={selectedJobs}
         open={isLockDialogOpen}
@@ -488,7 +362,7 @@ const AdminJobOverview = () => {
         onSuccess={refetchTaskList}
       />
 
-      {/* Duration Dialog for extending locked jobs */}
+      {/* Duration Dialog for extending locked jobs (batch operation) */}
       <DurationDialog
         jobs={selectedJobs}
         open={isExtendDialogOpen}

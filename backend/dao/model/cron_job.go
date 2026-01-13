@@ -37,11 +37,13 @@ func (c CronJobType) String() string {
 
 const (
 	CronJobTypeCleanerFunc CronJobType = "cleaner_function"
+	CronJobTypePatrolFunc  CronJobType = "patrol_function"
 )
 
 func GetAllCronJobTypes() []CronJobType {
 	return []CronJobType{
 		CronJobTypeCleanerFunc,
+		CronJobTypePatrolFunc,
 	}
 }
 

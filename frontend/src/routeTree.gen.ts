@@ -22,6 +22,7 @@ import { Route as PortalMoreRouteRouteImport } from './routes/portal/more/route'
 import { Route as PortalAccountRouteRouteImport } from './routes/portal/account/route'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
 import { Route as AdminJobsRouteRouteImport } from './routes/admin/jobs/route'
+import { Route as AdminGpuAnalysisRouteRouteImport } from './routes/admin/gpu-analysis/route'
 import { Route as AdminDataRouteRouteImport } from './routes/admin/data/route'
 import { Route as AdminAccountsRouteRouteImport } from './routes/admin/accounts/route'
 import { Route as PortalUsersIndexRouteImport } from './routes/portal/users/index'
@@ -31,6 +32,7 @@ import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminMoreIndexRouteImport } from './routes/admin/more/index'
 import { Route as AdminJobsIndexRouteImport } from './routes/admin/jobs/index'
+import { Route as AdminGpuAnalysisIndexRouteImport } from './routes/admin/gpu-analysis/index'
 import { Route as AdminDataIndexRouteImport } from './routes/admin/data/index'
 import { Route as AdminCronjobsIndexRouteImport } from './routes/admin/cronjobs/index'
 import { Route as AdminAccountsIndexRouteImport } from './routes/admin/accounts/index'
@@ -165,6 +167,11 @@ const AdminJobsRouteRoute = AdminJobsRouteRouteImport.update({
   path: '/jobs',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminGpuAnalysisRouteRoute = AdminGpuAnalysisRouteRouteImport.update({
+  id: '/gpu-analysis',
+  path: '/gpu-analysis',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminDataRouteRoute = AdminDataRouteRouteImport.update({
   id: '/data',
   path: '/data',
@@ -209,6 +216,11 @@ const AdminJobsIndexRoute = AdminJobsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminJobsRouteRoute,
+} as any)
+const AdminGpuAnalysisIndexRoute = AdminGpuAnalysisIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminGpuAnalysisRouteRoute,
 } as any)
 const AdminDataIndexRoute = AdminDataIndexRouteImport.update({
   id: '/',
@@ -566,6 +578,7 @@ export interface FileRoutesByFullPath {
   '/portal': typeof PortalRouteRouteWithChildren
   '/admin/accounts': typeof AdminAccountsRouteRouteWithChildren
   '/admin/data': typeof AdminDataRouteRouteWithChildren
+  '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
@@ -610,6 +623,7 @@ export interface FileRoutesByFullPath {
   '/admin/accounts/': typeof AdminAccountsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
+  '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
   '/admin/jobs/': typeof AdminJobsIndexRoute
   '/admin/more': typeof AdminMoreIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
@@ -683,6 +697,7 @@ export interface FileRoutesByTo {
   '/admin/accounts': typeof AdminAccountsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data': typeof AdminDataIndexRoute
+  '/admin/gpu-analysis': typeof AdminGpuAnalysisIndexRoute
   '/admin/jobs': typeof AdminJobsIndexRoute
   '/admin/more': typeof AdminMoreIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
@@ -732,6 +747,7 @@ export interface FileRoutesById {
   '/portal': typeof PortalRouteRouteWithChildren
   '/admin/accounts': typeof AdminAccountsRouteRouteWithChildren
   '/admin/data': typeof AdminDataRouteRouteWithChildren
+  '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
@@ -776,6 +792,7 @@ export interface FileRoutesById {
   '/admin/accounts/': typeof AdminAccountsIndexRoute
   '/admin/cronjobs/': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
+  '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
   '/admin/jobs/': typeof AdminJobsIndexRoute
   '/admin/more/': typeof AdminMoreIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
@@ -826,6 +843,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/admin/accounts'
     | '/admin/data'
+    | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/users'
     | '/portal/account'
@@ -870,6 +888,7 @@ export interface FileRouteTypes {
     | '/admin/accounts/'
     | '/admin/cronjobs'
     | '/admin/data/'
+    | '/admin/gpu-analysis/'
     | '/admin/jobs/'
     | '/admin/more'
     | '/admin/users/'
@@ -943,6 +962,7 @@ export interface FileRouteTypes {
     | '/admin/accounts'
     | '/admin/cronjobs'
     | '/admin/data'
+    | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/more'
     | '/admin/users'
@@ -991,6 +1011,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/admin/accounts'
     | '/admin/data'
+    | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/users'
     | '/portal/account'
@@ -1035,6 +1056,7 @@ export interface FileRouteTypes {
     | '/admin/accounts/'
     | '/admin/cronjobs/'
     | '/admin/data/'
+    | '/admin/gpu-analysis/'
     | '/admin/jobs/'
     | '/admin/more/'
     | '/admin/users/'
@@ -1180,6 +1202,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminJobsRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/gpu-analysis': {
+      id: '/admin/gpu-analysis'
+      path: '/gpu-analysis'
+      fullPath: '/admin/gpu-analysis'
+      preLoaderRoute: typeof AdminGpuAnalysisRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/data': {
       id: '/admin/data'
       path: '/data'
@@ -1242,6 +1271,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/jobs/'
       preLoaderRoute: typeof AdminJobsIndexRouteImport
       parentRoute: typeof AdminJobsRouteRoute
+    }
+    '/admin/gpu-analysis/': {
+      id: '/admin/gpu-analysis/'
+      path: '/'
+      fullPath: '/admin/gpu-analysis/'
+      preLoaderRoute: typeof AdminGpuAnalysisIndexRouteImport
+      parentRoute: typeof AdminGpuAnalysisRouteRoute
     }
     '/admin/data/': {
       id: '/admin/data/'
@@ -1749,6 +1785,19 @@ const AdminDataRouteRouteWithChildren = AdminDataRouteRoute._addFileChildren(
   AdminDataRouteRouteChildren,
 )
 
+interface AdminGpuAnalysisRouteRouteChildren {
+  AdminGpuAnalysisIndexRoute: typeof AdminGpuAnalysisIndexRoute
+}
+
+const AdminGpuAnalysisRouteRouteChildren: AdminGpuAnalysisRouteRouteChildren = {
+  AdminGpuAnalysisIndexRoute: AdminGpuAnalysisIndexRoute,
+}
+
+const AdminGpuAnalysisRouteRouteWithChildren =
+  AdminGpuAnalysisRouteRoute._addFileChildren(
+    AdminGpuAnalysisRouteRouteChildren,
+  )
+
 interface AdminJobsRouteRouteChildren {
   AdminJobsNameRoute: typeof AdminJobsNameRoute
   AdminJobsIndexRoute: typeof AdminJobsIndexRoute
@@ -1838,6 +1887,7 @@ const AdminMoreOrdersRouteRouteWithChildren =
 interface AdminRouteRouteChildren {
   AdminAccountsRouteRoute: typeof AdminAccountsRouteRouteWithChildren
   AdminDataRouteRoute: typeof AdminDataRouteRouteWithChildren
+  AdminGpuAnalysisRouteRoute: typeof AdminGpuAnalysisRouteRouteWithChildren
   AdminJobsRouteRoute: typeof AdminJobsRouteRouteWithChildren
   AdminUsersRouteRoute: typeof AdminUsersRouteRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1858,6 +1908,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAccountsRouteRoute: AdminAccountsRouteRouteWithChildren,
   AdminDataRouteRoute: AdminDataRouteRouteWithChildren,
+  AdminGpuAnalysisRouteRoute: AdminGpuAnalysisRouteRouteWithChildren,
   AdminJobsRouteRoute: AdminJobsRouteRouteWithChildren,
   AdminUsersRouteRoute: AdminUsersRouteRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,

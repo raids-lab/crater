@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { Trash2Icon } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import JobPhaseLabel from '@/components/badge/job-phase-badge'
@@ -41,6 +42,7 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 import ListedNewJobButton from '../new-job-button'
 
 const VolcanoOverview = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const batchQuery = useQuery({
@@ -67,7 +69,7 @@ const VolcanoOverview = () => {
     mutationFn: apiJobDelete,
     onSuccess: async () => {
       await refetchTaskList()
-      toast.success('作业已删除')
+      toast.success(t('jobs.successMessage'))
     },
   })
 
@@ -171,10 +173,12 @@ const VolcanoOverview = () => {
       toolbarConfig={jobToolbarConfig}
       multipleHandlers={[
         {
-          title: (rows) => `停止或删除 ${rows.length} 个作业`,
+          title: (rows) => t('jobs.handlers.stopOrDeleteTitle', { count: rows.length }),
           description: (rows) => (
             <>
-              作业 {rows.map((row) => row.original.name).join(', ')} 将被停止或删除，确认要继续吗？
+              {t('jobs.handlers.stopOrDeleteDescription', {
+                jobs: rows.map((row) => row.original.name).join(', '),
+              })}
             </>
           ),
           icon: <Trash2Icon className="text-destructive" />,

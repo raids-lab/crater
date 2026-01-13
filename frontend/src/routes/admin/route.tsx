@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query'
+// [新增]
 import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-router'
 import {
   AlarmClockIcon,
@@ -7,6 +9,7 @@ import {
   DatabaseIcon,
   FlaskConicalIcon,
   FolderIcon,
+  GpuIcon,
   ServerIcon,
   SettingsIcon,
   UserRoundIcon,
@@ -18,6 +21,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { NavGroupProps } from '@/components/sidebar/types'
 
 import { Role } from '@/services/api/auth'
+import { apiAdminGetGpuAnalysisStatus } from '@/services/api/system-config'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: ({ context, location }) => {
@@ -37,6 +41,16 @@ export const Route = createFileRoute('/admin')({
 
 const useAdminSidebarGroups = (): NavGroupProps[] => {
   const { t } = useTranslation()
+
+  // [新增] 获取 GPU 分析功能的开启状态
+  const { data: gpuStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'gpu-status'],
+    queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
+    staleTime: 1000 * 60 * 5, // 建议设置缓存时间，避免每次点击侧边栏都请求
+  })
+
+  // 判断是否开启
+  const showGpuAnalysis = gpuStatus?.enabled ?? false
 
   return [
     {
@@ -89,6 +103,16 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           url: '/admin/cronjobs',
           icon: AlarmClockIcon,
         },
+        // [修改] 条件渲染：只有开启时才把该对象加入数组
+        ...(showGpuAnalysis
+          ? [
+              {
+                title: t('navigation.gpuAnalysis'),
+                url: '/admin/gpu-analysis',
+                icon: GpuIcon,
+              },
+            ]
+          : []),
       ],
     },
     {

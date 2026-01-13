@@ -26,6 +26,7 @@ var (
 	CronJobRecord     *cronJobRecord
 	CudaBaseImage     *cudaBaseImage
 	Dataset           *dataset
+	GpuAnalysis       *gpuAnalysis
 	Image             *image
 	ImageAccount      *imageAccount
 	ImageUser         *imageUser
@@ -36,6 +37,7 @@ var (
 	Resource          *resource
 	ResourceNetwork   *resourceNetwork
 	ResourceVGPU      *resourceVGPU
+	SystemConfig      *systemConfig
 	User              *user
 	UserAccount       *userAccount
 	UserDataset       *userDataset
@@ -53,6 +55,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	CronJobRecord = &Q.CronJobRecord
 	CudaBaseImage = &Q.CudaBaseImage
 	Dataset = &Q.Dataset
+	GpuAnalysis = &Q.GpuAnalysis
 	Image = &Q.Image
 	ImageAccount = &Q.ImageAccount
 	ImageUser = &Q.ImageUser
@@ -63,6 +66,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
 	ResourceVGPU = &Q.ResourceVGPU
+	SystemConfig = &Q.SystemConfig
 	User = &Q.User
 	UserAccount = &Q.UserAccount
 	UserDataset = &Q.UserDataset
@@ -81,6 +85,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		CronJobRecord:     newCronJobRecord(db, opts...),
 		CudaBaseImage:     newCudaBaseImage(db, opts...),
 		Dataset:           newDataset(db, opts...),
+		GpuAnalysis:       newGpuAnalysis(db, opts...),
 		Image:             newImage(db, opts...),
 		ImageAccount:      newImageAccount(db, opts...),
 		ImageUser:         newImageUser(db, opts...),
@@ -91,6 +96,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Resource:          newResource(db, opts...),
 		ResourceNetwork:   newResourceNetwork(db, opts...),
 		ResourceVGPU:      newResourceVGPU(db, opts...),
+		SystemConfig:      newSystemConfig(db, opts...),
 		User:              newUser(db, opts...),
 		UserAccount:       newUserAccount(db, opts...),
 		UserDataset:       newUserDataset(db, opts...),
@@ -110,6 +116,7 @@ type Query struct {
 	CronJobRecord     cronJobRecord
 	CudaBaseImage     cudaBaseImage
 	Dataset           dataset
+	GpuAnalysis       gpuAnalysis
 	Image             image
 	ImageAccount      imageAccount
 	ImageUser         imageUser
@@ -120,6 +127,7 @@ type Query struct {
 	Resource          resource
 	ResourceNetwork   resourceNetwork
 	ResourceVGPU      resourceVGPU
+	SystemConfig      systemConfig
 	User              user
 	UserAccount       userAccount
 	UserDataset       userDataset
@@ -140,6 +148,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		CronJobRecord:     q.CronJobRecord.clone(db),
 		CudaBaseImage:     q.CudaBaseImage.clone(db),
 		Dataset:           q.Dataset.clone(db),
+		GpuAnalysis:       q.GpuAnalysis.clone(db),
 		Image:             q.Image.clone(db),
 		ImageAccount:      q.ImageAccount.clone(db),
 		ImageUser:         q.ImageUser.clone(db),
@@ -150,6 +159,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Resource:          q.Resource.clone(db),
 		ResourceNetwork:   q.ResourceNetwork.clone(db),
 		ResourceVGPU:      q.ResourceVGPU.clone(db),
+		SystemConfig:      q.SystemConfig.clone(db),
 		User:              q.User.clone(db),
 		UserAccount:       q.UserAccount.clone(db),
 		UserDataset:       q.UserDataset.clone(db),
@@ -177,6 +187,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		CronJobRecord:     q.CronJobRecord.replaceDB(db),
 		CudaBaseImage:     q.CudaBaseImage.replaceDB(db),
 		Dataset:           q.Dataset.replaceDB(db),
+		GpuAnalysis:       q.GpuAnalysis.replaceDB(db),
 		Image:             q.Image.replaceDB(db),
 		ImageAccount:      q.ImageAccount.replaceDB(db),
 		ImageUser:         q.ImageUser.replaceDB(db),
@@ -187,6 +198,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Resource:          q.Resource.replaceDB(db),
 		ResourceNetwork:   q.ResourceNetwork.replaceDB(db),
 		ResourceVGPU:      q.ResourceVGPU.replaceDB(db),
+		SystemConfig:      q.SystemConfig.replaceDB(db),
 		User:              q.User.replaceDB(db),
 		UserAccount:       q.UserAccount.replaceDB(db),
 		UserDataset:       q.UserDataset.replaceDB(db),
@@ -204,6 +216,7 @@ type queryCtx struct {
 	CronJobRecord     ICronJobRecordDo
 	CudaBaseImage     ICudaBaseImageDo
 	Dataset           IDatasetDo
+	GpuAnalysis       IGpuAnalysisDo
 	Image             IImageDo
 	ImageAccount      IImageAccountDo
 	ImageUser         IImageUserDo
@@ -214,6 +227,7 @@ type queryCtx struct {
 	Resource          IResourceDo
 	ResourceNetwork   IResourceNetworkDo
 	ResourceVGPU      IResourceVGPUDo
+	SystemConfig      ISystemConfigDo
 	User              IUserDo
 	UserAccount       IUserAccountDo
 	UserDataset       IUserDatasetDo
@@ -231,6 +245,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		CronJobRecord:     q.CronJobRecord.WithContext(ctx),
 		CudaBaseImage:     q.CudaBaseImage.WithContext(ctx),
 		Dataset:           q.Dataset.WithContext(ctx),
+		GpuAnalysis:       q.GpuAnalysis.WithContext(ctx),
 		Image:             q.Image.WithContext(ctx),
 		ImageAccount:      q.ImageAccount.WithContext(ctx),
 		ImageUser:         q.ImageUser.WithContext(ctx),
@@ -241,6 +256,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Resource:          q.Resource.WithContext(ctx),
 		ResourceNetwork:   q.ResourceNetwork.WithContext(ctx),
 		ResourceVGPU:      q.ResourceVGPU.WithContext(ctx),
+		SystemConfig:      q.SystemConfig.WithContext(ctx),
 		User:              q.User.WithContext(ctx),
 		UserAccount:       q.UserAccount.WithContext(ctx),
 		UserDataset:       q.UserDataset.WithContext(ctx),

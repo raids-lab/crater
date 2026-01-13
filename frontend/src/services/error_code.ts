@@ -21,6 +21,7 @@ export type ErrorCode = number
 
 export const OK: ErrorCode = 0
 export const ERROR_INVALID_REQUEST: ErrorCode = 40001
+export const ERROR_BUSINESSLOFGIC_ERROR: ErrorCode = 40002
 export const ERROR_TOKEN_EXPIRED: ErrorCode = 40101
 export const ERROR_TOKEN_INVALID: ErrorCode = 40102
 export const ERROR_MUST_REGISTER: ErrorCode = 40103

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
-import UserDetail from '@/components/layout/user-detail'
+import UserDetail from '@/components/user'
 
 export const Route = createFileRoute('/portal/users/$name')({
   validateSearch: detailValidateSearch,
