@@ -152,11 +152,11 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
             },
           ],
         },
-        {
-          title: t('navigation.fileManagement'),
-          icon: FolderIcon,
-          url: '/portal/files',
-        },
+        // {
+        //   title: t('navigation.fileManagement'),
+        //   icon: FolderIcon,
+        //   url: '/portal/files',
+        // },
       ],
     },
     {
