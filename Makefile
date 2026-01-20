@@ -39,6 +39,24 @@ pre-commit-check: install-hooks ## Run the installed pre-commit hook.
 	@echo "$(BLUE)Running pre-commit hook...$(RESET)"
 	@$(GIT_HOOKS_DIR)/pre-commit
 
+##@ Configuration Management
+
+.PHONY: config-link
+config-link: ## Create symlinks for configuration files (usage: make config-link CONFIG_DIR=~/develop/crater/config)
+	@bash hack/config.sh link $(CONFIG_DIR)
+
+.PHONY: config-status
+config-status: ## Show status of configuration files
+	@bash hack/config.sh status
+
+.PHONY: config-unlink
+config-unlink: ## Remove configuration symlinks (only symlinks, not regular files)
+	@bash hack/config.sh unlink
+
+.PHONY: config-restore
+config-restore: ## Restore configuration files from .bak backups
+	@bash hack/config.sh restore
+
 # 默认目标
 .DEFAULT_GOAL := help
 

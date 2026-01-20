@@ -48,6 +48,9 @@ etc/*
 # Do not ignore template
 !etc/example-config.yaml
 
+# Configuration backups (created by make config-link)
+*.bak
+
 # Test binary, build with `go test -c`
 *.test
 

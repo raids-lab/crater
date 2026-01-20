@@ -137,6 +137,41 @@ make install-hooks
 - **存储服务开发环境**: 请参考 [存储服务开发指南](../../storage/README_CN.md)
 - **文档网站开发环境**: 请参考 [文档网站开发指南](../../website/README.zh-CN.md)
 
+### 📁 配置文件管理
+
+Crater 提供了统一的配置文件管理系统，帮助开发者管理不同组件的配置文件。该系统允许您将所有配置文件集中在一个目录中，并在各个项目目录中创建软链接。
+
+**配置文件目录结构：**
+
+配置文件目录应具有以下结构：
+
+```
+config/
+├── backend/
+│   ├── .debug.env              # 后端调试环境变量
+│   ├── kubeconfig              # Kubernetes 配置文件（可选）
+│   └── debug-config.yaml       # 后端调试配置
+├── frontend/
+│   └── .env.development        # 前端开发环境变量
+└── storage/
+    ├── .env                    # 存储服务环境变量
+    └── config.yaml             # 存储服务配置
+```
+
+**可用的 Make 目标：**
+
+- `make config-link`: 创建配置文件的软链接。如果配置文件已存在为普通文件，将被备份为 `.bak` 后缀。如果已存在为软链接，将被替换。
+
+  ```bash
+  make config-link CONFIG_DIR=~/develop/crater/config
+  ```
+
+- `make config-status`: 显示所有配置文件的状态，包括是否存在、是否为软链接或缺失。
+
+- `make config-unlink`: 删除配置文件的软链接（仅删除软链接，普通文件会被保留）。
+
+- `make config-restore`: 从 `.bak` 备份恢复配置文件。
+
 ### 💻 进行开发
 
 根据您要修改的组件，进入相应的目录进行开发：

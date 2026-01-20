@@ -82,6 +82,8 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 ### Preparing Configuration Files
 
+**Note:** It is recommended to manage these configuration files through the unified configuration management system in the main repository. For details, please refer to the main repository README.
+
 #### `kubeconfig`
 
 To run the project, you need at least one Kubernetes cluster and have Kubectl installed.

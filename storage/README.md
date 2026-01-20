@@ -114,6 +114,8 @@ This project supports two ways to run: **Local Development** and **Deployment on
 
 #### 📄 Configuration:
 
+**Note:** It is recommended to manage these configuration files (`config.yaml` and `.env`) through the unified configuration management system in the main repository. For details, please refer to the main repository README.
+
 Make sure you have a [config.yaml](./etc/config.yaml) file with the correct database settings. 
 
 Create a `.env` file at the root directory to customize local ports. This file is ignored by Git:
