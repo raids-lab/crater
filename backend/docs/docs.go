@@ -10198,6 +10198,9 @@ const docTemplate = `{
         "internal_handler.GpuAnalysisWithJobInfo": {
             "type": "object",
             "properties": {
+                "UserNickname": {
+                    "type": "string"
+                },
                 "command": {
                     "description": "采集到的原始数据",
                     "type": "string"

@@ -1000,6 +1000,8 @@ definitions:
     type: object
   internal_handler.GpuAnalysisWithJobInfo:
     properties:
+      UserNickname:
+        type: string
       command:
         description: 采集到的原始数据
         type: string
