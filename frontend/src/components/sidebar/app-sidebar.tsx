@@ -79,6 +79,10 @@ export function AppSidebar({
               title: '成员管理',
               url: '/portal/account/member',
             },
+            {
+              title: '卡时统计',
+              url: '/portal/account/statistics',
+            },
           ],
         },
         ...groups[groups.length - 1].items,

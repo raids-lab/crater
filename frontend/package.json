@@ -20,6 +20,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@nivo/calendar": "^0.99.0",
     "@nivo/core": "^0.99.0",
+    "@nivo/line": "^0.99.0",
     "@nivo/pie": "^0.99.0",
     "@nivo/theming": "^0.99.0",
     "@polkadot/react-identicon": "^3.15.3",
