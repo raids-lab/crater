@@ -41,7 +41,7 @@ const (
 	SleepBetweenRetries  = 2 * time.Second    // LLM请求失败时的重试间隔
 	GpuAnalysisMaxAge    = 7 * 24 * time.Hour // GPU分析记录的最大保留时间
 	psColumnNum          = 5                  // ps 命令输出的列数
-	maxScriptLength      = 15000
+	maxScriptLength      = 20000
 )
 
 // LLMResponse 定义了我们期望 LLM 返回的 JSON 结构
@@ -160,6 +160,7 @@ func (s *GpuAnalysisService) TriggerAllJobsAnalysis(ctx context.Context) (int, e
 	// 注意: 这里的 job.Status 可能需要根据你的模型调整
 	eligibleJobs, err := j.WithContext(ctx).
 		Where(j.Status.Eq("Running")).
+		Where(j.LockedTimestamp.Eq(time.Time{})).
 		Find()
 
 	if err != nil {

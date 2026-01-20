@@ -331,6 +331,43 @@ definitions:
     x-enum-varnames:
     - Asc
     - Desc
+  github_com_raids-lab_crater_internal_payload.ResourceDetail:
+    properties:
+      label:
+        description: 显示名称 (例如 "NVIDIA V100", "CPU", "内存")
+        type: string
+      type:
+        description: 资源类型 (gpu, vgpu, rdma, common)
+        type: string
+      usage:
+        description: 用量 (核时/卡时/GiB时)
+        type: number
+    type: object
+  github_com_raids-lab_crater_internal_payload.StatisticsResp:
+    properties:
+      series:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TimePointData'
+        type: array
+      totalUsage:
+        additionalProperties:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.ResourceDetail'
+        description: |-
+          TotalUsage Key: ResourceName (如 nvidia.com/v100)
+          Value: 包含 Label 和 Type 的详细对象
+        type: object
+    type: object
+  github_com_raids-lab_crater_internal_payload.TimePointData:
+    properties:
+      timestamp:
+        type: string
+      usage:
+        additionalProperties:
+          format: float64
+          type: number
+        description: 'Key: ResourceName, Value: Usage'
+        type: object
+    type: object
   github_com_raids-lab_crater_internal_resputil.ErrorCode:
     enum:
     - 0
@@ -432,6 +469,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
       msg:
         type: string
     type: object
@@ -954,6 +1000,8 @@ definitions:
     type: object
   internal_handler.GpuAnalysisWithJobInfo:
     properties:
+      UserNickname:
+        type: string
       command:
         description: 采集到的原始数据
         type: string
@@ -6915,6 +6963,48 @@ paths:
       summary: 获取稀疏推荐作业的事件
       tags:
       - SpJob
+  /v1/statistics:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定时间范围、指定维度的资源使用统计（核时/卡时）
+      parameters:
+      - description: 开始时间 (RFC3339)
+        in: query
+        name: startTime
+        required: true
+        type: string
+      - description: 结束时间 (RFC3339)
+        in: query
+        name: endTime
+        required: true
+        type: string
+      - description: 聚合粒度 (day/week)
+        in: query
+        name: step
+        required: true
+        type: string
+      - description: 统计范围 (user/account/cluster)
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: 目标ID (user_id 或 account_id)
+        in: query
+        name: targetID
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp'
+      security:
+      - Bearer: []
+      summary: 获取资源统计信息
+      tags:
+      - statistics
   /v1/token/verify:
     get:
       consumes:

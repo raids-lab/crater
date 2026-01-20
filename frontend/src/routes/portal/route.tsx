@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-router'
+import { useAtomValue } from 'jotai'
 import {
   BarChartBigIcon,
   BoxIcon,
   DatabaseIcon,
   FlaskConicalIcon,
   FolderIcon,
+  LayoutDashboard,
   SettingsIcon,
   ShoppingBagIcon,
   SquareChartGanttIcon,
@@ -29,6 +31,8 @@ import { useTranslation } from 'react-i18next'
 import AppLayout from '@/components/layout/app-layout'
 import NotFound from '@/components/placeholder/not-found'
 import { NavGroupProps } from '@/components/sidebar/types'
+
+import { atomUserInfo } from '@/utils/store'
 
 export const Route = createFileRoute('/portal')({
   beforeLoad: ({ context, location }) => {
@@ -63,6 +67,7 @@ function RouteComponent() {
 // 使用 hook 获取翻译版的侧边栏组
 const useUserSidebarGroups = (): NavGroupProps[] => {
   const { t } = useTranslation()
+  const user = useAtomValue(atomUserInfo)
 
   return [
     {
@@ -90,6 +95,11 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
               url: '/portal/monitor/network',
             },
           ],
+        },
+        {
+          title: t('navigation.personalDashboard'),
+          url: '/portal/users/' + user?.name,
+          icon: LayoutDashboard,
         },
       ],
     },

@@ -357,7 +357,7 @@ const GpuAnalysisOverview = () => {
             lockedTimestamp: originalData.lockedTimestamp,
             userInfo: {
               username: originalData.UserName,
-              nickname: '',
+              nickname: originalData.UserNickname,
             },
           }
           return <JobNameCell jobInfo={jobInfoForCell as unknown as IJobInfo} />
@@ -368,7 +368,11 @@ const GpuAnalysisOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('gpuAnalysis.headers.UserName')} />
         ),
-        cell: ({ row }) => <UserLabel info={{ username: row.original.UserName, nickname: '' }} />,
+        cell: ({ row }) => (
+          <UserLabel
+            info={{ username: row.original.UserName, nickname: row.original.UserNickname }}
+          />
+        ),
       },
       {
         accessorKey: 'JobType',
@@ -539,7 +543,7 @@ const GpuAnalysisOverview = () => {
                       {t('gpuAnalysis.dialog.confirmAndStop.description', {
                         name: record.JobName,
                       }) ||
-                        `Are you sure you want to stop job ${record.JobName} and mark it as confirmed violation?`}
+                        `Are you sure you want to stop job ${record.Name} and mark it as confirmed violation?`}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -592,7 +596,7 @@ const GpuAnalysisOverview = () => {
             title: (rows) => t('gpuAnalysis.handlers.confirmAndStopTitle', { count: rows.length }),
             description: (rows) =>
               t('gpuAnalysis.handlers.confirmAndStopDescription', {
-                jobs: rows.map((row) => row.original.JobName).join(', '),
+                jobs: rows.map((row) => row.original.Name).join(', '),
               }),
             icon: <Trash2Icon className="text-destructive size-5" />,
             isDanger: true,

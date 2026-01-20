@@ -7677,6 +7677,70 @@
                 }
             }
         },
+        "/v1/statistics": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取指定时间范围、指定维度的资源使用统计（核时/卡时）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "获取资源统计信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "开始时间 (RFC3339)",
+                        "name": "startTime",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "结束时间 (RFC3339)",
+                        "name": "endTime",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "聚合粒度 (day/week)",
+                        "name": "step",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "统计范围 (user/account/cluster)",
+                        "name": "scope",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "目标ID (user_id 或 account_id)",
+                        "name": "targetID",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/token/verify": {
             "get": {
                 "security": [
@@ -9131,6 +9195,57 @@
                 "Desc"
             ]
         },
+        "github_com_raids-lab_crater_internal_payload.ResourceDetail": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "description": "显示名称 (例如 \"NVIDIA V100\", \"CPU\", \"内存\")",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "资源类型 (gpu, vgpu, rdma, common)",
+                    "type": "string"
+                },
+                "usage": {
+                    "description": "用量 (核时/卡时/GiB时)",
+                    "type": "number"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.StatisticsResp": {
+            "type": "object",
+            "properties": {
+                "series": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TimePointData"
+                    }
+                },
+                "totalUsage": {
+                    "description": "TotalUsage Key: ResourceName (如 nvidia.com/v100)\nValue: 包含 Label 和 Type 的详细对象",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.ResourceDetail"
+                    }
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TimePointData": {
+            "type": "object",
+            "properties": {
+                "timestamp": {
+                    "type": "string"
+                },
+                "usage": {
+                    "description": "Key: ResourceName, Value: Usage",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.ErrorCode": {
             "type": "integer",
             "enum": [
@@ -9271,6 +9386,20 @@
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp"
                 },
                 "msg": {
                     "type": "string"
@@ -10061,6 +10190,9 @@
         "internal_handler.GpuAnalysisWithJobInfo": {
             "type": "object",
             "properties": {
+                "UserNickname": {
+                    "type": "string"
+                },
                 "command": {
                     "description": "采集到的原始数据",
                     "type": "string"

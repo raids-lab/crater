@@ -48,6 +48,7 @@ export interface IGpuAnalysis {
   JobName: string
   UserID: number
   UserName: string
+  UserNickname: string
 
   // Kubernetes 信息
   PodName: string
