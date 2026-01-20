@@ -107,6 +107,8 @@ go mod download
 
 #### 📄 配置：
 
+**注意：** 建议通过主仓库的统一配置文件管理系统来管理这些配置文件（`config.yaml` 和 `.env`），详见主仓库 README。
+
 确保您有一个 [config.yaml](./etc/config.yaml) 文件，其中包含正确的数据库设置。
 
 在根目录创建 `.env` 文件以自定义本地端口。此文件被 Git 忽略：

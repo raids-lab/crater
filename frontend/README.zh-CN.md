@@ -98,6 +98,8 @@ Crater Frontend 基于现代 React 技术栈构建，主要包括：
 
 当后端服务尚未就绪或本地联调不便时，可通过 [MSW](https://mswjs.io/) 进行接口模拟，方便开发调试。
 
+**注意：** 建议通过主仓库的统一配置文件管理系统来管理 `.env.development` 文件，详见主仓库 README。
+
 使用步骤：
 
 1. 在 `.env.development` 中设置：

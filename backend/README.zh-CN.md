@@ -82,6 +82,8 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 ### 准备配置文件
 
+**注意：** 建议通过主仓库的统一配置文件管理系统来管理这些配置文件，详见主仓库 README。
+
 #### `kubeconfig`
 
 要运行项目，你至少需要有一个 Kubernetes 集群，并安装 Kubectl。

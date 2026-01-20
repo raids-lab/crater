@@ -136,6 +136,41 @@ Then configure the development environment for the component you want to develop
 - **Storage Service Development Environment**: Please refer to [Storage Service Development Guide](./storage/README.md)
 - **Documentation Website Development Environment**: Please refer to [Documentation Website Development Guide](./website/README.md)
 
+### 📁 Configuration File Management
+
+Crater provides a unified configuration file management system to help developers manage configuration files across different components. This system allows you to centralize all configuration files in a single directory and create symlinks in each project directory.
+
+**Configuration Directory Structure:**
+
+The configuration directory should have the following structure:
+
+```
+config/
+├── backend/
+│   ├── .debug.env              # Backend debug environment variables
+│   ├── kubeconfig              # Kubernetes config file (optional)
+│   └── debug-config.yaml       # Backend debug configuration
+├── frontend/
+│   └── .env.development        # Frontend development environment variables
+└── storage/
+    ├── .env                    # Storage service environment variables
+    └── config.yaml             # Storage service configuration
+```
+
+**Available Make Targets:**
+
+- `make config-link`: Create symlinks for configuration files. If a configuration file already exists as a regular file, it will be backed up with a `.bak` suffix. If it exists as a symlink, it will be replaced.
+
+  ```bash
+  make config-link CONFIG_DIR=~/develop/crater/config
+  ```
+
+- `make config-status`: Display the status of all configuration files, showing whether they exist, are symlinks, or are missing.
+
+- `make config-unlink`: Remove configuration symlinks (only symlinks, regular files are preserved).
+
+- `make config-restore`: Restore configuration files from `.bak` backups.
+
 ### 💻 Development
 
 Enter the corresponding directory for the component you want to modify:
