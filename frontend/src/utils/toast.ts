@@ -19,24 +19,63 @@ import { toast } from 'sonner'
 import { IErrorResponse } from '@/services/types'
 
 export const showErrorToast = (error: unknown) => {
+  // 1. Handle AxiosError (for backward compatibility with axios-based code)
   if (isAxiosError(error)) {
     if (error.response?.data) {
       try {
         const errorResponse = error.response.data as IErrorResponse
-        if (errorResponse.msg) {
-          toast.error(`${errorResponse.msg}`)
-        } else {
-          toast.error(`${error.message}`)
-        }
+        const httpStatus = error.response.status
+        const businessCode = errorResponse.code
+        const errorMsg = errorResponse.msg || error.message
+
+        // Build complete error message: HTTP status code + business error code + error message
+        const fullErrorMessage = `[HTTP ${httpStatus}] [Code ${businessCode}] ${errorMsg}`
+        toast.error(fullErrorMessage)
       } catch {
         toast.error(`${error.message}`)
       }
     } else {
       toast.error(`${error.message}`)
     }
-  } else if (typeof error === 'string') {
-    toast.error(error)
-  } else {
-    toast.error((error as Error).message)
+    return
   }
+
+  // 2. Handle string (display directly)
+  if (typeof error === 'string') {
+    toast.error(error)
+    return
+  }
+
+  // 3. Handle HTTPError (from ky library)
+  // apiRequest has already mounted errorResponse to error.data and HTTP status code to error.httpStatus
+  if (error && typeof error === 'object' && 'data' in error) {
+    const errorWithData = error as {
+      data?: IErrorResponse
+      httpStatus?: number
+      response?: { status: number }
+    }
+
+    // Try to get HTTP status code from multiple locations
+    const httpStatus = errorWithData.httpStatus || errorWithData.response?.status
+
+    if (errorWithData.data) {
+      const businessCode = errorWithData.data.code
+      const errorMsg = errorWithData.data.msg || 'Request failed'
+
+      // Build complete error message: HTTP status code + business error code + error message
+      if (httpStatus !== undefined) {
+        const fullErrorMessage = `[HTTP ${httpStatus}] [Code ${businessCode}] ${errorMsg}`
+        toast.error(fullErrorMessage)
+      } else {
+        // If HTTP status code is not available, only show business error code and message
+        const fullErrorMessage = `[Code ${businessCode}] ${errorMsg}`
+        toast.error(fullErrorMessage)
+      }
+      return
+    }
+  }
+
+  // 4. Fallback: display the error object's message property
+  const errorMessage = (error as Error)?.message || 'Request failed, please try again later'
+  toast.error(errorMessage)
 }
