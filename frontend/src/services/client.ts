@@ -146,9 +146,13 @@ export async function apiRequest<T>(
       try {
         const errorResponse = await error.response.json<IErrorResponse>()
 
-        // 🔥 【关键修改】将解析后的数据挂载到 error 对象上
-        // 这样上层组件通过 error.data 就能拿到后端返回的 { code, msg }
-        Object.assign(error, { data: errorResponse })
+        // Mount the parsed error response data to the error object
+        // This allows upper-level components to access backend response { code, msg } via error.data
+        // Also mount HTTP status code for error display
+        Object.assign(error, {
+          data: errorResponse,
+          httpStatus: error.response.status,
+        })
 
         // 根据错误码进行不同处理
         switch (errorResponse.code) {
