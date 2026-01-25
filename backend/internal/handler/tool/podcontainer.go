@@ -1021,12 +1021,12 @@ func (mgr *APIServerMgr) EditPodResource(
 
 	// 使用 Patch 的 resize subresource 方式调整资源
 	// 构造 patch payload
-	patchData := map[string]interface{}{
-		"spec": map[string]interface{}{
-			"containers": []map[string]interface{}{
+	patchData := map[string]any{
+		"spec": map[string]any{
+			"containers": []map[string]any{
 				{
 					"name": ctr.Name,
-					"resources": map[string]interface{}{
+					"resources": map[string]any{
 						"requests": newRequests,
 						"limits":   newLimits,
 					},
