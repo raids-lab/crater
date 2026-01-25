@@ -109,6 +109,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		commandArgs,
 		JupyterPort,
 		string(CraterJobTypeWebIDE),
+		req.CpuPinningEnabled,
 	)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)

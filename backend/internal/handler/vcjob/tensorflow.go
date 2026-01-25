@@ -135,7 +135,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 			}
 		}
 		// 4.3. Generate pod spec
-		podSpec := generatePodSpecForParallelJob(task, taskAffinity, baseTolerations, volumes, volumeMounts, envs, ports)
+		podSpec := generatePodSpecForParallelJob(task, taskAffinity, baseTolerations, volumes, volumeMounts, envs, ports, req.CpuPinningEnabled)
 
 		// 4.4. Create task spec
 		taskSpec := batch.TaskSpec{

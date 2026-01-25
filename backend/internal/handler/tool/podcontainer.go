@@ -1,6 +1,7 @@
 package tool
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -9,7 +10,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -974,28 +977,79 @@ func (mgr *APIServerMgr) EditPodResource(
 		}
 	}
 
-	// 只改目标容器的 CPU/Memory
 	ctr := &pod.Spec.Containers[idx]
-	if qty, ok := resources[v1.ResourceCPU]; ok {
-		ctr.Resources.Requests[v1.ResourceCPU] = qty
-		ctr.Resources.Limits[v1.ResourceCPU] = qty
-	}
-	if qty, ok := resources[v1.ResourceMemory]; ok {
-		ctr.Resources.Requests[v1.ResourceMemory] = qty
-		ctr.Resources.Limits[v1.ResourceMemory] = qty
+
+	// 检查是否为绑核模式（CPU 和 Memory 的 requests == limits）
+	isCpuPinned := false
+	isMemPinned := false
+
+	if cpuReq, cpuReqOk := ctr.Resources.Requests[v1.ResourceCPU]; cpuReqOk {
+		if cpuLim, cpuLimOk := ctr.Resources.Limits[v1.ResourceCPU]; cpuLimOk {
+			isCpuPinned = cpuReq.Equal(cpuLim)
+		}
 	}
 
-	// 使用 Update 提交整个 Pod 对象
-	updated, err := mgr.kubeClient.CoreV1().Pods(pod.Namespace).
-		Update(ctx, pod, metav1.UpdateOptions{})
+	if memReq, memReqOk := ctr.Resources.Requests[v1.ResourceMemory]; memReqOk {
+		if memLim, memLimOk := ctr.Resources.Limits[v1.ResourceMemory]; memLimOk {
+			isMemPinned = memReq.Equal(memLim)
+		}
+	}
+
+	// 如果是绑核模式，拒绝调整
+	if isCpuPinned && isMemPinned {
+		return fmt.Errorf("pod %s/%s is in CPU pinning mode (requests == limits), cannot adjust resources dynamically",
+			pod.Namespace, pod.Name)
+	}
+
+	// 准备新的资源值
+	newRequests := ctr.Resources.Requests.DeepCopy()
+	newLimits := ctr.Resources.Limits.DeepCopy()
+
+	// 更新 CPU：requests 为用户指定值，limits 为 requests + 1 millicore
+	if cpuQty, ok := resources[v1.ResourceCPU]; ok {
+		cpuMillis := cpuQty.MilliValue()
+		newRequests[v1.ResourceCPU] = cpuQty
+		newLimits[v1.ResourceCPU] = *resource.NewMilliQuantity(cpuMillis+1, resource.DecimalSI)
+	}
+
+	// 更新 Memory：requests 为用户指定值，limits 为 requests + 1Mi
+	if memQty, ok := resources[v1.ResourceMemory]; ok {
+		memBytes := memQty.Value()
+		newRequests[v1.ResourceMemory] = memQty
+		newLimits[v1.ResourceMemory] = *resource.NewQuantity(memBytes+1024*1024, resource.BinarySI)
+	}
+
+	// 使用 Patch 的 resize subresource 方式调整资源
+	// 构造 patch payload
+	patchData := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"containers": []map[string]interface{}{
+				{
+					"name": ctr.Name,
+					"resources": map[string]interface{}{
+						"requests": newRequests,
+						"limits":   newLimits,
+					},
+				},
+			},
+		},
+	}
+
+	patchBytes, err := json.Marshal(patchData)
 	if err != nil {
-		return fmt.Errorf("update pod %s/%s container[%d] resources: %w",
-			pod.Namespace, pod.Name, idx, err)
+		return fmt.Errorf("marshal patch data: %w", err)
 	}
 
-	klog.Infof("Updated pod %s/%s container[%d]=%q resources=%+v",
-		updated.Namespace, updated.Name, idx, updated.Spec.Containers[idx].Name,
-		updated.Spec.Containers[idx].Resources)
+	// 使用 resize subresource
+	_, err = mgr.kubeClient.CoreV1().Pods(pod.Namespace).
+		Patch(ctx, pod.Name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{}, "resize")
+	if err != nil {
+		return fmt.Errorf("patch pod %s/%s with resize subresource: %w",
+			pod.Namespace, pod.Name, err)
+	}
+
+	klog.Infof("Resized pod %s/%s container[%d]=%q resources: requests=%+v limits=%+v",
+		pod.Namespace, pod.Name, idx, ctr.Name, newRequests, newLimits)
 
 	return nil
 }
