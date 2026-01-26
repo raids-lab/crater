@@ -1,5 +1,4 @@
 // src/components/user/statistics/resource-trend.tsx
-// @ts-expect-error - @nivo/line type definitions
 import { ResponsiveLine } from '@nivo/line'
 import { format } from 'date-fns'
 import { Filter } from 'lucide-react'
@@ -41,7 +40,7 @@ interface SlicePoint {
 
 interface SliceTooltipProps {
   slice: {
-    points: SlicePoint[]
+    points: readonly SlicePoint[]
   }
 }
 
