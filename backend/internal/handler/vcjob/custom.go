@@ -179,6 +179,9 @@ func GenerateCustomPodSpec(
 		})
 	}
 
+	// Prepare resource requirements based on CPU pinning setting
+	resourceRequirements, resizePolicy := buildResourceRequirements(custom.Resource, custom.CpuPinningEnabled)
+
 	podSpec = v1.PodSpec{
 		Affinity:         affinity,
 		Tolerations:      tolerations,
@@ -186,15 +189,13 @@ func GenerateCustomPodSpec(
 		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
-				Name:       string(CraterJobTypeCustom),
-				Image:      custom.Image.ImageLink,
-				WorkingDir: custom.WorkingDir,
-				Resources: v1.ResourceRequirements{
-					Limits:   custom.Resource,
-					Requests: custom.Resource,
-				},
-				Env:   envs,
-				Ports: []v1.ContainerPort{},
+				Name:         string(CraterJobTypeCustom),
+				Image:        custom.Image.ImageLink,
+				WorkingDir:   custom.WorkingDir,
+				Resources:    resourceRequirements,
+				ResizePolicy: resizePolicy,
+				Env:          envs,
+				Ports:        []v1.ContainerPort{},
 				SecurityContext: &v1.SecurityContext{
 					RunAsUser:  ptr.To(int64(0)),
 					RunAsGroup: ptr.To(int64(0)),

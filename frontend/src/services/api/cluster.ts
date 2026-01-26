@@ -58,6 +58,7 @@ export interface IClusterPodInfo {
   createTime: string
   status: string
   resources: Record<string, string>
+  requestResources?: Record<string, string> // 添加 requests 资源
   locked: boolean
   permanentLocked: boolean
   lockedTimestamp?: string

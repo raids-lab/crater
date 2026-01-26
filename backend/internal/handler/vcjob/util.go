@@ -10,6 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -42,6 +43,55 @@ var (
 		},
 	}
 )
+
+// buildResourceRequirements creates resource requirements and resize policy based on CPU pinning setting
+func buildResourceRequirements(resourceList v1.ResourceList, cpuPinningEnabled bool) (v1.ResourceRequirements, []v1.ContainerResizePolicy) {
+	var resourceRequirements v1.ResourceRequirements
+	var resizePolicy []v1.ContainerResizePolicy
+
+	if cpuPinningEnabled {
+		// CPU pinning enabled: requests == limits
+		resourceRequirements = v1.ResourceRequirements{
+			Limits:   resourceList,
+			Requests: resourceList,
+		}
+	} else {
+		// CPU pinning disabled: limits slightly higher than requests for dynamic adjustment
+		requests := resourceList.DeepCopy()
+		limits := resourceList.DeepCopy()
+
+		// Add 1 millicore to CPU limits
+		if cpuQty, ok := resourceList[v1.ResourceCPU]; ok {
+			cpuMillis := cpuQty.MilliValue()
+			limits[v1.ResourceCPU] = *resource.NewMilliQuantity(cpuMillis+1, resource.DecimalSI)
+		}
+
+		// Add 1Mi to Memory limits
+		if memQty, ok := resourceList[v1.ResourceMemory]; ok {
+			memBytes := memQty.Value()
+			limits[v1.ResourceMemory] = *resource.NewQuantity(memBytes+1024*1024, resource.BinarySI)
+		}
+
+		resourceRequirements = v1.ResourceRequirements{
+			Limits:   limits,
+			Requests: requests,
+		}
+
+		// Set resize policy to allow dynamic resource adjustment
+		resizePolicy = []v1.ContainerResizePolicy{
+			{
+				ResourceName:  v1.ResourceCPU,
+				RestartPolicy: v1.NotRequired,
+			},
+			{
+				ResourceName:  v1.ResourceMemory,
+				RestartPolicy: v1.NotRequired,
+			},
+		}
+	}
+
+	return resourceRequirements, resizePolicy
+}
 
 type ForwardType uint
 
@@ -518,6 +568,7 @@ func generatePodSpecForParallelJob(
 	volumeMounts []v1.VolumeMount,
 	envs []v1.EnvVar,
 	ports []v1.ContainerPort,
+	cpuPinningEnabled bool,
 ) (podSpec v1.PodSpec) {
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {
@@ -526,6 +577,9 @@ func generatePodSpecForParallelJob(
 		})
 	}
 
+	// Prepare resource requirements based on CPU pinning setting
+	resourceRequirements, resizePolicy := buildResourceRequirements(task.Resource, cpuPinningEnabled)
+
 	podSpec = v1.PodSpec{
 		Affinity:         affinity,
 		Tolerations:      tolerations,
@@ -533,14 +587,12 @@ func generatePodSpecForParallelJob(
 		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
-				Name:  task.Name,
-				Image: task.Image.ImageLink,
-				Resources: v1.ResourceRequirements{
-					Limits:   task.Resource,
-					Requests: task.Resource,
-				},
-				Env:   envs,
-				Ports: ports,
+				Name:         task.Name,
+				Image:        task.Image.ImageLink,
+				Resources:    resourceRequirements,
+				ResizePolicy: resizePolicy,
+				Env:          envs,
+				Ports:        ports,
 				SecurityContext: &v1.SecurityContext{
 					RunAsUser:  ptr.To(int64(0)),
 					RunAsGroup: ptr.To(int64(0)),
@@ -674,11 +726,12 @@ func generateInteractivePodSpec(
 	c context.Context,
 	token util.JWTMessage,
 	req *CreateJobCommon,
-	resource v1.ResourceList,
+	resourceList v1.ResourceList,
 	image ImageBaseInfo,
 	command []string,
 	port int32,
 	containerName string,
+	cpuPinningEnabled bool,
 ) (v1.PodSpec, error) {
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
@@ -710,7 +763,7 @@ func generateInteractivePodSpec(
 	envs := GenerateEnvs(c, token, req.Envs)
 
 	// 3. Node Affinity and Tolerations
-	baseAffinity := GenerateNodeAffinity(req.Selectors, resource)
+	baseAffinity := GenerateNodeAffinity(req.Selectors, resourceList)
 	affinity := GenerateArchitectureNodeAffinity(image, baseAffinity)
 
 	tolerations := GenerateTaintTolerationsForAccount(token)
@@ -722,6 +775,9 @@ func generateInteractivePodSpec(
 		})
 	}
 
+	// Prepare resource requirements based on CPU pinning setting
+	resourceRequirements, resizePolicy := buildResourceRequirements(resourceList, cpuPinningEnabled)
+
 	podSpec := v1.PodSpec{
 		Affinity:         affinity,
 		Tolerations:      tolerations,
@@ -729,14 +785,12 @@ func generateInteractivePodSpec(
 		ImagePullSecrets: imagePullSecrets,
 		Containers: []v1.Container{
 			{
-				Name:    containerName,
-				Image:   image.ImageLink,
-				Command: command,
-				Resources: v1.ResourceRequirements{
-					Limits:   resource,
-					Requests: resource,
-				},
-				WorkingDir: fmt.Sprintf("/home/%s", token.Username),
+				Name:         containerName,
+				Image:        image.ImageLink,
+				Command:      command,
+				Resources:    resourceRequirements,
+				ResizePolicy: resizePolicy,
+				WorkingDir:   fmt.Sprintf("/home/%s", token.Username),
 
 				Env: envs,
 				Ports: []v1.ContainerPort{

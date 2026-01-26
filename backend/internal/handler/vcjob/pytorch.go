@@ -108,6 +108,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			volumeMounts,
 			envs,
 			ports,
+			req.CpuPinningEnabled,
 		)
 
 		// 4.4. Create task spec

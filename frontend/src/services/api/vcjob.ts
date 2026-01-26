@@ -353,6 +353,7 @@ export interface IJupyterCreate {
   selectors?: NodeSelectorRequirement[]
   template: string
   alertEnabled: boolean
+  cpuPinningEnabled?: boolean
   forwards: Forward[]
 }
 

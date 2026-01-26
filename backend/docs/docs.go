@@ -9907,8 +9907,21 @@ const docTemplate = `{
                 "permanentLocked": {
                     "type": "boolean"
                 },
+                "requestResources": {
+                    "description": "Requests",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.ResourceList"
+                        }
+                    ]
+                },
                 "resources": {
-                    "$ref": "#/definitions/v1.ResourceList"
+                    "description": "Limits",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.ResourceList"
+                        }
+                    ]
                 },
                 "status": {
                     "$ref": "#/definitions/v1.PodPhase"
@@ -11244,6 +11257,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "alertEnabled": {
+                    "type": "boolean"
+                },
+                "cpuPinningEnabled": {
                     "type": "boolean"
                 },
                 "datasetMounts": {

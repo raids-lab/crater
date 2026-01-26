@@ -25,6 +25,25 @@ interface ResourceTrendProps {
   isLoading: boolean
 }
 
+// 定义 Nivo Line 图表的类型
+interface SlicePoint {
+  id: string
+  seriesId: string | number
+  seriesColor: string
+  data: {
+    x: string | number
+    y: number
+    xFormatted: string
+    yFormatted: string
+  }
+}
+
+interface SliceTooltipProps {
+  slice: {
+    points: readonly SlicePoint[]
+  }
+}
+
 export function ResourceTrend({ data, isLoading }: ResourceTrendProps) {
   const { nivoTheme } = useNivoTheme()
   const { t } = useTranslation()
@@ -162,14 +181,14 @@ export function ResourceTrend({ data, isLoading }: ResourceTrendProps) {
             enableGridX={false}
             theme={nivoTheme}
             enableSlices="x"
-            sliceTooltip={({ slice }) => {
+            sliceTooltip={({ slice }: SliceTooltipProps) => {
               return (
                 <div className="bg-popover animate-in fade-in-0 zoom-in-95 z-50 w-fit min-w-[190px] rounded-lg border p-3 shadow-xl">
                   <div className="text-foreground mb-2 border-b pb-2 text-sm font-bold">
                     {format(new Date(slice.points[0].data.x as string), 'PPP')}
                   </div>
                   <div className="space-y-2">
-                    {slice.points.map((point) => (
+                    {slice.points.map((point: SlicePoint) => (
                       <div key={point.id} className="flex items-center justify-between gap-6">
                         <div className="flex items-center gap-2.5">
                           <div

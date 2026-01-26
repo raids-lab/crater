@@ -79,16 +79,17 @@ type NodeBriefInfo struct {
 }
 
 type Pod struct {
-	Name            string                  `json:"name"`
-	Namespace       string                  `json:"namespace"`
-	OwnerReference  []metav1.OwnerReference `json:"ownerReference"`
-	IP              string                  `json:"ip"`
-	CreateTime      metav1.Time             `json:"createTime"`
-	Status          corev1.PodPhase         `json:"status"`
-	Resources       corev1.ResourceList     `json:"resources"`
-	Locked          bool                    `json:"locked"`
-	PermanentLocked bool                    `json:"permanentLocked"`
-	LockedTimestamp metav1.Time             `json:"lockedTimestamp"`
+	Name             string                  `json:"name"`
+	Namespace        string                  `json:"namespace"`
+	OwnerReference   []metav1.OwnerReference `json:"ownerReference"`
+	IP               string                  `json:"ip"`
+	CreateTime       metav1.Time             `json:"createTime"`
+	Status           corev1.PodPhase         `json:"status"`
+	Resources        corev1.ResourceList     `json:"resources"`        // Limits
+	RequestResources corev1.ResourceList     `json:"requestResources"` // Requests
+	Locked           bool                    `json:"locked"`
+	PermanentLocked  bool                    `json:"permanentLocked"`
+	LockedTimestamp  metav1.Time             `json:"lockedTimestamp"`
 	// 管理员接口返回的字段（omitempty 表示字段为空时不序列化）
 	UserName        string `json:"userName,omitempty"`        // 用户昵称（用于显示）
 	UserID          uint   `json:"userID,omitempty"`          // 用户ID（用于跳转）
@@ -435,15 +436,16 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 		pods[i] = Pod{
-			Name:            pod.Name,
-			Namespace:       pod.Namespace,
-			IP:              pod.Status.PodIP,
-			CreateTime:      pod.CreationTimestamp,
-			Status:          pod.Status.Phase,
-			OwnerReference:  pod.OwnerReferences,
-			Resources:       utils.CalculateRequsetsByContainers(pod.Spec.Containers),
-			Locked:          false,
-			LockedTimestamp: metav1.Time{},
+			Name:             pod.Name,
+			Namespace:        pod.Namespace,
+			IP:               pod.Status.PodIP,
+			CreateTime:       pod.CreationTimestamp,
+			Status:           pod.Status.Phase,
+			OwnerReference:   pod.OwnerReferences,
+			Resources:        utils.CalculateLimitsByContainers(pod.Spec.Containers),
+			RequestResources: utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+			Locked:           false,
+			LockedTimestamp:  metav1.Time{},
 		}
 		if len(pod.OwnerReferences) == 0 {
 			continue
@@ -484,15 +486,16 @@ func (nc *NodeClient) AdminGetPodsForNode(ctx context.Context, nodeName string) 
 		pod := &podList.Items[i]
 
 		pods[i] = Pod{
-			Name:            pod.Name,
-			Namespace:       pod.Namespace,
-			IP:              pod.Status.PodIP,
-			CreateTime:      pod.CreationTimestamp,
-			Status:          pod.Status.Phase,
-			OwnerReference:  pod.OwnerReferences,
-			Resources:       utils.CalculateRequsetsByContainers(pod.Spec.Containers),
-			Locked:          false,
-			LockedTimestamp: metav1.Time{},
+			Name:             pod.Name,
+			Namespace:        pod.Namespace,
+			IP:               pod.Status.PodIP,
+			CreateTime:       pod.CreationTimestamp,
+			Status:           pod.Status.Phase,
+			OwnerReference:   pod.OwnerReferences,
+			Resources:        utils.CalculateLimitsByContainers(pod.Spec.Containers),
+			RequestResources: utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+			Locked:           false,
+			LockedTimestamp:  metav1.Time{},
 		}
 
 		// 如果是 crater 作业命名空间中的 VolcanoJob Pod，查询作业和用户信息

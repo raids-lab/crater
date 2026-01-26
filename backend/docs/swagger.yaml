@@ -807,8 +807,14 @@ definitions:
         type: array
       permanentLocked:
         type: boolean
+      requestResources:
+        allOf:
+        - $ref: '#/definitions/v1.ResourceList'
+        description: Requests
       resources:
-        $ref: '#/definitions/v1.ResourceList'
+        allOf:
+        - $ref: '#/definitions/v1.ResourceList'
+        description: Limits
       status:
         $ref: '#/definitions/v1.PodPhase'
       userID:
@@ -1692,6 +1698,8 @@ definitions:
   internal_handler_vcjob.CreateJupyterReq:
     properties:
       alertEnabled:
+        type: boolean
+      cpuPinningEnabled:
         type: boolean
       datasetMounts:
         items:
