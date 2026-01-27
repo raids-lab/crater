@@ -153,7 +153,6 @@ func (b *imagePacker) generateBuildKitContainer(
 		%s	docker buildx use multi-platform-builder && \
 		docker buildx build --progress plain --platform %s \
 		--file /workspace/Dockerfile --output %s \
-		--build-context project=/data/home/user/ \
 	`, buildkitdAmdNameSpace, appendArmCmd, archs, output)
 	for key, value := range buildContext {
 		cmd += fmt.Sprintf(" --build-context %s=%s", key, value)
@@ -277,7 +276,7 @@ func (b *imagePacker) createJob(
 					},
 					RunAsUser:  &runAsUerNumber,
 					RunAsGroup: &runAsGroupNumber,
-					FSGroup:    &fsAsGroupNumber,
+					// FSGroup:    &fsAsGroupNumber,
 				},
 				EnableServiceLinks: ptr.To(false),
 				NodeSelector: map[string]string{

@@ -80,7 +80,7 @@ var (
 	buildkitdAmdName string = "buildkitd-x86"
 	runAsUerNumber   int64  = 1000
 	runAsGroupNumber int64  = 1000
-	fsAsGroupNumber  int64  = 1000
+	// fsAsGroupNumber  int64  = 1000
 
 	harborCreditSecretName string = "buildkit-secret"
 
