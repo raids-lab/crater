@@ -11,6 +11,15 @@ func CalculateRequsetsByContainers(containers []v1.Container) (resources v1.Reso
 	return resources
 }
 
+func CalculateLimitsByContainers(containers []v1.Container) (resources v1.ResourceList) {
+	resources = make(v1.ResourceList, 0)
+	for j := range containers {
+		container := &containers[j]
+		resources = SumResources(resources, container.Resources.Limits)
+	}
+	return resources
+}
+
 func SumResources(resources ...v1.ResourceList) v1.ResourceList {
 	result := make(v1.ResourceList)
 	for _, res := range resources {

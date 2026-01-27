@@ -98,6 +98,7 @@ const formSchema = z.object({
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
+  cpuPinningEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
 })
 
@@ -145,6 +146,7 @@ function RouteComponent() {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         alertEnabled: values.alertEnabled,
+        cpuPinningEnabled: values.cpuPinningEnabled,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -197,6 +199,7 @@ function RouteComponent() {
       forwards: [],
       envs: [],
       alertEnabled: true,
+      cpuPinningEnabled: false,
       nodeSelector: {
         enable: false,
       },
@@ -345,6 +348,7 @@ function RouteComponent() {
             <OtherOptionsFormCard
               form={form}
               alertEnabledPath="alertEnabled"
+              cpuPinningEnabledPath="cpuPinningEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
               open={otherOpen}

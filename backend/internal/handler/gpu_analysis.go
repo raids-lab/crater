@@ -109,6 +109,7 @@ type GpuAnalysisWithJobInfo struct {
 	Nodes           datatypes.JSONType[[]string]
 	Status          batch.JobPhase `json:"status"`
 	LockedTimestamp time.Time      `json:"lockedTimestamp"`
+	UserNickname    string         `json:"UserNickname"`
 }
 
 // ListAnalyses godoc
@@ -124,11 +125,13 @@ func (mgr *GpuAnalysisMgr) ListAnalyses(c *gin.Context) {
 	var results []GpuAnalysisWithJobInfo
 	ga := query.GpuAnalysis
 	j := query.Job
+	u := query.User
 
 	err := ga.WithContext(c.Request.Context()).
 		LeftJoin(j, ga.JobName.EqCol(j.JobName)).
+		LeftJoin(u, ga.UserID.EqCol(u.ID)).
 		Order(ga.Phase2Score.Desc(), ga.CreatedAt.Desc()).
-		Select(ga.ALL, j.Name, j.JobType, j.Resources, j.Nodes, j.Status, j.LockedTimestamp).
+		Select(ga.ALL, j.Name, j.JobType, j.Resources, j.Nodes, j.Status, j.LockedTimestamp, u.Nickname.As("user_nickname")).
 		Scan(&results)
 
 	if err != nil {

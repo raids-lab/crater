@@ -126,6 +126,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		commandArgs,
 		JupyterPort,
 		string(CraterJobTypeJupyter),
+		req.CpuPinningEnabled,
 	)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)

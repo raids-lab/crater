@@ -43,6 +43,7 @@ interface OtherOptionsFormCardProps<T extends FieldValues> {
   alertEnabledPath: FieldPath<T>
   nodeSelectorEnablePath: FieldPath<T>
   nodeSelectorNodeNamePath: FieldPath<T>
+  cpuPinningEnabledPath?: FieldPath<T> // 可选的 CPU 绑核路径
   open: boolean
   setOpen: (open: boolean) => void
 }
@@ -52,6 +53,7 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   alertEnabledPath,
   nodeSelectorEnablePath,
   nodeSelectorNodeNamePath,
+  cpuPinningEnabledPath,
   open,
   setOpen,
 }: OtherOptionsFormCardProps<T>) {
@@ -98,6 +100,32 @@ export function OtherOptionsFormCard<T extends FieldValues>({
             </FormItem>
           )}
         />
+        {cpuPinningEnabledPath && (
+          <FormField
+            control={form.control}
+            name={cpuPinningEnabledPath}
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">
+                  {t('otherOptionsFormCard.enableCpuPinning')}
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {t('otherOptionsFormCard.tooltip.cpuPinning')}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </FormLabel>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        )}
         <div className="space-y-1.5">
           <FormField
             control={form.control}

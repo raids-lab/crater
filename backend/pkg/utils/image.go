@@ -34,7 +34,10 @@ func GetImageNameAndTag(imageLink string) (name, tag string, err error) {
 	re := regexp.MustCompile(getNameTagRegExp)
 	matches := re.FindStringSubmatch(imageLink)
 	if len(matches) != parts {
-		return "", "", fmt.Errorf("invalid image link: %s", imageLink)
+		return "", "", fmt.Errorf(
+			"regex pattern mismatch: base image '%s' does not match required format. "+
+				"Please provide a complete image URL. Required regex pattern: %s",
+			imageLink, getNameTagRegExp)
 	}
 	name, tag = matches[2], matches[3]
 	return name, tag, nil

@@ -102,6 +102,7 @@ const formSchema = z.object({
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
+  cpuPinningEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
 })
 
@@ -159,6 +160,7 @@ function RouteComponent() {
         envs: values.envs,
         forwards: values.forwards,
         alertEnabled: values.alertEnabled,
+        cpuPinningEnabled: values.cpuPinningEnabled,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -210,6 +212,7 @@ function RouteComponent() {
       ],
       envs: [],
       alertEnabled: true,
+      cpuPinningEnabled: false,
       nodeSelector: {
         enable: false,
       },
@@ -425,6 +428,7 @@ conda activate base;
             <OtherOptionsFormCard
               form={form}
               alertEnabledPath="alertEnabled"
+              cpuPinningEnabledPath="cpuPinningEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
               open={otherOpen}

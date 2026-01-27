@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 // ignore-i18n-script
-import { Link, useNavigate } from '@tanstack/react-router'
+import { useNavigate } from '@tanstack/react-router'
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
-  BadgeCheck,
   BookOpenIcon,
   ChevronsUpDown,
   Globe,
@@ -142,12 +141,12 @@ export function NavUser() {
               </>
             )}
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
+              {/* <DropdownMenuItem asChild>
                 <Link to="/portal/more/user">
                   <BadgeCheck />
                   {t('navUser.personalPage')}
                 </Link>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem onClick={() => window.open(website)}>
                 <BookOpenIcon />
                 {t('navUser.platformDocs')}

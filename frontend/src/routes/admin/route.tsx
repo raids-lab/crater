@@ -10,6 +10,7 @@ import {
   FlaskConicalIcon,
   FolderIcon,
   GpuIcon,
+  LayoutDashboard,
   ServerIcon,
   SettingsIcon,
   UserRoundIcon,
@@ -87,6 +88,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
               url: '/admin/monitor/network',
             },
           ],
+        },
+        {
+          title: t('navigation.platformStatistics', { defaultValue: 'Platform Stats' }),
+          url: '/admin/statistics', // 指向刚才创建的路由
+          icon: LayoutDashboard,
         },
       ],
     },

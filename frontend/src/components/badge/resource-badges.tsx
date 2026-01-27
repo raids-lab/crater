@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { apiAdminResourceReset } from '@/services/api/resource'
 import { IResponse } from '@/services/types'
@@ -30,7 +31,9 @@ import useIsAdmin from '@/hooks/use-admin'
 interface ResourceBadgesProps {
   namespace?: string
   podName?: string
+  nodeName?: string // 添加 nodeName 用于刷新节点pods列表
   resources?: Record<string, string>
+  requestResources?: Record<string, string> // 添加 requests 资源
   showEdit?: boolean
 }
 
@@ -64,6 +67,22 @@ const ResourceBadge = ({
   const display =
     keyName === 'cpu' ? `${value}c` : keyName === 'memory' ? `${value}` : `${keyName}: ${value}`
 
+  // 验证内存格式是否为 xxGi
+  const isValidMemoryFormat = useMemo(() => {
+    if (keyName !== 'memory') return true
+    return /^\d+(\.\d+)?Gi$/.test(editValue)
+  }, [keyName, editValue])
+
+  // 检查内存是否减小
+  const isMemoryDecreased = useMemo(() => {
+    if (keyName !== 'memory') return false
+    const originalValue = parseFloat(value)
+    const newValue = parseFloat(editValue)
+    return !isNaN(originalValue) && !isNaN(newValue) && newValue < originalValue
+  }, [keyName, value, editValue])
+
+  const isSaveDisabled = !editValue || !isValidMemoryFormat || isMemoryDecreased
+
   if (!editable) {
     return (
       <Badge variant="secondary" className="font-mono">
@@ -93,14 +112,31 @@ const ResourceBadge = ({
             className="flex-1"
           />
         </div>
-        <Button
-          size="sm"
-          className="w-full"
-          disabled={!editValue}
-          onClick={() => onUpdate(keyName as 'cpu' | 'memory', editValue)}
-        >
-          Save
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <Button
+                  size="sm"
+                  className="w-full"
+                  disabled={isSaveDisabled}
+                  onClick={() => onUpdate(keyName as 'cpu' | 'memory', editValue)}
+                >
+                  Save
+                </Button>
+              </div>
+            </TooltipTrigger>
+            {(isMemoryDecreased || !isValidMemoryFormat) && (
+              <TooltipContent>
+                {isMemoryDecreased ? (
+                  <p>减小内存需要重启容器，暂不支持</p>
+                ) : (
+                  <p>内存格式必须为 xGi（例如：7Gi）</p>
+                )}
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </PopoverContent>
     </Popover>
   )
@@ -109,7 +145,9 @@ const ResourceBadge = ({
 export default function ResourceBadges({
   namespace,
   podName,
+  nodeName,
   resources = {},
+  requestResources = {},
   showEdit = false,
 }: ResourceBadgesProps) {
   const isAdmin = useIsAdmin()
@@ -119,8 +157,12 @@ export default function ResourceBadges({
     mutationFn: ({ namespace, podName, key, numericValue }) =>
       apiAdminResourceReset(namespace, podName, key, numericValue),
     onSuccess: (_res, { podName, key, numericValue }) => {
+      // 刷新节点的pods列表（管理员和普通用户视图都刷新）
+      if (nodeName) {
+        queryClient.invalidateQueries({ queryKey: ['nodes', nodeName, 'pods'] })
+      }
       queryClient.invalidateQueries({ queryKey: ['podResources', podName] })
-      toast.success(`${namespace} ${podName} ${key} updated to ${numericValue}`)
+      toast.success(`${podName} ${key} updated to ${numericValue}`)
     },
     onError: (_err, { podName, key }) => {
       toast.error(`Failed to update ${key} for ${podName}`)
@@ -137,25 +179,44 @@ export default function ResourceBadges({
     [namespace, podName, updateResource]
   )
 
-  // 使用 useMemo 缓存排序结果
-  const sortedEntries = useMemo(
-    () =>
-      Object.entries(resources).sort(([a], [b]) => {
-        if (a === 'cpu') return -1
-        if (b === 'cpu') return 1
-        if (a === 'memory') return b === 'cpu' ? 1 : -1
-        if (b === 'memory') return a === 'cpu' ? -1 : 1
-        return a.localeCompare(b)
-      }),
-    [resources]
-  )
+  // 检测是否为绑核模式（requests == limits）
+  const isCpuPinned = useMemo(() => {
+    const cpuLimit = resources['cpu']
+    const cpuRequest = requestResources['cpu']
+    return cpuLimit && cpuRequest && cpuLimit === cpuRequest
+  }, [resources, requestResources])
+
+  const isMemoryPinned = useMemo(() => {
+    const memLimit = resources['memory']
+    const memRequest = requestResources['memory']
+    return memLimit && memRequest && memLimit === memRequest
+  }, [resources, requestResources])
+
+  // 使用 useMemo 缓存排序结果 - 显示 requestResources 的值
+  const sortedEntries = useMemo(() => {
+    // 优先使用 requestResources 来显示，如果没有则使用 resources
+    const displayResources = Object.keys(requestResources).length > 0 ? requestResources : resources
+    return Object.entries(displayResources).sort(([a], [b]) => {
+      if (a === 'cpu') return -1
+      if (b === 'cpu') return 1
+      if (a === 'memory') return b === 'cpu' ? 1 : -1
+      if (b === 'memory') return a === 'cpu' ? -1 : 1
+      return a.localeCompare(b)
+    })
+  }, [resources, requestResources])
 
   return (
     <div className="flex flex-col flex-wrap gap-1 lg:flex-row">
       {sortedEntries.map(([rawKey, rawValue]) => {
         const key = rawKey.includes('/') ? rawKey.split('/').slice(1).join('') : rawKey
-        const editable = showEdit && isAdmin && (key === 'cpu' || key === 'memory')
-
+        // 检查是否可编辑：管理员、CPU/Memory资源、非绑核状态
+        let editable = showEdit && isAdmin && (key === 'cpu' || key === 'memory')
+        if (editable && key === 'cpu' && isCpuPinned) {
+          editable = false
+        }
+        if (editable && key === 'memory' && isMemoryPinned) {
+          editable = false
+        }
         return (
           <ResourceBadge
             key={key}

@@ -235,7 +235,7 @@ func (mgr *ImagePackMgr) buildFromDockerfile(c *gin.Context, data *DockerfileBui
 	imagepackName := fmt.Sprintf("%s-%s", data.UserName, uuid.New().String()[:5])
 	imageLink, err := utils.GenerateNewImageLinkForDockerfileBuild(data.BaseImage, data.UserName, data.ImageName, data.ImageTag)
 	if err != nil {
-		resputil.Error(c, "generate new image link failed", resputil.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 

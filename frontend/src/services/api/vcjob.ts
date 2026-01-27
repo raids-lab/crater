@@ -353,6 +353,7 @@ export interface IJupyterCreate {
   selectors?: NodeSelectorRequirement[]
   template: string
   alertEnabled: boolean
+  cpuPinningEnabled?: boolean
   forwards: Forward[]
 }
 
@@ -506,7 +507,7 @@ export const apiJobScheduleChangeAdmin = (schedule: object) =>
   apiV1Put<IResponse<string>>('admin/operations/cronjob', schedule)
 
 // 作业清理
-export interface WaitingJupyterJobCancelReq {
+export interface WaitingJobCancelReq {
   waitMinutes: number
 }
 
@@ -526,9 +527,17 @@ export interface CleanupResult {
   deleted: string[]
 }
 
-export const apiAdminWaitingJupyterJobCancel = (param: WaitingJupyterJobCancelReq) => {
-  return apiV1Post<IResponse<string[]>>('admin/operations/clean/clean-waiting-jupyter-job', {
+export const apiAdminWaitingJupyterJobCancel = (param: WaitingJobCancelReq) => {
+  return apiV1Post<IResponse<CleanupResult>>('admin/operations/clean/clean-waiting-jupyter-job', {
     waitMinitues: param.waitMinutes,
+    jobTypes: [JobType.Jupyter],
+  })
+}
+
+export const apiAdminWaitingCustomJobCancel = (param: WaitingJobCancelReq) => {
+  return apiV1Post<IResponse<CleanupResult>>('admin/operations/clean/clean-waiting-custom-job', {
+    waitMinitues: param.waitMinutes,
+    jobTypes: [JobType.Custom],
   })
 }
 

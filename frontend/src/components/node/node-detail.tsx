@@ -183,6 +183,7 @@ const getHeader = (name: string, t: (key: string) => string): string => {
 
 const getColumns = (
   isAdminView: boolean,
+  nodeName: string,
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
   handleShowMonitor: (pod: IClusterPodInfo) => void,
   t: (key: string) => string,
@@ -425,7 +426,9 @@ const getColumns = (
         <ResourceBadges
           namespace={row.original.namespace}
           podName={row.original.name}
+          nodeName={nodeName}
           resources={row.getValue('resources')}
+          requestResources={row.original.requestResources}
           showEdit={true}
         />
       )
@@ -526,6 +529,7 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
     () =>
       getColumns(
         isAdminView,
+        nodeName,
         setShowLogPod,
         (pod) => {
           setGrafanaUrl(
