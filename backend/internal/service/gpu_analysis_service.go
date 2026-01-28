@@ -704,8 +704,9 @@ func (s *GpuAnalysisService) cleanupStaleAnalyses(ctx context.Context) {
 	// 5. 找出需要删除的 GpuAnalysis 记录的 ID
 	var analysisIDsToDelete []uint
 	for _, analysis := range allAnalyses {
+		_, isJobActive := eligibleJobIDs[analysis.JobID]
 		// 如果 Job ID 不在有效列表中，则说明该分析记录是过时的
-		if _, ok := eligibleJobIDs[analysis.JobID]; !ok {
+		if !isJobActive && analysis.ReviewStatus != model.ReviewStatusPending {
 			analysisIDsToDelete = append(analysisIDsToDelete, analysis.ID)
 		}
 	}
