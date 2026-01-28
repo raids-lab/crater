@@ -299,6 +299,10 @@ function RouteComponent() {
                   memoryPath="task.resource.memory"
                   gpuCountPath="task.resource.gpu.count"
                   gpuModelPath="task.resource.gpu.model"
+                  rdmaPath={{
+                    rdmaEnabled: 'task.resource.network.enabled',
+                    rdmaLabel: 'task.resource.network.model',
+                  }}
                   vgpuPath={{
                     vgpuEnabled: 'task.resource.vgpu.enabled',
                     vgpuModels: 'task.resource.vgpu.models',
