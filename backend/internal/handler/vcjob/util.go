@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -25,14 +24,6 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
-)
-
-type VolumeType uint
-
-const (
-	_ VolumeType = iota
-	FileType
-	DataType
 )
 
 var (
@@ -118,7 +109,7 @@ type ImageBaseInfo struct {
 
 func GenerateVolumeMounts(
 	c context.Context,
-	volumes []VolumeMount,
+	volumes []util.VolumeMount,
 	token util.JWTMessage, // 传入 token 信息
 ) (pvc []v1.Volume, volumeMounts []v1.VolumeMount, err error) {
 	// 初始化返回的 PVC 和 VolumeMount 列表
@@ -142,14 +133,14 @@ func GenerateVolumeMounts(
 	// 遍历 volumes，根据权限动态创建 PVC
 	pvcMap := make(map[string]bool) // 用于避免重复创建同一 PVC
 	for _, vm := range volumes {
-		volumeMount, err := resolveVolumeMount(c, token, vm)
+		volumeMount, err := util.ResolveVolumeMount(c, token, vm, util.Task)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		// 如果该 PVC 尚未创建，添加到 PVC 列表
 		if !pvcMap[volumeMount.Name] {
-			pvc = append(pvc, createVolume(volumeMount.Name))
+			pvc = append(pvc, util.CreateVolume(volumeMount.Name))
 			pvcMap[volumeMount.Name] = true
 		}
 
@@ -178,163 +169,6 @@ func GenerateVolumeMounts(
 	})
 
 	return pvc, volumeMounts, nil
-}
-
-// resolveVolumeMount resolves the subpath and volume type based on the mount configuration
-func resolveVolumeMount(c context.Context, token util.JWTMessage, vm VolumeMount) (
-	mount v1.VolumeMount, err error,
-) {
-	// Get PVC names from config
-	pvc := config.GetConfig().Storage.PVC
-	rwxPVCName, roxPVCName := pvc.ReadWriteMany, pvc.ReadWriteMany
-	if pvc.ReadOnlyMany != nil {
-		roxPVCName = *pvc.ReadOnlyMany
-	}
-
-	// Handle dataset type volumes - always read-only
-	if vm.Type == DataType {
-		// Get dataset path from database
-		datasetPath, editable, err := GetSubPathByDatasetVolume(c, token.UserID, vm.DatasetID)
-		if err != nil {
-			return v1.VolumeMount{}, err
-		}
-		// If editable is true, use RWX PVC
-		if editable {
-			return v1.VolumeMount{
-				Name:      rwxPVCName,
-				SubPath:   datasetPath,
-				MountPath: vm.MountPath,
-				ReadOnly:  false,
-			}, nil
-		}
-		// If editable is false, use ROX PVC
-		return v1.VolumeMount{
-			Name:      roxPVCName,
-			SubPath:   datasetPath,
-			MountPath: vm.MountPath,
-			ReadOnly:  true,
-		}, nil
-	}
-
-	// Handle file type volumes based on path prefix
-	switch {
-	case strings.HasPrefix(vm.SubPath, "public"):
-		// Public space paths - permission based on PublicAccessMode
-		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.Public + strings.TrimPrefix(vm.SubPath, "public"))
-		if isReadOnly(token.PublicAccessMode) {
-			// Read-only access
-			return v1.VolumeMount{
-				Name:      roxPVCName,
-				SubPath:   subPath,
-				MountPath: vm.MountPath,
-				ReadOnly:  true,
-			}, nil
-		}
-		return v1.VolumeMount{
-			Name:      rwxPVCName,
-			SubPath:   subPath,
-			MountPath: vm.MountPath,
-			ReadOnly:  false,
-		}, nil
-	case strings.HasPrefix(vm.SubPath, "account"):
-		// Account space paths - permission based on AccountAccessMode
-		a := query.Account
-		account, err := a.WithContext(c).Where(a.ID.Eq(token.AccountID)).First()
-		if err != nil {
-			return v1.VolumeMount{}, err
-		}
-		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.Account + "/" + account.Space + strings.TrimPrefix(vm.SubPath, "account"))
-		if isReadOnly(token.AccountAccessMode) {
-			// Read-only access
-			return v1.VolumeMount{
-				Name:      roxPVCName,
-				SubPath:   subPath,
-				MountPath: vm.MountPath,
-				ReadOnly:  true,
-			}, nil
-		}
-		// Read-write access
-		return v1.VolumeMount{
-			Name:      rwxPVCName,
-			SubPath:   subPath,
-			MountPath: vm.MountPath,
-			ReadOnly:  false,
-		}, nil
-	case strings.HasPrefix(vm.SubPath, "user"):
-		// User space paths - always read-write
-		u := query.User
-		user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
-		if err != nil {
-			return v1.VolumeMount{}, err
-		}
-		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.User + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user"))
-		// User's own space always gets read-write access
-		return v1.VolumeMount{
-			Name:      rwxPVCName,
-			SubPath:   subPath,
-			MountPath: vm.MountPath,
-			ReadOnly:  false,
-		}, nil
-	default:
-		return v1.VolumeMount{}, fmt.Errorf("invalid mount path format: %s", vm.SubPath)
-	}
-}
-
-// isReadOnly determines the appropriate PVC and read-only flag based on the access mode
-func isReadOnly(accessMode model.AccessMode) bool {
-	switch accessMode {
-	case model.AccessModeRO, model.AccessModeAO:
-		// Read-only access
-		return true
-	case model.AccessModeRW:
-		// Read-write access
-		return false
-	default:
-		// Invalid access mode
-		return true
-	}
-}
-
-// 创建 PVC Volume
-func createVolume(volumeName string) v1.Volume {
-	return v1.Volume{
-		Name: volumeName,
-		VolumeSource: v1.VolumeSource{
-			PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-				ClaimName: volumeName,
-			},
-		},
-	}
-}
-
-func GetSubPathByDatasetVolume(c context.Context,
-	userID, datasetID uint) (subPath string, editable bool, err error) {
-	ud := query.UserDataset
-	d := query.Dataset
-	ad := query.AccountDataset
-	ua := query.UserAccount
-	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetID)).First()
-	if err != nil {
-		return "", false, err
-	}
-	editable = dataset.Extra.Data().Editable
-	// Find()方法没找到不会报err，而是返回nil
-	accountDatasets, err := ad.WithContext(c).Where(ad.DatasetID.Eq(datasetID)).Find()
-	if err != nil {
-		return "", false, err
-	}
-	for _, accountDataset := range accountDatasets {
-		_, err = ua.WithContext(c).Where(ua.AccountID.Eq(accountDataset.AccountID), ua.UserID.Eq(userID)).First()
-		if err == nil {
-			return dataset.URL, editable, nil
-		}
-	}
-	_, err = ud.WithContext(c).Where(ud.UserID.Eq(userID), ud.DatasetID.Eq(datasetID)).First()
-	if err != nil {
-		return "", false, err
-	}
-
-	return dataset.URL, editable, nil
 }
 
 func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1.Toleration) {

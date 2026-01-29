@@ -7,6 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/util"
 )
 
 type ImageRegistrySecret struct {
@@ -29,6 +30,8 @@ type BuildKitReq struct {
 	Template     string
 	BuildSource  model.BuildSource
 	Archs        []string
+	VolumeMounts []util.VolumeMount
+	Token        util.JWTMessage // Token information for volume resolution
 }
 
 type SnapshotReq struct {
@@ -77,7 +80,7 @@ var (
 	buildkitdAmdName string = "buildkitd-x86"
 	runAsUerNumber   int64  = 1000
 	runAsGroupNumber int64  = 1000
-	fsAsGroupNumber  int64  = 1000
+	// fsAsGroupNumber  int64  = 1000
 
 	harborCreditSecretName string = "buildkit-secret"
 
