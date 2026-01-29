@@ -125,15 +125,15 @@ func ResolveVolumeMount(c context.Context, token JWTMessage, vm VolumeMount, sou
 		}
 		subPath := filepath.Clean(config.GetConfig().Storage.Prefix.User + "/" + user.Space + strings.TrimPrefix(vm.SubPath, "user"))
 		// User's own space always gets read-write access
-		// if source == ImageCreate {
-		// 	// For image creation jobs, use ROX PVC to avoid accidental modifications
-		// 	return v1.VolumeMount{
-		// 		Name:      roxPVCName,
-		// 		SubPath:   subPath,
-		// 		MountPath: vm.MountPath,
-		// 		ReadOnly:  true,
-		// 	}, nil
-		// }
+		if source == ImageCreate {
+			// For image creation jobs, use ROX PVC to avoid accidental modifications
+			return v1.VolumeMount{
+				Name:      roxPVCName,
+				SubPath:   subPath,
+				MountPath: vm.MountPath,
+				ReadOnly:  true,
+			}, nil
+		}
 		return v1.VolumeMount{
 			Name:      rwxPVCName,
 			SubPath:   subPath,
