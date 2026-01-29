@@ -22,6 +22,7 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-build.yml"
+      - "website/**"
 
 env:
   # Modified to use GHCR configuration
@@ -120,13 +121,41 @@ jobs:
         with:
           node-version: 22
           cache: "pnpm"
-          cache-dependency-path: "frontend/pnpm-lock.yaml"
+          cache-dependency-path: |
+            frontend/pnpm-lock.yaml
+            website/pnpm-lock.yaml
 
-      - name: Install dependencies
+      # --- 修改开始：构建 Website ---
+      
+      - name: Install Website Dependencies
+        run: |
+          cd ../website
+          pnpm install
+
+      - name: Build Website
+        run: |
+          cd ../website
+          # 确保这一步生成了 ./out 目录
+          pnpm build 
+
+      # --- 修改结束 ---
+
+      - name: Install Frontend Dependencies
         run: pnpm install
 
-      - name: Build project
+      - name: Build Frontend Project
         run: pnpm build
+
+      # --- 修改开始：合并文档到前端构建产物 ---
+      
+      - name: Merge Docs into Frontend Dist
+        run: |
+          # 创建存放文档的目录
+          mkdir -p dist/crater
+          # 将 website/out 下的所有内容复制到 frontend/dist/crater
+          cp -r ../website/out/* dist/crater/
+          
+      # --- 修改结束 ---
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
