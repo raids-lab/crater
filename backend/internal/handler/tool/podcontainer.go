@@ -952,6 +952,72 @@ func checkUserPermissionForJob(c *gin.Context, jobName string) bool {
 	return true
 }
 
+// findContainerIndex finds the container index by name, returns 0 if containerName is nil
+func findContainerIndex(pod *v1.Pod, containerName *string) (int, error) {
+	if containerName == nil {
+		return 0, nil
+	}
+	for i := range pod.Spec.Containers {
+		if pod.Spec.Containers[i].Name == *containerName {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("container %q not found in pod %s/%s",
+		*containerName, pod.Namespace, pod.Name)
+}
+
+// isPinningMode checks if the container is in pinning mode (requests == limits)
+func isPinningMode(ctr *v1.Container) bool {
+	cpuPinned := false
+	memPinned := false
+
+	if cpuReq, ok := ctr.Resources.Requests[v1.ResourceCPU]; ok {
+		if cpuLim, ok := ctr.Resources.Limits[v1.ResourceCPU]; ok {
+			cpuPinned = cpuReq.Equal(cpuLim)
+		}
+	}
+
+	if memReq, ok := ctr.Resources.Requests[v1.ResourceMemory]; ok {
+		if memLim, ok := ctr.Resources.Limits[v1.ResourceMemory]; ok {
+			memPinned = memReq.Equal(memLim)
+		}
+	}
+
+	return cpuPinned && memPinned
+}
+
+// updateCPUResources updates CPU requests and limits
+func updateCPUResources(resources, newRequests, newLimits v1.ResourceList) {
+	if cpuQty, ok := resources[v1.ResourceCPU]; ok {
+		cpuMillis := cpuQty.MilliValue()
+		newRequests[v1.ResourceCPU] = cpuQty
+		newLimits[v1.ResourceCPU] = *resource.NewMilliQuantity(cpuMillis+1, resource.DecimalSI)
+	}
+}
+
+// updateMemoryResources updates Memory requests and optionally limits
+// If memory is decreased, only requests are updated to avoid k8s restart requirement
+func updateMemoryResources(pod *v1.Pod, ctr *v1.Container, resources, newRequests, newLimits v1.ResourceList) {
+	memQty, ok := resources[v1.ResourceMemory]
+	if !ok {
+		return
+	}
+
+	newMemBytes := memQty.Value()
+	newRequests[v1.ResourceMemory] = memQty
+
+	// 检查是否调小内存
+	currentMemReq, hasCurrentMem := ctr.Resources.Requests[v1.ResourceMemory]
+	if hasCurrentMem && newMemBytes < currentMemReq.Value() {
+		// 调小内存：保持 limits 不变，只修改 requests
+		klog.Infof("Decreasing memory for pod %s/%s: only adjusting requests, keeping limits unchanged",
+			pod.Namespace, pod.Name)
+	} else {
+		// 调大内存或首次设置：requests 和 limits 都设置
+		newLimits[v1.ResourceMemory] = *resource.NewQuantity(newMemBytes+1024*1024, resource.BinarySI)
+	}
+}
+
 func (mgr *APIServerMgr) EditPodResource(
 	c *gin.Context,
 	pod *v1.Pod,
@@ -961,42 +1027,15 @@ func (mgr *APIServerMgr) EditPodResource(
 	ctx := c.Request.Context()
 
 	// 确定要修改的 container 索引
-	idx := 0
-	if containerName != nil {
-		found := false
-		for i := range pod.Spec.Containers {
-			if pod.Spec.Containers[i].Name == *containerName {
-				idx = i
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("container %q not found in pod %s/%s",
-				*containerName, pod.Namespace, pod.Name)
-		}
+	idx, err := findContainerIndex(pod, containerName)
+	if err != nil {
+		return err
 	}
 
 	ctr := &pod.Spec.Containers[idx]
 
-	// 检查是否为绑核模式（CPU 和 Memory 的 requests == limits）
-	isCpuPinned := false
-	isMemPinned := false
-
-	if cpuReq, cpuReqOk := ctr.Resources.Requests[v1.ResourceCPU]; cpuReqOk {
-		if cpuLim, cpuLimOk := ctr.Resources.Limits[v1.ResourceCPU]; cpuLimOk {
-			isCpuPinned = cpuReq.Equal(cpuLim)
-		}
-	}
-
-	if memReq, memReqOk := ctr.Resources.Requests[v1.ResourceMemory]; memReqOk {
-		if memLim, memLimOk := ctr.Resources.Limits[v1.ResourceMemory]; memLimOk {
-			isMemPinned = memReq.Equal(memLim)
-		}
-	}
-
 	// 如果是绑核模式，拒绝调整
-	if isCpuPinned && isMemPinned {
+	if isPinningMode(ctr) {
 		return fmt.Errorf("pod %s/%s is in CPU pinning mode (requests == limits), cannot adjust resources dynamically",
 			pod.Namespace, pod.Name)
 	}
@@ -1005,22 +1044,11 @@ func (mgr *APIServerMgr) EditPodResource(
 	newRequests := ctr.Resources.Requests.DeepCopy()
 	newLimits := ctr.Resources.Limits.DeepCopy()
 
-	// 更新 CPU：requests 为用户指定值，limits 为 requests + 1 millicore
-	if cpuQty, ok := resources[v1.ResourceCPU]; ok {
-		cpuMillis := cpuQty.MilliValue()
-		newRequests[v1.ResourceCPU] = cpuQty
-		newLimits[v1.ResourceCPU] = *resource.NewMilliQuantity(cpuMillis+1, resource.DecimalSI)
-	}
-
-	// 更新 Memory：requests 为用户指定值，limits 为 requests + 1Mi
-	if memQty, ok := resources[v1.ResourceMemory]; ok {
-		memBytes := memQty.Value()
-		newRequests[v1.ResourceMemory] = memQty
-		newLimits[v1.ResourceMemory] = *resource.NewQuantity(memBytes+1024*1024, resource.BinarySI)
-	}
+	// 更新资源
+	updateCPUResources(resources, newRequests, newLimits)
+	updateMemoryResources(pod, ctr, resources, newRequests, newLimits)
 
 	// 使用 Patch 的 resize subresource 方式调整资源
-	// 构造 patch payload
 	patchData := map[string]any{
 		"spec": map[string]any{
 			"containers": []map[string]any{
