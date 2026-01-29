@@ -5,10 +5,16 @@ import time
 from collections import OrderedDict
 import re
 
-API_URL = "http://127.0.0.1:8000/v1/chat/completions"
-MODEL_PATH = "Qwen3-30B-A3B-Instruct-2507-Int8"  # 请按需修改
+DEFAULT_API_URL = "http://127.0.0.1:8000/v1/chat/completions"
+DEFAULT_MODEL_NAME = "Qwen3-30B-A3B-Instruct-2507-Int8"
+
+API_URL = os.environ.get("LLM_API_URL", DEFAULT_API_URL)
+MODEL_PATH = os.environ.get("LLM_MODEL_NAME", DEFAULT_MODEL_NAME)
+
 MAX_RETRIES = 3
 
+print(f"[i] 使用的 vLLM API URL: {API_URL}")
+print(f"[i] 使用的模型名称: {MODEL_PATH}")
 # === 辅助函数: 展平 & 重建 JSON ===
 
 def _flatten_json(nested_json: dict, separator: str = '.') -> dict:
