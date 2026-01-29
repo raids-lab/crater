@@ -3,7 +3,8 @@ title: "Configuration Guide"
 description: "A university-developed cluster management platform for intelligent cluster scheduling and monitoring."
 ---
 
-![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+<!-- ![Version: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square) -->
+<img src="https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square" alt="Version: 0.1.0"> <img src="https://img.shields.io/badge/Type-application-informational?style=flat-square" alt="Type: application"> <img src="https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square" alt="AppVersion: 1.0.0">
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 

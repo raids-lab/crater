@@ -19,7 +19,7 @@ import { RootProvider } from "fumadocs-ui/provider";
 import type { ReactNode } from "react";
 import {notFound} from 'next/navigation';
 import {NextIntlClientProvider, hasLocale, } from 'next-intl';
-import OramaSearchDialog from "@/components/search/search";
+import PagefindSearchDialog from "@/components/search/search";
 import { InternalLinkUpdater } from '@/components/internal-link-updater';
 import {routing} from '@/i18n/routing';
 import {setRequestLocale, getMessages} from 'next-intl/server';
@@ -47,10 +47,10 @@ export default async function Layout({
   
   return (
     <html lang={lang} suppressHydrationWarning>
-      <body className="flex flex-col min-h-screen">
+      <body className="flex flex-col min-h-screen" data-pagefind-filter={`lang:${lang}`}>
         <NextIntlClientProvider locale={lang} messages={messages}>
           <RootProvider
-            search={{SearchDialog: OramaSearchDialog}}  
+            search={{SearchDialog: PagefindSearchDialog}}  
             // 还需要提供语言切换器所需的信息
             i18n={{
               locale: lang,

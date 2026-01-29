@@ -423,7 +423,7 @@ Taking creating a PR that updates the documentation website as an example, the e
    - **Automatic Correction** (`docs-autocorrect.yml`): Automatically corrects documentation format. For internal PRs, it directly commits corrections; for Fork PRs, it reports issues in PR comments
 
 2. **After PR merge**: When the PR is merged to the main branch, two workflows are triggered:
-   - **Documentation Deployment** (`docs-deploy.yml`): Builds the Next.js website including Orama search index and deploys it to GitHub Pages, automatically updating the documentation website
+   - **Documentation Deployment** (`docs-deploy.yml`): Builds the Next.js website including Pagefind search index and deploys it to GitHub Pages, automatically updating the documentation website
    - **Automatic Translation** (`docs-autotranslate.yml`): Intelligently filters files that need translation based on file change types and PR labels, runs translation scripts, and creates PRs containing translation results (branch name: `feature/auto-translate-{run_id}`)
 
 3. **After translation PR is created**: The PR created by automatic translation triggers PR check and automatic correction workflows, but since the translation PR's commit message starts with `chore(i18n):`, the automatic translation workflow's loop prevention mechanism skips this PR to avoid infinite loops.
@@ -449,13 +449,10 @@ Image format check ensures that newly added or modified images in the PR use Web
 
 Documentation deployment is triggered when code is pushed to the main branch, listening to changes in `website/src/**`, `website/content/**`, and `website/package.json`. The deployment process includes two stages: build and deployment.
 
-The build stage uses Next.js to build the website, including Orama search index (requiring `ORAMA_PRIVATE_API_KEY` and `ORAMA_INDEX_NAME` environment variables), and creates a `.nojekyll` file to prevent GitHub Pages from using Jekyll processing:
+The build stage uses Next.js to build the website,  and creates a `.nojekyll` file to prevent GitHub Pages from using Jekyll processing:
 
 ```yaml
 - name: Build website
-  env:
-    ORAMA_PRIVATE_API_KEY: ${{ secrets.ORAMA_PRIVATE_API_KEY }}
-    ORAMA_INDEX_NAME: ${{ secrets.ORAMA_INDEX_NAME }}
   run: pnpm build
 
 - name: Create .nojekyll file

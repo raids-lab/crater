@@ -3,7 +3,8 @@ title: "설명서"
 description: "대학에서 개발한 지능형 클러스터 스케줄링 및 모니터링을 위한 클러스터 관리 플랫폼입니다."
 ---
 
-![버전: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![유형: 애플리케이션](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![앱버전: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+<!-- ![버전: 0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![유형: 애플리케이션](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![앱버전: 1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square) -->
+<img src="https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square" alt="버전: 0.1.0"> <img src="https://img.shields.io/badge/Type-application-informational?style=flat-square" alt="유형: 애플리케이션"> <img src="https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square" alt="앱버전: 1.0.0">
 
 Kubernetes 를 위한 포괄적인 AI 개발 플랫폼으로, GPU 자원 관리, 컨테이너화된 개발 환경, 워크플로우 오케스트레이션 기능을 제공합니다.
 
