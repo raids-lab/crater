@@ -73,15 +73,7 @@ const ResourceBadge = ({
     return /^\d+(\.\d+)?Gi$/.test(editValue)
   }, [keyName, editValue])
 
-  // 检查内存是否减小
-  const isMemoryDecreased = useMemo(() => {
-    if (keyName !== 'memory') return false
-    const originalValue = parseFloat(value)
-    const newValue = parseFloat(editValue)
-    return !isNaN(originalValue) && !isNaN(newValue) && newValue < originalValue
-  }, [keyName, value, editValue])
-
-  const isSaveDisabled = !editValue || !isValidMemoryFormat || isMemoryDecreased
+  const isSaveDisabled = !editValue || !isValidMemoryFormat
 
   if (!editable) {
     return (
@@ -126,13 +118,9 @@ const ResourceBadge = ({
                 </Button>
               </div>
             </TooltipTrigger>
-            {(isMemoryDecreased || !isValidMemoryFormat) && (
+            {!isValidMemoryFormat && (
               <TooltipContent>
-                {isMemoryDecreased ? (
-                  <p>减小内存需要重启容器，暂不支持</p>
-                ) : (
-                  <p>内存格式必须为 xGi（例如：7Gi）</p>
-                )}
+                <p>内存格式必须为 xGi（例如：7Gi）</p>
               </TooltipContent>
             )}
           </Tooltip>
