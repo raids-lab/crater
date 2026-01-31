@@ -239,27 +239,11 @@
       }
     }
   },
-  "OramaSearch": {
-    "dictionary": {
-      "searchPlaceholder": "Search our documentation...",
-      "chatPlaceholder": "Ask our AI assistant...",
-      "noResultsFound": "We couldn't find any results",
-      "noResultsFoundFor": "for",
-      "suggestionsTitle": "You might want to try",
-      "seeAll": "View all results",
-      "addMore": "Load more",
-      "clearChat": "Reset conversation",
-      "errorMessage": "Oops! Something went wrong with your search.",
-      "disclaimer": "AI-generated responses may not always be accurate.",
-      "startYourSearch": "Begin your search",
-      "initErrorSearch": "Search service initialization failed",
-      "initErrorChat": "Chat service initialization failed",
-      "chatButtonLabel": "Get AI summary"
-    },
-    "suggestions": [
-      "How to start a PyTorch job?",
-      "How to connect via SSH?",
-      "How to perform LLM inference on Crater?"
-    ]
+  "PagefindSearch": {
+    "close": "Close",
+    "select": "Select",
+    "noResults": "No results found",
+    "poweredBy": "Search powered by ",
+    "untitled": "Untitled"
   }
 }

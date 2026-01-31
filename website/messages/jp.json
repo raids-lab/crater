@@ -239,27 +239,11 @@
       }
     }
   },
-  "OramaSearch": {
-    "dictionary": {
-      "searchPlaceholder": "ドキュメントを検索...",
-      "chatPlaceholder": "AI アシスタントに質問...",
-      "noResultsFound": "結果が見つかりませんでした",
-      "noResultsFoundFor": "に関する結果はありません",
-      "suggestionsTitle": "こちらも試してみませんか",
-      "seeAll": "すべての結果を見る",
-      "addMore": "さらに読み込む",
-      "clearChat": "チャットをリセット",
-      "errorMessage": "検索中にエラーが発生しました。",
-      "disclaimer": "AI が生成した回答は、必ずしも正確であるとは限りません。",
-      "startYourSearch": "さあ、検索を始めましょう",
-      "initErrorSearch": "検索サービスの初期化に失敗しました",
-      "initErrorChat": "チャットサービスの初期化に失敗しました",
-      "chatButtonLabel": "AI による要約を取得"
-    },
-    "suggestions": [
-      "Pytorch ジョブを開始するには？",
-      "SSH 接続を行うには？",
-      "Crater で LLM 推論を行うには？"
-    ]
+  "PagefindSearch": {
+    "close": "検索を閉じる",
+    "select": "選択",
+    "noResults": "結果が見つかりませんでした",
+    "poweredBy": "検索エンジン: ",
+    "untitled": "タイトルなし"
   }
 }

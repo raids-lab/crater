@@ -239,27 +239,11 @@
       }
     }
   },
-  "OramaSearch": {
-    "dictionary": {
-      "searchPlaceholder": "搜索文档...",
-      "chatPlaceholder": "询问 AI 助手...",
-      "noResultsFound": "没有找到结果",
-      "noResultsFoundFor": "关于",
-      "suggestionsTitle": "你或许想试试",
-      "seeAll": "查看所有结果",
-      "addMore": "加载更多",
-      "clearChat": "重置对话",
-      "errorMessage": "哎呀！搜索出错了。",
-      "disclaimer": "AI 生成的回复可能并不总是准确。",
-      "startYourSearch": "开始搜索吧",
-      "initErrorSearch": "搜索服务初始化失败",
-      "initErrorChat": "聊天服务初始化失败",
-      "chatButtonLabel": "获取 AI 摘要"
-    },
-    "suggestions": [
-      "怎么启动 Pytorch job？",
-      "怎么进行 SSH 连接？",
-      "怎么在 Crater 上进行 LLM 推理？"
-    ]
+  "PagefindSearch": {
+    "close": "关闭搜索",
+    "select": "选择",
+    "noResults": "未找到结果",
+    "poweredBy": "搜索引擎: ",
+    "untitled": "无标题"
   }
 }

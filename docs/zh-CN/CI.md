@@ -423,7 +423,7 @@ detect-changes:
    - **自动修正**（`docs-autocorrect.yml`）：自动修正文档格式，对于内部 PR 会直接提交修正，对于 Fork PR 会在 PR 评论中报告问题
 
 2. **PR 合并后**：当 PR 合并到 main 分支后，会触发两个 workflow：
-   - **文档部署**（`docs-deploy.yml`）：构建包含 Orama 搜索索引的 Next.js 网站，并部署到 GitHub Pages，文档网站自动更新
+   - **文档部署**（`docs-deploy.yml`）：构建包含 PageFind 搜索索引的 Next.js 网站，并部署到 GitHub Pages，文档网站自动更新
    - **自动翻译**（`docs-autotranslate.yml`）：根据文件变更类型和 PR 标签智能过滤需要翻译的文件，运行翻译脚本，并创建包含翻译结果的 PR（分支名为 `feature/auto-translate-{run_id}`）
 
 3. **翻译 PR 创建后**：自动翻译创建的 PR 会触发 PR 检查和自动修正 workflow，但由于翻译 PR 的 commit 消息以 `chore(i18n):` 开头，自动翻译 workflow 的防循环机制会跳过该 PR，避免无限循环。
@@ -449,13 +449,10 @@ PR 检查在创建 Pull Request 时触发，监听 `website/src/**`、`website/c
 
 文档部署在代码推送到 main 分支时触发，监听 `website/src/**`、`website/content/**` 和 `website/package.json` 的变更。部署流程包括构建和部署两个阶段。
 
-构建阶段使用 Next.js 构建网站，包含 Orama 搜索索引（需要 `ORAMA_PRIVATE_API_KEY` 和 `ORAMA_INDEX_NAME` 环境变量），并创建 `.nojekyll` 文件以防止 GitHub Pages 使用 Jekyll 处理：
+构建阶段使用 Next.js 构建网站，并创建 `.nojekyll` 文件以防止 GitHub Pages 使用 Jekyll 处理：
 
 ```yaml
 - name: Build website
-  env:
-    ORAMA_PRIVATE_API_KEY: ${{ secrets.ORAMA_PRIVATE_API_KEY }}
-    ORAMA_INDEX_NAME: ${{ secrets.ORAMA_INDEX_NAME }}
   run: pnpm build
 
 - name: Create .nojekyll file

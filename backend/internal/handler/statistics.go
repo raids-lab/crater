@@ -108,14 +108,15 @@ func (mgr *StatisticsMgr) GetStatistics(c *gin.Context) {
 		}
 
 	case payload.ScopeUser:
-		// 如果是普通用户，只能查自己
-		if token.RolePlatform != model.RoleAdmin {
-			req.TargetID = token.UserID
-		}
-		// 如果是 Admin 且没传 targetID，则报错；或者 Admin 可以指定查某个 User
+		// 所有用户可互相查询
 		if req.TargetID == 0 {
-			req.TargetID = token.UserID
+			resputil.Error(c, "targetID is required for user scope", resputil.NotSpecified)
+			return
 		}
+
+	default:
+		resputil.Error(c, "invalid scope value", resputil.NotSpecified)
+		return
 	}
 
 	// 3. 校验时间范围

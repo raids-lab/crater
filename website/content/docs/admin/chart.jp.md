@@ -3,7 +3,9 @@ title: "設定説明"
 description: "大学が開発したクラスタ管理プラットフォームで、インテリジェントなクラスタスケジューリングとモニタリングを提供します。"
 ---
 
-![バージョン：0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![タイプ：アプリケーション](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![アプリバージョン：1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square)
+<!-- ![バージョン：0.1.0](https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square) ![タイプ：アプリケーション](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![アプリバージョン：1.0.0](https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square) -->
+<img src="https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square" alt="バージョン：0.1.0"> <img src="https://img.shields.io/badge/Type-application-informational?style=flat-square" alt="タイプ：アプリケーション"> <img src="https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square" alt="アプリバージョン：1.0.0">
+
 
 Kubernetes 向けの包括的な AI 開発プラットフォームで、GPU リソース管理、コンテナ化された開発環境、ワークフローのオーケストレーションを提供します。
 

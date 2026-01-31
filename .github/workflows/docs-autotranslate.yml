@@ -170,6 +170,8 @@ jobs:
         env:
           # 将仓库根目录的绝对路径传递给 Python
           REPO_ROOT: ${{ github.workspace }}
+          LLM_API_URL: ${{ vars.LLM_API_URL }} 
+          LLM_MODEL_NAME: ${{ vars.LLM_MODEL_NAME }}
         run: |
           python website/hack/i18n/bootstrap.py --changed-files "${{ steps.files-to-process.outputs.files }}"
 
