@@ -1,53 +1,91 @@
-[English](README.md) | [简体中文](docs/zh-CN/README.md)
+<p align="center">
+  <a href="README.md">English</a> · <a href="docs/zh-CN/README.md">简体中文</a>
+</p>
 
-# ![crater](./website/content/docs/admin/assets/icon.webp) Crater
+<p align="center">
+  <img src="./website/content/docs/admin/assets/icon.webp" alt="Crater logo" width="120" />
+</p>
+
+<h1 align="center">Crater</h1>
+
+<p align="center">
+  A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" /></a>
+  <a href="https://raids-lab.github.io/crater/zh"><img src="https://img.shields.io/badge/Docs-raids--lab.github.io-brightgreen" alt="Docs" /></a>
+  <a href="https://github.com/raids-lab/crater/actions/workflows/backend-build.yml"><img src="https://github.com/raids-lab/crater/actions/workflows/backend-build.yml/badge.svg" alt="Backend Build" /></a>
+  <a href="https://github.com/raids-lab/crater/actions/workflows/helm-chart-validate.yml"><img src="https://github.com/raids-lab/crater/actions/workflows/helm-chart-validate.yml/badge.svg" alt="Helm Chart Validate" /></a>
+</p>
+
+<p align="center">
+  <a href="https://raids-lab.github.io/crater/zh/docs/admin/">Documentation</a> ·
+  <a href="./charts/crater">Helm Chart</a> ·
+  <a href="./backend/README.md">Backend</a> ·
+  <a href="./frontend/README.md">Frontend</a>
+</p>
 
 <table>
   <tr>
     <td align="center" width="45%">
-      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif"><br>
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" /><br>
       <em>Jupyter Lab</em>
     </td>
     <td align="center" width="45%">
-      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif"><br>
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Ray Job" /><br>
       <em>Ray Job</em>
     </td>
   </tr>
   <tr>
     <td align="center" width="45%">
-      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif"><br>
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" /><br>
       <em>Monitor</em>
     </td>
     <td align="center" width="45%">
-      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif"><br>
+      <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" /><br>
       <em>Models</em>
     </td>
   </tr>
 </table>
 
-**Crater** is a university-developed cluster management platform designed to provide users with an efficient and user-friendly solution for managing computing clusters. It offers unified scheduling and management of computing, storage, and other resources within a cluster, ensuring stable operation and optimal resource utilization.
+Crater is a Kubernetes-based platform that helps teams manage heterogeneous compute resources (e.g., GPUs) and run AI workloads through unified scheduling, development environments, and observability.
 
 ## Features
 
-### 🎛️ Intuitive Interface Design
+- 🎛️ **Intuitive UI**: Manage clusters, jobs, and resources through a clean web interface.
+- ⚙️ **Intelligent scheduling**: Allocate resources based on priority and requirements to improve utilization.
+- 📈 **Monitoring & logs**: Observe cluster status and troubleshoot with metrics and logs.
 
-Crater features a clean and easy-to-use graphical user interface that enables users to perform various cluster management tasks effortlessly. The resource dashboard provides real-time insights into key metrics such as CPU utilization, memory usage, and storage capacity.
+## Architecture
 
-The job management interface allows users to monitor running jobs, view job queues, and access job history, making it easy to track and control task execution.
-
-### ⚙️ Intelligent Resource Scheduling
-
-The platform employs smart scheduling algorithms to automatically allocate the most suitable resources to each job based on priority, resource requirements, and other factors. For example, when multiple jobs request resources simultaneously, Crater can quickly analyze the situation and prioritize critical and time-sensitive tasks to improve overall efficiency.
-
-### 📈 Comprehensive Monitoring
-
-Crater offers detailed monitoring data and logging capabilities, empowering users with deep visibility into cluster operations. These features facilitate quick troubleshooting and performance tuning, helping maintain system stability and responsiveness.
-
----
-## Overall Architecture
 ![crater architecture](./website/content/docs/admin/assets/architecture.webp)
 
-## Installation
+High-level architecture of Crater and its major components.
+
+## Documentation
+
+- Admin guide (中文): https://raids-lab.github.io/crater/zh/docs/admin/
+- Admin guide (English): https://raids-lab.github.io/crater/en/docs/admin/
+
+Deployment guides:
+
+If you want to quickly deploy a basic Crater using Kind, please refer to [Minimal Deployment](https://raids-lab.github.io/crater/zh/docs/admin/kind-start/).
+
+If you want to deploy a full Crater in a cluster, please refer to [Cluster Deployment Guide](https://raids-lab.github.io/crater/zh/docs/admin/deploy-on-cluster/).
+
+English versions:
+
+- [Minimal Deployment](https://raids-lab.github.io/crater/en/docs/admin/kind-start/)
+- [Cluster Deployment Guide](https://raids-lab.github.io/crater/en/docs/admin/deploy-on-cluster/)
+
+## Getting Started
+
+### Prerequisites
+
+- A running Kubernetes cluster
+- `kubectl`
+- Helm v3
 
 To get started with **Crater**, you first need to have a running Kubernetes cluster. You can set up a cluster using one of the following methods:
 
@@ -69,47 +107,57 @@ For deploying Crater in a production or large-scale test environment, you can us
 
 📖 [https://kubernetes.io/docs/setup/](https://kubernetes.io/docs/setup/)
 
----
+### Install via Helm (OCI)
 
-## Deployment (via Helm)
+> Use the docs above for a full guide. The chart version can be found in `charts/crater/Chart.yaml` (field `version`) or GitHub releases.
 
-If you want to quickly deploy a basic Crater using Kind, please refer to [Minimal Deployment](https://raids-lab.github.io/crater/zh/docs/admin/kind-start/).
+```bash
+helm registry login ghcr.io
+helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
+```
 
-If you want to deploy a full Crater in a cluster, please refer to [Cluster Deployment Guide](https://raids-lab.github.io/crater/zh/docs/admin/deploy-on-cluster/).
+## Repository Structure
 
----
+- `backend/`: Backend services
+- `frontend/`: Web UI
+- `storage/`: Storage service
+- `charts/`: Helm charts for deploying Crater
+- `website/`: Documentation website source
+- `grafana-dashboards/`: Grafana dashboards used by Crater
+- `docs/`: Documentation entrypoints and localization resources
+- `hack/`: Developer tooling and scripts
 
-## Development
+## Contributing
 
-We welcome community contributions! If you would like to contribute to the Crater project, please follow the development workflow below.
+We welcome community contributions! If you would like to contribute to the Crater project, please follow the workflow below.
 
-### 🔀 Fork and Clone Repository
+### 1) Fork and clone
 
-1. **Fork the Repository**
+1. **Fork the repository**
    - Visit the [Crater main repository](https://github.com/raids-lab/crater)
-   - Click the "Fork" button in the top right corner to fork the repository to your GitHub account
+   - Click **Fork** in the top right corner
 
-2. **Clone Your Fork**
+2. **Clone your fork**
+
    ```bash
    # Replace YOUR_USERNAME with your GitHub username
    git clone https://github.com/YOUR_USERNAME/crater.git
    cd crater
    ```
 
-3. **Add Upstream Repository**
+3. **Add upstream (optional)**
+
    ```bash
    # Add upstream repository to sync latest changes
    git remote add upstream https://github.com/raids-lab/crater.git
-   
-   # Verify remote repository configuration, you should see both the main repository and your Fork
+
+   # Verify remote repository configuration
    git remote -v
    ```
-   
-   If you configure it this way, `origin` points to your Fork repository, and `upstream` points to the upstream main repository.
 
-   **Alternative:** You can also skip `git remote add upstream` and only connect to your Fork repository. In this case, when you need to sync upstream changes, use the Sync Fork feature on GitHub to sync changes from the upstream main repository.
+   If you configure it this way, `origin` points to your fork repository, and `upstream` points to the upstream main repository.
 
-### 🌿 Create Development Branch
+### 2) Create a branch
 
 It's recommended to create a new feature branch from the latest main branch. If you need to sync upstream changes, please first refer to the [Sync Upstream Changes](#-sync-upstream-changes) section to update your local main branch, then create a new feature branch:
 
@@ -120,29 +168,26 @@ git checkout -b feature/your-feature-name
 git checkout -b fix/your-bug-fix
 ```
 
-### ⚙️ Environment Setup
+### 3) Install hooks and set up environments
 
-Before starting development, first install Git pre-commit hooks, which will automatically check modified files when you commit code:
+Install Git pre-commit hooks (required for the repository workflow):
 
 ```bash
-# Execute in the repository root directory
 make install-hooks
 ```
 
-Then configure the development environment for the component you want to develop. For detailed environment setup instructions, please refer to the README of each submodule:
+Then set up the environment for the component you want to work on:
 
-- **Backend Development Environment**: Please refer to [Backend Development Guide](./backend/README.md)
-- **Frontend Development Environment**: Please refer to [Frontend Development Guide](./frontend/README.md)
-- **Storage Service Development Environment**: Please refer to [Storage Service Development Guide](./storage/README.md)
-- **Documentation Website Development Environment**: Please refer to [Documentation Website Development Guide](./website/README.md)
+- Backend: [Backend Development Guide](./backend/README.md)
+- Frontend: [Frontend Development Guide](./frontend/README.md)
+- Storage: [Storage Service Development Guide](./storage/README.md)
+- Website: [Documentation Website Development Guide](./website/README.md)
 
-### 📁 Configuration File Management
+### 4) Configuration files (optional)
 
-Crater provides a unified configuration file management system to help developers manage configuration files across different components. This system allows you to centralize all configuration files in a single directory and create symlinks in each project directory.
+Crater provides a unified configuration management workflow to centralize configs and create symlinks per component.
 
-**Configuration Directory Structure:**
-
-The configuration directory should have the following structure:
+Example structure:
 
 ```
 config/
@@ -157,167 +202,97 @@ config/
     └── config.yaml             # Storage service configuration
 ```
 
-**Available Make Targets:**
+Make targets:
 
-- `make config-link`: Create symlinks for configuration files. If a configuration file already exists as a regular file, it will be backed up with a `.bak` suffix. If it exists as a symlink, it will be replaced.
+- `make config-link`: Create symlinks for config files (backs up existing files with `.bak`)
 
   ```bash
   make config-link CONFIG_DIR=~/develop/crater/config
   ```
 
-- `make config-status`: Display the status of all configuration files, showing whether they exist, are symlinks, or are missing.
+- `make config-status`: Show config file status
+- `make config-unlink`: Remove symlinks only
+- `make config-restore`: Restore files from `.bak`
 
-- `make config-unlink`: Remove configuration symlinks (only symlinks, regular files are preserved).
+### 5) Run checks before commit
 
-- `make config-restore`: Restore configuration files from `.bak` backups.
-
-### 💻 Development
-
-Enter the corresponding directory for the component you want to modify:
-
-- **Backend Development**: `backend/` directory
-- **Frontend Development**: `frontend/` directory
-- **Storage Service**: `storage/` directory
-- **Documentation**: `website` directory
-
-**Pre-commit Testing:**
-
-Before committing, you can use the following command to run checks in advance to ensure your code meets the standards:
+The pre-commit hook checks staged files and runs checks for the affected sub-projects:
 
 ```bash
-# Execute in the repository root directory, will check all modified directories
-# Note: You must first stage files with 'git add' before running this command
-# The hook only checks staged files to determine which sub-projects to check
 git add <your-files>
 make pre-commit-check
 ```
 
-Alternatively, you can run checks directly in sub-project directories, which will check all files in that project (not just staged files):
+You can also run checks within a sub-project (checks all files in that sub-project):
 
 ```bash
-# Check frontend (checks all files in frontend/)
 cd frontend && make pre-commit-check
-
-# Check backend (checks all files in backend/)
 cd backend && make pre-commit-check
-
-# Check storage (checks all files in storage/)
 cd storage && make pre-commit-check
-
-# Check website (checks all files in website/)
 cd website && make pre-commit-check
 ```
 
-This helps you discover and fix issues early, avoiding being blocked by hooks during commit.
-
-### 📝 Commit Changes
-
-After completing development, commit your changes:
+### 6) Commit and open a PR
 
 ```bash
-# View changed files
 git status
 
 # Add changed files (please specify specific files or directories, avoid using git add .)
 git add backend/pkg/handler/user.go
-# Or add an entire directory
 git add frontend/src/components/
 
-# Commit changes (please use clear English commit messages)
 git commit -m "feat: add new feature description"
+git push origin feature/your-feature-name
 ```
 
-**Commit Message Convention:**
+Commit message convention:
 
-- **Commit Types**:
-  - `feat:` - New feature
-  - `fix:` - Bug fix
-  - `docs:` - Documentation updates
-  - `style:` - Code style changes
-  - `refactor:` - Code refactoring
-  - `test:` - Test related
-  - `chore:` - Build/tool related
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation updates
+- `style:` Code style changes
+- `refactor:` Code refactoring
+- `test:` Test related
+- `chore:` Build/tool related
 
-**Git Hook Checks:**
+Then create a Pull Request on GitHub and include:
 
-If you have installed Git hooks (see Environment Setup section), checks will be automatically triggered when you commit. The hooks will execute corresponding checks based on the directories you modified (`backend/`, `frontend/`, `storage/`, `website/`) (such as lint, format checks, etc.).
+- What changed and why
+- How to test
+- Screenshots (if UI changes)
 
-If checks fail, the commit will be blocked. Please fix the issues according to the error messages and commit again.
-
-**Squash Multiple Commits:**
-
-If you have multiple commits for one feature, it's recommended to squash them into one commit before pushing to your Fork repository. You can use interactive rebase:
+### 7) (Optional) squash commits
 
 ```bash
 # Assuming you have 3 commits to squash
 git rebase -i HEAD~3
-# In the editor, change "pick" to "squash" or "s" for the last two commits
-# After saving, Git will prompt you to edit the merged commit message
 ```
 
-### 🚀 Push to Fork Repository
-
-Push your changes to your Fork repository:
-
-```bash
-# Push to your Fork repository
-git push origin feature/your-feature-name
-```
-
-### 📤 Create Pull Request
-
-1. **Create PR on GitHub**
-   - Visit your Fork repository page
-   - Click the "Compare & pull request" button
-   - Or visit the main repository, click "New pull request", and select your Fork and branch
-
-   Actually, after you push your changes, you'll see a prominent prompt to create a PR, and you can also click the prompt directly to create a PR.
-
-2. **Self-review Changes**
-
-   Before creating the PR, please review your own changes first, carefully check all changes (Changes), and ensure each modification is as expected, without including files or code that shouldn't be committed.
-
-3. **Fill in PR Information**
-   - **Title**: GitHub will set the PR title to the first line of the latest commit message. Please ensure it conforms to conventions and is accurate. If not, please modify it before creating the PR.
-   - **Description**: Provide detailed information:
-     - The reason and content of the changes
-     - How to test these changes
-     - Screenshots of the modified effects (if frontend changes are involved)
-     - References to related Issues (if any)
-
-4. **Review and Modify**
-
-   Maintainers will review your PR. Please make necessary modifications based on feedback, and push to the same branch after modifications. The PR will be automatically updated.
+<a id="-sync-upstream-changes"></a>
 
 ### 🔄 Sync Upstream Changes
 
 If you have added `upstream` and there are new changes in the upstream repository, you can update your local main branch as follows:
 
 ```bash
-# Switch to main branch
 git checkout main
-
-# Fetch and merge upstream changes
 git fetch upstream
 git merge upstream/main
 # Or use the shortcut (one step)
 # git pull upstream main
 ```
 
-After completing the above steps, your local main branch is updated, and you can create new feature branches based on it for development.
+After your local main branch is updated, you can create new feature branches based on it.
 
-**Additionally, if you already have a development branch, you need to merge updates into it:**
+If you already have a feature branch, merge updates into it:
 
 ```bash
-# After updating the local main branch, switch to your feature branch
 git checkout feature/your-feature-name
-
-# Merge main branch changes into your feature branch
 git merge main
 ```
 
-Additionally, if you haven't configured `upstream` remote, you can use the Sync Fork feature on GitHub to sync upstream changes. After the main branch of your Fork repository is updated, use `git pull origin main` to update it locally.
+If you haven't configured `upstream`, you can use GitHub's **Sync fork** feature to sync changes from upstream, then run `git pull origin main` locally.
 
----
+## License
 
-Thank you for contributing to the Crater project! 🎉
+Crater is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
