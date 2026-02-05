@@ -33,6 +33,9 @@ func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 		resputil.BadRequestError(c, msg)
 		return
 	}
+	if len(req.Archs) == 0 {
+		req.Archs = []string{"linux/amd64"}
+	}
 	dockerfile := mgr.generateDockerfile(req)
 	buildData := &DockerfileBuildData{
 		BaseImage:    req.SourceImage,
@@ -68,6 +71,9 @@ func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
+	}
+	if len(req.Archs) == 0 {
+		req.Archs = []string{"linux/amd64"}
 	}
 	baseImage, err := extractBaseImageFromDockerfile(req.Dockerfile)
 	if err != nil {
@@ -141,6 +147,9 @@ func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
+	}
+	if len(req.Archs) == 0 {
+		req.Archs = []string{"linux/amd64"}
 	}
 
 	buildData := &EnvdBuildData{
