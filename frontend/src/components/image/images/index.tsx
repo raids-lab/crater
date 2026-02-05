@@ -540,7 +540,7 @@ const Actions: FC<ActionsProps> = ({
               修改标签
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled={isDisabled}
+              disabled={isDisabled || imageInfo.imageBuildSource === 1}
               onClick={() => {
                 setDialog(Dialogs.arch)
                 setOpenDialog(true)
