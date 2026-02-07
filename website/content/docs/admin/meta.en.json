@@ -3,6 +3,7 @@
     "---Installation and Deployment---",
     "quick-start",
     "kind-start",
+    "deploy-on-cluster",
     "deployment",
     "---Advanced Configuration---",
     "chart",

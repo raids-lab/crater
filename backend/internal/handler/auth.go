@@ -2,13 +2,9 @@ package handler
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 	"time"
 
@@ -18,7 +14,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 
@@ -38,7 +33,6 @@ type AuthMgr struct {
 	name     string
 	client   *http.Client
 	req      *imrocreq.Client
-	openAPI  config.RaidsLabOpenAPI
 	tokenMgr *util.TokenManager
 }
 
@@ -48,7 +42,6 @@ func NewAuthMgr(_ *RegisterConfig) Manager {
 		client:   &http.Client{},
 		req:      imrocreq.C(),
 		tokenMgr: util.GetTokenMgr(),
-		openAPI:  config.GetConfig().RaidsLab.OpenAPI,
 	}
 }
 
@@ -70,10 +63,10 @@ func (mgr *AuthMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
 	LoginReq struct {
-		AuthMethod AuthMethod `json:"auth" binding:"required"` // [normal, act-ldap, act-api]
-		Username   *string    `json:"username"`                // (act-ldap, normal)
-		Password   *string    `json:"password"`                // (act-ldap, normal)
-		Token      *string    `json:"token"`                   // (act-api)
+		AuthMethod AuthMethod `json:"auth" binding:"required"` // [normal, ldap]
+		Username   *string    `json:"username"`                // (ldap, normal)
+		Password   *string    `json:"password"`                // (ldap, normal)
+		Token      *string    `json:"token"`                   // Legacy ACT API token (deprecated)
 	}
 
 	LoginResp struct {
@@ -127,35 +120,52 @@ func GetVersionInfo() VersionInfo {
 type AuthMode string
 
 const (
-	AuthModeACT    AuthMode = "act"
+	AuthModeLDAP   AuthMode = "ldap"
 	AuthModeNormal AuthMode = "normal"
 )
+
+type AuthModeResp struct {
+	EnableLDAP           bool `json:"enableLdap"`
+	EnableNormalLogin    bool `json:"enableNormalLogin"`
+	EnableNormalRegister bool `json:"enableNormalRegister"`
+}
 
 type AuthMethod string
 
 const (
-	AuthMethodNormal  AuthMethod = "normal"
-	AuthMethodACTLDAP AuthMethod = "act-ldap"
-	AuthMethodACTAPI  AuthMethod = "act-api"
+	AuthMethodNormal AuthMethod = "normal"
+	AuthMethodLDAP   AuthMethod = "ldap"
 )
+
+type UIDSource string
+
+const (
+	UIDSourceNone     UIDSource = "none"
+	UIDSourceLDAP     UIDSource = "ldap"
+	UIDSourceExternal UIDSource = "external"
+	UIDSourceDefault  UIDSource = "default"
+)
+
+const LogLevelDebug = 4
 
 // GetAuthMode godoc
 //
 //	@Summary		获取后端用户认证模式
-//	@Description	返回后端部署的config值
+//	@Description	返回后端部署的认证模式配置
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	resputil.Response[string]	"启用认证类型"
-//	@Failure		400	{object}	resputil.Response[any]		"请求参数错误"
-//	@Failure		500	{object}	resputil.Response[any]		"获取相关配置时错误"
+//	@Success		200	{object}	resputil.Response[AuthModeResp]	"启用认证类型及注册配置"
+//	@Failure		500	{object}	resputil.Response[any]			"获取相关配置时错误"
 //	@Router			/auth/mode [get]
 func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
-	if config.GetConfig().RaidsLab.Enable {
-		resputil.Success(c, "act")
-		return
+	conf := config.GetConfig().Auth
+	resp := AuthModeResp{
+		EnableLDAP:           conf.LDAP.Enable,
+		EnableNormalLogin:    conf.Normal.AllowLogin,
+		EnableNormalRegister: conf.Normal.AllowRegister,
 	}
-	resputil.Success(c, "normal")
+	resputil.Success(c, resp)
 }
 
 // Check godoc
@@ -243,6 +253,62 @@ func (mgr *AuthMgr) Check(c *gin.Context) {
 	resputil.Success(c, checkResponse)
 }
 
+func (mgr *AuthMgr) performAuthentication(
+	c *gin.Context,
+	method AuthMethod,
+	username, password string,
+	attr *model.UserAttribute,
+) (allowRegister bool, err error) {
+	conf := config.GetConfig().Auth
+	switch method {
+	case AuthMethodLDAP:
+		if !conf.LDAP.Enable {
+			resputil.HTTPError(c, http.StatusForbidden, "LDAP authentication is disabled", resputil.InvalidRequest)
+			return false, errors.New("ldap disabled")
+		}
+		if err := mgr.actLDAPAuth(c, username, password, attr); err != nil {
+			if errors.Is(err, ErrorInvalidCredentials) {
+				resputil.HTTPError(c, http.StatusUnauthorized, "Invalid username or password", resputil.InvalidCredentials)
+				return false, err
+			}
+			if errors.Is(err, ErrorLdapUserNotFound) {
+				resputil.HTTPError(c, http.StatusUnauthorized, "User not found or too many entries returned", resputil.LdapUserNotFound)
+				return false, err
+			}
+			klog.Errorf("LDAP auth failed for user %s: %v", username, err)
+			resputil.HTTPError(c, http.StatusUnauthorized, fmt.Sprintf("LDAP authentication failed: %v", err), resputil.LdapError)
+			return false, err
+		}
+		return true, nil
+	case AuthMethodNormal:
+		if conf.LDAP.Enable && !conf.Normal.AllowLogin {
+			resputil.HTTPError(c, http.StatusForbidden, "Normal login is disabled by administrator", resputil.UserNotAllowed)
+			return false, errors.New("normal login disabled")
+		}
+		if err := mgr.normalAuth(c, username, password); err != nil {
+			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
+			return false, err
+		}
+		return false, nil
+	default:
+		resputil.BadRequestError(c, "Invalid authentication method")
+		return false, errors.New("invalid auth method")
+	}
+}
+
+func (mgr *AuthMgr) handleLoginError(c *gin.Context, err error) {
+	if errors.Is(err, ErrorMustRegister) {
+		resputil.HTTPError(c, http.StatusUnauthorized, "User must register before login", resputil.MustRegister)
+	} else if errors.Is(err, ErrorUIDServerConnect) {
+		resputil.HTTPError(c, http.StatusBadGateway, "Can't connect to UID server", resputil.UidServiceError)
+	} else if errors.Is(err, ErrorUIDServerNotFound) {
+		resputil.HTTPError(c, http.StatusNotFound, "UID not found", resputil.UidNotFound)
+	} else {
+		klog.Errorf("getOrCreateUser failed: %v", err)
+		resputil.HTTPError(c, http.StatusInternalServerError, "Create or update user failed", resputil.NotSpecified)
+	}
+}
+
 // Login godoc
 //
 //	@Summary		用户登录
@@ -256,8 +322,6 @@ func (mgr *AuthMgr) Check(c *gin.Context) {
 //	@Failure		401		{object}	resputil.Response[any]			"用户名或密码错误"
 //	@Failure		500		{object}	resputil.Response[any]			"数据库交互错误"
 //	@Router			/auth/login [post]
-//
-//nolint:gocyclo // TODO(liyilong): refactor this
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {
@@ -265,78 +329,42 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	var username, password, token string
-	switch req.AuthMethod {
-	case AuthMethodACTAPI:
-		if req.Token == nil {
-			resputil.BadRequestError(c, "Token not provided")
-			return
-		}
-		token = *req.Token
-	case AuthMethodACTLDAP, AuthMethodNormal:
-		if req.Username == nil || req.Password == nil {
-			resputil.BadRequestError(c, "Username or password not provided")
-			return
-		}
-		username = *req.Username
-		password = *req.Password
-		// Username must start with lowercase letter and can only contain lowercase letters, numbers, and hyphens
-		if len(validation.IsDNS1123Label(username)) > 0 {
-			klog.Error("invalid username")
-			resputil.BadRequestError(c, "Invalid username")
-			return
-		}
-	default:
-		resputil.BadRequestError(c, "Invalid auth method")
+	if req.Token != nil && *req.Token != "" {
+		msg := "Legacy token login is no longer supported, just use your LDAP account"
+		resputil.HTTPError(c, http.StatusForbidden, msg, resputil.LegacyTokenNotSupported)
 		return
 	}
 
-	// Check if request auth method is valid
+	if req.Username == nil || req.Password == nil {
+		resputil.BadRequestError(c, "Username or password not provided")
+		return
+	}
+	username := *req.Username
+	password := *req.Password
+
+	// Username validation - allow common LDAP characters (letters, numbers, dots, underscores, dashes)
+	if username == "" {
+		resputil.BadRequestError(c, "Username cannot be empty")
+		return
+	}
+
 	var attributes model.UserAttribute
-	allowRegister := false
-	switch req.AuthMethod {
-	case AuthMethodACTAPI:
-		if err := mgr.actAPIAuth(c, token, &attributes); err != nil {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.NotSpecified)
-			return
-		}
-		allowRegister = true
-	case AuthMethodACTLDAP:
-		if err := mgr.actLDAPAuth(c, username, password); err != nil {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
-			return
-		}
-		allowRegister = !config.GetConfig().RaidsLab.Enable
-	case AuthMethodNormal:
-		if err := mgr.normalAuth(c, username, password); err != nil {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
-			return
-		}
-	default:
-		resputil.BadRequestError(c, "Invalid auth method")
+	allowRegister, err := mgr.performAuthentication(c, req.AuthMethod, username, password, &attributes)
+	if err != nil {
+		// Error already handled in performAuthentication
 		return
 	}
 
 	// Check if the user exists, and should create user or return error
 	user, err := mgr.getOrCreateUser(c, &req, &attributes, allowRegister)
 	if err != nil {
-		if errors.Is(err, ErrorMustRegister) {
-			resputil.Error(c, "User must register before login", resputil.MustRegister)
-			return
-		} else if errors.Is(err, ErrorUIDServerConnect) {
-			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
-			return
-		} else if errors.Is(err, ErrorUIDServerNotFound) {
-			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
-			return
-		} else {
-			resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
-			return
-		}
+		mgr.handleLoginError(c, err)
+		return
 	}
 
-	if err = updateUserIfNeeded(c, user, &attributes); err != nil {
-		resputil.Error(c, "Create or update user failed", resputil.NotSpecified)
+	if err = mgr.updateUserIfNeeded(c, user, &attributes); err != nil {
+		klog.Errorf("updateUserIfNeeded failed: %v", err)
+		resputil.Error(c, "Update user attributes failed", resputil.NotSpecified)
 		return
 	}
 
@@ -382,6 +410,11 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
+	// Ensure ID and Name are populated in the response attributes
+	respAttr := user.Attributes.Data()
+	respAttr.ID = user.ID
+	respAttr.Name = user.Name
+
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -393,15 +426,17 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			AccessPublic: publicAccessMode,
 			Space:        user.Space,
 		},
-		User: user.Attributes.Data(),
+		User: respAttr,
 	}
 	resputil.Success(c, loginResponse)
 }
 
 var (
-	ErrorMustRegister      = errors.New("user must be registered before login")
-	ErrorUIDServerConnect  = errors.New("can't connect to UID server")
-	ErrorUIDServerNotFound = errors.New("UID not found")
+	ErrorMustRegister       = errors.New("user must be registered before login")
+	ErrorUIDServerConnect   = errors.New("can't connect to UID server")
+	ErrorUIDServerNotFound  = errors.New("UID not found")
+	ErrorInvalidCredentials = errors.New("invalid username or password")
+	ErrorLdapUserNotFound   = errors.New("user not found or too many entries returned")
 )
 
 func (mgr *AuthMgr) getOrCreateUser(
@@ -431,45 +466,80 @@ func (mgr *AuthMgr) getOrCreateUser(
 	// User not found in the database
 	if allowCreate {
 		// User exists in the auth method but not in the database, create a new user
-		return mgr.createUser(c, attr.Name, nil)
+		return mgr.createUser(c, attr.Name, nil, attr)
 	}
 
 	return nil, ErrorMustRegister
 }
 
-// updateUserIfNeeded updates the user attributes if they have changed.
-// It takes a context, a user model, and the new attributes to be updated.
-// It returns an error if the update fails.
-func updateUserIfNeeded(
+func syncField[T comparable](current *T, incoming T, changed *bool) {
+	if *current != incoming {
+		*current = incoming
+		*changed = true
+	}
+}
+
+func syncPtrField[T comparable](current **T, incoming *T, changed *bool) {
+	if incoming != nil && (*current == nil || **current != *incoming) {
+		*current = incoming
+		*changed = true
+	}
+}
+
+func (mgr *AuthMgr) syncUserAttributes(
+	user *model.User,
+	currentAttr *model.UserAttribute,
+	newAttr *model.UserAttribute,
+) bool {
+	changed := false
+
+	// Ensure ID and Name are populated in Attributes JSONB
+	syncField(&currentAttr.ID, user.ID, &changed)
+	syncField(&currentAttr.Name, user.Name, &changed)
+
+	// Mandatory sync for most fields
+	if newAttr.Nickname != "" && user.Nickname != newAttr.Nickname {
+		user.Nickname = newAttr.Nickname
+		currentAttr.Nickname = newAttr.Nickname
+		changed = true
+	} else {
+		syncField(&currentAttr.Nickname, user.Nickname, &changed)
+	}
+
+	// Email protection: only sync if email is NOT verified
+	if newAttr.Email != nil && (currentAttr.Email == nil || *currentAttr.Email != *newAttr.Email) {
+		if user.LastEmailVerifiedAt == nil {
+			currentAttr.Email = newAttr.Email
+			changed = true
+		} else {
+			klog.V(LogLevelDebug).Infof("Skip syncing email for user %s because email is already verified", user.Name)
+		}
+	}
+
+	syncPtrField(&currentAttr.Teacher, newAttr.Teacher, &changed)
+	syncPtrField(&currentAttr.Group, newAttr.Group, &changed)
+	syncPtrField(&currentAttr.Phone, newAttr.Phone, &changed)
+	syncPtrField(&currentAttr.ExpiredAt, newAttr.ExpiredAt, &changed)
+
+	if newAttr.UID != nil && (currentAttr.UID == nil || *currentAttr.UID != *newAttr.UID) {
+		currentAttr.UID = newAttr.UID
+		currentAttr.GID = newAttr.GID
+		changed = true
+	}
+
+	return changed
+}
+
+// updateUserIfNeeded updates the user attributes if they have changed from LDAP.
+func (mgr *AuthMgr) updateUserIfNeeded(
 	c context.Context,
 	user *model.User,
-	attr *model.UserAttribute,
+	newAttr *model.UserAttribute,
 ) error {
-	// Return early if user attributes do not need updating
-	attr.ID = user.ID
-
-	// If don't need to update the user, return directly
 	currentAttr := user.Attributes.Data()
+	changed := mgr.syncUserAttributes(user, &currentAttr, newAttr)
 
-	attr.Avatar = currentAttr.Avatar
-	attr.UID = currentAttr.UID
-	attr.GID = currentAttr.GID
-
-	newAttr := datatypes.NewJSONType(*attr)
-
-	// if attr contains email, this attr may be from act-api
-	if currentAttr.ID != model.InvalidUserID &&
-		(attr.Email == nil || reflect.DeepEqual(currentAttr, *attr)) {
-		return nil
-	}
-
-	// dont update email if it has been set
-	if currentAttr.Email != nil {
-		attr.Email = currentAttr.Email
-	}
-
-	if currentAttr.ID != model.InvalidUserID &&
-		(attr.Email == nil || reflect.DeepEqual(user.Attributes, newAttr)) {
+	if !changed {
 		return nil
 	}
 
@@ -477,13 +547,13 @@ func updateUserIfNeeded(
 	if _, err := u.WithContext(c).
 		Where(u.ID.Eq(user.ID)).
 		Updates(map[string]any{
-			"attributes": datatypes.NewJSONType(*attr),
-			"nickname":   attr.Nickname,
+			"attributes": datatypes.NewJSONType(currentAttr),
+			"nickname":   user.Nickname,
 		}); err != nil {
 		return err
 	}
 
-	user.Attributes = newAttr
+	user.Attributes = datatypes.NewJSONType(currentAttr)
 	return nil
 }
 
@@ -499,28 +569,46 @@ type (
 )
 
 // createUser is called when the user is not found in the database
-func (mgr *AuthMgr) createUser(c context.Context, name string, password *string) (*model.User, error) {
+func (mgr *AuthMgr) createUser(c context.Context, name string, password *string, attrFromLDAP *model.UserAttribute) (*model.User, error) {
 	u := query.User
 	uq := query.UserAccount
 	userAttribute := model.UserAttribute{
 		UID: ptr.To("1001"),
 		GID: ptr.To("1001"),
 	}
-	// Custom Check if the user is valid in external UID server
-	if config.GetConfig().RaidsLab.Enable {
-		uidServerURL := config.GetConfig().RaidsLab.UIDServerURL
-		var result ActUIDServerSuccessResp
-		var errorResult ActUIDServerErrorResp
-		if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
-			SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
-			return nil, ErrorUIDServerConnect
+
+	// Normal user registration (not LDAP)
+	if attrFromLDAP == nil {
+		// Always use default UID/GID for normal registration
+		userAttribute.UID = ptr.To("1001")
+		userAttribute.GID = ptr.To("1001")
+		// Set default name and nickname to username
+		userAttribute.Name = name
+		userAttribute.Nickname = name
+	} else {
+		// LDAP auto-registration: determine UID/GID based on system configuration source
+		userAttribute = *attrFromLDAP
+		uidConf := config.GetConfig().Auth.LDAP.UID
+		switch UIDSource(uidConf.Source) {
+		case UIDSourceExternal:
+			uidServerURL := uidConf.ExternalService.URL
+			var result ActUIDServerSuccessResp
+			var errorResult ActUIDServerErrorResp
+			if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
+				SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
+				return nil, ErrorUIDServerConnect
+			}
+			if errorResult.Error != "" {
+				return nil, ErrorUIDServerNotFound
+			}
+			userAttribute.UID = ptr.To(result.UID)
+			userAttribute.GID = ptr.To(result.GID)
+		case UIDSourceLDAP:
+			// Already in userAttribute from attrFromLDAP
+		case UIDSourceNone, UIDSourceDefault, "":
+			userAttribute.UID = ptr.To("1001")
+			userAttribute.GID = ptr.To("1001")
 		}
-		if errorResult.Error != "" {
-			return nil, ErrorUIDServerNotFound
-		}
-		userAttribute.Email = ptr.To(name + "@act.buaa.edu.cn")
-		userAttribute.UID = ptr.To(result.UID)
-		userAttribute.GID = ptr.To(result.GID)
 	}
 
 	var hashedPassword *string
@@ -542,6 +630,10 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		Space:      name,
 		Attributes: datatypes.NewJSONType(userAttribute),
 	}
+	if userAttribute.Nickname != "" {
+		user.Nickname = userAttribute.Nickname
+	}
+
 	if err := u.WithContext(c).Create(&user); err != nil {
 		return nil, err
 	}
@@ -552,14 +644,11 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string)
 		AccountID:  model.DefaultAccountID,
 		Role:       model.RoleUser,
 		AccessMode: model.AccessModeRO,
-		// Quota:      datatypes.NewJSONType(model.DefaultQuota),
 	}
 
 	if err := uq.WithContext(c).Create(&userAccount); err != nil {
 		return nil, err
 	}
-
-	// TODO: Create personal directory
 
 	return &user, nil
 }
@@ -582,104 +671,150 @@ func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error 
 	return nil
 }
 
-type (
-	ActAPIAuthReq struct {
-		Token string `json:"token"`
-		Stamp string `json:"stamp"`
-		Sign  string `json:"sign"`
-	}
-
-	ActAPIAuthResp struct {
-		Data struct {
-			Account  string `json:"account"`
-			Name     string `json:"name"`
-			Email    string `json:"email"`
-			Teacher  string `json:"teacher"`
-			Group    string `json:"group"`
-			AdExpire string `json:"ad_expire"`
-		} `json:"data"`
-		Sign string `json:"sign"`
-	}
-)
-
-func (mgr *AuthMgr) actAPIAuth(_ context.Context, token string, attr *model.UserAttribute) error {
-	timestamp := time.Now().UTC().Format(time.RFC3339)
-	h := hmac.New(sha256.New, []byte(mgr.openAPI.AccessToken))
-	h.Write([]byte(token + timestamp))
-	signature := base64.StdEncoding.EncodeToString(h.Sum(nil))
-
-	// Send request to ACT API with body v
-	var result ActAPIAuthResp
-	resp, err := mgr.req.R().
-		SetBody(&ActAPIAuthReq{
-			Token: token,
-			Stamp: timestamp,
-			Sign:  signature,
-		}).
-		SetHeader("Chameleon-Key", mgr.openAPI.ChameleonKey).
-		SetHeader("Content-Type", "application/json").
-		SetSuccessResult(&result).
-		Post(mgr.openAPI.URL)
+func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string, attr *model.UserAttribute) error {
+	conf := config.GetConfig().Auth.LDAP
+	// LDAP connection
+	l, err := ldap.DialURL(conf.Server.Address)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to LDAP server: %w", err)
+	}
+	defer l.Close()
+
+	// Admin bind
+	err = l.Bind(conf.Server.BindDN, conf.Server.BindPassword)
+	if err != nil {
+		return fmt.Errorf("LDAP admin bind failed: %w", err)
 	}
 
-	if !resp.IsSuccessState() {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	attributes := mgr.prepareLDAPAttributes()
+
+	// Search for user
+	mapping := conf.AttributeMapping
+	filter := fmt.Sprintf("(%s=%s)", mapping.Username, username)
+	searchRequest := ldap.NewSearchRequest(
+		conf.Server.BaseDN,
+		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
+		filter,
+		attributes,
+		nil,
+	)
+
+	searchResult, err := l.Search(searchRequest)
+	if err != nil {
+		return fmt.Errorf("LDAP search failed: %w", err)
 	}
 
-	// TODO(liyilong): 验证返回的签名
+	if len(searchResult.Entries) != 1 {
+		return ErrorLdapUserNotFound
+	}
 
-	attr.Name = result.Data.Account
-	attr.Nickname = result.Data.Name
-	attr.Email = &result.Data.Email
-	attr.Teacher = &result.Data.Teacher
-	attr.Group = &result.Data.Group
-	attr.ExpiredAt = &result.Data.AdExpire
+	entry := searchResult.Entries[0]
+	userDN := entry.DN
+
+	// User bind for password verification
+	err = l.Bind(userDN, password)
+	if err != nil {
+		if ldap.IsErrorWithCode(err, ldap.LDAPResultInvalidCredentials) {
+			return ErrorInvalidCredentials
+		}
+		return fmt.Errorf("LDAP user bind failed: %w", err)
+	}
+
+	// Populate attributes
+	mgr.populateUserAttributes(username, entry, attr)
+
+	uidConf := config.GetConfig().Auth.LDAP.UID
+	if UIDSource(uidConf.Source) == UIDSourceLDAP {
+		attr.UID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.UID))
+		attr.GID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.GID))
+	}
 
 	return nil
 }
 
-func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string) error {
-	authConfig := config.GetConfig()
-	// ACT 管理员认证
-	l, err := ldap.DialURL(authConfig.RaidsLab.LDAP.Address)
-	if err != nil {
-		return err
+func (mgr *AuthMgr) prepareLDAPAttributes() []string {
+	conf := config.GetConfig().Auth.LDAP
+	attributes := []string{"dn"}
+	mapping := conf.AttributeMapping
+	if mapping.Username != "" {
+		attributes = append(attributes, mapping.Username)
 	}
-	err = l.Bind(authConfig.RaidsLab.LDAP.UserName, authConfig.RaidsLab.LDAP.Password)
-	if err != nil {
-		return err
+	if mapping.DisplayName != "" {
+		attributes = append(attributes, mapping.DisplayName)
 	}
-
-	// ACT 管理员搜索用户
-	searchRequest := ldap.NewSearchRequest(
-		authConfig.RaidsLab.LDAP.SearchDN, // 搜索基准 DN
-		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf("(sAMAccountName=%s)", username), // 过滤条件
-		[]string{"dn"}, // 返回的属性列表
-		nil,
-	)
-
-	// 执行搜索请求
-	searchResult, err := l.Search(searchRequest)
-	if err != nil {
-		return err
+	if mapping.Email != "" {
+		attributes = append(attributes, mapping.Email)
 	}
-
-	if len(searchResult.Entries) != 1 {
-		return fmt.Errorf("user not found or too many entries returned")
+	if mapping.Teacher != "" {
+		attributes = append(attributes, mapping.Teacher)
+	}
+	if mapping.Group != "" {
+		attributes = append(attributes, mapping.Group)
+	}
+	if mapping.Phone != "" {
+		attributes = append(attributes, mapping.Phone)
+	}
+	if mapping.ExpiredAt != "" {
+		attributes = append(attributes, mapping.ExpiredAt)
 	}
 
-	// 用户存在，验证用户密码
-	if len(searchResult.Entries) == 1 {
-		userDN := searchResult.Entries[0].DN
-		err = l.Bind(userDN, password)
-		if err != nil {
-			return err
+	// Fetch UID/GID if from LDAP
+	uidConf := config.GetConfig().Auth.LDAP.UID
+	if UIDSource(uidConf.Source) == UIDSourceLDAP {
+		if uidConf.LDAPAttribute.UID != "" {
+			attributes = append(attributes, uidConf.LDAPAttribute.UID)
+		}
+		if uidConf.LDAPAttribute.GID != "" {
+			attributes = append(attributes, uidConf.LDAPAttribute.GID)
 		}
 	}
+	return attributes
+}
 
+func (mgr *AuthMgr) populateUserAttributes(username string, entry *ldap.Entry, attr *model.UserAttribute) {
+	conf := config.GetConfig().Auth.LDAP
+	mapping := conf.AttributeMapping
+
+	attr.Name = username
+	if mapping.DisplayName != "" {
+		attr.Nickname = entry.GetAttributeValue(mapping.DisplayName)
+	}
+	if mapping.Email != "" {
+		attr.Email = ptr.To(entry.GetAttributeValue(mapping.Email))
+	}
+	if mapping.Teacher != "" {
+		attr.Teacher = ptr.To(entry.GetAttributeValue(mapping.Teacher))
+	}
+	if mapping.Group != "" {
+		attr.Group = ptr.To(entry.GetAttributeValue(mapping.Group))
+	}
+	if mapping.Phone != "" {
+		attr.Phone = ptr.To(entry.GetAttributeValue(mapping.Phone))
+	}
+	if mapping.ExpiredAt != "" {
+		val := entry.GetAttributeValue(mapping.ExpiredAt)
+		if val != "" && val != "0" && val != "9223372036854775807" {
+			attr.ExpiredAt = convertFileTimeToRFC3339(val)
+		}
+	}
+}
+
+func convertFileTimeToRFC3339(val string) *string {
+	// Correct FILETIME conversion:
+	// FILETIME is 100-nanosecond intervals since January 1, 1601 (UTC).
+	// Go time is since January 1, 1970 (UTC).
+	// Offset is 11644473600 seconds.
+	var ticks int64
+	if _, err := fmt.Sscanf(val, "%d", &ticks); err != nil {
+		klog.V(LogLevelDebug).Infof("Failed to parse FILETIME %s: %v", val, err)
+		return nil
+	}
+	if ticks > 0 {
+		sec := (ticks / 10000000) - 11644473600
+		nsec := (ticks % 10000000) * 100
+		t := time.Unix(sec, nsec).UTC()
+		return ptr.To(t.Format(time.RFC3339))
+	}
 	return nil
 }
 
@@ -697,41 +832,100 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	if config.GetConfig().RaidsLab.Enable {
-		resputil.Error(c, "User must sign up with token", resputil.NotSpecified)
+	conf := config.GetConfig().Auth
+	if !conf.Normal.AllowRegister {
+		resputil.HTTPError(c, http.StatusForbidden, "Direct registration is disabled by administrator", resputil.InvalidRequest)
 		return
 	}
 
 	u := query.User
-
 	_, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
 	if err == nil {
-		resputil.Error(c, "User already exists", resputil.InvalidRequest)
+		resputil.HTTPError(c, http.StatusConflict, "User already exists", resputil.InvalidRequest)
 		return
 	}
 
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	_, err = mgr.createUser(c, req.Username, &req.Password)
+	user, err := mgr.createUser(c, req.Username, &req.Password, nil)
 	if err != nil {
-		if errors.Is(err, ErrorUIDServerConnect) {
-			klog.Error("can't connect to UID server")
-			resputil.Error(c, "Can't connect to UID server", resputil.RegisterTimeout)
-			return
-		} else if errors.Is(err, ErrorUIDServerNotFound) {
-			klog.Error("UID not found")
-			resputil.Error(c, "UID not found", resputil.RegisterNotFound)
-			return
-		}
-		klog.Error("create new user", err)
-		resputil.Error(c, "Create user failed", resputil.NotSpecified)
+		mgr.handleCreateUserError(c, err)
 		return
 	}
 
-	resputil.Success(c, "Signup successful")
+	// Login logic after signup
+	q := query.Account
+	uq := query.UserAccount
+
+	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
+	if err != nil {
+		resputil.HTTPError(c, http.StatusForbidden, "User must has at least one queue", resputil.UserNotAllowed)
+		return
+	}
+
+	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.AccountID)).First()
+	if err != nil {
+		resputil.HTTPError(c, http.StatusForbidden, "User must has at least one queue", resputil.UserNotAllowed)
+		return
+	}
+
+	publicAccessMode := model.AccessModeNA
+	defaultUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
+	if err == nil {
+		publicAccessMode = defaultUserQueue.AccessMode
+	}
+
+	// Generate JWT tokens
+	jwtMessage := util.JWTMessage{
+		UserID:            user.ID,
+		Username:          user.Name,
+		AccountID:         lastQueue.ID,
+		AccountName:       lastQueue.Name,
+		RoleAccount:       lastUserQueue.Role,
+		AccountAccessMode: lastUserQueue.AccessMode,
+		PublicAccessMode:  publicAccessMode,
+		RolePlatform:      user.Role,
+	}
+	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		return
+	}
+	// Ensure ID and Name are populated in the response attributes
+	respAttr := user.Attributes.Data()
+	respAttr.ID = user.ID
+	respAttr.Name = user.Name
+
+	loginResponse := LoginResp{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Context: AccountContext{
+			Queue:        lastQueue.Name,
+			RoleQueue:    lastUserQueue.Role,
+			RolePlatform: user.Role,
+			AccessQueue:  lastUserQueue.AccessMode,
+			AccessPublic: publicAccessMode,
+			Space:        user.Space,
+		},
+		User: respAttr,
+	}
+	resputil.Success(c, loginResponse)
+}
+
+func (mgr *AuthMgr) handleCreateUserError(c *gin.Context, err error) {
+	if errors.Is(err, ErrorUIDServerConnect) {
+		klog.Error("can't connect to UID server")
+		resputil.HTTPError(c, http.StatusBadGateway, "Can't connect to UID server", resputil.UidServiceError)
+	} else if errors.Is(err, ErrorUIDServerNotFound) {
+		klog.Error("UID not found")
+		resputil.HTTPError(c, http.StatusNotFound, "UID not found", resputil.UidNotFound)
+	} else {
+		klog.Error("create new user", err)
+		resputil.HTTPError(c, http.StatusInternalServerError, "Create user failed", resputil.NotSpecified)
+	}
 }
 
 type (
@@ -835,6 +1029,19 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
 		return
 	}
+	// Fetch user to populate User and Space
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.NotSpecified)
+		return
+	}
+
+	// Ensure ID and Name are populated in the response attributes
+	respAttr := user.Attributes.Data()
+	respAttr.ID = user.ID
+	respAttr.Name = user.Name
+
 	loginResponse := LoginResp{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -844,7 +1051,9 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 			AccessQueue:  userQueue.AccessMode,
 			RolePlatform: token.RolePlatform,
 			AccessPublic: token.PublicAccessMode,
+			Space:        user.Space,
 		},
+		User: respAttr,
 	}
 	resputil.Success(c, loginResponse)
 }

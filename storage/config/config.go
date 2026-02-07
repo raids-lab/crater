@@ -24,8 +24,10 @@ type Config struct {
 	PublicSpacePrefix  string `yaml:"publicSpacePrefix"`
 
 	Auth struct {
-		AccessTokenSecret  string `yaml:"accessTokenSecret"`
-		RefreshTokenSecret string `yaml:"refreshTokenSecret"`
+		Token struct {
+			AccessTokenSecret  string `yaml:"accessTokenSecret"`
+			RefreshTokenSecret string `yaml:"refreshTokenSecret"`
+		} `yaml:"token"`
 	} `yaml:"auth"`
 }
 

@@ -52,8 +52,9 @@ backendConfig:
     host: "your-postgres-host"
     password: "your-password"
   auth:
-    accessTokenSecret: "your-access-token-secret"
-    refreshTokenSecret: "your-refresh-token-secret"
+    token:
+      accessTokenSecret: "your-access-token-secret"
+      refreshTokenSecret: "your-refresh-token-secret"
 ```
 
 그런 다음 values 파일과 함께 설치합니다:

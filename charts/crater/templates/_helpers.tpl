@@ -59,7 +59,9 @@ userSpacePrefix: {{ .Values.backendConfig.storage.prefix.user }}
 accountSpacePrefix: {{ .Values.backendConfig.storage.prefix.account }}
 publicSpacePrefix: {{ .Values.backendConfig.storage.prefix.public }}
 auth:
-  {{ toYaml .Values.backendConfig.auth | nindent 2 | trim }}
+  token:
+    accessTokenSecret: {{ .Values.backendConfig.auth.token.accessTokenSecret }}
+    refreshTokenSecret: {{ .Values.backendConfig.auth.token.refreshTokenSecret }}
 {{- end -}}
 
 {{/*

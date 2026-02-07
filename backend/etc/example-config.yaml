@@ -48,16 +48,6 @@ postgres:
   # Optional: Defaults to system time zone if not specified
   TimeZone: Asia/Shanghai
 
-# Authentication token configuration for JWT-based authentication
-# Required: Both token secrets must be specified for secure authentication
-auth:
-  # Secret key used to sign JWT access tokens
-  # Required: Must be a secure, randomly generated string
-  accessTokenSecret: <MASKED>
-  # Secret key used to sign JWT refresh tokens
-  # Required: Must be a secure, randomly generated string
-  refreshTokenSecret: <MASKED>
-
 # Persistent volume claim and path prefix configurations
 # Required: All PVC names and prefix paths must be specified
 storage:
@@ -166,3 +156,75 @@ smtp:
   # Default email address for system notifications
   # Required if Enable is true: Must be a valid email address
   notify: example@example.com
+
+# Authentication configuration
+auth:
+  # Authentication token configuration for JWT-based authentication
+  # Required: Both token secrets must be specified for secure authentication
+  token:
+    # Secret key used to sign JWT access tokens
+    # Required: Must be a secure, randomly generated string
+    accessTokenSecret: <MASKED>
+    # Secret key used to sign JWT refresh tokens
+    # Required: Must be a secure, randomly generated string
+    refreshTokenSecret: <MASKED>
+  # LDAP authentication settings
+  ldap:
+    # Enable LDAP authentication
+    # Optional: Defaults to false if not specified
+    # If false, LDAP login option will not be shown in frontend
+    enable: false
+    # Server connection settings
+    server:
+      # LDAP server address (host:port or ldap://host:port)
+      # Required if ldap.enable is true
+      address: ldap://ldap.example.com:389
+      # Base DN for LDAP searches
+      # Required if ldap.enable is true
+      baseDN: dc=example,dc=com
+      # Admin account for LDAP bind (used for searching users)
+      # Required if ldap.enable is true
+      bindDN: cn=admin,dc=example,dc=com
+      # BindPassword is the password for initial bind.
+      bindPassword: <MASKED>
+    # LDAP attribute mapping configuration
+    # Maps LDAP attribute types to UserAttribute fields
+    attributeMapping:
+      # Username attribute (used for searching users)
+      # Required: Must be a valid LDAP attribute type
+      username: uid
+      # Display name attribute (mapped to UserAttribute.nickname)
+      # Required: Must be specified. If no nickname attribute exists in LDAP, set this to the same as username.
+      displayName: displayName
+      # Email attribute (mapped to UserAttribute.email)
+      email: mail
+      # Teacher/Advisor attribute (mapped to UserAttribute.teacher)
+      teacher: description
+      # Group/Department attribute (mapped to UserAttribute.group)
+      group: ou
+      # Phone attribute (mapped to UserAttribute.phone)
+      phone: telephoneNumber
+      # Account expiration attribute (mapped to UserAttribute.expiredAt)
+      expiredAt: accountExpires
+    # UID/GID acquisition configuration
+    # Only effective when LDAP authentication is enabled
+    uid:
+      # UID acquisition method ("none", "ldap", "external")
+      # Required: Must be specified
+      source: none
+      # LDAP attribute names for UID/GID (used when source is "ldap")
+      ldapAttribute:
+        uid: uidNumber
+        gid: gidNumber
+      # External service configuration (used when source is "external")
+      externalService:
+        url: http://uid-server.example.com/get_user_id
+        timeout: 5
+  # Normal authentication settings
+  normal:
+    # Allow users to register directly with username and password
+    # Optional: Defaults to false if not specified
+    allowRegister: true
+    # Allow users to login with normal authentication when LDAP is enabled
+    # Optional: Defaults to true if not specified
+    allowLogin: true

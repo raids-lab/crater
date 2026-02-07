@@ -24,8 +24,8 @@ func NewTokenConf() *TokenConf {
 		ContextTimeout:         2,
 		AccessTokenExpiryHour:  1,
 		RefreshTokenExpiryHour: 168,
-		AccessTokenSecret:      config.GetConfig().Auth.AccessTokenSecret,
-		RefreshTokenSecret:     config.GetConfig().Auth.RefreshTokenSecret,
+		AccessTokenSecret:      config.GetConfig().Auth.Token.AccessTokenSecret,
+		RefreshTokenSecret:     config.GetConfig().Auth.Token.RefreshTokenSecret,
 	}
 }
 
