@@ -7,7 +7,7 @@ description: "Crater 平台 Helm Chart 详细配置参数说明，涵盖后端�
 
 Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GPU 资源管理、容器化开发环境和工作流编排功能。本文档详细列出了通过 Helm 部署 Crater 时的所有可配置项。
 
-**项目主页:** <https://github.com/raids-lab/crater>
+**项目主页：** <https://github.com/raids-lab/crater>
 
 ## 维护者
 
