@@ -1,54 +1,107 @@
 ---
 title: Platform Access
-description: In order to use the ACT GPU platform, you must have an ACT account
+description: Log in to Crater using an existing account or create a Crater account
 ---
 
-In order to use the ACT GPU platform, you must have an ACT account. If you do not have an ACT account yet, please contact Professor Du Yingjie (Room G512, New Main Building, BUAA).
+To use the Crater platform, you need to have a valid platform account. Depending on the platform configuration, you can choose to log in using the laboratory's LDAP account or through a Crater platform account.
 
-## Apply for GPU Cluster Access Permissions
+If you don't see some login method entries mentioned in this document, it's normal. The available login methods depend on your platform administrator's configuration.
+
+## LDAP Login & Registration
+
+### Overview
+Crater supports automatic registration and information synchronization of LDAP accounts. You don't need to manually create an account; just enter your LDAP username and password to log in.
+
+If you are a member of the ACT Lab and have a unified authentication account, you should use this method.
+
+### Authentication Flow
+
+<Mermaid
+  chart="
+flowchart TD;
+    A[Enter LDAP Username/Password] --> B{LDAP Server Authentication};
+    B -- Auth Failed --> C[Return Credential Error];
+    B -- Auth Success --> D{Does user exist<br/>in Crater DB?};
+    D -- No --> E1[Get User UID/GID<br/>from LDAP attributes or external service];
+    E1 --> E2[Automatically create account<br/>and sync attributes in Crater DB];
+    D -- Yes --> F[Update Crater DB attributes<br/>such as Email, Nickname, etc.];
+    E2 --> G[Assign Default Queue Permissions];
+    F --> H[Generate JWT Token];
+    G --> H;
+    H --> I[Login Success];
+"
+/>
+
+### Quick Error Check
 
 <Callout>
-
-If you have previously applied for access to the Slurm GPU cluster, you can skip this step.
-
+The current platform error message system is being refactored. Specific quick-check documentation for error messages will be added after the refactor.
 </Callout>
 
-Log in to the [ACT Lab User Platform](https://user.act.buaa.edu.cn/), where you can book meeting rooms and apply for GPU cluster access, among other things.
+## Platform Login
 
-First, click on the avatar box in the top right corner to log in to the platform.
+### Overview
+If you have manually registered an account in Crater, or if the administrator assigned you an account and requested this login method, please log in this way.
 
-Then, click on the "Lab" option in the top navigation bar, and then select "My Information."
+Note that normally you cannot use this login method to directly log in to your LDAP or other accounts.
 
-If you do not have access permissions to the GPU cluster, the interface you see should look like this:
+### Authentication Flow
 
-![GPU Cluster Access Permissions](./images/no-access-to-gpu.webp)
+<Mermaid
+  chart="
+flowchart TD;
+    A[Enter Crater Account Username/Password] --> B{Crater DB Comparison<br/>Bcrypt Validation};
+    B -- Validation Failed --> C[Return Username or Password Error];
+    B -- Validation Success --> D{User Status Check};
+    D -- Inactive/Disabled --> E[Return User Not Enabled];
+    D -- Active --> F[Get Associated Projects/Queues];
+    F --> G[Generate JWT Token];
+    G --> H[Login Success];
+"
+/>
 
-Please click on "Apply for Usage Permissions," fill out the application form, and wait for the administrator (Professor Du Yingjie) to review it.
-
-## Activate Crater GPU Platform Account
+### Quick Error Check
 
 <Callout>
-
-You need to follow these steps to activate your account for the first time. Subsequent logins can be done directly on the Crater platform.
-
+The current platform error message system is being refactored. Specific quick-check documentation for error messages will be added after the refactor.
 </Callout>
 
-After successful activation, you can see a new GPU cluster access button under "Lab" -> "My Information."
+## Platform Registration
 
-![New GPU Cluster Access Permissions](./images/new-access-to-gpu.webp)
+### Overview
+When the administrator has enabled the "Allow Self-Registration" function, new users who do not yet have any account can create a Crater platform account through the registration page.
 
-When logging in to the platform for the first time, you must activate your account through this button. After activation, your supervisor, research group, and other information will be synchronized to this platform.
+### Authentication Flow
 
-In subsequent logins, you can directly log in to the Crater platform using your ACT account.
+<Mermaid
+  chart="
+flowchart TD;
+    A[Fill in Username and Password] --> B{Platform Registration Switch Check};
+    B -- Disabled --> C[Prompt Self-Registration Forbidden];
+    B -- Enabled --> D{Username Uniqueness Check};
+    D -- Already Exists --> E[Prompt Username Conflict];
+    D -- Does Not Exist --> F1[Assign Crater Default UID/GID 1001];
+    F1 --> F2[Create User Record in Crater DB];
+    F2 --> G[Initialize User Space];
+    G --> H[Associate Default Public Queue];
+    H --> I[Register Success and Auto Login];
+"
+/>
+
+### Quick Error Check
+
+<Callout>
+The current platform error message system is being refactored. Specific quick-check documentation for error messages will be added after the refactor.
+</Callout>
 
 ## Common Issues
 
-### 1. How to access the GPU cluster outside the lab?
+### 1. How to access the GPU cluster outside the lab for ACT Lab users?
 
 Download the client: https://vpn.buaa.edu.cn/portal,
 click on "Download Client" below the login box, and select the corresponding operating system in the pop-up window for download.
 
-### 2. Troubleshooting if you cannot connect to the VPN:
+### 2. Troubleshooting if you cannot connect to ACT VPN:
 
 Check if your local DNS resolution is correct;
 

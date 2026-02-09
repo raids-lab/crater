@@ -159,10 +159,10 @@ test: ## 🧪 Run tests
 	@echo "$(YELLOW)Note: Add test command to package.json if needed$(RESET)"
 
 ## 🛡️  Code Generation & Backend Integration
-.PHONY: generate
-generate: ## 🛠️ Generate error codes from backend
-	@echo "$(BLUE)Generating code...$(RESET)"
-	python3 ./src/services/generator.py ../web-backend/internal/resputil/code.go ./src/services/error_code.ts
+.PHONY: generate-error-code
+generate-error-code: ## 🛠️ Generate error codes from backend
+	@echo "$(BLUE)Generating error codes from backend...$(RESET)"
+	python3 ./src/services/generator.py ../backend/internal/resputil/code.go ./src/services/error_code.ts
 
 .PHONY: backend-help
 backend-help: ## ❓ Show backend server startup instructions

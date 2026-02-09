@@ -3,6 +3,7 @@
     "---インストールと展開---",
     "quick-start",
     "kind-start",
+    "deploy-on-cluster",
     "deployment",
     "---高度な設定---",
     "chart",

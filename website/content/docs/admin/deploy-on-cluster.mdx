@@ -534,7 +534,41 @@ kubectl create secret tls crater-tls-secret \
 
 ---
 
-### 4.7 部署命令
+### 4.7 LDAP 配置
+
+如果您的组织已拥有现有的 LDAP 目录服务（如 OpenLDAP 或 Active Directory），可以配置 Crater 接入该服务实现统一身份认证。
+
+启用 LDAP 后，系统会在用户首次登录时自动完成账号注册，并持续同步 LDAP 中的昵称、邮箱等信息。
+
+如果您没有相关的需求，那么可以直接把 `auth.ldap.enable` 设置为 `false`，其它 LDAP 配置项保持缺省即可。
+
+```yaml
+backendConfig:
+  auth:
+    ldap:
+      enable: true
+      server:
+        address: "ldap://ldap.example.com:389"
+        bindDN: "cn=admin,dc=example,dc=org"
+        bindPassword: "<MUSTEDIT>"
+        baseDN: "dc=example,dc=org"
+      attributeMapping:
+        username: "uid"
+        displayName: "cn"
+        email: "mail"
+      uid:
+        source: "default"  # 可选: "default", "ldap", "external"
+```
+
+如果启用 LDAP，那么字段映射中的 `username` 和 `displayName` 与服务器配置同样是必填项。平台将使用前者作为用户名，后者则作为显示的名称。如果您的 LDAP 没有对应的属性，您可以在这里指定其映射到与 `username` 相同的 LDAP 属性。
+
+配置项 `uid.source` 允许从 LDAP 属性或外部微服务获取用户的 UID/GID。此功能主要用于兼容 ACT 实验室内部原有的分布式存储系统权限。对于外部集群，我们建议将 `uid.source` 设置为 **`default`**。平台将统一使用 **1001** 作为用户的容器内运行标识，这对于大多数标准 NFS 或本地存储环境是最简便的选择。
+
+更详细的说明可以参阅 [配置说明](/zh/docs/admin/chart/) 文档。
+
+---
+
+### 4.8 部署命令
 
 确认修改完成后执行：
 
