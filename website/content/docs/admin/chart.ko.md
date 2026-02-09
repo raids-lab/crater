@@ -5,7 +5,7 @@ description: "Crater 플랫폼 Helm Chart 상세 설정 파라미터 설명. 백
 
 <img src="https://img.shields.io/badge/Version-0.1.0-informational?style=flat-square" alt="Version: 0.1.0"> <img src="https://img.shields.io/badge/Type-application-informational?style=flat-square" alt="Type: application"> <img src="https://img.shields.io/badge/AppVersion-1.0.0-informational?style=flat-square" alt="AppVersion: 1.0.0">
 
-Crater는 Kubernetes를 위해 설계된 종합 AI 개발 플랫폼으로, GPU 자원 관리, 컨테이너화된 개발 환경 및 워크플로우 오케스트레이션 기능을 제공합니다. 이 문서는 Helm을 통해 Crater를 배포할 때 설정 가능한 모든 항목을 상세히 설명합니다.
+Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU 자원 관리, 컨테이너화된 개발 환경 및 워크플로우 오케스트레이션 기능을 제공합니다. 이 문서는 Helm 을 통해 Crater 를 배포할 때 설정 가능한 모든 항목을 상세히 설명합니다.
 
 **프로젝트 홈페이지:** <https://github.com/raids-lab/crater>
 
