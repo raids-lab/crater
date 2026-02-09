@@ -31,7 +31,7 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 | namespaces.create | bool | `true` | 네임스페이스 자동 생성 여부 |
 | namespaces.job | string | `"crater-workspace"` | 작업 태스크 실행을 위한 네임스페이스 |
 | namespaces.image | string | `"crater-images"` | 이미지 빌드를 위한 네임스페이스 |
-| storage.create | bool | `true` | 기본 지속성 스토리지(PVC) 자동 생성 여부 |
+| storage.create | bool | `true`| 기본 지속성 스토리지 (PVC) 자동 생성 여부 ||
 | storage.request | string | `"10Gi"` | 스토리지 신청 용량 |
 | storage.storageClass | string | `"nfs"` | 스토리지 클래스 이름 (ReadWriteMany 지원 필요) |
 | storage.pvcName | string | `"crater-rw-storage"` | 공유 PVC 이름 |
@@ -85,7 +85,7 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 
 | 파라미터 | 타입 | 기본값 | 설명 |
 |-----|------|---------|-------------|
-| backendConfig.secrets.tlsSecretName | string | `"crater-tls-secret"` | HTTPS용 TLS 인증서 Secret 이름 |
+| backendConfig.secrets.tlsSecretName | string | `"crater-tls-secret"`| HTTPS 용 TLS 인증서 Secret 이름 ||
 | backendConfig.secrets.tlsForwardSecretName | string | `"crater-tls-forward-secret"` | 전달용 TLS 인증서 Secret 이름 |
 | backendConfig.secrets.imagePullSecretName | string | `""` | 프라이빗 이미지를 가져오기 위한 Secret 이름 |
 
@@ -107,7 +107,7 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 
 | 파라미터 | 타입 | 기본값 | 설명 |
 |-----|------|---------|-------------|
-| backendConfig.registry.enable | bool | `false` | 컨테이너 이미지 레지스트리(Harbor) 통합 활성화 여부 |
+| backendConfig.registry.enable | bool | `false`| 컨테이너 이미지 레지스트리 (Harbor) 통합 활성화 여부 ||
 | backendConfig.registry.harbor.server | string | `"..."` | Harbor 서비스 접속 주소 |
 | backendConfig.registry.harbor.user | string | `"admin"` | Harbor 관리자 계정 |
 | backendConfig.registry.harbor.password | string | `"..."` | Harbor 관리자 비밀번호 |
@@ -166,9 +166,9 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 
 | 파라미터 | 타입 | 기본값 | 설명 |
 |-----|------|---------|-------------|
-| tls.base.create | bool | `false` | Helm에서 기본 인증서 Secret 생성 여부 |
+| tls.base.create | bool | `false`| Helm 에서 기본 인증서 Secret 생성 여부 ||
 | tls.base.cert | string | `""` | 기본 인증서 내용 (Base64) |
-| tls.forward.create | bool | `false` | Helm에서 전달 인증서 Secret 생성 여부 |
+| tls.forward.create | bool | `false`| Helm 에서 전달 인증서 Secret 생성 여부 ||
 | tls.forward.cert | string | `""` | 전달 인증서 내용 (Base64) |
 
 ## 컴포넌트 이미지 버전 (images)

@@ -7,7 +7,7 @@ description: "Crater プラットフォーム Helm Chart の詳細な設定パ�
 
 Crater は Kubernetes 向けに設計された総合的な AI 開発プラットフォームであり、GPU リソース管理、コンテナ化された開発環境、およびワークフローのオーケストレーション機能を提供します。本ドキュメントでは、Helm を使用して Crater をデプロイする際の設定可能なすべての項目について詳しく説明します。
 
-**プロジェクトホームページ:** <https://github.com/raids-lab/crater>
+**プロジェクトホームページ：** <https://github.com/raids-lab/crater>
 
 ## メンテナ
 
