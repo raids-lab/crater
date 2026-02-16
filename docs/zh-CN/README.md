@@ -293,3 +293,5 @@ git merge main
 ## 许可证
 
 Crater 使用 Apache License 2.0 许可证，详见 [LICENSE](../../LICENSE)。
+
+<!-- 2026 丙午马年除夕快乐！祝老师及项目组全体成员：马到功成，新春大吉！ -->

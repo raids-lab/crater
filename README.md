@@ -296,3 +296,5 @@ If you haven't configured `upstream`, you can use GitHub's **Sync fork** feature
 ## License
 
 Crater is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
+
+<!-- Happy Chinese New Year 2026! Best wishes to the team. -->
