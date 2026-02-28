@@ -791,9 +791,13 @@ spec:
 
 推理过程，Kubernetes 也检测不到机间通信的流量了，说明我们的部署已经成功。
 
-## 问题记录
+## 修改内存锁定上限
 
-### 1. 进行联通性测试报错
+### 0. 问题描述
+
+以下的报错都是内存锁定限制引起的。
+
+联通性测试时产生以下报错：
 
 ```bash
 [host1] $ ib_read_bw -q 30
@@ -828,9 +832,176 @@ Failed to create MR
  Couldn't create IB resources
 ```
 
-这是因为申请 RDMA 资源后，不能给 Pod 设置 Memory 的 Limit。
+RDMA 进行带宽测试时，小数据量（如 1024 字节）传输正常，但 1M 及以上数据量传输失败，具体的报错信息与上面类似，详见 [Issue #339](https://github.com/raids-lab/crater/issues/339)。
 
-### 2. 启动 vLLM 时报错 `Segmentation fault`
+直接使用 `ulimit -l` 查看限制，得到的是 64KB，即系统默认的内存锁定上限。
+
+此时在容器中使用 `ulimit -l unlimited` 或者修改 `/etc/security/limits.conf` 均不能成功修改内存锁定上限。
+
+### 1. 问题分析
+
+RDMA 的核心是让 hardware（网卡 HCA）绕过 CPU 直接访问远程内存。在普通操作中，操作系统为了优化内存，会随时进行“换页” (Paging) 或移动数据，导致虚拟地址对应的物理地址发生变化。如果网卡正在传输数据时，内核将该页内存换出或移动，会导致传输崩溃甚至系统错误。
+
+所以，为了保证地址绝对稳定，RDMA 在传输前必须执行“内存注册” (Memory Registration, MR)。这一动作在内核层面将指定的虚拟内存页“锁死”在物理内存中，禁止内核对其进行移动或交换到磁盘。
+
+Crater 已经通过给作业设置 `CAP_IPC_LOCK` 允许其执行锁定内存的操作，但是没有修改允许锁定的量的限制。同时，由于没有给予容器 `CAP_SYS_RESOURCE` 的权限，容器内部的操作也无法修改这个上限。
+
+目前 Kubernetes 官方在 Pod Spec 中并未提供直接设置 `ulimit` 的配置项，详见 [Issue #3595](https://github.com/kubernetes/kubernetes/issues/3595)，因此需要从容器运行时的角度下手。
+
+> 另外，值得期待的是，Kubernetes 社区已经在 v1.36 周期内正式启动了关于原生支持 Pod 级 ulimit 配置的讨论，详见 [KEP-5758](https://github.com/kubernetes/enhancements/pull/5762)。
+
+`dockerd` 运行时提供了相应的配置项 `default-ulimits`，可以比较方便的在节点层面配置这个限制，详见[配置文件说明](https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file)和[资源限制指南](https://docs.docker.com/engine/containers/resource_constraints/#set-default-ulimits-for-a-container)。
+
+但目前集群中使用的是 `containerd`，它并不提供类似 `dockerd` 的配置项，详见[配置文件说明](https://github.com/containerd/containerd/blob/main/docs/cri/config.md)，同时开发者在 [Issue #3150](https://github.com/containerd/containerd/issues/3150) 中明确拒绝提供守护进程级别的配置。因此需要另辟蹊径以解决这个问题。
+
+> 另外，经过尝试，直接在节点修改 `/etc/security/limits.conf` 解除限制，或者仅为容器运行时守护进程设置 `LimitMEMLOCK=infinity` 同样无法放开 Pod 内的限制。其根源推测在于容器执行器 `runc` 会严格按照 OCI 规范蓝图中的定义，在启动时为容器执行 `setrlimit` 系统调用，这会将容器的限制强制覆盖（通常是拉低）为蓝图中的默认值（如 64KB），从而无视了守护进程自身的权力上限。
+
+### 2. 解决方案
+
+该方案的核心在于修改 **OCI Runtime Specification (OCI 运行时规范)**。在 `containerd` 的语境下，通过 `base_runtime_spec` 参数指定的 JSON 文件被视为容器的**基础规范模板**。它是定义容器资源边界（如 `memlock` 限制）的最终权威来源（详见 [OCI 配置规范](https://github.com/opencontainers/runtime-spec/blob/main/config.md#posix-process)），底层的 OCI 运行时（如 `runc`）会严格按照该蓝图的定义，通过 `setrlimit` 系统调用来初始化容器进程的资源限额。
+
+#### 导出现有配置并修改
+
+由于 `containerd` 并不支持将该参数与系统默认配置进行自动合并（Merge），而是采取完全替换（Replace）策略，因此我们必须先导出一份包含当前系统完整定义的配置模板，再在其基础上进行微调。在节点上运行以下命令。
+
+```shell
+ctr oci spec > /etc/containerd/rdma-spec.json
+vim /etc/containerd/rdma-spec.json
+```
+
+修改配置文件的以下部分（在 `rlimits` 数组中追加 `RLIMIT_MEMLOCK`）：
+
+```json
+        "rlimits": [
+            {
+                "type": "RLIMIT_NOFILE",
+                "hard": 1024,
+                "soft": 1024
+            },
+            {
+                "type": "RLIMIT_MEMLOCK",
+                "hard": 18446744073709551615,
+                "soft": 18446744073709551615
+            }
+        ],
+```
+
+#### 引用修改后的配置
+
+修改 `containerd` 的配置。
+
+```toml
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+          # 修改为指向上述 JSON 模板的绝对路径
+          base_runtime_spec = "/etc/containerd/rdma-spec.json"
+          cni_conf_dir = ""
+          cni_max_conf_num = 0
+          container_annotations = []
+          pod_annotations = []
+          privileged_without_host_devices = false
+          privileged_without_host_devices_all_devices_allowed = false
+          runtime_engine = ""
+          runtime_path = ""
+          runtime_root = ""
+          runtime_type = "io.containerd.runc.v2"
+          sandbox_mode = "podsandbox"
+          snapshotter = ""
+```
+
+需要根据具体情况修改，目标是让对应的 Pod 成功应用对应的配置。
+
+<Callout type="warn">
+修改容器运行时配置并重启服务后，**不会影响已经在运行的 Pod**。必须手动删除旧的 Pod，由 Kubernetes 重新调度并触发 `containerd` 使用新的 OCI 蓝图进行初始化，配置才会真正生效。
+</Callout>
+
+#### 解除 containerd 自身的限制（可选）
+
+```shell
+EDITOR=vim systemctl edit containerd
+```
+
+在守护进程配置中添加以下内容。
+
+```toml
+[Service]
+LimitMEMLOCK=infinity
+```
+
+然后使用 `systemctl restart containerd` 重启服务。
+
+虽然实测显示由于 `containerd` 拥有 `CAP_SYS_RESOURCE` 特权，仅修改 OCI 蓝图即可生效，但补全此项是为了确保守护进程自身的鲁棒性，作为生产环境的最佳实践推荐开启。
+
+#### 测试
+
+至此，Pod 中的内存锁定上限应该已被解除，我们可以再次运行 RDMA 带宽测试命令，分别能够在主机和从机上看到以下输出。
+
+**Master:**
+
+```bash
+root@pyt-liuyizhou-260206-2a3fe-master-0:/# ib_write_bw -s 1M -d mlx5_0 -F
+************************************
+* Waiting for client to connect... *
+************************************
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0x2c QPN 0x0087 PSN 0xcc6a4c RKey 0x1fcc bd VAddr 0x037f67d3b5030
+ remote address: LID 0x2c QPN 0x0088 PSN 0x6dc93a RKey 0x1fcf be VAddr 0x037f026db4030
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 1048576    5000             11133.60            11129.09           0.011123
+---------------------------------------------------------------------------------------
+```
+
+**Worker:**
+
+```bash
+root@pyt-liuyizhou-260206-2a3fe-worker-0:/# ib_write_bw -s 1M -d mlx5_0 -F 10.244.44.139
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0x2c QPN 0x0088 PSN 0x6dc93a RKey 0x1fcf be VAddr 0x037f026db4030
+ remote address: LID 0x2c QPN 0x0087 PSN 0xcc6a4c RKey 0x1fcc bd VAddr 0x037f67d3b5030
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 1048576    5000             11133.60            11129.09           0.011123
+---------------------------------------------------------------------------------------
+
+root@pyt-liuyizhou-260206-2a3fe-worker-0:/# ulimit -l
+unlimited
+```
+
+可以看到 Pod 内的内存锁定上限已被解除，并且可以正常进行较大带宽的 RDMA 通信。
+
+## 问题记录
+
+### 1. 启动 vLLM 时报错 `Segmentation fault`
 
 从日志来看，IB 设备已经成功识别了，但出现了段错误。
 
@@ -883,7 +1054,7 @@ Fatal Python error: Segmentation fault
 
 还记得我们之前提到，需要在 Pod 的安全上下文中增加 `IPC_LOCK` 么？如果不增加，就会导致上述问题。
 
-### 3. A100 机型跑多机推理失败
+### 2. A100 机型跑多机推理失败
 
 首先在 A100 机型运行单机的验证，如果正好使用了 Up 的网卡，好像没有问题：
 

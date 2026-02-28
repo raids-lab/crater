@@ -4,12 +4,12 @@ description: "RDMA"
 ---
 
 > - [K8s test via Infiniband network - Adapters and Cables / InfiniBand/VPI Adapter Cards - NVIDIA Developer Forums](https://forums.developer.nvidia.com/t/k8s-test-via-infiniband-network/285610)
-> - [Running tightly coupled HPC/AI workloads with InfiniBand using NVIDIA Network Operator on AKS \| Microsoft Community Hub](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/running-tightly-coupled-hpcai-workloads-with-infiniband-using-nvidia-network-ope/4117209)
+> - [Running tightly coupled HPC/AI workloads with InfiniBand using NVIDIA Network Operator on AKS | Microsoft Community Hub](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/running-tightly-coupled-hpcai-workloads-with-infiniband-using-nvidia-network-ope/4117209)
 > - [Basic Knowledge and Differences of RoCE, IB, and TCP Networks](https://support.huawei.com/enterprise/en/doc/EDOC1100203339)
 
 正式に開始する前に、RDMA に関連する基礎知識を補足しておきます：
 
-- **RDMA**：これは、オペレーティングシステムのカーネルを迂回するネットワーク通信技術であり、その核心はネットワークカードを介してリモートメモリに直接アクセスすることにあり、従来の TCP/IP プロトコルスタックのデータコピーおよびコンテキストスイッチのオーバーヘッドを回避します。
+- **RDMA**：これは、オペレーティングシステムのカーネルを迂回する network 通信技術であり、その核心はネットワークカードを介してリモートメモリに直接アクセスすることにあり、従来の TCP/IP プロトコルスタックのデータコピーおよびコンテキストスイッチのオーバーヘッドを回避します。
 - **NVIDIA GPU Direct**[^2]：GPU のビデオメモリとネットワークカードの DMA エンジンを直接接続して実現します。GPU がリモートノードと通信する必要がある場合、データは InfiniBand または RoCE ネットワークカードを介して直接転送され、ホストメモリを経由することなくなります。
 - **ネットワーク仮想化**：Macvlan と SR-IOV は 2 つの一般的なネットワーク仮想化のソリューションです。Macvlan は、コンテナに仮想ネットワークインターフェースを作成して、物理ネットワーク上では独立したデバイスとして表示させます。SR-IOV は、物理ネットワークカードのハードウェア仮想化能力を用いて、単一の物理機能（PF）を複数の仮想機能（VF）に分割し、それぞれの VF が Pod に直接割り当てられることを可能にします。
 - **技術パス**：現在の RDMA には主に InfiniBand と RoCE の 2 つの実装方法があります[^6]。InfiniBand は原生的に RDMA プロトコルをサポートしており、専用のスイッチおよびサブネットマネージャーが必要で、独立ネットワークを構築するためコストが高くなります。RoCEv2 は、従来のイーサネットインフラストラクチャを基盤としており、PFC や ECN などのフローコントロールメカニズムを用いてノンロス伝送を保証し、インターネット企業で広く使用されています。
@@ -151,7 +151,7 @@ Deployment Examples（展開例）の章で、約 20 種類の展開方法が紹
 5. コンテナ内で RDMA ネットワークをテストするにはどうすればよいですか？
 6. 一般的なエラーとその解決策はどれですか？
 
-ドキュメントではこれらの質問に答えていません。そのため、私の試行錯誤も非常に困難でした。まず、この段階でこれらの質問に対する私の理解と参考資料を簡単にまとめます：
+ドキュメントではこれらの質問に答えていないため、私の試行錯誤も非常に困難でした。まず、この段階でこれらの質問に対する私の理解と参考資料を簡単にまとめます：
 
 - **性能差**：[IPoIB (IP over InfiniBand) vs. RDMA performance](https://serverfault.com/questions/876403/ipoib-ip-over-infiniband-vs-rdma-performance)、さらに Shared Device Plugin が 1 つの Pod がリソースを申請した場合、帯域幅はほぼ満たすことができます。複数の状況についてはまだテストしていません。
 - **展開方法**：現在は RDMA Shared Device Plugin の方法を採用しており、V100 上で正常に動作しています。ただし、この方法が結合されたネットワークカードを使用できるかは不明で、将来的には Host Network モードに切り替えるかもしれません。
@@ -634,9 +634,9 @@ ib_write_bw -a -F --report_gbits -q 2 <server-pod-default-network-IP>
 
 帯域幅値も`100Gb/s`に近づくため、複数マシン間の接続に問題がないことを示します。
 
-### 4. vLLM 複数マシン分散推論の実践
+### 4. vLLM 複数マシン分散推論の実戦
 
-最後に、Volcano Job を通じて vLLM 複数マシン分散推論 DeepSeek R1 Distill Qwen 32B モデルを実測します。モデルは PVC でマウントし、イメージは Envd で作成します。vLLM は専用の CUDA 12.4 をインストールするため、基本イメージには CUDA を含めません。
+最後に、Volcano Job を通じて vLLM 複数マシン分散推論 DeepSeek R1 Distill Qwen 32B モデルを実行する実測を行います。モデルは PVC を通じてマウントされ、イメージは Envd を通じて作成されます。vLLM は特製の CUDA 12.4 をインストールするため、ベースイメージには CUDA を含める必要はありません。
 
 ```python
 # syntax=v1
@@ -654,7 +654,7 @@ def build():
     config.jupyter()
 ```
 
-その後、Volcano Job を起動します：
+その後、Volcano Job を開始します：
 
 ```yaml
 apiVersion: batch.volcano.sh/v1alpha1
@@ -678,3 +678,491 @@ spec:
   schedulerName: volcano
   tasks:
     - maxRetry: 3
+      minAvailable: 1
+      name: master
+      policies:
+        - action: CompleteJob
+          event: TaskCompleted
+        - action: TerminateJob
+          event: PodFailed
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - command:
+                - sh
+                - -c
+                - |-
+                  ray start --head --port=6667 --disable-usage-stats;
+                  NCCL_DEBUG=TRACE python3 -m vllm.entrypoints.openai.api_server \
+                  --model=/models/DeepSeek-R1-Distill-Qwen-32B \
+                  --max-model-len 32768 \
+                  --tensor-parallel-size 4 \
+                  --pipeline-parallel-size 2 \
+                  --gpu-memory-utilization 0.90 \
+                  --max-num-seqs 128 \
+                  --trust-remote-code \
+                  --disable-custom-all-reduce \
+                  --port 6666 \
+                  --dtype=half;
+              image: xxx/envd-vllm:0.8.3-cu12.4-rdma-v1
+              name: master
+              resources:
+                limits:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+                requests:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+              securityContext:
+                capabilities:
+                  add:
+                    - IPC_LOCK
+                runAsGroup: 0
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /dev/shm
+                  name: crater-cache
+                - mountPath: /models/DeepSeek-R1-Distill-Qwen-32B
+                  name: crater-ro-storage
+                  readOnly: true
+                  subPath: LLM/deepseek/DeepSeek-R1-Distill-Qwen-32B
+              workingDir: /models
+          restartPolicy: Never
+          volumes:
+            - emptyDir:
+                medium: Memory
+              name: crater-cache
+            - name: crater-ro-storage
+              persistentVolumeClaim:
+                claimName: crater-ro-storage
+    - maxRetry: 3
+      minAvailable: 1
+      name: worker
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - command:
+                - sh
+                - -c
+                - |-
+                  ray start --address="$MASTER_ADDR:6667";
+                  sleep infinity;
+              image: xxx/envd-vllm:0.8.3-cu12.4-rdma-v1
+              name: worker
+              resources:
+                limits:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+                requests:
+                  nvidia.com/v100: "4"
+                  rdma/rdma_v100: "1"
+              securityContext:
+                capabilities:
+                  add:
+                    - IPC_LOCK
+                runAsGroup: 0
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - mountPath: /dev/shm
+                  name: crater-cache
+                - mountPath: /models/DeepSeek-R1-Distill-Qwen-32B
+                  name: crater-ro-storage
+                  readOnly: true
+                  subPath: LLM/deepseek/DeepSeek-R1-Distill-Qwen-32B
+              workingDir: /models
+          restartPolicy: OnFailure
+          volumes:
+            - emptyDir:
+                medium: Memory
+              name: crater-cache
+            - name: crater-ro-storage
+              persistentVolumeClaim:
+                claimName: crater-ro-storage
+  ttlSecondsAfterFinished: 259200
+```
+
+vLLM の分散推論に関する説明[^7]を参照し、`NCCL_DEBUG=TRACE` を有効にしました。ログでは、NCCL が Socket 接続ではなく IB を使用していることがわかります。
+
+推論プロセス中、Kubernetes はマシン間の通信トラフィックを検出できなくなったため、デプロイが成功したことを示しています。
+
+## メモリロック上限の変更
+
+### 0. 問題の説明
+
+以下のエラーはすべて、メモリロックの制限が原因で発生します。
+
+接続テスト中に以下のエラーが発生します：
+
+```bash
+[host1] $ ib_read_bw -q 30
+
+************************************
+* Waiting for client to connect... *
+************************************
+---------------------------------------------------------------------------------------
+                    RDMA_Read BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 30           Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Outstand reads  : 16
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ethernet_read_keys: Couldn't read remote address
+ Unable to read to socket/rdma_cm
+Failed to exchange data between server and clients
+```
+
+```bash
+[host2] $ ib_read_bw -q 30 10.244.46.50
+Couldn't allocate MR
+failed to create mr
+Failed to create MR
+ Couldn't create IB resources
+```
+
+RDMA の帯域幅テストを行う際、小規模なデータ（1024 バイトなど）の転送は正常ですが、1M 以上のデータの転送に失敗します。具体的なエラーメッセージは上記と同様です。詳細は [Issue #339](https://github.com/raids-lab/crater/issues/339) を参照してください。
+
+`ulimit -l` を直接使用して制限を確認すると、システムデフォルトのメモリロック上限である 64KB が得られます。
+
+このとき、コンテナー内で `ulimit -l unlimited` を使用したり、`/etc/security/limits.conf` を変更したりしても、メモリロック上限を正常に変更することはできません。
+
+### 1. 問題の分析
+
+RDMA の核心は、ハードウェア（ネットワークカード HCA）が CPU をバイパスしてリモートメモリに直接アクセスできるようにすることです。通常、OS はメモリを最適化するために、いつでも「ページング」を行ったりデータを移動したりするため、仮想アドレスに対応する物理アドレスが変化します。ネットワークカードがデータを転送している間に、カーネルがそのメモリページをスワップアウトしたり移動したりすると、転送のクラッシュやシステムエラーにつながります。
+
+そのため、アドレスを完全に安定させるために、RDMA は転送前に「メモリ登録」（Memory Registration, MR）を実行する必要があります。この動作は、カーネルレベルで指定された仮想メモリページを物理メモリ内に「ロック」し、カーネルによる移動やディスクへのスワップを禁止します。
+
+Crater は、ジョブに `CAP_IPC_LOCK` を設定することでメモリロック操作の実行をすでに許可していますが、許可されるロック量の制限は変更していません。また、コンテナーに `CAP_SYS_RESOURCE` 特権が付与されていないため、コンテナー内部の操作ではこの上限を変更できません。
+
+現在、Kubernetes 公式は Pod Spec で `ulimit` の直接的な設定を提供していません（詳細は [Issue #3595](https://github.com/kubernetes/kubernetes/issues/3595) を参照）。そのため、コンテナーランタイムの観点から対処する必要があります。
+
+> また、期待すべき点として、Kubernetes コミュニティは v1.36 サイクルにおいて、Pod レベルの ulimit 設定のネイティブサポートに関する議論を正式に開始しました（詳細は [KEP-5758](https://github.com/kubernetes/enhancements/pull/5762) を参照）。
+
+`dockerd` ランタイムには対応する構成項目 `default-ulimits` があり、ノードレベルでこの制限を比較的容易に構成できます。詳細は [構成ファイルの説明](https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file) と [リソース制限ガイド](https://docs.docker.com/engine/containers/resource_constraints/#set-default-ulimits-for-a-container) を参照してください。
+
+しかし、現在クラスターで使用されているのは `containerd` であり、`dockerd` のような構成項目は提供されていません。詳細は [構成ファイルの説明](https://github.com/containerd/containerd/blob/main/docs/cri/config.md) を参照してください。一方、開発者は [Issue #3150](https://github.com/containerd/containerd/issues/3150) において、デーモンレベルの構成を提供することを明確に拒否しています。そのため、この問題を解決するために別の道を探す必要があります。
+
+> また、試行の結果、ノード上で直接 `/etc/security/limits.conf` を変更して制限を解除したり、コンテナーランタイムデーモンに対してのみ `LimitMEMLOCK=infinity` を設定したりしても、Pod 内の制限を解除することはできません。その根本原因は、コンテナー実行器 `runc` が OCI 仕様のブループリントの定義に厳格に従い、起動時にコンテナーに対して `setrlimit` システムコールを実行するためと考えられます。これにより、デーモン自身の権限上限に関係なく、コンテナーの制限がブループリント内のデフォルト値（例：64KB）で強制的に上書き（通常は引き下げ）されます。
+
+### 2. 解決策
+
+この解決策の核心は、**OCI Runtime Specification (OCI ランタイム仕様)** を変更することにあります。`containerd` の文脈では、`base_runtime_spec` パラメーターで指定された JSON ファイルが、コンテナーの**基礎仕様テンプレート**とみなされます。これはコンテナーの最終的な権威あるリソース境界（`memlock` 制限など）の情報源です（詳細は [OCI 構成仕様](https://github.com/opencontainers/runtime-spec/blob/main/config.md#posix-process) を参照）。基盤となる OCI ランタイム（`runc` など）は、ブループリントの定義に厳密に従い、`setrlimit` システムコールを通じてコンテナープロセスのリソース制限を初期化します。
+
+#### 既存の構成をエクスポートして変更する
+
+`containerd` は、このパラメーターをシステムのデフォルト構成と自動的にマージ（Merge）することをサポートしておらず、完全に置き換える（Replace）戦略をとっているため、まず現在のシステムの完全な定義を含む構成テンプレートをエクスポートし、その上で微調整を行う必要があります。ノード上で以下のコマンドを実行します。
+
+```shell
+ctr oci spec > /etc/containerd/rdma-spec.json
+vim /etc/containerd/rdma-spec.json
+```
+
+構成ファイルの以下の部分を変更します（`rlimits` 配列に `RLIMIT_MEMLOCK` を追加）：
+
+```json
+        "rlimits": [
+            {
+                "type": "RLIMIT_NOFILE",
+                "hard": 1024,
+                "soft": 1024
+            },
+            {
+                "type": "RLIMIT_MEMLOCK",
+                "hard": 18446744073709551615,
+                "soft": 18446744073709551615
+            }
+        ],
+```
+
+#### 変更した構成の参照
+
+`containerd` の構成を変更します。
+
+```toml
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+          # 上記の JSON テンプレートの絶対パスを指すように変更
+          base_runtime_spec = "/etc/containerd/rdma-spec.json"
+          cni_conf_dir = ""
+          cni_max_conf_num = 0
+          container_annotations = []
+          pod_annotations = []
+          privileged_without_host_devices = false
+          privileged_without_host_devices_all_devices_allowed = false
+          runtime_engine = ""
+          runtime_path = ""
+          runtime_root = ""
+          runtime_type = "io.containerd.runc.v2"
+          sandbox_mode = "podsandbox"
+          snapshotter = ""
+```
+
+具体的な状況に応じて変更する必要があります。目標は、対応する Pod が対応する構成を正常に適用できるようにすることです。
+
+<Callout type="warn">
+コンテナーランタイムの構成を変更してサービスを再起動した後、**すでに実行中の Pod には影響しません**。古い Pod を手動で削除し、Kubernetes によって再スケジューリングと `containerd` による新しい OCI ブループリントを使用した初期化をトリガーする必要があります。そうして初めて、構成が真に有効になります。
+</Callout>
+
+#### containerd 自身の制限の解除 (任意)
+
+```shell
+EDITOR=vim systemctl edit containerd
+```
+
+デーモン構成に以下の内容を追加します。
+
+```toml
+[Service]
+LimitMEMLOCK=infinity
+```
+
+その後、`systemctl restart containerd` を使用してサービスを再起動します。
+
+実測の結果、`containerd` が `CAP_SYS_RESOURCE` 特権を持っているため、OCI ブループリントを変更するだけで有効になることが示されていますが、デーモン自身の堅牢性を確保するためにこの項目を補完することは、実稼働環境でのベストプラクティスとして推奨されます。
+
+#### テスト
+
+これで Pod 内のメモリロック上限が解除されているはずです。RDMA 帯域幅テストコマンドを再度実行すると、マスターとワーカーでそれぞれ以下のような出力が表示されます。
+
+**Master:**
+
+```bash
+root@pyt-liuyizhou-260206-2a3fe-master-0:/# ib_write_bw -s 1M -d mlx5_0 -F
+************************************
+* Waiting for client to connect... *
+************************************
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0x2c QPN 0x0087 PSN 0xcc6a4c RKey 0x1fcc bd VAddr 0x037f67d3b5030
+ remote address: LID 0x2c QPN 0x0088 PSN 0x6dc93a RKey 0x1fcf be VAddr 0x037f026db4030
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 1048576    5000             11133.60            11129.09           0.011123
+---------------------------------------------------------------------------------------
+```
+
+**Worker:**
+
+```bash
+root@pyt-liuyizhou-260206-2a3fe-worker-0:/# ib_write_bw -s 1M -d mlx5_0 -F 10.244.44.139
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0x2c QPN 0x0088 PSN 0x6dc93a RKey 0x1fcf be VAddr 0x037f026db4030
+ remote address: LID 0x2c QPN 0x0087 PSN 0xcc6a4c RKey 0x1fcc bd VAddr 0x037f67d3b5030
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 1048576    5000             11133.60            11129.09           0.011123
+---------------------------------------------------------------------------------------
+
+root@pyt-liuyizhou-260206-2a3fe-worker-0:/# ulimit -l
+unlimited
+```
+
+Pod 内のメモリロック上限が解除され、大きな帯域幅での RDMA 通信が正常に行えることがわかります。
+
+## 問題の記録
+
+### 1. vLLM 起動時に `Segmentation fault` エラーが発生する
+
+ログから、IB デバイスは正常に認識されていますが、セグメンテーションフォルトが発生しています。
+
+```bash
+[デバイス名]-master-0:528:528 [0] NCCL INFO Channel 00/02 :    0   1   2   3   4   5   6   7
+[デバイス名]-master-0:528:528 [0] NCCL INFO Channel 01/02 :    0   1   2   3   4   5   6   7
+[デバイス名]-master-0:528:528 [0] NCCL INFO Trees [0] 1/4/-1->0->-1 [1] 1/-1/-1->0->4
+    self.device_communicator = device_comm_cls(
+[デバイス名]-master-0:528:528 [0] NCCL INFO P2P Chunksize set to 131072
+[デバイス名]-master-0:528:528 [0] NCCL INFO Channel 00/0 : 7[3] -> 0[0] [receive] via NET/IB/0
+[デバイス名]-master-0:528:528 [0] NCCL INFO Channel 01/0 : 7[3] -> 0[0] [receive] via NET/IB/0
+[デバイス名]-master-0:528:528 [0] NCCL INFO Channel 00/0 : 0[0] -> 1[1] via P2P/IPC
+[デバイス名]-master-0:528:528 [0] NCCL INFO Channel 01/0 : 0[0] -> 1[1] via P2P/IPC
+[デバイス名]-master-0:528:5379 [0] misc/socket.cc:50 NCCL WARN socketProgress: Connection closed by remote peer [デバイス名]-worker-0.[ホスト名].svc.cluster.local<35396>
+[デバイス名]-master-0:528:5379 [0] NCCL INFO misc/socket.cc:752 -> 6
+[デバイス名]-master-0:528:5379 [0] NCCL INFO transport/net_ib.cc:1207 -> 6
+[デバイス名]-master-0:528:5379 [0] NCCL INFO transport/net.cc:837 -> 6
+[デバイス名]-master-0:528:528 [0] NCCL INFO transport/net.cc:405 -> 6
+[デバイス名]-master-0:528:528 [0] NCCL INFO transport.cc:183 -> 6
+                               ^^^^^^^^^^^^^^^^
+[デバイス名]-master-0:528:528 [0] NCCL INFO init.cc:1263 -> 6
+[デバイス名]-master-0:528:528 [0] NCCL INFO init.cc:1548 -> 6
+[デバイス名]-master-0:528:528 [0] NCCL INFO init.cc:1799 -> 6
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/cuda_communicator.py", line 39, in __init__
+[デバイス名]-master-0:528:5379 [0] misc/socket.cc:50 NCCL WARN socketProgress: Connection closed by remote peer [デバイス名]-worker-0.[ホスト名].svc.cluster.local<52144>
+    self.pynccl_comm = PyNcclCommunicator(
+                       ^^^^^^^^^^^^^^^^^^^
+[デバイス名]-master-0:528:5379 [0] NCCL INFO misc/socket.cc:752 -> 6
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[デバイス名]-master-0:528:5379 [0] NCCL INFO transport/net_ib.cc:1207 -> 6
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/pynccl.py", line 99, in __init__
+    self.comm: ncclComm_t = self.nccl.ncclCommInitRank(
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/pynccl_wrapper.py", line 277, in ncclCommInitRank
+    self.NCCL_CHECK(self._funcs["ncclCommInitRank"](ctypes.byref(comm),
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/pynccl_wrapper.py", line 256, in NCCL_CHECK
+    raise RuntimeError(f"NCCL error: {error_str}")
+RuntimeError: NCCL error: unhandled system error (run with NCCL_DEBUG=INFO for details)
+[デバイス名]-master-0:528:5379 [0] NCCL INFO transport/net.cc:837 -> 6
+[デバイス名]-master-0:528:528 [0] NCCL INFO init.cc:1837 -> 6
+*** SIGSEGV received at time=1745072123 on cpu 70 ***
+PC: @     0x7ff94e269506  (unknown)  ncclProxyServiceUDS()
+    @     0x7ffa0c242520       3384  (unknown)
+    @ ... and at least 1 more frames
+[2025-04-19 14:15:23,982 E 528 5383] logging.cc:484: *** SIGSEGV received at time=1745072123 on cpu 70 ***
+[2025-04-19 14:15:23,982 E 528 5383] logging.cc:484: PC: @     0x7ff94e269506  (unknown)  ncclProxyServiceUDS()
+[2025-04-19 14:15:23,983 E 528 5383] logging.cc:484:     @     0x7ffa0c242520       3384  (unknown)
+[2025-04-19 14:15:23,983 E 528 5383] logging.cc:484:     @ ... and at least 1 more frames
+Fatal Python error: Segmentation fault
+```
+
+以前、Pod のセキュアコンテキストに `IPC_LOCK` を追加する必要があると言ったのを覚えていますか？追加しないと、上記の問題が発生します。
+
+### 2. A100 モデルでの複数マシン推論の失敗
+
+まず、A100 モデルで単一マシンの検証を実行します。Up 状態のネットワークカードをちょうど使用した場合、問題ないようです：
+
+```bash
+$ ib_write_bw -d mlx5_1 &
+[1] 1501
+
+************************************
+* Waiting for client to connect... *
+************************************
+
+
+$ ib_write_bw -d mlx5_1 127.0.0.1 --report_gbits
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_1
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_1
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[Gb/sec]    BW average[Gb/sec]   MsgRate[Mpps]
+Conflicting CPU frequency values detected: 863.109000 != 2300.000000. CPU Frequency is not max.
+ 65536      5000             183.66             183.61             0.350214
+---------------------------------------------------------------------------------------
+ 65536      5000             183.66             183.61             0.350214
+---------------------------------------------------------------------------------------
+
+$ ib_write_bw -d mlx5_0 &
+[1] 1618
+
+Port number 1 state is Down
+ Couldn't set the link layer
+ Couldn't get context for the device
+
+$ ib_write_bw -d mlx5_0 127.0.0.1 --report_gbits
+ Port number 1 state is Down
+ Couldn't set the link layer
+ Couldn't get context for the device
+
+$ ibstat
+CA 'mlx5_0'
+        CA type: MT4123
+        Port 1:
+                State: Down
+                Physical state: Disabled
+                Rate: 10
+                Base lid: 65535
+                LMC: 0
+                SM lid: 0
+                Link layer: InfiniBand
+CA 'mlx5_1'
+        CA type: MT4123
+        Port 1:
+                State: Active
+                Physical state: LinkUp
+                Rate: 200
+                Base lid: 3
+                LMC: 0
+                SM lid: 1
+                Link layer: InfiniBand
+CA 'mlx5_bond_0'
+        CA type: MT4117
+        Port 1:
+                State: Active
+                Physical state: LinkUp
+                Rate: 10
+                Link layer: Ethernet
+
+$ ib_write_bw -d mlx5_bond_0 &
+IB device mlx5_bond_0 not found
+ Unable to find the Infiniband/RoCE device
+```
+
+しかし、vLLM を実行するとエラーが発生します。後に、この問題は vLLM V1 および Ray[^8] に関連しており、IB とは関係ないことが判明しました。たまたま手元に vLLM の複数マシン分散推論コードがあったのでテストに使用しましたが、外部の干渉要因を避けるためには NCCL Test などを実行したほうがよいかもしれません。
+
+## まとめ
+
+以上、ローカル Kubernetes クラスターにおける RDMA 接続のプロセスを記録しました。現在、関連ドキュメントの不足や、プロセスに含まれる問題領域の広さが、この分野の学習を妨げる主な要因となっています。確かに、比較的しっかりとしたコンピューターの基礎が必要です。
+
+[^1]: [2 个 RoCE 网卡 Bond 聚合，实现带宽 X2-云社区 - 华为云](https://bbs.huaweicloud.com/blogs/412088)
+[^2]: [RDG for Accelerated K8s Cluster over NVIDIA DGX A100 Servers and 200Gbps Ethernet Network Fabric](https://docs.nvidia.com/networking/display/public/sol/rdg+for+accelerated+k8s+cluster+over+nvidia+dgx+a100+servers+and+200gbps+ethernet+network+fabric)
+[^3]: [Enhance documentaitons · Issue #54 · Mellanox/k8s-rdma-shared-dev-plugin](https://github.com/Mellanox/k8s-rdma-shared-dev-plugin/issues/54)
+[^4]: [Multus-CNI 与 whereabouts 的简单运用 - 剑轩的专栏 - TNBLOG](https://www.tnblog.net/aojiancc2/article/details/7929)
+[^5]: [hostdevice-network-pod1.yml](https://github.com/Mellanox/network-operator/tree/master/example)
+[^6]: [理想与现实  - Infiniband 和以太网的抉择   -  雪球](https://xueqiu.com/2448317325/292453176?md5__1038=eqAxgDyDuD0jQGXBDrDcQ8FKiIwx8iD)
+[^7]: [Distributed Inference and Serving](https://docs.vllm.ai/en/stable/serving/distributed_serving.html)
+[^8]: [[Bug]: 0.8.0(V1) Ray cannot find model pyarrow and pandas](https://github.com/vllm-project/vllm/issues/15100)

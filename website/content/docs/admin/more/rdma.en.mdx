@@ -4,7 +4,7 @@ description: "RDMA"
 ---
 
 > - [K8s test via Infiniband network - Adapters and Cables / InfiniBand/VPI Adapter Cards - NVIDIA Developer Forums](https://forums.developer.nvidia.com/t/k8s-test-via-infiniband-network/285610)
-> - [Running tightly coupled HPC/AI workloads with InfiniBand using NVIDIA Network Operator on AKS \| Microsoft Community Hub](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/running-tightly-coupled-hpcai-workloads-with-infiniband-using-nvidia-network-ope/4117209)
+> - [Running tightly coupled HPC/AI workloads with InfiniBand using NVIDIA Network Operator on AKS | Microsoft Community Hub](https://techcommunity.microsoft.com/blog/azurehighperformancecomputingblog/running-tightly-coupled-hpcai-workloads-with-infiniband-using-nvidia-network-ope/4117209)
 > - [Basic Knowledge and Differences of RoCE, IB, and TCP Networks](https://support.huawei.com/enterprise/en/doc/EDOC1100203339)
 
 Before officially starting, we first supplement some basic knowledge related to RDMA:
@@ -791,9 +791,13 @@ According to the vLLM documentation on distributed inference[^7], we enabled `NC
 
 During the inference process, Kubernetes also does not detect inter-machine communication traffic, indicating that our deployment has been successful.
 
-## Problem Records
+## Lifting the Memory Lock Limit
 
-### 1. Connectivity Test Error
+### 0. Problem Description
+
+The following errors are caused by the memory lock limit.
+
+The following error occurs during connectivity testing:
 
 ```bash
 [host1] $ ib_read_bw -q 30
@@ -810,3 +814,355 @@ During the inference process, Kubernetes also does not detect inter-machine comm
  ibv_wr* API     : ON
  CQ Moderation   : 1
  Mtu             : 4096[B]
+ Link type       : IB
+ Outstand reads  : 16
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ethernet_read_keys: Couldn't read remote address
+ Unable to read to socket/rdma_cm
+Failed to exchange data between server and clients
+```
+
+```bash
+[host2] $ ib_read_bw -q 30 10.244.46.50
+Couldn't allocate MR
+failed to create mr
+Failed to create MR
+ Couldn't create IB resources
+```
+
+When performing RDMA bandwidth testing, small data volume (e.g., 1024 bytes) transmission is normal, but 1M and above data volume transmission fails. The specific error message is similar to above, see [Issue #339](https://github.com/raids-lab/crater/issues/339).
+
+Directly using `ulimit -l` to view the limit, what we get is 64KB, which is the system's default memory lock limit.
+
+At this time, using `ulimit -l unlimited` in the container or modifying `/etc/security/limits.conf` will not successfully change the memory lock limit.
+
+### 1. Problem Analysis
+
+The core of RDMA is letting the hardware (network card HCA) bypass the CPU and directly access remote memory. In normal operations, to optimize memory, the operating system will "page out" or move data at any time, causing the physical address corresponding to the virtual address to change. If the kernel pages out or moves a page of memory while the network card is transmitting data, it will lead to a transmission crash or even a system error.
+
+So, to ensure the address is absolutely stable, RDMA must perform "Memory Registration" (MR) before transmission. This action "locks" the specified virtual memory pages into physical memory at the kernel level, prohibiting the kernel from moving or swapping them to disk.
+
+Crater has already allowed jobs to perform memory locking operations by setting `CAP_IPC_LOCK`, but it hasn't modified the limit on the allowed locking amount. Also, since the container isn't given the `CAP_SYS_RESOURCE` privilege, operations inside the container cannot modify this limit either.
+
+Currently, Kubernetes officially doesn't provide a `ulimit` setting in the Pod Spec, see [Issue #3595](https://github.com/kubernetes/kubernetes/issues/3595). Therefore, it's necessary to handle it from the container runtime perspective.
+
+> Additionally, it's worth looking forward to the fact that the Kubernetes community has officially started a discussion on native support for Pod-level ulimit configuration in the v1.36 cycle, see [KEP-5758](https://github.com/kubernetes/enhancements/pull/5762).
+
+The `dockerd` runtime provides the corresponding configuration item `default-ulimits`, which can easily configure this limit at the node level, see [configuration file description](https://docs.docker.com/reference/cli/dockerd/#daemon-configuration-file) and [resource limit guide](https://docs.docker.com/engine/containers/resource_constraints/#set-default-ulimits-for-a-container).
+
+However, `containerd` is currently used in the cluster, and it doesn't provide a configuration item similar to `dockerd`, see [configuration file description](https://github.com/containerd/containerd/blob/main/docs/cri/config.md). Meanwhile, the developer explicitly refused to provide daemon-level configuration in [Issue #3150](https://github.com/containerd/containerd/issues/3150). Therefore, another way is needed to solve this problem.
+
+> Additionally, after trying, directly modifying `/etc/security/limits.conf` on the node to lift the limit, or only setting `LimitMEMLOCK=infinity` for the container runtime daemon also cannot release the limit inside the Pod. The root cause is speculated to be that the container executor `runc` will strictly follow the definition in the OCI specification blueprint and perform the `setrlimit` system call for the container at startup. This will forcibly override (usually pull down) the container's limit to the default value in the blueprint (e.g., 64KB), thus ignoring the daemon's own authority limit.
+
+### 2. Solution
+
+The core of this solution lies in modifying the **OCI Runtime Specification**. In the context of `containerd`, the JSON file specified by the `base_runtime_spec` parameter is considered the container's **base specification template**. It is the final authoritative source for defining container resource boundaries (such as `memlock` limit) (see [OCI Configuration Specification](https://github.com/opencontainers/runtime-spec/blob/main/config.md#posix-process)). The underlying OCI runtime (such as `runc`) will strictly follow the blueprint's definition to initialize the container process's resource limit through the `setrlimit` system call.
+
+#### Exporting and Modifying the Existing Configuration
+
+Since `containerd` doesn't support automatically merging this parameter with the system default configuration (Merge), but takes a full replacement strategy (Replace), we must first export a configuration template containing the current system's full definition, and then fine-tune on its basis. Run the following command on the node.
+
+```shell
+ctr oci spec > /etc/containerd/rdma-spec.json
+vim /etc/containerd/rdma-spec.json
+```
+
+Modify the following part of the configuration file (append `RLIMIT_MEMLOCK` to the `rlimits` array):
+
+```json
+        "rlimits": [
+            {
+                "type": "RLIMIT_NOFILE",
+                "hard": 1024,
+                "soft": 1024
+            },
+            {
+                "type": "RLIMIT_MEMLOCK",
+                "hard": 18446744073709551615,
+                "soft": 18446744073709551615
+            }
+        ],
+```
+
+#### Referencing the Modified Configuration
+
+Modify the `containerd` configuration.
+
+```toml
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+          # Modify to point to the absolute path of the above JSON template
+          base_runtime_spec = "/etc/containerd/rdma-spec.json"
+          cni_conf_dir = ""
+          cni_max_conf_num = 0
+          container_annotations = []
+          pod_annotations = []
+          privileged_without_host_devices = false
+          privileged_without_host_devices_all_devices_allowed = false
+          runtime_engine = ""
+          runtime_path = ""
+          runtime_root = ""
+          runtime_type = "io.containerd.runc.v2"
+          sandbox_mode = "podsandbox"
+          snapshotter = ""
+```
+
+It needs to be modified according to the specific situation, with the goal of letting the corresponding Pod successfully apply the corresponding configuration.
+
+<Callout type="warn">
+After modifying the container runtime configuration and restarting the service, **it will not affect the Pods that are already running**. You must manually delete the old Pods, and have Kubernetes reschedule and trigger `containerd` to use the new OCI blueprint for initialization, then the configuration will truly take effect.
+</Callout>
+
+#### Lifting containerd's Own Limit (Optional)
+
+```shell
+EDITOR=vim systemctl edit containerd
+```
+
+Add the following content to the daemon configuration.
+
+```toml
+[Service]
+LimitMEMLOCK=infinity
+```
+
+Then use `systemctl restart containerd` to restart the service.
+
+Although experiments show that because `containerd` has `CAP_SYS_RESOURCE` privilege, only modifying the OCI blueprint can take effect, completing this item is to ensure the robustness of the daemon itself, and it is recommended as a best practice in production environments.
+
+#### Testing
+
+By now, the memory lock limit in the Pod should have been lifted, and we can run the RDMA bandwidth test command again, being able to see the following output on the master and worker respectively.
+
+**Master:**
+
+```bash
+root@pyt-liuyizhou-260206-2a3fe-master-0:/# ib_write_bw -s 1M -d mlx5_0 -F
+************************************
+* Waiting for client to connect... *
+************************************
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0x2c QPN 0x0087 PSN 0xcc6a4c RKey 0x1fcc bd VAddr 0x037f67d3b5030
+ remote address: LID 0x2c QPN 0x0088 PSN 0x6dc93a RKey 0x1fcf be VAddr 0x037f026db4030
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 1048576    5000             11133.60            11129.09           0.011123
+---------------------------------------------------------------------------------------
+```
+
+**Worker:**
+
+```bash
+root@pyt-liuyizhou-260206-2a3fe-worker-0:/# ib_write_bw -s 1M -d mlx5_0 -F 10.244.44.139
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0x2c QPN 0x0088 PSN 0x6dc93a RKey 0x1fcf be VAddr 0x037f026db4030
+ remote address: LID 0x2c QPN 0x0087 PSN 0xcc6a4c RKey 0x1fcc bd VAddr 0x037f67d3b5030
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 1048576    5000             11133.60            11129.09           0.011123
+---------------------------------------------------------------------------------------
+
+root@pyt-liuyizhou-260206-2a3fe-worker-0:/# ulimit -l
+unlimited
+```
+
+As can be seen, the memory lock limit inside the Pod has been lifted, and normal RDMA communication with large bandwidth can be performed.
+
+## Problem Records
+
+### 1. Error `Segmentation fault` when starting vLLM
+
+From the logs, the IB device has been successfully recognized, but a segmentation fault occurred.
+
+```bash
+[device-name]-master-0:528:528 [0] NCCL INFO Channel 00/02 :    0   1   2   3   4   5   6   7
+[device-name]-master-0:528:528 [0] NCCL INFO Channel 01/02 :    0   1   2   3   4   5   6   7
+[device-name]-master-0:528:528 [0] NCCL INFO Trees [0] 1/4/-1->0->-1 [1] 1/-1/-1->0->4
+    self.device_communicator = device_comm_cls(
+[device-name]-master-0:528:528 [0] NCCL INFO P2P Chunksize set to 131072
+[device-name]-master-0:528:528 [0] NCCL INFO Channel 00/0 : 7[3] -> 0[0] [receive] via NET/IB/0
+[device-name]-master-0:528:528 [0] NCCL INFO Channel 01/0 : 7[3] -> 0[0] [receive] via NET/IB/0
+[device-name]-master-0:528:528 [0] NCCL INFO Channel 00/0 : 0[0] -> 1[1] via P2P/IPC
+[device-name]-master-0:528:528 [0] NCCL INFO Channel 01/0 : 0[0] -> 1[1] via P2P/IPC
+[device-name]-master-0:528:5379 [0] misc/socket.cc:50 NCCL WARN socketProgress: Connection closed by remote peer [device-name]-worker-0.[hostname].svc.cluster.local<35396>
+[device-name]-master-0:528:5379 [0] NCCL INFO misc/socket.cc:752 -> 6
+[device-name]-master-0:528:5379 [0] NCCL INFO transport/net_ib.cc:1207 -> 6
+[device-name]-master-0:528:5379 [0] NCCL INFO transport/net.cc:837 -> 6
+[device-name]-master-0:528:528 [0] NCCL INFO transport/net.cc:405 -> 6
+[device-name]-master-0:528:528 [0] NCCL INFO transport.cc:183 -> 6
+                               ^^^^^^^^^^^^^^^^
+[device-name]-master-0:528:528 [0] NCCL INFO init.cc:1263 -> 6
+[device-name]-master-0:528:528 [0] NCCL INFO init.cc:1548 -> 6
+[device-name]-master-0:528:528 [0] NCCL INFO init.cc:1799 -> 6
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/cuda_communicator.py", line 39, in __init__
+[device-name]-master-0:528:5379 [0] misc/socket.cc:50 NCCL WARN socketProgress: Connection closed by remote peer [device-name]-worker-0.[hostname].svc.cluster.local<52144>
+    self.pynccl_comm = PyNcclCommunicator(
+                       ^^^^^^^^^^^^^^^^^^^
+[device-name]-master-0:528:5379 [0] NCCL INFO misc/socket.cc:752 -> 6
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[device-name]-master-0:528:5379 [0] NCCL INFO transport/net_ib.cc:1207 -> 6
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/pynccl.py", line 99, in __init__
+    self.comm: ncclComm_t = self.nccl.ncclCommInitRank(
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/pynccl_wrapper.py", line 277, in ncclCommInitRank
+    self.NCCL_CHECK(self._funcs["ncclCommInitRank"](ctypes.byref(comm),
+  File "/opt/conda/envs/envd/lib/python3.12/site-packages/vllm/distributed/device_communicators/pynccl_wrapper.py", line 256, in NCCL_CHECK
+    raise RuntimeError(f"NCCL error: {error_str}")
+RuntimeError: NCCL error: unhandled system error (run with NCCL_DEBUG=INFO for details)
+[device-name]-master-0:528:5379 [0] NCCL INFO transport/net.cc:837 -> 6
+[device-name]-master-0:528:528 [0] NCCL INFO init.cc:1837 -> 6
+*** SIGSEGV received at time=1745072123 on cpu 70 ***
+PC: @     0x7ff94e269506  (unknown)  ncclProxyServiceUDS()
+    @     0x7ffa0c242520       3384  (unknown)
+    @ ... and at least 1 more frames
+[2025-04-19 14:15:23,982 E 528 5383] logging.cc:484: *** SIGSEGV received at time=1745072123 on cpu 70 ***
+[2025-04-19 14:15:23,982 E 528 5383] logging.cc:484: PC: @     0x7ff94e269506  (unknown)  ncclProxyServiceUDS()
+[2025-04-19 14:15:23,983 E 528 5383] logging.cc:484:     @     0x7ffa0c242520       3384  (unknown)
+[2025-04-19 14:15:23,983 E 528 5383] logging.cc:484:     @ ... and at least 1 more frames
+Fatal Python error: Segmentation fault
+```
+
+Remember we mentioned before that we need to add `IPC_LOCK` in the Pod's security context? If not added, it will lead to the above problem.
+
+### 2. Failure of Multi-machine Inference on A100 Model
+
+First, run single-machine verification on the A100 model. If an Up network card is used, there seems to be no problem:
+
+```bash
+$ ib_write_bw -d mlx5_1 &
+[1] 1501
+
+************************************
+* Waiting for client to connect... *
+************************************
+
+
+$ ib_write_bw -d mlx5_1 127.0.0.1 --report_gbits
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_1
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF          Device         : mlx5_1
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : ON
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 4096[B]
+ Link type       : IB
+ Max inline data : 0[B]
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[Gb/sec]    BW average[Gb/sec]   MsgRate[Mpps]
+Conflicting CPU frequency values detected: 863.109000 != 2300.000000. CPU Frequency is not max.
+ 65536      5000             183.66             183.61             0.350214
+---------------------------------------------------------------------------------------
+ 65536      5000             183.66             183.61             0.350214
+---------------------------------------------------------------------------------------
+
+$ ib_write_bw -d mlx5_0 &
+[1] 1618
+
+Port number 1 state is Down
+ Couldn't set the link layer
+ Couldn't get context for the device
+
+$ ib_write_bw -d mlx5_0 127.0.0.1 --report_gbits
+ Port number 1 state is Down
+ Couldn't set the link layer
+ Couldn't get context for the device
+
+$ ibstat
+CA 'mlx5_0'
+        CA type: MT4123
+        Port 1:
+                State: Down
+                Physical state: Disabled
+                Rate: 10
+                Base lid: 65535
+                LMC: 0
+                SM lid: 0
+                Link layer: InfiniBand
+CA 'mlx5_1'
+        CA type: MT4123
+        Port 1:
+                State: Active
+                Physical state: LinkUp
+                Rate: 200
+                Base lid: 3
+                LMC: 0
+                SM lid: 1
+                Link layer: InfiniBand
+CA 'mlx5_bond_0'
+        CA type: MT4117
+        Port 1:
+                State: Active
+                Physical state: LinkUp
+                Rate: 10
+                Link layer: Ethernet
+
+$ ib_write_bw -d mlx5_bond_0 &
+IB device mlx5_bond_0 not found
+ Unable to find the Infiniband/RoCE device
+```
+
+But when running vLLM, an error will occur, and it was later found that this problem is related to vLLM V1 and Ray[^8], and not related to IB. Since I happened to have vLLM multi-machine distributed inference code in hand, I used it for testing. Actually, running something like NCCL Test might be better to avoid some out-of-field interference factors.
+
+## Summary
+
+The above records the process of connecting RDMA in the local Kubernetes cluster. At present, the lack of relevant documents and the wide range of problem domains involved in the process are the main factors hindering learning in this area. Indeed, a relatively solid computer foundation is required.
+
+[^1]: [2 个 RoCE 网卡 Bond 聚合，实现带宽 X2-云社区 - 华为云](https://bbs.huaweicloud.com/blogs/412088)
+[^2]: [RDG for Accelerated K8s Cluster over NVIDIA DGX A100 Servers and 200Gbps Ethernet Network Fabric](https://docs.nvidia.com/networking/display/public/sol/rdg+for+accelerated+k8s+cluster+over+nvidia+dgx+a100+servers+and+200gbps+ethernet+network+fabric)
+[^3]: [Enhance documentaitons · Issue #54 · Mellanox/k8s-rdma-shared-dev-plugin](https://github.com/Mellanox/k8s-rdma-shared-dev-plugin/issues/54)
+[^4]: [Multus-CNI 与 whereabouts 的简单运用 - 剑轩的专栏 - TNBLOG](https://www.tnblog.net/aojiancc2/article/details/7929)
+[^5]: [hostdevice-network-pod1.yml](https://github.com/Mellanox/network-operator/tree/master/example)
+[^6]: [理想与现实  - Infiniband 和以太网的抉择   -  雪球](https://xueqiu.com/2448317325/292453176?md5__1038=eqAxgDyDuD0jQGXBDrDcQ8FKiIwx8iD)
+[^7]: [Distributed Inference and Serving](https://docs.vllm.ai/en/stable/serving/distributed_serving.html)
+[^8]: [[Bug]: 0.8.0(V1) Ray cannot find model pyarrow and pandas](https://github.com/vllm-project/vllm/issues/15100)
