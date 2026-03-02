@@ -36,7 +36,7 @@ import (
 const (
 	PodAnalysisMinAge    = 2 * time.Hour
 	MetricsQueryDuration = 2 * time.Hour
-	LLMRequestTimeout    = 120 * time.Second  // 为LLM请求设置超时
+	LLMRequestTimeout    = 300 * time.Second  // 为LLM请求设置超时
 	MaxQueryLength       = 4000               // LLM查询的最大长度
 	SleepBetweenRetries  = 2 * time.Second    // LLM请求失败时的重试间隔
 	GpuAnalysisMaxAge    = 7 * 24 * time.Hour // GPU分析记录的最大保留时间
@@ -276,7 +276,7 @@ func (s *GpuAnalysisService) performFullAnalysis(ctx context.Context, pod *v1.Po
 	}
 	containerName := pod.Spec.Containers[0].Name
 
-	psCommand := `ps -eo pid,pcpu,pmem,user,cmd --sort=-pmem | head -n 20`
+	psCommand := `ps -eo pid,ppid,pcpu,pmem,user,cmd --sort=-pmem | head -n 20`
 	processList, err := s.execCommandInPod(ctx, pod.Namespace, pod.Name, containerName, []string{"sh", "-c", psCommand})
 	if err != nil {
 		klog.Warningf("Failed to run ps command in pod %s: %v", pod.Name, err)
