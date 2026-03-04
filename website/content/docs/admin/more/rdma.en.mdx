@@ -999,6 +999,87 @@ unlimited
 
 As can be seen, the memory lock limit inside the Pod has been lifted, and normal RDMA communication with large bandwidth can be performed.
 
+<Callout type="warn">
+Note that if the node kernel or related components are updated, it may be necessary to lift the memory lock limit again.
+</Callout>
+
+## Tolerance of RDMA Tools Pods to Crater Taints
+
+### 0. Problem Description
+
+After the node kernel upgrade, it was observed that RDMA jobs could not be scheduled to the node, but non-RDMA jobs could.
+
+The reason is that the node did not report RDMA resources, even though the relevant network cards and drivers were working normally.
+
+### 1. Problem Analysis
+
+#### Resource Discovery Flow and Analysis of Blocking Points
+
+In normal circumstances, the NVIDIA Network Operator automatically manages the node's RDMA resources through the following flow. This flow is re-triggered when the kernel is updated:
+
+1.  **Status Monitoring and Change Locking (Network Operator)**: The Operator monitors the host's kernel version in real-time. Once a kernel change is detected, it immediately sets the node's `network.nvidia.com/operator.mofed.wait` label to `true`. This action "locks" the resource discovery path to prevent allocating incorrect resources before the driver compatibility is confirmed.
+2.  **Driver Environment Verification and Reporting (MOFED Driver Pod)**: The Operator attempts to schedule and run the `mofed-driver` Pod on each node. This Pod is responsible for checking, installing, or updating the host's Mellanox driver. Only after this Pod successfully runs on the corresponding node and returns a readiness signal will the Operator update the `mofed.wait` label to `false`.
+    *   **Core Blocking Point**: If the node has **custom business taints** (e.g., `crater.raids.io/account` exclusive) or is in **maintenance mode** (Cordoned, with the `node.kubernetes.io/unschedulable` taint), and the `NicClusterPolicy` does not have the corresponding **Tolerations** configured, the driver Pod will be intercepted by the scheduler. This causes the flow to get stuck at this step, with the node label staying permanently at `true`, thereby locking resource discovery.
+3.  **Plugin Activation and Resource Exposure (RDMA Shared Device Plugin Pod)**: Once `mofed.wait` becomes `false`, the locked RDMA Shared Device Plugin Pod will start its detection logic, identify physical network cards, and report resources such as `rdma/rdma_v100` to the Kubelet.
+
+#### Driver Self-healing Mechanism (DKMS)
+
+In this case, although the K8s control plane's resource discovery flow was blocked due to scheduling permission issues, the host's physical data plane was actually normal. This is because:
+*   **DKMS (Dynamic Kernel Module Support)**: Host-level DKMS is configured. During the first boot after the kernel upgrade, the system automatically completed the reconstruction and loading of kernel modules in the background.
+*   **Cognitive Bias**: A "cognitive bias" occurred where the physical driver was ready, but the Operator incorrectly believed the driver was invalid because the verification Pod could not enter the node.
+
+### 2. Solution
+
+The key to solving this problem is to supplement the necessary toleration configurations for the `NicClusterPolicy`.
+
+#### Configuration Location and Verification
+Note that different versions of the NVIDIA Network Operator have different field support for `NicClusterPolicy`. Before attempting to modify, **be sure to verify the configuration structure**.
+
+For example, in the `v1alpha1` version, tolerations are usually configured globally under `spec`, rather than inside sub-components like `ofedDriver` or `rdmaSharedDevicePlugin`. You can confirm this with the following commands:
+
+```bash
+# Check if sub-components support tolerations (if not, it will prompt 'unknown field')
+kubectl explain nicclusterpolicy.spec.ofedDriver
+
+# Check if the spec level supports global tolerations
+kubectl explain nicclusterpolicy.spec
+```
+
+#### Implementation of Precise Patch (Patch)
+After determining the path, it is recommended to use `kubectl patch` for "surgical" modification, avoiding the introduction of system metadata or status field conflicts from directly applying an exported YAML file.
+
+<Callout type="warn">
+**Note**: Patch operations are persistent modifications directly applied to the cluster instance. If your cluster is deployed via Helm and has resource auto-sync enabled (e.g., ArgoCD), performing a direct Patch may be overwritten by the upper-level tool. In this case, it is recommended to modify the Helm `values.yaml` configuration synchronously.
+</Callout>
+
+Before formal execution, be sure to add `--dry-run=server` for a **server-side dry-run test** to verify the correctness of the field path and syntax:
+
+```bash
+kubectl patch nicclusterpolicy nic-cluster-policy --type='merge' -p '{
+  "spec": {
+    "tolerations": [
+      {
+        "key": "crater.raids.io/account",
+        "operator": "Exists",
+        "effect": "NoSchedule"
+      },
+      {
+        "key": "node.kubernetes.io/unschedulable",
+        "operator": "Exists",
+        "effect": "NoSchedule"
+      }
+    ]
+  }
+}' --dry-run=server
+```
+
+If the dry-run output is `patched` and there are no errors, you can remove `--dry-run=server` to take effect formally.
+
+#### Verification Steps
+1.  **Observe Pod Status**: Run `kubectl get pods -n nvidia-network-operator -w` to confirm that `mofed-driver` and `rdma-shared-dp` Pods successfully start on the corresponding node.
+2.  **Check Node Status**: Run `kubectl get node [node-name] -L network.nvidia.com/operator.mofed.wait` to confirm that the label changes back to `false`.
+3.  **Confirm Resource Reporting**: Run `kubectl describe node [node-name]`. You should see `rdma/rdma_v100` again in the `Allocatable` list.
+
 ## Problem Records
 
 ### 1. Error `Segmentation fault` when starting vLLM

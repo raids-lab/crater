@@ -999,6 +999,87 @@ unlimited
 
 可以看到 Pod 内的内存锁定上限已被解除，并且可以正常进行较大带宽的 RDMA 通信。
 
+<Callout type="warn">
+需要注意的是，如果节点内核或者相关组件有更新，可能需要重新解除内存锁定限制。
+</Callout>
+
+## RDMA 相关工具 Pod 的对 Crater 污点的容忍问题
+
+### 0. 问题描述
+
+节点内核升级后，观察到 RDMA 作业无法调度到节点，但是非 RDMA 作业可以。
+
+其原因在于节点没有上报 RDMA 资源，但是相关的网卡、驱动等均正常工作。
+
+### 1. 问题分析
+
+#### 资源发现流程与卡点分析
+
+在正常情况下，NVIDIA Network Operator 通过以下流程自动化管理节点的 RDMA 资源。当内核更新后，该流程会重新触发：
+
+1.  **状态监控与变更锁定 (Network Operator)**：Operator 实时监控主机内核版本。一旦检测到内核变更，会立即将节点的 `network.nvidia.com/operator.mofed.wait` 标签设为 `true`。此操作会“锁定”资源发现路径，防止在驱动未确认兼容的情况下分配错误的资源。
+2.  **驱动环境校验与上报 (MOFED 驱动 Pod)**：Operator 尝试在每个节点上调度并运行 `mofed-driver` Pod。该 Pod 负责检查、安装或更新宿主机的 Mellanox 驱动。只有当该 Pod 在对应节点成功运行并返回就绪信号后，Operator 才会将 `mofed.wait` 标签更新为 `false`。
+    *   **核心卡点**：如果节点设置了**自定义业务污点**（如 `crater.raids.io/account` 独占）或处于**维护模式**（被 Cordon，带有 `node.kubernetes.io/unschedulable` 污点），且 `NicClusterPolicy` 中未配置相应的**容忍度 (Tolerations)**，则驱动 Pod 会被调度器拦截。这会导致流程卡在这一步，节点标签永久停留在 `true`，从而锁死资源发现。
+3.  **插件激活与资源暴露 (RDMA Shared Device Plugin Pod)**：当 `mofed.wait` 变为 `false` 后，被锁定的 RDMA 共享设备插件 Pod 才会启动探测逻辑，识别物理网卡并将 `rdma/rdma_v100` 等扩展资源上报给 Kubelet。
+
+#### 驱动自愈机制 (DKMS)
+
+在本案例中，尽管 K8s 控制平面的资源发现流程因调度权限问题被阻塞，但宿主机的物理数据平面其实是正常的。这是因为：
+*   **DKMS (Dynamic Kernel Module Support)**：主机层面配置了 DKMS。在内核升级后的首次启动过程中，系统已自动在后台完成了内核模块的重构与加载。
+*   **认知偏差**：此时出现了“物理驱动已就绪，但 Operator 因校验 Pod 无法进驻而误认为驱动失效”的认知偏差。
+
+### 2. 解决方案
+
+解决该问题的关键是为 `NicClusterPolicy` 补齐必要的容忍度配置。
+
+#### 配置定位与校验
+需要注意的是，不同版本的 NVIDIA Network Operator 对 `NicClusterPolicy` 的字段支持不同。在尝试修改前，**务必先校验配置结构**。
+
+例如，在 `v1alpha1` 版本中，容忍度通常是全局配置在 `spec` 下，而不是在 `ofedDriver` 或 `rdmaSharedDevicePlugin` 等子组件内部。可以通过以下命令确认：
+
+```bash
+# 检查子组件是否支持容忍度（如果不支持，会提示 unknown field）
+kubectl explain nicclusterpolicy.spec.ofedDriver
+
+# 检查 spec 级别是否支持全局容忍度
+kubectl explain nicclusterpolicy.spec
+```
+
+#### 实施精准补丁 (Patch)
+确定路径后，建议使用 `kubectl patch` 进行“手术刀式”修改，避免因直接应用导出的 YAML 文件而引入系统元数据或状态字段的冲突。
+
+<Callout type="warn">
+Patch 操作是直接作用于集群实例的持久化修改。如果目标集群是通过 Helm 部署并开启了资源自动同步（如 ArgoCD），直接执行 Patch 可能会被上层工具覆盖。在这种情况下，建议同步修改 Helm 的 `values.yaml` 配置。
+</Callout>
+
+在正式执行前，请务必增加 `--dry-run=server` 进行**服务端干跑测试**，验证字段路径和语法的正确性：
+
+```bash
+kubectl patch nicclusterpolicy nic-cluster-policy --type='merge' -p '{
+  "spec": {
+    "tolerations": [
+      {
+        "key": "crater.raids.io/account",
+        "operator": "Exists",
+        "effect": "NoSchedule"
+      },
+      {
+        "key": "node.kubernetes.io/unschedulable",
+        "operator": "Exists",
+        "effect": "NoSchedule"
+      }
+    ]
+  }
+}' --dry-run=server
+```
+
+若干跑输出 `patched` 且无报错，即可去掉 `--dry-run=server` 正式生效。
+
+#### 验证步骤
+1.  **观察 Pod 状态**：执行 `kubectl get pods -n nvidia-network-operator -w`，确认 `mofed-driver` 和 `rdma-shared-dp` Pod 在对应节点成功启动。
+2.  **检查节点状态**：执行 `kubectl get node [节点名] -L network.nvidia.com/operator.mofed.wait`，确认标签变回 `false`。
+3.  **确认资源上报**：执行 `kubectl describe node [节点名]`，在 `Allocatable` 列表中应重新看到 `rdma/rdma_v100`。
+
 ## 问题记录
 
 ### 1. 启动 vLLM 时报错 `Segmentation fault`

@@ -999,6 +999,87 @@ unlimited
 
 Pod 내부의 메모리 잠금 상한이 해제되어 큰 대역폭에서도 RDMA 통신이 정상적으로 이루어지는 것을 확인할 수 있습니다.
 
+<Callout type="warn">
+노드 커널 또는 관련 컴포넌트가 업데이트된 경우 메모리 잠금 제한 해제를 다시 수행해야 할 수 있습니다.
+</Callout>
+
+## RDMA 관련 도구 Pod 의 Crater 테인트 허용
+
+### 0. 문제 설명
+
+노드 커널 업그레이드 후 RDMA 작업은 노드에 스케줄할 수 없으나 비 RDMA 작업은 스케줄할 수 있는 현상이 관찰되었습니다.
+
+원인은 관련 네트워크 카드와 드라이버는 정상 작동 중임에도 노드가 RDMA 리소스를 보고하지 않는 것입니다.
+
+### 1. 문제 분석
+
+#### 리소스 발견 흐름 및 차단 지점 분석
+
+정상적으로 NVIDIA Network Operator 는 다음 흐름으로 노드의 RDMA 리소스를 자동 관리합니다. 커널 업데이트 후 이 흐름이 다시 트리거됩니다.
+
+1.  **상태 모니터링 및 변경 잠금 (Network Operator)**：Operator 는 호스트 커널 버전을 실시간으로 모니터링합니다. 커널 변경을 감지하면 즉시 노드의 `network.nvidia.com/operator.mofed.wait` 레이블을 `true` 로 설정합니다. 이 동작은 리소스 발견 경로를 "잠금"하여 드라이버 호환성이 확인되기 전 잘못된 리소스가 할당되는 것을 방지합니다.
+2.  **드라이버 환경 검증 및 보고 (MOFED 드라이버 Pod)**：Operator 는 각 노드에서 `mofed-driver` Pod 를 스케줄하고 실행하려고 시도합니다. 이 Pod 는 호스트 Mellanox 드라이버의 검사, 설치, 업데이트를 담당합니다. 이 Pod 가 해당 노드에서 성공적으로 실행되어 준비 완료 신호를 반환한 후에만 Operator 가 `mofed.wait` 레이블을 `false` 로 업데이트합니다.
+    *   **핵심 차단 지점**：노드에 **사용자 정의 비즈니스 테인트**(예: `crater.raids.io/account` 전용)가 설정되었거나 **유지보수 모드**(Cordon 됨, `node.kubernetes.io/unschedulable` 테인트 보유)인데, `NicClusterPolicy` 에 해당 **Tolerations(허용)** 이 구성되어 있지 않으면 드라이버 Pod 가 스케줄러에 의해 차단됩니다. 이로 인해 흐름이 이 단계에서 멈추고 노드 레이블이 영구적으로 `true` 로 유지되어 리소스 발견이 잠깁니다.
+3.  **플러그인 활성화 및 리소스 노출 (RDMA Shared Device Plugin Pod)**：`mofed.wait` 이 `false` 가 된 후, 잠겨 있던 RDMA 공유 디바이스 플러그인 Pod 가 검출 로직을 시작하고 물리 네트워크 카드를 식별하여 `rdma/rdma_v100` 등의 리소스를 Kubelet 에 보고합니다.
+
+#### 드라이버 자가 치유 메커니즘 (DKMS)
+
+본 사례에서는 K8s 제어 평면의 리소스 발견 흐름이 스케줄링 권한 문제로 차단되었으나, 호스트의 물리 데이터 평면은 실제로 정상이었습니다. 이유는 다음과 같습니다.
+*   **DKMS (Dynamic Kernel Module Support)**：호스트 수준에서 DKMS 가 구성되어 있습니다. 커널 업그레이드 후 첫 부팅 시 시스템이 백그라운드에서 커널 모듈 재구성 및 로드를 자동으로 완료했습니다.
+*   **인지 편향**：물리 드라이버는 준비되었으나 검증 Pod 가 노드에 진입하지 못해 Operator 가 드라이버가 무효하다고 잘못 판단하는 "인지 편향"이 발생했습니다.
+
+### 2. 해결 방법
+
+이 문제를 해결하려면 `NicClusterPolicy` 에 필요한 허용(Tolerations) 구성을 보완하는 것이 핵심입니다.
+
+#### 구성 위치 및 검증
+NVIDIA Network Operator 버전에 따라 `NicClusterPolicy` 의 필드 지원이 다릅니다. 수정 전에 **반드시 구성 구조를 검증하세요**.
+
+예를 들어 `v1alpha1` 에서는 허용은 보통 `ofedDriver` 나 `rdmaSharedDevicePlugin` 같은 하위 컴포넌트 내부가 아니라 `spec` 아래에서 전역으로 구성됩니다. 다음 명령으로 확인할 수 있습니다.
+
+```bash
+# 하위 컴포넌트가 허용을 지원하는지 확인(미지원 시 'unknown field' 표시)
+kubectl explain nicclusterpolicy.spec.ofedDriver
+
+# spec 수준에서 전역 허용 지원 여부 확인
+kubectl explain nicclusterpolicy.spec
+```
+
+#### 정밀 패치 적용 (Patch)
+경로를 확인한 후 `kubectl patch` 로 "수술식" 수정을 권장하며, 내보낸 YAML 을 직접 적용해 시스템 메타데이터나 상태 필드 충돌을 유발하지 않도록 합니다.
+
+<Callout type="warn">
+**참고**：Patch 작업은 클러스터 인스턴스에 직접 적용되는 영구 변경입니다. Helm 으로 배포하고 리소스 자동 동기화(예: ArgoCD)를 사용 중이면 직접 Patch 를 실행하면 상위 도구에 의해 덮어쓸 수 있습니다. 이 경우 Helm 의 `values.yaml` 구성을 동기적으로 수정하는 것을 권장합니다.
+</Callout>
+
+정식 실행 전 **서버 측 드라이런**으로 `--dry-run=server` 를 추가해 필드 경로와 문법이 올바른지 검증하세요.
+
+```bash
+kubectl patch nicclusterpolicy nic-cluster-policy --type='merge' -p '{
+  "spec": {
+    "tolerations": [
+      {
+        "key": "crater.raids.io/account",
+        "operator": "Exists",
+        "effect": "NoSchedule"
+      },
+      {
+        "key": "node.kubernetes.io/unschedulable",
+        "operator": "Exists",
+        "effect": "NoSchedule"
+      }
+    ]
+  }
+}' --dry-run=server
+```
+
+드라이런 출력이 `patched` 이고 오류가 없으면 `--dry-run=server` 를 제거하고 정식 적용하면 됩니다.
+
+#### 검증 단계
+1.  **Pod 상태 확인**：`kubectl get pods -n nvidia-network-operator -w` 를 실행해 `mofed-driver` 와 `rdma-shared-dp` Pod 가 해당 노드에서 정상 기동하는지 확인하세요.
+2.  **노드 상태 확인**：`kubectl get node [노드명] -L network.nvidia.com/operator.mofed.wait` 를 실행해 레이블이 `false` 로 바뀌는지 확인하세요.
+3.  **리소스 보고 확인**：`kubectl describe node [노드명]` 를 실행해 `Allocatable` 목록에 `rdma/rdma_v100` 가 다시 보이는지 확인하세요.
+
 ## 문제 기록
 
 ### 1. vLLM 시작 시 `Segmentation fault` 오류 발생
