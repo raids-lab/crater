@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -12,12 +12,14 @@ import { Card } from '@/components/ui/card'
 import WarningAlert from '@/components/custom/warning-alert'
 
 import {
+  type IQueueResourceLimit,
   apiAdminGetGpuAnalysisStatus,
   apiAdminGetLLMConfig,
+  apiAdminGetUserResourceLimitConfig,
   apiAdminResetLLMConfig,
-  // 1. 确保已引入此 API
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
+  apiAdminUpdateUserResourceLimitConfig,
 } from '@/services/api/system-config'
 import { ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
@@ -25,6 +27,7 @@ import { IErrorResponse } from '@/services/types'
 import { BasicSettings } from './-components/basic-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
+import { UserResourceLimit } from './-components/user-resource-limit'
 
 export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
@@ -58,6 +61,22 @@ function RouteComponent() {
     queryKey: ['admin', 'system-config', 'gpu-status'],
     queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
   })
+
+  const { data: resourceLimitData } = useQuery({
+    queryKey: ['admin', 'system-config', 'user-resource-limit'],
+    queryFn: () => apiAdminGetUserResourceLimitConfig().then((res) => res.data),
+  })
+
+  // --- User Resource Limit Local State ---
+  const [rlEnabled, setRlEnabled] = useState(false)
+  const [rlConfigs, setRlConfigs] = useState<IQueueResourceLimit[]>([])
+
+  useEffect(() => {
+    if (resourceLimitData) {
+      setRlEnabled(resourceLimitData.enabled)
+      setRlConfigs(resourceLimitData.configs || [])
+    }
+  }, [resourceLimitData])
 
   // Sync Data to Form
   useEffect(() => {
@@ -172,6 +191,27 @@ function RouteComponent() {
     }
   }
 
+  // --- User Resource Limit Mutation ---
+  const updateResourceLimitMutation = useMutation({
+    mutationFn: apiAdminUpdateUserResourceLimitConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'user-resource-limit'] })
+      toast.success(t('systemConfig.userResourceLimit.saveSuccess'))
+    },
+    onError: handleError,
+  })
+
+  const handleResourceLimitToggle = (checked: boolean) => {
+    setRlEnabled(checked)
+    if (!checked) {
+      updateResourceLimitMutation.mutate({ enabled: false, configs: rlConfigs })
+    }
+  }
+
+  const handleResourceLimitSave = () => {
+    updateResourceLimitMutation.mutate({ enabled: rlEnabled, configs: rlConfigs })
+  }
+
   return (
     <div className="space-y-6">
       <WarningAlert
@@ -184,7 +224,6 @@ function RouteComponent() {
       </Card>
 
       <Card>
-        {/* 4. 更新：传入 onReset 属性和更新 isPending 状态 */}
         <LlmSettings
           form={llmForm}
           isPending={updateLLMMutation.isPending || resetLLMMutation.isPending}
@@ -196,6 +235,17 @@ function RouteComponent() {
           enabled={gpuStatusData?.enabled || false}
           isPending={toggleGpuMutation.isPending || updateLLMMutation.isPending}
           onToggle={handleGpuToggle}
+        />
+      </Card>
+
+      <Card>
+        <UserResourceLimit
+          enabled={rlEnabled}
+          configs={rlConfigs}
+          isPending={updateResourceLimitMutation.isPending}
+          onToggle={handleResourceLimitToggle}
+          onConfigsChange={setRlConfigs}
+          onSave={handleResourceLimitSave}
         />
       </Card>
     </div>

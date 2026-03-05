@@ -14,6 +14,7 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	apiresource "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -21,6 +22,7 @@ import (
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/crypto"
 	"github.com/raids-lab/crater/pkg/patrol"
+	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
 // 定义掩码常量
@@ -87,8 +89,11 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					defaultValue := ""
-					if key == model.ConfigKeyEnableGpuAnalysis {
+					switch key {
+					case model.ConfigKeyEnableGpuAnalysis, model.ConfigKeyEnableUserResourceLimit:
 						defaultValue = "false"
+					case model.ConfigKeyUserResourceLimitConfig:
+						defaultValue = "[]"
 					}
 
 					klog.Infof("[ConfigService] Seeding missing config key: %s", key)
@@ -382,4 +387,189 @@ func (s *ConfigService) getConfigs(ctx context.Context, keys ...string) (map[str
 		configMap[cfg.Key] = cfg.Value
 	}
 	return configMap, nil
+}
+
+// IsUserResourceLimitEnabled 查询用户资源限制开关状态
+func (s *ConfigService) IsUserResourceLimitEnabled(ctx context.Context) bool {
+	sc := s.q.SystemConfig
+	cfg, err := sc.WithContext(ctx).Where(sc.Key.Eq(model.ConfigKeyEnableUserResourceLimit)).First()
+	if err != nil {
+		return false
+	}
+	enabled, _ := strconv.ParseBool(cfg.Value)
+	return enabled
+}
+
+// GetUserResourceLimitConfig 获取用户资源限制配置（多队列）
+func (s *ConfigService) GetUserResourceLimitConfig(ctx context.Context) ([]model.UserResourceLimitConfig, bool, error) {
+	configMap, err := s.getConfigs(ctx, model.ConfigKeyEnableUserResourceLimit, model.ConfigKeyUserResourceLimitConfig)
+	if err != nil {
+		return nil, false, err
+	}
+
+	enabled, _ := strconv.ParseBool(configMap[model.ConfigKeyEnableUserResourceLimit])
+
+	raw := configMap[model.ConfigKeyUserResourceLimitConfig]
+	if raw == "" || raw == "[]" {
+		return nil, enabled, nil
+	}
+
+	var configs []model.UserResourceLimitConfig
+	if err := json.Unmarshal([]byte(raw), &configs); err != nil {
+		// 向后兼容：旧格式为单对象 {}，尝试解析后包装为数组
+		var single model.UserResourceLimitConfig
+		if fallbackErr := json.Unmarshal([]byte(raw), &single); fallbackErr != nil {
+			return nil, enabled, fmt.Errorf("failed to parse user resource limit config: %w", err)
+		}
+		configs = []model.UserResourceLimitConfig{single}
+	}
+
+	return configs, enabled, nil
+}
+
+// UpdateUserResourceLimitConfig 更新用户资源限制配置（多队列）
+func (s *ConfigService) UpdateUserResourceLimitConfig(ctx context.Context, enabled bool, configs []model.UserResourceLimitConfig) error {
+	cfgJSON, err := json.Marshal(configs)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	updates := map[string]string{
+		model.ConfigKeyEnableUserResourceLimit: strconv.FormatBool(enabled),
+		model.ConfigKeyUserResourceLimitConfig: string(cfgJSON),
+	}
+
+	return s.q.Transaction(func(tx *query.Query) error {
+		for k, v := range updates {
+			if _, err := tx.SystemConfig.WithContext(ctx).Where(tx.SystemConfig.Key.Eq(k)).Update(tx.SystemConfig.Value, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// ResourceLimitDetail 单项资源的限额检查结果
+type ResourceLimitDetail struct {
+	Resource string `json:"resource"`
+	Used     string `json:"used"`
+	Limit    string `json:"limit"`
+	Exceeded bool   `json:"exceeded"`
+}
+
+// ResourceLimitCheckResult 资源限额检查的完整结果
+type ResourceLimitCheckResult struct {
+	Enabled  bool                  `json:"enabled"`
+	Exceeded bool                  `json:"exceeded"`
+	Details  []ResourceLimitDetail `json:"details"`
+}
+
+// CheckUserResourceLimit 检查用户资源使用是否超限（running + requested > limit）
+func (s *ConfigService) CheckUserResourceLimit(
+	ctx context.Context,
+	userID,
+	accountID uint,
+	_ string, // accountName — reserved for future audit logging
+	requestedResources map[string]string,
+) (*ResourceLimitCheckResult, error) {
+	configs, enabled, err := s.GetUserResourceLimitConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !enabled {
+		return &ResourceLimitCheckResult{Enabled: false}, nil
+	}
+
+	matched := s.findMatchingQueueConfig(configs, accountID, userID)
+	if matched == nil || len(matched.Limits) == 0 {
+		return &ResourceLimitCheckResult{Enabled: true}, nil
+	}
+
+	j := s.q.Job
+	jobs, err := j.WithContext(ctx).Where(
+		j.UserID.Eq(userID),
+		j.AccountID.Eq(accountID),
+		j.Status.In("Running", "Pending"),
+	).Find()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query jobs: %w", err)
+	}
+
+	used := make(map[string]int64)
+	for _, job := range jobs {
+		for name, quantity := range job.Resources.Data() {
+			used[string(name)] += quantity.MilliValue()
+		}
+	}
+
+	for name, valStr := range requestedResources {
+		qty, parseErr := apiresource.ParseQuantity(valStr)
+		if parseErr != nil {
+			continue
+		}
+		used[name] += qty.MilliValue()
+	}
+
+	var details []ResourceLimitDetail
+	anyExceeded := false
+
+	for resourceName, limitStr := range matched.Limits {
+		limitQty, parseErr := apiresource.ParseQuantity(limitStr)
+		if parseErr != nil {
+			continue
+		}
+		limitMilli := limitQty.MilliValue()
+		usedMilli := used[resourceName]
+
+		exceeded := usedMilli > limitMilli
+
+		usedQty := apiresource.NewMilliQuantity(usedMilli, limitQty.Format)
+		details = append(details, ResourceLimitDetail{
+			Resource: resourceName,
+			Used:     usedQty.String(),
+			Limit:    limitStr,
+			Exceeded: exceeded,
+		})
+
+		if exceeded {
+			anyExceeded = true
+		}
+	}
+
+	return &ResourceLimitCheckResult{
+		Enabled:  true,
+		Exceeded: anyExceeded,
+		Details:  details,
+	}, nil
+}
+
+// findMatchingQueueConfig 按特异性优先级匹配：user queue > account queue > public queue
+func (s *ConfigService) findMatchingQueueConfig(
+	configs []model.UserResourceLimitConfig,
+	accountID, userID uint,
+) *model.UserResourceLimitConfig {
+	userQ := vcqueue.GetUserQueueName(accountID, userID)
+	accountQ := vcqueue.GetAccountLogicQueueName(accountID)
+
+	var accountMatch, publicMatch *model.UserResourceLimitConfig
+	for i := range configs {
+		switch configs[i].Queue {
+		case userQ:
+			return &configs[i]
+		case accountQ:
+			if accountMatch == nil {
+				accountMatch = &configs[i]
+			}
+		case vcqueue.PublicQueueName:
+			if publicMatch == nil {
+				publicMatch = &configs[i]
+			}
+		}
+	}
+
+	if accountMatch != nil {
+		return accountMatch
+	}
+	return publicMatch
 }
