@@ -1,7 +1,5 @@
 ---
-applyTo:
-  - "docs/**"
-  - "website/**"
+applyTo: "docs/**,website/**"
 ---
 
 # 仓库文档及文档网站开发与审查规范
