@@ -1,5 +1,8 @@
 ---
-applyTo: "backend/**,frontend/**,storage/**"
+applyTo:
+  - "backend/**"
+  - "frontend/**"
+  - "storage/**"
 ---
 
 # 前后端及存储模块开发与审查规范
