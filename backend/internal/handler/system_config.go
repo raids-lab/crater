@@ -5,6 +5,7 @@ import (
 
 	"strings"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -37,11 +38,13 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 路由组: /v1/admin/system-config
 	g.GET("/llm", mgr.GetLLMConfig)
 	g.PUT("/llm", mgr.UpdateLLMConfig)
-	// 新增：重置 LLM 配置
 	g.DELETE("/llm", mgr.ResetLLMConfig)
 
 	g.GET("/gpu-analysis", mgr.GetGpuAnalysisStatus)
 	g.PUT("/gpu-analysis", mgr.SetGpuAnalysisStatus)
+
+	g.GET("/user-resource-limit", mgr.GetUserResourceLimitConfig)
+	g.PUT("/user-resource-limit", mgr.UpdateUserResourceLimitConfig)
 }
 
 // --- DTOs ---
@@ -65,6 +68,16 @@ type GpuAnalysisStatusResp struct {
 
 type SetGpuAnalysisStatusReq struct {
 	Enable bool `json:"enable"`
+}
+
+type UserResourceLimitConfigResp struct {
+	Enabled bool                            `json:"enabled"`
+	Configs []model.UserResourceLimitConfig `json:"configs"`
+}
+
+type UpdateUserResourceLimitReq struct {
+	Enabled bool                            `json:"enabled"`
+	Configs []model.UserResourceLimitConfig `json:"configs"`
 }
 
 // --- Handlers ---
@@ -199,4 +212,60 @@ func (mgr *SystemConfigMgr) SetGpuAnalysisStatus(c *gin.Context) {
 		action = "enabled"
 	}
 	resputil.Success(c, "GPU analysis "+action)
+}
+
+// GetUserResourceLimitConfig godoc
+// @Summary		获取用户资源限制配置
+// @Description	查询当前系统的用户资源限制配置，包括开关状态、目标队列和资源上限
+// @Tags			SystemConfig
+// @Produce		json
+// @Security		Bearer
+// @Success		200		{object}	resputil.Response[UserResourceLimitConfigResp] "配置信息"
+// @Failure		500		{object}	resputil.Response[any] "服务器错误"
+// @Router			/v1/admin/system-config/user-resource-limit [get]
+func (mgr *SystemConfigMgr) GetUserResourceLimitConfig(c *gin.Context) {
+	configs, enabled, err := mgr.service.GetUserResourceLimitConfig(c.Request.Context())
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	if configs == nil {
+		configs = []model.UserResourceLimitConfig{}
+	}
+
+	resputil.Success(c, UserResourceLimitConfigResp{
+		Enabled: enabled,
+		Configs: configs,
+	})
+}
+
+// UpdateUserResourceLimitConfig godoc
+// @Summary		更新用户资源限制配置
+// @Description	更新用户资源限制的开关状态、目标队列和资源上限
+// @Tags			SystemConfig
+// @Accept			json
+// @Produce		json
+// @Security		Bearer
+// @Param			data	body		UpdateUserResourceLimitReq		true	"配置信息"
+// @Success		200		{object}	resputil.Response[string] "更新成功"
+// @Failure		400		{object}	resputil.Response[any] "参数错误"
+// @Router			/v1/admin/system-config/user-resource-limit [put]
+func (mgr *SystemConfigMgr) UpdateUserResourceLimitConfig(c *gin.Context) {
+	var req UpdateUserResourceLimitReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	if req.Configs == nil {
+		req.Configs = []model.UserResourceLimitConfig{}
+	}
+
+	if err := mgr.service.UpdateUserResourceLimitConfig(c.Request.Context(), req.Enabled, req.Configs); err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	resputil.Success(c, "User resource limit configuration updated successfully")
 }

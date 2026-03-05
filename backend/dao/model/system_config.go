@@ -16,7 +16,17 @@ const (
 
 	// 功能开关配置键
 	ConfigKeyEnableGpuAnalysis = "ENABLE_GPU_ANALYSIS" // 值: "true" or "false"
+
+	// 用户资源限制配置键
+	ConfigKeyEnableUserResourceLimit = "ENABLE_USER_RESOURCE_LIMIT" // 值: "true" or "false"
+	ConfigKeyUserResourceLimitConfig = "USER_RESOURCE_LIMIT_CONFIG" // 值: JSON
 )
+
+// UserResourceLimitConfig 用户资源限制的配置结构
+type UserResourceLimitConfig struct {
+	Queue  string            `json:"queue"`
+	Limits map[string]string `json:"limits"`
+}
 
 // DefaultConfigKeys 定义了系统启动时必须存在的键
 var DefaultConfigKeys = []string{
@@ -24,4 +34,6 @@ var DefaultConfigKeys = []string{
 	ConfigKeyLLMAPIKey,
 	ConfigKeyLLMModelName,
 	ConfigKeyEnableGpuAnalysis,
+	ConfigKeyEnableUserResourceLimit,
+	ConfigKeyUserResourceLimitConfig,
 }

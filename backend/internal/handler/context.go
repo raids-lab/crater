@@ -18,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -32,14 +33,16 @@ func init() {
 }
 
 type ContextMgr struct {
-	name   string
-	client client.Client
+	name          string
+	client        client.Client
+	configService *service.ConfigService
 }
 
 func NewContextMgr(conf *RegisterConfig) Manager {
 	return &ContextMgr{
-		name:   "context",
-		client: conf.Client,
+		name:          "context",
+		client:        conf.Client,
+		configService: conf.ConfigService,
 	}
 }
 
@@ -49,6 +52,7 @@ func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
+	g.POST("resource-limit-check", mgr.CheckResourceLimit)
 	g.PUT("attributes", mgr.UpdateUserAttributes)
 	g.POST("email/code", mgr.SendUserVerificationCode)
 	g.POST("email/update", mgr.UpdateUserEmail)
@@ -63,6 +67,9 @@ type (
 	CheckCodeReq struct {
 		Email string `json:"email"`
 		Code  string `json:"code"`
+	}
+	ResourceLimitCheckReq struct {
+		RequestedResources map[string]string `json:"requestedResources"`
 	}
 )
 
@@ -305,4 +312,39 @@ func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 	}
 
 	resputil.Success(c, "User email updated successfully")
+}
+
+// CheckResourceLimit godoc
+//
+//	@Summary		检查用户资源使用是否超限
+//	@Description	根据全局用户资源限制配置，检查当前用户运行中作业资源加上本次请求资源是否超限
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			body	body		ResourceLimitCheckReq							false	"本次请求的资源"
+//	@Success		200		{object}	resputil.Response[service.ResourceLimitCheckResult]	"检查结果"
+//	@Failure		500		{object}	resputil.Response[any]							"服务器错误"
+//	@Router			/v1/context/resource-limit-check [post]
+func (mgr *ContextMgr) CheckResourceLimit(c *gin.Context) {
+	token := util.GetToken(c)
+
+	var req ResourceLimitCheckReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req.RequestedResources = nil
+	}
+
+	result, err := mgr.configService.CheckUserResourceLimit(
+		c.Request.Context(),
+		token.UserID,
+		token.AccountID,
+		token.AccountName,
+		req.RequestedResources,
+	)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	resputil.Success(c, result)
 }

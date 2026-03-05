@@ -18,7 +18,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
-import { CirclePlus, LayoutGridIcon } from 'lucide-react'
+import { LayoutGridIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -36,7 +36,6 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
-import LoadableButton from '@/components/button/loadable-button'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -48,6 +47,7 @@ import { OtherOptionsFormCard } from '@/components/form/other-options-form-field
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormJupyter } from '@/components/form/types'
+import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { PublishConfigForm, publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
@@ -274,10 +274,10 @@ function RouteComponent() {
                 configform={form}
                 fromTemplate={searchParams.fromTemplate}
               />
-              <LoadableButton isLoading={isPending} isLoadingText="提交作业" type="submit">
-                <CirclePlus className="size-4" />
-                提交作业
-              </LoadableButton>
+              <JobSubmitButton
+                isLoading={isPending}
+                requestedResources={convertToResourceList(form.watch('task.resource'))}
+              />
             </div>
           </PageTitle>
           <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
