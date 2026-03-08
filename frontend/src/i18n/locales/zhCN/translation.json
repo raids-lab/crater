@@ -473,6 +473,7 @@
   "floatingBall.tooltip.logDiagnosis": "日志诊断",
   "floatingBall.tooltip.operations": "操作",
   "floatingBall.tooltip.saveSnapshot": "保存镜像",
+  "floatingBall.tooltip.snapshotDisabledReason": "节点已被禁止调度，无法保存镜像",
   "floatingBall.tooltip.viewAccessToken": "访问凭证",
   "folderNavigation.folderDescriptions.account": "账户共享空间，仅限账户内用户访问，如需获取上传权限，请联系账户管理员。",
   "folderNavigation.folderDescriptions.public": "平台上所有用户都可以访问，如需获取上传权限，请联系管理员。",

@@ -106,7 +106,9 @@ export default function FloatingBall({
                 className="justify-start px-2 py-1 font-normal"
                 onClick={handleSnapshot}
                 disabled={snapshotDisabled}
-                title={snapshotDisabled ? '节点已被禁止调度，无法保存镜像' : undefined}
+                title={
+                  snapshotDisabled ? t('floatingBall.tooltip.snapshotDisabledReason') : undefined
+                }
               >
                 <Save
                   className={snapshotDisabled ? 'text-muted-foreground' : 'text-highlight-purple'}

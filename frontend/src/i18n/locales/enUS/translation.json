@@ -447,6 +447,7 @@
   "floatingBall.tooltip.logDiagnosis": "Log Diagnosis",
   "floatingBall.tooltip.operations": "Operations",
   "floatingBall.tooltip.saveSnapshot": "Save Snapshot",
+  "floatingBall.tooltip.snapshotDisabledReason": "Node scheduling is disabled, cannot save snapshot",
   "folderNavigation.folderDescriptions.account": "Account shared space, accessible only to users within the account. If you need upload permissions, please contact the account administrator.",
   "folderNavigation.folderDescriptions.public": "Accessible by all users on the platform. If you need upload permissions, please contact the administrator.",
   "folderNavigation.folderDescriptions.user": "Personal space, accessible only by the current user, with full read and write permissions.",

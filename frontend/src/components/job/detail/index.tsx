@@ -88,6 +88,7 @@ import {
 } from '@/services/api/vcjob'
 
 import useFixedLayout from '@/hooks/use-fixed-layout'
+import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
 
 import { hasNvidiaGPU } from '@/utils/resource'
 import { configGrafanaJobAtom } from '@/utils/store/config'
@@ -175,6 +176,9 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     },
   })
 
+  // 判断作业所在节点是否被禁止调度
+  const snapshotDisabled = useSnapshotDisabled(jobName)
+
   const showGPUDashboard = useMemo(() => {
     if (!data) {
       return false
@@ -221,10 +225,17 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                     <SSHPortDialog jobName={jobName} userName={data.username} />
                   )}
                   {isSingleJob(data.jobType) && (
-                    <SimpleTooltip tooltip="将当前运行的容器快照保存为私有镜像">
+                    <SimpleTooltip
+                      tooltip={
+                        snapshotDisabled
+                          ? t('floatingBall.tooltip.snapshotDisabledReason')
+                          : '将当前运行的容器快照保存为私有镜像'
+                      }
+                    >
                       <Button
                         variant="secondary"
                         className="cursor-pointer"
+                        disabled={snapshotDisabled}
                         onClick={() => setIsSnapshotOpen(true)}
                       >
                         <SaveIcon className="size-4" />

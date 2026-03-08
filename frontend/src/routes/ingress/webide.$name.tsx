@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ExternalLink, RefreshCw } from 'lucide-react'
-import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -32,10 +32,10 @@ import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
 import CodeServerIcon from '@/components/icon/code-server-icon'
 import BasicIframe from '@/components/layout/embed/basic-iframe'
 
-import { NodeStatus } from '@/services/api/cluster'
-import { apiJobGetPods, apiJobSnapshot } from '@/services/api/vcjob'
+import { apiJobSnapshot } from '@/services/api/vcjob'
 import { queryWebIDEToken } from '@/services/query/job'
-import { queryNodes } from '@/services/query/node'
+
+import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
 
 import FloatingBall from './-components/floating-ball'
 
@@ -131,24 +131,8 @@ function WebIDE() {
 
   const { data: webideInfo } = useSuspenseQuery(queryWebIDEToken(name ?? ''))
 
-  // 查询作业所在节点，判断是否被禁止调度
-  const { data: pods } = useQuery({
-    queryKey: ['job', 'pods', name],
-    queryFn: () => apiJobGetPods(name),
-    select: (res) => res.data,
-    enabled: !!name,
-  })
-  const { data: nodes } = useQuery(queryNodes())
-
-  const snapshotDisabled = useMemo(() => {
-    if (!pods || !nodes) return false
-    const nodeNames = pods.map((p) => p.nodename)
-    return nodes.some(
-      (n) =>
-        nodeNames.includes(n.name) &&
-        (n.status === NodeStatus.Unschedulable || n.status === NodeStatus.Occupied)
-    )
-  }, [pods, nodes])
+  // 判断作业所在节点是否被禁止调度
+  const snapshotDisabled = useSnapshotDisabled(name)
 
   // Convert JupyterIcon SVG to favicon and set as page icon
   // set title to jupyter base url
