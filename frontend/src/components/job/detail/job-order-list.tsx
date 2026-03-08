@@ -141,11 +141,10 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
           search: { tab: 'detail' },
         })
       } else {
-        // 普通用户跳转到门户作业详情页面，默认落在详情页
+        // 普通用户跳转到门户作业详情页面（当前仅有详情视图，无需附加 tab 参数）
         navigate({
           to: '/portal/more/orders/$id',
           params: { id: String(order.id) },
-          search: { tab: 'detail' },
         })
       }
     } catch (error) {
