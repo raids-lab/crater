@@ -75,8 +75,14 @@ export interface IAuthResponse {
 
 // 定义认证模式枚举
 export enum AuthMode {
-  ACT = 'act',
+  LDAP = 'ldap',
   NORMAL = 'normal',
+}
+
+export interface IAuthModeResponse {
+  enableLdap: boolean
+  enableNormalLogin: boolean
+  enableNormalRegister: boolean
 }
 
 export type ICheckResponse = {
@@ -97,7 +103,7 @@ export const apiSignup = async (user: ISignup) => {
   return response.data
 }
 
-export const apiGetAuthMode = () => apiGet<IResponse<AuthMode>>('auth/mode')
+export const apiGetAuthMode = () => apiGet<IResponse<IAuthModeResponse>>('auth/mode')
 
 export const apiLogin = (user: ILogin) => apiPost<IResponse<IAuthResponse>>('auth/login', user)
 

@@ -24,7 +24,7 @@ On the platform's Harbor integration page, you can find the following informatio
 Use the obtained credentials to log in to Harbor:
 
 ```bash
-docker login crater-harbor.act.buaa.edu.cn -u <username> -p <password>
+docker login harbor.example.com -u <username> -p <password>
 ```
 
 After successful login, you will see the prompt `Login Succeeded`. ✅
@@ -43,6 +43,10 @@ docker tag local-image:tag harbor.example.com/project-name/repository-name:tag
 - `harbor.example.com/project-name/repository-name:tag`: The complete path of the Harbor repository, including the project name, repository name, and tag.
 
 Each user's Project Name is `user-{ACT username}`. 💡
+
+<Callout type="warn" title="Tag Convention">
+Do not update images referred to by any tag other than `latest`. That is: if you have already pushed an image with tag `v1.0.0` to Harbor, you should push to a new tag even for very small changes; if you need to iterate quickly, use the `latest` tag directly. Please follow this convention; otherwise the platform cannot guarantee that the image in use is the latest.
+</Callout>
 
 ### ⬆️ 2.2 Push the Image to Harbor
 
@@ -64,19 +68,23 @@ Open your browser and visit the Harbor Web UI (e.g., `https://harbor.example.com
 
 Navigate to the corresponding project and repository to confirm that your uploaded image is successfully displayed in the repository.
 
-## ⚠️ 4. Common Issues
+## 📥 4. Import Image
 
-### ❌ 4.1 Login Failed
+After uploading the image to the Harbor repository, you still need to import it on the platform before you can use it in jobs and other scenarios. Please follow the [Image List - Import Image](/en/docs/user/image/imageList/#import-image) documentation to import the uploaded image to the platform.
+
+## ⚠️ 5. Common Issues
+
+### ❌ 5.1 Login Failed
 
 - Ensure that the username and password are correct.
 - Check that the Harbor URL is correct and that the network can access it.
 
-### ❌ 4.2 Push Failed
+### ❌ 5.2 Push Failed
 
 - Ensure that the path of the image tag is correct.
 - Check whether you have permission to push the image to the specified project and repository.
 
-## 📚 5. Reference Documents
+## 📚 6. Reference Documents
 
 - [Harbor Official Documentation](https://goharbor.io/docs/)
 - [Docker Official Documentation](https://docs.docker.com/)

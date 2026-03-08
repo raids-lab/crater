@@ -16,8 +16,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { isAxiosError } from 'axios'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { HTTPError } from 'ky'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -55,12 +55,11 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
 
-import { AuthMode, IAuthResponse, ILogin } from '@/services/api/auth'
+import { AuthMode, IAuthResponse, ILogin, Role } from '@/services/api/auth'
 import {
   ERROR_INVALID_CREDENTIALS,
+  ERROR_LDAP_USER_NOT_FOUND,
   ERROR_MUST_REGISTER,
-  ERROR_REGISTER_NOT_FOUND,
-  ERROR_REGISTER_TIMEOUT,
 } from '@/services/error_code'
 import { IErrorResponse, IResponse } from '@/services/types'
 
@@ -156,32 +155,39 @@ export function LoginForm({
       // 清除 GitHub Star 卡片关闭状态，每次登录都显示
       localStorage.removeItem('github-star-card-dismissed')
       toast.success(
-        `你好，${data.context.rolePlatform ? '系统管理员' : '用户'}${data.user.nickname}`
+        `你好，${data.context.rolePlatform === Role.Admin ? '系统管理员' : '用户'}${data.user.nickname}`
       )
       navigate({ to: searchParams.redirect || '/portal', replace: true })
     },
     onError: (error) => {
-      if (isAxiosError<IErrorResponse>(error)) {
-        const errorCode = error.response?.data.code
-        switch (errorCode) {
+      // The apiRequest interceptor in client.ts attaches .data to the error object
+      let errorData: IErrorResponse | undefined
+
+      if (error instanceof HTTPError) {
+        const augmentedError = error as HTTPError & { data?: IErrorResponse }
+        errorData = augmentedError.data
+      } else if (error && typeof error === 'object' && 'data' in error) {
+        errorData = (error as { data?: IErrorResponse }).data
+      }
+
+      if (errorData) {
+        switch (errorData.code) {
           case ERROR_INVALID_CREDENTIALS:
             form.setError('password', {
               type: 'manual',
               message: '用户名或密码错误',
             })
             return
+          case ERROR_LDAP_USER_NOT_FOUND:
+            form.setError('username', {
+              type: 'manual',
+              message: '用户不存在或存在多个同名实体',
+            })
+            return
           case ERROR_MUST_REGISTER:
             setOpen(true)
             return
-          case ERROR_REGISTER_TIMEOUT:
-            toast.error('新用户注册访问 UID Server 超时，请联系管理员')
-            return
-          case ERROR_REGISTER_NOT_FOUND:
-            toast.error('新用户注册访问 UID Server 失败，请联系管理员')
-            return
         }
-      } else {
-        toast.error('登录失败，请稍后重试')
       }
     },
   })
@@ -193,16 +199,15 @@ export function LoginForm({
       loginUser({
         username: values.username,
         password: values.password,
-        auth: authMode == AuthMode.ACT ? 'act-ldap' : 'normal',
+        auth: authMode === AuthMode.LDAP ? 'ldap' : 'normal',
       })
     }
   }
 
   useEffect(() => {
-    // token 登录（如 ACT 单点登录）保留原有逻辑
-    if (!!searchParams.token && searchParams.token.length > 0) {
+    if (searchParams.token) {
       loginUser({
-        auth: 'act-api',
+        auth: 'normal', // 实际上后端只要看到 token 就会拦截并报错
         token: searchParams.token,
       })
     }
@@ -281,7 +286,7 @@ export function LoginForm({
             className="w-full"
             isLoading={status === 'pending'}
           >
-            {authMode === AuthMode.ACT ? 'ACT 认证登录' : '登录'}
+            {authMode === AuthMode.LDAP ? 'LDAP 认证登录' : '登录'}
           </LoadableButton>
         </form>
       </Form>
@@ -292,7 +297,7 @@ export function LoginForm({
           <AlertDialogHeader>
             <AlertDialogTitle>账号未激活</AlertDialogTitle>
             <AlertDialogDescription>
-              第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
+              第一次登录平台时，需要从 LDAP 门户同步用户信息，请参考「
               <a href={`${website}/docs/user/quick-start/login`}>平台访问指南</a>
               」激活您的账号。
             </AlertDialogDescription>

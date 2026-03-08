@@ -7,10 +7,13 @@ import { configAPIBaseAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import {
-  ERROR_BACKEND,
-  ERROR_BUSINESSLOFGIC_ERROR,
+  ERROR_BUSINESS_LOGIC_ERROR,
+  ERROR_INVALID_CREDENTIALS,
   ERROR_INVALID_REQUEST,
+  ERROR_LDAP_USER_NOT_FOUND,
+  ERROR_LEGACY_TOKEN_NOT_SUPPORTED,
   ERROR_NOT_SPECIFIED,
+  ERROR_SERVICE_ERROR,
   ERROR_TOKEN_EXPIRED,
   ERROR_TOKEN_INVALID,
   ERROR_USER_EMAIL_NOT_VERIFIED,
@@ -158,7 +161,14 @@ export async function apiRequest<T>(
         switch (errorResponse.code) {
           case ERROR_TOKEN_INVALID:
             break
-          case ERROR_BUSINESSLOFGIC_ERROR:
+          case ERROR_BUSINESS_LOGIC_ERROR:
+            break
+          case ERROR_INVALID_CREDENTIALS:
+            break
+          case ERROR_LDAP_USER_NOT_FOUND:
+            break
+          case ERROR_LEGACY_TOKEN_NOT_SUPPORTED:
+            showErrorToast('不再支持这种登陆方式，直接通过 LDAP 登录即可')
             break
           case ERROR_INVALID_REQUEST:
             showErrorToast(`请求参数有误, ${errorResponse.msg}`)
@@ -169,7 +179,7 @@ export async function apiRequest<T>(
           case ERROR_USER_EMAIL_NOT_VERIFIED:
             showErrorToast('接收通知需要验证邮箱，请前往个人主页验证')
             break
-          case ERROR_BACKEND:
+          case ERROR_SERVICE_ERROR:
             // 确保后端返回了 msg
             showErrorToast(errorResponse.msg || '后端服务异常')
             break

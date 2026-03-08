@@ -231,7 +231,9 @@ function RouteComponent() {
                   />
                   <Avatar className="h-20 w-20">
                     <AvatarImage src={avatarPreview} alt="Avatar preview" />
-                    <AvatarFallback>{user?.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>
+                      {user?.name?.charAt(0) || user?.nickname?.charAt(0) || '?'}
+                    </AvatarFallback>
                   </Avatar>
                 </div>
                 <FormField

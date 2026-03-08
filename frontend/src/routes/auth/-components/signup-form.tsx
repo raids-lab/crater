@@ -16,7 +16,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { isAxiosError } from 'axios'
+import { HTTPError } from 'ky'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -34,8 +34,6 @@ import { Input } from '@/components/ui/input'
 import LoadableButton from '@/components/button/loadable-button'
 
 import { apiSignup } from '@/services/api/auth'
-import { ERROR_REGISTER_NOT_FOUND, ERROR_REGISTER_TIMEOUT } from '@/services/error_code'
-import { IErrorResponse } from '@/services/types'
 
 const formSchema = z
   .object({
@@ -75,18 +73,8 @@ export function SignupForm() {
       navigate({ to: '/auth', search: { redirect: '/', token: '' } })
     },
     onError: (error) => {
-      if (isAxiosError<IErrorResponse>(error)) {
-        const errorCode = error.response?.data.code
-        switch (errorCode) {
-          case ERROR_REGISTER_TIMEOUT:
-            toast.error('新用户注册访问 UID Server 超时，请联系管理员')
-            return
-          case ERROR_REGISTER_NOT_FOUND:
-            toast.error('新用户注册访问 UID Server 失败，请联系管理员')
-            return
-        }
-      } else {
-        toast.error('登录失败，请稍后重试')
+      if (error instanceof HTTPError) {
+        // Handled by global apiRequest interceptor
       }
     },
   })

@@ -534,7 +534,41 @@ HTTPS 를 사용하지 않는 경우, 기본값을 유지하고 프로토콜은 
 
 ---
 
-### 4.7 배포 명령어
+### 4.7 LDAP 설정
+
+조직에서 이미 LDAP 디렉토리 서비스(예: OpenLDAP 또는 Active Directory)를 사용 중인 경우, Crater를 해당 서비스에 연결하여 통합 인증을 구현할 수 있습니다.
+
+LDAP을 활성화하면 사용자의 첫 로그인 시 계정 등록이 자동으로 완료되며, LDAP의 닉네임, 이메일 등의 정보가 지속적으로 동기화됩니다.
+
+관련 요구 사항이 없는 경우 `auth.ldap.enable`을 `false`로 설정하면 되며, 다른 LDAP 설정 항목은 기본값으로 유지하면 됩니다.
+
+```yaml
+backendConfig:
+  auth:
+    ldap:
+      enable: true
+      server:
+        address: "ldap://ldap.example.com:389"
+        bindDN: "cn=admin,dc=example,dc=org"
+        bindPassword: "<MUSTEDIT>"
+        baseDN: "dc=example,dc=org"
+      attributeMapping:
+        username: "uid"
+        displayName: "cn"
+        email: "mail"
+      uid:
+        source: "default"  # 선택 가능: "default", "ldap", "external"
+```
+
+LDAP을 활성화하는 경우, 필드 매핑의 `username`과 `displayName`은 서버 설정과 마찬가지로 필수 항목입니다. 플랫폼은 전자를 사용자 이름으로, 후자를 표시 이름으로 사용합니다. LDAP에 해당 속성이 없는 경우 `username`과 동일한 LDAP 속성에 매핑되도록 지정할 수 있습니다.
+
+`uid.source` 설정 항목은 LDAP 속성 또는 외부 마이크로서비스에서 사용자의 UID/GID를 가져올 수 있게 합니다. 이 기능은 주로 ACT 실험실 내부에서 기존에 사용하던 스토리지 시스템 권한과의 호환성을 위해 설계되었습니다. 외부 클러스터의 경우 `uid.source`를 **`default`**로 설정할 것을 강력히 권장합니다. 플랫폼은 모든 사용자에 대해 컨테이너 내 실행 ID를 **1001**로 통일하여 사용하며, 이는 대부분의 표준 NFS 또는 로컬 스토리지 환경에서 가장 간편한 선택입니다.
+
+더 자세한 설명은 [설정 안내](/ko/docs/admin/chart/) 문서를 참조하십시오.
+
+---
+
+### 4.8 배포 명령어
 
 수정 완료 후 실행:
 

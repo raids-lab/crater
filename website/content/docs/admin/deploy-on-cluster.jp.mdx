@@ -1,6 +1,6 @@
 ---
 title: Crater クラスタのデプロイガイド
-description: 本ガイドは、生産環境用 Kubernetes クラスタにおける Crater プラットフォームの標準化デプロイ手順を説明します。環境準備、依存コンポーネントのインストール、コアサービスのデプロイ、および一般的な問題のトラブルシューティングをカバーしています。
+description: 本ガイドは、生産環境用 Kubernetes クラスタにおける Crater プラットフォームの標準化デプロイ手順を説明します。環境準備、依存コンポーネントのインストール、コアサービスのデプロイ、および一般的な問題のトラブルシュー팅をカバーしています。
 ---
 
 ## 1. 環境と基本要件
@@ -17,7 +17,7 @@ description: 本ガイドは、生産環境用 Kubernetes クラスタにおけ�
 例：
 ```bash
 kubectl get nodes -o wide
-````
+```
 
 出力例：
 
@@ -287,7 +287,6 @@ helm install metallb <your-path>/charts/metallb \
 | Speaker | quay.io/metallb/speaker:v0.14.8 |
 
 例：IP アドレスプールの設定
-
 ```bash
 cat <<EOF | kubectl apply -f -
 apiVersion: metallb.io/v1beta1
@@ -408,7 +407,7 @@ protocol: http
 firstUser:
   username: crater-admin
   password: <MUSTEDIT>
-````
+```
 
 Ingress とドメインの DNS 設定が完了している場合は、実際のドメイン（例：`crater.mycluster.local`）を使用できます。  
 テスト環境のみの場合は、コントロールノードの IP アドレスを入力してください。
@@ -534,7 +533,41 @@ HTTPS を有効化しない場合、デフォルト値のままにしてくだ�
 
 ---
 
-### 4.7 デプロイコマンド
+### 4.7 LDAP 設定
+
+組織ですでに LDAP ディレクトリサービス（OpenLDAP や Active Directory など）を使用している場合、Crater をそのサービスに接続して統一認証を実現できます。
+
+LDAP を有効にすると、ユーザーの初回ログイン時にアカウント登録が自動的に完了し、LDAP からニックネームやメールアドレスなどの情報が継続的に同期されます。
+
+特に必要がない場合は、`auth.ldap.enable` を `false` に設定し、他の LDAP 設定項目はデフォルトのままにしてください。
+
+```yaml
+backendConfig:
+  auth:
+    ldap:
+      enable: true
+      server:
+        address: "ldap://ldap.example.com:389"
+        bindDN: "cn=admin,dc=example,dc=org"
+        bindPassword: "<MUSTEDIT>"
+        baseDN: "dc=example,dc=org"
+      attributeMapping:
+        username: "uid"
+        displayName: "cn"
+        email: "mail"
+      uid:
+        source: "default"  # 選択肢: "default", "ldap", "external"
+```
+
+LDAP を有効にする場合、フィールドマッピングの `username` と `displayName` はサーバー設定と同様に必須項目となります。プラットフォームは前者をユーザー名として、後者を表示名として使用します。LDAP に対応する属性がない場合は、`username` と同じ LDAP 属性にマッピングするように指定できます。
+
+`uid.source` 設定項目は、LDAP 属性または外部マイクロサービスからユーザーの UID/GID を取得することを可能にします。この機能は、主に ACT ラボ内部で長年使用されてきたストレージシステムの権限との互換性を保つために設計されました。外部クラスターの場合、`uid.source` を **`default`** に設定することを強く推奨します。プラットフォームはすべてのユーザーに対して **1001** をコンテナ内の実行 ID として統一的に使用します。これは、ほとんどの標準的な NFS やローカルストレージ環境において最もシンプルな選択肢です。
+
+詳細な説明については、[設定ガイド](/jp/docs/admin/chart/) ドキュメントを参照してください。
+
+---
+
+### 4.8 デプロイコマンド
 
 設定の変更が完了したら、以下のコマンドを実行します：
 

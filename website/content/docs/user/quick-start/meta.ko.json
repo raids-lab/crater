@@ -1,4 +1,11 @@
 {
+  "pages": [
+    "login",
+    "user-account",
+    "interactive",
+    "batchprocess",
+    "jobtemplate"
+  ],
   "title": "빠른 시작",
   "description": "빠른 시작",
   "Icon": "UserIcon"

@@ -209,16 +209,6 @@ backendConfig:
     # Defaults to system time zone if not specified
     TimeZone: Asia/Shanghai
 
-  # -- Authentication token configuration for JWT-based authentication (Required)
-  # Both token secrets must be specified for secure authentication
-  auth:
-    # -- Secret key used to sign JWT access tokens (Required)
-    # Must be a secure, randomly generated string
-    accessTokenSecret: "example-access-token"
-    # -- Secret key used to sign JWT refresh tokens (Required)
-    # Must be a secure, randomly generated string
-    refreshTokenSecret: "example-refresh-token"
-
   # -- Persistent volume claim and path prefix configurations (Required)
   # All PVC names and prefix paths must be specified
   storage:
@@ -312,6 +302,51 @@ backendConfig:
     # -- Default email address for system notifications (Required if Enable is true)
     # Must be a valid email address
     notify: example@example.com
+
+  # -- Configuration for authentication methods and tokens
+  auth:
+    # -- Authentication token configuration for JWT-based authentication (Required)
+    # Both token secrets must be specified for secure authentication
+    token:
+      # -- Secret key used to sign JWT access tokens (Required)
+      # Must be a secure, randomly generated string
+      accessTokenSecret: "example-access-token"
+      # -- Secret key used to sign JWT refresh tokens (Required)
+      # Must be a secure, randomly generated string
+      refreshTokenSecret: "example-refresh-token"
+
+    # -- LDAP authentication settings
+    ldap:
+      # -- Enable LDAP authentication
+      enable: false
+      # -- LDAP server connection settings
+      server:
+        # -- LDAP server address
+        address: "ldap://ldap.example.com:389"
+        # -- Admin DN for binding
+        bindDN: "cn=admin,dc=example,dc=org"
+        # -- Admin password for binding
+        bindPassword: "<MUSTEDIT>"
+        # -- Base DN for search
+        baseDN: "dc=example,dc=org"
+      # -- LDAP attribute mapping configuration
+      attributeMapping:
+        # -- LDAP attribute for username
+        username: "uid"
+        # -- LDAP attribute for display name (Required)
+        displayName: "cn"
+        # -- LDAP attribute for email
+        email: "mail"
+      # -- UID/GID acquisition settings
+      uid:
+        # -- Source of UID/GID ("default", "ldap", "external")
+        source: "default"
+    # -- Normal login/registration settings
+    normal:
+      # -- Allow local registration
+      allowRegister: true
+      # -- Allow local login
+      allowLogin: true
 
 # -- Backup configuratiton
 dbBackup:

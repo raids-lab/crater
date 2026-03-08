@@ -1,4 +1,11 @@
 {
+  "pages": [
+    "login",
+    "user-account",
+    "interactive",
+    "batchprocess",
+    "jobtemplate"
+  ],
   "title": "クイックスタート",
   "description": "クイックスタート",
   "Icon": "UserIcon"

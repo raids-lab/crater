@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import DocsButton from '@/components/button/docs-button'
 import CraterIcon from '@/components/icon/crater-icon'
@@ -37,7 +36,6 @@ import NotFound from '@/components/placeholder/not-found'
 import { AuthMode } from '@/services/api/auth'
 import { queryAuthMode } from '@/services/query/auth'
 
-import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 import { useTheme } from '@/utils/theme'
 
 import { ForgotPasswordForm } from './-components/forgot-password-form'
@@ -58,14 +56,20 @@ export const Route = createFileRoute('/auth/')({
   loader: async ({ context: { queryClient } }) => {
     return queryClient
       .ensureQueryData(queryAuthMode)
-      .then((data) => {
+      .then((res) => {
+        // ensureQueryData returns the raw result from queryFn (IResponse<IAuthModeResponse>)
+        // We need to manually access .data here
         return {
-          authMode: data.data,
+          enableLdap: res.data?.enableLdap ?? false,
+          enableNormalLogin: res.data?.enableNormalLogin ?? false,
+          enableNormalRegister: res.data?.enableNormalRegister ?? false,
         }
       })
       .catch(() => {
         return {
-          authMode: AuthMode.NORMAL,
+          enableLdap: false,
+          enableNormalLogin: true,
+          enableNormalRegister: false,
         }
       })
   },
@@ -79,24 +83,47 @@ function LoginPage() {
   const [showSignup, setShowSignup] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [showRegisterDialog, setShowRegisterDialog] = useState(false)
+  const [registerDialogType, setRegisterDialogType] = useState<'ldap' | 'normal_disabled'>('ldap')
   const { theme, setTheme } = useTheme()
-  const currentMode = Route.useLoaderData().authMode
-  const website = useAtomValue(configUrlWebsiteBaseAtom)
+  const { enableLdap, enableNormalLogin, enableNormalRegister } = Route.useLoaderData()
 
-  // 处理注册按钮点击
+  // Ensure selectedMode is one of enabled modes, preferring LDAP as default if enabled
+  const [selectedMode, setSelectedMode] = useState<AuthMode>(() => {
+    if (enableLdap) return AuthMode.LDAP
+    return AuthMode.NORMAL
+  })
+
+  // Calculate if we should show mode switcher
+  const showSwitcher = enableLdap && enableNormalLogin
+
+  // Handle mode switching
+  const handleModeChange = (newMode: string) => {
+    const mode = newMode as AuthMode
+    setSelectedMode(mode)
+    setShowSignup(false)
+    setShowForgotPassword(false)
+  }
+
+  // Handle registration button click
   const handleRegisterClick = () => {
-    if (currentMode === AuthMode.ACT) {
+    if (selectedMode === AuthMode.LDAP) {
+      setRegisterDialogType('ldap')
       setShowRegisterDialog(true)
     } else {
-      setShowSignup(true)
-      setShowForgotPassword(false)
+      if (enableNormalRegister) {
+        setShowSignup(true)
+        setShowForgotPassword(false)
+      } else {
+        setRegisterDialogType('normal_disabled')
+        setShowRegisterDialog(true)
+      }
     }
   }
 
-  // 处理忘记密码按钮点击
+  // Handle forgot password button click
   const handleForgotPasswordClick = () => {
-    if (currentMode === AuthMode.ACT) {
-      toast.info('请联系 G512 杜英杰老师')
+    if (selectedMode === AuthMode.LDAP) {
+      toast.info('请联系平台管理员协助重置密码')
     } else {
       setShowForgotPassword(true)
       setShowSignup(false)
@@ -130,7 +157,7 @@ function LoginPage() {
           {/* 底部版权信息 */}
           <div className="absolute bottom-10 left-10 z-20">
             <blockquote className="space-y-2">
-              <footer className="text-sm text-white/80">Copyright @ ACT RAIDS Lab</footer>
+              <footer className="text-sm text-white/80">Copyright @ RAIDS Lab</footer>
             </blockquote>
           </div>
           {/* 中间文字内容 */}
@@ -155,11 +182,11 @@ function LoginPage() {
       </div>
       {/* 右侧表单部分 */}
       <div className="flex items-center justify-center py-12">
-        {showSignup && currentMode === AuthMode.NORMAL ? (
+        {showSignup && selectedMode === AuthMode.NORMAL ? (
           <div className="mx-auto w-[350px] space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户注册</h1>
-              <p className="text-muted-foreground text-sm">仅面向特定用户提供此功能</p>
+              <p className="text-muted-foreground text-sm">注册您在 Crater 平台的账号</p>
             </div>
             <SignupForm />
             <div className="text-muted-foreground text-center text-sm">
@@ -169,7 +196,7 @@ function LoginPage() {
               </button>
             </div>
           </div>
-        ) : showForgotPassword && currentMode === AuthMode.NORMAL ? (
+        ) : showForgotPassword && selectedMode === AuthMode.NORMAL ? (
           <div className="mx-auto w-[350px] space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">重置密码</h1>
@@ -188,15 +215,25 @@ function LoginPage() {
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户登录</h1>
               <p className="text-muted-foreground text-sm">
-                {currentMode === AuthMode.ACT
-                  ? '已接入 ACT 实验室统一身份认证'
+                {selectedMode === AuthMode.LDAP
+                  ? '已接入 LDAP 统一身份认证'
                   : '请输入您的账号和密码'}
               </p>
             </div>
+
+            {showSwitcher && (
+              <Tabs value={selectedMode} onValueChange={handleModeChange} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value={AuthMode.LDAP}>LDAP 登录</TabsTrigger>
+                  <TabsTrigger value={AuthMode.NORMAL}>普通登录</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
             <LoginForm
               searchParams={searchParams}
               login={auth.login}
-              authMode={currentMode}
+              authMode={selectedMode}
               onForgotPasswordClick={handleForgotPasswordClick}
             />
             <div className="text-muted-foreground text-center text-sm">
@@ -209,23 +246,22 @@ function LoginPage() {
         )}
       </div>
 
-      {/* ACT模式下的注册引导对话框 */}
+      {/* Registration guide dialog */}
       <AlertDialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>账号激活指南</AlertDialogTitle>
+            <AlertDialogTitle>
+              {registerDialogType === 'ldap' ? 'LDAP 账号登录说明' : '注册功能已禁用'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              第一次登录平台时，需要从 ACT 门户同步用户信息，请参考「
-              <a href={`${website}/docs/user/quick-start/login`} className="text-primary underline">
-                平台访问指南
-              </a>
-              」激活您的账号。
+              {registerDialogType === 'ldap'
+                ? '平台已接入 LDAP 统一身份认证。如果您拥有 LDAP 账号，可以直接在登录页面使用该账号及密码登录，系统将自动为您创建平台账户，无需进行额外的注册操作。'
+                : '当前平台已禁用普通用户自主注册功能。请联系系统管理员协助为您创建账号，或者申请打开注册功能。'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <DocsButton title={'立即阅读'} url={`quick-start/login`} />
+            <AlertDialogAction onClick={() => setShowRegisterDialog(false)}>
+              知道了
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

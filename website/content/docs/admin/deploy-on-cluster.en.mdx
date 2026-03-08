@@ -533,7 +533,41 @@ If HTTPS is not enabled, keep the default values; the protocol remains HTTP.
 
 ---
 
-### 4.7 Deployment Command
+### 4.7 LDAP Configuration
+
+If your organization already has an existing LDAP directory service (such as OpenLDAP or Active Directory), you can configure Crater to integrate with this service for unified identity authentication.
+
+If LDAP is enabled, the system will automatically complete account registration upon the user's first login and continuously synchronize information such as nickname and email from LDAP.
+
+If you do not have such requirements, you can directly set `auth.ldap.enable` to `false`, and other LDAP configuration items can be left at their default values.
+
+```yaml
+backendConfig:
+  auth:
+    ldap:
+      enable: true
+      server:
+        address: "ldap://ldap.example.com:389"
+        bindDN: "cn=admin,dc=example,dc=org"
+        bindPassword: "<MUSTEDIT>"
+        baseDN: "dc=example,dc=org"
+      attributeMapping:
+        username: "uid"
+        displayName: "cn"
+        email: "mail"
+      uid:
+        source: "default"  # Options: "default", "ldap", "external"
+```
+
+If LDAP is enabled, the `username` and `displayName` in the field mapping are mandatory along with the server configuration. The platform uses the former as the username and the latter as the display name. If your LDAP does not have a corresponding attribute, you can map it to the same LDAP attribute as `username`.
+
+The `uid.source` configuration allows retrieving user UID/GID from LDAP attributes or an external microservice. This feature was primarily designed for compatibility with legacy distributed storage system permissions at ACT Lab. For external clusters, we strongly recommend setting `uid.source` to **`default`**. The platform will uniformly use **1001** as the runtime identity inside containers, which is the simplest choice for most standard NFS or local storage environments.
+
+For more detailed instructions, please refer to the [Configuration Guide](/en/docs/admin/chart/) document.
+
+---
+
+### 4.8 Deployment Command
 
 After confirming all configurations:
 

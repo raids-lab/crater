@@ -375,10 +375,13 @@ definitions:
     - 40002
     - 40101
     - 40102
-    - 40103
-    - 40104
-    - 40105
-    - 40106
+    - 40111
+    - 40112
+    - 40113
+    - 40114
+    - 40121
+    - 40122
+    - 40123
     - 40301
     - 40302
     - 40401
@@ -391,10 +394,13 @@ definitions:
     - BusinessLogicError
     - TokenExpired
     - TokenInvalid
-    - MustRegister
-    - RegisterTimeout
-    - RegisterNotFound
     - InvalidCredentials
+    - LdapError
+    - LdapUserNotFound
+    - LegacyTokenNotSupported
+    - MustRegister
+    - UidServiceError
+    - UidNotFound
     - UserNotAllowed
     - UserEmailNotVerified
     - ServiceSshdNotFound
@@ -505,6 +511,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.AuthModeResp'
       msg:
         type: string
     type: object
@@ -943,13 +958,20 @@ definitions:
   internal_handler.AuthMethod:
     enum:
     - normal
-    - act-ldap
-    - act-api
+    - ldap
     type: string
     x-enum-varnames:
     - AuthMethodNormal
-    - AuthMethodACTLDAP
-    - AuthMethodACTAPI
+    - AuthMethodLDAP
+  internal_handler.AuthModeResp:
+    properties:
+      enableLdap:
+        type: boolean
+      enableNormalLogin:
+        type: boolean
+      enableNormalRegister:
+        type: boolean
+    type: object
   internal_handler.CheckResp:
     properties:
       context:
@@ -1130,15 +1152,15 @@ definitions:
       auth:
         allOf:
         - $ref: '#/definitions/internal_handler.AuthMethod'
-        description: '[normal, act-ldap, act-api]'
+        description: '[normal, ldap]'
       password:
-        description: (act-ldap, normal)
+        description: (ldap, normal)
         type: string
       token:
-        description: (act-api)
+        description: Legacy ACT API token (deprecated)
         type: string
       username:
-        description: (act-ldap, normal)
+        description: (ldap, normal)
         type: string
     required:
     - auth
@@ -2190,18 +2212,14 @@ paths:
     get:
       consumes:
       - application/json
-      description: 返回后端部署的config值
+      description: 返回后端部署的认证模式配置
       produces:
       - application/json
       responses:
         "200":
-          description: 启用认证类型
+          description: 启用认证类型及注册配置
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp'
         "500":
           description: 获取相关配置时错误
           schema:

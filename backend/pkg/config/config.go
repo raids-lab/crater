@@ -40,18 +40,6 @@ type Config struct {
 	// Optional: If not specified, Prometheus integration will be disabled.
 	PrometheusAPI string `json:"prometheusAPI"`
 
-	// Auth contains authentication token configuration for JWT-based authentication.
-	// Required: Both token secrets must be specified for secure authentication.
-	Auth struct {
-		// AccessTokenSecret is the secret key used to sign JWT access tokens.
-		// Required: Must be a secure, randomly generated string.
-		AccessTokenSecret string `json:"accessTokenSecret"`
-
-		// RefreshTokenSecret is the secret key used to sign JWT refresh tokens.
-		// Required: Must be a secure, randomly generated string.
-		RefreshTokenSecret string `json:"refreshTokenSecret"`
-	} `json:"auth"`
-
 	// Postgres contains PostgreSQL database connection configuration.
 	// Required: All fields must be specified for database connectivity.
 	Postgres struct {
@@ -227,41 +215,77 @@ type Config struct {
 		Notify string `json:"notify"`
 	} `json:"smtp"`
 
-	// RaidsLab contains configuration for Raids Lab integration features.
-	// Optional: If Enable is false, Raids Lab features will be disabled.
-	RaidsLab struct {
-		// Enable toggles all Raids Lab integration features.
-		// Optional: Defaults to false if not specified.
-		Enable bool `json:"enable"`
+	// Auth contains configuration for various authentication methods and tokens.
+	Auth struct {
+		// Token contains authentication token configuration for JWT-based authentication.
+		Token struct {
+			// AccessTokenSecret is the secret key used to sign JWT access tokens.
+			AccessTokenSecret string `json:"accessTokenSecret"`
+			// RefreshTokenSecret is the secret key used to sign JWT refresh tokens.
+			RefreshTokenSecret string `json:"refreshTokenSecret"`
+		} `json:"token"`
 
-		// LDAP contains configuration for LDAP authentication integration.
-		// Required if RaidsLab.Enable is true: All LDAP fields must be specified.
+		// LDAP authentication settings.
 		LDAP struct {
-			// UserName is the LDAP bind username for authentication.
-			// Required: Must have permissions to search the LDAP directory.
-			UserName string `json:"userName"`
+			// Enable toggles LDAP authentication.
+			// Optional: Defaults to false if not specified.
+			Enable bool `json:"enable"`
 
-			// Password is the LDAP bind password for authentication.
-			// Required: Must match the specified user's password.
-			Password string `json:"password"`
+			// Server connection settings.
+			Server struct {
+				// Address is the LDAP server address (host:port).
+				Address string `json:"address"`
+				// BaseDN is the search base.
+				BaseDN string `json:"baseDN"`
+				// BindDN is the account for initial bind.
+				BindDN string `json:"bindDN"`
+				// BindPassword is the password for initial bind.
+				BindPassword string `json:"bindPassword"`
+			} `json:"server"`
 
-			// Address is the LDAP server address (host:port).
-			// Required: Must be a reachable LDAP server.
-			Address string `json:"address"`
+			// AttributeMapping defines how LDAP attributes map to User fields.
+			AttributeMapping struct {
+				// Username is the LDAP attribute for login name.
+				Username string `json:"username"`
+				// DisplayName maps to user's nickname.
+				DisplayName string `json:"displayName"`
+				// Email maps to user's email.
+				Email string `json:"email"`
+				// Teacher maps to user's teacher/advisor.
+				Teacher string `json:"teacher"`
+				// Group maps to user's group.
+				Group string `json:"group"`
+				// Phone maps to user's phone.
+				Phone string `json:"phone"`
+				// ExpiredAt maps to user's account expiration.
+				ExpiredAt string `json:"expiredAt"`
+			} `json:"attributeMapping"`
 
-			// SearchDN is the base DN for LDAP searches.
-			// Required: Must be a valid Distinguished Name for search operations.
-			SearchDN string `json:"searchDN"`
+			// UID contains settings for UID/GID acquisition.
+			UID struct {
+				// Source defines where to get UID/GID ("none", "ldap", "external").
+				Source string `json:"source"`
+				// LDAPAttribute defines attribute names when source is "ldap".
+				LDAPAttribute struct {
+					UID string `json:"uid"`
+					GID string `json:"gid"`
+				} `json:"ldapAttribute"`
+				// ExternalService defines service details when source is "external".
+				ExternalService struct {
+					URL     string `json:"url"`
+					Timeout int    `json:"timeout"`
+				} `json:"externalService"`
+			} `json:"uid"`
 		} `json:"ldap"`
 
-		// OpenAPI contains token configuration for Raids Lab OpenAPI integration.
-		// Required if RaidsLab.Enable is true: OpenAPI configuration must be specified.
-		OpenAPI RaidsLabOpenAPI `json:"openAPI"`
-
-		// UIDServerURL is the URL of the UID generation server for unique identifier creation.
-		// Required if RaidsLab.Enable is true: Must be a valid UID service endpoint.
-		UIDServerURL string `json:"uidServerURL"`
-	} `json:"raidsLab"`
+		// Normal contains settings for local database-based authentication.
+		Normal struct {
+			// AllowRegister allows users to sign up via the platform.
+			AllowRegister bool `json:"allowRegister"`
+			// AllowLogin allows users to login using local credentials when LDAP is enabled.
+			AllowLogin bool `json:"allowLogin"`
+		} `json:"normal"`
+	} `json:"auth"`
 
 	// SchedulerPlugins contains configuration for Kubernetes scheduler plugin integrations.
 	// Optional: Individual plugins can be enabled/disabled independently.
@@ -296,12 +320,6 @@ type Config struct {
 	} `json:"schedulerPlugins"`
 }
 
-type RaidsLabOpenAPI struct {
-	URL          string `json:"url"`
-	ChameleonKey string `json:"chameleonKey"`
-	AccessToken  string `json:"accessToken"`
-}
-
 // ValidateConfig validates the configuration structure and checks for required fields
 //
 //nolint:gocyclo // This is long but simple.
@@ -325,11 +343,11 @@ func (c *Config) ValidateConfig() error {
 	}
 
 	// Validate auth configuration
-	if c.Auth.AccessTokenSecret == "" {
-		errors = append(errors, "auth.accessTokenSecret is required")
+	if c.Auth.Token.AccessTokenSecret == "" {
+		errors = append(errors, "auth.token.accessTokenSecret is required")
 	}
-	if c.Auth.RefreshTokenSecret == "" {
-		errors = append(errors, "auth.refreshTokenSecret is required")
+	if c.Auth.Token.RefreshTokenSecret == "" {
+		errors = append(errors, "auth.token.refreshTokenSecret is required")
 	}
 
 	// Validate postgres configuration
@@ -411,30 +429,55 @@ func (c *Config) ValidateConfig() error {
 		}
 	}
 
-	if c.RaidsLab.Enable {
-		if c.RaidsLab.LDAP.UserName == "" {
-			errors = append(errors, "raidsLab.ldap.userName is required when raidsLab is enabled")
+	if c.Auth.LDAP.Enable {
+		if c.Auth.LDAP.Server.BindDN == "" {
+			errors = append(errors, "auth.ldap.server.bindDN is required when ldap is enabled")
 		}
-		if c.RaidsLab.LDAP.Password == "" {
-			errors = append(errors, "raidsLab.ldap.password is required when raidsLab is enabled")
+		if c.Auth.LDAP.Server.BindPassword == "" {
+			errors = append(errors, "auth.ldap.server.bindPassword is required when ldap is enabled")
 		}
-		if c.RaidsLab.LDAP.Address == "" {
-			errors = append(errors, "raidsLab.ldap.address is required when raidsLab is enabled")
+		if c.Auth.LDAP.Server.Address == "" {
+			errors = append(errors, "auth.ldap.server.address is required when ldap is enabled")
 		}
-		if c.RaidsLab.LDAP.SearchDN == "" {
-			errors = append(errors, "raidsLab.ldap.searchDN is required when raidsLab is enabled")
+		if c.Auth.LDAP.Server.BaseDN == "" {
+			errors = append(errors, "auth.ldap.server.baseDN is required when ldap is enabled")
 		}
-		if c.RaidsLab.OpenAPI.URL == "" {
-			errors = append(errors, "raidsLab.openAPI.url is required when raidsLab is enabled")
+		if c.Auth.LDAP.AttributeMapping.Username == "" {
+			errors = append(errors, "auth.ldap.attributeMapping.username is required when ldap is enabled")
 		}
-		if c.RaidsLab.OpenAPI.ChameleonKey == "" {
-			errors = append(errors, "raidsLab.openAPI.chameleonKey is required when raidsLab is enabled")
+		if c.Auth.LDAP.AttributeMapping.DisplayName == "" {
+			errors = append(errors, "auth.ldap.attributeMapping.displayName is required when ldap is enabled "+
+				"(can be same as username if no nickname field exists)")
 		}
-		if c.RaidsLab.OpenAPI.AccessToken == "" {
-			errors = append(errors, "raidsLab.openAPI.accessToken is required when raidsLab is enabled")
-		}
-		if c.RaidsLab.UIDServerURL == "" {
-			errors = append(errors, "raidsLab.uidServerURL is required when raidsLab is enabled")
+	}
+
+	// Validate authentication logic: at least one login method must be enabled
+	if !c.Auth.LDAP.Enable && !c.Auth.Normal.AllowLogin {
+		errors = append(errors, "at least one authentication method (LDAP or Normal Login) must be enabled")
+	}
+
+	// Validate authentication logic: normal register requires normal login
+	if !c.Auth.Normal.AllowLogin && c.Auth.Normal.AllowRegister {
+		errors = append(errors, "normal registration cannot be enabled when normal login is disabled")
+	}
+
+	if c.Auth.LDAP.Enable {
+		switch c.Auth.LDAP.UID.Source {
+		case "ldap":
+			if c.Auth.LDAP.UID.LDAPAttribute.UID == "" {
+				errors = append(errors, "auth.ldap.uid.ldapAttribute.uid is required when uid.source is 'ldap'")
+			}
+			if c.Auth.LDAP.UID.LDAPAttribute.GID == "" {
+				errors = append(errors, "auth.ldap.uid.ldapAttribute.gid is required when uid.source is 'ldap'")
+			}
+		case "external":
+			if c.Auth.LDAP.UID.ExternalService.URL == "" {
+				errors = append(errors, "auth.ldap.uid.externalService.url is required when uid.source is 'external'")
+			}
+		case "none", "default", "":
+			// OK
+		default:
+			errors = append(errors, fmt.Sprintf("invalid auth.ldap.uid.source: %s", c.Auth.LDAP.UID.Source))
 		}
 	}
 
@@ -519,13 +562,16 @@ func (c *Config) PrintConfig() {
 		klog.Info("SMTP: Disabled")
 	}
 
-	// RaidsLab
-	if c.RaidsLab.Enable {
-		klog.Infof("RaidsLab: Enabled (LDAP: %s, UID Server: %s)",
-			c.RaidsLab.LDAP.Address, c.RaidsLab.UIDServerURL)
-		klog.Infof("RaidsLab OpenAPI: %s", c.RaidsLab.OpenAPI.URL)
+	// Authentication
+	if c.Auth.LDAP.Enable {
+		klog.Infof("LDAP Authentication: Enabled (Server: %s, BaseDN: %s)",
+			c.Auth.LDAP.Server.Address, c.Auth.LDAP.Server.BaseDN)
+		klog.Infof("LDAP UID Source: %s", c.Auth.LDAP.UID.Source)
+		if c.Auth.LDAP.UID.Source == "external" {
+			klog.Infof("LDAP External UID Service: %s", c.Auth.LDAP.UID.ExternalService.URL)
+		}
 	} else {
-		klog.Info("RaidsLab: Disabled")
+		klog.Info("LDAP Authentication: Disabled")
 	}
 
 	// Scheduler Plugins
