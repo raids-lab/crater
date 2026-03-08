@@ -128,7 +128,7 @@ function RouteComponent() {
     queryKey: ['approvalorders', 'byName', order?.name],
     queryFn: () => listApprovalOrdersbyName(order!.name),
     select: (res) => res.data,
-    enabled: !!order,
+    enabled: !!order && order.type === 'job',
   })
 
   // Fetch nodes
