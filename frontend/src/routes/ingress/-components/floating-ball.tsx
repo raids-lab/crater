@@ -32,12 +32,14 @@ export default function FloatingBall({
   handleSnapshot,
   handleShowToken,
   setIsDragging,
+  snapshotDisabled,
 }: {
   handleShowLog: () => void
   handleSnapshot: () => void
   handleShowDetail: () => void
   handleShowToken?: () => void
   setIsDragging: (isDragging: boolean) => void
+  snapshotDisabled?: boolean
 }) {
   const { t } = useTranslation()
   const x = useMotionValue(window.innerWidth - 60)
@@ -103,8 +105,12 @@ export default function FloatingBall({
                 variant="ghost"
                 className="justify-start px-2 py-1 font-normal"
                 onClick={handleSnapshot}
+                disabled={snapshotDisabled}
+                title={snapshotDisabled ? '节点已被禁止调度，无法保存镜像' : undefined}
               >
-                <Save className="text-highlight-purple" />
+                <Save
+                  className={snapshotDisabled ? 'text-muted-foreground' : 'text-highlight-purple'}
+                />
                 {t('floatingBall.tooltip.saveSnapshot')}
               </Button>
             </TooltipContent>
