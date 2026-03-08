@@ -66,7 +66,7 @@ export const betterResourceQuantity = (key: string, value?: number, withUnit?: b
 
   switch (key) {
     case 'cpu':
-      return withUnit ? `${Math.floor(value)}C` : `${Math.floor(value)}`
+      return withUnit ? `${Math.round(value)}C` : `${Math.round(value)}`
     case 'memory':
       if (value > 1024) {
         return withUnit ? `${Math.round(value / 1024)}Ti` : `${Math.round(value / 1024)}`
