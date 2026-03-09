@@ -400,6 +400,18 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, op
 		// 恢复调度：删除原因和操作员注解
 		delete(node.Annotations, reasonKey)
 		delete(node.Annotations, operatorKey)
+		// 恢复调度时，同时删除排空相关的注解和 taint
+		delete(node.Annotations, "crater.raids.io/drained-reason")
+		delete(node.Annotations, "crater.raids.io/drained-operator")
+
+		// 删除排空 taint
+		newTaints := []corev1.Taint{}
+		for _, t := range node.Spec.Taints {
+			if t.Key != "crater.raids.io/drained" {
+				newTaints = append(newTaints, t)
+			}
+		}
+		node.Spec.Taints = newTaints
 	} else {
 		// 禁止调度：添加原因和操作员注解
 		if reason != "" {
@@ -1056,4 +1068,101 @@ func (nc *NodeClient) DeleteNodeTaint(ctx context.Context, nodeName, key, value,
 
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return err
+}
+
+// DrainNode 排空节点并禁止调度
+func (nc *NodeClient) DrainNode(ctx context.Context, nodeName, operator string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// 确保 Annotations 不为 nil
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+
+	// 1. 添加排空污点
+	drainedTaint := corev1.Taint{
+		Key:    "crater.raids.io/drained",
+		Value:  "true",
+		Effect: corev1.TaintEffectNoSchedule,
+	}
+
+	// 检查是否已存在排空污点
+	taintExists := false
+	for _, t := range node.Spec.Taints {
+		if t.Key == drainedTaint.Key && t.Effect == drainedTaint.Effect {
+			taintExists = true
+			break
+		}
+	}
+
+	if !taintExists {
+		node.Spec.Taints = append(node.Spec.Taints, drainedTaint)
+	}
+
+	// 2. 设置节点为不可调度
+	node.Spec.Unschedulable = true
+
+	// 3. 记录排空操作的原因和操作员
+	node.Annotations["crater.raids.io/drained-reason"] = "节点已排空"
+	if operator != "" {
+		node.Annotations["crater.raids.io/drained-operator"] = formatOperatorInfo(ctx, operator)
+	}
+
+	// 4. 更新节点
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update node: %w", err)
+	}
+
+	// 5. 驱逐节点上的所有 Pod（异步操作）
+	// 注意：这里只驱逐可以被驱逐的 Pod，DaemonSet 和特殊系统 Pod 会被保留
+	go func() {
+		podList, listErr := nc.getPodsForNode(context.Background(), nodeName)
+		if listErr != nil {
+			klog.Errorf("Failed to list pods for node %s: %v", nodeName, listErr)
+			return
+		}
+
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+
+			// 跳过 DaemonSet 管理的 Pod
+			isDaemonSetPod := false
+			for _, owner := range pod.OwnerReferences {
+				if owner.Kind == "DaemonSet" {
+					isDaemonSetPod = true
+					break
+				}
+			}
+			if isDaemonSetPod {
+				continue
+			}
+
+			// 跳过系统命名空间的某些关键 Pod
+			if pod.Namespace == "kube-system" && strings.HasPrefix(pod.Name, "kube-") {
+				continue
+			}
+
+			// 使用 Eviction API 驱逐 Pod
+			deleteErr := nc.KubeClient.CoreV1().Pods(pod.Namespace).Delete(
+				context.Background(),
+				pod.Name,
+				metav1.DeleteOptions{
+					GracePeriodSeconds: new(int64), // 0 表示立即删除
+				},
+			)
+			if deleteErr != nil {
+				klog.Warningf("Failed to evict pod %s/%s from node %s: %v",
+					pod.Namespace, pod.Name, nodeName, deleteErr)
+			} else {
+				klog.Infof("Successfully evicted pod %s/%s from node %s",
+					pod.Namespace, pod.Name, nodeName)
+			}
+		}
+	}()
+
+	return nil
 }

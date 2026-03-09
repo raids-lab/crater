@@ -19,7 +19,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { BanIcon, Users, ZapIcon } from 'lucide-react'
+import { BanIcon, CloudDrizzleIcon, Users, ZapIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,12 +49,23 @@ import { useAccountNameLookup } from '@/components/node/getaccountnickname'
 import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui-custom/alert-dialog'
 
 import {
   IClusterNodeTaint,
   NodeStatus,
   apiAddNodeTaint,
   apiDeleteNodeTaint,
+  apiDrainNode,
   apichangeNodeScheduling,
 } from '@/services/api/cluster'
 import { queryNodes } from '@/services/query/node'
@@ -84,6 +95,10 @@ function NodesForAdmin() {
   const [schedulingIsCurrentlyUnschedule, setSchedulingIsCurrentlyUnschedule] = useState(false)
   const [schedulingReason, setSchedulingReason] = useState('')
   const [schedulingReasonError, setSchedulingReasonError] = useState('')
+
+  // 排空节点对话框状态
+  const [drainDialogOpen, setDrainDialogOpen] = useState(false)
+  const [drainNodeId, setDrainNodeId] = useState('')
 
   // 常用的禁止调度原因
   const commonSchedulingReasons = ['内核/驱动升级', 'GPU 驱动升级', 'GPU 故障']
@@ -151,6 +166,19 @@ function NodesForAdmin() {
     },
     onError: (error) => {
       toast.error(t('nodeManagement.releaseFailed', { error: error.message }))
+    },
+  })
+
+  const { mutate: drainNode } = useMutation({
+    mutationFn: (nodeName: string) => apiDrainNode(nodeName),
+    onSuccess: async () => {
+      await refetchTaskList()
+      toast.success(t('nodeManagement.drainSuccess'))
+      setDrainDialogOpen(false)
+      setDrainNodeId('')
+    },
+    onError: (error) => {
+      toast.error(t('nodeManagement.drainFailed', { error: error.message }))
     },
   })
 
@@ -268,6 +296,7 @@ function NodesForAdmin() {
             taints?.some(
               (t) => t.key === 'node.kubernetes.io/unschedulable' && t.effect === 'NoSchedule'
             ) || false
+          const drainedTaint = taints?.some((t) => t.key === 'crater.raids.io/drained') || false
           const occupiedTaint = taints?.find((t) => t.key === 'crater.raids.io/account')
           const occupiedaccount = occupiedTaint?.value
           const occupiedAccountNickname = occupiedaccount
@@ -309,6 +338,16 @@ function NodesForAdmin() {
                     {t('nodeManagement.accountOccupation')}
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem
+                  disabled={drainedTaint}
+                  onClick={() => {
+                    setDrainNodeId(nodeId)
+                    setDrainDialogOpen(true)
+                  }}
+                >
+                  <CloudDrizzleIcon className="size-4" />
+                  {t('nodeManagement.drainNode')}
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => {
                     setSchedulingNodeId(nodeId)
@@ -489,6 +528,23 @@ function NodesForAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* 排空节点确认对话框 */}
+      <AlertDialog open={drainDialogOpen} onOpenChange={setDrainDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('nodeManagement.drainDialogTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('nodeManagement.confirmDrain', { node: drainNodeId })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('nodeManagement.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => drainNode(drainNodeId)}>
+              {t('nodeManagement.submit')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
