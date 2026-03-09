@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -1072,6 +1073,12 @@ func (nc *NodeClient) DeleteNodeTaint(ctx context.Context, nodeName, key, value,
 
 // shouldEvictPod 判断 Pod 是否应该被驱逐
 func shouldEvictPod(pod *corev1.Pod) bool {
+	// 跳过静态 Pod（Mirror Pod）
+	// 静态 Pod 由 kubelet 直接管理，带有 kubernetes.io/config.mirror 注解
+	if _, isMirror := pod.Annotations[corev1.MirrorPodAnnotationKey]; isMirror {
+		return false
+	}
+
 	// 跳过 DaemonSet 管理的 Pod
 	for _, owner := range pod.OwnerReferences {
 		if owner.Kind == "DaemonSet" {
@@ -1079,8 +1086,19 @@ func shouldEvictPod(pod *corev1.Pod) bool {
 		}
 	}
 
-	// 跳过系统命名空间的某些关键 Pod
-	if pod.Namespace == "kube-system" && strings.HasPrefix(pod.Name, "kube-") {
+	// 跳过已终止的 Pod（Succeeded 或 Failed 状态）
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		return false
+	}
+
+	// 跳过 kube-system 命名空间中的所有 Pod（包含关键系统组件）
+	// 如 coredns、etcd、flannel、calico-node、metrics-server 等
+	if pod.Namespace == "kube-system" {
+		return false
+	}
+
+	// 跳过 kube-public 和 kube-node-lease 等系统命名空间
+	if pod.Namespace == "kube-public" || pod.Namespace == "kube-node-lease" {
 		return false
 	}
 
@@ -1102,17 +1120,21 @@ func (nc *NodeClient) evictPodsFromNode(nodeName string) {
 			continue
 		}
 
-		// 使用 Delete API 驱逐 Pod
-		deleteErr := nc.KubeClient.CoreV1().Pods(pod.Namespace).Delete(
-			context.Background(),
-			pod.Name,
-			metav1.DeleteOptions{
-				GracePeriodSeconds: new(int64), // 0 表示立即删除
+		// 使用 Eviction API 驱逐 Pod，尊重 PodDisruptionBudget
+		eviction := &policyv1.Eviction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pod.Name,
+				Namespace: pod.Namespace,
 			},
-		)
-		if deleteErr != nil {
+			DeleteOptions: &metav1.DeleteOptions{
+				// 不设置 GracePeriodSeconds，尊重 Pod 的 terminationGracePeriodSeconds
+			},
+		}
+
+		evictErr := nc.KubeClient.CoreV1().Pods(pod.Namespace).EvictV1(context.Background(), eviction)
+		if evictErr != nil {
 			klog.Warningf("Failed to evict pod %s/%s from node %s: %v",
-				pod.Namespace, pod.Name, nodeName, deleteErr)
+				pod.Namespace, pod.Name, nodeName, evictErr)
 		} else {
 			klog.Infof("Successfully evicted pod %s/%s from node %s",
 				pod.Namespace, pod.Name, nodeName)
