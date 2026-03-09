@@ -1070,6 +1070,56 @@ func (nc *NodeClient) DeleteNodeTaint(ctx context.Context, nodeName, key, value,
 	return err
 }
 
+// shouldEvictPod 判断 Pod 是否应该被驱逐
+func shouldEvictPod(pod *corev1.Pod) bool {
+	// 跳过 DaemonSet 管理的 Pod
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "DaemonSet" {
+			return false
+		}
+	}
+
+	// 跳过系统命名空间的某些关键 Pod
+	if pod.Namespace == "kube-system" && strings.HasPrefix(pod.Name, "kube-") {
+		return false
+	}
+
+	return true
+}
+
+// evictPodsFromNode 驱逐节点上的所有可驱逐 Pod
+func (nc *NodeClient) evictPodsFromNode(nodeName string) {
+	podList, listErr := nc.getPodsForNode(context.Background(), nodeName)
+	if listErr != nil {
+		klog.Errorf("Failed to list pods for node %s: %v", nodeName, listErr)
+		return
+	}
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+
+		if !shouldEvictPod(pod) {
+			continue
+		}
+
+		// 使用 Delete API 驱逐 Pod
+		deleteErr := nc.KubeClient.CoreV1().Pods(pod.Namespace).Delete(
+			context.Background(),
+			pod.Name,
+			metav1.DeleteOptions{
+				GracePeriodSeconds: new(int64), // 0 表示立即删除
+			},
+		)
+		if deleteErr != nil {
+			klog.Warningf("Failed to evict pod %s/%s from node %s: %v",
+				pod.Namespace, pod.Name, nodeName, deleteErr)
+		} else {
+			klog.Infof("Successfully evicted pod %s/%s from node %s",
+				pod.Namespace, pod.Name, nodeName)
+		}
+	}
+}
+
 // DrainNode 排空节点并禁止调度
 func (nc *NodeClient) DrainNode(ctx context.Context, nodeName, operator string) error {
 	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
@@ -1117,52 +1167,8 @@ func (nc *NodeClient) DrainNode(ctx context.Context, nodeName, operator string) 
 		return fmt.Errorf("failed to update node: %w", err)
 	}
 
-	// 5. 驱逐节点上的所有 Pod（异步操作）
-	// 注意：这里只驱逐可以被驱逐的 Pod，DaemonSet 和特殊系统 Pod 会被保留
-	go func() {
-		podList, listErr := nc.getPodsForNode(context.Background(), nodeName)
-		if listErr != nil {
-			klog.Errorf("Failed to list pods for node %s: %v", nodeName, listErr)
-			return
-		}
-
-		for i := range podList.Items {
-			pod := &podList.Items[i]
-
-			// 跳过 DaemonSet 管理的 Pod
-			isDaemonSetPod := false
-			for _, owner := range pod.OwnerReferences {
-				if owner.Kind == "DaemonSet" {
-					isDaemonSetPod = true
-					break
-				}
-			}
-			if isDaemonSetPod {
-				continue
-			}
-
-			// 跳过系统命名空间的某些关键 Pod
-			if pod.Namespace == "kube-system" && strings.HasPrefix(pod.Name, "kube-") {
-				continue
-			}
-
-			// 使用 Eviction API 驱逐 Pod
-			deleteErr := nc.KubeClient.CoreV1().Pods(pod.Namespace).Delete(
-				context.Background(),
-				pod.Name,
-				metav1.DeleteOptions{
-					GracePeriodSeconds: new(int64), // 0 表示立即删除
-				},
-			)
-			if deleteErr != nil {
-				klog.Warningf("Failed to evict pod %s/%s from node %s: %v",
-					pod.Namespace, pod.Name, nodeName, deleteErr)
-			} else {
-				klog.Infof("Successfully evicted pod %s/%s from node %s",
-					pod.Namespace, pod.Name, nodeName)
-			}
-		}
-	}()
+	// 5. 异步驱逐节点上的所有 Pod
+	go nc.evictPodsFromNode(nodeName)
 
 	return nil
 }
