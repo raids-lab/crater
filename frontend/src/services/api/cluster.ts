@@ -193,3 +193,7 @@ export const apiDeleteNodeAnnotation = (
 
 export const apiGetNodeMark = (name: string) =>
   apiV1Get<IResponse<IClusterNodeMark>>(`admin/nodes/${name}/mark`)
+
+// 排空节点
+export const apiDrainNode = (nodeName: string) =>
+  apiV1Post<IResponse<string>>(`admin/nodes/${nodeName}/drain`)

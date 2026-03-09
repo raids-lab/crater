@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
@@ -400,6 +401,18 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, op
 		// 恢复调度：删除原因和操作员注解
 		delete(node.Annotations, reasonKey)
 		delete(node.Annotations, operatorKey)
+		// 恢复调度时，同时删除排空相关的注解和 taint
+		delete(node.Annotations, "crater.raids.io/drained-reason")
+		delete(node.Annotations, "crater.raids.io/drained-operator")
+
+		// 删除排空 taint
+		newTaints := []corev1.Taint{}
+		for _, t := range node.Spec.Taints {
+			if t.Key != "crater.raids.io/drained" {
+				newTaints = append(newTaints, t)
+			}
+		}
+		node.Spec.Taints = newTaints
 	} else {
 		// 禁止调度：添加原因和操作员注解
 		if reason != "" {
@@ -1056,4 +1069,128 @@ func (nc *NodeClient) DeleteNodeTaint(ctx context.Context, nodeName, key, value,
 
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	return err
+}
+
+// shouldEvictPod 判断 Pod 是否应该被驱逐
+func shouldEvictPod(pod *corev1.Pod) bool {
+	// 跳过静态 Pod（Mirror Pod）
+	// 静态 Pod 由 kubelet 直接管理，带有 kubernetes.io/config.mirror 注解
+	if _, isMirror := pod.Annotations[corev1.MirrorPodAnnotationKey]; isMirror {
+		return false
+	}
+
+	// 跳过 DaemonSet 管理的 Pod
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "DaemonSet" {
+			return false
+		}
+	}
+
+	// 跳过已终止的 Pod（Succeeded 或 Failed 状态）
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		return false
+	}
+
+	// 跳过 kube-system 命名空间中的所有 Pod（包含关键系统组件）
+	// 如 coredns、etcd、flannel、calico-node、metrics-server 等
+	if pod.Namespace == "kube-system" {
+		return false
+	}
+
+	// 跳过 kube-public 和 kube-node-lease 等系统命名空间
+	if pod.Namespace == "kube-public" || pod.Namespace == "kube-node-lease" {
+		return false
+	}
+
+	return true
+}
+
+// evictPodsFromNode 驱逐节点上的所有可驱逐 Pod
+func (nc *NodeClient) evictPodsFromNode(nodeName string) {
+	podList, listErr := nc.getPodsForNode(context.Background(), nodeName)
+	if listErr != nil {
+		klog.Errorf("Failed to list pods for node %s: %v", nodeName, listErr)
+		return
+	}
+
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+
+		if !shouldEvictPod(pod) {
+			continue
+		}
+
+		// 使用 Eviction API 驱逐 Pod，尊重 PodDisruptionBudget
+		eviction := &policyv1.Eviction{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pod.Name,
+				Namespace: pod.Namespace,
+			},
+			DeleteOptions: &metav1.DeleteOptions{
+				// 不设置 GracePeriodSeconds，尊重 Pod 的 terminationGracePeriodSeconds
+			},
+		}
+
+		evictErr := nc.KubeClient.CoreV1().Pods(pod.Namespace).EvictV1(context.Background(), eviction)
+		if evictErr != nil {
+			klog.Warningf("Failed to evict pod %s/%s from node %s: %v",
+				pod.Namespace, pod.Name, nodeName, evictErr)
+		} else {
+			klog.Infof("Successfully evicted pod %s/%s from node %s",
+				pod.Namespace, pod.Name, nodeName)
+		}
+	}
+}
+
+// DrainNode 排空节点并禁止调度
+func (nc *NodeClient) DrainNode(ctx context.Context, nodeName, operator string) error {
+	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get node: %w", err)
+	}
+
+	// 确保 Annotations 不为 nil
+	if node.Annotations == nil {
+		node.Annotations = make(map[string]string)
+	}
+
+	// 1. 添加排空污点
+	drainedTaint := corev1.Taint{
+		Key:    "crater.raids.io/drained",
+		Value:  "true",
+		Effect: corev1.TaintEffectNoSchedule,
+	}
+
+	// 检查是否已存在排空污点
+	taintExists := false
+	for _, t := range node.Spec.Taints {
+		if t.Key == drainedTaint.Key && t.Effect == drainedTaint.Effect {
+			taintExists = true
+			break
+		}
+	}
+
+	if !taintExists {
+		node.Spec.Taints = append(node.Spec.Taints, drainedTaint)
+	}
+
+	// 2. 设置节点为不可调度
+	node.Spec.Unschedulable = true
+
+	// 3. 记录排空操作的原因和操作员
+	node.Annotations["crater.raids.io/drained-reason"] = "节点已排空"
+	if operator != "" {
+		node.Annotations["crater.raids.io/drained-operator"] = formatOperatorInfo(ctx, operator)
+	}
+
+	// 4. 更新节点
+	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update node: %w", err)
+	}
+
+	// 5. 异步驱逐节点上的所有 Pod
+	go nc.evictPodsFromNode(nodeName)
+
+	return nil
 }
