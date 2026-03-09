@@ -25,6 +25,8 @@ import BasicIframe from '@/components/layout/embed/basic-iframe'
 import { apiJobSnapshot } from '@/services/api/vcjob'
 import { queryJupyterToken } from '@/services/query/job'
 
+import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
+
 import FloatingBall from './-components/floating-ball'
 import { Refresh } from './webide.$name'
 
@@ -65,6 +67,9 @@ function Jupyter() {
   const [isDetailOpen, setIsDetailOpen] = useState(false)
 
   const { data: jupyterInfo } = useSuspenseQuery(queryJupyterToken(name ?? ''))
+
+  // 判断作业所在节点是否被禁止调度
+  const snapshotDisabled = useSnapshotDisabled(name)
 
   // Convert JupyterIcon SVG to favicon and set as page icon
   // set title to jupyter base url
@@ -146,6 +151,7 @@ function Jupyter() {
         }
         handleShowDetail={() => setIsDetailOpen(true)}
         handleSnapshot={() => setIsSnapshotOpen(true)}
+        snapshotDisabled={snapshotDisabled}
       />
       <LogDialog namespacedName={namespacedName} setNamespacedName={setNamespacedName} />
       <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>

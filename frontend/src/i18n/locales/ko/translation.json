@@ -398,6 +398,7 @@
   "floatingBall.tooltip.logDiagnosis": "로그 진단",
   "floatingBall.tooltip.operations": "작업",
   "floatingBall.tooltip.saveSnapshot": "스냅샷 저장",
+  "floatingBall.tooltip.snapshotDisabledReason": "노드 스케줄링이 비활성화되어 스냅샷을 저장할 수 없습니다",
   "folderNavigation.folderDescriptions.account": "계정 공유 공간으로, 계정 내 사용자만 접근할 수 있으며, 업로드 권한을 얻으려면 계정 관리자에게 문의하십시오.",
   "folderNavigation.folderDescriptions.public": "플랫폼의 모든 사용자가 접근할 수 있으며, 업로드 권한을 얻으려면 관리자에게 문의하십시오.",
   "folderNavigation.folderDescriptions.user": "개인 공간, 현재 사용자만 접근 가능하며, 완전한 읽기 및 쓰기 권한이 있습니다.",

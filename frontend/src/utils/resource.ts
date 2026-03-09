@@ -59,19 +59,19 @@ export const convertKResourceToResource = (key: string, value?: string): number 
 }
 
 export const betterResourceQuantity = (key: string, value?: number, withUnit?: boolean): string => {
-  // 保留整数部分，向下取整
+  // 保留整数部分，四舍五入
   if (value === undefined) {
     return ''
   }
 
   switch (key) {
     case 'cpu':
-      return withUnit ? `${Math.floor(value)}C` : `${Math.floor(value)}`
+      return withUnit ? `${Math.round(value)}C` : `${Math.round(value)}`
     case 'memory':
       if (value > 1024) {
-        return withUnit ? `${Math.floor(value / 1024)}Ti` : `${Math.floor(value / 1024)}`
+        return withUnit ? `${Math.round(value / 1024)}Ti` : `${Math.round(value / 1024)}`
       }
-      return withUnit ? `${Math.floor(value)}Gi` : `${Math.floor(value)}`
+      return withUnit ? `${Math.round(value)}Gi` : `${Math.round(value)}`
     default:
       return `${value}`
   }
