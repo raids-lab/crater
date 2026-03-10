@@ -23,13 +23,15 @@ import {
 } from "fumadocs-ui/page";
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
-import { getMDXComponents } from "@/mdx-components";
-import { SquarePenIcon } from "lucide-react";
+import {getMDXComponents} from "@/mdx-components";
+import {SquarePenIcon} from "lucide-react";
+import {setRequestLocale} from "next-intl/server";
 
 export default async function Page(props: {
   params: Promise<{ lang: string; slug?: string[] }>;
 }) {
   const params = await props.params;
+  setRequestLocale(params.lang);
   const page = source.getPage(params.slug, params.lang);
   if (!page) notFound();
 
@@ -66,9 +68,21 @@ export default async function Page(props: {
   );
 }
 
+import {locales} from "@/i18n/config";
+
 export async function generateStaticParams() {
-  const staticParams = source.generateParams();
-  return staticParams;
+  const params = source.generateParams();
+  return params.flatMap((p) => {
+    const lang = (p as { locale?: string; lang?: string }).locale || (p as { locale?: string; lang?: string }).lang;
+    if (lang) {
+      return [{ ...p, lang }];
+    }
+    // 如果 Fumadocs generateParams 没有包含语言信息，则为所有支持的语言生成参数
+    return locales.map((l) => ({
+      ...p,
+      lang: l,
+    }));
+  });
 }
 
 export async function generateMetadata(props: {

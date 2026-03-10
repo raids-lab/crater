@@ -245,5 +245,10 @@
     "noResults": "No results found",
     "poweredBy": "Search powered by ",
     "untitled": "Untitled"
+  },
+  "CraterChartVersionNotice": {
+    "message": "This version number is the Helm Chart configuration version, extracted from <link>Chart.yaml</link>, and must correspond to the Crater component image versions for the system to function correctly.",
+    "version": " (Current version: {version})",
+    "fallback": "Unable to obtain the version automatically. Please check <link>Chart.yaml</link> to ensure version consistency."
   }
 }

@@ -19,15 +19,17 @@ Crater 플랫폼은 Kubernetes 클러스터에 의존하여 작동하므로, 배
 
 ### GitHub Container Registry 에서 설치 (권장)
 
+<CraterChartVersionNotice />
+
 ```bash
 # Helm OCI 저장소 추가
 helm registry login ghcr.io
 
 # 차트 설치
-helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 
 # 기존 설치 업그레이드
-helm upgrade crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+helm upgrade crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 ```
 
 ### 소스에서 설치

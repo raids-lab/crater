@@ -25,6 +25,10 @@ import {routing} from '@/i18n/routing';
 import {setRequestLocale, getMessages} from 'next-intl/server';
 import { locales, localeNames } from '@/i18n/config';
 
+export function generateStaticParams() {
+  return locales.map((lang) => ({ lang }));
+}
+
 export default async function Layout({
   params,
   children,
