@@ -245,5 +245,10 @@
     "noResults": "未找到结果",
     "poweredBy": "搜索引擎: ",
     "untitled": "无标题"
+  },
+  "CraterChartVersionNotice": {
+    "message": "此版本号为 Helm Chart 配置版本，提取自 <link>Chart.yaml</link>，需与 Crater 相关组件镜像版本保持对应，系统才能正常工作。",
+    "version": "（当前版本：{version}）",
+    "fallback": "无法自动获取版本号，请查阅 <link>Chart.yaml</link> 以确保其与相关组件镜像版本保持对应。"
   }
 }

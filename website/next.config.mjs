@@ -16,6 +16,27 @@
 
 import { createMDX } from "fumadocs-mdx/next";
 import createNextIntlPlugin from 'next-intl/plugin';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function getChartVersion() {
+  const fromEnv = process.env.NEXT_PUBLIC_CRATER_CHART_VERSION;
+  if (fromEnv && fromEnv !== '<chart-version>') return fromEnv;
+  const chartPath = resolve(__dirname, '../charts/crater/Chart.yaml');
+  try {
+    if (!existsSync(chartPath)) return '<chart-version>';
+    const content = readFileSync(chartPath, 'utf8');
+    const match = content.match(/^version:\s*["']?([a-zA-Z0-9\.\-\+]+)/m);
+    return match ? match[1].trim() : '<chart-version>';
+  } catch {
+    return '<chart-version>';
+  }
+}
+
+const chartVersion = getChartVersion();
 
 const withMDX = createMDX();
 const withNextIntl = createNextIntlPlugin();
@@ -28,6 +49,9 @@ const config = {
   trailingSlash: true,
   images: {
     unoptimized: true,
+  },
+  env: {
+    NEXT_PUBLIC_CRATER_CHART_VERSION: chartVersion,
   },
 };
 

@@ -384,8 +384,10 @@ http://<your-node-ip>:30002
 
 拉取 Chart：
 
+<CraterChartVersionNotice />
+
 ```bash
-helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+helm pull oci://ghcr.io/raids-lab/crater --version <chart-version> --untar
 ```
 
 Crater 平台的核心配置文件为 `values.yaml`。  
@@ -574,7 +576,7 @@ backendConfig:
 
 ```bash
 helm install crater oci://ghcr.io/raids-lab/crater \
-  --version 0.1.0 \
+  --version <chart-version> \
   -n crater-system \
   -f values.yaml
 ```

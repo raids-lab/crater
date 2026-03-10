@@ -245,5 +245,10 @@
     "noResults": "結果が見つかりませんでした",
     "poweredBy": "検索エンジン: ",
     "untitled": "タイトルなし"
+  },
+  "CraterChartVersionNotice": {
+    "message": "このバージョン番号は Helm Chart の設定バージョンであり、<link>Chart.yaml</link> から抽出されたものです。システムが正常に動作するには、Crater 関連コンポーネントのイメージバージョンと一致する必要があります。",
+    "version": "（現在のバージョン：{version}）",
+    "fallback": "バージョン番号を自動的に取得できません。バージョンの一致を確認するには、<link>Chart.yaml</link> を参照してください。"
   }
 }

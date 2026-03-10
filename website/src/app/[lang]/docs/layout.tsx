@@ -19,6 +19,11 @@ import { source } from "@/lib/source";
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { baseOptions } from "@/app/layout.config";
 import {getTranslations, setRequestLocale} from 'next-intl/server';
+import { locales } from '@/i18n/config';
+
+export function generateStaticParams() {
+  return locales.map((lang) => ({ lang }));
+}
 
 export default async function Layout({
   params,
