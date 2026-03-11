@@ -18,26 +18,7 @@ import { toast } from 'sonner'
 
 import { IErrorResponse } from '@/services/types'
 
-const markToastHandled = (error: unknown) => {
-  if (!error || typeof error !== 'object') {
-    return
-  }
-
-  const handledError = error as {
-    isHandledByBiz?: boolean
-    fallbackLogTimer?: ReturnType<typeof setTimeout>
-  }
-  handledError.isHandledByBiz = true
-
-  if (handledError.fallbackLogTimer) {
-    clearTimeout(handledError.fallbackLogTimer)
-    handledError.fallbackLogTimer = undefined
-  }
-}
-
 export const showErrorToast = (error: unknown) => {
-  markToastHandled(error)
-
   // 1. Handle AxiosError (for backward compatibility with axios-based code)
   if (isAxiosError(error)) {
     if (error.response?.data) {

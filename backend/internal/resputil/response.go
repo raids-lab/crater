@@ -4,61 +4,52 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
-	"github.com/raids-lab/crater/internal/bizerr"
 )
 
-// Response 用于 swagger 生成文档
+// Used by swagger to generate documentation
 type Response[T any] struct {
-	Code    bizerr.BizCode `json:"code"` // 依然保持 int (ErrorCode) 类型
-	Data    T              `json:"data"`
-	Message string         `json:"msg"`
+	Code    ErrorCode `json:"code"`
+	Data    T         `json:"data"`
+	Message string    `json:"msg"`
 }
 
-// emit 内部统一发送方法，接收基础 ErrorCode
-func emit(c *gin.Context, httpCode int, bizCode bizerr.BizCode, msg string, data any) {
-	c.JSON(httpCode, Response[any]{
-		Code:    bizCode,
-		Data:    data,
-		Message: msg,
+// wrapResponse wraps the response data and sends it back to the client.
+// It takes in a Gin context, a message string, data any, and an ErrorCode.
+// The function sets the appropriate HTTP status code based on the ErrorCode.
+// It then serializes the response data into JSON format and sends it back to the client.
+func wrapResponse(c *gin.Context, msg string, data any, code ErrorCode) {
+	httpCode := http.StatusOK
+	if code != OK {
+		httpCode = http.StatusInternalServerError
+	}
+	c.JSON(httpCode, gin.H{
+		"code": code,
+		"data": data,
+		"msg":  msg,
 	})
 }
 
-const OK bizerr.BizCode = 0
-
-// Success 200 OK - 常规查询、修改成功
+// Success sends a successful response to the client with the provided data.
+// It wraps the response using the wrapResponse function and sets the HTTP status code to OK.
 func Success(c *gin.Context, data any) {
-	emit(c, http.StatusOK, OK, "success", data)
+	wrapResponse(c, "", data, OK)
 }
 
-func respond(c *gin.Context, httpCode int, bErr *bizerr.BizError) {
-	emit(c, httpCode, bErr.Code, bErr.Message, nil)
+// Error sends an error response to the client with the specified message and error code.
+func Error(c *gin.Context, msg string, errorCode ErrorCode) {
+	wrapResponse(c, msg, nil, errorCode)
 }
 
-// =============================================================================
-// 兼容旧版本 / 逃生舱
-// =============================================================================
-
-type AnyErrorCode interface {
-	~int
-}
-
-// Deprecated: 请使用 HandleError 方法配合 bizerr 包的错误类型来处理错误响应
-func Error[T AnyErrorCode](c *gin.Context, msg string, errorCode T) {
-	// 统一转为 500 处理，并将泛型 T 强转回 ErrorCode
-	emit(c, http.StatusInternalServerError, bizerr.BizCode(errorCode), msg, nil)
-}
-
-// Deprecated: 请使用 HandleError 方法配合 bizerr 包的错误类型来处理错误响应
-func HTTPError[T AnyErrorCode](c *gin.Context, httpCode int, err string, errorCode T) {
-	emit(c, httpCode, bizerr.BizCode(errorCode), err, nil)
-}
-
-// Deprecated: 请使用 HandleError 方法配合 bizerr 包的错误类型来处理错误响应
-func BadRequestError(c *gin.Context, err string) {
-	// 这里硬编码使用 InvalidRequest，因为它已经是 BizCode400 了
-	respond(c, http.StatusBadRequest, &bizerr.BizError{
-		Code:    InvalidRequest,
-		Message: err,
+// HTTPError sends an HTTP error response with the specified HTTP code, error message, and error code.
+func HTTPError(c *gin.Context, httpCode int, err string, errorCode ErrorCode) {
+	c.JSON(httpCode, gin.H{
+		"code": errorCode,
+		"data": nil,
+		"msg":  err,
 	})
+}
+
+// 用于 Gin ShouldBindJSON、ShouldBindQuery 等绑定参数失败时返回错误
+func BadRequestError(c *gin.Context, err string) {
+	HTTPError(c, http.StatusBadRequest, err, InvalidRequest)
 }

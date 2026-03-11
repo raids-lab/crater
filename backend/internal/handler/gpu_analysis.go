@@ -19,7 +19,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/config" // 需要引入 config 获取 namespace
@@ -80,8 +79,9 @@ type TriggerAnalysisReq struct {
 // @Failure		500		{object}	resputil.Response[any] "分析过程中发生错误"
 // @Router			/v1/admin/gpu-analysis/trigger [post]
 func (mgr *GpuAnalysisMgr) TriggerPodAnalysis(c *gin.Context) {
+	// 【修改】使用 BusinessLogicError，以便前端组件捕获并显示“功能未开启”的引导提示，而非全局报错
 	if !mgr.configService.IsGpuAnalysisEnabled(c.Request.Context()) {
-		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("GPU Analysis feature is currently disabled."))
+		resputil.Error(c, "GPU Analysis feature is currently disabled.", resputil.BusinessLogicError)
 		return
 	}
 
@@ -213,8 +213,9 @@ type TriggerJobAnalysisReq struct {
 // @Failure		500		{object}	resputil.Response[any] "分析过程中发生错误"
 // @Router			/v1/admin/gpu-analysis/trigger/job [post]
 func (mgr *GpuAnalysisMgr) TriggerJobAnalysis(c *gin.Context) {
+	// 【修改】使用 BusinessLogicError
 	if !mgr.configService.IsGpuAnalysisEnabled(c.Request.Context()) {
-		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("GPU Analysis feature is currently disabled."))
+		resputil.Error(c, "GPU Analysis feature is currently disabled.", resputil.BusinessLogicError)
 		return
 	}
 
@@ -249,8 +250,9 @@ type TriggerAllJobsAnalysisResponse struct {
 // @Failure		500		{object}	resputil.Response[any] "服务器错误或队列已满"
 // @Router			/v1/admin/gpu-analysis/trigger/all-jobs [post]
 func (mgr *GpuAnalysisMgr) TriggerAllJobsAnalysis(c *gin.Context) {
+	// 【修改】使用 BusinessLogicError
 	if !mgr.configService.IsGpuAnalysisEnabled(c.Request.Context()) {
-		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("GPU Analysis feature is currently disabled."))
+		resputil.Error(c, "GPU Analysis feature is currently disabled.", resputil.BusinessLogicError)
 		return
 	}
 

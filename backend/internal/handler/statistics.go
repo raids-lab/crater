@@ -6,7 +6,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
@@ -57,14 +56,14 @@ func (mgr *StatisticsMgr) GetStatistics(c *gin.Context) {
 	var req payload.StatisticsReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		klog.Errorf("bind query params failed: %v", err)
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid query parameters"))
+		resputil.Error(c, "invalid query parameters", resputil.NotSpecified)
 		return
 	}
 
 	// 1. 获取当前用户身份
 	token := util.GetToken(c)
 	if token.UserID == 0 {
-		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("unauthorized"))
+		resputil.Error(c, "unauthorized", resputil.NotSpecified)
 		return
 	}
 	ua := query.UserAccount
@@ -74,13 +73,13 @@ func (mgr *StatisticsMgr) GetStatistics(c *gin.Context) {
 	case payload.ScopeCluster:
 		// 只有管理员可以查询集群维度
 		if token.RolePlatform != model.RoleAdmin {
-			resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied: cluster scope requires the admin role"))
+			resputil.Error(c, "permission denied: cluster scope requires admin role", resputil.NotSpecified)
 			return
 		}
 
 	case payload.ScopeAccount:
 		if req.TargetID == 0 {
-			resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("targetID is required for account scope"))
+			resputil.Error(c, "targetID is required for account scope", resputil.NotSpecified)
 			return
 		}
 
@@ -99,30 +98,30 @@ func (mgr *StatisticsMgr) GetStatistics(c *gin.Context) {
 
 		if err != nil {
 			klog.Errorf("query user account permission failed: %v", err)
-			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "query user account permission failed"))
+			resputil.Error(c, "internal server error", resputil.NotSpecified)
 			return
 		}
 
 		if count == 0 {
-			resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied: you are not the admin of this account"))
+			resputil.Error(c, "permission denied: you are not the admin of this account", resputil.NotSpecified)
 			return
 		}
 
 	case payload.ScopeUser:
 		// 所有用户可互相查询
 		if req.TargetID == 0 {
-			resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("targetID is required for user scope"))
+			resputil.Error(c, "targetID is required for user scope", resputil.NotSpecified)
 			return
 		}
 
 	default:
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("invalid scope value"))
+		resputil.Error(c, "invalid scope value", resputil.NotSpecified)
 		return
 	}
 
 	// 3. 校验时间范围
 	if req.EndTime.Before(req.StartTime) {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("endTime must be after startTime"))
+		resputil.Error(c, "endTime must be after startTime", resputil.NotSpecified)
 		return
 	}
 	// 限制查询跨度，防止数据库压力过大（例如最大一年）
@@ -135,7 +134,7 @@ func (mgr *StatisticsMgr) GetStatistics(c *gin.Context) {
 	resp, err := service.Statistics.GetResourceStatistics(c.Request.Context(), &req)
 	if err != nil {
 		klog.Errorf("get resource statistics failed: %v", err)
-		resputil.HandleError(c, err)
+		resputil.Error(c, "internal server error", resputil.NotSpecified)
 		return
 	}
 

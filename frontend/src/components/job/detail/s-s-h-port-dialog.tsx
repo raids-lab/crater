@@ -32,9 +32,8 @@ import LoadableButton from '@/components/button/loadable-button'
 import { CopyableCommand } from '@/components/codeblock/copyable-command'
 
 import { SSHInfo, apiOpenSSH } from '@/services/api/vcjob'
-import { getErrorCode, markApiErrorHandled } from '@/services/client'
+import { getErrorCode } from '@/services/client'
 import { ERROR_SERVICE_SSHD_NOT_FOUND } from '@/services/error_code'
-import { LEGACY_ERROR_SERVICE_SSHD_NOT_FOUND } from '@/services/error_code_legacy'
 
 interface SSHPortDialogProps {
   jobName: string
@@ -67,11 +66,7 @@ export function SSHPortDialog({
     },
     onError: async (error) => {
       const [errorCode] = await getErrorCode(error)
-      if (
-        errorCode === ERROR_SERVICE_SSHD_NOT_FOUND ||
-        errorCode === LEGACY_ERROR_SERVICE_SSHD_NOT_FOUND
-      ) {
-        markApiErrorHandled(error)
+      if (errorCode === ERROR_SERVICE_SSHD_NOT_FOUND) {
         toast.error(<div className="flex flex-row items-center">未检测到 SSHD 服务</div>)
       }
     },

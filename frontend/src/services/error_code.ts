@@ -3,74 +3,20 @@
 
 export type ErrorCode = number
 
-export const BAD_REQUEST_ERROR_GROUP: ErrorCode = 400
-export const AUTH_ERROR_GROUP: ErrorCode = 401
-export const FORBIDDEN_ERROR_GROUP: ErrorCode = 403
-export const NOT_FOUND_ERROR_GROUP: ErrorCode = 404
-export const METHOD_NOT_ALLOWED_ERROR_GROUP: ErrorCode = 405
-export const CONFLICT_ERROR_GROUP: ErrorCode = 409
-export const PAYLOAD_TOO_LARGE_ERROR_GROUP: ErrorCode = 413
-export const RATE_LIMIT_ERROR_GROUP: ErrorCode = 429
-export const INTERNAL_ERROR_GROUP: ErrorCode = 500
-export const BAD_GATEWAY_ERROR_GROUP: ErrorCode = 502
-export const SERVICE_UNAVAILABLE_ERROR_GROUP: ErrorCode = 503
-export const GATEWAY_TIMEOUT_ERROR_GROUP: ErrorCode = 504
-
 export const OK: ErrorCode = 0
-// 400xx - Bad Request
 export const ERROR_INVALID_REQUEST: ErrorCode = 40001
-export const ERROR_PARAMETER_ERROR: ErrorCode = 40002
-export const ERROR_MISSING_PARAMETER: ErrorCode = 40003
-
-// 401xx - Auth
+export const ERROR_BUSINESS_LOGIC_ERROR: ErrorCode = 40002
 export const ERROR_TOKEN_EXPIRED: ErrorCode = 40101
 export const ERROR_TOKEN_INVALID: ErrorCode = 40102
-export const ERROR_MUST_REGISTER: ErrorCode = 40103
-export const ERROR_REGISTER_TIMEOUT: ErrorCode = 40104
-export const ERROR_REGISTER_NOT_FOUND: ErrorCode = 40105
-export const ERROR_INVALID_CREDENTIALS: ErrorCode = 40106
-export const ERROR_ACCOUNT_LOCKED: ErrorCode = 40107
-export const ERROR_MFA_REQUIRED: ErrorCode = 40108
-
-// 403xx - Forbidden
-export const ERROR_PERMISSION_DENIED: ErrorCode = 40301
+export const ERROR_INVALID_CREDENTIALS: ErrorCode = 40111
+export const ERROR_LDAP_ERROR: ErrorCode = 40112
+export const ERROR_LDAP_USER_NOT_FOUND: ErrorCode = 40113
+export const ERROR_LEGACY_TOKEN_NOT_SUPPORTED: ErrorCode = 40114
+export const ERROR_MUST_REGISTER: ErrorCode = 40121
+export const ERROR_UID_SERVICE_ERROR: ErrorCode = 40122
+export const ERROR_UID_NOT_FOUND: ErrorCode = 40123
+export const ERROR_USER_NOT_ALLOWED: ErrorCode = 40301
 export const ERROR_USER_EMAIL_NOT_VERIFIED: ErrorCode = 40302
-
-// 404xx - Not Found
-export const ERROR_DATA_BASE_NOT_FOUND: ErrorCode = 40401
-export const ERROR_SERVICE_SSHD_NOT_FOUND: ErrorCode = 40402
-export const ERROR_K8S_RESOURCE_NOT_FOUND: ErrorCode = 40403
-
-// 405xx - Method Not Allowed
-export const ERROR_METHOD_NOT_ALLOWED: ErrorCode = 40501
-
-// 409xx - Conflict
-export const ERROR_RESOURCE_ALREADY_EXISTS: ErrorCode = 40901
-export const ERROR_RESOURCE_STATUS_ERROR: ErrorCode = 40902
-export const ERROR_DUPLICATE_OPERATION: ErrorCode = 40903
-export const ERROR_DEPENDENCY_CONFLICT: ErrorCode = 40904
-
-// 413xx - Payload Too Large
-export const ERROR_PAYLOAD_TOO_LARGE: ErrorCode = 41301
-
-// 429xx - Rate Limit
-export const ERROR_TOO_MANY_REQUESTS: ErrorCode = 42901
-
-// 500xx - Internal
+export const ERROR_SERVICE_SSHD_NOT_FOUND: ErrorCode = 40401
 export const ERROR_SERVICE_ERROR: ErrorCode = 50001
-export const ERROR_DATABASE_ERROR: ErrorCode = 50002
-export const ERROR_CACHE_ERROR: ErrorCode = 50003
-export const ERROR_THIRD_PARTY_API_ERROR: ErrorCode = 50004
-export const ERROR_FILE_SYSTEM_ERROR: ErrorCode = 50005
-export const ERROR_K8S_SERVICE_ERROR: ErrorCode = 50006
-export const ERROR_INTERNAL_PANIC: ErrorCode = 50007
-export const ERROR_VOLCANO_SERVICE_ERROR: ErrorCode = 50008
-
-// 502xx - Bad Gateway
-export const ERROR_BAD_GATEWAY: ErrorCode = 50201
-
-// 503xx - Service Unavailable
-export const ERROR_SERVICE_UNAVAILABLE: ErrorCode = 50301
-
-// 504xx - Gateway Timeout
-export const ERROR_GATEWAY_TIMEOUT: ErrorCode = 50401
+export const ERROR_NOT_SPECIFIED: ErrorCode = 99999
