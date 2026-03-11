@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
@@ -18,6 +20,8 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	commonerr "github.com/raids-lab/crater/internal/bizerr/common"
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
@@ -28,8 +32,6 @@ import (
 const (
 	// maxUint8Value is the maximum value for uint8 type
 	maxUint8Value = 255
-	// httpStatusForbidden is HTTP 403 Forbidden status code
-	httpStatusForbidden = 403
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -50,6 +52,59 @@ func NewAccountMgr(conf *RegisterConfig) Manager {
 }
 
 func (mgr *AccountMgr) GetName() string { return mgr.name }
+
+func raiseAccountNotFoundByID(err error, accountID uint) error {
+	return commonerr.RaiseGormError(
+		err,
+		fmt.Sprintf("account not found: account ID %d does not exist", accountID),
+		"failed to get account by ID",
+	)
+}
+
+func raiseAccountNotFoundByName(err error, accountName string) error {
+	return commonerr.RaiseGormError(
+		err,
+		fmt.Sprintf("account not found: account name '%s' does not exist", accountName),
+		"failed to get account by name",
+	)
+}
+
+func raiseUserAccountLookupError(err error, userID, accountID uint) error {
+	return commonerr.RaiseGormError(
+		err,
+		fmt.Sprintf("failed to get user-account relationship for user %d in account %d", userID, accountID),
+		"failed to get user-account relationship",
+	)
+}
+
+func raiseUserAccountCreateError(err error, userID, accountID uint) error {
+	return commonerr.RaiseGormError(
+		err,
+		fmt.Sprintf("failed to create user-account relationship for user %d in account %d", userID, accountID),
+		"failed to create user-account relationship",
+	)
+}
+
+func raiseUserNotInAccountError(err error, userID, accountID uint) error {
+	return commonerr.RaiseGormError(
+		err,
+		fmt.Sprintf("user %d is not in account %d", userID, accountID),
+		"failed to get user-account relationship",
+	)
+}
+
+func defaultAccountRoleConflict(userID, accountID uint) error {
+	return bizerr.Conflict.ResourceStatusError.New(
+		fmt.Sprintf("cannot modify role for user %d in default account (account ID: %d)", userID, accountID),
+	)
+}
+
+func wrapUserVolcanoQueueError(err error, action string, userID, accountID uint) error {
+	return bizerr.Internal.VolcanoServiceError.Wrap(
+		err,
+		fmt.Sprintf("failed to %s volcano queue for user %d in account %d", action, userID, accountID),
+	)
+}
 
 func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {
 
@@ -115,7 +170,7 @@ func (mgr *AccountMgr) UserListAccounts(c *gin.Context) {
 	err := ua.WithContext(c).Where(ua.UserID.Eq(token.UserID)).Select(a.Name, a.Nickname, ua.Role, ua.AccessMode, a.ExpiredAt).
 		Join(a, a.ID.EqCol(ua.AccountID)).Order(a.ID.Desc()).Scan(&projects)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to list accounts for user"))
 		return
 	}
 
@@ -160,7 +215,7 @@ func (mgr *AccountMgr) AdminListAccounts(c *gin.Context) {
 
 	queues, err := q.WithContext(c).Order(q.ID.Asc()).Find()
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to list all accounts"))
 		return
 	}
 
@@ -202,14 +257,15 @@ type AccountIDReq struct {
 func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
 	var uriReq AccountIDReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 	q := query.Account
 	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
 
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("account not found: account ID %d does not exist", uriReq.ID), resputil.NotSpecified)
+		err = raiseAccountNotFoundByID(err, uriReq.ID)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -247,14 +303,15 @@ type AccountNameReq struct {
 func (mgr *AccountMgr) GetAccountByName(c *gin.Context) {
 	var uriReq AccountNameReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 	q := query.Account
 	queue, err := q.WithContext(c).Where(q.Name.Eq(uriReq.Name)).First()
 
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("account not found: account name '%s' does not exist", uriReq.Name), resputil.NotSpecified)
+		err = raiseAccountNotFoundByName(err, uriReq.Name)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -274,14 +331,15 @@ func (mgr *AccountMgr) GetAccountByName(c *gin.Context) {
 func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 	var uriReq AccountIDReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	a := query.Account
 	account, err := a.WithContext(c).Where(a.ID.Eq(uriReq.ID)).First()
 	if err != nil {
-		resputil.Error(c, "Account not found", resputil.NotSpecified)
+		err = raiseAccountNotFoundByID(err, uriReq.ID)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -291,7 +349,12 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 		Name:      account.Name,
 		Namespace: config.GetConfig().Namespaces.Job,
 	}, &queue); err != nil {
-		resputil.Error(c, "Queue not found", resputil.NotSpecified)
+		if client.IgnoreNotFound(err) == nil {
+			err = bizerr.NotFound.K8sResourceNotFound.New(fmt.Sprintf("vc queue not found: %s", account.Name))
+		} else {
+			err = bizerr.Internal.K8sServiceError.Wrap(err, "failed to get vc queue for account")
+		}
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -423,12 +486,12 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 
 	var req AccountCreateOrUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
 		return
 	}
 
 	if len(req.Admins) == 0 {
-		resputil.Error(c, "Admins is empty", resputil.InvalidRequest)
+		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("Admins is required"))
 		return
 	}
 
@@ -447,7 +510,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 			Nickname: req.Nickname,
 		}
 		if err := q.WithContext(c).Create(&queue); err != nil {
-			return err
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to create queue")
 		}
 		queueID = queue.ID
 		// Create a space for the project, folder path is generated by uuid
@@ -463,7 +526,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 			queue.ExpiredAt = &req.ExpiredAt
 		}
 		if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(&queue); err != nil {
-			return err
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to update queue")
 		}
 
 		toCreateQueueNames := make([]string, 0)
@@ -484,7 +547,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 				AccessMode: model.AccessModeRW,
 			}
 			if err := uq.WithContext(c).Create(&userQueue); err != nil {
-				return err
+				return bizerr.Internal.DatabaseError.Wrap(err, "failed to create user-account relationship")
 			}
 			if !req.WithoutVolcano {
 				queueName := vcqueue.GetUserQueueName(queue.ID, adminID)
@@ -499,7 +562,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 			parentQueueName := parentQueueNames[i]
 			quota := queueQuotas[i]
 			if err := vcqueue.CreateQueue(c, mgr.client, token, queueName, parentQueueName, quota); err != nil {
-				return err
+				return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to create Volcano queue")
 			}
 			createdQueueNames = append(createdQueueNames, queueName)
 		}
@@ -511,7 +574,7 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 		for _, queueName := range createdQueueNames {
 			_ = vcqueue.DeleteQueue(c, mgr.client, queueName)
 		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	} else {
 		resputil.Success(c, ProjectCreateResp{ID: queueID})
@@ -537,19 +600,18 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 	var uriReq AccountIDReq
 	var queueName string
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid account ID parameter: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid account ID parameter"))
 		return
 	}
 	token := util.GetToken(c)
 	err := query.Q.Transaction(func(tx *query.Query) error {
 		queue, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(uriReq.ID)).First()
 		if err != nil {
-			resputil.Error(c, fmt.Sprintf("account not found: account ID %d does not exist", uriReq.ID), resputil.NotSpecified)
-			return err
+			return raiseAccountNotFoundByID(err, uriReq.ID)
 		}
 		queueName = queue.Name
 
@@ -564,8 +626,7 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 		}
 		queue.Nickname = req.Nickname
 		if _, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(queue.ID)).Updates(queue); err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to update account %d: %v", queue.ID, err), resputil.NotSpecified)
-			return err
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to update account")
 		}
 
 		// update queue
@@ -583,13 +644,12 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 		}
 		queueName := vcqueue.GetAccountLogicQueueName(queue.ID)
 		if err := vcqueue.UpdateQueue(c, mgr.client, queueName, quota); err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to update Volcano queue for account %d: %v", queue.ID, err), resputil.NotSpecified)
-			return err
+			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to update Volcano queue for account")
 		}
 		return nil
 	})
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -620,7 +680,7 @@ type DeleteProjectResp struct {
 func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	var req DeleteProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid account ID parameter: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid account ID parameter"))
 		return
 	}
 
@@ -633,7 +693,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	// get user-queues relationship without quota limit
 
 	if userQueues, err := uq.WithContext(c).Where(uq.AccountID.Eq(queueID)).Find(); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to get user-account relationships"))
 		return
 	} else if len(userQueues) > 0 {
 		msg := fmt.Sprintf(
@@ -641,7 +701,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 			queueID,
 			len(userQueues),
 		)
-		resputil.Error(c, msg, resputil.InvalidRequest)
+		resputil.HandleError(c, bizerr.Conflict.DependencyConflict.New(msg))
 		return
 	}
 
@@ -654,7 +714,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 		// get queue in db
 		queue, err := q.WithContext(c).Where(q.ID.Eq(queueID)).First()
 		if err != nil {
-			return err
+			return raiseAccountNotFoundByID(err, queueID)
 		}
 		accountName = queue.Name
 		toDeleteQueues := make([]string, 0)
@@ -662,7 +722,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 		// get user-queues relationship without quota limit
 		userQueues, err := uq.WithContext(c).Where(uq.AccountID.Eq(queue.ID)).Find()
 		if err != nil {
-			return err
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to get user-account relationships")
 		}
 
 		if len(userQueues) > 0 {
@@ -671,12 +731,12 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 				toDeleteQueues = append(toDeleteQueues, queueName)
 			}
 			if _, err := uq.WithContext(c).Delete(userQueues...); err != nil {
-				return err
+				return bizerr.Internal.DatabaseError.Wrap(err, "failed to delete user-account relationships")
 			}
 		}
 
 		if _, err := q.WithContext(c).Delete(queue); err != nil {
-			return err
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to delete account")
 		}
 		toDeleteQueues = append(toDeleteQueues, vcqueue.GetAccountQueueName(queue.Name), vcqueue.GetAccountLogicQueueName(queue.ID))
 
@@ -690,7 +750,7 @@ func (mgr *AccountMgr) DeleteAccount(c *gin.Context) {
 	})
 
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	} else {
 		resputil.Success(c, DeleteProjectResp{Name: accountName})
@@ -725,47 +785,45 @@ type (
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/admin/projects/add/{aid}/{uid} [post]
-//
-//nolint:dupl // AdminAddAccountMember and AdminUpdateAccountMember have similar structure but different business logic
 func (mgr *AccountMgr) AdminAddAccountMember(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	queue, err := mgr.validateAccount(c, req.QueueID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	user, err := mgr.validateUser(c, req.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	var reqBody UpdateUserProjectReq
 	if err = c.ShouldBindJSON(&reqBody); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	role, err := mgr.parseAndValidateRole(reqBody.Role)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	accessMode, err := mgr.parseAndValidateAccessMode(reqBody.AccessMode)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.createUserAccount(c, req.QueueID, req.UserID, role, accessMode, reqBody.Quota); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -787,47 +845,45 @@ func (mgr *AccountMgr) AdminAddAccountMember(c *gin.Context) {
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/admin/projects/update/{aid}/{uid} [post]
-//
-//nolint:dupl // AdminUpdateAccountMember and AdminAddAccountMember have similar structure but different business logic
 func (mgr *AccountMgr) AdminUpdateAccountMember(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	queue, err := mgr.validateAccount(c, req.QueueID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	user, err := mgr.validateUser(c, req.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	var reqBody UpdateUserProjectReq
 	if err = c.ShouldBindJSON(&reqBody); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	role, err := mgr.parseAndValidateRole(reqBody.Role)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	accessMode, err := mgr.parseAndValidateAccessMode(reqBody.AccessMode)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.updateUserAccount(c, req.QueueID, req.UserID, role, accessMode, reqBody.Quota); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -865,19 +921,19 @@ type UserProjectGetResp struct {
 func (mgr *AccountMgr) AdminListAccountMembers(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	_, err := mgr.validateAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	resp, err := mgr.getUsersInAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -918,22 +974,22 @@ func (mgr *AccountMgr) AdminUpdateAccountMemberPartial(c *gin.Context) {
 	uriReq := PutUserInProjectUriReq{}
 	req := &PutUserInProjectReq{}
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request"))
 		return
 	}
 
 	_, err := mgr.validateAccount(c, uriReq.AccountId)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.putUserInAccount(c, uriReq.AccountId, req.UserId, req.Role, req.AccessMode, req.Quota); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -948,7 +1004,7 @@ func (mgr *AccountMgr) AdminUpdateAccountMemberPartial(c *gin.Context) {
 func checkResource(_ *gin.Context, ls v1.ResourceList) error {
 	for k, v := range ls {
 		if i, ok := v.AsInt64(); ok && i < 0 {
-			return fmt.Errorf("resource %s invalid, is %d", k, i)
+			return bizerr.BadRequest.ParameterError.New(fmt.Sprintf("resource %s invalid, is %d", k, i))
 		}
 	}
 	return nil
@@ -972,19 +1028,19 @@ func checkResource(_ *gin.Context, ls v1.ResourceList) error {
 func (mgr *AccountMgr) AdminListUsersOutOfAccount(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	_, err := mgr.validateAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	resp, err := mgr.getUsersOutOfAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1008,24 +1064,24 @@ func (mgr *AccountMgr) AdminListUsersOutOfAccount(c *gin.Context) {
 func (mgr *AccountMgr) AdminRemoveAccountMember(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	queue, err := mgr.validateAccount(c, req.QueueID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	user, err := mgr.validateUser(c, req.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.deleteUserAccount(c, req.QueueID, req.UserID); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1039,7 +1095,8 @@ func (mgr *AccountMgr) validateAccount(c *gin.Context, accountID uint) (*model.A
 	q := query.Account
 	account, err := q.WithContext(c).Where(q.ID.Eq(accountID)).First()
 	if err != nil {
-		return nil, fmt.Errorf("account not found: account ID %d does not exist", accountID)
+		err = raiseAccountNotFoundByID(err, accountID)
+		return nil, err
 	}
 	return account, nil
 }
@@ -1049,7 +1106,8 @@ func (mgr *AccountMgr) validateUser(c *gin.Context, userID uint) (*model.User, e
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
 	if err != nil {
-		return nil, fmt.Errorf("user not found: user ID %d does not exist", userID)
+		err = commonerr.RaiseGormError(err, fmt.Sprintf("user not found: user ID %d does not exist", userID), "failed to get user by ID")
+		return nil, err
 	}
 	return user, nil
 }
@@ -1057,8 +1115,8 @@ func (mgr *AccountMgr) validateUser(c *gin.Context, userID uint) (*model.User, e
 // validateRole validates if role value is valid
 func (mgr *AccountMgr) validateRole(role uint64) error {
 	if role < uint64(model.RoleGuest) || role > uint64(model.RoleAdmin) {
-		return fmt.Errorf("invalid role value: %d, valid values are %d (guest), %d (user), %d (admin)",
-			role, model.RoleGuest, model.RoleUser, model.RoleAdmin)
+		return bizerr.BadRequest.ParameterError.New(fmt.Sprintf("invalid role value: %d, valid values are %d (guest), %d (user), %d (admin)",
+			role, model.RoleGuest, model.RoleUser, model.RoleAdmin))
 	}
 	return nil
 }
@@ -1068,8 +1126,14 @@ func (mgr *AccountMgr) validateRole(role uint64) error {
 // NA (not-allowed) and AO (append-only) modes are not exposed in the UI.
 func (mgr *AccountMgr) validateAccessMode(accessMode uint64) error {
 	if accessMode != uint64(model.AccessModeRO) && accessMode != uint64(model.AccessModeRW) {
-		return fmt.Errorf("invalid access mode value: %d, valid values are %d (RO - read-only), %d (RW - read-write)",
-			accessMode, model.AccessModeRO, model.AccessModeRW)
+		return bizerr.BadRequest.ParameterError.New(
+			fmt.Sprintf(
+				"invalid access mode value: %d, valid values are %d (RO - read-only), %d (RW - read-write)",
+				accessMode,
+				model.AccessModeRO,
+				model.AccessModeRW,
+			),
+		)
 	}
 	return nil
 }
@@ -1078,14 +1142,14 @@ func (mgr *AccountMgr) validateAccessMode(accessMode uint64) error {
 func (mgr *AccountMgr) parseAndValidateRole(roleStr string) (model.Role, error) {
 	role, err := strconv.ParseUint(roleStr, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid role parameter: %w", err)
+		return 0, bizerr.BadRequest.InvalidRequest.New(fmt.Sprintf("invalid role parameter: %v", err))
 	}
 	if err := mgr.validateRole(role); err != nil {
 		return 0, err
 	}
 	// Check for uint8 overflow
 	if role > maxUint8Value {
-		return 0, fmt.Errorf("role value %d exceeds uint8 range", role)
+		return 0, bizerr.BadRequest.InvalidRequest.New(fmt.Sprintf("role value %d exceeds uint8 range", role))
 	}
 	return model.Role(role), nil
 }
@@ -1094,14 +1158,14 @@ func (mgr *AccountMgr) parseAndValidateRole(roleStr string) (model.Role, error) 
 func (mgr *AccountMgr) parseAndValidateAccessMode(accessStr string) (model.AccessMode, error) {
 	access, err := strconv.ParseUint(accessStr, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid access mode parameter: %w", err)
+		return 0, bizerr.BadRequest.InvalidRequest.New(fmt.Sprintf("invalid access mode parameter: %v", err))
 	}
 	if err := mgr.validateAccessMode(access); err != nil {
 		return 0, err
 	}
 	// Check for uint8 overflow
 	if access > maxUint8Value {
-		return 0, fmt.Errorf("access mode value %d exceeds uint8 range", access)
+		return 0, bizerr.BadRequest.InvalidRequest.New(fmt.Sprintf("access mode value %d exceeds uint8 range", access))
 	}
 	return model.AccessMode(access), nil
 }
@@ -1111,10 +1175,10 @@ func (mgr *AccountMgr) checkAccountAdmin(c *gin.Context, userID, accountID uint)
 	uq := query.UserAccount
 	userAccount, err := uq.WithContext(c).Where(uq.UserID.Eq(userID), uq.AccountID.Eq(accountID)).First()
 	if err != nil {
-		return fmt.Errorf("user %d is not in account %d", userID, accountID)
+		return raiseUserAccountLookupError(err, userID, accountID)
 	}
 	if userAccount.Role != model.RoleAdmin {
-		return fmt.Errorf("user %d is not an admin of account %d", userID, accountID)
+		return bizerr.Forbidden.PermissionDenied.New(fmt.Sprintf("user %d is not an admin of account %d", userID, accountID))
 	}
 	return nil
 }
@@ -1124,7 +1188,7 @@ func (mgr *AccountMgr) checkUserInAccount(c *gin.Context, userID, accountID uint
 	uq := query.UserAccount
 	_, err := uq.WithContext(c).Where(uq.UserID.Eq(userID), uq.AccountID.Eq(accountID)).First()
 	if err != nil {
-		return fmt.Errorf("user %d is not in account %d", userID, accountID)
+		return raiseUserAccountLookupError(err, userID, accountID)
 	}
 	return nil
 }
@@ -1154,10 +1218,10 @@ func (mgr *AccountMgr) createUserAccount(
 	// Prevent adding user to default account
 	isDefault, err := mgr.isDefaultAccount(c, accountID)
 	if err != nil {
-		return fmt.Errorf("failed to check if account is default: %w", err)
+		return err
 	}
 	if isDefault {
-		return fmt.Errorf("cannot add user to default account (account ID: %d)", accountID)
+		return bizerr.BadRequest.ParameterError.New(fmt.Sprintf("cannot add user to default account (account ID: %d)", accountID))
 	}
 
 	account, err := mgr.validateAccount(c, accountID)
@@ -1175,7 +1239,9 @@ func (mgr *AccountMgr) createUserAccount(
 		// Check if user already exists in account
 		_, err = tx.UserAccount.WithContext(c).Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).First()
 		if err == nil {
-			return fmt.Errorf("user %d is already in account %d", userID, accountID)
+			return bizerr.Conflict.ResourceAlreadyExists.New(fmt.Sprintf("user %d is already in account %d", userID, accountID))
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to check existing user-account relationship")
 		}
 
 		q := model.QueueQuota{Capability: quota}
@@ -1187,10 +1253,10 @@ func (mgr *AccountMgr) createUserAccount(
 		queueName := vcqueue.GetUserQueueName(accountID, userID)
 		parentQueueName := vcqueue.GetAccountLogicQueueName(accountID)
 		if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
-			return fmt.Errorf("failed to ensure account queue exists: %w", err)
+			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to ensure account queue exists")
 		}
 		if err := vcqueue.CreateQueue(c, mgr.client, token, queueName, &parentQueueName, &q); err != nil {
-			return fmt.Errorf("failed to create volcano queue for user %d in account %d: %w", userID, accountID, err)
+			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to create volcano queue for user in account")
 		}
 
 		userQueue := model.UserAccount{
@@ -1202,7 +1268,7 @@ func (mgr *AccountMgr) createUserAccount(
 		userQueue.Quota = datatypes.NewJSONType(q)
 
 		if err := tx.UserAccount.WithContext(c).Create(&userQueue); err != nil {
-			return fmt.Errorf("failed to create user-account relationship: %w", err)
+			return raiseUserAccountCreateError(err, userID, accountID)
 		}
 
 		return nil
@@ -1226,16 +1292,16 @@ func (mgr *AccountMgr) updateUserAccount(
 	err := query.Q.Transaction(func(tx *query.Query) error {
 		userQueue, err := tx.UserAccount.WithContext(c).Where(tx.UserAccount.AccountID.Eq(accountID), tx.UserAccount.UserID.Eq(userID)).First()
 		if err != nil {
-			return fmt.Errorf("user %d is not in account %d", userID, accountID)
+			return raiseUserNotInAccountError(err, userID, accountID)
 		}
 
 		// Prevent role modification for default account
 		isDefault, err := mgr.isDefaultAccount(c, accountID)
 		if err != nil {
-			return fmt.Errorf("failed to check if account is default: %w", err)
+			return err
 		}
 		if isDefault && userQueue.Role != role {
-			return fmt.Errorf("cannot modify user role in default account (account ID: %d)", accountID)
+			return defaultAccountRoleConflict(userID, accountID)
 		}
 
 		account, err := mgr.validateAccount(c, accountID)
@@ -1267,7 +1333,7 @@ func (mgr *AccountMgr) updateUserAccount(
 			Where(tx.UserAccount.AccountID.Eq(accountID), tx.UserAccount.UserID.Eq(userID)).
 			Updates(userQueue)
 		if err != nil {
-			return fmt.Errorf("failed to update user-account relationship: %w", err)
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to update user-account relationship")
 		}
 
 		if isDefault {
@@ -1275,16 +1341,16 @@ func (mgr *AccountMgr) updateUserAccount(
 		}
 
 		if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
-			return fmt.Errorf("failed to ensure account queue exists: %w", err)
+			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to ensure account queue exists")
 		}
 		if err := vcqueue.EnsureUserQueueExists(c, mgr.client, token, accountID, userID); err != nil {
-			return fmt.Errorf("failed to ensure user queue exists: %w", err)
+			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to ensure user queue exists")
 		}
 		queueName := vcqueue.GetUserQueueName(accountID, userID)
 		if err := vcqueue.UpdateQueue(c, mgr.client, queueName, model.QueueQuota{
 			Capability: finalQuota,
 		}); err != nil {
-			return fmt.Errorf("failed to update volcano queue for user %d in account %d: %w", userID, accountID, err)
+			return wrapUserVolcanoQueueError(err, "update", userID, accountID)
 		}
 
 		return nil
@@ -1298,10 +1364,10 @@ func (mgr *AccountMgr) deleteUserAccount(c *gin.Context, accountID, userID uint)
 	// Prevent deletion from default account
 	isDefault, err := mgr.isDefaultAccount(c, accountID)
 	if err != nil {
-		return fmt.Errorf("failed to check if account is default: %w", err)
+		return err
 	}
 	if isDefault {
-		return fmt.Errorf("cannot remove user from default account (account ID: %d)", accountID)
+		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf("cannot remove user from default account (account ID: %d)", accountID))
 	}
 
 	account, err := mgr.validateAccount(c, accountID)
@@ -1316,16 +1382,16 @@ func (mgr *AccountMgr) deleteUserAccount(c *gin.Context, accountID, userID uint)
 	err = query.Q.Transaction(func(tx *query.Query) error {
 		userQueue, err := tx.UserAccount.WithContext(c).Where(tx.UserAccount.AccountID.Eq(accountID), tx.UserAccount.UserID.Eq(userID)).First()
 		if err != nil {
-			return fmt.Errorf("user %d is not in account %d", userID, accountID)
+			return bizerr.NotFound.DataBaseNotFound.New(fmt.Sprintf("user %d is not in account %d", userID, accountID))
 		}
 
 		if _, err := tx.UserAccount.WithContext(c).Delete(userQueue); err != nil {
-			return fmt.Errorf("failed to delete user-account relationship: %w", err)
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to delete user-account relationship")
 		}
 
 		userQueueName := vcqueue.GetUserQueueName(account.ID, user.ID)
 		if err := vcqueue.DeleteQueue(c, mgr.client, userQueueName); err != nil {
-			return fmt.Errorf("failed to delete volcano queue for user %d in account %d: %w", userID, accountID, err)
+			return wrapUserVolcanoQueueError(err, "delete", userID, accountID)
 		}
 
 		return nil
@@ -1346,7 +1412,7 @@ func (mgr *AccountMgr) getUsersInAccount(c *gin.Context, accountID uint) ([]User
 	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
 	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.AccountID, u.Attributes, uq.Quota)
 	if err := exec.Where(uq.AccountID.Eq(accountID)).Distinct().Scan(&resp); err != nil {
-		return nil, fmt.Errorf("get userProject failed, detail: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to get users in account")
 	}
 	return resp, nil
 }
@@ -1358,13 +1424,13 @@ func (mgr *AccountMgr) getUsersOutOfAccount(c *gin.Context, accountID uint) ([]U
 	var uids []uint
 
 	if err := uq.WithContext(c).Select(uq.UserID).Where(uq.AccountID.Eq(accountID)).Scan(&uids); err != nil {
-		return nil, fmt.Errorf("failed to scan user IDs: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to scan user IDs")
 	}
 
 	var resp []UserProjectGetResp
 	exec := u.WithContext(c).Where(u.ID.NotIn(uids...)).Distinct()
 	if err := exec.Scan(&resp); err != nil {
-		return nil, fmt.Errorf("failed to get users out of account: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to get users out of account")
 	}
 	return resp, nil
 }
@@ -1379,7 +1445,7 @@ func (mgr *AccountMgr) validateRoleUpdateForDefaultAccount(
 	uq := query.UserAccount
 	userQueue, err := uq.WithContext(c).Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).First()
 	if err != nil {
-		return fmt.Errorf("user %d is not in account %d", userID, accountID)
+		return raiseUserNotInAccountError(err, userID, accountID)
 	}
 
 	role, err := mgr.parseAndValidateRole(roleStr)
@@ -1389,7 +1455,7 @@ func (mgr *AccountMgr) validateRoleUpdateForDefaultAccount(
 
 	// Prevent role modification for default account
 	if userQueue.Role != role {
-		return fmt.Errorf("cannot modify user role in default account (account ID: %d)", accountID)
+		return defaultAccountRoleConflict(userID, accountID)
 	}
 	return nil
 }
@@ -1421,13 +1487,13 @@ func (mgr *AccountMgr) buildUserAccountUpdates(
 
 	if quota != nil {
 		if err := checkResource(c, quota.Data().Guaranteed); err != nil {
-			return nil, fmt.Errorf("invalid quota guaranteed resources: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quota guaranteed resources")
 		}
 		if err := checkResource(c, quota.Data().Deserved); err != nil {
-			return nil, fmt.Errorf("invalid quota deserved resources: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quota deserved resources")
 		}
 		if err := checkResource(c, quota.Data().Capability); err != nil {
-			return nil, fmt.Errorf("invalid quota capability resources: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quota capability resources")
 		}
 		updates["quota"] = *quota
 	}
@@ -1445,7 +1511,7 @@ func (mgr *AccountMgr) putUserInAccount(
 	// Check if trying to modify role in default account
 	isDefault, err := mgr.isDefaultAccount(c, accountID)
 	if err != nil {
-		return fmt.Errorf("failed to check if account is default: %w", err)
+		return err
 	}
 	if isDefault && role != nil {
 		if err := mgr.validateRoleUpdateForDefaultAccount(c, accountID, userID, *role); err != nil {
@@ -1465,7 +1531,7 @@ func (mgr *AccountMgr) putUserInAccount(
 	uq := query.UserAccount
 	_, err = uq.WithContext(c).Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).Updates(updates)
 	if err != nil {
-		return fmt.Errorf("failed to update user-account relationship: %w", err)
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to update user-account relationship")
 	}
 	return nil
 }
@@ -1493,49 +1559,49 @@ func (mgr *AccountMgr) putUserInAccount(
 func (mgr *AccountMgr) UserAddAccountMember(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	// Check if current user is account admin
 	if err := mgr.checkAccountAdmin(c, token.UserID, req.QueueID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	queue, err := mgr.validateAccount(c, req.QueueID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	user, err := mgr.validateUser(c, req.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	var reqBody UpdateUserProjectReq
 	if err = c.ShouldBindJSON(&reqBody); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request"))
 		return
 	}
 
 	role, err := mgr.parseAndValidateRole(reqBody.Role)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	accessMode, err := mgr.parseAndValidateAccessMode(reqBody.AccessMode)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.createUserAccount(c, req.QueueID, req.UserID, role, accessMode, reqBody.Quota); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1563,49 +1629,49 @@ func (mgr *AccountMgr) UserAddAccountMember(c *gin.Context) {
 func (mgr *AccountMgr) UserUpdateAccountMember(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	// Check if current user is account admin
 	if err := mgr.checkAccountAdmin(c, token.UserID, req.QueueID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	queue, err := mgr.validateAccount(c, req.QueueID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	user, err := mgr.validateUser(c, req.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	var reqBody UpdateUserProjectReq
 	if err = c.ShouldBindJSON(&reqBody); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request"))
 		return
 	}
 
 	role, err := mgr.parseAndValidateRole(reqBody.Role)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	accessMode, err := mgr.parseAndValidateAccessMode(reqBody.AccessMode)
 	if err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.updateUserAccount(c, req.QueueID, req.UserID, role, accessMode, reqBody.Quota); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1630,31 +1696,31 @@ func (mgr *AccountMgr) UserUpdateAccountMember(c *gin.Context) {
 func (mgr *AccountMgr) UserRemoveAccountMember(c *gin.Context) {
 	var req UserProjectReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	// Check if current user is account admin
 	if err := mgr.checkAccountAdmin(c, token.UserID, req.QueueID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	queue, err := mgr.validateAccount(c, req.QueueID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	user, err := mgr.validateUser(c, req.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	if err := mgr.deleteUserAccount(c, req.QueueID, req.UserID); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1680,26 +1746,26 @@ func (mgr *AccountMgr) UserRemoveAccountMember(c *gin.Context) {
 func (mgr *AccountMgr) UserListAccountMembers(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	// Check if current user is in account (does not require admin role)
 	if err := mgr.checkUserInAccount(c, token.UserID, req.ID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not in account", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	_, err := mgr.validateAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	resp, err := mgr.getUsersInAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1725,26 +1791,26 @@ func (mgr *AccountMgr) UserListAccountMembers(c *gin.Context) {
 func (mgr *AccountMgr) UserListUsersOutOfAccount(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	// Check if current user is in account (does not require admin role)
 	if err := mgr.checkUserInAccount(c, token.UserID, req.ID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not in account", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	_, err := mgr.validateAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	resp, err := mgr.getUsersOutOfAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1775,30 +1841,30 @@ func (mgr *AccountMgr) UserUpdateAccountMemberPartial(c *gin.Context) {
 	req := &PutUserInProjectReq{}
 
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 	if err := c.ShouldBindJSON(req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	// Check if current user is account admin
 	if err := mgr.checkAccountAdmin(c, token.UserID, uriReq.AccountId); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	_, err := mgr.validateAccount(c, uriReq.AccountId)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	// Use userID from URI, ignore UserId in request body
 	if err := mgr.putUserInAccount(c, uriReq.AccountId, uriReq.UserID, req.Role, req.AccessMode, req.Quota); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 

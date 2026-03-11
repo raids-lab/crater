@@ -162,7 +162,8 @@ test: ## 🧪 Run tests
 .PHONY: generate-error-code
 generate-error-code: ## 🛠️ Generate error codes from backend
 	@echo "$(BLUE)Generating error codes from backend...$(RESET)"
-	python3 ./src/services/generator.py ../backend/internal/resputil/code.go ./src/services/error_code.ts
+	python3 ./src/services/generator.py ../backend/internal/bizerr/groups.go ./src/services/error_code.ts
+	python3 ./src/services/generator.py --deprecated-only --no-ok --prefix LEGACY_ ../backend/internal/resputil/code.go ./src/services/error_code_legacy.ts
 
 .PHONY: backend-help
 backend-help: ## ❓ Show backend server startup instructions

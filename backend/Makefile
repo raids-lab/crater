@@ -1,5 +1,11 @@
 KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
 CONFIG_FILE := ./etc/debug-config.yaml
+CACHE_DIR := $(PWD)/.cache
+GOCACHE ?= $(CACHE_DIR)/go-build
+GOLANGCI_LINT_CACHE ?= $(CACHE_DIR)/golangci-lint
+
+export GOCACHE
+export GOLANGCI_LINT_CACHE
 
 # Version information for development builds
 # DEV_APP_VERSION ?= 1234567
@@ -116,9 +122,23 @@ import-check: goimports ## Check if goimports is needed.
 	fi
 
 .PHONY: lint
-lint: fmt imports import-check golangci-lint ## Lint go files.
-	@echo "$(BLUE)Linting go files...$(RESET)"
-	$(GOLANGCI_LINT) run --timeout 5m
+lint: lint-full lint-diff
+	@echo "$(BLUE)Lint finished.$(RESET)"
+
+.PHONY: lint-full
+lint-full: golangci-lint
+	@echo "$(BLUE)Linting full codebase (ignore deprecated)...$(RESET)"
+	$(GOLANGCI_LINT) run \
+		-c .golangci-full.yml\
+		--timeout 5m
+
+.PHONY: lint-diff
+lint-diff: golangci-lint
+	@echo "$(BLUE)Linting changed code (ignore deprecated)...$(RESET)"
+	$(GOLANGCI_LINT) run \
+		-c .golangci-diff.yml\
+		--new-from-rev=upstream/main \
+		--timeout 5m
 
 .PHONY: curd
 curd: ## Generate Gorm CURD code.
@@ -165,7 +185,7 @@ build-migrate: fmt lint ## Build migration binary.
 ## Location to install tools to
 LOCALBIN ?= $(PWD)/bin
 $(LOCALBIN):
-	mkdir -p $(LOCALBIN)
+	mkdir -p $(LOCALBIN) $(GOCACHE) $(GOLANGCI_LINT_CACHE)
 
 ## Tool Binaries
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint

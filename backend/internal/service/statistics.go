@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/payload"
 )
 
@@ -89,12 +89,12 @@ func (s *StatisticsService) fetchStatsJobs(ctx context.Context, req *payload.Sta
 	switch req.Scope {
 	case payload.ScopeUser:
 		if req.TargetID == 0 {
-			return nil, fmt.Errorf("targetID is required for user scope")
+			return nil, bizerr.BadRequest.MissingParameter.New("targetID is required for user scope")
 		}
 		jobDo = jobDo.Where(q.UserID.Eq(req.TargetID))
 	case payload.ScopeAccount:
 		if req.TargetID == 0 {
-			return nil, fmt.Errorf("targetID is required for account scope")
+			return nil, bizerr.BadRequest.MissingParameter.New("targetID is required for account scope")
 		}
 		jobDo = jobDo.Where(q.AccountID.Eq(req.TargetID))
 	case payload.ScopeCluster:
@@ -235,7 +235,7 @@ func (s *StatisticsService) loadResourceMetadata(ctx context.Context) (map[strin
 	// 查询 Resource 表
 	resources, err := query.Resource.WithContext(ctx).Find()
 	if err != nil {
-		return nil, err
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to query resource")
 	}
 
 	resMap := make(map[string]model.Resource)
