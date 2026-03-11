@@ -56,17 +56,11 @@ import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
 
 import { AuthMode, IAuthResponse, ILogin, Role } from '@/services/api/auth'
-import { markApiErrorHandled } from '@/services/client'
 import {
   ERROR_INVALID_CREDENTIALS,
+  ERROR_LDAP_USER_NOT_FOUND,
   ERROR_MUST_REGISTER,
-  ERROR_REGISTER_NOT_FOUND,
 } from '@/services/error_code'
-import {
-  LEGACY_ERROR_INVALID_CREDENTIALS,
-  LEGACY_ERROR_LDAP_USER_NOT_FOUND,
-  LEGACY_ERROR_MUST_REGISTER,
-} from '@/services/error_code_legacy'
 import { IErrorResponse, IResponse } from '@/services/types'
 
 import { atomPrivacyAccepted, atomUserContext, atomUserInfo, useResetStore } from '@/utils/store'
@@ -179,24 +173,18 @@ export function LoginForm({
       if (errorData) {
         switch (errorData.code) {
           case ERROR_INVALID_CREDENTIALS:
-          case LEGACY_ERROR_INVALID_CREDENTIALS:
-            markApiErrorHandled(error)
             form.setError('password', {
               type: 'manual',
               message: '用户名或密码错误',
             })
             return
-          case ERROR_REGISTER_NOT_FOUND:
-          case LEGACY_ERROR_LDAP_USER_NOT_FOUND:
-            markApiErrorHandled(error)
+          case ERROR_LDAP_USER_NOT_FOUND:
             form.setError('username', {
               type: 'manual',
               message: '用户不存在或存在多个同名实体',
             })
             return
           case ERROR_MUST_REGISTER:
-          case LEGACY_ERROR_MUST_REGISTER:
-            markApiErrorHandled(error)
             setOpen(true)
             return
         }

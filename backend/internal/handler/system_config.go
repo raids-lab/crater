@@ -5,7 +5,6 @@ import (
 
 	"strings"
 
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -129,7 +128,7 @@ func (mgr *SystemConfigMgr) UpdateLLMConfig(c *gin.Context) {
 	err := mgr.service.UpdateLLMConfig(c.Request.Context(), serviceCfg, req.Validate)
 	if err != nil {
 		if strings.Contains(err.Error(), "validation failed") {
-			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("LLM connection check failed. Please verify your settings."))
+			resputil.Error(c, "LLM connection check failed. Please verify your settings.", resputil.BusinessLogicError)
 			return
 		}
 		resputil.Error(c, err.Error(), resputil.ServiceError)

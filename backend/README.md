@@ -176,60 +176,6 @@ Git Hooks
   pre-commit          Install git pre-commit hook.
 ```
 
-## Error Handling Rules
-
-For new code, do not add new usages of the legacy response pattern.
-
-```go
-// Don't
-if err != nil {
-    resputil.Error(c, err.Error(), resputil.NotSpecified)
-    return
-}
-```
-
-```go
-// Do
-if err != nil {
-    resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query xxx"))
-    return
-}
-```
-
-```go
-// Service / biz layer: only return error
-func (s *Service) DoSomething(...) error {
-    if err != nil {
-        return bizerr.Internal.DatabaseError.Wrap(err, "failed to query xxx")
-    }
-    if invalid {
-        return bizerr.BadRequest.ParameterError.New("invalid xxx")
-    }
-    return nil
-}
-```
-
-```go
-// Handler: top-level unified handling
-func (mgr *Mgr) Handler(c *gin.Context) {
-    if err := mgr.service.DoSomething(...); err != nil {
-        resputil.HandleError(c, err)
-        return
-    }
-    resputil.Success(c, data)
-}
-```
-
-```go
-// New error codes go here
-backend/internal/bizerr/groups.go
-```
-
-```go
-// Do not use this first for new code
-backend/internal/resputil/code.go
-```
-
 ## 🛠️ Database Development Guide
 
 The project uses **GORM** as the ORM framework, manages database version migrations through **gormigrate**, and automatically generates type-safe CRUD code using **GORM Gen**.

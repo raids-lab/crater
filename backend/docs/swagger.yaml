@@ -368,11 +368,48 @@ definitions:
         description: 'Key: ResourceName, Value: Usage'
         type: object
     type: object
+  github_com_raids-lab_crater_internal_resputil.ErrorCode:
+    enum:
+    - 0
+    - 40001
+    - 40002
+    - 40101
+    - 40102
+    - 40111
+    - 40112
+    - 40113
+    - 40114
+    - 40121
+    - 40122
+    - 40123
+    - 40301
+    - 40302
+    - 40401
+    - 50001
+    - 99999
+    type: integer
+    x-enum-varnames:
+    - OK
+    - InvalidRequest
+    - BusinessLogicError
+    - TokenExpired
+    - TokenInvalid
+    - InvalidCredentials
+    - LdapError
+    - LdapUserNotFound
+    - LegacyTokenNotSupported
+    - MustRegister
+    - UidServiceError
+    - UidNotFound
+    - UserNotAllowed
+    - UserEmailNotVerified
+    - ServiceSshdNotFound
+    - ServiceError
+    - NotSpecified
   github_com_raids-lab_crater_internal_resputil.Response-any:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data: {}
       msg:
         type: string
@@ -380,8 +417,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod'
@@ -392,8 +428,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_AccountResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/internal_handler.AccountResp'
@@ -404,8 +439,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/internal_handler.ApprovalOrderResp'
@@ -416,8 +450,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/internal_handler.GpuAnalysisWithJobInfo'
@@ -428,8 +461,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         items:
           $ref: '#/definitions/internal_handler.ModelDownloadResp'
@@ -440,8 +472,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis'
       msg:
@@ -450,8 +481,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
       msg:
@@ -460,8 +490,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail'
       msg:
@@ -470,8 +499,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_GPUInfo:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo'
       msg:
@@ -480,8 +508,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
       msg:
@@ -490,8 +517,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.AuthModeResp'
       msg:
@@ -500,8 +526,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.CheckResp'
       msg:
@@ -510,8 +535,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DeleteProjectResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.DeleteProjectResp'
       msg:
@@ -520,8 +544,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_GpuAnalysisStatusResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.GpuAnalysisStatusResp'
       msg:
@@ -530,8 +553,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.LLMConfigResp'
       msg:
@@ -540,8 +562,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.LoginResp'
       msg:
@@ -550,8 +571,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.ModelDownloadResp'
       msg:
@@ -560,8 +580,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.NodeMark'
       msg:
@@ -570,8 +589,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.ProjectCreateResp'
       msg:
@@ -580,8 +598,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.PutUserInProjectResp'
       msg:
@@ -590,8 +607,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TokenReq:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.TokenReq'
       msg:
@@ -600,8 +616,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TriggerAllJobsAnalysisResponse:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.TriggerAllJobsAnalysisResponse'
       msg:
@@ -610,8 +625,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserDetailResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.UserDetailResp'
       msg:
@@ -620,8 +634,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler_tool.PodIngress'
       msg:
@@ -630,8 +643,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngressResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler_tool.PodIngressResp'
       msg:
@@ -640,8 +652,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeport:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler_tool.PodNodeport'
       msg:
@@ -650,8 +661,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeportResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler_tool.PodNodeportResp'
       msg:
@@ -660,8 +670,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
       msg:
@@ -670,8 +679,7 @@ definitions:
   github_com_raids-lab_crater_internal_resputil.Response-string:
     properties:
       code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         type: string
       msg:

@@ -19,8 +19,7 @@ import {
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
 } from '@/services/api/system-config'
-import { markApiErrorHandled } from '@/services/client'
-import { ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
+import { ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
 
 import { BasicSettings } from './-components/basic-settings'
@@ -78,8 +77,7 @@ function RouteComponent() {
       const errorData = (error as { data: IErrorResponse }).data
       const errorCode = errorData?.code
 
-      if (errorCode === ERROR_RESOURCE_STATUS_ERROR) {
-        markApiErrorHandled(error)
+      if (errorCode === ERROR_BUSINESS_LOGIC_ERROR) {
         toast.error(t('systemConfig.gpuAnalysis.error.llmCheckFailed'))
       }
     }
