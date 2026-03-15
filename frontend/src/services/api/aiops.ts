@@ -50,7 +50,7 @@ export interface IChatRequest {
 export interface IChatResponse {
   message: string
   type: 'text' | 'diagnosis' | 'suggestion'
-  data?: any
+  data?: IDiagnosis
 }
 
 /**
