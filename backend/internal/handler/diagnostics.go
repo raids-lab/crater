@@ -63,7 +63,7 @@ type FailureStat struct {
 // @Produce json
 // @Param days query int false "Number of days to look back (-1 means all time)"
 // @Param limit query int false "Maximum number of failure types to return"
-// @Success 200 {object} resputil.Response
+// @Success 200 {object} resputil.Response[[]FailureStat]
 // @Router /api/v1/diagnostics/failure-types/top [get]
 func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 	type QueryParams struct {
@@ -140,7 +140,7 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 // @Produce json
 // @Param days query int false "Number of days to look back (-1 means all time)"
 // @Param limit query int false "Maximum number of failure types to return"
-// @Success 200 {object} resputil.Response
+// @Success 200 {object} resputil.Response[[]FailureStat]
 // @Router /api/v1/admin/diagnostics/failure-types/top [get]
 func (mgr *DiagnosticsMgr) GetTopFailureTypesAdmin(c *gin.Context) {
 	type QueryParams struct {
