@@ -1,20 +1,25 @@
-/**
- * Enhanced AI Chat Drawer with intelligent prompts and help dialog
- */
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { Send, X, Loader2, AlertCircle, CheckCircle, HelpCircle, Sparkles, ChevronDown } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
+import {
+  AlertCircle,
+  CheckCircle,
+  ChevronDown,
+  HelpCircle,
+  Loader2,
+  Send,
+  Sparkles,
+  X,
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
   DialogClose,
@@ -24,12 +29,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 import {
   apiAdminChatMessage,
@@ -37,14 +38,16 @@ import {
   apiChatMessage,
   apiChatMessageLLM,
 } from '@/services/api/aiops'
-import type { IChatRequest, IChatResponse } from '@/services/api/aiops'
+import type { IChatRequest, IChatResponse, IDiagnosis } from '@/services/api/aiops'
+
+import { cn } from '@/lib/utils'
 
 interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   type?: 'text' | 'diagnosis' | 'suggestion'
-  data?: any
+  data?: IDiagnosis
   timestamp: Date
 }
 
@@ -80,9 +83,21 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       category: t('aiops.chat.prompt.category.topIssues'),
       prompts: [
         { text: t('aiops.chat.prompt.exit1'), icon: '🐛', hint: t('aiops.chat.prompt.hint.exit1') },
-        { text: t('aiops.chat.prompt.evicted'), icon: '🔧', hint: t('aiops.chat.prompt.hint.evicted') },
-        { text: t('aiops.chat.prompt.mountFailed'), icon: '💾', hint: t('aiops.chat.prompt.hint.mountFailed') },
-        { text: t('aiops.chat.prompt.exit127'), icon: '⚙️', hint: t('aiops.chat.prompt.hint.exit127') },
+        {
+          text: t('aiops.chat.prompt.evicted'),
+          icon: '🔧',
+          hint: t('aiops.chat.prompt.hint.evicted'),
+        },
+        {
+          text: t('aiops.chat.prompt.mountFailed'),
+          icon: '💾',
+          hint: t('aiops.chat.prompt.hint.mountFailed'),
+        },
+        {
+          text: t('aiops.chat.prompt.exit127'),
+          icon: '⚙️',
+          hint: t('aiops.chat.prompt.hint.exit127'),
+        },
         { text: t('aiops.chat.prompt.oom'), icon: '💥', hint: t('aiops.chat.prompt.hint.oom') },
       ],
     },
@@ -90,7 +105,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       id: 'job-diagnosis',
       category: t('aiops.chat.prompt.category.jobDiagnosis'),
       prompts: [
-        { text: t('aiops.chat.prompt.diagnoseJob'), icon: '🔍', hint: t('aiops.chat.prompt.hint.jobName') },
+        {
+          text: t('aiops.chat.prompt.diagnoseJob'),
+          icon: '🔍',
+          hint: t('aiops.chat.prompt.hint.jobName'),
+        },
         { text: t('aiops.chat.prompt.logTips'), icon: '📝' },
       ],
     },
@@ -108,7 +127,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const [input, setInput] = useState('')
   const [showHelp, setShowHelp] = useState(false)
   const [chatMode, setChatMode] = useState<'rule' | 'llm'>('rule')
-  const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  const isAdminRoute =
+    typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['top-issues'])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -137,11 +157,14 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       }
       setMessages((prev) => [...prev, assistantMessage])
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : t('aiops.common.unknownError')
       const errorMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',
-        content: t('aiops.chat.errorMessage', { message: error.message || t('aiops.common.unknownError') }),
+        content: t('aiops.chat.errorMessage', {
+          message,
+        }),
         type: 'text',
         timestamp: new Date(),
       }
@@ -195,14 +218,14 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
 
   return (
     <>
-      <div className="fixed inset-y-0 right-0 w-full sm:w-[500px] bg-background border-l shadow-2xl flex flex-col z-50">
+      <div className="bg-background fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l shadow-2xl sm:w-[500px]">
         {/* Header */}
-        <div className="flex-none p-4 border-b bg-gradient-to-r from-primary/5 to-primary/10 flex items-center justify-between">
+        <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r p-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="text-primary h-5 w-5" />
             <div>
               <h3 className="font-semibold">{t('aiops.chat.assistantName')}</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-muted-foreground mt-0.5 text-xs">
                 {chatMode === 'llm' ? t('aiops.chat.llmBased') : t('aiops.chat.ruleBased')}
               </p>
             </div>
@@ -232,18 +255,18 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               </DialogTrigger>
               <DialogContent
                 showCloseButton={false}
-                className="max-w-2xl max-h-[80vh] p-0 overflow-hidden"
+                className="max-h-[80vh] max-w-2xl overflow-hidden p-0"
               >
-                <div className="sticky top-0 z-10 border-b bg-background px-6 py-4 pr-12">
+                <div className="bg-background sticky top-0 z-10 border-b px-6 py-4 pr-12">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-primary" />
+                      <Sparkles className="text-primary h-5 w-5" />
                       {t('aiops.chat.helpTitle')}
                     </DialogTitle>
                     <DialogDescription>{t('aiops.chat.helpDesc')}</DialogDescription>
                   </DialogHeader>
                   <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="absolute right-4 top-4 h-8 w-8">
+                    <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-8 w-8">
                       <X className="h-4 w-4" />
                     </Button>
                   </DialogClose>
@@ -260,7 +283,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 min-h-0 p-4">
+        <ScrollArea className="min-h-0 flex-1 p-4">
           <div className="space-y-4">
             {messages.map((message) => (
               <div
@@ -268,7 +291,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                 className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
               >
                 {message.role === 'user' ? (
-                  <div className="bg-primary text-primary-foreground rounded-lg px-4 py-2 max-w-[85%]">
+                  <div className="bg-primary text-primary-foreground max-w-[85%] rounded-lg px-4 py-2">
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                 ) : (
@@ -281,37 +304,59 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                         return (
                           <>
                             {showAdminHint && (
-                              <div className="mb-2 rounded-md border bg-background/70 px-3 py-1.5 text-xs text-muted-foreground">
+                              <div className="bg-background/70 text-muted-foreground mb-2 rounded-md border px-3 py-1.5 text-xs">
                                 {ADMIN_CHAT_HINT}
                               </div>
                             )}
-                            <div className="text-sm markdown-content">
+                            <div className="markdown-content text-sm">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
                                   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                                  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-                                  ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
-                                  ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
+                                  strong: ({ children }) => (
+                                    <strong className="text-foreground font-semibold">
+                                      {children}
+                                    </strong>
+                                  ),
+                                  ul: ({ children }) => (
+                                    <ul className="my-2 list-inside list-disc space-y-1">
+                                      {children}
+                                    </ul>
+                                  ),
+                                  ol: ({ children }) => (
+                                    <ol className="my-2 list-inside list-decimal space-y-1">
+                                      {children}
+                                    </ol>
+                                  ),
                                   li: ({ children }) => <li className="text-sm">{children}</li>,
                                   code: ({ children, className }) => {
                                     const isInline = !className
                                     return isInline ? (
-                                      <code className="bg-background px-1 py-0.5 rounded text-xs font-mono">
+                                      <code className="bg-background rounded px-1 py-0.5 font-mono text-xs">
                                         {children}
                                       </code>
                                     ) : (
-                                      <code className="block bg-background p-2 rounded text-xs font-mono overflow-x-auto whitespace-pre">
+                                      <code className="bg-background block overflow-x-auto rounded p-2 font-mono text-xs whitespace-pre">
                                         {children}
                                       </code>
                                     )
                                   },
-                                  h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                                  h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                                  h3: ({ children }) => <h3 className="text-sm font-semibold mb-1">{children}</h3>,
-                                  h4: ({ children }) => <h4 className="text-sm font-semibold mb-1">{children}</h4>,
+                                  h1: ({ children }) => (
+                                    <h1 className="mb-2 text-lg font-bold">{children}</h1>
+                                  ),
+                                  h2: ({ children }) => (
+                                    <h2 className="mb-2 text-base font-bold">{children}</h2>
+                                  ),
+                                  h3: ({ children }) => (
+                                    <h3 className="mb-1 text-sm font-semibold">{children}</h3>
+                                  ),
+                                  h4: ({ children }) => (
+                                    <h4 className="mb-1 text-sm font-semibold">{children}</h4>
+                                  ),
                                   blockquote: ({ children }) => (
-                                    <blockquote className="border-l-2 border-primary pl-3 my-2 italic">{children}</blockquote>
+                                    <blockquote className="border-primary my-2 border-l-2 pl-3 italic">
+                                      {children}
+                                    </blockquote>
                                   ),
                                 }}
                               >
@@ -331,9 +376,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             ))}
             {chatMutation.isPending && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
+                <div className="bg-muted flex items-center gap-2 rounded-lg px-4 py-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">{t('aiops.chat.thinking')}</span>
+                  <span className="text-muted-foreground text-sm">{t('aiops.chat.thinking')}</span>
                 </div>
               </div>
             )}
@@ -343,8 +388,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         </ScrollArea>
 
         {/* Smart Prompts - Collapsible */}
-        <div className="flex-none border-t bg-muted/30 max-h-[30vh] overflow-y-auto">
-          <div className="p-3 space-y-2">
+        <div className="bg-muted/30 max-h-[30vh] flex-none overflow-y-auto border-t">
+          <div className="space-y-2 p-3">
             {smartPrompts.map((category) => (
               <Collapsible
                 key={category.id}
@@ -352,7 +397,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                 onOpenChange={() => toggleCategory(category.id)}
               >
                 <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between h-7 text-xs font-medium">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-full justify-between text-xs font-medium"
+                  >
                     {category.category}
                     <ChevronDown
                       className={cn(
@@ -371,13 +420,13 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                         size="sm"
                         onClick={() => handleSend(prompt.text)}
                         disabled={chatMutation.isPending}
-                        className="justify-start h-auto py-1.5 px-2 text-xs text-left whitespace-normal"
+                        className="h-auto justify-start px-2 py-1.5 text-left text-xs whitespace-normal"
                         title={prompt.hint}
                       >
                         <span className="mr-1.5">{prompt.icon}</span>
                         <span className="flex-1">{prompt.text}</span>
                         {prompt.hint && (
-                          <span className="text-[10px] text-muted-foreground ml-1 hidden sm:inline">
+                          <span className="text-muted-foreground ml-1 hidden text-[10px] sm:inline">
                             {prompt.hint.split(/[，,]/)[0]}
                           </span>
                         )}
@@ -391,7 +440,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         </div>
 
         {/* Input */}
-        <div className="flex-none p-4 border-t bg-background">
+        <div className="bg-background flex-none border-t p-4">
           <div className="flex gap-2">
             <Input
               value={input}
@@ -401,14 +450,18 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               disabled={chatMutation.isPending}
               className="flex-1"
             />
-            <Button onClick={() => handleSend()} disabled={chatMutation.isPending || !input.trim()} size="icon">
+            <Button
+              onClick={() => handleSend()}
+              disabled={chatMutation.isPending || !input.trim()}
+              size="icon"
+            >
               <Send className="h-4 w-4" />
             </Button>
           </div>
           {currentJobName && (
-            <div className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
+            <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
               <span>{t('aiops.chat.currentJob')}</span>
-              <Badge variant="secondary" className="text-xs font-mono">
+              <Badge variant="secondary" className="font-mono text-xs">
                 {currentJobName}
               </Badge>
             </div>
@@ -427,21 +480,22 @@ function HelpContent() {
     <div className="space-y-6 text-sm">
       {/* Usage Guide */}
       <section>
-        <h4 className="font-semibold mb-2 text-base">{t('aiops.chat.help.usageTitle')}</h4>
-        <div className="space-y-3 text-muted-foreground">
+        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.usageTitle')}</h4>
+        <div className="text-muted-foreground space-y-3">
           <div>
-            <p className="font-medium text-foreground mb-1">{t('aiops.chat.help.usage1Title')}</p>
+            <p className="text-foreground mb-1 font-medium">{t('aiops.chat.help.usage1Title')}</p>
             <p>{t('aiops.chat.help.usage1Desc')}</p>
           </div>
           <div>
-            <p className="font-medium text-foreground mb-1">{t('aiops.chat.help.usage2Title')}</p>
+            <p className="text-foreground mb-1 font-medium">{t('aiops.chat.help.usage2Title')}</p>
             <p>{t('aiops.chat.help.usage2Desc')}</p>
           </div>
           <div>
-            <p className="font-medium text-foreground mb-1">{t('aiops.chat.help.usage3Title')}</p>
+            <p className="text-foreground mb-1 font-medium">{t('aiops.chat.help.usage3Title')}</p>
             <p>
-              {t('aiops.chat.help.usage3Desc')}: <code className="bg-muted px-1 py-0.5 rounded">job:jpt-xxx-xxx</code> /{' '}
-              <code className="bg-muted px-1 py-0.5 rounded">analyze job jpt-xxx-xxx</code>
+              {t('aiops.chat.help.usage3Desc')}:{' '}
+              <code className="bg-muted rounded px-1 py-0.5">job:jpt-xxx-xxx</code> /{' '}
+              <code className="bg-muted rounded px-1 py-0.5">analyze job jpt-xxx-xxx</code>
             </p>
           </div>
         </div>
@@ -449,7 +503,7 @@ function HelpContent() {
 
       {/* Failure Statistics */}
       <section>
-        <h4 className="font-semibold mb-2 text-base">{t('aiops.chat.help.statsTitle')}</h4>
+        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.statsTitle')}</h4>
         <div className="space-y-2">
           <StatItem
             rank="1"
@@ -489,8 +543,8 @@ function HelpContent() {
 
       {/* Self-Check Guide */}
       <section>
-        <h4 className="font-semibold mb-2 text-base">{t('aiops.chat.help.selfCheckTitle')}</h4>
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-2">
+        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.selfCheckTitle')}</h4>
+        <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
           <p className="font-medium text-yellow-700 dark:text-yellow-300">
             {t('aiops.chat.help.selfCheckHighlight')}
           </p>
@@ -505,8 +559,8 @@ function HelpContent() {
 
       {/* Supported Formats */}
       <section>
-        <h4 className="font-semibold mb-2 text-base">{t('aiops.chat.help.supportedInputTitle')}</h4>
-        <div className="space-y-1.5 font-mono text-xs bg-muted p-3 rounded-lg">
+        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.supportedInputTitle')}</h4>
+        <div className="bg-muted space-y-1.5 rounded-lg p-3 font-mono text-xs">
           <p>• {t('aiops.chat.help.input1')}</p>
           <p>• {t('aiops.chat.help.input2')}</p>
           <p>• {t('aiops.chat.help.input3')}</p>
@@ -517,8 +571,8 @@ function HelpContent() {
 
       {/* Limitations */}
       <section>
-        <h4 className="font-semibold mb-2 text-base">{t('aiops.chat.help.limitationsTitle')}</h4>
-        <div className="text-muted-foreground text-xs space-y-1">
+        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.limitationsTitle')}</h4>
+        <div className="text-muted-foreground space-y-1 text-xs">
           <p>{t('aiops.chat.help.limit1')}</p>
           <p>{t('aiops.chat.help.limit2')}</p>
           <p>{t('aiops.chat.help.limit3')}</p>
@@ -546,30 +600,30 @@ function StatItem({
   const { t } = useTranslation()
 
   return (
-    <div className="flex items-start gap-2 p-2 bg-muted/50 rounded">
+    <div className="bg-muted/50 flex items-start gap-2 rounded p-2">
       <Badge variant="outline" className="flex-shrink-0 font-mono text-xs">
         #{rank}
       </Badge>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{type}</span>
+          <span className="text-sm font-medium">{type}</span>
           <Badge variant="secondary" className="text-xs">
             {percentage}
           </Badge>
           {isUserIssue && (
-            <Badge variant="destructive" className="text-[10px] h-4">
+            <Badge variant="destructive" className="h-4 text-[10px]">
               {t('aiops.chat.selfCheckShort')}
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>
       </div>
     </div>
   )
 }
 
 // Diagnosis Card Component
-function DiagnosisCard({ diagnosis }: { diagnosis: any }) {
+function DiagnosisCard({ diagnosis }: { diagnosis: IDiagnosis }) {
   const { t } = useTranslation()
 
   const severityColors = {
@@ -593,15 +647,13 @@ function DiagnosisCard({ diagnosis }: { diagnosis: any }) {
   const isUserCodeIssue = ['ContainerError', 'CommandNotFound'].includes(diagnosis.category)
 
   return (
-    <Card className="p-4 space-y-3">
+    <Card className="space-y-3 p-4">
       <div className="flex items-start gap-2">
-        <Icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
+        <Icon className="mt-0.5 h-5 w-5 flex-shrink-0" />
         <div className="flex-1 space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-semibold text-sm">{diagnosis.category}</h4>
-            <Badge variant={severity}>
-              {diagnosis.severity}
-            </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="text-sm font-semibold">{diagnosis.category}</h4>
+            <Badge variant={severity}>{diagnosis.severity}</Badge>
             <Badge variant="outline" className="text-xs">
               {diagnosis.confidence}
             </Badge>
@@ -611,20 +663,21 @@ function DiagnosisCard({ diagnosis }: { diagnosis: any }) {
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{diagnosis.diagnosis}</p>
+          <p className="text-muted-foreground text-sm">{diagnosis.diagnosis}</p>
         </div>
       </div>
       {diagnosis.solution && (
         <div className="bg-muted/50 rounded p-3">
-          <p className="text-xs font-medium mb-1">{t('aiops.chat.solution')}</p>
+          <p className="mb-1 text-xs font-medium">{t('aiops.chat.solution')}</p>
           <p className="text-xs whitespace-pre-wrap">{diagnosis.solution}</p>
         </div>
       )}
       {isUserCodeIssue && (
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
-          <p className="text-xs text-yellow-700 dark:text-yellow-300 flex items-center gap-1">
+        <div className="rounded border border-yellow-500/20 bg-yellow-500/10 p-2">
+          <p className="flex items-center gap-1 text-xs text-yellow-700 dark:text-yellow-300">
             <AlertCircle className="h-3 w-3" />
-            <strong>{t('aiops.chat.tipLabel')}</strong>{t('aiops.chat.tipText')}
+            <strong>{t('aiops.chat.tipLabel')}</strong>
+            {t('aiops.chat.tipText')}
           </p>
         </div>
       )}
@@ -644,7 +697,7 @@ function DiagnosisCard({ diagnosis }: { diagnosis: any }) {
           <p className="text-xs font-medium">{t('aiops.chat.relatedEvents')}</p>
           <div className="space-y-1">
             {diagnosis.evidence.events.slice(0, 3).map((event: string, i: number) => (
-              <div key={i} className="text-xs text-muted-foreground bg-muted/30 rounded p-2">
+              <div key={i} className="text-muted-foreground bg-muted/30 rounded p-2 text-xs">
                 {event}
               </div>
             ))}

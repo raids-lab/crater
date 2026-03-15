@@ -195,19 +195,28 @@ type classifyResult struct {
 	sample   string
 }
 
+const (
+	exitCodeSegmentationFault = 139
+	exitCodeCommandNotFound   = 127
+	exitCodeGracefulTerm      = 143
+)
+
+//nolint:gocyclo // Rule matching intentionally keeps failure classification in one place.
 func categorizeFailure(job *model.Job) classifyResult {
 	if job.TerminatedStates != nil {
-		for _, ts := range job.TerminatedStates.Data() {
+		terminated := job.TerminatedStates.Data()
+		for i := range terminated {
+			ts := &terminated[i]
 			if strings.EqualFold(ts.Reason, "OOMKilled") || ts.ExitCode == 137 {
 				return classifyResult{typeName: "OOMKilled", sample: sampleTerminated(ts)}
 			}
-			if ts.ExitCode == 139 {
+			if ts.ExitCode == exitCodeSegmentationFault {
 				return classifyResult{typeName: "SegmentationFault", sample: sampleTerminated(ts)}
 			}
-			if ts.ExitCode == 127 {
+			if ts.ExitCode == exitCodeCommandNotFound {
 				return classifyResult{typeName: "CommandNotFound", sample: sampleTerminated(ts)}
 			}
-			if ts.ExitCode == 143 {
+			if ts.ExitCode == exitCodeGracefulTerm {
 				return classifyResult{typeName: "GracefulTermination", sample: sampleTerminated(ts)}
 			}
 			if strings.EqualFold(ts.Reason, "Error") && ts.ExitCode != 0 {
@@ -218,7 +227,7 @@ func categorizeFailure(job *model.Job) classifyResult {
 	if job.Events != nil {
 		events := job.Events.Data()
 		for i := range events {
-			ev := events[i]
+			ev := &events[i]
 			if ev.Reason == "ErrImagePull" || ev.Reason == "ImagePullBackOff" {
 				return classifyResult{typeName: "ImagePullError", sample: sampleEvent(ev)}
 			}
@@ -256,14 +265,17 @@ func categorizeFailure(job *model.Job) classifyResult {
 	return classifyResult{typeName: "UnknownFailure", sample: ""}
 }
 
-func sampleTerminated(ts v1.ContainerStateTerminated) string {
-	return strings.TrimSpace(strings.Join([]string{
-		ts.Reason,
-		ts.Message,
-	}, " "))
+func sampleTerminated(ts *v1.ContainerStateTerminated) string {
+	if ts == nil {
+		return ""
+	}
+	return strings.TrimSpace(ts.Reason + " " + ts.Message)
 }
 
-func sampleEvent(ev v1.Event) string {
+func sampleEvent(ev *v1.Event) string {
+	if ev == nil {
+		return ""
+	}
 	return strings.TrimSpace(ev.Message)
 }
 
@@ -294,6 +306,7 @@ type JobContextResp struct {
 	} `json:"log"`
 }
 
+//nolint:gocyclo // Context assembly combines auth scope, DB query, and optional log collection.
 func (mgr *DiagnosticsMgr) GetDiagnosticContext(c *gin.Context) {
 	type URI struct {
 		Name string `uri:"name" binding:"required"`
