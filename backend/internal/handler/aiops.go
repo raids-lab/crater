@@ -409,7 +409,7 @@ type DiagnosisResp struct {
 // @Tags aiops
 // @Produce json
 // @Param jobName path string true "Job name"
-// @Success 200 {object} resputil.Response
+// @Success 200 {object} resputil.Response[DiagnosisResp]
 // @Router /api/v1/aiops/diagnose/{jobName} [get]
 // @Router /api/v1/admin/aiops/diagnose/{jobName} [get]
 func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
@@ -742,7 +742,7 @@ func (mgr *AIOPsMgr) llmChatCompletion(c *gin.Context, systemPrompt, userPrompt 
 // @Accept json
 // @Produce json
 // @Param request body ChatRequest true "Chat request"
-// @Success 200 {object} resputil.Response
+// @Success 200 {object} resputil.Response[ChatResponse]
 // @Router /api/v1/aiops/llmchat [post]
 // @Router /api/v1/admin/aiops/llmchat [post]
 func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
@@ -819,7 +819,7 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body ChatRequest true "Chat request"
-// @Success 200 {object} resputil.Response
+// @Success 200 {object} resputil.Response[ChatResponse]
 // @Router /api/v1/aiops/chat [post]
 // @Router /api/v1/admin/aiops/chat [post]
 //

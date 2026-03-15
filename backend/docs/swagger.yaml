@@ -447,6 +447,17 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.FailureStat'
+        type: array
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo:
     properties:
       code:
@@ -523,6 +534,15 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.ChatResponse'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp:
     properties:
       code:
@@ -538,6 +558,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.DeleteProjectResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.DiagnosisResp'
       msg:
         type: string
     type: object
@@ -972,6 +1001,25 @@ definitions:
       enableNormalRegister:
         type: boolean
     type: object
+  internal_handler.ChatRequest:
+    properties:
+      jobName:
+        description: 'optional: if analyzing specific job'
+        type: string
+      message:
+        type: string
+    required:
+    - message
+    type: object
+  internal_handler.ChatResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      type:
+        description: text, diagnosis, suggestion
+        type: string
+    type: object
   internal_handler.CheckResp:
     properties:
       context:
@@ -1029,6 +1077,47 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  internal_handler.DiagnosisResp:
+    properties:
+      category:
+        type: string
+      confidence:
+        description: high, medium, low
+        type: string
+      diagnosis:
+        type: string
+      evidence:
+        properties:
+          events:
+            items:
+              type: string
+            type: array
+          exitCode:
+            type: integer
+          exitReason:
+            type: string
+        type: object
+      jobName:
+        type: string
+      severity:
+        description: critical, error, warning, info
+        type: string
+      solution:
+        type: string
+      status:
+        type: string
+    type: object
+  internal_handler.FailureStat:
+    properties:
+      count:
+        type: integer
+      samples:
+        items:
+          type: string
+        type: array
+      type:
+        type: string
     type: object
   internal_handler.FilePermission:
     enum:
@@ -2150,6 +2239,182 @@ paths:
       summary: 获取节点Pod信息（管理员）
       tags:
       - Node
+  /api/v1/admin/aiops/chat:
+    post:
+      consumes:
+      - application/json
+      description: Chat with AIOps assistant in rule-based mode, optionally with a
+        target job.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse'
+      summary: Rule-based chat for AIOps
+      tags:
+      - aiops
+  /api/v1/admin/aiops/diagnose/{jobName}:
+    get:
+      description: Run rule-based diagnosis for a job by jobName.
+      parameters:
+      - description: Job name
+        in: path
+        name: jobName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp'
+      summary: Diagnose a job
+      tags:
+      - aiops
+  /api/v1/admin/aiops/llmchat:
+    post:
+      consumes:
+      - application/json
+      description: Chat with AIOps assistant in LLM mode, optionally with a target
+        job context.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse'
+      summary: LLM chat for AIOps
+      tags:
+      - aiops
+  /api/v1/admin/diagnostics/failure-types/top:
+    get:
+      description: Get aggregated statistics of the most common failure types for
+        all users' failed jobs.
+      parameters:
+      - description: Number of days to look back (-1 means all time)
+        in: query
+        name: days
+        type: integer
+      - description: Maximum number of failure types to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat'
+      summary: Get top failure types (admin)
+      tags:
+      - diagnostics
+  /api/v1/aiops/chat:
+    post:
+      consumes:
+      - application/json
+      description: Chat with AIOps assistant in rule-based mode, optionally with a
+        target job.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse'
+      summary: Rule-based chat for AIOps
+      tags:
+      - aiops
+  /api/v1/aiops/diagnose/{jobName}:
+    get:
+      description: Run rule-based diagnosis for a job by jobName.
+      parameters:
+      - description: Job name
+        in: path
+        name: jobName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp'
+      summary: Diagnose a job
+      tags:
+      - aiops
+  /api/v1/aiops/llmchat:
+    post:
+      consumes:
+      - application/json
+      description: Chat with AIOps assistant in LLM mode, optionally with a target
+        job context.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse'
+      summary: LLM chat for AIOps
+      tags:
+      - aiops
+  /api/v1/diagnostics/failure-types/top:
+    get:
+      description: Get aggregated statistics of the most common failure types for
+        current user's failed jobs.
+      parameters:
+      - description: Number of days to look back (-1 means all time)
+        in: query
+        name: days
+        type: integer
+      - description: Maximum number of failure types to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat'
+      summary: Get top failure types
+      tags:
+      - diagnostics
   /auth/check:
     get:
       consumes:
