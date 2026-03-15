@@ -238,8 +238,8 @@ export const apiV1Get = <T>(url: string, options?: Options) =>
 /**
  * POST 请求的辅助函数
  */
-export const apiV1Post = <T>(url: string, json?: unknown) =>
-  apiRequest(() => apiClient.post(`v1/${url}`, { json }).json<T>())
+export const apiV1Post = <T>(url: string, json?: unknown, options?: Options) =>
+  apiRequest(() => apiClient.post(`v1/${url}`, { json, ...options }).json<T>())
 
 /**
  * PUT 请求的辅助函数
