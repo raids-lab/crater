@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -42,6 +43,8 @@ const (
 	userIssueWarnPercent = 30.0
 	percentBase          = 100.0
 )
+
+var errJobNotOwned = errors.New("job does not belong to requester")
 
 //nolint:gochecknoinits // Handler managers are registered during package initialization.
 func init() {
@@ -120,9 +123,6 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 		days = *req.Days
 	}
 
-	// Log the received days parameter for debugging
-	c.Writer.Header().Set("X-Debug-Days", fmt.Sprintf("%d", days))
-
 	token := util.GetToken(c)
 	j := query.Job
 
@@ -172,8 +172,16 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 	if days > 0 {
 		startDate = lookback
 	} else {
-		// For "all time", use last 30 days to avoid too many data points
-		startDate = now.AddDate(0, 0, -30)
+		if len(allJobs) == 0 {
+			startDate = endDate
+		} else {
+			startDate = allJobs[0].CreationTimestamp
+			for i := 1; i < len(allJobs); i++ {
+				if allJobs[i].CreationTimestamp.Before(startDate) {
+					startDate = allJobs[i].CreationTimestamp
+				}
+			}
+		}
 	}
 
 	// Initialize all dates with 0
@@ -212,7 +220,11 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 		failedQuery = failedQuery.Where(j.CreationTimestamp.Gte(lookback))
 	}
 
-	failedJobs, _ := failedQuery.Find()
+	failedJobs, failedErr := failedQuery.Find()
+	if failedErr != nil {
+		resputil.Error(c, failedErr.Error(), resputil.NotSpecified)
+		return
+	}
 
 	reasonCount := make(map[string]int)
 	for _, job := range failedJobs {
@@ -254,9 +266,6 @@ func (mgr *AIOPsMgr) GetHealthOverviewAdmin(c *gin.Context) {
 	if req.Days != nil {
 		days = *req.Days
 	}
-
-	// Log the received days parameter for debugging
-	c.Writer.Header().Set("X-Debug-Days", fmt.Sprintf("%d", days))
 
 	j := query.Job
 
@@ -304,8 +313,16 @@ func (mgr *AIOPsMgr) GetHealthOverviewAdmin(c *gin.Context) {
 	if days > 0 {
 		startDate = lookback
 	} else {
-		// For "all time", use last 30 days to avoid too many data points
-		startDate = now.AddDate(0, 0, -30)
+		if len(allJobs) == 0 {
+			startDate = endDate
+		} else {
+			startDate = allJobs[0].CreationTimestamp
+			for i := 1; i < len(allJobs); i++ {
+				if allJobs[i].CreationTimestamp.Before(startDate) {
+					startDate = allJobs[i].CreationTimestamp
+				}
+			}
+		}
 	}
 
 	// Initialize all dates with 0
@@ -342,7 +359,11 @@ func (mgr *AIOPsMgr) GetHealthOverviewAdmin(c *gin.Context) {
 		failedQuery = failedQuery.Where(j.CreationTimestamp.Gte(lookback))
 	}
 
-	failedJobs, _ := failedQuery.Find()
+	failedJobs, failedErr := failedQuery.Find()
+	if failedErr != nil {
+		resputil.Error(c, failedErr.Error(), resputil.NotSpecified)
+		return
+	}
 
 	reasonCount := make(map[string]int)
 	for _, job := range failedJobs {
@@ -383,6 +404,14 @@ type DiagnosisResp struct {
 }
 
 // DiagnoseJob performs rule-based diagnosis on a specific job
+// @Summary Diagnose a job
+// @Description Run rule-based diagnosis for a job by jobName.
+// @Tags aiops
+// @Produce json
+// @Param jobName path string true "Job name"
+// @Success 200 {object} resputil.Response
+// @Router /api/v1/aiops/diagnose/{jobName} [get]
+// @Router /api/v1/admin/aiops/diagnose/{jobName} [get]
 func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 	type URI struct {
 		JobName string `uri:"jobName" binding:"required"`
@@ -640,7 +669,7 @@ func (mgr *AIOPsMgr) findJobByInput(c *gin.Context, token util.JWTMessage, jobNa
 	}
 	if !canAccessAllJobs(c, token) {
 		if total, totalErr := j.WithContext(c).Where(j.JobName.Eq(jobName)).Count(); totalErr == nil && total > 0 {
-			return nil, fmt.Errorf("%s", notOwnerMsg)
+			return nil, fmt.Errorf("%w: %s", errJobNotOwned, notOwnerMsg)
 		}
 	}
 	qName := j.WithContext(c).Where(j.Name.Eq(jobName))
@@ -654,7 +683,7 @@ func (mgr *AIOPsMgr) findJobByInput(c *gin.Context, token util.JWTMessage, jobNa
 	if count == 0 {
 		if !canAccessAllJobs(c, token) {
 			if totalByName, totalByNameErr := j.WithContext(c).Where(j.Name.Eq(jobName)).Count(); totalByNameErr == nil && totalByName > 0 {
-				return nil, fmt.Errorf("%s", notOwnerMsg)
+				return nil, fmt.Errorf("%w: %s", errJobNotOwned, notOwnerMsg)
 			}
 		}
 		return nil, fmt.Errorf("未找到作业 \"%s\"。\n\n请检查：\n• 作业名是否正确\n• 建议使用作业详情路由中的 name 参数（即 jobName）", jobName)
@@ -706,6 +735,16 @@ func (mgr *AIOPsMgr) llmChatCompletion(c *gin.Context, systemPrompt, userPrompt 
 	)
 }
 
+// ChatMessageLLM godoc
+// @Summary LLM chat for AIOps
+// @Description Chat with AIOps assistant in LLM mode, optionally with a target job context.
+// @Tags aiops
+// @Accept json
+// @Produce json
+// @Param request body ChatRequest true "Chat request"
+// @Success 200 {object} resputil.Response
+// @Router /api/v1/aiops/llmchat [post]
+// @Router /api/v1/admin/aiops/llmchat [post]
 func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -728,12 +767,16 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 	if jobName != "" {
 		job, err := mgr.findJobByInput(c, token, jobName)
 		if err != nil {
+			data := map[string]any{
+				"engine": "llm",
+			}
+			if errors.Is(err, errJobNotOwned) {
+				data["adminHint"] = true
+			}
 			resputil.Success(c, ChatResponse{
 				Message: fmt.Sprintf("无法定位作业 %q：%v", jobName, err),
 				Type:    chatResponseTypeText,
-				Data: map[string]any{
-					"engine": "llm",
-				},
+				Data:    data,
 			})
 			return
 		}
@@ -770,6 +813,16 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 
 // ChatMessage handles chatbot interactions with rule matching
 //
+// @Summary Rule-based chat for AIOps
+// @Description Chat with AIOps assistant in rule-based mode, optionally with a target job.
+// @Tags aiops
+// @Accept json
+// @Produce json
+// @Param request body ChatRequest true "Chat request"
+// @Success 200 {object} resputil.Response
+// @Router /api/v1/aiops/chat [post]
+// @Router /api/v1/admin/aiops/chat [post]
+//
 //nolint:gocyclo,funlen // Chat routing intentionally uses ordered keyword rules and preset responses.
 func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	var req ChatRequest
@@ -802,6 +855,9 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 		if err != nil {
 			resp.Message = err.Error()
 			resp.Type = chatResponseTypeText
+			if errors.Is(err, errJobNotOwned) {
+				resp.Data = map[string]any{"adminHint": true}
+			}
 			resputil.Success(c, resp)
 			return
 		}
