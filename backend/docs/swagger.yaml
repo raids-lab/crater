@@ -3155,6 +3155,37 @@ paths:
       summary: 管理员删除模型下载任务
       tags:
       - ModelDownload
+  /v1/admin/nodes/{name}/drain:
+    post:
+      consumes:
+      - application/json
+      description: 排空节点并禁止调度
+      parameters:
+      - description: 节点名称
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功排空节点
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 排空节点失败
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 排空节点
+      tags:
+      - admin
   /v1/admin/projects:
     get:
       consumes:

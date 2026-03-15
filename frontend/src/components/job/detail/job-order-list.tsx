@@ -134,11 +134,18 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
 
     try {
       if (isAdmin) {
-        // 管理员跳转到管理员作业详情页面
-        navigate({ to: '/admin/more/orders/$id', params: { id: String(order.id) } })
+        // 管理员跳转到管理员作业详情页面，默认落在详情页
+        navigate({
+          to: '/admin/more/orders/$id',
+          params: { id: String(order.id) },
+          search: { tab: 'detail' },
+        })
       } else {
-        // 普通用户跳转到门户作业详情页面
-        navigate({ to: '/portal/more/orders/$id', params: { id: String(order.id) } })
+        // 普通用户跳转到门户作业详情页面（当前仅有详情视图，无需附加 tab 参数）
+        navigate({
+          to: '/portal/more/orders/$id',
+          params: { id: String(order.id) },
+        })
       }
     } catch (error) {
       toast.error(`导航错误: ${error}`)

@@ -92,6 +92,7 @@ func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.DELETE("/:name/annotation", mgr.DeleteNodeAnnotation)
 	g.POST("/:name/taint", mgr.AddNodeTaint)
 	g.DELETE("/:name/taint", mgr.DeleteNodeTaint)
+	g.POST("/:name/drain", mgr.DrainNode)
 }
 
 // ListNode godoc
@@ -578,4 +579,39 @@ func (mgr *NodeMgr) DeleteNodeTaint(c *gin.Context) {
 	}
 
 	resputil.Success(c, fmt.Sprintf("Delete taint from node %s successfully", req.Name))
+}
+
+// DrainNode godoc
+//
+//	@Summary		排空节点
+//	@Description	排空节点并禁止调度
+//	@Tags			admin
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string						true	"节点名称"
+//	@Success		200		{object}	resputil.Response[string]	"成功排空节点"
+//	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]		"排空节点失败"
+//	@Router			/v1/admin/nodes/{name}/drain [post]
+func (mgr *NodeMgr) DrainNode(c *gin.Context) {
+	var req NodePodRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		klog.Errorf("Bind URI failed, err: %v", err)
+		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
+		return
+	}
+
+	// 从 token 中获取用户名作为操作员
+	token := util.GetToken(c)
+	operator := token.Username
+
+	klog.Infof("Drain Node, name: %s, operator: %s", req.Name, operator)
+	err := mgr.nodeClient.DrainNode(c, req.Name, operator)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("Drain node failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, fmt.Sprintf("Drain node %s successfully", req.Name))
 }

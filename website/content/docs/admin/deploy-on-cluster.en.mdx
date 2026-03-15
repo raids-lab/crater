@@ -384,8 +384,10 @@ http://<your-node-ip>:30002
 
 Pull the Helm Chart:
 
+<CraterChartVersionNotice />
+
 ```bash
-helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+helm pull oci://ghcr.io/raids-lab/crater --version <chart-version> --untar
 ```
 
 The core configuration file for the Crater platform is `values.yaml`.  
@@ -573,7 +575,7 @@ After confirming all configurations:
 
 ```bash
 helm install crater oci://ghcr.io/raids-lab/crater \
-  --version 0.1.0 \
+  --version <chart-version> \
   -n crater-system \
   -f values.yaml
 ```

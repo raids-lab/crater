@@ -512,7 +512,7 @@ Helm Chart is used to deploy the Crater platform to Kubernetes clusters, providi
 
 Helm Chart's CI process adopts a two-stage design: the Chart validation stage executes during PRs, performing syntax validation, template validation, and version number checks; the Chart publishing stage executes when code is merged to the main branch or when Releases are created, packaging Charts and pushing them to the GHCR OCI repository. Inputs are Chart source code (located in the `charts/crater/` directory), outputs are packaged Helm Charts (`.tgz` files), and artifacts are stored in GHCR's `ghcr.io/raids-lab/crater` OCI repository.
 
-Chart validation ensures Chart correctness and completeness, including syntax checks, template rendering validation, and version number update checks. Chart publishing packages validated Charts and pushes them to GHCR. Users can install Charts via `helm install crater oci://ghcr.io/raids-lab/crater --version <version>`.
+Chart validation ensures Chart correctness and completeness, including syntax checks, template rendering validation, and version number update checks. Chart publishing packages validated Charts and pushes them to GHCR. Users can install Charts via `helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>`.
 
 ### Chart Validation
 
@@ -588,7 +588,7 @@ After Charts are pushed to the `ghcr.io/raids-lab/crater` OCI repository, users 
 
 ```bash
 helm registry login ghcr.io
-helm install crater oci://ghcr.io/raids-lab/crater --version <version>
+helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 ```
 
 After publishing, old Chart versions are automatically cleaned up using `ghcr-cleaner` to clean untagged Charts, keeping at most 10 versions and skipping the `latest` tag:

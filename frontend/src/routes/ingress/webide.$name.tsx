@@ -35,6 +35,8 @@ import BasicIframe from '@/components/layout/embed/basic-iframe'
 import { apiJobSnapshot } from '@/services/api/vcjob'
 import { queryWebIDEToken } from '@/services/query/job'
 
+import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
+
 import FloatingBall from './-components/floating-ball'
 
 export const Route = createFileRoute('/ingress/webide/$name')({
@@ -129,6 +131,9 @@ function WebIDE() {
 
   const { data: webideInfo } = useSuspenseQuery(queryWebIDEToken(name ?? ''))
 
+  // 判断作业所在节点是否被禁止调度
+  const snapshotDisabled = useSnapshotDisabled(name)
+
   // Convert JupyterIcon SVG to favicon and set as page icon
   // set title to jupyter base url
   useEffect(() => {
@@ -215,6 +220,7 @@ function WebIDE() {
         handleShowDetail={() => setIsDetailOpen(true)}
         handleSnapshot={() => setIsSnapshotOpen(true)}
         handleShowToken={() => setIsTokenOpen(true)}
+        snapshotDisabled={snapshotDisabled}
       />
       <LogDialog namespacedName={namespacedName} setNamespacedName={setNamespacedName} />
       <AlertDialog open={isSnapshotOpen} onOpenChange={setIsSnapshotOpen}>

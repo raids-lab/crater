@@ -19,15 +19,17 @@ The reason for selecting these components is that they are **key supports for th
 
 ### Install from GitHub Container Registry (Recommended)
 
+<CraterChartVersionNotice />
+
 ```bash
 # Add the Helm OCI repository
 helm registry login ghcr.io
 
 # Install the chart
-helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 
 # Or upgrade an existing installation
-helm upgrade crater oci://ghcr.io/raids-lab/crater --version 0.1.0
+helm upgrade crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 ```
 
 ### Install from Source

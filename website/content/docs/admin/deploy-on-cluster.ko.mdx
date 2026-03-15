@@ -384,8 +384,10 @@ http://<your-node-ip>:30002
 
 Chart 가져오기:
 
+<CraterChartVersionNotice />
+
 ```bash
-helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+helm pull oci://ghcr.io/raids-lab/crater --version <chart-version> --untar
 ```
 
 크레이터 플랫폼의 핵심 설정 파일은 `values.yaml`입니다.  
@@ -574,7 +576,7 @@ LDAP을 활성화하는 경우, 필드 매핑의 `username`과 `displayName`은 
 
 ```bash
 helm install crater oci://ghcr.io/raids-lab/crater \
-  --version 0.1.0 \
+  --version <chart-version> \
   -n crater-system \
   -f values.yaml
 ```

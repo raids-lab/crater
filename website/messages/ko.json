@@ -245,5 +245,10 @@
     "noResults": "결과를 찾을 수 없습니다",
     "poweredBy": "검색 엔진: ",
     "untitled": "제목 없음"
+  },
+  "CraterChartVersionNotice": {
+    "message": "이 버전 번호는 Helm Chart 설정 버전이며 <link>Chart.yaml</link>에서 추출되었습니다. 시스템이 정상적으로 작동하려면 Crater 관련 구성 요소 이미지 버전과 일치해야 합니다.",
+    "version": "(현재 버전: {version})",
+    "fallback": "버전 번호를 자동으로 가져올 수 없습니다. 버전 일치를 확인하려면 <link>Chart.yaml</link>을 참조하십시오."
   }
 }

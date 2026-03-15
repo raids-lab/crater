@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-import defaultMdxComponents from "fumadocs-ui/mdx";
-import { CraterChartVersionNotice } from "@/components/mdx/crater-chart-version-notice";
-import { ChartBadge } from "@/components/mdx/chart-badge";
-import { Mermaid } from "@/components/mdx/mermaid";
-import type { MDXComponents } from "mdx/types";
+export const CHART_YAML_URL =
+  'https://github.com/raids-lab/crater/blob/main/charts/crater/Chart.yaml';
 
-// use this function to get MDX components, you will need it for rendering MDX
-export function getMDXComponents(components?: MDXComponents): MDXComponents {
-  return {
-    ...defaultMdxComponents,
-    CraterChartVersionNotice,
-    ChartBadge,
-    Mermaid,
-    ...components,
-  };
+const PLACEHOLDER = '<chart-version>';
+
+/**
+ * Returns the Crater Helm Chart version from build-time env.
+ * Empty or placeholder value means "not injected" (e.g. build without Chart.yaml).
+ */
+export function getChartVersion(): string {
+  const v = process.env.NEXT_PUBLIC_CRATER_CHART_VERSION;
+  if (!v || v === PLACEHOLDER) return '';
+  return v;
+}
+
+export function isChartVersionInjected(): boolean {
+  return getChartVersion() !== '';
 }

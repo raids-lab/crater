@@ -383,8 +383,10 @@ http://<your-node-ip>:30002
 
 Chart の取得：
 
+<CraterChartVersionNotice />
+
 ```bash
-helm pull oci://ghcr.io/raids-lab/crater --version 0.1.0 --untar
+helm pull oci://ghcr.io/raids-lab/crater --version <chart-version> --untar
 ```
 
 Crater プラットフォームのコア設定ファイルは `values.yaml` です。  
@@ -573,7 +575,7 @@ LDAP を有効にする場合、フィールドマッピングの `username` と
 
 ```bash
 helm install crater oci://ghcr.io/raids-lab/crater \
-  --version 0.1.0 \
+  --version <chart-version> \
   -n crater-system \
   -f values.yaml
 ```

@@ -17,7 +17,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { CheckCircle, Clock, FileText, Type, User } from 'lucide-react'
+import {
+  CheckCircle,
+  ClipboardListIcon,
+  Clock,
+  FileText,
+  GaugeIcon,
+  GpuIcon,
+  Type,
+  User,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -36,7 +45,9 @@ import { Label } from '@/components/ui/label'
 import { ApprovalOrderStatusBadge } from '@/components/badge/approvalorder-badge'
 import NodeStatusBadge from '@/components/badge/node-status-badge'
 import ResourceBadges from '@/components/badge/resource-badges'
+import JobOrderList from '@/components/job/detail/job-order-list'
 import DetailPage from '@/components/layout/detail-page'
+import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 
 import {
   type ApprovalOrder,
@@ -44,18 +55,24 @@ import {
   adminGetApprovalOrder,
   updateApprovalOrder,
 } from '@/services/api/approvalorder'
-import { apiJobGetPods } from '@/services/api/vcjob'
+import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
+import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
 
+import { hasNvidiaGPU } from '@/utils/resource'
 import { atomUserInfo } from '@/utils/store'
+import { configGrafanaJobAtom } from '@/utils/store/config'
 
 import { DurationDialog } from '../../jobs/-components/duration-dialog'
 
 const DETAIL_QUERY_KEY = ['admin', 'approvalorder'] as const
 
 export const Route = createFileRoute('/admin/more/orders/$id')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: search.tab as string | undefined,
+  }),
   component: RouteComponent,
   loader: async ({ params }) => ({ crumb: params.id }),
 })
@@ -63,9 +80,19 @@ export const Route = createFileRoute('/admin/more/orders/$id')({
 function RouteComponent() {
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
+  const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { id } = Route.useParams()
+  const { tab: currentTab } = Route.useSearch()
   const orderId = Number(id) || 0
   const navigate = useNavigate()
+
+  const setCurrentTab = (nextTab: string) => {
+    navigate({
+      to: '.',
+      search: { tab: nextTab },
+      replace: true,
+    })
+  }
 
   const { data: order, refetch } = useQuery({
     queryKey: [...DETAIL_QUERY_KEY, orderId],
@@ -74,6 +101,34 @@ function RouteComponent() {
       return res.data
     },
     enabled: orderId > 0,
+  })
+
+  // Fetch job detail if it's a job
+  const { data: jobDetail } = useQuery({
+    queryKey: ['job', 'detail', order?.name],
+    queryFn: () => apiJobGetDetail(order!.name),
+    select: (res) => res.data,
+    enabled: !!order && order.type === 'job',
+  })
+
+  const jobStatus = useMemo(() => {
+    if (!jobDetail) return JobStatus.Unknown
+    return getJobStateType(jobDetail.status)
+  }, [jobDetail])
+
+  const showGPUDashboard = useMemo(() => {
+    if (!jobDetail) return false
+    return hasNvidiaGPU(jobDetail.resources)
+  }, [jobDetail])
+
+  const fromTime = jobDetail?.startedAt ? new Date(jobDetail.startedAt).toISOString() : 'now-3h'
+  const toTime = jobDetail?.completedAt ? new Date(jobDetail.completedAt).toISOString() : 'now'
+
+  const { data: ordersData } = useQuery({
+    queryKey: ['approvalorders', 'byName', order?.name],
+    queryFn: () => listApprovalOrdersbyName(order!.name),
+    select: (res) => res.data,
+    enabled: !!order && order.type === 'job',
   })
 
   // Fetch nodes
@@ -240,6 +295,8 @@ function RouteComponent() {
   return (
     <>
       <DetailPage
+        currentTab={currentTab}
+        setCurrentTab={setCurrentTab}
         header={
           <div className="flex justify-between">
             <div className="flex items-center gap-4">
@@ -376,6 +433,36 @@ function RouteComponent() {
                 </Card>
               </div>
             ),
+          },
+          {
+            key: 'order',
+            icon: ClipboardListIcon,
+            label: '相关工单',
+            children: <JobOrderList jobName={order.name} />,
+            scrollable: true,
+            hidden: !ordersData || ordersData.length === 0,
+          },
+          {
+            key: 'monitor',
+            icon: GaugeIcon,
+            label: '基础监控',
+            children: (
+              <GrafanaIframe
+                baseSrc={`${grafanaJob.basic}?var-job=${order.name}&from=${fromTime}&to=${toTime}`}
+              />
+            ),
+            hidden: !jobDetail || jobStatus !== JobStatus.Running,
+          },
+          {
+            key: 'gpu',
+            icon: GpuIcon,
+            label: '加速卡监控',
+            children: (
+              <GrafanaIframe
+                baseSrc={`${grafanaJob.nvidia}?var-job=${order.name}&from=${fromTime}&to=${toTime}`}
+              />
+            ),
+            hidden: !jobDetail || !showGPUDashboard || jobStatus !== JobStatus.Running,
           },
         ]}
       />

@@ -187,8 +187,10 @@ nfs    cluster.local/nfs-provisioner-nfs-server-provisioner   Delete          Im
 
 ### 7.1 获取 Crater Helm Chart 值文件
 
+<CraterChartVersionNotice />
+
 ```bash
-helm show values oci://ghcr.io/raids-lab/crater --version 0.1.0 > values.yaml
+helm show values oci://ghcr.io/raids-lab/crater --version <chart-version> > values.yaml
 ```
 
 ### 7.2 配置数据库连接
@@ -209,7 +211,7 @@ postgres:
 ### 7.3 安装 Crater
 
 ```bash
-helm install crater oci://ghcr.io/raids-lab/crater --version 0.1.0 -n crater-system -f values.yaml
+helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version> -n crater-system -f values.yaml
 ```
 
 **验证安装：**

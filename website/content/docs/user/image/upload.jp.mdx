@@ -24,7 +24,7 @@ description: このドキュメントでは、プラットフォームから Har
 取得した資格情報を使用して Harbor にログインします：
 
 ```bash
-docker login crater-harbor.act.buaa.edu.cn -u <ユーザー名> -p <パスワード>
+docker login harbor.example.com -u <ユーザー名> -p <パスワード>
 ```
 
 ログインに成功すると、`Login Succeeded`というメッセージが表示されます。✅
@@ -43,6 +43,10 @@ docker tag local-image:tag harbor.example.com/project-name/repository-name:tag
 - `harbor.example.com/project-name/repository-name:tag`: Harbor レポジトリの完全なパス、プロジェクト名、リポジトリ名、タグを含む。
 
 各ユーザーの Project Name は `user-{ACT ユーザー名}` です。💡
+
+<Callout type="warn" title="タグの取り決めについて">
+`latest` 以外のタグが指すイメージは更新しないでください。つまり、すでに `v1.0.0` などのタグで Harbor にプッシュしたイメージは、ごく小さな変更でも新しいタグでプッシュしてください。迅速に反復する必要がある場合は、`latest` タグを直接使用してください。この取り決めに従わない場合、プラットフォームは使用中のイメージが最新であることを保証できません。
+</Callout>
 
 ### ⬆️ 2.2 イメージを Harbor にプッシュする
 
@@ -64,19 +68,23 @@ docker push harbor.example.com/project-name/repository-name:tag
 
 対応するプロジェクトとリポジトリに移動し、アップロードしたイメージがレポジトリに正しく表示されているか確認してください。
 
-## ⚠️ 4. よくある質問
+## 📥 4. イメージのインポート
 
-### ❌ 4.1 ログインに失敗する
+イメージを Harbor レポジトリにアップロードした後、ジョブなどのシナリオで使用するには、プラットフォームにイメージをインポートする必要があります。[イメージリスト - イメージのインポート](/jp/docs/user/image/imageList/#import-image) のドキュメントに従って、アップロードしたイメージをプラットフォームにインポートしてください。
+
+## ⚠️ 5. よくある質問
+
+### ❌ 5.1 ログインに失敗する
 
 - ユーザー名とパスワードが正しいか確認してください。
 - Harbor URL が正しいか、ネットワークでアクセス可能か確認してください。
 
-### ❌ 4.2 プッシュに失敗する
+### ❌ 5.2 プッシュに失敗する
 
 - イメージのタグ付けしたパスが正しいか確認してください。
 - 指定されたプロジェクトとリポジトリにイメージをプッシュする権限があるか確認してください。
 
-## 📚 5. 参考資料
+## 📚 6. 参考資料
 
 - [Harbor 公式ドキュメント](https://goharbor.io/docs/)
 - [Docker 公式ドキュメント](https://docs.docker.com/)
