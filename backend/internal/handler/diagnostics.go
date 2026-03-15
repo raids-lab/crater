@@ -56,6 +56,15 @@ type FailureStat struct {
 	Samples []string `json:"samples"`
 }
 
+// GetTopFailureTypes godoc
+// @Summary Get top failure types
+// @Description Get aggregated statistics of the most common failure types for current user's failed jobs.
+// @Tags diagnostics
+// @Produce json
+// @Param days query int false "Number of days to look back (-1 means all time)"
+// @Param limit query int false "Maximum number of failure types to return"
+// @Success 200 {object} resputil.Response
+// @Router /api/v1/diagnostics/failure-types/top [get]
 func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 	type QueryParams struct {
 		Days  int `form:"days"`
@@ -124,6 +133,15 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 	resputil.Success(c, stats)
 }
 
+// GetTopFailureTypesAdmin godoc
+// @Summary Get top failure types (admin)
+// @Description Get aggregated statistics of the most common failure types for all users' failed jobs.
+// @Tags diagnostics
+// @Produce json
+// @Param days query int false "Number of days to look back (-1 means all time)"
+// @Param limit query int false "Maximum number of failure types to return"
+// @Success 200 {object} resputil.Response
+// @Router /api/v1/admin/diagnostics/failure-types/top [get]
 func (mgr *DiagnosticsMgr) GetTopFailureTypesAdmin(c *gin.Context) {
 	type QueryParams struct {
 		Days  int `form:"days"`

@@ -47,7 +47,7 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   type?: 'text' | 'diagnosis' | 'suggestion'
-  data?: IDiagnosis
+  data?: IChatResponse['data']
   timestamp: Date
 }
 
@@ -57,16 +57,27 @@ interface AIChatDrawerProps {
   currentJobName?: string
 }
 
-const ADMIN_CHAT_HINT = '管理员账号可前往 Admin 页面使用 Chat 诊断（/admin/aiops）。'
-
-function getAssistantContentForDisplay(content: string) {
-  const showAdminHint = content.includes('仅管理员可查看所有作业')
-  const cleanedContent = content.replace(ADMIN_CHAT_HINT, '').trim()
+function getAssistantContentForDisplay(
+  content: string,
+  data: IChatResponse['data'],
+  adminHintText: string
+) {
+  const hintFromData =
+    !!data && typeof data === 'object' && 'adminHint' in data && data.adminHint === true
+  const showAdminHint = hintFromData || content.includes(adminHintText)
+  const cleanedContent = content.replace(adminHintText, '').trim()
   return { showAdminHint, cleanedContent }
+}
+
+function isDiagnosisData(data: IChatResponse['data']): data is IDiagnosis {
+  return !!data && typeof data === 'object' && 'jobName' in data && 'category' in data
 }
 
 export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerProps) {
   const { t } = useTranslation()
+  const adminHintText = t('aiops.chat.adminHint', {
+    defaultValue: '管理员账号可前往 Admin 页面使用 Chat 诊断（/admin/aiops）。',
+  })
 
   const smartPrompts = [
     {
@@ -249,7 +260,12 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             </Button>
             <Dialog open={showHelp} onOpenChange={setShowHelp}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label={t('aiops.chat.helpTitle')}
+                >
                   <HelpCircle className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
@@ -266,7 +282,12 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                     <DialogDescription>{t('aiops.chat.helpDesc')}</DialogDescription>
                   </DialogHeader>
                   <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-8 w-8">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-4 right-4 h-8 w-8"
+                      aria-label={t('common.close')}
+                    >
                       <X className="h-4 w-4" />
                     </Button>
                   </DialogClose>
@@ -276,7 +297,13 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                 </div>
               </DialogContent>
             </Dialog>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onClose}
+              aria-label={t('common.close')}
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -299,13 +326,15 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                     <div className="bg-muted rounded-lg px-4 py-3">
                       {(() => {
                         const { showAdminHint, cleanedContent } = getAssistantContentForDisplay(
-                          message.content
+                          message.content,
+                          message.data,
+                          adminHintText
                         )
                         return (
                           <>
                             {showAdminHint && (
                               <div className="bg-background/70 text-muted-foreground mb-2 rounded-md border px-3 py-1.5 text-xs">
-                                {ADMIN_CHAT_HINT}
+                                {adminHintText}
                               </div>
                             )}
                             <div className="markdown-content text-sm">
@@ -367,7 +396,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                         )
                       })()}
                     </div>
-                    {message.type === 'diagnosis' && message.data && (
+                    {message.type === 'diagnosis' && isDiagnosisData(message.data) && (
                       <DiagnosisCard diagnosis={message.data} />
                     )}
                   </div>
@@ -454,6 +483,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               onClick={() => handleSend()}
               disabled={chatMutation.isPending || !input.trim()}
               size="icon"
+              aria-label={t('common.send')}
             >
               <Send className="h-4 w-4" />
             </Button>

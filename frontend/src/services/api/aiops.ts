@@ -50,7 +50,7 @@ export interface IChatRequest {
 export interface IChatResponse {
   message: string
   type: 'text' | 'diagnosis' | 'suggestion'
-  data?: IDiagnosis
+  data?: IDiagnosis | { engine?: string; mode?: string; adminHint?: boolean }
 }
 
 /**
@@ -73,7 +73,7 @@ export const apiGetHealthOverviewAdmin = (days?: number) =>
  * Diagnose a specific job
  */
 export const apiDiagnoseJob = (jobName: string) =>
-  apiV1Get<IResponse<IDiagnosis>>(`aiops/diagnose/${jobName}`)
+  apiV1Get<IResponse<IDiagnosis>>(`aiops/diagnose/${encodeURIComponent(jobName)}`)
 
 /**
  * Chat with AI assistant
