@@ -64,6 +64,268 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/aiops/chat": {
+            "post": {
+                "description": "Chat with AIOps assistant in rule-based mode, optionally with a target job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Rule-based chat for AIOps",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/aiops/diagnose/{jobName}": {
+            "get": {
+                "description": "Run rule-based diagnosis for a job by jobName.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Diagnose a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job name",
+                        "name": "jobName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/aiops/llmchat": {
+            "post": {
+                "description": "Chat with AIOps assistant in LLM mode, optionally with a target job context.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "LLM chat for AIOps",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/diagnostics/failure-types/top": {
+            "get": {
+                "description": "Get aggregated statistics of the most common failure types for all users' failed jobs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "Get top failure types (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of days to look back (-1 means all time)",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of failure types to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/aiops/chat": {
+            "post": {
+                "description": "Chat with AIOps assistant in rule-based mode, optionally with a target job.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Rule-based chat for AIOps",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/aiops/diagnose/{jobName}": {
+            "get": {
+                "description": "Run rule-based diagnosis for a job by jobName.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Diagnose a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job name",
+                        "name": "jobName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/aiops/llmchat": {
+            "post": {
+                "description": "Chat with AIOps assistant in LLM mode, optionally with a target job context.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "LLM chat for AIOps",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/diagnostics/failure-types/top": {
+            "get": {
+                "description": "Get aggregated statistics of the most common failure types for current user's failed jobs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "Get top failure types",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of days to look back (-1 means all time)",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of failure types to return",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/check": {
             "get": {
                 "security": [
@@ -9401,6 +9663,23 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.FailureStat"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo": {
             "type": "object",
             "properties": {
@@ -9519,6 +9798,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ChatResponse"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp": {
             "type": "object",
             "properties": {
@@ -9541,6 +9834,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.DeleteProjectResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.DiagnosisResp"
                 },
                 "msg": {
                     "type": "string"
@@ -10203,6 +10510,34 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.ChatRequest": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "jobName": {
+                    "description": "optional: if analyzing specific job",
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.ChatResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "text, diagnosis, suggestion",
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.CheckResp": {
             "type": "object",
             "properties": {
@@ -10286,6 +10621,68 @@ const docTemplate = `{
             ],
             "properties": {
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.DiagnosisResp": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "confidence": {
+                    "description": "high, medium, low",
+                    "type": "string"
+                },
+                "diagnosis": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "type": "object",
+                    "properties": {
+                        "events": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "exitCode": {
+                            "type": "integer"
+                        },
+                        "exitReason": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "severity": {
+                    "description": "critical, error, warning, info",
+                    "type": "string"
+                },
+                "solution": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.FailureStat": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "samples": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "type": {
                     "type": "string"
                 }
             }

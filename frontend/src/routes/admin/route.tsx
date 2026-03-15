@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ServerIcon,
   SettingsIcon,
+  Sparkles,
   UserRoundIcon,
   UsersRoundIcon,
 } from 'lucide-react'
@@ -108,6 +109,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.cronPolicy'),
           url: '/admin/cronjobs',
           icon: AlarmClockIcon,
+        },
+        {
+          title: t('navigation.aiops'),
+          url: '/admin/aiops',
+          icon: Sparkles,
         },
         // [修改] 条件渲染：只有开启时才把该对象加入数组
         ...(showGpuAnalysis
