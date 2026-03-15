@@ -18,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
+//nolint:gochecknoinits // Handler managers are registered during package initialization.
 func init() {
 	Registers = append(Registers, NewDiagnosticsMgr)
 }
