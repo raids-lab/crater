@@ -19,17 +19,20 @@ import { Route as PortalUsersRouteRouteImport } from './routes/portal/users/rout
 import { Route as PortalTemplatesRouteRouteImport } from './routes/portal/templates/route'
 import { Route as PortalOverviewRouteRouteImport } from './routes/portal/overview/route'
 import { Route as PortalMoreRouteRouteImport } from './routes/portal/more/route'
+import { Route as PortalAiopsRouteRouteImport } from './routes/portal/aiops/route'
 import { Route as PortalAccountRouteRouteImport } from './routes/portal/account/route'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
 import { Route as AdminStatisticsRouteRouteImport } from './routes/admin/statistics/route'
 import { Route as AdminJobsRouteRouteImport } from './routes/admin/jobs/route'
 import { Route as AdminGpuAnalysisRouteRouteImport } from './routes/admin/gpu-analysis/route'
 import { Route as AdminDataRouteRouteImport } from './routes/admin/data/route'
+import { Route as AdminAiopsRouteRouteImport } from './routes/admin/aiops/route'
 import { Route as AdminAccountsRouteRouteImport } from './routes/admin/accounts/route'
 import { Route as PortalUsersIndexRouteImport } from './routes/portal/users/index'
 import { Route as PortalTemplatesIndexRouteImport } from './routes/portal/templates/index'
 import { Route as PortalOverviewIndexRouteImport } from './routes/portal/overview/index'
 import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
+import { Route as PortalAiopsIndexRouteImport } from './routes/portal/aiops/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminStatisticsIndexRouteImport } from './routes/admin/statistics/index'
 import { Route as AdminOperationLogsIndexRouteImport } from './routes/admin/operation-logs/index'
@@ -38,6 +41,7 @@ import { Route as AdminJobsIndexRouteImport } from './routes/admin/jobs/index'
 import { Route as AdminGpuAnalysisIndexRouteImport } from './routes/admin/gpu-analysis/index'
 import { Route as AdminDataIndexRouteImport } from './routes/admin/data/index'
 import { Route as AdminCronjobsIndexRouteImport } from './routes/admin/cronjobs/index'
+import { Route as AdminAiopsIndexRouteImport } from './routes/admin/aiops/index'
 import { Route as AdminAccountsIndexRouteImport } from './routes/admin/accounts/index'
 import { Route as PortalUsersNameRouteImport } from './routes/portal/users/$name'
 import { Route as PortalOverviewNodeRouteImport } from './routes/portal/overview/$node'
@@ -156,6 +160,11 @@ const PortalMoreRouteRoute = PortalMoreRouteRouteImport.update({
   path: '/more',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const PortalAiopsRouteRoute = PortalAiopsRouteRouteImport.update({
+  id: '/aiops',
+  path: '/aiops',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
 const PortalAccountRouteRoute = PortalAccountRouteRouteImport.update({
   id: '/account',
   path: '/account',
@@ -186,6 +195,11 @@ const AdminDataRouteRoute = AdminDataRouteRouteImport.update({
   path: '/data',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAiopsRouteRoute = AdminAiopsRouteRouteImport.update({
+  id: '/aiops',
+  path: '/aiops',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminAccountsRouteRoute = AdminAccountsRouteRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -210,6 +224,11 @@ const PortalMoreIndexRoute = PortalMoreIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PortalMoreRouteRoute,
+} as any)
+const PortalAiopsIndexRoute = PortalAiopsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalAiopsRouteRoute,
 } as any)
 const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
   id: '/',
@@ -250,6 +269,11 @@ const AdminCronjobsIndexRoute = AdminCronjobsIndexRouteImport.update({
   id: '/cronjobs/',
   path: '/cronjobs/',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAiopsIndexRoute = AdminAiopsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminAiopsRouteRoute,
 } as any)
 const AdminAccountsIndexRoute = AdminAccountsIndexRouteImport.update({
   id: '/',
@@ -601,12 +625,14 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
   '/admin/accounts': typeof AdminAccountsRouteRouteWithChildren
+  '/admin/aiops': typeof AdminAiopsRouteRouteWithChildren
   '/admin/data': typeof AdminDataRouteRouteWithChildren
   '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/statistics': typeof AdminStatisticsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
+  '/portal/aiops': typeof PortalAiopsRouteRouteWithChildren
   '/portal/more': typeof PortalMoreRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
@@ -647,6 +673,7 @@ export interface FileRoutesByFullPath {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
+  '/admin/aiops/': typeof AdminAiopsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
@@ -655,6 +682,7 @@ export interface FileRoutesByFullPath {
   '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
+  '/portal/aiops/': typeof PortalAiopsIndexRoute
   '/portal/more/': typeof PortalMoreIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
   '/portal/templates/': typeof PortalTemplatesIndexRoute
@@ -724,6 +752,7 @@ export interface FileRoutesByTo {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts': typeof AdminAccountsIndexRoute
+  '/admin/aiops': typeof AdminAiopsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data': typeof AdminDataIndexRoute
   '/admin/gpu-analysis': typeof AdminGpuAnalysisIndexRoute
@@ -732,6 +761,7 @@ export interface FileRoutesByTo {
   '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics': typeof AdminStatisticsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
+  '/portal/aiops': typeof PortalAiopsIndexRoute
   '/portal/more': typeof PortalMoreIndexRoute
   '/portal/overview': typeof PortalOverviewIndexRoute
   '/portal/templates': typeof PortalTemplatesIndexRoute
@@ -777,12 +807,14 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
   '/admin/accounts': typeof AdminAccountsRouteRouteWithChildren
+  '/admin/aiops': typeof AdminAiopsRouteRouteWithChildren
   '/admin/data': typeof AdminDataRouteRouteWithChildren
   '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/statistics': typeof AdminStatisticsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
+  '/portal/aiops': typeof PortalAiopsRouteRouteWithChildren
   '/portal/more': typeof PortalMoreRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
@@ -823,6 +855,7 @@ export interface FileRoutesById {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
+  '/admin/aiops/': typeof AdminAiopsIndexRoute
   '/admin/cronjobs/': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
@@ -831,6 +864,7 @@ export interface FileRoutesById {
   '/admin/operation-logs/': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
+  '/portal/aiops/': typeof PortalAiopsIndexRoute
   '/portal/more/': typeof PortalMoreIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
   '/portal/templates/': typeof PortalTemplatesIndexRoute
@@ -877,12 +911,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/portal'
     | '/admin/accounts'
+    | '/admin/aiops'
     | '/admin/data'
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/statistics'
     | '/admin/users'
     | '/portal/account'
+    | '/portal/aiops'
     | '/portal/more'
     | '/portal/overview'
     | '/portal/templates'
@@ -923,6 +959,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts/'
+    | '/admin/aiops/'
     | '/admin/cronjobs'
     | '/admin/data/'
     | '/admin/gpu-analysis/'
@@ -931,6 +968,7 @@ export interface FileRouteTypes {
     | '/admin/operation-logs'
     | '/admin/statistics/'
     | '/admin/users/'
+    | '/portal/aiops/'
     | '/portal/more/'
     | '/portal/overview/'
     | '/portal/templates/'
@@ -1000,6 +1038,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts'
+    | '/admin/aiops'
     | '/admin/cronjobs'
     | '/admin/data'
     | '/admin/gpu-analysis'
@@ -1008,6 +1047,7 @@ export interface FileRouteTypes {
     | '/admin/operation-logs'
     | '/admin/statistics'
     | '/admin/users'
+    | '/portal/aiops'
     | '/portal/more'
     | '/portal/overview'
     | '/portal/templates'
@@ -1052,12 +1092,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/portal'
     | '/admin/accounts'
+    | '/admin/aiops'
     | '/admin/data'
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/statistics'
     | '/admin/users'
     | '/portal/account'
+    | '/portal/aiops'
     | '/portal/more'
     | '/portal/overview'
     | '/portal/templates'
@@ -1098,6 +1140,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts/'
+    | '/admin/aiops/'
     | '/admin/cronjobs/'
     | '/admin/data/'
     | '/admin/gpu-analysis/'
@@ -1106,6 +1149,7 @@ export interface FileRouteTypes {
     | '/admin/operation-logs/'
     | '/admin/statistics/'
     | '/admin/users/'
+    | '/portal/aiops/'
     | '/portal/more/'
     | '/portal/overview/'
     | '/portal/templates/'
@@ -1227,6 +1271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalMoreRouteRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/portal/aiops': {
+      id: '/portal/aiops'
+      path: '/aiops'
+      fullPath: '/portal/aiops'
+      preLoaderRoute: typeof PortalAiopsRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/account': {
       id: '/portal/account'
       path: '/account'
@@ -1269,6 +1320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDataRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/aiops': {
+      id: '/admin/aiops'
+      path: '/aiops'
+      fullPath: '/admin/aiops'
+      preLoaderRoute: typeof AdminAiopsRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/accounts': {
       id: '/admin/accounts'
       path: '/accounts'
@@ -1303,6 +1361,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/more/'
       preLoaderRoute: typeof PortalMoreIndexRouteImport
       parentRoute: typeof PortalMoreRouteRoute
+    }
+    '/portal/aiops/': {
+      id: '/portal/aiops/'
+      path: '/'
+      fullPath: '/portal/aiops/'
+      preLoaderRoute: typeof PortalAiopsIndexRouteImport
+      parentRoute: typeof PortalAiopsRouteRoute
     }
     '/admin/users/': {
       id: '/admin/users/'
@@ -1359,6 +1424,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/cronjobs'
       preLoaderRoute: typeof AdminCronjobsIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/aiops/': {
+      id: '/admin/aiops/'
+      path: '/'
+      fullPath: '/admin/aiops/'
+      preLoaderRoute: typeof AdminAiopsIndexRouteImport
+      parentRoute: typeof AdminAiopsRouteRoute
     }
     '/admin/accounts/': {
       id: '/admin/accounts/'
@@ -1845,6 +1917,18 @@ const AdminAccountsRouteRouteChildren: AdminAccountsRouteRouteChildren = {
 const AdminAccountsRouteRouteWithChildren =
   AdminAccountsRouteRoute._addFileChildren(AdminAccountsRouteRouteChildren)
 
+interface AdminAiopsRouteRouteChildren {
+  AdminAiopsIndexRoute: typeof AdminAiopsIndexRoute
+}
+
+const AdminAiopsRouteRouteChildren: AdminAiopsRouteRouteChildren = {
+  AdminAiopsIndexRoute: AdminAiopsIndexRoute,
+}
+
+const AdminAiopsRouteRouteWithChildren = AdminAiopsRouteRoute._addFileChildren(
+  AdminAiopsRouteRouteChildren,
+)
+
 interface AdminDataRouteRouteChildren {
   AdminDataIdRoute: typeof AdminDataIdRoute
   AdminDataIndexRoute: typeof AdminDataIndexRoute
@@ -1971,6 +2055,7 @@ const AdminMoreOrdersRouteRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAccountsRouteRoute: typeof AdminAccountsRouteRouteWithChildren
+  AdminAiopsRouteRoute: typeof AdminAiopsRouteRouteWithChildren
   AdminDataRouteRoute: typeof AdminDataRouteRouteWithChildren
   AdminGpuAnalysisRouteRoute: typeof AdminGpuAnalysisRouteRouteWithChildren
   AdminJobsRouteRoute: typeof AdminJobsRouteRouteWithChildren
@@ -1994,6 +2079,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAccountsRouteRoute: AdminAccountsRouteRouteWithChildren,
+  AdminAiopsRouteRoute: AdminAiopsRouteRouteWithChildren,
   AdminDataRouteRoute: AdminDataRouteRouteWithChildren,
   AdminGpuAnalysisRouteRoute: AdminGpuAnalysisRouteRouteWithChildren,
   AdminJobsRouteRoute: AdminJobsRouteRouteWithChildren,
@@ -2031,6 +2117,17 @@ const PortalAccountRouteRouteChildren: PortalAccountRouteRouteChildren = {
 
 const PortalAccountRouteRouteWithChildren =
   PortalAccountRouteRoute._addFileChildren(PortalAccountRouteRouteChildren)
+
+interface PortalAiopsRouteRouteChildren {
+  PortalAiopsIndexRoute: typeof PortalAiopsIndexRoute
+}
+
+const PortalAiopsRouteRouteChildren: PortalAiopsRouteRouteChildren = {
+  PortalAiopsIndexRoute: PortalAiopsIndexRoute,
+}
+
+const PortalAiopsRouteRouteWithChildren =
+  PortalAiopsRouteRoute._addFileChildren(PortalAiopsRouteRouteChildren)
 
 interface PortalMoreOrdersRouteRouteChildren {
   PortalMoreOrdersIdRoute: typeof PortalMoreOrdersIdRoute
@@ -2213,6 +2310,7 @@ const PortalJobsNewRouteRouteWithChildren =
 
 interface PortalRouteRouteChildren {
   PortalAccountRouteRoute: typeof PortalAccountRouteRouteWithChildren
+  PortalAiopsRouteRoute: typeof PortalAiopsRouteRouteWithChildren
   PortalMoreRouteRoute: typeof PortalMoreRouteRouteWithChildren
   PortalOverviewRouteRoute: typeof PortalOverviewRouteRouteWithChildren
   PortalTemplatesRouteRoute: typeof PortalTemplatesRouteRouteWithChildren
@@ -2235,6 +2333,7 @@ interface PortalRouteRouteChildren {
 
 const PortalRouteRouteChildren: PortalRouteRouteChildren = {
   PortalAccountRouteRoute: PortalAccountRouteRouteWithChildren,
+  PortalAiopsRouteRoute: PortalAiopsRouteRouteWithChildren,
   PortalMoreRouteRoute: PortalMoreRouteRouteWithChildren,
   PortalOverviewRouteRoute: PortalOverviewRouteRouteWithChildren,
   PortalTemplatesRouteRoute: PortalTemplatesRouteRouteWithChildren,

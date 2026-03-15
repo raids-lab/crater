@@ -26,6 +26,55 @@ type LLMRequestPayload struct {
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 }
 
+func executeLLMRequest(
+	httpClient *http.Client,
+	ctx context.Context,
+	apiURL string,
+	apiKey string,
+	payload LLMRequestPayload,
+) (string, error) {
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal LLM request payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return "", fmt.Errorf("failed to create LLM request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if strings.TrimSpace(apiKey) != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute LLM request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("LLM API returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	var apiResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return "", fmt.Errorf("failed to decode LLM API response wrapper: %w", err)
+	}
+
+	if len(apiResp.Choices) == 0 {
+		return "", fmt.Errorf("LLM response contained no choices")
+	}
+
+	return strings.TrimSpace(apiResp.Choices[0].Message.Content), nil
+}
+
 // CallLLMAPI 是一个通用的 LLM API 调用泛型函数
 func CallLLMAPI[T any](
 	httpClient *http.Client,
@@ -44,44 +93,10 @@ func CallLLMAPI[T any](
 		ResponseFormat: &ResponseFormat{Type: "json_object"},
 	}
 
-	payloadBytes, err := json.Marshal(payload)
+	rawContent, err := executeLLMRequest(httpClient, ctx, apiURL, apiKey, payload)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal LLM request payload: %w", err)
+		return nil, err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create LLM request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute LLM request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("LLM API returned non-200 status code: %d", resp.StatusCode)
-	}
-
-	var apiResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("failed to decode LLM API response wrapper: %w", err)
-	}
-
-	if len(apiResp.Choices) == 0 {
-		return nil, fmt.Errorf("LLM response contained no choices")
-	}
-
-	rawContent := apiResp.Choices[0].Message.Content
 	cleanedContent := CleanLLMJSONOutput(rawContent)
 
 	var result T
@@ -90,6 +105,24 @@ func CallLLMAPI[T any](
 	}
 
 	return &result, nil
+}
+
+func CallLLMText(
+	httpClient *http.Client,
+	ctx context.Context,
+	apiURL string,
+	apiKey string,
+	modelName string,
+	systemPrompt, userPrompt string,
+) (string, error) {
+	payload := LLMRequestPayload{
+		Model: modelName,
+		Messages: []Message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+	}
+	return executeLLMRequest(httpClient, ctx, apiURL, apiKey, payload)
 }
 
 // CleanLLMJSONOutput 移除可能存在的 Markdown 代码块标记
