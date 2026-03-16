@@ -101,8 +101,9 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | LDAP attribute name for username |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | LDAP attribute name for display name |
 | backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID acquisition strategy**: options `default`, `ldap`, `rid`, `external` (deprecated) |
-| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | UID calculation offset when source is `rid` |
-| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | LDAP attribute storing the binary SID when source is `rid` |
+| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | UID/GID calculation offset when source is `rid` (UID/GID = RID + offset) |
+| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | LDAP attribute storing the user's binary SID when source is `rid` (used to compute UID) |
+| backendConfig.auth.ldap.uid.rid.pgidAttribute | string | `"primaryGroupID"` | LDAP attribute storing the primary group RID when source is `rid` (used to compute GID) |
 | backendConfig.auth.ldap.uid.ldapAttribute.uid | string | `""` | UID attribute name when source is `ldap` |
 | backendConfig.auth.ldap.uid.ldapAttribute.gid | string | `""` | GID attribute name when source is `ldap` |
 | backendConfig.auth.normal.allowRegister | bool | `true` | Whether to allow direct registration on the platform |

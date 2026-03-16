@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -143,11 +144,11 @@ const (
 type UIDSource string
 
 const (
-	UIDSourceNone     UIDSource = "none"
-	UIDSourceLDAP     UIDSource = "ldap"
-	UIDSourceRID      UIDSource = "rid"
-	UIDSourceExternal UIDSource = "external"
-	UIDSourceDefault  UIDSource = "default"
+	UIDSourceNone     UIDSource = UIDSource(config.UIDSourceNone)
+	UIDSourceLDAP     UIDSource = UIDSource(config.UIDSourceLDAP)
+	UIDSourceRID      UIDSource = UIDSource(config.UIDSourceRID)
+	UIDSourceExternal UIDSource = UIDSource(config.UIDSourceExternal)
+	UIDSourceDefault  UIDSource = UIDSource(config.UIDSourceDefault)
 )
 
 const LogLevelDebug = 4
@@ -615,7 +616,7 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 			userAttribute.GID = ptr.To(result.GID)
 		case UIDSourceLDAP, UIDSourceRID:
 			// Already in userAttribute from attrFromLDAP (calculated in actLDAPAuth for RID mode)
-		case UIDSourceNone, UIDSourceDefault, "":
+		case UIDSourceDefault, UIDSourceNone, "":
 			userAttribute.UID = ptr.To("1001")
 			userAttribute.GID = ptr.To("1001")
 		}
@@ -740,35 +741,87 @@ func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string, at
 		attr.GID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.GID))
 	case UIDSourceRID:
 		sidAttr := uidConf.RID.SIDAttribute
-		if sidAttr == "" {
-			sidAttr = "objectSid"
+		uid, err := calculateUIDFromRID(entry, sidAttr, uidConf.RID.Offset, username)
+		if err != nil {
+			return err
 		}
-		sidBytes := entry.GetRawAttributeValue(sidAttr)
-		if len(sidBytes) > 0 {
-			rid, err := parseRIDFromSID(sidBytes)
-			if err != nil {
-				klog.Errorf("failed to parse RID from SID for user %s: %v", username, err)
-			} else {
-				uid := int(rid) + uidConf.RID.Offset
-				attr.UID = ptr.To(fmt.Sprintf("%d", uid))
-				attr.GID = ptr.To(fmt.Sprintf("%d", uid))
-			}
-		} else {
-			klog.Warningf("SID attribute %s not found for user %s in RID mode", sidAttr, username)
+		attr.UID = ptr.To(fmt.Sprintf("%d", uid))
+
+		pgidAttr := uidConf.RID.PGIDAttribute
+		gid, err := calculateGIDFromPrimaryGroup(entry, pgidAttr, uidConf.RID.Offset, username)
+		if err != nil {
+			return err
 		}
+		attr.GID = ptr.To(fmt.Sprintf("%d", gid))
 	}
 
 	return nil
 }
 
-const minSIDLengthBytes = 8
+const minSIDLengthBytes = 12
+
+// calculateUIDFromRID computes UID from objectSid using RID + offset.
+func calculateUIDFromRID(entry *ldap.Entry, sidAttr string, offset int, username string) (int, error) {
+	if sidAttr == "" {
+		sidAttr = "objectSid"
+	}
+
+	sidBytes := entry.GetRawAttributeValue(sidAttr)
+	if len(sidBytes) == 0 {
+		return 0, fmt.Errorf("SID attribute %s not found for user %s in RID mode", sidAttr, username)
+	}
+
+	rid, err := parseRIDFromSID(sidBytes)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse RID from SID for user %s: %w", username, err)
+	}
+
+	return int(rid) + offset, nil
+}
+
+// calculateGIDFromPrimaryGroup computes GID from primaryGroupID using RID + offset.
+func calculateGIDFromPrimaryGroup(entry *ldap.Entry, pgidAttr string, offset int, username string) (int, error) {
+	if pgidAttr == "" {
+		pgidAttr = "primaryGroupID"
+	}
+
+	pgidStr := entry.GetAttributeValue(pgidAttr)
+	if pgidStr == "" {
+		return 0, fmt.Errorf("primary group attribute %s not found for user %s in RID mode", pgidAttr, username)
+	}
+
+	pgid, err := strconv.Atoi(pgidStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse primaryGroupID %s for user %s: %w", pgidStr, username, err)
+	}
+
+	return pgid + offset, nil
+}
 
 // parseRIDFromSID extracts the RID (Relative Identifier) from a binary Windows SID.
-// A Windows SID binary format ends with the 32-bit RID in little-endian.
+// A Windows SID binary format (MS-DTYP 2.4.2.2) consists of:
+// - Revision (1 byte)
+// - SubAuthorityCount (1 byte)
+// - IdentifierAuthority (6 bytes)
+// - SubAuthorities (SubAuthorityCount * 4 bytes)
+// The RID is the last 4-byte sub-authority in little-endian.
 func parseRIDFromSID(sidBytes []byte) (uint32, error) {
 	if len(sidBytes) < minSIDLengthBytes {
-		return 0, fmt.Errorf("invalid SID length: %d", len(sidBytes))
+		return 0, fmt.Errorf("invalid SID length (must be at least %d bytes): %d", minSIDLengthBytes, len(sidBytes))
 	}
+
+	// Verify the length matches the SubAuthorityCount
+	n := int(sidBytes[1])
+	expectedLen := 8 + (n * 4)
+	if len(sidBytes) != expectedLen {
+		return 0, fmt.Errorf("invalid SID binary format: length %d does not match sub-authority count %d (expected %d)",
+			len(sidBytes), n, expectedLen)
+	}
+
+	if n < 1 {
+		return 0, fmt.Errorf("invalid SID binary format: sub-authority count is zero")
+	}
+
 	// The RID is the last 4 bytes of the SID, stored in little-endian.
 	pos := len(sidBytes) - 4
 	return binary.LittleEndian.Uint32(sidBytes[pos:]), nil
@@ -815,7 +868,11 @@ func (mgr *AuthMgr) prepareLDAPAttributes() []string {
 		if sidAttr == "" {
 			sidAttr = "objectSid"
 		}
-		attributes = append(attributes, sidAttr)
+		pgidAttr := uidConf.RID.PGIDAttribute
+		if pgidAttr == "" {
+			pgidAttr = "primaryGroupID"
+		}
+		attributes = append(attributes, sidAttr, pgidAttr)
 	}
 	return attributes
 }

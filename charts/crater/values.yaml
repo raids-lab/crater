@@ -357,6 +357,8 @@ backendConfig:
           offset: 10000
           # -- LDAP attribute storing the binary SID (defaults to "objectSid")
           sidAttribute: "objectSid"
+          # -- LDAP attribute storing the primary group RID (defaults to "primaryGroupID")
+          pgidAttribute: "primaryGroupID"
         # -- LDAP attribute names for UID/GID (used when source is "ldap")
         ldapAttribute:
           uid: "uidNumber"

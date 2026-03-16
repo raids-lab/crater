@@ -566,11 +566,15 @@ backendConfig:
       uid:
         # 使用 LDAP 认证时的 UID/GID 获取策略，可选: "default", "ldap", "rid"
         source: "default"
-        # 当 source 为 "rid" 时，对齐 winbind，用于计算 UID/GID = RID + offset
+        # 当 source 为 "rid" 时，对齐 winbind，用于计算：
+        # - UID = objectSid 中最后一段 RID + offset
+        # - GID = primaryGroupID (主组 RID) + offset
         rid:
           offset: 10000
-          # 存储二进制 SID 的 LDAP 属性名，Windows AD 默认使用 "objectSid"
+          # 存储用户二进制 SID 的 LDAP 属性名，Windows AD 默认使用 "objectSid"
           sidAttribute: "objectSid"
+          # 存储主组 RID 的 LDAP 属性名，Windows AD 默认使用 "primaryGroupID"
+          pgidAttribute: "primaryGroupID"
         # 当 source 为 "ldap" 时，用于指定 UID/GID 对应的 LDAP 属性名
         ldapAttribute:
           uid: "uidNumber"

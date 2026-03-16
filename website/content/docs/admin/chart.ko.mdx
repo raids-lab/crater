@@ -101,8 +101,9 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | 사용자 이름에 대응하는 LDAP 속성 이름 |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | 표시 이름에 대응하는 LDAP 속성 이름 |
 | backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 획득 전략**: `default`, `ldap`, `rid`, `external` (권장되지 않음) 중 선택 |
-| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | source가 `rid`일 때의 UID 계산 오프셋 |
-| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | source가 `rid`일 때 바이너리 SID를 저장하는 LDAP 속성 이름 |
+| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | source가 `rid`일 때의 UID/GID 계산 오프셋 (UID/GID = RID + offset) |
+| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | source가 `rid`일 때 사용자의 바이너리 SID를 저장하는 LDAP 속성 이름 (UID 계산에 사용) |
+| backendConfig.auth.ldap.uid.rid.pgidAttribute | string | `"primaryGroupID"` | source가 `rid`일 때 기본 그룹 RID를 저장하는 LDAP 속성 이름 (GID 계산에 사용) |
 | backendConfig.auth.ldap.uid.ldapAttribute.uid | string | `""` | source가 `ldap`일 때의 UID 속성 이름 |
 | backendConfig.auth.ldap.uid.ldapAttribute.gid | string | `""` | source가 `ldap`일 때의 GID 속성 이름 |
 | backendConfig.auth.normal.allowRegister | bool | `true` | 플랫폼 내 직접 가입 허용 여부 |

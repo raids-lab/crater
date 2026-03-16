@@ -566,14 +566,19 @@ backendConfig:
         # LDAP 認証時の UID/GID 取得ポリシー。選択肢:
         # - "default" / "none": コンテナ内 UID/GID として常に 1001:1001 を使用（ほとんどのクラスターで推奨）
         # - "ldap": 指定した LDAP 属性から UID/GID を直接取得
-        # - "rid": objectSid から RID を解析し、UID/GID = RID + offset として計算（AD + Winbind 互換シナリオ向け）
+        # - "rid": objectSid / primaryGroupID から RID を解析し、
+        #          UID = RID(objectSid) + offset、GID = RID(primaryGroupID) + offset として計算（AD + Winbind 互換シナリオ向け）
         # - "external": 学内のレガシー UID サービスを利用（後方互換のためにのみ存在し、非推奨）
         source: "default"
-        # source が "rid" の場合、Winbind と同様に UID/GID = RID + offset を計算
+        # source が "rid" の場合、Winbind と同様に:
+        # - objectSid から UID を計算
+        # - primaryGroupID から GID を計算
         rid:
           offset: 10000
           # バイナリ SID を格納する LDAP 属性名。Windows AD では通常 "objectSid" を使用します。
           sidAttribute: "objectSid"
+          # 主グループの RID を格納する LDAP 属性名。Windows AD では通常 "primaryGroupID" を使用します。
+          pgidAttribute: "primaryGroupID"
         # source が "ldap" の場合、UID/GID に対応する LDAP 属性名を指定
         ldapAttribute:
           uid: "uidNumber"

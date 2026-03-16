@@ -566,14 +566,19 @@ backendConfig:
         # UID/GID acquisition strategy when using LDAP authentication. Options:
         # - "default" / "none": Use default UID=1001, GID=1001 (recommended for most clusters)
         # - "ldap": Read UID/GID directly from specified LDAP attributes
-        # - "rid": Parse RID from objectSid and compute UID/GID as RID + offset (for AD + Winbind style setups)
+        # - "rid": Parse RID from objectSid/primaryGroupID and compute:
+        #          UID = RID(objectSid) + offset, GID = RID(primaryGroupID) + offset
         # - "external": Use a legacy internal UID service (deprecated)
         source: "default"
-        # When source is "rid", align with Winbind by computing UID/GID = RID + offset
+        # When source is "rid", align with Winbind by computing:
+        # - UID from the user's objectSid
+        # - GID from the user's primaryGroupID
         rid:
           offset: 10000
           # LDAP attribute that stores the binary SID. For Windows AD this is usually "objectSid".
           sidAttribute: "objectSid"
+          # LDAP attribute that stores the primary group RID. For Windows AD this is usually "primaryGroupID".
+          pgidAttribute: "primaryGroupID"
         # When source is "ldap", specify which LDAP attributes contain UID/GID
         ldapAttribute:
           uid: "uidNumber"

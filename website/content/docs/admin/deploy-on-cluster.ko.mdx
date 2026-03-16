@@ -567,14 +567,19 @@ backendConfig:
         # LDAP 인증 시 UID/GID를 어떻게 가져올지 결정하는 전략입니다. 선택 가능:
         # - "default" / "none": 컨테이너 내 UID/GID를 항상 1001:1001로 사용 (대부분의 클러스터에서 권장)
         # - "ldap": 지정한 LDAP 속성에서 UID/GID를 직접 조회
-        # - "rid": objectSid에서 RID를 파싱하고 UID/GID = RID + offset으로 계산 (AD + Winbind 환경과의 호환용)
+        # - "rid": objectSid / primaryGroupID에서 RID를 파싱하고,
+        #          UID = RID(objectSid) + offset, GID = RID(primaryGroupID) + offset으로 계산 (AD + Winbind 환경과의 호환용)
         # - "external": 연구실 내부의 레거시 UID 서비스 사용 (호환성 유지를 위해 남겨두었으며, 현재는 비권장)
         source: "default"
-        # source가 "rid"일 때, Winbind와 동일하게 UID/GID = RID + offset을 계산
+        # source가 "rid"일 때, Winbind와 동일하게 동작합니다:
+        # - objectSid에서 UID를 계산
+        # - primaryGroupID에서 GID를 계산
         rid:
           offset: 10000
           # 바이너리 SID를 저장하는 LDAP 속성 이름. Windows AD에서는 일반적으로 "objectSid"를 사용합니다.
           sidAttribute: "objectSid"
+          # 기본 그룹 RID를 저장하는 LDAP 속성 이름. Windows AD에서는 일반적으로 "primaryGroupID"를 사용합니다.
+          pgidAttribute: "primaryGroupID"
         # source가 "ldap"일 때, UID/GID에 해당하는 LDAP 속성 이름을 지정
         ldapAttribute:
           uid: "uidNumber"

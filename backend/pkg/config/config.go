@@ -11,6 +11,14 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const (
+	UIDSourceDefault  = "default"
+	UIDSourceNone     = "none"
+	UIDSourceLDAP     = "ldap"
+	UIDSourceRID      = "rid"
+	UIDSourceExternal = "external"
+)
+
 type Config struct {
 	// EnableLeaderElection enables leader election for controller manager to ensure high availability.
 	// Optional: Defaults to false if not specified.
@@ -272,8 +280,9 @@ type Config struct {
 
 			// UID contains settings for UID/GID acquisition.
 			UID struct {
-				// Source defines where to get UID/GID ("none", "ldap", "rid").
-				// "rid" (Recommended): Calculates UID/GID from LDAP objectSid using RID + offset.
+				// Source defines where to get UID/GID ("default", "ldap", "rid", "external").
+				// "default" (Recommended for standard LDAP): Uses default UID=1001, GID=1001.
+				// "rid" (Recommended for AD): Calculates UID/GID from LDAP objectSid using RID + offset.
 				// "ldap": Fetches UID/GID from specified LDAP attributes.
 				// "external" (Deprecated): Fetches UID/GID from an external HTTP service.
 				Source string `json:"source"`
@@ -283,6 +292,8 @@ type Config struct {
 					Offset int `json:"offset"`
 					// SIDAttribute is the LDAP attribute storing the binary SID (defaults to "objectSid").
 					SIDAttribute string `json:"sidAttribute"`
+					// PGIDAttribute is the LDAP attribute storing the primary group RID (defaults to "primaryGroupID").
+					PGIDAttribute string `json:"pgidAttribute"`
 				} `json:"rid"`
 				// LDAPAttribute defines attribute names when source is "ldap".
 				LDAPAttribute struct {
@@ -483,23 +494,23 @@ func (c *Config) ValidateConfig() error {
 
 	if c.Auth.LDAP.Enable {
 		switch c.Auth.LDAP.UID.Source {
-		case "ldap":
+		case UIDSourceLDAP:
 			if c.Auth.LDAP.UID.LDAPAttribute.UID == "" {
 				errors = append(errors, "auth.ldap.uid.ldapAttribute.uid is required when uid.source is 'ldap'")
 			}
 			if c.Auth.LDAP.UID.LDAPAttribute.GID == "" {
 				errors = append(errors, "auth.ldap.uid.ldapAttribute.gid is required when uid.source is 'ldap'")
 			}
-		case "rid":
+		case UIDSourceRID:
 			if c.Auth.LDAP.UID.RID.Offset <= 0 {
 				errors = append(errors, "auth.ldap.uid.rid.offset must be positive when uid.source is 'rid'")
 			}
-		case "external":
+		case UIDSourceExternal:
 			// Deprecated source
 			if c.Auth.LDAP.UID.ExternalService.URL == "" {
 				errors = append(errors, "auth.ldap.uid.externalService.url is required when uid.source is 'external'")
 			}
-		case "none", "default", "":
+		case UIDSourceDefault, UIDSourceNone, "":
 			// OK
 		default:
 			errors = append(errors, fmt.Sprintf("invalid auth.ldap.uid.source: %s", c.Auth.LDAP.UID.Source))
@@ -533,6 +544,12 @@ func (c *Config) logConfigWarnings() {
 				"the UI appends suffixes like \"登录\" or \"统一身份认证\", so a short alias is recommended",
 				n, ldapAliasMaxRunes))
 		}
+	}
+
+	// LDAP UID external source deprecation warning
+	if c.Auth.LDAP.Enable && c.Auth.LDAP.UID.Source == UIDSourceExternal {
+		warnings = append(warnings, "auth.ldap.uid.source 'external' is deprecated and will be removed in the future; "+
+			"it is recommended to use 'rid' source for direct calculation from LDAP objectSid")
 	}
 
 	// Add more warning checks here, e.g.:
