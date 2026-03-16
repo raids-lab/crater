@@ -463,7 +463,7 @@ func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 
 // performDiagnosis applies diagnostic rules to a job
 //
-//nolint:gocyclo // Rule-driven diagnosis intentionally keeps category handling in one switch.
+//nolint:gocyclo,funlen // Rule-driven diagnosis intentionally keeps category handling in one switch.
 func performDiagnosis(job *model.Job) DiagnosisResp {
 	resp := DiagnosisResp{
 		JobName: job.JobName,
@@ -504,11 +504,35 @@ func performDiagnosis(job *model.Job) DiagnosisResp {
 		resp.Confidence = diagnosisConfidenceHigh
 		resp.Severity = diagnosisSeverityError
 
+	case "SchedulingTaintMismatch":
+		resp.Diagnosis = "节点污点与容忍度不匹配"
+		resp.Solution = "建议：1) 检查节点 taint；2) 在作业配置中补充 tolerations；3) 与管理员确认调度策略"
+		resp.Confidence = diagnosisConfidenceHigh
+		resp.Severity = diagnosisSeverityError
+
+	case "SchedulingFailed":
+		resp.Diagnosis = "作业调度失败"
+		resp.Solution = "建议：1) 查看 FailedScheduling 事件原文；2) 检查资源请求、节点选择器与污点容忍；3) 必要时联系管理员"
+		resp.Confidence = diagnosisConfidenceHigh
+		resp.Severity = diagnosisSeverityError
+
 	case "CrashLoopBackOff":
 		resp.Diagnosis = "容器持续崩溃重启"
 		resp.Solution = "建议：1) 查看容器日志确定崩溃原因；2) 检查启动命令；3) 检查配置文件；4) 可能是资源不足"
 		resp.Confidence = diagnosisConfidenceHigh
 		resp.Severity = diagnosisSeverityCrit
+
+	case "VolumeMountFailed":
+		resp.Diagnosis = "存储卷挂载失败"
+		resp.Solution = "建议：1) 检查 PVC/PV 绑定状态；2) 核对存储类与访问模式；3) 检查挂载路径和权限"
+		resp.Confidence = diagnosisConfidenceHigh
+		resp.Severity = diagnosisSeverityError
+
+	case "JobDeadlineExceeded":
+		resp.Diagnosis = "作业超出截止时间被终止"
+		resp.Solution = "建议：1) 评估并调大 activeDeadlineSeconds；2) 优化作业耗时；3) 检查资源瓶颈"
+		resp.Confidence = diagnosisConfidenceHigh
+		resp.Severity = diagnosisSeverityWarn
 
 	case "ContainerError":
 		resp.Diagnosis = "容器运行时错误"
@@ -555,6 +579,12 @@ func performDiagnosis(job *model.Job) DiagnosisResp {
 		resp.Solution = "建议：1) C/C++程序内存访问错误；2) 检查指针使用；3) 可能是依赖库版本不兼容"
 		resp.Confidence = diagnosisConfidenceHigh
 		resp.Severity = diagnosisSeverityCrit
+
+	case "JobAbortedOrTerminated":
+		resp.Diagnosis = "作业被中止或终止"
+		resp.Solution = "建议：1) 检查是否有人工停止或控制器回收；2) 结合事件与调度记录确认触发原因"
+		resp.Confidence = diagnosisConfidenceHigh
+		resp.Severity = diagnosisSeverityWarn
 
 	default:
 		resp.Diagnosis = "未能自动诊断出具体原因"
@@ -680,6 +710,12 @@ func classifyAIOPsLookupError(err error) apiErrorDetails {
 		MsgKey: errorKeyAIOPsQueryFailed,
 		Msg:    "Failed to query job information.",
 	}
+}
+
+func containsExitCode(message, code string) bool {
+	pattern := fmt.Sprintf(`(?:\bexit\s*[:=]?\s*%s\b|\bexit%s\b)`, regexp.QuoteMeta(code), regexp.QuoteMeta(code))
+	re := regexp.MustCompile(pattern)
+	return re.MatchString(message)
 }
 
 func extractJobNameFromMessage(message, jobName string) string {
@@ -902,7 +938,7 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	if strings.Contains(message, "你好") || strings.Contains(message, "hello") || strings.Contains(message, "hi") ||
 		message == "help" || strings.Contains(message, "帮助") {
 		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "👋 你好！我是 Crater 智能运维助手。\n\n我可以帮助你：\n• 分析作业失败原因\n• 查看系统健康状况\n• 提供故障排查建议\n\n💡 **重要提示**：根据统计，37.7% 的失败是由用户代码或环境配置问题导致的。遇到 Exit 1/127 错误时，建议先检查代码和日志。\n\n🔍 **快速开始**：\n• 问我 \"最近失败的原因是什么？\"\n• 问我 \"容器错误怎么办？\"\n• 告诉我作业名来诊断，如 \"作业:jpt-xxx-xxx\""
+		resp.Message = "👋 你好！我是 Crater 智能运维助手。\n\n我可以帮助你：\n• 分析作业失败原因\n• 查看系统健康状况\n• 提供故障排查建议\n\n💡 **重要提示**：遇到 Exit 1/127 等问题时，建议先检查代码、启动命令和日志。\n\n🔍 **快速开始**：\n• 问我 \"最近失败的原因是什么？\"\n• 问我 \"容器错误怎么办？\"\n• 告诉我作业名来诊断，如 \"作业:jpt-xxx-xxx\""
 		resp.Type = chatResponseTypeText
 		resputil.Success(c, resp)
 		return
@@ -934,37 +970,37 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	// Rule 3: How to reduce failure rate (check before general failure queries)
 	if strings.Contains(message, "降低") && (strings.Contains(message, "失败率") || strings.Contains(message, "失败")) {
 		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "📉 **降低作业失败率的方法**：\n\n**1. 针对用户代码问题（占37.7%）：**\n• 提交前在本地测试代码\n• 检查所有依赖是否在镜像中\n• 使用正确的 Python 版本和包版本\n• 仔细检查文件路径\n\n**2. 针对资源问题：**\n• 根据实际需求设置合理的资源配额\n• 避免过度申请资源导致排队\n• OOM 时增加内存或优化代码\n\n**3. 针对镜像问题：**\n• 使用稳定的基础镜像\n• 提前构建并测试镜像\n• 检查镜像仓库连接\n\n**4. 针对配置问题：**\n• 仔细检查作业配置\n• 确认存储卷路径正确\n• 检查节点选择器配置\n\n💡 **建议**：先通过 \"最近失败的原因\" 查看你的主要失败类型，然后针对性优化。"
+		resp.Message = "📉 **降低作业失败率的方法**：\n\n**1. 优先处理用户代码与运行环境问题：**\n• 提交前在本地复现启动命令\n• 检查依赖版本和镜像环境是否一致\n• 仔细核对文件路径与配置文件\n\n**2. 资源配置按需申请：**\n• 根据实际峰值设置 CPU/GPU/内存\n• 避免过度申请导致长期排队\n• 出现 OOM 时先定位峰值再调参\n\n**3. 保证镜像与仓库可用：**\n• 使用稳定基础镜像并固定关键依赖\n• 提前构建并验证镜像可拉取\n\n**4. 调度与存储配置前置检查：**\n• 提交前检查节点选择器/容忍度配置\n• 检查 PVC、StorageClass 与挂载路径\n\n💡 **建议**：先用“最近失败的原因”看你当前主要失败类型，再做针对性优化。"
 		resp.Type = chatResponseTypeSuggestion
 		resputil.Success(c, resp)
 		return
 	}
 
-	// Rule 4: Ask about Exit 1 (Container Error) - check before general failure queries
-	if strings.Contains(message, "exit 1") || strings.Contains(message, "容器错误") ||
-		(strings.Contains(message, "容器") && strings.Contains(message, "怎么办")) {
-		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "🐛 **容器错误（Exit 1）详解**\n\n容器错误占失败作业的 **24.1%**，是最常见的失败类型。\n\n**常见原因：**\n• **ImportError**: Python 依赖包缺失或版本不匹配\n• **FileNotFoundError**: 找不到数据文件或脚本\n• **SyntaxError**: 代码语法错误\n• **CUDA out of memory**: GPU 显存不足\n• **逻辑错误**: 代码运行时异常\n\n**🔍 如何排查：**\n1. **查看容器日志**（作业详情页 → 日志标签）\n2. **搜索关键错误**：\n   - ImportError / ModuleNotFoundError\n   - FileNotFoundError / No such file\n   - CUDA out of memory\n   - Traceback（Python 错误堆栈）\n3. **常见修复方法**：\n   - 在镜像中安装缺失的依赖\n   - 检查文件路径是否正确\n   - 修复代码语法错误\n   - 减小 batch size 或降低模型精度\n\n⚠️ **重要**：这类问题通常需要查看日志并修改代码或镜像配置。"
-		resp.Type = chatResponseTypeSuggestion
-		resputil.Success(c, resp)
-		return
-	}
-
-	// Rule 5: Ask about OOM
-	if strings.Contains(message, "内存") || strings.Contains(message, "oom") ||
-		(strings.Contains(message, "exit 137") || strings.Contains(message, "溢出")) {
-		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "💥 **内存溢出（OOM, Exit 137）解决方案**\n\n内存溢出占失败作业的 **4.2%**。\n\n**解决方法（按推荐顺序）：**\n\n**1. 增加内存配额**（最快）\n• 在作业配置中增加 memory 请求和限制\n• 建议先尝试增加 50%\n• 例如：从 8Gi 增加到 12Gi\n\n**2. 优化代码**（治本）\n• 减小 batch size（最有效）\n• 使用梯度累积代替大 batch\n• 及时释放不用的变量（del variable）\n• 使用生成器而非一次性加载全部数据\n• 使用混合精度训练（FP16）\n\n**3. 检查内存泄漏**\n• 使用 memory_profiler 工具分析\n• 检查是否有循环引用\n• 确认是否正确关闭文件\n\n**4. 使用内存映射**\n• 对于大数据集，使用 mmap\n• PyTorch 可用 DataLoader 的 pin_memory\n\n💡 **快速测试**：先临时增加内存配额，如果还失败则需要优化代码。"
-		resp.Type = chatResponseTypeSuggestion
-		resputil.Success(c, resp)
-		return
-	}
-
-	// Rule 6: Ask about Exit 127 (Command Not Found)
-	if strings.Contains(message, "exit 127") || strings.Contains(message, "命令未找到") ||
+	// Rule 4: Ask about Exit 127 (Command Not Found)
+	if containsExitCode(message, "127") || strings.Contains(message, "命令未找到") ||
 		strings.Contains(message, "command not found") {
 		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "⚙️ **命令未找到（Exit 127）解决方案**\n\n命令未找到占失败作业的 **9.4%**。\n\n**常见原因：**\n\n**1. 命令拼写错误**\n• `python` vs `python3`\n• `pip` vs `pip3`\n• 检查命令是否有拼写错误\n\n**2. 命令未安装**\n• 镜像中缺少该命令\n• 需要在 Dockerfile 中安装\n• 例如：`apt-get install xxx` 或 `pip install xxx`\n\n**3. PATH 环境变量问题**\n• 命令不在 PATH 中\n• 可以使用绝对路径：`/usr/local/bin/python3`\n\n**4. 启动脚本路径错误**\n• 检查脚本文件是否存在\n• 使用绝对路径而非相对路径\n\n**🔍 如何调试：**\n```bash\n# 在本地测试镜像\ndocker run -it your-image:tag /bin/bash\nwhich python3  # 检查命令是否存在\necho $PATH     # 查看 PATH 变量\n```\n\n⚠️ **提示**：这通常是镜像环境配置问题，需要修改 Dockerfile 或启动命令。"
+		resp.Message = "⚙️ **命令未找到（Exit 127）解决方案**\n\n**典型表现：**\n• 启动时提示 `command not found`\n• 脚本/可执行文件路径不存在（`No such file or directory`）\n\n**常见原因：**\n\n**1. 命令或脚本写错**\n• `python` / `python3`、`pip` / `pip3` 混用\n• 启动命令中有拼写错误\n\n**2. 镜像里没有安装该命令**\n• Dockerfile 没装依赖或工具链\n• 运行镜像与本地测试镜像不一致\n\n**3. 路径与权限问题**\n• 可执行文件不在 PATH\n• 脚本没有执行权限（`chmod +x`）\n• 使用了相对路径但工作目录不对\n\n**🔍 排查步骤：**\n1. 在作业日志里定位第一条 `command not found` 或 `No such file or directory`\n2. 进入同版本镜像执行 `which <cmd>`、`echo $PATH`\n3. 用绝对路径替换入口命令并重试\n\n💡 **建议**：优先修正启动命令和镜像内容，通常不属于资源配额问题。"
+		resp.Type = chatResponseTypeSuggestion
+		resputil.Success(c, resp)
+		return
+	}
+
+	// Rule 5: Ask about Exit 1 (Container Error) - check before general failure queries
+	if containsExitCode(message, "1") || strings.Contains(message, "容器错误") ||
+		(strings.Contains(message, "容器") && strings.Contains(message, "怎么办")) {
+		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
+		resp.Message = "🐛 **容器错误（Exit 1）详解**\n\n**典型表现：**\n• 程序启动后很快退出并返回 Exit 1\n• 日志里出现异常堆栈（如 Python Traceback）\n\n**常见原因：**\n• **ImportError / ModuleNotFoundError**：依赖缺失或版本不匹配\n• **FileNotFoundError**：配置/数据文件路径错误\n• **SyntaxError / RuntimeError**：代码运行异常\n• **业务逻辑失败**：输入参数、权限、外部服务调用异常\n\n**🔍 如何排查：**\n1. 打开作业日志，从最后一个报错堆栈往上看\n2. 搜索关键词：`Traceback`、`Exception`、`ImportError`、`FileNotFoundError`\n3. 对照镜像环境检查依赖版本与启动参数\n\n**常见修复方法：**\n• 在镜像中补齐依赖并固定版本\n• 修正文件路径与配置挂载\n• 先在本地/开发环境复现同样命令再提交\n\n⚠️ **注意**：Exit 1 是“程序自身错误”信号，不等同于 Exit 127（命令不存在）或 Exit 137（OOM）。"
+		resp.Type = chatResponseTypeSuggestion
+		resputil.Success(c, resp)
+		return
+	}
+
+	// Rule 6: Ask about OOM
+	if strings.Contains(message, "内存") || strings.Contains(message, "oom") ||
+		(containsExitCode(message, "137") || strings.Contains(message, "溢出")) {
+		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
+		resp.Message = "💥 **内存溢出（OOM，常见为 Exit 137）处理建议**\n\n**先确认是否真 OOM：**\n• 终止原因里出现 `OOMKilled`\n• 日志里出现 `out of memory` / `Killed`\n\n**处理方法（按优先级）：**\n\n**1. 先止血：提高内存配额**\n• 适当提高 memory request/limit\n• 小步调整并观察峰值\n\n**2. 再治本：降低内存占用**\n• 减小 batch size\n• 分块加载数据，避免一次性全量读入\n• 及时释放中间变量\n\n**3. 排查泄漏与异常增长**\n• 观察迭代过程中内存是否持续攀升\n• 检查缓存、列表累积、循环引用\n\n💡 **提示**：Exit 137 也可能是被系统强杀，不一定都等于 OOM，需结合 `OOMKilled` 与日志一起判断。"
 		resp.Type = chatResponseTypeSuggestion
 		resputil.Success(c, resp)
 		return
@@ -983,7 +1019,7 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	if strings.Contains(message, "节点驱逐") || strings.Contains(message, "evict") ||
 		strings.Contains(message, "node eviction") || strings.Contains(message, "驱逐") {
 		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "🔧 **节点驱逐问题详解**\n\n节点驱逐占失败作业的 **23.6%**，通常**不是用户问题**。\n\n**什么是节点驱逐？**\n当节点出现问题时，Kubernetes 会将该节点上的 Pod 驱逐（删除），并尝试在其他节点上重新调度。\n\n**常见原因：**\n\n**1. 节点故障或维护**\n• 节点宕机或重启\n• 管理员进行节点维护\n• 节点资源耗尽\n\n**2. 节点资源压力**\n• 节点磁盘空间不足\n• 节点内存压力过大\n• 节点进入不可调度状态\n\n**3. 节点污点（Taint）**\n• 管理员给节点添加了污点\n• 节点被标记为不可调度\n\n**✅ 解决方法：**\n\n**对于用户：**\n• **等待重新调度**：系统通常会自动重新调度到其他节点\n• **重新提交作业**：如果长时间未恢复\n• **配置容忍度**：允许作业在有污点的节点上运行\n\n**对于管理员：**\n• 检查节点状态：`kubectl get nodes`\n• 查看节点事件：`kubectl describe node <node-name>`\n• 修复或替换故障节点\n\n💡 **重要**：这是基础设施问题，无需自查代码。如果频繁发生，请联系管理员检查集群健康状况。"
+		resp.Message = "🔧 **节点驱逐问题详解**\n\n节点驱逐通常**不是用户代码问题**，多与节点状态或集群资源有关。\n\n**什么是节点驱逐？**\n当节点出现压力或异常时，Kubernetes 会将该节点上的 Pod 驱逐并尝试重新调度。\n\n**常见原因：**\n\n**1. 节点故障或维护**\n• 节点宕机、重启或维护\n• 节点不可用\n\n**2. 节点资源压力**\n• 磁盘、内存压力过高\n• 节点被系统保护机制驱逐 Pod\n\n**3. 节点污点（Taint）与调度策略变化**\n• 节点被打污点，现有 Pod 不再满足策略\n\n**✅ 建议：**\n\n**对于用户：**\n• 先观察是否自动重调度成功\n• 若长时间未恢复，重新提交作业\n\n**对于管理员：**\n• 检查节点状态与事件：`kubectl get nodes` / `kubectl describe node <node-name>`\n• 修复异常节点或调整调度策略\n\n💡 **提示**：若频繁发生驱逐，应优先排查集群健康与容量。"
 		resp.Type = chatResponseTypeSuggestion
 		resputil.Success(c, resp)
 		return
@@ -993,7 +1029,7 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	if strings.Contains(message, "存储") || strings.Contains(message, "挂载") || strings.Contains(message, "mount") ||
 		strings.Contains(message, "volume") {
 		//nolint:lll // Keep the preset response as one literal to preserve exact markdown output.
-		resp.Message = "💾 **存储卷挂载失败解决方案**\n\n存储卷挂载失败占 **18.4%**，通常是配置问题。\n\n**常见原因：**\n\n**1. ConfigMap 不存在**\n• 作业依赖的 ConfigMap 未创建\n• 常见：`custom-start-configmap` 缺失\n• **解决**：联系管理员创建或检查配置\n\n**2. CSI 驱动未安装**\n• 存储驱动（如 rook-ceph）未正确安装\n• **解决**：联系管理员检查存储驱动\n\n**3. LXCFS 挂载路径问题**\n• LXCFS 服务未运行\n• 挂载路径不存在\n• **解决**：联系管理员检查节点 LXCFS 状态\n\n**4. 存储卷权限问题**\n• 没有权限访问存储卷\n• PVC（PersistentVolumeClaim）状态异常\n• **解决**：检查存储卷权限配置\n\n**5. 存储类（StorageClass）问题**\n• 指定的 StorageClass 不存在\n• StorageClass 配置错误\n• **解决**：确认可用的 StorageClass\n\n**🔍 如何调试：**\n• 在作业详情的「事件」标签查看具体错误\n• 检查 PVC 状态：`kubectl get pvc -n crater-workspace`\n• 查看存储卷详情：`kubectl describe pvc <pvc-name>`\n\n💡 **提示**：这类问题通常需要管理员协助解决，用户一般无法自行修复。请将错误信息提供给管理员。"
+		resp.Message = "💾 **存储卷挂载失败解决方案**\n\n存储挂载失败通常是资源对象或权限配置问题。\n\n**常见原因：**\n\n**1. PVC/PV 异常**\n• PVC 未绑定成功\n• PV 容量、访问模式不匹配\n\n**2. StorageClass 或 CSI 组件问题**\n• StorageClass 名称错误\n• CSI 驱动异常或未就绪\n\n**3. 配置对象缺失**\n• 依赖的 ConfigMap/Secret 不存在\n• 挂载路径配置错误\n\n**4. 权限问题**\n• 目录权限与运行用户不匹配\n• 存储后端访问受限\n\n**🔍 如何排查：**\n• 在作业详情「事件」中查看 `FailedMount` 原因\n• 检查 PVC：`kubectl get pvc -n crater-workspace`\n• 查看详情：`kubectl describe pvc <pvc-name>`\n\n💡 **提示**：多数存储挂载问题需要管理员协同处理。"
 		resp.Type = chatResponseTypeSuggestion
 		resputil.Success(c, resp)
 		return
@@ -1111,12 +1147,12 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 		"告诉我作业名称，我会帮你诊断：\n" +
 		"• \"作业:jpt-username-251221-xxxxx\"\n" +
 		"• \"分析作业 jpt-username-251221-xxxxx\"\n\n" +
-		"**💡 常见问题（Top 5）**\n" +
-		"• \"容器错误（Exit 1）怎么办？\" - 占24.1%\n" +
-		"• \"节点驱逐是什么原因？\" - 占23.6%\n" +
-		"• \"存储挂载失败怎么解决？\" - 占18.4%\n" +
-		"• \"命令未找到（Exit 127）\" - 占9.4%\n" +
-		"• \"内存溢出（OOM）如何处理？\" - 占4.2%\n\n" +
+		"**💡 常见问题（示例）**\n" +
+		"• \"容器错误（Exit 1）怎么办？\"\n" +
+		"• \"节点驱逐是什么原因？\"\n" +
+		"• \"存储挂载失败怎么解决？\"\n" +
+		"• \"命令未找到（Exit 127）\"\n" +
+		"• \"内存溢出（OOM）如何处理？\"\n\n" +
 		"**🛠️ 其他常见问题**\n" +
 		"• \"如何查看日志？\"\n" +
 		"• \"镜像拉取失败怎么办？\"\n" +
