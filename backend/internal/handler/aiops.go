@@ -27,6 +27,10 @@ import (
 const (
 	chatResponseTypeText       = "text"
 	chatResponseTypeSuggestion = "suggestion"
+	errorKeyAIOPsJobNotOwned   = "aiops.error.jobNotOwned"
+	errorKeyAIOPsJobNotFound   = "aiops.error.jobNotFound"
+	errorKeyAIOPsJobAmbiguous  = "aiops.error.jobAmbiguous"
+	errorKeyAIOPsQueryFailed   = "aiops.error.queryFailed"
 
 	diagnosisConfidenceHigh = "high"
 	diagnosisSeverityError  = "error"
@@ -45,6 +49,12 @@ const (
 )
 
 var errJobNotOwned = errors.New("job does not belong to requester")
+
+type apiErrorDetails struct {
+	Code   resputil.ErrorCode `json:"code"`
+	MsgKey string             `json:"msgKey"`
+	Msg    string             `json:"msg"`
+}
 
 //nolint:gochecknoinits // Handler managers are registered during package initialization.
 func init() {
@@ -104,6 +114,14 @@ type HealthOverviewResp struct {
 	} `json:"topFailureReasons"`
 }
 
+// GetHealthOverview godoc
+// @Summary Get AIOps health overview
+// @Description Get job health overview for current user. days=0 means all time.
+// @Tags aiops
+// @Produce json
+// @Param days query int false "Lookback days (default 7, 0 means all time)"
+// @Success 200 {object} resputil.Response[HealthOverviewResp]
+// @Router /api/v1/aiops/health-overview [get]
 // GetHealthOverview returns health overview for current user
 //
 //nolint:gocyclo // This endpoint aggregates multiple query branches for a single response.
@@ -248,6 +266,14 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+// GetHealthOverviewAdmin godoc
+// @Summary Get AIOps health overview (admin)
+// @Description Get job health overview for all users. days=0 means all time.
+// @Tags aiops
+// @Produce json
+// @Param days query int false "Lookback days (default 7, 0 means all time)"
+// @Success 200 {object} resputil.Response[HealthOverviewResp]
+// @Router /api/v1/admin/aiops/health-overview [get]
 // GetHealthOverviewAdmin returns health overview for all users (admin only)
 //
 //nolint:gocyclo // This endpoint mirrors user overview logic with admin-wide query scope.
@@ -425,7 +451,8 @@ func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 	token := util.GetToken(c)
 	job, err := mgr.findJobByInput(c, token, uri.JobName)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		lookupErr := classifyAIOPsLookupError(err)
+		resputil.ErrorWithKey(c, lookupErr.MsgKey, lookupErr.Msg, lookupErr.Code)
 		return
 	}
 
@@ -625,6 +652,36 @@ type ChatResponse struct {
 	Data    any    `json:"data,omitempty"`
 }
 
+func classifyAIOPsLookupError(err error) apiErrorDetails {
+	if errors.Is(err, errJobNotOwned) {
+		return apiErrorDetails{
+			Code:   resputil.UserNotAllowed,
+			MsgKey: errorKeyAIOPsJobNotOwned,
+			Msg:    "The requested job does not belong to your account.",
+		}
+	}
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "未找到作业") {
+		return apiErrorDetails{
+			Code:   resputil.BusinessLogicError,
+			MsgKey: errorKeyAIOPsJobNotFound,
+			Msg:    "Job not found.",
+		}
+	}
+	if strings.Contains(errMsg, "无法唯一定位") {
+		return apiErrorDetails{
+			Code:   resputil.BusinessLogicError,
+			MsgKey: errorKeyAIOPsJobAmbiguous,
+			Msg:    "Multiple jobs matched the input. Please use a unique jobName.",
+		}
+	}
+	return apiErrorDetails{
+		Code:   resputil.ServiceError,
+		MsgKey: errorKeyAIOPsQueryFailed,
+		Msg:    "Failed to query job information.",
+	}
+}
+
 func extractJobNameFromMessage(message, jobName string) string {
 	name := strings.TrimSpace(jobName)
 	if name != "" {
@@ -767,8 +824,10 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 	if jobName != "" {
 		job, err := mgr.findJobByInput(c, token, jobName)
 		if err != nil {
+			lookupErr := classifyAIOPsLookupError(err)
 			data := map[string]any{
 				"engine": "llm",
+				"error":  lookupErr,
 			}
 			if errors.Is(err, errJobNotOwned) {
 				data["adminHint"] = true
@@ -853,10 +912,12 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	if jobName != "" {
 		job, err := mgr.findJobByInput(c, token, jobName)
 		if err != nil {
+			lookupErr := classifyAIOPsLookupError(err)
 			resp.Message = err.Error()
 			resp.Type = chatResponseTypeText
+			resp.Data = map[string]any{"error": lookupErr}
 			if errors.Is(err, errJobNotOwned) {
-				resp.Data = map[string]any{"adminHint": true}
+				resp.Data = map[string]any{"adminHint": true, "error": lookupErr}
 			}
 			resputil.Success(c, resp)
 			return

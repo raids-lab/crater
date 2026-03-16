@@ -127,6 +127,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/aiops/health-overview": {
+            "get": {
+                "description": "Get job health overview for all users. days=0 means all time.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Get AIOps health overview (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lookback days (default 7, 0 means all time)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/aiops/llmchat": {
             "post": {
                 "description": "Chat with AIOps assistant in LLM mode, optionally with a target job context.",
@@ -258,6 +286,34 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/aiops/health-overview": {
+            "get": {
+                "description": "Get job health overview for current user. days=0 means all time.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Get AIOps health overview",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lookback days (default 7, 0 means all time)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/aiops/llmchat": {
             "post": {
                 "description": "Chat with AIOps assistant in LLM mode, optionally with a target job context.",
@@ -287,6 +343,47 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/diagnostics/context/{name}": {
+            "get": {
+                "description": "Get job metadata, persisted diagnostics fields, and optional log tail for troubleshooting.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "diagnostics"
+                ],
+                "summary": "Get diagnostic context by job name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Whether to include pod log tail",
+                        "name": "includeLog",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of log lines to tail when includeLog=true",
+                        "name": "tailLines",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobContextResp"
                         }
                     }
                 }
@@ -9410,6 +9507,17 @@ const docTemplate = `{
                 "RoleAdmin"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.ScheduleData": {
+            "type": "object",
+            "properties": {
+                "imagePullTime": {
+                    "type": "string"
+                },
+                "imageSize": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
             "format": "int32",
@@ -9609,6 +9717,9 @@ const docTemplate = `{
                 "data": {},
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9625,6 +9736,9 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9643,6 +9757,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9659,6 +9776,9 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9677,6 +9797,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9693,6 +9816,9 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9711,6 +9837,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9724,6 +9853,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9739,6 +9871,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9752,6 +9887,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9767,6 +9905,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9780,6 +9921,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.ApprovalOrderResp"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9795,6 +9939,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9808,6 +9955,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.ChatResponse"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9823,6 +9973,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9836,6 +9989,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.DeleteProjectResp"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9851,6 +10007,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9864,6 +10023,43 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.GpuAnalysisStatusResp"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.HealthOverviewResp"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobContextResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.JobContextResp"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9879,6 +10075,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9892,6 +10091,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.LoginResp"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9907,6 +10109,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9920,6 +10125,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.NodeMark"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9935,6 +10143,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9948,6 +10159,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.PutUserInProjectResp"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9963,6 +10177,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -9976,6 +10193,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.TriggerAllJobsAnalysisResponse"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9991,6 +10211,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -10004,6 +10227,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_tool.PodIngress"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10019,6 +10245,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -10032,6 +10261,9 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_tool.PodNodeport"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10047,6 +10279,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -10061,6 +10296,9 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
                 }
             }
         },
@@ -10074,6 +10312,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10337,6 +10578,157 @@ const docTemplate = `{
                 "userRealName": {
                     "description": "用户真实名称（用于tooltip）",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_pkg_monitor.ProfileData": {
+            "type": "object",
+            "properties": {
+                "cpu_limit": {
+                    "type": "number"
+                },
+                "cpu_mem_avg": {
+                    "type": "number"
+                },
+                "cpu_mem_max": {
+                    "type": "number"
+                },
+                "cpu_mem_std": {
+                    "type": "number"
+                },
+                "cpu_request": {
+                    "description": "CPU and Memory",
+                    "type": "number"
+                },
+                "cpu_usage_avg": {
+                    "type": "number"
+                },
+                "cpu_usage_max": {
+                    "type": "number"
+                },
+                "cpu_usage_std": {
+                    "type": "number"
+                },
+                "dram_active_avg": {
+                    "type": "number"
+                },
+                "dram_active_max": {
+                    "type": "number"
+                },
+                "dram_active_std": {
+                    "type": "number"
+                },
+                "dram_util_avg": {
+                    "type": "number"
+                },
+                "dram_util_max": {
+                    "type": "number"
+                },
+                "dram_util_std": {
+                    "type": "number"
+                },
+                "fp16_active_avg": {
+                    "type": "number"
+                },
+                "fp16_active_max": {
+                    "type": "number"
+                },
+                "fp16_active_std": {
+                    "type": "number"
+                },
+                "fp32_active_avg": {
+                    "type": "number"
+                },
+                "fp32_active_max": {
+                    "type": "number"
+                },
+                "fp32_active_std": {
+                    "type": "number"
+                },
+                "fp64_active_avg": {
+                    "type": "number"
+                },
+                "fp64_active_max": {
+                    "type": "number"
+                },
+                "fp64_active_std": {
+                    "type": "number"
+                },
+                "gpu_mem_avg": {
+                    "type": "number"
+                },
+                "gpu_mem_max": {
+                    "type": "number"
+                },
+                "gpu_mem_std": {
+                    "type": "number"
+                },
+                "gpu_mem_total": {
+                    "type": "number"
+                },
+                "gpu_util_avg": {
+                    "description": "GPU",
+                    "type": "number"
+                },
+                "gpu_util_max": {
+                    "type": "number"
+                },
+                "gpu_util_std": {
+                    "type": "number"
+                },
+                "mem_copy_util_avg": {
+                    "type": "number"
+                },
+                "mem_copy_util_max": {
+                    "type": "number"
+                },
+                "mem_copy_util_std": {
+                    "type": "number"
+                },
+                "mem_limit": {
+                    "type": "number"
+                },
+                "mem_request": {
+                    "type": "number"
+                },
+                "pcie_rx_avg": {
+                    "type": "number"
+                },
+                "pcie_rx_max": {
+                    "type": "number"
+                },
+                "pcie_tx_avg": {
+                    "type": "number"
+                },
+                "pcie_tx_max": {
+                    "type": "number"
+                },
+                "sm_active_avg": {
+                    "type": "number"
+                },
+                "sm_active_max": {
+                    "type": "number"
+                },
+                "sm_active_std": {
+                    "type": "number"
+                },
+                "sm_occupancy_avg": {
+                    "type": "number"
+                },
+                "sm_occupancy_max": {
+                    "type": "number"
+                },
+                "sm_occupancy_std": {
+                    "type": "number"
+                },
+                "tensor_active_avg": {
+                    "type": "number"
+                },
+                "tensor_active_max": {
+                    "type": "number"
+                },
+                "tensor_active_std": {
+                    "type": "number"
                 }
             }
         },
@@ -10793,6 +11185,137 @@ const docTemplate = `{
                 },
                 "userName": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler.HealthOverviewResp": {
+            "type": "object",
+            "properties": {
+                "failedJobs": {
+                    "type": "integer"
+                },
+                "failureRate": {
+                    "type": "number"
+                },
+                "failureTrend": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "date": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "pendingJobs": {
+                    "type": "integer"
+                },
+                "runningJobs": {
+                    "type": "integer"
+                },
+                "topFailureReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "reason": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "totalJobs": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.JobContextResp": {
+            "type": "object",
+            "properties": {
+                "db": {
+                    "type": "object",
+                    "properties": {
+                        "events": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/k8s_io_api_core_v1.Event"
+                            }
+                        },
+                        "profileData": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_pkg_monitor.ProfileData"
+                        },
+                        "scheduleData": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ScheduleData"
+                        },
+                        "terminatedStates": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/v1.ContainerStateTerminated"
+                            }
+                        }
+                    }
+                },
+                "log": {
+                    "type": "object",
+                    "properties": {
+                        "container": {
+                            "type": "string"
+                        },
+                        "tail": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "meta": {
+                    "type": "object",
+                    "properties": {
+                        "completedAt": {
+                            "type": "string"
+                        },
+                        "createdAt": {
+                            "type": "string"
+                        },
+                        "jobName": {
+                            "type": "string"
+                        },
+                        "jobType": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        },
+                        "nodes": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "queue": {
+                            "type": "string"
+                        },
+                        "resources": {
+                            "$ref": "#/definitions/v1.ResourceList"
+                        },
+                        "startedAt": {
+                            "type": "string"
+                        },
+                        "status": {
+                            "$ref": "#/definitions/volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase"
+                        },
+                        "user": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
@@ -11886,6 +12409,120 @@ const docTemplate = `{
                 }
             }
         },
+        "k8s_io_api_core_v1.Event": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "What action was taken/failed regarding to the Regarding object.\n+optional",
+                    "type": "string"
+                },
+                "apiVersion": {
+                    "description": "APIVersion defines the versioned schema of this representation of an object.\nServers should convert recognized schemas to the latest internal value, and\nmay reject unrecognized values.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources\n+optional",
+                    "type": "string"
+                },
+                "count": {
+                    "description": "The number of times this event has occurred.\n+optional",
+                    "type": "integer"
+                },
+                "eventTime": {
+                    "description": "Time when this Event was first observed.\n+optional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.MicroTime"
+                        }
+                    ]
+                },
+                "firstTimestamp": {
+                    "description": "The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)\n+optional",
+                    "type": "string"
+                },
+                "involvedObject": {
+                    "description": "The object that this event is about.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.ObjectReference"
+                        }
+                    ]
+                },
+                "kind": {
+                    "description": "Kind is a string value representing the REST resource this object represents.\nServers may infer this from the endpoint the client submits requests to.\nCannot be updated.\nIn CamelCase.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\n+optional",
+                    "type": "string"
+                },
+                "lastTimestamp": {
+                    "description": "The time at which the most recent occurrence of this event was recorded.\n+optional",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "A human-readable description of the status of this operation.\nTODO: decide on maximum length.\n+optional",
+                    "type": "string"
+                },
+                "metadata": {
+                    "description": "Standard object's metadata.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.ObjectMeta"
+                        }
+                    ]
+                },
+                "reason": {
+                    "description": "This should be a short, machine understandable string that gives the reason\nfor the transition into the object's current status.\nTODO: provide exact specification for format.\n+optional",
+                    "type": "string"
+                },
+                "related": {
+                    "description": "Optional secondary object for more complex actions.\n+optional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.ObjectReference"
+                        }
+                    ]
+                },
+                "reportingComponent": {
+                    "description": "Name of the controller that emitted this Event, e.g. ` + "`" + `kubernetes.io/kubelet` + "`" + `.\n+optional",
+                    "type": "string"
+                },
+                "reportingInstance": {
+                    "description": "ID of the controller instance, e.g. ` + "`" + `kubelet-xyzf` + "`" + `.\n+optional",
+                    "type": "string"
+                },
+                "series": {
+                    "description": "Data about the Event series this event represents or nil if it's a singleton Event.\n+optional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/k8s_io_api_core_v1.EventSeries"
+                        }
+                    ]
+                },
+                "source": {
+                    "description": "The component reporting this event. Should be a short machine understandable string.\n+optional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.EventSource"
+                        }
+                    ]
+                },
+                "type": {
+                    "description": "Type of this event (Normal, Warning), new types could be added in the future\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "k8s_io_api_core_v1.EventSeries": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "description": "Number of occurrences in this series up to the last heartbeat time",
+                    "type": "integer"
+                },
+                "lastObservedTime": {
+                    "description": "Time of the last occurrence observed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.MicroTime"
+                        }
+                    ]
+                }
+            }
+        },
         "resource.Quantity": {
             "type": "object",
             "properties": {
@@ -11928,6 +12565,39 @@ const docTemplate = `{
                 "optional": {
                     "description": "Specify whether the ConfigMap or its key must be defined\n+optional",
                     "type": "boolean"
+                }
+            }
+        },
+        "v1.ContainerStateTerminated": {
+            "type": "object",
+            "properties": {
+                "containerID": {
+                    "description": "Container's ID in the format '\u003ctype\u003e://\u003ccontainer_id\u003e'\n+optional",
+                    "type": "string"
+                },
+                "exitCode": {
+                    "description": "Exit status from the last termination of the container",
+                    "type": "integer"
+                },
+                "finishedAt": {
+                    "description": "Time at which the container last terminated\n+optional",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message regarding the last termination of the container\n+optional",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "(brief) reason from the last termination of the container\n+optional",
+                    "type": "string"
+                },
+                "signal": {
+                    "description": "Signal from the last termination of the container\n+optional",
+                    "type": "integer"
+                },
+                "startedAt": {
+                    "description": "Time at which previous execution of the container started\n+optional",
+                    "type": "string"
                 }
             }
         },
@@ -11986,6 +12656,82 @@ const docTemplate = `{
                             "$ref": "#/definitions/v1.SecretKeySelector"
                         }
                     ]
+                }
+            }
+        },
+        "v1.EventSource": {
+            "type": "object",
+            "properties": {
+                "component": {
+                    "description": "Component from which the event is generated.\n+optional",
+                    "type": "string"
+                },
+                "host": {
+                    "description": "Node name on which the event is generated.\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.FieldsV1": {
+            "type": "object"
+        },
+        "v1.ManagedFieldsEntry": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "APIVersion defines the version of this resource that this field set\napplies to. The format is \"group/version\" just like the top-level\nAPIVersion field. It is necessary to track the version of a field\nset because it cannot be automatically converted.",
+                    "type": "string"
+                },
+                "fieldsType": {
+                    "description": "FieldsType is the discriminator for the different fields format and version.\nThere is currently only one possible value: \"FieldsV1\"",
+                    "type": "string"
+                },
+                "fieldsV1": {
+                    "description": "FieldsV1 holds the first JSON version format as described in the \"FieldsV1\" type.\n+optional",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.FieldsV1"
+                        }
+                    ]
+                },
+                "manager": {
+                    "description": "Manager is an identifier of the workflow managing these fields.",
+                    "type": "string"
+                },
+                "operation": {
+                    "description": "Operation is the type of operation which lead to this ManagedFieldsEntry being created.\nThe only valid values for this field are 'Apply' and 'Update'.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.ManagedFieldsOperationType"
+                        }
+                    ]
+                },
+                "subresource": {
+                    "description": "Subresource is the name of the subresource used to update that object, or\nempty string if the object was updated through the main resource. The\nvalue of this field is used to distinguish between managers, even if they\nshare the same name. For example, a status update will be distinct from a\nregular update using the same manager name.\nNote that the APIVersion field is not related to the Subresource field and\nit always corresponds to the version of the main resource.",
+                    "type": "string"
+                },
+                "time": {
+                    "description": "Time is the timestamp of when the ManagedFields entry was added. The\ntimestamp will also be updated if a field is added, the manager\nchanges any of the owned fields value or removes a field. The\ntimestamp does not update when a field is removed from the entry\nbecause another manager took it over.\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ManagedFieldsOperationType": {
+            "type": "string",
+            "enum": [
+                "Apply",
+                "Update"
+            ],
+            "x-enum-varnames": [
+                "ManagedFieldsOperationApply",
+                "ManagedFieldsOperationUpdate"
+            ]
+        },
+        "v1.MicroTime": {
+            "type": "object",
+            "properties": {
+                "time.Time": {
+                    "type": "string"
                 }
             }
         },
@@ -12058,6 +12804,119 @@ const docTemplate = `{
                 },
                 "fieldPath": {
                     "description": "Path of the field to select in the specified API version.",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ObjectMeta": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "description": "Annotations is an unstructured key value map stored with a resource that may be\nset by external tools to store and retrieve arbitrary metadata. They are not\nqueryable and should be preserved when modifying objects.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations\n+optional",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "creationTimestamp": {
+                    "description": "CreationTimestamp is a timestamp representing the server time when this object was\ncreated. It is not guaranteed to be set in happens-before order across separate operations.\nClients may not set this value. It is represented in RFC3339 form and is in UTC.\n\nPopulated by the system.\nRead-only.\nNull for lists.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata\n+optional",
+                    "type": "string"
+                },
+                "deletionGracePeriodSeconds": {
+                    "description": "Number of seconds allowed for this object to gracefully terminate before\nit will be removed from the system. Only set when deletionTimestamp is also set.\nMay only be shortened.\nRead-only.\n+optional",
+                    "type": "integer"
+                },
+                "deletionTimestamp": {
+                    "description": "DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This\nfield is set by the server when a graceful deletion is requested by the user, and is not\ndirectly settable by a client. The resource is expected to be deleted (no longer visible\nfrom resource lists, and not reachable by name) after the time in this field, once the\nfinalizers list is empty. As long as the finalizers list contains items, deletion is blocked.\nOnce the deletionTimestamp is set, this value may not be unset or be set further into the\nfuture, although it may be shortened or the resource may be deleted prior to this time.\nFor example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react\nby sending a graceful termination signal to the containers in the pod. After that 30 seconds,\nthe Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup,\nremove the pod from the API. In the presence of network partitions, this object may still\nexist after this timestamp, until an administrator or automated process can determine the\nresource is fully terminated.\nIf not set, graceful deletion of the object has not been requested.\n\nPopulated by the system when a graceful deletion is requested.\nRead-only.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata\n+optional",
+                    "type": "string"
+                },
+                "finalizers": {
+                    "description": "Must be empty before the object is deleted from the registry. Each entry\nis an identifier for the responsible component that will remove the entry\nfrom the list. If the deletionTimestamp of the object is non-nil, entries\nin this list can only be removed.\nFinalizers may be processed and removed in any order.  Order is NOT enforced\nbecause it introduces significant risk of stuck finalizers.\nfinalizers is a shared field, any actor with permission can reorder it.\nIf the finalizer list is processed in order, then this can lead to a situation\nin which the component responsible for the first finalizer in the list is\nwaiting for a signal (field value, external system, or other) produced by a\ncomponent responsible for a finalizer later in the list, resulting in a deadlock.\nWithout enforced ordering finalizers are free to order amongst themselves and\nare not vulnerable to ordering changes in the list.\n+optional\n+patchStrategy=merge\n+listType=set",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "generateName": {
+                    "description": "GenerateName is an optional prefix, used by the server, to generate a unique\nname ONLY IF the Name field has not been provided.\nIf this field is used, the name returned to the client will be different\nthan the name passed. This value will also be combined with a unique suffix.\nThe provided value has the same validation rules as the Name field,\nand may be truncated by the length of the suffix required to make the value\nunique on the server.\n\nIf this field is specified and the generated name exists, the server will return a 409.\n\nApplied only if Name is not specified.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency\n+optional",
+                    "type": "string"
+                },
+                "generation": {
+                    "description": "A sequence number representing a specific generation of the desired state.\nPopulated by the system. Read-only.\n+optional",
+                    "type": "integer"
+                },
+                "labels": {
+                    "description": "Map of string keys and values that can be used to organize and categorize\n(scope and select) objects. May match selectors of replication controllers\nand services.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels\n+optional",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "managedFields": {
+                    "description": "ManagedFields maps workflow-id and version to the set of fields\nthat are managed by that workflow. This is mostly for internal\nhousekeeping, and users typically shouldn't need to set or\nunderstand this field. A workflow can be the user's name, a\ncontroller's name, or the name of a specific apply path like\n\"ci-cd\". The set of fields is always in the version that the\nworkflow used when modifying the object.\n\n+optional\n+listType=atomic",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.ManagedFieldsEntry"
+                    }
+                },
+                "name": {
+                    "description": "Name must be unique within a namespace. Is required when creating resources, although\nsome resources may allow a client to request the generation of an appropriate name\nautomatically. Name is primarily intended for creation idempotence and configuration\ndefinition.\nCannot be updated.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names\n+optional",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace defines the space within which each name must be unique. An empty namespace is\nequivalent to the \"default\" namespace, but \"default\" is the canonical representation.\nNot all objects are required to be scoped to a namespace - the value of this field for\nthose objects will be empty.\n\nMust be a DNS_LABEL.\nCannot be updated.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces\n+optional",
+                    "type": "string"
+                },
+                "ownerReferences": {
+                    "description": "List of objects depended by this object. If ALL objects in the list have\nbeen deleted, this object will be garbage collected. If this object is managed by a controller,\nthen an entry in this list will point to this controller, with the controller field set to true.\nThere cannot be more than one managing controller.\n+optional\n+patchMergeKey=uid\n+patchStrategy=merge\n+listType=map\n+listMapKey=uid",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.OwnerReference"
+                    }
+                },
+                "resourceVersion": {
+                    "description": "An opaque value that represents the internal version of this object that can\nbe used by clients to determine when objects have changed. May be used for optimistic\nconcurrency, change detection, and the watch operation on a resource or set of resources.\nClients must treat these values as opaque and passed unmodified back to the server.\nThey may only be valid for a particular resource or set of resources.\n\nPopulated by the system.\nRead-only.\nValue must be treated as opaque by clients and .\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency\n+optional",
+                    "type": "string"
+                },
+                "selfLink": {
+                    "description": "Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.\n+optional",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "UID is the unique in time and space value for this object. It is typically generated by\nthe server on successful creation of a resource and is not allowed to change on PUT\noperations.\n\nPopulated by the system.\nRead-only.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ObjectReference": {
+            "type": "object",
+            "properties": {
+                "apiVersion": {
+                    "description": "API version of the referent.\n+optional",
+                    "type": "string"
+                },
+                "fieldPath": {
+                    "description": "If referring to a piece of an object instead of an entire object, this string\nshould contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].\nFor example, if the object reference is to a container within a pod, this would take on a value like:\n\"spec.containers{name}\" (where \"name\" refers to the name of the container that triggered\nthe event) or if no container name is specified \"spec.containers[2]\" (container with\nindex 2 in this pod). This syntax is chosen only to have some well-defined way of\nreferencing a part of an object.\nTODO: this design is not final and this field is subject to change in the future.\n+optional",
+                    "type": "string"
+                },
+                "kind": {
+                    "description": "Kind of the referent.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds\n+optional",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names\n+optional",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/\n+optional",
+                    "type": "string"
+                },
+                "resourceVersion": {
+                    "description": "Specific resourceVersion to which this reference is made, if any.\nMore info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency\n+optional",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "UID of the referent.\nMore info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids\n+optional",
                     "type": "string"
                 }
             }

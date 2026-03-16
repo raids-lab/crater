@@ -324,6 +324,17 @@ type JobContextResp struct {
 	} `json:"log"`
 }
 
+// GetDiagnosticContext godoc
+// @Summary Get diagnostic context by job name
+// @Description Get job metadata, persisted diagnostics fields, and optional log tail for troubleshooting.
+// @Tags diagnostics
+// @Produce json
+// @Param name path string true "Job name"
+// @Param includeLog query bool false "Whether to include pod log tail"
+// @Param tailLines query int false "Number of log lines to tail when includeLog=true"
+// @Success 200 {object} resputil.Response[JobContextResp]
+// @Router /api/v1/diagnostics/context/{name} [get]
+//
 //nolint:gocyclo // Context assembly combines auth scope, DB query, and optional log collection.
 func (mgr *DiagnosticsMgr) GetDiagnosticContext(c *gin.Context) {
 	type URI struct {

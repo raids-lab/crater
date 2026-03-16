@@ -258,6 +258,13 @@ definitions:
     - RoleGuest
     - RoleUser
     - RoleAdmin
+  github_com_raids-lab_crater_dao_model.ScheduleData:
+    properties:
+      imagePullTime:
+        type: string
+      imageSize:
+        type: string
+    type: object
   github_com_raids-lab_crater_dao_model.Status:
     enum:
     - 0
@@ -413,6 +420,8 @@ definitions:
       data: {}
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod:
     properties:
@@ -423,6 +432,8 @@ definitions:
           $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod'
         type: array
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_AccountResp:
@@ -435,6 +446,8 @@ definitions:
         type: array
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp:
     properties:
@@ -445,6 +458,8 @@ definitions:
           $ref: '#/definitions/internal_handler.ApprovalOrderResp'
         type: array
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat:
@@ -457,6 +472,8 @@ definitions:
         type: array
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo:
     properties:
@@ -467,6 +484,8 @@ definitions:
           $ref: '#/definitions/internal_handler.GpuAnalysisWithJobInfo'
         type: array
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
@@ -479,6 +498,8 @@ definitions:
         type: array
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
@@ -487,6 +508,8 @@ definitions:
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp:
@@ -497,6 +520,8 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
     properties:
@@ -505,6 +530,8 @@ definitions:
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_GPUInfo:
@@ -515,6 +542,8 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
     properties:
@@ -523,6 +552,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp:
@@ -533,6 +564,8 @@ definitions:
         $ref: '#/definitions/internal_handler.AuthModeResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse:
     properties:
@@ -541,6 +574,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.ChatResponse'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp:
@@ -551,6 +586,8 @@ definitions:
         $ref: '#/definitions/internal_handler.CheckResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DeleteProjectResp:
     properties:
@@ -559,6 +596,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.DeleteProjectResp'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp:
@@ -569,6 +608,8 @@ definitions:
         $ref: '#/definitions/internal_handler.DiagnosisResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_GpuAnalysisStatusResp:
     properties:
@@ -577,6 +618,30 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.GpuAnalysisStatusResp'
       msg:
+        type: string
+      msgKey:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.HealthOverviewResp'
+      msg:
+        type: string
+      msgKey:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobContextResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.JobContextResp'
+      msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp:
@@ -587,6 +652,8 @@ definitions:
         $ref: '#/definitions/internal_handler.LLMConfigResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp:
     properties:
@@ -595,6 +662,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.LoginResp'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
@@ -605,6 +674,8 @@ definitions:
         $ref: '#/definitions/internal_handler.ModelDownloadResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark:
     properties:
@@ -613,6 +684,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.NodeMark'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
@@ -623,6 +696,8 @@ definitions:
         $ref: '#/definitions/internal_handler.ProjectCreateResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp:
     properties:
@@ -631,6 +706,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.PutUserInProjectResp'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TokenReq:
@@ -641,6 +718,8 @@ definitions:
         $ref: '#/definitions/internal_handler.TokenReq'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TriggerAllJobsAnalysisResponse:
     properties:
@@ -649,6 +728,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.TriggerAllJobsAnalysisResponse'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserDetailResp:
@@ -659,6 +740,8 @@ definitions:
         $ref: '#/definitions/internal_handler.UserDetailResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress:
     properties:
@@ -667,6 +750,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler_tool.PodIngress'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngressResp:
@@ -677,6 +762,8 @@ definitions:
         $ref: '#/definitions/internal_handler_tool.PodIngressResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeport:
     properties:
@@ -685,6 +772,8 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler_tool.PodNodeport'
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeportResp:
@@ -695,6 +784,8 @@ definitions:
         $ref: '#/definitions/internal_handler_tool.PodNodeportResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp:
     properties:
@@ -704,6 +795,8 @@ definitions:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
       msg:
         type: string
+      msgKey:
+        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-string:
     properties:
@@ -712,6 +805,8 @@ definitions:
       data:
         type: string
       msg:
+        type: string
+      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_util.VolumeMount:
@@ -891,6 +986,107 @@ definitions:
       userRealName:
         description: 用户真实名称（用于tooltip）
         type: string
+    type: object
+  github_com_raids-lab_crater_pkg_monitor.ProfileData:
+    properties:
+      cpu_limit:
+        type: number
+      cpu_mem_avg:
+        type: number
+      cpu_mem_max:
+        type: number
+      cpu_mem_std:
+        type: number
+      cpu_request:
+        description: CPU and Memory
+        type: number
+      cpu_usage_avg:
+        type: number
+      cpu_usage_max:
+        type: number
+      cpu_usage_std:
+        type: number
+      dram_active_avg:
+        type: number
+      dram_active_max:
+        type: number
+      dram_active_std:
+        type: number
+      dram_util_avg:
+        type: number
+      dram_util_max:
+        type: number
+      dram_util_std:
+        type: number
+      fp16_active_avg:
+        type: number
+      fp16_active_max:
+        type: number
+      fp16_active_std:
+        type: number
+      fp32_active_avg:
+        type: number
+      fp32_active_max:
+        type: number
+      fp32_active_std:
+        type: number
+      fp64_active_avg:
+        type: number
+      fp64_active_max:
+        type: number
+      fp64_active_std:
+        type: number
+      gpu_mem_avg:
+        type: number
+      gpu_mem_max:
+        type: number
+      gpu_mem_std:
+        type: number
+      gpu_mem_total:
+        type: number
+      gpu_util_avg:
+        description: GPU
+        type: number
+      gpu_util_max:
+        type: number
+      gpu_util_std:
+        type: number
+      mem_copy_util_avg:
+        type: number
+      mem_copy_util_max:
+        type: number
+      mem_copy_util_std:
+        type: number
+      mem_limit:
+        type: number
+      mem_request:
+        type: number
+      pcie_rx_avg:
+        type: number
+      pcie_rx_max:
+        type: number
+      pcie_tx_avg:
+        type: number
+      pcie_tx_max:
+        type: number
+      sm_active_avg:
+        type: number
+      sm_active_max:
+        type: number
+      sm_active_std:
+        type: number
+      sm_occupancy_avg:
+        type: number
+      sm_occupancy_max:
+        type: number
+      sm_occupancy_std:
+        type: number
+      tensor_active_avg:
+        type: number
+      tensor_active_max:
+        type: number
+      tensor_active_std:
+        type: number
     type: object
   gorm.DeletedAt:
     properties:
@@ -1192,6 +1388,91 @@ definitions:
         type: integer
       userName:
         type: string
+    type: object
+  internal_handler.HealthOverviewResp:
+    properties:
+      failedJobs:
+        type: integer
+      failureRate:
+        type: number
+      failureTrend:
+        items:
+          properties:
+            count:
+              type: integer
+            date:
+              type: string
+          type: object
+        type: array
+      pendingJobs:
+        type: integer
+      runningJobs:
+        type: integer
+      topFailureReasons:
+        items:
+          properties:
+            count:
+              type: integer
+            reason:
+              type: string
+          type: object
+        type: array
+      totalJobs:
+        type: integer
+    type: object
+  internal_handler.JobContextResp:
+    properties:
+      db:
+        properties:
+          events:
+            items:
+              $ref: '#/definitions/k8s_io_api_core_v1.Event'
+            type: array
+          profileData:
+            $ref: '#/definitions/github_com_raids-lab_crater_pkg_monitor.ProfileData'
+          scheduleData:
+            $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleData'
+          terminatedStates:
+            items:
+              $ref: '#/definitions/v1.ContainerStateTerminated'
+            type: array
+        type: object
+      log:
+        properties:
+          container:
+            type: string
+          tail:
+            type: string
+        type: object
+      meta:
+        properties:
+          completedAt:
+            type: string
+          createdAt:
+            type: string
+          jobName:
+            type: string
+          jobType:
+            $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
+          name:
+            type: string
+          namespace:
+            type: string
+          nodes:
+            items:
+              type: string
+            type: array
+          queue:
+            type: string
+          resources:
+            $ref: '#/definitions/v1.ResourceList'
+          startedAt:
+            type: string
+          status:
+            $ref: '#/definitions/volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase'
+          user:
+            type: string
+        type: object
     type: object
   internal_handler.JobTemplateReq:
     properties:
@@ -1917,6 +2198,119 @@ definitions:
       token:
         type: string
     type: object
+  k8s_io_api_core_v1.Event:
+    properties:
+      action:
+        description: |-
+          What action was taken/failed regarding to the Regarding object.
+          +optional
+        type: string
+      apiVersion:
+        description: |-
+          APIVersion defines the versioned schema of this representation of an object.
+          Servers should convert recognized schemas to the latest internal value, and
+          may reject unrecognized values.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+          +optional
+        type: string
+      count:
+        description: |-
+          The number of times this event has occurred.
+          +optional
+        type: integer
+      eventTime:
+        allOf:
+        - $ref: '#/definitions/v1.MicroTime'
+        description: |-
+          Time when this Event was first observed.
+          +optional
+      firstTimestamp:
+        description: |-
+          The time at which the event was first recorded. (Time of server receipt is in TypeMeta.)
+          +optional
+        type: string
+      involvedObject:
+        allOf:
+        - $ref: '#/definitions/v1.ObjectReference'
+        description: The object that this event is about.
+      kind:
+        description: |-
+          Kind is a string value representing the REST resource this object represents.
+          Servers may infer this from the endpoint the client submits requests to.
+          Cannot be updated.
+          In CamelCase.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+          +optional
+        type: string
+      lastTimestamp:
+        description: |-
+          The time at which the most recent occurrence of this event was recorded.
+          +optional
+        type: string
+      message:
+        description: |-
+          A human-readable description of the status of this operation.
+          TODO: decide on maximum length.
+          +optional
+        type: string
+      metadata:
+        allOf:
+        - $ref: '#/definitions/v1.ObjectMeta'
+        description: |-
+          Standard object's metadata.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+      reason:
+        description: |-
+          This should be a short, machine understandable string that gives the reason
+          for the transition into the object's current status.
+          TODO: provide exact specification for format.
+          +optional
+        type: string
+      related:
+        allOf:
+        - $ref: '#/definitions/v1.ObjectReference'
+        description: |-
+          Optional secondary object for more complex actions.
+          +optional
+      reportingComponent:
+        description: |-
+          Name of the controller that emitted this Event, e.g. `kubernetes.io/kubelet`.
+          +optional
+        type: string
+      reportingInstance:
+        description: |-
+          ID of the controller instance, e.g. `kubelet-xyzf`.
+          +optional
+        type: string
+      series:
+        allOf:
+        - $ref: '#/definitions/k8s_io_api_core_v1.EventSeries'
+        description: |-
+          Data about the Event series this event represents or nil if it's a singleton Event.
+          +optional
+      source:
+        allOf:
+        - $ref: '#/definitions/v1.EventSource'
+        description: |-
+          The component reporting this event. Should be a short machine understandable string.
+          +optional
+      type:
+        description: |-
+          Type of this event (Normal, Warning), new types could be added in the future
+          +optional
+        type: string
+    type: object
+  k8s_io_api_core_v1.EventSeries:
+    properties:
+      count:
+        description: Number of occurrences in this series up to the last heartbeat
+          time
+        type: integer
+      lastObservedTime:
+        allOf:
+        - $ref: '#/definitions/v1.MicroTime'
+        description: Time of the last occurrence observed
+    type: object
   resource.Quantity:
     properties:
       Format:
@@ -1960,6 +2354,42 @@ definitions:
           Specify whether the ConfigMap or its key must be defined
           +optional
         type: boolean
+    type: object
+  v1.ContainerStateTerminated:
+    properties:
+      containerID:
+        description: |-
+          Container's ID in the format '<type>://<container_id>'
+          +optional
+        type: string
+      exitCode:
+        description: Exit status from the last termination of the container
+        type: integer
+      finishedAt:
+        description: |-
+          Time at which the container last terminated
+          +optional
+        type: string
+      message:
+        description: |-
+          Message regarding the last termination of the container
+          +optional
+        type: string
+      reason:
+        description: |-
+          (brief) reason from the last termination of the container
+          +optional
+        type: string
+      signal:
+        description: |-
+          Signal from the last termination of the container
+          +optional
+        type: integer
+      startedAt:
+        description: |-
+          Time at which previous execution of the container started
+          +optional
+        type: string
     type: object
   v1.EnvVar:
     properties:
@@ -2014,6 +2444,83 @@ definitions:
         description: |-
           Selects a key of a secret in the pod's namespace
           +optional
+    type: object
+  v1.EventSource:
+    properties:
+      component:
+        description: |-
+          Component from which the event is generated.
+          +optional
+        type: string
+      host:
+        description: |-
+          Node name on which the event is generated.
+          +optional
+        type: string
+    type: object
+  v1.FieldsV1:
+    type: object
+  v1.ManagedFieldsEntry:
+    properties:
+      apiVersion:
+        description: |-
+          APIVersion defines the version of this resource that this field set
+          applies to. The format is "group/version" just like the top-level
+          APIVersion field. It is necessary to track the version of a field
+          set because it cannot be automatically converted.
+        type: string
+      fieldsType:
+        description: |-
+          FieldsType is the discriminator for the different fields format and version.
+          There is currently only one possible value: "FieldsV1"
+        type: string
+      fieldsV1:
+        allOf:
+        - $ref: '#/definitions/v1.FieldsV1'
+        description: |-
+          FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
+          +optional
+      manager:
+        description: Manager is an identifier of the workflow managing these fields.
+        type: string
+      operation:
+        allOf:
+        - $ref: '#/definitions/v1.ManagedFieldsOperationType'
+        description: |-
+          Operation is the type of operation which lead to this ManagedFieldsEntry being created.
+          The only valid values for this field are 'Apply' and 'Update'.
+      subresource:
+        description: |-
+          Subresource is the name of the subresource used to update that object, or
+          empty string if the object was updated through the main resource. The
+          value of this field is used to distinguish between managers, even if they
+          share the same name. For example, a status update will be distinct from a
+          regular update using the same manager name.
+          Note that the APIVersion field is not related to the Subresource field and
+          it always corresponds to the version of the main resource.
+        type: string
+      time:
+        description: |-
+          Time is the timestamp of when the ManagedFields entry was added. The
+          timestamp will also be updated if a field is added, the manager
+          changes any of the owned fields value or removes a field. The
+          timestamp does not update when a field is removed from the entry
+          because another manager took it over.
+          +optional
+        type: string
+    type: object
+  v1.ManagedFieldsOperationType:
+    enum:
+    - Apply
+    - Update
+    type: string
+    x-enum-varnames:
+    - ManagedFieldsOperationApply
+    - ManagedFieldsOperationUpdate
+  v1.MicroTime:
+    properties:
+      time.Time:
+        type: string
     type: object
   v1.NodeConditionType:
     enum:
@@ -2078,6 +2585,245 @@ definitions:
         type: string
       fieldPath:
         description: Path of the field to select in the specified API version.
+        type: string
+    type: object
+  v1.ObjectMeta:
+    properties:
+      annotations:
+        additionalProperties:
+          type: string
+        description: |-
+          Annotations is an unstructured key value map stored with a resource that may be
+          set by external tools to store and retrieve arbitrary metadata. They are not
+          queryable and should be preserved when modifying objects.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
+          +optional
+        type: object
+      creationTimestamp:
+        description: |-
+          CreationTimestamp is a timestamp representing the server time when this object was
+          created. It is not guaranteed to be set in happens-before order across separate operations.
+          Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+
+          Populated by the system.
+          Read-only.
+          Null for lists.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+          +optional
+        type: string
+      deletionGracePeriodSeconds:
+        description: |-
+          Number of seconds allowed for this object to gracefully terminate before
+          it will be removed from the system. Only set when deletionTimestamp is also set.
+          May only be shortened.
+          Read-only.
+          +optional
+        type: integer
+      deletionTimestamp:
+        description: |-
+          DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This
+          field is set by the server when a graceful deletion is requested by the user, and is not
+          directly settable by a client. The resource is expected to be deleted (no longer visible
+          from resource lists, and not reachable by name) after the time in this field, once the
+          finalizers list is empty. As long as the finalizers list contains items, deletion is blocked.
+          Once the deletionTimestamp is set, this value may not be unset or be set further into the
+          future, although it may be shortened or the resource may be deleted prior to this time.
+          For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react
+          by sending a graceful termination signal to the containers in the pod. After that 30 seconds,
+          the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup,
+          remove the pod from the API. In the presence of network partitions, this object may still
+          exist after this timestamp, until an administrator or automated process can determine the
+          resource is fully terminated.
+          If not set, graceful deletion of the object has not been requested.
+
+          Populated by the system when a graceful deletion is requested.
+          Read-only.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+          +optional
+        type: string
+      finalizers:
+        description: |-
+          Must be empty before the object is deleted from the registry. Each entry
+          is an identifier for the responsible component that will remove the entry
+          from the list. If the deletionTimestamp of the object is non-nil, entries
+          in this list can only be removed.
+          Finalizers may be processed and removed in any order.  Order is NOT enforced
+          because it introduces significant risk of stuck finalizers.
+          finalizers is a shared field, any actor with permission can reorder it.
+          If the finalizer list is processed in order, then this can lead to a situation
+          in which the component responsible for the first finalizer in the list is
+          waiting for a signal (field value, external system, or other) produced by a
+          component responsible for a finalizer later in the list, resulting in a deadlock.
+          Without enforced ordering finalizers are free to order amongst themselves and
+          are not vulnerable to ordering changes in the list.
+          +optional
+          +patchStrategy=merge
+          +listType=set
+        items:
+          type: string
+        type: array
+      generateName:
+        description: |-
+          GenerateName is an optional prefix, used by the server, to generate a unique
+          name ONLY IF the Name field has not been provided.
+          If this field is used, the name returned to the client will be different
+          than the name passed. This value will also be combined with a unique suffix.
+          The provided value has the same validation rules as the Name field,
+          and may be truncated by the length of the suffix required to make the value
+          unique on the server.
+
+          If this field is specified and the generated name exists, the server will return a 409.
+
+          Applied only if Name is not specified.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency
+          +optional
+        type: string
+      generation:
+        description: |-
+          A sequence number representing a specific generation of the desired state.
+          Populated by the system. Read-only.
+          +optional
+        type: integer
+      labels:
+        additionalProperties:
+          type: string
+        description: |-
+          Map of string keys and values that can be used to organize and categorize
+          (scope and select) objects. May match selectors of replication controllers
+          and services.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+          +optional
+        type: object
+      managedFields:
+        description: |-
+          ManagedFields maps workflow-id and version to the set of fields
+          that are managed by that workflow. This is mostly for internal
+          housekeeping, and users typically shouldn't need to set or
+          understand this field. A workflow can be the user's name, a
+          controller's name, or the name of a specific apply path like
+          "ci-cd". The set of fields is always in the version that the
+          workflow used when modifying the object.
+
+          +optional
+          +listType=atomic
+        items:
+          $ref: '#/definitions/v1.ManagedFieldsEntry'
+        type: array
+      name:
+        description: |-
+          Name must be unique within a namespace. Is required when creating resources, although
+          some resources may allow a client to request the generation of an appropriate name
+          automatically. Name is primarily intended for creation idempotence and configuration
+          definition.
+          Cannot be updated.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
+          +optional
+        type: string
+      namespace:
+        description: |-
+          Namespace defines the space within which each name must be unique. An empty namespace is
+          equivalent to the "default" namespace, but "default" is the canonical representation.
+          Not all objects are required to be scoped to a namespace - the value of this field for
+          those objects will be empty.
+
+          Must be a DNS_LABEL.
+          Cannot be updated.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
+          +optional
+        type: string
+      ownerReferences:
+        description: |-
+          List of objects depended by this object. If ALL objects in the list have
+          been deleted, this object will be garbage collected. If this object is managed by a controller,
+          then an entry in this list will point to this controller, with the controller field set to true.
+          There cannot be more than one managing controller.
+          +optional
+          +patchMergeKey=uid
+          +patchStrategy=merge
+          +listType=map
+          +listMapKey=uid
+        items:
+          $ref: '#/definitions/v1.OwnerReference'
+        type: array
+      resourceVersion:
+        description: |-
+          An opaque value that represents the internal version of this object that can
+          be used by clients to determine when objects have changed. May be used for optimistic
+          concurrency, change detection, and the watch operation on a resource or set of resources.
+          Clients must treat these values as opaque and passed unmodified back to the server.
+          They may only be valid for a particular resource or set of resources.
+
+          Populated by the system.
+          Read-only.
+          Value must be treated as opaque by clients and .
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+          +optional
+        type: string
+      selfLink:
+        description: |-
+          Deprecated: selfLink is a legacy read-only field that is no longer populated by the system.
+          +optional
+        type: string
+      uid:
+        description: |-
+          UID is the unique in time and space value for this object. It is typically generated by
+          the server on successful creation of a resource and is not allowed to change on PUT
+          operations.
+
+          Populated by the system.
+          Read-only.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#uids
+          +optional
+        type: string
+    type: object
+  v1.ObjectReference:
+    properties:
+      apiVersion:
+        description: |-
+          API version of the referent.
+          +optional
+        type: string
+      fieldPath:
+        description: |-
+          If referring to a piece of an object instead of an entire object, this string
+          should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+          For example, if the object reference is to a container within a pod, this would take on a value like:
+          "spec.containers{name}" (where "name" refers to the name of the container that triggered
+          the event) or if no container name is specified "spec.containers[2]" (container with
+          index 2 in this pod). This syntax is chosen only to have some well-defined way of
+          referencing a part of an object.
+          TODO: this design is not final and this field is subject to change in the future.
+          +optional
+        type: string
+      kind:
+        description: |-
+          Kind of the referent.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+          +optional
+        type: string
+      name:
+        description: |-
+          Name of the referent.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+          +optional
+        type: string
+      namespace:
+        description: |-
+          Namespace of the referent.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+          +optional
+        type: string
+      resourceVersion:
+        description: |-
+          Specific resourceVersion to which this reference is made, if any.
+          More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+          +optional
+        type: string
+      uid:
+        description: |-
+          UID of the referent.
+          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+          +optional
         type: string
     type: object
   v1.OwnerReference:
@@ -2281,6 +3027,24 @@ paths:
       summary: Diagnose a job
       tags:
       - aiops
+  /api/v1/admin/aiops/health-overview:
+    get:
+      description: Get job health overview for all users. days=0 means all time.
+      parameters:
+      - description: Lookback days (default 7, 0 means all time)
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp'
+      summary: Get AIOps health overview (admin)
+      tags:
+      - aiops
   /api/v1/admin/aiops/llmchat:
     post:
       consumes:
@@ -2369,6 +3133,24 @@ paths:
       summary: Diagnose a job
       tags:
       - aiops
+  /api/v1/aiops/health-overview:
+    get:
+      description: Get job health overview for current user. days=0 means all time.
+      parameters:
+      - description: Lookback days (default 7, 0 means all time)
+        in: query
+        name: days
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp'
+      summary: Get AIOps health overview
+      tags:
+      - aiops
   /api/v1/aiops/llmchat:
     post:
       consumes:
@@ -2392,6 +3174,34 @@ paths:
       summary: LLM chat for AIOps
       tags:
       - aiops
+  /api/v1/diagnostics/context/{name}:
+    get:
+      description: Get job metadata, persisted diagnostics fields, and optional log
+        tail for troubleshooting.
+      parameters:
+      - description: Job name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Whether to include pod log tail
+        in: query
+        name: includeLog
+        type: boolean
+      - description: Number of log lines to tail when includeLog=true
+        in: query
+        name: tailLines
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobContextResp'
+      summary: Get diagnostic context by job name
+      tags:
+      - diagnostics
   /api/v1/diagnostics/failure-types/top:
     get:
       description: Get aggregated statistics of the most common failure types for
