@@ -225,7 +225,7 @@ func categorizeFailure(job *model.Job) classifyResult {
 		terminated := job.TerminatedStates.Data()
 		for i := range terminated {
 			ts := &terminated[i]
-			if strings.EqualFold(ts.Reason, "OOMKilled") || ts.ExitCode == 137 {
+			if strings.EqualFold(ts.Reason, "OOMKilled") {
 				return classifyResult{typeName: "OOMKilled", sample: sampleTerminated(ts)}
 			}
 			if ts.ExitCode == exitCodeSegmentationFault {
@@ -236,9 +236,6 @@ func categorizeFailure(job *model.Job) classifyResult {
 			}
 			if ts.ExitCode == exitCodeGracefulTerm {
 				return classifyResult{typeName: "GracefulTermination", sample: sampleTerminated(ts)}
-			}
-			if strings.EqualFold(ts.Reason, "Error") && ts.ExitCode != 0 {
-				return classifyResult{typeName: "ContainerError", sample: sampleTerminated(ts)}
 			}
 		}
 	}
@@ -262,7 +259,8 @@ func categorizeFailure(job *model.Job) classifyResult {
 					return classifyResult{typeName: "SchedulingFailed", sample: sampleEvent(ev)}
 				}
 			}
-			if ev.Reason == "BackOff" && strings.Contains(strings.ToLower(ev.Message), "back-off restarting failed container") {
+			if ev.Reason == "CrashLoopBackOff" ||
+				(ev.Reason == "BackOff" && strings.Contains(strings.ToLower(ev.Message), "back-off restarting failed container")) {
 				return classifyResult{typeName: "CrashLoopBackOff", sample: sampleEvent(ev)}
 			}
 			if ev.Reason == "Evicted" {
@@ -273,6 +271,15 @@ func categorizeFailure(job *model.Job) classifyResult {
 			}
 			if ev.Reason == "DeadlineExceeded" {
 				return classifyResult{typeName: "JobDeadlineExceeded", sample: sampleEvent(ev)}
+			}
+		}
+	}
+	if job.TerminatedStates != nil {
+		terminated := job.TerminatedStates.Data()
+		for i := range terminated {
+			ts := &terminated[i]
+			if strings.EqualFold(ts.Reason, "Error") && ts.ExitCode != 0 {
+				return classifyResult{typeName: "ContainerError", sample: sampleTerminated(ts)}
 			}
 		}
 	}

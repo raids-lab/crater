@@ -667,7 +667,7 @@ function DiagnosisCard({ diagnosis }: { diagnosis: IDiagnosis }) {
   const severityColors = {
     critical: 'destructive',
     error: 'destructive',
-    warning: 'default',
+    warning: 'secondary',
     info: 'secondary',
   } as const
 
@@ -690,7 +690,9 @@ function DiagnosisCard({ diagnosis }: { diagnosis: IDiagnosis }) {
         <Icon className="mt-0.5 h-5 w-5 flex-shrink-0" />
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-semibold">{diagnosis.category}</h4>
+            <h4 className="text-sm font-semibold">
+              {t(`aiops.reason.${diagnosis.category}`, { defaultValue: diagnosis.category })}
+            </h4>
             <Badge variant={severity}>{diagnosis.severity}</Badge>
             <Badge variant="outline" className="text-xs">
               {diagnosis.confidence}
