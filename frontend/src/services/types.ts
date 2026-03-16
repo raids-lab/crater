@@ -21,6 +21,7 @@ export interface IResponse<T> {
   data: T
   code: ErrorCode
   msg: string
+  msgKey?: string
 }
 
 export type IErrorResponse = IResponse<never>

@@ -169,7 +169,15 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       setMessages((prev) => [...prev, assistantMessage])
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : t('aiops.common.unknownError')
+      let message = error instanceof Error ? error.message : t('aiops.common.unknownError')
+      if (error && typeof error === 'object' && 'data' in error) {
+        const backend = (error as { data?: { msg?: string; msgKey?: string } }).data
+        if (backend?.msgKey) {
+          message = t(backend.msgKey, { defaultValue: backend.msg || message })
+        } else if (backend?.msg) {
+          message = backend.msg
+        }
+      }
       const errorMessage: ChatMessage = {
         id: Date.now().toString(),
         role: 'assistant',

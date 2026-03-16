@@ -285,6 +285,10 @@
   "aiops.common.noData": "데이터 없음",
   "aiops.common.noFailedJobs": "실패 작업 없음",
   "aiops.common.unknownError": "알 수 없는 오류",
+  "aiops.error.jobAmbiguous": "여러 작업이 일치했습니다. 고유한 jobName으로 다시 시도하세요.",
+  "aiops.error.jobNotFound": "작업을 찾을 수 없습니다. jobName을 확인하세요.",
+  "aiops.error.jobNotOwned": "해당 작업은 현재 계정 소유가 아닙니다.",
+  "aiops.error.queryFailed": "작업 정보 조회에 실패했습니다. 잠시 후 다시 시도하세요.",
   "aiops.metric.failedJobs": "실패 작업",
   "aiops.metric.failedJobsDesc": "확인이 필요한 작업",
   "aiops.metric.failureRate": "실패율",
@@ -1488,7 +1492,6 @@
   "volumeMounts.fileTab": "파일",
   "volumeMounts.mountPathDescription": "컨테이너 내의 마운트 경로를 수정할 수 있습니다",
   "volumeMounts.mountPoint": "마운트 지점 {{index}}",
-<<<<<<< HEAD
   "volumeMounts.mountSource": "마운트 소스 {{index}}",
   "分享对象类别错误，请联系管理员！": "Share target type error. Contact the administrator.",
   "删除访问权限成功!": "Access permission removed successfully!",
@@ -1503,7 +1506,4 @@
   "请至少选择一个分享对象": "Please select at least one share target",
   "请输入": "Please enter",
   "账户": "Account"
-=======
-  "volumeMounts.mountSource": "마운트 소스 {{index}}"
->>>>>>> 365315b6 (fix: lint)
 }

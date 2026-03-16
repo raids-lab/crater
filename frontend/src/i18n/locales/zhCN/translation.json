@@ -286,6 +286,10 @@
   "aiops.common.noData": "暂无数据",
   "aiops.common.noFailedJobs": "暂无失败作业",
   "aiops.common.unknownError": "未知错误",
+  "aiops.error.jobAmbiguous": "匹配到多个作业，请使用唯一的 jobName 重新查询。",
+  "aiops.error.jobNotFound": "未找到该作业，请检查 jobName 是否正确。",
+  "aiops.error.jobNotOwned": "该作业不属于你的账户，无法查看。",
+  "aiops.error.queryFailed": "查询作业信息失败，请稍后重试。",
   "aiops.metric.failedJobs": "失败作业",
   "aiops.metric.failedJobsDesc": "需要关注的异常作业",
   "aiops.metric.failureRate": "失败率",
@@ -1487,7 +1491,6 @@
   "volumeMounts.fileTab": "文件",
   "volumeMounts.mountPathDescription": "可修改容器内的挂载路径",
   "volumeMounts.mountPoint": "挂载点 {{index}}",
-<<<<<<< HEAD
   "volumeMounts.mountSource": "挂载源 {{index}}",
   "分享对象类别错误，请联系管理员！": "分享对象类别错误，请联系管理员！",
   "删除访问权限成功!": "删除访问权限成功!",
@@ -1502,7 +1505,4 @@
   "请至少选择一个分享对象": "请至少选择一个分享对象",
   "请输入": "请输入",
   "账户": "账户"
-=======
-  "volumeMounts.mountSource": "挂载源 {{index}}"
->>>>>>> 365315b6 (fix: lint)
 }
