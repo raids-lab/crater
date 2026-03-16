@@ -231,6 +231,15 @@ type Config struct {
 			// Optional: Defaults to false if not specified.
 			Enable bool `json:"enable"`
 
+			// Alias is a short display name for this auth method (e.g., "ACT", "SJTU").
+			// The UI will append suffixes like "登录" or "统一身份认证", so keep it brief.
+			// Optional: If empty, frontend falls back to "LDAP".
+			Alias string `json:"alias"`
+
+			// Help is the description shown in a tooltip for this auth method.
+			// Optional: If empty, frontend shows a default description.
+			Help string `json:"help"`
+
 			// Server connection settings.
 			Server struct {
 				// Address is the LDAP server address (host:port).
@@ -263,14 +272,25 @@ type Config struct {
 
 			// UID contains settings for UID/GID acquisition.
 			UID struct {
-				// Source defines where to get UID/GID ("none", "ldap", "external").
+				// Source defines where to get UID/GID ("none", "ldap", "rid").
+				// "rid" (Recommended): Calculates UID/GID from LDAP objectSid using RID + offset.
+				// "ldap": Fetches UID/GID from specified LDAP attributes.
+				// "external" (Deprecated): Fetches UID/GID from an external HTTP service.
 				Source string `json:"source"`
+				// RID contains settings for "rid" source calculation.
+				RID struct {
+					// Offset is the starting UID/GID offset (e.g., 10000).
+					Offset int `json:"offset"`
+					// SIDAttribute is the LDAP attribute storing the binary SID (defaults to "objectSid").
+					SIDAttribute string `json:"sidAttribute"`
+				} `json:"rid"`
 				// LDAPAttribute defines attribute names when source is "ldap".
 				LDAPAttribute struct {
 					UID string `json:"uid"`
 					GID string `json:"gid"`
 				} `json:"ldapAttribute"`
 				// ExternalService defines service details when source is "external".
+				// @Deprecated: Use "rid" source instead for direct calculation.
 				ExternalService struct {
 					URL     string `json:"url"`
 					Timeout int    `json:"timeout"`
@@ -470,7 +490,12 @@ func (c *Config) ValidateConfig() error {
 			if c.Auth.LDAP.UID.LDAPAttribute.GID == "" {
 				errors = append(errors, "auth.ldap.uid.ldapAttribute.gid is required when uid.source is 'ldap'")
 			}
+		case "rid":
+			if c.Auth.LDAP.UID.RID.Offset <= 0 {
+				errors = append(errors, "auth.ldap.uid.rid.offset must be positive when uid.source is 'rid'")
+			}
 		case "external":
+			// Deprecated source
 			if c.Auth.LDAP.UID.ExternalService.URL == "" {
 				errors = append(errors, "auth.ldap.uid.externalService.url is required when uid.source is 'external'")
 			}
@@ -493,6 +518,29 @@ func (c *Config) ValidateConfig() error {
 	}
 
 	return nil
+}
+
+const ldapAliasMaxRunes = 6
+
+// logConfigWarnings collects non-fatal configuration warnings and logs them once.
+// Same pattern as ValidateConfig (errors): gather all items then output.
+func (c *Config) logConfigWarnings() {
+	var warnings []string
+
+	if c.Auth.LDAP.Enable && c.Auth.LDAP.Alias != "" {
+		if n := len([]rune(c.Auth.LDAP.Alias)); n > ldapAliasMaxRunes {
+			warnings = append(warnings, fmt.Sprintf("auth.ldap.alias has %d characters (recommended ≤%d); "+
+				"the UI appends suffixes like \"登录\" or \"统一身份认证\", so a short alias is recommended",
+				n, ldapAliasMaxRunes))
+		}
+	}
+
+	// Add more warning checks here, e.g.:
+	// if c.SomeField > limit { warnings = append(warnings, "...") }
+
+	if len(warnings) > 0 {
+		klog.Warningf("Configuration warnings:\n- %s", strings.Join(warnings, "\n- "))
+	}
 }
 
 // PrintConfig prints the configuration in a formatted and readable way, masking sensitive information
@@ -642,6 +690,9 @@ func initConfig() *Config {
 	if err := config.ValidateConfig(); err != nil {
 		klog.Fatalf("Configuration validation failed: %v", err)
 	}
+
+	// Log configuration warnings (non-fatal, same collect-then-output pattern as errors)
+	config.logConfigWarnings()
 
 	// Print configuration summary
 	config.PrintConfig()

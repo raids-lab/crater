@@ -174,6 +174,13 @@ auth:
     # Optional: Defaults to false if not specified
     # If false, LDAP login option will not be shown in frontend
     enable: false
+    # Short display name for this auth method in the UI (e.g., "ACT", "SJTU")
+    # The UI will append suffixes like "Login" or "SSO", so keep it brief.
+    # Optional: If empty, frontend falls back to "LDAP"
+    alias: ""
+    # Description shown in a tooltip for this auth method
+    # Optional: If empty, frontend shows a default description
+    help: ""
     # Server connection settings
     server:
       # LDAP server address (host:port or ldap://host:port)
@@ -209,17 +216,29 @@ auth:
     # UID/GID acquisition configuration
     # Only effective when LDAP authentication is enabled
     uid:
-      # UID acquisition method ("none", "ldap", "external")
+      # UID acquisition method ("none", "ldap", "rid", "external")
+      # - "rid" (Recommended): Calculates UID/GID directly from LDAP SID using RID + Offset.
+      # - "ldap": Fetches UID/GID from specified LDAP attributes (e.g., posixAccount).
+      # - "external" (Deprecated): Fetches UID/GID from an external Winbind-based HTTP service.
+      # - "none" / "default": Uses default UID=1001, GID=1001.
       # Required: Must be specified
       source: none
+      # Configuration for "rid" source (common for Windows AD + Winbind environments)
+      rid:
+        # Starting offset for UID/GID calculation (e.g., UID = RID + 10000)
+        # Required if source is "rid"
+        offset: 10000
+        # LDAP attribute storing the binary objectSid (defaults to "objectSid")
+        sidAttribute: objectSid
       # LDAP attribute names for UID/GID (used when source is "ldap")
       ldapAttribute:
         uid: uidNumber
         gid: gidNumber
       # External service configuration (used when source is "external")
-      externalService:
-        url: http://uid-server.example.com/get_user_id
-        timeout: 5
+      # @Deprecated: Use "rid" source instead for direct calculation.
+      # externalService:
+      #   url: http://uid-server.example.com/get_user_id
+      #   timeout: 5
   # Normal authentication settings
   normal:
     # Allow users to register directly with username and password

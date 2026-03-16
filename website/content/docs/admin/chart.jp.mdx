@@ -94,12 +94,17 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | パラメータ | 型 | デフォルト値 | 説明 |
 |-----|------|---------|-------------|
 | backendConfig.auth.ldap.enable | bool | `false` | LDAP 統一認証を有効にするかどうか |
+| backendConfig.auth.ldap.alias | string | `""` | LDAP ログインの表示名（別名）、簡潔な名称（例: "ACT"）を推奨 |
+| backendConfig.auth.ldap.help | string | `""` | LDAP ログイン方式にマウスを合わせたときに表示されるヘルプ説明 |
 | backendConfig.auth.ldap.server.address | string | `"..."` | LDAP サーバーのアドレス |
 | backendConfig.auth.ldap.server.baseDN | string | `"..."` | ユーザー検索の Base DN |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | ユーザー名に対応する LDAP 属性名 |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | 表示名に対応する LDAP 属性名 |
-| backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 取得ポリシー**: `default`, `ldap`, `external` から選択 |
+| backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 取得ポリシー**: `default`, `ldap`, `rid`, `external` (非推奨) から選択 |
+| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | source が `rid` の場合の UID 計算オフセット |
+| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | source が `rid` の場合、バイナリ SID を格納する LDAP 属性名 |
 | backendConfig.auth.ldap.uid.ldapAttribute.uid | string | `""` | source が `ldap` の場合の UID 属性名 |
+| backendConfig.auth.ldap.uid.ldapAttribute.gid | string | `""` | source が `ldap` の場合の GID 属性名 |
 | backendConfig.auth.normal.allowRegister | bool | `true` | プラットフォームでの直接登録を許可するかどうか |
 | backendConfig.auth.normal.allowLogin | bool | `true` | ローカルデータベースアカウントでのログインを許可するかどうか |
 

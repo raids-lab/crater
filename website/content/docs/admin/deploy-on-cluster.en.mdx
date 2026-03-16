@@ -548,6 +548,11 @@ backendConfig:
   auth:
     ldap:
       enable: true
+      # Short display name for the LDAP login method in the UI, e.g. "ACT"
+      # The UI will append suffixes like "Login" or "Unified Identity", so keep it brief.
+      alias: "ACT"
+      # Help text shown when hovering over the LDAP login option
+      help: "Please use your centralized identity account to sign in. The system will automatically synchronize your profile from LDAP."
       server:
         address: "ldap://ldap.example.com:389"
         bindDN: "cn=admin,dc=example,dc=org"
@@ -558,12 +563,31 @@ backendConfig:
         displayName: "cn"
         email: "mail"
       uid:
-        source: "default"  # Options: "default", "ldap", "external"
+        # UID/GID acquisition strategy when using LDAP authentication. Options:
+        # - "default" / "none": Use default UID=1001, GID=1001 (recommended for most clusters)
+        # - "ldap": Read UID/GID directly from specified LDAP attributes
+        # - "rid": Parse RID from objectSid and compute UID/GID as RID + offset (for AD + Winbind style setups)
+        # - "external": Use a legacy internal UID service (deprecated)
+        source: "default"
+        # When source is "rid", align with Winbind by computing UID/GID = RID + offset
+        rid:
+          offset: 10000
+          # LDAP attribute that stores the binary SID. For Windows AD this is usually "objectSid".
+          sidAttribute: "objectSid"
+        # When source is "ldap", specify which LDAP attributes contain UID/GID
+        ldapAttribute:
+          uid: "uidNumber"
+          gid: "gidNumber"
 ```
 
 If LDAP is enabled, the `username` and `displayName` in the field mapping are mandatory along with the server configuration. The platform uses the former as the username and the latter as the display name. If your LDAP does not have a corresponding attribute, you can map it to the same LDAP attribute as `username`.
 
-The `uid.source` configuration allows retrieving user UID/GID from LDAP attributes or an external microservice. This feature was primarily designed for compatibility with legacy distributed storage system permissions at ACT Lab. For external clusters, we strongly recommend setting `uid.source` to **`default`**. The platform will uniformly use **1001** as the runtime identity inside containers, which is the simplest choice for most standard NFS or local storage environments.
+The `uid.source` configuration determines how the platform assigns container UID/GID when a user is **auto-registered on first login**:
+
+- When set to `default` / `none`, the platform always uses **1001:1001** as the container runtime identity. This is the simplest and **recommended** choice for most NFS or local storage environments.
+- When set to `ldap`, the platform reads UID/GID directly from the LDAP attributes specified by `uid.ldapAttribute.uid/gid`, suitable for directories that already expose POSIX attributes.
+- When set to `rid`, the platform parses the user's `objectSid`, extracts the RID, and computes UID/GID based on `uid.rid.offset` (for example, UID = RID + 10000), which keeps IDs consistent with environments that use Winbind-based ID mapping.
+- When set to `external`, the platform calls a **legacy internal UID service** to obtain UID/GID. This mode exists only for backward compatibility and is **no longer recommended**.
 
 For more detailed instructions, please refer to the [Configuration Guide](/en/docs/admin/chart/) document.
 

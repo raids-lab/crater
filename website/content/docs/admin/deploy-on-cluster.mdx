@@ -549,6 +549,11 @@ backendConfig:
   auth:
     ldap:
       enable: true
+      # LDAP 登录方式在前端展示时的短别名，例如 "ACT"
+      # 实际界面会在其后拼接「登录」「统一身份认证」等后缀，因此建议保持简短
+      alias: "ACT"
+      # 鼠标悬浮在 LDAP 登录方式上的帮助提示文案
+      help: "请使用实验室统一身份账号登录，系统将自动从 LDAP 同步您的个人信息"
       server:
         address: "ldap://ldap.example.com:389"
         bindDN: "cn=admin,dc=example,dc=org"
@@ -559,12 +564,27 @@ backendConfig:
         displayName: "cn"
         email: "mail"
       uid:
-        source: "default"  # 可选: "default", "ldap", "external"
+        # 使用 LDAP 认证时的 UID/GID 获取策略，可选: "default", "ldap", "rid"
+        source: "default"
+        # 当 source 为 "rid" 时，对齐 winbind，用于计算 UID/GID = RID + offset
+        rid:
+          offset: 10000
+          # 存储二进制 SID 的 LDAP 属性名，Windows AD 默认使用 "objectSid"
+          sidAttribute: "objectSid"
+        # 当 source 为 "ldap" 时，用于指定 UID/GID 对应的 LDAP 属性名
+        ldapAttribute:
+          uid: "uidNumber"
+          gid: "gidNumber"
 ```
 
 如果启用 LDAP，那么字段映射中的 `username` 和 `displayName` 与服务器配置同样是必填项。平台将使用前者作为用户名，后者则作为显示的名称。如果您的 LDAP 没有对应的属性，您可以在这里指定其映射到与 `username` 相同的 LDAP 属性。
 
-配置项 `uid.source` 允许从 LDAP 属性或外部微服务获取用户的 UID/GID。此功能主要用于兼容 ACT 实验室内部原有的分布式存储系统权限。对于外部集群，我们建议将 `uid.source` 设置为 **`default`**。平台将统一使用 **1001** 作为用户的容器内运行标识，这对于大多数标准 NFS 或本地存储环境是最简便的选择。
+配置项 `uid.source` 决定了平台在**首次登录自动注册**用户时如何分配容器内的 UID/GID：
+
+- 当为 `default` / `none` 时，平台统一使用 **1001:1001** 作为容器内运行身份，这对于大多数标准 NFS 或本地存储环境是最简便、也推荐的选择。
+- 当为 `ldap` 时，平台会从 `uid.ldapAttribute.uid/gid` 指定的 LDAP 属性中直接读取 UID/GID，适用于已经为用户配置了 POSIX 相关属性的目录服务。
+- 当为 `rid` 时，平台会从用户的 `objectSid` 中解析 RID，并根据 `uid.rid.offset` 计算 UID/GID（例如 UID = RID + 10000），用于与实验室内部采用 Winbind 的存储系统保持一致。
+- 当为 `external` 时，平台会调用实验室内部的 UID 服务获取 UID/GID。该方式主要用于兼容历史部署场景，**已弃用**。
 
 更详细的说明可以参阅 [配置说明](/zh/docs/admin/chart/) 文档。
 

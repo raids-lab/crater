@@ -94,12 +94,17 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | Parameter | Type | Default | Description |
 |-----|------|---------|-------------|
 | backendConfig.auth.ldap.enable | bool | `false` | Whether to enable LDAP unified identity authentication |
+| backendConfig.auth.ldap.alias | string | `""` | Display name (alias) for LDAP login, recommended to be short (e.g., "ACT") |
+| backendConfig.auth.ldap.help | string | `""` | Help description shown when hovering over the LDAP login method |
 | backendConfig.auth.ldap.server.address | string | `"..."` | LDAP server address |
 | backendConfig.auth.ldap.server.baseDN | string | `"..."` | Base DN for user search |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | LDAP attribute name for username |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | LDAP attribute name for display name |
-| backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID acquisition strategy**: options `default`, `ldap`, `external` |
+| backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID acquisition strategy**: options `default`, `ldap`, `rid`, `external` (deprecated) |
+| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | UID calculation offset when source is `rid` |
+| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | LDAP attribute storing the binary SID when source is `rid` |
 | backendConfig.auth.ldap.uid.ldapAttribute.uid | string | `""` | UID attribute name when source is `ldap` |
+| backendConfig.auth.ldap.uid.ldapAttribute.gid | string | `""` | GID attribute name when source is `ldap` |
 | backendConfig.auth.normal.allowRegister | bool | `true` | Whether to allow direct registration on the platform |
 | backendConfig.auth.normal.allowLogin | bool | `true` | Whether to allow login with local database accounts |
 
