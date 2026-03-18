@@ -2,29 +2,171 @@ import { getDefaultStore } from 'jotai'
 import ky, { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'
 
+import { logger } from '@/utils/loglevel'
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
 import { configAPIBaseAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import {
-  ERROR_BUSINESS_LOGIC_ERROR,
+  CONFLICT_ERROR_GROUP,
   ERROR_INVALID_CREDENTIALS,
   ERROR_INVALID_REQUEST,
-  ERROR_LDAP_USER_NOT_FOUND,
-  ERROR_LEGACY_TOKEN_NOT_SUPPORTED,
-  ERROR_NOT_SPECIFIED,
+  ERROR_PARAMETER_ERROR,
+  ERROR_PERMISSION_DENIED,
+  ERROR_REGISTER_NOT_FOUND,
   ERROR_SERVICE_ERROR,
   ERROR_TOKEN_EXPIRED,
   ERROR_TOKEN_INVALID,
   ERROR_USER_EMAIL_NOT_VERIFIED,
-  ERROR_USER_NOT_ALLOWED,
   ErrorCode,
 } from './error_code'
+import {
+  LEGACY_ERROR_INVALID_CREDENTIALS,
+  LEGACY_ERROR_LDAP_USER_NOT_FOUND,
+  LEGACY_ERROR_LEGACY_TOKEN_NOT_SUPPORTED,
+  LEGACY_ERROR_NOT_SPECIFIED,
+  LEGACY_ERROR_USER_NOT_ALLOWED,
+} from './error_code_legacy'
 import type { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from './types'
 
 const store = getDefaultStore()
 const apiBase = store.get(configAPIBaseAtom)
 const baseURL = `${apiBase ?? ''}/api`
+const FALLBACK_ERROR_CODE = LEGACY_ERROR_NOT_SPECIFIED
+
+type EnhancedHTTPError = HTTPError & {
+  data?: IErrorResponse
+  httpStatus?: number
+  isHandledByBiz?: boolean
+  fallbackLogTimer?: ReturnType<typeof setTimeout>
+}
+
+type ErrorPolicyAction = 'silent' | 'toast' | 'delegate'
+
+type ErrorPolicy = {
+  action: ErrorPolicyAction
+  match: (code: number, error: EnhancedHTTPError) => boolean
+  message?: string | ((errorResponse: IErrorResponse, error: EnhancedHTTPError) => string)
+}
+
+const getErrorGroup = (code?: number): number => {
+  if (!code || Number.isNaN(code)) {
+    return 0
+  }
+  return Math.floor(code / 100)
+}
+
+const ERROR_POLICY_TABLE: ErrorPolicy[] = [
+  {
+    action: 'delegate',
+    match: (code) => getErrorGroup(code) === CONFLICT_ERROR_GROUP,
+  },
+  {
+    action: 'silent',
+    match: (code) => code === ERROR_TOKEN_INVALID,
+  },
+  {
+    action: 'silent',
+    match: (code) =>
+      code === ERROR_INVALID_CREDENTIALS || code === LEGACY_ERROR_INVALID_CREDENTIALS,
+  },
+  {
+    action: 'silent',
+    match: (code) => code === LEGACY_ERROR_LDAP_USER_NOT_FOUND || code === ERROR_REGISTER_NOT_FOUND,
+  },
+  {
+    action: 'toast',
+    match: (code) => code === LEGACY_ERROR_LEGACY_TOKEN_NOT_SUPPORTED,
+    message: '不再支持这种登陆方式，直接通过 LDAP 登录即可',
+  },
+  {
+    action: 'toast',
+    match: (code) => code === ERROR_INVALID_REQUEST || code === ERROR_PARAMETER_ERROR,
+    message: (errorResponse) => `请求参数有误, ${errorResponse.msg}`,
+  },
+  {
+    action: 'toast',
+    match: (code) => code === ERROR_PERMISSION_DENIED,
+    message: (errorResponse) => errorResponse.msg || '没有权限执行此操作',
+  },
+  {
+    action: 'toast',
+    match: (code) => code === LEGACY_ERROR_USER_NOT_ALLOWED,
+    message: '用户激活成功，但无关联账户，请联系平台管理员',
+  },
+  {
+    action: 'toast',
+    match: (code) => code === ERROR_USER_EMAIL_NOT_VERIFIED,
+    message: '接收通知需要验证邮箱，请前往个人主页验证',
+  },
+  {
+    action: 'toast',
+    match: (code) => code === ERROR_SERVICE_ERROR,
+    message: (errorResponse) => errorResponse.msg || '后端服务异常',
+  },
+  {
+    action: 'toast',
+    match: (code) => code === FALLBACK_ERROR_CODE,
+    message: (errorResponse) => errorResponse.msg || '请求失败，请稍后重试',
+  },
+]
+
+const scheduleUnhandledConflictFallback = (error: EnhancedHTTPError) => {
+  if (error.fallbackLogTimer) {
+    return
+  }
+
+  error.fallbackLogTimer = setTimeout(() => {
+    if (error.isHandledByBiz) {
+      return
+    }
+
+    const businessCode = error.data?.code ?? FALLBACK_ERROR_CODE
+    const httpStatus = error.httpStatus ?? error.response.status
+    const message = error.data?.msg ?? error.message
+    showErrorToast(error)
+    logger.error(`[UnhandledConflict] http=${httpStatus} code=${businessCode} msg=${message}`)
+  }, 0)
+}
+
+const resolveErrorPolicy = (code: number, error: EnhancedHTTPError): ErrorPolicy | undefined =>
+  ERROR_POLICY_TABLE.find((policy) => policy.match(code, error))
+
+const applyErrorPolicy = (
+  policy: ErrorPolicy,
+  errorResponse: IErrorResponse,
+  error: EnhancedHTTPError
+) => {
+  switch (policy.action) {
+    case 'delegate':
+      scheduleUnhandledConflictFallback(error)
+      return
+    case 'silent':
+      return
+    case 'toast': {
+      const message =
+        typeof policy.message === 'function' ? policy.message(errorResponse, error) : policy.message
+      if (message) {
+        showErrorToast(message)
+      }
+      return
+    }
+  }
+}
+
+export const markApiErrorHandled = (error: unknown) => {
+  if (!error || typeof error !== 'object') {
+    return
+  }
+
+  const enhancedError = error as EnhancedHTTPError
+  enhancedError.isHandledByBiz = true
+
+  if (enhancedError.fallbackLogTimer) {
+    clearTimeout(enhancedError.fallbackLogTimer)
+    enhancedError.fallbackLogTimer = undefined
+  }
+}
 
 // Token 刷新函数
 const refreshTokenFn = async (): Promise<string> => {
@@ -148,52 +290,27 @@ export async function apiRequest<T>(
     if (error instanceof HTTPError) {
       try {
         const errorResponse = await error.response.json<IErrorResponse>()
+        const enhancedError = error as EnhancedHTTPError
 
         // Mount the parsed error response data to the error object
         // This allows upper-level components to access backend response { code, msg } via error.data
         // Also mount HTTP status code for error display
-        Object.assign(error, {
+        Object.assign(enhancedError, {
           data: errorResponse,
           httpStatus: error.response.status,
         })
 
-        // 根据错误码进行不同处理
-        switch (errorResponse.code) {
-          case ERROR_TOKEN_INVALID:
-            break
-          case ERROR_BUSINESS_LOGIC_ERROR:
-            break
-          case ERROR_INVALID_CREDENTIALS:
-            break
-          case ERROR_LDAP_USER_NOT_FOUND:
-            break
-          case ERROR_LEGACY_TOKEN_NOT_SUPPORTED:
-            showErrorToast('不再支持这种登陆方式，直接通过 LDAP 登录即可')
-            break
-          case ERROR_INVALID_REQUEST:
-            showErrorToast(`请求参数有误, ${errorResponse.msg}`)
-            break
-          case ERROR_USER_NOT_ALLOWED:
-            showErrorToast('用户激活成功，但无关联账户，请联系平台管理员')
-            break
-          case ERROR_USER_EMAIL_NOT_VERIFIED:
-            showErrorToast('接收通知需要验证邮箱，请前往个人主页验证')
-            break
-          case ERROR_SERVICE_ERROR:
-            // 确保后端返回了 msg
-            showErrorToast(errorResponse.msg || '后端服务异常')
-            break
-          case ERROR_NOT_SPECIFIED:
-            showErrorToast(error)
-            break
-          default:
-            toast.error(errorMessage, {
-              description: errorResponse.msg || errorMessage || '请求失败，请稍后重试',
-            })
-            break
+        const matchedPolicy = resolveErrorPolicy(errorResponse.code, enhancedError)
+        if (matchedPolicy) {
+          applyErrorPolicy(matchedPolicy, errorResponse, enhancedError)
+          throw enhancedError
         }
 
-        throw error
+        toast.error(errorMessage, {
+          description: errorResponse.msg || errorMessage || '请求失败，请稍后重试',
+        })
+
+        throw enhancedError
       } catch (parseError) {
         // 如果解析 JSON 失败（比如后端返回了 HTML 或者空），抛出原始错误
         if (parseError instanceof HTTPError) {
@@ -219,14 +336,22 @@ export async function apiRequest<T>(
  */
 export const getErrorCode = async (error: unknown): Promise<[ErrorCode, string]> => {
   if (error instanceof HTTPError) {
+    const errorWithData = error as EnhancedHTTPError
+    if (errorWithData.data) {
+      return [
+        errorWithData.data.code ?? FALLBACK_ERROR_CODE,
+        errorWithData.data.msg ?? error.message,
+      ]
+    }
+
     try {
       const errorResponse = await error.response.json<IErrorResponse>()
-      return [errorResponse.code ?? ERROR_NOT_SPECIFIED, errorResponse.msg ?? error.message]
+      return [errorResponse.code ?? FALLBACK_ERROR_CODE, errorResponse.msg ?? error.message]
     } catch {
-      return [ERROR_NOT_SPECIFIED, error.message]
+      return [FALLBACK_ERROR_CODE, error.message]
     }
   }
-  return [ERROR_NOT_SPECIFIED, (error as Error).message]
+  return [FALLBACK_ERROR_CODE, (error as Error).message]
 }
 
 /**

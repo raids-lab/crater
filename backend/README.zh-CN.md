@@ -176,6 +176,60 @@ Git Hooks
   pre-commit          Install git pre-commit hook.
 ```
 
+## 错误处理规则
+
+新增代码不要再写旧范例。
+
+```go
+// 不要这样
+if err != nil {
+    resputil.Error(c, err.Error(), resputil.NotSpecified)
+    return
+}
+```
+
+```go
+// 要这样
+if err != nil {
+    resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query xxx"))
+    return
+}
+```
+
+```go
+// service / biz 层只 return error
+func (s *Service) DoSomething(...) error {
+    if err != nil {
+        return bizerr.Internal.DatabaseError.Wrap(err, "failed to query xxx")
+    }
+    if invalid {
+        return bizerr.BadRequest.ParameterError.New("invalid xxx")
+    }
+    return nil
+}
+```
+
+```go
+// handler 顶层统一 HandleError
+func (mgr *Mgr) Handler(c *gin.Context) {
+    if err := mgr.service.DoSomething(...); err != nil {
+        resputil.HandleError(c, err)
+        return
+    }
+    resputil.Success(c, data)
+}
+```
+
+```go
+// 新错误码写这里
+backend/internal/bizerr/groups.go
+```
+
+```go
+// 新增代码不要优先写这里
+backend/internal/resputil/code.go
+```
+
 ## 🛠️ 数据库开发指南
 
 项目使用 **GORM** 作为 ORM 框架，通过 **gormigrate** 进行数据库版本迁移管理，并使用 **GORM Gen** 自动生成类型安全的 CRUD 代码。

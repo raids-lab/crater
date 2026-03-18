@@ -112,6 +112,70 @@ for file in src/components/ui/*.tsx; do
 done
 ```
 
+## Error Code Usage
+
+Most frontend changes do not need extra error handling code.
+
+```ts
+// Default: no extra handling
+const query = useQuery({
+  queryKey: ['xxx'],
+  queryFn: () => apiSomething(),
+})
+```
+
+```ts
+// Example 1: field-level error
+onError: (error) => {
+  switch ((error as { data?: { code?: number } }).data?.code) {
+    case ERROR_INVALID_CREDENTIALS:
+    case LEGACY_ERROR_INVALID_CREDENTIALS:
+      markApiErrorHandled(error)
+      form.setError('password', { type: 'manual', message: 'Invalid credentials' })
+      return
+  }
+}
+```
+
+```ts
+// Example 2: page-owned toast/dialog
+onError: async (error) => {
+  const [code] = await getErrorCode(error)
+  if (code === ERROR_SERVICE_SSHD_NOT_FOUND || code === LEGACY_ERROR_SERVICE_SSHD_NOT_FOUND) {
+    markApiErrorHandled(error)
+    toast.error('SSHD service not found')
+  }
+}
+```
+
+```ts
+// Example 3: special handling for 409xx conflicts
+import { CONFLICT_ERROR_GROUP, ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
+
+const isConflict = (code?: number) => Math.floor((code ?? 0) / 100) === CONFLICT_ERROR_GROUP
+
+onError: (error) => {
+  const code = (error as { data?: { code?: number } }).data?.code
+
+  if (code === ERROR_RESOURCE_STATUS_ERROR) {
+    markApiErrorHandled(error)
+    toast.error('Current state does not allow this action')
+    return
+  }
+
+  if (isConflict(code)) {
+    markApiErrorHandled(error)
+    toast.error('Business conflict')
+  }
+}
+```
+
+```bash
+cd frontend
+make generate-error-code
+make lint
+```
+
 ## 🚀 Deployment
 
 To deploy Crater Project in a production environment, we provide a Helm Chart available at: [Crater Helm Chart](https://github.com/raids-lab/crater).

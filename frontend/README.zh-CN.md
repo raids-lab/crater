@@ -141,6 +141,70 @@ done
 
 > 建议更新前确认组件是否有破坏性改动，并进行回归测试。
 
+## 错误码使用
+
+前端大多数情况不用额外处理。
+
+```ts
+// 默认不用改
+const query = useQuery({
+  queryKey: ['xxx'],
+  queryFn: () => apiSomething(),
+})
+```
+
+```ts
+// 范例 1：字段错误
+onError: (error) => {
+  switch ((error as { data?: { code?: number } }).data?.code) {
+    case ERROR_INVALID_CREDENTIALS:
+    case LEGACY_ERROR_INVALID_CREDENTIALS:
+      markApiErrorHandled(error)
+      form.setError('password', { type: 'manual', message: '用户名或密码错误' })
+      return
+  }
+}
+```
+
+```ts
+// 范例 2：页面自己提示
+onError: async (error) => {
+  const [code] = await getErrorCode(error)
+  if (code === ERROR_SERVICE_SSHD_NOT_FOUND || code === LEGACY_ERROR_SERVICE_SSHD_NOT_FOUND) {
+    markApiErrorHandled(error)
+    toast.error('未检测到 SSHD 服务')
+  }
+}
+```
+
+```ts
+// 范例 3：409xx 冲突类错误特殊处理
+import { CONFLICT_ERROR_GROUP, ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
+
+const isConflict = (code?: number) => Math.floor((code ?? 0) / 100) === CONFLICT_ERROR_GROUP
+
+onError: (error) => {
+  const code = (error as { data?: { code?: number } }).data?.code
+
+  if (code === ERROR_RESOURCE_STATUS_ERROR) {
+    markApiErrorHandled(error)
+    toast.error('当前状态不允许此操作')
+    return
+  }
+
+  if (isConflict(code)) {
+    markApiErrorHandled(error)
+    toast.error('发生业务冲突')
+  }
+}
+```
+
+```bash
+cd frontend
+make generate-error-code
+make lint
+```
+
 ---
 
 ## 🚀 部署说明
