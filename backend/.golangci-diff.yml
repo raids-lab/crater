@@ -12,7 +12,7 @@ linters:
           msg: "禁止直接使用 fmt.Errorf。请使用 bizerr.<Group>.<Code>.Wrap(err, msg) 或 .New(msg)"
         - pattern: ^errors\.New$
           msg: "禁止直接使用 errors.New。请使用 bizerr.<Group>.<Code>.New(msg)"
-        
+
         # 2. 如果你引入了 pkg/errors (github.com/pkg/errors)，也建议禁用
         - pattern: ^errors\.Errorf$
           msg: "禁止使用 pkg/errors.Errorf。请使用 bizerr 体系"
