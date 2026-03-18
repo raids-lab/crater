@@ -82,7 +82,8 @@ When changing job creation configuration fields, request/response schema, or tem
 ## Errors And Security
 
 - Use RESTful-compliant HTTP status codes; do not use `Error()` everywhere. Pick the response helper that matches the semantics.
-- Define and use precise business codes in `backend/internal/resputil/code.go` as needed.
+- For new code, return `bizerr` errors and send them with `resputil.HandleError`; keep `backend/internal/resputil/code.go` only for legacy compatibility.
+- Define new business error codes in `backend/internal/bizerr/groups.go` as needed.
 - Error messages returned to the frontend must be clear, accurate English.
 - Never concatenate SQL strings in `backend/internal/storage/` or the DAO layer; use parameterized queries.
 - Never hardcode secrets, tokens, passwords, internal IPs, kubeconfigs, or production credentials.
