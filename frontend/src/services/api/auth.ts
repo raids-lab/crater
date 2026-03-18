@@ -81,6 +81,8 @@ export enum AuthMode {
 
 export interface IAuthModeResponse {
   enableLdap: boolean
+  ldapAlias?: string
+  ldapHelp?: string
   enableNormalLogin: boolean
   enableNormalRegister: boolean
 }

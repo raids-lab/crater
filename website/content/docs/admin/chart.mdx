@@ -94,12 +94,18 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | 参数 | 类型 | 默认值 | 描述 |
 |-----|------|---------|-------------|
 | backendConfig.auth.ldap.enable | bool | `false` | 是否启用 LDAP 统一身份认证 |
+| backendConfig.auth.ldap.alias | string | `""` | LDAP 登录方式的显示名称（别名），建议简短（如 "ACT"） |
+| backendConfig.auth.ldap.help | string | `""` | 鼠标悬浮在 LDAP 登录方式上时显示的帮助说明 |
 | backendConfig.auth.ldap.server.address | string | `"..."` | LDAP 服务器地址 |
 | backendConfig.auth.ldap.server.baseDN | string | `"..."` | 用户搜索的 Base DN |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | 用户名对应的 LDAP 属性名 |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | 显示名称对应的 LDAP 属性名 |
-| backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 获取策略**：可选 `default`, `ldap`, `external` |
+| backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 获取策略**：可选 `default`, `ldap`, `rid`, `external` (弃用) |
+| backendConfig.auth.ldap.uid.rid.offset | int | `10000` | 当 source 为 `rid` 时的 UID/GID 计算偏移量（UID/GID = RID + offset） |
+| backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | 当 source 为 `rid` 时，存储用户二进制 SID 的 LDAP 属性名（用于计算 UID） |
+| backendConfig.auth.ldap.uid.rid.pgidAttribute | string | `"primaryGroupID"` | 当 source 为 `rid` 时，存储主组 RID 的 LDAP 属性名（用于计算 GID） |
 | backendConfig.auth.ldap.uid.ldapAttribute.uid | string | `""` | 当 source 为 `ldap` 时的 UID 属性名 |
+| backendConfig.auth.ldap.uid.ldapAttribute.gid | string | `""` | 当 source 为 `ldap` 时的 GID 属性名 |
 | backendConfig.auth.normal.allowRegister | bool | `true` | 是否允许平台本地直接注册 |
 | backendConfig.auth.normal.allowLogin | bool | `true` | 是否允许使用本地数据库账号登录 |
 

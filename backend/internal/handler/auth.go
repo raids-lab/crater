@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -125,9 +127,11 @@ const (
 )
 
 type AuthModeResp struct {
-	EnableLDAP           bool `json:"enableLdap"`
-	EnableNormalLogin    bool `json:"enableNormalLogin"`
-	EnableNormalRegister bool `json:"enableNormalRegister"`
+	EnableLDAP           bool   `json:"enableLdap"`
+	LDAPAlias            string `json:"ldapAlias,omitempty"`
+	LDAPHelp             string `json:"ldapHelp,omitempty"`
+	EnableNormalLogin    bool   `json:"enableNormalLogin"`
+	EnableNormalRegister bool   `json:"enableNormalRegister"`
 }
 
 type AuthMethod string
@@ -140,10 +144,11 @@ const (
 type UIDSource string
 
 const (
-	UIDSourceNone     UIDSource = "none"
-	UIDSourceLDAP     UIDSource = "ldap"
-	UIDSourceExternal UIDSource = "external"
-	UIDSourceDefault  UIDSource = "default"
+	UIDSourceNone     UIDSource = UIDSource(config.UIDSourceNone)
+	UIDSourceLDAP     UIDSource = UIDSource(config.UIDSourceLDAP)
+	UIDSourceRID      UIDSource = UIDSource(config.UIDSourceRID)
+	UIDSourceExternal UIDSource = UIDSource(config.UIDSourceExternal)
+	UIDSourceDefault  UIDSource = UIDSource(config.UIDSourceDefault)
 )
 
 const LogLevelDebug = 4
@@ -162,6 +167,8 @@ func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 	conf := config.GetConfig().Auth
 	resp := AuthModeResp{
 		EnableLDAP:           conf.LDAP.Enable,
+		LDAPAlias:            conf.LDAP.Alias,
+		LDAPHelp:             conf.LDAP.Help,
 		EnableNormalLogin:    conf.Normal.AllowLogin,
 		EnableNormalRegister: conf.Normal.AllowRegister,
 	}
@@ -591,6 +598,10 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 		uidConf := config.GetConfig().Auth.LDAP.UID
 		switch UIDSource(uidConf.Source) {
 		case UIDSourceExternal:
+			// Deprecated: Internal ACT UID server (Winbind wrapper).
+			// Keeping this for backward compatibility as per request.
+			klog.Warningf("using deprecated UID source 'external' for user %s; "+
+				"please consider switching to 'rid' for direct LDAP SID calculation", name)
 			uidServerURL := uidConf.ExternalService.URL
 			var result ActUIDServerSuccessResp
 			var errorResult ActUIDServerErrorResp
@@ -603,9 +614,9 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 			}
 			userAttribute.UID = ptr.To(result.UID)
 			userAttribute.GID = ptr.To(result.GID)
-		case UIDSourceLDAP:
-			// Already in userAttribute from attrFromLDAP
-		case UIDSourceNone, UIDSourceDefault, "":
+		case UIDSourceLDAP, UIDSourceRID:
+			// Already in userAttribute from attrFromLDAP (calculated in actLDAPAuth for RID mode)
+		case UIDSourceDefault, UIDSourceNone, "":
 			userAttribute.UID = ptr.To("1001")
 			userAttribute.GID = ptr.To("1001")
 		}
@@ -724,12 +735,96 @@ func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string, at
 	mgr.populateUserAttributes(username, entry, attr)
 
 	uidConf := config.GetConfig().Auth.LDAP.UID
-	if UIDSource(uidConf.Source) == UIDSourceLDAP {
+	switch UIDSource(uidConf.Source) {
+	case UIDSourceLDAP:
 		attr.UID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.UID))
 		attr.GID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.GID))
+	case UIDSourceRID:
+		sidAttr := uidConf.RID.SIDAttribute
+		uid, err := calculateUIDFromRID(entry, sidAttr, uidConf.RID.Offset, username)
+		if err != nil {
+			return err
+		}
+		attr.UID = ptr.To(fmt.Sprintf("%d", uid))
+
+		pgidAttr := uidConf.RID.PGIDAttribute
+		gid, err := calculateGIDFromPrimaryGroup(entry, pgidAttr, uidConf.RID.Offset, username)
+		if err != nil {
+			return err
+		}
+		attr.GID = ptr.To(fmt.Sprintf("%d", gid))
 	}
 
 	return nil
+}
+
+const minSIDLengthBytes = 12
+
+// calculateUIDFromRID computes UID from objectSid using RID + offset.
+func calculateUIDFromRID(entry *ldap.Entry, sidAttr string, offset int, username string) (int, error) {
+	if sidAttr == "" {
+		sidAttr = "objectSid"
+	}
+
+	sidBytes := entry.GetRawAttributeValue(sidAttr)
+	if len(sidBytes) == 0 {
+		return 0, fmt.Errorf("SID attribute %s not found for user %s in RID mode", sidAttr, username)
+	}
+
+	rid, err := parseRIDFromSID(sidBytes)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse RID from SID for user %s: %w", username, err)
+	}
+
+	return int(rid) + offset, nil
+}
+
+// calculateGIDFromPrimaryGroup computes GID from primaryGroupID using RID + offset.
+func calculateGIDFromPrimaryGroup(entry *ldap.Entry, pgidAttr string, offset int, username string) (int, error) {
+	if pgidAttr == "" {
+		pgidAttr = "primaryGroupID"
+	}
+
+	pgidStr := entry.GetAttributeValue(pgidAttr)
+	if pgidStr == "" {
+		return 0, fmt.Errorf("primary group attribute %s not found for user %s in RID mode", pgidAttr, username)
+	}
+
+	pgid, err := strconv.Atoi(pgidStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse primaryGroupID %s for user %s: %w", pgidStr, username, err)
+	}
+
+	return pgid + offset, nil
+}
+
+// parseRIDFromSID extracts the RID (Relative Identifier) from a binary Windows SID.
+// A Windows SID binary format (MS-DTYP 2.4.2.2) consists of:
+// - Revision (1 byte)
+// - SubAuthorityCount (1 byte)
+// - IdentifierAuthority (6 bytes)
+// - SubAuthorities (SubAuthorityCount * 4 bytes)
+// The RID is the last 4-byte sub-authority in little-endian.
+func parseRIDFromSID(sidBytes []byte) (uint32, error) {
+	if len(sidBytes) < minSIDLengthBytes {
+		return 0, fmt.Errorf("invalid SID length (must be at least %d bytes): %d", minSIDLengthBytes, len(sidBytes))
+	}
+
+	// Verify the length matches the SubAuthorityCount
+	n := int(sidBytes[1])
+	expectedLen := 8 + (n * 4)
+	if len(sidBytes) != expectedLen {
+		return 0, fmt.Errorf("invalid SID binary format: length %d does not match sub-authority count %d (expected %d)",
+			len(sidBytes), n, expectedLen)
+	}
+
+	if n < 1 {
+		return 0, fmt.Errorf("invalid SID binary format: sub-authority count is zero")
+	}
+
+	// The RID is the last 4 bytes of the SID, stored in little-endian.
+	pos := len(sidBytes) - 4
+	return binary.LittleEndian.Uint32(sidBytes[pos:]), nil
 }
 
 func (mgr *AuthMgr) prepareLDAPAttributes() []string {
@@ -760,13 +855,24 @@ func (mgr *AuthMgr) prepareLDAPAttributes() []string {
 
 	// Fetch UID/GID if from LDAP
 	uidConf := config.GetConfig().Auth.LDAP.UID
-	if UIDSource(uidConf.Source) == UIDSourceLDAP {
+	switch UIDSource(uidConf.Source) {
+	case UIDSourceLDAP:
 		if uidConf.LDAPAttribute.UID != "" {
 			attributes = append(attributes, uidConf.LDAPAttribute.UID)
 		}
 		if uidConf.LDAPAttribute.GID != "" {
 			attributes = append(attributes, uidConf.LDAPAttribute.GID)
 		}
+	case UIDSourceRID:
+		sidAttr := uidConf.RID.SIDAttribute
+		if sidAttr == "" {
+			sidAttr = "objectSid"
+		}
+		pgidAttr := uidConf.RID.PGIDAttribute
+		if pgidAttr == "" {
+			pgidAttr = "primaryGroupID"
+		}
+		attributes = append(attributes, sidAttr, pgidAttr)
 	}
 	return attributes
 }

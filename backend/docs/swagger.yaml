@@ -971,6 +971,10 @@ definitions:
         type: boolean
       enableNormalRegister:
         type: boolean
+      ldapAlias:
+        type: string
+      ldapHelp:
+        type: string
     type: object
   internal_handler.CheckResp:
     properties:

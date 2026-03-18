@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { HelpCircle } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -27,6 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import DocsButton from '@/components/button/docs-button'
 import CraterIcon from '@/components/icon/crater-icon'
@@ -61,6 +63,8 @@ export const Route = createFileRoute('/auth/')({
         // We need to manually access .data here
         return {
           enableLdap: res.data?.enableLdap ?? false,
+          ldapAlias: res.data?.ldapAlias,
+          ldapHelp: res.data?.ldapHelp,
           enableNormalLogin: res.data?.enableNormalLogin ?? false,
           enableNormalRegister: res.data?.enableNormalRegister ?? false,
         }
@@ -68,6 +72,8 @@ export const Route = createFileRoute('/auth/')({
       .catch(() => {
         return {
           enableLdap: false,
+          ldapAlias: undefined,
+          ldapHelp: undefined,
           enableNormalLogin: true,
           enableNormalRegister: false,
         }
@@ -85,7 +91,8 @@ function LoginPage() {
   const [showRegisterDialog, setShowRegisterDialog] = useState(false)
   const [registerDialogType, setRegisterDialogType] = useState<'ldap' | 'normal_disabled'>('ldap')
   const { theme, setTheme } = useTheme()
-  const { enableLdap, enableNormalLogin, enableNormalRegister } = Route.useLoaderData()
+  const { enableLdap, ldapAlias, ldapHelp, enableNormalLogin, enableNormalRegister } =
+    Route.useLoaderData()
 
   // Ensure selectedMode is one of enabled modes, preferring LDAP as default if enabled
   const [selectedMode, setSelectedMode] = useState<AuthMode>(() => {
@@ -214,17 +221,43 @@ function LoginPage() {
           <div className="mx-auto w-[350px] space-y-6">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户登录</h1>
-              <p className="text-muted-foreground text-sm">
-                {selectedMode === AuthMode.LDAP
-                  ? '已接入 LDAP 统一身份认证'
-                  : '请输入您的账号和密码'}
+              <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm">
+                {selectedMode === AuthMode.LDAP ? (
+                  <>
+                    已接入 {ldapAlias || 'LDAP'} 统一身份认证
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="text-muted-foreground/60 h-3.5 w-3.5 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" align="center" className="max-w-64">
+                          <p>{ldapHelp || '通过管理员配置的 LDAP 服务器进行身份认证'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
+                ) : (
+                  '请输入您的账号和密码'
+                )}
               </p>
             </div>
 
             {showSwitcher && (
               <Tabs value={selectedMode} onValueChange={handleModeChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value={AuthMode.LDAP}>LDAP 登录</TabsTrigger>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value={AuthMode.LDAP} className="flex items-center gap-1.5">
+                          {ldapAlias || 'LDAP'} 登录
+                          <HelpCircle className="text-muted-foreground/60 h-3.5 w-3.5" />
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="center" className="max-w-64">
+                        <p>{ldapHelp || '通过管理员配置的 LDAP 服务器进行身份认证'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   <TabsTrigger value={AuthMode.NORMAL}>普通登录</TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -234,6 +267,7 @@ function LoginPage() {
               searchParams={searchParams}
               login={auth.login}
               authMode={selectedMode}
+              ldapAlias={ldapAlias}
               onForgotPasswordClick={handleForgotPasswordClick}
             />
             <div className="text-muted-foreground text-center text-sm">
@@ -251,11 +285,13 @@ function LoginPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {registerDialogType === 'ldap' ? 'LDAP 账号登录说明' : '注册功能已禁用'}
+              {registerDialogType === 'ldap'
+                ? `${ldapAlias || 'LDAP'} 账号登录说明`
+                : '注册功能已禁用'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {registerDialogType === 'ldap'
-                ? '平台已接入 LDAP 统一身份认证。如果您拥有 LDAP 账号，可以直接在登录页面使用该账号及密码登录，系统将自动为您创建平台账户，无需进行额外的注册操作。'
+                ? `平台已接入 ${ldapAlias || 'LDAP'} 统一身份认证。如果您拥有 ${ldapAlias || 'LDAP'} 账号，可以直接在登录页面使用该账号及密码登录，系统将自动为您创建平台账户，无需进行额外的注册操作。`
                 : '当前平台已禁用普通用户自主注册功能。请联系系统管理员协助为您创建账号，或者申请打开注册功能。'}
             </AlertDialogDescription>
           </AlertDialogHeader>

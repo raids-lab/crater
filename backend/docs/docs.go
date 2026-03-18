@@ -10200,6 +10200,12 @@ const docTemplate = `{
                 },
                 "enableNormalRegister": {
                     "type": "boolean"
+                },
+                "ldapAlias": {
+                    "type": "string"
+                },
+                "ldapHelp": {
+                    "type": "string"
                 }
             }
         },
