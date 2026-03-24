@@ -1,41 +1,66 @@
 package resputil
 
-type ErrorCode int
+import (
+	"github.com/raids-lab/crater/internal/bizerr"
+)
 
 const (
-	OK ErrorCode = 0
-
+	// 旧的
 	// General
-	InvalidRequest     ErrorCode = 40001
-	BusinessLogicError ErrorCode = 40002
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	InvalidRequest bizerr.BizCode = 40001
 
 	// Token (4010x)
-	TokenExpired ErrorCode = 40101
-	TokenInvalid ErrorCode = 40102
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	TokenExpired bizerr.BizCode = 40101
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	TokenInvalid bizerr.BizCode = 40102
 
 	// Auth/Login (4011x)
-	InvalidCredentials      ErrorCode = 40111
-	LdapError               ErrorCode = 40112
-	LdapUserNotFound        ErrorCode = 40113
-	LegacyTokenNotSupported ErrorCode = 40114
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	InvalidCredentials bizerr.BizCode = 40111
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	LdapError bizerr.BizCode = 40112
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	LdapUserNotFound bizerr.BizCode = 40113
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	LegacyTokenNotSupported bizerr.BizCode = 40114
 
 	// Registration/Uid (4012x)
-	MustRegister    ErrorCode = 40121
-	UidServiceError ErrorCode = 40122
-	UidNotFound     ErrorCode = 40123
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	MustRegister    bizerr.BizCode = 40121
+	UidServiceError bizerr.BizCode = 40122
+	UidNotFound     bizerr.BizCode = 40123
 
 	// User is not allowed to access the resource
-	UserNotAllowed ErrorCode = 40301
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	UserNotAllowed bizerr.BizCode = 40301
 
 	// User's email is not verified
-	UserEmailNotVerified ErrorCode = 40302
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	UserEmailNotVerified bizerr.BizCode = 40302
 
 	// Container related
-	ServiceSshdNotFound ErrorCode = 40401
 
-	ServiceError ErrorCode = 50001
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	ServiceSshdNotFound bizerr.BizCode = 40401
+
+	// Conflict
+
+	ResourceStatusError bizerr.BizCode = 40902
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	ServiceError bizerr.BizCode = 50001
 
 	// Indicates laziness of the developer
 	// Frontend will directly print the message without any translation
-	NotSpecified ErrorCode = 99999
+
+	// Deprecated: 保留旧码以兼容历史代码，但不推荐新代码使用
+	NotSpecified bizerr.BizCode = 99999
 )

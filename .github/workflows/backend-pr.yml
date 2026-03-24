@@ -48,11 +48,15 @@ jobs:
           go env -w GOPROXY=https://goproxy.cn,direct
           go mod download
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          working-directory: backend
+      - name: Prepare upstream base for lint-diff
+        run: |
+          if ! git remote get-url upstream >/dev/null 2>&1; then
+            git remote add upstream https://github.com/raids-lab/crater.git
+          fi
+          git fetch upstream main --depth=1
+
+      - name: Run make lint
+        run: make lint
 
   backend-build-check:
     runs-on: ubuntu-latest
