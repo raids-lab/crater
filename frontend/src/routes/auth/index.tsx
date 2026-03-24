@@ -245,19 +245,19 @@ function LoginPage() {
             {showSwitcher && (
               <Tabs value={selectedMode} onValueChange={handleModeChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TooltipProvider>
+                  <TabsTrigger value={AuthMode.LDAP} className="flex items-center gap-1.5">
+                    {ldapAlias || 'LDAP'} 登录
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <TabsTrigger value={AuthMode.LDAP} className="flex items-center gap-1.5">
-                          {ldapAlias || 'LDAP'} 登录
+                        <span className="inline-flex shrink-0 cursor-help">
                           <HelpCircle className="text-muted-foreground/60 h-3.5 w-3.5" />
-                        </TabsTrigger>
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="center" className="max-w-64">
                         <p>{ldapHelp || '通过管理员配置的 LDAP 服务器进行身份认证'}</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
+                  </TabsTrigger>
                   <TabsTrigger value={AuthMode.NORMAL}>普通登录</TabsTrigger>
                 </TabsList>
               </Tabs>
