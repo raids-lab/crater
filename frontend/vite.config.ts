@@ -25,6 +25,12 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const backendUrl = env.VITE_SERVER_PROXY_BACKEND // http://xxx
   const backendHost = backendUrl ? new URL(backendUrl).host : ''
+  // const backendUrl = env.VITE_SERVER_PROXY_BACKEND || 'http://localhost:8098' // Fallback to default
+  // const storageUrl = env.VITE_SERVER_PROXY_STORAGE || 'http://localhost:8098' // Fallback to default
+  // const backendHost = backendUrl ? new URL(backendUrl).host : 'localhost:8098'
+
+  // console.log(`[Vite Proxy] Backend: ${backendUrl}, Storage: ${storageUrl}, Host: ${backendHost}`)
+
 
   return {
     plugins: [

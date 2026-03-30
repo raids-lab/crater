@@ -755,6 +755,25 @@ func main() {
 			},
 		},
 		{
+			ID: "202603290001",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&model.AgentSession{},
+					&model.AgentMessage{},
+					&model.AgentToolCall{},
+					&model.JobLogSnapshot{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"agent_sessions",
+					"agent_messages",
+					"agent_tool_calls",
+					"job_log_snapshots",
+				)
+			},
+		},
+		{
 			ID: "202512261300",
 			Migrate: func(tx *gorm.DB) error {
 				config := &model.CronJobConfig{
@@ -818,6 +837,10 @@ func main() {
 			&model.CronJobRecord{},
 			&model.GpuAnalysis{},
 			&model.SystemConfig{},
+			&model.AgentSession{},
+			&model.AgentMessage{},
+			&model.AgentToolCall{},
+			&model.JobLogSnapshot{},
 		)
 		if err != nil {
 			return err

@@ -287,6 +287,14 @@ type Config struct {
 		} `json:"normal"`
 	} `json:"auth"`
 
+	// Agent contains configuration for the Crater Agent (Python) service.
+	// Optional: Defaults to http://localhost:8000 if not specified.
+	Agent struct {
+		// ServiceURL is the base URL of the Python Agent service.
+		// Optional: Defaults to "http://localhost:8000".
+		ServiceURL string `json:"serviceURL"`
+	} `json:"agent"`
+
 	// SchedulerPlugins contains configuration for Kubernetes scheduler plugin integrations.
 	// Optional: Individual plugins can be enabled/disabled independently.
 	SchedulerPlugins struct {
