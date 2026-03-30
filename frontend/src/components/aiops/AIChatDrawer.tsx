@@ -39,6 +39,12 @@ import {
   apiChatMessageLLM,
 } from '@/services/api/aiops'
 import type { IChatRequest, IChatResponse, IDiagnosis } from '@/services/api/aiops'
+import { connectAgentChat } from '@/services/api/agent'
+import type { AgentSSEEvent } from '@/services/api/agent'
+
+import { ConfirmActionCard } from './ConfirmActionCard'
+import { ThinkingIndicator } from './ThinkingIndicator'
+import { ToolCallCard } from './ToolCallCard'
 
 import { cn } from '@/lib/utils'
 
@@ -50,6 +56,37 @@ interface ChatMessage {
   data?: IChatResponse['data']
   timestamp: Date
 }
+
+// ── Agent-mode message types ──────────────────────────────────────────────────
+
+type AgentMessageKind =
+  | 'user'
+  | 'thinking'
+  | 'tool_call'
+  | 'message'
+  | 'confirmation_required'
+  | 'error'
+
+interface AgentChatItem {
+  id: string
+  kind: AgentMessageKind
+  /** For 'user' and 'message' kinds */
+  text?: string
+  /** For 'thinking' — may be partial/streaming */
+  thinkingContent?: string
+  /** For 'tool_call' */
+  toolName?: string
+  toolArgs?: Record<string, any>
+  toolStatus?: 'executing' | 'done' | 'error'
+  toolResult?: string
+  /** For 'confirmation_required' */
+  confirmId?: string
+  confirmAction?: string
+  confirmDescription?: string
+  timestamp: Date
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface AIChatDrawerProps {
   isOpen: boolean
@@ -137,16 +174,190 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   ])
   const [input, setInput] = useState('')
   const [showHelp, setShowHelp] = useState(false)
-  const [chatMode, setChatMode] = useState<'rule' | 'llm'>('rule')
+  const [chatMode, setChatMode] = useState<'rule' | 'llm' | 'agent'>('rule')
   const isAdminRoute =
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['top-issues'])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Auto scroll to bottom when messages change
+  // ── Agent mode state ──────────────────────────────────────────────────────
+  const [agentItems, setAgentItems] = useState<AgentChatItem[]>([])
+  const [agentStreaming, setAgentStreaming] = useState(false)
+  const agentAbortRef = useRef<AbortController | null>(null)
+  /** Current session ID — null means the backend will create a new one */
+  const agentSessionIdRef = useRef<string | null>(null)
+
+  /** Extract page context from the current URL */
+  const getPageContext = () => {
+    const pathname = window.location.pathname
+    const jobMatch = pathname.match(/\/jobs\/detail\/([^/?#]+)/)
+    return {
+      url: pathname,
+      jobName: jobMatch?.[1] ?? currentJobName,
+    }
+  }
+
+  /** Cancel any running SSE stream */
+  const cancelAgentStream = () => {
+    agentAbortRef.current?.abort()
+    agentAbortRef.current = null
+    setAgentStreaming(false)
+  }
+
+  // Cancel stream when the drawer closes
+  useEffect(() => {
+    if (!isOpen) cancelAgentStream()
+  }, [isOpen])
+
+  // Cancel stream when switching away from agent mode
+  useEffect(() => {
+    if (chatMode !== 'agent') cancelAgentStream()
+  }, [chatMode])
+
+  const handleAgentSend = (messageText?: string) => {
+    const textToSend = messageText ?? input.trim()
+    if (!textToSend || agentStreaming) return
+
+    setInput('')
+
+    // Append user bubble
+    const userItem: AgentChatItem = {
+      id: `user-${Date.now()}`,
+      kind: 'user',
+      text: textToSend,
+      timestamp: new Date(),
+    }
+    setAgentItems((prev) => [...prev, userItem])
+
+    setAgentStreaming(true)
+
+    // Placeholder for the live thinking item (updated in-place via id)
+    const thinkingId = `thinking-${Date.now()}`
+
+    const ctrl = connectAgentChat(
+      agentSessionIdRef.current,
+      textToSend,
+      getPageContext(),
+      // onEvent
+      (event: AgentSSEEvent) => {
+        switch (event.event) {
+          case 'thinking': {
+            const content: string =
+              typeof event.data === 'string' ? event.data : event.data?.content ?? ''
+            setAgentItems((prev) => {
+              const existing = prev.find((i) => i.id === thinkingId)
+              if (existing) {
+                return prev.map((i) =>
+                  i.id === thinkingId ? { ...i, thinkingContent: (i.thinkingContent ?? '') + content } : i
+                )
+              }
+              const item: AgentChatItem = {
+                id: thinkingId,
+                kind: 'thinking',
+                thinkingContent: content,
+                timestamp: new Date(),
+              }
+              return [...prev, item]
+            })
+            break
+          }
+
+          case 'tool_call': {
+            const toolName: string = event.data?.name ?? event.data?.toolName ?? 'unknown'
+            const toolArgs: Record<string, any> = event.data?.args ?? event.data?.arguments ?? {}
+            const toolCallId = event.data?.id ?? `tool-${Date.now()}`
+            const item: AgentChatItem = {
+              id: `toolcall-${toolCallId}`,
+              kind: 'tool_call',
+              toolName,
+              toolArgs,
+              toolStatus: 'executing',
+              timestamp: new Date(),
+            }
+            setAgentItems((prev) => [...prev, item])
+            break
+          }
+
+          case 'tool_result': {
+            const toolCallId = event.data?.id ?? event.data?.toolCallId
+            const result: string =
+              typeof event.data?.result === 'string'
+                ? event.data.result
+                : JSON.stringify(event.data?.result ?? event.data ?? '')
+            const isError: boolean = event.data?.isError ?? false
+            setAgentItems((prev) =>
+              prev.map((i) => {
+                if (i.id === `toolcall-${toolCallId}`) {
+                  return {
+                    ...i,
+                    toolStatus: isError ? 'error' : 'done',
+                    toolResult: result,
+                  }
+                }
+                return i
+              })
+            )
+            break
+          }
+
+          case 'message': {
+            const text: string =
+              typeof event.data === 'string' ? event.data : event.data?.content ?? ''
+            // Capture session id if provided
+            if (event.data?.sessionId) {
+              agentSessionIdRef.current = event.data.sessionId
+            }
+            const item: AgentChatItem = {
+              id: `msg-${Date.now()}`,
+              kind: 'message',
+              text,
+              timestamp: new Date(),
+            }
+            setAgentItems((prev) => [...prev, item])
+            break
+          }
+
+          case 'confirmation_required': {
+            const item: AgentChatItem = {
+              id: `confirm-${Date.now()}`,
+              kind: 'confirmation_required',
+              confirmId: event.data?.confirmId ?? event.data?.id ?? '',
+              confirmAction: event.data?.action ?? '',
+              confirmDescription: event.data?.description ?? '',
+              timestamp: new Date(),
+            }
+            setAgentItems((prev) => [...prev, item])
+            break
+          }
+
+          default:
+            break
+        }
+      },
+      // onError
+      (err: Error) => {
+        const errItem: AgentChatItem = {
+          id: `err-${Date.now()}`,
+          kind: 'error',
+          text: err.message,
+          timestamp: new Date(),
+        }
+        setAgentItems((prev) => [...prev, errItem])
+        setAgentStreaming(false)
+      },
+      // onDone
+      () => {
+        setAgentStreaming(false)
+      },
+    )
+
+    agentAbortRef.current = ctrl
+  }
+
+  // Auto scroll to bottom when messages or agent items change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, agentItems])
 
   // Chat mutation
   const chatMutation = useMutation({
@@ -220,13 +431,6 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     setInput('')
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
-
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
       prev.includes(categoryId) ? prev.filter((c) => c !== categoryId) : [...prev, categoryId]
@@ -245,7 +449,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             <div>
               <h3 className="font-semibold">{t('aiops.chat.assistantName')}</h3>
               <p className="text-muted-foreground mt-0.5 text-xs">
-                {chatMode === 'llm' ? t('aiops.chat.llmBased') : t('aiops.chat.ruleBased')}
+                {chatMode === 'llm'
+                  ? t('aiops.chat.llmBased')
+                  : chatMode === 'agent'
+                    ? t('aiops.agent.modeBased', { defaultValue: 'Agent 自主执行模式' })
+                    : t('aiops.chat.ruleBased')}
               </p>
             </div>
           </div>
@@ -265,6 +473,14 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               onClick={() => setChatMode('llm')}
             >
               {t('aiops.chat.mode.llm')}
+            </Button>
+            <Button
+              variant={chatMode === 'agent' ? 'default' : 'outline'}
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setChatMode('agent')}
+            >
+              {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
             </Button>
             <Dialog open={showHelp} onOpenChange={setShowHelp}>
               <DialogTrigger asChild>
@@ -320,161 +536,322 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         {/* Messages */}
         <ScrollArea className="min-h-0 flex-1 p-4">
           <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
-              >
-                {message.role === 'user' ? (
-                  <div className="bg-primary text-primary-foreground max-w-[85%] rounded-lg px-4 py-2">
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  </div>
-                ) : (
-                  <div className="max-w-[95%] space-y-2">
-                    <div className="bg-muted rounded-lg px-4 py-3">
-                      {(() => {
-                        const { showAdminHint, cleanedContent } = getAssistantContentForDisplay(
-                          message.content,
-                          message.data,
-                          adminHintText
-                        )
-                        return (
-                          <>
-                            {showAdminHint && (
-                              <div className="bg-background/70 text-muted-foreground mb-2 rounded-md border px-3 py-1.5 text-xs">
-                                {adminHintText}
-                              </div>
-                            )}
-                            <div className="markdown-content text-sm">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={{
-                                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                                  strong: ({ children }) => (
-                                    <strong className="text-foreground font-semibold">
-                                      {children}
-                                    </strong>
-                                  ),
-                                  ul: ({ children }) => (
-                                    <ul className="my-2 list-inside list-disc space-y-1">
-                                      {children}
-                                    </ul>
-                                  ),
-                                  ol: ({ children }) => (
-                                    <ol className="my-2 list-inside list-decimal space-y-1">
-                                      {children}
-                                    </ol>
-                                  ),
-                                  li: ({ children }) => <li className="text-sm">{children}</li>,
-                                  code: ({ children, className }) => {
-                                    const isInline = !className
-                                    return isInline ? (
-                                      <code className="bg-background rounded px-1 py-0.5 font-mono text-xs">
-                                        {children}
-                                      </code>
-                                    ) : (
-                                      <code className="bg-background block overflow-x-auto rounded p-2 font-mono text-xs whitespace-pre">
-                                        {children}
-                                      </code>
-                                    )
-                                  },
-                                  h1: ({ children }) => (
-                                    <h1 className="mb-2 text-lg font-bold">{children}</h1>
-                                  ),
-                                  h2: ({ children }) => (
-                                    <h2 className="mb-2 text-base font-bold">{children}</h2>
-                                  ),
-                                  h3: ({ children }) => (
-                                    <h3 className="mb-1 text-sm font-semibold">{children}</h3>
-                                  ),
-                                  h4: ({ children }) => (
-                                    <h4 className="mb-1 text-sm font-semibold">{children}</h4>
-                                  ),
-                                  blockquote: ({ children }) => (
-                                    <blockquote className="border-primary my-2 border-l-2 pl-3 italic">
-                                      {children}
-                                    </blockquote>
-                                  ),
-                                }}
-                              >
-                                {cleanedContent}
-                              </ReactMarkdown>
-                            </div>
-                          </>
-                        )
-                      })()}
+            {chatMode === 'agent' ? (
+              <>
+                {agentItems.length === 0 && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted max-w-[95%] rounded-lg px-4 py-3">
+                      <p className="text-sm">
+                        {t('aiops.agent.initialMessage', {
+                          defaultValue:
+                            '你好！我是 Crater Agent，可以自主执行操作来帮助你管理作业。请告诉我你需要什么帮助。',
+                        })}
+                      </p>
                     </div>
-                    {message.type === 'diagnosis' && isDiagnosisData(message.data) && (
-                      <DiagnosisCard diagnosis={message.data} />
-                    )}
                   </div>
                 )}
-              </div>
-            ))}
-            {chatMutation.isPending && (
-              <div className="flex justify-start">
-                <div className="bg-muted flex items-center gap-2 rounded-lg px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-muted-foreground text-sm">{t('aiops.chat.thinking')}</span>
-                </div>
-              </div>
+                {agentItems.map((item) => {
+                  if (item.kind === 'user') {
+                    return (
+                      <div key={item.id} className="flex justify-end">
+                        <div className="bg-primary text-primary-foreground max-w-[85%] rounded-lg px-4 py-2">
+                          <p className="text-sm whitespace-pre-wrap">{item.text}</p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'thinking') {
+                    return (
+                      <div key={item.id} className="flex justify-start">
+                        <div className="bg-muted max-w-[95%] rounded-lg px-4 py-3">
+                          <ThinkingIndicator content={item.thinkingContent} />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'tool_call') {
+                    return (
+                      <div key={item.id} className="flex justify-start">
+                        <div className="w-full max-w-[95%]">
+                          <ToolCallCard
+                            toolName={item.toolName ?? 'unknown'}
+                            args={item.toolArgs ?? {}}
+                            status={item.toolStatus ?? 'executing'}
+                            resultSummary={item.toolResult}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'message') {
+                    return (
+                      <div key={item.id} className="flex justify-start">
+                        <div className="bg-muted max-w-[95%] rounded-lg px-4 py-3">
+                          <div className="markdown-content text-sm">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                strong: ({ children }) => (
+                                  <strong className="text-foreground font-semibold">
+                                    {children}
+                                  </strong>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="my-2 list-inside list-disc space-y-1">
+                                    {children}
+                                  </ul>
+                                ),
+                                ol: ({ children }) => (
+                                  <ol className="my-2 list-inside list-decimal space-y-1">
+                                    {children}
+                                  </ol>
+                                ),
+                                li: ({ children }) => <li className="text-sm">{children}</li>,
+                                code: ({ children, className }) => {
+                                  const isInline = !className
+                                  return isInline ? (
+                                    <code className="bg-background rounded px-1 py-0.5 font-mono text-xs">
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <code className="bg-background block overflow-x-auto rounded p-2 font-mono text-xs whitespace-pre">
+                                      {children}
+                                    </code>
+                                  )
+                                },
+                                h1: ({ children }) => (
+                                  <h1 className="mb-2 text-lg font-bold">{children}</h1>
+                                ),
+                                h2: ({ children }) => (
+                                  <h2 className="mb-2 text-base font-bold">{children}</h2>
+                                ),
+                                h3: ({ children }) => (
+                                  <h3 className="mb-1 text-sm font-semibold">{children}</h3>
+                                ),
+                                h4: ({ children }) => (
+                                  <h4 className="mb-1 text-sm font-semibold">{children}</h4>
+                                ),
+                                blockquote: ({ children }) => (
+                                  <blockquote className="border-primary my-2 border-l-2 pl-3 italic">
+                                    {children}
+                                  </blockquote>
+                                ),
+                              }}
+                            >
+                              {item.text ?? ''}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'confirmation_required') {
+                    return (
+                      <div key={item.id} className="flex justify-start">
+                        <div className="w-full max-w-[95%]">
+                          <ConfirmActionCard
+                            confirmId={item.confirmId ?? ''}
+                            action={item.confirmAction ?? ''}
+                            description={item.confirmDescription ?? ''}
+                            onConfirmed={() => {}}
+                            onRejected={() => {}}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'error') {
+                    return (
+                      <div key={item.id} className="flex justify-start">
+                        <div className="bg-destructive/10 border-destructive/30 max-w-[95%] rounded-lg border px-4 py-3">
+                          <p className="text-destructive text-sm">
+                            {t('aiops.agent.errorMessage', {
+                              defaultValue: 'Agent 出错：{{message}}',
+                              message: item.text,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return null
+                })}
+                {agentStreaming && agentItems[agentItems.length - 1]?.kind !== 'thinking' && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted rounded-lg px-4 py-3">
+                      <ThinkingIndicator />
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
+                  >
+                    {message.role === 'user' ? (
+                      <div className="bg-primary text-primary-foreground max-w-[85%] rounded-lg px-4 py-2">
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      </div>
+                    ) : (
+                      <div className="max-w-[95%] space-y-2">
+                        <div className="bg-muted rounded-lg px-4 py-3">
+                          {(() => {
+                            const { showAdminHint, cleanedContent } = getAssistantContentForDisplay(
+                              message.content,
+                              message.data,
+                              adminHintText
+                            )
+                            return (
+                              <>
+                                {showAdminHint && (
+                                  <div className="bg-background/70 text-muted-foreground mb-2 rounded-md border px-3 py-1.5 text-xs">
+                                    {adminHintText}
+                                  </div>
+                                )}
+                                <div className="markdown-content text-sm">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      strong: ({ children }) => (
+                                        <strong className="text-foreground font-semibold">
+                                          {children}
+                                        </strong>
+                                      ),
+                                      ul: ({ children }) => (
+                                        <ul className="my-2 list-inside list-disc space-y-1">
+                                          {children}
+                                        </ul>
+                                      ),
+                                      ol: ({ children }) => (
+                                        <ol className="my-2 list-inside list-decimal space-y-1">
+                                          {children}
+                                        </ol>
+                                      ),
+                                      li: ({ children }) => <li className="text-sm">{children}</li>,
+                                      code: ({ children, className }) => {
+                                        const isInline = !className
+                                        return isInline ? (
+                                          <code className="bg-background rounded px-1 py-0.5 font-mono text-xs">
+                                            {children}
+                                          </code>
+                                        ) : (
+                                          <code className="bg-background block overflow-x-auto rounded p-2 font-mono text-xs whitespace-pre">
+                                            {children}
+                                          </code>
+                                        )
+                                      },
+                                      h1: ({ children }) => (
+                                        <h1 className="mb-2 text-lg font-bold">{children}</h1>
+                                      ),
+                                      h2: ({ children }) => (
+                                        <h2 className="mb-2 text-base font-bold">{children}</h2>
+                                      ),
+                                      h3: ({ children }) => (
+                                        <h3 className="mb-1 text-sm font-semibold">{children}</h3>
+                                      ),
+                                      h4: ({ children }) => (
+                                        <h4 className="mb-1 text-sm font-semibold">{children}</h4>
+                                      ),
+                                      blockquote: ({ children }) => (
+                                        <blockquote className="border-primary my-2 border-l-2 pl-3 italic">
+                                          {children}
+                                        </blockquote>
+                                      ),
+                                    }}
+                                  >
+                                    {cleanedContent}
+                                  </ReactMarkdown>
+                                </div>
+                              </>
+                            )
+                          })()}
+                        </div>
+                        {message.type === 'diagnosis' && isDiagnosisData(message.data) && (
+                          <DiagnosisCard diagnosis={message.data} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chatMutation.isPending && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted flex items-center gap-2 rounded-lg px-4 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-muted-foreground text-sm">{t('aiops.chat.thinking')}</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {/* Invisible element for auto-scroll */}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        {/* Smart Prompts - Collapsible */}
-        <div className="bg-muted/30 max-h-[30vh] flex-none overflow-y-auto border-t">
-          <div className="space-y-2 p-3">
-            {smartPrompts.map((category) => (
-              <Collapsible
-                key={category.id}
-                open={expandedCategories.includes(category.id)}
-                onOpenChange={() => toggleCategory(category.id)}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-full justify-between text-xs font-medium"
-                  >
-                    {category.category}
-                    <ChevronDown
-                      className={cn(
-                        'h-3 w-3 transition-transform',
-                        expandedCategories.includes(category.id) && 'rotate-180'
-                      )}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
-                  <div className="grid gap-1.5">
-                    {category.prompts.map((prompt, idx) => (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSend(prompt.text)}
-                        disabled={chatMutation.isPending}
-                        className="h-auto justify-start px-2 py-1.5 text-left text-xs whitespace-normal"
-                        title={prompt.hint}
-                      >
-                        <span className="mr-1.5">{prompt.icon}</span>
-                        <span className="flex-1">{prompt.text}</span>
-                        {prompt.hint && (
-                          <span className="text-muted-foreground ml-1 hidden text-[10px] sm:inline">
-                            {prompt.hint.split(/[，,]/)[0]}
-                          </span>
+        {/* Smart Prompts - only shown for rule/llm modes */}
+        {chatMode !== 'agent' && (
+          <div className="bg-muted/30 max-h-[30vh] flex-none overflow-y-auto border-t">
+            <div className="space-y-2 p-3">
+              {smartPrompts.map((category) => (
+                <Collapsible
+                  key={category.id}
+                  open={expandedCategories.includes(category.id)}
+                  onOpenChange={() => toggleCategory(category.id)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-full justify-between text-xs font-medium"
+                    >
+                      {category.category}
+                      <ChevronDown
+                        className={cn(
+                          'h-3 w-3 transition-transform',
+                          expandedCategories.includes(category.id) && 'rotate-180'
                         )}
-                      </Button>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
+                    <div className="grid gap-1.5">
+                      {category.prompts.map((prompt, idx) => (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSend(prompt.text)}
+                          disabled={chatMutation.isPending}
+                          className="h-auto justify-start px-2 py-1.5 text-left text-xs whitespace-normal"
+                          title={prompt.hint}
+                        >
+                          <span className="mr-1.5">{prompt.icon}</span>
+                          <span className="flex-1">{prompt.text}</span>
+                          {prompt.hint && (
+                            <span className="text-muted-foreground ml-1 hidden text-[10px] sm:inline">
+                              {prompt.hint.split(/[，,]/)[0]}
+                            </span>
+                          )}
+                        </Button>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Input */}
         <div className="bg-background flex-none border-t p-4">
@@ -482,18 +859,37 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder={t('aiops.chat.inputPlaceholder')}
-              disabled={chatMutation.isPending}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  chatMode === 'agent' ? handleAgentSend() : handleSend()
+                }
+              }}
+              placeholder={
+                chatMode === 'agent'
+                  ? t('aiops.agent.inputPlaceholder', {
+                      defaultValue: '告诉 Agent 你想做什么...',
+                    })
+                  : t('aiops.chat.inputPlaceholder')
+              }
+              disabled={chatMode === 'agent' ? agentStreaming : chatMutation.isPending}
               className="flex-1"
             />
             <Button
-              onClick={() => handleSend()}
-              disabled={chatMutation.isPending || !input.trim()}
+              onClick={() => (chatMode === 'agent' ? handleAgentSend() : handleSend())}
+              disabled={
+                chatMode === 'agent'
+                  ? agentStreaming || !input.trim()
+                  : chatMutation.isPending || !input.trim()
+              }
               size="icon"
               aria-label={t('common.send')}
             >
-              <Send className="h-4 w-4" />
+              {chatMode === 'agent' && agentStreaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
           {currentJobName && (
