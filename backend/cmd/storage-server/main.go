@@ -75,7 +75,7 @@ func main() {
 	if rootDir == "" {
 		rootDir = "/crater"
 	}
-	if err := os.MkdirAll(rootDir, 0o777); err != nil {
+	if err := os.MkdirAll(rootDir, os.ModePerm); err != nil {
 		klog.Fatalf("failed to create storage root directory %s: %v", rootDir, err)
 	}
 	storage.SetRootDir(rootDir)

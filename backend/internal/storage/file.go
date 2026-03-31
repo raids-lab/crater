@@ -94,7 +94,7 @@ func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
 	}
 }
 
-// 闂佸搫瀚烽崹浼村垂椤忓牆绀勯柧蹇氼潐閺嗗繘鏌熼弶鎴濇Щ缂傚秴顑夊畷婊冾吋閸繍妲遍梺鐟扮摠閻忔岸鍩€椤戣法顦﹂柛娆愭礋瀹曟娼忛銏╂П闂佽娼欓崲鏌ュ箯娴煎瓨鍤婃い蹇撳缁犳帡鏌ｉ～顒€濡介柛鈺傜〒缁艾煤椤忓拑绱甸梺姹囧妼鐎氼剙锕㈤幘顔奸敜闁逞屽墴瀹曨亞浠﹂悾灞炬緰闂傚倸瀚幊搴★耿閹绢喖閿ら柍?
+// ListMySpace returns visible logical spaces and mapped real storage paths for one user context.
 func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace []string) {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
@@ -128,7 +128,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 	return space, realSpace
 }
 
-// 闂佸吋鍎抽崲鑼躲亹閸ヮ剙绠ラ柍褜鍓熷鍨緞鎼粹槅妲遍梺瑙勬尦椤ユ捇鍩為弽顓熲拻闁哄鍨归弶浠嬫⒒閸曨偅鍣规繝鈧幘顔奸敜闁?
+// ListAllAccountSpaces returns all account storage roots with normalized prefixes.
 func ListAllAccountSpaces(c *gin.Context) []string {
 	accountSpacePrefix := config.GetConfig().Storage.Prefix.Account
 	var data []string
@@ -150,7 +150,7 @@ func ListAllAccountSpaces(c *gin.Context) []string {
 	return data
 }
 
-// 闂佸吋鍎抽崲鑼躲亹閸ヮ剙绠ラ柍褜鍓熷鍨緞鐏炵偓娈㈤梺瑙勬尦椤ユ捇鍩為弽顓熲拻闁哄鍨归弶浠嬫⒒閸曨偅鍣规繝鈧幘顔奸敜闁?
+// ListAllUserSpaces returns all user storage roots with normalized prefixes.
 func ListAllUserSpaces(c *gin.Context) []string {
 	userSpacePrefix := config.GetConfig().Storage.Prefix.User
 	var data []string
@@ -199,7 +199,7 @@ func WebDav(c *gin.Context) {
 	http.StripPrefix("/api/ss", fs)
 	c.Request.URL.Path = "/api/ss/" + realPath
 	fs.ServeHTTP(c.Writer, c.Request)
-	// 闂佺儵鏅涢悺銊ф暜閹绢喖绀嗘繛鎴烆焽缁憋箓鏌￠崒姘煑婵炲棎鍨哄鍕焻濞戞ǚ鏋忛梺?77闂佸搫顦崯鏉戭瀶閻戞鈻曢柣鏂挎憸濮婇箖鏌￠崼婵愭Ш闁轰降鍊濋弫宥囦沪閽樺顔夐梺鐓庣枃婵倕危閹间礁鐐婇柣妯跨簿缁€瀣煟閺嵮冾暢婵炲弶濯介妵鎰板即閻斿摜鐣抽柣鐘辩婢т粙鎮块崫鐖€tGID婵炶揪绲界粙鍕濠靛绾ч柛鎰靛枟椤庢瑩鏌￠崟顓燁棤rwxr-sr-x闂佹寧绋戞總鏃傝姳椤掑嫬鍙婃い鏍亹閸嬫挻寰勭€ｎ亶浠撮梺鐑╂櫅閻°劎鏁€涙鈹嶆い鏃囧Г閺嗩參鏌℃径濠傛殻婵?
+	// For collection or upload requests, enforce folder permission for the target path.
 	if c.Request.Method == "MKCOL" || c.Request.Method == "PUT" {
 		chmod(c, model.RWXFolderPerm)
 	}
@@ -360,7 +360,7 @@ func GetFilesByPaths(paths []string, c *gin.Context) []Files {
 	return data
 }
 
-// 闂佹椿娼块崝宥夊春濞戙垺鍤旂€瑰嫭婢樼徊鍧楁煛閸屾碍鐭楁繛?
+// GetFiles lists files under a logical path according to resolved permissions.
 func GetFiles(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
@@ -393,7 +393,7 @@ func GetFiles(c *gin.Context) {
 	}
 }
 
-// 闂佹椿娼块崝宥夊春濞戙垺鍤旂€瑰嫭婢樼徊鍧楁煛閸繍妲兼い鏇氬嵆瀹曟ê鈻庨幇顓犵К闂傚倸瀚崝妤€鈻撻幋锕€鐭楁い鏍ㄧ敖閳哄懎绀夐柕濠忛檮閻庮喖霉?
+// GetFilesWithRWAcc lists files and allows read-write scoped roots when permitted.
 func GetFilesWithRWAcc(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
@@ -426,7 +426,7 @@ func GetFilesWithRWAcc(c *gin.Context) {
 	}
 }
 
-// 闂佸憡锚椤嘲鈻嶆惔銊ョ鐎广儱顦板銊╂煟?闂佸憡鑹鹃崙鐣屾濠靛洦濯撮悹鎭掑妽閺?婵炶揪绲剧划鍫㈡嫻閻旂厧绀嗛柛鈩冪⊕椤撳墽绱掑Δ瀣洭婵炲牊鍨圭划顓㈩敄鐠侯煈浼囨繛鎴炴尵鐏忕灒ken
+// getFirstToken extracts the first normalized path segment.
 func getFirstToken(path string) string {
 	tokens := splitURLPath(path)
 	if len(tokens) > 0 {
@@ -435,7 +435,7 @@ func getFirstToken(path string) string {
 	return ""
 }
 
-// admin闂佸吋鍎抽崲鑼躲亹閸ヮ剙妫橀柛銉檮椤?
+// GetAllFiles lists files for admin routes across all logical spaces.
 func GetAllFiles(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
@@ -506,7 +506,7 @@ func GetDatasetURLByID(c *gin.Context, datasetID uint) (string, error) {
 	return dataset.URL, err
 }
 
-// 闂備緡鍋呮穱铏规崲閸愵喖鏋侀柣妤€鐗嗙粊锕傛⒒閸℃顥℃鐐茬箻瀹曪綁寮介妸锔锯偓顔济?
+// GetDatasetFiles lists dataset files after dataset-level permission checks.
 func GetDatasetFiles(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
@@ -672,7 +672,7 @@ func DeleteFile(c *gin.Context) {
 	resputil.Success(c, "Delete file successfully ")
 }
 
-// 闂佸吋鍎抽崲鑼闁秵鍋ㄩ柕濠忕畱閻撴洟鏌℃径濠傛殻婵?
+// GetPermission resolves the caller's permission from the logical path root.
 func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.FilePermission {
 	cleanedPath := cleanURLPath(path)
 	if cleanedPath == "" {
@@ -789,7 +789,8 @@ func GetAccountSpace(c *gin.Context) {
 	resputil.Success(c, accountSpaceResp)
 }
 
-// 闂佸搫鍊稿ú锝呪枎閵忋倕鎹堕柡澶嬪缁插姊洪幓鎺斝㈤柣锝夌畺瀹曘儵骞嬮婊咁槷闂佸湱顭堝ú銈夊箖濠婂應鍋撻崷顓炰槐婵＄虎鍨跺顒勫炊閿旂瓔鍋ㄩ梺闈╅檮濠㈡ê顭?public闂佹寧绋戦惁鍧癳r闂佹寧绋戦悾鐢ount闂佹寧绋戦悾鐢in-public闂佹寧绋戦悾鐢in-user闂佹寧绋戦悾鐢in-account闁诲海鏁搁幊鎾惰姳閺屻儱绀傛い鎾跺濞兼艾鈽夐幘宕囆㈤柟顔芥崌瀹曠兘寮堕幐搴ｇシ闂?// 闂佸搫鎷嬮崳锝夊焵椤掍焦鐨戦柡浣靛€濋獮瀣憥閸屾埃鏋忛梺娲绘娇閸斿骸鈻撻幉鍒焧h闂佸搫瀚烽崹鐗堟櫠閻樺磭鈻斿璺虹焾濞兼岸鏌ㄥ☉妯肩伇婵炴彃娼￠獮鎺楀Ψ閳轰焦顏熼柣搴ゎ潐閼归箖骞冨鍫濈闁瑰嘲鑻▓鎵偓瑙勭摃妞村憡鏅跺澶婃嵍闁靛ě鍕殸闂佸搫鍊稿ú锝呪枎閵忋倕鎹堕柡澶嬪缁插鏌ㄥ☉妯肩伇妞ゆ挻鎮傞幃鍫曞幢濡や礁鏋€闁诲海鏁搁幊鎾惰姳閺屻儱瑙﹂幖瀛樼箘閻熷繒绱掓径濠勨枌缂佽鲸绻勯幉鐗堢瑹閳ь剟鎮板▎鎴炲珰濞达絼璀﹂崥鈧梺鑽ゅ仜濡骞夐幎钘夌骇闁告劦鍠楅娆撴煏?
+// Redirect maps URL logical prefixes to physical storage prefixes.
+// Supported logical roots: public, user, account, and admin variants.
 func Redirect(c *gin.Context, path string, token util.JWTMessage) (string, error) {
 	userSpacePrefix := config.GetConfig().Storage.Prefix.User
 	accountSpacePrefix := config.GetConfig().Storage.Prefix.Account
