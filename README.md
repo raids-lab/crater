@@ -120,7 +120,7 @@ helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 
 - `backend/`: Backend services
 - `frontend/`: Web UI
-- `storage/`: Storage service
+- `backend/internal/storage/`: Storage service (integrated in backend module)
 - `charts/`: Helm charts for deploying Crater
 - `website/`: Documentation website source
 - `grafana-dashboards/`: Grafana dashboards used by Crater
@@ -180,7 +180,7 @@ Then set up the environment for the component you want to work on:
 
 - Backend: [Backend Development Guide](./backend/README.md)
 - Frontend: [Frontend Development Guide](./frontend/README.md)
-- Storage: [Storage Service Development Guide](./storage/README.md)
+- Storage: Integrated into backend module (see [Backend Development Guide](./backend/README.md))
 - Website: [Documentation Website Development Guide](./website/README.md)
 
 ### 4) Configuration files (optional)
@@ -189,17 +189,14 @@ Crater provides a unified configuration management workflow to centralize config
 
 Example structure:
 
-```
+```text
 config/
 ├── backend/
 │   ├── .debug.env              # Backend debug environment variables
 │   ├── kubeconfig              # Kubernetes config file (optional)
-│   └── debug-config.yaml       # Backend debug configuration
+│   └── debug-config.yaml       # Backend & storage-server shared debug configuration
 ├── frontend/
 │   └── .env.development        # Frontend development environment variables
-└── storage/
-    ├── .env                    # Storage service environment variables
-    └── config.yaml             # Storage service configuration
 ```
 
 Make targets:
@@ -228,7 +225,6 @@ You can also run checks within a sub-project (checks all files in that sub-proje
 ```bash
 cd frontend && make pre-commit-check
 cd backend && make pre-commit-check
-cd storage && make pre-commit-check
 cd website && make pre-commit-check
 ```
 

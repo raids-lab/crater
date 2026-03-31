@@ -50,21 +50,6 @@ Generate the url of main project
 {{- end -}}
 
 {{/*
-Generate storage server configuration from backendConfig
-*/}}
-{{- define "crater.storageServerConfig" -}}
-postgres:
-  {{ toYaml .Values.backendConfig.postgres | nindent 2 | trim }}
-userSpacePrefix: {{ .Values.backendConfig.storage.prefix.user }}
-accountSpacePrefix: {{ .Values.backendConfig.storage.prefix.account }}
-publicSpacePrefix: {{ .Values.backendConfig.storage.prefix.public }}
-auth:
-  token:
-    accessTokenSecret: {{ .Values.backendConfig.auth.token.accessTokenSecret }}
-    refreshTokenSecret: {{ .Values.backendConfig.auth.token.refreshTokenSecret }}
-{{- end -}}
-
-{{/*
 Generate dockerconfigjson
 */}}
 {{- define "dockerconfigjson" -}}
@@ -92,5 +77,4 @@ Generate backend config with images from top-level images section
 {{- $_ := set $config "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image) -}}
 {{- $config | toYaml -}}
 {{- end -}}
-
 

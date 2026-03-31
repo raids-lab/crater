@@ -82,6 +82,9 @@ prepare: ## Prepare development environment with updated configs
 	@if [ ! -f .debug.env ]; then \
 		echo "$(YELLOW)Creating .debug.env file...$(RESET)"; \
 		echo 'CRATER_BE_PORT=:8088' > .debug.env; \
+		echo '# Storage server (optional for local debug)' >> .debug.env; \
+		echo '# CRATER_STORAGE_PORT=7320' >> .debug.env; \
+		echo '# CRATER_STORAGE_ROOT=./storage-data' >> .debug.env; \
 		echo "$(GREEN)✅ .debug.env created successfully!$(RESET)"; \
 	else \
 		echo "$(GREEN)✅ .debug.env already exists$(RESET)"; \
@@ -192,3 +195,14 @@ $(GOIMPORTS): $(LOCALBIN)
 swaggo: $(SWAGGO) ## Install swaggo
 $(SWAGGO): $(LOCALBIN)
 	$(call go-install-tool,$(SWAGGO),github.com/swaggo/swag/cmd/swag,$(SWAGGO_VERSION))
+
+.PHONY: run-storage
+run-storage: prepare fmt imports ## Run storage server from backend module.
+	@echo "$(GREEN)Starting crater storage server...$(RESET)"
+	go run -ldflags="$(VERSION_LDFLAGS)" cmd/storage-server/main.go
+
+.PHONY: build-storage
+build-storage: fmt lint ## Build storage server binary.
+	@echo "$(YELLOW)Building storage server binary...$(RESET)"
+	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/storage-server cmd/storage-server/main.go
+	@echo "$(GREEN)Storage server binary built successfully: bin/storage-server$(RESET)"

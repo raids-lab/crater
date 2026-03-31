@@ -34,7 +34,6 @@ if [ -z "$STAGED_FILES" ]; then
         echo "💡 Tip: You can also run checks directly in sub-project directories:"
         echo "   cd frontend && make pre-commit-check"
         echo "   cd backend && make pre-commit-check"
-        echo "   cd storage && make pre-commit-check"
         echo "   cd website && make pre-commit-check"
         echo ""
         exit 0
@@ -87,21 +86,6 @@ if echo "$STAGED_FILES" | grep -q "^backend/"; then
         CHECKS_RUN=1
     else
         echo "❌ Backend checks failed!"
-        exit 1
-    fi
-fi
-
-# Check if there are storage-related changes
-if echo "$STAGED_FILES" | grep -q "^storage/"; then
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "💾 Storage Checks"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    if (cd storage && make pre-commit-check); then
-        echo "✅ Storage checks passed!"
-        CHECKS_RUN=1
-    else
-        echo "❌ Storage checks failed!"
         exit 1
     fi
 fi
