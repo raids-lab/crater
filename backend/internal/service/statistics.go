@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,6 +44,7 @@ const (
 
 // GetResourceStatistics 获取资源统计信息 (主入口，负责编排)
 func (s *StatisticsService) GetResourceStatistics(ctx context.Context, req *payload.StatisticsReq) (*payload.StatisticsResp, error) {
+	// TODO(perf): Add short-TTL cache for resource metadata to avoid querying the resource table on every request.
 	// 1. 准备工作：加载资源元数据
 	resourceMap, err := s.loadResourceMetadata(ctx)
 	if err != nil {
@@ -51,6 +53,7 @@ func (s *StatisticsService) GetResourceStatistics(ctx context.Context, req *payl
 	}
 
 	// 2. 准备查询并获取作业数据
+	// TODO(perf): Replace full in-memory loading with FindInBatches and accumulate usage per batch to reduce memory footprint.
 	jobs, err := s.fetchStatsJobs(ctx, req)
 	if err != nil {
 		return nil, err
@@ -83,7 +86,13 @@ func (s *StatisticsService) GetResourceStatistics(ctx context.Context, req *payl
 // fetchStatsJobs 构建查询条件并获取作业列表
 func (s *StatisticsService) fetchStatsJobs(ctx context.Context, req *payload.StatisticsReq) ([]*model.Job, error) {
 	q := query.Job
-	jobDo := q.WithContext(ctx).Unscoped()
+	jobDo := q.WithContext(ctx).Unscoped().
+		Select(
+			q.RunningTimestamp,
+			q.CompletedTimestamp,
+			q.Resources,
+		)
+	// TODO(perf): Validate and add supporting DB indexes for this filter pattern (scope id + running/completed timestamps).
 
 	// 过滤范围 (Scope)
 	switch req.Scope {
@@ -138,6 +147,24 @@ func (s *StatisticsService) calculateJobUsage(
 	req *payload.StatisticsReq,
 ) map[string]float64 {
 	rawTotalUsage := make(map[string]float64)
+	if len(buckets) == 0 {
+		return rawTotalUsage
+	}
+
+	bucketCount := len(buckets)
+	bucketEnds := make([]time.Time, bucketCount)
+	for i := range buckets {
+		if i+1 < bucketCount {
+			bucketEnds[i] = buckets[i+1].Timestamp
+		} else {
+			bucketEnds[i] = req.EndTime
+		}
+	}
+
+	now := time.Now()
+	if now.After(req.EndTime) {
+		now = req.EndTime
+	}
 
 	for _, job := range jobs {
 		// 解析作业的资源配额
@@ -146,49 +173,78 @@ func (s *StatisticsService) calculateJobUsage(
 			continue
 		}
 
-		// 确定作业起止时间
-		jobStart := job.RunningTimestamp
-		jobEnd := job.CompletedTimestamp
-		if jobEnd.IsZero() {
-			jobEnd = time.Now()
-			if jobEnd.After(req.EndTime) {
-				jobEnd = req.EndTime
-			}
+		jobStart, jobEnd, ok := s.clampJobInterval(job, req, now)
+		if !ok {
+			continue
 		}
 
-		// 遍历每个时间桶
-		for i := range buckets {
+		startIdx, endExclusive, ok := s.findOverlappingBucketRange(buckets, bucketEnds, jobStart, jobEnd, bucketCount)
+		if !ok {
+			continue
+		}
+
+		for i := startIdx; i < endExclusive; i++ {
 			bucketStart := buckets[i].Timestamp
-			var bucketEnd time.Time
-			if req.Step == payload.StepWeek {
-				bucketEnd = bucketStart.AddDate(0, 0, DaysInWeek)
-			} else {
-				bucketEnd = bucketStart.AddDate(0, 0, 1)
-			}
+			bucketEnd := bucketEnds[i]
 
-			// 计算交集并累加
-			overlapDuration := s.calculateOverlapDuration(jobStart, jobEnd, bucketStart, bucketEnd)
-			if overlapDuration > 0 {
-				hours := overlapDuration.Hours()
-				for resName, amount := range jobRes {
-					usage := amount * hours
-
-					// 累加到 Bucket
-					if _, ok := buckets[i].Usage[resName]; !ok {
-						buckets[i].Usage[resName] = 0
-					}
-					buckets[i].Usage[resName] += usage
-
-					// 累加到 Total
-					if _, ok := rawTotalUsage[resName]; !ok {
-						rawTotalUsage[resName] = 0
-					}
-					rawTotalUsage[resName] += usage
-				}
-			}
+			s.accumulateBucketUsage(buckets[i].Usage, rawTotalUsage, jobRes, jobStart, jobEnd, bucketStart, bucketEnd)
 		}
 	}
 	return rawTotalUsage
+}
+
+func (s *StatisticsService) clampJobInterval(
+	job *model.Job,
+	req *payload.StatisticsReq,
+	now time.Time,
+) (jobStart, jobEnd time.Time, ok bool) {
+	jobStart = job.RunningTimestamp
+	jobEnd = job.CompletedTimestamp
+	if jobEnd.IsZero() {
+		jobEnd = now
+	}
+	if jobStart.Before(req.StartTime) {
+		jobStart = req.StartTime
+	}
+	if jobEnd.After(req.EndTime) {
+		jobEnd = req.EndTime
+	}
+	ok = jobEnd.After(jobStart)
+	return
+}
+
+func (s *StatisticsService) findOverlappingBucketRange(
+	buckets []payload.TimePointData,
+	bucketEnds []time.Time,
+	jobStart, jobEnd time.Time,
+	bucketCount int,
+) (startIdx, endExclusive int, ok bool) {
+	startIdx = sort.Search(bucketCount, func(i int) bool {
+		return bucketEnds[i].After(jobStart)
+	})
+	endExclusive = sort.Search(bucketCount, func(i int) bool {
+		return !buckets[i].Timestamp.Before(jobEnd)
+	})
+	ok = startIdx < endExclusive && startIdx < bucketCount
+	return
+}
+
+func (s *StatisticsService) accumulateBucketUsage(
+	bucketUsage map[string]float64,
+	totalUsage map[string]float64,
+	jobRes map[string]float64,
+	jobStart, jobEnd, bucketStart, bucketEnd time.Time,
+) {
+	overlapDuration := s.calculateOverlapDuration(jobStart, jobEnd, bucketStart, bucketEnd)
+	if overlapDuration <= 0 {
+		return
+	}
+	hours := overlapDuration.Hours()
+	for resName, amount := range jobRes {
+		usage := amount * hours
+		bucketUsage[resName] += usage
+		totalUsage[resName] += usage
+	}
 }
 
 // formatStatsUsage 格式化统计结果，注入 Label 和 Type

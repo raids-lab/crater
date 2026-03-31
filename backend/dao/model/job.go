@@ -68,15 +68,18 @@ func (s *ScheduleData) Init(msg string) error {
 
 type Job struct {
 	gorm.Model
-	Name               string                              `gorm:"not null;type:varchar(256);comment:作业名称"`
-	JobName            string                              `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
-	UserID             uint                                `gorm:"primaryKey"`
-	User               User                                `gorm:"foreignKey:UserID"`
-	AccountID          uint                                `gorm:"primaryKey"`
-	Account            Account                             `gorm:"foreignKey:AccountID"`
-	JobType            JobType                             `gorm:"not null;comment:作业类型"`
-	Status             batch.JobPhase                      `gorm:"index:status;not null;comment:作业状态"`
-	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
+	Name              string         `gorm:"not null;type:varchar(256);comment:作业名称"`
+	JobName           string         `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
+	UserID            uint           `gorm:"primaryKey"`
+	User              User           `gorm:"foreignKey:UserID"`
+	AccountID         uint           `gorm:"primaryKey"`
+	Account           Account        `gorm:"foreignKey:AccountID"`
+	JobType           JobType        `gorm:"not null;comment:作业类型"`
+	Status            batch.JobPhase `gorm:"index:status;not null;comment:作业状态"`
+	CreationTimestamp time.Time      `gorm:"not null;comment:作业创建时间"`
+	// TODO(perf): Evaluate adding composite indexes for statistics queries:
+	// (user_id, running_timestamp), (account_id, running_timestamp),
+	// and potentially (running_timestamp, completed_timestamp).
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
 	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
 	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`
