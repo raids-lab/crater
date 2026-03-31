@@ -1,4 +1,4 @@
-package service
+package storage
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"webdav/dao/model"
-	"webdav/dao/query"
-	"webdav/response"
+
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,38 +25,38 @@ func MoveFile(c *gin.Context) {
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	var moveFileReq MoveFileReq
 	err = c.ShouldBind(&moveFileReq)
 	if err != nil {
-		response.BadRequestError(c, err.Error())
+		resputil.BadRequestError(c, err.Error())
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/move")
 	sourcePermission := GetPermission(param, jwttoken, c)
 	dstPermission := GetPermission(moveFileReq.Dst, jwttoken, c)
 	if sourcePermission != model.ReadWrite || dstPermission != model.ReadWrite {
-		response.HTTPError(c, http.StatusUnauthorized, "You have no permission to move files or move files to this location ",
-			response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "You have no permission to move files or move files to this location ",
+			resputil.NotSpecified)
 		return
 	}
 	realPath, err := Redirect(c, param, jwttoken)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	realDst, err := Redirect(c, moveFileReq.Dst, jwttoken)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 	}
 	err = moveFiles(c.Request.Context(), realPath, realDst, false)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	response.Success(c, "move files successfully")
+	resputil.Success(c, "move files successfully")
 }
 
 func MoveDatasetOrModel(c *gin.Context) {
@@ -63,22 +64,22 @@ func MoveDatasetOrModel(c *gin.Context) {
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	var datasetReq DatasetRequest
 	if err = c.ShouldBindUri(&datasetReq); err != nil {
-		response.HTTPError(c, http.StatusBadRequest, err.Error(), response.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if jwttoken.RolePlatform != model.RoleAdmin {
-		response.HTTPError(c, http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin", resputil.NotSpecified)
 		return
 	}
 	d := query.Dataset
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(datasetReq.ID)).First()
 	if err != nil {
-		response.Error(c, "Dataset don't exist", response.NotSpecified)
+		resputil.Error(c, "Dataset don't exist", resputil.NotSpecified)
 		return
 	}
 	var dest string
@@ -88,22 +89,22 @@ func MoveDatasetOrModel(c *gin.Context) {
 	case model.DataTypeDataset:
 		dest = model.DatasetPrefix
 	default:
-		response.Error(c, "The type of dataset is incorrect", response.NotSpecified)
+		resputil.Error(c, "The type of dataset is incorrect", resputil.NotSpecified)
 		return
 	}
 	dest = dest + "/" + strconv.FormatUint(uint64(datasetReq.ID), 10)
 	dest = filepath.Join(dest, filepath.Base(dataset.URL))
 	err = moveFiles(c.Request.Context(), dataset.URL, dest, false)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	dataset.URL = dest
 	if _, err := d.WithContext(c).Updates(dataset); err != nil {
-		response.Error(c, "failed to update dataset URL", response.NotSpecified)
+		resputil.Error(c, "failed to update dataset URL", resputil.NotSpecified)
 		return
 	}
-	response.Success(c, "move dataset or model successfully")
+	resputil.Success(c, "move dataset or model successfully")
 }
 
 type RestoreFileReq struct {
@@ -111,28 +112,28 @@ type RestoreFileReq struct {
 	Dst string `json:"dst"  binding:"required"`
 }
 
-// 传进来的目标路径应该是实际路径，而不能是user/111这样的虚拟路径
+// 浼犺繘鏉ョ殑鐩爣璺緞搴旇鏄疄闄呰矾寰勶紝鑰屼笉鑳芥槸user/111杩欐牱鐨勮櫄鎷熻矾寰?
 func RestoreDatasetOrModel(c *gin.Context) {
 	AlloweOption(c)
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	var restoreFileReq RestoreFileReq
 	if err = c.ShouldBind(&restoreFileReq); err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if jwttoken.RolePlatform != model.RoleAdmin {
-		response.HTTPError(c, http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin", resputil.NotSpecified)
 		return
 	}
 	d := query.Dataset
 	dataset, err := d.WithContext(c).Where(d.ID.Eq(restoreFileReq.ID)).First()
 	if err != nil {
-		response.Error(c, "Dataset don't exist", response.NotSpecified)
+		resputil.Error(c, "Dataset don't exist", resputil.NotSpecified)
 		return
 	}
 	soure := dataset.URL
@@ -144,15 +145,15 @@ func RestoreDatasetOrModel(c *gin.Context) {
 	}
 	err = moveFiles(c.Request.Context(), soure, dstPath, false)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	dataset.URL = dstPath
 	if _, err := d.WithContext(c).Updates(dataset); err != nil {
-		response.Error(c, "failed to update dataset URL", response.NotSpecified)
+		resputil.Error(c, "failed to update dataset URL", resputil.NotSpecified)
 		return
 	}
-	response.Success(c, "restore dataset or model successfully")
+	resputil.Success(c, "restore dataset or model successfully")
 }
 
 func moveFiles(ctx context.Context, src, dst string, overwrite bool) error {

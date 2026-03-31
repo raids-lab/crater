@@ -267,3 +267,21 @@ Where:
 - **`program`**: Main program entry file, pointing to `backend/cmd/crater/main.go`
 - **Automatic Configuration File Discovery**: The program automatically searches for `./etc/debug-config.yaml` in debug mode (relative to `cwd`), **no need** to pass `--config-file` parameter through `args`
 - **`KUBECONFIG`**: Uses the `kubeconfig` configuration file in the backend repository to connect to the cluster
+
+## Storage Server (Now in Backend Module)
+
+The storage service is now part of the backend Go module and built from `cmd/storage-server/main.go`.
+
+Useful commands:
+
+```bash
+make run-storage
+make build-storage
+```
+
+Storage server runtime env vars:
+
+- `CRATER_STORAGE_PORT` (preferred, fallback: `PORT`, default: `7320`)
+- `CRATER_STORAGE_ROOT` (preferred, fallback: `ROOTDIR`, default: `/crater`)
+
+For local debug, you can put these vars in `backend/.debug.env` and run `make run-storage`.

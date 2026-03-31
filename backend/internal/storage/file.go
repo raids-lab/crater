@@ -1,4 +1,4 @@
-package service
+package storage
 
 import (
 	"context"
@@ -7,17 +7,19 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
+	urlpath "path"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"webdav/config"
-	"webdav/dao/model"
-	"webdav/dao/query"
-	"webdav/logutils"
-	"webdav/response"
-	"webdav/util"
+
+	"k8s.io/klog/v2"
+
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/webdav"
@@ -25,6 +27,15 @@ import (
 
 var fs *webdav.Handler
 var fsonce sync.Once
+var storageRootDir = "/crater"
+
+func SetRootDir(rootDir string) {
+	if rootDir == "" {
+		storageRootDir = "/crater"
+		return
+	}
+	storageRootDir = rootDir
+}
 
 type Files struct {
 	Name       string    `json:"name"`
@@ -41,18 +52,12 @@ type Permissions struct {
 
 func checkfs() {
 	fsonce.Do(func() {
-		rootDir := "/crater"
-		if gin.Mode() == gin.DebugMode {
-			if envDir := os.Getenv("ROOTDIR"); envDir != "" {
-				rootDir = envDir
-				logutils.Log.Infof("WebDAV root set from ROOTDIR: %s", rootDir)
-			}
-		}
 		fs = &webdav.Handler{
 			Prefix:     "/api/ss",
-			FileSystem: webdav.Dir(rootDir),
+			FileSystem: webdav.Dir(storageRootDir),
 			LockSystem: webdav.NewMemLS(),
 		}
+		klog.Infof("Storage root directory: %s", storageRootDir)
 	})
 }
 
@@ -89,7 +94,7 @@ func GetPermissionFromToken(token util.JWTMessage) model.FilePermission {
 	}
 }
 
-// 是列出用户当前账户、公共账户和自己用户空间的地址和实际地址
+// ListMySpace returns visible logical spaces and mapped real storage paths for one user context.
 func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace []string) {
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
@@ -100,7 +105,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 	var space, realSpace []string
 	if user.Space != "" {
 		space = append(space, user.Space)
-		realSpace = append(realSpace, config.GetConfig().UserSpacePrefix+"/"+user.Space)
+		realSpace = append(realSpace, config.GetConfig().Storage.Prefix.User+"/"+user.Space)
 	}
 	a := query.Account
 	publicaccount, err := a.WithContext(c).Where(a.ID.Eq(model.DefaultAccountID)).First()
@@ -109,7 +114,7 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 		return space, realSpace
 	}
 	space = append(space, strings.TrimLeft(publicaccount.Space, "/"))
-	realSpace = append(realSpace, config.GetConfig().PublicSpacePrefix)
+	realSpace = append(realSpace, config.GetConfig().Storage.Prefix.Public)
 	if accountID != 0 && accountID != model.DefaultAccountID {
 		account, err := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
 		if err != nil {
@@ -117,15 +122,15 @@ func ListMySpace(userID, accountID uint, c *gin.Context) (allspace, allRealSpace
 			return space, realSpace
 		}
 		space = append(space, strings.TrimLeft(account.Space, "/"))
-		realSpace = append(realSpace, config.GetConfig().AccountSpacePrefix+"/"+account.Space)
+		realSpace = append(realSpace, config.GetConfig().Storage.Prefix.Account+"/"+account.Space)
 	}
-	space = append(space, config.GetConfig().PublicSpacePrefix)
+	space = append(space, config.GetConfig().Storage.Prefix.Public)
 	return space, realSpace
 }
 
-// 获取所有账户空间实际地址
+// ListAllAccountSpaces returns all account storage roots with normalized prefixes.
 func ListAllAccountSpaces(c *gin.Context) []string {
-	accountSpacePrefix := config.GetConfig().AccountSpacePrefix
+	accountSpacePrefix := config.GetConfig().Storage.Prefix.Account
 	var data []string
 	a := query.Account
 	accounts, err := a.WithContext(c).Where(a.ID.IsNotNull()).Find()
@@ -145,9 +150,9 @@ func ListAllAccountSpaces(c *gin.Context) []string {
 	return data
 }
 
-// 获取所有用户空间实际地址
+// ListAllUserSpaces returns all user storage roots with normalized prefixes.
 func ListAllUserSpaces(c *gin.Context) []string {
-	userSpacePrefix := config.GetConfig().UserSpacePrefix
+	userSpacePrefix := config.GetConfig().Storage.Prefix.User
 	var data []string
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.IsNotNull()).Find()
@@ -172,29 +177,29 @@ func WebDav(c *gin.Context) {
 	checkfs()
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss")
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
-		response.HTTPError(c, http.StatusUnauthorized, "Your permission is notAllowed", response.InvalidRole)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Your permission is notAllowed", resputil.UserNotAllowed)
 		return
 	}
 	realPath, err := Redirect(c, param, jwttoken)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	rwMethods := []string{"PROPPATCH", "MKCOL", "PUT", "DELETE"}
 	if permission == model.ReadOnly && containsString(rwMethods, c.Request.Method) {
-		response.HTTPError(c, http.StatusUnauthorized, "You have no permission to do this", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "You have no permission to do this", resputil.NotSpecified)
 		return
 	}
 	http.StripPrefix("/api/ss", fs)
 	c.Request.URL.Path = "/api/ss/" + realPath
 	fs.ServeHTTP(c.Writer, c.Request)
-	// 直接创建文件夹使用777权限也没有用，可能是因为父目录有设置SetGID位，权限是drwxr-sr-x，于是选择直接修改权限
+	// For collection or upload requests, enforce folder permission for the target path.
 	if c.Request.Method == "MKCOL" || c.Request.Method == "PUT" {
 		chmod(c, model.RWXFolderPerm)
 	}
@@ -203,14 +208,14 @@ func WebDav(c *gin.Context) {
 func chmod(c *gin.Context, mode os.FileMode) {
 	reqPath := strings.TrimPrefix(c.Request.URL.Path, fs.Prefix)
 	if fs.Prefix != "" && len(reqPath) == len(c.Request.URL.Path) {
-		response.Error(c, "prefix mismatch error", response.InvalidRequest)
+		resputil.Error(c, "prefix mismatch error", resputil.InvalidRequest)
 		return
 	}
 	var realPath string
 	dir, _ := fs.FileSystem.(webdav.Dir)
 	realPath = string(dir) + reqPath
 	if err := os.Chmod(realPath, mode); err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 }
@@ -231,24 +236,24 @@ func AlloweOption(c *gin.Context) {
 func Download(c *gin.Context) {
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	path := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/download/")
 	permission := GetPermission(path, jwttoken, c)
 	if permission == model.NotAllowed {
-		response.HTTPError(c, http.StatusUnauthorized, "Your permission is notAllowed", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Your permission is notAllowed", resputil.NotSpecified)
 		return
 	}
 	realPath, err := Redirect(c, path, jwttoken)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	f, err := fs.FileSystem.OpenFile(c.Request.Context(), realPath, os.O_RDWR, 0)
 	if err != nil {
 		fmt.Println("err:", err)
-		response.BadRequestError(c, "can't find file")
+		resputil.BadRequestError(c, "can't find file")
 		return
 	}
 	defer f.Close()
@@ -256,7 +261,7 @@ func Download(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%q\"", c.Request.URL.Path))
 	_, err = io.Copy(c.Writer, f)
 	if err != nil {
-		response.Error(c, "can't download file", response.NotSpecified)
+		resputil.Error(c, "can't download file", resputil.NotSpecified)
 		return
 	}
 }
@@ -270,10 +275,28 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
+func cleanURLPath(raw string) string {
+	// URL paths must always use "/" semantics across all OS.
+	normalized := strings.ReplaceAll(raw, "\\", "/")
+	trimmed := strings.TrimLeft(normalized, "/")
+	cleaned := urlpath.Clean(trimmed)
+	if cleaned == "." {
+		return ""
+	}
+	return cleaned
+}
+
+func splitURLPath(raw string) []string {
+	cleaned := cleanURLPath(raw)
+	if cleaned == "" {
+		return nil
+	}
+	return strings.Split(cleaned, "/")
+}
 func GetBasicFiles(c *gin.Context, token util.JWTMessage, isadmin bool) []Files {
-	userSpacePrefix := config.GetConfig().UserSpacePrefix
-	accountSpacePrefix := config.GetConfig().AccountSpacePrefix
-	publicSpacePrefix := config.GetConfig().PublicSpacePrefix
+	userSpacePrefix := config.GetConfig().Storage.Prefix.User
+	accountSpacePrefix := config.GetConfig().Storage.Prefix.Account
+	publicSpacePrefix := config.GetConfig().Storage.Prefix.Public
 	var s []string
 	s = append(s, userSpacePrefix, publicSpacePrefix)
 	if isadmin || (token.AccountID != 0 && token.AccountID != model.DefaultAccountID) {
@@ -294,9 +317,9 @@ func GetBasicFiles(c *gin.Context, token util.JWTMessage, isadmin bool) []Files 
 }
 
 func GetRWFiles(c *gin.Context, token util.JWTMessage) []Files {
-	userSpacePrefix := config.GetConfig().UserSpacePrefix
-	accountSpacePrefix := config.GetConfig().AccountSpacePrefix
-	publicSpacePrefix := config.GetConfig().PublicSpacePrefix
+	userSpacePrefix := config.GetConfig().Storage.Prefix.User
+	accountSpacePrefix := config.GetConfig().Storage.Prefix.Account
+	publicSpacePrefix := config.GetConfig().Storage.Prefix.Public
 	var s []string
 	s = append(s, userSpacePrefix)
 	if token.PublicAccessMode == model.AccessModeRW {
@@ -337,112 +360,110 @@ func GetFilesByPaths(paths []string, c *gin.Context) []Files {
 	return data
 }
 
-// 用户获取文件
+// GetFiles lists files under a logical path according to resolved permissions.
 func GetFiles(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/files")
 	token := getFirstToken(param)
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed {
-		response.HTTPError(c, http.StatusUnauthorized, "Your permission is notAllowed", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Your permission is notAllowed", resputil.NotSpecified)
 		return
 	}
 	if token == "" {
 		data = GetBasicFiles(c, jwttoken, false)
-		response.Success(c, data)
+		resputil.Success(c, data)
 	} else {
 		realPath, err := Redirect(c, param, jwttoken)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
 		data, err = handleDirsList(fs.FileSystem, realPath)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
-		response.Success(c, data)
+		resputil.Success(c, data)
 	}
 }
 
-// 用户获取有读写权限的可移动文件
+// GetFilesWithRWAcc lists files and allows read-write scoped roots when permitted.
 func GetFilesWithRWAcc(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/rwfiles")
 	token := getFirstToken(param)
 	permission := GetPermission(param, jwttoken, c)
 	if permission == model.NotAllowed || (permission == model.ReadOnly && token != "") {
-		response.HTTPError(c, http.StatusUnauthorized, "You have no permission to get these files", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "You have no permission to get these files", resputil.NotSpecified)
 		return
 	}
 	if token == "" {
 		data = GetRWFiles(c, jwttoken)
-		response.Success(c, data)
+		resputil.Success(c, data)
 	} else {
 		realPath, err := Redirect(c, param, jwttoken)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
 		data, err = handleDirsList(fs.FileSystem, realPath)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
-		response.Success(c, data)
+		resputil.Success(c, data)
 	}
 }
 
-// 去除前面的/后，使用/作为分隔符的第一个token
+// getFirstToken extracts the first normalized path segment.
 func getFirstToken(path string) string {
-	path = strings.TrimLeft(path, "/")
-	cleanedPath := filepath.Clean(path)
-	tokens := strings.Split(cleanedPath, "/")
-	if len(tokens) > 0 && tokens[0] != "." {
+	tokens := splitURLPath(path)
+	if len(tokens) > 0 {
 		return tokens[0]
 	}
 	return ""
 }
 
-// admin获取文件
+// GetAllFiles lists files for admin routes across all logical spaces.
 func GetAllFiles(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if jwttoken.RolePlatform != model.RoleAdmin {
-		response.HTTPError(c, http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "Your RolePlatform is not RoleAdmin", resputil.NotSpecified)
 		return
 	}
 	path := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/admin/files")
 	token := getFirstToken(path)
 	if token == "" {
 		data = GetBasicFiles(c, jwttoken, true)
-		response.Success(c, data)
+		resputil.Success(c, data)
 	} else {
 		realPath, err := Redirect(c, path, jwttoken)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
 		data, err = handleDirsList(fs.FileSystem, realPath)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
-		response.Success(c, data)
+		resputil.Success(c, data)
 	}
 }
 
@@ -485,27 +506,27 @@ func GetDatasetURLByID(c *gin.Context, datasetID uint) (string, error) {
 	return dataset.URL, err
 }
 
-// 通过数据集获取文件
+// GetDatasetFiles lists dataset files after dataset-level permission checks.
 func GetDatasetFiles(c *gin.Context) {
 	var data []Files
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	var datasetReq DatasetRequest
 	if err = c.ShouldBindUri(&datasetReq); err != nil {
-		response.HTTPError(c, http.StatusBadRequest, err.Error(), response.NotSpecified)
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
 		return
 	}
 	permission := GetDatasetPermission(c, datasetReq.ID, jwttoken)
 	if permission == model.NotAllowed {
-		response.Error(c, "This dataset does not exist or you do not have permission", response.NotSpecified)
+		resputil.Error(c, "This dataset does not exist or you do not have permission", resputil.NotSpecified)
 		return
 	}
 	URL, err := GetDatasetURLByID(c, datasetReq.ID)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	ss := "/api/ss/dataset/" + strconv.FormatUint(uint64(datasetReq.ID), 10)
@@ -516,18 +537,18 @@ func GetDatasetFiles(c *gin.Context) {
 		datasetpaths = append(datasetpaths, URL)
 		files := GetFilesByPaths(datasetpaths, c)
 		if len(files) == 0 {
-			response.Error(c, "The dataset's URL does not exist. ", response.NotSpecified)
+			resputil.Error(c, "The dataset's URL does not exist. ", resputil.NotSpecified)
 			return
 		}
-		response.Success(c, files)
+		resputil.Success(c, files)
 	} else {
 		realPath := URL + "/" + strings.TrimPrefix(path, "/"+token)
 		data, err = handleDirsList(fs.FileSystem, realPath)
 		if err != nil {
-			response.Error(c, err.Error(), response.NotSpecified)
+			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
-		response.Success(c, data)
+		resputil.Success(c, data)
 	}
 }
 
@@ -540,12 +561,12 @@ func handleDirsList(fs webdav.FileSystem, path string) ([]Files, error) {
 	var files []Files
 	defer f.Close()
 	if fi, _ := f.Stat(); fi != nil && !fi.IsDir() {
-		logutils.Log.Info("cann't read a empty file")
+		klog.Info("cann't read a empty file")
 		return files, nil
 	}
 	dirs, err := f.Readdir(-1)
 	if err != nil {
-		logutils.Log.Info("Error reading directory")
+		klog.Info("Error reading directory")
 		return nil, err
 	}
 	var tmp Files
@@ -567,8 +588,8 @@ type SpacePaths struct {
 func checkSpace() {
 	ctx := context.Background()
 	var baseSpace []string
-	baseSpace = append(baseSpace, config.GetConfig().AccountSpacePrefix,
-		config.GetConfig().UserSpacePrefix, config.GetConfig().PublicSpacePrefix, model.DatasetPrefix, model.ModelPrefix)
+	baseSpace = append(baseSpace, config.GetConfig().Storage.Prefix.Account,
+		config.GetConfig().Storage.Prefix.User, config.GetConfig().Storage.Prefix.Public, model.DatasetPrefix, model.ModelPrefix)
 	for _, space := range baseSpace {
 		_, err := fs.FileSystem.Stat(ctx, space)
 		if err != nil {
@@ -596,7 +617,7 @@ func checkSpace() {
 		return
 	}
 	for _, us := range user {
-		space := config.GetConfig().UserSpacePrefix + "/" + us.Space
+		space := config.GetConfig().Storage.Prefix.User + "/" + us.Space
 		_, err := fs.FileSystem.Stat(ctx, space)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
@@ -611,7 +632,7 @@ func checkSpace() {
 		}
 	}
 	for _, acc := range account {
-		space := config.GetConfig().AccountSpacePrefix + "/" + acc.Space
+		space := config.GetConfig().Storage.Prefix.Account + "/" + acc.Space
 		_, err := fs.FileSystem.Stat(ctx, space)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
@@ -629,33 +650,32 @@ func checkSpace() {
 func DeleteFile(c *gin.Context) {
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	param := strings.TrimPrefix(c.Request.URL.Path, "/api/ss/delete/")
 	permission := GetPermission(param, jwttoken, c)
 	if permission != model.ReadWrite {
-		response.HTTPError(c, http.StatusUnauthorized, "You have no permission to delete file", response.NotSpecified)
+		resputil.HTTPError(c, http.StatusUnauthorized, "You have no permission to delete file", resputil.NotSpecified)
 		return
 	}
 	realPath, err := Redirect(c, param, jwttoken)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	err = fs.FileSystem.RemoveAll(c, realPath)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	response.Success(c, "Delete file successfully ")
+	resputil.Success(c, "Delete file successfully ")
 }
 
-// 获得用户权限
+// GetPermission resolves the caller's permission from the logical path root.
 func GetPermission(path string, token util.JWTMessage, c *gin.Context) model.FilePermission {
-	path = strings.TrimLeft(path, "/")
-	cleanedPath := filepath.Clean(path)
-	if path == "" {
+	cleanedPath := cleanURLPath(path)
+	if cleanedPath == "" {
 		return model.ReadOnly
 	}
 	part := strings.Split(cleanedPath, "/")
@@ -720,17 +740,17 @@ type AccountSpaceResp struct {
 func GetUserSpace(c *gin.Context) {
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if jwttoken.RolePlatform != model.RoleAdmin {
-		response.Error(c, "can't get user", response.InvalidRole)
+		resputil.Error(c, "can't get user", resputil.UserNotAllowed)
 		return
 	}
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.IsNotNull()).Find()
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	var userSpaceResp []UserSpaceResp
@@ -740,23 +760,23 @@ func GetUserSpace(c *gin.Context) {
 		userspace.Username = user[i].Name
 		userSpaceResp = append(userSpaceResp, userspace)
 	}
-	response.Success(c, userSpaceResp)
+	resputil.Success(c, userSpaceResp)
 }
 
 func GetAccountSpace(c *gin.Context) {
 	jwttoken, err := CheckJWTToken(c)
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	a := query.Account
 	account, err := a.WithContext(c).Where(a.ID.IsNotNull()).Find()
 	if err != nil {
-		response.Error(c, err.Error(), response.NotSpecified)
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 	if jwttoken.RolePlatform != model.RoleAdmin {
-		response.Error(c, "has no permission to get queue", response.InvalidRole)
+		resputil.Error(c, "has no permission to get queue", resputil.UserNotAllowed)
 		return
 	}
 	var accountSpaceResp []AccountSpaceResp
@@ -766,16 +786,16 @@ func GetAccountSpace(c *gin.Context) {
 		accountspace.Space = account[i].Space
 		accountSpaceResp = append(accountSpaceResp, accountspace)
 	}
-	response.Success(c, accountSpaceResp)
+	resputil.Success(c, accountSpaceResp)
 }
 
-// 文件地址重定向，指向实际文件地址,public，user，account，admin-public，admin-user，admin-account对应六种不同地址，
-// 普通用户使用的path是前三种，直接重定向到自己所在的文件地址，管理员对应后三种，要验证管理员权限。
+// Redirect maps URL logical prefixes to physical storage prefixes.
+// Supported logical roots: public, user, account, and admin variants.
 func Redirect(c *gin.Context, path string, token util.JWTMessage) (string, error) {
-	userSpacePrefix := config.GetConfig().UserSpacePrefix
-	accountSpacePrefix := config.GetConfig().AccountSpacePrefix
-	publicSpacePrefix := config.GetConfig().PublicSpacePrefix
-	path = strings.TrimLeft(path, "/")
+	userSpacePrefix := config.GetConfig().Storage.Prefix.User
+	accountSpacePrefix := config.GetConfig().Storage.Prefix.Account
+	publicSpacePrefix := config.GetConfig().Storage.Prefix.Public
+	path = cleanURLPath(path)
 	var res string
 	if strings.HasPrefix(path, model.PublicPath) {
 		res = strings.TrimPrefix(path, model.PublicPath)
@@ -811,9 +831,8 @@ func Redirect(c *gin.Context, path string, token util.JWTMessage) (string, error
 	} else {
 		return "", fmt.Errorf("an incorrect path")
 	}
-	cleanedPath := filepath.Clean(path)
-	tokens := strings.Split(cleanedPath, "/")
-	if len(tokens) > 0 && tokens[0] != "." {
+	tokens := splitURLPath(path)
+	if len(tokens) > 0 {
 		return res, nil
 	}
 	return "", fmt.Errorf("an illegal path")

@@ -37,7 +37,7 @@ spec:
             - containerPort: 7320
           volumeMounts:
             - name: ss-conf
-              mountPath: /etc/config.yaml
+              mountPath: /etc/config/config.yaml
               subPath: config.yaml
             - name: mypvc
               mountPath: /crater

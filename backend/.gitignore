@@ -31,6 +31,7 @@ etc/*
 *~
 .cache
 .debug.env
+storage-data/
 __debug_*
 
 # Kubernetes Config
@@ -44,4 +45,3 @@ gpu.act.buaa.edu.cn*
 
 # statistic files
 *.csv
-

@@ -1,10 +1,10 @@
 ---
-applyTo: "backend/**,frontend/**,storage/**"
+applyTo: "backend/**,frontend/**"
 ---
 
 # 前后端及存储模块开发与审查规范
 
-此文档针对 `backend/`、`frontend/` 及 `storage/` 目录的代码变更提供深度指引。
+此文档针对 `backend/`、`frontend/` 及 `backend/internal/storage/` 目录的代码变更提供深度指引。
 
 ## 核心规范 (Core Requirements)
 
@@ -18,7 +18,7 @@ applyTo: "backend/**,frontend/**,storage/**"
 ### 后端 (Backend & Storage)
 - **权限与路由**: 管理员接口必须注册到 `Admin` 路由，用户接口必须注册到 `Protected` 路由。
 - **API 文档**: 变更外部 API 必须同步更新 `swag` 注释。
-- **存储安全**: 严禁在 `storage/` 模块或 DAO 层拼接 SQL 字符串，必须使用参数化查询。
+- **存储安全**: 严禁在 `backend/internal/storage/` 模块或 DAO 层拼接 SQL 字符串，必须使用参数化查询。
 - **错误响应**: 必须使用符合 RESTful 规范的 HTTP 状态码，且返回给前端的错误信息必须为清晰、准确的英文。
 
 ### 前端 (Frontend)
