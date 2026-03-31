@@ -5,4 +5,4 @@ metadata:
   namespace: {{ .Values.namespaces.job }}
 data:
   config.yaml: |
-{{ include "crater.backendConfig" . | nindent 4 }}
+{{ include "crater.storageServerConfig" . | nindent 4 }}

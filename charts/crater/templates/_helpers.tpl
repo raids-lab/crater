@@ -78,3 +78,27 @@ Generate backend config with images from top-level images section
 {{- $config | toYaml -}}
 {{- end -}}
 
+{{/*
+Generate storage-server specific config with minimum required fields.
+Avoid rendering full backend config into ss-config.
+*/}}
+{{- define "crater.storageServerConfig" -}}
+{{- $backend := .Values.backendConfig -}}
+{{- $config := dict
+  "host" .Values.host
+  "port" $backend.port
+  "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image)
+  "postgres" $backend.postgres
+  "storage" $backend.storage
+  "secrets" $backend.secrets
+  "auth" (dict
+    "token" $backend.auth.token
+    "ldap" (dict "enable" false)
+    "normal" (dict "allowLogin" true "allowRegister" false)
+  )
+  "registry" (dict "enable" false)
+  "smtp" (dict "enable" false)
+-}}
+{{- $config | toYaml -}}
+{{- end -}}
+
