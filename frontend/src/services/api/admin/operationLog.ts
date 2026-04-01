@@ -1,6 +1,10 @@
 import { apiV1Delete, apiV1Get } from '@/services/client'
 import { IResponse, IWithPagination } from '@/services/types'
 
+export type JsonPrimitive = string | number | boolean | null
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
+export type JsonObject = { [key: string]: JsonValue }
+
 export interface IOperationLog {
   id: number
   created_at: string
@@ -9,7 +13,7 @@ export interface IOperationLog {
   operator_role: string
   operation_type: string
   target: string
-  details: Record<string, any>
+  details: JsonObject
   status: string
   error_message?: string
 }
@@ -26,9 +30,15 @@ export interface IGetOperationLogsParams {
   end_time?: string
 }
 
+type OperationLogSearchParams = Record<string, string | number | boolean>
+
 export const getOperationLogs = async (params: IGetOperationLogsParams) => {
+  const searchParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== '')
+  ) as OperationLogSearchParams
+
   return await apiV1Get<IOperationLogResponse>('admin/operation-logs', {
-    searchParams: params as any,
+    searchParams,
   })
 }
 

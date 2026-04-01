@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/datatypes"
 	"k8s.io/klog/v2"
@@ -33,7 +34,17 @@ func (s *OperationLogService) Create(ctx context.Context, operator, role, opType
 	return query.GetDB().Create(log).Error
 }
 
-func (s *OperationLogService) List(ctx context.Context, page, pageSize int, operator, opType, target, search string) ([]*model.OperationLog, int64, error) {
+func (s *OperationLogService) List(
+	ctx context.Context,
+	page,
+	pageSize int,
+	operator,
+	opType,
+	target,
+	search string,
+	startTime,
+	endTime *time.Time,
+) ([]*model.OperationLog, int64, error) {
 	var logs []*model.OperationLog
 	var total int64
 	db := query.GetDB().Model(&model.OperationLog{})
@@ -50,6 +61,12 @@ func (s *OperationLogService) List(ctx context.Context, page, pageSize int, oper
 	if search != "" {
 		searchPattern := "%" + search + "%"
 		db = db.Where("operator LIKE ? OR operation_type LIKE ? OR target LIKE ? OR message LIKE ?", searchPattern, searchPattern, searchPattern, searchPattern)
+	}
+	if startTime != nil {
+		db = db.Where("created_at >= ?", *startTime)
+	}
+	if endTime != nil {
+		db = db.Where("created_at <= ?", *endTime)
 	}
 
 	err := db.Count(&total).Error

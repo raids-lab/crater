@@ -848,6 +848,7 @@
   "operationLog.title": "操作日志",
   "operationLog.type.CancelExclusive": "取消独占",
   "operationLog.type.CancelUnschedulable": "取消不可调度",
+  "operationLog.type.DeleteJob": "删除作业",
   "operationLog.type.DrainNode": "驱逐节点",
   "operationLog.type.SetExclusive": "设为独占",
   "operationLog.type.SetUnschedulable": "标记不可调度",

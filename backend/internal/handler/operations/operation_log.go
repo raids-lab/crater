@@ -41,12 +41,14 @@ func (mgr *OperationLogMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type ListOperationLogsReq struct {
-	Page     int    `form:"page,default=1"`
-	PageSize int    `form:"limit,default=10"`
-	Type     string `form:"operation_type"`
-	Operator string `form:"operator"`
-	Target   string `form:"target"`
-	Search   string `form:"search"`
+	Page      int    `form:"page,default=1"`
+	PageSize  int    `form:"limit,default=10"`
+	Type      string `form:"operation_type"`
+	Operator  string `form:"operator"`
+	Target    string `form:"target"`
+	Search    string `form:"search"`
+	StartTime string `form:"start_time"`
+	EndTime   string `form:"end_time"`
 }
 
 type OperationLogResp struct {
@@ -133,7 +135,23 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 		return
 	}
 
-	logs, total, err := service.OpLog.List(c, req.Page, req.PageSize, req.Operator, req.Type, req.Target, req.Search)
+	startTime, endTime, err := parseOperationLogTimeRange(req.StartTime, req.EndTime)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	logs, total, err := service.OpLog.List(
+		c,
+		req.Page,
+		req.PageSize,
+		req.Operator,
+		req.Type,
+		req.Target,
+		req.Search,
+		startTime,
+		endTime,
+	)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list operation logs failed, err %v", err), resputil.NotSpecified)
 		return
@@ -165,6 +183,36 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 		Total: total,
 		Items: logResps,
 	})
+}
+
+func parseOperationLogTimeRange(
+	startTimeRaw string,
+	endTimeRaw string,
+) (*time.Time, *time.Time, error) {
+	parseTime := func(value string) (*time.Time, error) {
+		if value == "" {
+			return nil, nil
+		}
+
+		parsed, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			return nil, fmt.Errorf("invalid time format: %s", value)
+		}
+
+		return &parsed, nil
+	}
+
+	startTime, err := parseTime(startTimeRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	endTime, err := parseTime(endTimeRaw)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return startTime, endTime, nil
 }
 
 // ClearOperationLogs godoc

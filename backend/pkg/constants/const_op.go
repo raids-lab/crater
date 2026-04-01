@@ -8,6 +8,7 @@ const (
 	OpTypeCancelUnschedulable = "CancelUnschedulable"
 	OpTypeDrainNode           = "DrainNode"
 	OpTypeUpdateVPA           = "UpdateVPA"
+	OpTypeDeleteJob           = "DeleteJob"
 
 	// Execution Status
 	OpStatusSuccess = "Success"

@@ -26,6 +26,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -181,21 +182,79 @@ type (
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) DeleteJob(c *gin.Context) {
-	mgr.deleteJob(c)
+	mgr.deleteJob(c, false)
 }
 
-func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
+func getDeleteJobOperatorDisplayName(name, nickname string) string {
+	if nickname != "" {
+		return nickname
+	}
+	if name != "" {
+		return name
+	}
+	return "-"
+}
+
+func buildDeleteJobOperationDetails(job *model.Job) map[string]interface{} {
+	if job == nil {
+		return map[string]interface{}{}
+	}
+
+	return map[string]interface{}{
+		"jobName":        job.JobName,
+		"jobDisplayName": job.Name,
+		"owner":          getDeleteJobOperatorDisplayName(job.User.Name, job.User.Nickname),
+		"account":        getDeleteJobOperatorDisplayName(job.Account.Name, job.Account.Nickname),
+		"jobType":        string(job.JobType),
+		"previousStatus": string(job.Status),
+	}
+}
+
+func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, recordAdminOperation bool) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
 
+	recordDeleteJobOperation := func(
+		status, message string,
+		job *model.Job,
+		details map[string]interface{},
+	) {
+		if !recordAdminOperation {
+			return
+		}
+
+		logDetails := details
+		if len(logDetails) == 0 {
+			logDetails = buildDeleteJobOperationDetails(job)
+		}
+		if len(logDetails) == 0 {
+			logDetails = map[string]interface{}{
+				"jobName": req.JobName,
+			}
+		}
+		if _, ok := logDetails["jobName"]; !ok {
+			logDetails["jobName"] = req.JobName
+		}
+
+		handler.RecordOperationLog(
+			c,
+			constants.OpTypeDeleteJob,
+			req.JobName,
+			status,
+			message,
+			logDetails,
+		)
+	}
+
 	// Get job record from database
 	token := util.GetToken(c)
 	j := query.Job
-	_, err := getJob(c, req.JobName, &token)
+	jobRecord, err := getJob(c, req.JobName, &token)
 	if err != nil {
+		recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), nil, nil)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -209,6 +268,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 		if errors.IsNotFound(err) {
 			shouldDeleteRecord = true
 		} else {
+			recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
@@ -227,6 +287,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 
 	if shouldDeleteRecord {
 		if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Delete(); err != nil {
+			recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
@@ -236,6 +297,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 			Status:             model.Deleted,
 			CompletedTimestamp: time.Now(),
 		}); err != nil {
+			recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
@@ -244,10 +306,22 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 	// 直接删除 Job，OwnerReference 会自动删除 Ingress 和 Service
 	if shouldDeleteJob {
 		if err := mgr.client.Delete(c, job); err != nil {
+			recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 			resputil.Error(c, err.Error(), resputil.NotSpecified)
 			return
 		}
 	}
+
+	recordDeleteJobOperation(constants.OpStatusSuccess, "", jobRecord, map[string]interface{}{
+		"jobName":           jobRecord.JobName,
+		"jobDisplayName":    jobRecord.Name,
+		"owner":             getDeleteJobOperatorDisplayName(jobRecord.User.Name, jobRecord.User.Nickname),
+		"account":           getDeleteJobOperatorDisplayName(jobRecord.Account.Name, jobRecord.Account.Nickname),
+		"jobType":           string(jobRecord.JobType),
+		"previousStatus":    string(jobRecord.Status),
+		"deletedRecord":     shouldDeleteRecord,
+		"deletedClusterJob": shouldDeleteJob,
+	})
 
 	resputil.Success(c, nil)
 }
@@ -266,7 +340,7 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context) {
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/admin/vcjobs/{name} [delete]
 func (mgr *VolcanojobMgr) AdminDeleteJob(c *gin.Context) {
-	mgr.deleteJob(c)
+	mgr.deleteJob(c, true)
 }
 
 func (mgr *VolcanojobMgr) getPodLog(c *gin.Context, namespace, podName string) (*bytes.Buffer, error) {

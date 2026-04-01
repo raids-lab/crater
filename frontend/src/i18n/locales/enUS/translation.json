@@ -765,6 +765,7 @@
   "operationLog.title": "Operation Logs",
   "operationLog.type.CancelExclusive": "Cancel Exclusive",
   "operationLog.type.CancelUnschedulable": "Unmark Unschedulable",
+  "operationLog.type.DeleteJob": "Delete Job",
   "operationLog.type.DrainNode": "Drain Node",
   "operationLog.type.SetExclusive": "Set Exclusive",
   "operationLog.type.SetUnschedulable": "Mark Unschedulable",

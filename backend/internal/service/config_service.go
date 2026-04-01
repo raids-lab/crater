@@ -90,7 +90,6 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 					if key == model.ConfigKeyEnableGpuAnalysis {
 						defaultValue = "false"
 					}
-
 					klog.Infof("[ConfigService] Seeding missing config key: %s", key)
 					if createErr := tx.SystemConfig.WithContext(ctx).Create(&model.SystemConfig{
 						Key:   key,

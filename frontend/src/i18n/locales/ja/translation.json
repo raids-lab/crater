@@ -670,6 +670,7 @@
   "nodeManagement.statusFilter": "ステータス",
   "nodeManagement.submit": "送信",
   "nodeManagement.title": "ノード管理",
+  "operationLog.type.DeleteJob": "ジョブを削除",
   "otherOptionsFormCard.accordionTitle": "その他のオプション",
   "otherOptionsFormCard.nodeNameDescription": "ノード名（空きリソース検索で確認可能）",
   "otherOptionsFormCard.receiveStatusNotifications": "ステータス通知を受け取る",
