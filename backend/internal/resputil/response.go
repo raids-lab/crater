@@ -13,6 +13,11 @@ type Response[T any] struct {
 	Message string    `json:"msg"`
 }
 
+type List[T any] struct {
+	Total int64 `json:"total"`
+	Items []T   `json:"items"`
+}
+
 // wrapResponse wraps the response data and sends it back to the client.
 // It takes in a Gin context, a message string, data any, and an ErrorCode.
 // The function sets the appropriate HTTP status code based on the ErrorCode.

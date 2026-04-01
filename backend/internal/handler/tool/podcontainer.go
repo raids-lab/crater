@@ -25,6 +25,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
@@ -912,10 +913,60 @@ func (mgr *APIServerMgr) UpdatePodResources(c *gin.Context) {
 		containerName = &uri.Container
 	}
 
+	// Capture old resources for logging
+	oldResources := make(map[string]map[string]string)
+	for _, c := range pod.Spec.Containers {
+		if containerName != nil && c.Name != *containerName {
+			continue
+		}
+		res := make(map[string]string)
+		res["cpu"] = c.Resources.Limits.Cpu().String()
+		res["memory"] = c.Resources.Limits.Memory().String()
+		// Also requests if needed
+		res["requests.cpu"] = c.Resources.Requests.Cpu().String()
+		res["requests.memory"] = c.Resources.Requests.Memory().String()
+		oldResources[c.Name] = res
+	}
+
 	if err := mgr.EditPodResource(c, &pod, containerName, req.Resources); err != nil {
 		resputil.Error(c, fmt.Sprintf("Edit resources: %v", err), resputil.NotSpecified)
+		handler.RecordOperationLog(c, constants.OpTypeUpdateVPA, pod.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+			"container": uri.Container,
+			"target":    req.Resources,
+		})
 		return
 	}
+
+	// Prepare details for logging
+	newResourceValues := make(map[string]string)
+	for resourceName, quantity := range req.Resources {
+		newResourceValues[string(resourceName)] = quantity.String()
+	}
+
+	cloneResourceMap := func(src map[string]string) map[string]string {
+		copied := make(map[string]string, len(src))
+		for k, v := range src {
+			copied[k] = v
+		}
+		return copied
+	}
+
+	newResourcesByContainer := make(map[string]map[string]string)
+	if containerName != nil {
+		newResourcesByContainer[*containerName] = cloneResourceMap(newResourceValues)
+	} else {
+		for name := range oldResources {
+			newResourcesByContainer[name] = cloneResourceMap(newResourceValues)
+		}
+	}
+
+	logDetails := map[string]interface{}{
+		"container":    uri.Container, // Empty if all containers (though usually specific)
+		"oldResources": oldResources,
+		"newResources": newResourcesByContainer,
+	}
+
+	handler.RecordOperationLog(c, constants.OpTypeUpdateVPA, pod.Name, constants.OpStatusSuccess, "", logDetails)
 
 	resputil.Success(c, "Successfully updated pod resource")
 }

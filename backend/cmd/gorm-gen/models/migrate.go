@@ -789,6 +789,15 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202603170000",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.OperationLog{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&model.OperationLog{})
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -818,6 +827,7 @@ func main() {
 			&model.CronJobRecord{},
 			&model.GpuAnalysis{},
 			&model.SystemConfig{},
+			&model.OperationLog{},
 		)
 		if err != nil {
 			return err

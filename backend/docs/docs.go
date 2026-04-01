@@ -1700,6 +1700,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/operation-logs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取操作日志列表，支持分页和筛选",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OperationLog"
+                ],
+                "summary": "获取操作日志列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "操作类型",
+                        "name": "operation_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "操作人",
+                        "name": "operator",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "操作对象",
+                        "name": "target",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "模糊搜索关键词",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除所有操作日志记录，仅用于测试/调试场景",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OperationLog"
+                ],
+                "summary": "清空操作日志",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/projects": {
             "get": {
                 "security": [
@@ -9338,6 +9448,20 @@ const docTemplate = `{
                 "NotSpecified"
             ]
         },
+        "github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_operations.OperationLogResp"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-any": {
             "type": "object",
             "properties": {
@@ -9457,6 +9581,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp"
                 },
                 "msg": {
                     "type": "string"
@@ -9751,6 +9889,20 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_vcjob.JupyterTokenResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-map_string_string": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/map_string_string"
                 },
                 "msg": {
                     "type": "string"
@@ -11258,6 +11410,44 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_operations.OperationLogResp": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operation_type": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "operator_role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_tool.PodIngress": {
             "type": "object",
             "required": [
@@ -11493,6 +11683,12 @@ const docTemplate = `{
                 "token": {
                     "type": "string"
                 }
+            }
+        },
+        "map_string_string": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
             }
         },
         "resource.Quantity": {

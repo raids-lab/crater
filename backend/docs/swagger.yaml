@@ -406,6 +406,15 @@ definitions:
     - ServiceSshdNotFound
     - ServiceError
     - NotSpecified
+  github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_operations.OperationLogResp'
+        type: array
+      total:
+        type: integer
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-any:
     properties:
       code:
@@ -484,6 +493,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp
+  : properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
       msg:
         type: string
     type: object
@@ -673,6 +691,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-map_string_string:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/map_string_string'
       msg:
         type: string
     type: object
@@ -1670,6 +1697,31 @@ definitions:
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
     type: object
+  internal_handler_operations.OperationLogResp:
+    properties:
+      created_at:
+        type: string
+      details:
+        items:
+          type: integer
+        type: array
+      error_message:
+        type: string
+      id:
+        type: integer
+      operation_type:
+        type: string
+      operator:
+        type: string
+      operator_role:
+        type: string
+      status:
+        type: string
+      target:
+        type: string
+      updated_at:
+        type: string
+    type: object
   internal_handler_tool.PodIngress:
     properties:
       name:
@@ -1831,6 +1883,10 @@ definitions:
         type: string
       token:
         type: string
+    type: object
+  map_string_string:
+    additionalProperties:
+      type: string
     type: object
   resource.Quantity:
     properties:
@@ -3190,6 +3246,76 @@ paths:
       summary: 排空节点
       tags:
       - admin
+  /v1/admin/operation-logs:
+    delete:
+      consumes:
+      - application/json
+      description: 删除所有操作日志记录，仅用于测试/调试场景
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_string'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 清空操作日志
+      tags:
+      - OperationLog
+    get:
+      consumes:
+      - application/json
+      description: 获取操作日志列表，支持分页和筛选
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      - description: 操作类型
+        in: query
+        name: operation_type
+        type: string
+      - description: 操作人
+        in: query
+        name: operator
+        type: string
+      - description: 操作对象
+        in: query
+        name: target
+        type: string
+      - description: 模糊搜索关键词
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取操作日志列表
+      tags:
+      - OperationLog
   /v1/admin/projects:
     get:
       consumes:

@@ -6,10 +6,12 @@ import (
 	"sort"
 
 	"github.com/gin-gonic/gin"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
@@ -177,11 +179,43 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	// 从 token 中获取用户名
 	token := util.GetToken(c)
 
-	err := mgr.nodeClient.UpdateNodeunschedule(c, urlReq.Name, bodyReq.Reason, token.Username)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("Update Node Unschedulable failed , err %v", err), resputil.NotSpecified)
+	// 获取节点当前状态以确定操作类型（禁止调度 vs 恢复调度）
+	// 注意：GetNode 返回的是 ClusterNodeDetail，其中 Status 字段是 Ready/NotReady/Unschedulable 等字符串
+	// 但这里我们需要更精确的 Unschedulable 字段。
+	// 由于 GetNode 返回的是转换后的 info，我们可能无法直接得知 spec.unschedulable。
+	// 简单起见，这里再通过 kubeClient 获取一次原生 Node 对象，或者修改 UpdateNodeunschedule 返回值
+	// 也可以根据 nodeInfo.Status 判断，通常 Unschedulable 会在 Status 中体现，但可能不准。
+	// 为了稳妥，这里直接复用 nodeClient.UpdateNodeunschedule 的逻辑：它是一个 Toggle。
+	// 我们可以在 Update 之前查看 Status 包含 "SchedulingDisabled" 字符串？
+	// 或者，我们假设前端调用这个接口时知道自己在做什么（因为按钮状态是确定的）。
+	// 但是为了后端记录准确，最好能知道。
+
+	opType := constants.OpTypeSetUnschedulable
+
+	// 修正逻辑：先尝试获取原生节点状态，或者容忍多一次 API 调用
+	rawNode, err := mgr.nodeClient.KubeClient.CoreV1().Nodes().Get(c, urlReq.Name, metav1.GetOptions{})
+	if err == nil {
+		if rawNode.Spec.Unschedulable {
+			opType = constants.OpTypeCancelUnschedulable // 当前是禁止，操作后就是恢复
+		} else {
+			opType = constants.OpTypeSetUnschedulable // 当前是允许，操作后就是禁止
+		}
+	} else {
+		resputil.Error(c, fmt.Sprintf("Get Node failed , err %v", err), resputil.NotSpecified)
 		return
 	}
+
+	err = mgr.nodeClient.UpdateNodeunschedule(c, urlReq.Name, bodyReq.Reason, token.Username)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("Update Node Unschedulable failed , err %v", err), resputil.NotSpecified)
+		RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+			"reason": bodyReq.Reason,
+		})
+		return
+	}
+	RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusSuccess, "", map[string]interface{}{
+		"reason": bodyReq.Reason,
+	})
 	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", urlReq.Name))
 }
 
@@ -536,9 +570,20 @@ func (mgr *NodeMgr) AddNodeTaint(c *gin.Context) {
 	err := mgr.nodeClient.AddNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect, taintReq.Reason, token.Username)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Add node taint failed, err %v", err), resputil.NotSpecified)
+		RecordOperationLog(c, constants.OpTypeSetExclusive, req.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+			"key":    taintReq.Key,
+			"value":  taintReq.Value,
+			"effect": taintReq.Effect,
+			"reason": taintReq.Reason,
+		})
 		return
 	}
-
+	RecordOperationLog(c, constants.OpTypeSetExclusive, req.Name, constants.OpStatusSuccess, "", map[string]interface{}{
+		"key":    taintReq.Key,
+		"value":  taintReq.Value,
+		"effect": taintReq.Effect,
+		"reason": taintReq.Reason,
+	})
 	resputil.Success(c, fmt.Sprintf("Add taint %s=%s:%s to node %s successfully", taintReq.Key, taintReq.Value, taintReq.Effect, req.Name))
 }
 
@@ -575,8 +620,18 @@ func (mgr *NodeMgr) DeleteNodeTaint(c *gin.Context) {
 	err := mgr.nodeClient.DeleteNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Delete node taint failed, err %v", err), resputil.NotSpecified)
+		RecordOperationLog(c, constants.OpTypeCancelExclusive, req.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+			"key":    taintReq.Key,
+			"value":  taintReq.Value,
+			"effect": taintReq.Effect,
+		})
 		return
 	}
+	RecordOperationLog(c, constants.OpTypeCancelExclusive, req.Name, constants.OpStatusSuccess, "", map[string]interface{}{
+		"key":    taintReq.Key,
+		"value":  taintReq.Value,
+		"effect": taintReq.Effect,
+	})
 
 	resputil.Success(c, fmt.Sprintf("Delete taint from node %s successfully", req.Name))
 }
@@ -610,8 +665,10 @@ func (mgr *NodeMgr) DrainNode(c *gin.Context) {
 	err := mgr.nodeClient.DrainNode(c, req.Name, operator)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Drain node failed, err %v", err), resputil.NotSpecified)
+		RecordOperationLog(c, constants.OpTypeDrainNode, req.Name, constants.OpStatusFailed, err.Error(), nil)
 		return
 	}
+	RecordOperationLog(c, constants.OpTypeDrainNode, req.Name, constants.OpStatusSuccess, "", nil)
 
 	resputil.Success(c, fmt.Sprintf("Drain node %s successfully", req.Name))
 }
