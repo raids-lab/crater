@@ -14,8 +14,10 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 )
 
+const unknownOperatorValue = "unknown"
+
 // RecordOperationLog 记录操作日志的辅助函数
-func RecordOperationLog(c *gin.Context, opType, target, status, message string, details map[string]interface{}) {
+func RecordOperationLog(c *gin.Context, opType, target, status, message string, details map[string]any) {
 	operator, role := GetOperatorInfo(c)
 
 	// Convert map to datatypes.JSON
@@ -36,16 +38,16 @@ func RecordOperationLog(c *gin.Context, opType, target, status, message string, 
 }
 
 // GetOperatorInfo 从 Context 中提取操作人和角色
-func GetOperatorInfo(c *gin.Context) (string, string) {
+func GetOperatorInfo(c *gin.Context) (operator, role string) {
 	claims := util.GetToken(c)
 	ctx := c.Request.Context()
 
-	role := "unknown"
+	role = unknownOperatorValue
 	if claims.RolePlatform != 0 {
 		role = claims.RolePlatform.String()
 	}
 
-	operator := "unknown"
+	operator = unknownOperatorValue
 
 	if claims.UserID != 0 {
 		u := query.User
@@ -66,7 +68,7 @@ func GetOperatorInfo(c *gin.Context) (string, string) {
 		}
 	}
 
-	if operator == "unknown" && claims.Username != "" {
+	if operator == unknownOperatorValue && claims.Username != "" {
 		operator = claims.Username
 	}
 

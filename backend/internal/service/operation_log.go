@@ -11,6 +11,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 )
 
+//nolint:gochecknoinits // Operation logs need schema migration during service registration.
 func init() {
 	if err := query.GetDB().AutoMigrate(&model.OperationLog{}); err != nil {
 		klog.Fatalf("auto migrate operation_logs failed: %v", err)
@@ -21,7 +22,12 @@ type OperationLogService struct{}
 
 var OpLog = &OperationLogService{}
 
-func (s *OperationLogService) Create(ctx context.Context, operator, role, opType, target string, details datatypes.JSON, status, message string) error {
+func (s *OperationLogService) Create(
+	ctx context.Context,
+	operator, role, opType, target string,
+	details datatypes.JSON,
+	status, message string,
+) error {
 	log := &model.OperationLog{
 		Operator:      operator,
 		OperatorRole:  role,
@@ -31,7 +37,7 @@ func (s *OperationLogService) Create(ctx context.Context, operator, role, opType
 		Status:        status,
 		Message:       message,
 	}
-	return query.GetDB().Create(log).Error
+	return query.GetDB().WithContext(ctx).Create(log).Error
 }
 
 func (s *OperationLogService) List(
@@ -47,7 +53,7 @@ func (s *OperationLogService) List(
 ) ([]*model.OperationLog, int64, error) {
 	var logs []*model.OperationLog
 	var total int64
-	db := query.GetDB().Model(&model.OperationLog{})
+	db := query.GetDB().WithContext(ctx).Model(&model.OperationLog{})
 
 	if operator != "" {
 		db = db.Where("operator LIKE ?", "%"+operator+"%")
@@ -60,7 +66,13 @@ func (s *OperationLogService) List(
 	}
 	if search != "" {
 		searchPattern := "%" + search + "%"
-		db = db.Where("operator LIKE ? OR operation_type LIKE ? OR target LIKE ? OR message LIKE ?", searchPattern, searchPattern, searchPattern, searchPattern)
+		db = db.Where(
+			"operator LIKE ? OR operation_type LIKE ? OR target LIKE ? OR message LIKE ?",
+			searchPattern,
+			searchPattern,
+			searchPattern,
+			searchPattern,
+		)
 	}
 	if startTime != nil {
 		db = db.Where("created_at >= ?", *startTime)

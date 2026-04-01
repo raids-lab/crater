@@ -190,30 +190,27 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	// 或者，我们假设前端调用这个接口时知道自己在做什么（因为按钮状态是确定的）。
 	// 但是为了后端记录准确，最好能知道。
 
-	opType := constants.OpTypeSetUnschedulable
-
 	// 修正逻辑：先尝试获取原生节点状态，或者容忍多一次 API 调用
 	rawNode, err := mgr.nodeClient.KubeClient.CoreV1().Nodes().Get(c, urlReq.Name, metav1.GetOptions{})
-	if err == nil {
-		if rawNode.Spec.Unschedulable {
-			opType = constants.OpTypeCancelUnschedulable // 当前是禁止，操作后就是恢复
-		} else {
-			opType = constants.OpTypeSetUnschedulable // 当前是允许，操作后就是禁止
-		}
-	} else {
+	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Get Node failed , err %v", err), resputil.NotSpecified)
 		return
+	}
+
+	opType := constants.OpTypeSetUnschedulable
+	if rawNode.Spec.Unschedulable {
+		opType = constants.OpTypeCancelUnschedulable // 当前是禁止，操作后就是恢复
 	}
 
 	err = mgr.nodeClient.UpdateNodeunschedule(c, urlReq.Name, bodyReq.Reason, token.Username)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Update Node Unschedulable failed , err %v", err), resputil.NotSpecified)
-		RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+		RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusFailed, err.Error(), map[string]any{
 			"reason": bodyReq.Reason,
 		})
 		return
 	}
-	RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusSuccess, "", map[string]interface{}{
+	RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusSuccess, "", map[string]any{
 		"reason": bodyReq.Reason,
 	})
 	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", urlReq.Name))
@@ -570,7 +567,7 @@ func (mgr *NodeMgr) AddNodeTaint(c *gin.Context) {
 	err := mgr.nodeClient.AddNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect, taintReq.Reason, token.Username)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Add node taint failed, err %v", err), resputil.NotSpecified)
-		RecordOperationLog(c, constants.OpTypeSetExclusive, req.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+		RecordOperationLog(c, constants.OpTypeSetExclusive, req.Name, constants.OpStatusFailed, err.Error(), map[string]any{
 			"key":    taintReq.Key,
 			"value":  taintReq.Value,
 			"effect": taintReq.Effect,
@@ -578,7 +575,7 @@ func (mgr *NodeMgr) AddNodeTaint(c *gin.Context) {
 		})
 		return
 	}
-	RecordOperationLog(c, constants.OpTypeSetExclusive, req.Name, constants.OpStatusSuccess, "", map[string]interface{}{
+	RecordOperationLog(c, constants.OpTypeSetExclusive, req.Name, constants.OpStatusSuccess, "", map[string]any{
 		"key":    taintReq.Key,
 		"value":  taintReq.Value,
 		"effect": taintReq.Effect,
@@ -620,14 +617,14 @@ func (mgr *NodeMgr) DeleteNodeTaint(c *gin.Context) {
 	err := mgr.nodeClient.DeleteNodeTaint(c, req.Name, taintReq.Key, taintReq.Value, taintReq.Effect)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Delete node taint failed, err %v", err), resputil.NotSpecified)
-		RecordOperationLog(c, constants.OpTypeCancelExclusive, req.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+		RecordOperationLog(c, constants.OpTypeCancelExclusive, req.Name, constants.OpStatusFailed, err.Error(), map[string]any{
 			"key":    taintReq.Key,
 			"value":  taintReq.Value,
 			"effect": taintReq.Effect,
 		})
 		return
 	}
-	RecordOperationLog(c, constants.OpTypeCancelExclusive, req.Name, constants.OpStatusSuccess, "", map[string]interface{}{
+	RecordOperationLog(c, constants.OpTypeCancelExclusive, req.Name, constants.OpStatusSuccess, "", map[string]any{
 		"key":    taintReq.Key,
 		"value":  taintReq.Value,
 		"effect": taintReq.Effect,

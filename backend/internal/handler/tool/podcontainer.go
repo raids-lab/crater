@@ -915,22 +915,23 @@ func (mgr *APIServerMgr) UpdatePodResources(c *gin.Context) {
 
 	// Capture old resources for logging
 	oldResources := make(map[string]map[string]string)
-	for _, c := range pod.Spec.Containers {
-		if containerName != nil && c.Name != *containerName {
+	for i := range pod.Spec.Containers {
+		container := &pod.Spec.Containers[i]
+		if containerName != nil && container.Name != *containerName {
 			continue
 		}
 		res := make(map[string]string)
-		res["cpu"] = c.Resources.Limits.Cpu().String()
-		res["memory"] = c.Resources.Limits.Memory().String()
+		res["cpu"] = container.Resources.Limits.Cpu().String()
+		res["memory"] = container.Resources.Limits.Memory().String()
 		// Also requests if needed
-		res["requests.cpu"] = c.Resources.Requests.Cpu().String()
-		res["requests.memory"] = c.Resources.Requests.Memory().String()
-		oldResources[c.Name] = res
+		res["requests.cpu"] = container.Resources.Requests.Cpu().String()
+		res["requests.memory"] = container.Resources.Requests.Memory().String()
+		oldResources[container.Name] = res
 	}
 
 	if err := mgr.EditPodResource(c, &pod, containerName, req.Resources); err != nil {
 		resputil.Error(c, fmt.Sprintf("Edit resources: %v", err), resputil.NotSpecified)
-		handler.RecordOperationLog(c, constants.OpTypeUpdateVPA, pod.Name, constants.OpStatusFailed, err.Error(), map[string]interface{}{
+		handler.RecordOperationLog(c, constants.OpTypeUpdateVPA, pod.Name, constants.OpStatusFailed, err.Error(), map[string]any{
 			"container": uri.Container,
 			"target":    req.Resources,
 		})
@@ -960,7 +961,7 @@ func (mgr *APIServerMgr) UpdatePodResources(c *gin.Context) {
 		}
 	}
 
-	logDetails := map[string]interface{}{
+	logDetails := map[string]any{
 		"container":    uri.Container, // Empty if all containers (though usually specific)
 		"oldResources": oldResources,
 		"newResources": newResourcesByContainer,

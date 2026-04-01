@@ -15,7 +15,7 @@ import (
 	"github.com/raids-lab/crater/internal/service"
 )
 
-//nolint:gochecknoinits
+//nolint:gochecknoinits // Gin managers are registered via package init hooks.
 func init() {
 	handler.Registers = append(handler.Registers, NewOperationLogMgr)
 }
@@ -188,7 +188,7 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 func parseOperationLogTimeRange(
 	startTimeRaw string,
 	endTimeRaw string,
-) (*time.Time, *time.Time, error) {
+) (startTime, endTime *time.Time, err error) {
 	parseTime := func(value string) (*time.Time, error) {
 		if value == "" {
 			return nil, nil
@@ -202,12 +202,12 @@ func parseOperationLogTimeRange(
 		return &parsed, nil
 	}
 
-	startTime, err := parseTime(startTimeRaw)
+	startTime, err = parseTime(startTimeRaw)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	endTime, err := parseTime(endTimeRaw)
+	endTime, err = parseTime(endTimeRaw)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -234,33 +234,4 @@ func (mgr *OperationLogMgr) ClearOperationLogs(c *gin.Context) {
 	}
 
 	resputil.Success(c, gin.H{"message": "cleared"})
-}
-
-// Helper function to create operation log
-func CreateLog(c *gin.Context, opType string, target string, details datatypes.JSON, status string, message string) {
-	// 尝试从 Context 中获取用户信息
-	// 假设 middleware.AuthProtected() 设置了 "username" 和 "role"
-	// 具体实现可能需要参考 internal/util/token.go 或相关逻辑
-
-	// 这里假设有一个工具函数或者从 context 取
-	// 暂时先留空或者简单的取值逻辑，实际项目中需要根据 auth middleware 来调整
-	operator := ""
-	role := ""
-
-	// 检查是否有 user claims
-	if claims, exists := c.Get("claims"); exists {
-		// 根据实际 Claims 结构体断言
-		// operator = claims.Username
-		// role = claims.Role
-		_ = claims
-	}
-
-	// 或者从 Header/Token 解析
-	// ...
-
-	// 调用 Service
-	err := service.OpLog.Create(c, operator, role, opType, target, details, status, message)
-	if err != nil {
-		klog.Errorf("Create operation log failed: %v", err)
-	}
 }
