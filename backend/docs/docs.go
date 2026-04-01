@@ -1754,6 +1754,18 @@ const docTemplate = `{
                         "description": "模糊搜索关键词",
                         "name": "search",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "开始时间，格式例如：2024-01-02T15:04:05Z",
+                        "name": "start_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "结束时间，格式例如：2024-01-02T15:04:05Z",
+                        "name": "end_time",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -11417,10 +11429,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "details": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "error_message": {
                     "type": "string"

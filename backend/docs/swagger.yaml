@@ -1702,9 +1702,7 @@ definitions:
       created_at:
         type: string
       details:
-        items:
-          type: integer
-        type: array
+        type: object
       error_message:
         type: string
       id:
@@ -3295,6 +3293,14 @@ paths:
       - description: 模糊搜索关键词
         in: query
         name: search
+        type: string
+      - description: 开始时间，格式例如：2024-01-02T15:04:05Z
+        in: query
+        name: start_time
+        type: string
+      - description: 结束时间，格式例如：2024-01-02T15:04:05Z
+        in: query
+        name: end_time
         type: string
       produces:
       - application/json

@@ -43,5 +43,5 @@ export const getOperationLogs = async (params: IGetOperationLogsParams) => {
 }
 
 export const clearOperationLogs = async () => {
-  return await apiV1Delete<IResponse<null>>('admin/operation-logs')
+  return await apiV1Delete<IResponse<Record<string, string>>>('admin/operation-logs')
 }

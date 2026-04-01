@@ -1,11 +1,11 @@
 package operations
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/datatypes"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -57,7 +57,7 @@ type OperationLogResp struct {
 	OperatorRole  string         `json:"operator_role"`
 	OperationType string         `json:"operation_type"`
 	Target        string         `json:"target"`
-	Details       datatypes.JSON `json:"details"`
+	Details       map[string]any `json:"details" swaggertype:"object"`
 	Status        string         `json:"status"`
 	ErrorMessage  string         `json:"error_message,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
@@ -123,6 +123,8 @@ func (mgr *OperationLogMgr) buildOperatorDisplayMap(c *gin.Context, logs []*mode
 //	@Param		operator		query		string	false	"操作人"
 //	@Param		target		query		string	false	"操作对象"
 //	@Param		search		query		string	false	"模糊搜索关键词"
+//	@Param		start_time		query		string	false	"开始时间，格式例如：2024-01-02T15:04:05Z"
+//	@Param		end_time		query		string	false	"结束时间，格式例如：2024-01-02T15:04:05Z"
 //	@Success		200			{object}	resputil.Response[resputil.List[OperationLogResp]]
 //	@Failure		400			{object}	resputil.Response[any]
 //	@Failure		500			{object}	resputil.Response[any]
@@ -131,7 +133,7 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 	var req ListOperationLogsReq
 	if err := c.ShouldBindQuery(&req); err != nil {
 		klog.Errorf("Bind Query failed, err: %v", err)
-		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
+		resputil.BadRequestError(c, "invalid request parameter")
 		return
 	}
 
@@ -160,6 +162,13 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 	operatorDisplay := mgr.buildOperatorDisplayMap(c, logs)
 	logResps := make([]OperationLogResp, 0, len(logs))
 	for _, log := range logs {
+		details := make(map[string]any)
+		if len(log.Details) > 0 {
+			if err := json.Unmarshal(log.Details, &details); err != nil {
+				klog.Warningf("failed to unmarshal operation log details for log %d: %v", log.ID, err)
+			}
+		}
+
 		displayOperator := log.Operator
 		if name, ok := operatorDisplay[log.Operator]; ok && name != "" {
 			displayOperator = name
@@ -171,7 +180,7 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 			OperatorRole:  log.OperatorRole,
 			OperationType: log.OperationType,
 			Target:        log.Target,
-			Details:       log.Details,
+			Details:       details,
 			Status:        log.Status,
 			ErrorMessage:  log.Message,
 			CreatedAt:     log.CreatedAt,
@@ -194,12 +203,14 @@ func parseOperationLogTimeRange(
 			return nil, nil
 		}
 
-		parsed, err := time.Parse(time.RFC3339, value)
-		if err != nil {
-			return nil, fmt.Errorf("invalid time format: %s", value)
+		for _, layout := range []string{time.RFC3339Nano, time.RFC3339} {
+			parsed, err := time.Parse(layout, value)
+			if err == nil {
+				return &parsed, nil
+			}
 		}
 
-		return &parsed, nil
+		return nil, fmt.Errorf("invalid time format: %s", value)
 	}
 
 	startTime, err = parseTime(startTimeRaw)

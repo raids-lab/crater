@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import type { SVGProps } from 'react'
+
 import { cn } from '@/lib/utils'
 
-interface LoadingCircleIconProps extends React.SVGProps<SVGSVGElement> {
+interface LoadingCircleIconProps extends SVGProps<SVGSVGElement> {
   className?: string
 }
 
