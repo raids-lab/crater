@@ -36,3 +36,8 @@ export interface IRefreshResponse {
   accessToken: string
   refreshToken: string
 }
+
+export interface IWithPagination<T> {
+  items: T[]
+  total: number
+}
