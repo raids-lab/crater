@@ -322,7 +322,11 @@ func (s *ConfigService) ResetLLMConfig(ctx context.Context) error {
 }
 
 // UpdateLLMConfig 更新配置
-func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, validate bool) error {
+func (s *ConfigService) UpdateLLMConfig(
+	ctx context.Context,
+	reqCfg *LLMConfig,
+	validate bool,
+) error {
 	// 1. 处理 API Key 的更新逻辑
 	finalKeyToSave := ""
 

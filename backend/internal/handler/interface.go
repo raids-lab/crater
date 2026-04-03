@@ -1,12 +1,16 @@
 package handler
 
 import (
+	"context"
+	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -53,6 +57,24 @@ type RegisterConfig struct {
 
 	ConfigService      *service.ConfigService
 	GpuAnalysisService *service.GpuAnalysisService
+}
+
+type JobMutationSubmitter interface {
+	SubmitJupyterJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitTrainingJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+}
+
+var jobMutationSubmitterFactory func(conf *RegisterConfig) JobMutationSubmitter
+
+func RegisterJobMutationSubmitterFactory(factory func(conf *RegisterConfig) JobMutationSubmitter) {
+	jobMutationSubmitterFactory = factory
+}
+
+func NewJobMutationSubmitter(conf *RegisterConfig) JobMutationSubmitter {
+	if jobMutationSubmitterFactory == nil {
+		return nil
+	}
+	return jobMutationSubmitterFactory(conf)
 }
 
 // Registers is a slice of Manager Init functions.

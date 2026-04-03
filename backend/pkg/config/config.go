@@ -293,6 +293,10 @@ type Config struct {
 		// ServiceURL is the base URL of the Python Agent service.
 		// Optional: Defaults to "http://localhost:8000".
 		ServiceURL string `json:"serviceURL"`
+		// InternalToken is the shared secret used by the Python Agent service when calling
+		// internal tool execution endpoints exposed by the Go backend.
+		// Optional: Can also be supplied via CRATER_AGENT_INTERNAL_TOKEN.
+		InternalToken string `json:"internalToken"`
 	} `json:"agent"`
 
 	// SchedulerPlugins contains configuration for Kubernetes scheduler plugin integrations.

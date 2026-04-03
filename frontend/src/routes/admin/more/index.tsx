@@ -87,7 +87,8 @@ function RouteComponent() {
   const updateLLMMutation = useMutation({
     mutationFn: (vars: { data: LlmFormSchema; validate: boolean }) =>
       apiAdminUpdateLLMConfig({
-        ...vars.data,
+        baseUrl: vars.data.baseUrl,
+        modelName: vars.data.modelName,
         apiKey: vars.data.apiKey ?? '',
         validate: vars.validate,
       }),

@@ -499,3 +499,44 @@
     cursor: pointer;
   }
 }
+
+@layer components {
+  .chat-drawer-scroll-area [data-slot='scroll-area-viewport'] {
+    min-width: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .chat-drawer-scroll-area [data-slot='scroll-area-viewport'] > div {
+    display: block !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .markdown-content {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .markdown-content > * {
+    min-width: 0;
+  }
+
+  .markdown-content :where(p, li, blockquote, h1, h2, h3, h4, a) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .markdown-content pre,
+  .markdown-content table {
+    max-width: 100%;
+  }
+
+  .markdown-content pre code {
+    display: block;
+    min-width: max-content;
+    white-space: pre;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}

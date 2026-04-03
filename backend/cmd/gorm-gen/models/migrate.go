@@ -774,6 +774,21 @@ func main() {
 			},
 		},
 		{
+			ID: "202604030001",
+			Migrate: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					PinnedAt *time.Time `gorm:"index"`
+				}
+				return tx.Migrator().AddColumn(&AgentSession{}, "PinnedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					PinnedAt *time.Time `gorm:"index"`
+				}
+				return tx.Migrator().DropColumn(&AgentSession{}, "PinnedAt")
+			},
+		},
+		{
 			ID: "202512261300",
 			Migrate: func(tx *gorm.DB) error {
 				config := &model.CronJobConfig{
@@ -840,6 +855,8 @@ func main() {
 			&model.AgentSession{},
 			&model.AgentMessage{},
 			&model.AgentToolCall{},
+			&model.AgentTurn{},
+			&model.AgentRunEvent{},
 			&model.JobLogSnapshot{},
 		)
 		if err != nil {
