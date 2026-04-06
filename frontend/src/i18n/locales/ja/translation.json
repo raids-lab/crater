@@ -375,6 +375,8 @@
   "cronPolicy.executeNow": "今すぐ実行",
   "cronPolicy.executing": "実行中...",
   "cronPolicy.gpuAnalysisError": "GPU 不正使用検知ポリシーの更新に失敗しました：",
+  "cronPolicy.gpuAnalysisTitle": "GPU 不正使用検知",
+  "cronPolicy.adminOpsReportTitle": "インテリジェントパトロールレポート",
   "cronPolicy.interactiveDays": "対話型ジョブ実行日数（INTERACTIVE_DAYS）",
   "cronPolicy.invalidCron": "無効なCron式です。形式と値の範囲を確認してください",
   "cronPolicy.jobsToDelete": "以下のジョブが削除されます：",

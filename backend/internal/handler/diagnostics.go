@@ -112,13 +112,13 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 
 	for i := range jobs {
 		job := jobs[i]
-		t := categorizeFailure(job)
-		if _, ok := result[t.typeName]; !ok {
-			result[t.typeName] = &agg{count: 0, samples: []string{}}
+		t := CategorizeFailure(job)
+		if _, ok := result[t.TypeName]; !ok {
+			result[t.TypeName] = &agg{count: 0, samples: []string{}}
 		}
-		result[t.typeName].count++
-		if t.sample != "" && len(result[t.typeName].samples) < 5 {
-			result[t.typeName].samples = append(result[t.typeName].samples, t.sample)
+		result[t.TypeName].count++
+		if t.Sample != "" && len(result[t.TypeName].samples) < 5 {
+			result[t.TypeName].samples = append(result[t.TypeName].samples, t.Sample)
 		}
 	}
 
@@ -187,13 +187,13 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypesAdmin(c *gin.Context) {
 
 	for i := range jobs {
 		job := jobs[i]
-		t := categorizeFailure(job)
-		if _, ok := result[t.typeName]; !ok {
-			result[t.typeName] = &agg{count: 0, samples: []string{}}
+		t := CategorizeFailure(job)
+		if _, ok := result[t.TypeName]; !ok {
+			result[t.TypeName] = &agg{count: 0, samples: []string{}}
 		}
-		result[t.typeName].count++
-		if t.sample != "" && len(result[t.typeName].samples) < 5 {
-			result[t.typeName].samples = append(result[t.typeName].samples, t.sample)
+		result[t.TypeName].count++
+		if t.Sample != "" && len(result[t.TypeName].samples) < 5 {
+			result[t.TypeName].samples = append(result[t.TypeName].samples, t.Sample)
 		}
 	}
 
@@ -208,9 +208,10 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypesAdmin(c *gin.Context) {
 	resputil.Success(c, stats)
 }
 
-type classifyResult struct {
-	typeName string
-	sample   string
+// ClassifyResult holds the failure classification output.
+type ClassifyResult struct {
+	TypeName string
+	Sample   string
 }
 
 const (
@@ -220,22 +221,22 @@ const (
 )
 
 //nolint:gocyclo // Rule matching intentionally keeps failure classification in one place.
-func categorizeFailure(job *model.Job) classifyResult {
+func CategorizeFailure(job *model.Job) ClassifyResult {
 	if job.TerminatedStates != nil {
 		terminated := job.TerminatedStates.Data()
 		for i := range terminated {
 			ts := &terminated[i]
 			if strings.EqualFold(ts.Reason, "OOMKilled") {
-				return classifyResult{typeName: "OOMKilled", sample: sampleTerminated(ts)}
+				return ClassifyResult{TypeName: "OOMKilled", Sample: sampleTerminated(ts)}
 			}
 			if ts.ExitCode == exitCodeSegmentationFault {
-				return classifyResult{typeName: "SegmentationFault", sample: sampleTerminated(ts)}
+				return ClassifyResult{TypeName: "SegmentationFault", Sample: sampleTerminated(ts)}
 			}
 			if ts.ExitCode == exitCodeCommandNotFound {
-				return classifyResult{typeName: "CommandNotFound", sample: sampleTerminated(ts)}
+				return ClassifyResult{TypeName: "CommandNotFound", Sample: sampleTerminated(ts)}
 			}
 			if ts.ExitCode == exitCodeGracefulTerm {
-				return classifyResult{typeName: "GracefulTermination", sample: sampleTerminated(ts)}
+				return ClassifyResult{TypeName: "GracefulTermination", Sample: sampleTerminated(ts)}
 			}
 		}
 	}
@@ -244,33 +245,33 @@ func categorizeFailure(job *model.Job) classifyResult {
 		for i := range events {
 			ev := &events[i]
 			if ev.Reason == "ErrImagePull" || ev.Reason == "ImagePullBackOff" {
-				return classifyResult{typeName: "ImagePullError", sample: sampleEvent(ev)}
+				return ClassifyResult{TypeName: "ImagePullError", Sample: sampleEvent(ev)}
 			}
 			if ev.Reason == "FailedScheduling" {
 				msg := strings.ToLower(ev.Message)
 				switch {
 				case strings.Contains(msg, "insufficient"):
-					return classifyResult{typeName: "SchedulingInsufficientResources", sample: sampleEvent(ev)}
+					return ClassifyResult{TypeName: "SchedulingInsufficientResources", Sample: sampleEvent(ev)}
 				case strings.Contains(msg, "didn't match node selector") || strings.Contains(msg, "node(s) didn't match"):
-					return classifyResult{typeName: "SchedulingNodeSelectorMismatch", sample: sampleEvent(ev)}
+					return ClassifyResult{TypeName: "SchedulingNodeSelectorMismatch", Sample: sampleEvent(ev)}
 				case strings.Contains(msg, "taint"):
-					return classifyResult{typeName: "SchedulingTaintMismatch", sample: sampleEvent(ev)}
+					return ClassifyResult{TypeName: "SchedulingTaintMismatch", Sample: sampleEvent(ev)}
 				default:
-					return classifyResult{typeName: "SchedulingFailed", sample: sampleEvent(ev)}
+					return ClassifyResult{TypeName: "SchedulingFailed", Sample: sampleEvent(ev)}
 				}
 			}
 			if ev.Reason == "CrashLoopBackOff" ||
 				(ev.Reason == "BackOff" && strings.Contains(strings.ToLower(ev.Message), "back-off restarting failed container")) {
-				return classifyResult{typeName: "CrashLoopBackOff", sample: sampleEvent(ev)}
+				return ClassifyResult{TypeName: "CrashLoopBackOff", Sample: sampleEvent(ev)}
 			}
 			if ev.Reason == "Evicted" {
-				return classifyResult{typeName: "Evicted", sample: sampleEvent(ev)}
+				return ClassifyResult{TypeName: "Evicted", Sample: sampleEvent(ev)}
 			}
 			if ev.Reason == "FailedMount" || strings.Contains(strings.ToLower(ev.Message), "mountvolume") {
-				return classifyResult{typeName: "VolumeMountFailed", sample: sampleEvent(ev)}
+				return ClassifyResult{TypeName: "VolumeMountFailed", Sample: sampleEvent(ev)}
 			}
 			if ev.Reason == "DeadlineExceeded" {
-				return classifyResult{typeName: "JobDeadlineExceeded", sample: sampleEvent(ev)}
+				return ClassifyResult{TypeName: "JobDeadlineExceeded", Sample: sampleEvent(ev)}
 			}
 		}
 	}
@@ -279,15 +280,15 @@ func categorizeFailure(job *model.Job) classifyResult {
 		for i := range terminated {
 			ts := &terminated[i]
 			if strings.EqualFold(ts.Reason, "Error") && ts.ExitCode != 0 {
-				return classifyResult{typeName: "ContainerError", sample: sampleTerminated(ts)}
+				return ClassifyResult{TypeName: "ContainerError", Sample: sampleTerminated(ts)}
 			}
 		}
 	}
 	switch job.Status {
 	case batch.Aborted, batch.Terminated:
-		return classifyResult{typeName: "JobAbortedOrTerminated", sample: ""}
+		return ClassifyResult{TypeName: "JobAbortedOrTerminated", Sample: ""}
 	}
-	return classifyResult{typeName: "UnknownFailure", sample: ""}
+	return ClassifyResult{TypeName: "UnknownFailure", Sample: ""}
 }
 
 func sampleTerminated(ts *v1.ContainerStateTerminated) string {

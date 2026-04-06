@@ -438,6 +438,7 @@
   "cronPolicy.gpuAnalysisError": "GPU 违规占用检测更新失败：",
   "cronPolicy.gpuAnalysisSuccess": "GPU 违规占用检测更新成功",
   "cronPolicy.gpuAnalysisTitle": "GPU 违规占用检测",
+  "cronPolicy.adminOpsReportTitle": "智能巡检报告",
   "cronPolicy.gpuAnalysisUpdate": "更新 GPU 违规占用检测策略",
   "cronPolicy.interactiveDays": "交互式任务运行天数（INTERACTIVE_DAYS）",
   "cronPolicy.invalidCron": "无效的 Cron 表达式，请检查格式和数值范围",

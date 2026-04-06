@@ -420,6 +420,8 @@
   "cronPolicy.executeNow": "Execute Now",
   "cronPolicy.executing": "Executing...",
   "cronPolicy.gpuAnalysisError": "Failed to update GPU abuse detection policy:",
+  "cronPolicy.gpuAnalysisTitle": "GPU Abuse Detection",
+  "cronPolicy.adminOpsReportTitle": "Intelligent Patrol Report",
   "cronPolicy.interactiveDays": "Interactive job running days (INTERACTIVE_DAYS)",
   "cronPolicy.invalidCron": "Invalid Cron expression, please check the format and numeric range",
   "cronPolicy.jobsToDelete": "The following jobs will be deleted:",

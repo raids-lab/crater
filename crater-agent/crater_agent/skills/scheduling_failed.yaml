@@ -1,0 +1,34 @@
+name: 调度失败
+description: 作业无法被调度到可用节点
+
+trigger_signals:
+  job_status: ["Pending"]
+  event_reasons: ["FailedScheduling", "Unschedulable", "InsufficientResources"]
+
+recommended_tools:
+  - get_job_detail: {}
+  - analyze_queue_status: {}
+  - get_realtime_capacity: {}
+  - check_quota: {}
+
+diagnosis_knowledge: |
+  调度失败（Pending）的常见原因:
+  1. 资源不足: 请求的 GPU/CPU/Memory 超出集群当前空闲容量
+  2. 配额用完: 用户或账户的资源配额已达上限
+  3. 节点选择不匹配: nodeSelector 指定的标签无法匹配任何节点
+  4. 污点/容忍: 节点有 taint 但作业未设置对应 toleration
+  5. 队列优先级: 低优先级作业被高优先级作业挤占
+
+common_solutions:
+  - name: 调整资源请求
+    condition: "集群空闲资源不足"
+    suggestion: "减少 GPU 数量或换用其他可用 GPU 型号，可能立即获得调度"
+  - name: 释放配额
+    condition: "配额已用完"
+    suggestion: "停止不再需要的 Running 作业以释放配额"
+  - name: 放宽节点选择
+    condition: "nodeSelector 过于严格"
+    suggestion: "移除或放宽 nodeSelector 限制，扩大可调度的节点范围"
+  - name: 等待资源释放
+    condition: "短时间内会有作业完成"
+    suggestion: "当前资源紧张，预计 N 分钟后有作业完成释放资源"

@@ -10,11 +10,12 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/cleaner"
+	"github.com/raids-lab/crater/pkg/patrol"
 )
 
 func TestCronJob(t *testing.T) {
 	t.Run("newCronJobFunc", func(t *testing.T) {
-		manager := NewCronJobManager(nil, nil, nil, nil)
+		manager := NewCronJobManager(nil, nil, nil, nil, nil)
 		PatchConvey("newCronJobFunc", t, func() {
 			jobName := cleaner.CLEAN_LONG_TIME_RUNNING_JOB
 			jobConfig := datatypes.JSON(`{"batchDays": 4, "interactiveDays": 4}`)
@@ -40,6 +41,12 @@ func TestCronJob(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(jobFunc, ShouldNotBeNil)
 
+			jobName = patrol.TRIGGER_ADMIN_OPS_REPORT_JOB
+			jobConfig = datatypes.JSON(`{"lookback_hours": 1, "idle_hours": 1}`)
+			jobFunc, err = manager.newCronJobFunc(jobName, model.CronJobTypePatrolFunc, jobConfig)
+			So(err, ShouldBeNil)
+			So(jobFunc, ShouldNotBeNil)
+
 			jobName = "unknown"
 			jobConfig = datatypes.JSON(`{"unknown": "unknown"}`)
 			jobFunc, err = manager.newCronJobFunc(jobName, model.CronJobTypeCleanerFunc, jobConfig)
@@ -50,7 +57,7 @@ func TestCronJob(t *testing.T) {
 
 	t.Run("prepareUpdateConfig", func(t *testing.T) {
 		PatchConvey("prepareUpdateConfig", t, func() {
-			manager := NewCronJobManager(nil, nil, nil, nil)
+			manager := NewCronJobManager(nil, nil, nil, nil, nil)
 			cur := &model.CronJobConfig{
 				Name:   "test",
 				Type:   model.CronJobTypeCleanerFunc,

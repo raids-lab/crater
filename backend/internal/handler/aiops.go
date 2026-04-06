@@ -246,7 +246,7 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 
 	reasonCount := make(map[string]int)
 	for _, job := range failedJobs {
-		reason := categorizeFailure(job).typeName
+		reason := CategorizeFailure(job).TypeName
 		reasonCount[reason]++
 	}
 
@@ -393,7 +393,7 @@ func (mgr *AIOPsMgr) GetHealthOverviewAdmin(c *gin.Context) {
 
 	reasonCount := make(map[string]int)
 	for _, job := range failedJobs {
-		reason := categorizeFailure(job).typeName
+		reason := CategorizeFailure(job).TypeName
 		reasonCount[reason]++
 	}
 
@@ -457,25 +457,25 @@ func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 	}
 
 	// Perform diagnosis
-	diagnosis := performDiagnosis(job)
+	diagnosis := PerformDiagnosis(job)
 	resputil.Success(c, diagnosis)
 }
 
 // performDiagnosis applies diagnostic rules to a job
 //
 //nolint:gocyclo,funlen // Rule-driven diagnosis intentionally keeps category handling in one switch.
-func performDiagnosis(job *model.Job) DiagnosisResp {
+func PerformDiagnosis(job *model.Job) DiagnosisResp {
 	resp := DiagnosisResp{
 		JobName: job.JobName,
 		Status:  string(job.Status),
 	}
 
 	// Rule-based diagnosis
-	result := categorizeFailure(job)
-	resp.Category = result.typeName
+	result := CategorizeFailure(job)
+	resp.Category = result.TypeName
 
 	// Apply diagnostic rules based on category
-	switch result.typeName {
+	switch result.TypeName {
 	case "OOMKilled":
 		resp.Diagnosis = "作业因内存溢出（OOM）被终止"
 		resp.Solution = "建议：1) 增加内存请求和限制；2) 优化代码减少内存使用；3) 检查是否有内存泄漏"
@@ -875,7 +875,7 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 			})
 			return
 		}
-		diagnosis := performDiagnosis(job)
+		diagnosis := PerformDiagnosis(job)
 		diagJSON, _ := json.Marshal(diagnosis)
 		userPrompt = fmt.Sprintf(
 			"用户问题：%s\n\n作业名：%s\n作业状态：%s\n机器诊断结果(JSON)：%s\n\n请基于以上信息给出结论、可能原因和下一步排查建议。",
@@ -959,7 +959,7 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 			return
 		}
 
-		diagnosis := performDiagnosis(job)
+		diagnosis := PerformDiagnosis(job)
 		resp.Message = fmt.Sprintf("✅ 已完成对作业 %s 的诊断分析", jobName)
 		resp.Type = "diagnosis"
 		resp.Data = diagnosis
@@ -1081,7 +1081,7 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 		reasonCount := make(map[string]int)
 		userIssueCount := 0
 		for _, job := range failedJobs {
-			reason := categorizeFailure(job).typeName
+			reason := CategorizeFailure(job).TypeName
 			reasonCount[reason]++
 			// Count user code issues
 			if reason == "ContainerError" || reason == "CommandNotFound" {

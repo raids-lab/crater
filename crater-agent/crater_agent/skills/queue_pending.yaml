@@ -1,0 +1,30 @@
+name: 排队分析
+description: 作业长时间 Pending 的排队原因分析
+
+trigger_signals:
+  job_status: ["Pending"]
+  event_reasons: ["FailedScheduling"]
+
+recommended_tools:
+  - get_job_detail: {}
+  - analyze_queue_status: {}
+  - get_realtime_capacity: {}
+  - check_quota: {}
+
+diagnosis_knowledge: |
+  排队分析需要关注以下几个维度:
+  1. 作业请求了什么资源（GPU型号、数量、CPU、Memory）
+  2. 集群当前各节点的空闲资源
+  3. 用户/账户的配额剩余
+  4. 是否有调整空间（减少GPU、换型号、减少内存）
+
+  如果用户调整资源请求可以立即调度，应该明确告知具体调整方案。
+  如果无论如何都需要等待，应给出预估的等待因素（哪些作业即将完成）。
+
+common_solutions:
+  - name: 调小资源请求
+    suggestion: "如果减少 GPU 数量或切换到较小型号可以立即调度，建议尝试"
+  - name: 清理空闲作业
+    suggestion: "检查是否有已完成但未清理的作业占用配额，停止不需要的运行中作业"
+  - name: 分时段提交
+    suggestion: "避开资源使用高峰时段（如工作日上午），夜间或周末资源更充裕"

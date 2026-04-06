@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -98,15 +99,20 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 		registerConfig.PrometheusClient.(*monitor.PrometheusClient),
 		registerConfig.ConfigService,
 	)
+	adminOpsReportService := service.NewAdminOpsReportService()
 
 	registerConfig.CronJobManager = cronjob.NewCronJobManager(
 		registerConfig.Client,
 		registerConfig.KubeClient,
 		registerConfig.PrometheusClient,
 		registerConfig.GpuAnalysisService,
+		adminOpsReportService,
 	)
 
 	registerConfig.ConfigService.SetCronJobManager(registerConfig.CronJobManager)
+	if err := registerConfig.ConfigService.EnsureBuiltinCronJobs(context.Background()); err != nil {
+		panic(err)
+	}
 
 	go registerConfig.CronJobManager.SyncCronJob()
 

@@ -57,6 +57,7 @@ import {
   apiGetSessionToolCalls,
   apiGetTurnEvents,
   apiListSessions,
+  apiParameterUpdate,
   apiPinSession,
   connectAgentChat,
   connectAgentResume,
@@ -69,6 +70,10 @@ import type {
   AgentSession,
   AgentToolCall,
   AgentTurn,
+  BatchConfirmationPayload,
+  ParameterReviewPayload,
+  PipelineReportPayload,
+  ResourceSuggestionPayload,
 } from '@/services/api/agent'
 import type { AgentSSEEvent } from '@/services/api/agent'
 import {
@@ -83,7 +88,11 @@ import { cn } from '@/lib/utils'
 
 import { AgentTimeline } from './AgentTimeline'
 import type { TimelineEvent } from './AgentTimeline'
+import { BatchConfirmCard } from './BatchConfirmCard'
 import { ConfirmActionCard } from './ConfirmActionCard'
+import { ParameterReviewCard } from './ParameterReviewCard'
+import { PipelineReportCard } from './PipelineReportCard'
+import { ResourceSuggestionCard } from './ResourceSuggestionCard'
 import { ThinkingIndicator } from './ThinkingIndicator'
 import { ToolCallCard } from './ToolCallCard'
 
@@ -99,6 +108,8 @@ interface ChatMessage {
   timestamp: Date
 }
 
+type AgentEntryPoint = 'default' | 'node_analysis' | 'ops_report'
+
 // ── Agent-mode: Two-layer conversation model ──────────────────────────────────
 
 /**
@@ -112,6 +123,10 @@ type ConversationItemKind =
   | 'message'
   | 'tool_call'
   | 'confirmation_required'
+  | 'parameter_review'
+  | 'resource_suggestion'
+  | 'pipeline_report'
+  | 'batch_confirmation'
   | 'error'
 
 interface ConversationItem {
@@ -146,6 +161,14 @@ interface ConversationItem {
   retryRequestId?: string
   /** For agent_event in single_agent (thinking update) */
   agentRole?: string
+  /** For 'parameter_review' */
+  parameterReview?: ParameterReviewPayload
+  /** For 'resource_suggestion' */
+  resourceSuggestion?: ResourceSuggestionPayload
+  /** For 'pipeline_report' */
+  pipelineReport?: PipelineReportPayload
+  /** For 'batch_confirmation' */
+  batchConfirmation?: BatchConfirmationPayload
   timestamp: Date
 }
 
@@ -159,6 +182,8 @@ interface AgentPendingRequest {
     url: string
     jobName?: string
     jobStatus?: string
+    nodeName?: string
+    entryPoint?: AgentEntryPoint
   }
   clientContext?: {
     locale?: string
@@ -257,6 +282,16 @@ function generateAgentRequestId() {
     return crypto.randomUUID()
   }
   return `agent-req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function inferAgentEntryPoint(pathname: string): AgentEntryPoint {
+  if (/\/admin\/nodes(\/|$)/.test(pathname)) {
+    return 'node_analysis'
+  }
+  if (/\/admin\/(aiops|monitor|cluster-overview)(\/|$)/.test(pathname)) {
+    return 'ops_report'
+  }
+  return 'default'
 }
 
 function getToolStatusFromResult(resultStatus: string): ConversationItem['toolStatus'] {
@@ -771,10 +806,13 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const getPageContext = () => {
     const pathname = window.location.pathname
     const jobMatch = pathname.match(/\/jobs\/detail\/([^/?#]+)/)
+    const nodeMatch = pathname.match(/\/nodes\/([^/?#]+)/)
     return {
       route: pathname,
       url: pathname,
       jobName: jobMatch?.[1] ?? currentJobName,
+      nodeName: nodeMatch?.[1],
+      entryPoint: inferAgentEntryPoint(pathname),
     }
   }
 
@@ -1434,6 +1472,66 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                 : item
             )
           })
+          break
+        }
+
+        case 'parameter_review': {
+          const payload = eventData as unknown as ParameterReviewPayload
+          clearThinkingItems()
+          setConversationItems((prev) => [
+            ...prev,
+            {
+              id: `param-review-${payload.reviewId || Date.now()}`,
+              kind: 'parameter_review',
+              parameterReview: payload,
+              timestamp: new Date(),
+            },
+          ])
+          break
+        }
+
+        case 'resource_suggestion': {
+          const payload = eventData as unknown as ResourceSuggestionPayload
+          clearThinkingItems()
+          setConversationItems((prev) => [
+            ...prev,
+            {
+              id: `resource-sug-${payload.suggestionId || Date.now()}`,
+              kind: 'resource_suggestion',
+              resourceSuggestion: payload,
+              timestamp: new Date(),
+            },
+          ])
+          break
+        }
+
+        case 'pipeline_report': {
+          const payload = eventData as unknown as PipelineReportPayload
+          clearThinkingItems()
+          setConversationItems((prev) => [
+            ...prev,
+            {
+              id: `pipeline-rpt-${payload.reportId || Date.now()}`,
+              kind: 'pipeline_report',
+              pipelineReport: payload,
+              timestamp: new Date(),
+            },
+          ])
+          break
+        }
+
+        case 'batch_confirmation': {
+          const payload = eventData as unknown as BatchConfirmationPayload
+          clearThinkingItems()
+          setConversationItems((prev) => [
+            ...prev,
+            {
+              id: `batch-confirm-${payload.batchId || Date.now()}`,
+              kind: 'batch_confirmation',
+              batchConfirmation: payload,
+              timestamp: new Date(),
+            },
+          ])
           break
         }
 
@@ -2576,6 +2674,152 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                                 `${item.confirmAction ?? '操作'} 已取消`
                               )
                             }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'parameter_review' && item.parameterReview) {
+                    const pr = item.parameterReview
+                    return (
+                      <div key={item.id} className="flex min-w-0 justify-start">
+                        <div className="w-full max-w-[95%] min-w-0">
+                          <ParameterReviewCard
+                            reviewId={pr.reviewId}
+                            scenario={pr.scenario}
+                            complexity={pr.complexity}
+                            step={pr.step}
+                            totalSteps={pr.totalSteps}
+                            title={pr.title}
+                            description={pr.description}
+                            parameters={pr.parameters as ParameterReviewPayload['parameters']}
+                            onConfirm={(reviewId, parameters) => {
+                              apiParameterUpdate(
+                                lastLoadedAgentSessionIdRef.current ?? '',
+                                reviewId,
+                                'confirm',
+                                parameters
+                              )
+                              setConversationItems((prev) =>
+                                prev.map((ci) =>
+                                  ci.id === item.id
+                                    ? {
+                                        ...ci,
+                                        parameterReview: ci.parameterReview
+                                          ? { ...ci.parameterReview, _settled: 'confirmed' as const }
+                                          : ci.parameterReview,
+                                      }
+                                    : ci
+                                )
+                              )
+                            }}
+                            onModify={(reviewId, parameters) => {
+                              apiParameterUpdate(
+                                lastLoadedAgentSessionIdRef.current ?? '',
+                                reviewId,
+                                'modify',
+                                parameters
+                              )
+                              setConversationItems((prev) =>
+                                prev.map((ci) =>
+                                  ci.id === item.id
+                                    ? {
+                                        ...ci,
+                                        parameterReview: ci.parameterReview
+                                          ? { ...ci.parameterReview, _settled: 'confirmed' as const }
+                                          : ci.parameterReview,
+                                      }
+                                    : ci
+                                )
+                              )
+                            }}
+                            settled={(pr as ParameterReviewPayload & { _settled?: string })._settled === 'confirmed' ? 'confirmed' : null}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'resource_suggestion' && item.resourceSuggestion) {
+                    const rs = item.resourceSuggestion
+                    return (
+                      <div key={item.id} className="flex min-w-0 justify-start">
+                        <div className="w-full max-w-[95%] min-w-0">
+                          <ResourceSuggestionCard
+                            suggestionId={rs.suggestionId}
+                            context={rs.context}
+                            recommendations={rs.recommendations}
+                            tip={rs.tip}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'pipeline_report' && item.pipelineReport) {
+                    const rpt = item.pipelineReport
+                    return (
+                      <div key={item.id} className="flex min-w-0 justify-start">
+                        <div className="w-full max-w-[95%] min-w-0">
+                          <PipelineReportCard
+                            reportId={rpt.reportId}
+                            reportType={rpt.reportType}
+                            completedAt={rpt.completedAt}
+                            summary={rpt.summary}
+                            summaryLabels={rpt.summary_labels}
+                            categories={rpt.categories}
+                          />
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (item.kind === 'batch_confirmation' && item.batchConfirmation) {
+                    const bc = item.batchConfirmation
+                    return (
+                      <div key={item.id} className="flex min-w-0 justify-start">
+                        <div className="w-full max-w-[95%] min-w-0">
+                          <BatchConfirmCard
+                            batchId={bc.batchId}
+                            action={bc.action}
+                            description={bc.description}
+                            items={bc.items}
+                            onConfirmSelected={(_batchId, _selectedJobNames) => {
+                              setConversationItems((prev) =>
+                                prev.map((ci) =>
+                                  ci.id === item.id
+                                    ? {
+                                        ...ci,
+                                        batchConfirmation: ci.batchConfirmation
+                                          ? { ...ci.batchConfirmation, _settled: 'confirmed' as const }
+                                          : ci.batchConfirmation,
+                                      }
+                                    : ci
+                                )
+                              )
+                            }}
+                            onRejectAll={(_batchId) => {
+                              setConversationItems((prev) =>
+                                prev.map((ci) =>
+                                  ci.id === item.id
+                                    ? {
+                                        ...ci,
+                                        batchConfirmation: ci.batchConfirmation
+                                          ? { ...ci.batchConfirmation, _settled: 'rejected' as const }
+                                          : ci.batchConfirmation,
+                                      }
+                                    : ci
+                                )
+                              )
+                            }}
+                            settled={
+                              (bc as BatchConfirmationPayload & { _settled?: string })._settled === 'confirmed'
+                                ? 'confirmed'
+                                : (bc as BatchConfirmationPayload & { _settled?: string })._settled === 'rejected'
+                                  ? 'rejected'
+                                  : null
+                            }
                           />
                         </div>
                       </div>

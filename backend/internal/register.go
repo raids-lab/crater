@@ -4,6 +4,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/internal/handler"
+	_ "github.com/raids-lab/crater/internal/handler/agent"
 	_ "github.com/raids-lab/crater/internal/handler/aijob"
 	_ "github.com/raids-lab/crater/internal/handler/image"
 	_ "github.com/raids-lab/crater/internal/handler/operations"

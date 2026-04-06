@@ -374,6 +374,8 @@
   "cronPolicy.executeNow": "즉시 실행",
   "cronPolicy.executing": "실행 중...",
   "cronPolicy.gpuAnalysisError": "GPU 비정상 점유 감지 정책 업데이트 실패:",
+  "cronPolicy.gpuAnalysisTitle": "GPU 비정상 점유 감지",
+  "cronPolicy.adminOpsReportTitle": "지능형 순찰 보고서",
   "cronPolicy.interactiveDays": "인터랙티브 작업 실행 일수 (INTERACTIVE_DAYS)",
   "cronPolicy.invalidCron": "잘못된 Cron 표현식입니다. 형식과 숫자 범위를 확인해 주세요.",
   "cronPolicy.jobsToDelete": "다음 작업이 삭제됩니다:",
