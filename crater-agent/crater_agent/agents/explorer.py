@@ -11,6 +11,57 @@ logger = logging.getLogger(__name__)
 
 
 class ExplorerAgent(BaseRoleAgent):
+    def build_tool_loop_prompts(
+        self,
+        *,
+        user_message: str,
+        page_context: dict,
+        plan_candidate_tools: list[str],
+        plan_steps: list[str],
+        enabled_tools: list[str],
+        evidence_summary: str = "",
+        attempted_tool_signatures: list[str] | None = None,
+    ) -> tuple[str, str]:
+        allowed = sorted({t for t in enabled_tools if t in READ_ONLY_TOOL_NAMES})
+        visible_tools = list(allowed)
+        candidates_hint = ""
+        valid_candidates: list[str] = []
+        if plan_candidate_tools:
+            valid_candidates = [t for t in plan_candidate_tools if t in allowed]
+            if valid_candidates:
+                candidates_hint = f"\nPlanner 推荐的候选工具: {', '.join(valid_candidates)}"
+                visible_tools = valid_candidates + [t for t in visible_tools if t not in valid_candidates]
+        recent_attempts = list((attempted_tool_signatures or [])[-8:])
+
+        steps_hint = ""
+        if plan_steps:
+            steps_hint = "\nPlanner 的调查步骤:\n" + "\n".join(
+                f"  {i + 1}. {step}" for i, step in enumerate(plan_steps)
+            )
+
+        system_prompt = (
+            "你是 Crater 的 Explorer Agent。你的职责是通过只读工具主动收集证据，并在证据足够时直接给出探索总结。\n"
+            "你可以连续多轮调用工具。每次拿到工具结果后，你必须继续基于结果判断下一步，而不是机械重复同一个工具。\n"
+            "如果已有证据足够，请不要再调工具，直接给出中文总结。\n"
+            "你只能使用只读工具，绝对不能执行写操作。\n\n"
+            f"可用只读工具: {', '.join(visible_tools) or '(empty)'}\n"
+            f"{candidates_hint}"
+            f"{steps_hint}\n\n"
+            "工作要求：\n"
+            "- 优先使用最少的工具获得足够证据。\n"
+            "- 避免重复调用已经用相同参数执行过的工具，除非世界状态明显变化。\n"
+            "- 如果用户是在追问或质疑上一轮回答，先用工具核实，不要沿用未经证实的旧说法。\n"
+            "- 最终总结要明确：已确认事实、仍缺失的信息、建议下一步。\n"
+        )
+        user_prompt = (
+            f"用户请求:\n{user_message}\n\n"
+            f"页面上下文:\n{page_context}\n\n"
+            f"已有证据摘要:\n{evidence_summary or '(empty)'}\n\n"
+            f"最近已执行工具签名:\n{recent_attempts or []}\n\n"
+            "请开始探索；若需要更多信息就调用工具，否则直接总结。"
+        )
+        return system_prompt, user_prompt
+
     async def select_tools_with_llm(
         self,
         *,
@@ -21,6 +72,7 @@ class ExplorerAgent(BaseRoleAgent):
         enabled_tools: list[str],
         evidence_summary: str = "",
         attempted_tool_signatures: list[str] | None = None,
+        history_messages: list | None = None,
     ) -> list[tuple[str, dict]]:
         """Use LLM to select read-only tools and generate arguments.
 
@@ -35,10 +87,13 @@ class ExplorerAgent(BaseRoleAgent):
 
         # Build tool catalog description for LLM
         candidates_hint = ""
+        valid_candidates: list[str] = []
         if plan_candidate_tools:
             valid_candidates = [t for t in plan_candidate_tools if t in allowed]
             if valid_candidates:
                 candidates_hint = f"\nPlanner 推荐的候选工具: {', '.join(valid_candidates)}"
+        visible_tools = valid_candidates + [t for t in allowed if t not in valid_candidates]
+        recent_attempts = list((attempted_tool_signatures or [])[-8:])
 
         steps_hint = ""
         if plan_steps:
@@ -48,8 +103,8 @@ class ExplorerAgent(BaseRoleAgent):
             system_prompt=(
                 "你是 Crater 的 Explorer Agent。你的职责是选择只读工具来收集证据。\n"
                 "你必须输出 JSON 数组，每个元素是 {\"tool\": \"工具名\", \"args\": {参数}}。\n"
-                "最多选择 3 个工具。只能从可用工具列表中选择。\n\n"
-                f"可用只读工具: {', '.join(allowed)}\n"
+                "只能从可用工具列表中选择。\n\n"
+                f"可用只读工具: {', '.join(visible_tools) or '(empty)'}\n"
                 f"{candidates_hint}"
                 f"{steps_hint}\n\n"
                 "如果已有证据已经足够，请输出空数组 []。\n"
@@ -62,9 +117,10 @@ class ExplorerAgent(BaseRoleAgent):
                 f"用户请求:\n{user_message}\n\n"
                 f"页面上下文:\n{page_context}\n\n"
                 f"已有证据摘要:\n{evidence_summary or '(empty)'}\n\n"
-                f"本轮已执行工具签名:\n{attempted_tool_signatures or []}\n\n"
+                f"最近已执行工具签名:\n{recent_attempts or []}\n\n"
                 "请选择需要调用的工具。"
             ),
+            history_messages=history_messages,
         )
 
         return self._parse_tool_selections(result, allowed)
@@ -89,7 +145,7 @@ class ExplorerAgent(BaseRoleAgent):
         else:
             return []
 
-        for item in tool_list[:3]:
+        for item in tool_list:
             if not isinstance(item, dict):
                 continue
             tool_name = str(item.get("tool") or item.get("name") or "").strip()

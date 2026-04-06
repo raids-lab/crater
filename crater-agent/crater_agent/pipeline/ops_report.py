@@ -6,7 +6,10 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
-from crater_agent.pipeline.ops_report_llm import analyze_ops_report_with_llm
+from crater_agent.pipeline.ops_report_llm import (
+    analyze_ops_report_with_llm,
+    build_deterministic_ops_report,
+)
 from crater_agent.report_utils import (
     build_admin_ops_audit_items,
     build_pipeline_report_payload_from_admin_ops_report,
@@ -29,7 +32,7 @@ async def run_admin_ops_report(
 ) -> dict:
     now = datetime.now(timezone.utc)
     period_end = now.isoformat()
-    period_start = (now - timedelta(hours=lookback_hours)).isoformat()
+    period_start = (now - timedelta(days=days)).isoformat()
 
     async with PipelineToolClient(timeout=120) as client:
         # Step 1: Collect raw data via Go backend tools
@@ -65,23 +68,40 @@ async def run_admin_ops_report(
         if prev_result.get("status") == "success":
             prev_data = prev_result.get("result", {})
             if isinstance(prev_data, dict) and prev_data.get("id"):
-                prev_summary = prev_data.get("summary")
-                if isinstance(prev_summary, dict):
-                    previous_report_json = prev_summary
+                prev_report_json = prev_data.get("report_json")
+                if isinstance(prev_report_json, dict):
+                    previous_report_json = prev_report_json
+                elif isinstance(prev_report_json, str):
+                    import json as _json
+
+                    try:
+                        parsed_prev = _json.loads(prev_report_json)
+                    except Exception:
+                        parsed_prev = None
+                    if isinstance(parsed_prev, dict):
+                        previous_report_json = parsed_prev
+                if previous_report_json is None:
+                    prev_summary = prev_data.get("summary")
+                    if isinstance(prev_summary, dict):
+                        previous_report_json = prev_summary
 
         # Step 3: LLM analysis (or fallback)
         report_json = None
         if use_llm:
             report_json = await analyze_ops_report_with_llm(raw_report, previous_report_json)
+        else:
+            report_json = build_deterministic_ops_report(raw_report, previous_report_json)
 
         # Step 4: Build pipeline payload (for backward compat with existing report card)
         pipeline_payload = build_pipeline_report_payload_from_admin_ops_report(raw_report) or {}
         summary = dict(pipeline_payload.get("summary") or {})
         summary["summary_labels"] = pipeline_payload.get("summary_labels") or {}
+        summary["lookback_days"] = raw_report.get("lookback_days", days)
         summary["lookback_hours"] = raw_report.get("lookback_hours", lookback_hours)
         summary["recent_running_summary"] = raw_report.get("recent_running_summary") or {}
         summary["recent_running_jobs"] = raw_report.get("recent_running_jobs") or []
         summary["node_summary"] = raw_report.get("node_summary") or {}
+        summary["resource_utilization"] = raw_report.get("resource_utilization") or {}
 
         # Merge LLM executive summary into summary if available
         if report_json and report_json.get("executive_summary"):

@@ -184,13 +184,15 @@ def get_health_overview(days: int = 7) -> dict:
 @tool
 def list_user_jobs(
     statuses: Optional[List[str]] = None,
+    job_types: Optional[List[str]] = None,
     days: int = 30,
     limit: int = 20,
 ) -> dict:
-    """列出当前用户在当前账户下的作业，支持按状态筛选。
+    """列出当前用户在当前账户下的作业，支持按状态和作业类型筛选。
 
     Args:
         statuses: 可选，按状态过滤，如 running、failed、deleted、completed
+        job_types: 可选，按作业类型过滤，如 custom、jupyter、webide、pytorch
         days: 查询最近 N 天，默认 30
         limit: 最多返回 N 条，默认 20
     """
@@ -210,13 +212,15 @@ def get_cluster_health_overview(days: int = 7) -> dict:
 @tool
 def list_cluster_jobs(
     statuses: Optional[List[str]] = None,
+    job_types: Optional[List[str]] = None,
     days: int = 7,
     limit: int = 30,
 ) -> dict:
-    """列出管理员视角下整个集群最近的作业，支持按状态筛选。
+    """列出管理员视角下整个集群最近的作业，支持按状态和作业类型筛选。
 
     Args:
         statuses: 可选，按状态过滤，如 running、failed、pending
+        job_types: 可选，按作业类型过滤，如 custom、jupyter、webide、pytorch
         days: 查询最近 N 天，默认 7
         limit: 最多返回 N 条，默认 30
     """

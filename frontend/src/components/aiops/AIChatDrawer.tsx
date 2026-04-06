@@ -108,7 +108,7 @@ interface ChatMessage {
   timestamp: Date
 }
 
-type AgentEntryPoint = 'default' | 'node_analysis' | 'ops_report'
+type AgentEntryPoint = 'default' | 'node_analysis'
 
 // ── Agent-mode: Two-layer conversation model ──────────────────────────────────
 
@@ -287,9 +287,6 @@ function generateAgentRequestId() {
 function inferAgentEntryPoint(pathname: string): AgentEntryPoint {
   if (/\/admin\/nodes(\/|$)/.test(pathname)) {
     return 'node_analysis'
-  }
-  if (/\/admin\/(aiops|monitor|cluster-overview)(\/|$)/.test(pathname)) {
-    return 'ops_report'
   }
   return 'default'
 }
@@ -1170,7 +1167,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                 if (existing) {
                   return prev.map((item) =>
                     item.id === thinkingId
-                      ? { ...item, thinkingContent: summary || '主 Agent 思考中...' }
+                      ? { ...item, thinkingContent: summary || 'Agent 思考中...' }
                       : item
                   )
                 }
@@ -1179,7 +1176,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                   {
                     id: thinkingId,
                     kind: 'thinking',
-                    thinkingContent: summary || '主 Agent 思考中...',
+                    thinkingContent: summary || 'Agent 思考中...',
                     timestamp: new Date(),
                   },
                 ]

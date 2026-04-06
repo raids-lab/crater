@@ -1,0 +1,7 @@
+{
+  "lead_max_rounds": 8,
+  "subagent_max_iterations": 25,
+  "no_progress_rounds": 2,
+  "tool_timeout_seconds": 60,
+  "max_actions_per_round": 4
+}

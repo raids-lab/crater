@@ -6,6 +6,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -50,12 +51,23 @@ class BaseRoleAgent:
         self.last_reasoning_content = ""
         self.last_selected_text = ""
 
-    async def run_text(self, *, system_prompt: str, user_prompt: str) -> str:
+    async def run_text(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        history_messages: list | None = None,
+    ) -> str:
         agent_ref = f"{self.role}/{self.agent_id}"
         self.last_usage = {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0}
         self.last_content = ""
         self.last_reasoning_content = ""
         self.last_selected_text = ""
+
+        msgs: list = [SystemMessage(content=system_prompt)]
+        if history_messages:
+            msgs.extend(history_messages)
+        msgs.append(HumanMessage(content=user_prompt))
 
         @retry(
             stop=stop_after_attempt(3),
@@ -70,12 +82,7 @@ class BaseRoleAgent:
             ),
         )
         async def _invoke():
-            return await self.llm.ainvoke(
-                [
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=user_prompt),
-                ]
-            )
+            return await self.llm.ainvoke(msgs)
 
         try:
             response = await _invoke()
@@ -95,8 +102,18 @@ class BaseRoleAgent:
             logger.exception("[%s] LLM call failed after retries", agent_ref)
             raise
 
-    async def run_json(self, *, system_prompt: str, user_prompt: str) -> dict | list:
-        content = await self.run_text(system_prompt=system_prompt, user_prompt=user_prompt)
+    async def run_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        history_messages: list | None = None,
+    ) -> dict | list:
+        content = await self.run_text(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            history_messages=history_messages,
+        )
         original_content = self.last_content
         original_reasoning = self.last_reasoning_content
         original_selected = self.last_selected_text or content
@@ -355,23 +372,63 @@ class BaseRoleAgent:
         return None
 
     @staticmethod
-    def summarize_capabilities(capabilities: dict | None) -> str:
+    def summarize_capabilities(
+        capabilities: dict | None,
+        *,
+        allowed_tool_names: list[str] | set[str] | None = None,
+        max_tools: int = 8,
+        include_descriptions: bool = True,
+        include_role_policies: bool = True,
+    ) -> str:
         capabilities = capabilities or {}
         tool_catalog = capabilities.get("tool_catalog") or []
+        enabled_tools = capabilities.get("enabled_tools") or []
+        allowed_set = {
+            str(name).strip()
+            for name in (allowed_tool_names or [])
+            if str(name).strip()
+        }
         tool_lines: list[str] = []
-        for item in tool_catalog[:12]:
+        filtered_catalog: list[dict[str, Any]] = []
+        for item in tool_catalog:
             if not isinstance(item, dict):
                 continue
             name = str(item.get("name") or "").strip()
-            description = str(item.get("description") or "").strip()
-            mode = str(item.get("mode") or "").strip()
             if not name:
                 continue
+            if allowed_set and name not in allowed_set:
+                continue
+            filtered_catalog.append(item)
+
+        if not filtered_catalog and enabled_tools:
+            for name in enabled_tools:
+                normalized = str(name).strip()
+                if not normalized:
+                    continue
+                if allowed_set and normalized not in allowed_set:
+                    continue
+                filtered_catalog.append({"name": normalized})
+
+        read_only_count = 0
+        confirm_count = 0
+        for item in filtered_catalog:
+            mode = str(item.get("mode") or "").strip().lower()
+            if mode == "confirm":
+                confirm_count += 1
+            else:
+                read_only_count += 1
+
+        for item in filtered_catalog[: max(1, max_tools)]:
+            name = str(item.get("name") or "").strip()
+            description = str(item.get("description") or "").strip()
+            mode = str(item.get("mode") or "").strip()
             suffix = f" [{mode}]" if mode else ""
-            if description:
+            if include_descriptions and description:
                 tool_lines.append(f"- {name}{suffix}: {description}")
             else:
                 tool_lines.append(f"- {name}{suffix}")
+
+        hidden_count = max(0, len(filtered_catalog) - max(1, max_tools))
 
         role_policies = capabilities.get("role_policies") or {}
         policy_lines: list[str] = []
@@ -382,8 +439,15 @@ class BaseRoleAgent:
                     policy_lines.append(f"- {role_name}: {description}")
 
         sections: list[str] = []
+        if filtered_catalog:
+            overview = f"工具总览: 只读 {read_only_count} 个"
+            if confirm_count:
+                overview += f"，需确认 {confirm_count} 个"
+            sections.append(overview)
         if tool_lines:
+            if hidden_count > 0:
+                tool_lines.append(f"- 其余 {hidden_count} 个工具已省略")
             sections.append("可用工具摘要:\n" + "\n".join(tool_lines))
-        if policy_lines:
+        if include_role_policies and policy_lines:
             sections.append("角色约束:\n" + "\n".join(policy_lines))
         return "\n\n".join(sections) if sections else "无额外能力摘要"

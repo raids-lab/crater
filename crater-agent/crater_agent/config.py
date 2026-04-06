@@ -23,6 +23,12 @@ class Settings(BaseSettings):
         description="Path to the LLM client map JSON file",
     )
 
+    # MAS runtime guardrails (optional, has sensible defaults).
+    agent_runtime_config_path: str = Field(
+        default="./config/agent-runtime.json",
+        description="Path to the MAS runtime config JSON file",
+    )
+
     # Crater Go Backend
     crater_backend_url: str = Field(
         default="http://localhost:8080", description="Crater Go backend URL"
@@ -101,6 +107,26 @@ class Settings(BaseSettings):
         if normalized and normalized in configs:
             return dict(configs[normalized])
         return dict(configs["default"])
+
+    def load_agent_runtime_config(self) -> dict[str, Any]:
+        """Load MAS runtime config. Returns empty dict if file missing (defaults used)."""
+        configured = self.agent_runtime_config_path.strip() or "./config/agent-runtime.json"
+        raw_path = Path(configured).expanduser()
+        if not raw_path.is_absolute():
+            cwd_candidate = Path.cwd() / raw_path
+            if cwd_candidate.exists():
+                raw_path = cwd_candidate
+            else:
+                project_root = Path(__file__).resolve().parents[1]
+                raw_path = project_root / raw_path
+        if not raw_path.exists():
+            return {}
+        try:
+            raw = raw_path.read_text(encoding="utf-8").strip()
+            loaded = json.loads(raw) if raw else {}
+            return dict(loaded) if isinstance(loaded, dict) else {}
+        except Exception:
+            return {}
 
     def public_agent_config_summary(self) -> dict[str, Any]:
         configs = self.load_llm_client_configs()

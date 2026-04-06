@@ -7,71 +7,50 @@
     "max_tokens": 4096,
     "timeout": 45
   },
-  "single_agent": {
+  "default-plus": {
     "provider": "openai_compatible",
-    "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
-    "model": "qwen3.5",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "qwen3.6-plus",
     "temperature": 0.1,
-    "max_tokens": 4096,
-    "timeout": 45
+    "max_tokens": 8192,
+    "timeout": 90
   },
   "coordinator": {
     "provider": "openai_compatible",
-    "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
-    "model": "qwen3.5",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "qwen3.6-plus",
     "temperature": 0.1,
-    "max_tokens": 4096,
-    "timeout": 45
+    "max_tokens": 8192,
+    "timeout": 90
   },
   "planner": {
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.5-122b-a10b",
+    "model": "qwen3.6-plus",
     "temperature": 0.05,
-    "max_tokens": 6144,
+    "max_tokens": 8192,
     "timeout": 120
   },
   "explorer": {
     "provider": "openai_compatible",
-    "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
-    "model": "qwen3.5",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "qwen3.6-plus",
     "temperature": 0.1,
-    "max_tokens": 4096,
-    "timeout": 45
+    "max_tokens": 8192,
+    "timeout": 90
   },
   "executor": {
     "provider": "openai_compatible",
-    "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
-    "model": "qwen3.5",
-    "temperature": 0.1,
-    "max_tokens": 4096,
-    "timeout": 45
-  },
-  "verifier": {
-    "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.5-122b-a10b",
-    "temperature": 0.0,
-    "max_tokens": 4096,
+    "model": "qwen3.6-plus",
+    "temperature": 0.1,
+    "max_tokens": 8192,
     "timeout": 90
-  },
-  "guide": {
-    "provider": "openai_compatible",
-    "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
-    "model": "qwen3.5",
-    "temperature": 0.1,
-    "max_tokens": 4096,
-    "timeout": 45
-  },
-  "general": {
-    "provider": "openai_compatible",
-    "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
-    "model": "qwen3.5",
-    "temperature": 0.1,
-    "max_tokens": 4096,
-    "timeout": 45
   },
   "ops_report": {
     "provider": "openai_compatible",
@@ -79,7 +58,7 @@
     "api_key_env": "DASHSCOPE_API_KEY",
     "model": "qwen3.6-plus",
     "temperature": 0.1,
-    "max_tokens": 4096,
+    "max_tokens": 8192,
     "timeout": 90
   }
 }

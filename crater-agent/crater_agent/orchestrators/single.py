@@ -20,11 +20,12 @@ class SingleAgentOrchestrator:
         self.tool_executor = tool_executor or GoBackendToolExecutor()
 
     async def stream(self, *, request: Any, model_factory: ModelClientFactory) -> AsyncIterator[dict]:
-        llm = model_factory.create(purpose="default", orchestration_mode="single_agent")
+        llm = model_factory.create("default")
         graph = create_agent_graph(tool_executor=self.tool_executor, llm=llm)
         context = dict(request.context or {})
         pending_tool_calls: list[dict[str, Any]] = []
         tool_result_summaries: list[str] = []
+        pending_final_content = ""
         emitted_final_answer = False
         emitted_confirmation = False
         initial_state = {
@@ -103,17 +104,7 @@ class SingleAgentOrchestrator:
                                 or (output.additional_kwargs or {}).get("reasoning_content", "")
                             )
                         if final_content:
-                            emitted_final_answer = True
-                            yield {
-                                "event": "final_answer",
-                                "data": {
-                                    "turnId": request.turn_id,
-                                    "sessionId": request.session_id,
-                                    "agentId": "single-agent",
-                                    "agentRole": "single_agent",
-                                    "content": final_content,
-                                },
-                            }
+                            pending_final_content = final_content
                 continue
 
             if kind == "on_tool_end":
@@ -204,6 +195,19 @@ class SingleAgentOrchestrator:
                         },
                     }
                     continue
+
+        if pending_final_content and not emitted_confirmation:
+            emitted_final_answer = True
+            yield {
+                "event": "final_answer",
+                "data": {
+                    "turnId": request.turn_id,
+                    "sessionId": request.session_id,
+                    "agentId": "single-agent",
+                    "agentRole": "single_agent",
+                    "content": pending_final_content,
+                },
+            }
 
         if not emitted_final_answer and not emitted_confirmation:
             if tool_result_summaries:

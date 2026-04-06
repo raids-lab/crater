@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func normalizePageContext(raw json.RawMessage) map[string]any {
@@ -58,6 +60,33 @@ func normalizeJobStatuses(statuses []string) []string {
 		}
 	}
 	return normalized
+}
+
+func normalizeJobTypes(jobTypes []string) []string {
+	normalized := make([]string, 0, len(jobTypes))
+	for _, jobType := range jobTypes {
+		switch strings.TrimSpace(strings.ToLower(jobType)) {
+		case "all", "jobtypeall":
+			normalized = append(normalized, string(model.JobTypeAll))
+		case "jupyter", "notebook", "jobtypejupyter":
+			normalized = append(normalized, string(model.JobTypeJupyter))
+		case "webide", "web-ide", "jobtypewebide":
+			normalized = append(normalized, string(model.JobTypeWebIDE))
+		case "pytorch", "torch", "jobtypepytorch":
+			normalized = append(normalized, string(model.JobTypePytorch))
+		case "tensorflow", "tf", "jobtypetensorflow":
+			normalized = append(normalized, string(model.JobTypeTensorflow))
+		case "kuberay", "ray", "jobtypekuberay":
+			normalized = append(normalized, string(model.JobTypeKubeRay))
+		case "deepspeed", "jobtypedeepspeed":
+			normalized = append(normalized, string(model.JobTypeDeepSpeed))
+		case "openmpi", "mpi", "jobtypeopenmpi":
+			normalized = append(normalized, string(model.JobTypeOpenMPI))
+		case "custom", "自定义", "jobtypecustom":
+			normalized = append(normalized, string(model.JobTypeCustom))
+		}
+	}
+	return uniqueStrings(normalized)
 }
 
 func parseToolArgsMap(rawArgs json.RawMessage) map[string]any {

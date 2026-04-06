@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -1072,6 +1073,7 @@ func (mgr *AgentMgr) toolGetClusterHealthOverview(c *gin.Context, token util.JWT
 func (mgr *AgentMgr) toolListUserJobs(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	var args struct {
 		Statuses []string `json:"statuses"`
+		JobTypes []string `json:"job_types"`
 		Days     int      `json:"days"`
 		Limit    int      `json:"limit"`
 	}
@@ -1095,6 +1097,12 @@ func (mgr *AgentMgr) toolListUserJobs(c *gin.Context, token util.JWTMessage, raw
 		statuses := normalizeJobStatuses(args.Statuses)
 		if len(statuses) > 0 {
 			q = q.Where(j.Status.In(statuses...))
+		}
+	}
+	if len(args.JobTypes) > 0 {
+		jobTypes := normalizeJobTypes(args.JobTypes)
+		if len(jobTypes) > 0 {
+			q = q.Where(j.JobType.In(jobTypes...))
 		}
 	}
 
@@ -1121,6 +1129,7 @@ func (mgr *AgentMgr) toolListUserJobs(c *gin.Context, token util.JWTMessage, raw
 		"count":     len(items),
 		"days":      args.Days,
 		"requested": args.Statuses,
+		"jobTypes":  normalizeJobTypes(args.JobTypes),
 	}, nil
 }
 
@@ -1130,6 +1139,7 @@ func (mgr *AgentMgr) toolListClusterJobs(c *gin.Context, token util.JWTMessage, 
 	}
 	var args struct {
 		Statuses []string `json:"statuses"`
+		JobTypes []string `json:"job_types"`
 		Days     int      `json:"days"`
 		Limit    int      `json:"limit"`
 	}
@@ -1152,6 +1162,12 @@ func (mgr *AgentMgr) toolListClusterJobs(c *gin.Context, token util.JWTMessage, 
 		statuses := normalizeJobStatuses(args.Statuses)
 		if len(statuses) > 0 {
 			q = q.Where(j.Status.In(statuses...))
+		}
+	}
+	if len(args.JobTypes) > 0 {
+		jobTypes := normalizeJobTypes(args.JobTypes)
+		if len(jobTypes) > 0 {
+			q = q.Where(j.JobType.In(jobTypes...))
 		}
 	}
 
@@ -1181,6 +1197,7 @@ func (mgr *AgentMgr) toolListClusterJobs(c *gin.Context, token util.JWTMessage, 
 		"count":     len(items),
 		"days":      args.Days,
 		"requested": args.Statuses,
+		"jobTypes":  normalizeJobTypes(args.JobTypes),
 	}, nil
 }
 
@@ -1252,6 +1269,141 @@ func estimateActualGPUUsage(gpuUtilization float64, requested int) int {
 		estimated = requested
 	}
 	return estimated
+}
+
+func resourceListValue(resources v1.ResourceList, name v1.ResourceName, milli bool) int64 {
+	if resources == nil {
+		return 0
+	}
+	quantity, ok := resources[name]
+	if !ok {
+		return 0
+	}
+	if milli {
+		return quantity.MilliValue()
+	}
+	return quantity.Value()
+}
+
+func sumGPUResourceValues(allocatable, used v1.ResourceList) (int64, int64) {
+	total := int64(0)
+	usedTotal := int64(0)
+	for name, quantity := range allocatable {
+		if !isGPUResourceName(string(name)) {
+			continue
+		}
+		total += quantity.Value()
+		if usedQuantity, ok := used[name]; ok {
+			usedTotal += usedQuantity.Value()
+		}
+	}
+	return total, usedTotal
+}
+
+func usagePercent(used, total int64) float64 {
+	if total <= 0 || used <= 0 {
+		return 0
+	}
+	return float64(int((float64(used)*1000.0/float64(total))+0.5)) / 10.0
+}
+
+func asMapSlice(value any) []map[string]any {
+	if value == nil {
+		return nil
+	}
+	if items, ok := value.([]map[string]any); ok {
+		return items
+	}
+	rawItems, ok := value.([]any)
+	if !ok {
+		return nil
+	}
+	result := make([]map[string]any, 0, len(rawItems))
+	for _, raw := range rawItems {
+		if item, ok := raw.(map[string]any); ok {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func buildClusterResourceUtilizationSummary(capacityRaw any) map[string]any {
+	summary := map[string]any{
+		"cluster_gpu_avg":    0.0,
+		"cluster_cpu_avg":    0.0,
+		"cluster_memory_avg": 0.0,
+		"node_hotspots":      []string{},
+		"total_nodes":        0,
+		"ready_nodes":        0,
+		"total_gpus":         0,
+		"allocated_gpus":     0,
+	}
+
+	capacity, ok := capacityRaw.(map[string]any)
+	if !ok {
+		return summary
+	}
+
+	nodes := asMapSlice(capacity["nodes"])
+	if len(nodes) == 0 {
+		return summary
+	}
+
+	totalGPU := int64(0)
+	usedGPU := int64(0)
+	totalCPUMilli := int64(0)
+	usedCPUMilli := int64(0)
+	totalMemory := int64(0)
+	usedMemory := int64(0)
+	readyNodes := 0
+	hotspots := make([]string, 0, 5)
+	seenHotspots := make(map[string]struct{}, 5)
+
+	for _, node := range nodes {
+		name := strings.TrimSpace(fmt.Sprint(node["name"]))
+		status := strings.TrimSpace(fmt.Sprint(node["status"]))
+		if status == string(v1.NodeReady) {
+			readyNodes++
+		}
+
+		allocatable, _ := node["allocatable"].(v1.ResourceList)
+		used, _ := node["used"].(v1.ResourceList)
+		nodeGPUAlloc, nodeGPUUsed := sumGPUResourceValues(allocatable, used)
+		nodeCPUAllocMilli := resourceListValue(allocatable, v1.ResourceCPU, true)
+		nodeCPUUsedMilli := resourceListValue(used, v1.ResourceCPU, true)
+		nodeMemoryAlloc := resourceListValue(allocatable, v1.ResourceMemory, false)
+		nodeMemoryUsed := resourceListValue(used, v1.ResourceMemory, false)
+
+		totalGPU += nodeGPUAlloc
+		usedGPU += nodeGPUUsed
+		totalCPUMilli += nodeCPUAllocMilli
+		usedCPUMilli += nodeCPUUsedMilli
+		totalMemory += nodeMemoryAlloc
+		usedMemory += nodeMemoryUsed
+
+		gpuPct := usagePercent(nodeGPUUsed, nodeGPUAlloc)
+		cpuPct := usagePercent(nodeCPUUsedMilli, nodeCPUAllocMilli)
+		memoryPct := usagePercent(nodeMemoryUsed, nodeMemoryAlloc)
+		isHotspot := status != string(v1.NodeReady) || gpuPct >= 85 || cpuPct >= 85 || memoryPct >= 90
+		if !isHotspot || name == "" {
+			continue
+		}
+		if _, exists := seenHotspots[name]; exists {
+			continue
+		}
+		seenHotspots[name] = struct{}{}
+		hotspots = append(hotspots, name)
+	}
+
+	summary["cluster_gpu_avg"] = usagePercent(usedGPU, totalGPU)
+	summary["cluster_cpu_avg"] = usagePercent(usedCPUMilli, totalCPUMilli)
+	summary["cluster_memory_avg"] = usagePercent(usedMemory, totalMemory)
+	summary["node_hotspots"] = hotspots
+	summary["total_nodes"] = len(nodes)
+	summary["ready_nodes"] = readyNodes
+	summary["total_gpus"] = int(totalGPU)
+	summary["allocated_gpus"] = int(usedGPU)
+	return summary
 }
 
 type idleEntry struct {
@@ -1887,6 +2039,11 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 		return nil, nodeOverviewErr
 	}
 	nodeOverview, _ := nodeOverviewRaw.(map[string]any)
+	capacityRaw, capacityErr := mgr.toolGetRealtimeCapacity(c, token, nil)
+	if capacityErr != nil {
+		return nil, capacityErr
+	}
+	resourceUtilization := buildClusterResourceUtilizationSummary(capacityRaw)
 
 	successSamples := make([]map[string]any, 0, len(completedJobs))
 	for _, job := range completedJobs {
@@ -1912,6 +2069,8 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 			"job_name":            job.JobName,
 			"name":                job.Name,
 			"user":                jobDisplayUser(job),
+			"job_type":            string(job.JobType),
+			"namespace":           getJobNamespace(job),
 			"scheduled_node":      primaryNodeName(job),
 			"requested_resources": job.Resources.Data(),
 			"actual_usage": map[string]any{
@@ -1938,6 +2097,8 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 			"job_name":            job.JobName,
 			"name":                job.Name,
 			"user":                jobDisplayUser(job),
+			"job_type":            string(job.JobType),
+			"namespace":           getJobNamespace(job),
 			"failure_category":    getFailureCategory(job),
 			"scheduled_node":      primaryNodeName(job),
 			"requested_resources": job.Resources.Data(),
@@ -2024,6 +2185,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 
 	recentRunningJobs := make([]map[string]any, 0, args.RunningLimit)
 	seenRecentJobs := make(map[string]struct{}, args.RunningLimit)
+	recentRunningTotalGPU := 0
 	appendRecentRunningJob := func(job *model.Job, observedState string) {
 		if job == nil || strings.TrimSpace(job.JobName) == "" {
 			return
@@ -2050,7 +2212,9 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 		if overlapMinutes <= 0 && job.Status != batch.Running {
 			return
 		}
+		gpuRequested := extractRequestedGPUCount(job.Resources.Data())
 		seenRecentJobs[job.JobName] = struct{}{}
+		recentRunningTotalGPU += gpuRequested
 		recentRunningJobs = append(recentRunningJobs, map[string]any{
 			"job_name":               job.JobName,
 			"name":                   job.Name,
@@ -2058,7 +2222,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 			"status":                 job.Status,
 			"scheduled_node":         primaryNodeName(job),
 			"requested_resources":    job.Resources.Data(),
-			"gpu_requested":          extractRequestedGPUCount(job.Resources.Data()),
+			"gpu_requested":          gpuRequested,
 			"queue_wait_minutes":     minutesBetween(job.CreationTimestamp, job.RunningTimestamp),
 			"running_minutes":        runningMinutes,
 			"window_overlap_minutes": overlapMinutes,
@@ -2084,6 +2248,10 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 	}
 
 	nodeItems, _ := nodeOverview["nodes"].([]map[string]any)
+	resourceTotalNodes := getIntValueFromAny(resourceUtilization["total_nodes"])
+	resourceReadyNodes := getIntValueFromAny(resourceUtilization["ready_nodes"])
+	resourceTotalGPUs := getIntValueFromAny(resourceUtilization["total_gpus"])
+	resourceAllocatedGPUs := getIntValueFromAny(resourceUtilization["allocated_gpus"])
 	sort.Slice(nodeItems, func(i, j int) bool {
 		leftStatus := fmt.Sprint(nodeItems[i]["status"])
 		rightStatus := fmt.Sprint(nodeItems[j]["status"])
@@ -2138,16 +2306,32 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 			"top_jobs":                  idleActions,
 		},
 		"recent_running_summary": map[string]any{
-			"window_hours": args.LookbackHours,
-			"job_count":    len(recentRunningJobs),
+			"window_hours":  args.LookbackHours,
+			"job_count":     len(recentRunningJobs),
+			"running_count": len(recentRunningJobs),
+			"total_gpu":     recentRunningTotalGPU,
 		},
 		"recent_running_jobs": recentRunningJobs,
 		"node_summary": map[string]any{
 			"total_nodes":      nodeOverview["count"],
+			"ready_nodes":      resourceReadyNodes,
 			"status_count":     nodeOverview["statusCount"],
+			"total_gpus":       resourceTotalGPUs,
+			"allocated_gpus":   resourceAllocatedGPUs,
 			"sampled_nodes":    sampledNodes,
 			"unhealthy_nodes":  unhealthyNodes,
 			"requested_sample": args.NodeLimit,
+		},
+		"resource_utilization": map[string]any{
+			"cluster_gpu_avg":    resourceUtilization["cluster_gpu_avg"],
+			"cluster_cpu_avg":    resourceUtilization["cluster_cpu_avg"],
+			"cluster_memory_avg": resourceUtilization["cluster_memory_avg"],
+			"node_hotspots":      resourceUtilization["node_hotspots"],
+			"total_nodes":        resourceTotalNodes,
+			"ready_nodes":        resourceReadyNodes,
+			"total_gpus":         resourceTotalGPUs,
+			"allocated_gpus":     resourceAllocatedGPUs,
+			"idle_gpu_jobs":      len(idleJobsAny),
 		},
 		"successful_jobs": successSamples,
 		"failed_jobs":     failureSamples,
@@ -2198,15 +2382,22 @@ func (mgr *AgentMgr) toolGetLatestAuditReport(_ *gin.Context, token util.JWTMess
 		Status        string          `json:"status" gorm:"column:status"`
 		TriggerSource *string         `json:"trigger_source" gorm:"column:trigger_source"`
 		Summary       json.RawMessage `json:"summary" gorm:"column:summary"`
+		ReportJSON    json.RawMessage `json:"report_json" gorm:"column:report_json"`
 		CreatedAt     time.Time       `json:"created_at" gorm:"column:created_at"`
 		CompletedAt   *time.Time      `json:"completed_at" gorm:"column:completed_at"`
 	}
 	result := db.Raw(`
-		SELECT id, report_type, status, trigger_source, summary, created_at, completed_at
+		SELECT id, report_type, status, trigger_source, summary, report_json, created_at, completed_at
 		FROM ops_audit_reports WHERE report_type = ? ORDER BY created_at DESC LIMIT 1
 	`, args.ReportType).Scan(&report)
 	if result.Error != nil || result.RowsAffected == 0 {
-		return map[string]any{"message": "暂无审计报告"}, nil
+		result = db.Raw(`
+			SELECT id, report_type, status, trigger_source, summary, created_at, completed_at
+			FROM ops_audit_reports WHERE report_type = ? ORDER BY created_at DESC LIMIT 1
+		`, args.ReportType).Scan(&report)
+		if result.Error != nil || result.RowsAffected == 0 {
+			return map[string]any{"message": "暂无审计报告"}, nil
+		}
 	}
 	return report, nil
 }
@@ -2299,114 +2490,117 @@ func (mgr *AgentMgr) toolSaveAuditReport(_ *gin.Context, token util.JWTMessage, 
 	}
 
 	var reportID string
-	insertResult := db.Raw(`
-		INSERT INTO ops_audit_reports
-			(report_type, status, trigger_source, summary, report_json,
-			 period_start, period_end, job_total, job_success, job_failed, job_pending,
-			 completed_at)
-		VALUES (?, 'completed', ?, ?, ?,
-			CASE WHEN ? = '' THEN NULL ELSE ?::timestamptz END,
-			CASE WHEN ? = '' THEN NULL ELSE ?::timestamptz END,
-			?, ?, ?, ?, NOW())
-		RETURNING id
-	`,
-		args.ReportType, args.TriggerSource, string(args.Summary), reportJSON,
-		ptrToStr(args.PeriodStart), ptrToStr(args.PeriodStart),
-		ptrToStr(args.PeriodEnd), ptrToStr(args.PeriodEnd),
-		args.JobTotal, args.JobSuccess, args.JobFailed, args.JobPending,
-	).Scan(&reportID)
-	if insertResult.Error != nil {
-		// Fallback: insert with base columns only (migration not applied yet)
-		insertResult = db.Raw(`
-			INSERT INTO ops_audit_reports (report_type, status, trigger_source, summary, completed_at)
-			VALUES (?, 'completed', ?, ?, NOW())
-			RETURNING id
-		`, args.ReportType, args.TriggerSource, string(args.Summary)).Scan(&reportID)
-		if insertResult.Error != nil {
-			return nil, fmt.Errorf("failed to create audit report: %w", insertResult.Error)
-		}
-	}
-
-	// Insert items with extended fields
 	itemCount := 0
-	for _, item := range args.Items {
-		jobName, _ := item["job_name"].(string)
-		if strings.TrimSpace(jobName) == "" {
-			continue
-		}
-		actionType, _ := item["action_type"].(string)
-		if strings.TrimSpace(actionType) == "" {
-			actionType = "stop"
-		}
-		severity, _ := item["severity"].(string)
-		if strings.TrimSpace(severity) == "" {
-			severity = "warning"
-		}
-		analysisDetail, _ := json.Marshal(item["analysis_detail"])
-		if string(analysisDetail) == "null" {
-			analysisDetail = []byte("{}")
-		}
-		resourceRequested, _ := json.Marshal(item["resource_requested"])
-		if string(resourceRequested) == "null" {
-			resourceRequested = []byte("{}")
-		}
-		resourceActual, _ := json.Marshal(item["resource_actual"])
-		if string(resourceActual) == "null" {
-			resourceActual = []byte("{}")
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		insertResult := tx.Raw(`
+			INSERT INTO ops_audit_reports
+				(report_type, status, trigger_source, summary, report_json,
+				 period_start, period_end, job_total, job_success, job_failed, job_pending,
+				 completed_at)
+			VALUES (?, 'completed', ?, ?, ?,
+				CASE WHEN ? = '' THEN NULL ELSE ?::timestamptz END,
+				CASE WHEN ? = '' THEN NULL ELSE ?::timestamptz END,
+				?, ?, ?, ?, NOW())
+			RETURNING id
+		`,
+			args.ReportType, args.TriggerSource, string(args.Summary), reportJSON,
+			ptrToStr(args.PeriodStart), ptrToStr(args.PeriodStart),
+			ptrToStr(args.PeriodEnd), ptrToStr(args.PeriodEnd),
+			args.JobTotal, args.JobSuccess, args.JobFailed, args.JobPending,
+		).Scan(&reportID)
+		if insertResult.Error != nil {
+			insertResult = tx.Raw(`
+				INSERT INTO ops_audit_reports (report_type, status, trigger_source, summary, completed_at)
+				VALUES (?, 'completed', ?, ?, NOW())
+				RETURNING id
+			`, args.ReportType, args.TriggerSource, string(args.Summary)).Scan(&reportID)
+			if insertResult.Error != nil {
+				return fmt.Errorf("failed to create audit report: %w", insertResult.Error)
+			}
 		}
 
-		err := db.Exec(`
-			INSERT INTO ops_audit_items
-				(report_id, job_name, user_id, account_id, username, action_type, severity,
-				 gpu_utilization, gpu_requested, gpu_actual_used, analysis_detail,
-				 category, job_type, owner, namespace, duration_seconds,
-				 resource_requested, resource_actual, exit_code, failure_reason)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-				?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`,
-			reportID,
-			jobName,
-			getMapStringValue(item, "user_id"),
-			getMapStringValue(item, "account_id"),
-			getMapStringValue(item, "username"),
-			actionType,
-			severity,
-			getMapFloatValue(item, "gpu_utilization"),
-			getMapIntValue(item, "gpu_requested"),
-			getMapIntValue(item, "gpu_actual_used"),
-			string(analysisDetail),
-			getMapStringValue(item, "category"),
-			getMapStringValue(item, "job_type"),
-			getMapStringValue(item, "owner"),
-			getMapStringValue(item, "namespace"),
-			getMapIntValue(item, "duration_seconds"),
-			string(resourceRequested),
-			string(resourceActual),
-			getMapIntValue(item, "exit_code"),
-			getMapStringValue(item, "failure_reason"),
-		).Error
-		if err != nil {
-			// Fallback: insert with base columns only
-			err = db.Exec(`
+		for _, item := range args.Items {
+			jobName, _ := item["job_name"].(string)
+			if strings.TrimSpace(jobName) == "" {
+				continue
+			}
+			actionType, _ := item["action_type"].(string)
+			if strings.TrimSpace(actionType) == "" {
+				actionType = "stop"
+			}
+			severity, _ := item["severity"].(string)
+			if strings.TrimSpace(severity) == "" {
+				severity = "warning"
+			}
+			analysisDetail, _ := json.Marshal(item["analysis_detail"])
+			if string(analysisDetail) == "null" {
+				analysisDetail = []byte("{}")
+			}
+			resourceRequested, _ := json.Marshal(item["resource_requested"])
+			if string(resourceRequested) == "null" {
+				resourceRequested = []byte("{}")
+			}
+			resourceActual, _ := json.Marshal(item["resource_actual"])
+			if string(resourceActual) == "null" {
+				resourceActual = []byte("{}")
+			}
+
+			err := tx.Exec(`
 				INSERT INTO ops_audit_items
 					(report_id, job_name, user_id, account_id, username, action_type, severity,
-					 gpu_utilization, gpu_requested, gpu_actual_used, analysis_detail)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+					 gpu_utilization, gpu_requested, gpu_actual_used, analysis_detail,
+					 category, job_type, owner, namespace, duration_seconds,
+					 resource_requested, resource_actual, exit_code, failure_reason)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+					?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`,
-				reportID, jobName,
+				reportID,
+				jobName,
 				getMapStringValue(item, "user_id"),
 				getMapStringValue(item, "account_id"),
 				getMapStringValue(item, "username"),
-				actionType, severity,
+				actionType,
+				severity,
 				getMapFloatValue(item, "gpu_utilization"),
 				getMapIntValue(item, "gpu_requested"),
 				getMapIntValue(item, "gpu_actual_used"),
 				string(analysisDetail),
+				getMapStringValue(item, "category"),
+				getMapStringValue(item, "job_type"),
+				getMapStringValue(item, "owner"),
+				getMapStringValue(item, "namespace"),
+				getMapIntValue(item, "duration_seconds"),
+				string(resourceRequested),
+				string(resourceActual),
+				getMapIntValue(item, "exit_code"),
+				getMapStringValue(item, "failure_reason"),
 			).Error
-		}
-		if err == nil {
+			if err != nil {
+				err = tx.Exec(`
+					INSERT INTO ops_audit_items
+						(report_id, job_name, user_id, account_id, username, action_type, severity,
+						 gpu_utilization, gpu_requested, gpu_actual_used, analysis_detail)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				`,
+					reportID, jobName,
+					getMapStringValue(item, "user_id"),
+					getMapStringValue(item, "account_id"),
+					getMapStringValue(item, "username"),
+					actionType, severity,
+					getMapFloatValue(item, "gpu_utilization"),
+					getMapIntValue(item, "gpu_requested"),
+					getMapIntValue(item, "gpu_actual_used"),
+					string(analysisDetail),
+				).Error
+			}
+			if err != nil {
+				return fmt.Errorf("failed to insert audit item for %s: %w", jobName, err)
+			}
 			itemCount++
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return map[string]any{

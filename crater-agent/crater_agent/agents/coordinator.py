@@ -45,7 +45,12 @@ class CoordinatorAgent(BaseRoleAgent):
         recent_history_excerpt: str = "",
         capabilities: dict[str, Any] | None = None,
     ) -> TurnContextDecision:
-        capability_summary = self.summarize_capabilities(capabilities)
+        capability_summary = self.summarize_capabilities(
+            capabilities,
+            max_tools=6,
+            include_descriptions=False,
+            include_role_policies=False,
+        )
 
         result = await self.run_json(
             system_prompt=(
@@ -199,18 +204,21 @@ class CoordinatorAgent(BaseRoleAgent):
         user_message: str,
         plan_summary: str,
         evidence_summary: str,
+        compact_evidence: list[dict[str, Any]] | None = None,
         executor_summary: str,
         verifier_summary: str,
     ) -> RoleExecutionResult:
         summary = await self.run_text(
             system_prompt=(
                 "你是 Crater 的 Coordinator Agent。你负责整合 Planner、Explorer、Executor、Verifier "
-                "的输出，向用户给出最终答复。要求中文、结论在前、证据在后、建议最后。"
+                "的输出，向用户给出最终答复。要求中文、结论在前、证据在后、建议最后。\n"
+                "请优先基于实际证据作答，不要只复述其他 agent 的摘要。"
             ),
             user_prompt=(
                 f"用户请求:\n{user_message}\n\n"
                 f"Planner:\n{plan_summary}\n\n"
                 f"Explorer:\n{evidence_summary}\n\n"
+                f"紧凑证据:\n{compact_evidence or []}\n\n"
                 f"Executor:\n{executor_summary}\n\n"
                 f"Verifier:\n{verifier_summary}\n\n"
                 "请输出最终面向用户的自然语言回复。"

@@ -75,9 +75,7 @@ async def health():
     except Exception:
         pass
     try:
-        default_model = ModelClientFactory().create(
-            purpose="default", orchestration_mode="single_agent"
-        ).model_name
+        default_model = ModelClientFactory().create("default").model_name
     except Exception:
         pass
     return {"status": "ok", "model": default_model}
@@ -122,7 +120,7 @@ async def chat(request: ChatRequest):
                 "data": json.dumps({}, ensure_ascii=False),
             }
 
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(event_generator(), ping=0)
 
 
 if __name__ == "__main__":
