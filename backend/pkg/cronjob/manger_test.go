@@ -10,6 +10,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/cleaner"
+	"github.com/raids-lab/crater/pkg/patrol"
 )
 
 func TestCronJob(t *testing.T) {
@@ -37,6 +38,12 @@ func TestCronJob(t *testing.T) {
 			jobName = cleaner.CLEAN_WAITING_CUSTOM_JOB
 			jobConfig = datatypes.JSON(`{"waitMinitues": 5}`)
 			jobFunc, err = manager.newCronJobFunc(jobName, model.CronJobTypeCleanerFunc, jobConfig)
+			So(err, ShouldBeNil)
+			So(jobFunc, ShouldNotBeNil)
+
+			jobName = patrol.TRIGGER_ADMIN_OPS_REPORT_JOB
+			jobConfig = datatypes.JSON(`{"lookback_hours": 1, "idle_hours": 1}`)
+			jobFunc, err = manager.newCronJobFunc(jobName, model.CronJobTypePatrolFunc, jobConfig)
 			So(err, ShouldBeNil)
 			So(jobFunc, ShouldNotBeNil)
 

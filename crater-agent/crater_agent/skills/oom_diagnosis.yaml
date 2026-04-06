@@ -1,0 +1,34 @@
+name: OOM 诊断
+description: GPU/CPU 内存不足导致作业被 Kill
+
+trigger_signals:
+  exit_codes: [137]
+  event_reasons: ["OOMKilled"]
+  log_keywords: ["CUDA out of memory", "MemoryError", "Killed", "RuntimeError"]
+
+recommended_tools:
+  - query_job_metrics: { metrics: ["gpu_mem_used", "cpu_mem_used"] }
+  - get_job_logs: { keyword: "CUDA out of memory|MemoryError" }
+
+diagnosis_knowledge: |
+  Exit 137 = SIGKILL，通常由 K8s OOM Killer 或 GPU 驱动发出。
+  GPU OOM: 模型参数 + 中间激活值 + 梯度 + 优化器状态超出显存限制。
+  CPU OOM: 数据加载、预处理或模型推理占用过多主存。
+  常见于: 大 batch size、大模型、多 worker 数据加载。
+
+common_solutions:
+  - name: 混合精度训练
+    condition: "GPU 显存使用率 > 90%"
+    suggestion: "启用 FP16/BF16 混合精度训练 (torch.cuda.amp)，可减少约 50% 显存占用"
+  - name: 梯度检查点
+    condition: "GPU 显存使用率 > 90%"
+    suggestion: "启用 gradient checkpointing，用计算时间换显存空间"
+  - name: 减小 batch size
+    condition: "GPU 显存使用率 > 80%"
+    suggestion: "减小 per-device batch size 或使用梯度累积 (gradient accumulation)"
+  - name: 增大内存配额
+    condition: "CPU 内存使用率 > 90%"
+    suggestion: "增大 memory 配置，或减少 DataLoader num_workers"
+  - name: 更换 GPU 型号
+    condition: "需要的显存超过当前 GPU 最大显存"
+    suggestion: "切换到更大显存的 GPU (如 A100-80G 或 H100-80G)"

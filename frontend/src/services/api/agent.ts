@@ -24,6 +24,10 @@ export interface AgentSSEEvent {
     | 'tool_call_started'
     | 'tool_call_completed'
     | 'tool_call_confirmation_required'
+    | 'parameter_review'
+    | 'resource_suggestion'
+    | 'pipeline_report'
+    | 'batch_confirmation'
     | 'final_answer'
     | 'error'
     | 'done'
@@ -140,6 +144,8 @@ export interface AgentChatRequest {
     url: string
     jobName?: string
     jobStatus?: string
+    nodeName?: string
+    entryPoint?: 'default' | 'node_analysis' | 'ops_report'
   }
   clientContext?: {
     locale?: string
@@ -149,6 +155,82 @@ export interface AgentChatRequest {
 
 export interface AgentResumeRequest {
   confirmId: string
+}
+
+export interface ParameterReviewPayload {
+  reviewId: string
+  scenario: string
+  complexity: 'simple' | 'complex'
+  step: number
+  totalSteps: number
+  title: string
+  description: string
+  parameters: Array<{
+    key: string
+    label: string
+    value: unknown
+    source: 'recommended' | 'default' | 'user'
+    editable: boolean
+    type: 'text' | 'number' | 'select' | 'textarea'
+    options?: Array<{ label: string; value: string }>
+    constraints?: { min?: number; max?: number }
+    hint?: string
+  }>
+}
+
+export interface ResourceSuggestionPayload {
+  suggestionId: string
+  context: string
+  recommendations: Array<{
+    gpu_model: string
+    available: number
+    queue_depth: number
+    estimated_wait: string
+    match_score: number
+    reason: string
+  }>
+  tip: string
+}
+
+export interface PipelineReportPayload {
+  reportId: string
+  reportType: string
+  completedAt: string
+  summary: {
+    total_scanned: number
+    idle_detected: number
+    gpu_waste_hours: number
+  }
+  summary_labels?: {
+    total_label?: string
+    middle_label?: string
+    right_label?: string
+  }
+  categories: Array<{
+    action: string
+    severity: 'critical' | 'warning' | 'info'
+    count: number
+    items: Array<{
+      job_name: string
+      user: string
+      gpu_util: string
+      duration?: string
+      gpu_requested?: number
+      gpu_actual?: number
+    }>
+  }>
+}
+
+export interface BatchConfirmationPayload {
+  batchId: string
+  action: string
+  description: string
+  items: Array<{
+    job_name: string
+    user: string
+    gpu_util: string
+    selected: boolean
+  }>
 }
 
 // ──────────────────────────────────────────────
@@ -163,7 +245,14 @@ export function connectAgentChat(
   sessionId: string | null,
   requestId: string,
   message: string,
-  pageContext: { route?: string; url: string; jobName?: string; jobStatus?: string },
+  pageContext: {
+    route?: string
+    url: string
+    jobName?: string
+    jobStatus?: string
+    nodeName?: string
+    entryPoint?: 'default' | 'node_analysis' | 'ops_report'
+  },
   orchestrationMode: 'single_agent' | 'multi_agent',
   clientContext: { locale?: string; timezone?: string } | undefined,
   onEvent: (event: AgentSSEEvent) => void,
@@ -514,3 +603,19 @@ export const apiGetTurnEvents = (turnId: string) =>
 
 export const apiGetAgentConfigSummary = () =>
   apiV1Get<IResponse<AgentConfigSummary>>('agent/config-summary')
+
+/**
+ * Submit parameter review result (confirm or modify).
+ */
+export const apiParameterUpdate = (
+  sessionId: string,
+  reviewId: string,
+  action: 'confirm' | 'modify',
+  parameters: Record<string, unknown>
+) =>
+  apiV1Post<IResponse<{ status: string }>>('agent/chat/parameter-update', {
+    session_id: sessionId,
+    review_id: reviewId,
+    action,
+    parameters,
+  })

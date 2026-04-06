@@ -79,6 +79,7 @@ const JOB_CONFIGS = [
     jobName: 'cronPolicy.billingBaseLoopTitle',
     jobType: 'patrol_function',
   },
+  { jobId: 'trigger-admin-ops-report-job', jobName: 'cronPolicy.adminOpsReportTitle', jobType: 'patrol_function' },
 ]
 
 function CronPolicy({ className }: { className?: string }) {

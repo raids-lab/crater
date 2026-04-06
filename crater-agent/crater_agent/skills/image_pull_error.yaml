@@ -1,0 +1,25 @@
+name: 镜像拉取失败
+description: 容器镜像无法下载导致作业无法启动
+
+trigger_signals:
+  event_reasons: ["ErrImagePull", "ImagePullBackOff", "InvalidImageName"]
+  log_keywords: ["pull access denied", "not found", "manifest unknown"]
+
+recommended_tools:
+  - get_job_events: {}
+  - get_job_detail: {}
+
+diagnosis_knowledge: |
+  镜像拉取失败的常见原因:
+  1. 镜像地址拼写错误或 tag 不存在
+  2. 镜像仓库需要认证但未配置 imagePullSecret
+  3. 网络不可达（私有仓库未配置代理）
+  4. 镜像体积过大导致拉取超时
+
+common_solutions:
+  - name: 检查镜像地址
+    suggestion: "确认镜像地址和 tag 是否正确，可在 Crater 镜像管理页面查找可用镜像"
+  - name: 使用平台预置镜像
+    suggestion: "使用 Crater 平台提供的预置镜像，已包含常用深度学习框架"
+  - name: 检查仓库权限
+    suggestion: "如果使用私有仓库，确认 imagePullSecret 已配置"

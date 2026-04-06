@@ -1,0 +1,89 @@
+{
+  "default_client_key": "single_default",
+  "llm_clients": {
+    "single_default": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.6-plus",
+      "temperature": 0.1,
+      "max_tokens": 4096,
+      "timeout": 90
+    },
+    "coordinator_router": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.6-plus",
+      "temperature": 0.05,
+      "max_tokens": 4096,
+      "timeout": 90
+    },
+    "planner_reasoner": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.5-122b-a10b",
+      "temperature": 0.05,
+      "max_tokens": 6144,
+      "timeout": 120
+    },
+    "explorer_fast": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.5-flash",
+      "temperature": 0.1,
+      "max_tokens": 2048,
+      "timeout": 45
+    },
+    "executor_careful": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.6-plus",
+      "temperature": 0.05,
+      "max_tokens": 4096,
+      "timeout": 90
+    },
+    "verifier_strict": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.5-122b-a10b",
+      "temperature": 0.0,
+      "max_tokens": 2048,
+      "timeout": 90
+    },
+    "guide_fast": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.5-flash",
+      "temperature": 0.2,
+      "max_tokens": 2048,
+      "timeout": 45
+    },
+    "general_fast": {
+      "provider": "openai_compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "model": "qwen3.5-flash",
+      "temperature": 0.15,
+      "max_tokens": 2048,
+      "timeout": 45
+    }
+  },
+  "single_agent": {
+    "client_key": "single_default"
+  },
+  "multi_agent_roles": {
+    "coordinator": "coordinator_router",
+    "planner": "planner_reasoner",
+    "explorer": "explorer_fast",
+    "executor": "executor_careful",
+    "verifier": "verifier_strict",
+    "guide": "guide_fast",
+    "general": "general_fast"
+  }
+}

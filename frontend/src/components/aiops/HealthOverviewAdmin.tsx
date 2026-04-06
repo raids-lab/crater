@@ -2,6 +2,7 @@
  * AIOps Health Overview Page - Admin Only (全平台数据)
  */
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { Activity, AlertCircle, Calendar, Clock, Info, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +32,19 @@ const TIME_RANGES = [
 export function HealthOverviewAdmin() {
   const { t } = useTranslation()
   const [timeRange, setTimeRange] = useState('7')
+  const navigate = useNavigate()
+
+  const navigateToJobs = (statusFilter?: string[]) => {
+    if (statusFilter) {
+      localStorage.setItem(
+        'admin_job_overview-column-filters',
+        JSON.stringify([{ id: 'status', value: statusFilter }])
+      )
+    } else {
+      localStorage.removeItem('admin_job_overview-column-filters')
+    }
+    navigate({ to: '/admin/jobs' })
+  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['aiops', 'health-overview-admin', timeRange],
@@ -115,6 +129,7 @@ export function HealthOverviewAdmin() {
           description={t('aiops.metric.totalJobsDesc', { timeRange: timeRangeLabel })}
           icon={Activity}
           variant="default"
+          onClick={() => navigateToJobs()}
         />
         <MetricCard
           title={t('aiops.metric.failedJobs')}
@@ -122,6 +137,7 @@ export function HealthOverviewAdmin() {
           description={t('aiops.metric.failedJobsDesc')}
           icon={AlertCircle}
           variant={healthData && healthData.failedJobs > 0 ? 'destructive' : 'default'}
+          onClick={() => navigateToJobs(['Failed'])}
         />
         <MetricCard
           title={t('aiops.metric.pendingJobs')}
@@ -129,6 +145,7 @@ export function HealthOverviewAdmin() {
           description={t('aiops.metric.pendingJobsDesc')}
           icon={Clock}
           variant="warning"
+          onClick={() => navigateToJobs(['Pending'])}
         />
         <MetricCard
           title={t('aiops.metric.failureRate')}
@@ -215,6 +232,7 @@ interface MetricCardProps {
   description: string
   icon: React.ElementType
   variant?: 'default' | 'destructive' | 'warning'
+  onClick?: () => void
 }
 
 function MetricCard({
@@ -223,6 +241,7 @@ function MetricCard({
   description,
   icon: Icon,
   variant = 'default',
+  onClick,
 }: MetricCardProps) {
   const variantStyles = {
     default: 'border-border',
@@ -231,7 +250,10 @@ function MetricCard({
   }
 
   return (
-    <Card className={`${variantStyles[variant]}`}>
+    <Card
+      className={`${variantStyles[variant]} ${onClick ? 'cursor-pointer transition-shadow hover:shadow-md' : ''}`}
+      onClick={onClick}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="text-muted-foreground h-4 w-4" />

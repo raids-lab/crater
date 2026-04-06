@@ -456,6 +456,7 @@
   "cronPolicy.gpuAnalysisSuccess": "GPU abuse detection policy updated successfully",
   "cronPolicy.gpuAnalysisTitle": "GPU Abuse Detection",
   "cronPolicy.gpuAnalysisUpdate": "Update GPU abuse detection policy",
+  "cronPolicy.adminOpsReportTitle": "Intelligent Patrol Report",
   "cronPolicy.interactiveDays": "Interactive job running days (INTERACTIVE_DAYS)",
   "cronPolicy.invalidCron": "Invalid Cron expression, please check the format and numeric range",
   "cronPolicy.jobsToDelete": "The following jobs will be deleted:",
