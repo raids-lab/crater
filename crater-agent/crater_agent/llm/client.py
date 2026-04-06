@@ -57,43 +57,17 @@ class ClientConfig:
         return NO_AUTH_API_KEY_PLACEHOLDER
 
 
-def default_client_config(name: str = "default") -> ClientConfig:
-    return ClientConfig(
-        name=name,
-        provider="openai_compatible",
-        base_url=settings.llm_base_url,
-        api_key="" if settings.llm_api_key_env.strip() else settings.llm_api_key,
-        api_key_env=settings.llm_api_key_env.strip(),
-        model=settings.llm_model_name,
-        temperature=settings.llm_temperature,
-        max_tokens=settings.llm_max_tokens,
-        timeout=settings.llm_timeout,
-        max_retries=2,
-    )
-
-
-def normalize_client_map(raw: dict[str, Any] | None) -> dict[str, ClientConfig]:
-    """Normalize config into a direct purpose/role -> client config map.
-
-    Expected format:
-        {
-          "default": {...},
-          "planner": {...},
-          "ops_report": {...}
-        }
-    """
-
-    if not raw:
-        return {"default": default_client_config()}
+def normalize_client_map(raw: dict[str, Any]) -> dict[str, ClientConfig]:
+    """Normalize the direct purpose/role -> client config map."""
 
     lookup: dict[str, ClientConfig] = {}
     for name, cfg in raw.items():
         if isinstance(cfg, dict):
             lookup[str(name)] = ClientConfig.from_dict(str(name), cfg)
 
-    fallback = default_client_config()
-    if "default" not in lookup:
-        lookup["default"] = fallback
+    fallback = lookup.get("default")
+    if fallback is None:
+        raise ValueError("LLM client config must define a 'default' client")
 
     for name, cfg in list(lookup.items()):
         if not cfg.base_url:
@@ -114,7 +88,7 @@ class ModelClientFactory:
 
     def __init__(self, raw_clients: dict[str, Any] | None = None):
         if raw_clients is None:
-            raw_clients = settings.load_llm_clients_config()
+            raw_clients = settings.load_llm_client_configs()
         self._clients = normalize_client_map(raw_clients)
 
     @property
@@ -131,7 +105,7 @@ class ModelClientFactory:
 
     def create(self, *, purpose: str, orchestration_mode: str) -> ChatOpenAI:
         client_name = self.resolve_client_name(purpose, orchestration_mode)
-        config = self._clients.get(client_name) or default_client_config(client_name)
+        config = self._clients[client_name]
         client_kwargs: dict[str, Any] = {
             "base_url": config.base_url,
             "api_key": config.resolved_api_key(),
