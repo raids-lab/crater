@@ -46,14 +46,8 @@ func (sr *ServerRunner) StartManager(ctx context.Context, mgr manager.Manager) {
 		}
 	}()
 
-	// 异步等待缓存同步，避免阻塞主线程（特别是在开发环境下网络不通时）
-	go func() {
-		if !mgr.GetCache().WaitForCacheSync(ctx) {
-			klog.Error(nil, "failed to wait for cache sync")
-			return
-		}
-		klog.Info("cache sync success")
-	}()
+	mgr.GetCache().WaitForCacheSync(ctx)
+	klog.Info("cache sync success")
 }
 
 var (
