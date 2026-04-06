@@ -120,6 +120,10 @@ export function OpsReportTab() {
         <FailureAnalysisCard analysis={reportJSON.failure_analysis} />
       )}
 
+      {reportJSON?.success_analysis && (
+        <SuccessAnalysisCard analysis={reportJSON.success_analysis} />
+      )}
+
       {reportJSON?.resource_utilization && (
         <ResourceUtilizationCard utilization={reportJSON.resource_utilization} />
       )}
@@ -257,7 +261,70 @@ function FailureAnalysisCard({ analysis }: { analysis: OpsReportJSON['failure_an
             ))}
           </TableBody>
         </Table>
+        {analysis.top_affected_users && analysis.top_affected_users.length > 0 && (
+          <p className="text-muted-foreground mt-3 text-sm">
+            受影响用户: {analysis.top_affected_users.join('、')}
+          </p>
+        )}
         {analysis.patterns && <p className="text-muted-foreground mt-3 text-sm">{analysis.patterns}</p>}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SuccessAnalysisCard({ analysis }: { analysis: OpsReportJSON['success_analysis'] }) {
+  const durations = Object.entries(analysis.avg_duration_by_type || {})
+  const efficiency = analysis.resource_efficiency
+  const hasEfficiency =
+    efficiency.avg_cpu_ratio > 0 || efficiency.avg_gpu_ratio > 0 || efficiency.avg_memory_ratio > 0
+
+  if (!durations.length && !hasEfficiency) return null
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <CheckCircle className="h-4 w-4 text-green-500" />成功作业画像
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {hasEfficiency && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard
+              label="平均 CPU 利用率"
+              value={Number((efficiency.avg_cpu_ratio * 100).toFixed(1))}
+              icon={Cpu}
+              suffix="%"
+            />
+            <StatCard
+              label="平均 GPU 利用率"
+              value={Number((efficiency.avg_gpu_ratio * 100).toFixed(1))}
+              icon={Cpu}
+              suffix="%"
+            />
+            <StatCard
+              label="平均内存利用率"
+              value={Number((efficiency.avg_memory_ratio * 100).toFixed(1))}
+              icon={Cpu}
+              suffix="%"
+            />
+          </div>
+        )}
+        {durations.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-muted-foreground text-xs">按作业类型统计的平均运行时长</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {durations.slice(0, 6).map(([jobType, seconds]) => (
+                <div key={jobType} className="bg-muted/40 rounded-lg px-3 py-2 text-sm">
+                  <div className="font-medium">{jobType}</div>
+                  <div className="text-muted-foreground mt-1">
+                    平均 {Math.round(Number(seconds) / 60)} 分钟
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

@@ -4,13 +4,28 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
+from dotenv import dotenv_values
 from langchain_openai import ChatOpenAI
 
 from crater_agent.config import settings
 
 NO_AUTH_API_KEY_PLACEHOLDER = "sk-no-auth-required"
+
+# Load .env once at module level so api_key_env references can resolve
+_dotenv_cache: dict[str, str | None] | None = None
+
+
+def _load_dotenv() -> dict[str, str | None]:
+    global _dotenv_cache
+    if _dotenv_cache is None:
+        env_path = Path(settings.llm_clients_config_path).parent.parent / ".env"
+        if not env_path.exists():
+            env_path = Path.cwd() / ".env"
+        _dotenv_cache = dotenv_values(env_path) if env_path.exists() else {}
+    return _dotenv_cache
 
 
 @dataclass
@@ -49,9 +64,15 @@ class ClientConfig:
 
     def resolved_api_key(self) -> str:
         if self.api_key_env:
+            # 1. Check process environment
             env_value = os.getenv(self.api_key_env, "").strip()
             if env_value:
                 return env_value
+            # 2. Check .env file (Pydantic only loads CRATER_AGENT_ prefixed vars)
+            dotenv = _load_dotenv()
+            dotenv_value = str(dotenv.get(self.api_key_env) or "").strip()
+            if dotenv_value:
+                return dotenv_value
         if self.api_key.strip():
             return self.api_key.strip()
         return NO_AUTH_API_KEY_PLACEHOLDER
@@ -84,7 +105,7 @@ def normalize_client_map(raw: dict[str, Any]) -> dict[str, ClientConfig]:
 
 
 class ModelClientFactory:
-    """Builds ChatOpenAI clients from a direct role/purpose -> client map."""
+    """Builds ChatOpenAI clients from a direct client-key -> config map."""
 
     def __init__(self, raw_clients: dict[str, Any] | None = None):
         if raw_clients is None:
@@ -95,17 +116,9 @@ class ModelClientFactory:
     def client_map(self) -> dict[str, ClientConfig]:
         return self._clients
 
-    def resolve_client_name(self, purpose: str, orchestration_mode: str) -> str:
-        normalized_purpose = str(purpose or "").strip()
-        if normalized_purpose and normalized_purpose in self._clients:
-            return normalized_purpose
-        if orchestration_mode == "single_agent" and "single_agent" in self._clients:
-            return "single_agent"
-        return "default"
-
-    def create(self, *, purpose: str, orchestration_mode: str) -> ChatOpenAI:
-        client_name = self.resolve_client_name(purpose, orchestration_mode)
-        config = self._clients[client_name]
+    def create(self, client_key: str = "default") -> ChatOpenAI:
+        normalized_key = str(client_key or "").strip() or "default"
+        config = self._clients.get(normalized_key) or self._clients["default"]
         client_kwargs: dict[str, Any] = {
             "base_url": config.base_url,
             "api_key": config.resolved_api_key(),

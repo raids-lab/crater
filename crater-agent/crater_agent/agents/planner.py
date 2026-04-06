@@ -36,36 +36,60 @@ class PlannerAgent(BaseRoleAgent):
         action_history_summary: str = "",
         continuation: dict | None = None,
         replan_reason: str = "",
+        history_messages: list | None = None,
     ) -> RoleExecutionResult:
         page_summary = page_context or {}
-        capability_summary = self.summarize_capabilities(capabilities)
+        enabled_tools = list((capabilities or {}).get("enabled_tools") or [])
+        surface = dict((capabilities or {}).get("surface") or {})
+        all_tool_names = enabled_tools
+        capability_summary = self.summarize_capabilities(
+            capabilities,
+            allowed_tool_names=all_tool_names,
+            max_tools=12,
+            include_descriptions=True,
+            include_role_policies=False,
+        )
+
+        is_replan = bool(replan_reason)
+        replan_section = f"重规划原因:\n{replan_reason}" if is_replan else "（首次规划）"
 
         result = await self.run_json(
             system_prompt=(
-                "你是 Crater 的 Planner Agent。你负责只读规划。\n"
-                "你可以参考页面上下文、能力摘要、既有证据和可用工具目录来决定调查方案，"
-                "但不得建议或执行任何写操作。\n\n"
+                "你是 Crater 的 Planner Agent。你负责分析用户请求并制定执行计划。\n\n"
+                "你的计划会被 Coordinator 协调者审查，由 Explorer（只读工具收集证据）和 "
+                "Executor（读+写工具执行操作）分别执行。\n\n"
+                "## 规划原则\n"
+                "- 先理解用户到底要什么，再规划步骤\n"
+                "- steps 描述要做什么，不需要关心谁来执行\n"
+                "- 如果已有证据足够回答用户，可以只输出一步「总结回复用户」\n"
+                "- candidate_tools 只能从当前可用工具中选择，不能编造工具名\n"
+                "- 优先遵守当前页面范围：普通用户页优先用户/当前账户范围，不要主动规划管理员报告或全局巡检工具\n"
+                "- 只有当页面就是 admin 场景，或用户明确要求全局/集群/所有用户视角时，才考虑管理员级集群工具\n"
+                "- 如果本轮是在追问上一轮回答或质疑上一轮结论，必须结合近期对话上下文，不要脱离上下文重新编例子\n"
+                "- 不要过度规划，Coordinator 会在每步执行后审查进展\n\n"
                 "请输出 JSON 格式：\n"
                 '{\n'
-                '  "goal": "诊断目标（一句话）",\n'
-                '  "steps": ["调查步骤1", "调查步骤2"],\n'
+                '  "goal": "本次目标（一句话）",\n'
+                '  "steps": ["步骤1", "步骤2", ...],\n'
                 '  "candidate_tools": ["tool_name1", "tool_name2"],\n'
                 '  "risk": "low|medium|high",\n'
-                '  "raw_summary": "面向其他 agent 的自然语言摘要"\n'
+                '  "raw_summary": "面向 Coordinator 的自然语言摘要"\n'
                 '}\n\n'
-                "candidate_tools 必须从可用工具中选择。使用中文。"
+                "使用中文。"
             ),
             user_prompt=(
                 f"用户请求:\n{user_message}\n\n"
                 f"当前用户角色:\n{actor_role}\n\n"
                 f"页面上下文:\n{page_summary}\n\n"
+                f"页面边界:\n{surface or {}}\n\n"
                 f"已有证据摘要:\n{evidence_summary or '(empty)'}\n\n"
                 f"已有执行历史摘要:\n{action_history_summary or '(empty)'}\n\n"
                 f"continuation:\n{continuation or {}}\n\n"
-                f"重规划原因:\n{replan_reason or '(none)'}\n\n"
+                f"{replan_section}\n\n"
                 f"能力摘要:\n{capability_summary}\n\n"
                 "请输出结构化 JSON 计划。"
             ),
+            history_messages=history_messages,
         )
 
         plan_output = self._parse_plan_output(result)

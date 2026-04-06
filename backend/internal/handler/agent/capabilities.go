@@ -39,16 +39,11 @@ var agentUserTools = []string{
 var agentAdminTools = []string{
 	agentToolGetClusterHealth,
 	agentToolGetClusterReport,
-	agentToolGetAdminOpsReport,
 	agentToolGetNodeDetail,
 	agentToolListClusterJobs,
 	agentToolListClusterNodes,
 	toolBatchStopJobs,
-	toolGetLatestAuditReport,
-	toolListAuditItems,
-	toolMarkAuditHandled,
 	toolNotifyJobOwner,
-	toolSaveAuditReport,
 }
 
 var agentConfirmToolSet = map[string]struct{}{

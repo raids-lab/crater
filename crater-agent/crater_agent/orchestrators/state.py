@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from crater_agent.orchestrators.artifacts import GoalArtifact
+
 
 @dataclass
 class MultiAgentUsageSummary:
@@ -17,7 +19,6 @@ class MultiAgentUsageSummary:
     read_tool_calls: int = 0
     write_tool_calls: int = 0
     evidence_items: int = 0
-    verification_calls: int = 0
 
     @property
     def total_tokens(self) -> int:
@@ -32,12 +33,11 @@ class MultiAgentUsageSummary:
             "read_tool_calls": self.read_tool_calls,
             "write_tool_calls": self.write_tool_calls,
             "evidence_items": self.evidence_items,
-            "verification_calls": self.verification_calls,
             "total_tokens": self.total_tokens,
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any] | None) -> "MultiAgentUsageSummary":
+    def from_dict(cls, payload: dict[str, Any] | None) -> MultiAgentUsageSummary:
         if not isinstance(payload, dict):
             return cls()
         return cls(
@@ -48,97 +48,6 @@ class MultiAgentUsageSummary:
             read_tool_calls=int(payload.get("read_tool_calls") or 0),
             write_tool_calls=int(payload.get("write_tool_calls") or 0),
             evidence_items=int(payload.get("evidence_items") or 0),
-            verification_calls=int(payload.get("verification_calls") or 0),
-        )
-
-
-@dataclass
-class MultiAgentRuntimeGuard:
-    """Scenario-specific runtime guard for the multi-agent controller loop."""
-
-    scenario: str = "query"
-    max_loop_iterations: int = 4
-    max_replans: int = 1
-    max_frontier_actions: int = 2
-    max_read_only_explore_rounds: int = 1
-    max_read_tool_calls: int = 3
-    max_evidence_items: int = 4
-    max_verifications: int = 1
-    max_no_progress_rounds: int = 1
-    max_budget_tokens: int = 6000
-    structured_retry_limit: int = 1
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "scenario": self.scenario,
-            "max_loop_iterations": self.max_loop_iterations,
-            "max_replans": self.max_replans,
-            "max_frontier_actions": self.max_frontier_actions,
-            "max_read_only_explore_rounds": self.max_read_only_explore_rounds,
-            "max_read_tool_calls": self.max_read_tool_calls,
-            "max_evidence_items": self.max_evidence_items,
-            "max_verifications": self.max_verifications,
-            "max_no_progress_rounds": self.max_no_progress_rounds,
-            "max_budget_tokens": self.max_budget_tokens,
-            "structured_retry_limit": self.structured_retry_limit,
-        }
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any] | None) -> "MultiAgentRuntimeGuard | None":
-        if not isinstance(payload, dict):
-            return None
-        scenario = str(payload.get("scenario") or "").strip().lower()
-        if not scenario:
-            return None
-        return cls(
-            scenario=scenario,
-            max_loop_iterations=int(payload.get("max_loop_iterations") or 4),
-            max_replans=int(payload.get("max_replans") or 1),
-            max_frontier_actions=int(payload.get("max_frontier_actions") or 2),
-            max_read_only_explore_rounds=int(payload.get("max_read_only_explore_rounds") or 1),
-            max_read_tool_calls=int(payload.get("max_read_tool_calls") or 3),
-            max_evidence_items=int(payload.get("max_evidence_items") or 4),
-            max_verifications=int(payload.get("max_verifications") or 1),
-            max_no_progress_rounds=int(payload.get("max_no_progress_rounds") or 1),
-            max_budget_tokens=int(payload.get("max_budget_tokens") or 6000),
-            structured_retry_limit=int(payload.get("structured_retry_limit") or 1),
-        )
-
-
-@dataclass
-class MultiAgentRoleOutput:
-    """Normalized role output stored in the turn state."""
-
-    agent_id: str
-    agent_role: str
-    summary: str
-    status: str = "completed"
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "agent_id": self.agent_id,
-            "agent_role": self.agent_role,
-            "summary": self.summary,
-            "status": self.status,
-            "metadata": self.metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any] | None) -> "MultiAgentRoleOutput | None":
-        if not isinstance(payload, dict):
-            return None
-        agent_id = str(payload.get("agent_id") or "").strip()
-        agent_role = str(payload.get("agent_role") or "").strip()
-        summary = str(payload.get("summary") or "").strip()
-        if not agent_id or not agent_role:
-            return None
-        return cls(
-            agent_id=agent_id,
-            agent_role=agent_role,
-            summary=summary,
-            status=str(payload.get("status") or "completed").strip() or "completed",
-            metadata=dict(payload.get("metadata") or {}),
         )
 
 
@@ -170,7 +79,7 @@ class MultiAgentActionItem:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any] | None) -> "MultiAgentActionItem | None":
+    def from_dict(cls, payload: dict[str, Any] | None) -> MultiAgentActionItem | None:
         if not isinstance(payload, dict):
             return None
         action_id = str(payload.get("action_id") or "").strip()
@@ -207,42 +116,84 @@ class MultiAgentToolRecord:
 
 
 @dataclass
-class MultiAgentTurnState:
-    """Ephemeral per-turn state for the loop-based multi-agent controller."""
+class MASRuntimeConfig:
+    """Minimal runtime guardrails. No scenario-specific presets."""
+    lead_max_rounds: int = 8
+    subagent_max_iterations: int = 25
+    no_progress_rounds: int = 2
+    tool_timeout_seconds: int = 60
+    max_actions_per_round: int = 4
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "lead_max_rounds": self.lead_max_rounds,
+            "subagent_max_iterations": self.subagent_max_iterations,
+            "no_progress_rounds": self.no_progress_rounds,
+            "tool_timeout_seconds": self.tool_timeout_seconds,
+            "max_actions_per_round": self.max_actions_per_round,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> MASRuntimeConfig:
+        if not isinstance(data, dict):
+            return cls()
+        return cls(
+            lead_max_rounds=int(data.get("lead_max_rounds") or 8),
+            subagent_max_iterations=int(data.get("subagent_max_iterations") or 25),
+            no_progress_rounds=int(data.get("no_progress_rounds") or 2),
+            tool_timeout_seconds=int(data.get("tool_timeout_seconds") or 60),
+            max_actions_per_round=int(data.get("max_actions_per_round") or 4),
+        )
+
+
+@dataclass
+class MASState:
+    """Per-turn state for the Coordinator multi-agent controller."""
 
     session_id: str
     turn_id: str
-    user_message: str
-    actor: dict[str, Any] = field(default_factory=dict)
-    page_context: dict[str, Any] = field(default_factory=dict)
+
+    # Goal (immutable input)
+    goal: GoalArtifact
+
+    # Stage outputs
+    observation: "ObservationArtifact | None" = None
+    plan: "PlanArtifact | None" = None
+    execution: "ExecutionArtifact | None" = None
+
+    # Request context (carried from request)
     capabilities: dict[str, Any] = field(default_factory=dict)
     continuation: dict[str, Any] = field(default_factory=dict)
     history: list[dict[str, Any]] = field(default_factory=list)
     workflow: dict[str, Any] = field(default_factory=dict)
     resume_context: dict[str, Any] = field(default_factory=dict)
-    route: str = "diagnostic"
-    root_agent_id: str = "coordinator-1"
-    plan: MultiAgentRoleOutput | None = None
-    exploration: MultiAgentRoleOutput | None = None
-    execution: MultiAgentRoleOutput | None = None
-    verification: MultiAgentRoleOutput | None = None
+
+    # Runtime
+    runtime_config: MASRuntimeConfig = field(default_factory=MASRuntimeConfig)
+    usage_summary: MultiAgentUsageSummary = field(default_factory=MultiAgentUsageSummary)
+
+    # Flow control
+    loop_round: int = 0
+    no_progress_count: int = 0
+    stop_reason: str = ""  # "completed" | "max_rounds" | "no_progress" | "awaiting_confirmation"
     final_answer: str = ""
-    evidence: list[dict[str, Any]] = field(default_factory=list)
-    tool_records: list[MultiAgentToolRecord] = field(default_factory=list)
+
+    # Actions & evidence tracking
     actions: list[MultiAgentActionItem] = field(default_factory=list)
     action_history: list[dict[str, Any]] = field(default_factory=list)
-    controller_trace: list[dict[str, Any]] = field(default_factory=list)
+    tool_records: list[MultiAgentToolRecord] = field(default_factory=list)
     attempted_tool_signatures: list[str] = field(default_factory=list)
-    loop_iteration: int = 0
-    replan_count: int = 0
-    runtime_scenario: str = ""
-    runtime_guard: MultiAgentRuntimeGuard | None = None
-    usage_summary: MultiAgentUsageSummary = field(default_factory=MultiAgentUsageSummary)
-    stop_reason: str = ""
+    controller_trace: list[dict[str, Any]] = field(default_factory=list)
+
+    # Confirmation
     pending_confirmation: dict[str, Any] | None = None
 
+    # Clarification (from previous turn's final_answer continuation)
+    clarification_context: dict[str, Any] = field(default_factory=dict)
+
     @classmethod
-    def from_request(cls, request: Any) -> "MultiAgentTurnState":
+    def from_request(cls, request: Any) -> MASState:
+        """Build MASState from incoming ChatRequest. GoalArtifact is populated later by IntentRouter."""
         context = dict(request.context or {})
         continuation = dict(context.get("continuation") or {})
         resume_context = dict(continuation.get("resume_after_confirmation") or {})
@@ -251,66 +202,114 @@ class MultiAgentTurnState:
             or continuation.get("workflow")
             or {}
         )
+        actor = dict(context.get("actor") or {})
+        page_context = dict(context.get("page") or {})
+        actor_role = str(actor.get("role") or "user").strip().lower() or "user"
+
+        # Build initial goal (routing will be set by IntentRouter)
+        goal = GoalArtifact(
+            user_message=request.message,
+            original_user_message=str(workflow.get("original_user_message") or "").strip() or request.message,
+            actor_role=actor_role,
+            page_context=page_context,
+        )
+
         state = cls(
             session_id=request.session_id,
             turn_id=request.turn_id,
-            user_message=request.message,
-            actor=dict(context.get("actor") or {}),
-            page_context=dict(context.get("page") or {}),
+            goal=goal,
             capabilities=dict(context.get("capabilities") or {}),
             continuation=continuation,
             history=list(context.get("history") or []),
             workflow=workflow,
             resume_context=resume_context,
+            clarification_context=dict(continuation.get("clarification") or {}),
         )
-        state.route = str(workflow.get("route") or state.route).strip() or "diagnostic"
-        state.plan = MultiAgentRoleOutput.from_dict(workflow.get("plan"))
-        state.exploration = MultiAgentRoleOutput.from_dict(workflow.get("exploration"))
-        state.execution = MultiAgentRoleOutput.from_dict(workflow.get("execution"))
-        state.verification = MultiAgentRoleOutput.from_dict(workflow.get("verification"))
-        state.evidence = list(workflow.get("evidence") or [])
-        state.action_history = list(workflow.get("action_history") or [])
-        state.controller_trace = list(workflow.get("controller_trace") or [])
-        state.attempted_tool_signatures = [
+
+        # Restore from checkpoint if resuming
+        state._restore_from_workflow(workflow)
+
+        return state
+
+    def _restore_from_workflow(self, workflow: dict[str, Any]) -> None:
+        """Restore state from a persisted workflow checkpoint."""
+        if not workflow or not isinstance(workflow, dict):
+            return
+
+        # Restore artifacts
+        from crater_agent.orchestrators.artifacts import (
+            ObservationArtifact,
+            PlanArtifact,
+            ExecutionArtifact,
+            RoutingDecision,
+        )
+        self.observation = ObservationArtifact.from_dict(workflow.get("observation"))
+        self.plan = PlanArtifact.from_dict(workflow.get("plan"))
+        self.execution = ExecutionArtifact.from_dict(workflow.get("execution"))
+
+        routing_data = workflow.get("routing")
+        if routing_data:
+            self.goal.routing = RoutingDecision.from_dict(routing_data)
+
+        # Restore flow control
+        self.loop_round = int(workflow.get("loop_round") or 0)
+        self.no_progress_count = int(workflow.get("no_progress_count") or 0)
+        self.stop_reason = str(workflow.get("stop_reason") or "").strip()
+
+        # Restore runtime config
+        self.runtime_config = MASRuntimeConfig.from_dict(workflow.get("runtime_config"))
+        self.usage_summary = MultiAgentUsageSummary.from_dict(workflow.get("usage_summary"))
+
+        # Restore tracking
+        self.action_history = list(workflow.get("action_history") or [])
+        self.controller_trace = list(workflow.get("controller_trace") or [])
+        self.attempted_tool_signatures = [
             str(item).strip()
             for item in (workflow.get("attempted_tool_signatures") or [])
             if str(item).strip()
         ]
-        state.loop_iteration = int(workflow.get("loop_iteration") or 0)
-        state.replan_count = int(workflow.get("replan_count") or 0)
-        state.runtime_scenario = str(workflow.get("runtime_scenario") or "").strip().lower()
-        state.runtime_guard = MultiAgentRuntimeGuard.from_dict(workflow.get("runtime_guard"))
-        state.usage_summary = MultiAgentUsageSummary.from_dict(workflow.get("usage_summary"))
-        state.stop_reason = str(workflow.get("stop_reason") or "").strip().lower()
-        state.actions = [
-            action
-            for action in (
+        self.actions = [
+            action for action in (
                 MultiAgentActionItem.from_dict(item)
                 for item in (workflow.get("actions") or [])
             )
             if action is not None
         ]
-        return state
 
     @property
     def enabled_tools(self) -> list[str]:
         return list(self.capabilities.get("enabled_tools") or [])
 
-    @property
-    def actor_role(self) -> str:
-        return str((self.actor.get("role") or "user")).strip().lower() or "user"
-
-    @property
-    def original_user_message(self) -> str:
-        workflow_message = str(self.workflow.get("original_user_message") or "").strip()
-        return workflow_message or self.user_message
+    def build_state_view(self, for_role: str) -> "StateView":
+        from crater_agent.orchestrators.artifacts import StateView
+        base = StateView(
+            goal=self.goal,
+            loop_round=self.loop_round,
+            max_rounds=self.runtime_config.lead_max_rounds,
+        )
+        if for_role == "planner":
+            base.observation = self.observation
+        elif for_role == "explorer":
+            base.plan = self.plan
+        elif for_role == "executor":
+            base.observation = self.observation
+            base.plan = self.plan
+        elif for_role == "coordinator":
+            base.observation = self.observation
+            base.plan = self.plan
+            base.execution = self.execution
+            # Include evidence from observation artifact so Coordinator
+            # has access to actual tool results for final summarization
+            if self.observation and self.observation.evidence:
+                base.compact_evidence = list(self.observation.evidence)
+        return base
 
     def recent_history_excerpt(self, *, max_items: int = 6, max_chars: int = 800) -> str:
         if not self.history:
             return ""
         lines: list[str] = []
         for item in self.history[-max_items:]:
-            role = str(item.get("role") or "unknown").strip() or "unknown"
+            role = str(item.get("role") or "unknown").strip()
             content = str(item.get("content") or "").strip()
             if not content:
                 continue
@@ -319,36 +318,38 @@ class MultiAgentTurnState:
             lines.append(f"[{role}] {content}")
         return "\n".join(lines)
 
-    def remember_tool(
+    def recent_history_context(
         self,
         *,
-        agent_id: str,
-        agent_role: str,
-        tool_name: str,
-        tool_args: dict[str, Any],
-        tool_call_id: str,
-        result: dict[str, Any],
-    ) -> None:
+        max_items: int = 12,
+        max_chars_per_item: int = 1200,
+        max_total_chars: int = 6000,
+    ) -> str:
+        if not self.history:
+            return ""
+        selected: list[str] = []
+        total_chars = 0
+        for item in reversed(self.history[-max_items:]):
+            role = str(item.get("role") or "unknown").strip()
+            content = str(item.get("content") or "").strip()
+            if not content:
+                continue
+            if len(content) > max_chars_per_item:
+                content = content[:max_chars_per_item] + "..."
+            line = f"[{role}] {content}"
+            if selected and total_chars + len(line) > max_total_chars:
+                break
+            if not selected and len(line) > max_total_chars:
+                line = line[:max_total_chars] + "..."
+            selected.append(line)
+            total_chars += len(line)
+        return "\n".join(reversed(selected))
+
+    def remember_tool(self, *, agent_id: str, agent_role: str, tool_name: str, tool_args: dict[str, Any], tool_call_id: str, result: dict[str, Any]) -> None:
         self.tool_records.append(
-            MultiAgentToolRecord(
-                agent_id=agent_id,
-                agent_role=agent_role,
-                tool_name=tool_name,
-                tool_args=tool_args,
-                tool_call_id=tool_call_id,
-                result=result,
-            )
+            MultiAgentToolRecord(agent_id=agent_id, agent_role=agent_role, tool_name=tool_name, tool_args=tool_args, tool_call_id=tool_call_id, result=result)
         )
-        self.evidence.append(
-            {
-                "agent_id": agent_id,
-                "agent_role": agent_role,
-                "tool_name": tool_name,
-                "tool_args": tool_args,
-                "result": result,
-            }
-        )
-        self.usage_summary.evidence_items = len(self.evidence)
+        self.usage_summary.evidence_items = len(self.tool_records)
 
     def remember_controller_decision(self, decision: dict[str, Any]) -> None:
         self.controller_trace.append(decision)
@@ -362,35 +363,22 @@ class MultiAgentTurnState:
         self.usage_summary.llm_input_tokens += int(usage.get("input_tokens") or 0)
         self.usage_summary.llm_output_tokens += int(usage.get("output_tokens") or 0)
 
-    def record_action_result(
-        self,
-        *,
-        action: MultiAgentActionItem,
-        result_status: str,
-        result: dict[str, Any] | None,
-        confirmed: bool | None = None,
-    ) -> None:
-        self.action_history.append(
-            {
-                "action_id": action.action_id,
-                "tool_name": action.tool_name,
-                "tool_args": action.tool_args,
-                "title": action.title,
-                "reason": action.reason,
-                "status": result_status,
-                "confirmed": confirmed,
-                "confirm_id": action.confirm_id,
-                "result": result,
-            }
-        )
+    def record_action_result(self, *, action: MultiAgentActionItem, result_status: str, result: dict[str, Any] | None, confirmed: bool | None = None) -> None:
+        self.action_history.append({
+            "action_id": action.action_id,
+            "tool_name": action.tool_name,
+            "tool_args": action.tool_args,
+            "title": action.title,
+            "reason": action.reason,
+            "status": result_status,
+            "confirmed": confirmed,
+            "confirm_id": action.confirm_id,
+            "result": result,
+        })
 
     def action_frontier(self) -> list[MultiAgentActionItem]:
         completed = {item.action_id for item in self.actions if item.status == "completed"}
-        blocked = {
-            item.action_id
-            for item in self.actions
-            if item.status in {"error", "rejected", "skipped"}
-        }
+        blocked = {item.action_id for item in self.actions if item.status in {"error", "rejected", "skipped"}}
         frontier: list[MultiAgentActionItem] = []
         for action in self.actions:
             if action.status != "pending":
@@ -404,21 +392,18 @@ class MultiAgentTurnState:
 
     def build_workflow_checkpoint(self) -> dict[str, Any]:
         return {
-            "version": 2,
-            "original_user_message": self.original_user_message,
-            "route": self.route,
-            "loop_iteration": self.loop_iteration,
-            "replan_count": self.replan_count,
-            "runtime_scenario": self.runtime_scenario,
-            "runtime_guard": self.runtime_guard.to_dict() if self.runtime_guard else None,
+            "version": 3,
+            "original_user_message": self.goal.original_user_message,
+            "routing": self.goal.routing.to_dict(),
+            "observation": self.observation.to_dict() if self.observation else None,
+            "plan": self.plan.to_dict() if self.plan else None,
+            "execution": self.execution.to_dict() if self.execution else None,
+            "loop_round": self.loop_round,
+            "no_progress_count": self.no_progress_count,
+            "runtime_config": self.runtime_config.to_dict(),
             "usage_summary": self.usage_summary.to_dict(),
             "stop_reason": self.stop_reason,
-            "plan": self.plan.to_dict() if self.plan else None,
-            "exploration": self.exploration.to_dict() if self.exploration else None,
-            "execution": self.execution.to_dict() if self.execution else None,
-            "verification": self.verification.to_dict() if self.verification else None,
-            "evidence": list(self.evidence),
-            "actions": [action.to_dict() for action in self.actions],
+            "actions": [a.to_dict() for a in self.actions],
             "action_history": list(self.action_history),
             "controller_trace": list(self.controller_trace),
             "attempted_tool_signatures": list(self.attempted_tool_signatures),
@@ -427,7 +412,6 @@ class MultiAgentTurnState:
     def apply_resume_outcome(self) -> dict[str, Any] | None:
         if not self.resume_context:
             return None
-
         confirm_id = str(self.resume_context.get("confirm_id") or "").strip()
         result_status = str(self.resume_context.get("result_status") or "").strip() or "completed"
         result = self.resume_context.get("result")
@@ -440,7 +424,6 @@ class MultiAgentTurnState:
                     continue
             elif action.status != "awaiting_confirmation":
                 continue
-
             if action.confirm_id == "" and confirm_id:
                 action.confirm_id = confirm_id
             action.result = result
@@ -450,18 +433,11 @@ class MultiAgentTurnState:
                 action.status = "rejected"
             else:
                 action.status = "error"
-
             if not any(
                 str(item.get("confirm_id") or "").strip() == action.confirm_id and action.confirm_id
                 for item in self.action_history
             ):
-                self.record_action_result(
-                    action=action,
-                    result_status=action.status,
-                    result=result,
-                    confirmed=self.resume_context.get("confirmed"),
-                )
-
+                self.record_action_result(action=action, result_status=action.status, result=result, confirmed=self.resume_context.get("confirmed"))
             return {
                 "action_id": action.action_id,
                 "tool_name": action.tool_name,

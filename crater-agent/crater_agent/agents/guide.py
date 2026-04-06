@@ -14,7 +14,12 @@ class GuideAgent(BaseRoleAgent):
         capabilities: dict | None = None,
         actor_role: str = "user",
     ) -> RoleExecutionResult:
-        capability_summary = self.summarize_capabilities(capabilities)
+        capability_summary = self.summarize_capabilities(
+            capabilities,
+            max_tools=8,
+            include_descriptions=True,
+            include_role_policies=False,
+        )
         audience = "管理员" if actor_role == "admin" else "普通用户"
         summary = await self.run_text(
             system_prompt=(

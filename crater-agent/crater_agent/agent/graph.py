@@ -117,7 +117,7 @@ def _compact_messages_for_retry(messages: list[Any]) -> list[Any]:
 
 def create_llm() -> ChatOpenAI:
     """Create the default single-agent LLM instance."""
-    return ModelClientFactory().create(purpose="default", orchestration_mode="single_agent")
+    return ModelClientFactory().create("default")
 
 
 def create_agent_graph(

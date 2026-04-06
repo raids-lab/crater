@@ -145,7 +145,7 @@ export interface AgentChatRequest {
     jobName?: string
     jobStatus?: string
     nodeName?: string
-    entryPoint?: 'default' | 'node_analysis' | 'ops_report'
+    entryPoint?: 'default' | 'node_analysis'
   }
   clientContext?: {
     locale?: string
@@ -251,7 +251,7 @@ export function connectAgentChat(
     jobName?: string
     jobStatus?: string
     nodeName?: string
-    entryPoint?: 'default' | 'node_analysis' | 'ops_report'
+    entryPoint?: 'default' | 'node_analysis'
   },
   orchestrationMode: 'single_agent' | 'multi_agent',
   clientContext: { locale?: string; timezone?: string } | undefined,

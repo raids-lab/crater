@@ -11,6 +11,54 @@ logger = logging.getLogger(__name__)
 
 
 class ExecutorAgent(BaseRoleAgent):
+    def build_tool_loop_prompts(
+        self,
+        *,
+        user_message: str,
+        page_context: dict,
+        plan_summary: str,
+        evidence_summary: str,
+        compact_evidence: list[dict],
+        action_intent: str | None,
+        selected_job_name: str | None,
+        requested_scope: str,
+        action_history: list[dict],
+        pending_actions: list[dict],
+        enabled_tools: list[str],
+    ) -> tuple[str, str]:
+        allowed_tools = sorted(set(enabled_tools))
+        visible_tools = allowed_tools[:10]
+        hidden_tool_count = max(0, len(allowed_tools) - len(visible_tools))
+        system_prompt = (
+            "你是 Crater 的 Executor Agent。你的职责是根据用户请求和现有证据，直接推进下一步工具执行。\n"
+            "你可以连续多轮调用工具，并且每拿到一次工具结果，都要继续基于结果判断下一步。\n"
+            "如果需要进一步确认目标对象，可以先调用只读工具；如果用户已经明确要求操作，可以调用写工具。\n"
+            "当你认为无需再调用工具时，请直接给出中文执行总结。\n\n"
+            f"可用工具共 {len(allowed_tools)} 个；当前聚焦: {', '.join(visible_tools) or '(empty)'}"
+            + (f"；其余 {hidden_tool_count} 个暂不展开" if hidden_tool_count > 0 else "")
+            + "\n\n"
+            "执行要求：\n"
+            "- 纯查询/诊断请求不要擅自执行写操作。\n"
+            "- 写操作前应确保目标对象明确；如果不明确，先补最小只读核验。\n"
+            "- 如果工具返回需要用户确认，你应停止继续调用，等待系统接管确认流程。\n"
+            "- 避免重复调用相同参数的工具，除非世界状态明显变化。\n"
+        )
+        user_prompt = (
+            f"用户请求:\n{user_message}\n\n"
+            f"页面上下文:\n{page_context}\n\n"
+            f"规划摘要:\n{plan_summary or '(empty)'}\n\n"
+            f"Explorer 证据摘要:\n{evidence_summary or '(empty)'}\n\n"
+            f"紧凑证据:\n{compact_evidence}\n\n"
+            f"结构化意图:\n"
+            f"- action_intent={action_intent}\n"
+            f"- selected_job_name={selected_job_name}\n"
+            f"- requested_scope={requested_scope}\n\n"
+            f"已有执行历史:\n{action_history or []}\n\n"
+            f"待执行动作:\n{pending_actions or []}\n\n"
+            "请直接推进执行；若需要工具就调用工具，否则直接总结。"
+        )
+        return system_prompt, user_prompt
+
     async def decide_actions_with_llm(
         self,
         *,
@@ -25,6 +73,7 @@ class ExecutorAgent(BaseRoleAgent):
         action_history: list[dict],
         pending_actions: list[dict],
         enabled_tools: list[str],
+        history_messages: list | None = None,
     ) -> list[dict]:
         """Use LLM to decide whether write actions are needed, and if so, which ones."""
         write_tools = sorted({t for t in enabled_tools if t in CONFIRM_TOOL_NAMES})
@@ -72,6 +121,7 @@ class ExecutorAgent(BaseRoleAgent):
                 f"待执行动作:\n{pending_actions or []}\n\n"
                 "请输出下一批写操作计划。"
             ),
+            history_messages=history_messages,
         )
 
         return self._parse_action_plan(result, write_tools)
@@ -134,6 +184,7 @@ class ExecutorAgent(BaseRoleAgent):
         user_message: str,
         plan_summary: str,
         action_result: dict | None,
+        history_messages: list | None = None,
     ) -> RoleExecutionResult:
         if not action_result:
             return RoleExecutionResult(summary="无需执行写操作，继续进入验证。", metadata={})
@@ -149,5 +200,6 @@ class ExecutorAgent(BaseRoleAgent):
                 f"执行结果:\n{action_result}\n\n"
                 "请给出执行阶段的简短总结。"
             ),
+            history_messages=history_messages,
         )
         return RoleExecutionResult(summary=summary or "已完成执行阶段总结。")

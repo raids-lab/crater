@@ -14,7 +14,12 @@ class GeneralPurposeAgent(BaseRoleAgent):
         capabilities: dict | None = None,
         actor_role: str = "user",
     ) -> RoleExecutionResult:
-        capability_summary = self.summarize_capabilities(capabilities)
+        capability_summary = self.summarize_capabilities(
+            capabilities,
+            max_tools=6,
+            include_descriptions=True,
+            include_role_policies=False,
+        )
         summary = await self.run_text(
             system_prompt=(
                 "你是 Crater 的 General Purpose Agent。"
