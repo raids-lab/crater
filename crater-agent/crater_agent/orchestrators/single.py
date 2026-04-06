@@ -8,6 +8,7 @@ from typing import Any, AsyncIterator
 from langchain_core.messages import AIMessage, HumanMessage
 
 from crater_agent.agent.graph import create_agent_graph
+from crater_agent.config import settings
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.memory.session import build_history_messages
 from crater_agent.report_utils import build_pipeline_report_payload
@@ -40,7 +41,11 @@ class SingleAgentOrchestrator:
         }
         history = context.get("history", [])
         if history:
-            initial_state["messages"] = build_history_messages(history=history) + initial_state["messages"]
+            initial_state["messages"] = build_history_messages(
+                history=history,
+                max_tokens=settings.history_max_tokens,
+                tool_result_max_chars=160,
+            ) + initial_state["messages"]
 
         yield {
             "event": "agent_run_started",
@@ -64,7 +69,7 @@ class SingleAgentOrchestrator:
                         "agentId": "single-agent",
                         "agentRole": "single_agent",
                         "status": "running",
-                        "summary": "主 Agent 思考中",
+                        "summary": "Agent 思考中",
                     },
                 }
                 continue

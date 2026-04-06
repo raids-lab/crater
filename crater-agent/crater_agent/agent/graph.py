@@ -11,12 +11,14 @@ No fixed workflow or intent classification — pure ReAct.
 from __future__ import annotations
 
 import json
+import logging
 import time
 from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
+from openai import BadRequestError
 
 from crater_agent.agent.prompts import build_system_prompt
 from crater_agent.agent.state import CraterAgentState
@@ -25,6 +27,8 @@ from crater_agent.llm.client import ModelClientFactory
 from crater_agent.skills.loader import load_all_skills
 from crater_agent.tools.definitions import ALL_TOOLS
 from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
+
+logger = logging.getLogger(__name__)
 
 
 def _truncate_text(value: str, max_chars: int = 2400) -> str:
@@ -51,17 +55,64 @@ def _build_tool_observation(tool_name: str, result: dict[str, Any]) -> str:
             error_payload["status_code"] = result["status_code"]
         if isinstance(result.get("result"), dict):
             error_payload["result"] = result["result"]
-        return _truncate_text(json.dumps(error_payload, ensure_ascii=False), max_chars=2000)
+        return _truncate_text(json.dumps(error_payload, ensure_ascii=False), max_chars=1200)
 
     result_content = result.get("result", result.get("message", ""))
     if isinstance(result_content, dict):
         compact = dict(result_content)
         if tool_name == "get_job_logs" and isinstance(compact.get("log"), str):
-            compact["log"] = _truncate_text(compact["log"], max_chars=1600)
+            compact["log"] = _truncate_text(compact["log"], max_chars=1000)
             compact["note"] = "日志内容已截断，只保留部分片段供推理使用"
-        return _truncate_text(json.dumps(compact, ensure_ascii=False), max_chars=2600)
+        return _truncate_text(json.dumps(compact, ensure_ascii=False), max_chars=1400)
 
-    return _truncate_text(str(result_content), max_chars=2600)
+    return _truncate_text(str(result_content), max_chars=1400)
+
+
+def _is_context_limit_error(exc: Exception) -> bool:
+    message = str(exc or "")
+    return (
+        "exceed_context_size_error" in message
+        or "available context size" in message
+        or "maximum context length" in message
+    )
+
+
+def _compact_message(message: Any) -> Any:
+    if isinstance(message, SystemMessage):
+        return SystemMessage(content=_truncate_text(str(message.content or ""), max_chars=1600))
+    if isinstance(message, HumanMessage):
+        return HumanMessage(content=_truncate_text(str(message.content or ""), max_chars=600))
+    if isinstance(message, ToolMessage):
+        return ToolMessage(
+            content=_truncate_text(str(message.content or ""), max_chars=800),
+            tool_call_id=getattr(message, "tool_call_id", "unknown"),
+        )
+    if isinstance(message, AIMessage):
+        return AIMessage(
+            content=_truncate_text(str(message.content or ""), max_chars=600),
+            tool_calls=list(getattr(message, "tool_calls", []) or []),
+            additional_kwargs=dict(getattr(message, "additional_kwargs", {}) or {}),
+            response_metadata=dict(getattr(message, "response_metadata", {}) or {}),
+        )
+    return message
+
+
+def _compact_messages_for_retry(messages: list[Any]) -> list[Any]:
+    if not messages:
+        return messages
+
+    system_message = messages[0] if isinstance(messages[0], SystemMessage) else None
+    body = list(messages[1:] if system_message else messages)
+    tail = body[-6:]
+    last_human = next((msg for msg in reversed(body) if isinstance(msg, HumanMessage)), None)
+
+    compacted: list[Any] = []
+    if system_message:
+        compacted.append(_compact_message(system_message))
+    if last_human and last_human not in tail:
+        compacted.append(_compact_message(last_human))
+    compacted.extend(_compact_message(msg) for msg in tail)
+    return compacted
 
 
 def create_llm() -> ChatOpenAI:
@@ -115,7 +166,18 @@ def create_agent_graph(
             )
             messages = [SystemMessage(content=system_prompt)] + list(messages)
 
-        response = await llm_with_tools.ainvoke(messages)
+        try:
+            response = await llm_with_tools.ainvoke(messages)
+        except BadRequestError as exc:
+            if not _is_context_limit_error(exc):
+                raise
+            compact_messages = _compact_messages_for_retry(messages)
+            logger.warning(
+                "Single-agent context limit hit, retrying with compacted messages: %d -> %d",
+                len(messages),
+                len(compact_messages),
+            )
+            response = await llm_with_tools.ainvoke(compact_messages)
 
         # Handle qwen thinking mode: content may be empty, actual reply in reasoning_content
         if not response.content and not response.tool_calls:
