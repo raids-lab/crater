@@ -160,7 +160,7 @@ async def analyze_ops_report_with_llm(
 
     try:
         factory = ModelClientFactory()
-        llm = factory.create(purpose="single_default", orchestration_mode="single_agent")
+        llm = factory.create(purpose="ops_report", orchestration_mode="single_agent")
 
         user_prompt = _build_analysis_prompt(raw_report, previous_report_json)
 
