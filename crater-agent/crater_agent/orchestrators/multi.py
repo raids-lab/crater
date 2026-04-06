@@ -2233,14 +2233,15 @@ class MultiAgentOrchestrator:
         # STEP 6: Finalize
         # =================================================================
         if not state.final_answer:
-            terminal_answer = _build_terminal_action_answer(state)
-            if terminal_answer:
-                state.final_answer = terminal_answer
-            elif state.stop_reason in {"max_rounds", "no_progress"}:
+            if state.stop_reason in {"max_rounds", "no_progress"}:
                 state.final_answer = _build_runtime_fallback_final_answer(state)
             else:
                 # Coordinator LLM synthesizes final answer from all artifacts
                 state_view = state.build_state_view("coordinator")
+                user_prompt = state_view.for_prompt()
+                terminal_answer = _build_terminal_action_answer(state)
+                if terminal_answer:
+                    user_prompt += f"\n\n动作执行摘要:\n{terminal_answer}"
                 try:
                     state.final_answer = await coordinator.run_text(
                         system_prompt=(
@@ -2256,16 +2257,17 @@ class MultiAgentOrchestrator:
                             "- 如果证据不完整（例如只诊断了部分作业），明确告知用户哪些已分析、哪些尚未覆盖\n"
                             "- 如果近期对话里出现过错误结论，本轮必须直接纠正；不要重复沿用旧答案中的作业名或示例"
                         ),
-                        user_prompt=state_view.for_prompt(),
+                        user_prompt=user_prompt,
                         history_messages=history_messages,
                     )
                     record_agent_usage(coordinator)
                 except Exception:
                     logger.exception("Coordinator final summarization failed")
                     state.final_answer = (
-                        state.execution.summary if state.execution
-                        else state.observation.summary if state.observation
-                        else "Agent 执行完成，但生成最终答复时出错。"
+                        terminal_answer
+                        or (state.execution.summary if state.execution
+                            else state.observation.summary if state.observation
+                            else "Agent 执行完成，但生成最终答复时出错。")
                     )
 
         if not state.stop_reason:
