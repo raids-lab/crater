@@ -2010,6 +2010,13 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         toolStatus: nextStatus,
         toolResult: nextToolResult,
       })
+      setConversationItems((prev) =>
+        prev.map((ci) =>
+          ci.kind === 'user' && ci.requestState === 'awaiting_confirmation'
+            ? { ...ci, requestState: 'done' }
+            : ci
+        )
+      )
       startAgentResume(item.confirmId ?? '', result.message ?? fallbackText)
     },
     [resolveConfirmation, startAgentResume, updateTimelineToolEvent, updateToolCallItem]
