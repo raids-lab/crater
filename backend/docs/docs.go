@@ -64,6 +64,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/agent/tools/execute": {
+            "post": {
+                "description": "Routes tool_name to the appropriate internal handler. Write tools return confirmation_required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Execute a named tool (called by the Python Agent service)",
+                "parameters": [
+                    {
+                        "description": "Tool execution request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.ExecuteToolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentToolResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/aiops/chat": {
             "post": {
                 "description": "Chat with AIOps assistant in rule-based mode, optionally with a target job.",
@@ -218,6 +252,347 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/chat": {
+            "post": {
+                "description": "Create or continue an agent chat session; streams SSE events from the Python Agent service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Agent chat (SSE)",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentChatRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/chat/confirm": {
+            "post": {
+                "description": "Called by the frontend after the user confirms or rejects a write operation (e.g., stop_job).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Confirm or reject a write tool operation",
+                "parameters": [
+                    {
+                        "description": "Confirmation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.ConfirmToolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/chat/parameter-update": {
+            "post": {
+                "description": "Allows the frontend to send parameter adjustments (e.g. form field changes) to the agent mid-session.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Forward a parameter update to the Python Agent service",
+                "parameters": [
+                    {
+                        "description": "Parameter update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/chat/resume": {
+            "post": {
+                "description": "Starts a hidden follow-up turn so the agent can explain the execution result.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Resume an agent turn after a confirmation result",
+                "parameters": [
+                    {
+                        "description": "Resume request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentResumeRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/config-summary": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get agent configuration summary for the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "List agent chat sessions for the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Soft delete an agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/messages": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get messages for a specific agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/pin": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Pin or unpin an agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Pin request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentSessionPinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/tool-calls": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get tool calls for a specific agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/turns": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get turns for a specific agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/turns/{turnId}/events": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get run events for a specific agent turn",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Turn ID (UUID)",
+                        "name": "turnId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     }
                 }
@@ -2052,6 +2427,128 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "排空节点失败",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/operation-logs": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取操作日志列表，支持分页和筛选",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OperationLog"
+                ],
+                "summary": "获取操作日志列表",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "页码",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "操作类型",
+                        "name": "operation_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "操作人",
+                        "name": "operator",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "操作对象",
+                        "name": "target",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "模糊搜索关键词",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "开始时间，格式例如：2024-01-02T15:04:05Z",
+                        "name": "start_time",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "结束时间，格式例如：2024-01-02T15:04:05Z",
+                        "name": "end_time",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除所有操作日志记录，仅用于测试/调试场景",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OperationLog"
+                ],
+                "summary": "清空操作日志",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -9708,6 +10205,20 @@ const docTemplate = `{
                 "NotSpecified"
             ]
         },
+        "github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_operations.OperationLogResp"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-any": {
             "type": "object",
             "properties": {
@@ -9716,9 +10227,6 @@ const docTemplate = `{
                 },
                 "data": {},
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9737,9 +10245,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9756,9 +10261,6 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9777,9 +10279,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9796,9 +10295,6 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9817,9 +10313,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9837,9 +10330,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9853,9 +10343,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9871,8 +10358,19 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
                 },
-                "msgKey": {
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp"
+                },
+                "msg": {
                     "type": "string"
                 }
             }
@@ -9888,9 +10386,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9904,9 +10399,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9922,9 +10414,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9938,9 +10427,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.AuthModeResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9956,9 +10442,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -9972,9 +10455,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.CheckResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -9990,9 +10470,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10006,9 +10483,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.DiagnosisResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10024,9 +10498,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10040,9 +10511,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.HealthOverviewResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10058,9 +10526,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10074,9 +10539,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.LLMConfigResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10092,9 +10554,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10108,9 +10567,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.ModelDownloadResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10126,9 +10582,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10142,9 +10595,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.ProjectCreateResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10160,9 +10610,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10176,9 +10623,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.TokenReq"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10194,9 +10638,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10211,8 +10652,33 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
                 },
-                "msgKey": {
+                "data": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentConfigSummary"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentToolResponse"
+                },
+                "msg": {
                     "type": "string"
                 }
             }
@@ -10228,9 +10694,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10244,9 +10707,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_tool.PodIngressResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10262,9 +10722,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -10278,9 +10735,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_tool.PodNodeportResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10296,8 +10750,19 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-map_string_string": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
                 },
-                "msgKey": {
+                "data": {
+                    "$ref": "#/definitions/map_string_string"
+                },
+                "msg": {
                     "type": "string"
                 }
             }
@@ -10312,9 +10777,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -10899,6 +11361,12 @@ const docTemplate = `{
                 },
                 "enableNormalRegister": {
                     "type": "boolean"
+                },
+                "ldapAlias": {
+                    "type": "string"
+                },
+                "ldapHelp": {
+                    "type": "string"
                 }
             }
         },
@@ -11970,6 +12438,252 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_agent.AgentChatRequest": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "clientContext": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "orchestrationMode": {
+                    "type": "string"
+                },
+                "pageContext": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentConfigSummary": {
+            "type": "object",
+            "properties": {
+                "availableModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "defaultOrchestrationMode": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentInternalContext": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentResumeRequest": {
+            "type": "object",
+            "required": [
+                "confirmId"
+            ],
+            "properties": {
+                "confirmId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentSessionPinRequest": {
+            "type": "object",
+            "properties": {
+                "pinned": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolConfirmation": {
+            "type": "object",
+            "properties": {
+                "confirm_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "form": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentToolForm"
+                },
+                "interaction": {
+                    "type": "string"
+                },
+                "risk_level": {
+                    "type": "string"
+                },
+                "tool_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolField": {
+            "type": "object",
+            "properties": {
+                "defaultValue": {},
+                "description": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_agent.AgentToolFieldOption"
+                    }
+                },
+                "placeholder": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolFieldOption": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolForm": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_agent.AgentToolField"
+                    }
+                },
+                "submitLabel": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolResponse": {
+            "type": "object",
+            "properties": {
+                "confirmation": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentToolConfirmation"
+                },
+                "latency_ms": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tool_call_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.ConfirmToolRequest": {
+            "type": "object",
+            "required": [
+                "confirmId"
+            ],
+            "properties": {
+                "confirmId": {
+                    "type": "string"
+                },
+                "confirmed": {
+                    "type": "boolean"
+                },
+                "payload": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "internal_handler_agent.ExecuteToolRequest": {
+            "type": "object",
+            "required": [
+                "session_id",
+                "tool_args",
+                "tool_name"
+            ],
+            "properties": {
+                "agent_id": {
+                    "type": "string"
+                },
+                "agent_role": {
+                    "type": "string"
+                },
+                "internal_context": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentInternalContext"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "tool_args": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "tool_call_id": {
+                    "type": "string"
+                },
+                "tool_name": {
+                    "type": "string"
+                },
+                "turn_id": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_image.ChangeImagePublicStatusRequest": {
             "type": "object",
             "required": [
@@ -12169,6 +12883,41 @@ const docTemplate = `{
                 },
                 "taskType": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
+                }
+            }
+        },
+        "internal_handler_operations.OperationLogResp": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object"
+                },
+                "error_message": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operation_type": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "operator_role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -12521,6 +13270,12 @@ const docTemplate = `{
                         }
                     ]
                 }
+            }
+        },
+        "map_string_string": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
             }
         },
         "resource.Quantity": {

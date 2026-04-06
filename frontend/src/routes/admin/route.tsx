@@ -11,6 +11,7 @@ import {
   FolderIcon,
   GpuIcon,
   LayoutDashboard,
+  ScrollText,
   ServerIcon,
   SettingsIcon,
   Sparkles,
@@ -183,6 +184,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.approvalOrder'),
           url: '/admin/more/orders',
           icon: ClipboardCheckIcon,
+        },
+        {
+          title: t('navigation.operationLogs', { defaultValue: '操作日志' }),
+          url: '/admin/operation-logs',
+          icon: ScrollText,
         },
         {
           title: t('navigation.aboutCrater'),

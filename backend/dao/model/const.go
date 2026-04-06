@@ -102,3 +102,28 @@ const (
 )
 
 //go:generate stringer -type=Role,Status,AccessMode,JobStatus,ImageTaskType,WorkerType,ImageSourceType,AlertType -output=const_string.go
+
+type FilePermission int
+
+const (
+	_ FilePermission = iota
+	NotAllowed
+	ReadOnly
+	ReadWrite
+)
+
+const (
+	DefaultFolderPerm = 0755
+	RWXFolderPerm     = 0777
+)
+
+const (
+	UserPath         = "user"
+	PublicPath       = "public"
+	AccountPath      = "account"
+	AdminUserPath    = "admin-user"
+	AdminPublicPath  = "admin-public"
+	AdminAccountPath = "admin-account"
+	ModelPrefix      = "crater-model"
+	DatasetPrefix    = "crater-dataset"
+)

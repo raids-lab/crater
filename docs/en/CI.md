@@ -40,7 +40,7 @@ Crater's CI process is divided into four main categories based on different buil
 
 This section introduces the CI configuration for Crater's frontend and backend.
 
-It should be noted that the storage service (storage-server) is located in the `storage` directory under the main repository, and its CI configuration is also included in this section. The storage service adopts the same CI pattern as the backend and is planned to be merged into the backend in the future.
+It should be noted that the storage service (`storage-server`) is now built from the `backend` module (entrypoint: `backend/cmd/storage-server/main.go`), and its CI configuration is included in this section as an independent workflow.
 
 ### Overview
 
@@ -613,4 +613,3 @@ Helm Chart uses Semantic Versioning to manage version numbers, with version numb
 The PR check stage enforces version number updates, ensuring each Chart change has a corresponding version number update. This helps users track Chart change history and select appropriate versions when upgrading.
 
 When Charts are published, version numbers are pushed to GHCR as tags. Users can install specific Chart versions through version numbers. The cleanup mechanism keeps at most 10 Chart versions, ensuring users can access historical versions while controlling storage space.
-

@@ -413,14 +413,21 @@ definitions:
     - ServiceSshdNotFound
     - ServiceError
     - NotSpecified
+  github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_operations.OperationLogResp'
+        type: array
+      total:
+        type: integer
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-any:
     properties:
       code:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data: {}
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod:
@@ -433,8 +440,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_AccountResp:
     properties:
@@ -445,8 +450,6 @@ definitions:
           $ref: '#/definitions/internal_handler.AccountResp'
         type: array
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp:
@@ -459,8 +462,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat:
     properties:
@@ -471,8 +472,6 @@ definitions:
           $ref: '#/definitions/internal_handler.FailureStat'
         type: array
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo:
@@ -485,8 +484,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
     properties:
@@ -498,8 +495,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
@@ -508,8 +503,6 @@ definitions:
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp:
@@ -520,7 +513,14 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
       msg:
         type: string
-      msgKey:
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp
+  : properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
+      msg:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
@@ -531,8 +531,6 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_GPUInfo:
     properties:
@@ -541,8 +539,6 @@ definitions:
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
@@ -553,8 +549,6 @@ definitions:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp:
     properties:
@@ -563,8 +557,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.AuthModeResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse:
@@ -575,8 +567,6 @@ definitions:
         $ref: '#/definitions/internal_handler.ChatResponse'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp:
     properties:
@@ -585,8 +575,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.CheckResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DeleteProjectResp:
@@ -597,8 +585,6 @@ definitions:
         $ref: '#/definitions/internal_handler.DeleteProjectResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp:
     properties:
@@ -607,8 +593,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.DiagnosisResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_GpuAnalysisStatusResp:
@@ -619,8 +603,6 @@ definitions:
         $ref: '#/definitions/internal_handler.GpuAnalysisStatusResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp:
     properties:
@@ -629,8 +611,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.HealthOverviewResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobContextResp:
@@ -641,8 +621,6 @@ definitions:
         $ref: '#/definitions/internal_handler.JobContextResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp:
     properties:
@@ -651,8 +629,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.LLMConfigResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp:
@@ -663,8 +639,6 @@ definitions:
         $ref: '#/definitions/internal_handler.LoginResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
     properties:
@@ -673,8 +647,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.ModelDownloadResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark:
@@ -685,8 +657,6 @@ definitions:
         $ref: '#/definitions/internal_handler.NodeMark'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
     properties:
@@ -695,8 +665,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.ProjectCreateResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp:
@@ -707,8 +675,6 @@ definitions:
         $ref: '#/definitions/internal_handler.PutUserInProjectResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TokenReq:
     properties:
@@ -717,8 +683,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.TokenReq'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TriggerAllJobsAnalysisResponse:
@@ -729,8 +693,6 @@ definitions:
         $ref: '#/definitions/internal_handler.TriggerAllJobsAnalysisResponse'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserDetailResp:
     properties:
@@ -740,7 +702,23 @@ definitions:
         $ref: '#/definitions/internal_handler.UserDetailResp'
       msg:
         type: string
-      msgKey:
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler_agent.AgentConfigSummary'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler_agent.AgentToolResponse'
+      msg:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress:
@@ -751,8 +729,6 @@ definitions:
         $ref: '#/definitions/internal_handler_tool.PodIngress'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngressResp:
     properties:
@@ -761,8 +737,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler_tool.PodIngressResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeport:
@@ -773,8 +747,6 @@ definitions:
         $ref: '#/definitions/internal_handler_tool.PodNodeport'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeportResp:
     properties:
@@ -783,8 +755,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler_tool.PodNodeportResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp:
@@ -795,7 +765,14 @@ definitions:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
       msg:
         type: string
-      msgKey:
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-map_string_string:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/map_string_string'
+      msg:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-string:
@@ -805,8 +782,6 @@ definitions:
       data:
         type: string
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_util.VolumeMount:
@@ -1196,6 +1171,10 @@ definitions:
         type: boolean
       enableNormalRegister:
         type: boolean
+      ldapAlias:
+        type: string
+      ldapHelp:
+        type: string
     type: object
   internal_handler.ChatRequest:
     properties:
@@ -1903,6 +1882,167 @@ definitions:
     - datasetID
     - userID
     type: object
+  internal_handler_agent.AgentChatRequest:
+    properties:
+      clientContext:
+        items:
+          type: integer
+        type: array
+      message:
+        type: string
+      orchestrationMode:
+        type: string
+      pageContext:
+        items:
+          type: integer
+        type: array
+      requestId:
+        type: string
+      sessionId:
+        type: string
+    required:
+    - message
+    type: object
+  internal_handler_agent.AgentConfigSummary:
+    properties:
+      availableModes:
+        items:
+          type: string
+        type: array
+      defaultOrchestrationMode:
+        type: string
+    type: object
+  internal_handler_agent.AgentInternalContext:
+    properties:
+      account_name:
+        type: string
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  internal_handler_agent.AgentResumeRequest:
+    properties:
+      confirmId:
+        type: string
+    required:
+    - confirmId
+    type: object
+  internal_handler_agent.AgentSessionPinRequest:
+    properties:
+      pinned:
+        type: boolean
+    type: object
+  internal_handler_agent.AgentToolConfirmation:
+    properties:
+      confirm_id:
+        type: string
+      description:
+        type: string
+      form:
+        $ref: '#/definitions/internal_handler_agent.AgentToolForm'
+      interaction:
+        type: string
+      risk_level:
+        type: string
+      tool_name:
+        type: string
+    type: object
+  internal_handler_agent.AgentToolField:
+    properties:
+      defaultValue: {}
+      description:
+        type: string
+      key:
+        type: string
+      label:
+        type: string
+      options:
+        items:
+          $ref: '#/definitions/internal_handler_agent.AgentToolFieldOption'
+        type: array
+      placeholder:
+        type: string
+      required:
+        type: boolean
+      type:
+        type: string
+    type: object
+  internal_handler_agent.AgentToolFieldOption:
+    properties:
+      label:
+        type: string
+      value:
+        type: string
+    type: object
+  internal_handler_agent.AgentToolForm:
+    properties:
+      description:
+        type: string
+      fields:
+        items:
+          $ref: '#/definitions/internal_handler_agent.AgentToolField'
+        type: array
+      submitLabel:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_handler_agent.AgentToolResponse:
+    properties:
+      confirmation:
+        $ref: '#/definitions/internal_handler_agent.AgentToolConfirmation'
+      latency_ms:
+        type: integer
+      message:
+        type: string
+      result:
+        items:
+          type: integer
+        type: array
+      status:
+        type: string
+      tool_call_id:
+        type: string
+    type: object
+  internal_handler_agent.ConfirmToolRequest:
+    properties:
+      confirmId:
+        type: string
+      confirmed:
+        type: boolean
+      payload:
+        items:
+          type: integer
+        type: array
+    required:
+    - confirmId
+    type: object
+  internal_handler_agent.ExecuteToolRequest:
+    properties:
+      agent_id:
+        type: string
+      agent_role:
+        type: string
+      internal_context:
+        $ref: '#/definitions/internal_handler_agent.AgentInternalContext'
+      session_id:
+        type: string
+      tool_args:
+        items:
+          type: integer
+        type: array
+      tool_call_id:
+        type: string
+      tool_name:
+        type: string
+      turn_id:
+        type: string
+    required:
+    - session_id
+    - tool_args
+    - tool_name
+    type: object
   internal_handler_image.ChangeImagePublicStatusRequest:
     properties:
       id:
@@ -2035,6 +2175,29 @@ definitions:
         type: array
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
+    type: object
+  internal_handler_operations.OperationLogResp:
+    properties:
+      created_at:
+        type: string
+      details:
+        type: object
+      error_message:
+        type: string
+      id:
+        type: integer
+      operation_type:
+        type: string
+      operator:
+        type: string
+      operator_role:
+        type: string
+      status:
+        type: string
+      target:
+        type: string
+      updated_at:
+        type: string
     type: object
   internal_handler_tool.PodIngress:
     properties:
@@ -2310,6 +2473,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/v1.MicroTime'
         description: Time of the last occurrence observed
+    type: object
+  map_string_string:
+    additionalProperties:
+      type: string
     type: object
   resource.Quantity:
     properties:
@@ -2985,6 +3152,29 @@ paths:
       summary: 获取节点Pod信息（管理员）
       tags:
       - Node
+  /api/agent/tools/execute:
+    post:
+      consumes:
+      - application/json
+      description: Routes tool_name to the appropriate internal handler. Write tools
+        return confirmation_required.
+      parameters:
+      - description: Tool execution request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.ExecuteToolRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler_agent.AgentToolResponse'
+      summary: Execute a named tool (called by the Python Agent service)
+      tags:
+      - agent
   /api/v1/admin/aiops/chat:
     post:
       consumes:
@@ -3091,6 +3281,231 @@ paths:
       summary: Get top failure types (admin)
       tags:
       - diagnostics
+  /api/v1/agent/chat:
+    post:
+      consumes:
+      - application/json
+      description: Create or continue an agent chat session; streams SSE events from
+        the Python Agent service.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.AgentChatRequest'
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Agent chat (SSE)
+      tags:
+      - agent
+  /api/v1/agent/chat/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Called by the frontend after the user confirms or rejects a write
+        operation (e.g., stop_job).
+      parameters:
+      - description: Confirmation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.ConfirmToolRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse'
+      summary: Confirm or reject a write tool operation
+      tags:
+      - agent
+  /api/v1/agent/chat/parameter-update:
+    post:
+      consumes:
+      - application/json
+      description: Allows the frontend to send parameter adjustments (e.g. form field
+        changes) to the agent mid-session.
+      parameters:
+      - description: Parameter update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Forward a parameter update to the Python Agent service
+      tags:
+      - agent
+  /api/v1/agent/chat/resume:
+    post:
+      consumes:
+      - application/json
+      description: Starts a hidden follow-up turn so the agent can explain the execution
+        result.
+      parameters:
+      - description: Resume request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.AgentResumeRequest'
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Resume an agent turn after a confirmation result
+      tags:
+      - agent
+  /api/v1/agent/config-summary:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary'
+      summary: Get agent configuration summary for the current user
+      tags:
+      - agent
+  /api/v1/agent/sessions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: List agent chat sessions for the current user
+      tags:
+      - agent
+  /api/v1/agent/sessions/{sessionId}:
+    delete:
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      summary: Soft delete an agent session
+      tags:
+      - agent
+  /api/v1/agent/sessions/{sessionId}/messages:
+    get:
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Get messages for a specific agent session
+      tags:
+      - agent
+  /api/v1/agent/sessions/{sessionId}/pin:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      - description: Pin request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.AgentSessionPinRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Pin or unpin an agent session
+      tags:
+      - agent
+  /api/v1/agent/sessions/{sessionId}/tool-calls:
+    get:
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Get tool calls for a specific agent session
+      tags:
+      - agent
+  /api/v1/agent/sessions/{sessionId}/turns:
+    get:
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Get turns for a specific agent session
+      tags:
+      - agent
+  /api/v1/agent/turns/{turnId}/events:
+    get:
+      parameters:
+      - description: Turn ID (UUID)
+        in: path
+        name: turnId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Get run events for a specific agent turn
+      tags:
+      - agent
   /api/v1/aiops/chat:
     post:
       consumes:
@@ -4261,6 +4676,84 @@ paths:
       summary: 排空节点
       tags:
       - admin
+  /v1/admin/operation-logs:
+    delete:
+      consumes:
+      - application/json
+      description: 删除所有操作日志记录，仅用于测试/调试场景
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_string'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 清空操作日志
+      tags:
+      - OperationLog
+    get:
+      consumes:
+      - application/json
+      description: 获取操作日志列表，支持分页和筛选
+      parameters:
+      - description: 页码
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      - description: 操作类型
+        in: query
+        name: operation_type
+        type: string
+      - description: 操作人
+        in: query
+        name: operator
+        type: string
+      - description: 操作对象
+        in: query
+        name: target
+        type: string
+      - description: 模糊搜索关键词
+        in: query
+        name: search
+        type: string
+      - description: 开始时间，格式例如：2024-01-02T15:04:05Z
+        in: query
+        name: start_time
+        type: string
+      - description: 结束时间，格式例如：2024-01-02T15:04:05Z
+        in: query
+        name: end_time
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取操作日志列表
+      tags:
+      - OperationLog
   /v1/admin/projects:
     get:
       consumes:

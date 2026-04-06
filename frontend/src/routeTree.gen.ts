@@ -35,6 +35,7 @@ import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
 import { Route as PortalAiopsIndexRouteImport } from './routes/portal/aiops/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminStatisticsIndexRouteImport } from './routes/admin/statistics/index'
+import { Route as AdminOperationLogsIndexRouteImport } from './routes/admin/operation-logs/index'
 import { Route as AdminMoreIndexRouteImport } from './routes/admin/more/index'
 import { Route as AdminJobsIndexRouteImport } from './routes/admin/jobs/index'
 import { Route as AdminGpuAnalysisIndexRouteImport } from './routes/admin/gpu-analysis/index'
@@ -238,6 +239,11 @@ const AdminStatisticsIndexRoute = AdminStatisticsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminStatisticsRouteRoute,
+} as any)
+const AdminOperationLogsIndexRoute = AdminOperationLogsIndexRouteImport.update({
+  id: '/operation-logs/',
+  path: '/operation-logs/',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminMoreIndexRoute = AdminMoreIndexRouteImport.update({
   id: '/more/',
@@ -673,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
   '/admin/jobs/': typeof AdminJobsIndexRoute
   '/admin/more': typeof AdminMoreIndexRoute
+  '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/portal/aiops/': typeof PortalAiopsIndexRoute
@@ -751,6 +758,7 @@ export interface FileRoutesByTo {
   '/admin/gpu-analysis': typeof AdminGpuAnalysisIndexRoute
   '/admin/jobs': typeof AdminJobsIndexRoute
   '/admin/more': typeof AdminMoreIndexRoute
+  '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics': typeof AdminStatisticsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
   '/portal/aiops': typeof PortalAiopsIndexRoute
@@ -853,6 +861,7 @@ export interface FileRoutesById {
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
   '/admin/jobs/': typeof AdminJobsIndexRoute
   '/admin/more/': typeof AdminMoreIndexRoute
+  '/admin/operation-logs/': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/portal/aiops/': typeof PortalAiopsIndexRoute
@@ -956,6 +965,7 @@ export interface FileRouteTypes {
     | '/admin/gpu-analysis/'
     | '/admin/jobs/'
     | '/admin/more'
+    | '/admin/operation-logs'
     | '/admin/statistics/'
     | '/admin/users/'
     | '/portal/aiops/'
@@ -1034,6 +1044,7 @@ export interface FileRouteTypes {
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/more'
+    | '/admin/operation-logs'
     | '/admin/statistics'
     | '/admin/users'
     | '/portal/aiops'
@@ -1135,6 +1146,7 @@ export interface FileRouteTypes {
     | '/admin/gpu-analysis/'
     | '/admin/jobs/'
     | '/admin/more/'
+    | '/admin/operation-logs/'
     | '/admin/statistics/'
     | '/admin/users/'
     | '/portal/aiops/'
@@ -1370,6 +1382,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/statistics/'
       preLoaderRoute: typeof AdminStatisticsIndexRouteImport
       parentRoute: typeof AdminStatisticsRouteRoute
+    }
+    '/admin/operation-logs/': {
+      id: '/admin/operation-logs/'
+      path: '/operation-logs'
+      fullPath: '/admin/operation-logs'
+      preLoaderRoute: typeof AdminOperationLogsIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/more/': {
       id: '/admin/more/'
@@ -2054,6 +2073,7 @@ interface AdminRouteRouteChildren {
   AdminMoreVersionRoute: typeof AdminMoreVersionRoute
   AdminCronjobsIndexRoute: typeof AdminCronjobsIndexRoute
   AdminMoreIndexRoute: typeof AdminMoreIndexRoute
+  AdminOperationLogsIndexRoute: typeof AdminOperationLogsIndexRoute
   AdminEnvImagesIndexRoute: typeof AdminEnvImagesIndexRoute
 }
 
@@ -2077,6 +2097,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMoreVersionRoute: AdminMoreVersionRoute,
   AdminCronjobsIndexRoute: AdminCronjobsIndexRoute,
   AdminMoreIndexRoute: AdminMoreIndexRoute,
+  AdminOperationLogsIndexRoute: AdminOperationLogsIndexRoute,
   AdminEnvImagesIndexRoute: AdminEnvImagesIndexRoute,
 }
 

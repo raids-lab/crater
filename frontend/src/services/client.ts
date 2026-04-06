@@ -1,4 +1,3 @@
-import i18n from '@/i18n'
 import { getDefaultStore } from 'jotai'
 import ky, { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'
@@ -159,9 +158,6 @@ export async function apiRequest<T>(
         })
 
         // 根据错误码进行不同处理
-        const localizedMessage = errorResponse.msgKey
-          ? i18n.t(errorResponse.msgKey, { defaultValue: errorResponse.msg || errorMessage })
-          : errorResponse.msg
         switch (errorResponse.code) {
           case ERROR_TOKEN_INVALID:
             break
@@ -175,7 +171,7 @@ export async function apiRequest<T>(
             showErrorToast('不再支持这种登陆方式，直接通过 LDAP 登录即可')
             break
           case ERROR_INVALID_REQUEST:
-            showErrorToast(`请求参数有误, ${localizedMessage}`)
+            showErrorToast(`请求参数有误, ${errorResponse.msg}`)
             break
           case ERROR_USER_NOT_ALLOWED:
             showErrorToast('用户激活成功，但无关联账户，请联系平台管理员')
@@ -185,14 +181,14 @@ export async function apiRequest<T>(
             break
           case ERROR_SERVICE_ERROR:
             // 确保后端返回了 msg
-            showErrorToast(localizedMessage || '后端服务异常')
+            showErrorToast(errorResponse.msg || '后端服务异常')
             break
           case ERROR_NOT_SPECIFIED:
             showErrorToast(error)
             break
           default:
             toast.error(errorMessage, {
-              description: localizedMessage || errorMessage || '请求失败，请稍后重试',
+              description: errorResponse.msg || errorMessage || '请求失败，请稍后重试',
             })
             break
         }
@@ -242,8 +238,8 @@ export const apiV1Get = <T>(url: string, options?: Options) =>
 /**
  * POST 请求的辅助函数
  */
-export const apiV1Post = <T>(url: string, json?: unknown, options?: Options) =>
-  apiRequest(() => apiClient.post(`v1/${url}`, { json, ...options }).json<T>())
+export const apiV1Post = <T>(url: string, json?: unknown) =>
+  apiRequest(() => apiClient.post(`v1/${url}`, { json }).json<T>())
 
 /**
  * PUT 请求的辅助函数

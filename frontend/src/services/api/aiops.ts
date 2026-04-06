@@ -1,4 +1,4 @@
-import { apiV1Get, apiV1Post } from '@/services/client'
+import { apiClient, apiRequest, apiV1Get, apiV1Post } from '@/services/client'
 
 import type { IResponse } from '../types'
 
@@ -82,10 +82,16 @@ export const apiChatMessage = (request: IChatRequest) =>
   apiV1Post<IResponse<IChatResponse>>('aiops/chat', request)
 
 export const apiChatMessageLLM = (request: IChatRequest) =>
-  apiV1Post<IResponse<IChatResponse>>('aiops/llmchat', request, { timeout: 150000 })
+  apiRequest(() =>
+    apiClient.post('v1/aiops/llmchat', { json: request, timeout: 150000 }).json<IResponse<IChatResponse>>()
+  )
 
 export const apiAdminChatMessage = (request: IChatRequest) =>
   apiV1Post<IResponse<IChatResponse>>('admin/aiops/chat', request)
 
 export const apiAdminChatMessageLLM = (request: IChatRequest) =>
-  apiV1Post<IResponse<IChatResponse>>('admin/aiops/llmchat', request, { timeout: 150000 })
+  apiRequest(() =>
+    apiClient
+      .post('v1/admin/aiops/llmchat', { json: request, timeout: 150000 })
+      .json<IResponse<IChatResponse>>()
+  )

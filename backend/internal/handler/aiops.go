@@ -27,10 +27,6 @@ import (
 const (
 	chatResponseTypeText       = "text"
 	chatResponseTypeSuggestion = "suggestion"
-	errorKeyAIOPsJobNotOwned   = "aiops.error.jobNotOwned"
-	errorKeyAIOPsJobNotFound   = "aiops.error.jobNotFound"
-	errorKeyAIOPsJobAmbiguous  = "aiops.error.jobAmbiguous"
-	errorKeyAIOPsQueryFailed   = "aiops.error.queryFailed"
 
 	diagnosisConfidenceHigh = "high"
 	diagnosisSeverityError  = "error"
@@ -51,9 +47,8 @@ const (
 var errJobNotOwned = errors.New("job does not belong to requester")
 
 type apiErrorDetails struct {
-	Code   resputil.ErrorCode `json:"code"`
-	MsgKey string             `json:"msgKey"`
-	Msg    string             `json:"msg"`
+	Code resputil.ErrorCode `json:"code"`
+	Msg  string             `json:"msg"`
 }
 
 //nolint:gochecknoinits // Handler managers are registered during package initialization.
@@ -452,7 +447,7 @@ func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 	job, err := mgr.findJobByInput(c, token, uri.JobName)
 	if err != nil {
 		lookupErr := classifyAIOPsLookupError(err)
-		resputil.ErrorWithKey(c, lookupErr.MsgKey, lookupErr.Msg, lookupErr.Code)
+		resputil.Error(c, lookupErr.Msg, lookupErr.Code)
 		return
 	}
 
@@ -685,30 +680,26 @@ type ChatResponse struct {
 func classifyAIOPsLookupError(err error) apiErrorDetails {
 	if errors.Is(err, errJobNotOwned) {
 		return apiErrorDetails{
-			Code:   resputil.UserNotAllowed,
-			MsgKey: errorKeyAIOPsJobNotOwned,
-			Msg:    "The requested job does not belong to your account.",
+			Code: resputil.UserNotAllowed,
+			Msg:  "The requested job does not belong to your account.",
 		}
 	}
 	errMsg := err.Error()
 	if strings.Contains(errMsg, "未找到作业") {
 		return apiErrorDetails{
-			Code:   resputil.BusinessLogicError,
-			MsgKey: errorKeyAIOPsJobNotFound,
-			Msg:    "Job not found.",
+			Code: resputil.BusinessLogicError,
+			Msg:  "Job not found.",
 		}
 	}
 	if strings.Contains(errMsg, "无法唯一定位") {
 		return apiErrorDetails{
-			Code:   resputil.BusinessLogicError,
-			MsgKey: errorKeyAIOPsJobAmbiguous,
-			Msg:    "Multiple jobs matched the input. Please use a unique jobName.",
+			Code: resputil.BusinessLogicError,
+			Msg:  "Multiple jobs matched the input. Please use a unique jobName.",
 		}
 	}
 	return apiErrorDetails{
-		Code:   resputil.ServiceError,
-		MsgKey: errorKeyAIOPsQueryFailed,
-		Msg:    "Failed to query job information.",
+		Code: resputil.ServiceError,
+		Msg:  "Failed to query job information.",
 	}
 }
 

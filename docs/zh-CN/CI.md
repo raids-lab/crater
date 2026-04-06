@@ -40,7 +40,7 @@ Crater 的 CI 流程根据构建目标的不同，划分为四个主要类别，
 
 本章节介绍 Crater 前端与后端的 CI 配置。
 
-需要特别说明的是，存储服务（storage-server）位于主仓库下的 `storage` 目录，其 CI 配置也包含在本章节中。存储服务采用与后端相同的 CI 模式，未来计划将其合并至后端。
+需要特别说明的是，存储服务（storage-server）现已并入 `backend` 模块（入口为 `backend/cmd/storage-server/main.go`），其 CI 仍以独立 workflow 形式保留在本章节中。
 
 ### 概述
 

@@ -548,6 +548,11 @@ backendConfig:
   auth:
     ldap:
       enable: true
+      # フロントエンドで表示される LDAP ログイン方式の短い別名（例: "ACT"）
+      # 実際の画面ではその後ろに「ログイン」「統一認証」などの文言が付与されるため、短くわかりやすい名前を推奨します。
+      alias: "ACT"
+      # LDAP ログイン方式にマウスカーソルを合わせたときに表示されるヘルプテキスト
+      help: "学内の統一認証アカウントでログインしてください。システムは LDAP からユーザー情報を自動同期します。"
       server:
         address: "ldap://ldap.example.com:389"
         bindDN: "cn=admin,dc=example,dc=org"
@@ -558,12 +563,36 @@ backendConfig:
         displayName: "cn"
         email: "mail"
       uid:
-        source: "default"  # 選択肢: "default", "ldap", "external"
+        # LDAP 認証時の UID/GID 取得ポリシー。選択肢:
+        # - "default" / "none": コンテナ内 UID/GID として常に 1001:1001 を使用（ほとんどのクラスターで推奨）
+        # - "ldap": 指定した LDAP 属性から UID/GID を直接取得
+        # - "rid": objectSid / primaryGroupID から RID を解析し、
+        #          UID = RID(objectSid) + offset、GID = RID(primaryGroupID) + offset として計算（AD + Winbind 互換シナリオ向け）
+        # - "external": 学内のレガシー UID サービスを利用（後方互換のためにのみ存在し、非推奨）
+        source: "default"
+        # source が "rid" の場合、Winbind と同様に:
+        # - objectSid から UID を計算
+        # - primaryGroupID から GID を計算
+        rid:
+          offset: 10000
+          # バイナリ SID を格納する LDAP 属性名。Windows AD では通常 "objectSid" を使用します。
+          sidAttribute: "objectSid"
+          # 主グループの RID を格納する LDAP 属性名。Windows AD では通常 "primaryGroupID" を使用します。
+          pgidAttribute: "primaryGroupID"
+        # source が "ldap" の場合、UID/GID に対応する LDAP 属性名を指定
+        ldapAttribute:
+          uid: "uidNumber"
+          gid: "gidNumber"
 ```
 
 LDAP を有効にする場合、フィールドマッピングの `username` と `displayName` はサーバー設定と同様に必須項目となります。プラットフォームは前者をユーザー名として、後者を表示名として使用します。LDAP に対応する属性がない場合は、`username` と同じ LDAP 属性にマッピングするように指定できます。
 
-`uid.source` 設定項目は、LDAP 属性または外部マイクロサービスからユーザーの UID/GID を取得することを可能にします。この機能は、主に ACT ラボ内部で長年使用されてきたストレージシステムの権限との互換性を保つために設計されました。外部クラスターの場合、`uid.source` を **`default`** に設定することを強く推奨します。プラットフォームはすべてのユーザーに対して **1001** をコンテナ内の実行 ID として統一的に使用します。これは、ほとんどの標準的な NFS やローカルストレージ環境において最もシンプルな選択肢です。
+`uid.source` 設定項目は、ユーザーが**初回ログイン時に自動登録**される際、コンテナ内でどの UID/GID を使用するかを決定します:
+
+- `default` / `none` の場合、すべてのユーザーに対してコンテナ内 UID/GID として **1001:1001** が使用されます。これは標準的な NFS やローカルストレージ環境において最もシンプルで、推奨される設定です。
+- `ldap` の場合、`uid.ldapAttribute.uid/gid` で指定した LDAP 属性から UID/GID を直接読み取ります。すでに POSIX 関連属性を持つディレクトリ環境に適しています。
+- `rid` の場合、ユーザーの `objectSid` から RID を解析し、`uid.rid.offset` に基づいて UID/GID（例: UID = RID + 10000）を計算します。これは Winbind を利用する既存ストレージシステムとの ID 整合性を保つためのモードです。
+- `external` の場合、学内のレガシー UID サービスを通じて UID/GID を取得します。この方式は過去のデプロイとの互換性のためにのみ残されており、現在は **非推奨** です。
 
 詳細な説明については、[設定ガイド](/jp/docs/admin/chart/) ドキュメントを参照してください。
 

@@ -319,6 +319,12 @@ backendConfig:
     ldap:
       # -- Enable LDAP authentication
       enable: false
+      # -- Short display name for this auth method in the UI (e.g., "ACT", "SJTU")
+      # The UI will append suffixes like "登录" or "统一身份认证", so keep it brief.
+      alias: ""
+      # -- Description shown in a tooltip for this auth method
+      # If empty, frontend shows a default description.
+      help: ""
       # -- LDAP server connection settings
       server:
         # -- LDAP server address
@@ -339,8 +345,30 @@ backendConfig:
         email: "mail"
       # -- UID/GID acquisition settings
       uid:
-        # -- Source of UID/GID ("default", "ldap", "external")
+        # -- Source of UID/GID ("default", "ldap", "rid", "external")
+        # - "rid" (Recommended): Calculates UID/GID from LDAP objectSid using RID + offset.
+        # - "ldap": Fetches UID/GID from specified LDAP attributes.
+        # - "external" (Deprecated): Fetches UID/GID from an external HTTP service.
+        # - "default" / "none": Uses default UID=1001, GID=1001.
         source: "default"
+        # -- RID-based calculation settings (used when source is "rid")
+        rid:
+          # -- Offset for UID/GID calculation (e.g., UID = RID + 10000)
+          offset: 10000
+          # -- LDAP attribute storing the binary SID (defaults to "objectSid")
+          sidAttribute: "objectSid"
+          # -- LDAP attribute storing the primary group RID (defaults to "primaryGroupID")
+          pgidAttribute: "primaryGroupID"
+        # -- LDAP attribute names for UID/GID (used when source is "ldap")
+        ldapAttribute:
+          uid: "uidNumber"
+          gid: "gidNumber"
+        # -- External UID service configuration (Deprecated)
+        # Previously used in lab to query Winbind on a dedicated node for UID/GID.
+        # Use source "rid" instead to compute UID from LDAP objectSid directly.
+        # externalService:
+          # url: "http://uid-server.example.com/get_user_id"
+          # timeout: 5
     # -- Normal login/registration settings
     normal:
       # -- Allow local registration

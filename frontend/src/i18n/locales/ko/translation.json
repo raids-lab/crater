@@ -818,6 +818,7 @@
   "nodeManagement.statusFilter": "상태",
   "nodeManagement.submit": "제출",
   "nodeManagement.title": "노드 관리",
+  "operationLog.type.DeleteJob": "작업 삭제",
   "otherOptionsFormCard.accordionTitle": "기타 옵션",
   "otherOptionsFormCard.nodeNameDescription": "노드 이름 (여유 자원 조회를 통해 확인 가능)",
   "otherOptionsFormCard.receiveStatusNotifications": "상태 알림 수신",

@@ -50,21 +50,6 @@ Generate the url of main project
 {{- end -}}
 
 {{/*
-Generate storage server configuration from backendConfig
-*/}}
-{{- define "crater.storageServerConfig" -}}
-postgres:
-  {{ toYaml .Values.backendConfig.postgres | nindent 2 | trim }}
-userSpacePrefix: {{ .Values.backendConfig.storage.prefix.user }}
-accountSpacePrefix: {{ .Values.backendConfig.storage.prefix.account }}
-publicSpacePrefix: {{ .Values.backendConfig.storage.prefix.public }}
-auth:
-  token:
-    accessTokenSecret: {{ .Values.backendConfig.auth.token.accessTokenSecret }}
-    refreshTokenSecret: {{ .Values.backendConfig.auth.token.refreshTokenSecret }}
-{{- end -}}
-
-{{/*
 Generate dockerconfigjson
 */}}
 {{- define "dockerconfigjson" -}}
@@ -93,4 +78,27 @@ Generate backend config with images from top-level images section
 {{- $config | toYaml -}}
 {{- end -}}
 
+{{/*
+Generate storage-server specific config with minimum required fields.
+Avoid rendering full backend config into ss-config.
+*/}}
+{{- define "crater.storageServerConfig" -}}
+{{- $backend := .Values.backendConfig -}}
+{{- $config := dict
+  "host" .Values.host
+  "port" $backend.port
+  "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image)
+  "postgres" $backend.postgres
+  "storage" $backend.storage
+  "secrets" $backend.secrets
+  "auth" (dict
+    "token" $backend.auth.token
+    "ldap" (dict "enable" false)
+    "normal" (dict "allowLogin" true "allowRegister" false)
+  )
+  "registry" (dict "enable" false)
+  "smtp" (dict "enable" false)
+-}}
+{{- $config | toYaml -}}
+{{- end -}}
 

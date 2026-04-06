@@ -266,3 +266,21 @@ Git Hooks
 - **`program`**: 主程序入口文件，指向 `backend/cmd/crater/main.go`
 - **配置文件自动查找**：程序在 debug 模式下会自动查找 `./etc/debug-config.yaml`（相对于 `cwd`），**无需**通过 `args` 传递 `--config-file` 参数
 - **`KUBECONFIG`**: 使用后端仓库中的 `kubeconfig` 配置文件连接集群
+
+## Storage Server（已并入 Backend 模块）
+
+存储服务已并入 backend 的 Go 模块，入口为 `cmd/storage-server/main.go`。
+
+常用命令：
+
+```bash
+make run-storage
+make build-storage
+```
+
+运行时环境变量：
+
+- `CRATER_STORAGE_PORT`（优先，回退 `PORT`，默认 `7320`）
+- `CRATER_STORAGE_ROOT`（优先，回退 `ROOTDIR`，默认 `/crater`）
+
+本地调试建议把这些变量写到 `backend/.debug.env`，然后执行 `make run-storage`。

@@ -21,7 +21,6 @@ export interface IResponse<T> {
   data: T
   code: ErrorCode
   msg: string
-  msgKey?: string
 }
 
 export type IErrorResponse = IResponse<never>
@@ -36,4 +35,9 @@ export interface IRefresh {
 export interface IRefreshResponse {
   accessToken: string
   refreshToken: string
+}
+
+export interface IWithPagination<T> {
+  items: T[]
+  total: number
 }

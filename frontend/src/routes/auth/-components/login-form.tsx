@@ -106,6 +106,7 @@ const formSchema = z.object({
 
 interface LoginFormProps {
   authMode: AuthMode
+  ldapAlias?: string
   login: (auth: ILogin) => Promise<IResponse<IAuthResponse>>
   onForgotPasswordClick: () => void
   searchParams: LoginSearch
@@ -113,6 +114,7 @@ interface LoginFormProps {
 
 export function LoginForm({
   authMode,
+  ldapAlias,
   login,
   onForgotPasswordClick,
   searchParams,
@@ -240,6 +242,7 @@ export function LoginForm({
                   <button
                     className="text-muted-foreground p-0 text-sm underline"
                     type="button"
+                    tabIndex={-1}
                     onClick={onForgotPasswordClick}
                   >
                     忘记密码？
@@ -286,7 +289,11 @@ export function LoginForm({
             className="w-full"
             isLoading={status === 'pending'}
           >
-            {authMode === AuthMode.LDAP ? 'LDAP 认证登录' : '登录'}
+            {authMode === AuthMode.LDAP
+              ? ldapAlias
+                ? `${ldapAlias} 登录`
+                : 'LDAP 认证登录'
+              : '登录'}
           </LoadableButton>
         </form>
       </Form>
