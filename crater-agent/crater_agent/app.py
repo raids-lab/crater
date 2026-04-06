@@ -69,7 +69,11 @@ def get_orchestration_mode(context: dict[str, Any]) -> str:
 
 @app.get("/health")
 async def health():
-    default_model = settings.llm_model_name
+    default_model = ""
+    try:
+        default_model = str(settings.get_llm_client_config("default").get("model") or "")
+    except Exception:
+        pass
     try:
         default_model = ModelClientFactory().create(
             purpose="default", orchestration_mode="single_agent"
