@@ -176,7 +176,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 			Annotations: jobAnnotations,
 		},
 		Spec: batch.JobSpec{
-			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(SevenDaySeconds),
 			MinAvailable:            minAvailable,
 			SchedulerName:           VolcanoSchedulerName,
 			Plugins: map[string][]string{

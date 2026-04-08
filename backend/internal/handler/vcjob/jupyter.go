@@ -27,6 +27,7 @@ import (
 
 const (
 	ThreeDaySeconds    int32 = 259200
+	SevenDaySeconds    int32 = 604800
 	IngressLabelPrefix       = "ingress.crater.raids.io/" // Annotation Ingress Key
 	NodePortLabelKey         = "nodeport.crater.raids.io/"
 )

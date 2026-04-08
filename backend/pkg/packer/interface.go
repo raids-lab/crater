@@ -84,7 +84,7 @@ var (
 
 	harborCreditSecretName string = "buildkit-secret"
 
-	JobCleanTime       int32 = 259200
+	JobCleanTime       int32 = 604800
 	BackoffLimitNumber int32 = 0
 	CompletionNumber   int32 = 1
 	ParallelismNumber  int32 = 1
