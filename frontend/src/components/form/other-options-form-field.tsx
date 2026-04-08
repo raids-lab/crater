@@ -15,9 +15,20 @@
  */
 // i18n-processed-v1.1.0
 import { CircleHelpIcon, SettingsIcon } from 'lucide-react'
+import { useState } from 'react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   FormControl,
   FormDescription,
@@ -59,117 +70,156 @@ export function OtherOptionsFormCard<T extends FieldValues>({
 }: OtherOptionsFormCardProps<T>) {
   const { t } = useTranslation()
   const nodeSelectorEnabled = form.watch(nodeSelectorEnablePath)
+  const [cpuPinningConfirmOpen, setCpuPinningConfirmOpen] = useState(false)
 
   return (
-    <AccordionCard
-      cardTitle={t('otherOptionsFormCard.accordionTitle')}
-      icon={SettingsIcon}
-      open={open}
-      setOpen={setOpen}
-    >
-      <div className="mt-3 space-y-3">
-        <FormField
-          control={form.control}
-          name={alertEnabledPath}
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-              <FormLabel className="font-normal">
-                {t('otherOptionsFormCard.receiveStatusNotifications')}
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="mb-0.5 font-semibold">
-                        {t('otherOptionsFormCard.tooltip.receiveEmailNotifications')}
-                      </p>
-                      <p>{t('otherOptionsFormCard.tooltip.notification1')}</p>
-                      <p>{t('otherOptionsFormCard.tooltip.notification2')}</p>
-                      <p>{t('otherOptionsFormCard.tooltip.notification3')}</p>
-                      <p>{t('otherOptionsFormCard.tooltip.notification4')}</p>
-                      <p>{t('otherOptionsFormCard.tooltip.notification5')}</p>
-                      <p>{t('otherOptionsFormCard.tooltip.emailSupport')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </FormLabel>
-              <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-            </FormItem>
+    <>
+      <AccordionCard
+        cardTitle={t('otherOptionsFormCard.accordionTitle')}
+        icon={SettingsIcon}
+        open={open}
+        setOpen={setOpen}
+      >
+        <div className="mt-3 space-y-3">
+          <FormField
+            control={form.control}
+            name={alertEnabledPath}
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormLabel className="font-normal">
+                  {t('otherOptionsFormCard.receiveStatusNotifications')}
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="mb-0.5 font-semibold">
+                          {t('otherOptionsFormCard.tooltip.receiveEmailNotifications')}
+                        </p>
+                        <p>{t('otherOptionsFormCard.tooltip.notification1')}</p>
+                        <p>{t('otherOptionsFormCard.tooltip.notification2')}</p>
+                        <p>{t('otherOptionsFormCard.tooltip.notification3')}</p>
+                        <p>{t('otherOptionsFormCard.tooltip.notification4')}</p>
+                        <p>{t('otherOptionsFormCard.tooltip.notification5')}</p>
+                        <p>{t('otherOptionsFormCard.tooltip.emailSupport')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </FormLabel>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          {cpuPinningEnabledPath && (
+            <FormField
+              control={form.control}
+              name={cpuPinningEnabledPath}
+              render={({ field }) => (
+                <>
+                  <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                    <FormLabel className="font-normal">
+                      {t('otherOptionsFormCard.enableCpuPinning')}
+                      <TooltipProvider delayDuration={100}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t('otherOptionsFormCard.tooltip.cpuPinning')}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          if (checked && !field.value) {
+                            setCpuPinningConfirmOpen(true)
+                            return
+                          }
+
+                          field.onChange(checked)
+                        }}
+                      />
+                    </FormControl>
+                  </FormItem>
+                  <AlertDialog open={cpuPinningConfirmOpen} onOpenChange={setCpuPinningConfirmOpen}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {t('otherOptionsFormCard.cpuPinningConfirm.title')}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t('otherOptionsFormCard.cpuPinningConfirm.description')}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          {t('otherOptionsFormCard.cpuPinningConfirm.cancel')}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            field.onChange(true)
+                          }}
+                        >
+                          {t('otherOptionsFormCard.cpuPinningConfirm.confirm')}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
+            />
           )}
-        />
-        {cpuPinningEnabledPath && (
-          <FormField
-            control={form.control}
-            name={cpuPinningEnabledPath}
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">
-                  {t('otherOptionsFormCard.enableCpuPinning')}
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {t('otherOptionsFormCard.tooltip.cpuPinning')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </FormLabel>
-                <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        )}
-        <div className="space-y-1.5">
-          <FormField
-            control={form.control}
-            name={nodeSelectorEnablePath}
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">
-                  {t('otherOptionsFormCard.specifyWorkNode')}
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {t('otherOptionsFormCard.tooltip.debugPerformanceTesting')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </FormLabel>
-                <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name={nodeSelectorNodeNamePath}
-            render={({ field }) => (
-              <FormItem
-                className={cn({
-                  hidden: !nodeSelectorEnabled,
-                })}
-              >
-                <FormControl>
-                  <Input {...field} className="font-mono" />
-                </FormControl>
-                <FormDescription>{t('otherOptionsFormCard.nodeNameDescription')}</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-y-1.5">
+            <FormField
+              control={form.control}
+              name={nodeSelectorEnablePath}
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                  <FormLabel className="font-normal">
+                    {t('otherOptionsFormCard.specifyWorkNode')}
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t('otherOptionsFormCard.tooltip.debugPerformanceTesting')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={nodeSelectorNodeNamePath}
+              render={({ field }) => (
+                <FormItem
+                  className={cn({
+                    hidden: !nodeSelectorEnabled,
+                  })}
+                >
+                  <FormControl>
+                    <Input {...field} className="font-mono" />
+                  </FormControl>
+                  <FormDescription>{t('otherOptionsFormCard.nodeNameDescription')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
-      </div>
-    </AccordionCard>
+      </AccordionCard>
+    </>
   )
 }
