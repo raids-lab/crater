@@ -15,6 +15,8 @@ import json
 import os
 from typing import Any
 
+_SUPPORTED_CODE_LANGUAGES = frozenset({"python"})
+
 
 def _ddg_search(query: str, max_results: int) -> list[dict[str, Any]]:
     """Synchronous DuckDuckGo search via CAMEL SearchToolkit.
@@ -34,10 +36,12 @@ def _ddg_search(query: str, max_results: int) -> list[dict[str, Any]]:
     if isinstance(raw, str):
         try:
             parsed = json.loads(raw)
-            return parsed if isinstance(parsed, list) else []
+            if isinstance(parsed, list):
+                return parsed
+            raise TypeError(f"SearchToolkit returned JSON non-list: {type(parsed).__name__}")
         except (json.JSONDecodeError, ValueError):
-            return []
-    return []
+            raise TypeError(f"SearchToolkit returned non-JSON string: {raw[:100]!r}")
+    raise TypeError(f"Unexpected result type from SearchToolkit: {type(raw).__name__}")
 
 
 def _run_code_in_thread(
@@ -111,10 +115,17 @@ async def camel_execute_code(
         {"status": "success", "result": {"output": ..., "language": ..., "sandbox": ...}}
         {"status": "error", "error_type": "dependency_missing"|"execution_error", "message": ...}
     """
+    if language not in _SUPPORTED_CODE_LANGUAGES:
+        return {
+            "status": "error",
+            "error_type": "invalid_input",
+            "message": f"Unsupported language: {language!r}. Supported: {sorted(_SUPPORTED_CODE_LANGUAGES)}",
+        }
     resolved_sandbox = sandbox or _default_sandbox()
     try:
-        output = await asyncio.to_thread(
-            _run_code_in_thread, code, language, resolved_sandbox, timeout
+        output = await asyncio.wait_for(
+            asyncio.to_thread(_run_code_in_thread, code, language, resolved_sandbox, timeout),
+            timeout=timeout + 5,
         )
         return {
             "status": "success",
@@ -123,6 +134,12 @@ async def camel_execute_code(
                 "language": language,
                 "sandbox": resolved_sandbox,
             },
+        }
+    except asyncio.TimeoutError:
+        return {
+            "status": "error",
+            "error_type": "execution_error",
+            "message": f"Code execution timed out after {timeout + 5}s",
         }
     except ImportError as exc:
         return {
