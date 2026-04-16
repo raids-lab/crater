@@ -34,6 +34,9 @@ var agentUserTools = []string{
 	agentToolResourceRecommend,
 	agentToolSearchSimilarFail,
 	agentToolStopJob,
+	agentToolK8sGetEvents,
+	agentToolK8sDescribe,
+	agentToolK8sPodLogs,
 }
 
 var agentAdminTools = []string{
@@ -54,9 +57,6 @@ var agentAdminTools = []string{
 	agentToolRuntimeSummary,
 	agentToolK8sListNodes,
 	agentToolK8sListPods,
-	agentToolK8sGetEvents,
-	agentToolK8sDescribe,
-	agentToolK8sPodLogs,
 	agentToolPromQuery,
 	agentToolHarborCheck,
 	agentToolRunOpsScript,
