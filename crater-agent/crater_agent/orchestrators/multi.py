@@ -48,7 +48,7 @@ from crater_agent.tools.definitions import (
     READ_ONLY_TOOL_NAMES,
     is_tool_allowed_for_role,
 )
-from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
+from crater_agent.tools.executor import CompositeToolExecutor, ToolExecutorProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -965,7 +965,7 @@ def _derive_runtime_scenario_from_routing(routing: RoutingDecision) -> str:
 
 class MultiAgentOrchestrator:
     def __init__(self, tool_executor: ToolExecutorProtocol | None = None):
-        self.tool_executor = tool_executor or GoBackendToolExecutor()
+        self.tool_executor = tool_executor or CompositeToolExecutor()
 
     @staticmethod
     def _create_role_llm(model_factory: Any, role: str):

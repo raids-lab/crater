@@ -71,6 +71,7 @@ class LocalToolExecutor:
             "sandbox_read_file": self._handle_sandbox_read_file,
             "get_agent_runtime_summary": self._handle_get_agent_runtime_summary,
             "web_search": self._handle_web_search,
+            "fetch_url": self._handle_fetch_url,
             "k8s_list_nodes": self._handle_k8s_list_nodes,
             "k8s_list_pods": self._handle_k8s_list_pods,
             "k8s_get_events": self._handle_k8s_get_events,
@@ -1039,9 +1040,63 @@ class LocalToolExecutor:
             raise ValueError("web_search requires a non-empty query")
 
         limit = max(1, min(int(tool_args.get("limit") or 5), 20))
+        timeout = max(10, min(int(tool_args.get("timeout_seconds") or 60), 120))
 
         from crater_agent.tools.camel_tools import camel_web_search  # noqa: PLC0415
-        return await camel_web_search(query=query, max_results=limit)
+        return await camel_web_search(query=query, max_results=limit, timeout=timeout)
+
+    async def _handle_fetch_url(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        import re  # noqa: PLC0415
+
+        if not self.runtime.web_search_enabled:
+            raise PermissionError("fetch_url is disabled by runtime config")
+
+        url = str(tool_args.get("url") or "").strip()
+        if not url:
+            raise ValueError("fetch_url requires a non-empty url")
+        if not url.startswith(("https://", "http://")):
+            raise ValueError("fetch_url requires a full URL starting with https:// or http://")
+        if not self.runtime.is_allowed_web_url(url):
+            raise PermissionError(f"fetch_url: domain not in allowedDomains: {url}")
+
+        max_chars = max(200, min(int(tool_args.get("max_chars") or 4000), 16000))
+
+        try:
+            resp = await self.client.get(
+                url,
+                timeout=60,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; crater-agent/1.0)"},
+            )
+        except Exception as exc:
+            return {"status": "error", "error_type": "network", "message": str(exc), "url": url}
+
+        content_type = resp.headers.get("content-type", "")
+        if "json" in content_type:
+            try:
+                return {"status": "success", "url": url, "content_type": "json", "content": resp.json()}
+            except Exception:
+                pass
+
+        body = resp.text
+        # Remove <script>, <style>, <nav>, <header>, <footer> blocks entirely
+        for tag in ("script", "style", "nav", "header", "footer", "aside"):
+            body = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", " ", body, flags=re.DOTALL | re.IGNORECASE)
+        # Strip remaining tags
+        body = re.sub(r"<[^>]+>", " ", body)
+        # Unescape HTML entities and collapse whitespace
+        import html as _html  # noqa: PLC0415
+        body = _html.unescape(body)
+        body = " ".join(body.split())
+
+        return {
+            "status": "ok" if resp.status_code < 400 else "error",
+            "url": url,
+            "status_code": resp.status_code,
+            "content_type": content_type,
+            "content": body[:max_chars],
+            "truncated": len(body) > max_chars,
+        }
+
 
     async def _handle_execute_code(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         code = str(tool_args.get("code") or "").strip()

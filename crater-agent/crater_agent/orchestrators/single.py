@@ -12,12 +12,12 @@ from crater_agent.config import settings
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.memory.session import build_history_messages
 from crater_agent.report_utils import build_pipeline_report_payload
-from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
+from crater_agent.tools.executor import CompositeToolExecutor, ToolExecutorProtocol
 
 
 class SingleAgentOrchestrator:
     def __init__(self, tool_executor: ToolExecutorProtocol | None = None):
-        self.tool_executor = tool_executor or GoBackendToolExecutor()
+        self.tool_executor = tool_executor or CompositeToolExecutor()
 
     async def stream(self, *, request: Any, model_factory: ModelClientFactory) -> AsyncIterator[dict]:
         # Support both:

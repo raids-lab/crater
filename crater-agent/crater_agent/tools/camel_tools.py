@@ -65,16 +65,20 @@ def _run_code_in_thread(
 
 async def camel_web_search(
     query: str,
-    max_results: int = 5,
+    max_results: int = 10,
+    timeout: int = 60,
 ) -> dict[str, Any]:
     """Search using CAMEL's SearchToolkit (DuckDuckGo, no API key required).
 
     Returns:
         {"status": "success", "result": {"query": ..., "results": [...], "source": "duckduckgo", "count": N}}
-        {"status": "error", "error_type": "dependency_missing"|"search_error", "message": ...}
+        {"status": "error", "error_type": "dependency_missing"|"search_error"|"timeout", "message": ...}
     """
     try:
-        results = await asyncio.to_thread(_ddg_search, query, max_results)
+        results = await asyncio.wait_for(
+            asyncio.to_thread(_ddg_search, query, max_results),
+            timeout=timeout,
+        )
         return {
             "status": "success",
             "result": {
@@ -83,6 +87,12 @@ async def camel_web_search(
                 "source": "duckduckgo",
                 "count": len(results),
             },
+        }
+    except asyncio.TimeoutError:
+        return {
+            "status": "error",
+            "error_type": "timeout",
+            "message": f"DuckDuckGo search timed out after {timeout}s",
         }
     except ImportError as exc:
         return {

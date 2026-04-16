@@ -15,7 +15,7 @@ dependencies = [
     "pydantic-settings>=2.0",
     "sse-starlette>=2.0",
     "camel-ai>=0.2.16",
-    "duckduckgo-search>=6.0",
+    "ddgs>=0.1",
 ]
 
 [build-system]

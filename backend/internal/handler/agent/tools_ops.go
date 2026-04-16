@@ -35,7 +35,7 @@ import (
 const (
 	agentOpsAuditMetaKey = "_audit"
 
-	defaultOpsWebSearchTimeoutSeconds = 10
+	defaultOpsWebSearchTimeoutSeconds = 3600
 	defaultOpsScriptTimeoutSeconds    = 300
 	defaultOpsScriptMaxTimeoutSeconds = 1800
 	defaultSandboxGrepMaxMatches      = 50
@@ -1119,12 +1119,28 @@ func isPodReady(pod corev1.Pod) bool {
 	return false
 }
 
+// domainSearchTemplates maps known domains to their native search URL format.
+// Domains not listed fall back to https://{domain}/search/?q={query}.
+var domainSearchTemplates = map[string]string{
+	"huggingface.co":     "https://huggingface.co/models?search=%s",
+	"arxiv.org":          "https://arxiv.org/search/?query=%s&searchtype=all",
+	"paperswithcode.com": "https://paperswithcode.com/search?q_meta=&q_type=&q=%s",
+	"github.com":         "https://github.com/search?q=%s&type=repositories",
+	"pytorch.org":        "https://pytorch.org/search/?q=%s",
+	"kubernetes.io":      "https://kubernetes.io/search/?q=%s",
+	"prometheus.io":      "https://prometheus.io/docs/search/?q=%s",
+}
+
 func buildDefaultWebSearchURLs(query string, domains []string, maxResults int) []string {
 	escaped := url.QueryEscape(query)
 	urls := make([]string, 0, len(domains))
 	for _, domain := range domains {
-		// Use site-native search endpoints as deterministic seeds.
-		urls = append(urls, fmt.Sprintf("https://%s/search/?q=%s", domain, escaped))
+		tmpl, ok := domainSearchTemplates[domain]
+		if ok {
+			urls = append(urls, fmt.Sprintf(tmpl, escaped))
+		} else {
+			urls = append(urls, fmt.Sprintf("https://%s/search/?q=%s", domain, escaped))
+		}
 		if len(urls) >= maxResults {
 			break
 		}

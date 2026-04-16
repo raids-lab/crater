@@ -495,17 +495,29 @@ def diagnose_distributed_job_network(
 def web_search(
     query: str,
     limit: int = 5,
-    urls: Optional[List[str]] = None,
-    timeout_seconds: Optional[int] = None,
 ) -> dict:
-    """检索外部公开文档与公告（由平台白名单域名控制）。
+    """用 DuckDuckGo 检索外部公开信息，返回搜索结果列表（标题、摘要、链接）。
     仅管理员可用。
 
     Args:
         query: 检索关键词
         limit: 最多返回 N 条结果，默认 5
-        urls: 可选，直接指定白名单 URL 列表
-        timeout_seconds: 可选，覆盖默认请求超时
+    """
+    pass
+
+
+@tool
+def fetch_url(
+    url: str,
+    max_chars: int = 4000,
+) -> dict:
+    """抓取指定 URL 的页面正文（去除脚本/样式后的可读文本）。
+    配合 web_search 使用：先搜索拿到链接，再用此工具读取具体内容。
+    仅支持 platform 白名单域名。仅管理员可用。
+
+    Args:
+        url: 要读取的完整 URL（https://...）
+        max_chars: 返回正文的最大字符数，默认 4000
     """
     pass
 
@@ -914,6 +926,7 @@ AUTO_TOOLS = [
     get_node_network_summary,
     diagnose_distributed_job_network,
     web_search,
+    fetch_url,
     sandbox_grep,
     sandbox_list_dir,
     sandbox_read_file,
@@ -975,6 +988,7 @@ ADMIN_ONLY_TOOL_NAMES = {
         get_node_network_summary,
         diagnose_distributed_job_network,
         web_search,
+        fetch_url,
         sandbox_grep,
         sandbox_list_dir,
         sandbox_read_file,

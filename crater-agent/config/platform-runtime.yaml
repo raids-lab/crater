@@ -31,6 +31,7 @@ toolRouting:
     - sandbox_read_file
     - get_agent_runtime_summary
     - web_search
+    - fetch_url
     - k8s_list_nodes
     - k8s_list_pods
     - k8s_get_events
@@ -101,13 +102,76 @@ kubernetes:
 webSearch:
   enabled: true
   allowedDomains:
-    - pytorch.org
-    - docs.nvidia.com
+    # Search engines
+    - bing.com
+    - baidu.com
+    - google.com
+    - duckduckgo.com
+    # AI / ML official
     - huggingface.co
-    - volcano.sh
+    - pytorch.org
+    - tensorflow.org
+    - keras.io
+    - openai.com
+    - anthropic.com
+    - mistral.ai
+    - ollama.com
+    - cohere.com
+    - langchain.com
+    # Research
+    - arxiv.org
+    - paperswithcode.com
+    - semanticscholar.org
+    - openreview.net
+    # Hardware (nvidia.com covers docs/developer/nccl subdomains)
+    - nvidia.com
+    - amd.com
+    - intel.com
+    # Kubernetes / containers
     - kubernetes.io
+    - k8s.io
+    - docker.com
+    - helm.sh
+    - istio.io
+    # Storage
+    - ceph.com
+    - openebs.io
+    - longhorn.io
+    - min.io
+    # Observability
     - prometheus.io
-    - nccl.nvidia.com
+    - grafana.com
+    - opentelemetry.io
+    # Job scheduling
+    - volcano.sh
+    - apache.org
+    # Cloud providers
+    - aws.amazon.com
+    - learn.microsoft.com
+    - azure.microsoft.com
+    - alibabacloud.com
+    - aliyun.com
+    - cloud.tencent.com
+    - huaweicloud.com
+    # Developer community (global)
+    - github.com
+    - stackoverflow.com
+    - medium.com
+    - readthedocs.io
+    - dev.to
+    # Chinese tech community
+    - zhihu.com
+    - csdn.net
+    - cnblogs.com
+    - segmentfault.com
+    - juejin.cn
+    - jianshu.com
+    # Language / framework docs
+    - python.org
+    - go.dev
+    - pypi.org
+    - rust-lang.org
+    - npmjs.com
   seedUrls: []
   timeoutSeconds: 15
   maxContentChars: 4000
