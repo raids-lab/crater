@@ -1667,7 +1667,7 @@ func (mgr *AgentMgr) K8sOwnershipCheck(c *gin.Context) {
 	j := query.Job
 	jobs, err := j.WithContext(c.Request.Context()).
 		Where(j.UserID.Eq(uint(userID))).
-		Select(j.Name).
+		Select(j.JobName).
 		Find()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
@@ -1675,7 +1675,7 @@ func (mgr *AgentMgr) K8sOwnershipCheck(c *gin.Context) {
 	}
 
 	for _, job := range jobs {
-		if job.Name != "" && (strings.HasPrefix(podName, job.Name+"-") || podName == job.Name) {
+		if job.JobName != "" && (strings.HasPrefix(podName, job.JobName+"-") || podName == job.JobName) {
 			c.JSON(http.StatusOK, gin.H{"allowed": true})
 			return
 		}
