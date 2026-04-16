@@ -214,6 +214,14 @@ def create_agent_graph(
         session_id = context.get("session_id", "unknown")
         actor = context.get("actor", {})
         user_id = actor.get("user_id", 0)
+        actor_role = str(actor.get("role") or "user").strip().lower() or "user"
+        page = context.get("page", {}) if isinstance(context.get("page"), dict) else {}
+        route = str(page.get("route") or "").strip().lower()
+        url = str(page.get("url") or "").strip().lower()
+        if actor_role == "user" and (
+            route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url
+        ):
+            actor_role = "admin"
         turn_id = context.get("turn_id")
 
         tool_messages = []
@@ -265,6 +273,7 @@ def create_agent_graph(
                 tool_call_id=tc["id"],
                 agent_id="single-agent",
                 agent_role="single_agent",
+                actor_role=actor_role,
             )
 
             # Record trace

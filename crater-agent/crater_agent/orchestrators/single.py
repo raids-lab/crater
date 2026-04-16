@@ -20,7 +20,13 @@ class SingleAgentOrchestrator:
         self.tool_executor = tool_executor or GoBackendToolExecutor()
 
     async def stream(self, *, request: Any, model_factory: ModelClientFactory) -> AsyncIterator[dict]:
-        llm = model_factory.create("default")
+        # Support both:
+        # - ModelClientFactory.create(client_key: str)
+        # - role-aware factories with create(purpose=..., orchestration_mode=...)
+        try:
+            llm = model_factory.create(purpose="default", orchestration_mode="single_agent")
+        except TypeError:
+            llm = model_factory.create("default")
         graph = create_agent_graph(tool_executor=self.tool_executor, llm=llm)
         context = dict(request.context or {})
         pending_tool_calls: list[dict[str, Any]] = []
@@ -170,13 +176,13 @@ class SingleAgentOrchestrator:
                 output = event["data"].get("output", {})
                 if not pending_tool_calls:
                     continue
-                pending = pending_tool_calls.pop(0)
-                tool_name = pending.get("name", "unknown")
-                tool_call_id = pending.get("id")
                 pending_confirmation = (
                     output.get("pending_confirmation", {}) if isinstance(output, dict) else {}
                 )
                 if pending_confirmation:
+                    pending = pending_tool_calls.pop(0)
+                    tool_name = pending.get("name", "unknown")
+                    tool_call_id = pending.get("id")
                     confirmation = pending_confirmation.get("confirmation", {})
                     emitted_confirmation = True
                     yield {
@@ -195,6 +201,49 @@ class SingleAgentOrchestrator:
                         },
                     }
                     continue
+
+                # Normal tool completion path: the LangGraph node "tools" is a custom
+                # chain, so we won't get "on_tool_end". Emit tool_call_completed from
+                # the node output trace/messages so downstream consumers (eval harness,
+                # UI) can see successful tool calls.
+                if not isinstance(output, dict):
+                    continue
+                tool_trace = [
+                    entry for entry in (output.get("trace") or [])
+                    if isinstance(entry, dict) and entry.get("node") == "tools"
+                ]
+                tool_messages = list(output.get("messages") or [])
+                for idx, entry in enumerate(tool_trace):
+                    pending = pending_tool_calls.pop(0) if pending_tool_calls else {}
+                    tool_name = entry.get("tool_name") or pending.get("name") or "unknown"
+                    tool_call_id = pending.get("id")
+                    tool_args = (
+                        entry.get("tool_args")
+                        if isinstance(entry.get("tool_args"), dict)
+                        else pending.get("args") or {}
+                    )
+                    result_status = str(entry.get("result_status") or "unknown").strip().lower()
+                    is_error = result_status == "error"
+                    raw_output = ""
+                    if idx < len(tool_messages):
+                        raw_output = str(getattr(tool_messages[idx], "content", "") or "")
+                    tool_result_summaries.append(f"{tool_name}: {raw_output[:160]}")
+                    yield {
+                        "event": "tool_call_completed",
+                        "data": {
+                            "turnId": request.turn_id,
+                            "agentId": "single-agent",
+                            "agentRole": "single_agent",
+                            "toolCallId": tool_call_id,
+                            "toolName": tool_name,
+                            "toolArgs": tool_args,
+                            "result": raw_output,
+                            "resultSummary": raw_output[:500],
+                            "status": "error" if is_error else "done",
+                            "isError": is_error,
+                            "latencyMs": entry.get("latency_ms", 0),
+                        },
+                    }
 
         if pending_final_content and not emitted_confirmation:
             emitted_final_answer = True

@@ -44,6 +44,23 @@ func isAgentReadOnlyTool(toolName string) bool {
 		agentToolGetAdminOpsReport,
 		agentToolResourceRecommend,
 		agentToolGetNodeDetail,
+		agentToolListStoragePVCs,
+		agentToolGetPVCDetail,
+		agentToolGetPVCEvents,
+		agentToolInspectJobStorage,
+		agentToolStorageCapacity,
+		agentToolNodeNetwork,
+		agentToolDiagnoseJobNet,
+		agentToolWebSearch,
+		agentToolSandboxGrep,
+		agentToolRuntimeSummary,
+		agentToolK8sListNodes,
+		agentToolK8sListPods,
+		agentToolK8sGetEvents,
+		agentToolK8sDescribe,
+		agentToolK8sPodLogs,
+		agentToolPromQuery,
+		agentToolHarborCheck,
 		toolGetLatestAuditReport,
 		toolListAuditItems,
 		toolSaveAuditReport:
@@ -56,7 +73,52 @@ func isAgentReadOnlyTool(toolName string) bool {
 func isAgentConfirmTool(toolName string) bool {
 	switch toolName {
 	case agentToolResubmitJob, agentToolStopJob, agentToolDeleteJob, agentToolCreateJupyter, agentToolCreateTrain,
+		agentToolRunOpsScript,
+		agentToolCordonNode, agentToolUncordonNode, agentToolDrainNode, agentToolDeletePod, agentToolRestartWL,
 		toolMarkAuditHandled, toolBatchStopJobs, toolNotifyJobOwner:
+		return true
+	default:
+		return false
+	}
+}
+
+func isAgentAdminOnlyTool(toolName string) bool {
+	switch toolName {
+	case agentToolGetClusterHealth,
+		agentToolGetClusterReport,
+		agentToolGetNodeDetail,
+		agentToolListClusterJobs,
+		agentToolListClusterNodes,
+		agentToolGetAdminOpsReport,
+		agentToolListStoragePVCs,
+		agentToolGetPVCDetail,
+		agentToolGetPVCEvents,
+		agentToolInspectJobStorage,
+		agentToolStorageCapacity,
+		agentToolNodeNetwork,
+		agentToolDiagnoseJobNet,
+		agentToolWebSearch,
+		agentToolSandboxGrep,
+		agentToolRunOpsScript,
+		agentToolRuntimeSummary,
+		agentToolK8sListNodes,
+		agentToolK8sListPods,
+		agentToolK8sGetEvents,
+		agentToolK8sDescribe,
+		agentToolK8sPodLogs,
+		agentToolPromQuery,
+		agentToolHarborCheck,
+		agentToolCordonNode,
+		agentToolUncordonNode,
+		agentToolDrainNode,
+		agentToolDeletePod,
+		agentToolRestartWL,
+		toolGetLatestAuditReport,
+		toolListAuditItems,
+		toolSaveAuditReport,
+		toolMarkAuditHandled,
+		toolBatchStopJobs,
+		toolNotifyJobOwner:
 		return true
 	default:
 		return false
@@ -164,9 +226,15 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("failed to resolve tool actor: %v", tokenErr), resputil.NotSpecified)
 		return
 	}
+	if isAgentAdminOnlyTool(req.ToolName) && sessionToken.RolePlatform != model.RoleAdmin {
+		resputil.HTTPError(c, http.StatusForbidden, "admin privileges required for this tool", resputil.TokenInvalid)
+		return
+	}
 
 	switch req.ToolName {
 	case agentToolResubmitJob, agentToolStopJob, agentToolDeleteJob, agentToolCreateJupyter, agentToolCreateTrain,
+		agentToolRunOpsScript,
+		agentToolCordonNode, agentToolUncordonNode, agentToolDrainNode, agentToolDeletePod, agentToolRestartWL,
 		toolMarkAuditHandled, toolBatchStopJobs, toolNotifyJobOwner:
 		start := time.Now()
 		confirmation := mgr.buildToolConfirmation(sessionToken, req.ToolName, req.ToolArgs)
@@ -176,7 +244,7 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 			"interaction": confirmation.Interaction,
 			"form":        confirmation.Form,
 		})
-		toolCall, createErr := mgr.agentService.CreateToolCall(c.Request.Context(), &model.AgentToolCall{
+		toolCallRecord := &model.AgentToolCall{
 			SessionID:    req.SessionID,
 			TurnID:       req.TurnID,
 			ToolCallID:   req.ToolCallID,
@@ -187,7 +255,12 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 			ToolResult:   pendingResult,
 			ResultStatus: agentToolStatusAwaitConfirm,
 			CreatedAt:    time.Now(),
-		})
+		}
+		if req.ToolName == agentToolRunOpsScript {
+			toolCallRecord.ScriptName = extractRunOpsScriptName(req.ToolArgs)
+			toolCallRecord.ExecutionBackend = "k8s_sandbox_job"
+		}
+		toolCall, createErr := mgr.agentService.CreateToolCall(c.Request.Context(), toolCallRecord)
 		if createErr != nil {
 			resputil.Error(c, fmt.Sprintf("failed to create pending tool call: %v", createErr), resputil.NotSpecified)
 			return
@@ -295,6 +368,24 @@ func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req 
 		return mgr.toolGetResourceRecommendation(c, token, req.ToolArgs)
 	case agentToolGetNodeDetail:
 		return mgr.toolGetNodeDetail(c, token, req.ToolArgs)
+	case agentToolListStoragePVCs:
+		return mgr.toolListStoragePVCs(c, token, req.ToolArgs)
+	case agentToolGetPVCDetail:
+		return mgr.toolGetPVCDetail(c, token, req.ToolArgs)
+	case agentToolGetPVCEvents:
+		return mgr.toolGetPVCEvents(c, token, req.ToolArgs)
+	case agentToolInspectJobStorage:
+		return mgr.toolInspectJobStorage(c, token, req.ToolArgs)
+	case agentToolStorageCapacity:
+		return mgr.toolGetStorageCapacityOverview(c, token, req.ToolArgs)
+	case agentToolNodeNetwork:
+		return mgr.toolGetNodeNetworkSummary(c, token, req.ToolArgs)
+	case agentToolDiagnoseJobNet:
+		return mgr.toolDiagnoseDistributedJobNetwork(c, token, req.ToolArgs)
+	case agentToolWebSearch:
+		return mgr.toolWebSearch(c, token, req.ToolArgs)
+	case agentToolSandboxGrep:
+		return mgr.toolSandboxGrep(c, token, req.ToolArgs)
 	case toolGetLatestAuditReport:
 		return mgr.toolGetLatestAuditReport(c, token, req.ToolArgs)
 	case toolListAuditItems:
@@ -318,6 +409,18 @@ func (mgr *AgentMgr) executeWriteTool(c *gin.Context, token util.JWTMessage, too
 		return mgr.toolCreateJupyterJob(c, token, rawArgs)
 	case agentToolCreateTrain:
 		return mgr.toolCreateTrainingJob(c, token, rawArgs)
+	case agentToolRunOpsScript:
+		return mgr.toolRunOpsScript(c, token, rawArgs)
+	case agentToolCordonNode:
+		return mgr.toolCordonNode(c, token, rawArgs)
+	case agentToolUncordonNode:
+		return mgr.toolUncordonNode(c, token, rawArgs)
+	case agentToolDrainNode:
+		return mgr.toolDrainNode(c, token, rawArgs)
+	case agentToolDeletePod:
+		return mgr.toolDeletePod(c, token, rawArgs)
+	case agentToolRestartWL:
+		return mgr.toolRestartWorkload(c, token, rawArgs)
 	case toolMarkAuditHandled:
 		return mgr.toolMarkAuditHandled(c, token, rawArgs)
 	case toolBatchStopJobs:

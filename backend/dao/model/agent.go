@@ -38,22 +38,27 @@ type AgentMessage struct {
 
 // AgentToolCall is an audit log for tool executions, also used for benchmark data collection.
 type AgentToolCall struct {
-	ID            uint           `gorm:"primarykey" json:"id"`
-	SessionID     string         `gorm:"type:uuid;index;not null" json:"sessionId"`
-	TurnID        string         `gorm:"type:uuid;index" json:"turnId,omitempty"`
-	MessageID     *uint          `json:"messageId,omitempty"`
-	ToolCallID    string         `gorm:"type:varchar(128);index" json:"toolCallId,omitempty"`
-	AgentID       string         `gorm:"type:varchar(128);index" json:"agentId,omitempty"`
-	ParentEventID *uint          `gorm:"index" json:"parentEventId,omitempty"`
-	AgentRole     string         `gorm:"type:varchar(32);index" json:"agentRole,omitempty"`
-	ToolName      string         `gorm:"type:varchar(100);not null;index" json:"toolName"`
-	ToolArgs      datatypes.JSON `gorm:"not null" json:"toolArgs"`
-	ToolResult    datatypes.JSON `json:"toolResult,omitempty"`
-	ResultStatus  string         `gorm:"type:varchar(32);not null;default:'success'" json:"resultStatus"`
-	LatencyMs     int            `json:"latencyMs,omitempty"`
-	TokenCount    int            `json:"tokenCount,omitempty"`
-	UserConfirmed *bool          `json:"userConfirmed,omitempty"`
-	CreatedAt     time.Time      `json:"createdAt"`
+	ID                uint           `gorm:"primarykey" json:"id"`
+	SessionID         string         `gorm:"type:uuid;index;not null" json:"sessionId"`
+	TurnID            string         `gorm:"type:uuid;index" json:"turnId,omitempty"`
+	MessageID         *uint          `json:"messageId,omitempty"`
+	ToolCallID        string         `gorm:"type:varchar(128);index" json:"toolCallId,omitempty"`
+	AgentID           string         `gorm:"type:varchar(128);index" json:"agentId,omitempty"`
+	ParentEventID     *uint          `gorm:"index" json:"parentEventId,omitempty"`
+	AgentRole         string         `gorm:"type:varchar(32);index" json:"agentRole,omitempty"`
+	ToolName          string         `gorm:"type:varchar(100);not null;index" json:"toolName"`
+	ToolArgs          datatypes.JSON `gorm:"not null" json:"toolArgs"`
+	ToolResult        datatypes.JSON `json:"toolResult,omitempty"`
+	ResultStatus      string         `gorm:"type:varchar(32);not null;default:'success'" json:"resultStatus"`
+	ExecutionBackend  string         `gorm:"type:varchar(64)" json:"executionBackend,omitempty"`
+	SandboxJobName    string         `gorm:"type:varchar(255);index" json:"sandboxJobName,omitempty"`
+	ScriptName        string         `gorm:"type:varchar(128);index" json:"scriptName,omitempty"`
+	ResultArtifactRef string         `gorm:"type:text" json:"resultArtifactRef,omitempty"`
+	EgressDomains     datatypes.JSON `json:"egressDomains,omitempty"`
+	LatencyMs         int            `json:"latencyMs,omitempty"`
+	TokenCount        int            `json:"tokenCount,omitempty"`
+	UserConfirmed     *bool          `json:"userConfirmed,omitempty"`
+	CreatedAt         time.Time      `json:"createdAt"`
 }
 
 // AgentTurn represents one agent execution turn within a session.

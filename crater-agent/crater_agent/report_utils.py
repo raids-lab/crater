@@ -42,6 +42,8 @@ def _report_title(report_type: str) -> str:
         return "GPU 利用率审计报告"
     if normalized == "admin_ops_report":
         return "智能运维分析报告"
+    if normalized == "storage_audit":
+        return "存储巡检报告"
     return report_type or "分析报告"
 
 
@@ -62,7 +64,9 @@ def _normalize_report_items(raw_items: Any) -> list[dict[str, Any]]:
     return items
 
 
-def build_pipeline_report_payload_from_admin_ops_report(report: dict[str, Any]) -> dict[str, Any] | None:
+def build_pipeline_report_payload_from_admin_ops_report(
+    report: dict[str, Any],
+) -> dict[str, Any] | None:
     if not isinstance(report, dict):
         return None
 
@@ -98,7 +102,9 @@ def build_pipeline_report_payload_from_admin_ops_report(report: dict[str, Any]) 
     }
 
 
-def build_pipeline_report_payload_from_audit_report(report: dict[str, Any]) -> dict[str, Any] | None:
+def build_pipeline_report_payload_from_audit_report(
+    report: dict[str, Any],
+) -> dict[str, Any] | None:
     if not isinstance(report, dict):
         return None
 
@@ -107,7 +113,11 @@ def build_pipeline_report_payload_from_audit_report(report: dict[str, Any]) -> d
     for raw in _as_list(summary.get("recommendations")):
         item = _as_dict(raw)
         action = str(item.get("action") or "建议").strip()
-        severity = {"stop": "critical", "notify": "warning", "downscale": "info"}.get(action, "info")
+        severity = {
+            "stop": "critical",
+            "notify": "warning",
+            "downscale": "info",
+        }.get(action, "info")
         categories.append(
             {
                 "action": action,
@@ -125,7 +135,13 @@ def build_pipeline_report_payload_from_audit_report(report: dict[str, Any]) -> d
         "summary": {
             "total_scanned": _to_int(summary.get("total_scanned")),
             "idle_detected": _to_int(summary.get("idle_detected")),
-            "gpu_waste_hours": round(_to_float(summary.get("gpu_waste_hours") or summary.get("estimated_gpu_waste_hours")), 1),
+            "gpu_waste_hours": round(
+                _to_float(
+                    summary.get("gpu_waste_hours")
+                    or summary.get("estimated_gpu_waste_hours")
+                ),
+                1,
+            ),
         },
         "summary_labels": {
             "total_label": str(summary_labels.get("total_label") or "扫描任务"),

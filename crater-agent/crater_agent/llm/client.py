@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import httpx
 from dotenv import dotenv_values
 from langchain_openai import ChatOpenAI
 
@@ -42,6 +43,7 @@ class ClientConfig:
     max_tokens: int = 4096
     timeout: int = 60
     max_retries: int = 2
+    verify_ssl: bool = True
     headers: dict[str, str] = field(default_factory=dict)
     model_kwargs: dict[str, Any] = field(default_factory=dict)
 
@@ -58,6 +60,7 @@ class ClientConfig:
             max_tokens=int(raw.get("max_tokens") or 4096),
             timeout=int(raw.get("timeout") or 60),
             max_retries=int(raw.get("max_retries") or 2),
+            verify_ssl=bool(raw.get("verify_ssl", True)),
             headers={str(key): str(value) for key, value in (raw.get("headers") or {}).items()},
             model_kwargs={str(key): value for key, value in (raw.get("model_kwargs") or {}).items()},
         )
@@ -128,6 +131,9 @@ class ModelClientFactory:
             "timeout": config.timeout,
             "max_retries": config.max_retries,
         }
+        if not config.verify_ssl:
+            client_kwargs["http_client"] = httpx.Client(verify=False)
+            client_kwargs["http_async_client"] = httpx.AsyncClient(verify=False)
         if config.headers:
             client_kwargs["default_headers"] = config.headers
         if config.model_kwargs:

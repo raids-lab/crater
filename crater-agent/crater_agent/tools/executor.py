@@ -15,7 +15,14 @@ from typing import Any, Protocol
 import httpx
 
 from crater_agent.config import settings
-from crater_agent.tools.definitions import CONFIRM_TOOL_NAMES, is_tool_allowed_for_role
+from crater_agent.runtime.platform import route_for_tool
+from crater_agent.tools.definitions import (
+    CONFIRM_TOOL_NAMES,
+    READ_ONLY_TOOL_NAMES,
+    is_actor_allowed_for_tool,
+    is_tool_allowed_for_role,
+)
+from crater_agent.tools.local_executor import LocalToolExecutor
 
 
 class ToolExecutorProtocol(Protocol):
@@ -31,6 +38,7 @@ class ToolExecutorProtocol(Protocol):
         tool_call_id: str | None = None,
         agent_id: str | None = None,
         agent_role: str | None = None,
+        actor_role: str | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -54,6 +62,7 @@ class GoBackendToolExecutor:
         tool_call_id: str | None = None,
         agent_id: str | None = None,
         agent_role: str | None = None,
+        actor_role: str | None = None,
     ) -> dict[str, Any]:
         """Execute a tool via Go backend HTTP call.
 
@@ -70,6 +79,14 @@ class GoBackendToolExecutor:
                 "error_type": "tool_policy",
                 "retryable": False,
                 "message": f"Tool {tool_name} is not allowed for agent role {normalized_role}",
+                "_latency_ms": int((time.monotonic() - start_time) * 1000),
+            }
+        if not is_actor_allowed_for_tool(actor_role, tool_name):
+            return {
+                "status": "error",
+                "error_type": "tool_policy",
+                "retryable": False,
+                "message": f"Tool {tool_name} requires admin privileges",
                 "_latency_ms": int((time.monotonic() - start_time) * 1000),
             }
         try:
@@ -161,6 +178,144 @@ class GoBackendToolExecutor:
         await self.client.aclose()
 
 
+class LocalCoreToolExecutor(LocalToolExecutor):
+    """Backward-compatible alias for the agent-local core tool executor.
+
+    Older code referenced LocalCoreToolExecutor; the implementation now lives in
+    crater_agent.tools.local_executor.LocalToolExecutor.
+    """
+
+
+class CompositeToolExecutor:
+    """Routes tool executions between local core tools and backend delegation."""
+
+    def __init__(
+        self,
+        *,
+        local: LocalToolExecutor | None = None,
+        backend: ToolExecutorProtocol | None = None,
+        backend_url: str | None = None,
+    ):
+        self.local = local or LocalToolExecutor()
+        self.backend: ToolExecutorProtocol = backend or GoBackendToolExecutor(backend_url=backend_url)
+        self._runtime = self.local.runtime
+
+    async def execute(
+        self,
+        tool_name: str,
+        tool_args: dict[str, Any],
+        session_id: str,
+        user_id: int,
+        turn_id: str | None = None,
+        tool_call_id: str | None = None,
+        agent_id: str | None = None,
+        agent_role: str | None = None,
+        actor_role: str | None = None,
+    ) -> dict[str, Any]:
+        default_target = (
+            "local"
+            if (self._runtime.is_local_core_tool(tool_name) and self.local.supports(tool_name))
+            else "backend"
+        )
+        target = route_for_tool(self._runtime, tool_name, default=default_target)
+        if target == "local":
+            return await self.local.execute(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                session_id=session_id,
+                user_id=user_id,
+                turn_id=turn_id,
+                tool_call_id=tool_call_id,
+                agent_id=agent_id,
+                agent_role=agent_role,
+                actor_role=actor_role,
+            )
+        return await self.backend.execute(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            session_id=session_id,
+            user_id=user_id,
+            turn_id=turn_id,
+            tool_call_id=tool_call_id,
+            agent_id=agent_id,
+            agent_role=agent_role,
+            actor_role=actor_role,
+        )
+
+    async def close(self) -> None:
+        local_close = getattr(self.local, "close", None)
+        if callable(local_close):
+            await local_close()
+        close = getattr(self.backend, "close", None)
+        if callable(close):
+            await close()
+
+
+class ReadOnlyToolExecutor:
+    """Proxy executor that denies any non-read-only tools.
+
+    Intended for eval harness live-readonly mode to prevent accidental mutations.
+    """
+
+    def __init__(self, inner: ToolExecutorProtocol, *, allowed_tools: set[str] | None = None):
+        self.inner = inner
+        self.allowed_tools = allowed_tools or set(READ_ONLY_TOOL_NAMES)
+
+    async def execute(
+        self,
+        tool_name: str,
+        tool_args: dict[str, Any],
+        session_id: str,
+        user_id: int,
+        turn_id: str | None = None,
+        tool_call_id: str | None = None,
+        agent_id: str | None = None,
+        agent_role: str | None = None,
+        actor_role: str | None = None,
+    ) -> dict[str, Any]:
+        start_time = time.monotonic()
+        if tool_name in CONFIRM_TOOL_NAMES:
+            return {
+                "tool_call_id": tool_call_id,
+                "status": "confirmation_required",
+                "confirmation": {
+                    "confirm_id": f"eval_ro_{tool_name}_{tool_call_id or 'pending'}",
+                    "tool_name": tool_name,
+                    "description": (
+                        f"live-readonly evaluation blocks write tool '{tool_name}' "
+                        f"with args {tool_args}"
+                    ),
+                    "interaction": "approval",
+                    "risk_level": "high",
+                },
+                "_latency_ms": int((time.monotonic() - start_time) * 1000),
+            }
+        if tool_name not in self.allowed_tools:
+            return {
+                "status": "error",
+                "error_type": "tool_policy",
+                "retryable": False,
+                "message": f"Tool {tool_name} is not allowed in live-readonly mode",
+                "_latency_ms": int((time.monotonic() - start_time) * 1000),
+            }
+        return await self.inner.execute(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            session_id=session_id,
+            user_id=user_id,
+            turn_id=turn_id,
+            tool_call_id=tool_call_id,
+            agent_id=agent_id,
+            agent_role=agent_role,
+            actor_role=actor_role,
+        )
+
+    async def close(self) -> None:
+        close = getattr(self.inner, "close", None)
+        if callable(close):
+            await close()
+
+
 class MockToolExecutor:
     """Mock executor for benchmarking. Returns pre-recorded tool responses."""
 
@@ -174,6 +329,17 @@ class MockToolExecutor:
         self.snapshots = snapshots
         self.call_log: list[dict[str, Any]] = []
 
+    def _resolve_snapshot(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
+        snapshot = self.snapshots[tool_name]
+        if not isinstance(snapshot, dict):
+            return snapshot
+        for arg_key, arg_map in snapshot.items():
+            if arg_key in tool_args and isinstance(arg_map, dict):
+                arg_value = tool_args[arg_key]
+                if arg_value in arg_map:
+                    return arg_map[arg_value]
+        return snapshot
+
     async def execute(
         self,
         tool_name: str,
@@ -184,8 +350,20 @@ class MockToolExecutor:
         tool_call_id: str | None = None,
         agent_id: str | None = None,
         agent_role: str | None = None,
+        actor_role: str | None = None,
     ) -> dict[str, Any]:
+        del session_id, user_id, turn_id, agent_id, agent_role
         start_time = time.monotonic()
+
+        if not is_actor_allowed_for_tool(actor_role, tool_name):
+            return {
+                "tool_call_id": tool_call_id,
+                "status": "error",
+                "error_type": "tool_policy",
+                "retryable": False,
+                "message": f"Tool {tool_name} requires admin privileges",
+                "_latency_ms": int((time.monotonic() - start_time) * 1000),
+            }
 
         # Record the call for evaluation
         call_record = {
@@ -207,7 +385,7 @@ class MockToolExecutor:
                 },
             }
         elif tool_name in self.snapshots:
-            snapshot = self.snapshots[tool_name]
+            snapshot = self._resolve_snapshot(tool_name, tool_args)
             result = {"tool_call_id": tool_call_id, "status": "success", "result": snapshot}
         else:
             result = {

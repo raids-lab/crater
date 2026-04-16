@@ -22,6 +22,8 @@ from crater_agent.agents.base import BaseRoleAgent, RoleExecutionResult
 from crater_agent.agents.executor import ExecutorAgent
 from crater_agent.agents.explorer import ExplorerAgent
 from crater_agent.agents.planner import PlannerAgent
+from crater_agent.agents.general import GeneralPurposeAgent
+from crater_agent.agents.guide import GuideAgent
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.memory.session import build_history_messages
 from crater_agent.orchestrators.artifacts import (
@@ -39,11 +41,7 @@ from crater_agent.orchestrators.state import (
     MultiAgentActionItem,
 )
 from crater_agent.report_utils import build_pipeline_report_payload
-from crater_agent.scenarios import (
-    NODE_ANALYSIS_ENTRYPOINT,
-    extract_node_name,
-    infer_entrypoint,
-)
+from crater_agent.scenarios import extract_focus_hints, extract_node_name
 from crater_agent.tools.definitions import (
     ALL_TOOLS,
     CONFIRM_TOOL_NAMES,
@@ -620,15 +618,6 @@ def _preferred_tools_for_first_observe(
     enabled = set(enabled_tools)
     preferred: list[tuple[str, dict[str, Any]]] = []
 
-    entrypoint = infer_entrypoint(page_context, user_message)
-
-    # Node analysis entrypoint
-    if entrypoint == NODE_ANALYSIS_ENTRYPOINT:
-        node_name = extract_node_name(page_context, user_message)
-        if node_name and "get_node_detail" in enabled:
-            preferred.append(("get_node_detail", {"node_name": node_name}))
-        return preferred
-
     # Submission-like request (create job)
     if routing.requested_action == "create":
         if "recommend_training_images" in enabled:
@@ -656,6 +645,42 @@ def _preferred_tools_for_first_observe(
             requested_job_types=requested_job_types,
             enabled_tools=enabled_tools,
         )
+
+    focus_hints = extract_focus_hints(page_context, user_message)
+    node_name = str(focus_hints.get("node_name") or "").strip()
+    pvc_name = str(focus_hints.get("pvc_name") or "").strip()
+    job_name = (
+        str(routing.targets.job_name or "").strip()
+        or str(focus_hints.get("job_name") or "").strip()
+        or str(page_context.get("job_name") or "").strip()
+    )
+
+    if node_name and "get_node_detail" in enabled:
+        preferred.append(("get_node_detail", {"node_name": node_name}))
+
+    if bool(focus_hints.get("mentions_storage")):
+        if pvc_name and "get_pvc_detail" in enabled:
+            preferred.append(("get_pvc_detail", {"pvc_name": pvc_name}))
+        elif "list_storage_pvcs" in enabled:
+            preferred.append(("list_storage_pvcs", {"limit": 10}))
+
+    if bool(focus_hints.get("mentions_distributed_network")):
+        if job_name and "diagnose_distributed_job_network" in enabled:
+            preferred.append((
+                "diagnose_distributed_job_network",
+                {
+                    "job_name": job_name,
+                    "tail_lines": 200,
+                    "max_log_matches": 30,
+                },
+            ))
+        elif node_name and "get_node_network_summary" in enabled:
+            preferred.append(("get_node_network_summary", {"node_name": node_name}))
+        elif "get_node_network_summary" in enabled:
+            preferred.append(("get_node_network_summary", {"limit": 10}))
+
+    if preferred:
+        return preferred
 
     # Generic fallback from page context
     return _fallback_read_tools_from_context(
@@ -943,6 +968,19 @@ class MultiAgentOrchestrator:
         self.tool_executor = tool_executor or GoBackendToolExecutor()
 
     @staticmethod
+    def _create_role_llm(model_factory: Any, role: str):
+        """Create a role-specific LLM client.
+
+        Supports both:
+        - ModelClientFactory.create(client_key: str)
+        - A role-aware factory with create(purpose=..., orchestration_mode=...)
+        """
+        try:
+            return model_factory.create(purpose=role, orchestration_mode="multi_agent")
+        except TypeError:
+            return model_factory.create(role)
+
+    @staticmethod
     def _determine_next_stage_fast(
         state: MASState,
         routing: RoutingDecision,
@@ -996,7 +1034,7 @@ class MultiAgentOrchestrator:
             return cls(
                 agent_id=agent_id,
                 role=role,
-                llm=model_factory.create(role),
+                llm=self._create_role_llm(model_factory, role),
             )
 
         coordinator = make_agent(BaseRoleAgent, "coordinator-1", "coordinator")
@@ -1108,6 +1146,7 @@ class MultiAgentOrchestrator:
                 tool_call_id=tool_call_id,
                 agent_id=role_agent_id,
                 agent_role=role_name,
+                actor_role=state.goal.actor_role,
             )
             if result.get("status") == "confirmation_required":
                 confirmation = result.get("confirmation", {})
@@ -1457,35 +1496,52 @@ class MultiAgentOrchestrator:
         # STEP 4: Help fast path
         # =================================================================
         if routing.entry_mode == "help" and not state.workflow and not state.resume_context:
+            entrypoint = str(page_context.get("entryPoint") or page_context.get("entrypoint") or "").strip().lower()
+            if entrypoint == "guide":
+                help_agent = make_agent(GuideAgent, "guide-1", "guide")
+                summary_msg = "Coordinator 将帮助类问题交给 Guide 处理"
+            else:
+                help_agent = make_agent(GeneralPurposeAgent, "general-1", "general")
+                summary_msg = "Coordinator 将通用问答交给 General 处理"
+
+            yield await emit(
+                "agent_handoff",
+                {
+                    "agentId": coordinator.agent_id,
+                    "agentRole": coordinator.role,
+                    "targetAgentId": help_agent.agent_id,
+                    "targetAgentRole": help_agent.role,
+                    "summary": summary_msg,
+                    "status": "completed",
+                },
+            )
             try:
-                answer = await coordinator.run_text(
-                    system_prompt=(
-                        "你是 Crater 的智能运维助手。请用中文回答用户的帮助问题。\n"
-                        "回答应该清晰、简洁、有帮助性。\n"
-                        "如果涉及具体操作步骤，请给出明确指引。\n"
-                        "如果不确定某些细节，请如实说明。"
-                    ),
-                    user_prompt=state.build_state_view("coordinator").for_prompt(),
+                result = await help_agent.respond(
+                    user_message=goal_message,
+                    page_context=page_context,
+                    capabilities=capabilities,
+                    actor_role=state.goal.actor_role,
                     history_messages=history_messages,
                 )
-                record_agent_usage(coordinator)
-                state.final_answer = answer
+                record_agent_usage(help_agent)
+                state.final_answer = result.summary
             except Exception:
-                logger.exception("Coordinator help response failed")
+                logger.exception("Help Agent response failed")
                 state.final_answer = "抱歉，生成帮助说明时出错，请稍后重试。"
+            
             state.stop_reason = "completed"
             yield await emit(
                 "agent_status",
                 {
-                    "agentId": coordinator.agent_id,
-                    "agentRole": coordinator.role,
+                    "agentId": help_agent.agent_id,
+                    "agentRole": help_agent.role,
                     "status": "completed",
                     "summary": state.final_answer,
                 },
             )
             yield await emit_final_answer(
-                agent_id=coordinator.agent_id,
-                agent_role=coordinator.role,
+                agent_id=help_agent.agent_id,
+                agent_role=help_agent.role,
                 content=state.final_answer,
             )
             yield {"event": "done", "data": {}}

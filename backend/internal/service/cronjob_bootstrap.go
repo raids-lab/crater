@@ -33,6 +33,17 @@ func (s *ConfigService) EnsureBuiltinCronJobs(ctx context.Context) error {
 					"node_limit": 10
 				}`),
 			},
+			{
+				Name:    patrol.TRIGGER_STORAGE_DAILY_AUDIT_JOB,
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "0 3 * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				EntryID: -1,
+				Config: datatypes.JSON(`{
+					"days": 1,
+					"pvc_limit": 200
+				}`),
+			},
 		}
 
 		for _, job := range defaultConfigs {

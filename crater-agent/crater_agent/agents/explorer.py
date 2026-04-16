@@ -48,6 +48,9 @@ class ExplorerAgent(BaseRoleAgent):
             f"{candidates_hint}"
             f"{steps_hint}\n\n"
             "工作要求：\n"
+            "- 对存储/网络/节点/作业问题，优先调用平台内只读工具。\n"
+            "- web_search 仅用于厂商文档、公告、CVE 对照，不能替代平台实时状态查询。\n"
+            "- sandbox_grep 仅用于补充证据（如 runbook / 诊断包内容检索），不要当成主查询路径。\n"
             "- 优先使用最少的工具获得足够证据。\n"
             "- 避免重复调用已经用相同参数执行过的工具，除非世界状态明显变化。\n"
             "- 如果用户是在追问或质疑上一轮回答，先用工具核实，不要沿用未经证实的旧说法。\n"
@@ -108,6 +111,7 @@ class ExplorerAgent(BaseRoleAgent):
                 f"{candidates_hint}"
                 f"{steps_hint}\n\n"
                 "如果已有证据已经足够，请输出空数组 []。\n"
+                "优先平台内只读工具；web_search 仅用于外部文档/CVE 对照；sandbox_grep 仅用于补充检索。\n"
                 "不要重复调用已经以相同参数执行过的工具，除非页面上下文或世界状态明确变化。\n\n"
                 "输出格式示例:\n"
                 '[{"tool": "get_job_detail", "args": {"job_name": "xxx"}}]\n\n'

@@ -20,6 +20,8 @@ const (
 	TRIGGER_BILLING_BASE_LOOP_JOB = "biling-base-loop"
 	// 管理员智能运维报告任务
 	TRIGGER_ADMIN_OPS_REPORT_JOB = "trigger-admin-ops-report-job"
+	// 存储专项巡检任务
+	TRIGGER_STORAGE_DAILY_AUDIT_JOB = "trigger-storage-daily-audit-job"
 	// 未来可以扩展其他巡检任务，例如：
 	// CHECK_NODE_HEALTH = "check-node-health"
 )
@@ -34,6 +36,7 @@ type BillingServiceInterface interface {
 
 type AdminOpsReportServiceInterface interface {
 	TriggerAdminOpsReport(ctx context.Context, req TriggerAdminOpsReportRequest) (map[string]any, error)
+	TriggerStorageAudit(ctx context.Context, req TriggerStorageAuditRequest) (map[string]any, error)
 }
 
 type TriggerAdminOpsReportRequest struct {
@@ -44,6 +47,12 @@ type TriggerAdminOpsReportRequest struct {
 	RunningLimit  int  `json:"running_limit,omitempty"`
 	NodeLimit     int  `json:"node_limit,omitempty"`
 	DryRun        bool `json:"dry_run,omitempty"`
+}
+
+type TriggerStorageAuditRequest struct {
+	Days     int  `json:"days,omitempty"`
+	PVCLimit int  `json:"pvc_limit,omitempty"`
+	DryRun   bool `json:"dry_run,omitempty"`
 }
 
 // Clients 包含巡检任务所需的客户端
@@ -127,6 +136,25 @@ func GetPatrolFunc(jobName string, clients *Clients, jobConfig datatypes.JSON) (
 		}
 		f = func(ctx context.Context) (any, error) {
 			return RunTriggerAdminOpsReport(ctx, clients, req)
+		}
+	case TRIGGER_STORAGE_DAILY_AUDIT_JOB:
+		req := TriggerStorageAuditRequest{
+			Days:     1,
+			PVCLimit: 200,
+		}
+		if len(jobConfig) > 0 {
+			if err := json.Unmarshal(jobConfig, &req); err != nil {
+				return nil, err
+			}
+		}
+		if req.Days <= 0 {
+			req.Days = 1
+		}
+		if req.PVCLimit <= 0 {
+			req.PVCLimit = 200
+		}
+		f = func(ctx context.Context) (any, error) {
+			return RunTriggerStorageAudit(ctx, clients, req)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported patrol job name: %s", jobName)

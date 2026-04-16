@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from crater_agent.config import settings
 from crater_agent.pipeline.gpu_analyzer import run_gpu_audit
 from crater_agent.pipeline.ops_report import run_admin_ops_report
+from crater_agent.pipeline.storage_audit import run_storage_audit
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,23 @@ class AdminOpsReportRequest(BaseModel):
 
 class AdminOpsReportResponse(BaseModel):
     """Result of an admin ops report run."""
+
+    report_id: Optional[str] = None
+    status: str
+    summary: dict
+    report: dict = Field(default_factory=dict)
+
+
+class StorageAuditRequest(BaseModel):
+    """Parameters for a scheduled storage audit report."""
+
+    days: int = Field(default=1, description="Lookback window in days.")
+    pvc_limit: int = Field(default=200, description="Max PVC items to scan.")
+    dry_run: bool = Field(default=False, description="Analyze only; do not persist a report.")
+
+
+class StorageAuditResponse(BaseModel):
+    """Result of a storage audit run."""
 
     report_id: Optional[str] = None
     status: str
@@ -133,6 +151,37 @@ async def admin_ops_report(
     except Exception as e:
         logger.exception("admin-ops-report pipeline failed: %s", e)
         return AdminOpsReportResponse(
+            report_id=None,
+            status="failed",
+            summary={"error": str(e)},
+            report={},
+        )
+
+
+@pipeline_router.post("/storage-audit", response_model=StorageAuditResponse)
+async def storage_audit(
+    request: StorageAuditRequest,
+    x_agent_internal_token: str = Header(..., alias="X-Agent-Internal-Token"),
+) -> StorageAuditResponse:
+    """Run the scheduled storage audit pipeline."""
+    if x_agent_internal_token != settings.crater_backend_internal_token:
+        raise HTTPException(status_code=403, detail="Invalid internal token")
+
+    try:
+        result = await run_storage_audit(
+            days=request.days,
+            pvc_limit=request.pvc_limit,
+            dry_run=request.dry_run,
+        )
+        return StorageAuditResponse(
+            report_id=result.get("report_id"),
+            status=result.get("status", "failed"),
+            summary=result.get("summary", {}),
+            report=result.get("report", {}),
+        )
+    except Exception as e:
+        logger.exception("storage-audit pipeline failed: %s", e)
+        return StorageAuditResponse(
             report_id=None,
             status="failed",
             summary={"error": str(e)},

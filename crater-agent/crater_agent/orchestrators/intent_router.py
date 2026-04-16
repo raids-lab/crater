@@ -107,7 +107,6 @@ def _extract_deterministic_hints(
     continuation: dict[str, Any],
     resume_context: dict[str, Any],
     clarification_context: dict[str, Any],
-    actor_role: str,
 ) -> RoutingDecision:
     """Extract deterministic routing hints without LLM. No keyword tables."""
     targets = RoutingTargets()
@@ -223,11 +222,17 @@ class IntentRouter:
             continuation=continuation,
             resume_context=resume_context,
             clarification_context=dict(clarification_context or {}),
-            actor_role=actor_role,
         )
 
-        # If deterministic hints are confident enough, skip LLM
-        if hints.confidence >= 0.7:
+        # Only stateful follow-ups with explicit carry-over/selection bypass LLM.
+        # All regular user utterances should still be classified by the LLM with
+        # history + page context, so the orchestrator remains model-driven.
+        if self._should_use_hints_directly(
+            hints=hints,
+            continuation=continuation,
+            resume_context=resume_context,
+            clarification_context=dict(clarification_context or {}),
+        ):
             logger.info(
                 "IntentRouter: deterministic routing (confidence=%.2f, mode=%s, action=%s)",
                 hints.confidence,
@@ -252,6 +257,33 @@ class IntentRouter:
             hints.confidence = 0.3
             return hints
 
+    @staticmethod
+    def _should_use_hints_directly(
+        *,
+        hints: RoutingDecision,
+        continuation: dict[str, Any],
+        resume_context: dict[str, Any],
+        clarification_context: dict[str, Any],
+    ) -> bool:
+        if resume_context and hints.requested_action:
+            return True
+
+        if clarification_context and (
+            hints.targets.job_name
+            or hints.targets.scope == "all"
+        ):
+            return True
+
+        workflow = continuation.get("workflow") or {}
+        if (
+            isinstance(workflow, dict)
+            and hints.requested_action
+            and (hints.targets.job_name or hints.targets.node_name)
+        ):
+            return True
+
+        return False
+
     async def _classify_with_llm(
         self,
         *,
@@ -267,6 +299,14 @@ class IntentRouter:
             hints_context += f"\n已知目标作业: {deterministic_hints.targets.job_name}"
         if deterministic_hints.targets.node_name:
             hints_context += f"\n已知目标节点: {deterministic_hints.targets.node_name}"
+        if deterministic_hints.requested_action:
+            hints_context += f"\n已知动作候选: {deterministic_hints.requested_action}"
+        if deterministic_hints.targets.scope != "unspecified":
+            hints_context += f"\n已知作用范围: {deterministic_hints.targets.scope}"
+        if deterministic_hints.entry_mode != "agent":
+            hints_context += f"\n上下文提示 entry_mode 倾向: {deterministic_hints.entry_mode}"
+        if deterministic_hints.operation_mode != "unknown":
+            hints_context += f"\n上下文提示 operation_mode 倾向: {deterministic_hints.operation_mode}"
 
         result = await self.coordinator_agent.run_json(
             system_prompt=(
@@ -279,8 +319,11 @@ class IntentRouter:
                 "- '集群资源如何'、'当前作业情况'、'节点状态' → agent + read（需要工具查数据）\n"
                 "- '怎么创建作业'、'在哪看日志' → help（纯文档指引）\n"
                 "- '重提/停止/删除 xxx' → agent + write + 对应 action\n"
-                "- 如果当前输入是在追问或质疑上一轮回答，要结合近期对话理解，但不要继承未经工具证实的旧结论\n"
-                "- 模糊请求默认 agent + unknown\n\n"
+                "- 如果当前输入是在追问、纠正、补充或质疑上一轮回答，要结合近期对话理解，但不要继承未经工具证实的旧结论\n"
+                "- 纯问候语、寒暄、轻量闲聊，通常判为 help + unknown\n"
+                "- 普通问答、概念解释、怎么做、去哪做，优先根据历史和页面上下文理解，不要被孤立关键词误导\n"
+                "- deterministic hints 只是上下文提示，不是必须采纳的最终结论；若与当前 message 和 history 不一致，以整体语义为准\n"
+                "- 模糊且涉及业务数据/平台状态/实际对象的请求，默认 agent + unknown\n\n"
                 "输出 JSON:\n"
                 '{"entry_mode": "help|agent", "operation_mode": "read|write|unknown", '
                 '"requested_action": "resubmit|stop|delete|create|null", '

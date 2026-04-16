@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"gorm.io/datatypes"
@@ -14,6 +16,146 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 )
+
+type toolCallAuditMetadata struct {
+	ExecutionBackend  string
+	SandboxJobName    string
+	ScriptName        string
+	ResultArtifactRef string
+	EgressDomains     []string
+}
+
+var agentToolAuditCompatFields = []string{
+	"ExecutionBackend",
+	"SandboxJobName",
+	"ScriptName",
+	"ResultArtifactRef",
+	"EgressDomains",
+}
+
+var agentToolAuditCompatColumns = []string{
+	"execution_backend",
+	"sandbox_job_name",
+	"script_name",
+	"result_artifact_ref",
+	"egress_domains",
+}
+
+func parseStringSlice(value any) []string {
+	switch typed := value.(type) {
+	case []string:
+		return typed
+	case []any:
+		result := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if s, ok := item.(string); ok {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					result = append(result, s)
+				}
+			}
+		}
+		return result
+	default:
+		return nil
+	}
+}
+
+func parseToolCallAuditMeta(toolArgs, toolResult json.RawMessage) toolCallAuditMetadata {
+	meta := toolCallAuditMetadata{}
+	argsMap := map[string]any{}
+	if len(toolArgs) > 0 {
+		_ = json.Unmarshal(toolArgs, &argsMap)
+		if scriptName, ok := argsMap["script_name"].(string); ok {
+			meta.ScriptName = strings.TrimSpace(scriptName)
+		}
+	}
+
+	resultMap := map[string]any{}
+	if len(toolResult) > 0 {
+		_ = json.Unmarshal(toolResult, &resultMap)
+	}
+	readMeta := func(source map[string]any) {
+		if source == nil {
+			return
+		}
+		if v, ok := source["execution_backend"].(string); ok && strings.TrimSpace(v) != "" {
+			meta.ExecutionBackend = strings.TrimSpace(v)
+		}
+		if v, ok := source["sandbox_job_name"].(string); ok && strings.TrimSpace(v) != "" {
+			meta.SandboxJobName = strings.TrimSpace(v)
+		}
+		if v, ok := source["script_name"].(string); ok && strings.TrimSpace(v) != "" {
+			meta.ScriptName = strings.TrimSpace(v)
+		}
+		if v, ok := source["result_artifact_ref"].(string); ok && strings.TrimSpace(v) != "" {
+			meta.ResultArtifactRef = strings.TrimSpace(v)
+		}
+		if domains := parseStringSlice(source["egress_domains"]); len(domains) > 0 {
+			meta.EgressDomains = append(meta.EgressDomains, domains...)
+		}
+	}
+	readMeta(resultMap)
+	if nested, ok := resultMap["_audit"].(map[string]any); ok {
+		readMeta(nested)
+	}
+	if len(meta.EgressDomains) > 0 {
+		seen := make(map[string]struct{}, len(meta.EgressDomains))
+		uniq := make([]string, 0, len(meta.EgressDomains))
+		for _, domain := range meta.EgressDomains {
+			trimmed := strings.TrimSpace(domain)
+			if trimmed == "" {
+				continue
+			}
+			if _, ok := seen[trimmed]; ok {
+				continue
+			}
+			seen[trimmed] = struct{}{}
+			uniq = append(uniq, trimmed)
+		}
+		sort.Strings(uniq)
+		meta.EgressDomains = uniq
+	}
+	return meta
+}
+
+func isMissingAgentToolAuditColumnError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	if !strings.Contains(message, "agent_tool_calls") || !strings.Contains(message, "does not exist") {
+		return false
+	}
+	for _, column := range agentToolAuditCompatColumns {
+		if strings.Contains(message, fmt.Sprintf(`column "%s"`, column)) {
+			return true
+		}
+	}
+	return false
+}
+
+func stripUnsupportedAgentToolAuditUpdates(updates map[string]any) map[string]any {
+	if len(updates) == 0 {
+		return updates
+	}
+	compat := make(map[string]any, len(updates))
+	for key, value := range updates {
+		compat[key] = value
+	}
+	for _, column := range agentToolAuditCompatColumns {
+		delete(compat, column)
+	}
+	return compat
+}
+
+func (s *AgentService) createToolCallWithCompat(ctx context.Context, toolCall *model.AgentToolCall) error {
+	err := s.db.WithContext(ctx).Create(toolCall).Error
+	if err == nil || !isMissingAgentToolAuditColumnError(err) {
+		return err
+	}
+	return s.db.WithContext(ctx).Omit(agentToolAuditCompatFields...).Create(toolCall).Error
+}
 
 // AgentService encapsulates DB operations for the Agent feature.
 type AgentService struct {
@@ -211,11 +353,11 @@ func (s *AgentService) ListToolCallsByTurn(ctx context.Context, turnID string) (
 
 // LogToolCall records a tool execution in the agent_tool_calls table.
 func (s *AgentService) LogToolCall(ctx context.Context, toolCall *model.AgentToolCall) error {
-	return s.db.WithContext(ctx).Create(toolCall).Error
+	return s.createToolCallWithCompat(ctx, toolCall)
 }
 
 func (s *AgentService) CreateToolCall(ctx context.Context, toolCall *model.AgentToolCall) (*model.AgentToolCall, error) {
-	if err := s.db.WithContext(ctx).Create(toolCall).Error; err != nil {
+	if err := s.createToolCallWithCompat(ctx, toolCall); err != nil {
 		return nil, err
 	}
 	return toolCall, nil
@@ -236,6 +378,7 @@ func (s *AgentService) UpdateToolCallOutcome(
 	toolResult json.RawMessage,
 	userConfirmed *bool,
 ) error {
+	meta := parseToolCallAuditMeta(nil, toolResult)
 	updates := map[string]any{
 		"result_status": resultStatus,
 	}
@@ -245,10 +388,31 @@ func (s *AgentService) UpdateToolCallOutcome(
 	if userConfirmed != nil {
 		updates["user_confirmed"] = *userConfirmed
 	}
-	return s.db.WithContext(ctx).
+	if meta.ExecutionBackend != "" {
+		updates["execution_backend"] = meta.ExecutionBackend
+	}
+	if meta.SandboxJobName != "" {
+		updates["sandbox_job_name"] = meta.SandboxJobName
+	}
+	if meta.ScriptName != "" {
+		updates["script_name"] = meta.ScriptName
+	}
+	if meta.ResultArtifactRef != "" {
+		updates["result_artifact_ref"] = meta.ResultArtifactRef
+	}
+	if len(meta.EgressDomains) > 0 {
+		if payload, err := json.Marshal(meta.EgressDomains); err == nil {
+			updates["egress_domains"] = datatypes.JSON(payload)
+		}
+	}
+	db := s.db.WithContext(ctx).
 		Model(&model.AgentToolCall{}).
-		Where("id = ?", id).
-		Updates(updates).Error
+		Where("id = ?", id)
+	err := db.Updates(updates).Error
+	if err == nil || !isMissingAgentToolAuditColumnError(err) {
+		return err
+	}
+	return db.Updates(stripUnsupportedAgentToolAuditUpdates(updates)).Error
 }
 
 func (s *AgentService) UpdateToolCallArgs(ctx context.Context, id uint, toolArgs json.RawMessage) error {
@@ -371,6 +535,7 @@ func (s *AgentService) LogToolCallAsync(
 	agentRole string,
 ) {
 	go func() {
+		meta := parseToolCallAuditMeta(toolArgs, toolResult)
 		tc := &model.AgentToolCall{
 			SessionID:    sessionID,
 			TurnID:       turnID,
@@ -384,7 +549,24 @@ func (s *AgentService) LogToolCallAsync(
 			LatencyMs:    latencyMs,
 			CreatedAt:    time.Now(),
 		}
-		if err := s.db.WithContext(context.Background()).Create(tc).Error; err != nil {
+		if meta.ExecutionBackend != "" {
+			tc.ExecutionBackend = meta.ExecutionBackend
+		}
+		if meta.SandboxJobName != "" {
+			tc.SandboxJobName = meta.SandboxJobName
+		}
+		if meta.ScriptName != "" {
+			tc.ScriptName = meta.ScriptName
+		}
+		if meta.ResultArtifactRef != "" {
+			tc.ResultArtifactRef = meta.ResultArtifactRef
+		}
+		if len(meta.EgressDomains) > 0 {
+			if payload, err := json.Marshal(meta.EgressDomains); err == nil {
+				tc.EgressDomains = datatypes.JSON(payload)
+			}
+		}
+		if err := s.createToolCallWithCompat(context.Background(), tc); err != nil {
 			klog.Warningf("[AgentService] Failed to log tool call %s for session %s: %v", toolName, sessionID, err)
 		}
 	}()

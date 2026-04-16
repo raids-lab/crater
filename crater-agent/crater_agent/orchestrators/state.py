@@ -205,6 +205,12 @@ class MASState:
         actor = dict(context.get("actor") or {})
         page_context = dict(context.get("page") or {})
         actor_role = str(actor.get("role") or "user").strip().lower() or "user"
+        route = str(page_context.get("route") or "").strip().lower()
+        url = str(page_context.get("url") or "").strip().lower()
+        if actor_role == "user" and (
+            route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url
+        ):
+            actor_role = "admin"
 
         # Build initial goal (routing will be set by IntentRouter)
         goal = GoalArtifact(

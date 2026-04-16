@@ -56,6 +56,23 @@ const (
 	agentToolResourceRecommend = "get_resource_recommendation"
 	agentToolGetNodeDetail     = "get_node_detail"
 	agentToolGetAdminOpsReport = "get_admin_ops_report"
+	agentToolListStoragePVCs   = "list_storage_pvcs"
+	agentToolGetPVCDetail      = "get_pvc_detail"
+	agentToolGetPVCEvents      = "get_pvc_events"
+	agentToolInspectJobStorage = "inspect_job_storage"
+	agentToolStorageCapacity   = "get_storage_capacity_overview"
+	agentToolNodeNetwork       = "get_node_network_summary"
+	agentToolDiagnoseJobNet    = "diagnose_distributed_job_network"
+	agentToolWebSearch         = "web_search"
+	agentToolSandboxGrep       = "sandbox_grep"
+	agentToolRuntimeSummary    = "get_agent_runtime_summary"
+	agentToolK8sListNodes      = "k8s_list_nodes"
+	agentToolK8sListPods       = "k8s_list_pods"
+	agentToolK8sGetEvents      = "k8s_get_events"
+	agentToolK8sDescribe       = "k8s_describe_resource"
+	agentToolK8sPodLogs        = "k8s_get_pod_logs"
+	agentToolPromQuery         = "prometheus_query"
+	agentToolHarborCheck       = "harbor_check"
 
 	// AIOps audit tools (admin)
 	toolGetLatestAuditReport = "get_latest_audit_report"
@@ -71,6 +88,12 @@ const (
 	agentToolDeleteJob     = "delete_job"
 	agentToolCreateJupyter = "create_jupyter_job"
 	agentToolCreateTrain   = "create_training_job"
+	agentToolRunOpsScript  = "run_ops_script"
+	agentToolCordonNode    = "cordon_node"
+	agentToolUncordonNode  = "uncordon_node"
+	agentToolDrainNode     = "drain_node"
+	agentToolDeletePod     = "delete_pod"
+	agentToolRestartWL     = "restart_workload"
 )
 
 type AgentMgr struct {

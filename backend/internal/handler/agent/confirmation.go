@@ -28,6 +28,14 @@ func (mgr *AgentMgr) buildToolConfirmation(token util.JWTMessage, toolName strin
 		confirmation.Interaction = "form"
 		confirmation.Form = buildCreateTrainingJobForm(token, rawArgs)
 	}
+	switch toolName {
+	case agentToolUncordonNode:
+		confirmation.RiskLevel = "medium"
+	case agentToolCordonNode, agentToolRestartWL:
+		confirmation.RiskLevel = "high"
+	case agentToolDrainNode, agentToolDeletePod, agentToolRunOpsScript:
+		confirmation.RiskLevel = "critical"
+	}
 	confirmation.Description = mgr.buildConfirmationDescription(toolName, rawArgs)
 	return confirmation
 }
@@ -241,6 +249,94 @@ func (mgr *AgentMgr) buildConfirmationDescription(toolName string, rawArgs json.
 			name = "新的训练作业"
 		}
 		return fmt.Sprintf("创建训练作业 %s", name)
+	case agentToolCordonNode:
+		nodeName := getToolArgString(args, "node_name", "")
+		reason := getToolArgString(args, "reason", "")
+		target := nodeName
+		if target == "" {
+			target = "<未指定节点>"
+		}
+		lines := []string{
+			fmt.Sprintf("操作：将节点 %s 标记为不可调度。", target),
+			"影响：新 Pod/新作业将不再调度到该节点，当前已运行负载通常不会被立刻驱逐。",
+			"建议先确认：该节点是否正用于问题隔离、维护准备或升级前冻结。",
+		}
+		if reason != "" {
+			lines = append(lines, fmt.Sprintf("原因：%s", reason))
+		}
+		return strings.Join(lines, "\n")
+	case agentToolUncordonNode:
+		nodeName := getToolArgString(args, "node_name", "")
+		reason := getToolArgString(args, "reason", "")
+		target := nodeName
+		if target == "" {
+			target = "<未指定节点>"
+		}
+		lines := []string{
+			fmt.Sprintf("操作：恢复节点 %s 的调度。", target),
+			"影响：新的 Pod/作业会重新落到该节点；如果节点仍有硬件或驱动问题，可能再次放大故障范围。",
+			"建议先确认：节点 Ready、关键 DaemonSet、GPU/网络/存储相关组件已恢复正常。",
+		}
+		if reason != "" {
+			lines = append(lines, fmt.Sprintf("说明：%s", reason))
+		}
+		return strings.Join(lines, "\n")
+	case agentToolDrainNode:
+		nodeName := getToolArgString(args, "node_name", "")
+		reason := getToolArgString(args, "reason", "")
+		target := nodeName
+		if target == "" {
+			target = "<未指定节点>"
+		}
+		lines := []string{
+			fmt.Sprintf("操作：排空节点 %s 并禁止调度。", target),
+			"影响：该节点上的可驱逐 Pod 会被迁移或中断，训练/服务可能出现短时抖动；受 PDB、local data、daemonset 约束时可能无法完全排空。",
+			"建议先确认：关键作业是否已知情，是否允许短时中断，是否已准备后续重启/升级/检修动作。",
+		}
+		if reason != "" {
+			lines = append(lines, fmt.Sprintf("原因：%s", reason))
+		}
+		return strings.Join(lines, "\n")
+	case agentToolDeletePod:
+		name := getToolArgString(args, "name", "")
+		namespace := getToolArgString(args, "namespace", "")
+		target := name
+		if target == "" {
+			target = "<未指定 Pod>"
+		}
+		if namespace != "" {
+			target = fmt.Sprintf("%s/%s", namespace, name)
+		}
+		lines := []string{
+			fmt.Sprintf("操作：删除 Pod %s。", target),
+			"影响：控制器可能立即重建该 Pod；如果问题来自配置、镜像或节点本身，删除后可能仍会失败。未受控制器管理的 Pod 删除后不会自动恢复。",
+			"建议先确认：是否已查看事件/日志，是否确认该 Pod 可被安全重建。",
+		}
+		if force, ok := args["force"].(bool); ok && force {
+			lines = append(lines, "附加风险：将使用强制删除，可能跳过优雅退出。")
+		}
+		return strings.Join(lines, "\n")
+	case agentToolRestartWL:
+		kind := getToolArgString(args, "kind", "")
+		name := getToolArgString(args, "name", "")
+		namespace := getToolArgString(args, "namespace", "")
+		target := name
+		if target == "" {
+			target = "<未指定工作负载>"
+		}
+		if namespace != "" {
+			target = fmt.Sprintf("%s/%s", namespace, name)
+		}
+		kindText := kind
+		if kindText == "" {
+			kindText = "工作负载"
+		}
+		lines := []string{
+			fmt.Sprintf("操作：滚动重启 %s %s。", kindText, target),
+			"影响：对应 Pod 会逐步重建；如果副本数不足、配置错误或镜像有问题，服务/监控可能出现不可用窗口。",
+			"建议先确认：当前是否在业务低峰，副本数和就绪策略是否足以承受滚动重启。",
+		}
+		return strings.Join(lines, "\n")
 	case toolMarkAuditHandled:
 		itemIDs := getToolArgString(args, "item_ids", "")
 		if itemIDs != "" {
@@ -259,6 +355,17 @@ func (mgr *AgentMgr) buildConfirmationDescription(toolName string, rawArgs json.
 			return fmt.Sprintf("通知作业所有者：%s", jobNames)
 		}
 		return "通知作业所有者"
+	case agentToolRunOpsScript:
+		scriptName := getToolArgString(args, "script_name", "")
+		target := scriptName
+		if target == "" {
+			target = "<未指定脚本>"
+		}
+		return strings.Join([]string{
+			fmt.Sprintf("操作：在沙箱中执行运维脚本 %s。", target),
+			"影响：会触发受白名单约束的自动化运维动作，可能修改集群或节点状态。",
+			"建议先确认：脚本名称、目标范围、预期副作用和回退方式都已明确。",
+		}, "\n")
 	default:
 		return fmt.Sprintf("执行操作 %s", toolName)
 	}
@@ -298,6 +405,42 @@ func (mgr *AgentMgr) buildToolOutcomeMessage(toolName, status string, result any
 		return "已提交新的 Jupyter 作业。"
 	case agentToolCreateTrain:
 		return "已提交新的训练作业。"
+	case agentToolCordonNode:
+		if nodeName, _ := resultMap["node_name"].(string); nodeName != "" {
+			return fmt.Sprintf("已将节点 %s 标记为不可调度。", nodeName)
+		}
+		return "已将节点标记为不可调度。"
+	case agentToolUncordonNode:
+		if nodeName, _ := resultMap["node_name"].(string); nodeName != "" {
+			return fmt.Sprintf("已恢复节点 %s 的调度。", nodeName)
+		}
+		return "已恢复节点调度。"
+	case agentToolDrainNode:
+		if nodeName, _ := resultMap["node_name"].(string); nodeName != "" {
+			return fmt.Sprintf("已开始排空节点 %s。", nodeName)
+		}
+		return "已开始排空节点。"
+	case agentToolDeletePod:
+		name, _ := resultMap["name"].(string)
+		namespace, _ := resultMap["namespace"].(string)
+		if name != "" && namespace != "" {
+			return fmt.Sprintf("已删除 Pod %s/%s。", namespace, name)
+		}
+		if name != "" {
+			return fmt.Sprintf("已删除 Pod %s。", name)
+		}
+		return "已删除目标 Pod。"
+	case agentToolRestartWL:
+		kind, _ := resultMap["kind"].(string)
+		name, _ := resultMap["name"].(string)
+		namespace, _ := resultMap["namespace"].(string)
+		if kind != "" && name != "" && namespace != "" {
+			return fmt.Sprintf("已触发 %s %s/%s 的滚动重启。", kind, namespace, name)
+		}
+		if kind != "" && name != "" {
+			return fmt.Sprintf("已触发 %s %s 的滚动重启。", kind, name)
+		}
+		return "已触发工作负载滚动重启。"
 	case toolMarkAuditHandled:
 		if updated, _ := resultMap["updated"].(float64); updated > 0 {
 			return fmt.Sprintf("已标记 %.0f 条审计条目为已处理。", updated)
@@ -313,6 +456,12 @@ func (mgr *AgentMgr) buildToolOutcomeMessage(toolName, status string, result any
 			return fmt.Sprintf("已通知 %.0f 位作业所有者。", notified)
 		}
 		return "已通知作业所有者。"
+	case agentToolRunOpsScript:
+		jobName, _ := resultMap["sandbox_job_name"].(string)
+		if jobName != "" {
+			return fmt.Sprintf("已提交运维脚本任务 %s，等待沙箱执行结果。", jobName)
+		}
+		return "已提交运维脚本任务。"
 	default:
 		if fallback != "" {
 			return fallback

@@ -1,11 +1,19 @@
 """Configuration for Crater Agent Service."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+
+def _resolve_profile_relative_path(raw_path: str, *, base_dir: Path) -> Path:
+    candidate = Path(raw_path).expanduser()
+    if candidate.is_absolute():
+        return candidate
+    return (base_dir / candidate).resolve()
 
 
 class Settings(BaseSettings):
@@ -27,6 +35,18 @@ class Settings(BaseSettings):
     agent_runtime_config_path: str = Field(
         default="./config/agent-runtime.json",
         description="Path to the MAS runtime config JSON file",
+    )
+    agent_profile_path: str = Field(
+        default="",
+        description="Optional path to an agent-owned JSON profile for standalone/offline deployment",
+    )
+    platform_runtime_config_path: str = Field(
+        default="",
+        description="Optional path to an agent-side platform/runtime override config (prefer YAML)",
+    )
+    backend_debug_config_path: str = Field(
+        default="",
+        description="Optional path to backend debug config YAML for live platform discovery",
     )
 
     # Crater Go Backend
@@ -59,6 +79,10 @@ class Settings(BaseSettings):
         "extra": "ignore",
     }
 
+    def model_post_init(self, __context: Any) -> None:
+        del __context
+        self._apply_agent_profile_overrides()
+
     def normalized_default_orchestration_mode(self) -> str:
         return (
             "multi_agent"
@@ -68,6 +92,45 @@ class Settings(BaseSettings):
 
     def resolve_llm_clients_config_path(self) -> Path:
         configured = self.llm_clients_config_path.strip() or "./config/llm-clients.json"
+        return self._resolve_config_path(configured)
+
+    def resolve_agent_runtime_config_path(self) -> Path:
+        configured = self.agent_runtime_config_path.strip() or "./config/agent-runtime.json"
+        return self._resolve_config_path(configured)
+
+    def resolve_agent_profile_path(self) -> Path | None:
+        configured = self.agent_profile_path.strip()
+        if not configured:
+            configured = str(os.getenv("CRATER_AGENT_PROFILE_PATH") or "").strip()
+        if configured:
+            return self._resolve_config_path(configured)
+
+        default_path = self._resolve_config_path("./config/agent-profile.json")
+        if default_path.exists():
+            return default_path
+        return None
+
+    def resolve_platform_runtime_config_path(self) -> Path | None:
+        configured = self.platform_runtime_config_path.strip()
+        if configured:
+            return self._resolve_config_path(configured)
+
+        for default_path in (
+            "./config/platform-runtime.yaml",
+            "./config/platform-runtime.yml",
+        ):
+            resolved = self._resolve_config_path(default_path)
+            if resolved.exists():
+                return resolved
+        return None
+
+    def resolve_backend_debug_config_path(self) -> Path | None:
+        configured = self.backend_debug_config_path.strip()
+        if not configured:
+            return None
+        return self._resolve_config_path(configured)
+
+    def _resolve_config_path(self, configured: str) -> Path:
         raw_path = Path(configured).expanduser()
         if raw_path.is_absolute():
             return raw_path
@@ -110,15 +173,7 @@ class Settings(BaseSettings):
 
     def load_agent_runtime_config(self) -> dict[str, Any]:
         """Load MAS runtime config. Returns empty dict if file missing (defaults used)."""
-        configured = self.agent_runtime_config_path.strip() or "./config/agent-runtime.json"
-        raw_path = Path(configured).expanduser()
-        if not raw_path.is_absolute():
-            cwd_candidate = Path.cwd() / raw_path
-            if cwd_candidate.exists():
-                raw_path = cwd_candidate
-            else:
-                project_root = Path(__file__).resolve().parents[1]
-                raw_path = project_root / raw_path
+        raw_path = self.resolve_agent_runtime_config_path()
         if not raw_path.exists():
             return {}
         try:
@@ -128,12 +183,95 @@ class Settings(BaseSettings):
         except Exception:
             return {}
 
+    def _load_agent_profile(self) -> dict[str, Any]:
+        path = self.resolve_agent_profile_path()
+        if path is None or not path.exists():
+            return {}
+        try:
+            raw = path.read_text(encoding="utf-8").strip()
+            loaded = json.loads(raw) if raw else {}
+            return dict(loaded) if isinstance(loaded, dict) else {}
+        except Exception:
+            return {}
+
+    def _apply_agent_profile_overrides(self) -> None:
+        profile = self._load_agent_profile()
+        if not profile:
+            return
+        profile_path = self.resolve_agent_profile_path()
+        profile_base = profile_path.parent if profile_path is not None else Path.cwd()
+
+        override_specs = {
+            "defaultOrchestrationMode": (
+                "default_orchestration_mode",
+                "CRATER_AGENT_DEFAULT_ORCHESTRATION_MODE",
+            ),
+            "llmClientsConfigPath": (
+                "llm_clients_config_path",
+                "CRATER_AGENT_LLM_CLIENTS_CONFIG_PATH",
+            ),
+            "agentRuntimeConfigPath": (
+                "agent_runtime_config_path",
+                "CRATER_AGENT_AGENT_RUNTIME_CONFIG_PATH",
+            ),
+            "platformRuntimeConfigPath": (
+                "platform_runtime_config_path",
+                "CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH",
+            ),
+            "backendDebugConfigPath": (
+                "backend_debug_config_path",
+                "CRATER_AGENT_BACKEND_DEBUG_CONFIG_PATH",
+            ),
+            "craterBackendUrl": (
+                "crater_backend_url",
+                "CRATER_AGENT_CRATER_BACKEND_URL",
+            ),
+            "craterBackendInternalToken": (
+                "crater_backend_internal_token",
+                "CRATER_AGENT_CRATER_BACKEND_INTERNAL_TOKEN",
+            ),
+            "host": ("host", "CRATER_AGENT_HOST"),
+            "port": ("port", "CRATER_AGENT_PORT"),
+            "debug": ("debug", "CRATER_AGENT_DEBUG"),
+        }
+        path_like_fields = {
+            "llm_clients_config_path",
+            "agent_runtime_config_path",
+            "platform_runtime_config_path",
+            "backend_debug_config_path",
+        }
+        for profile_key, (field_name, env_name) in override_specs.items():
+            if os.getenv(env_name) not in (None, ""):
+                continue
+            value = profile.get(profile_key)
+            if value in (None, ""):
+                continue
+            if field_name in path_like_fields:
+                value = str(_resolve_profile_relative_path(str(value), base_dir=profile_base))
+            setattr(self, field_name, value)
+
     def public_agent_config_summary(self) -> dict[str, Any]:
         configs = self.load_llm_client_configs()
         return {
             "defaultOrchestrationMode": self.normalized_default_orchestration_mode(),
             "availableModes": ["single_agent", "multi_agent"],
+            "agentProfilePath": (
+                str(self.resolve_agent_profile_path())
+                if self.resolve_agent_profile_path() is not None
+                else ""
+            ),
             "llmConfigPath": str(self.resolve_llm_clients_config_path()),
+            "agentRuntimeConfigPath": str(self.resolve_agent_runtime_config_path()),
+            "platformRuntimeConfigPath": (
+                str(self.resolve_platform_runtime_config_path())
+                if self.resolve_platform_runtime_config_path() is not None
+                else ""
+            ),
+            "backendDebugConfigPath": (
+                str(self.resolve_backend_debug_config_path())
+                if self.resolve_backend_debug_config_path() is not None
+                else ""
+            ),
             "llmClientKeys": list(configs.keys()),
             "llmClients": {
                 name: {
@@ -148,6 +286,5 @@ class Settings(BaseSettings):
                 for name, config in configs.items()
             },
         }
-
 
 settings = Settings()

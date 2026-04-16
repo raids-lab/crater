@@ -13,6 +13,7 @@ class GeneralPurposeAgent(BaseRoleAgent):
         page_context: dict,
         capabilities: dict | None = None,
         actor_role: str = "user",
+        history_messages: list | None = None,
     ) -> RoleExecutionResult:
         capability_summary = self.summarize_capabilities(
             capabilities,
@@ -22,8 +23,9 @@ class GeneralPurposeAgent(BaseRoleAgent):
         )
         summary = await self.run_text(
             system_prompt=(
-                "你是 Crater 的 General Purpose Agent。"
-                "你负责处理平台内的大多数常规问答、轻量诊断解释和上下文衔接。"
+                "你是 Crater 的通用运维助手 (General Agent)。"
+                "你负责处理平台内的常规问答、基础概念解释、欢迎语和上下文衔接。"
+                "如果用户只是打招呼（如 hi、你好），请友好回复并引导他们说出具体需求（如作业诊断、节点查询等）。"
                 "如果上下文不足以确认事实，要明确说明“基于当前上下文无法确认”，不要编造。"
                 "默认不要建议高风险写操作，除非用户明确要求。"
             ),
@@ -32,7 +34,8 @@ class GeneralPurposeAgent(BaseRoleAgent):
                 f"用户请求:\n{user_message}\n\n"
                 f"页面上下文:\n{page_context or {}}\n\n"
                 f"能力摘要:\n{capability_summary}\n\n"
-                "请直接输出面向用户的中文回复，结论优先，尽量简洁。"
+                "请直接输出面向用户的中文回复，语气自然专业。"
             ),
+            history_messages=history_messages,
         )
         return RoleExecutionResult(summary=summary or "已完成常规平台答复。")

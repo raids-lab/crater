@@ -42,6 +42,29 @@ var agentAdminTools = []string{
 	agentToolGetNodeDetail,
 	agentToolListClusterJobs,
 	agentToolListClusterNodes,
+	agentToolListStoragePVCs,
+	agentToolGetPVCDetail,
+	agentToolGetPVCEvents,
+	agentToolInspectJobStorage,
+	agentToolStorageCapacity,
+	agentToolNodeNetwork,
+	agentToolDiagnoseJobNet,
+	agentToolWebSearch,
+	agentToolSandboxGrep,
+	agentToolRuntimeSummary,
+	agentToolK8sListNodes,
+	agentToolK8sListPods,
+	agentToolK8sGetEvents,
+	agentToolK8sDescribe,
+	agentToolK8sPodLogs,
+	agentToolPromQuery,
+	agentToolHarborCheck,
+	agentToolRunOpsScript,
+	agentToolCordonNode,
+	agentToolUncordonNode,
+	agentToolDrainNode,
+	agentToolDeletePod,
+	agentToolRestartWL,
 	toolBatchStopJobs,
 	toolNotifyJobOwner,
 }
@@ -52,6 +75,12 @@ var agentConfirmToolSet = map[string]struct{}{
 	agentToolDeleteJob:     {},
 	agentToolCreateJupyter: {},
 	agentToolCreateTrain:   {},
+	agentToolRunOpsScript:  {},
+	agentToolCordonNode:    {},
+	agentToolUncordonNode:  {},
+	agentToolDrainNode:     {},
+	agentToolDeletePod:     {},
+	agentToolRestartWL:     {},
 	toolMarkAuditHandled:   {},
 	toolBatchStopJobs:      {},
 	toolNotifyJobOwner:     {},
@@ -101,6 +130,42 @@ func agentToolCompactDescription(toolName string) string {
 		return "管理员读取聚合后的集群健康报告"
 	case agentToolGetAdminOpsReport:
 		return "管理员读取智能运维分析报告，聚合成功/失败/闲置任务与资源差异"
+	case agentToolListStoragePVCs:
+		return "管理员读取存储 PVC 列表与状态摘要"
+	case agentToolGetPVCDetail:
+		return "管理员读取单个 PVC 详情"
+	case agentToolGetPVCEvents:
+		return "管理员读取 PVC 相关事件"
+	case agentToolInspectJobStorage:
+		return "管理员诊断作业挂载、卷声明与存储关联"
+	case agentToolStorageCapacity:
+		return "管理员读取 PVC 容量与存储类聚合视图"
+	case agentToolNodeNetwork:
+		return "管理员读取节点网络状态摘要"
+	case agentToolDiagnoseJobNet:
+		return "管理员诊断分布式作业网络问题（事件/日志/节点分布）"
+	case agentToolWebSearch:
+		return "管理员执行受白名单约束的外网文档检索"
+	case agentToolSandboxGrep:
+		return "管理员在受限沙箱目录执行内容检索"
+	case agentToolRuntimeSummary:
+		return "读取 agent 运行时配置摘要（本地工具、k8s、prometheus 等）"
+	case agentToolK8sListNodes:
+		return "通过 agent 侧 kubeconfig 直接列出节点摘要"
+	case agentToolK8sListPods:
+		return "通过 agent 侧 kubeconfig 直接列出 Pod 摘要"
+	case agentToolK8sGetEvents:
+		return "通过 agent 侧 kubeconfig 直接查询 Kubernetes 事件"
+	case agentToolK8sDescribe:
+		return "通过 agent 侧 kubeconfig 直接执行 kubectl describe"
+	case agentToolK8sPodLogs:
+		return "通过 agent 侧 kubeconfig 直接读取 Pod 日志"
+	case agentToolPromQuery:
+		return "通过 agent 侧 Prometheus API 执行指标查询"
+	case agentToolHarborCheck:
+		return "检查 Harbor/OCI Registry 健康状态以及目标镜像是否存在"
+	case agentToolRunOpsScript:
+		return "管理员提交白名单运维脚本（需确认）"
 	case agentToolResourceRecommend:
 		return "根据任务描述推荐 CPU/GPU/内存配置"
 	case agentToolGetNodeDetail:
@@ -121,6 +186,16 @@ func agentToolCompactDescription(toolName string) string {
 		return "创建 Jupyter 作业，需要确认"
 	case agentToolCreateTrain:
 		return "创建训练作业，需要确认"
+	case agentToolCordonNode:
+		return "将节点标记为不可调度，需要确认"
+	case agentToolUncordonNode:
+		return "恢复节点调度，需要确认"
+	case agentToolDrainNode:
+		return "排空节点，需要确认"
+	case agentToolDeletePod:
+		return "删除 Pod 以触发重建，需要确认"
+	case agentToolRestartWL:
+		return "滚动重启 Deployment/StatefulSet/DaemonSet，需要确认"
 	case toolGetLatestAuditReport:
 		return "查看最近审计报告"
 	case toolListAuditItems:

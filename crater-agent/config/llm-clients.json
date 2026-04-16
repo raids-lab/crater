@@ -1,11 +1,21 @@
 {
-  "default": {
+  "default-act": {
     "provider": "openai_compatible",
     "base_url": "https://87ba3.gpu.act.buaa.edu.cn/v1",
     "model": "qwen3.5",
     "temperature": 0.1,
     "max_tokens": 4096,
-    "timeout": 45
+    "timeout": 45,
+    "verify_ssl": false
+  },
+  "default": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "qwen-plus-2025-07-28",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90
   },
   "default-plus": {
     "provider": "openai_compatible",

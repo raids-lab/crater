@@ -944,6 +944,35 @@ func main() {
 			},
 		},
 		{
+			ID: "202604110001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS execution_backend VARCHAR(64),
+						ADD COLUMN IF NOT EXISTS sandbox_job_name VARCHAR(255),
+						ADD COLUMN IF NOT EXISTS script_name VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS result_artifact_ref TEXT,
+						ADD COLUMN IF NOT EXISTS egress_domains JSONB`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_sandbox_job_name
+						ON agent_tool_calls (sandbox_job_name)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_script_name
+						ON agent_tool_calls (script_name)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_script_name`,
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_sandbox_job_name`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS egress_domains,
+						DROP COLUMN IF EXISTS result_artifact_ref,
+						DROP COLUMN IF EXISTS script_name,
+						DROP COLUMN IF EXISTS sandbox_job_name,
+						DROP COLUMN IF EXISTS execution_backend`,
+				})
+			},
+		},
+		{
 			ID: "202512261300",
 			Migrate: func(tx *gorm.DB) error {
 				config := &model.CronJobConfig{
@@ -1489,6 +1518,17 @@ func main() {
 					"idle_hours": 1,
 					"running_limit": 20,
 					"node_limit": 10
+				}`),
+				EntryID: -1,
+			},
+			{
+				Name:   patrol.TRIGGER_STORAGE_DAILY_AUDIT_JOB,
+				Type:   model.CronJobTypePatrolFunc,
+				Spec:   "0 3 * * *",
+				Status: model.CronJobConfigStatusSuspended,
+				Config: datatypes.JSON(`{
+					"days": 1,
+					"pvc_limit": 200
 				}`),
 				EntryID: -1,
 			},

@@ -4,7 +4,7 @@ Each tool is declared here with its schema. Actual execution happens via
 HTTP callback to the Go backend's /v1/agent/tools/execute endpoint.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from langchain_core.tools import tool
 
@@ -379,8 +379,340 @@ def save_audit_report(
 
 
 # ============================================================
+# B4. Storage / Network / Retrieval Tools (admin, auto-execute)
+# ============================================================
+
+
+@tool
+def list_storage_pvcs(
+    namespace: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 30,
+) -> dict:
+    """列出存储 PVC 摘要（容量、状态、命名空间、绑定关系）。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤
+        status: 可选，按 PVC 状态过滤（如 Bound / Pending）
+        limit: 最多返回 N 条，默认 30
+    """
+    pass
+
+
+@tool
+def get_pvc_detail(pvc_name: str, namespace: Optional[str] = None) -> dict:
+    """获取单个 PVC 详情，包括容量、访问模式、存储类、挂载引用等。
+    仅管理员可用。
+
+    Args:
+        pvc_name: PVC 名称
+        namespace: 可选，PVC 所在命名空间
+    """
+    pass
+
+
+@tool
+def get_pvc_events(
+    pvc_name: str,
+    namespace: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """获取 PVC 相关事件（调度、挂载、绑定、扩容失败等）。
+    仅管理员可用。
+
+    Args:
+        pvc_name: PVC 名称
+        namespace: 可选，PVC 所在命名空间
+        limit: 最多返回 N 条事件，默认 50
+    """
+    pass
+
+
+@tool
+def inspect_job_storage(job_name: str) -> dict:
+    """检查指定作业的存储挂载与卷声明情况，辅助定位挂载失败或存储不可用问题。
+    仅管理员可用。
+
+    Args:
+        job_name: 作业系统唯一名（Job.JobName）
+    """
+    pass
+
+
+@tool
+def get_storage_capacity_overview(namespace: Optional[str] = None) -> dict:
+    """获取存储容量总览，包含已用/可用/异常 PVC 摘要。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间聚合
+    """
+    pass
+
+
+@tool
+def get_node_network_summary(
+    node_name: Optional[str] = None,
+    include_addresses: bool = False,
+    limit: Optional[int] = None,
+) -> dict:
+    """获取节点网络状态摘要（节点网络可用性、关键告警、基础网卡状态等）。
+    仅管理员可用。
+
+    Args:
+        node_name: 可选，指定节点；为空则返回集群级网络摘要
+        include_addresses: 是否附带节点地址列表
+        limit: 可选，返回节点数量上限
+    """
+    pass
+
+
+@tool
+def diagnose_distributed_job_network(
+    job_name: Optional[str] = None,
+    tail_lines: int = 200,
+    max_log_matches: int = 50,
+    keyword: Optional[str] = None,
+    lookback_hours: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> dict:
+    """诊断分布式作业网络通信问题（如 NCCL/RDMA 相关异常）。
+    仅管理员可用。
+
+    Args:
+        job_name: 作业系统唯一名（Job.JobName）；为空时返回近期分布式作业的聚合诊断
+        tail_lines: 日志回看行数，默认 200
+        max_log_matches: 最多保留多少条日志命中
+        keyword: 可选，额外关键词/正则过滤
+        lookback_hours: 聚合诊断时的时间窗口（小时）
+        limit: 聚合诊断时最多检查多少个作业
+    """
+    pass
+
+
+@tool
+def web_search(
+    query: str,
+    limit: int = 5,
+    urls: Optional[List[str]] = None,
+    timeout_seconds: Optional[int] = None,
+) -> dict:
+    """检索外部公开文档与公告（由平台白名单域名控制）。
+    仅管理员可用。
+
+    Args:
+        query: 检索关键词
+        limit: 最多返回 N 条结果，默认 5
+        urls: 可选，直接指定白名单 URL 列表
+        timeout_seconds: 可选，覆盖默认请求超时
+    """
+    pass
+
+
+@tool
+def sandbox_grep(
+    pattern: str,
+    path: str,
+    ignore_case: bool = False,
+    max_matches: int = 50,
+) -> dict:
+    """在受限沙箱目录内执行文本检索（例如 runbooks/、collected-bundles/、mounted-config/）。
+    仅管理员可用。
+
+    Args:
+        pattern: 搜索模式（正则）
+        path: 沙箱内目标路径
+        ignore_case: 是否忽略大小写
+        max_matches: 最多返回 N 条匹配，默认 50
+    """
+    pass
+
+
+@tool
+def sandbox_list_dir(
+    path: str,
+    glob: Optional[str] = None,
+    max_entries: int = 200,
+) -> dict:
+    """列出受限沙箱目录下的文件/子目录（用于排查配置、runbook、bundle内容）。
+    仅管理员可用。
+
+    Args:
+        path: 沙箱内目标目录
+        glob: 可选，glob 过滤，如 "*.yaml"
+        max_entries: 最多返回 N 条条目，默认 200
+    """
+    pass
+
+
+@tool
+def sandbox_read_file(path: str, max_bytes: int = 50000) -> dict:
+    """读取受限沙箱内的文本文件内容（用于排查配置/日志片段）。
+    仅管理员可用。
+
+    Args:
+        path: 沙箱内目标文件路径
+        max_bytes: 最多读取字节数，默认 50000
+    """
+    pass
+
+
+@tool
+def get_agent_runtime_summary() -> dict:
+    """返回 agent 侧运行时配置摘要（backend/k8s/prometheus、本地工具沙箱规则等）。
+
+    该工具为平台无关工具，本地执行，不依赖 Crater 后端。
+    """
+    pass
+
+
+@tool
+def k8s_list_nodes(
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """通过 agent 侧 kubeconfig 直接列出 Kubernetes 节点摘要。
+
+    适用于节点 NotReady、调度异常、节点筛选等排查。
+    """
+    pass
+
+
+@tool
+def k8s_list_pods(
+    namespace: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    node_name: Optional[str] = None,
+    limit: int = 200,
+) -> dict:
+    """通过 agent 侧 kubeconfig 直接列出 Pod 摘要。
+
+    适用于按 namespace / label / node 聚合排查 Pod 与作业状态。
+    """
+    pass
+
+
+@tool
+def k8s_get_events(
+    namespace: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    limit: int = 100,
+) -> dict:
+    """通过 agent 侧 kubeconfig 查询 Kubernetes 事件。
+
+    适用于镜像拉取失败、调度失败、节点异常、PVC 挂载失败等问题排查。
+    """
+    pass
+
+
+@tool
+def k8s_describe_resource(
+    kind: str,
+    name: str,
+    namespace: Optional[str] = None,
+) -> dict:
+    """通过 agent 侧 kubeconfig 执行 kubectl describe。
+
+    适用于节点、Pod、PVC、Deployment、DaemonSet 等资源的详细排查。
+    """
+    pass
+
+
+@tool
+def k8s_get_pod_logs(
+    pod_name: str,
+    namespace: Optional[str] = None,
+    container: Optional[str] = None,
+    tail: int = 200,
+    since_seconds: Optional[int] = None,
+    previous: bool = False,
+) -> dict:
+    """通过 agent 侧 kubeconfig 读取 Pod 日志。
+
+    适用于镜像拉取失败后容器错误、CrashLoopBackOff、监控组件异常、训练容器报错等排查。
+    """
+    pass
+
+
+@tool
+def prometheus_query(
+    query: str,
+    query_type: str = "instant",
+    time: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    step: Optional[str] = None,
+    timeout_seconds: Optional[int] = None,
+    max_series: int = 20,
+    max_points_per_series: int = 120,
+) -> dict:
+    """通过 agent 侧 Prometheus API 直接执行 instant/range 查询。
+
+    适用于 GPU/节点/Pod 指标、Prometheus 自身健康、node-exporter 重启频繁等问题排查。
+    """
+    pass
+
+
+@tool
+def harbor_check(
+    server: Optional[str] = None,
+    image: Optional[str] = None,
+    repository: Optional[str] = None,
+    reference: Optional[str] = None,
+    timeout_seconds: Optional[int] = None,
+) -> dict:
+    """检查 Harbor/OCI Registry 健康状态，以及指定镜像是否存在。
+
+    适用于镜像拉取失败、构建镜像失败、Harbor 迁移后地址异常等问题排查。
+    """
+    pass
+
+
+# ============================================================
 # C. Action Tools (require user confirmation)
 # ============================================================
+
+
+@tool
+def cordon_node(node_name: str, reason: Optional[str] = None) -> dict:
+    """将节点标记为不可调度。需要管理员确认。"""
+    pass
+
+
+@tool
+def uncordon_node(node_name: str, reason: Optional[str] = None) -> dict:
+    """恢复节点调度。需要管理员确认。"""
+    pass
+
+
+@tool
+def drain_node(node_name: str, reason: Optional[str] = None) -> dict:
+    """排空节点并禁止新调度。需要管理员确认。"""
+    pass
+
+
+@tool
+def delete_pod(
+    name: str,
+    namespace: Optional[str] = None,
+    force: bool = False,
+    grace_period_seconds: Optional[int] = None,
+) -> dict:
+    """删除 Pod 以触发重建或清理卡死实例。需要管理员确认。"""
+    pass
+
+
+@tool
+def restart_workload(
+    kind: str,
+    name: str,
+    namespace: Optional[str] = None,
+) -> dict:
+    """对 Deployment/StatefulSet/DaemonSet 执行滚动重启。需要管理员确认。"""
+    pass
 
 
 @tool
@@ -499,6 +831,22 @@ def notify_job_owner(job_names: str = "", message: str = "") -> str:
     pass
 
 
+@tool
+def run_ops_script(
+    script_name: str,
+    script_args: Optional[Dict[str, Any]] = None,
+    timeout_seconds: Optional[int] = None,
+) -> dict:
+    """执行受控运维脚本（仅允许平台白名单脚本名），需要管理员确认。
+
+    Args:
+        script_name: 白名单脚本名，如 inspect_pvc / inspect_mounts / collect_events / inspect_rdma_node / diagnose_nccl_job
+        script_args: 结构化参数（JSON 对象），不接受任意 shell 文本
+        timeout_seconds: 可选，脚本超时时间（秒）
+    """
+    pass
+
+
 # ============================================================
 # Tool Registry
 # ============================================================
@@ -534,6 +882,25 @@ AUTO_TOOLS = [
     get_latest_audit_report,
     list_audit_items,
     save_audit_report,
+    list_storage_pvcs,
+    get_pvc_detail,
+    get_pvc_events,
+    inspect_job_storage,
+    get_storage_capacity_overview,
+    get_node_network_summary,
+    diagnose_distributed_job_network,
+    web_search,
+    sandbox_grep,
+    sandbox_list_dir,
+    sandbox_read_file,
+    get_agent_runtime_summary,
+    k8s_list_nodes,
+    k8s_list_pods,
+    k8s_get_events,
+    k8s_describe_resource,
+    k8s_get_pod_logs,
+    prometheus_query,
+    harbor_check,
 ]
 
 # Tools that require user confirmation before execution (write operations)
@@ -543,9 +910,15 @@ CONFIRM_TOOLS = [
     delete_job,
     create_jupyter_job,
     create_training_job,
+    cordon_node,
+    uncordon_node,
+    drain_node,
+    delete_pod,
+    restart_workload,
     mark_audit_handled,
     batch_stop_jobs,
     notify_job_owner,
+    run_ops_script,
 ]
 
 ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
@@ -553,6 +926,48 @@ ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
 READ_ONLY_TOOL_NAMES = {t.name for t in AUTO_TOOLS}
 CONFIRM_TOOL_NAMES = {t.name for t in CONFIRM_TOOLS}
 WRITE_TOOL_NAMES = CONFIRM_TOOL_NAMES  # Alias used by spec
+ADMIN_ONLY_TOOL_NAMES = {
+    tool.name
+    for tool in [
+        get_cluster_health_overview,
+        list_cluster_jobs,
+        list_cluster_nodes,
+        get_cluster_health_report,
+        get_node_detail,
+        get_admin_ops_report,
+        get_latest_audit_report,
+        list_audit_items,
+        save_audit_report,
+        list_storage_pvcs,
+        get_pvc_detail,
+        get_pvc_events,
+        inspect_job_storage,
+        get_storage_capacity_overview,
+        get_node_network_summary,
+        diagnose_distributed_job_network,
+        web_search,
+        sandbox_grep,
+        sandbox_list_dir,
+        sandbox_read_file,
+        get_agent_runtime_summary,
+        k8s_list_nodes,
+        k8s_list_pods,
+        k8s_get_events,
+        k8s_describe_resource,
+        k8s_get_pod_logs,
+        prometheus_query,
+        harbor_check,
+        cordon_node,
+        uncordon_node,
+        drain_node,
+        delete_pod,
+        restart_workload,
+        mark_audit_handled,
+        batch_stop_jobs,
+        notify_job_owner,
+        run_ops_script,
+    ]
+}
 
 ROLE_ALLOWED_TOOL_NAMES = {
     "planner": set(READ_ONLY_TOOL_NAMES),
@@ -570,3 +985,10 @@ def is_tool_allowed_for_role(role: Optional[str], tool_name: str) -> bool:
     normalized_role = (role or "single_agent").strip().lower() or "single_agent"
     allowed = ROLE_ALLOWED_TOOL_NAMES.get(normalized_role, ROLE_ALLOWED_TOOL_NAMES["single_agent"])
     return tool_name in allowed
+
+
+def is_actor_allowed_for_tool(actor_role: Optional[str], tool_name: str) -> bool:
+    normalized_role = (actor_role or "user").strip().lower() or "user"
+    if tool_name not in ADMIN_ONLY_TOOL_NAMES:
+        return True
+    return normalized_role in {"admin", "platform_admin", "system_admin"}
