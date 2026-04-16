@@ -1659,7 +1659,7 @@ func (mgr *AgentMgr) K8sOwnershipCheck(c *gin.Context) {
 	}
 
 	userID, err := strconv.ParseUint(userIDStr, 10, 64)
-	if err != nil {
+	if err != nil || userID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
 		return
 	}
