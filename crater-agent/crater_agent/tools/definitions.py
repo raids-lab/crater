@@ -672,6 +672,30 @@ def harbor_check(
 
 
 # ============================================================
+# B5. Local Code Execution Tool (admin, local CAMEL sandbox)
+# ============================================================
+
+
+@tool
+def execute_code(
+    code: str,
+    language: str = "python",
+    timeout: int = 30,
+) -> dict:
+    """在受控沙箱中执行代码片段，用于日志分析、指标计算、数据处理等。
+    使用 CAMEL CodeExecutionToolkit，沙箱类型由 CRATER_AGENT_CODE_SANDBOX 控制
+    （默认 subprocess；Docker 模式需要宿主机运行 Docker daemon）。
+    仅管理员可用。
+
+    Args:
+        code: 要执行的代码内容（Python）
+        language: 编程语言，默认 python（当前仅支持 python）
+        timeout: 超时秒数，默认 30
+    """
+    pass  # Executed by LocalToolExecutor._handle_execute_code
+
+
+# ============================================================
 # C. Action Tools (require user confirmation)
 # ============================================================
 
@@ -901,6 +925,7 @@ AUTO_TOOLS = [
     k8s_get_pod_logs,
     prometheus_query,
     harbor_check,
+    execute_code,  # local CAMEL sandbox execution
 ]
 
 # Tools that require user confirmation before execution (write operations)
@@ -926,6 +951,10 @@ ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
 READ_ONLY_TOOL_NAMES = {t.name for t in AUTO_TOOLS}
 CONFIRM_TOOL_NAMES = {t.name for t in CONFIRM_TOOLS}
 WRITE_TOOL_NAMES = CONFIRM_TOOL_NAMES  # Alias used by spec
+
+# Tools that should only be accessible to executor/single_agent roles (not explorer/planner)
+EXECUTOR_ONLY_TOOL_NAMES = {"execute_code"}
+
 ADMIN_ONLY_TOOL_NAMES = {
     tool.name
     for tool in [
@@ -954,6 +983,7 @@ ADMIN_ONLY_TOOL_NAMES = {
         k8s_list_pods,
         prometheus_query,
         harbor_check,
+        execute_code,  # local code execution, admin-only
         cordon_node,
         uncordon_node,
         drain_node,
@@ -967,13 +997,13 @@ ADMIN_ONLY_TOOL_NAMES = {
 }
 
 ROLE_ALLOWED_TOOL_NAMES = {
-    "planner": set(READ_ONLY_TOOL_NAMES),
-    "coordinator": set(READ_ONLY_TOOL_NAMES),
-    "explorer": set(READ_ONLY_TOOL_NAMES),
+    "planner": set(READ_ONLY_TOOL_NAMES) - EXECUTOR_ONLY_TOOL_NAMES,
+    "coordinator": set(READ_ONLY_TOOL_NAMES) - EXECUTOR_ONLY_TOOL_NAMES,
+    "explorer": set(READ_ONLY_TOOL_NAMES) - EXECUTOR_ONLY_TOOL_NAMES,
     "executor": {tool.name for tool in ALL_TOOLS},
-    "verifier": set(READ_ONLY_TOOL_NAMES),
+    "verifier": set(READ_ONLY_TOOL_NAMES) - EXECUTOR_ONLY_TOOL_NAMES,
     "guide": set(),
-    "general": set(READ_ONLY_TOOL_NAMES),
+    "general": set(READ_ONLY_TOOL_NAMES) - EXECUTOR_ONLY_TOOL_NAMES,
     "single_agent": {tool.name for tool in ALL_TOOLS},
 }
 
