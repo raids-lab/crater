@@ -103,12 +103,9 @@ def build_system_prompt(
         page_context_detail = f"{page_context_detail}\n{pvc_line}".strip()
     capabilities_detail = ""
     capabilities = context.get("capabilities", {})
-    enabled_tools = capabilities.get("enabled_tools") or []
     confirm_tools = capabilities.get("confirm_tools") or []
-    if enabled_tools:
-        capabilities_detail = f"\n- 当前可用 Tools: {', '.join(enabled_tools)}"
-        if confirm_tools:
-            capabilities_detail += f"\n- 其中需要确认的写工具: {', '.join(confirm_tools)}"
+    if confirm_tools:
+        capabilities_detail = f"\n- 写操作需用户确认（会弹出确认卡片）: {', '.join(confirm_tools)}"
 
     actor = context.get("actor", {})
     page_url = page.get("url") or page.get("route", "")
