@@ -118,6 +118,7 @@ class LocalToolExecutor:
             "k8s_get_pod_logs": self._handle_k8s_get_pod_logs,
             "prometheus_query": self._handle_prometheus_query,
             "harbor_check": self._handle_harbor_check,
+            "execute_code": self._handle_execute_code,
         }
 
     def supports(self, tool_name: str) -> bool:
@@ -1069,33 +1070,6 @@ class LocalToolExecutor:
             },
         }
 
-    async def _fetch_web_page(self, url: str, timeout_seconds: int) -> tuple[str, str, str]:
-        response = await self.client.get(url, timeout=timeout_seconds)
-        response.raise_for_status()
-        raw_text = response.text
-        title = _extract_title(raw_text)
-        content = _strip_html(raw_text)
-        return url, title, content
-
-    async def _duckduckgo_html_search(self, query: str, timeout_seconds: int, limit: int) -> list[str]:
-        # Best-effort fallback when no urls/seedUrls are configured.
-        # This can be disabled by config: keep deterministic mode via urls/seedUrls.
-        search_url = "https://duckduckgo.com/html/"
-        resp = await self.client.get(search_url, params={"q": query}, timeout=timeout_seconds)
-        resp.raise_for_status()
-        html_text = resp.text or ""
-        urls: list[str] = []
-        for m in re.finditer(
-            r'(?is)<a[^>]+class="[^"]*result__a[^"]*"[^>]+href="([^"]+)"',
-            html_text,
-        ):
-            url = m.group(1).strip()
-            if url and url not in urls:
-                urls.append(url)
-            if len(urls) >= limit * 3:
-                break
-        return urls
-
     async def _handle_web_search(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         if not self.runtime.web_search_enabled:
             raise PermissionError("web_search is disabled by runtime config")
@@ -1105,82 +1079,20 @@ class LocalToolExecutor:
             raise ValueError("web_search requires a non-empty query")
 
         limit = max(1, min(int(tool_args.get("limit") or 5), 20))
-        timeout_seconds = int(
-            tool_args.get("timeout_seconds") or self.runtime.web_search_timeout_seconds
-        )
-        provided_urls = [
-            str(url).strip()
-            for url in (tool_args.get("urls") or [])
-            if str(url).strip()
-        ]
-        candidate_urls = provided_urls or list(self.runtime.web_search_seed_urls)
-        if not candidate_urls:
-            allow_fallback = (
-                os.getenv("CRATER_AGENT_LOCAL_WEB_SEARCH_ALLOW_FALLBACK", "")
-                .strip()
-                .lower()
-                in ("1", "true", "yes", "on")
-            )
-            if allow_fallback:
-                # Optional fallback: attempt a public search and then fetch result pages.
-                candidate_urls = await self._duckduckgo_html_search(
-                    query=query, timeout_seconds=timeout_seconds, limit=limit
-                )
 
-        if not candidate_urls:
-            raise ValueError("web_search requires urls/seedUrls (fallback search disabled)")
+        from crater_agent.tools.camel_tools import camel_web_search  # noqa: PLC0415
+        return await camel_web_search(query=query, max_results=limit)
 
-        deduped_urls: list[str] = []
-        for url in candidate_urls:
-            if url not in deduped_urls:
-                deduped_urls.append(url)
+    async def _handle_execute_code(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        code = str(tool_args.get("code") or "").strip()
+        if not code:
+            raise ValueError("execute_code requires non-empty code")
 
-        allowed_urls = [url for url in deduped_urls if self.runtime.is_allowed_web_url(url)]
-        blocked_urls = [url for url in deduped_urls if url not in allowed_urls]
-        if not allowed_urls:
-            raise PermissionError("no allowed URLs available for web_search")
+        language = str(tool_args.get("language") or "python").strip().lower() or "python"
+        if language not in {"python"}:
+            raise ValueError(f"execute_code: unsupported language '{language}' (only 'python' supported)")
 
-        fetch_results = await asyncio.gather(
-            *(self._fetch_web_page(url, timeout_seconds) for url in allowed_urls[: max(10, limit * 2)]),
-            return_exceptions=True,
-        )
+        timeout = max(5, min(int(tool_args.get("timeout") or 30), 120))
 
-        terms = _query_terms(query)
-        results: list[dict[str, Any]] = []
-        errors: list[dict[str, Any]] = []
-        for item in fetch_results:
-            if isinstance(item, Exception):
-                errors.append({"message": str(item)})
-                continue
-
-            url, title, content = item
-            haystack = f"{title}\n{content}".lower()
-            score = sum(haystack.count(term) for term in terms) if terms else 1
-            if not provided_urls and score <= 0:
-                continue
-            snippet = _extract_snippet(
-                content, query=query, max_chars=self.runtime.web_search_max_content_chars
-            )
-            results.append(
-                {
-                    "url": url,
-                    "title": title,
-                    "snippet": snippet,
-                    "score": score,
-                }
-            )
-
-        results.sort(
-            key=lambda item: (item.get("score", 0), len(item.get("snippet", ""))),
-            reverse=True,
-        )
-        return {
-            "status": "success",
-            "result": {
-                "query": query,
-                "results": results[:limit],
-                "searched_urls": allowed_urls[:limit] if provided_urls else allowed_urls,
-                "blocked_urls": blocked_urls,
-                "errors": errors,
-            },
-        }
+        from crater_agent.tools.camel_tools import camel_execute_code  # noqa: PLC0415
+        return await camel_execute_code(code=code, language=language, timeout=timeout)
