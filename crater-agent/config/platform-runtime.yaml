@@ -1,0 +1,113 @@
+# Agent-side platform/runtime override.
+#
+# Default behavior:
+# - crater-agent first discovers backend debug-config and reads shared endpoints/policies from there
+# - this file is optional and only overrides agent-specific runtime concerns
+#
+# Recommended for split deployment:
+# - mount this file into the agent container
+# - point CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH here only if the path is non-default
+#
+# Shared-vs-local rule:
+# - prefer backend/etc/debug-config.yaml -> agent.ops.kubernetes / webSearch for platform-shared defaults
+# - use this file only for agent-local overrides plus a small amount of durable
+#   platform baseline metadata that the agent may need even when backend config
+#   is unavailable
+#
+# What belongs here:
+# - agent-consumable runtime endpoints and binaries
+# - k8s/Prometheus/Harbor access needed by agent-local read-only tools
+# - stable platform metadata such as namespaces, storage prefixes, build images
+#
+# What should stay out:
+# - postgres/smtp/ldap/auth/backend-only settings
+# - inline kubeconfig cert/key blobs
+# - large chart values that agent tools never read
+
+toolRouting:
+  localCoreTools:
+    - sandbox_grep
+    - sandbox_list_dir
+    - sandbox_read_file
+    - get_agent_runtime_summary
+    - web_search
+    - k8s_list_nodes
+    - k8s_list_pods
+    - k8s_get_events
+    - k8s_describe_resource
+    - k8s_get_pod_logs
+    - prometheus_query
+    - harbor_check
+
+sandboxGrep:
+  roots:
+    - ../dataset
+  maxFileSizeBytes: 1000000
+
+# Optional durable platform baseline. Prefer filling only fields the agent will
+# actually consume or summarize.
+host: crater.act.buaa.edu.cn
+modelDownloadImage: crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim
+
+namespaces:
+  job: crater-workspace
+  image: crater-images
+
+storage:
+  prefix:
+    user: sugon-gpu-home-lab
+    account: crater-accounts
+    public: sugon-gpu-incoming
+  pvc:
+    readWriteMany: crater-storage
+    readOnlyMany: crater-rox-storage
+
+prometheus:
+  baseURL: http://192.168.5.60:31110
+  timeoutSeconds: 15
+  headers: {}
+  verifyTLS: true
+
+registry:
+  enabled: true
+  server: crater-harbor.act.buaa.edu.cn
+  project: ""
+  username: ""
+  password: ""
+  verifyTLS: true
+  buildProxy:
+    httpsProxy: http://192.168.5.58:1080
+    httpProxy: ""
+    noProxy: ""
+  buildToolImages:
+    buildx: crater-harbor.act.buaa.edu.cn/user-huangsy/buildkit/buildctl:v0.18.2
+    nerdctl: crater-harbor.act.buaa.edu.cn/crater/nerdctl:2.0.1-retry
+    envd: gpu-harbor.act.buaa.edu.cn/user-huangsy/envd-build-frontend:v1.2.0
+
+grafana:
+  address: ""
+  host: ""
+  token: ""
+
+kubernetes:
+  # Keep kubeconfig in a separate file, e.g. crater-agent/config/kubeconfig.
+  # Do not inline certificate/key material into this YAML.
+  kubeconfigPath: ./kubeconfig
+  context: kubernetes-admin@kubernetes
+  namespace: crater-workspace
+  kubectlBin: kubectl
+  timeoutSeconds: 30
+
+webSearch:
+  enabled: true
+  allowedDomains:
+    - pytorch.org
+    - docs.nvidia.com
+    - huggingface.co
+    - volcano.sh
+    - kubernetes.io
+    - prometheus.io
+    - nccl.nvidia.com
+  seedUrls: []
+  timeoutSeconds: 15
+  maxContentChars: 4000
