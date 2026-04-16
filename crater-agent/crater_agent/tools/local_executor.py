@@ -6,7 +6,8 @@ Goal:
 
 Currently supported (minimum viable set):
 - sandbox_grep: grep inside configured sandbox roots.
-- web_search: fetch/score/summarize content from allowed URLs (provided or seeded).
+- web_search: DuckDuckGo search via CAMEL SearchToolkit.
+- execute_code: run Python in CAMEL CodeExecutionToolkit sandbox.
 
 Extended local/core tools (platform-agnostic):
 - sandbox_list_dir: list directory entries inside sandbox roots.
@@ -17,7 +18,6 @@ Extended local/core tools (platform-agnostic):
 from __future__ import annotations
 
 import asyncio
-import html
 import json
 import os
 import re
@@ -38,46 +38,6 @@ def _is_relative_to(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
-
-
-def _strip_html(raw: str) -> str:
-    text = re.sub(r"(?is)<script.*?>.*?</script>", " ", raw)
-    text = re.sub(r"(?is)<style.*?>.*?</style>", " ", text)
-    text = re.sub(r"(?s)<[^>]+>", " ", text)
-    text = html.unescape(text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
-
-
-def _extract_title(raw: str) -> str:
-    match = re.search(r"(?is)<title[^>]*>(.*?)</title>", raw)
-    if not match:
-        return ""
-    return re.sub(r"\s+", " ", html.unescape(match.group(1))).strip()
-
-
-def _extract_snippet(text: str, query: str, max_chars: int) -> str:
-    if not text:
-        return ""
-    lowered = text.lower()
-    query_lower = query.lower().strip()
-    if query_lower:
-        idx = lowered.find(query_lower)
-        if idx >= 0:
-            start = max(0, idx - max_chars // 4)
-            end = min(len(text), start + max_chars)
-            return text[start:end].strip()
-    return text[:max_chars].strip()
-
-
-def _query_terms(query: str) -> list[str]:
-    normalized = str(query or "").strip().lower()
-    if not normalized:
-        return []
-    tokens = [token for token in re.split(r"\s+", normalized) if token]
-    if normalized not in tokens:
-        tokens.append(normalized)
-    return tokens
 
 
 def _extract_involved_object_name(field_selector: str) -> str | None:
