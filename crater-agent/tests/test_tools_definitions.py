@@ -26,6 +26,7 @@ NEW_READ_ONLY_TOOLS = {
     "k8s_list_pods",
     "k8s_get_events",
     "k8s_describe_resource",
+    "k8s_get_pod_logs",
 }
 
 
