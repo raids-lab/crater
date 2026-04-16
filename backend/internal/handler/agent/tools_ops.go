@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1637,4 +1638,47 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// K8sOwnershipCheck verifies that a pod (by pod_name) belongs to a job owned by the requesting user.
+// Called by the Python agent local k8s executor for non-admin actors.
+// Auth: X-Agent-Internal-Token header.
+// Query params: pod_name (string, required), user_id (uint64, required).
+// Response: {"allowed": true|false}
+func (mgr *AgentMgr) K8sOwnershipCheck(c *gin.Context) {
+	if !mgr.isInternalToolRequestAuthorized(c) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	podName := strings.TrimSpace(c.Query("pod_name"))
+	userIDStr := strings.TrimSpace(c.Query("user_id"))
+	if podName == "" || userIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pod_name and user_id are required"})
+		return
+	}
+
+	userID, err := strconv.ParseUint(userIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
+		return
+	}
+
+	j := query.Job
+	jobs, err := j.WithContext(c.Request.Context()).
+		Where(j.UserID.Eq(uint(userID))).
+		Select(j.Name).
+		Find()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+
+	for _, job := range jobs {
+		if job.Name != "" && (strings.HasPrefix(podName, job.Name+"-") || podName == job.Name) {
+			c.JSON(http.StatusOK, gin.H{"allowed": true})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"allowed": false})
 }

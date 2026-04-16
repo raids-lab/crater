@@ -127,6 +127,7 @@ func (mgr *AgentMgr) GetName() string { return mgr.name }
 
 func (mgr *AgentMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.POST("/tools/execute", mgr.ExecuteTool)
+	g.GET("/k8s-ownership", mgr.K8sOwnershipCheck)
 }
 
 func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
