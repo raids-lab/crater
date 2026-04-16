@@ -1018,4 +1018,5 @@ def is_actor_allowed_for_tool(actor_role: Optional[str], tool_name: str) -> bool
     normalized_role = (actor_role or "user").strip().lower() or "user"
     if tool_name not in ADMIN_ONLY_TOOL_NAMES:
         return True
-    return normalized_role in {"admin", "platform_admin", "system_admin"}
+    # "roleadmin" = strings.ToLower(model.RoleAdmin.String()) from Go backend python_proxy.go
+    return normalized_role in {"roleadmin", "admin", "platform_admin", "system_admin"}
