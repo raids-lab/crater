@@ -8,11 +8,29 @@
     "timeout": 45,
     "verify_ssl": false
   },
-  "default": {
+  "default_used0": {
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
     "model": "qwen-plus-2025-07-28",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90
+  },
+  "default-tool-disable": {
+    "provider": "openai_compatible",
+    "base_url": "http://model.ic.h3i.buaa.edu.cn/v1",
+    "api_key_env": "HZBH_API_KEY",
+    "model": "Qwen3-235B-A22B-Instruct-2507",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90
+  },
+  "default": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "qwen3-vl-235b-a22b-thinking",
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 90
@@ -30,7 +48,7 @@
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.6-plus",
+    "model": "qwen3-vl-flash-2025-10-15",
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 90
@@ -39,7 +57,7 @@
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.6-plus",
+    "model": "qwen3-vl-flash-2025-10-15",
     "temperature": 0.05,
     "max_tokens": 8192,
     "timeout": 120
@@ -48,7 +66,7 @@
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.6-plus",
+    "model": "qwen3-vl-flash-2025-10-15",
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 90
@@ -57,7 +75,7 @@
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.6-plus",
+    "model": "qwen3-vl-flash-2025-10-15",
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 90
@@ -66,7 +84,7 @@
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY",
-    "model": "qwen3.6-plus",
+    "model": "qwen3-vl-flash-2025-10-15",
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 90

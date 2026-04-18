@@ -37,15 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
@@ -2259,58 +2251,35 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {/* Header — clean: title + mode tabs + help/close */}
+        {/* Header — pill tabs + help/close */}
         <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r px-4 py-2.5">
           <div className="flex items-center gap-2">
             <Sparkles className="text-primary h-4 w-4" />
             <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
           </div>
           <div className="flex items-center gap-1">
+            <Tabs value={chatMode} onValueChange={(v) => handleAgentModeSwitch(v as 'rule' | 'llm' | 'agent')}>
+              <TabsList className="h-7">
+                <TabsTrigger value="rule" className="h-6 px-2.5 text-[11px]">
+                  {t('aiops.chat.mode.rule')}
+                </TabsTrigger>
+                <TabsTrigger value="llm" className="h-6 px-2.5 text-[11px]">
+                  {t('aiops.chat.mode.llm')}
+                </TabsTrigger>
+                <TabsTrigger value="agent" className="h-6 px-2.5 text-[11px]">
+                  {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-2 text-[11px]"
-              onClick={() => handleAgentModeSwitch('rule')}
+              variant="ghost"
+              size="icon"
+              className={cn('h-6 w-6', showHelp && 'bg-accent')}
+              onClick={() => setShowHelp((v) => !v)}
+              aria-label={t('aiops.chat.helpTitle')}
             >
-              {t('aiops.chat.mode.rule')}
+              <HelpCircle className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 px-2 text-[11px]"
-              onClick={() => handleAgentModeSwitch('llm')}
-            >
-              {t('aiops.chat.mode.llm')}
-            </Button>
-            <Button variant="default" size="sm" className="h-6 px-2 text-[11px]">
-              {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
-            </Button>
-            <Dialog open={showHelp} onOpenChange={setShowHelp}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={t('aiops.chat.helpTitle')}>
-                  <HelpCircle className="h-3.5 w-3.5" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent showCloseButton={false} className="max-h-[80vh] max-w-2xl overflow-hidden p-0">
-                <div className="bg-background sticky top-0 z-10 border-b px-6 py-4 pr-12">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Sparkles className="text-primary h-5 w-5" />
-                      {t('aiops.chat.helpTitle')}
-                    </DialogTitle>
-                    <DialogDescription>{t('aiops.chat.helpDesc')}</DialogDescription>
-                  </DialogHeader>
-                  <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="absolute top-4 right-4 h-8 w-8" aria-label={t('common.close')}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </DialogClose>
-                </div>
-                <div className="overflow-y-auto px-6 py-4">
-                  <HelpContent />
-                </div>
-              </DialogContent>
-            </Dialog>
             <Button
               variant="ghost"
               size="icon"
@@ -2322,7 +2291,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             </Button>
           </div>
         </div>
-        {hasActiveAgentTask && (
+        {showHelp && <ModeGuideCard mode={chatMode} onClose={() => setShowHelp(false)} />}
+        {hasActiveAgentTask && !showHelp && (
           <div className="border-b bg-amber-50/70 px-4 py-2">
             <p className="text-[11px] leading-relaxed text-amber-800">
               {t('aiops.agent.interruptHint', {
@@ -2953,85 +2923,39 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   return (
     <>
       <div className="bg-background fixed inset-y-0 right-0 z-50 flex w-full min-w-0 flex-col border-l shadow-2xl sm:w-[500px]">
-        {/* Header */}
-        <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r p-4">
+        {/* Header — pill tabs + help/close */}
+        <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r px-4 py-2.5">
           <div className="flex items-center gap-2">
-            <Sparkles className="text-primary h-5 w-5" />
-            <div>
-              <h3 className="font-semibold">{t('aiops.chat.assistantName')}</h3>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                {chatMode === 'llm' ? t('aiops.chat.llmBased') : t('aiops.chat.ruleBased')}
-              </p>
-            </div>
+            <Sparkles className="text-primary h-4 w-4" />
+            <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              variant={chatMode === 'rule' ? 'default' : 'outline'}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setChatMode('rule')}
-            >
-              {t('aiops.chat.mode.rule')}
-            </Button>
-            <Button
-              variant={chatMode === 'llm' ? 'default' : 'outline'}
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setChatMode('llm')}
-            >
-              {t('aiops.chat.mode.llm')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setChatMode('agent')}
-            >
-              {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
-            </Button>
-            <Dialog open={showHelp} onOpenChange={setShowHelp}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  aria-label={t('aiops.chat.helpTitle')}
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent
-                showCloseButton={false}
-                className="max-h-[80vh] max-w-2xl overflow-hidden p-0"
-              >
-                <div className="bg-background sticky top-0 z-10 border-b px-6 py-4 pr-12">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Sparkles className="text-primary h-5 w-5" />
-                      {t('aiops.chat.helpTitle')}
-                    </DialogTitle>
-                    <DialogDescription>{t('aiops.chat.helpDesc')}</DialogDescription>
-                  </DialogHeader>
-                  <DialogClose asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-4 right-4 h-8 w-8"
-                      aria-label={t('common.close')}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </DialogClose>
-                </div>
-                <div className="overflow-y-auto px-6 py-4">
-                  <HelpContent />
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Tabs value={chatMode} onValueChange={(v) => setChatMode(v as 'rule' | 'llm' | 'agent')}>
+              <TabsList className="h-7">
+                <TabsTrigger value="rule" className="h-6 px-2.5 text-[11px]">
+                  {t('aiops.chat.mode.rule')}
+                </TabsTrigger>
+                <TabsTrigger value="llm" className="h-6 px-2.5 text-[11px]">
+                  {t('aiops.chat.mode.llm')}
+                </TabsTrigger>
+                <TabsTrigger value="agent" className="h-6 px-2.5 text-[11px]">
+                  {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className={cn('h-7 w-7', showHelp && 'bg-accent')}
+              onClick={() => setShowHelp((v) => !v)}
+              aria-label={t('aiops.chat.helpTitle')}
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
               onClick={onClose}
               aria-label={t('common.close')}
             >
@@ -3039,6 +2963,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             </Button>
           </div>
         </div>
+        {showHelp && <ModeGuideCard mode={chatMode} onClose={() => setShowHelp(false)} />}
 
         {/* Messages */}
         <ScrollArea className="chat-drawer-scroll-area min-h-0 min-w-0 flex-1 p-4">
@@ -3199,148 +3124,89 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   )
 }
 
-// ── Help Content Component ──────────────────────────────────────────────────
+// ── Mode Guide Card Component ───────────────────────────────────────────────
 
-function HelpContent() {
-  const { t } = useTranslation()
+const GUIDE_MODES = ['rule', 'llm', 'agent'] as const
 
-  return (
-    <div className="space-y-6 text-sm">
-      <section>
-        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.usageTitle')}</h4>
-        <div className="text-muted-foreground space-y-3">
-          <div>
-            <p className="text-foreground mb-1 font-medium">{t('aiops.chat.help.usage1Title')}</p>
-            <p>{t('aiops.chat.help.usage1Desc')}</p>
-          </div>
-          <div>
-            <p className="text-foreground mb-1 font-medium">{t('aiops.chat.help.usage2Title')}</p>
-            <p>{t('aiops.chat.help.usage2Desc')}</p>
-          </div>
-          <div>
-            <p className="text-foreground mb-1 font-medium">{t('aiops.chat.help.usage3Title')}</p>
-            <p>
-              {t('aiops.chat.help.usage3Desc')}:{' '}
-              <code className="bg-muted rounded px-1 py-0.5">job:jpt-xxx-xxx</code> /{' '}
-              <code className="bg-muted rounded px-1 py-0.5">analyze job jpt-xxx-xxx</code>
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.statsTitle')}</h4>
-        <div className="space-y-2">
-          <StatItem
-            rank="1"
-            type={t('aiops.chat.help.stat1Type')}
-            percentage="24.1%"
-            description={t('aiops.chat.help.stat1Desc')}
-            isUserIssue
-          />
-          <StatItem
-            rank="2"
-            type={t('aiops.chat.help.stat2Type')}
-            percentage="23.6%"
-            description={t('aiops.chat.help.stat2Desc')}
-          />
-          <StatItem
-            rank="3"
-            type={t('aiops.chat.help.stat3Type')}
-            percentage="18.4%"
-            description={t('aiops.chat.help.stat3Desc')}
-          />
-          <StatItem
-            rank="4"
-            type={t('aiops.chat.help.stat4Type')}
-            percentage="9.4%"
-            description={t('aiops.chat.help.stat4Desc')}
-            isUserIssue
-          />
-          <StatItem
-            rank="5"
-            type={t('aiops.chat.help.stat5Type')}
-            percentage="4.2%"
-            description={t('aiops.chat.help.stat5Desc')}
-            isUserIssue
-          />
-        </div>
-      </section>
-
-      <section>
-        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.selfCheckTitle')}</h4>
-        <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
-          <p className="font-medium text-yellow-700 dark:text-yellow-300">
-            {t('aiops.chat.help.selfCheckHighlight')}
-          </p>
-          <div className="text-muted-foreground space-y-1 text-xs">
-            <p>{t('aiops.chat.help.selfCheck1')}</p>
-            <p>{t('aiops.chat.help.selfCheck2')}</p>
-            <p>{t('aiops.chat.help.selfCheck3')}</p>
-            <p>{t('aiops.chat.help.selfCheck4')}</p>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.supportedInputTitle')}</h4>
-        <div className="bg-muted space-y-1.5 rounded-lg p-3 font-mono text-xs">
-          <p>• {t('aiops.chat.help.input1')}</p>
-          <p>• {t('aiops.chat.help.input2')}</p>
-          <p>• {t('aiops.chat.help.input3')}</p>
-          <p>• {t('aiops.chat.help.input4')}</p>
-          <p>• {t('aiops.chat.help.input5')}</p>
-        </div>
-      </section>
-
-      <section>
-        <h4 className="mb-2 text-base font-semibold">{t('aiops.chat.help.limitationsTitle')}</h4>
-        <div className="text-muted-foreground space-y-1 text-xs">
-          <p>{t('aiops.chat.help.limit1')}</p>
-          <p>{t('aiops.chat.help.limit2')}</p>
-          <p>{t('aiops.chat.help.limit3')}</p>
-          <p>{t('aiops.chat.help.limit4')}</p>
-        </div>
-      </section>
-    </div>
-  )
+function GuideIcon({ mode }: { mode: string }) {
+  switch (mode) {
+    case 'llm':
+      return <Sparkles className="text-primary h-4 w-4" />
+    case 'agent':
+      return <Users className="text-primary h-4 w-4" />
+    default:
+      return <Zap className="text-primary h-4 w-4" />
+  }
 }
 
-// ── Stat Item Component ─────────────────────────────────────────────────────
-
-function StatItem({
-  rank,
-  type,
-  percentage,
-  description,
-  isUserIssue = false,
+function ModeGuideCard({
+  mode,
+  onClose,
 }: {
-  rank: string
-  type: string
-  percentage: string
-  description: string
-  isUserIssue?: boolean
+  mode: 'rule' | 'llm' | 'agent'
+  onClose: () => void
 }) {
   const { t } = useTranslation()
+  const [guideMode, setGuideMode] = useState<'rule' | 'llm' | 'agent'>(mode)
+
+  // Sync with external mode changes
+  useEffect(() => {
+    setGuideMode(mode)
+  }, [mode])
+
+  const modeKey = `aiops.chat.guide.${guideMode}`
 
   return (
-    <div className="bg-muted/50 flex items-start gap-2 rounded p-2">
-      <Badge variant="outline" className="flex-shrink-0 font-mono text-xs">
-        #{rank}
-      </Badge>
-      <div className="min-w-0 flex-1">
+    <div className="border-b bg-gradient-to-b from-muted/40 to-transparent px-4 py-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{type}</span>
-          <Badge variant="secondary" className="text-xs">
-            {percentage}
-          </Badge>
-          {isUserIssue && (
-            <Badge variant="destructive" className="h-4 text-[10px]">
-              {t('aiops.chat.selfCheckShort')}
-            </Badge>
-          )}
+          <GuideIcon mode={guideMode} />
+          <div>
+            <h4 className="text-sm font-semibold">{t(`${modeKey}.title`)}</h4>
+            <p className="text-muted-foreground text-[11px]">{t(`${modeKey}.desc`)}</p>
+          </div>
         </div>
-        <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 shrink-0"
+          onClick={onClose}
+        >
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+      <ul className="text-muted-foreground mt-2 space-y-1 text-xs">
+        <li className="flex items-start gap-1.5">
+          <CheckCircle className="text-primary mt-0.5 h-3 w-3 shrink-0" />
+          <span>{t(`${modeKey}.feat1`)}</span>
+        </li>
+        <li className="flex items-start gap-1.5">
+          <CheckCircle className="text-primary mt-0.5 h-3 w-3 shrink-0" />
+          <span>{t(`${modeKey}.feat2`)}</span>
+        </li>
+        <li className="flex items-start gap-1.5">
+          <CheckCircle className="text-primary mt-0.5 h-3 w-3 shrink-0" />
+          <span>{t(`${modeKey}.feat3`)}</span>
+        </li>
+      </ul>
+      <p className="text-muted-foreground mt-2 text-[11px] italic">
+        {t(`${modeKey}.hint`)}
+      </p>
+      {/* Dot indicators */}
+      <div className="mt-2 flex items-center justify-center gap-1.5">
+        {GUIDE_MODES.map((m) => (
+          <button
+            key={m}
+            onClick={() => setGuideMode(m)}
+            className={cn(
+              'h-1.5 rounded-full transition-all',
+              guideMode === m
+                ? 'bg-primary w-4'
+                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5'
+            )}
+            aria-label={t(`aiops.chat.guide.${m}.title`)}
+          />
+        ))}
       </div>
     </div>
   )
