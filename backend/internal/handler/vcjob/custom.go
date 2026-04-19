@@ -62,7 +62,11 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
+	exceededResources, err := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return

@@ -49,7 +49,7 @@ import { ScheduleTypeFormField } from '@/components/form/schedule-type-form-fiel
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormWebIDE } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
-import { JobSubmitButton } from '@/components/job/job-submit-button
+import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { PublishConfigForm, publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'

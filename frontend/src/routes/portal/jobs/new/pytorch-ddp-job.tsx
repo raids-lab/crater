@@ -51,7 +51,7 @@ import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormPytorch } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
-import { JobSubmitButton } from '@/components/job/job-submit-button
+import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { publishValidateSearch } from '@/components/job/publish'
 import { PublishConfigForm } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'

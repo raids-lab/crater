@@ -55,7 +55,7 @@ import {
   ScheduleType,
   apiJobAllList,
   getUnifiedJobPhase,
-} from '@/services/api/vcjob
+} from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
 

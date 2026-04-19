@@ -36,7 +36,7 @@ import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
-import { BillingPointsBadge } from '@/components/custom/billing-points-badge
+import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { scheduleTypes } from '@/components/job/statuses'
@@ -56,7 +56,7 @@ import {
   apiAdminGetJobList,
   apiJobDeleteForAdmin,
   getUnifiedJobPhase,
-} from '@/services/api/vcjob
+} from '@/services/api/vcjob'
 
 import { isBillingVisibleForAdmin } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'

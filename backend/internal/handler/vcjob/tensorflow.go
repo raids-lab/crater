@@ -54,6 +54,8 @@ type (
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/tensorflow [post]
+//
+//nolint:gocyclo // TODO
 func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -77,7 +79,11 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	for i := range len(req.Tasks) {
 		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[i].Resource)
 	}
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
+	exceededResources, err := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
 	if len(exceededResources) > 0 {
 		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
 		return

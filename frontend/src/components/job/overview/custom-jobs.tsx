@@ -46,7 +46,7 @@ import {
   apiJobDelete,
   getUnifiedJobPhase,
   isInteracitveJob,
-} from '@/services/api/vcjob
+} from '@/services/api/vcjob'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
