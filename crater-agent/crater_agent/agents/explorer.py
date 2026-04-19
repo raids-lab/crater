@@ -2,12 +2,29 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
 from crater_agent.agents.base import BaseRoleAgent, RoleExecutionResult
 from crater_agent.tools.definitions import READ_ONLY_TOOL_NAMES
 
 logger = logging.getLogger(__name__)
+
+
+def _format_compact_evidence(compact_evidence: list[dict]) -> str:
+    """Format structured evidence into a readable block for the LLM prompt."""
+    if not compact_evidence:
+        return "(无)"
+    lines = []
+    for i, item in enumerate(compact_evidence, 1):
+        tool_name = item.get("tool_name", "unknown")
+        result = item.get("result", {})
+        # Truncate result to avoid excessive prompt size
+        result_str = json.dumps(result, ensure_ascii=False, default=str)
+        if len(result_str) > 400:
+            result_str = result_str[:400] + "...(truncated)"
+        lines.append(f"  {i}. [{tool_name}] {result_str}")
+    return "\n".join(lines)
 
 
 class ExplorerAgent(BaseRoleAgent):
@@ -21,6 +38,7 @@ class ExplorerAgent(BaseRoleAgent):
         enabled_tools: list[str],
         evidence_summary: str = "",
         attempted_tool_signatures: list[str] | None = None,
+        compact_evidence: list[dict] | None = None,
     ) -> tuple[str, str]:
         allowed = sorted({t for t in enabled_tools if t in READ_ONLY_TOOL_NAMES})
         visible_tools = list(allowed)
@@ -39,6 +57,9 @@ class ExplorerAgent(BaseRoleAgent):
                 f"  {i + 1}. {step}" for i, step in enumerate(plan_steps)
             )
 
+        # Format structured evidence so LLM can see actual results, not just summaries
+        evidence_detail = _format_compact_evidence(compact_evidence or [])
+
         system_prompt = (
             "你是 Crater 的 Explorer Agent。你的职责是通过只读工具主动收集证据，并在证据足够时直接给出探索总结。\n"
             "你可以连续多轮调用工具。每次拿到工具结果后，你必须继续基于结果判断下一步，而不是机械重复同一个工具。\n"
@@ -50,16 +71,16 @@ class ExplorerAgent(BaseRoleAgent):
             "工作要求：\n"
             "- 对存储/网络/节点/作业问题，优先调用平台内只读工具。\n"
             "- web_search 仅用于厂商文档、公告、CVE 对照，不能替代平台实时状态查询。\n"
-            "- sandbox_grep 仅用于补充证据（如 runbook / 诊断包内容检索），不要当成主查询路径。\n"
             "- 优先使用最少的工具获得足够证据。\n"
-            "- 避免重复调用已经用相同参数执行过的工具，除非世界状态明显变化。\n"
-            "- 如果用户是在追问或质疑上一轮回答，先用工具核实，不要沿用未经证实的旧说法。\n"
+            "- 下方“已获取的工具结果”列出了之前已经调用过的工具和结果，不要重复调用这些工具。\n"
+            "- 如果已获取的结果已经足以回答用户问题，直接给出总结，不要再调工具。\n"
             "- 最终总结要明确：已确认事实、仍缺失的信息、建议下一步。\n"
         )
         user_prompt = (
             f"用户请求:\n{user_message}\n\n"
             f"页面上下文:\n{page_context}\n\n"
-            f"已有证据摘要:\n{evidence_summary or '(empty)'}\n\n"
+            f"已获取的工具结果（不要重复调用这些）:\n{evidence_detail}\n\n"
+            f"证据文本摘要:\n{evidence_summary or '(empty)'}\n\n"
             f"最近已执行工具签名:\n{recent_attempts or []}\n\n"
             "请开始探索；若需要更多信息就调用工具，否则直接总结。"
         )

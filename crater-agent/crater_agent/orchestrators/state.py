@@ -355,6 +355,10 @@ class MASState:
         self.tool_records.append(
             MultiAgentToolRecord(agent_id=agent_id, agent_role=agent_role, tool_name=tool_name, tool_args=tool_args, tool_call_id=tool_call_id, result=result)
         )
+        # Sliding window eviction: keep the most recent records to bound context growth
+        _MAX_EVIDENCE_ITEMS = 30
+        if len(self.tool_records) > _MAX_EVIDENCE_ITEMS:
+            self.tool_records = self.tool_records[-_MAX_EVIDENCE_ITEMS:]
         self.usage_summary.evidence_items = len(self.tool_records)
 
     def remember_controller_decision(self, decision: dict[str, Any]) -> None:

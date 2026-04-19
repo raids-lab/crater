@@ -24,15 +24,6 @@ def get_job_detail(job_name: str) -> dict:
     pass  # Executed by Go backend
 
 
-@tool
-def get_job_events(job_name: str) -> dict:
-    """获取作业的 Kubernetes 事件列表，包括调度、镜像拉取、容器状态变更等事件。
-
-    Args:
-        job_name: 作业的系统唯一名（Job.JobName）
-    """
-    pass
-
 
 @tool
 def get_job_logs(job_name: str, tail: int = 200, keyword: Optional[str] = None) -> dict:
@@ -198,15 +189,6 @@ def list_user_jobs(
     """
     pass
 
-
-@tool
-def get_cluster_health_overview(days: int = 7) -> dict:
-    """获取管理员视角下整个集群的作业健康概览：全局作业总量、运行中、失败、排队、涉及用户数等。
-
-    Args:
-        days: 统计最近 N 天，默认 7
-    """
-    pass
 
 
 @tool
@@ -522,53 +504,6 @@ def fetch_url(
     pass
 
 
-@tool
-def sandbox_grep(
-    pattern: str,
-    path: str,
-    ignore_case: bool = False,
-    max_matches: int = 50,
-) -> dict:
-    """在受限沙箱目录内执行文本检索（例如 runbooks/、collected-bundles/、mounted-config/）。
-    仅管理员可用。
-
-    Args:
-        pattern: 搜索模式（正则）
-        path: 沙箱内目标路径
-        ignore_case: 是否忽略大小写
-        max_matches: 最多返回 N 条匹配，默认 50
-    """
-    pass
-
-
-@tool
-def sandbox_list_dir(
-    path: str,
-    glob: Optional[str] = None,
-    max_entries: int = 200,
-) -> dict:
-    """列出受限沙箱目录下的文件/子目录（用于排查配置、runbook、bundle内容）。
-    仅管理员可用。
-
-    Args:
-        path: 沙箱内目标目录
-        glob: 可选，glob 过滤，如 "*.yaml"
-        max_entries: 最多返回 N 条条目，默认 200
-    """
-    pass
-
-
-@tool
-def sandbox_read_file(path: str, max_bytes: int = 50000) -> dict:
-    """读取受限沙箱内的文本文件内容（用于排查配置/日志片段）。
-    仅管理员可用。
-
-    Args:
-        path: 沙箱内目标文件路径
-        max_bytes: 最多读取字节数，默认 50000
-    """
-    pass
-
 
 @tool
 def get_agent_runtime_summary() -> dict:
@@ -679,6 +614,265 @@ def harbor_check(
     """检查 Harbor/OCI Registry 健康状态，以及指定镜像是否存在。
 
     适用于镜像拉取失败、构建镜像失败、Harbor 迁移后地址异常等问题排查。
+    """
+    pass
+
+
+# ============================================================
+# B6. Infrastructure Query Tools (admin, local kubectl)
+# ============================================================
+
+
+@tool
+def k8s_get_service(
+    namespace: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    field_selector: Optional[str] = None,
+    name: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """通过 agent 侧 kubeconfig 查询 Kubernetes Service 资源。
+
+    适用于 Jupyter/WebIDE 不可达时检查 Service 是否存在、端口映射是否正确、ClusterIP 是否分配。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤；为空则查询默认命名空间
+        label_selector: 可选，标签选择器
+        field_selector: 可选，字段选择器
+        name: 可选，指定单个 Service 名称
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def k8s_get_endpoints(
+    namespace: Optional[str] = None,
+    name: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """通过 agent 侧 kubeconfig 查询 Kubernetes Endpoints 资源。
+
+    适用于排查 Service 后端是否有就绪 Pod、地址是否正确、端口是否匹配。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤
+        name: 可选，指定单个 Endpoints 名称（通常与 Service 同名）
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def k8s_get_ingress(
+    namespace: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    name: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """通过 agent 侧 kubeconfig 查询 Kubernetes Ingress 资源。
+
+    适用于 Jupyter/WebIDE 外部访问不可达时检查 Ingress 规则、TLS 配置、后端 Service 绑定。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤
+        label_selector: 可选，标签选择器
+        name: 可选，指定单个 Ingress 名称
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def get_volcano_queue_state(
+    name: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """查询 Volcano Queue 调度队列状态（集群级资源，无需指定命名空间）。
+
+    适用于排查队列公平性、容量分配、Pending 作业排队原因、资源配额是否匹配。
+    仅管理员可用。
+
+    Args:
+        name: 可选，指定单个队列名称；为空则列出所有队列
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def k8s_get_configmap(
+    namespace: Optional[str] = None,
+    name: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """通过 agent 侧 kubeconfig 查询 Kubernetes ConfigMap 资源。
+
+    适用于检查服务配置、构建参数、代理配置、镜像源配置等。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤
+        name: 可选，指定单个 ConfigMap 名称
+        label_selector: 可选，标签选择器
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def k8s_get_networkpolicy(
+    namespace: Optional[str] = None,
+    name: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """通过 agent 侧 kubeconfig 查询 Kubernetes NetworkPolicy 资源。
+
+    适用于排查出网限制（如构建 Pod 无法访问外部 apt 源）、Pod 间通信隔离（如 NCCL 端口阻断）等网络策略问题。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤
+        name: 可选，指定单个 NetworkPolicy 名称
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def aggregate_image_pull_errors(
+    namespace: Optional[str] = None,
+    time_window_minutes: int = 60,
+    limit: int = 100,
+) -> dict:
+    """聚合集群中镜像拉取失败事件，按镜像名分组统计。
+
+    适用于 Harbor 故障、镜像仓库不可用、网络问题导致的批量镜像拉取失败排查。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤；为空则查询全部命名空间
+        time_window_minutes: 时间窗口（分钟），默认 60
+        limit: 最多返回 N 条聚合结果，默认 100
+    """
+    pass
+
+
+@tool
+def detect_zombie_jobs(
+    running_hours_threshold: int = 72,
+    limit: int = 50,
+) -> dict:
+    """检测可能已僵死但仍处于 Running 状态的作业 Pod。
+
+    基于运行时长判定：超过阈值小时数的 Running Pod 视为疑似僵尸作业。
+    适用于批量清理长期占用资源的无效作业。
+    仅管理员可用。
+
+    Args:
+        running_hours_threshold: 运行时长阈值（小时），默认 72
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def get_ddp_rank_mapping(job_name: str) -> dict:
+    """获取分布式训练作业（Volcano Job）的 rank→Pod 映射关系。
+
+    适用于 DDP/NCCL 通信超时时快速定位哪个 rank 在哪个节点、IP 地址是否正确。
+    仅管理员可用。
+
+    Args:
+        job_name: Volcano Job 名称（volcano.sh/job-name 标签值）
+    """
+    pass
+
+
+@tool
+def get_node_kernel_diagnostics(
+    node_name: str,
+    dmesg_lines: int = 200,
+    check_d_state: bool = True,
+) -> dict:
+    """通过 kubectl debug 获取节点内核级诊断信息。
+
+    收集 dmesg 中 GPU/NCCL/RDMA 相关日志、D 状态进程、负载均值等。
+    适用于 RDMA 驱动死锁、GPU Xid 错误、节点内核卡死等硬件级故障排查。
+    仅管理员可用。需要集群支持 kubectl debug node（K8s 1.23+）。
+
+    Args:
+        node_name: 目标节点名称
+        dmesg_lines: dmesg 回看行数，默认 200
+        check_d_state: 是否检查 D 状态进程，默认 True
+    """
+    pass
+
+
+@tool
+def get_rdma_interface_status(node_name: str) -> dict:
+    """通过 kubectl debug 获取节点 RDMA/InfiniBand 接口状态。
+
+    收集 ibstat、rdma link、IB 端口状态、相关内核模块加载情况。
+    适用于 RDMA 通信异常、IB 端口 down、驱动未加载等智算网络故障排查。
+    仅管理员可用。需要集群支持 kubectl debug node（K8s 1.23+）。
+
+    Args:
+        node_name: 目标节点名称
+    """
+    pass
+
+
+# ============================================================
+# B7. Extended K8s Read-only Tools (admin, local kubectl)
+# ============================================================
+
+
+@tool
+def k8s_top_nodes(node_name: Optional[str] = None) -> dict:
+    """查询节点实时 CPU/Memory 使用率（需要 metrics-server 已部署）。
+    仅管理员可用。
+
+    Args:
+        node_name: 可选，指定单个节点；为空则返回全部节点
+    """
+    pass
+
+
+@tool
+def k8s_top_pods(
+    namespace: Optional[str] = None,
+    label_selector: Optional[str] = None,
+    limit: int = 50,
+) -> dict:
+    """查询 Pod 实时 CPU/Memory 使用率（需要 metrics-server 已部署）。
+    仅管理员可用。
+
+    Args:
+        namespace: 可选，按命名空间过滤
+        label_selector: 可选，按标签过滤
+        limit: 最多返回 N 条，默认 50
+    """
+    pass
+
+
+@tool
+def k8s_rollout_status(
+    kind: str,
+    name: str,
+    namespace: Optional[str] = None,
+) -> dict:
+    """查看 Deployment/StatefulSet/DaemonSet 的滚动发布状态。
+    仅管理员可用。
+
+    Args:
+        kind: 资源类型（Deployment / StatefulSet / DaemonSet）
+        name: 资源名称
+        namespace: 可选，命名空间
     """
     pass
 
@@ -873,12 +1067,77 @@ def run_ops_script(
     script_args: Optional[Dict[str, Any]] = None,
     timeout_seconds: Optional[int] = None,
 ) -> dict:
-    """执行受控运维脚本（仅允许平台白名单脚本名），需要管理员确认。
+    """执行受控运维脚本，需要管理员确认。
+    script_name 必须是以下白名单值之一，不得自行编造脚本名：
+    - inspect_pvc: 检查 PVC 挂载状态和容量
+    - inspect_mounts: 检查节点挂载点和 NFS/Lustre 状态
+    - collect_events: 收集指定命名空间的 K8s 事件
+    - inspect_rdma_node: 检查节点 RDMA/InfiniBand 状态
+    - diagnose_nccl_job: 收集分布式训练 NCCL 通信日志
 
     Args:
-        script_name: 白名单脚本名，如 inspect_pvc / inspect_mounts / collect_events / inspect_rdma_node / diagnose_nccl_job
+        script_name: 必须是白名单中的脚本名（inspect_pvc / inspect_mounts / collect_events / inspect_rdma_node / diagnose_nccl_job），不可传入其他值
         script_args: 结构化参数（JSON 对象），不接受任意 shell 文本
         timeout_seconds: 可选，脚本超时时间（秒）
+    """
+    pass
+
+
+# ============================================================
+# C3. Extended K8s Write Tools (require confirmation, local kubectl)
+# ============================================================
+
+
+@tool
+def k8s_scale_workload(
+    kind: str,
+    name: str,
+    replicas: int,
+    namespace: Optional[str] = None,
+) -> dict:
+    """调整 Deployment/StatefulSet 的副本数。需要管理员确认。
+
+    Args:
+        kind: 资源类型（Deployment / StatefulSet）
+        name: 资源名称
+        replicas: 目标副本数（0-100）
+        namespace: 可选，命名空间
+    """
+    pass
+
+
+@tool
+def k8s_label_node(
+    node_name: str,
+    key: str,
+    value: str,
+    overwrite: bool = False,
+) -> dict:
+    """为节点添加或更新标签。需要管理员确认。
+
+    Args:
+        node_name: 节点名称
+        key: 标签键
+        value: 标签值
+        overwrite: 是否覆盖已有标签，默认 False
+    """
+    pass
+
+
+@tool
+def k8s_taint_node(
+    node_name: str,
+    key: str,
+    value: str = "",
+    effect: str = "NoSchedule",
+) -> dict:
+    """为节点添加 taint。需要管理员确认。
+
+    Args:
+        node_name: 节点名称
+        key: taint 键
+        value: taint 值（可为空）
+        effect: taint 效果（NoSchedule / PreferNoSchedule / NoExecute）
     """
     pass
 
@@ -890,7 +1149,6 @@ def run_ops_script(
 # Tools that execute automatically (read-only queries)
 AUTO_TOOLS = [
     get_job_detail,
-    get_job_events,
     get_job_logs,
     diagnose_job,
     get_diagnostic_context,
@@ -904,7 +1162,6 @@ AUTO_TOOLS = [
     recommend_training_images,
     get_health_overview,
     list_user_jobs,
-    get_cluster_health_overview,
     list_cluster_jobs,
     list_cluster_nodes,
     check_quota,
@@ -927,9 +1184,6 @@ AUTO_TOOLS = [
     diagnose_distributed_job_network,
     web_search,
     fetch_url,
-    sandbox_grep,
-    sandbox_list_dir,
-    sandbox_read_file,
     get_agent_runtime_summary,
     k8s_list_nodes,
     k8s_list_pods,
@@ -939,6 +1193,20 @@ AUTO_TOOLS = [
     prometheus_query,
     harbor_check,
     execute_code,  # local CAMEL sandbox execution
+    k8s_get_service,
+    k8s_get_endpoints,
+    k8s_get_ingress,
+    get_volcano_queue_state,
+    k8s_get_configmap,
+    k8s_get_networkpolicy,
+    aggregate_image_pull_errors,
+    detect_zombie_jobs,
+    get_ddp_rank_mapping,
+    get_node_kernel_diagnostics,
+    get_rdma_interface_status,
+    k8s_top_nodes,
+    k8s_top_pods,
+    k8s_rollout_status,
 ]
 
 # Tools that require user confirmation before execution (write operations)
@@ -957,6 +1225,9 @@ CONFIRM_TOOLS = [
     batch_stop_jobs,
     notify_job_owner,
     run_ops_script,
+    k8s_scale_workload,
+    k8s_label_node,
+    k8s_taint_node,
 ]
 
 ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
@@ -971,7 +1242,6 @@ EXECUTOR_ONLY_TOOL_NAMES = {"execute_code"}
 ADMIN_ONLY_TOOL_NAMES = {
     tool.name
     for tool in [
-        get_cluster_health_overview,
         list_cluster_jobs,
         list_cluster_nodes,
         get_cluster_health_report,
@@ -989,15 +1259,23 @@ ADMIN_ONLY_TOOL_NAMES = {
         diagnose_distributed_job_network,
         web_search,
         fetch_url,
-        sandbox_grep,
-        sandbox_list_dir,
-        sandbox_read_file,
         get_agent_runtime_summary,
         k8s_list_nodes,
         k8s_list_pods,
         prometheus_query,
         harbor_check,
         execute_code,  # local code execution, admin-only
+        k8s_get_service,
+        k8s_get_endpoints,
+        k8s_get_ingress,
+        get_volcano_queue_state,
+        k8s_get_configmap,
+        k8s_get_networkpolicy,
+        aggregate_image_pull_errors,
+        detect_zombie_jobs,
+        get_ddp_rank_mapping,
+        get_node_kernel_diagnostics,
+        get_rdma_interface_status,
         cordon_node,
         uncordon_node,
         drain_node,
@@ -1007,6 +1285,12 @@ ADMIN_ONLY_TOOL_NAMES = {
         batch_stop_jobs,
         notify_job_owner,
         run_ops_script,
+        k8s_top_nodes,
+        k8s_top_pods,
+        k8s_rollout_status,
+        k8s_scale_workload,
+        k8s_label_node,
+        k8s_taint_node,
     ]
 }
 

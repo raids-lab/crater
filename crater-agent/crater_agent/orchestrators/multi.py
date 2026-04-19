@@ -1015,6 +1015,11 @@ class MultiAgentOrchestrator:
         if not state.plan and state.loop_round <= 1:
             return "plan"
 
+        # Force finalize if we have evidence and most tools are already attempted
+        # (prevents the coordinator from endlessly looping)
+        if state.tool_records and state.loop_round >= 3 and len(state.attempted_tool_signatures) >= 10:
+            return "finalize"
+
         # Everything else → Coordinator decides
         return None
 
@@ -1362,7 +1367,7 @@ class MultiAgentOrchestrator:
                     stalled_tool_rounds = 0
                 else:
                     stalled_tool_rounds += 1
-                    if stalled_tool_rounds >= 2:
+                    if stalled_tool_rounds >= 1:
                         role_agent.last_usage = aggregate_usage
                         summary = selected or role_agent.latest_reasoning_summary()
                         if not summary:
@@ -1566,6 +1571,13 @@ class MultiAgentOrchestrator:
             # If no fast-path matched, ask Coordinator LLM to decide
             if next_stage is None:
                 state_view = state.build_state_view("coordinator")
+                tool_stats = (
+                    f"\n\n当前进度统计：\n"
+                    f"- 已调用工具次数: {len(state.attempted_tool_signatures)}\n"
+                    f"- 已收集证据条数: {len(state.tool_records)}\n"
+                    f"- 当前轮次: {state.loop_round}/{state.runtime_config.lead_max_rounds}\n"
+                    f"- 连续无进展轮数: {state.no_progress_count}\n"
+                )
                 try:
                     coordinator_decision = await coordinator.run_json(
                         system_prompt=(
@@ -1581,8 +1593,10 @@ class MultiAgentOrchestrator:
                             "- 如果证据和用户请求明显不匹配、计划走偏了，选 replan\n"
                             "- 如果需要执行写操作且目标明确，选 act\n"
                             "- 如果还缺关键信息，选 observe\n"
-                            "- 不要反复 observe 相同内容\n\n"
+                            "- 不要反复 observe/act 相同内容，如果工具已调用超过 10 次且证据充分，应当 finalize\n"
+                            "- 连续无进展 ≥ 1 轮时，强烈建议 finalize，不要继续空转\n\n"
                             '输出 JSON: {"next": "observe|act|replan|finalize", "reason": "简短理由"}\n'
+                            + tool_stats
                         ),
                         user_prompt=state_view.for_prompt(),
                         history_messages=history_messages,
@@ -1709,6 +1723,7 @@ class MultiAgentOrchestrator:
                         enabled_tools=enabled_tools,
                         evidence_summary=evidence_summary_text,
                         attempted_tool_signatures=state.attempted_tool_signatures,
+                        compact_evidence=compact_evidence,
                     )
 
                     async def on_explorer_tool_result(
@@ -2097,11 +2112,13 @@ class MultiAgentOrchestrator:
                     continue
 
                 executed_actions: list[dict[str, Any]] = []
+                all_skipped = True
                 for action in frontier[:state.runtime_config.max_actions_per_round]:
                     signature = _tool_signature(action.tool_name, action.tool_args)
                     if signature in state.attempted_tool_signatures:
                         action.status = "skipped"
                         continue
+                    all_skipped = False
                     state.attempted_tool_signatures.append(signature)
                     action.status = "running"
                     result, tool_events = await call_tool(
@@ -2192,7 +2209,11 @@ class MultiAgentOrchestrator:
                             "summary": state.execution.summary,
                         },
                     )
-                    state.no_progress_count = 0
+                    if all_skipped:
+                        # All frontier actions were duplicates — no real progress
+                        state.no_progress_count += 1
+                    else:
+                        state.no_progress_count = 0
                 else:
                     state.no_progress_count += 1
 

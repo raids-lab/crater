@@ -4,15 +4,14 @@ Goal:
 - Keep a small set of platform-agnostic tools runnable inside crater-agent.
 - Make them portable to other platforms/backends by avoiding backend-specific APIs.
 
-Currently supported (minimum viable set):
-- sandbox_grep: grep inside configured sandbox roots.
+Currently supported:
 - web_search: DuckDuckGo search via CAMEL SearchToolkit.
 - execute_code: run Python in CAMEL CodeExecutionToolkit sandbox.
+- get_agent_runtime_summary: return agent + runtime config summaries.
 
 Extended local/core tools (platform-agnostic):
-- sandbox_list_dir: list directory entries inside sandbox roots.
-- sandbox_read_file: read a text file inside sandbox roots with truncation.
-- get_agent_runtime_summary: return agent + runtime config summaries.
+- K8s read-only tools via kubectl subprocess.
+- Prometheus/Harbor direct HTTP queries.
 """
 
 from __future__ import annotations
@@ -31,13 +30,6 @@ import httpx
 from crater_agent.runtime.platform import PlatformRuntimeConfig, load_platform_runtime_config
 from crater_agent.tools.definitions import is_actor_allowed_for_tool, is_tool_allowed_for_role
 
-
-def _is_relative_to(path: Path, root: Path) -> bool:
-    try:
-        path.relative_to(root)
-        return True
-    except ValueError:
-        return False
 
 
 def _extract_involved_object_name(field_selector: str) -> str | None:
@@ -66,9 +58,6 @@ class LocalToolExecutor:
         self.client = client or httpx.AsyncClient(follow_redirects=True)
         self._owns_client = client is None
         self._handlers = {
-            "sandbox_grep": self._handle_sandbox_grep,
-            "sandbox_list_dir": self._handle_sandbox_list_dir,
-            "sandbox_read_file": self._handle_sandbox_read_file,
             "get_agent_runtime_summary": self._handle_get_agent_runtime_summary,
             "web_search": self._handle_web_search,
             "fetch_url": self._handle_fetch_url,
@@ -80,6 +69,23 @@ class LocalToolExecutor:
             "prometheus_query": self._handle_prometheus_query,
             "harbor_check": self._handle_harbor_check,
             "execute_code": self._handle_execute_code,
+            "k8s_get_service": self._handle_k8s_get_service,
+            "k8s_get_endpoints": self._handle_k8s_get_endpoints,
+            "k8s_get_ingress": self._handle_k8s_get_ingress,
+            "get_volcano_queue_state": self._handle_get_volcano_queue_state,
+            "k8s_get_configmap": self._handle_k8s_get_configmap,
+            "k8s_get_networkpolicy": self._handle_k8s_get_networkpolicy,
+            "aggregate_image_pull_errors": self._handle_aggregate_image_pull_errors,
+            "detect_zombie_jobs": self._handle_detect_zombie_jobs,
+            "get_ddp_rank_mapping": self._handle_get_ddp_rank_mapping,
+            "get_node_kernel_diagnostics": self._handle_get_node_kernel_diagnostics,
+            "get_rdma_interface_status": self._handle_get_rdma_interface_status,
+            "k8s_top_nodes": self._handle_k8s_top_nodes,
+            "k8s_top_pods": self._handle_k8s_top_pods,
+            "k8s_rollout_status": self._handle_k8s_rollout_status,
+            "k8s_scale_workload": self._handle_k8s_scale_workload,
+            "k8s_label_node": self._handle_k8s_label_node,
+            "k8s_taint_node": self._handle_k8s_taint_node,
         }
 
     def supports(self, tool_name: str) -> bool:
@@ -190,206 +196,6 @@ class LocalToolExecutor:
     async def close(self) -> None:
         if self._owns_client:
             await self.client.aclose()
-
-    def _expand_sandbox_targets(self, raw_path: str) -> list[Path]:
-        requested = str(raw_path or "").strip()
-        if not self.runtime.sandbox_roots:
-            raise PermissionError("sandbox_grep is unavailable: no sandbox roots configured")
-        if requested in {"", ".", "*"}:
-            return list(self.runtime.sandbox_roots)
-
-        candidate = Path(requested).expanduser()
-        if candidate.is_absolute():
-            resolved = candidate.resolve()
-            # Resolve roots too to avoid macOS /var -> /private/var mismatches.
-            if not any(
-                _is_relative_to(resolved, root.resolve()) for root in self.runtime.sandbox_roots
-            ):
-                raise PermissionError(f"path is outside sandbox roots: {requested}")
-            return [resolved]
-
-        matches: list[Path] = []
-        for root in self.runtime.sandbox_roots:
-            root_resolved = root.resolve()
-            resolved = (root_resolved / candidate).resolve()
-            if _is_relative_to(resolved, root_resolved) and resolved.exists():
-                matches.append(resolved)
-        if matches:
-            return matches
-        raise FileNotFoundError(f"sandbox path not found: {requested}")
-
-    def _resolve_sandbox_path(self, raw_path: str) -> Path:
-        requested = str(raw_path or "").strip()
-        if not requested:
-            raise ValueError("path is required")
-        targets = self._expand_sandbox_targets(requested)
-        if len(targets) != 1:
-            # For list/read we require a concrete single target.
-            raise ValueError("path must resolve to a single sandbox target (specify a concrete path)")
-        return targets[0]
-
-    async def _handle_sandbox_grep(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        pattern = str(tool_args.get("pattern") or "").strip()
-        if not pattern:
-            raise ValueError("sandbox_grep requires a non-empty pattern")
-
-        regex = re.compile(
-            pattern,
-            re.IGNORECASE if bool(tool_args.get("ignore_case")) else 0,
-        )
-        max_matches = max(1, min(int(tool_args.get("max_matches") or 50), 200))
-        targets = self._expand_sandbox_targets(str(tool_args.get("path") or ""))
-
-        matches: list[dict[str, Any]] = []
-        truncated = False
-        for target in targets:
-            files = (
-                [target]
-                if target.is_file()
-                else [path for path in target.rglob("*") if path.is_file()]
-            )
-            for file_path in files:
-                try:
-                    if file_path.stat().st_size > self.runtime.sandbox_max_file_size_bytes:
-                        continue
-                    content = file_path.read_text(encoding="utf-8", errors="ignore")
-                except OSError:
-                    continue
-                if "\x00" in content:
-                    continue
-                for line_no, line in enumerate(content.splitlines(), start=1):
-                    match = regex.search(line)
-                    if not match:
-                        continue
-                    matches.append(
-                        {
-                            "path": str(file_path),
-                            "line": line_no,
-                            "text": line.strip()[:300],
-                            "match": match.group(0)[:120],
-                        }
-                    )
-                    if len(matches) >= max_matches:
-                        truncated = True
-                        break
-                if truncated:
-                    break
-            if truncated:
-                break
-
-        return {
-            "status": "success",
-            "result": {
-                "pattern": pattern,
-                "path": str(tool_args.get("path") or "."),
-                "matches": matches,
-                "total_matches": len(matches),
-                "truncated": truncated,
-                "searched_roots": [str(path) for path in targets],
-            },
-        }
-
-    async def _handle_sandbox_list_dir(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        raw_path = str(tool_args.get("path") or "").strip()
-        max_entries = max(1, min(int(tool_args.get("max_entries") or 200), 2000))
-
-        # "" / "*" enumerates configured roots. "." means "default sandbox root"
-        # when only one root is configured; otherwise we keep the root listing to
-        # avoid ambiguous cross-root merges.
-        if raw_path in {"", "*"} or (
-            raw_path == "." and len(self.runtime.sandbox_roots) != 1
-        ):
-            roots = list(self.runtime.sandbox_roots)
-            entries = [
-                {"path": str(root), "name": root.name, "is_dir": True, "size": None}
-                for root in roots[:max_entries]
-            ]
-            return {
-                "status": "success",
-                "result": {
-                    "path": "<sandbox_roots>",
-                    "count": len(entries),
-                    "entries": entries,
-                    "truncated": len(roots) > len(entries),
-                },
-            }
-
-        target = (
-            self.runtime.sandbox_roots[0].resolve()
-            if raw_path == "."
-            else self._resolve_sandbox_path(raw_path)
-        )
-        if not target.exists():
-            raise FileNotFoundError(f"sandbox_list_dir: path not found: {raw_path}")
-        if not target.is_dir():
-            raise ValueError(f"sandbox_list_dir: not a directory: {raw_path}")
-
-        glob = str(tool_args.get("glob") or "").strip() or None
-
-        entries: list[dict[str, Any]] = []
-        iterator = target.glob(glob) if glob else target.iterdir()
-        for p in iterator:
-            if len(entries) >= max_entries:
-                break
-            try:
-                st = p.stat()
-                entries.append(
-                    {
-                        "path": str(p),
-                        "name": p.name,
-                        "is_dir": p.is_dir(),
-                        "size": int(st.st_size) if p.is_file() else None,
-                    }
-                )
-            except OSError:
-                entries.append({"path": str(p), "name": p.name, "is_dir": p.is_dir(), "size": None})
-
-        return {
-            "status": "success",
-            "result": {
-                "path": str(target),
-                "count": len(entries),
-                "entries": entries,
-                "truncated": len(entries) >= max_entries,
-            },
-        }
-
-    async def _handle_sandbox_read_file(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        raw_path = str(tool_args.get("path") or "").strip()
-        target = self._resolve_sandbox_path(raw_path)
-        if not target.exists() or not target.is_file():
-            raise FileNotFoundError(f"sandbox_read_file: file not found: {raw_path}")
-
-        try:
-            size = int(target.stat().st_size)
-        except OSError:
-            size = -1
-
-        if size >= 0 and size > self.runtime.sandbox_max_file_size_bytes:
-            raise PermissionError(
-                f"sandbox_read_file blocked: file too large ({size} bytes) > "
-                f"{self.runtime.sandbox_max_file_size_bytes}"
-            )
-
-        max_bytes = max(1, min(int(tool_args.get("max_bytes") or 50000), 2_000_000))
-
-        def _read_bytes() -> bytes:
-            try:
-                return target.read_bytes()[:max_bytes]
-            except OSError:
-                return b""
-
-        data = await asyncio.to_thread(_read_bytes)
-        content = data.decode("utf-8", errors="replace")
-        return {
-            "status": "success",
-            "result": {
-                "path": str(target),
-                "max_bytes": max_bytes,
-                "truncated": size >= 0 and size > max_bytes,
-                "content": content,
-            },
-        }
 
     async def _handle_get_agent_runtime_summary(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         del tool_args
@@ -1111,3 +917,727 @@ class LocalToolExecutor:
 
         from crater_agent.tools.camel_tools import camel_execute_code  # noqa: PLC0415
         return await camel_execute_code(code=code, language=language, timeout=timeout)
+
+    # ------------------------------------------------------------------
+    # P1: K8s Resource Query Tools
+    # ------------------------------------------------------------------
+
+    async def _handle_k8s_get_service(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        name = str(tool_args.get("name") or "").strip()
+        args = ["get", "services"]
+        if name:
+            args.append(name)
+        label_selector = str(tool_args.get("label_selector") or "").strip()
+        field_selector = str(tool_args.get("field_selector") or "").strip()
+        if label_selector:
+            args.extend(["-l", label_selector])
+        if field_selector:
+            args.extend(["--field-selector", field_selector])
+
+        payload = await self._run_kubectl_json(args, namespace=namespace)
+        if name and payload.get("kind") == "Service":
+            items = [payload]
+        else:
+            items = list(payload.get("items") or [])
+
+        results: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            metadata = item.get("metadata") or {}
+            spec = item.get("spec") or {}
+            ports = [
+                {
+                    "name": str(p.get("name") or ""),
+                    "port": p.get("port"),
+                    "target_port": p.get("targetPort"),
+                    "protocol": str(p.get("protocol") or "TCP"),
+                }
+                for p in (spec.get("ports") or [])
+            ]
+            results.append({
+                "name": str(metadata.get("name") or ""),
+                "namespace": str(metadata.get("namespace") or ""),
+                "type": str(spec.get("type") or "ClusterIP"),
+                "cluster_ip": str(spec.get("clusterIP") or ""),
+                "ports": ports,
+                "selector": spec.get("selector") or {},
+            })
+
+        return {
+            "status": "success",
+            "result": {"count": len(results), "services": results},
+        }
+
+    async def _handle_k8s_get_endpoints(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        name = str(tool_args.get("name") or "").strip()
+        args = ["get", "endpoints"]
+        if name:
+            args.append(name)
+
+        payload = await self._run_kubectl_json(args, namespace=namespace)
+        if name and payload.get("kind") == "Endpoints":
+            items = [payload]
+        else:
+            items = list(payload.get("items") or [])
+
+        results: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            metadata = item.get("metadata") or {}
+            subsets_raw = item.get("subsets") or []
+            subsets = []
+            for ss in subsets_raw:
+                addresses = [
+                    {
+                        "ip": str(a.get("ip") or ""),
+                        "node_name": str(a.get("nodeName") or ""),
+                        "target_ref": str((a.get("targetRef") or {}).get("name") or ""),
+                    }
+                    for a in (ss.get("addresses") or [])
+                ]
+                not_ready = [
+                    {
+                        "ip": str(a.get("ip") or ""),
+                        "node_name": str(a.get("nodeName") or ""),
+                        "target_ref": str((a.get("targetRef") or {}).get("name") or ""),
+                    }
+                    for a in (ss.get("notReadyAddresses") or [])
+                ]
+                ports = [
+                    {"port": p.get("port"), "protocol": str(p.get("protocol") or "TCP")}
+                    for p in (ss.get("ports") or [])
+                ]
+                subsets.append({
+                    "addresses": addresses,
+                    "not_ready_addresses": not_ready,
+                    "ports": ports,
+                })
+            results.append({
+                "name": str(metadata.get("name") or ""),
+                "namespace": str(metadata.get("namespace") or ""),
+                "subsets": subsets,
+            })
+
+        return {
+            "status": "success",
+            "result": {"count": len(results), "endpoints": results},
+        }
+
+    async def _handle_k8s_get_ingress(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        name = str(tool_args.get("name") or "").strip()
+        args = ["get", "ingress"]
+        if name:
+            args.append(name)
+        label_selector = str(tool_args.get("label_selector") or "").strip()
+        if label_selector:
+            args.extend(["-l", label_selector])
+
+        payload = await self._run_kubectl_json(args, namespace=namespace)
+        if name and payload.get("kind") == "Ingress":
+            items = [payload]
+        else:
+            items = list(payload.get("items") or [])
+
+        results: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            metadata = item.get("metadata") or {}
+            spec = item.get("spec") or {}
+            status = item.get("status") or {}
+            rules = []
+            for rule in (spec.get("rules") or []):
+                paths = []
+                for p in ((rule.get("http") or {}).get("paths") or []):
+                    backend = p.get("backend") or {}
+                    svc = backend.get("service") or {}
+                    port = svc.get("port") or {}
+                    paths.append({
+                        "path": str(p.get("path") or "/"),
+                        "path_type": str(p.get("pathType") or ""),
+                        "service": str(svc.get("name") or ""),
+                        "port": port.get("number") or port.get("name") or "",
+                    })
+                rules.append({
+                    "host": str(rule.get("host") or ""),
+                    "paths": paths,
+                })
+            tls = [
+                {"hosts": t.get("hosts") or [], "secret_name": str(t.get("secretName") or "")}
+                for t in (spec.get("tls") or [])
+            ]
+            lb_ingress = (status.get("loadBalancer") or {}).get("ingress") or []
+            lb_ips = [str(lb.get("ip") or lb.get("hostname") or "") for lb in lb_ingress]
+            results.append({
+                "name": str(metadata.get("name") or ""),
+                "namespace": str(metadata.get("namespace") or ""),
+                "ingress_class": str(spec.get("ingressClassName") or metadata.get("annotations", {}).get("kubernetes.io/ingress.class", "")),
+                "rules": rules,
+                "tls": tls,
+                "load_balancer_ips": lb_ips,
+            })
+
+        return {
+            "status": "success",
+            "result": {"count": len(results), "ingresses": results},
+        }
+
+    async def _handle_get_volcano_queue_state(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        name = str(tool_args.get("name") or "").strip()
+        args = ["get", "queue.scheduling.volcano.sh"]
+        if name:
+            args.append(name)
+
+        payload = await self._run_kubectl_json(args, include_namespace=False)
+        if name and payload.get("kind") == "Queue":
+            items = [payload]
+        else:
+            items = list(payload.get("items") or [])
+
+        results: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            metadata = item.get("metadata") or {}
+            spec = item.get("spec") or {}
+            status = item.get("status") or {}
+            capability = spec.get("capability") or {}
+            allocated = status.get("allocated") or {}
+            results.append({
+                "name": str(metadata.get("name") or ""),
+                "state": str(status.get("state") or ""),
+                "weight": spec.get("weight", 1),
+                "capability": {
+                    "cpu": str(capability.get("cpu") or ""),
+                    "memory": str(capability.get("memory") or ""),
+                    "gpu": str(capability.get("nvidia.com/gpu") or capability.get("gpu") or ""),
+                },
+                "allocated": {
+                    "cpu": str(allocated.get("cpu") or ""),
+                    "memory": str(allocated.get("memory") or ""),
+                    "gpu": str(allocated.get("nvidia.com/gpu") or allocated.get("gpu") or ""),
+                },
+                "running": status.get("running", 0),
+                "pending": status.get("pending", 0),
+                "inqueue": status.get("inqueue", 0),
+            })
+
+        return {
+            "status": "success",
+            "result": {"count": len(results), "queues": results},
+        }
+
+    async def _handle_k8s_get_configmap(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        name = str(tool_args.get("name") or "").strip()
+        args = ["get", "configmaps"]
+        if name:
+            args.append(name)
+        label_selector = str(tool_args.get("label_selector") or "").strip()
+        if label_selector:
+            args.extend(["-l", label_selector])
+
+        payload = await self._run_kubectl_json(args, namespace=namespace)
+        if name and payload.get("kind") == "ConfigMap":
+            items = [payload]
+        else:
+            items = list(payload.get("items") or [])
+
+        results: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            metadata = item.get("metadata") or {}
+            data = item.get("data") or {}
+            # Truncate large values to keep response manageable
+            truncated_data = {}
+            for k, v in data.items():
+                val = str(v)
+                truncated_data[k] = val[:2000] + "...(truncated)" if len(val) > 2000 else val
+            results.append({
+                "name": str(metadata.get("name") or ""),
+                "namespace": str(metadata.get("namespace") or ""),
+                "keys": list(data.keys()),
+                "data": truncated_data,
+            })
+
+        return {
+            "status": "success",
+            "result": {"count": len(results), "configmaps": results},
+        }
+
+    async def _handle_k8s_get_networkpolicy(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        name = str(tool_args.get("name") or "").strip()
+        args = ["get", "networkpolicies"]
+        if name:
+            args.append(name)
+
+        payload = await self._run_kubectl_json(args, namespace=namespace)
+        if name and payload.get("kind") == "NetworkPolicy":
+            items = [payload]
+        else:
+            items = list(payload.get("items") or [])
+
+        results: list[dict[str, Any]] = []
+        for item in items[:limit]:
+            metadata = item.get("metadata") or {}
+            spec = item.get("spec") or {}
+
+            pod_selector = spec.get("podSelector") or {}
+            policy_types = spec.get("policyTypes") or []
+
+            ingress_rules = []
+            for rule in (spec.get("ingress") or []):
+                ingress_rules.append({
+                    "from": rule.get("from") or [],
+                    "ports": rule.get("ports") or [],
+                })
+
+            egress_rules = []
+            for rule in (spec.get("egress") or []):
+                egress_rules.append({
+                    "to": rule.get("to") or [],
+                    "ports": rule.get("ports") or [],
+                })
+
+            results.append({
+                "name": str(metadata.get("name") or ""),
+                "namespace": str(metadata.get("namespace") or ""),
+                "pod_selector": pod_selector,
+                "policy_types": policy_types,
+                "ingress_rules": ingress_rules,
+                "egress_rules": egress_rules,
+            })
+
+        return {
+            "status": "success",
+            "result": {"count": len(results), "network_policies": results},
+        }
+
+    # ------------------------------------------------------------------
+    # P2: Enrichment Tools
+    # ------------------------------------------------------------------
+
+    async def _handle_aggregate_image_pull_errors(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 100), 500))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        time_window_minutes = max(1, min(int(tool_args.get("time_window_minutes") or 60), 1440))
+
+        args = ["get", "events"]
+        include_ns = True
+        if namespace:
+            include_ns = True
+        else:
+            args.append("--all-namespaces")
+            include_ns = False
+
+        payload = await self._run_kubectl_json(args, namespace=namespace, include_namespace=include_ns)
+        items = payload.get("items") or []
+
+        pull_reasons = {"Failed", "ErrImagePull", "ImagePullBackOff", "BackOff", "InspectFailed"}
+        from datetime import datetime, timezone, timedelta  # noqa: PLC0415
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=time_window_minutes)
+
+        aggregated: dict[str, dict[str, Any]] = {}
+        for ev in items:
+            reason = str(ev.get("reason") or "")
+            if reason not in pull_reasons:
+                continue
+            message = str(ev.get("message") or "")
+            if not any(kw in message.lower() for kw in ("image", "pull", "manifest", "registry", "unauthorized")):
+                if reason not in ("ErrImagePull", "ImagePullBackOff"):
+                    continue
+
+            last_ts_raw = ev.get("lastTimestamp") or ev.get("eventTime") or ""
+            if last_ts_raw:
+                try:
+                    last_ts = datetime.fromisoformat(str(last_ts_raw).replace("Z", "+00:00"))
+                    if last_ts < cutoff:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
+            # Extract image from message
+            image = ""
+            for token in message.split():
+                if "/" in token and (":" in token or "." in token):
+                    image = token.strip('"').strip("'").rstrip(":")
+                    break
+            if not image:
+                image = "(unknown)"
+
+            involved = ev.get("involvedObject") or {}
+            pod_name = str(involved.get("name") or "")
+
+            if image not in aggregated:
+                aggregated[image] = {
+                    "image": image,
+                    "error_count": 0,
+                    "affected_pods": [],
+                    "first_seen": str(ev.get("firstTimestamp") or last_ts_raw),
+                    "last_seen": str(last_ts_raw),
+                    "sample_message": message[:500],
+                }
+            entry = aggregated[image]
+            entry["error_count"] += int(ev.get("count") or 1)
+            if pod_name and pod_name not in entry["affected_pods"] and len(entry["affected_pods"]) < 20:
+                entry["affected_pods"].append(pod_name)
+            if str(last_ts_raw) > entry["last_seen"]:
+                entry["last_seen"] = str(last_ts_raw)
+
+        sorted_results = sorted(aggregated.values(), key=lambda x: x["error_count"], reverse=True)[:limit]
+        return {
+            "status": "success",
+            "result": {
+                "count": len(sorted_results),
+                "time_window_minutes": time_window_minutes,
+                "image_pull_errors": sorted_results,
+            },
+        }
+
+    async def _handle_detect_zombie_jobs(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        threshold_hours = max(1, int(tool_args.get("running_hours_threshold") or 72))
+
+        args = ["get", "pods", "--all-namespaces", "--field-selector", "status.phase=Running",
+                "-l", "crater.raids.io/task-type"]
+        payload = await self._run_kubectl_json(args, include_namespace=False)
+        items = payload.get("items") or []
+
+        from datetime import datetime, timezone  # noqa: PLC0415
+        now = datetime.now(timezone.utc)
+        zombies: list[dict[str, Any]] = []
+
+        for pod in items:
+            metadata = pod.get("metadata") or {}
+            spec = pod.get("spec") or {}
+            status = pod.get("status") or {}
+            start_raw = status.get("startTime")
+            if not start_raw:
+                continue
+            try:
+                start_time = datetime.fromisoformat(str(start_raw).replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                continue
+            running_hours = (now - start_time).total_seconds() / 3600
+            if running_hours < threshold_hours:
+                continue
+
+            labels = metadata.get("labels") or {}
+            zombies.append({
+                "pod_name": str(metadata.get("name") or ""),
+                "namespace": str(metadata.get("namespace") or ""),
+                "node": str(spec.get("nodeName") or ""),
+                "running_hours": round(running_hours, 1),
+                "job_name": str(labels.get("volcano.sh/job-name") or labels.get("crater.raids.io/job-name") or ""),
+                "owner": str(labels.get("crater.raids.io/task-user") or ""),
+                "job_type": str(labels.get("crater.raids.io/task-type") or ""),
+                "start_time": str(start_raw),
+            })
+
+        zombies.sort(key=lambda x: x["running_hours"], reverse=True)
+        return {
+            "status": "success",
+            "result": {
+                "count": len(zombies[:limit]),
+                "threshold_hours": threshold_hours,
+                "zombie_candidates": zombies[:limit],
+            },
+        }
+
+    async def _handle_get_ddp_rank_mapping(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        job_name = str(tool_args.get("job_name") or "").strip()
+        if not job_name:
+            raise ValueError("job_name is required")
+
+        args = ["get", "pods", "--all-namespaces", "-l", f"volcano.sh/job-name={job_name}"]
+        payload = await self._run_kubectl_json(args, include_namespace=False)
+        items = payload.get("items") or []
+
+        ranks: list[dict[str, Any]] = []
+        for pod in items:
+            metadata = pod.get("metadata") or {}
+            spec = pod.get("spec") or {}
+            status = pod.get("status") or {}
+            labels = metadata.get("labels") or {}
+            pod_name = str(metadata.get("name") or "")
+            task_spec = str(labels.get("volcano.sh/task-spec") or "")
+
+            # Derive ordinal from pod name suffix: <job>-<task>-<ordinal>
+            ordinal = 0
+            parts = pod_name.rsplit("-", 1)
+            if len(parts) == 2:
+                try:
+                    ordinal = int(parts[1])
+                except ValueError:
+                    pass
+
+            container_statuses = status.get("containerStatuses") or []
+            ready = all(cs.get("ready", False) for cs in container_statuses) if container_statuses else False
+
+            ranks.append({
+                "pod_name": pod_name,
+                "task_spec": task_spec,
+                "ordinal": ordinal,
+                "node_name": str(spec.get("nodeName") or ""),
+                "pod_ip": str(status.get("podIP") or ""),
+                "host_ip": str(status.get("hostIP") or ""),
+                "phase": str(status.get("phase") or ""),
+                "ready": ready,
+            })
+
+        ranks.sort(key=lambda x: (x["task_spec"], x["ordinal"]))
+        # Assign sequential rank
+        for i, r in enumerate(ranks):
+            r["rank"] = i
+
+        return {
+            "status": "success",
+            "result": {
+                "job_name": job_name,
+                "total_ranks": len(ranks),
+                "ranks": ranks,
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # P2: Node-level Diagnostics (kubectl debug node)
+    # ------------------------------------------------------------------
+
+    async def _run_kubectl_debug_node(
+        self,
+        node_name: str,
+        commands: str,
+        *,
+        image: str = "busybox:latest",
+        timeout: int = 60,
+    ) -> str:
+        if not self.runtime.kubeconfig_path:
+            raise PermissionError("no kubeconfig configured for kubectl debug")
+        cmd = self._kubectl_cmd(include_namespace=False) + [
+            "debug", f"node/{node_name}", "-it", "--image", image,
+            "--", "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "--",
+            "sh", "-c", commands,
+        ]
+        code, stdout, stderr = await self._run_subprocess(cmd, timeout_seconds=timeout)
+        if code != 0:
+            msg = stderr.strip() or f"kubectl debug failed with code {code}"
+            raise ValueError(f"kubectl debug node/{node_name} failed: {msg}")
+        return stdout
+
+    async def _handle_get_node_kernel_diagnostics(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+        dmesg_lines = max(50, min(int(tool_args.get("dmesg_lines") or 200), 1000))
+        check_d_state = tool_args.get("check_d_state", True)
+
+        commands_parts = [
+            f"echo '===KERNEL_VERSION===' && uname -r",
+            f"echo '===LOAD_AVG===' && cat /proc/loadavg",
+            f"echo '===DMESG===' && dmesg --time-format iso 2>/dev/null | tail -{dmesg_lines} | grep -iE 'gpu|nccl|rdma|error|warn|oom|hung|rcu|nvrm|xid|nv-|mlx|infiniband|fail|kill|panic' || echo '(no matches)'",
+        ]
+        if check_d_state:
+            commands_parts.append(
+                "echo '===D_STATE===' && ps aux 2>/dev/null | awk '$8 ~ /D/ {print}' | head -50 || echo '(none)'"
+            )
+
+        raw = await self._run_kubectl_debug_node(
+            node_name,
+            " && ".join(commands_parts),
+            timeout=90,
+        )
+
+        sections: dict[str, str] = {}
+        current_section = ""
+        current_lines: list[str] = []
+        for line in raw.splitlines():
+            if line.startswith("===") and line.endswith("==="):
+                if current_section:
+                    sections[current_section] = "\n".join(current_lines)
+                current_section = line.strip("=")
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_section:
+            sections[current_section] = "\n".join(current_lines)
+
+        dmesg_lines_list = [l.strip() for l in sections.get("DMESG", "").splitlines() if l.strip() and l.strip() != "(no matches)"]
+        d_state_lines = [l.strip() for l in sections.get("D_STATE", "").splitlines() if l.strip() and l.strip() != "(none)"]
+
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "kernel_version": sections.get("KERNEL_VERSION", "").strip(),
+                "load_avg": sections.get("LOAD_AVG", "").strip(),
+                "dmesg_highlights": dmesg_lines_list,
+                "dmesg_highlight_count": len(dmesg_lines_list),
+                "d_state_processes": d_state_lines,
+                "d_state_count": len(d_state_lines),
+            },
+        }
+
+    async def _handle_get_rdma_interface_status(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+
+        commands = (
+            "echo '===IB_DEVICES===' && "
+            "(ibstat 2>/dev/null || echo '(ibstat not available)') && "
+            "echo '===RDMA_LINKS===' && "
+            "(rdma link show 2>/dev/null || echo '(rdma tool not available)') && "
+            "echo '===IB_PORT_STATE===' && "
+            "(for f in /sys/class/infiniband/*/ports/*/state; do echo \"$f: $(cat $f 2>/dev/null)\"; done 2>/dev/null || echo '(no IB ports found)') && "
+            "echo '===IB_LINK===' && "
+            "(ip link show type infiniband 2>/dev/null || echo '(no IB interfaces)') && "
+            "echo '===KERNEL_MODULES===' && "
+            "(lsmod 2>/dev/null | grep -iE 'mlx|ib_|rdma|nv_peer|gpu' || echo '(no relevant modules)')"
+        )
+
+        raw = await self._run_kubectl_debug_node(
+            node_name,
+            commands,
+            image="busybox:latest",
+            timeout=90,
+        )
+
+        sections: dict[str, str] = {}
+        current_section = ""
+        current_lines: list[str] = []
+        for line in raw.splitlines():
+            if line.startswith("===") and line.endswith("==="):
+                if current_section:
+                    sections[current_section] = "\n".join(current_lines)
+                current_section = line.strip("=")
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_section:
+            sections[current_section] = "\n".join(current_lines)
+
+        def parse_section(key: str) -> list[str]:
+            text = sections.get(key, "").strip()
+            if not text or text.startswith("("):
+                return []
+            return [l.strip() for l in text.splitlines() if l.strip()]
+
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "ib_devices": parse_section("IB_DEVICES"),
+                "rdma_links": parse_section("RDMA_LINKS"),
+                "ib_port_states": parse_section("IB_PORT_STATE"),
+                "ib_interfaces": parse_section("IB_LINK"),
+                "kernel_modules": parse_section("KERNEL_MODULES"),
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # P3: Extended K8s Tools (top, rollout, scale, label, taint)
+    # ------------------------------------------------------------------
+
+    async def _handle_k8s_top_nodes(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        args = ["top", "nodes", "--no-headers"]
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if node_name:
+            args.insert(2, node_name)
+        result = await self._run_kubectl_text(args, include_namespace=False)
+        lines = [l for l in result.get("content", "").splitlines() if l.strip()]
+        nodes = []
+        for line in lines:
+            parts = line.split()
+            if len(parts) >= 5:
+                nodes.append({
+                    "name": parts[0],
+                    "cpu_usage": parts[1],
+                    "cpu_percent": parts[2],
+                    "memory_usage": parts[3],
+                    "memory_percent": parts[4],
+                })
+        return {"status": "success", "result": {"count": len(nodes), "nodes": nodes}}
+
+    async def _handle_k8s_top_pods(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        namespace = str(tool_args.get("namespace") or "").strip()
+        label_selector = str(tool_args.get("label_selector") or "").strip()
+        limit = max(1, min(int(tool_args.get("limit") or 50), 500))
+        args = ["top", "pods", "--no-headers"]
+        if namespace:
+            args.extend(["-n", namespace])
+        else:
+            args.append("--all-namespaces")
+        if label_selector:
+            args.extend(["-l", label_selector])
+        result = await self._run_kubectl_text(args, include_namespace=False)
+        lines = [l for l in result.get("content", "").splitlines() if l.strip()]
+        pods = []
+        for line in lines[:limit]:
+            parts = line.split()
+            if len(parts) >= 3:
+                pods.append({
+                    "name": parts[0] if namespace else parts[1],
+                    "namespace": namespace or (parts[0] if not namespace else ""),
+                    "cpu_usage": parts[-2] if len(parts) >= 4 else parts[-1],
+                    "memory_usage": parts[-1],
+                })
+        return {"status": "success", "result": {"count": len(pods), "pods": pods, "truncated": len(lines) > limit}}
+
+    async def _handle_k8s_rollout_status(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        kind = str(tool_args.get("kind") or "").strip()
+        name = str(tool_args.get("name") or "").strip()
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        if not kind or not name:
+            raise ValueError("kind and name are required")
+        allowed_kinds = {"Deployment", "StatefulSet", "DaemonSet"}
+        if kind not in allowed_kinds:
+            raise ValueError(f"kind must be one of {allowed_kinds}, got: {kind}")
+        args = ["rollout", "status", f"{kind.lower()}/{name}"]
+        result = await self._run_kubectl_text(args, namespace=namespace)
+        return {"status": "success", "result": {"kind": kind, "name": name, "output": result.get("content", "")}}
+
+    async def _handle_k8s_scale_workload(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        kind = str(tool_args.get("kind") or "").strip()
+        name = str(tool_args.get("name") or "").strip()
+        replicas = int(tool_args.get("replicas", -1))
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        if not kind or not name:
+            raise ValueError("kind and name are required")
+        if kind not in ("Deployment", "StatefulSet"):
+            raise ValueError(f"kind must be Deployment or StatefulSet, got: {kind}")
+        if replicas < 0 or replicas > 100:
+            raise ValueError(f"replicas must be 0-100, got: {replicas}")
+        args = ["scale", f"{kind.lower()}/{name}", f"--replicas={replicas}"]
+        result = await self._run_kubectl_text(args, namespace=namespace)
+        return {"status": "success", "result": {"kind": kind, "name": name, "replicas": replicas, "output": result.get("content", "")}}
+
+    async def _handle_k8s_label_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        key = str(tool_args.get("key") or "").strip()
+        value = str(tool_args.get("value") or "").strip()
+        overwrite = bool(tool_args.get("overwrite", False))
+        if not node_name or not key:
+            raise ValueError("node_name and key are required")
+        args = ["label", "nodes", node_name, f"{key}={value}"]
+        if overwrite:
+            args.append("--overwrite")
+        result = await self._run_kubectl_text(args, include_namespace=False)
+        return {"status": "success", "result": {"node_name": node_name, "label": f"{key}={value}", "output": result.get("content", "")}}
+
+    async def _handle_k8s_taint_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        key = str(tool_args.get("key") or "").strip()
+        value = str(tool_args.get("value") or "")
+        effect = str(tool_args.get("effect") or "NoSchedule").strip()
+        if not node_name or not key:
+            raise ValueError("node_name and key are required")
+        allowed_effects = {"NoSchedule", "PreferNoSchedule", "NoExecute"}
+        if effect not in allowed_effects:
+            raise ValueError(f"effect must be one of {allowed_effects}, got: {effect}")
+        taint_spec = f"{key}={value}:{effect}" if value else f"{key}:{effect}"
+        args = ["taint", "nodes", node_name, taint_spec]
+        result = await self._run_kubectl_text(args, include_namespace=False)
+        return {"status": "success", "result": {"node_name": node_name, "taint": taint_spec, "output": result.get("content", "")}}

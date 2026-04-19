@@ -27,6 +27,10 @@ class CraterAgentState(MessagesState):
     # The ReAct loop pauses and returns this to the frontend
     pending_confirmation: dict[str, Any] | None
 
+    # When True, the tool call limit was reached and the agent should
+    # summarize existing evidence instead of calling more tools.
+    force_limit_reached: bool
+
     # Accumulated trace records for evaluation/auditing
     # Uses operator.add reducer so each node's trace entries are appended, not replaced
     trace: Annotated[list[dict[str, Any]], operator.add]

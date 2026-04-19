@@ -21,6 +21,7 @@ def build_history_messages(
     history: list[dict],
     max_tokens: int = 4000,
     tool_result_max_chars: int = 200,
+    tool_error_max_chars: int = 500,
 ) -> list:
     """Build LangChain message objects from Go-provided history.
 
@@ -46,9 +47,12 @@ def build_history_messages(
         role = msg.get("role", "")
         content = msg.get("content", "")
 
-        # Truncate tool results to save tokens
-        if role == "tool" and len(content) > tool_result_max_chars:
-            content = content[:tool_result_max_chars] + "... (truncated)"
+        # Truncate tool results to save tokens (preserve more for errors)
+        if role == "tool":
+            is_error = any(kw in content for kw in ("error", "Error", "failed", "Failed", "错误", "失败"))
+            limit = tool_error_max_chars if is_error else tool_result_max_chars
+            if len(content) > limit:
+                content = content[:limit] + "... (truncated)"
 
         msg_tokens = estimate_tokens(content)
         if token_count + msg_tokens > max_tokens:

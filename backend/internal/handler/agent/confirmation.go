@@ -11,6 +11,23 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 )
 
+// opsScriptDescriptions maps whitelisted script names to human-readable descriptions
+// so the confirmation card can show users what the script actually does.
+var opsScriptDescriptions = map[string]string{
+	"inspect_pvc":       "只读检查 PVC 挂载状态、容量使用和 inode 占用",
+	"inspect_mounts":    "只读检查节点挂载点和 NFS/Lustre 状态",
+	"collect_events":    "只读收集指定命名空间的 K8s 事件并输出摘要",
+	"inspect_rdma_node": "只读检查节点 RDMA/InfiniBand 网卡状态和链路质量",
+	"diagnose_nccl_job": "只读收集分布式训练作业的 NCCL 通信日志和 rank 映射",
+}
+
+func opsScriptDescription(scriptName string) string {
+	if desc, ok := opsScriptDescriptions[scriptName]; ok {
+		return desc
+	}
+	return "（未知脚本，请谨慎确认）"
+}
+
 func (mgr *AgentMgr) buildToolConfirmation(token util.JWTMessage, toolName string, rawArgs json.RawMessage) AgentToolConfirmation {
 	confirmation := AgentToolConfirmation{
 		ToolName:    toolName,
@@ -361,8 +378,12 @@ func (mgr *AgentMgr) buildConfirmationDescription(toolName string, rawArgs json.
 		if target == "" {
 			target = "<未指定脚本>"
 		}
+		desc := opsScriptDescription(target)
+		argsJSON := getToolArgString(args, "script_args", "{}")
 		return strings.Join([]string{
-			fmt.Sprintf("操作：在沙箱中执行运维脚本 %s。", target),
+			fmt.Sprintf("操作：执行运维脚本 %s", target),
+			fmt.Sprintf("脚本功能：%s", desc),
+			fmt.Sprintf("参数：%s", argsJSON),
 			"影响：会触发受白名单约束的自动化运维动作，可能修改集群或节点状态。",
 			"建议先确认：脚本名称、目标范围、预期副作用和回退方式都已明确。",
 		}, "\n")

@@ -98,26 +98,12 @@ def _discover_backend_config_path() -> Path | None:
     return None
 
 
-def _default_sandbox_roots(repo_root: Path) -> list[Path]:
-    candidates = [
-        repo_root / "runbooks",
-        repo_root / "collected-bundles",
-        repo_root / "mounted-config",
-        repo_root / "crater-agent/dataset",
-        repo_root / "crater-agent/runbooks",
-    ]
-    return [path for path in candidates if path.exists()]
-
-
 @dataclass(frozen=True)
 class PlatformRuntimeConfig:
     """Resolved runtime config for agent-local tools."""
 
     local_core_tools: set[str] = field(
         default_factory=lambda: {
-            "sandbox_grep",
-            "sandbox_list_dir",
-            "sandbox_read_file",
             "get_agent_runtime_summary",
             "web_search",
             "k8s_list_nodes",
@@ -127,10 +113,19 @@ class PlatformRuntimeConfig:
             "k8s_get_pod_logs",
             "prometheus_query",
             "harbor_check",
+            "k8s_get_service",
+            "k8s_get_endpoints",
+            "k8s_get_ingress",
+            "get_volcano_queue_state",
+            "k8s_get_configmap",
+            "k8s_get_networkpolicy",
+            "aggregate_image_pull_errors",
+            "detect_zombie_jobs",
+            "get_ddp_rank_mapping",
+            "get_node_kernel_diagnostics",
+            "get_rdma_interface_status",
         }
     )
-    sandbox_roots: list[Path] = field(default_factory=list)
-    sandbox_max_file_size_bytes: int = 1_000_000
     web_search_enabled: bool = False
     web_search_allowed_domains: list[str] = field(default_factory=list)
     web_search_seed_urls: list[str] = field(default_factory=list)
@@ -180,7 +175,6 @@ class PlatformRuntimeConfig:
     def to_summary(self) -> dict[str, Any]:
         return {
             "localCoreTools": sorted(self.local_core_tools),
-            "sandboxRoots": [str(path) for path in self.sandbox_roots],
             "recommendedPlatformRuntimeFields": self.recommended_platform_runtime_fields(),
             "discouragedConfigSections": self.discouraged_platform_runtime_fields(),
             "toolReadiness": self.tool_readiness(),
@@ -240,10 +234,6 @@ class PlatformRuntimeConfig:
                 "storage.prefix.public",
                 "storage.pvc.readWriteMany",
                 "storage.pvc.readOnlyMany",
-            ],
-            "localSandboxTools": [
-                "sandboxGrep.roots",
-                "sandboxGrep.maxFileSizeBytes",
             ],
             "localKubernetesTools": [
                 "kubernetes.kubeconfigPath",
@@ -311,10 +301,6 @@ class PlatformRuntimeConfig:
                 "warnings": warning_list,
             }
 
-        sandbox_ready = build_state(
-            missing_fields=[] if self.sandbox_roots else ["sandboxGrep.roots"],
-        )
-
         web_search_ready = build_state(
             missing_fields=[] if self.web_search_enabled else ["webSearch.enabled=true"],
             warnings=[] if self.web_search_allowed_domains else ["no allowedDomains restriction configured"],
@@ -357,9 +343,6 @@ class PlatformRuntimeConfig:
         )
 
         return {
-            "sandbox_grep": sandbox_ready,
-            "sandbox_list_dir": sandbox_ready,
-            "sandbox_read_file": sandbox_ready,
             "get_agent_runtime_summary": build_state(),
             "web_search": web_search_ready,
             "k8s_list_nodes": k8s_ready,
@@ -384,7 +367,6 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
     backend_payload = _load_yaml_dict(backend_path)
 
     repo_root = _default_repo_root()
-    sandbox_cfg = platform_payload.get("sandboxGrep") or {}
     web_cfg = platform_payload.get("webSearch") or {}
     prometheus_cfg = platform_payload.get("prometheus") or {}
     registry_cfg = platform_payload.get("registry") or {}
@@ -403,19 +385,7 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
     backend_namespace_cfg = backend_payload.get("namespaces") or {}
     model_download_cfg = backend_payload.get("modelDownload") or {}
 
-    raw_roots = _as_string_list(sandbox_cfg.get("roots"))
-    if raw_roots:
-        sandbox_roots = [
-            _resolve_relative_path(path, base_dir=runtime_path.parent if runtime_path else repo_root)
-            for path in raw_roots
-        ]
-    else:
-        sandbox_roots = _default_sandbox_roots(repo_root)
-
     local_core_tools = set(_as_string_list(routing_cfg.get("localCoreTools"))) or {
-        "sandbox_grep",
-        "sandbox_list_dir",
-        "sandbox_read_file",
         "get_agent_runtime_summary",
         "web_search",
         "k8s_list_nodes",
@@ -466,8 +436,6 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
 
     config = PlatformRuntimeConfig(
         local_core_tools=local_core_tools,
-        sandbox_roots=[path for path in sandbox_roots if path.exists()],
-        sandbox_max_file_size_bytes=int(sandbox_cfg.get("maxFileSizeBytes") or 1_000_000),
         web_search_enabled=web_enabled,
         web_search_allowed_domains=allowed_domains,
         web_search_seed_urls=seed_urls,

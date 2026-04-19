@@ -59,11 +59,14 @@ class Settings(BaseSettings):
 
     # Agent Behavior
     max_tool_calls_per_turn: int = Field(
-        default=10, description="Max tool calls in a single ReAct loop"
+        default=15, description="Max tool calls in a single ReAct loop"
     )
     tool_execution_timeout: int = Field(default=30, description="Tool execution timeout (seconds)")
     history_max_tokens: int = Field(
         default=4000, description="Max tokens for conversation history"
+    )
+    max_context_tokens: int = Field(
+        default=30000, description="Estimated LLM context window budget for proactive compaction"
     )
 
     # Service

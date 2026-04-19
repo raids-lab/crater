@@ -145,7 +145,7 @@ class SingleAgentOrchestrator:
                     }
                     continue
 
-                tool_result_summaries.append(f"{tool_name}: {str(raw_output)[:160]}")
+                tool_result_summaries.append(f"{tool_name}: {str(raw_output)[:300]}")
                 yield {
                     "event": "tool_call_completed",
                     "data": {
@@ -227,7 +227,7 @@ class SingleAgentOrchestrator:
                     raw_output = ""
                     if idx < len(tool_messages):
                         raw_output = str(getattr(tool_messages[idx], "content", "") or "")
-                    tool_result_summaries.append(f"{tool_name}: {raw_output[:160]}")
+                    tool_result_summaries.append(f"{tool_name}: {raw_output[:300]}")
                     yield {
                         "event": "tool_call_completed",
                         "data": {
@@ -245,6 +245,26 @@ class SingleAgentOrchestrator:
                         },
                     }
 
+        # Cancel any orphaned tool_call_started events that never got executed
+        # (e.g., LLM requested tools but limit was hit before tools_node ran)
+        for tc in pending_tool_calls:
+            yield {
+                "event": "tool_call_completed",
+                "data": {
+                    "turnId": request.turn_id,
+                    "agentId": "single-agent",
+                    "agentRole": "single_agent",
+                    "toolCallId": tc.get("id"),
+                    "toolName": tc.get("name", "unknown"),
+                    "toolArgs": tc.get("args", {}),
+                    "result": "",
+                    "resultSummary": "已超过单轮工具调用上限，本次调用已取消",
+                    "status": "cancelled",
+                    "isError": False,
+                },
+            }
+        pending_tool_calls.clear()
+
         if pending_final_content and not emitted_confirmation:
             emitted_final_answer = True
             yield {
@@ -260,7 +280,7 @@ class SingleAgentOrchestrator:
 
         if not emitted_final_answer and not emitted_confirmation:
             if tool_result_summaries:
-                details = "\n".join(f"- {item}" for item in tool_result_summaries[-3:])
+                details = "\n".join(f"- {item}" for item in tool_result_summaries)
                 fallback_content = (
                     "我已经完成了本轮工具调用，但模型没有正常产出最终答复。"
                     "已拿到的结果如下：\n"

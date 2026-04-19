@@ -27,6 +27,7 @@ from crater_agent.llm.client import ModelClientFactory
 from crater_agent.skills.loader import load_all_skills
 from crater_agent.tools.definitions import ALL_TOOLS
 from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
+from crater_agent.tools.tool_selector import select_tools_for_context
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,37 @@ def _compact_messages_for_retry(messages: list[Any]) -> list[Any]:
     return compacted
 
 
+def _estimate_message_tokens(messages: list[Any]) -> int:
+    """Rough token estimate: ~1 token per 2 CJK chars, ~1 token per 4 Latin chars."""
+    total = 0
+    for msg in messages:
+        content = str(getattr(msg, "content", "") or "")
+        cjk = sum(1 for c in content if "\u4e00" <= c <= "\u9fff")
+        latin = len(content) - cjk
+        total += cjk // 2 + latin // 4 + 10  # +10 for message framing overhead
+    return total
+
+
+def _proactive_compact(messages: list[Any], max_context: int) -> list[Any]:
+    """Proactively compact messages before hitting the API context limit.
+
+    Reserves budget for tool schemas (~8000 tokens) and LLM response (~4000 tokens).
+    """
+    tool_schema_budget = 8000
+    response_budget = 4000
+    available = max_context - tool_schema_budget - response_budget
+    if available <= 0:
+        return messages
+    estimated = _estimate_message_tokens(messages)
+    if estimated <= available:
+        return messages
+    logger.info(
+        "Proactive compaction: estimated %d tokens > available %d, compacting",
+        estimated, available,
+    )
+    return _compact_messages_for_retry(messages)
+
+
 def create_llm() -> ChatOpenAI:
     """Create the default single-agent LLM instance."""
     return ModelClientFactory().create("default")
@@ -142,10 +174,12 @@ def create_agent_graph(
     def get_enabled_tools(context: dict[str, Any]) -> list[Any]:
         capabilities = context.get("capabilities", {})
         enabled_tool_names = capabilities.get("enabled_tools") or []
-        if not enabled_tool_names:
-            return ALL_TOOLS
-        enabled_set = set(enabled_tool_names)
-        return [tool for tool in ALL_TOOLS if tool.name in enabled_set]
+        if enabled_tool_names:
+            enabled_set = set(enabled_tool_names)
+            base_tools = [tool for tool in ALL_TOOLS if tool.name in enabled_set]
+        else:
+            base_tools = ALL_TOOLS
+        return select_tools_for_context(context, base_tools)
 
     # ----- Node: agent (LLM reasoning) -----
     async def agent_node(state: CraterAgentState) -> dict:
@@ -167,6 +201,7 @@ def create_agent_graph(
             messages = [SystemMessage(content=system_prompt)] + list(messages)
 
         try:
+            messages = _proactive_compact(messages, max_context=settings.max_context_tokens)
             response = await llm_with_tools.ainvoke(messages)
         except BadRequestError as exc:
             if not _is_context_limit_error(exc):
@@ -311,6 +346,58 @@ def create_agent_graph(
             "trace": trace_entries,
         }
 
+    # ----- Node: summarize (forced synthesis when tool limit reached) -----
+    async def summarize_node(state: CraterAgentState) -> dict:
+        """Force LLM to synthesize existing evidence when tool call limit is reached."""
+        messages = list(state["messages"])
+
+        # Inject a nudge so the LLM knows it must summarize now
+        messages.append(
+            HumanMessage(
+                content=(
+                    "[系统提示] 你已达到本轮工具调用上限，无法继续调用工具。"
+                    "请基于已收集到的所有工具返回结果，直接给出完整的综合分析回答。"
+                )
+            )
+        )
+
+        try:
+            # No tools bound — LLM can only produce text
+            response = await llm.ainvoke(messages)
+        except BadRequestError as exc:
+            if not _is_context_limit_error(exc):
+                raise
+            compact_messages = _compact_messages_for_retry(messages)
+            logger.warning(
+                "Summarize node context limit hit, retrying with compacted messages: %d -> %d",
+                len(messages),
+                len(compact_messages),
+            )
+            response = await llm.ainvoke(compact_messages)
+
+        # Handle qwen thinking mode
+        if not response.content and not response.tool_calls:
+            reasoning = getattr(response, "reasoning_content", "") or (
+                response.additional_kwargs or {}
+            ).get("reasoning_content", "")
+            if reasoning:
+                response = AIMessage(
+                    content=reasoning,
+                    additional_kwargs=response.additional_kwargs,
+                    response_metadata=response.response_metadata,
+                )
+
+        trace_entry = {
+            "node": "summarize",
+            "timestamp": time.time(),
+            "response_length": len(response.content) if response.content else 0,
+        }
+
+        return {
+            "messages": [response],
+            "trace": [trace_entry],
+        }
+
     # ----- Conditional edge: should the agent continue? -----
     def should_continue(state: CraterAgentState) -> str:
         """Determine if the agent should call tools, wait for confirmation, or respond."""
@@ -318,8 +405,12 @@ def create_agent_graph(
         last_message = messages[-1]
         tool_call_count = state.get("tool_call_count", 0)
 
-        # Safety: max tool calls reached → force respond
+        # Safety: max tool calls reached
         if tool_call_count >= settings.max_tool_calls_per_turn:
+            # If the LLM still wanted to call tools, route to summarize node
+            # so it can synthesize existing evidence instead of a raw fallback.
+            if isinstance(last_message, AIMessage) and last_message.tool_calls:
+                return "summarize"
             return "respond"
 
         # If there's a pending confirmation → pause and respond
@@ -342,6 +433,7 @@ def create_agent_graph(
     graph = StateGraph(CraterAgentState)
     graph.add_node("agent", agent_node)
     graph.add_node("tools", tools_node)
+    graph.add_node("summarize", summarize_node)
 
     graph.set_entry_point("agent")
     graph.add_conditional_edges(
@@ -349,6 +441,7 @@ def create_agent_graph(
         should_continue,
         {
             "tools": "tools",
+            "summarize": "summarize",
             "respond": END,
         },
     )
@@ -360,5 +453,7 @@ def create_agent_graph(
             "respond": END,
         },
     )
+    # summarize always ends the graph
+    graph.add_edge("summarize", END)
 
     return graph.compile()
