@@ -2,13 +2,11 @@ package vcjob
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -63,6 +61,16 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
+	scheduleType, err := req.validateScheduleOptions(true)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
 
 	if err := aitaskctl.CheckInteractiveLimitBeforeCreate(c, token.UserID, token.AccountID); err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
@@ -112,9 +120,8 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		CraterJobTypeJupyter,
 		token,
 		baseURL,
-		req.Name,
-		req.Template,
-		req.AlertEnabled,
+		&req.CreateJobCommon,
+		scheduleMetadata,
 	)
 
 	// 5. Create the pod spec
@@ -134,10 +141,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	queueName := token.AccountName
-	if token.AccountID != model.DefaultAccountID {
-		queueName = vcqueue.GetUserQueueName(token.AccountID, token.UserID)
-	}
+	queueName := vcqueue.ResolveJobQueueName(token)
 	// 6. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -175,38 +179,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.client.Create(c, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// create jupyter notebook ingress
-	port := &v1.ServicePort{
-		Name:       "notebook",
-		Port:       JupyterPort,
-		TargetPort: intstr.FromInt(JupyterPort),
-		Protocol:   v1.ProtocolTCP,
-	}
-
-	ingressPath, err := mgr.serviceManager.CreateIngressWithPrefix(
-		c,
-		[]metav1.OwnerReference{
-			*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
-		},
-		labels,
-		port,
-		config.GetConfig().Host,
-		baseURL,
-	)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create ingress: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	log.Printf("Ingress created at path: %s", ingressPath)
-
-	// create forward ing rules in template
-	if err := mgr.CreateForwardIngresses(c, &job, req.Forwards, labels, token.Username); err != nil {
+	if err = mgr.submitJob(c, token, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

@@ -122,8 +122,8 @@ export default function DetailPage({
   }
 
   return (
-    <div className="flex h-full w-full flex-col space-y-6">
-      <div className="h-32 space-y-6">
+    <div className="flex h-full w-full flex-col gap-6 overflow-hidden">
+      <div className="shrink-0 space-y-6">
         {header}
         <div className="text-muted-foreground grid grid-cols-3 gap-3 text-sm">
           {info.map((data, index) => (
@@ -135,8 +135,12 @@ export default function DetailPage({
           ))}
         </div>
       </div>
-      <Tabs className="w-full grow overflow-hidden" value={tab} onValueChange={setCurrentTab}>
-        <TabsList className="tabs-list-underline">
+      <Tabs
+        className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+        value={tab}
+        onValueChange={setCurrentTab}
+      >
+        <TabsList className="tabs-list-underline shrink-0">
           {tabs.map((tabItem) => {
             // 如果有子选项卡，渲染下拉菜单
             if (tabItem.subTabs && tabItem.subTabs.length > 0) {
@@ -185,7 +189,10 @@ export default function DetailPage({
         </TabsList>
         {tabs.map((tabItem) => (
           <TabsContent key={tabItem.key} value={tabItem.key} asChild>
-            <div key={`${tabItem.key}-${tab}`} className="w-full">
+            <div
+              key={`${tabItem.key}-${tab}`}
+              className="mt-0 min-h-0 w-full flex-1 overflow-hidden"
+            >
               {(() => {
                 // 如果有子选项卡，渲染对应的子选项卡内容
                 if (tabItem.subTabs && tabItem.subTabs.length > 0) {
@@ -195,26 +202,26 @@ export default function DetailPage({
 
                   if (tabItem.scrollable) {
                     return (
-                      <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
+                      <ScrollArea className="h-full w-full">
                         {content}
                         <ScrollBar orientation="horizontal" />
                       </ScrollArea>
                     )
                   } else {
-                    return <div className="h-[calc(100vh_-_300px)] w-full">{content}</div>
+                    return <div className="h-full w-full">{content}</div>
                   }
                 }
 
                 // 普通选项卡内容
                 if (tabItem.scrollable) {
                   return (
-                    <ScrollArea className="h-[calc(100vh_-_300px)] w-full">
+                    <ScrollArea className="h-full w-full">
                       {tabItem.children}
                       <ScrollBar orientation="horizontal" />
                     </ScrollArea>
                   )
                 } else {
-                  return <div className="h-[calc(100vh_-_300px)] w-full">{tabItem.children}</div>
+                  return <div className="h-full w-full">{tabItem.children}</div>
                 }
               })()}
             </div>

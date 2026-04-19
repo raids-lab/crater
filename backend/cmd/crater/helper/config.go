@@ -16,6 +16,7 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 // ConfigInitializer 封装配置初始化逻辑
@@ -90,6 +91,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	registerConfig.Client = mgr.GetClient()
 
 	registerConfig.ConfigService = service.NewConfigService(query.Q)
+	registerConfig.PrequeueService = service.NewPrequeueService(query.Q, registerConfig.ConfigService)
 
 	registerConfig.GpuAnalysisService = service.NewGpuAnalysisService(
 		query.Q,
@@ -113,4 +115,12 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	// 初始化 ServiceManager
 	serviceManager := crclient.NewServiceManager(mgr.GetClient(), registerConfig.KubeClient)
 	registerConfig.ServiceManager = serviceManager
+
+	registerConfig.PrequeueWatcher = prequeuewatcher.New(
+		query.Q,
+		registerConfig.PrequeueService,
+		registerConfig.ConfigService,
+		mgr.GetClient(),
+		serviceManager,
+	)
 }

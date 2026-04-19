@@ -2339,6 +2339,194 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/queue-quotas": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "查询当前系统的各队列资源限制配置",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QueueQuota"
+                ],
+                "summary": "获取队列内资源限制",
+                "responses": {
+                    "200": {
+                        "description": "配置信息",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "创建单个队列的资源限制配置",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QueueQuota"
+                ],
+                "summary": "创建队列内资源限制",
+                "parameters": [
+                    {
+                        "description": "配置信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.QueueQuotaReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "创建成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "名称冲突",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/queue-quotas/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新单个队列的资源限制配置",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QueueQuota"
+                ],
+                "summary": "更新队列内资源限制",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "队列配置 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "配置信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.QueueQuotaReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "名称冲突",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除单个队列的资源限制配置",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "QueueQuota"
+                ],
+                "summary": "删除队列内资源限制",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "队列配置 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "删除成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "配置不存在",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/resources/link": {
             "post": {
                 "security": [
@@ -2975,6 +3163,86 @@ const docTemplate = `{
                         "description": "重置成功",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/system-config/prequeue": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "获取新版排队配置",
+                "responses": {
+                    "200": {
+                        "description": "配置",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "更新回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "更新新版排队配置",
+                "parameters": [
+                    {
+                        "description": "配置",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdatePrequeueConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "更新成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
@@ -4122,6 +4390,90 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/context/job-resource-summary": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按个人或账户视角汇总运行中与排队中的作业资源占用，并返回队列内资源限制",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "获取当前资源占用汇总",
+                "parameters": [
+                    {
+                        "enum": [
+                            "personal",
+                            "account"
+                        ],
+                        "type": "string",
+                        "default": "personal",
+                        "description": "资源占用视角",
+                        "name": "scope",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "当前作业资源占用汇总",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobResourceSummaryResp"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/context/prequeue": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "返回当前是否允许提交 backfill 作业",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "获取回填提交开关状态",
+                "responses": {
+                    "200": {
+                        "description": "当前状态",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/context/queue": {
             "get": {
                 "security": [
@@ -4155,6 +4507,50 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/context/resource-limit-check": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据队列内资源限制配置，检查当前用户运行中作业资源加上本次请求资源是否超限",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "检查用户资源使用是否超限",
+                "parameters": [
+                    {
+                        "description": "本次请求的资源",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ResourceLimitCheckReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "检查结果",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -9270,6 +9666,17 @@ const docTemplate = `{
                 "RoleAdmin"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.ScheduleType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1
+            ],
+            "x-enum-varnames": [
+                "ScheduleTypeBackfill",
+                "ScheduleTypeNormal"
+            ]
+        },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
             "format": "int32",
@@ -9613,6 +10020,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail": {
             "type": "object",
             "properties": {
@@ -9711,6 +10132,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobResourceSummaryResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.JobResourceSummaryResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp": {
             "type": "object",
             "properties": {
@@ -9767,6 +10202,34 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.PrequeueConfigResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.PrequeueFeatureStatusResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp": {
             "type": "object",
             "properties": {
@@ -9789,6 +10252,34 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.PutUserInProjectResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.QueueQuotaConfigItemResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.QueueQuotaResp"
                 },
                 "msg": {
                     "type": "string"
@@ -9934,6 +10425,53 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitDetail"
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "exceeded": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.ResourceLimitDetail": {
+            "type": "object",
+            "properties": {
+                "exceeded": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "string"
+                },
+                "resource": {
+                    "type": "string"
+                },
+                "used": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service_vcjob.ForwardType": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "_",
+                "IngressType",
+                "NodePortType"
+            ]
         },
         "github_com_raids-lab_crater_internal_util.VolumeMount": {
             "type": "object",
@@ -10569,6 +11107,57 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.JobResourceSummaryAcceleratorResp": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "string"
+                },
+                "resource": {
+                    "type": "string"
+                },
+                "used": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.JobResourceSummaryResp": {
+            "type": "object",
+            "properties": {
+                "accelerators": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.JobResourceSummaryAcceleratorResp"
+                    }
+                },
+                "cpu": {
+                    "$ref": "#/definitions/internal_handler.JobResourceSummaryUsageResp"
+                },
+                "memory": {
+                    "$ref": "#/definitions/internal_handler.JobResourceSummaryUsageResp"
+                },
+                "occupiedJobs": {
+                    "type": "integer"
+                },
+                "queueName": {
+                    "type": "string"
+                },
+                "quotaEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.JobResourceSummaryUsageResp": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "string"
+                },
+                "used": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.JobTemplateReq": {
             "type": "object",
             "required": [
@@ -10799,6 +11388,34 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.PrequeueConfigResp": {
+            "type": "object",
+            "properties": {
+                "activateTickerIntervalSeconds": {
+                    "type": "integer"
+                },
+                "backfillEnabled": {
+                    "type": "boolean"
+                },
+                "maxTotalActivationsPerRound": {
+                    "type": "integer"
+                },
+                "normalJobWaitingToleranceSeconds": {
+                    "type": "integer"
+                },
+                "queueQuotaEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.PrequeueFeatureStatusResp": {
+            "type": "object",
+            "properties": {
+                "backfillEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_handler.ProjectCreateResp": {
             "type": "object",
             "properties": {
@@ -10839,6 +11456,71 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.QueueQuotaConfigItemResp": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "prequeueCandidateSize": {
+                    "type": "integer"
+                },
+                "quota": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_handler.QueueQuotaReq": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "prequeueCandidateSize": {
+                    "type": "integer"
+                },
+                "quota": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_handler.QueueQuotaResp": {
+            "type": "object",
+            "properties": {
+                "quotas": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.QueueQuotaConfigItemResp"
+                    }
+                }
+            }
+        },
+        "internal_handler.ResourceLimitCheckReq": {
+            "type": "object",
+            "properties": {
+                "requestedResources": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -11078,6 +11760,33 @@ const docTemplate = `{
                 },
                 "validate": {
                     "description": "是否立即校验连接",
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.UpdatePrequeueConfigReq": {
+            "type": "object",
+            "required": [
+                "activateTickerIntervalSeconds",
+                "backfillEnabled",
+                "maxTotalActivationsPerRound",
+                "normalJobWaitingToleranceSeconds",
+                "queueQuotaEnabled"
+            ],
+            "properties": {
+                "activateTickerIntervalSeconds": {
+                    "type": "integer"
+                },
+                "backfillEnabled": {
+                    "type": "boolean"
+                },
+                "maxTotalActivationsPerRound": {
+                    "type": "integer"
+                },
+                "normalJobWaitingToleranceSeconds": {
+                    "type": "integer"
+                },
+                "queueQuotaEnabled": {
                     "type": "boolean"
                 }
             }
@@ -11605,6 +12314,9 @@ const docTemplate = `{
                 "resource": {
                     "$ref": "#/definitions/v1.ResourceList"
                 },
+                "scheduleType": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType"
+                },
                 "selectors": {
                     "type": "array",
                     "items": {
@@ -11643,22 +12355,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "type": {
-                    "$ref": "#/definitions/internal_handler_vcjob.ForwardType"
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service_vcjob.ForwardType"
                 }
             }
-        },
-        "internal_handler_vcjob.ForwardType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1,
-                2
-            ],
-            "x-enum-varnames": [
-                "_",
-                "IngressType",
-                "NodePortType"
-            ]
         },
         "internal_handler_vcjob.ImageBaseInfo": {
             "type": "object",

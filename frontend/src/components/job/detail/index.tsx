@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import {
@@ -78,6 +78,7 @@ import {
   JobStatus,
   JobType,
   apiJobDelete,
+  apiJobDeleteForAdmin,
   apiJobGetDetail,
   apiJobGetEvent,
   apiJobGetPods,
@@ -87,6 +88,7 @@ import {
   isSingleJob,
 } from '@/services/api/vcjob'
 
+import useIsAdmin from '@/hooks/use-admin'
 import useFixedLayout from '@/hooks/use-fixed-layout'
 import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
 
@@ -103,7 +105,9 @@ import { SSHPortDialog } from './s-s-h-port-dialog'
 
 export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { jobName: string }) {
   useFixedLayout()
+  const isAdmin = useIsAdmin()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const router = useRouter()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { t } = useTranslation()
@@ -160,10 +164,13 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     [ingressList]
   )
 
-  const { mutate: deleteJTask } = useMutation({
-    mutationFn: () => apiJobDelete(jobName),
-    onSuccess: () => {
-      toast.success('作业已删除')
+  const { mutate: deleteJob } = useMutation({
+    mutationFn: () => (isAdmin ? apiJobDeleteForAdmin(jobName) : apiJobDelete(jobName)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['context', 'job-resource-summary'],
+      })
+      toast.success(t('jobs.successMessage'))
       router.history.back()
     },
   })
@@ -203,7 +210,6 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
 
   const fromTime = data.startedAt ? new Date(data.startedAt).toISOString() : 'now-3h'
   const toTime = data.completedAt ? new Date(data.completedAt).toISOString() : 'now'
-
   return (
     <DetailPage
       {...props}
@@ -337,7 +343,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                     <AlertDialogAction
                       variant="destructive"
                       onClick={() => {
-                        deleteJTask()
+                        deleteJob()
                       }}
                     >
                       {jobStatus === JobStatus.NotStarted

@@ -3,6 +3,7 @@ package vcjob
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,8 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/utils/ptr"
@@ -21,6 +20,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -83,14 +83,6 @@ func buildResourceRequirements(resourceList v1.ResourceList, cpuPinningEnabled b
 
 	return resourceRequirements, resizePolicy
 }
-
-type ForwardType uint
-
-const (
-	_ ForwardType = iota
-	IngressType
-	NodePortType
-)
 
 type CraterJobType string
 
@@ -532,7 +524,13 @@ func (mgr *VolcanojobMgr) execCommandInPod(
 	return stdout.String(), nil
 }
 
-func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, baseURL, taskName, template string, alertEnabled bool) (
+func getLabelAndAnnotations(
+	jobType CraterJobType,
+	token util.JWTMessage,
+	baseURL string,
+	c *CreateJobCommon,
+	scheduleMetadata *jobScheduleMetadata,
+) (
 	labels map[string]string,
 	jobAnnotations map[string]string,
 	podAnnotations map[string]string,
@@ -544,12 +542,29 @@ func getLabelAndAnnotations(jobType CraterJobType, token util.JWTMessage, baseUR
 		crclient.LalbeKeyTaskAccount: token.AccountName,
 	}
 	jobAnnotations = map[string]string{
-		AnnotationKeyTaskName:     taskName,
-		AnnotationKeyTaskTemplate: template,
-		AnnotationKeyAlertEnabled: strconv.FormatBool(alertEnabled),
+		AnnotationKeyTaskName:     c.Name,
+		AnnotationKeyTaskTemplate: c.Template,
+		AnnotationKeyAlertEnabled: strconv.FormatBool(c.AlertEnabled),
+		AnnotationKeyUserID:       strconv.FormatUint(uint64(token.UserID), 10),
+	}
+	scheduleType := model.ScheduleTypeNormal
+	var waitingToleranceSeconds *int64
+	if scheduleMetadata != nil {
+		scheduleType = scheduleMetadata.ScheduleType
+		waitingToleranceSeconds = scheduleMetadata.WaitingToleranceSeconds
+	}
+	vcjobservice.ApplyScheduleMetadataAnnotations(
+		jobAnnotations,
+		scheduleType,
+		waitingToleranceSeconds,
+	)
+	if len(c.Forwards) > 0 {
+		if data, err := json.Marshal(c.Forwards); err == nil {
+			jobAnnotations[AnnotationKeyForwards] = string(data)
+		}
 	}
 	podAnnotations = map[string]string{
-		AnnotationKeyTaskName: taskName,
+		AnnotationKeyTaskName: c.Name,
 		AnnotationKeyUser:     token.Username,
 	}
 	return labels, jobAnnotations, podAnnotations
@@ -657,28 +672,5 @@ func (mgr *VolcanojobMgr) CreateForwardIngresses(
 	labels map[string]string,
 	username string,
 ) error {
-	for _, forward := range forwards {
-		port := &v1.ServicePort{
-			Name:       forward.Name,
-			Port:       forward.Port,
-			TargetPort: intstr.FromInt(int(forward.Port)),
-			Protocol:   v1.ProtocolTCP,
-		}
-
-		ingressPath, err := mgr.serviceManager.CreateIngress(
-			c,
-			[]metav1.OwnerReference{
-				*metav1.NewControllerRef(job, batch.SchemeGroupVersion.WithKind("Job")),
-			},
-			labels,
-			port,
-			config.GetConfig().Host,
-			username,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create ingress for %s: %w", forward.Name, err)
-		}
-		fmt.Printf("Ingress created for %s at path: %s\n", forward.Name, ingressPath)
-	}
-	return nil
+	return vcjobservice.CreateForwardIngresses(c, mgr.serviceManager, job, forwards, labels, username)
 }

@@ -325,3 +325,33 @@ export const convertToResourceList = (resource: ResourceSchema): V1ResourceList 
   }
   return k8sResource
 }
+
+const multiplyQuantity = (val: string, factor: number): string => {
+  const match = val.match(/^([0-9]*\.?[0-9]+)(.*)$/)
+  if (!match) return val
+  return `${parseFloat(match[1]) * factor}${match[2]}`
+}
+
+const addQuantities = (a: string, b: string): string => {
+  const matchA = a.match(/^([0-9]*\.?[0-9]+)(.*)$/)
+  const matchB = b.match(/^([0-9]*\.?[0-9]+)(.*)$/)
+  if (!matchA || !matchB) return a
+  // Guard: units must match for valid addition (guaranteed by convertToResourceList)
+  if (matchA[2] !== matchB[2]) return a
+  return `${parseFloat(matchA[1]) + parseFloat(matchB[1])}${matchA[2]}`
+}
+
+/** 聚合多组 task 资源（每组乘以 replicas 后求和），用于多任务作业的资源限额检查 */
+export const aggregateResourceLists = (
+  tasks: { resources: V1ResourceList; replicas: number }[]
+): Record<string, string> => {
+  const result: Record<string, string> = {}
+  for (const { resources, replicas } of tasks) {
+    if (!resources) continue
+    for (const [key, val] of Object.entries(resources)) {
+      const scaled = multiplyQuantity(val, replicas)
+      result[key] = result[key] ? addQuantities(result[key], scaled) : scaled
+    }
+  }
+  return result
+}

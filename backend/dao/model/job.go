@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,8 +16,9 @@ import (
 )
 
 const (
-	Deleted batch.JobPhase = "Deleted"
-	Freed   batch.JobPhase = "Freed"
+	Deleted  batch.JobPhase = "Deleted"
+	Freed    batch.JobPhase = "Freed"
+	Prequeue batch.JobPhase = "Prequeue"
 )
 
 type JobType string
@@ -32,6 +34,68 @@ const (
 	JobTypeOpenMPI    JobType = "openmpi"
 	JobTypeCustom     JobType = "custom"
 )
+
+type ScheduleType int
+
+const (
+	ScheduleTypeBackfill ScheduleType = 0
+	ScheduleTypeNormal   ScheduleType = 1
+)
+
+const (
+	ScheduleTypeBackfillName = "backfill"
+	ScheduleTypeNormalName   = "normal"
+)
+
+func (s ScheduleType) String() string {
+	switch s {
+	case ScheduleTypeBackfill:
+		return ScheduleTypeBackfillName
+	default:
+		return ScheduleTypeNormalName
+	}
+}
+
+func ParseScheduleType(raw string) (ScheduleType, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ScheduleTypeNormal, nil
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err == nil {
+		scheduleType := ScheduleType(value)
+		switch scheduleType {
+		case ScheduleTypeNormal, ScheduleTypeBackfill:
+			return scheduleType, nil
+		default:
+			return ScheduleTypeNormal, fmt.Errorf("invalid schedule type: %s", raw)
+		}
+	}
+
+	switch strings.ToLower(raw) {
+	case ScheduleTypeNormalName:
+		return ScheduleTypeNormal, nil
+	case ScheduleTypeBackfillName:
+		return ScheduleTypeBackfill, nil
+	default:
+		return ScheduleTypeNormal, fmt.Errorf("invalid schedule type: %s", raw)
+	}
+}
+
+func ParseWaitingToleranceSeconds(raw string) (*int64, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+	seconds, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid waiting tolerance seconds: %w", err)
+	}
+	if seconds < 0 {
+		return nil, fmt.Errorf("waiting tolerance seconds must be greater than or equal to 0")
+	}
+	return &seconds, nil
+}
 
 type ScheduleData struct {
 	ImagePullTime string  `json:"imagePullTime"`
@@ -68,18 +132,21 @@ func (s *ScheduleData) Init(msg string) error {
 
 type Job struct {
 	gorm.Model
-	Name              string         `gorm:"not null;type:varchar(256);comment:作业名称"`
-	JobName           string         `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
-	UserID            uint           `gorm:"primaryKey"`
-	User              User           `gorm:"foreignKey:UserID"`
-	AccountID         uint           `gorm:"primaryKey"`
-	Account           Account        `gorm:"foreignKey:AccountID"`
-	JobType           JobType        `gorm:"not null;comment:作业类型"`
-	Status            batch.JobPhase `gorm:"index:status;not null;comment:作业状态"`
-	CreationTimestamp time.Time      `gorm:"not null;comment:作业创建时间"`
+	Name                    string         `gorm:"not null;type:varchar(256);comment:作业名称"`
+	JobName                 string         `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
+	UserID                  uint           `gorm:"primaryKey"`
+	User                    User           `gorm:"foreignKey:UserID"`
+	AccountID               uint           `gorm:"primaryKey"`
+	Account                 Account        `gorm:"foreignKey:AccountID"`
+	JobType                 JobType        `gorm:"not null;comment:作业类型"`
+	ScheduleType            *ScheduleType  `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
+	WaitingToleranceSeconds *int64         `gorm:"comment:作业等待忍耐时间(秒)"`
+	Status                  batch.JobPhase `gorm:"index:status;not null;comment:作业状态"`
+	Queue                   string         `gorm:"type:varchar(256);index:idx_jobs_queue;comment:作业提交的volcano队列"`
 	// TODO(perf): Evaluate adding composite indexes for statistics queries:
 	// (user_id, running_timestamp), (account_id, running_timestamp),
 	// and potentially (running_timestamp, completed_timestamp).
+	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
 	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
 	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`
