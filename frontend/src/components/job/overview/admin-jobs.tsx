@@ -35,22 +35,32 @@ import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
 import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
+import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
+import { scheduleTypes } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { IJobInfo, JobType, apiAdminGetJobList, apiJobDeleteForAdmin } from '@/services/api/vcjob'
-import { JobPhase } from '@/services/api/vcjob'
+import {
+  IJobInfo,
+  JobPhase,
+  JobType,
+  ScheduleType,
+  apiAdminGetJobList,
+  apiJobDeleteForAdmin,
+  getUnifiedJobPhase,
+} from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
 
 import { DurationDialog } from '../../../routes/admin/jobs/-components/duration-dialog'
 
 export type StatusValue =
+  | 'Prequeue'
   | 'Queueing'
   | 'Created'
   | 'Pending'
@@ -66,6 +76,8 @@ export const getHeader = (key: string): string => {
       return t('jobs.headers.jobName')
     case 'jobType':
       return t('jobs.headers.jobType')
+    case 'scheduleType':
+      return t('jobs.headers.scheduleType')
     case 'queue':
       return t('jobs.headers.queue')
     case 'owner':
@@ -104,6 +116,11 @@ const AdminJobOverview = () => {
         key: 'jobType',
         title: t('jobs.filters.jobType'),
         option: jobTypes,
+      },
+      {
+        key: 'scheduleType',
+        title: t('jobs.filters.scheduleType'),
+        option: scheduleTypes,
       },
       {
         key: 'status',
@@ -149,6 +166,8 @@ const AdminJobOverview = () => {
           return t('jobs.headers.jobName')
         case 'jobType':
           return t('jobs.headers.jobType')
+        case 'scheduleType':
+          return t('jobs.headers.scheduleType')
         case 'queue':
           return t('jobs.headers.queue')
         case 'owner':
@@ -176,6 +195,17 @@ const AdminJobOverview = () => {
           <DataTableColumnHeader column={column} title={getHeader('jobType')} />
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
+      },
+      {
+        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
+        id: 'scheduleType',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
+        ),
+        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id))
+        },
       },
       {
         accessorKey: 'jobName',
@@ -219,7 +249,8 @@ const AdminJobOverview = () => {
         },
       },
       {
-        accessorKey: 'status',
+        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),

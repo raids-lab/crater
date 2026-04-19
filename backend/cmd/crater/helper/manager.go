@@ -195,10 +195,16 @@ func (ms *ManagerSetup) setupVolcano(mgr manager.Manager, registerConfig *handle
 		mgr.GetScheme(),
 		registerConfig.PrometheusClient,
 		registerConfig.KubeClient,
+		registerConfig.PrequeueWatcher,
 	)
 	err := vcjobReconciler.SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("unable to set up vcjob controller: %w", err)
+	}
+	if registerConfig.PrequeueWatcher != nil {
+		if err := mgr.Add(registerConfig.PrequeueWatcher); err != nil {
+			return fmt.Errorf("unable to add prequeue watcher: %w", err)
+		}
 	}
 	return nil
 }

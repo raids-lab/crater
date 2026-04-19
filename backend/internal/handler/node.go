@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -21,8 +22,9 @@ func init() {
 }
 
 type NodeMgr struct {
-	name       string
-	nodeClient *crclient.NodeClient
+	name            string
+	nodeClient      *crclient.NodeClient
+	prequeueWatcher *prequeuewatcher.PrequeueWatcher
 }
 
 // 接收 URI 中的参数
@@ -62,7 +64,8 @@ type NodeMark struct {
 
 func NewNodeMgr(conf *RegisterConfig) Manager {
 	return &NodeMgr{
-		name: "nodes",
+		name:            "nodes",
+		prequeueWatcher: conf.PrequeueWatcher,
 		nodeClient: &crclient.NodeClient{
 			Client:           conf.Client,
 			KubeClient:       conf.KubeClient,
@@ -176,7 +179,6 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 		return
 	}
 
-	// 从 token 中获取用户名
 	token := util.GetToken(c)
 
 	// 获取节点当前状态以确定操作类型（禁止调度 vs 恢复调度）
@@ -197,18 +199,22 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 		return
 	}
 
+	wasUnschedulable := rawNode.Spec.Unschedulable
 	opType := constants.OpTypeSetUnschedulable
-	if rawNode.Spec.Unschedulable {
-		opType = constants.OpTypeCancelUnschedulable // 当前是禁止，操作后就是恢复
+	if wasUnschedulable {
+		opType = constants.OpTypeCancelUnschedulable
 	}
 
-	err = mgr.nodeClient.UpdateNodeunschedule(c, urlReq.Name, bodyReq.Reason, token.Username)
+	_, err = mgr.nodeClient.UpdateNodeunschedule(c, urlReq.Name, bodyReq.Reason, token.Username)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("Update Node Unschedulable failed , err %v", err), resputil.NotSpecified)
 		RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusFailed, err.Error(), map[string]any{
 			"reason": bodyReq.Reason,
 		})
 		return
+	}
+	if wasUnschedulable && mgr.prequeueWatcher != nil {
+		mgr.prequeueWatcher.RequestFullScan()
 	}
 	RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusSuccess, "", map[string]any{
 		"reason": bodyReq.Reason,
