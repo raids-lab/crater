@@ -19,19 +19,6 @@ import { jobPhases } from '@/components/badge/job-phase-badge'
 import { jobTypes } from '@/components/badge/job-type-badge'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { ScheduleType } from '@/services/api/vcjob'
-
-export const scheduleTypes = [
-  {
-    value: String(ScheduleType.Backfill),
-    label: t('jobs.scheduleTypes.backfill'),
-  },
-  {
-    value: String(ScheduleType.Normal),
-    label: t('jobs.scheduleTypes.normal'),
-  },
-]
-
 export const getHeader = (key: string): string => {
   switch (key) {
     case 'id':
@@ -40,8 +27,6 @@ export const getHeader = (key: string): string => {
       return t('jobs.headers.jobName')
     case 'jobType':
       return t('jobs.headers.jobType')
-    case 'scheduleType':
-      return t('jobs.headers.scheduleType')
     case 'queue':
       return t('jobs.headers.queue')
     case 'owner':
@@ -77,11 +62,6 @@ export const jobToolbarConfig: DataTableToolbarConfig = {
       key: 'jobType',
       title: t('jobs.filters.jobType'),
       option: jobTypes,
-    },
-    {
-      key: 'scheduleType',
-      title: t('jobs.filters.scheduleType'),
-      option: scheduleTypes,
     },
     {
       key: 'status',

@@ -41,47 +41,13 @@ export interface QuotaResp {
   gpus: ResourceResp[]
 }
 
-export interface JobResourceSummaryUsage {
-  used: string
-  limit?: string
-}
-
-export interface JobResourceSummaryAccelerator {
-  resource: string
-  used: string
-  limit?: string
-}
-
-export type JobResourceSummaryScope = 'personal' | 'account'
-
-export interface JobResourceSummaryResp {
-  queueName: string
-  quotaEnabled: boolean
-  occupiedJobs: number
-  cpu: JobResourceSummaryUsage
-  memory: JobResourceSummaryUsage
-  accelerators: JobResourceSummaryAccelerator[]
-}
-
-export interface PrequeueFeatureStatusResp {
-  backfillEnabled: boolean
-}
-
 const store = getDefaultStore()
 const { scheduler } = store.get(globalSettings)
-
-export const apiContextPrequeueStatus = () =>
-  apiV1Get<IResponse<PrequeueFeatureStatusResp>>('context/prequeue')
 
 export const apiContextQuota = () => {
   const url = scheduler === 'volcano' ? 'context/quota' : 'aijobs/quota'
   return apiV1Get<IResponse<QuotaResp>>(url)
 }
-
-export const apiContextJobResourceSummary = (scope: JobResourceSummaryScope = 'personal') =>
-  apiV1Get<IResponse<JobResourceSummaryResp>>('context/job-resource-summary', {
-    searchParams: { scope },
-  })
 
 export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
   apiV1Put<IResponse<string>>('context/attributes', data)

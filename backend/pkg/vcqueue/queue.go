@@ -143,14 +143,16 @@ func CreateQueue(
 	parentName *string,
 	quota *model.QueueQuota,
 ) error {
+	namespace := config.GetConfig().Namespaces.Job
 	labels := map[string]string{
 		constants.LabelKeyQueueCreatedBy: token.Username,
 	}
 
 	volcanoQueue := &scheduling.Queue{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   queueName,
-			Labels: labels,
+			Name:      queueName,
+			Namespace: namespace,
+			Labels:    labels,
 		},
 	}
 	if parentName != nil {
@@ -168,21 +170,15 @@ func CreateQueue(
 	return nil
 }
 
-func GetQueue(ctx context.Context, cli client.Client, queueName string) (*scheduling.Queue, error) {
-	q := &scheduling.Queue{}
-	if err := cli.Get(ctx, client.ObjectKey{Name: queueName}, q); err != nil {
-		return nil, err
-	}
-	return q, nil
-}
-
 func DeleteQueue(ctx context.Context, cli client.Client, queueName string) error {
+	namespace := config.GetConfig().Namespaces.Job
+
 	lock := getQueueLock(queueName)
 	lock.Lock()
 	defer lock.Unlock()
 
 	queue := &scheduling.Queue{}
-	if err := cli.Get(ctx, client.ObjectKey{Name: queueName}, queue); err != nil {
+	if err := cli.Get(ctx, client.ObjectKey{Name: queueName, Namespace: namespace}, queue); err != nil {
 		if errors.IsNotFound(err) {
 			klog.Infof("Queue %s not found, skipping deletion", queueName)
 			return nil
@@ -214,11 +210,4 @@ func GetAccountQueueName(accountName string) string {
 
 func GetAccountLogicQueueName(accountID uint) string {
 	return fmt.Sprintf("q-a%d", accountID)
-}
-
-func ResolveJobQueueName(token util.JWTMessage) string {
-	if token.AccountID == model.DefaultAccountID {
-		return token.AccountName
-	}
-	return GetUserQueueName(token.AccountID, token.UserID)
 }

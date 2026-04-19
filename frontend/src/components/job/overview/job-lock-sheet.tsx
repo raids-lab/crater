@@ -36,7 +36,7 @@ import {
   listMyApprovalOrder,
 } from '@/services/api/approvalorder'
 import { NodeStatus } from '@/services/api/cluster'
-import { IJobInfo, ScheduleType } from '@/services/api/vcjob'
+import { IJobInfo } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 
 const ExtensionMarkdown = `
@@ -52,15 +52,9 @@ interface JobLockSheetProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
   jobName: string
-  scheduleType: ScheduleType
 }
 
-export const JobLockSheet = ({
-  isOpen,
-  onOpenChange,
-  jobName,
-  scheduleType,
-}: JobLockSheetProps) => {
+export const JobLockSheet = ({ isOpen, onOpenChange, jobName }: JobLockSheetProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [urgentOpen, setUrgentOpen] = useState(false)
   const [newlyCreatedOrder, setNewlyCreatedOrder] = useState<ApprovalOrder | null>(null)
@@ -77,14 +71,8 @@ export const JobLockSheet = ({
     (val: { days: number; hours: number; totalHours: number }) => setDuration(val),
     []
   )
-  const isBackfillJob = scheduleType === ScheduleType.Backfill
 
   const handleSubmit = async () => {
-    if (isBackfillJob) {
-      toast.error('回填作业不支持申请锁定')
-      return
-    }
-
     const hours = duration.totalHours
     if (!reason || reason.trim().length === 0) {
       toast.error('请填写申请原因')
@@ -169,9 +157,7 @@ export const JobLockSheet = ({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={
-                  isBackfillJob || isSubmitting || duration.totalHours < 1 || !reason.trim()
-                }
+                disabled={isSubmitting || duration.totalHours < 1 || !reason.trim()}
               >
                 {isSubmitting ? '提交中...' : '提交申请'}
               </Button>
@@ -267,7 +253,6 @@ interface JobLockMenuItemProps {
 
 export const JobLockMenuItem = ({ jobInfo, onLock }: JobLockMenuItemProps) => {
   const { data: nodes } = useQuery(queryNodes())
-  const isBackfillJob = jobInfo.scheduleType === ScheduleType.Backfill
 
   const areNodesReady = useMemo(() => {
     if (!jobInfo.nodes || jobInfo.nodes.length === 0) return true
@@ -283,17 +268,15 @@ export const JobLockMenuItem = ({ jobInfo, onLock }: JobLockMenuItemProps) => {
     if (!areNodesReady) {
       e.preventDefault()
       toast.error('作业所在节点未在正常运行，暂不支持锁定作业')
-      return
+    } else {
+      onLock()
     }
-
-    onLock()
   }
 
   return (
     <DropdownMenuItem
       onClick={handleLockClick}
-      disabled={isBackfillJob}
-      className={isBackfillJob || !areNodesReady ? 'cursor-not-allowed opacity-50' : ''}
+      className={!areNodesReady ? 'cursor-not-allowed opacity-50' : ''}
     >
       <div className="flex w-full items-center gap-2">
         <ClockIcon className="text-highlight-blue size-4" />

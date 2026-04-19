@@ -48,8 +48,6 @@ func main() {
 		model.UserModelDownload{},
 		model.GpuAnalysis{},
 		model.SystemConfig{},
-		model.PrequeueConfig{},
-		model.QueueQuotaLimit{},
 	)
 
 	// 执行并生成代码

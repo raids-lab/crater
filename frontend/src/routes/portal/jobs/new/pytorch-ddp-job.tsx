@@ -20,7 +20,7 @@ import { useRouter } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { HammerIcon, LayoutGridIcon, PickaxeIcon } from 'lucide-react'
-import { CirclePlusIcon, XIcon } from 'lucide-react'
+import { CirclePlus, CirclePlusIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -40,6 +40,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
+import LoadableButton from '@/components/button/loadable-button'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -50,7 +51,6 @@ import { OtherOptionsFormCard } from '@/components/form/other-options-form-field
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormPytorch } from '@/components/form/types'
-import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { publishValidateSearch } from '@/components/job/publish'
 import { PublishConfigForm } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
@@ -389,7 +389,10 @@ function RouteComponent() {
                 configform={form}
                 fromTemplate={searchParams.fromTemplate}
               />
-              <JobSubmitButton isLoading={isPending} />
+              <LoadableButton isLoading={isPending} isLoadingText="提交作业" type="submit">
+                <CirclePlus className="size-4" />
+                提交作业
+              </LoadableButton>
             </div>
           </PageTitle>
 

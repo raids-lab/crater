@@ -20,7 +20,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { CpuIcon, LayoutGridIcon, XIcon } from 'lucide-react'
-import { ChevronLeftIcon, CircleArrowDown, CircleArrowUp } from 'lucide-react'
+import { ChevronLeftIcon, CircleArrowDown, CircleArrowUp, CirclePlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -45,7 +45,6 @@ import { EnvFormCard } from '@/components/form/env-form-field'
 import FormLabelMust from '@/components/form/form-label-must'
 import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
-import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import { ProgressBar } from '@/components/ui-custom/colorful-progress'
@@ -365,7 +364,10 @@ function RouteComponent() {
                 <CircleArrowUp className="size-4" />
                 导出配置
               </Button>
-              <JobSubmitButton isLoading={isPending} />
+              <Button type="submit">
+                <CirclePlus className="size-4" />
+                提交作业
+              </Button>
             </div>
           </div>
           <Card className="lg:col-span-2">

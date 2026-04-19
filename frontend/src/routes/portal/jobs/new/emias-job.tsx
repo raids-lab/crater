@@ -20,6 +20,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { LayoutGridIcon } from 'lucide-react'
+import { CirclePlus } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -45,6 +46,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
+import LoadableButton from '@/components/button/loadable-button'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -55,7 +57,6 @@ import { OtherOptionsFormCard } from '@/components/form/other-options-form-field
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormCustom } from '@/components/form/types'
-import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
@@ -258,7 +259,10 @@ function RouteComponent() {
                 }}
               />
               <FormExportButton metadata={{ version: VERSION, type: JOB_TYPE }} form={form} />
-              <JobSubmitButton isLoading={isPending} />
+              <LoadableButton isLoading={isPending} isLoadingText="提交作业" type="submit">
+                <CirclePlus className="size-4" />
+                提交作业
+              </LoadableButton>
             </div>
           </PageTitle>
 

@@ -2,34 +2,22 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Card } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 
 import WarningAlert from '@/components/custom/warning-alert'
 
 import {
-  type IQueueQuota,
-  type IQueueQuotaConfig,
-  type IQueueQuotaPayload,
-  type QueueQuotaDraft,
-  apiAdminCreateQueueQuota,
-  apiAdminDeleteQueueQuota,
-  apiAdminGetQueueQuotas,
-  apiAdminUpdateQueueQuota,
-} from '@/services/api/queue-quota'
-import {
   apiAdminGetGpuAnalysisStatus,
   apiAdminGetLLMConfig,
-  apiAdminGetPrequeueConfig,
   apiAdminResetLLMConfig,
+  // 1. 确保已引入此 API
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
-  apiAdminUpdatePrequeueConfig,
 } from '@/services/api/system-config'
 import { ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
@@ -37,23 +25,17 @@ import { IErrorResponse } from '@/services/types'
 import { BasicSettings } from './-components/basic-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
-import { PrequeueSettings } from './-components/prequeue-settings'
-import { UserResourceLimit } from './-components/user-resource-limit'
 
 export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
   loader: () => ({ crumb: t('navigation.platformSettings') }),
 })
 
-const toQueueQuotaDraft = (quota: IQueueQuota): QueueQuotaDraft => ({
-  ...quota,
-  savedName: quota.name,
-})
-
 function RouteComponent() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
+  // --- LLM Form Definition ---
   const llmForm = useForm<LlmFormSchema>({
     resolver: zodResolver(createLlmSettingsSchema(t)),
     defaultValues: {
@@ -63,6 +45,7 @@ function RouteComponent() {
     },
   })
 
+  // --- Queries ---
   const { data: llmConfigData } = useQuery({
     queryKey: ['admin', 'system-config', 'llm'],
     queryFn: async () => {
@@ -76,31 +59,7 @@ function RouteComponent() {
     queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
   })
 
-  const { data: prequeueConfigData } = useQuery({
-    queryKey: ['admin', 'system-config', 'prequeue'],
-    queryFn: () => apiAdminGetPrequeueConfig().then((res) => res.data),
-  })
-
-  const { data: resourceLimitData } = useQuery({
-    queryKey: ['admin', 'queue-quotas'],
-    queryFn: () => apiAdminGetQueueQuotas().then((res) => res.data),
-  })
-
-  const [backfillEnabled, setBackfillEnabled] = useState(false)
-  const [queueQuotaEnabled, setQueueQuotaEnabled] = useState(false)
-  const [prequeueWaitingToleranceSeconds, setPrequeueWaitingToleranceSeconds] = useState('')
-  const [activateTickerIntervalSeconds, setActivateTickerIntervalSeconds] = useState('')
-  const [maxTotalActivationsPerRound, setMaxTotalActivationsPerRound] = useState('')
-  const [rlConfigs, setRlConfigs] = useState<QueueQuotaDraft[]>([])
-  const [hasLoadedQueueQuotas, setHasLoadedQueueQuotas] = useState(false)
-
-  useEffect(() => {
-    if (resourceLimitData && !hasLoadedQueueQuotas) {
-      setRlConfigs((resourceLimitData.quotas || []).map(toQueueQuotaDraft))
-      setHasLoadedQueueQuotas(true)
-    }
-  }, [hasLoadedQueueQuotas, resourceLimitData])
-
+  // Sync Data to Form
   useEffect(() => {
     if (llmConfigData) {
       llmForm.reset({
@@ -111,21 +70,9 @@ function RouteComponent() {
     }
   }, [llmConfigData, llmForm])
 
-  useEffect(() => {
-    if (prequeueConfigData) {
-      setBackfillEnabled(prequeueConfigData.backfillEnabled)
-      setQueueQuotaEnabled(prequeueConfigData.queueQuotaEnabled)
-      setPrequeueWaitingToleranceSeconds(
-        String(prequeueConfigData.normalJobWaitingToleranceSeconds ?? '')
-      )
-      setActivateTickerIntervalSeconds(
-        String(prequeueConfigData.activateTickerIntervalSeconds ?? '')
-      )
-      setMaxTotalActivationsPerRound(String(prequeueConfigData.maxTotalActivationsPerRound ?? ''))
-    }
-  }, [prequeueConfigData])
-
+  // --- Error Handling ---
   const handleError = (error: unknown) => {
+    // 检查 error 是否为非空对象
     if (typeof error === 'object' && error !== null && 'data' in error) {
       const errorData = (error as { data: IErrorResponse }).data
       const errorCode = errorData?.code
@@ -136,6 +83,7 @@ function RouteComponent() {
     }
   }
 
+  // --- Mutations ---
   const updateLLMMutation = useMutation({
     mutationFn: (vars: { data: LlmFormSchema; validate: boolean }) =>
       apiAdminUpdateLLMConfig({
@@ -154,11 +102,15 @@ function RouteComponent() {
     onError: handleError,
   })
 
+  // 2. 新增：重置配置的 Mutation
   const resetLLMMutation = useMutation({
     mutationFn: apiAdminResetLLMConfig,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'llm'] })
 
+      // 【关键修改】同时刷新 GPU 状态
+      // 因为后端重置 LLM 时连带关闭了 GPU 分析，我们需要重新拉取最新的开关状态 (false)
+      // 这样界面上的开关就会自动变回关闭状态，不会出现 UI 和后端不一致的情况
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'gpu-status'] })
 
       toast.success(t('common.resetSuccess'))
@@ -168,9 +120,13 @@ function RouteComponent() {
 
   const toggleGpuMutation = useMutation({
     mutationFn: apiAdminSetGpuAnalysisStatus,
+    // 【关键修改】将 onSuccess 的签名从 (status) 改为 (_data, newStatus)
+    // _data 代表我们不关心 API 的返回值（第一个参数）
+    // newStatus 代表我们调用 mutate 时传入的值（第二个参数），即 true 或 false
     onSuccess: (_data, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'gpu-status'] })
 
+      // 使用 newStatus 来判断应该显示哪个提示
       const message = newStatus
         ? t('systemConfig.gpuAnalysis.enabledSuccess')
         : t('systemConfig.gpuAnalysis.disabledSuccess')
@@ -179,11 +135,16 @@ function RouteComponent() {
     onError: handleError,
   })
 
+  // --- Event Handlers ---
   const handleLlmSubmit = (values: LlmFormSchema, validate: boolean) => {
     updateLLMMutation.mutate({ data: values, validate })
   }
 
+  // 3. 新增：处理重置点击
   const handleLlmReset = () => {
+    // 建议增加一个简单的确认，防止误触
+    // 如果你有封装好的 Confirm Dialog 组件更好，这里使用原生 confirm 演示逻辑
+    // 或者直接调用 mutation
     resetLLMMutation.mutate()
   }
 
@@ -211,147 +172,6 @@ function RouteComponent() {
     }
   }
 
-  const buildPrequeuePayload = () => ({
-    backfillEnabled,
-    queueQuotaEnabled,
-    normalJobWaitingToleranceSeconds: Number(prequeueWaitingToleranceSeconds),
-    activateTickerIntervalSeconds: Number(activateTickerIntervalSeconds),
-    maxTotalActivationsPerRound: Number(maxTotalActivationsPerRound),
-  })
-
-  const validatePrequeuePositiveIntegers = () => {
-    const positiveIntegerValues = [
-      prequeueWaitingToleranceSeconds,
-      activateTickerIntervalSeconds,
-      maxTotalActivationsPerRound,
-    ]
-    for (const item of positiveIntegerValues) {
-      const value = Number(item)
-      if (!Number.isInteger(value) || value <= 0) {
-        toast.error(t('systemConfig.prequeue.invalidPositiveInteger'))
-        return false
-      }
-    }
-    return true
-  }
-
-  const invalidatePrequeueConfig = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'prequeue'] })
-    queryClient.invalidateQueries({ queryKey: ['context', 'prequeue'] })
-    queryClient.invalidateQueries({ queryKey: ['context', 'job-resource-summary'] })
-  }
-
-  const updatePrequeueMutation = useMutation({
-    mutationFn: () => apiAdminUpdatePrequeueConfig(buildPrequeuePayload()),
-    onSuccess: () => {
-      invalidatePrequeueConfig()
-      toast.success(t('systemConfig.prequeue.saveSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const handlePrequeueSubmit = () => {
-    if (!validatePrequeuePositiveIntegers()) {
-      return
-    }
-    updatePrequeueMutation.mutate()
-  }
-
-  const updateQueueQuotaCache = (updater: (quotas: IQueueQuota[]) => IQueueQuota[]) => {
-    queryClient.setQueryData<IQueueQuotaConfig | undefined>(['admin', 'queue-quotas'], (prev) => {
-      if (!prev) {
-        return prev
-      }
-      return {
-        ...prev,
-        quotas: updater(prev.quotas || []),
-      }
-    })
-  }
-
-  const createResourceLimitMutation = useMutation({
-    mutationFn: ({ data }: { index: number; data: IQueueQuotaPayload }) =>
-      apiAdminCreateQueueQuota(data),
-    onSuccess: (res, vars) => {
-      const createdQuota = res.data
-      const createdQuotaDraft = toQueueQuotaDraft(createdQuota)
-      setRlConfigs((prev) =>
-        prev.map((cfg, index) => (index === vars.index ? createdQuotaDraft : cfg))
-      )
-      updateQueueQuotaCache((quotas) => [...quotas, createdQuota])
-      toast.success(t('systemConfig.userResourceLimit.createSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const updateResourceLimitMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: IQueueQuotaPayload }) =>
-      apiAdminUpdateQueueQuota(id, data),
-    onSuccess: (res) => {
-      const updatedQuota = res.data
-      const updatedQuotaDraft = toQueueQuotaDraft(updatedQuota)
-      setRlConfigs((prev) =>
-        prev.map((cfg) => (cfg.id === updatedQuota.id ? updatedQuotaDraft : cfg))
-      )
-      updateQueueQuotaCache((quotas) =>
-        quotas.map((cfg) => (cfg.id === updatedQuota.id ? updatedQuota : cfg))
-      )
-      toast.success(t('systemConfig.userResourceLimit.updateSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const deleteResourceLimitMutation = useMutation({
-    mutationFn: (id: number) => apiAdminDeleteQueueQuota(id),
-    onSuccess: (_res, id) => {
-      setRlConfigs((prev) => prev.filter((cfg) => cfg.id !== id))
-      updateQueueQuotaCache((quotas) => quotas.filter((cfg) => cfg.id !== id))
-      toast.success(t('systemConfig.userResourceLimit.deleteSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const handleResourceLimitCreate = (config: QueueQuotaDraft, index: number) => {
-    createResourceLimitMutation.mutate({
-      index,
-      data: {
-        name: config.name,
-        enabled: config.enabled,
-        prequeueCandidateSize: config.prequeueCandidateSize,
-        quota: config.quota,
-      },
-    })
-  }
-
-  const handleResourceLimitUpdate = (config: QueueQuotaDraft) => {
-    if (!config.id) {
-      return
-    }
-    updateResourceLimitMutation.mutate({
-      id: config.id,
-      data: {
-        name: config.name,
-        enabled: config.enabled,
-        prequeueCandidateSize: config.prequeueCandidateSize,
-        quota: config.quota,
-      },
-    })
-  }
-
-  const handleResourceLimitRemove = (config: QueueQuotaDraft, index: number) => {
-    if (!config.id) {
-      setRlConfigs((prev) => prev.filter((_, i) => i !== index))
-      return
-    }
-    deleteResourceLimitMutation.mutate(config.id)
-  }
-
-  const isResourceLimitPending =
-    createResourceLimitMutation.isPending ||
-    updateResourceLimitMutation.isPending ||
-    deleteResourceLimitMutation.isPending
-  const isPrequeueConfigPending = updatePrequeueMutation.isPending
-
   return (
     <div className="space-y-6">
       <WarningAlert
@@ -364,6 +184,7 @@ function RouteComponent() {
       </Card>
 
       <Card>
+        {/* 4. 更新：传入 onReset 属性和更新 isPending 状态 */}
         <LlmSettings
           form={llmForm}
           isPending={updateLLMMutation.isPending || resetLLMMutation.isPending}
@@ -375,34 +196,6 @@ function RouteComponent() {
           enabled={gpuStatusData?.enabled || false}
           isPending={toggleGpuMutation.isPending || updateLLMMutation.isPending}
           onToggle={handleGpuToggle}
-        />
-      </Card>
-
-      <Card>
-        <PrequeueSettings
-          backfillEnabled={backfillEnabled}
-          queueQuotaEnabled={queueQuotaEnabled}
-          isPending={isPrequeueConfigPending}
-          waitingToleranceSeconds={prequeueWaitingToleranceSeconds}
-          activateTickerIntervalSeconds={activateTickerIntervalSeconds}
-          maxTotalActivationsPerRound={maxTotalActivationsPerRound}
-          onBackfillEnabledChange={setBackfillEnabled}
-          onQueueQuotaEnabledChange={setQueueQuotaEnabled}
-          onWaitingToleranceSecondsChange={setPrequeueWaitingToleranceSeconds}
-          onActivateTickerIntervalSecondsChange={setActivateTickerIntervalSeconds}
-          onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
-          onSubmit={handlePrequeueSubmit}
-        />
-
-        <Separator />
-
-        <UserResourceLimit
-          configs={rlConfigs}
-          isPending={isResourceLimitPending}
-          onConfigsChange={setRlConfigs}
-          onCreate={handleResourceLimitCreate}
-          onUpdate={handleResourceLimitUpdate}
-          onRemove={handleResourceLimitRemove}
         />
       </Card>
     </div>

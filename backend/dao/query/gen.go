@@ -34,8 +34,6 @@ var (
 	Jobtemplate       *jobtemplate
 	Kaniko            *kaniko
 	ModelDownload     *modelDownload
-	PrequeueConfig    *prequeueConfig
-	QueueQuotaLimit   *queueQuotaLimit
 	Resource          *resource
 	ResourceNetwork   *resourceNetwork
 	ResourceVGPU      *resourceVGPU
@@ -65,8 +63,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
 	ModelDownload = &Q.ModelDownload
-	PrequeueConfig = &Q.PrequeueConfig
-	QueueQuotaLimit = &Q.QueueQuotaLimit
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
 	ResourceVGPU = &Q.ResourceVGPU
@@ -97,8 +93,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Jobtemplate:       newJobtemplate(db, opts...),
 		Kaniko:            newKaniko(db, opts...),
 		ModelDownload:     newModelDownload(db, opts...),
-		PrequeueConfig:    newPrequeueConfig(db, opts...),
-		QueueQuotaLimit:   newQueueQuotaLimit(db, opts...),
 		Resource:          newResource(db, opts...),
 		ResourceNetwork:   newResourceNetwork(db, opts...),
 		ResourceVGPU:      newResourceVGPU(db, opts...),
@@ -130,8 +124,6 @@ type Query struct {
 	Jobtemplate       jobtemplate
 	Kaniko            kaniko
 	ModelDownload     modelDownload
-	PrequeueConfig    prequeueConfig
-	QueueQuotaLimit   queueQuotaLimit
 	Resource          resource
 	ResourceNetwork   resourceNetwork
 	ResourceVGPU      resourceVGPU
@@ -164,8 +156,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Jobtemplate:       q.Jobtemplate.clone(db),
 		Kaniko:            q.Kaniko.clone(db),
 		ModelDownload:     q.ModelDownload.clone(db),
-		PrequeueConfig:    q.PrequeueConfig.clone(db),
-		QueueQuotaLimit:   q.QueueQuotaLimit.clone(db),
 		Resource:          q.Resource.clone(db),
 		ResourceNetwork:   q.ResourceNetwork.clone(db),
 		ResourceVGPU:      q.ResourceVGPU.clone(db),
@@ -205,8 +195,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Jobtemplate:       q.Jobtemplate.replaceDB(db),
 		Kaniko:            q.Kaniko.replaceDB(db),
 		ModelDownload:     q.ModelDownload.replaceDB(db),
-		PrequeueConfig:    q.PrequeueConfig.replaceDB(db),
-		QueueQuotaLimit:   q.QueueQuotaLimit.replaceDB(db),
 		Resource:          q.Resource.replaceDB(db),
 		ResourceNetwork:   q.ResourceNetwork.replaceDB(db),
 		ResourceVGPU:      q.ResourceVGPU.replaceDB(db),
@@ -236,8 +224,6 @@ type queryCtx struct {
 	Jobtemplate       IJobtemplateDo
 	Kaniko            IKanikoDo
 	ModelDownload     IModelDownloadDo
-	PrequeueConfig    IPrequeueConfigDo
-	QueueQuotaLimit   IQueueQuotaLimitDo
 	Resource          IResourceDo
 	ResourceNetwork   IResourceNetworkDo
 	ResourceVGPU      IResourceVGPUDo
@@ -267,8 +253,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Jobtemplate:       q.Jobtemplate.WithContext(ctx),
 		Kaniko:            q.Kaniko.WithContext(ctx),
 		ModelDownload:     q.ModelDownload.WithContext(ctx),
-		PrequeueConfig:    q.PrequeueConfig.WithContext(ctx),
-		QueueQuotaLimit:   q.QueueQuotaLimit.WithContext(ctx),
 		Resource:          q.Resource.WithContext(ctx),
 		ResourceNetwork:   q.ResourceNetwork.WithContext(ctx),
 		ResourceVGPU:      q.ResourceVGPU.WithContext(ctx),
