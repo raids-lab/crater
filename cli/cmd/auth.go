@@ -87,8 +87,8 @@ var loginCmd = &cobra.Command{
 			fmt.Println()
 		}
 
-		apiClient := api.NewClient(platformURL)
-		loginResp, err := apiClient.Login(username, password, mode)
+		authClient := api.NewAuthClient(platformURL)
+		loginResp, err := authClient.Login(username, password, mode)
 		if err != nil {
 			return &CLIError{Category: errorcodes.CategoryAPI, Code: errorcodes.ErrUnauthorized, Message: i18n.T("err_unauthorized", err.Error())}
 		}
