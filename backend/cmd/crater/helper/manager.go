@@ -195,6 +195,7 @@ func (ms *ManagerSetup) setupVolcano(mgr manager.Manager, registerConfig *handle
 		mgr.GetScheme(),
 		registerConfig.PrometheusClient,
 		registerConfig.KubeClient,
+		registerConfig.BillingService,
 		registerConfig.PrequeueWatcher,
 	)
 	err := vcjobReconciler.SetupWithManager(mgr)

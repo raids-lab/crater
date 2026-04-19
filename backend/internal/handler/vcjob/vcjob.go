@@ -53,6 +53,7 @@ type VolcanojobMgr struct {
 	serviceManager  crclient.ServiceManagerInterface
 	configService   *service.ConfigService
 	queueQuotaSvc   *service.PrequeueService
+	billingService  *service.BillingService
 	prequeueWatcher *prequeuewatcher.PrequeueWatcher
 }
 
@@ -67,6 +68,7 @@ func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 		serviceManager:  conf.ServiceManager,
 		configService:   conf.ConfigService,
 		queueQuotaSvc:   conf.PrequeueService,
+		billingService:  conf.BillingService,
 		prequeueWatcher: conf.PrequeueWatcher,
 	}
 }
@@ -79,9 +81,13 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.GetSelfJobs)
 	g.GET("all", mgr.GetAllJobsInDays)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
+	g.GET("billing", mgr.GetSelfJobBilling)
+	g.GET("billing/all", mgr.GetAllJobBillingInDays)
+	g.GET("billing/user/:username", mgr.GetUserJobBillingInDays)
 	g.DELETE(":name", mgr.DeleteJob)
 
 	g.GET(":name/detail", mgr.GetJobDetail)
+	g.GET(":name/billing", mgr.GetJobBillingDetail)
 	g.GET(":name/yaml", mgr.GetJobYaml)
 	g.GET(":name/pods", mgr.GetJobPods)
 	g.GET(":name/template", mgr.GetJobTemplate)
@@ -115,6 +121,9 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobsInDays)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
+	g.GET("billing", mgr.GetAllJobBillingInDays)
+	g.GET("billing/user/:username", mgr.GetUserJobBillingInDays)
+	g.GET(":name/billing", mgr.GetJobBillingDetail)
 	// delete job
 	g.DELETE(":name", mgr.AdminDeleteJob)
 }
@@ -366,15 +375,56 @@ func (mgr *VolcanojobMgr) buildDeleteJobPlan(c *gin.Context, jobRecord *model.Jo
 func (mgr *VolcanojobMgr) applyDeleteJobPlan(c *gin.Context, jobName string, plan *deleteJobPlan) error {
 	j := query.Job
 	if plan.shouldDeleteRecord {
-		_, err := j.WithContext(c).Where(j.JobName.Eq(jobName)).Delete()
+		record, err := j.WithContext(c).Where(j.JobName.Eq(jobName)).First()
+		if err != nil {
+			return err
+		}
+		if err := mgr.settleJobBeforeDelete(c, record, plan.clusterJob); err != nil {
+			return err
+		}
+		_, err = j.WithContext(c).Where(j.JobName.Eq(jobName)).Delete()
 		return err
+	}
+
+	completedAt := time.Now()
+	if mgr.billingService != nil {
+		record, err := j.WithContext(c).Where(j.JobName.Eq(jobName)).First()
+		if err != nil {
+			return err
+		}
+		finalJob := *record
+		finalJob.Status = model.Deleted
+		finalJob.CompletedTimestamp = completedAt
+		if err := mgr.billingService.OnJobFinishedSettlement(c.Request.Context(), &finalJob); err != nil {
+			return err
+		}
 	}
 
 	_, err := j.WithContext(c).Where(j.JobName.Eq(jobName)).Updates(model.Job{
 		Status:             model.Deleted,
-		CompletedTimestamp: time.Now(),
+		CompletedTimestamp: completedAt,
 	})
 	return err
+}
+
+func (mgr *VolcanojobMgr) settleJobBeforeDelete(c *gin.Context, record *model.Job, job *batch.Job) error {
+	if mgr.billingService == nil || record == nil {
+		return nil
+	}
+
+	finalJob := *record
+	finalJob.CompletedTimestamp = resolveDeleteSettlementTime(record, job)
+	return mgr.billingService.OnJobFinishedSettlement(c.Request.Context(), &finalJob)
+}
+
+func resolveDeleteSettlementTime(record *model.Job, job *batch.Job) time.Time {
+	if record != nil && !record.CompletedTimestamp.IsZero() {
+		return record.CompletedTimestamp
+	}
+	if job != nil && !job.Status.State.LastTransitionTime.IsZero() {
+		return job.Status.State.LastTransitionTime.Time
+	}
+	return time.Now()
 }
 
 func (mgr *VolcanojobMgr) deleteClusterJob(c *gin.Context, plan *deleteJobPlan) error {
@@ -498,6 +548,12 @@ type (
 		Locked                  bool               `json:"locked"`
 		PermanentLocked         bool               `json:"permanentLocked"`
 		LockedTimestamp         metav1.Time        `json:"lockedTimestamp"`
+	}
+
+	JobBillingResp struct {
+		JobName           string  `json:"jobName"`
+		Name              string  `json:"name"`
+		BilledPointsTotal float64 `json:"billedPointsTotal"`
 	}
 )
 
@@ -654,6 +710,114 @@ func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 
 	jobList := convertJobResp(jobs)
 	resputil.Success(c, jobList)
+}
+
+func convertJobBillingResp(jobs []*model.Job) []JobBillingResp {
+	jobList := make([]JobBillingResp, len(jobs))
+	for i := range jobs {
+		jobList[i] = JobBillingResp{
+			JobName:           jobs[i].JobName,
+			Name:              jobs[i].Name,
+			BilledPointsTotal: service.ToDisplayPoints(jobs[i].BilledPointsTotal),
+		}
+	}
+	return jobList
+}
+
+func (mgr *VolcanojobMgr) GetSelfJobBilling(c *gin.Context) {
+	if mgr.billingService == nil || !mgr.billingService.IsUserFacingEnabled(c.Request.Context()) {
+		resputil.Success(c, []JobBillingResp{})
+		return
+	}
+
+	token := util.GetToken(c)
+	j := query.Job
+	jobs, err := j.WithContext(c).
+		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).
+		Find()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, convertJobBillingResp(jobs))
+}
+
+func (mgr *VolcanojobMgr) GetAllJobBillingInDays(c *gin.Context) {
+	type QueryParams struct {
+		Days int `form:"days"`
+	}
+
+	var req QueryParams
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	days := 7
+	if req.Days > 0 {
+		days = req.Days
+	}
+
+	j := query.Job
+	q := j.WithContext(c)
+	if req.Days != -1 {
+		now := time.Now()
+		lookbackPeriod := now.AddDate(0, 0, -days)
+		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
+	}
+	jobs, err := q.Find()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, convertJobBillingResp(jobs))
+}
+
+func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
+	username := c.Param("username")
+	if username == "" {
+		resputil.BadRequestError(c, "username is required")
+		return
+	}
+
+	type QueryParams struct {
+		Days int `form:"days"`
+	}
+
+	var req QueryParams
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	days := 30
+	if req.Days > 0 {
+		days = req.Days
+	}
+
+	u := query.User
+	targetUser, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
+	if err != nil {
+		resputil.Error(c, "User not found", resputil.NotSpecified)
+		return
+	}
+
+	j := query.Job
+	q := j.WithContext(c).Where(j.UserID.Eq(targetUser.ID))
+	if req.Days != -1 {
+		now := time.Now()
+		lookbackPeriod := now.AddDate(0, 0, -days)
+		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
+	}
+	jobs, err := q.Find()
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, convertJobBillingResp(jobs))
 }
 
 func convertJobResp(jobs []*model.Job) []JobResp {
@@ -1211,4 +1375,30 @@ func (mgr *VolcanojobMgr) ToggleAlertState(c *gin.Context) {
 	}
 	message := fmt.Sprintf("Set %s AlertEnabled to %t", req.JobName, !preStatus)
 	resputil.Success(c, message)
+}
+
+func (mgr *VolcanojobMgr) GetJobBillingDetail(c *gin.Context) {
+	if mgr.billingService == nil || !mgr.billingService.IsFeatureEnabled(c.Request.Context()) {
+		resputil.Success(c, JobBillingResp{})
+		return
+	}
+
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+	job, err := getJob(c, req.JobName, &token)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, JobBillingResp{
+		JobName:           job.JobName,
+		Name:              job.Name,
+		BilledPointsTotal: service.ToDisplayPoints(job.BilledPointsTotal),
+	})
 }

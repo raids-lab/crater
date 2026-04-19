@@ -32,6 +32,8 @@ export const formSchema = z.object({
   resources: quotaSchema,
   expiredAt: z.date().optional(),
   admins: z.array(z.string()).optional(),
+  billingIssueAmount: z.number().int().nonnegative().optional(),
+  billingIssuePeriodMinutes: z.number().int().nonnegative().optional(),
 })
 
 export type AccountFormSchema = z.infer<typeof formSchema>

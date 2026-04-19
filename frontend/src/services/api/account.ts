@@ -86,7 +86,7 @@ export interface IUserInAccountUpdateReq {
   uid: number
   role: string
   accessmode: string
-  quota?: Record<string, string>
+  quota?: IQuota
 }
 
 export interface IUserInAccountUpdateResp {
@@ -146,6 +146,12 @@ export const apiUserUpdateAccountMember = async (aid: number, user: IUserInAccou
     role: user.role,
     accessmode: user.accessmode,
   })
+
+export const apiUserUpdateAccountMemberPartial = (
+  aid: number,
+  uid: number,
+  data: { uid?: number; role?: string; accessmode?: string; quota?: IQuota }
+) => apiV1Put<IResponse<IUserInAccountUpdateResp>>(`accounts/${aid}/users/${uid}`, data)
 
 export const apiUserRemoveAccountMember = async (aid: number, user: IUserInAccountCreate) =>
   apiV1Delete<IResponse<IUserInAccount>>(`accounts/${aid}/users/${user.id}`)

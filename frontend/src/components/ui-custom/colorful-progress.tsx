@@ -16,32 +16,69 @@
 // i18n-processed-v1.1.0
 import { cn } from '@/lib/utils'
 
-export const progressTextColor = (percent: number) => {
+export type ProgressMode = 'usage' | 'balance'
+
+const getProgressTone = (percent: number, mode: ProgressMode) => {
+  if (mode === 'balance') {
+    if (percent > 90) {
+      return 'emerald'
+    }
+    if (percent > 70) {
+      return 'sky'
+    }
+    if (percent > 50) {
+      return 'yellow'
+    }
+    if (percent > 20) {
+      return 'orange'
+    }
+    return 'red'
+  }
+  if (percent <= 20) {
+    return 'emerald'
+  }
+  if (percent <= 50) {
+    return 'sky'
+  }
+  if (percent <= 70) {
+    return 'yellow'
+  }
+  if (percent <= 90) {
+    return 'orange'
+  }
+  return 'red'
+}
+
+export const progressTextColor = (percent: number, mode: ProgressMode = 'usage') => {
+  const tone = getProgressTone(percent, mode)
   return cn('text-highlight-emerald mb-0.5 font-mono text-sm font-bold', {
-            'text-highlight-emerald': percent <= 20,
-            'text-highlight-sky': percent > 20 && percent <= 50,
-            'text-highlight-yellow': percent > 50 && percent <= 70,
-            'text-highlight-orange': percent > 70 && percent <= 90,
-            'text-highlight-red': percent > 90,
-          })
+    'text-highlight-emerald': tone === 'emerald',
+    'text-highlight-sky': tone === 'sky',
+    'text-highlight-yellow': tone === 'yellow',
+    'text-highlight-orange': tone === 'orange',
+    'text-highlight-red': tone === 'red',
+  })
 }
 
 export const ProgressBar = ({
   percent,
   label,
   className,
+  mode = 'usage',
 }: {
   percent: number
   label?: string
   className?: string
+  mode?: ProgressMode
 }) => {
-  const newWidth = percent > 100 ? 100 : percent
+  const normalizedPercent = Math.min(100, Math.max(0, percent))
+  const tone = getProgressTone(normalizedPercent, mode)
   return (
     <div
       className={cn(
         'bg-accent text-foreground relative h-2 rounded-md',
         {
-          'text-white': percent > 90,
+          'text-white': mode === 'usage' && normalizedPercent > 90,
         },
         className
       )}
@@ -50,15 +87,15 @@ export const ProgressBar = ({
         className={cn(
           'h-2 rounded-md transition-all duration-500',
           {
-            'bg-highlight-emerald': percent <= 20,
-            'bg-highlight-sky': percent > 20 && percent <= 50,
-            'bg-highlight-yellow': percent > 50 && percent <= 70,
-            'bg-highlight-orange': percent > 70 && percent <= 90,
-            'bg-highlight-red': percent > 90,
+            'bg-highlight-emerald': tone === 'emerald',
+            'bg-highlight-sky': tone === 'sky',
+            'bg-highlight-yellow': tone === 'yellow',
+            'bg-highlight-orange': tone === 'orange',
+            'bg-highlight-red': tone === 'red',
           },
           className
         )}
-        style={{ width: `${newWidth}%` }}
+        style={{ width: `${normalizedPercent}%` }}
       ></div>
       {label && (
         <div className="absolute inset-0 font-mono text-xs font-medium">

@@ -34,12 +34,42 @@ func (mgr *OperationsMgr) UpdateCronjobConfig(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.InvalidRequest)
 		return
 	}
-	var (
-		jobTypePtr *model.CronJobType
-		specPtr    *string
-		statusPtr  *model.CronJobConfigStatus
-		configPtr  *string
-	)
+
+	jobTypePtr, specPtr, statusPtr, configPtr, err := buildCronUpdateParams(&req)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	if err := mgr.validateCronEnableGate(c, &req); err != nil {
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+
+	if err := mgr.cronJobManager.UpdateJobConfig(c, req.Name, jobTypePtr, specPtr, statusPtr, configPtr); err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+	if req.Name == patrol.TRIGGER_BILLING_BASE_LOOP_JOB &&
+		req.Status == model.CronJobConfigStatusSuspended &&
+		mgr.billingService != nil {
+		if err := mgr.billingService.HandleBaseLoopCronSuspended(c.Request.Context()); err != nil {
+			resputil.Error(c, err.Error(), resputil.ServiceError)
+			return
+		}
+	}
+	resputil.Success(c, "Successfully update cronjob config")
+}
+
+func buildCronUpdateParams(
+	req *model.CronJobConfig,
+) (
+	jobTypePtr *model.CronJobType,
+	specPtr *string,
+	statusPtr *model.CronJobConfigStatus,
+	configPtr *string,
+	err error,
+) {
 	if req.Type != "" {
 		jobTypePtr = ptr.To(req.Type)
 	}
@@ -50,28 +80,35 @@ func (mgr *OperationsMgr) UpdateCronjobConfig(c *gin.Context) {
 		statusPtr = ptr.To(req.Status)
 	}
 	if len(req.Config) > 0 {
-		configJson, err := json.Marshal(req.Config)
+		var configJSON []byte
+		configJSON, err = json.Marshal(req.Config)
 		if err != nil {
-			resputil.Error(c, err.Error(), resputil.ServiceError)
+			return nil, nil, nil, nil, err
 		}
-		configPtr = ptr.To(string(configJson))
+		configPtr = ptr.To(string(configJSON))
 	}
+	return jobTypePtr, specPtr, statusPtr, configPtr, nil
+}
 
-	if req.Name == patrol.TRIGGER_GPU_ANALYSIS_JOB && req.Status != "" && req.Status != model.CronJobConfigStatusSuspended {
-		isFeatureEnabled := mgr.configService.IsGpuAnalysisEnabled(c.Request.Context())
-		if !isFeatureEnabled {
-			// 如果主功能是关闭的，则禁止启用定时任务，并返回错误
-			errMsg := "Cannot enable the GPU analysis cron job because the main GPU analysis feature is disabled in system settings."
-			resputil.Error(c, errMsg, resputil.InvalidRequest)
-			return
+func (mgr *OperationsMgr) validateCronEnableGate(c *gin.Context, req *model.CronJobConfig) error {
+	if req.Status == "" || req.Status == model.CronJobConfigStatusSuspended {
+		return nil
+	}
+	if req.Name == patrol.TRIGGER_GPU_ANALYSIS_JOB {
+		if !mgr.configService.IsGpuAnalysisEnabled(c.Request.Context()) {
+			return fmt.Errorf("cannot enable the GPU analysis cron job because the main GPU analysis feature is disabled in system settings")
+		}
+		return nil
+	}
+	if req.Name == patrol.TRIGGER_BILLING_BASE_LOOP_JOB {
+		if mgr.billingService == nil || !mgr.billingService.IsFeatureEnabled(c.Request.Context()) {
+			return fmt.Errorf("cannot enable billing cron job because billing feature is disabled in system settings")
+		}
+		if !mgr.billingService.IsActive(c.Request.Context()) {
+			return fmt.Errorf("cannot enable billing cron job because billing active is disabled in system settings")
 		}
 	}
-
-	if err := mgr.cronJobManager.UpdateJobConfig(c, req.Name, jobTypePtr, specPtr, statusPtr, configPtr); err != nil {
-		resputil.Error(c, err.Error(), resputil.ServiceError)
-		return
-	}
-	resputil.Success(c, "Successfully update cronjob config")
+	return nil
 }
 
 // GetCronjobConfigs godoc

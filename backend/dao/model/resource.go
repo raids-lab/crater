@@ -29,6 +29,7 @@ type Resource struct {
 	Format          string `gorm:"type:varchar(255);not null;comment:资源格式" json:"format"`
 	Priority        int    `gorm:"not null;comment:优先级" json:"priority"`
 	Label           string `gorm:"type:varchar(255);not null;comment:用于显示的别名" json:"label"`
+	UnitPrice       int64  `gorm:"not null;default:0;comment:资源单位价格(内部微点, 展示为点数/单位/小时)" json:"unitPrice"`
 
 	// Resource relationship
 	Type     *CraterResourceType `gorm:"type:varchar(32);comment:资源类型" json:"type"`

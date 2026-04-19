@@ -92,8 +92,20 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					defaultValue := ""
-					if key == model.ConfigKeyEnableGpuAnalysis {
+					switch key {
+					case model.ConfigKeyEnableGpuAnalysis,
+						model.ConfigKeyEnableBillingFeature,
+						model.ConfigKeyEnableBillingActive,
+						model.ConfigKeyEnableRunningSettlement,
+						model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
+						model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled:
 						defaultValue = "false"
+					case model.ConfigKeyRunningSettlementIntervalMinute:
+						defaultValue = "5"
+					case model.ConfigKeyBillingDefaultIssueAmount:
+						defaultValue = FormatBillingAmountConfigValue(defaultBillingIssueAmount)
+					case model.ConfigKeyBillingDefaultIssuePeriodMinute:
+						defaultValue = "43200"
 					}
 					klog.Infof("[ConfigService] Seeding missing config key: %s", key)
 					if createErr := tx.SystemConfig.WithContext(ctx).Create(&model.SystemConfig{

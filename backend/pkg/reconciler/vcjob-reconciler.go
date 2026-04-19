@@ -42,6 +42,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
+	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
@@ -59,6 +60,7 @@ type VcJobReconciler struct {
 	log              logr.Logger
 	prometheusClient monitor.PrometheusInterface // get monitor data
 	kubeClient       kubernetes.Interface
+	billingService   *service.BillingService
 	prequeueWatcher  *prequeuewatcher.PrequeueWatcher
 }
 
@@ -68,6 +70,7 @@ func NewVcJobReconciler(
 	scheme *runtime.Scheme,
 	prometheusClient monitor.PrometheusInterface,
 	kubeClient kubernetes.Interface,
+	billingService *service.BillingService,
 	prequeueWatcher *prequeuewatcher.PrequeueWatcher,
 ) *VcJobReconciler {
 	return &VcJobReconciler{
@@ -76,6 +79,7 @@ func NewVcJobReconciler(
 		log:              ctrl.Log.WithName("vcjob-reconciler"),
 		prometheusClient: prometheusClient,
 		kubeClient:       kubeClient,
+		billingService:   billingService,
 		prequeueWatcher:  prequeueWatcher,
 	}
 }
@@ -139,6 +143,11 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				logger.Error(err, "unable to update job profile data")
 				return ctrl.Result{Requeue: true}, err
 			}
+			if r.billingService != nil {
+				if settleErr := r.billingService.OnJobFinishedSettlement(ctx, record); settleErr != nil {
+					logger.Error(settleErr, "billing final settlement hook failed for deleted job")
+				}
+			}
 			r.notifyPrequeue()
 			return ctrl.Result{}, nil
 		}
@@ -173,6 +182,13 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		if info.RowsAffected == 0 {
 			logger.Info("job not found in database")
+		}
+		if r.billingService != nil {
+			record.Status = model.Freed
+			record.CompletedTimestamp = time.Now()
+			if settleErr := r.billingService.OnJobFinishedSettlement(ctx, record); settleErr != nil {
+				logger.Error(settleErr, "billing final settlement hook failed")
+			}
 		}
 		r.notifyPrequeue()
 		return ctrl.Result{}, nil
@@ -240,6 +256,26 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		job.Status.State.Phase == batch.Pending
 
 	if !isJobActive {
+		if r.billingService != nil && (oldRecord.Status == batch.Running || oldRecord.Status == batch.Pending) {
+			finalJob := *oldRecord
+			finalJob.Status = job.Status.State.Phase
+			if updateRecord.RunningTimestamp.IsZero() {
+				finalJob.RunningTimestamp = oldRecord.RunningTimestamp
+			} else {
+				finalJob.RunningTimestamp = updateRecord.RunningTimestamp
+			}
+			finalJob.CompletedTimestamp = updateRecord.CompletedTimestamp
+			if finalJob.CompletedTimestamp.IsZero() {
+				if !job.Status.State.LastTransitionTime.IsZero() {
+					finalJob.CompletedTimestamp = job.Status.State.LastTransitionTime.Time
+				} else if !oldRecord.CompletedTimestamp.IsZero() {
+					finalJob.CompletedTimestamp = oldRecord.CompletedTimestamp
+				}
+			}
+			if settleErr := r.billingService.OnJobFinishedSettlement(ctx, &finalJob); settleErr != nil {
+				logger.Error(settleErr, "billing final settlement hook failed")
+			}
+		}
 		r.cancelPendingApprovalOrders(ctx, job.Name, fmt.Sprintf("job is not running (status: %s), order is canceled", job.Status.State.Phase))
 	}
 

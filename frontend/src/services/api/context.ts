@@ -67,6 +67,16 @@ export interface PrequeueFeatureStatusResp {
   backfillEnabled: boolean
 }
 
+export interface BillingSummaryResp {
+  periodFreeBalance: number
+  extraBalance: number
+  totalAvailable: number
+  lastIssuedAt?: string
+  nextIssueAt?: string
+  effectiveIssueAmount: number
+  effectiveIssuePeriodMinutes: number
+}
+
 const store = getDefaultStore()
 const { scheduler } = store.get(globalSettings)
 
@@ -82,6 +92,9 @@ export const apiContextJobResourceSummary = (scope: JobResourceSummaryScope = 'p
   apiV1Get<IResponse<JobResourceSummaryResp>>('context/job-resource-summary', {
     searchParams: { scope },
   })
+
+export const apiContextBillingSummary = () =>
+  apiV1Get<IResponse<BillingSummaryResp>>('context/billing/summary')
 
 export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
   apiV1Put<IResponse<string>>('context/attributes', data)

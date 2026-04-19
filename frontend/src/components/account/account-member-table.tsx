@@ -69,6 +69,7 @@ import {
 import CapacityBadges from '@/components/badge/capacity-badges'
 import UserAccessBadge from '@/components/badge/user-access-badge'
 import UserRoleBadge, { userRoles } from '@/components/badge/user-role-badge'
+import { BillingInlineMeter } from '@/components/custom/billing-balance-meter'
 import SelectBox from '@/components/custom/select-box'
 import FormLabelMust from '@/components/form/form-label-must'
 import UserLabel from '@/components/label/user-label'
@@ -102,12 +103,22 @@ import {
   apiUserOutOfProjectList,
   apiUserRemoveAccountMember,
   apiUserUpdateAccountMember,
+  apiUserUpdateAccountMemberPartial,
 } from '@/services/api/account'
 import { Role, apiQueueSwitch } from '@/services/api/auth'
+import {
+  AccountBillingMember,
+  apiAdminGetAccountBillingMembers,
+  apiAdminUpdateAccountBillingMemberIssueAmount,
+  apiGetAccountBillingMembers,
+  apiUpdateAccountBillingMemberIssueAmount,
+} from '@/services/api/billing'
+import { apiGetBillingStatus } from '@/services/api/system-config'
 import { queryAccountByID } from '@/services/query/account'
 
 import useIsAdmin from '@/hooks/use-admin'
 
+import { isBillingVisible } from '@/utils/billing-visibility'
 import { atomUserContext, atomUserInfo } from '@/utils/store'
 
 // Moved Zod schema to component
@@ -123,11 +134,19 @@ const formSchema = z.object({
   }),
 })
 
+const hasAtMostTwoDecimalPlaces = (value: number) =>
+  Math.abs(value * 100 - Math.round(value * 100)) < 1e-8
+
+const isBillingAmountValueValid = (value: number | null | undefined) =>
+  value != null && Number.isFinite(value) && value >= 0 && hasAtMostTwoDecimalPlaces(value)
+
 interface AccountMemberTableProps {
   accountId: number
   editable?: boolean
   storageKey?: string
 }
+
+type AccountMemberRow = IUserInAccount & Partial<AccountBillingMember>
 
 export function AccountMemberTable({
   accountId,
@@ -145,11 +164,17 @@ export function AccountMemberTable({
   // Get account info to check if it's default account
   const { data: accountInfo } = useQuery({
     ...queryAccountByID(accountId),
-    enabled: !!accountId,
+    enabled: isAdminView && !!accountId,
   })
+  const { data: billingStatus } = useQuery({
+    queryKey: ['system-config', 'billing-status'],
+    queryFn: () => apiGetBillingStatus().then((res) => res.data),
+    enabled: editable,
+  })
+  const billingEnabled = editable && isBillingVisible(billingStatus, isAdminView ? 'admin' : 'user')
 
   // Check if current account is default account
-  const isDefaultAccount = accountInfo?.name === 'default'
+  const isDefaultAccount = isAdminView && accountInfo?.name === 'default'
 
   const getHeader = useCallback(
     (key: string): string => {
@@ -189,6 +214,9 @@ export function AccountMemberTable({
   const addAccountMember = isAdminView ? apiAddUser : apiUserAddAccountMember
   const updateAccountMember = isAdminView ? apiUpdateUser : apiUserUpdateAccountMember
   const removeAccountMember = isAdminView ? apiRemoveUser : apiUserRemoveAccountMember
+  const listBillingMembers = isAdminView
+    ? apiAdminGetAccountBillingMembers
+    : apiGetAccountBillingMembers
 
   const accountUsersQuery = useQuery({
     queryKey: ['account', accountId, 'users', isAdminView ? 'admin' : 'user'],
@@ -303,6 +331,41 @@ export function AccountMemberTable({
     },
   })
 
+  const billingMembersQuery = useQuery({
+    queryKey: ['account', accountId, 'billing-members', isAdminView ? 'admin' : 'user'],
+    queryFn: () => listBillingMembers(accountId).then((res) => res.data),
+    enabled: billingEnabled,
+  })
+
+  const mergedAccountUsers = useMemo<AccountMemberRow[]>(() => {
+    const billingByUserId = new Map(
+      (billingMembersQuery.data ?? []).map((item) => [item.userId, item] as const)
+    )
+    return (accountUsersQuery.data ?? []).map((user) => ({
+      ...user,
+      ...billingByUserId.get(user.id),
+    }))
+  }, [accountUsersQuery.data, billingMembersQuery.data])
+
+  const mergedAccountUsersQuery = useMemo(
+    () =>
+      ({
+        data: mergedAccountUsers,
+        isLoading: accountUsersQuery.isLoading || (billingEnabled && billingMembersQuery.isLoading),
+        dataUpdatedAt: Math.max(accountUsersQuery.dataUpdatedAt, billingMembersQuery.dataUpdatedAt),
+        refetch: accountUsersQuery.refetch,
+      }) as UseQueryResult<AccountMemberRow[], Error>,
+    [
+      accountUsersQuery.dataUpdatedAt,
+      accountUsersQuery.isLoading,
+      accountUsersQuery.refetch,
+      billingEnabled,
+      billingMembersQuery.dataUpdatedAt,
+      billingMembersQuery.isLoading,
+      mergedAccountUsers,
+    ]
+  )
+
   const { data: usersOutOfProjectData, isLoading: isLoadingUsersOutOfProject } = useQuery({
     queryKey: ['usersOutOfProject', accountId, isAdminView ? 'admin' : 'user'],
     queryFn: () => listUsersOutOfAccount(accountId),
@@ -315,7 +378,7 @@ export function AccountMemberTable({
     setUsersOutOfProject(usersOutOfProjectData)
   }, [usersOutOfProjectData, isLoadingUsersOutOfProject])
 
-  const columns = useMemo<ColumnDef<IUserInAccount>[]>(
+  const columns = useMemo<ColumnDef<AccountMemberRow>[]>(
     () => [
       {
         accessorKey: 'name',
@@ -378,6 +441,22 @@ export function AccountMemberTable({
         },
         enableSorting: false,
       },
+      ...(billingEnabled
+        ? [
+            {
+              accessorKey: 'billing',
+              header: ({ column }) => <DataTableColumnHeader column={column} title="免费额度" />,
+              cell: ({ row }) => (
+                <BillingIssueAmountCell
+                  user={row.original}
+                  accountId={accountId}
+                  isAdminView={isAdminView}
+                  editable={editable}
+                />
+              ),
+            } as ColumnDef<AccountMemberRow>,
+          ]
+        : []),
       {
         id: 'actions',
         enableHiding: false,
@@ -415,6 +494,7 @@ export function AccountMemberTable({
       setPendingDeleteUser,
       accessModes,
       isDefaultAccount,
+      billingEnabled,
       isAdminView,
       currentUser,
       currentAccountContext,
@@ -474,7 +554,7 @@ export function AccountMemberTable({
       <DataTable
         key={`${accountId}-${accountUsersQuery.data?.length}`}
         columns={columns as ColumnDef<unknown>[]}
-        query={accountUsersQuery as UseQueryResult<unknown[], Error>}
+        query={mergedAccountUsersQuery as UseQueryResult<unknown[], Error>}
         storageKey={storageKey}
         toolbarConfig={toolbarConfig}
       >
@@ -501,8 +581,134 @@ export function AccountMemberTable({
   )
 }
 
+interface BillingIssueAmountCellProps {
+  user: AccountMemberRow
+  accountId: number
+  isAdminView: boolean
+  editable: boolean
+}
+
+const BillingIssueAmountCell: FC<BillingIssueAmountCellProps> = ({
+  user,
+  accountId,
+  isAdminView,
+  editable,
+}) => {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [billingDialogOpen, setBillingDialogOpen] = useState(false)
+  const [billingIssueAmountInput, setBillingIssueAmountInput] = useState('')
+
+  useEffect(() => {
+    if (!billingDialogOpen) {
+      return
+    }
+    setBillingIssueAmountInput(
+      user.issueAmountOverride == null ? '' : String(user.issueAmountOverride)
+    )
+  }, [billingDialogOpen, user.issueAmountOverride])
+
+  const parsedBillingIssueAmount = billingIssueAmountInput.trim()
+  const hasBillingOverride = parsedBillingIssueAmount !== ''
+  const nextBillingIssueAmount = hasBillingOverride ? Number(parsedBillingIssueAmount) : null
+  const isBillingIssueAmountValid =
+    !hasBillingOverride || isBillingAmountValueValid(nextBillingIssueAmount)
+
+  const { mutate: updateBillingIssueAmount, isPending: isBillingIssueAmountPending } = useMutation({
+    mutationFn: (issueAmountOverride: number | null) =>
+      isAdminView
+        ? apiAdminUpdateAccountBillingMemberIssueAmount(accountId, user.id, {
+            issueAmountOverride,
+          })
+        : apiUpdateAccountBillingMemberIssueAmount(accountId, user.id, {
+            issueAmountOverride,
+          }),
+    onSuccess: async () => {
+      toast.success('点数额度已更新')
+      setBillingDialogOpen(false)
+      await queryClient.invalidateQueries({
+        queryKey: ['account', accountId, 'billing-members'],
+      })
+    },
+    onError: () => {
+      toast.error('点数额度更新失败')
+    },
+  })
+
+  const balance = user.periodFreeBalance ?? 0
+  const total = user.effectiveIssueAmount ?? 0
+
+  const meter = <BillingInlineMeter balance={balance} total={total} className="w-[112px]" />
+
+  const onSaveBillingIssueAmount = () => {
+    if (!isBillingIssueAmountValid) {
+      return
+    }
+    updateBillingIssueAmount(nextBillingIssueAmount)
+  }
+
+  return (
+    <>
+      {editable ? (
+        <button
+          type="button"
+          onClick={() => setBillingDialogOpen(true)}
+          className="hover:bg-muted/60 focus-visible:ring-ring rounded-md p-1 text-left transition focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {meter}
+        </button>
+      ) : (
+        meter
+      )}
+      {billingDialogOpen && (
+        <Dialog open={billingDialogOpen} onOpenChange={setBillingDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>配置用户点数额度</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="text-sm font-medium">{user.name}</div>
+                <p className="text-muted-foreground text-xs">
+                  当前生效额度为 {user.effectiveIssueAmount ?? 0} 点。
+                </p>
+              </div>
+              <Input
+                type="number"
+                min={0}
+                step={0.01}
+                value={billingIssueAmountInput}
+                onChange={(e) => setBillingIssueAmountInput(e.target.value)}
+                placeholder="留空表示沿用账户配置"
+              />
+              {!isBillingIssueAmountValid ? (
+                <p className="text-destructive text-xs">请输入非负点数，最多保留两位小数。</p>
+              ) : (
+                <p className="text-muted-foreground text-xs">
+                  保存后会更新该用户在当前账户下的周期发放额度。
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={onSaveBillingIssueAmount}
+                disabled={isBillingIssueAmountPending || !isBillingIssueAmountValid}
+              >
+                {t('accountDetail.form.save')}
+              </Button>
+              <DialogClose asChild>
+                <Button variant="outline">{t('accountDetail.form.cancel')}</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  )
+}
+
 interface ActionsCellProps {
-  user: IUserInAccount
+  user: AccountMemberRow
   accountId: number
   t: (key: string) => string
   updateUser: (user: IUserInAccountCreate) => void
@@ -553,14 +759,23 @@ const ActionsCell: FC<ActionsCellProps> = ({
 
   const queryClient = useQueryClient()
   const { mutate: updateQuota, isPending: isQuotaPending } = useMutation({
-    mutationFn: (quota: Record<string, string>) =>
-      apiUpdateUserOutOfProjectList({
-        aid: accountId,
-        uid: user.id,
-        role: user.role,
-        accessmode: user.accessmode,
-        quota,
-      }),
+    mutationFn: (capability: Record<string, string>) => {
+      const quota = { capability }
+      return isAdminView
+        ? apiUpdateUserOutOfProjectList({
+            aid: accountId,
+            uid: user.id,
+            role: user.role,
+            accessmode: user.accessmode,
+            quota,
+          })
+        : apiUserUpdateAccountMemberPartial(accountId, user.id, {
+            uid: user.id,
+            role: user.role,
+            accessmode: user.accessmode,
+            quota,
+          })
+    },
     onSuccess: async () => {
       toast.success(t('accountDetail.toast.updated'))
       setQuotaDialogOpen(false)

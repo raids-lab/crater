@@ -799,6 +799,107 @@ func main() {
 			},
 		},
 		{
+			ID: "202603311930",
+			Migrate: func(tx *gorm.DB) error {
+				type Account struct {
+					BillingIssueAmount        *int64     `gorm:"comment:账户周期发放点数额度(内部微点, 为空表示未配置)"`
+					BillingIssuePeriodMinutes *int       `gorm:"comment:账户周期发放间隔分钟(<=0表示关闭, 为空表示未配置)"`
+					BillingLastIssuedAt       *time.Time `gorm:"comment:账户上次发放时间"`
+				}
+				type UserAccount struct {
+					BillingIssueAmountOverride *int64 `gorm:"comment:用户在账户内的周期发放额度覆盖(内部微点, 为空表示沿用账户配置)"`
+					PeriodFreeBalance          int64  `gorm:"not null;default:0;comment:用户在当前周期的免费额度剩余(内部微点)"`
+				}
+				type User struct {
+					ExtraBalance int64 `gorm:"type:bigint;not null;default:0;comment:用户额外点数余额(内部微点, 充值/奖励)"`
+				}
+				type Job struct {
+					LastSettledAt     *time.Time `gorm:"comment:作业上次结算时间"`
+					BilledPointsTotal int64      `gorm:"not null;default:0;comment:作业累计已结算点数(内部微点)"`
+				}
+				type Resource struct {
+					UnitPrice int64 `gorm:"not null;default:0;comment:资源单位价格(内部微点, 展示为点数/单位/小时)"`
+				}
+
+				if err := tx.Migrator().AddColumn(&Account{}, "BillingIssueAmount"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Account{}, "BillingIssuePeriodMinutes"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Account{}, "BillingLastIssuedAt"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&UserAccount{}, "BillingIssueAmountOverride"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&UserAccount{}, "PeriodFreeBalance"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&User{}, "ExtraBalance"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Job{}, "LastSettledAt"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Job{}, "BilledPointsTotal"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().AddColumn(&Resource{}, "UnitPrice"); err != nil {
+					return err
+				}
+
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Account struct {
+					BillingIssueAmount        *int64     `gorm:"comment:账户周期发放点数额度(内部微点, 为空表示未配置)"`
+					BillingIssuePeriodMinutes *int       `gorm:"comment:账户周期发放间隔分钟(<=0表示关闭, 为空表示未配置)"`
+					BillingLastIssuedAt       *time.Time `gorm:"comment:账户上次发放时间"`
+				}
+				type UserAccount struct {
+					BillingIssueAmountOverride *int64 `gorm:"comment:用户在账户内的周期发放额度覆盖(内部微点, 为空表示沿用账户配置)"`
+					PeriodFreeBalance          int64  `gorm:"not null;default:0;comment:用户在当前周期的免费额度剩余(内部微点)"`
+				}
+				type User struct {
+					ExtraBalance int64 `gorm:"type:bigint;not null;default:0;comment:用户额外点数余额(内部微点, 充值/奖励)"`
+				}
+				type Job struct {
+					LastSettledAt     *time.Time `gorm:"comment:作业上次结算时间"`
+					BilledPointsTotal int64      `gorm:"not null;default:0;comment:作业累计已结算点数(内部微点)"`
+				}
+				type Resource struct {
+					UnitPrice int64 `gorm:"not null;default:0;comment:资源单位价格(内部微点, 展示为点数/单位/小时)"`
+				}
+
+				if err := tx.Migrator().DropColumn(&Account{}, "BillingIssueAmount"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&Account{}, "BillingIssuePeriodMinutes"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&Account{}, "BillingLastIssuedAt"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&UserAccount{}, "BillingIssueAmountOverride"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&UserAccount{}, "PeriodFreeBalance"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&User{}, "ExtraBalance"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&Job{}, "LastSettledAt"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&Job{}, "BilledPointsTotal"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&Resource{}, "UnitPrice")
+			},
+		},
+		{
 			ID: "202603111300",
 			Migrate: func(tx *gorm.DB) error {
 				type Job struct {

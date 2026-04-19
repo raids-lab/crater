@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +12,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/vcqueue"
@@ -32,33 +32,50 @@ const (
 	httpStatusForbidden = 403
 )
 
+var (
+	errBillingFeatureDisabled        = errors.New("billing feature is disabled")
+	errNoBillingConfigFieldsToUpdate = errors.New("no billing config fields to update")
+)
+
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
 	Registers = append(Registers, NewAccountMgr)
 }
 
 type AccountMgr struct {
-	name   string
-	client client.Client
+	name           string
+	client         client.Client
+	billingService *service.BillingService
 }
 
 func NewAccountMgr(conf *RegisterConfig) Manager {
 	return &AccountMgr{
-		name:   "accounts",
-		client: conf.Client,
+		name:           "accounts",
+		client:         conf.Client,
+		billingService: conf.BillingService,
 	}
 }
 
 func (mgr *AccountMgr) GetName() string { return mgr.name }
 
-func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {
-
-}
+func (mgr *AccountMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *AccountMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.UserListAccounts)              // Get accounts accessible by current user
 	g.GET("by-name/:name", mgr.GetAccountByName) // Get account by name (use specific path to avoid conflict with :aid routes)
-	// Account member management APIs (require account admin permission)
+	mgr.registerUserBillingRoutes(g)
+	mgr.registerUserMemberRoutes(g)
+}
+
+func (mgr *AccountMgr) registerUserBillingRoutes(g *gin.RouterGroup) {
+	g.GET(":aid/billing/config", mgr.UserGetAccountBillingConfig)
+	g.PUT(":aid/billing/config", mgr.UserUpdateAccountBillingConfig)
+	g.GET(":aid/billing/members", mgr.UserListAccountBillingMembers)
+	g.PUT(":aid/billing/members/:uid", mgr.UserUpdateAccountBillingMemberIssueAmount)
+	g.POST(":aid/billing/reset", mgr.UserResetAccountBillingBalance)
+}
+
+func (mgr *AccountMgr) registerUserMemberRoutes(g *gin.RouterGroup) {
 	g.POST(":aid/users/:uid", mgr.UserAddAccountMember)           // Add user to account
 	g.POST(":aid/users/:uid/update", mgr.UserUpdateAccountMember) // Update user in account
 	g.DELETE(":aid/users/:uid", mgr.UserRemoveAccountMember)      // Remove user from account
@@ -72,6 +89,11 @@ func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("", mgr.CreateAccount)
 	g.GET(":aid", mgr.GetAccountByID)
 	g.GET(":aid/quota", mgr.GetQuota)
+	g.GET(":aid/billing/config", mgr.GetAccountBillingConfig)
+	g.PUT(":aid/billing/config", mgr.UpdateAccountBillingConfig)
+	g.GET(":aid/billing/members", mgr.AdminListAccountBillingMembers)
+	g.PUT(":aid/billing/members/:uid", mgr.AdminUpdateAccountBillingMemberIssueAmount)
+	g.POST(":aid/billing/reset", mgr.AdminResetAccountBillingBalance)
 	g.PUT(":aid", mgr.UpdateAccount)
 	g.DELETE(":aid", mgr.DeleteAccount)
 	g.POST("add/:aid/:uid", mgr.AdminAddAccountMember)
@@ -140,7 +162,126 @@ type (
 		Quota     model.QueueQuota `json:"quota"`
 		ExpiredAt *time.Time       `json:"expiredAt"`
 	}
+
+	AccountBillingConfigResp struct {
+		IssueAmount                 float64    `json:"issueAmount"`
+		IssuePeriodMinutes          int        `json:"issuePeriodMinutes"`
+		EffectiveIssueAmount        float64    `json:"effectiveIssueAmount"`
+		EffectiveIssuePeriodMinutes int        `json:"effectiveIssuePeriodMinutes"`
+		LastIssuedAt                *time.Time `json:"lastIssuedAt"`
+	}
+
+	AccountBillingConfigUpdateReq struct {
+		IssueAmount        *service.BillingAmountInput `json:"issueAmount"`
+		IssuePeriodMinutes *int                        `json:"issuePeriodMinutes" binding:"omitempty,gte=0"`
+	}
 )
+
+func buildListAllResp(account *model.Account) ListAllResp {
+	if account == nil {
+		return ListAllResp{}
+	}
+	return ListAllResp{
+		ID:        account.ID,
+		Name:      account.Name,
+		Nickname:  account.Nickname,
+		Space:     account.Space,
+		Quota:     account.Quota.Data(),
+		ExpiredAt: account.ExpiredAt,
+	}
+}
+
+func (mgr *AccountMgr) respondAccountLookup(
+	c *gin.Context,
+	lookup func() (*model.Account, error),
+	notFoundMessage string,
+) {
+	account, err := lookup()
+	if err != nil {
+		resputil.Error(c, notFoundMessage, resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, buildListAllResp(account))
+}
+
+func (mgr *AccountMgr) isBillingFeatureEnabled(ctx context.Context) bool {
+	return mgr.billingService != nil && mgr.billingService.IsFeatureEnabled(ctx)
+}
+
+func (mgr *AccountMgr) isBillingUserFacingEnabled(ctx context.Context) bool {
+	return mgr.billingService != nil && mgr.billingService.IsUserFacingEnabled(ctx)
+}
+
+func (mgr *AccountMgr) getAccountIssueOverrideFlags(ctx context.Context) (amountEnabled, periodEnabled bool) {
+	if !mgr.isBillingFeatureEnabled(ctx) {
+		return false, false
+	}
+	return mgr.billingService.IsAccountIssueAmountOverrideEnabled(ctx),
+		mgr.billingService.IsAccountIssuePeriodOverrideEnabled(ctx)
+}
+
+func (mgr *AccountMgr) requireBillingEnabled(ctx context.Context) error {
+	if mgr.billingService == nil || !mgr.isBillingFeatureEnabled(ctx) {
+		return errBillingFeatureDisabled
+	}
+	return nil
+}
+
+func (mgr *AccountMgr) requireUserFacingBillingEnabled(ctx context.Context) error {
+	if mgr.billingService == nil || !mgr.isBillingUserFacingEnabled(ctx) {
+		return errBillingFeatureDisabled
+	}
+	return nil
+}
+
+func respondIfBillingFeatureDisabled(c *gin.Context, err error) bool {
+	if !errors.Is(err, errBillingFeatureDisabled) {
+		return false
+	}
+	resputil.Error(c, err.Error(), resputil.BusinessLogicError)
+	return true
+}
+
+func handleAccountBillingConfigUpdateErr(c *gin.Context, err error) {
+	if respondIfBillingFeatureDisabled(c, err) {
+		return
+	}
+	if errors.Is(err, errNoBillingConfigFieldsToUpdate) {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	resputil.Error(c, err.Error(), resputil.NotSpecified)
+}
+
+func (mgr *AccountMgr) writeAccountBillingConfigUpdateResp(
+	c *gin.Context,
+	accountID uint,
+	req *AccountBillingConfigUpdateReq,
+) {
+	resp, err := mgr.updateAccountBillingConfigCore(c, accountID, req)
+	if err != nil {
+		handleAccountBillingConfigUpdateErr(c, err)
+		return
+	}
+	resputil.Success(c, resp)
+}
+
+func (mgr *AccountMgr) writeAccountBillingMemberIssueAmountResp(
+	c *gin.Context,
+	accountID, userID uint,
+	req *UpdateAccountBillingMemberIssueAmountReq,
+) {
+	resp, err := mgr.updateAccountBillingMemberIssueAmount(c, accountID, userID, req)
+	if err != nil {
+		if respondIfBillingFeatureDisabled(c, err) {
+			return
+		}
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, resp)
+}
 
 // AdminListAccounts lists all accounts (admin API)
 //
@@ -184,6 +325,199 @@ type AccountIDReq struct {
 	ID uint `uri:"aid" binding:"required"`
 }
 
+func (mgr *AccountMgr) bindAccountID(c *gin.Context) (uint, bool) {
+	var uriReq AccountIDReq
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid account ID parameter: %v", err))
+		return 0, false
+	}
+	return uriReq.ID, true
+}
+
+func (mgr *AccountMgr) requireUserManagedAccountID(c *gin.Context) (uint, bool) {
+	accountID, ok := mgr.bindAccountID(c)
+	if !ok {
+		return 0, false
+	}
+
+	token := util.GetToken(c)
+	if err := mgr.checkAccountAdmin(c, token.UserID, accountID); err != nil {
+		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		return 0, false
+	}
+
+	return accountID, true
+}
+
+func bindAccountName(c *gin.Context) (string, bool) {
+	var uriReq AccountNameReq
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		return "", false
+	}
+	return uriReq.Name, true
+}
+
+func (mgr *AccountMgr) buildAccountBillingConfigResp(
+	ctx context.Context,
+	account *model.Account,
+) AccountBillingConfigResp {
+	resp := AccountBillingConfigResp{}
+	if account == nil {
+		return resp
+	}
+	resp.LastIssuedAt = account.BillingLastIssuedAt
+	if !mgr.isBillingFeatureEnabled(ctx) {
+		return resp
+	}
+	if account.BillingIssueAmount != nil {
+		resp.IssueAmount = service.ToDisplayPoints(*account.BillingIssueAmount)
+	}
+	if account.BillingIssuePeriodMinutes != nil {
+		resp.IssuePeriodMinutes = *account.BillingIssuePeriodMinutes
+	}
+	effectiveIssueAmount, effectiveIssuePeriodMinutes := mgr.billingService.ResolveEffectiveIssueConfigForAccount(ctx, account)
+	resp.EffectiveIssueAmount = service.ToDisplayPoints(effectiveIssueAmount)
+	resp.EffectiveIssuePeriodMinutes = effectiveIssuePeriodMinutes
+	return resp
+}
+
+func (mgr *AccountMgr) loadAccountByID(c *gin.Context, accountID uint) (*model.Account, error) {
+	return query.Account.WithContext(c).Where(query.Account.ID.Eq(accountID)).First()
+}
+
+func (mgr *AccountMgr) getAccountBillingConfigResp(
+	c *gin.Context,
+	accountID uint,
+) (AccountBillingConfigResp, error) {
+	account, err := mgr.validateAccount(c, accountID)
+	if err != nil {
+		return AccountBillingConfigResp{}, err
+	}
+
+	return mgr.buildAccountBillingConfigResp(c.Request.Context(), account), nil
+}
+
+func (mgr *AccountMgr) updateAccountBillingConfigCore(
+	c *gin.Context,
+	accountID uint,
+	req *AccountBillingConfigUpdateReq,
+) (AccountBillingConfigResp, error) {
+	if err := mgr.requireBillingEnabled(c.Request.Context()); err != nil {
+		return AccountBillingConfigResp{}, err
+	}
+
+	if _, err := mgr.validateAccount(c, accountID); err != nil {
+		return AccountBillingConfigResp{}, err
+	}
+
+	updates := map[string]any{}
+	amountOverrideEnabled, periodOverrideEnabled := mgr.getAccountIssueOverrideFlags(c.Request.Context())
+	if amountOverrideEnabled && req != nil && req.IssueAmount != nil {
+		updates["billing_issue_amount"] = req.IssueAmount.MicroPoints()
+	}
+	if periodOverrideEnabled && req != nil && req.IssuePeriodMinutes != nil {
+		updates["billing_issue_period_minutes"] = *req.IssuePeriodMinutes
+	}
+	if len(updates) == 0 {
+		return AccountBillingConfigResp{}, errNoBillingConfigFieldsToUpdate
+	}
+
+	if _, err := query.Account.WithContext(c).Where(query.Account.ID.Eq(accountID)).Updates(updates); err != nil {
+		return AccountBillingConfigResp{}, fmt.Errorf("failed to update account billing config: %w", err)
+	}
+
+	account, err := mgr.loadAccountByID(c, accountID)
+	if err != nil {
+		return AccountBillingConfigResp{}, fmt.Errorf("failed to reload account billing config: %w", err)
+	}
+
+	return mgr.buildAccountBillingConfigResp(c.Request.Context(), account), nil
+}
+
+func (mgr *AccountMgr) resetAccountBillingBalanceCore(c *gin.Context, accountID uint) (string, error) {
+	if err := mgr.requireBillingEnabled(c.Request.Context()); err != nil {
+		return "", err
+	}
+
+	account, err := mgr.validateAccount(c, accountID)
+	if err != nil {
+		return "", err
+	}
+
+	if err := mgr.billingService.IssueAccountNow(c.Request.Context(), accountID); err != nil {
+		return "", fmt.Errorf("failed to reset billing balance for %s: %w", account.Name, err)
+	}
+
+	return fmt.Sprintf("billing balance reset for %s", account.Name), nil
+}
+
+func (mgr *AccountMgr) GetAccountBillingConfig(c *gin.Context) {
+	accountID, ok := mgr.bindAccountID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := mgr.getAccountBillingConfigResp(c, accountID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, resp)
+}
+
+func (mgr *AccountMgr) UpdateAccountBillingConfig(c *gin.Context) {
+	accountID, ok := mgr.bindAccountID(c)
+	if !ok {
+		return
+	}
+
+	var req AccountBillingConfigUpdateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		return
+	}
+	mgr.writeAccountBillingConfigUpdateResp(c, accountID, &req)
+}
+
+func (mgr *AccountMgr) UserGetAccountBillingConfig(c *gin.Context) {
+	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
+		handleAccountBillingConfigUpdateErr(c, err)
+		return
+	}
+	accountID, ok := mgr.requireUserManagedAccountID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := mgr.getAccountBillingConfigResp(c, accountID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, resp)
+}
+
+func (mgr *AccountMgr) UserUpdateAccountBillingConfig(c *gin.Context) {
+	var req AccountBillingConfigUpdateReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		return
+	}
+	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
+		handleAccountBillingConfigUpdateErr(c, err)
+		return
+	}
+
+	accountID, ok := mgr.requireUserManagedAccountID(c)
+	if !ok {
+		return
+	}
+	mgr.writeAccountBillingConfigUpdateResp(c, accountID, &req)
+}
+
 // GetAccountByID godoc
 //
 //	@Summary		获取指定账户
@@ -197,32 +531,12 @@ type AccountIDReq struct {
 //	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
 //	@Failure		500	{object}	resputil.Response[any]	"其他错误"
 //	@Router			/v1/admin/accounts/{aid} [get]
-//
-//nolint:dupl// 重复代码
 func (mgr *AccountMgr) GetAccountByID(c *gin.Context) {
-	var uriReq AccountIDReq
-	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+	accountID, ok := mgr.bindAccountID(c)
+	if !ok {
 		return
 	}
-	q := query.Account
-	queue, err := q.WithContext(c).Where(q.ID.Eq(uriReq.ID)).First()
-
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("account not found: account ID %d does not exist", uriReq.ID), resputil.NotSpecified)
-		return
-	}
-
-	resp := ListAllResp{
-		ID:        queue.ID,
-		Name:      queue.Name,
-		Nickname:  queue.Nickname,
-		Space:     queue.Space,
-		Quota:     queue.Quota.Data(),
-		ExpiredAt: queue.ExpiredAt,
-	}
-
-	resputil.Success(c, resp)
+	mgr.respondAccountByID(c, accountID)
 }
 
 type AccountNameReq struct {
@@ -242,35 +556,36 @@ type AccountNameReq struct {
 //	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
 //	@Failure		500		{object}	resputil.Response[any]	"其他错误"
 //	@Router			/v1/accounts/by-name/{name} [get]
-//
-//nolint:dupl// 重复代码
 func (mgr *AccountMgr) GetAccountByName(c *gin.Context) {
-	var uriReq AccountNameReq
-	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+	accountName, ok := bindAccountName(c)
+	if !ok {
 		return
 	}
-	q := query.Account
-	queue, err := q.WithContext(c).Where(q.Name.Eq(uriReq.Name)).First()
-
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("account not found: account name '%s' does not exist", uriReq.Name), resputil.NotSpecified)
-		return
-	}
-
-	resp := ListAllResp{
-		ID:        queue.ID,
-		Name:      queue.Name,
-		Nickname:  queue.Nickname,
-		Space:     queue.Space,
-		Quota:     queue.Quota.Data(),
-		ExpiredAt: queue.ExpiredAt,
-	}
-
-	resputil.Success(c, resp)
+	mgr.respondAccountByName(c, accountName)
 }
 
-//nolint:gocyclo // TODO(liyilong): delete other duplicated code
+func (mgr *AccountMgr) respondAccountByID(c *gin.Context, accountID uint) {
+	q := query.Account
+	mgr.respondAccountLookup(
+		c,
+		func() (*model.Account, error) {
+			return q.WithContext(c).Where(q.ID.Eq(accountID)).First()
+		},
+		fmt.Sprintf("account not found: account ID %d does not exist", accountID),
+	)
+}
+
+func (mgr *AccountMgr) respondAccountByName(c *gin.Context, accountName string) {
+	q := query.Account
+	mgr.respondAccountLookup(
+		c,
+		func() (*model.Account, error) {
+			return q.WithContext(c).Where(q.Name.Eq(accountName)).First()
+		},
+		fmt.Sprintf("account not found: account name '%s' does not exist", accountName),
+	)
+}
+
 func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 	var uriReq AccountIDReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
@@ -300,91 +615,29 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 	deserved := queue.Spec.Deserved
 	capability := queue.Spec.Capability
 
-	// resources is a map, key is the resource name, value is the resource amount
-	resources := make(map[v1.ResourceName]payload.ResourceResp)
-
-	for name, quantity := range allocated {
-		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
-			resources[name] = payload.ResourceResp{
-				Label: string(name),
-				Allocated: ptr.To(payload.ResourceBase{
-					Amount: quantity.Value(),
-					Format: string(quantity.Format),
-				}),
-			}
-		}
-	}
-	for name, quantity := range guarantee {
-		if v, ok := resources[name]; ok {
-			v.Guarantee = ptr.To(payload.ResourceBase{
-				Amount: quantity.Value(),
-				Format: string(quantity.Format),
-			})
-			resources[name] = v
-		}
-	}
-	for name, quantity := range deserved {
-		if v, ok := resources[name]; ok {
-			v.Deserved = ptr.To(payload.ResourceBase{
-				Amount: quantity.Value(),
-				Format: string(quantity.Format),
-			})
-			resources[name] = v
-		}
-	}
-	for name, quantity := range capability {
-		if v, ok := resources[name]; ok {
-			v.Capability = ptr.To(payload.ResourceBase{
-				Amount: quantity.Value(),
-				Format: string(quantity.Format),
-			})
-			resources[name] = v
-		}
-	}
+	resources := newAllocatedQuotaResources(allocated)
+	applyQuotaResourceList(resources, guarantee, setQuotaGuarantee)
+	applyQuotaResourceList(resources, deserved, setQuotaDeserved)
+	applyQuotaResourceList(resources, capability, setQuotaCapability)
 
 	// if capability is not set, read max from db
 	r := query.Resource
-	for name, resource := range resources {
-		if resource.Capability == nil {
-			resouece, err := r.WithContext(c).Where(r.ResourceName.Eq(string(name))).First()
-			if err != nil {
-				continue
-			}
-			resource.Capability = &payload.ResourceBase{
-				Amount: resouece.Amount,
-				Format: resouece.Format,
-			}
-			resources[name] = resource
+	for name, resourceResp := range resources {
+		if resourceResp.Capability != nil {
+			continue
 		}
+		resourceModel, err := r.WithContext(c).Where(r.ResourceName.Eq(string(name))).First()
+		if err != nil {
+			continue
+		}
+		resourceResp.Capability = &payload.ResourceBase{
+			Amount: resourceModel.Amount,
+			Format: resourceModel.Format,
+		}
+		resources[name] = resourceResp
 	}
 
-	// map contains cpu, memory, gpus, get them from the map
-	cpu := resources[v1.ResourceCPU]
-	cpu.Label = "cpu"
-	memory := resources[v1.ResourceMemory]
-	memory.Label = "mem"
-	var gpus []payload.ResourceResp
-	for name, resource := range resources {
-		if strings.Contains(string(name), "/") {
-			// convert nvidia.com/v100 to v100
-			split := strings.Split(string(name), "/")
-			if len(split) == 2 {
-				resourceType := split[1]
-				label := resourceType
-				resource.Label = label
-			}
-			gpus = append(gpus, resource)
-		}
-	}
-	sort.Slice(gpus, func(i, j int) bool {
-		return gpus[i].Label < gpus[j].Label
-	})
-
-	resputil.Success(c, payload.QuotaResp{
-		CPU:    cpu,
-		Memory: memory,
-		GPUs:   gpus,
-	})
+	resputil.Success(c, buildQuotaResp(resources))
 }
 
 type (
@@ -432,90 +685,15 @@ func (mgr *AccountMgr) CreateAccount(c *gin.Context) {
 		return
 	}
 
-	// Create a new project, and set the user as the admin in user_project
-	db := query.Use(query.GetDB())
-
-	var queueID uint
-	createdQueueNames := make([]string, 0)
-
-	err := db.Transaction(func(tx *query.Query) error {
-		q := tx.Account
-		uq := tx.UserAccount
-
-		// Create a queue Queue
-		queue := model.Account{
-			Nickname: req.Nickname,
-		}
-		if err := q.WithContext(c).Create(&queue); err != nil {
-			return err
-		}
-		queueID = queue.ID
-		// Create a space for the project, folder path is generated by uuid
-		quota := model.QueueQuota{
-			Guaranteed: req.Quota.Guaranteed,
-			Deserved:   req.Quota.Deserved,
-			Capability: req.Quota.Capability,
-		}
-		queue.Name = fmt.Sprintf("q-%d", queue.ID)
-		queue.Space = fmt.Sprintf("q-%d", queue.ID)
-		queue.Quota = datatypes.NewJSONType(quota)
-		if !req.ExpiredAt.IsZero() {
-			queue.ExpiredAt = &req.ExpiredAt
-		}
-		if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(&queue); err != nil {
-			return err
-		}
-
-		toCreateQueueNames := make([]string, 0)
-		parentQueueNames := make([]*string, 0)
-		queueQuotas := make([]*model.QueueQuota, 0)
-		logicQueueName := vcqueue.GetAccountLogicQueueName(queue.ID)
-		leafQueueName := vcqueue.GetAccountQueueName(queue.Name)
-		toCreateQueueNames = append(toCreateQueueNames, logicQueueName, leafQueueName)
-		parentQueueNames = append(parentQueueNames, nil, &logicQueueName)
-		queueQuotas = append(queueQuotas, &quota, nil)
-
-		// Create user-project relationship without quota limit
-		for _, adminID := range req.Admins {
-			userQueue := model.UserAccount{
-				UserID:     adminID,
-				AccountID:  queue.ID,
-				Role:       model.RoleAdmin, // Set the user as the admin
-				AccessMode: model.AccessModeRW,
-			}
-			if err := uq.WithContext(c).Create(&userQueue); err != nil {
-				return err
-			}
-			if !req.WithoutVolcano {
-				queueName := vcqueue.GetUserQueueName(queue.ID, adminID)
-				toCreateQueueNames = append(toCreateQueueNames, queueName)
-				parentQueueNames = append(parentQueueNames, &logicQueueName)
-				queueQuotas = append(queueQuotas, nil)
-			}
-		}
-
-		for i := 0; i < len(toCreateQueueNames); i++ {
-			queueName := toCreateQueueNames[i]
-			parentQueueName := parentQueueNames[i]
-			quota := queueQuotas[i]
-			if err := vcqueue.CreateQueue(c, mgr.client, token, queueName, parentQueueName, quota); err != nil {
-				return err
-			}
-			createdQueueNames = append(createdQueueNames, queueName)
-		}
-
-		return nil
-	})
+	queueID, createdQueueNames, createdAdminIDs, err := mgr.createAccountCore(c, token, &req)
 
 	if err != nil {
-		for _, queueName := range createdQueueNames {
-			_ = vcqueue.DeleteQueue(c, mgr.client, queueName)
-		}
+		mgr.cleanupCreatedQueues(c, createdQueueNames)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
-	} else {
-		resputil.Success(c, ProjectCreateResp{ID: queueID})
 	}
+	mgr.issueUserAccountNowForAdmins(c, queueID, createdAdminIDs)
+	resputil.Success(c, ProjectCreateResp{ID: queueID})
 }
 
 // UpdateAccount godoc
@@ -545,55 +723,268 @@ func (mgr *AccountMgr) UpdateAccount(c *gin.Context) {
 		return
 	}
 	token := util.GetToken(c)
-	err := query.Q.Transaction(func(tx *query.Query) error {
-		queue, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(uriReq.ID)).First()
-		if err != nil {
-			resputil.Error(c, fmt.Sprintf("account not found: account ID %d does not exist", uriReq.ID), resputil.NotSpecified)
-			return err
-		}
-		queueName = queue.Name
+	err := mgr.updateAccountCore(c, token, uriReq.ID, &req, &queueName)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, fmt.Sprintf("update capability of %s", queueName))
+}
 
-		// update db
-		queue.Quota = datatypes.NewJSONType(model.QueueQuota{
-			Guaranteed: req.Quota.Guaranteed,
-			Deserved:   req.Quota.Deserved,
-			Capability: req.Quota.Capability,
-		})
-		if !req.ExpiredAt.IsZero() {
-			queue.ExpiredAt = &req.ExpiredAt
-		}
-		queue.Nickname = req.Nickname
-		if _, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(queue.ID)).Updates(queue); err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to update account %d: %v", queue.ID, err), resputil.NotSpecified)
-			return err
-		}
+// AdminResetAccountBillingBalance godoc
+//
+//	@Summary		立即重置账户免费额度
+//	@Description	立即对指定账户执行一次免费额度发放，不影响 extra 点数
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path		AccountIDReq				true	"account id"
+//	@Success		200	{object}	resputil.Response[string]	"重置成功"
+//	@Failure		400	{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500	{object}	resputil.Response[any]		"其他错误"
+//	@Router			/v1/admin/projects/{aid}/billing/reset [post]
+func (mgr *AccountMgr) AdminResetAccountBillingBalance(c *gin.Context) {
+	accountID, ok := mgr.bindAccountID(c)
+	if !ok {
+		return
+	}
 
-		// update queue
-		if req.WithoutVolcano {
-			return nil
-		}
-
-		quota := model.QueueQuota{
-			Guaranteed: req.Quota.Guaranteed,
-			Deserved:   req.Quota.Deserved,
-			Capability: req.Quota.Capability,
-		}
-		if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, queue.ID); err != nil {
-			return err
-		}
-		queueName := vcqueue.GetAccountLogicQueueName(queue.ID)
-		if err := vcqueue.UpdateQueue(c, mgr.client, queueName, quota); err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to update Volcano queue for account %d: %v", queue.ID, err), resputil.NotSpecified)
-			return err
-		}
-		return nil
-	})
+	resp, err := mgr.resetAccountBillingBalanceCore(c, accountID)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	resputil.Success(c, fmt.Sprintf("update capability of %s", queueName))
+	resputil.Success(c, resp)
+}
+
+func (mgr *AccountMgr) UserResetAccountBillingBalance(c *gin.Context) {
+	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
+		handleAccountBillingConfigUpdateErr(c, err)
+		return
+	}
+	accountID, ok := mgr.requireUserManagedAccountID(c)
+	if !ok {
+		return
+	}
+
+	resp, err := mgr.resetAccountBillingBalanceCore(c, accountID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, resp)
+}
+
+func (mgr *AccountMgr) createAccountCore(
+	c *gin.Context,
+	token util.JWTMessage,
+	req *AccountCreateOrUpdateReq,
+) (queueID uint, createdQueueNames []string, createdAdminIDs []uint, err error) {
+	db := query.Use(query.GetDB())
+	createdQueueNames = make([]string, 0)
+	createdAdminIDs = make([]uint, 0)
+	err = db.Transaction(func(tx *query.Query) error {
+		queue, quota, createErr := mgr.createAccountRecord(c, tx, req)
+		if createErr != nil {
+			return createErr
+		}
+		queueID = queue.ID
+		adminIDs, queueNames, parentNames, queueQuotas, createErr := mgr.createAccountMembers(c, tx, req, queue, quota)
+		if createErr != nil {
+			return createErr
+		}
+		createdAdminIDs = adminIDs
+		createdQueueNames, createErr = mgr.createVolcanoQueues(c, token, queueNames, parentNames, queueQuotas)
+		return createErr
+	})
+	return queueID, createdQueueNames, createdAdminIDs, err
+}
+
+func (mgr *AccountMgr) createAccountRecord(
+	c *gin.Context,
+	tx *query.Query,
+	req *AccountCreateOrUpdateReq,
+) (*model.Account, *model.QueueQuota, error) {
+	q := tx.Account
+	queue := &model.Account{Nickname: req.Nickname}
+	if err := q.WithContext(c).Create(queue); err != nil {
+		return nil, nil, err
+	}
+	quota := &model.QueueQuota{
+		Guaranteed: req.Quota.Guaranteed,
+		Deserved:   req.Quota.Deserved,
+		Capability: req.Quota.Capability,
+	}
+	queue.Name = fmt.Sprintf("q-%d", queue.ID)
+	queue.Space = fmt.Sprintf("q-%d", queue.ID)
+	queue.Quota = datatypes.NewJSONType(*quota)
+	if !req.ExpiredAt.IsZero() {
+		queue.ExpiredAt = &req.ExpiredAt
+	}
+	if _, err := q.WithContext(c).Where(q.ID.Eq(queue.ID)).Updates(queue); err != nil {
+		return nil, nil, err
+	}
+	return queue, quota, nil
+}
+
+func (mgr *AccountMgr) createAccountMembers(
+	c *gin.Context,
+	tx *query.Query,
+	req *AccountCreateOrUpdateReq,
+	queue *model.Account,
+	quota *model.QueueQuota,
+) (adminIDs []uint, queueNames []string, parentNames []*string, queueQuotas []*model.QueueQuota, err error) {
+	uq := tx.UserAccount
+	adminIDs = make([]uint, 0, len(req.Admins))
+	queueNames = make([]string, 0)
+	parentNames = make([]*string, 0)
+	queueQuotas = make([]*model.QueueQuota, 0)
+	logicQueueName := vcqueue.GetAccountLogicQueueName(queue.ID)
+	leafQueueName := vcqueue.GetAccountQueueName(queue.Name)
+	queueNames = append(queueNames, logicQueueName, leafQueueName)
+	parentNames = append(parentNames, nil, &logicQueueName)
+	queueQuotas = append(queueQuotas, quota, nil)
+
+	for _, adminID := range req.Admins {
+		userQueue := model.UserAccount{
+			UserID:     adminID,
+			AccountID:  queue.ID,
+			Role:       model.RoleAdmin,
+			AccessMode: model.AccessModeRW,
+		}
+		if err := uq.WithContext(c).Create(&userQueue); err != nil {
+			return nil, nil, nil, nil, err
+		}
+		adminIDs = append(adminIDs, adminID)
+		if !req.WithoutVolcano {
+			queueName := vcqueue.GetUserQueueName(queue.ID, adminID)
+			queueNames = append(queueNames, queueName)
+			parentNames = append(parentNames, &logicQueueName)
+			queueQuotas = append(queueQuotas, nil)
+		}
+	}
+	return adminIDs, queueNames, parentNames, queueQuotas, nil
+}
+
+func (mgr *AccountMgr) createVolcanoQueues(
+	c *gin.Context,
+	token util.JWTMessage,
+	queueNames []string,
+	parentQueueNames []*string,
+	queueQuotas []*model.QueueQuota,
+) ([]string, error) {
+	created := make([]string, 0, len(queueNames))
+	for i := 0; i < len(queueNames); i++ {
+		queueName := queueNames[i]
+		parentQueueName := parentQueueNames[i]
+		quota := queueQuotas[i]
+		if err := vcqueue.CreateQueue(c, mgr.client, token, queueName, parentQueueName, quota); err != nil {
+			return created, err
+		}
+		created = append(created, queueName)
+	}
+	return created, nil
+}
+
+func (mgr *AccountMgr) cleanupCreatedQueues(c *gin.Context, queueNames []string) {
+	for _, queueName := range queueNames {
+		_ = vcqueue.DeleteQueue(c, mgr.client, queueName)
+	}
+}
+
+func (mgr *AccountMgr) issueUserAccountNowForAdmins(c *gin.Context, accountID uint, adminIDs []uint) {
+	if mgr.billingService == nil ||
+		!shouldIssueInitialAccountBalance(
+			mgr.isBillingFeatureEnabled(c.Request.Context()),
+			mgr.billingService.IsActive(c.Request.Context()),
+			len(adminIDs),
+		) {
+		return
+	}
+	if issueErr := mgr.billingService.IssueAccountNow(c.Request.Context(), accountID); issueErr != nil {
+		klog.Warningf(
+			"immediate billing issue after account create failed, accountID=%d, err=%v",
+			accountID,
+			issueErr,
+		)
+	}
+}
+
+func shouldIssueInitialAccountBalance(featureEnabled, active bool, adminCount int) bool {
+	return featureEnabled && active && adminCount > 0
+}
+
+func (mgr *AccountMgr) updateAccountCore(
+	c *gin.Context,
+	token util.JWTMessage,
+	accountID uint,
+	req *AccountCreateOrUpdateReq,
+	queueName *string,
+) error {
+	return query.Q.Transaction(func(tx *query.Query) error {
+		queue, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(accountID)).First()
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("account not found: account ID %d does not exist", accountID), resputil.NotSpecified)
+			return err
+		}
+		*queueName = queue.Name
+		if err := mgr.updateAccountRecord(c, tx, queue.ID, req); err != nil {
+			return err
+		}
+		if req.WithoutVolcano {
+			return nil
+		}
+		return mgr.updateAccountVolcanoQueue(c, token, queue.ID, req)
+	})
+}
+
+func (mgr *AccountMgr) updateAccountRecord(
+	c *gin.Context,
+	tx *query.Query,
+	accountID uint,
+	req *AccountCreateOrUpdateReq,
+) error {
+	updates := map[string]any{
+		"nickname": req.Nickname,
+		"quota": datatypes.NewJSONType(model.QueueQuota{
+			Guaranteed: req.Quota.Guaranteed,
+			Deserved:   req.Quota.Deserved,
+			Capability: req.Quota.Capability,
+		}),
+	}
+	if !req.ExpiredAt.IsZero() {
+		updates["expired_at"] = req.ExpiredAt
+	}
+	if _, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(accountID)).Updates(updates); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update account %d: %v", accountID, err), resputil.NotSpecified)
+		return err
+	}
+	return nil
+}
+
+func (mgr *AccountMgr) updateAccountVolcanoQueue(
+	c *gin.Context,
+	token util.JWTMessage,
+	accountID uint,
+	req *AccountCreateOrUpdateReq,
+) error {
+	quota := model.QueueQuota{
+		Guaranteed: req.Quota.Guaranteed,
+		Deserved:   req.Quota.Deserved,
+		Capability: req.Quota.Capability,
+	}
+	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
+		return err
+	}
+	queueName := vcqueue.GetAccountLogicQueueName(accountID)
+	if err := vcqueue.UpdateQueue(c, mgr.client, queueName, quota); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update Volcano queue for account %d: %v", accountID, err), resputil.NotSpecified)
+		return err
+	}
+	return nil
 }
 
 type DeleteProjectReq struct {
@@ -847,6 +1238,24 @@ type UserProjectGetResp struct {
 	Quota      datatypes.JSONType[model.QueueQuota]    `json:"quota"`
 }
 
+type AccountBillingMemberResp struct {
+	IssueAmountOverride         *float64   `json:"issueAmountOverride,omitempty"`
+	UserID                      uint       `json:"userId"`
+	Username                    string     `json:"username"`
+	Nickname                    string     `json:"nickname"`
+	PeriodFreeBalance           float64    `json:"periodFreeBalance"`
+	ExtraBalance                float64    `json:"extraBalance"`
+	TotalAvailable              float64    `json:"totalAvailable"`
+	LastIssuedAt                *time.Time `json:"lastIssuedAt"`
+	NextIssueAt                 *time.Time `json:"nextIssueAt"`
+	EffectiveIssueAmount        float64    `json:"effectiveIssueAmount"`
+	EffectiveIssuePeriodMinutes int        `json:"effectiveIssuePeriodMinutes"`
+}
+
+type UpdateAccountBillingMemberIssueAmountReq struct {
+	IssueAmountOverride *service.BillingAmountInput `json:"issueAmountOverride"`
+}
+
 // AdminListAccountMembers gets list of users in account (admin API)
 //
 //	@Summary		Get users in account
@@ -884,12 +1293,58 @@ func (mgr *AccountMgr) AdminListAccountMembers(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+func (mgr *AccountMgr) AdminListAccountBillingMembers(c *gin.Context) {
+	var req ProjectGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	if _, err := mgr.validateAccount(c, req.ID); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resp, err := mgr.getBillingMembersInAccount(c, req.ID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, resp)
+}
+
+func (mgr *AccountMgr) AdminUpdateAccountBillingMemberIssueAmount(c *gin.Context) {
+	var uriReq struct {
+		AccountID uint `uri:"aid" binding:"required"`
+		UserID    uint `uri:"uid" binding:"required"`
+	}
+	var req UpdateAccountBillingMemberIssueAmountReq
+
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid uri params: %v", err))
+		return
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		return
+	}
+
+	mgr.writeAccountBillingMemberIssueAmountResp(c, uriReq.AccountID, uriReq.UserID, &req)
+}
+
 type PutUserInProjectUriReq struct {
 	AccountId uint `uri:"aid" binding:"required"`
 }
 
 type PutUserInProjectReq struct {
 	UserId     uint                                  `json:"uid" binding:"required"`
+	Role       *string                               `json:"role"`
+	AccessMode *string                               `json:"accessmode" gorm:"access_mode"`
+	Quota      *datatypes.JSONType[model.QueueQuota] `json:"quota"`
+}
+
+type UserPutUserInProjectReq struct {
 	Role       *string                               `json:"role"`
 	AccessMode *string                               `json:"accessmode" gorm:"access_mode"`
 	Quota      *datatypes.JSONType[model.QueueQuota] `json:"quota"`
@@ -1211,6 +1666,16 @@ func (mgr *AccountMgr) createUserAccount(
 	if err != nil {
 		return err
 	}
+	if mgr.billingService != nil && mgr.isBillingFeatureEnabled(c.Request.Context()) {
+		if issueErr := mgr.billingService.IssueUserAccountNow(c.Request.Context(), userID, accountID); issueErr != nil {
+			klog.Warningf(
+				"immediate billing issue after user-account create failed, accountID=%d, userID=%d, err=%v",
+				accountID,
+				userID,
+				issueErr,
+			)
+		}
+	}
 	return nil
 }
 
@@ -1344,11 +1809,153 @@ func (mgr *AccountMgr) getUsersInAccount(c *gin.Context, accountID uint) ([]User
 
 	var resp []UserProjectGetResp
 	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, uq.AccountID, u.Attributes, uq.Quota)
+	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, u.Attributes, uq.Quota)
 	if err := exec.Where(uq.AccountID.Eq(accountID)).Distinct().Scan(&resp); err != nil {
 		return nil, fmt.Errorf("get userProject failed, detail: %w", err)
 	}
 	return resp, nil
+}
+
+func (mgr *AccountMgr) getBillingMembersInAccount(c *gin.Context, accountID uint) ([]AccountBillingMemberResp, error) {
+	if mgr.billingService == nil || !mgr.isBillingFeatureEnabled(c.Request.Context()) {
+		return []AccountBillingMemberResp{}, nil
+	}
+
+	account, err := mgr.validateAccount(c, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	ua := query.UserAccount
+	u := query.User
+
+	userAccounts, err := ua.WithContext(c).
+		Where(ua.AccountID.Eq(accountID), ua.DeletedAt.IsNull()).
+		Order(ua.UserID).
+		Find()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query account billing members: %w", err)
+	}
+
+	userIDs := make([]uint, 0, len(userAccounts))
+	for i := range userAccounts {
+		userIDs = append(userIDs, userAccounts[i].UserID)
+	}
+
+	usersByID := make(map[uint]*model.User, len(userIDs))
+	if len(userIDs) > 0 {
+		users, err := u.WithContext(c).
+			Where(u.ID.In(userIDs...), u.DeletedAt.IsNull()).
+			Find()
+		if err != nil {
+			return nil, fmt.Errorf("failed to load billing member users: %w", err)
+		}
+		for i := range users {
+			usersByID[users[i].ID] = users[i]
+		}
+	}
+
+	resp := make([]AccountBillingMemberResp, 0, len(userAccounts))
+	for i := range userAccounts {
+		userAccount := userAccounts[i]
+		user := usersByID[userAccount.UserID]
+		if user == nil {
+			continue
+		}
+		resp = append(resp, mgr.buildAccountBillingMemberResp(c, account, userAccount, user))
+	}
+	return resp, nil
+}
+
+func (mgr *AccountMgr) buildAccountBillingMemberResp(
+	c *gin.Context,
+	account *model.Account,
+	userAccount *model.UserAccount,
+	user *model.User,
+) AccountBillingMemberResp {
+	issueAmount, issuePeriod := mgr.billingService.ResolveEffectiveIssueConfigForUserAccount(
+		c.Request.Context(),
+		userAccount,
+		account,
+	)
+	nextIssueAt := mgr.billingService.ComputeNextIssueAt(account.BillingLastIssuedAt, issuePeriod, time.Now())
+
+	var issueAmountOverride *float64
+	if userAccount.BillingIssueAmountOverride != nil {
+		override := service.ToDisplayPoints(*userAccount.BillingIssueAmountOverride)
+		issueAmountOverride = &override
+	}
+
+	return AccountBillingMemberResp{
+		IssueAmountOverride:         issueAmountOverride,
+		UserID:                      user.ID,
+		Username:                    user.Name,
+		Nickname:                    user.Attributes.Data().Nickname,
+		PeriodFreeBalance:           service.ToDisplayPoints(userAccount.PeriodFreeBalance),
+		ExtraBalance:                service.ToDisplayPoints(user.ExtraBalance),
+		TotalAvailable:              service.ToDisplayPoints(userAccount.PeriodFreeBalance + user.ExtraBalance),
+		LastIssuedAt:                account.BillingLastIssuedAt,
+		NextIssueAt:                 nextIssueAt,
+		EffectiveIssueAmount:        service.ToDisplayPoints(issueAmount),
+		EffectiveIssuePeriodMinutes: issuePeriod,
+	}
+}
+
+func (mgr *AccountMgr) updateAccountBillingMemberIssueAmount(
+	c *gin.Context,
+	accountID, userID uint,
+	req *UpdateAccountBillingMemberIssueAmountReq,
+) (*AccountBillingMemberResp, error) {
+	if err := mgr.requireBillingEnabled(c.Request.Context()); err != nil {
+		return nil, err
+	}
+
+	account, err := mgr.validateAccount(c, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	u := query.User
+	user, err := u.WithContext(c).
+		Where(u.ID.Eq(userID), u.DeletedAt.IsNull()).
+		First()
+	if err != nil {
+		return nil, fmt.Errorf("user not found: %w", err)
+	}
+
+	ua := query.UserAccount
+	userAccount, err := ua.WithContext(c).
+		Where(ua.AccountID.Eq(accountID), ua.UserID.Eq(userID), ua.DeletedAt.IsNull()).
+		First()
+	if err != nil {
+		return nil, fmt.Errorf("user %d is not in account %d", userID, accountID)
+	}
+
+	if req != nil && req.IssueAmountOverride != nil && req.IssueAmountOverride.MicroPoints() < 0 {
+		return nil, fmt.Errorf("issue amount override must be non-negative")
+	}
+
+	updateValue := any(nil)
+	if req != nil && req.IssueAmountOverride != nil {
+		updateValue = req.IssueAmountOverride.MicroPoints()
+	}
+
+	if _, err := ua.WithContext(c).
+		Where(ua.AccountID.Eq(accountID), ua.UserID.Eq(userID), ua.DeletedAt.IsNull()).
+		Updates(map[string]any{
+			"billing_issue_amount_override": updateValue,
+		}); err != nil {
+		return nil, fmt.Errorf("failed to update billing issue amount override: %w", err)
+	}
+
+	userAccount.BillingIssueAmountOverride = nil
+	if req != nil && req.IssueAmountOverride != nil {
+		override := req.IssueAmountOverride.MicroPoints()
+		userAccount.BillingIssueAmountOverride = &override
+	}
+
+	resp := mgr.buildAccountBillingMemberResp(c, account, userAccount, user)
+	return &resp, nil
 }
 
 // getUsersOutOfAccount gets list of users not in account
@@ -1400,6 +2007,8 @@ func (mgr *AccountMgr) buildUserAccountUpdates(
 	role *string,
 	accessMode *string,
 	quota *datatypes.JSONType[model.QueueQuota],
+	account *model.Account,
+	isDefault bool,
 ) (map[string]any, error) {
 	updates := make(map[string]any)
 
@@ -1420,16 +2029,21 @@ func (mgr *AccountMgr) buildUserAccountUpdates(
 	}
 
 	if quota != nil {
-		if err := checkResource(c, quota.Data().Guaranteed); err != nil {
+		finalQuota := quota.Data()
+		if !isDefault && len(finalQuota.Capability) == 0 && account != nil && account.UserDefaultQuota != nil {
+			finalQuota.Capability = account.UserDefaultQuota.Data().Capability
+		}
+
+		if err := checkResource(c, finalQuota.Guaranteed); err != nil {
 			return nil, fmt.Errorf("invalid quota guaranteed resources: %w", err)
 		}
-		if err := checkResource(c, quota.Data().Deserved); err != nil {
+		if err := checkResource(c, finalQuota.Deserved); err != nil {
 			return nil, fmt.Errorf("invalid quota deserved resources: %w", err)
 		}
-		if err := checkResource(c, quota.Data().Capability); err != nil {
+		if err := checkResource(c, finalQuota.Capability); err != nil {
 			return nil, fmt.Errorf("invalid quota capability resources: %w", err)
 		}
-		updates["quota"] = *quota
+		updates["quota"] = datatypes.NewJSONType(finalQuota)
 	}
 
 	return updates, nil
@@ -1442,6 +2056,8 @@ func (mgr *AccountMgr) putUserInAccount(
 	accessMode *string,
 	quota *datatypes.JSONType[model.QueueQuota],
 ) error {
+	token := util.GetToken(c)
+
 	// Check if trying to modify role in default account
 	isDefault, err := mgr.isDefaultAccount(c, accountID)
 	if err != nil {
@@ -1453,19 +2069,99 @@ func (mgr *AccountMgr) putUserInAccount(
 		}
 	}
 
-	updates, err := mgr.buildUserAccountUpdates(c, role, accessMode, quota)
+	return query.Q.Transaction(func(tx *query.Query) error {
+		userQueue, err := mgr.getUserAccountForUpdate(c, tx, accountID, userID)
+		if err != nil {
+			return err
+		}
+
+		account, err := mgr.loadAccountForPartialUserUpdate(c, accountID, quota)
+		if err != nil {
+			return err
+		}
+
+		updates, err := mgr.buildUserAccountUpdates(c, role, accessMode, quota, account, isDefault)
+		if err != nil {
+			return err
+		}
+		if len(updates) == 0 {
+			return nil
+		}
+
+		finalQuota, err := mgr.applyPartialUserAccountUpdates(c, tx, accountID, userID, userQueue, updates)
+		if err != nil {
+			return err
+		}
+
+		return mgr.syncPartialUserQueueQuota(c, token, accountID, userID, finalQuota, quota, isDefault)
+	})
+}
+
+func (mgr *AccountMgr) getUserAccountForUpdate(c *gin.Context, tx *query.Query, accountID, userID uint) (*model.UserAccount, error) {
+	uq := tx.UserAccount
+	userQueue, err := uq.WithContext(c).
+		Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).
+		First()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("user %d is not in account %d", userID, accountID)
+	}
+	return userQueue, nil
+}
+
+func (mgr *AccountMgr) loadAccountForPartialUserUpdate(
+	c *gin.Context,
+	accountID uint,
+	quota *datatypes.JSONType[model.QueueQuota],
+) (*model.Account, error) {
+	if quota == nil {
+		return nil, nil
+	}
+	return mgr.validateAccount(c, accountID)
+}
+
+func (mgr *AccountMgr) applyPartialUserAccountUpdates(
+	c *gin.Context,
+	tx *query.Query,
+	accountID, userID uint,
+	userQueue *model.UserAccount,
+	updates map[string]any,
+) (model.QueueQuota, error) {
+	uq := tx.UserAccount
+	if _, err := uq.WithContext(c).
+		Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).
+		Updates(updates); err != nil {
+		return model.QueueQuota{}, fmt.Errorf("failed to update user-account relationship: %w", err)
 	}
 
-	if len(updates) == 0 {
-		return nil // No updates to apply
+	finalQuota := userQueue.Quota.Data()
+	if updatedQuota, ok := updates["quota"].(datatypes.JSONType[model.QueueQuota]); ok {
+		finalQuota = updatedQuota.Data()
+	}
+	return finalQuota, nil
+}
+
+func (mgr *AccountMgr) syncPartialUserQueueQuota(
+	c *gin.Context,
+	token util.JWTMessage,
+	accountID, userID uint,
+	finalQuota model.QueueQuota,
+	quota *datatypes.JSONType[model.QueueQuota],
+	isDefault bool,
+) error {
+	if quota == nil || isDefault {
+		return nil
 	}
 
-	uq := query.UserAccount
-	_, err = uq.WithContext(c).Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).Updates(updates)
-	if err != nil {
-		return fmt.Errorf("failed to update user-account relationship: %w", err)
+	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
+		return fmt.Errorf("failed to ensure account queue exists: %w", err)
+	}
+	if err := vcqueue.EnsureUserQueueExists(c, mgr.client, token, accountID, userID); err != nil {
+		return fmt.Errorf("failed to ensure user queue exists: %w", err)
+	}
+
+	queueName := vcqueue.GetUserQueueName(accountID, userID)
+	if err := vcqueue.UpdateQueue(c, mgr.client, queueName, finalQuota); err != nil {
+		return fmt.Errorf("failed to update volcano queue for user %d in account %d: %w", userID, accountID, err)
 	}
 	return nil
 }
@@ -1706,6 +2402,32 @@ func (mgr *AccountMgr) UserListAccountMembers(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+func (mgr *AccountMgr) UserListAccountBillingMembers(c *gin.Context) {
+	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
+		handleAccountBillingConfigUpdateErr(c, err)
+		return
+	}
+	var req ProjectGetReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	token := util.GetToken(c)
+	if err := mgr.checkAccountAdmin(c, token.UserID, req.ID); err != nil {
+		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		return
+	}
+
+	resp, err := mgr.getBillingMembersInAccount(c, req.ID)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	resputil.Success(c, resp)
+}
+
 // UserListUsersOutOfAccount gets list of users not in account (user API)
 //
 //	@Summary		Get users not in account
@@ -1761,7 +2483,7 @@ func (mgr *AccountMgr) UserListUsersOutOfAccount(c *gin.Context) {
 //	@Security		Bearer
 //	@Param			aid	path		uint					true	"aid"
 //	@Param			uid	path		uint					true	"uid"
-//	@Param			req	body		PutUserInProjectReq	true	"Update data"
+//	@Param			req	body		UserPutUserInProjectReq	true	"Update data"
 //	@Success		200	{object}	resputil.Response[PutUserInProjectResp]	"Update result"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		403	{object}	resputil.Response[any]	"Forbidden - not account admin"
@@ -1772,7 +2494,7 @@ func (mgr *AccountMgr) UserUpdateAccountMemberPartial(c *gin.Context) {
 		AccountId uint `uri:"aid" binding:"required"`
 		UserID    uint `uri:"uid" binding:"required"`
 	}
-	req := &PutUserInProjectReq{}
+	req := &UserPutUserInProjectReq{}
 
 	if err := c.ShouldBindUri(&uriReq); err != nil {
 		resputil.Error(c, fmt.Sprintf("validate PutUserInProject parameters failed, detail: %v", err), resputil.NotSpecified)
@@ -1808,4 +2530,33 @@ func (mgr *AccountMgr) UserUpdateAccountMemberPartial(c *gin.Context) {
 		UserId:    uriReq.UserID,
 	}
 	resputil.Success(c, ret)
+}
+
+func (mgr *AccountMgr) UserUpdateAccountBillingMemberIssueAmount(c *gin.Context) {
+	var uriReq struct {
+		AccountID uint `uri:"aid" binding:"required"`
+		UserID    uint `uri:"uid" binding:"required"`
+	}
+	var req UpdateAccountBillingMemberIssueAmountReq
+
+	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
+		handleAccountBillingConfigUpdateErr(c, err)
+		return
+	}
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid uri params: %v", err))
+		return
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		return
+	}
+
+	token := util.GetToken(c)
+	if err := mgr.checkAccountAdmin(c, token.UserID, uriReq.AccountID); err != nil {
+		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		return
+	}
+
+	mgr.writeAccountBillingMemberIssueAmountResp(c, uriReq.AccountID, uriReq.UserID, &req)
 }

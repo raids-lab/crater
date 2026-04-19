@@ -20,6 +20,12 @@ func (mgr *VolcanojobMgr) submitJob(
 	token util.JWTMessage,
 	job *batch.Job,
 ) error {
+	if mgr.billingService != nil {
+		if err := mgr.billingService.OnJobCreateCheck(ctx, token.UserID, token.AccountID); err != nil {
+			return err
+		}
+	}
+
 	scheduleTypeInt, err := strconv.ParseInt(
 		job.Annotations[vcjobservice.AnnotationKeyScheduleType], 10, 64,
 	)

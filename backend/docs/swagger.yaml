@@ -540,6 +540,15 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp:
+    properties:
+      code:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+      data:
+        $ref: '#/definitions/internal_handler.AdjustUserExtraBalanceResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
     properties:
       code:
@@ -1029,6 +1038,28 @@ definitions:
         type: string
       role:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Role'
+    type: object
+  internal_handler.AdjustUserExtraBalanceReq:
+    properties:
+      delta:
+        type: integer
+      reason:
+        type: string
+    required:
+    - delta
+    type: object
+  internal_handler.AdjustUserExtraBalanceResp:
+    properties:
+      afterBalance:
+        type: number
+      beforeBalance:
+        type: number
+      delta:
+        type: number
+      userId:
+        type: integer
+      username:
+        type: string
     type: object
   internal_handler.ApprovalOrderResp:
     properties:
@@ -1711,6 +1742,9 @@ definitions:
       createdAt:
         description: 创建时间
         type: string
+      extraBalance:
+        description: 用户额外点数
+        type: number
       group:
         description: 课题组
         type: string
@@ -1733,6 +1767,15 @@ definitions:
         description: 用户状态
       teacher:
         description: 导师
+        type: string
+    type: object
+  internal_handler.UserPutUserInProjectReq:
+    properties:
+      accessmode:
+        type: string
+      quota:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota'
+      role:
         type: string
     type: object
   internal_handler.VersionInfo:
@@ -2676,7 +2719,7 @@ paths:
         name: req
         required: true
         schema:
-          $ref: '#/definitions/internal_handler.PutUserInProjectReq'
+          $ref: '#/definitions/internal_handler.UserPutUserInProjectReq'
       produces:
       - application/json
       responses:
@@ -3639,6 +3682,36 @@ paths:
       summary: 更新配额
       tags:
       - Project
+  /v1/admin/projects/{aid}/billing/reset:
+    post:
+      consumes:
+      - application/json
+      description: 立即对指定账户执行一次免费额度发放，不影响 extra 点数
+      parameters:
+      - in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 重置成功
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 立即重置账户免费额度
+      tags:
+      - Project
   /v1/admin/projects/add/{aid}/{uid}:
     post:
       consumes:
@@ -4533,6 +4606,43 @@ paths:
       security:
       - Bearer: []
       summary: 管理员更新用户属性
+      tags:
+      - User
+  /v1/admin/users/{name}/billing/extra-balance:
+    post:
+      consumes:
+      - application/json
+      description: 管理员按增量调整用户 extraBalance（可正可负），使用行锁避免并发覆盖
+      parameters:
+      - description: username
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 增量与原因
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.AdjustUserExtraBalanceReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 调整成功
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 其他错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 调整用户额外点数
       tags:
       - User
   /v1/admin/users/{name}/role:

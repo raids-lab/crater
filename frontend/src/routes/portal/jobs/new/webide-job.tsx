@@ -48,13 +48,16 @@ import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { ScheduleTypeFormField } from '@/components/form/schedule-type-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormWebIDE } from '@/components/form/types'
-import { JobSubmitButton } from '@/components/job/job-submit-button'
+import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
+import { JobSubmitButton } from '@/components/job/job-submit-button
 import { PublishConfigForm, publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
 
 import { apiContextPrequeueStatus } from '@/services/api/context'
 import { ScheduleType, apiWebIDECreate } from '@/services/api/vcjob'
+
+import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
   VolumeMountType,
@@ -69,6 +72,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/webide-job')({
   validateSearch: publishValidateSearch,
@@ -124,6 +128,8 @@ function RouteComponent() {
     queryFn: () => apiContextPrequeueStatus().then((res) => res.data),
   })
   const isBackfillEnabled = prequeueStatusData?.backfillEnabled ?? false
+  const { billingBlockDialogOpen, setBillingBlockDialogOpen, handleJobCreateError } =
+    useJobCreateBillingBlockDialog()
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
@@ -156,6 +162,12 @@ function RouteComponent() {
       navigate({
         to: '/portal/jobs/inter',
       })
+    },
+    onError: (error) => {
+      if (handleJobCreateError(error)) {
+        return
+      }
+      showErrorToast(error)
     },
   })
 
@@ -236,6 +248,10 @@ function RouteComponent() {
 
   return (
     <>
+      <CreateBillingBlockDialog
+        open={billingBlockDialogOpen}
+        onOpenChange={setBillingBlockDialogOpen}
+      />
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}

@@ -19,7 +19,7 @@ import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
 import { CalendarIcon, CirclePlusIcon, XIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 import LoadableButton from '@/components/button/loadable-button'
 import SelectBox from '@/components/custom/select-box'
+import { BillingPeriodFields } from '@/components/form/billing-period-fields'
 import FormExportButton from '@/components/form/form-export-button'
 import FormImportButton from '@/components/form/form-import-button'
 import FormLabelMust from '@/components/form/form-label-must'
@@ -49,9 +50,14 @@ import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import { IAccount, apiAccountCreate, apiAccountUpdate } from '@/services/api/account'
 import { apiAdminUserList } from '@/services/api/admin/user'
+import {
+  apiAdminGetAccountBillingConfig,
+  apiAdminUpdateAccountBillingConfig,
+} from '@/services/api/billing'
 import { apiResourceList } from '@/services/api/resource'
+import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 
-import { convertFormToQuota } from '@/utils/quota'
+import { convertFormToQuota, convertQuotaToForm } from '@/utils/quota'
 import { globalSettings } from '@/utils/store'
 
 import { cn } from '@/lib/utils'
@@ -80,7 +86,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       })),
   })
 
-  const { data: resourceDimension } = useQuery({
+  const resourceDimensionQuery = useQuery({
     queryKey: ['resources', 'list'],
     queryFn: () => apiResourceList(false),
     select: (res) => {
@@ -113,6 +119,22 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
         )
     },
   })
+  const resourceDimension = resourceDimensionQuery.data
+
+  const { data: billingStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
+  })
+  const billingEnabled = billingStatus?.featureEnabled ?? false
+  const amountOverrideEnabled = billingStatus?.accountIssueAmountOverrideEnabled ?? false
+  const periodOverrideEnabled = billingStatus?.accountIssuePeriodOverrideEnabled ?? false
+  const accountBillingConfigQuery = useQuery({
+    queryKey: ['admin', 'accounts', account?.id, 'billing-config'],
+    queryFn: () => apiAdminGetAccountBillingConfig(account?.id ?? 0).then((res) => res.data),
+    enabled: billingEnabled && Boolean(account?.id),
+  })
+  const accountBillingConfig = accountBillingConfigQuery.data
+  const hydratedFormKeyRef = useRef<string | null>(null)
 
   // 1. Define your form.
   const form = useForm<AccountFormSchema>({
@@ -125,9 +147,48 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       ],
       expiredAt: account?.expiredAt ? new Date(account.expiredAt) : undefined,
       admins: [],
+      billingIssueAmount: accountBillingConfig?.issueAmount,
+      billingIssuePeriodMinutes: accountBillingConfig?.issuePeriodMinutes,
       ...(account ? { id: account.id } : {}),
     },
   })
+
+  const hydratedValues = useMemo<AccountFormSchema>(
+    () => ({
+      name: account?.nickname || '',
+      resources:
+        account && resourceDimension
+          ? convertQuotaToForm(account.quota, resourceDimension)
+          : resourceDimension?.map((name) => ({ name })) || [{ name: 'cpu' }, { name: 'memory' }],
+      expiredAt: account?.expiredAt ? new Date(account.expiredAt) : undefined,
+      admins: [],
+      billingIssueAmount: accountBillingConfig?.issueAmount,
+      billingIssuePeriodMinutes: accountBillingConfig?.issuePeriodMinutes,
+      ...(account ? { id: account.id } : {}),
+    }),
+    [account, accountBillingConfig, resourceDimension]
+  )
+  const needsBillingHydration = billingEnabled && Boolean(account?.id)
+  const hydrationReady =
+    resourceDimensionQuery.isFetched &&
+    (!needsBillingHydration || accountBillingConfigQuery.isFetched)
+  const hydrationKey = hydrationReady
+    ? `${account?.id ?? 'create'}:${resourceDimensionQuery.dataUpdatedAt}:${accountBillingConfigQuery.dataUpdatedAt}`
+    : null
+
+  useEffect(() => {
+    if (!hydrationKey) {
+      return
+    }
+    if (hydratedFormKeyRef.current === hydrationKey) {
+      return
+    }
+
+    form.reset(hydratedValues, {
+      keepDirtyValues: true,
+    })
+    hydratedFormKeyRef.current = hydrationKey
+  }, [form, hydratedValues, hydrationKey])
 
   const currentValues = form.watch()
 
@@ -140,36 +201,93 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     control: form.control,
   })
 
+  const buildBillingConfigPayload = (values: AccountFormSchema) => {
+    const payload: { issueAmount?: number; issuePeriodMinutes?: number } = {}
+    if (billingEnabled && amountOverrideEnabled && values.billingIssueAmount !== undefined) {
+      payload.issueAmount = values.billingIssueAmount
+    }
+    if (billingEnabled && periodOverrideEnabled && values.billingIssuePeriodMinutes !== undefined) {
+      payload.issuePeriodMinutes = values.billingIssuePeriodMinutes
+    }
+    return payload
+  }
+
+  const saveAccountBillingConfig = async (
+    accountId: number,
+    values: AccountFormSchema
+  ): Promise<string | null> => {
+    const billingPayload = buildBillingConfigPayload(values)
+    if (Object.keys(billingPayload).length === 0) {
+      return null
+    }
+
+    try {
+      await apiAdminUpdateAccountBillingConfig(accountId, billingPayload)
+      return null
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        return error.message
+      }
+      return 'unknown error'
+    }
+  }
+
   const { mutate: createAccount, isPending: isCreatePending } = useMutation({
-    mutationFn: (values: AccountFormSchema) =>
-      apiAccountCreate({
+    mutationFn: async (values: AccountFormSchema) => {
+      const resp = await apiAccountCreate({
         name: values.name,
         quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
         admins: values.admins?.map((id) => parseInt(id)),
         withoutVolcano: scheduler !== 'volcano',
-      }),
-    onSuccess: async (_, { name }) => {
+      })
+      const billingConfigError =
+        resp.data.id && resp.data.id > 0
+          ? await saveAccountBillingConfig(resp.data.id, values)
+          : null
+      return {
+        billingConfigError,
+        resp,
+      }
+    },
+    onSuccess: async ({ billingConfigError }, { name }) => {
       await queryClient.invalidateQueries({
         queryKey: ['admin', 'accounts'],
       })
-      toast.success(t('toast.accountCreated', { name }))
+      if (billingConfigError) {
+        toast.warning(
+          `账户 ${name} 已创建，但 Billing 配置保存失败，请进入账户后重试：${billingConfigError}`
+        )
+      } else {
+        toast.success(t('toast.accountCreated', { name }))
+      }
       onOpenChange(false)
     },
   })
 
   const { mutate: updateAccount, isPending: isUpdatePending } = useMutation({
-    mutationFn: (values: AccountFormSchema) =>
-      apiAccountUpdate(values.id ?? 0, {
+    mutationFn: async (values: AccountFormSchema) => {
+      const resp = await apiAccountUpdate(values.id ?? 0, {
         name: values.name,
         quota: convertFormToQuota(values.resources),
         expiredAt: values.expiredAt,
         admins: values.admins?.map((id) => parseInt(id)),
         withoutVolcano: scheduler !== 'volcano',
-      }),
+      })
+      if ((values.id ?? 0) > 0) {
+        const billingConfigError = await saveAccountBillingConfig(values.id ?? 0, values)
+        if (billingConfigError) {
+          throw new Error(billingConfigError)
+        }
+      }
+      return resp
+    },
     onSuccess: async (_, { name }) => {
       await queryClient.invalidateQueries({
         queryKey: ['admin', 'accounts'],
+      })
+      await queryClient.invalidateQueries({
+        queryKey: ['admin', 'accounts', account?.id, 'billing-config'],
       })
       toast.success(t('toast.accountUpdated', { name }))
       onOpenChange(false)
@@ -312,6 +430,77 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                 </FormItem>
               )}
             />
+          )}
+
+          {billingEnabled && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="billingIssueAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('accountForm.billingIssueAmountLabel', {
+                        defaultValue: '周期发放额度',
+                      })}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={0}
+                        disabled={!amountOverrideEnabled}
+                        value={field.value ?? ''}
+                        onChange={(e) =>
+                          field.onChange(e.target.value === '' ? undefined : Number(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {amountOverrideEnabled
+                        ? t('accountForm.billingIssueAmountDescription', {
+                            defaultValue: '每个发放周期发放的免费点数额度。',
+                          })
+                        : t('accountForm.billingIssueAmountDisabledDescription', {
+                            defaultValue: '当前由系统默认发放额度控制。',
+                          })}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="billingIssuePeriodMinutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t('accountForm.billingIssuePeriodMinutesLabel', {
+                        defaultValue: '发放周期（分钟）',
+                      })}
+                    </FormLabel>
+                    <FormControl>
+                      <BillingPeriodFields
+                        totalMinutes={field.value ?? 0}
+                        disabled={!periodOverrideEnabled}
+                        onChange={(value) => {
+                          field.onChange(value.totalMinutes)
+                        }}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {periodOverrideEnabled
+                        ? t('accountForm.billingIssuePeriodMinutesDescription', {
+                            defaultValue: '填 0 表示关闭该账户的周期发放。',
+                          })
+                        : t('accountForm.billingIssuePeriodMinutesDisabledDescription', {
+                            defaultValue: '当前由系统默认发放周期控制。',
+                          })}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           )}
           <div className="space-y-2">
             {resourcesFields.length > 0 && <FormLabel>{t('accountForm.quotaLabel')}</FormLabel>}

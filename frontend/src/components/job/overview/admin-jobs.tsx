@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
 import { CalendarIcon, LockIcon, Trash2Icon } from 'lucide-react'
@@ -36,6 +36,7 @@ import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
+import { BillingPointsBadge } from '@/components/custom/billing-points-badge
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { scheduleTypes } from '@/components/job/statuses'
@@ -45,6 +46,8 @@ import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
+import { apiAdminGetJobBillingList } from '@/services/api/billing'
+import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
   JobPhase,
@@ -53,8 +56,9 @@ import {
   apiAdminGetJobList,
   apiJobDeleteForAdmin,
   getUnifiedJobPhase,
-} from '@/services/api/vcjob'
+} from '@/services/api/vcjob
 
+import { isBillingVisibleForAdmin } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
 
 import { DurationDialog } from '../../../routes/admin/jobs/-components/duration-dialog'
@@ -69,6 +73,8 @@ export type StatusValue =
   | 'Succeeded'
   | 'Preempted'
   | 'Deleted'
+
+type JobTableRow = IJobInfo & { billedPointsTotal?: number }
 
 export const getHeader = (key: string): string => {
   switch (key) {
@@ -106,6 +112,11 @@ const AdminJobOverview = () => {
   const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([])
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false)
   const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false)
+  const { data: billingStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
+  })
+  const billingVisible = isBillingVisibleForAdmin(billingStatus)
 
   const toolbarConfig: DataTableToolbarConfig = {
     globalSearch: {
@@ -136,6 +147,47 @@ const AdminJobOverview = () => {
     queryFn: () => apiAdminGetJobList(days),
     select: (res) => res.data,
   })
+  const billingQuery = useQuery({
+    queryKey: ['admin', 'tasklist', 'job', 'billing', days],
+    queryFn: () => apiAdminGetJobBillingList(days),
+    select: (res) =>
+      res.data.reduce<Record<string, number>>((acc, item) => {
+        acc[item.jobName] = item.billedPointsTotal
+        return acc
+      }, {}),
+    enabled: billingVisible,
+  })
+  const refetchVcjobQuery = vcjobQuery.refetch
+  const refetchBillingQuery = billingQuery.refetch
+  const refetchMergedQuery = useCallback(async () => {
+    const [vcjobResult] = await Promise.all([refetchVcjobQuery(), refetchBillingQuery()])
+    return vcjobResult
+  }, [refetchBillingQuery, refetchVcjobQuery])
+  const mergedVcjobQuery = useMemo(
+    () =>
+      ({
+        data: (vcjobQuery.data ?? []).map((job) => ({
+          ...job,
+          billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
+        })),
+        isLoading: vcjobQuery.isLoading || (billingVisible && billingQuery.isLoading),
+        dataUpdatedAt: Math.max(
+          vcjobQuery.dataUpdatedAt,
+          billingVisible ? billingQuery.dataUpdatedAt : 0
+        ),
+        refetch: refetchMergedQuery,
+      }) as unknown as UseQueryResult<JobTableRow[], Error>,
+    [
+      billingVisible,
+      billingQuery.data,
+      billingQuery.dataUpdatedAt,
+      billingQuery.isLoading,
+      refetchMergedQuery,
+      vcjobQuery.data,
+      vcjobQuery.dataUpdatedAt,
+      vcjobQuery.isLoading,
+    ]
+  )
 
   const refetchTaskList = useCallback(async () => {
     try {
@@ -143,6 +195,11 @@ const AdminJobOverview = () => {
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({
             queryKey: ['admin', 'tasklist', 'job', days],
+          })
+        ),
+        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
+          queryClient.invalidateQueries({
+            queryKey: ['admin', 'tasklist', 'job', 'billing', days],
           })
         ),
       ])
@@ -159,7 +216,7 @@ const AdminJobOverview = () => {
     },
   })
 
-  const vcjobColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
+  const vcjobColumns = useMemo<ColumnDef<JobTableRow>[]>(() => {
     const getHeader = (key: string): string => {
       switch (key) {
         case 'jobName':
@@ -248,6 +305,15 @@ const AdminJobOverview = () => {
           return <ResourceBadges resources={resources} />
         },
       },
+      ...(billingVisible
+        ? [
+            {
+              accessorKey: 'billedPointsTotal',
+              header: ({ column }) => <DataTableColumnHeader column={column} title="累计点数" />,
+              cell: ({ row }) => <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />,
+            } as ColumnDef<JobTableRow>,
+          ]
+        : []),
       {
         accessorFn: (row) => getUnifiedJobPhase(row.status),
         id: 'status',
@@ -307,7 +373,7 @@ const AdminJobOverview = () => {
         },
       },
     ]
-  }, [deleteTask, refetchTaskList, t])
+  }, [billingVisible, deleteTask, refetchTaskList, t])
 
   return (
     <>
@@ -317,7 +383,7 @@ const AdminJobOverview = () => {
           description: t('adminJobOverview.description'),
         }}
         storageKey="admin_job_overview"
-        query={vcjobQuery}
+        query={mergedVcjobQuery}
         columns={vcjobColumns}
         toolbarConfig={toolbarConfig}
         multipleHandlers={[

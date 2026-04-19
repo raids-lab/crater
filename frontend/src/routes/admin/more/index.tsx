@@ -23,10 +23,14 @@ import {
   apiAdminUpdateQueueQuota,
 } from '@/services/api/queue-quota'
 import {
+  apiAdminGetBillingStatus,
   apiAdminGetGpuAnalysisStatus,
   apiAdminGetLLMConfig,
   apiAdminGetPrequeueConfig,
+  apiAdminGrantAllUsersExtraBalance,
+  apiAdminResetAllBillingBalances,
   apiAdminResetLLMConfig,
+  apiAdminSetBillingStatus,
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
   apiAdminUpdatePrequeueConfig,
@@ -34,7 +38,10 @@ import {
 import { ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
 
+import { showErrorToast } from '@/utils/toast'
+
 import { BasicSettings } from './-components/basic-settings'
+import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { PrequeueSettings } from './-components/prequeue-settings'
@@ -84,6 +91,11 @@ function RouteComponent() {
   const { data: resourceLimitData } = useQuery({
     queryKey: ['admin', 'queue-quotas'],
     queryFn: () => apiAdminGetQueueQuotas().then((res) => res.data),
+  })
+
+  const { data: billingStatusData } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
   })
 
   const [backfillEnabled, setBackfillEnabled] = useState(false)
@@ -177,6 +189,49 @@ function RouteComponent() {
       toast.success(message)
     },
     onError: handleError,
+  })
+
+  const updateBillingMutation = useMutation({
+    mutationFn: apiAdminSetBillingStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'billing-status'] })
+      toast.success(
+        t('systemConfig.billing.saveSuccess', {
+          defaultValue: 'Billing 配置已更新',
+        })
+      )
+    },
+    onError: showErrorToast,
+  })
+
+  const resetAllBillingMutation = useMutation({
+    mutationFn: apiAdminResetAllBillingBalances,
+    onSuccess: async (res) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'billing-status'] }),
+        queryClient.invalidateQueries({ queryKey: ['account'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['context', 'billing-summary'] }),
+      ])
+      toast.success(
+        `已重置 ${res.data.accountsAffected} 个账户、${res.data.userAccountsAffected} 条成员免费额度`
+      )
+    },
+    onError: showErrorToast,
+  })
+
+  const grantAllUsersExtraMutation = useMutation({
+    mutationFn: apiAdminGrantAllUsersExtraBalance,
+    onSuccess: async (res) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['context', 'billing-summary'] }),
+      ])
+      toast.success(`已为 ${res.data.usersAffected} 个用户发放 ${res.data.delta} 点 extra 额度`)
+    },
+    onError: showErrorToast,
   })
 
   const handleLlmSubmit = (values: LlmFormSchema, validate: boolean) => {
@@ -403,6 +458,18 @@ function RouteComponent() {
           onCreate={handleResourceLimitCreate}
           onUpdate={handleResourceLimitUpdate}
           onRemove={handleResourceLimitRemove}
+        />
+
+        <Separator />
+
+        <BillingSettings
+          status={billingStatusData}
+          isSaving={updateBillingMutation.isPending}
+          isResettingAll={resetAllBillingMutation.isPending}
+          isGrantingAllExtra={grantAllUsersExtraMutation.isPending}
+          onSave={(payload) => updateBillingMutation.mutate(payload)}
+          onResetAll={() => resetAllBillingMutation.mutate()}
+          onGrantAllExtra={(payload) => grantAllUsersExtraMutation.mutate(payload)}
         />
       </Card>
     </div>

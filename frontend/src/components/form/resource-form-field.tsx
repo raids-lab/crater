@@ -37,6 +37,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import TipBadge from '@/components/badge/tip-badge'
+import { BillingPricePreview } from '@/components/custom/billing-price-preview'
 import Combobox, { ComboboxItem } from '@/components/form/combobox'
 import FormLabelMust from '@/components/form/form-label-must'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
@@ -80,6 +81,15 @@ export function ResourceFormFields<T extends FieldValues>({
 }: ResourceFormFieldsProps<T>) {
   const { t } = useTranslation()
   const gpuCount = form.watch(gpuCountPath)
+  const cpu = form.watch(cpuPath)
+  const memory = form.watch(memoryPath)
+  const gpuModel = form.watch(gpuModelPath)
+  const rdmaEnabled = rdmaPath ? form.watch(rdmaPath.rdmaEnabled) : false
+  const rdmaLabel = rdmaPath ? form.watch(rdmaPath.rdmaLabel) : undefined
+  const vgpuEnabled = vgpuPath ? form.watch(vgpuPath.vgpuEnabled) : false
+  const vgpuModels = (vgpuPath ? form.watch(vgpuPath.vgpuModels) : undefined) as
+    | Array<{ label?: string; value?: number }>
+    | undefined
   const grafanaOverview = useAtomValue(configGrafanaOverviewAtom)
 
   // 获取可用资源列表
@@ -102,6 +112,32 @@ export function ResourceFormFields<T extends FieldValues>({
         )
     },
   })
+
+  const billingEntry = useMemo(() => {
+    const resourceList: Record<string, string> = {}
+    if (typeof cpu === 'number' && cpu > 0) {
+      resourceList.cpu = `${cpu}`
+    }
+    if (typeof memory === 'number' && memory > 0) {
+      resourceList.memory = `${memory}Gi`
+    }
+    if (typeof gpuCount === 'number' && gpuCount > 0 && typeof gpuModel === 'string' && gpuModel) {
+      resourceList[gpuModel] = `${gpuCount}`
+    }
+    if (rdmaEnabled && typeof rdmaLabel === 'string' && rdmaLabel) {
+      resourceList[rdmaLabel] = '1'
+    }
+    if (vgpuEnabled && Array.isArray(vgpuModels)) {
+      vgpuModels.forEach((model: { label?: string; value?: number }) => {
+        const label = model?.label
+        const value = model?.value
+        if (typeof label === 'string' && label && typeof value === 'number' && value > 0) {
+          resourceList[label] = `${value}`
+        }
+      })
+    }
+    return [{ resourceList }]
+  }, [cpu, memory, gpuCount, gpuModel, rdmaEnabled, rdmaLabel, vgpuEnabled, vgpuModels])
 
   return (
     <>
@@ -231,6 +267,7 @@ export function ResourceFormFields<T extends FieldValues>({
           </SheetContent>
         </Sheet>
       </div>
+      <BillingPricePreview entries={billingEntry} />
     </>
   )
 }

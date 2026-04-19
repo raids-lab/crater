@@ -16,6 +16,17 @@ const (
 
 	// 功能开关配置键
 	ConfigKeyEnableGpuAnalysis = "ENABLE_GPU_ANALYSIS" // 值: "true" or "false"
+
+	// Billing 功能与调度配置键
+	ConfigKeyEnableBillingFeature                     = "ENABLE_BILLING_FEATURE"
+	ConfigKeyEnableBillingActive                      = "ENABLE_BILLING_ACTIVE"
+	ConfigKeyEnableRunningSettlement                  = "ENABLE_RUNNING_SETTLEMENT"
+	ConfigKeyRunningSettlementIntervalMinute          = "RUNNING_SETTLEMENT_INTERVAL_MINUTES"
+	ConfigKeyBillingJobFreeMinutes                    = "BILLING_JOB_FREE_MINUTES"
+	ConfigKeyBillingDefaultIssueAmount                = "BILLING_DEFAULT_ISSUE_AMOUNT"
+	ConfigKeyBillingDefaultIssuePeriodMinute          = "BILLING_DEFAULT_ISSUE_PERIOD_MINUTES"
+	ConfigKeyBillingAccountIssueAmountOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_AMOUNT_OVERRIDE"
+	ConfigKeyBillingAccountIssuePeriodOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_PERIOD_OVERRIDE"
 )
 
 // DefaultConfigKeys 定义了系统启动时必须存在的键
@@ -24,4 +35,13 @@ var DefaultConfigKeys = []string{
 	ConfigKeyLLMAPIKey,
 	ConfigKeyLLMModelName,
 	ConfigKeyEnableGpuAnalysis,
+	ConfigKeyEnableBillingFeature,
+	ConfigKeyEnableBillingActive,
+	ConfigKeyEnableRunningSettlement,
+	ConfigKeyRunningSettlementIntervalMinute,
+	ConfigKeyBillingJobFreeMinutes,
+	ConfigKeyBillingDefaultIssueAmount,
+	ConfigKeyBillingDefaultIssuePeriodMinute,
+	ConfigKeyBillingAccountIssueAmountOverrideEnabled,
+	ConfigKeyBillingAccountIssuePeriodOverrideEnabled,
 }

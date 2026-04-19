@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"gorm.io/gen/field"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -17,17 +18,17 @@ const (
 
 // GetCronjobRecordTimeRange retrieves the time range of all cronjob records
 func (cm *CronJobManager) GetCronjobRecordTimeRange(ctx context.Context) (startTime, endTime time.Time, err error) {
+	recordQuery := query.CronJobRecord
 	var result struct {
 		StartTime time.Time
 		EndTime   time.Time
 	}
-	err = query.
-		GetDB().
-		WithContext(ctx).
-		Model(&model.CronJobRecord{}).
-		Select("min(execute_time) as start_time", "max(execute_time) as end_time").
-		Scan(&result).
-		Error
+	err = recordQuery.WithContext(ctx).
+		Select(
+			recordQuery.ExecuteTime.Min().As("start_time"),
+			recordQuery.ExecuteTime.Max().As("end_time"),
+		).
+		Scan(&result)
 	if err != nil {
 		err = fmt.Errorf("CronJobManager.GetCronjobRecordTimeRange: %w", err)
 		klog.Error(err)
@@ -48,21 +49,22 @@ func (cm *CronJobManager) GetCronjobRecords(
 	endTime *time.Time,
 	status *string,
 ) (records []*model.CronJobRecord, err error) {
+	recordQuery := query.CronJobRecord
 	tx := query.GetDB().WithContext(ctx)
 	if len(names) > 0 {
-		tx = tx.Where(query.CronJobRecord.Name.In(names...))
+		tx = tx.Where(recordQuery.Name.In(names...))
 	}
 	if startTime != nil {
-		tx = tx.Where(query.CronJobRecord.ExecuteTime.Gte(*startTime))
+		tx = tx.Where(recordQuery.ExecuteTime.Gte(*startTime))
 	}
 	if endTime != nil {
-		tx = tx.Where(query.CronJobRecord.ExecuteTime.Lte(*endTime))
+		tx = tx.Where(recordQuery.ExecuteTime.Lte(*endTime))
 	}
 	if status != nil {
-		tx = tx.Where(query.CronJobRecord.Status.Eq(*status))
+		tx = tx.Where(recordQuery.Status.Eq(*status))
 	}
 	err = tx.
-		Order(fmt.Sprintf("%s desc", query.CronJobRecord.ExecuteTime.ColumnName().String())).
+		Order(recordQuery.ExecuteTime.Desc()).
 		Find(&records).
 		Error
 	if err != nil {
@@ -105,42 +107,40 @@ func (cm *CronJobManager) DeleteCronjobRecords(
 func (cm *CronJobManager) GetLastCronjobRecord(
 	ctx context.Context, names []string, status *string, startTime, endTime *time.Time,
 ) ([]*model.CronJobRecord, error) {
-	lastExecuteTimeField := fmt.Sprintf("MAX(%s) as last_execute_time", query.CronJobRecord.ExecuteTime.ColumnName().String())
-	subTx := query.
-		GetDB().
-		WithContext(ctx).
-		Model(&model.CronJobRecord{}).
-		Select([]string{query.CronJobRecord.Name.ColumnName().String(), lastExecuteTimeField})
+	recordQuery := query.CronJobRecord
+	lastRecordQuery := query.CronJobRecord.As("last_record")
+	lastExecuteTime := field.NewTime(lastRecordQuery.TableName(), "last_execute_time")
+	subTx := recordQuery.WithContext(ctx).Select(
+		recordQuery.Name,
+		recordQuery.ExecuteTime.Max().As(lastExecuteTime.ColumnName().String()),
+	)
 
 	if len(names) > 0 {
-		subTx = subTx.Where(query.CronJobRecord.Name.In(names...))
+		subTx = subTx.Where(recordQuery.Name.In(names...))
 	}
 	if status != nil {
-		subTx = subTx.Where(query.CronJobRecord.Status.Eq(*status))
+		subTx = subTx.Where(recordQuery.Status.Eq(*status))
 	}
 	if startTime != nil {
-		subTx = subTx.Where(query.CronJobRecord.ExecuteTime.Gte(*startTime))
+		subTx = subTx.Where(recordQuery.ExecuteTime.Gte(*startTime))
 	}
 	if endTime != nil {
-		subTx = subTx.Where(query.CronJobRecord.ExecuteTime.Lte(*endTime))
+		subTx = subTx.Where(recordQuery.ExecuteTime.Lte(*endTime))
 	}
-	subTx = subTx.Group(query.CronJobRecord.Name.ColumnName().String())
+	subTx = subTx.Group(recordQuery.Name)
 
-	tx := query.
-		GetDB().
-		WithContext(ctx).
-		Model(&model.CronJobRecord{})
+	tx := recordQuery.WithContext(ctx)
 	if len(names) > 0 {
-		tx = tx.Where(query.CronJobRecord.Name.In(names...))
+		tx = tx.Where(recordQuery.Name.In(names...))
 	}
-	subCondtion := fmt.Sprintf("(%s, %s) in (?)",
-		query.CronJobRecord.Name.ColumnName().String(),
-		query.CronJobRecord.ExecuteTime.ColumnName().String(),
+	tx = tx.Join(
+		subTx.As(lastRecordQuery.TableName()),
+		recordQuery.Name.EqCol(lastRecordQuery.Name),
+		recordQuery.ExecuteTime.EqCol(lastExecuteTime),
 	)
-	tx = tx.Where(subCondtion, subTx)
 
 	res := make([]*model.CronJobRecord, 0)
-	err := tx.Find(&res).Error
+	err := tx.Scan(&res)
 	if err != nil {
 		err := fmt.Errorf("CronJobManager.GetLastCronjobRecord: %w", err)
 		klog.Error(err)

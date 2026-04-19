@@ -56,6 +56,7 @@ type RegisterConfig struct {
 	// services
 	ConfigService      *service.ConfigService
 	PrequeueService    *service.PrequeueService
+	BillingService     *service.BillingService
 	GpuAnalysisService *service.GpuAnalysisService
 }
 
