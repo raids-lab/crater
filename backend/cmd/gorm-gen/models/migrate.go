@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-gormigrate/gormigrate/v2"
@@ -770,6 +769,7 @@ func main() {
 					return err
 				}
 
+				// 2. Update clean-waiting-jupyter
 				if err := tx.Model(&model.CronJobConfig{}).
 					Where("name = ?", "clean-waiting-jupyter").
 					Update("config", datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["jupyter"]}`)).Error; err != nil {
@@ -796,198 +796,6 @@ func main() {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable(&model.OperationLog{})
-			},
-		},
-		{
-			ID: "202603111300",
-			Migrate: func(tx *gorm.DB) error {
-				type Job struct {
-					ID    uint   `gorm:"primaryKey"`
-					Queue string `gorm:"type:varchar(256);index:idx_jobs_queue;comment:作业提交的volcano队列"`
-				}
-
-				if err := tx.Migrator().AddColumn(&Job{}, "Queue"); err != nil {
-					return err
-				}
-				return tx.Migrator().CreateIndex(&Job{}, "Queue")
-			},
-			Rollback: func(tx *gorm.DB) error {
-				type Job struct {
-					Queue string `gorm:"type:varchar(256);index:idx_jobs_queue;comment:作业提交的volcano队列"`
-				}
-
-				if err := tx.Migrator().DropIndex(&Job{}, "Queue"); err != nil {
-					return err
-				}
-				return tx.Migrator().DropColumn(&Job{}, "Queue")
-			},
-		},
-		{
-			ID: "202603140930",
-			Migrate: func(tx *gorm.DB) error {
-				type QueueQuotaLimit struct {
-					gorm.Model
-					Name                  string                                `gorm:"uniqueIndex;type:varchar(256);not null;comment:队列名字"`
-					Enabled               bool                                  `gorm:"not null;default:false;comment:是否启用队列资源限制"`
-					PrequeueCandidateSize int                                   `gorm:"not null;default:10;comment:Prequeue 候选作业集大小"`
-					Quota                 datatypes.JSONType[map[string]string] `gorm:"type:jsonb;comment:队列内资源限制"`
-				}
-				return tx.Table("queue_quotas").Migrator().CreateTable(&QueueQuotaLimit{})
-			},
-			Rollback: func(tx *gorm.DB) error {
-				return tx.Migrator().DropTable("queue_quotas")
-			},
-		},
-		{
-			ID: "202604011747",
-			Migrate: func(tx *gorm.DB) error {
-				type Job struct {
-					gorm.Model
-					ScheduleType *int `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
-				}
-				if err := tx.Migrator().AddColumn(&Job{}, "ScheduleType"); err != nil {
-					return err
-				}
-				return tx.Migrator().CreateIndex(&Job{}, "ScheduleType")
-			},
-			Rollback: func(tx *gorm.DB) error {
-				type Job struct {
-					ScheduleType *int `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
-				}
-				if err := tx.Migrator().DropIndex(&Job{}, "ScheduleType"); err != nil {
-					return err
-				}
-				return tx.Migrator().DropColumn(&Job{}, "ScheduleType")
-			},
-		},
-		{
-			ID: "202604041030",
-			Migrate: func(tx *gorm.DB) error {
-				type Job struct {
-					gorm.Model
-					WaitingToleranceSeconds *int64 `gorm:"comment:作业等待忍耐时间(秒)"`
-				}
-				return tx.Migrator().AddColumn(&Job{}, "WaitingToleranceSeconds")
-			},
-			Rollback: func(tx *gorm.DB) error {
-				type Job struct {
-					WaitingToleranceSeconds *int64 `gorm:"comment:作业等待忍耐时间(秒)"`
-				}
-				return tx.Migrator().DropColumn(&Job{}, "WaitingToleranceSeconds")
-			},
-		},
-		{
-			ID: "202604091400",
-			Migrate: func(tx *gorm.DB) error {
-				type PrequeueConfig struct {
-					gorm.Model
-					Key      string     `gorm:"uniqueIndex:idx_prequeue_configs_key;size:100;not null;comment:配置项的键"`
-					Value    string     `gorm:"type:text;not null;comment:配置项的值"`
-					ExpireAt *time.Time `gorm:"index:idx_prequeue_configs_expire_at;comment:配置项过期时间"`
-				}
-				migrator := tx.Table("prequeue_configs").Migrator()
-				if err := migrator.CreateTable(&PrequeueConfig{}); err != nil {
-					return err
-				}
-				if !migrator.HasIndex(&PrequeueConfig{}, "idx_prequeue_configs_key") {
-					if err := migrator.CreateIndex(&PrequeueConfig{}, "idx_prequeue_configs_key"); err != nil {
-						return err
-					}
-				}
-				if !migrator.HasIndex(&PrequeueConfig{}, "idx_prequeue_configs_expire_at") {
-					if err := migrator.CreateIndex(&PrequeueConfig{}, "idx_prequeue_configs_expire_at"); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-			Rollback: func(tx *gorm.DB) error {
-				return tx.Migrator().DropTable("prequeue_configs")
-			},
-		},
-		{
-			ID: "202604161300",
-			Migrate: func(tx *gorm.DB) error {
-				defaults := map[string]string{
-					model.PrequeueBackfillEnabledKey:   strconv.FormatBool(model.PrequeueDefaultBackfillEnabled),
-					model.PrequeueQueueQuotaEnabledKey: strconv.FormatBool(model.PrequeueDefaultQueueQuotaEnabled),
-				}
-
-				for key, value := range defaults {
-					var count int64
-					if err := tx.Table("prequeue_configs").Where("key = ?", key).Count(&count).Error; err != nil {
-						return err
-					}
-					if count > 0 {
-						continue
-					}
-					if err := tx.Table("prequeue_configs").Create(map[string]any{
-						"created_at": time.Now(),
-						"updated_at": time.Now(),
-						"key":        key,
-						"value":      value,
-					}).Error; err != nil {
-						return err
-					}
-				}
-
-				return tx.Table("prequeue_configs").Where("key = ?", "enabled").Delete(nil).Error
-			},
-			Rollback: func(tx *gorm.DB) error {
-				if err := tx.Table("prequeue_configs").Where("key IN ?", []string{
-					model.PrequeueBackfillEnabledKey,
-					model.PrequeueQueueQuotaEnabledKey,
-				}).Delete(nil).Error; err != nil {
-					return err
-				}
-
-				var count int64
-				if err := tx.Table("prequeue_configs").Where("key = ?", "enabled").Count(&count).Error; err != nil {
-					return err
-				}
-				if count > 0 {
-					return nil
-				}
-
-				return tx.Table("prequeue_configs").Create(map[string]any{
-					"created_at": time.Now(),
-					"updated_at": time.Now(),
-					"key":        "enabled",
-					"value":      strconv.FormatBool(model.PrequeueDefaultBackfillEnabled),
-				}).Error
-			},
-		},
-		{
-			ID: "202604171200",
-			Migrate: func(tx *gorm.DB) error {
-				defaults := map[string]string{
-					model.PrequeueActivateTickerIntervalSecondsKey: strconv.FormatInt(model.PrequeueDefaultActivateTickerIntervalSeconds, 10),
-					model.PrequeueMaxTotalActivationsPerRoundKey:   strconv.FormatInt(model.PrequeueDefaultMaxTotalActivationsPerRound, 10),
-				}
-				for key, value := range defaults {
-					var count int64
-					if err := tx.Table("prequeue_configs").Where("key = ?", key).Count(&count).Error; err != nil {
-						return err
-					}
-					if count > 0 {
-						continue
-					}
-					if err := tx.Table("prequeue_configs").Create(map[string]any{
-						"created_at": time.Now(),
-						"updated_at": time.Now(),
-						"key":        key,
-						"value":      value,
-					}).Error; err != nil {
-						return err
-					}
-				}
-				return nil
-			},
-			Rollback: func(tx *gorm.DB) error {
-				return tx.Table("prequeue_configs").Where("key IN ?", []string{
-					model.PrequeueActivateTickerIntervalSecondsKey,
-					model.PrequeueMaxTotalActivationsPerRoundKey,
-				}).Delete(nil).Error
 			},
 		},
 	})
@@ -1020,8 +828,6 @@ func main() {
 			&model.GpuAnalysis{},
 			&model.SystemConfig{},
 			&model.OperationLog{},
-			&model.PrequeueConfig{},
-			&model.QueueQuotaLimit{},
 		)
 		if err != nil {
 			return err
@@ -1040,6 +846,8 @@ func main() {
 			return res.Error
 		}
 
+		// create default admin user, add to default queue
+		// 1. generate a random name and password
 		var name, password string
 		var ok bool
 		if name, ok = os.LookupEnv("CRATER_ADMIN_USERNAME"); !ok {
@@ -1052,6 +860,7 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// 2. create a user with the name and password
 		user := model.User{
 			Name:     name,
 			Nickname: "管理员",
@@ -1076,6 +885,7 @@ func main() {
 			return res.Error
 		}
 
+		// 3. add the user to the default queue
 		userQueue := model.UserAccount{
 			UserID:     user.ID,
 			AccountID:  account.ID,
@@ -1088,11 +898,13 @@ func main() {
 			return res.Error
 		}
 
+		// 4. print the name and password
 		fmt.Printf(`Default admin user created:
 	Name: %s
 	Password: %s
 		`, name, password)
 
+		// 5. create initial cronjob configs
 		initialCronJobConfigs := []*model.CronJobConfig{
 			{
 				Name:    "clean-long-time-job",

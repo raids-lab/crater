@@ -8,7 +8,6 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/cronjob"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -20,7 +19,6 @@ type SystemConfigMgr struct {
 	name           string
 	service        *service.ConfigService
 	cronjobManager *cronjob.CronJobManager
-	watcher        *prequeuewatcher.PrequeueWatcher
 }
 
 func NewSystemConfigMgr(conf *RegisterConfig) Manager {
@@ -28,7 +26,6 @@ func NewSystemConfigMgr(conf *RegisterConfig) Manager {
 		name:           "system-config",
 		service:        conf.ConfigService,
 		cronjobManager: conf.CronJobManager,
-		watcher:        conf.PrequeueWatcher,
 	}
 }
 
@@ -45,8 +42,6 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 
 	g.GET("/gpu-analysis", mgr.GetGpuAnalysisStatus)
 	g.PUT("/gpu-analysis", mgr.SetGpuAnalysisStatus)
-	g.GET("/prequeue", mgr.GetPrequeueConfig)
-	g.PUT("/prequeue", mgr.UpdatePrequeueConfig)
 }
 
 // --- DTOs ---
@@ -70,22 +65,6 @@ type GpuAnalysisStatusResp struct {
 
 type SetGpuAnalysisStatusReq struct {
 	Enable bool `json:"enable"`
-}
-
-type PrequeueConfigResp struct {
-	BackfillEnabled                  bool  `json:"backfillEnabled"`
-	QueueQuotaEnabled                bool  `json:"queueQuotaEnabled"`
-	NormalJobWaitingToleranceSeconds int64 `json:"normalJobWaitingToleranceSeconds"`
-	ActivateTickerIntervalSeconds    int64 `json:"activateTickerIntervalSeconds"`
-	MaxTotalActivationsPerRound      int64 `json:"maxTotalActivationsPerRound"`
-}
-
-type UpdatePrequeueConfigReq struct {
-	BackfillEnabled                  *bool  `json:"backfillEnabled" binding:"required"`
-	QueueQuotaEnabled                *bool  `json:"queueQuotaEnabled" binding:"required"`
-	NormalJobWaitingToleranceSeconds *int64 `json:"normalJobWaitingToleranceSeconds" binding:"required,gt=0"`
-	ActivateTickerIntervalSeconds    *int64 `json:"activateTickerIntervalSeconds" binding:"required,gt=0"`
-	MaxTotalActivationsPerRound      *int64 `json:"maxTotalActivationsPerRound" binding:"required,gt=0"`
 }
 
 // --- Handlers ---
@@ -220,70 +199,4 @@ func (mgr *SystemConfigMgr) SetGpuAnalysisStatus(c *gin.Context) {
 		action = "enabled"
 	}
 	resputil.Success(c, "GPU analysis "+action)
-}
-
-// GetPrequeueConfig godoc
-// @Summary		获取新版排队配置
-// @Description	获取当前回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数
-// @Tags			SystemConfig
-// @Produce		json
-// @Security		Bearer
-// @Success		200		{object}	resputil.Response[PrequeueConfigResp] "配置"
-// @Failure		500		{object}	resputil.Response[any] "服务器错误"
-// @Router			/v1/admin/system-config/prequeue [get]
-func (mgr *SystemConfigMgr) GetPrequeueConfig(c *gin.Context) {
-	cfg, err := mgr.service.GetPrequeueConfig(c.Request.Context())
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.ServiceError)
-		return
-	}
-
-	resputil.Success(c, PrequeueConfigResp{
-		BackfillEnabled:                  cfg.BackfillEnabled,
-		QueueQuotaEnabled:                cfg.QueueQuotaEnabled,
-		NormalJobWaitingToleranceSeconds: cfg.NormalJobWaitingToleranceSeconds,
-		ActivateTickerIntervalSeconds:    cfg.ActivateTickerIntervalSeconds,
-		MaxTotalActivationsPerRound:      cfg.MaxTotalActivationsPerRound,
-	})
-}
-
-// UpdatePrequeueConfig godoc
-// @Summary		更新新版排队配置
-// @Description	更新回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数
-// @Tags			SystemConfig
-// @Accept			json
-// @Produce		json
-// @Security		Bearer
-// @Param			data	body		UpdatePrequeueConfigReq	true	"配置"
-// @Success		200		{object}	resputil.Response[string] "更新成功"
-// @Failure		400		{object}	resputil.Response[any] "参数错误"
-// @Failure		500		{object}	resputil.Response[any] "服务器错误"
-// @Router			/v1/admin/system-config/prequeue [put]
-func (mgr *SystemConfigMgr) UpdatePrequeueConfig(c *gin.Context) {
-	var req UpdatePrequeueConfigReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	cfg := &service.PrequeueRuntimeConfig{
-		BackfillEnabled:                  *req.BackfillEnabled,
-		QueueQuotaEnabled:                *req.QueueQuotaEnabled,
-		NormalJobWaitingToleranceSeconds: *req.NormalJobWaitingToleranceSeconds,
-		ActivateTickerIntervalSeconds:    *req.ActivateTickerIntervalSeconds,
-		MaxTotalActivationsPerRound:      *req.MaxTotalActivationsPerRound,
-	}
-	if err := mgr.service.UpdatePrequeueConfig(c.Request.Context(), cfg); err != nil {
-		if strings.Contains(err.Error(), "must be greater than 0") {
-			resputil.BadRequestError(c, err.Error())
-			return
-		}
-		resputil.Error(c, err.Error(), resputil.ServiceError)
-		return
-	}
-	if mgr.watcher != nil {
-		mgr.watcher.RequestFullScan()
-	}
-
-	resputil.Success(c, "Prequeue configuration updated successfully")
 }

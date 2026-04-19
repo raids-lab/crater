@@ -10,6 +10,7 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
@@ -18,23 +19,12 @@ import (
 	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
-//nolint:gocyclo // TODO
 func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
 
 	var req CreateTensorflowReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	scheduleType, err := req.validateScheduleOptions(false)
-	if err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
 
@@ -85,8 +75,9 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		CraterJobTypePytorch,
 		token,
 		baseURL,
-		&req.CreateJobCommon,
-		scheduleMetadata,
+		req.Name,
+		req.Template,
+		req.AlertEnabled,
 	)
 
 	// 4. Create the task spec
@@ -153,7 +144,10 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		tasks[i] = taskSpec
 	}
 
-	queueName := vcqueue.ResolveJobQueueName(token)
+	queueName := token.AccountName
+	if token.AccountID != model.DefaultAccountID {
+		queueName = vcqueue.GetUserQueueName(token.AccountID, token.UserID)
+	}
 	// 5. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -180,7 +174,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.submitJob(c, token, &job); err != nil {
+	if err = mgr.client.Create(c, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

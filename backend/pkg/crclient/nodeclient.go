@@ -378,10 +378,10 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 	return nodeInfo, nil
 }
 
-func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, operator string) (bool, error) {
+func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, operator string) error {
 	node, err := nc.KubeClient.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		return false, err
+		return err
 	}
 	// 确保 Annotations 不为 nil
 	if node.Annotations == nil {
@@ -424,10 +424,7 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, op
 	}
 
 	_, err = nc.KubeClient.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
-	if err != nil {
-		return false, err
-	}
-	return wasUnschedulable, nil
+	return err
 }
 
 // getPodsForNode 获取节点上的 Pod 列表（内部辅助方法）

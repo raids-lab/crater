@@ -258,14 +258,6 @@ definitions:
     - RoleGuest
     - RoleUser
     - RoleAdmin
-  github_com_raids-lab_crater_dao_model.ScheduleType:
-    enum:
-    - 0
-    - 1
-    type: integer
-    x-enum-varnames:
-    - ScheduleTypeBackfill
-    - ScheduleTypeNormal
   github_com_raids-lab_crater_dao_model.Status:
     enum:
     - 0
@@ -513,15 +505,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult:
-    properties:
-      code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
-      data:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult'
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
     properties:
       code:
@@ -585,15 +568,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobResourceSummaryResp:
-    properties:
-      code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
-      data:
-        $ref: '#/definitions/internal_handler.JobResourceSummaryResp'
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp:
     properties:
       code:
@@ -630,24 +604,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp:
-    properties:
-      code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
-      data:
-        $ref: '#/definitions/internal_handler.PrequeueConfigResp'
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp:
-    properties:
-      code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
-      data:
-        $ref: '#/definitions/internal_handler.PrequeueFeatureStatusResp'
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
     properties:
       code:
@@ -663,24 +619,6 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
       data:
         $ref: '#/definitions/internal_handler.PutUserInProjectResp'
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp:
-    properties:
-      code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
-      data:
-        $ref: '#/definitions/internal_handler.QueueQuotaConfigItemResp'
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaResp:
-    properties:
-      code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
-      data:
-        $ref: '#/definitions/internal_handler.QueueQuotaResp'
       msg:
         type: string
     type: object
@@ -774,38 +712,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult:
-    properties:
-      details:
-        items:
-          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitDetail'
-        type: array
-      enabled:
-        type: boolean
-      exceeded:
-        type: boolean
-    type: object
-  github_com_raids-lab_crater_internal_service.ResourceLimitDetail:
-    properties:
-      exceeded:
-        type: boolean
-      limit:
-        type: string
-      resource:
-        type: string
-      used:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_service_vcjob.ForwardType:
-    enum:
-    - 0
-    - 1
-    - 2
-    type: integer
-    x-enum-varnames:
-    - _
-    - IngressType
-    - NodePortType
   github_com_raids-lab_crater_internal_util.VolumeMount:
     properties:
       datasetID:
@@ -1229,39 +1135,6 @@ definitions:
       userName:
         type: string
     type: object
-  internal_handler.JobResourceSummaryAcceleratorResp:
-    properties:
-      limit:
-        type: string
-      resource:
-        type: string
-      used:
-        type: string
-    type: object
-  internal_handler.JobResourceSummaryResp:
-    properties:
-      accelerators:
-        items:
-          $ref: '#/definitions/internal_handler.JobResourceSummaryAcceleratorResp'
-        type: array
-      cpu:
-        $ref: '#/definitions/internal_handler.JobResourceSummaryUsageResp'
-      memory:
-        $ref: '#/definitions/internal_handler.JobResourceSummaryUsageResp'
-      occupiedJobs:
-        type: integer
-      queueName:
-        type: string
-      quotaEnabled:
-        type: boolean
-    type: object
-  internal_handler.JobResourceSummaryUsageResp:
-    properties:
-      limit:
-        type: string
-      used:
-        type: string
-    type: object
   internal_handler.JobTemplateReq:
     properties:
       describe:
@@ -1412,24 +1285,6 @@ definitions:
       value:
         type: string
     type: object
-  internal_handler.PrequeueConfigResp:
-    properties:
-      activateTickerIntervalSeconds:
-        type: integer
-      backfillEnabled:
-        type: boolean
-      maxTotalActivationsPerRound:
-        type: integer
-      normalJobWaitingToleranceSeconds:
-        type: integer
-      queueQuotaEnabled:
-        type: boolean
-    type: object
-  internal_handler.PrequeueFeatureStatusResp:
-    properties:
-      backfillEnabled:
-        type: boolean
-    type: object
   internal_handler.ProjectCreateResp:
     properties:
       id:
@@ -1457,48 +1312,6 @@ definitions:
     required:
     - aid
     - uid
-    type: object
-  internal_handler.QueueQuotaConfigItemResp:
-    properties:
-      enabled:
-        type: boolean
-      id:
-        type: integer
-      name:
-        type: string
-      prequeueCandidateSize:
-        type: integer
-      quota:
-        additionalProperties:
-          type: string
-        type: object
-    type: object
-  internal_handler.QueueQuotaReq:
-    properties:
-      enabled:
-        type: boolean
-      name:
-        type: string
-      prequeueCandidateSize:
-        type: integer
-      quota:
-        additionalProperties:
-          type: string
-        type: object
-    type: object
-  internal_handler.QueueQuotaResp:
-    properties:
-      quotas:
-        items:
-          $ref: '#/definitions/internal_handler.QueueQuotaConfigItemResp'
-        type: array
-    type: object
-  internal_handler.ResourceLimitCheckReq:
-    properties:
-      requestedResources:
-        additionalProperties:
-          type: string
-        type: object
     type: object
   internal_handler.SetGpuAnalysisStatusReq:
     properties:
@@ -1660,25 +1473,6 @@ definitions:
     required:
     - baseUrl
     - modelName
-    type: object
-  internal_handler.UpdatePrequeueConfigReq:
-    properties:
-      activateTickerIntervalSeconds:
-        type: integer
-      backfillEnabled:
-        type: boolean
-      maxTotalActivationsPerRound:
-        type: integer
-      normalJobWaitingToleranceSeconds:
-        type: integer
-      queueQuotaEnabled:
-        type: boolean
-    required:
-    - activateTickerIntervalSeconds
-    - backfillEnabled
-    - maxTotalActivationsPerRound
-    - normalJobWaitingToleranceSeconds
-    - queueQuotaEnabled
     type: object
   internal_handler.UpdateResourceReq:
     properties:
@@ -2026,8 +1820,6 @@ definitions:
         type: string
       resource:
         $ref: '#/definitions/v1.ResourceList'
-      scheduleType:
-        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
       selectors:
         items:
           $ref: '#/definitions/v1.NodeSelectorRequirement'
@@ -2056,8 +1848,18 @@ definitions:
       port:
         type: integer
       type:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_service_vcjob.ForwardType'
+        $ref: '#/definitions/internal_handler_vcjob.ForwardType'
     type: object
+  internal_handler_vcjob.ForwardType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - _
+    - IngressType
+    - NodePortType
   internal_handler_vcjob.ImageBaseInfo:
     properties:
       archs:
@@ -3854,125 +3656,6 @@ paths:
       summary: Get users not in account
       tags:
       - Project
-  /v1/admin/queue-quotas:
-    get:
-      description: 查询当前系统的各队列资源限制配置
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 配置信息
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaResp'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取队列内资源限制
-      tags:
-      - QueueQuota
-    post:
-      consumes:
-      - application/json
-      description: 创建单个队列的资源限制配置
-      parameters:
-      - description: 配置信息
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler.QueueQuotaReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 创建成功
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp'
-        "400":
-          description: 参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "409":
-          description: 名称冲突
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 创建队列内资源限制
-      tags:
-      - QueueQuota
-  /v1/admin/queue-quotas/{id}:
-    delete:
-      description: 删除单个队列的资源限制配置
-      parameters:
-      - description: 队列配置 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 删除成功
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
-        "400":
-          description: 参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "404":
-          description: 配置不存在
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 删除队列内资源限制
-      tags:
-      - QueueQuota
-    put:
-      consumes:
-      - application/json
-      description: 更新单个队列的资源限制配置
-      parameters:
-      - description: 队列配置 ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: 配置信息
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler.QueueQuotaReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 更新成功
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp'
-        "400":
-          description: 参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "404":
-          description: 配置不存在
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "409":
-          description: 名称冲突
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 更新队列内资源限制
-      tags:
-      - QueueQuota
   /v1/admin/resources/{id}:
     delete:
       consumes:
@@ -4390,56 +4073,6 @@ paths:
       security:
       - Bearer: []
       summary: 更新 LLM 配置
-      tags:
-      - SystemConfig
-  /v1/admin/system-config/prequeue:
-    get:
-      description: 获取当前回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 配置
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取新版排队配置
-      tags:
-      - SystemConfig
-    put:
-      consumes:
-      - application/json
-      description: 更新回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数
-      parameters:
-      - description: 配置
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler.UpdatePrequeueConfigReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 更新成功
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
-        "400":
-          description: 参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 更新新版排队配置
       tags:
       - SystemConfig
   /v1/admin/users:
@@ -5159,59 +4792,6 @@ paths:
       summary: Update after judging Verification Code for email
       tags:
       - Context
-  /v1/context/job-resource-summary:
-    get:
-      consumes:
-      - application/json
-      description: 按个人或账户视角汇总运行中与排队中的作业资源占用，并返回队列内资源限制
-      parameters:
-      - default: personal
-        description: 资源占用视角
-        enum:
-        - personal
-        - account
-        in: query
-        name: scope
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 当前作业资源占用汇总
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobResourceSummaryResp'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取当前资源占用汇总
-      tags:
-      - Context
-  /v1/context/prequeue:
-    get:
-      description: 返回当前是否允许提交 backfill 作业
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 当前状态
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取回填提交开关状态
-      tags:
-      - Context
   /v1/context/queue:
     get:
       consumes:
@@ -5235,33 +4815,6 @@ paths:
       security:
       - Bearer: []
       summary: Get the queue information
-      tags:
-      - Context
-  /v1/context/resource-limit-check:
-    post:
-      consumes:
-      - application/json
-      description: 根据队列内资源限制配置，检查当前用户运行中作业资源加上本次请求资源是否超限
-      parameters:
-      - description: 本次请求的资源
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/internal_handler.ResourceLimitCheckReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 检查结果
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 检查用户资源使用是否超限
       tags:
       - Context
   /v1/dataset/{datasetId}/queuesIn:

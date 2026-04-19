@@ -13,7 +13,6 @@ import (
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 // Manager is the interface that wraps the basic methods for a handler manager.
@@ -50,12 +49,9 @@ type RegisterConfig struct {
 	// ServiceManager 用于创建 Service 和 Ingress
 	ServiceManager crclient.ServiceManagerInterface
 
-	CronJobManager  *cronjob.CronJobManager
-	PrequeueWatcher *prequeuewatcher.PrequeueWatcher
+	CronJobManager *cronjob.CronJobManager
 
-	// services
 	ConfigService      *service.ConfigService
-	PrequeueService    *service.PrequeueService
 	GpuAnalysisService *service.GpuAnalysisService
 }
 

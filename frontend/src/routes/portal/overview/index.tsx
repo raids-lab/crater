@@ -26,14 +26,12 @@ import JobPhaseLabel, { getJobPhaseLabel, jobPhases } from '@/components/badge/j
 import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
-import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import DocsButton from '@/components/button/docs-button'
 import NivoPie from '@/components/chart/nivo-pie'
 import PieCard from '@/components/chart/pie-card'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { getHeader } from '@/components/job/overview/admin-jobs'
-import { scheduleTypes } from '@/components/job/statuses'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -43,14 +41,8 @@ import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import {
-  IJobInfo,
-  JobPhase,
-  JobType,
-  ScheduleType,
-  apiJobAllList,
-  getUnifiedJobPhase,
-} from '@/services/api/vcjob'
+import { JobPhase } from '@/services/api/vcjob'
+import { IJobInfo, JobType, apiJobAllList } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
 
@@ -75,22 +67,17 @@ const toolbarConfig: DataTableToolbarConfig = {
       option: jobTypes,
     },
     {
-      key: 'scheduleType',
-      title: getHeader('scheduleType'),
-      option: scheduleTypes,
-    },
-    {
       key: 'status',
       title: '状态',
       option: jobPhases,
-      defaultValues: ['Running', 'Pending', 'Prequeue'],
+      defaultValues: ['Running', 'Pending'],
     },
   ],
   getHeader: getHeader,
 }
 
 function Overview() {
-  const { i18n, t } = useTranslation()
+  const { i18n } = useTranslation()
   const userInfo = useAtomValue(atomUserInfo)
   const nodeQuery = useQuery(queryNodes(true))
   const { getNicknameByName } = useAccountNameLookup()
@@ -117,17 +104,6 @@ function Overview() {
           <DataTableColumnHeader column={column} title={getHeader('jobType')} />
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
-      },
-      {
-        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
-        id: 'scheduleType',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
-        ),
-        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id))
-        },
       },
       {
         accessorKey: 'queue',
@@ -179,8 +155,7 @@ function Overview() {
         },
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
-        id: 'status',
+        accessorKey: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
@@ -361,12 +336,10 @@ function Overview() {
               icon: FlaskConicalIcon,
             },
             {
-              title: t('statuses.waiting'),
-              value:
-                jobQuery.data?.filter((job) => getUnifiedJobPhase(job.status) === JobPhase.Pending)
-                  .length ?? 0,
+              title: '等待中作业',
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Pending).length,
               className: 'text-highlight-purple',
-              description: t('jobs.statuses.pending.description'),
+              description: '等待调度或未就绪的作业数量',
               icon: ClockIcon,
             },
             {
@@ -384,7 +357,7 @@ function Overview() {
               icon: GpuIcon,
             },
           ]}
-          className="lg:col-span-2 @5xl/main:grid-cols-5"
+          className="lg:col-span-2"
         />
         <PieCard
           icon={FlaskConicalIcon}

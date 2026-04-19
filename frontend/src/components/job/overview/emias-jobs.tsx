@@ -36,7 +36,6 @@ import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
-import JobResourceSummary from '@/components/job/job-resource-summary'
 import { getHeader } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import { DataTable } from '@/components/query-table'
@@ -55,12 +54,13 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import { apiJobBatchList, apiJobDelete } from '@/services/api/vcjob'
-import { IJobInfo, JobType, getUnifiedJobPhase } from '@/services/api/vcjob'
+import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
+import Quota from '../../../routes/portal/jobs/inter/-components/quota'
 import ListedNewJobButton from '../new-job-button'
 
 // Link Options for portal job navigation
@@ -168,7 +168,6 @@ const ColocateOverview = () => {
         queryClient.invalidateQueries({ queryKey: ['job'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'quota'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
-        queryClient.invalidateQueries({ queryKey: ['context', 'job-resource-summary'] }),
       ])
     } catch (error) {
       logger.error(t('jobs.toast.refetchFailed'), error)
@@ -208,8 +207,7 @@ const ColocateOverview = () => {
         cell: ({ row }) => <div>{row.getValue('owner')}</div>,
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
-        id: 'status',
+        accessorKey: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
@@ -393,7 +391,7 @@ const ColocateOverview = () => {
             isDanger: true,
           },
         ]}
-        briefChildren={<JobResourceSummary />}
+        briefChildren={<Quota />}
       >
         <ListedNewJobButton mode="custom" />
       </DataTable>

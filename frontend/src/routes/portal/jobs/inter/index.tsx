@@ -28,12 +28,10 @@ import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
-import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import DocsButton from '@/components/button/docs-button'
 import { TimeDistance } from '@/components/custom/time-distance'
 import CodeServerIcon from '@/components/icon/code-server-icon'
 import JupyterIcon from '@/components/icon/jupyter-icon'
-import JobResourceSummary from '@/components/job/job-resource-summary'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
@@ -43,15 +41,12 @@ import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 
 import {
-  IJobInfo,
   JobPhase,
-  JobType,
-  ScheduleType,
   apiJobDelete,
   apiJobInteractiveList,
-  getUnifiedJobPhase,
   isInteracitveJob,
 } from '@/services/api/vcjob'
+import { IJobInfo, JobType } from '@/services/api/vcjob'
 
 import { logger } from '@/utils/loglevel'
 
@@ -87,9 +82,6 @@ function RouteComponent() {
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({ queryKey: ['context', 'quota'] })
         ),
-        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
-          queryClient.invalidateQueries({ queryKey: ['context', 'job-resource-summary'] })
-        ),
       ])
     } catch (error) {
       logger.error('更新查询失败', error)
@@ -114,24 +106,12 @@ function RouteComponent() {
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
       {
-        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
-        id: 'scheduleType',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
-        ),
-        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id))
-        },
-      },
-      {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
-        id: 'status',
+        accessorKey: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
@@ -258,7 +238,6 @@ function RouteComponent() {
       query={interactiveQuery}
       columns={interColumns}
       toolbarConfig={jobToolbarConfig}
-      briefChildren={<JobResourceSummary />}
       multipleHandlers={[
         {
           title: (rows) => translate('jobs.handlers.stopOrDeleteTitle', { count: rows.length }),
