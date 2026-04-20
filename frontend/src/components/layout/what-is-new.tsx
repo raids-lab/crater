@@ -31,28 +31,36 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 
 // Current app version - update this when you release new features
-const CURRENT_VERSION = '0.0.0'
+const CURRENT_VERSION = '1.0.0'
 
 // This would be your markdown content
 const WHATS_NEW_CONTENT = `
-## 版本 0.0.0
+## 版本 1.0.0
 
-> 开源 & 0.0.1 版本的发布已经不远了 🥳
+> 从 2023 年 7 月第一个前端提交开始，到今天，Crater 已走过近两年九个月。
+> 这段时间里，我们累计完成了近千次代码提交、300 余次功能迭代。
+> 在这个春天，Crater 终于迎来了 1.0.0 正式版。
 
-### 新功能
-- 新增「共享文件」功能，您可以把自己的 \`Home\` 目录分享给其他用户读写了 
-- 提供了 CUDA 11~12 的基础镜像，快从 Slurm Conda 环境迁移吧，后者真的很慢
-- 分布式作业支持 RDMA（基于 InfiniBand），和 TCP 连接说再见
-- 自定义任务可以用普通用户而非 \`root\` 用户提交了，但您还需要阅读一下提交页面的文档，我们在努力优化 💪
+### 本次更新
 
-### 问题修复
-- 分布式作业的「外部访问」功能现在正常了
-- 邮件通知的日期显示正常了，样式也更好看了
+- 作业体系更完整：支持 Jupyter、WebIDE、自定义任务、PyTorch DDP、TensorFlow PS 等多种作业类型
+- 开发流程更顺手：支持作业模板、作业克隆、日志查看、事件追踪，以及终止原因与资源明细展示
+- 镜像能力更成熟：支持 Dockerfile、Envd、Pip / Apt 等多种构建方式，也支持镜像上传、克隆、分享与标签筛选
+- 数据与文件管理更清晰：支持数据集、模型、共享块、文件系统管理，以及共享协作与权限控制
+- 平台视图与管理能力更完善：支持 GPU、网络、空闲资源监控，支持节点详情、平台统计与 GPU 分析，并提供用户、配额、审批单、Cron Job、计费点数等管理功能
 
-## 即将到来
-- 镜像按照标签搜索，Python、CUDA、Jupyter... 想要什么搜什么！
-- 数据缓存优化，多次访问同一数据集时极大提速，对标企业级体验！
-- 作业锁定的工单系统，不用再在群里 @ 管理员，小需求快捷通过
+### 接下来
+
+- 更好的国产化与异构硬件支持
+- 更智能的运维与平台治理能力
+- 面向 Harness 时代工作流的 CLI
+- 持续升级存储系统的稳定性与体验
+- 更加公平可靠的调度系统
+- 以及更多正在路上
+
+感谢一路以来的使用、反馈与催促。
+
+欢迎在仓库留下 Star 或提交 Issue，和我们一起把 Crater 做得更好🥳
 `
 
 interface WhatsNewDialogProps {
