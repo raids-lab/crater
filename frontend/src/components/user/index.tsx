@@ -43,6 +43,9 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
   const { t } = useTranslation()
   const hideUsername = useAtomValue(globalHideUsername)
   const grafanaUser = useAtomValue(configGrafanaUserAtom)
+  // TODO: 这两个标签页对应的能力尚未实现，先在正式版本中隐藏（管理员/用户视图都隐藏）。
+  // 等 SharedItems / RecentActivity 真实可用后，再把该开关改为可配置项（feature flag / config）。
+  const hideUnimplementedTabs = true
 
   // 1. 获取用户信息
   const { data: user } = useQuery({
@@ -117,20 +120,24 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
       children: <UserJobsOverview username={name} />,
       scrollable: true,
     },
-    {
-      key: 'shared',
-      icon: Database,
-      label: t('userDetail.tabs.sharedResources'),
-      children: <SharedItems />,
-      scrollable: true,
-    },
-    {
-      key: 'recent',
-      icon: Calendar,
-      label: t('userDetail.tabs.recentActivity'),
-      children: <RecentActivity />,
-      scrollable: true,
-    },
+    ...(!hideUnimplementedTabs
+      ? ([
+          {
+            key: 'shared',
+            icon: Database,
+            label: t('userDetail.tabs.sharedResources'),
+            children: <SharedItems />,
+            scrollable: true,
+          },
+          {
+            key: 'recent',
+            icon: Calendar,
+            label: t('userDetail.tabs.recentActivity'),
+            children: <RecentActivity />,
+            scrollable: true,
+          },
+        ] as const)
+      : []),
   ]
 
   return <DetailPage {...props} header={header} info={info} tabs={tabs} />
