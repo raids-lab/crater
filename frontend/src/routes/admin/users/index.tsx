@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
@@ -44,6 +44,7 @@ import { Input } from '@/components/ui/input'
 
 import UserRoleBadge from '@/components/badge/user-role-badge'
 import UserStatusBadge from '@/components/badge/user-status-badge'
+import { UserPointsTooltip } from '@/components/custom/user-points-tooltip'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
@@ -69,6 +70,12 @@ import {
   apiAdminUserUpdateRole,
 } from '@/services/api/admin/user'
 import { Role } from '@/services/api/auth'
+import {
+  AdjustUserExtraBalanceReq,
+  apiAdminAdjustUserExtraBalance,
+  apiAdminGetUserBillingSummary,
+} from '@/services/api/billing'
+import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 
 import { atomUserInfo } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
@@ -82,6 +89,10 @@ interface TUser {
   name: string
   role: string
   status: string
+  extraBalance?: number
+  periodFreeTotal?: number
+  totalIssueAmount?: number
+  totalAvailable?: number
   attributes: IUserAttributes
 }
 
@@ -299,12 +310,154 @@ function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
   )
 }
 
+const adjustBalanceFormSchema = z.object({
+  delta: z.number(),
+  reason: z.string().optional(),
+})
+
+type AdjustBalanceFormValues = z.infer<typeof adjustBalanceFormSchema>
+
+interface UserAdjustBalanceDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  user: TUser | null
+}
+
+function UserAdjustBalanceDialog({ open, onOpenChange, user }: UserAdjustBalanceDialogProps) {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
+  const form = useForm<AdjustBalanceFormValues>({
+    resolver: zodResolver(adjustBalanceFormSchema),
+    defaultValues: {
+      delta: 0,
+      reason: '',
+    },
+  })
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        delta: 0,
+        reason: '',
+      })
+    }
+  }, [form, open])
+
+  const { mutate: adjustBalance, isPending } = useMutation({
+    mutationFn: (values: AdjustUserExtraBalanceReq) => {
+      if (!user) throw new Error('No user selected')
+      return apiAdminAdjustUserExtraBalance(user.name, values)
+    },
+    onSuccess: (_, values) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'billing-summary'] })
+      toast.success(
+        t('userTable.adjustBalance.success', {
+          defaultValue: '点数调整成功',
+        }) + ` (${values.delta > 0 ? '+' : ''}${values.delta})`
+      )
+      onOpenChange(false)
+    },
+    onError: () => {
+      toast.error(
+        t('userTable.adjustBalance.error', {
+          defaultValue: '点数调整失败',
+        })
+      )
+    },
+  })
+
+  const onSubmit = (values: AdjustBalanceFormValues) => {
+    adjustBalance(values)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>
+            {t('userTable.adjustBalance.title', {
+              defaultValue: '调整额外点数',
+            })}
+          </DialogTitle>
+          <DialogDescription>
+            {t('userTable.adjustBalance.description', {
+              defaultValue: '按增量调整用户 extra 点数，可输入正数或负数。',
+            })}
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="delta"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {t('userTable.adjustBalance.delta', {
+                      defaultValue: '变更值',
+                    })}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      value={field.value ?? 0}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {t('userTable.adjustBalance.reason', {
+                      defaultValue: '原因',
+                    })}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t('userTable.adjustBalance.reasonPlaceholder', {
+                        defaultValue: '可选，便于审计',
+                      })}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? t('common.saving') : t('common.saveChanges')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function UserList() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const userInfo = useAtomValue(atomUserInfo)
   const [editUser, setEditUser] = useState<TUser | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [adjustUser, setAdjustUser] = useState<TUser | null>(null)
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false)
+
+  const { data: billingStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
+  })
+  const billingEnabled = billingStatus?.featureEnabled ?? false
 
   const userQuery = useQuery({
     queryKey: ['admin', 'userlist'],
@@ -315,9 +468,43 @@ function UserList() {
         name: item.name,
         role: item.role.toString(),
         status: item.status.toString(),
+        extraBalance: item.extraBalance,
         attributes: item.attributes,
       })),
   })
+  const billingSummaryQuery = useQuery({
+    queryKey: ['admin', 'users', 'billing-summary'],
+    queryFn: () => apiAdminGetUserBillingSummary().then((res) => res.data),
+    enabled: billingEnabled,
+  })
+  const mergedUserQuery = useMemo(
+    () =>
+      ({
+        data: (userQuery.data ?? []).map((user) => {
+          const summary = (billingSummaryQuery.data ?? []).find((item) => item.userId === user.id)
+          return {
+            ...user,
+            extraBalance: summary?.extraBalance ?? user.extraBalance,
+            periodFreeTotal: summary?.periodFreeTotal ?? 0,
+            totalIssueAmount: summary?.totalIssueAmount ?? 0,
+            totalAvailable: summary?.totalAvailable ?? 0,
+          }
+        }),
+        isLoading: userQuery.isLoading || (billingEnabled && billingSummaryQuery.isLoading),
+        dataUpdatedAt: Math.max(userQuery.dataUpdatedAt, billingSummaryQuery.dataUpdatedAt),
+        refetch: userQuery.refetch,
+      }) as unknown as UseQueryResult<TUser[], Error>,
+    [
+      billingEnabled,
+      billingSummaryQuery.data,
+      billingSummaryQuery.dataUpdatedAt,
+      billingSummaryQuery.isLoading,
+      userQuery.data,
+      userQuery.dataUpdatedAt,
+      userQuery.isLoading,
+      userQuery.refetch,
+    ]
+  )
 
   const { mutate: deleteUser } = useMutation({
     mutationFn: (userName: string) => apiAdminUserDelete(userName),
@@ -337,7 +524,7 @@ function UserList() {
   })
 
   const columns = useMemo<ColumnDef<TUser>[]>(() => {
-    return [
+    const baseColumns: ColumnDef<TUser>[] = [
       {
         accessorKey: 'name',
         header: ({ column }) => (
@@ -391,6 +578,31 @@ function UserList() {
           return (value as string[]).includes(row.getValue(id))
         },
       },
+      ...(billingEnabled
+        ? [
+            {
+              accessorKey: 'totalAvailable',
+              header: ({ column }) => (
+                <DataTableColumnHeader
+                  column={column}
+                  title={t('userTable.headers.totalPoints', { defaultValue: '点数' })}
+                />
+              ),
+              cell: ({ row }) => (
+                <UserPointsTooltip
+                  userName={row.original.name}
+                  totalPoints={row.original.totalAvailable ?? 0}
+                  extraPoints={row.original.extraBalance ?? 0}
+                  periodFreePoints={row.original.periodFreeTotal ?? 0}
+                  effectiveIssueAmount={row.original.totalIssueAmount ?? 0}
+                  showInlineBreakdown
+                  inlineVariant="minimal"
+                  fetchDetail
+                />
+              ),
+            } as ColumnDef<TUser>,
+          ]
+        : []),
       {
         id: 'actions',
         enableHiding: false,
@@ -417,6 +629,20 @@ function UserList() {
                     >
                       {t('userTable.editInfo')}
                     </DropdownMenuItem>
+                    {billingEnabled && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setAdjustUser(user)
+                            setAdjustDialogOpen(true)
+                          }}
+                        >
+                          {t('userTable.adjustBalance.action', {
+                            defaultValue: '调整额外点数',
+                          })}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSub>
                       <DropdownMenuSubTrigger>{t('userTable.roleLabel')}</DropdownMenuSubTrigger>
                       <DropdownMenuSubContent>
@@ -475,7 +701,8 @@ function UserList() {
         },
       },
     ]
-  }, [deleteUser, userInfo, updateRole, t])
+    return baseColumns
+  }, [billingEnabled, deleteUser, userInfo, updateRole, t])
 
   return (
     <>
@@ -485,11 +712,16 @@ function UserList() {
           description: t('userTable.description'),
         }}
         storageKey="admin_user"
-        query={userQuery}
+        query={mergedUserQuery as UseQueryResult<TUser[], Error>}
         columns={columns}
         toolbarConfig={toolbarConfig}
       />
       <UserEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} user={editUser} />
+      <UserAdjustBalanceDialog
+        open={adjustDialogOpen}
+        onOpenChange={setAdjustDialogOpen}
+        user={adjustUser}
+      />
     </>
   )
 }

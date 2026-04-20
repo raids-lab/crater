@@ -21,6 +21,7 @@ import { useMemo } from 'react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 
+import { AccountBillingActions } from '@/components/account/account-billing-actions'
 import { AccountMemberTable } from '@/components/account/account-member-table'
 import PageTitle from '@/components/layout/page-title'
 
@@ -101,7 +102,14 @@ function RouteComponent() {
       <PageTitle
         title={t('navigation.memberManagement')}
         description={t('accountDetail.tabs.users')}
-      />
+        className="h-auto flex-wrap items-start sm:h-12 sm:flex-nowrap sm:items-center"
+      >
+        <AccountBillingActions
+          accountId={accountId}
+          isAdminView={false}
+          editable={accountContext?.roleQueue === Role.Admin}
+        />
+      </PageTitle>
       <AccountMemberTable
         accountId={accountId}
         editable={accountContext?.roleQueue === Role.Admin}

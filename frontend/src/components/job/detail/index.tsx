@@ -23,6 +23,7 @@ import {
   CheckCircleIcon,
   ClipboardListIcon,
   ClockIcon,
+  CoinsIcon,
   CreditCardIcon,
   FileSlidersIcon,
   GaugeIcon,
@@ -72,6 +73,7 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
+import { apiJobBillingDetail } from '@/services/api/billing'
 import { apiGetPodIngresses } from '@/services/api/tool'
 import {
   JobPhase,
@@ -90,6 +92,7 @@ import {
 import useFixedLayout from '@/hooks/use-fixed-layout'
 import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
 
+import { formatBillingPoints } from '@/utils/billing'
 import { hasNvidiaGPU } from '@/utils/resource'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 import { getDaysDifference } from '@/utils/time'
@@ -114,6 +117,11 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     queryKey: ['job', 'detail', jobName],
     queryFn: () => apiJobGetDetail(jobName),
     select: (res) => res.data,
+    refetchInterval: REFETCH_INTERVAL,
+  })
+  const { data: billingDetail } = useQuery({
+    queryKey: ['job', 'detail', jobName, 'billing'],
+    queryFn: () => apiJobBillingDetail(jobName).then((res) => res.data),
     refetchInterval: REFETCH_INTERVAL,
   })
 
@@ -364,6 +372,15 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           title: '状态',
           icon: ActivityIcon,
           value: <JobPhaseLabel jobPhase={data.status} />,
+        },
+        {
+          title: '累计消耗',
+          icon: CoinsIcon,
+          value: (
+            <span className="font-mono text-sm">
+              {formatBillingPoints(billingDetail?.billedPointsTotal ?? 0)}
+            </span>
+          ),
         },
         {
           title: '创建于',

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { Trash2Icon } from 'lucide-react'
 import { useMemo } from 'react'
@@ -25,6 +25,7 @@ import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import DocsButton from '@/components/button/docs-button'
+import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
@@ -32,18 +33,28 @@ import { JobNameCell } from '@/components/label/job-name-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 
+import { apiJobBillingList } from '@/services/api/billing'
+import { apiGetBillingStatus } from '@/services/api/system-config'
 import { JobPhase, apiJobBatchList, apiJobDelete, isInteracitveJob } from '@/services/api/vcjob'
 import { IJobInfo, JobType } from '@/services/api/vcjob'
 
+import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import ListedNewJobButton from '../new-job-button'
 
+type JobTableRow = IJobInfo & { billedPointsTotal?: number }
+
 const VolcanoOverview = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { data: billingStatus } = useQuery({
+    queryKey: ['system-config', 'billing-status'],
+    queryFn: () => apiGetBillingStatus().then((res) => res.data),
+  })
+  const billingVisible = isBillingVisibleForUser(billingStatus)
 
   const batchQuery = useQuery({
     queryKey: ['job', 'batch'],
@@ -51,12 +62,49 @@ const VolcanoOverview = () => {
     select: (res) => res.data.filter((task) => !isInteracitveJob(task.jobType)),
     refetchInterval: REFETCH_INTERVAL,
   })
+  const billingQuery = useQuery({
+    queryKey: ['job', 'billing'],
+    queryFn: apiJobBillingList,
+    select: (res) =>
+      res.data.reduce<Record<string, number>>((acc, item) => {
+        acc[item.jobName] = item.billedPointsTotal
+        return acc
+      }, {}),
+    refetchInterval: REFETCH_INTERVAL,
+    enabled: billingVisible,
+  })
+  const mergedBatchQuery = useMemo(
+    () =>
+      ({
+        data: (batchQuery.data ?? []).map((job) => ({
+          ...job,
+          billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
+        })),
+        isLoading: batchQuery.isLoading || (billingVisible && billingQuery.isLoading),
+        dataUpdatedAt: Math.max(
+          batchQuery.dataUpdatedAt,
+          billingVisible ? billingQuery.dataUpdatedAt : 0
+        ),
+        refetch: batchQuery.refetch,
+      }) as unknown as UseQueryResult<JobTableRow[], Error>,
+    [
+      batchQuery.data,
+      batchQuery.dataUpdatedAt,
+      batchQuery.isLoading,
+      batchQuery.refetch,
+      billingVisible,
+      billingQuery.data,
+      billingQuery.dataUpdatedAt,
+      billingQuery.isLoading,
+    ]
+  )
 
   const refetchTaskList = async () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
+        queryClient.invalidateQueries({ queryKey: ['job', 'billing'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'quota'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
@@ -73,7 +121,7 @@ const VolcanoOverview = () => {
     },
   })
 
-  const batchColumns = useMemo<ColumnDef<IJobInfo>[]>(
+  const batchColumns = useMemo<ColumnDef<JobTableRow>[]>(
     () => [
       {
         accessorKey: 'jobType',
@@ -119,6 +167,15 @@ const VolcanoOverview = () => {
           return <ResourceBadges resources={resources} />
         },
       },
+      ...(billingVisible
+        ? [
+            {
+              accessorKey: 'billedPointsTotal',
+              header: ({ column }) => <DataTableColumnHeader column={column} title="累计点数" />,
+              cell: ({ row }) => <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />,
+            } as ColumnDef<JobTableRow>,
+          ]
+        : []),
       {
         accessorKey: 'createdAt',
         header: ({ column }) => (
@@ -158,7 +215,7 @@ const VolcanoOverview = () => {
         },
       },
     ],
-    [deleteTask]
+    [billingVisible, deleteTask]
   )
 
   return (
@@ -168,7 +225,7 @@ const VolcanoOverview = () => {
         description: '使用自定义作业进行训练、推理等任务',
       }}
       storageKey="portal_batch_job_overview"
-      query={batchQuery}
+      query={mergedBatchQuery}
       columns={batchColumns}
       toolbarConfig={jobToolbarConfig}
       multipleHandlers={[

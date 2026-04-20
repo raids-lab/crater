@@ -36,6 +36,10 @@ type Account struct {
 	ExpiredAt        *time.Time                      `gorm:"comment:账户过期时间"`
 	Quota            datatypes.JSONType[QueueQuota]  `gorm:"comment:账户对应队列的资源配额"`
 	UserDefaultQuota *datatypes.JSONType[QueueQuota] `gorm:"comment:账户中用户默认的资源配额模版"`
+	// Billing issue config (phase-2 persistent schema).
+	BillingIssueAmount        *int64     `gorm:"comment:账户周期发放点数额度(内部微点, 为空表示未配置)"`
+	BillingIssuePeriodMinutes *int       `gorm:"comment:账户周期发放间隔分钟(<=0表示关闭, 为空表示未配置)"`
+	BillingLastIssuedAt       *time.Time `gorm:"comment:账户上次发放时间"`
 
 	UserAccounts    []UserAccount
 	AccountDatasets []AccountDataset
@@ -49,4 +53,7 @@ type UserAccount struct {
 	AccessMode AccessMode `gorm:"not null;comment:用户在账户空间的访问模式 (na, ro, rw)"`
 
 	Quota datatypes.JSONType[QueueQuota] `gorm:"comment:用户在账户中的资源配额"`
+	// Billing issue state for current account cycle.
+	BillingIssueAmountOverride *int64 `gorm:"comment:用户在账户内的周期发放额度覆盖(内部微点, 为空表示沿用账户配置)"`
+	PeriodFreeBalance          int64  `gorm:"not null;default:0;comment:用户在当前周期的免费额度剩余(内部微点)"`
 }

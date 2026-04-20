@@ -38,6 +38,7 @@ export interface IUser {
   name: string
   role: Role
   status: ProjectStatus
+  extraBalance?: number
   attributes: IUserAttributes
 }
 

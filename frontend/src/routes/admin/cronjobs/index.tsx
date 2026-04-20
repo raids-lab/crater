@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { AlarmClockIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,7 +27,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import TipBadge from '@/components/badge/tip-badge'
 
-import { apiAdminGetGpuAnalysisStatus } from '@/services/api/system-config'
+import {
+  apiAdminGetBillingStatus,
+  apiAdminGetGpuAnalysisStatus,
+} from '@/services/api/system-config'
 import {
   CronJobConfig,
   CronJobConfigStatus,
@@ -71,6 +74,11 @@ const JOB_CONFIGS = [
     jobName: 'cronPolicy.gpuAnalysisTitle',
     jobType: 'patrol_function',
   },
+  {
+    jobId: 'biling-base-loop',
+    jobName: 'cronPolicy.billingBaseLoopTitle',
+    jobType: 'patrol_function',
+  },
 ]
 
 function CronPolicy({ className }: { className?: string }) {
@@ -82,8 +90,15 @@ function CronPolicy({ className }: { className?: string }) {
     queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
     staleTime: 1000 * 60 * 5,
   })
+  const { data: billingStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
+    staleTime: 1000 * 60 * 5,
+  })
 
   const showGpuAnalysis = gpuStatus?.enabled ?? false
+  const showBilling = billingStatus?.featureEnabled ?? false
+  const showPatrolTab = showGpuAnalysis || showBilling
 
   const jobsQuery = useQuery({
     queryKey: ['admin', 'cronjobs', 'configs'],
@@ -104,21 +119,42 @@ function CronPolicy({ className }: { className?: string }) {
   const statusQuery = useQuery({
     queryKey: ['admin', 'cronjobs', 'status'],
     queryFn: async () => {
+      const visibleNames = JOB_CONFIGS.filter((job) => {
+        if (job.jobId === 'trigger-gpu-analysis-job') return showGpuAnalysis
+        if (job.jobId === 'biling-base-loop') return showBilling
+        return true
+      }).map((job) => job.jobId)
       const res = await apiAdminCronJobConfigStatus({
-        name: JOB_CONFIGS.map((job) => job.jobId),
+        name: visibleNames,
       })
       return res.data || {}
     },
     refetchInterval: 5000,
   })
 
-  const cleanerJobs = JOB_CONFIGS.filter((job) => job.jobType === 'cleaner_function')
-  const patrolJobs = JOB_CONFIGS.filter((job) => job.jobType === 'patrol_function')
-
+  const cleanerJobs = useMemo(
+    () => JOB_CONFIGS.filter((job) => job.jobType === 'cleaner_function'),
+    []
+  )
+  const patrolJobs = useMemo(
+    () =>
+      JOB_CONFIGS.filter((job) => job.jobType === 'patrol_function').filter((job) => {
+        if (job.jobId === 'trigger-gpu-analysis-job') return showGpuAnalysis
+        if (job.jobId === 'biling-base-loop') return showBilling
+        return true
+      }),
+    [showBilling, showGpuAnalysis]
+  )
   const tabToJobNames: Record<string, string[]> = {
     cleaner_function: cleanerJobs.map((j) => j.jobId),
     patrol_function: patrolJobs.map((j) => j.jobId),
   }
+
+  useEffect(() => {
+    if (!showPatrolTab && activeTab === 'patrol_function') {
+      setActiveTab('cleaner_function')
+    }
+  }, [activeTab, showPatrolTab])
 
   const renderJobCards = (jobs: typeof JOB_CONFIGS) => {
     if (jobsQuery.isLoading) {
@@ -171,11 +207,9 @@ function CronPolicy({ className }: { className?: string }) {
               {t('cronPolicy.title')}
               <TipBadge />
             </CardTitle>
-            <TabsList
-              className={cn('grid w-full', showGpuAnalysis ? 'grid-cols-2' : 'grid-cols-1')}
-            >
+            <TabsList className={cn('grid w-full', showPatrolTab ? 'grid-cols-2' : 'grid-cols-1')}>
               <TabsTrigger value="cleaner_function">{t('cronPolicy.cleanerJobsTitle')}</TabsTrigger>
-              {showGpuAnalysis && (
+              {showPatrolTab && (
                 <TabsTrigger value="patrol_function">{t('cronPolicy.patrolJobsTitle')}</TabsTrigger>
               )}
             </TabsList>
@@ -184,7 +218,7 @@ function CronPolicy({ className }: { className?: string }) {
             <TabsContent value="cleaner_function" className="mt-0">
               {renderJobCards(cleanerJobs)}
             </TabsContent>
-            {showGpuAnalysis && (
+            {showPatrolTab && (
               <TabsContent value="patrol_function" className="mt-0">
                 {renderJobCards(patrolJobs)}
               </TabsContent>

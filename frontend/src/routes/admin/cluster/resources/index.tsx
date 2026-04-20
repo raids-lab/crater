@@ -19,8 +19,17 @@ import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { BoxIcon, CpuIcon, NetworkIcon, RefreshCcwIcon, TagIcon, Trash2Icon } from 'lucide-react'
-import { type FC, useMemo, useState } from 'react'
+import {
+  BoxIcon,
+  CheckIcon,
+  CpuIcon,
+  NetworkIcon,
+  RefreshCcwIcon,
+  TagIcon,
+  Trash2Icon,
+  XIcon,
+} from 'lucide-react'
+import { type FC, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -44,11 +53,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
+import {
+  BillingPriceResource,
+  apiAdminUpdateResourceUnitPrice,
+  apiBillingPriceList,
+} from '@/services/api/billing'
 import {
   Resource,
   apiAdminResourceDelete,
@@ -57,7 +73,9 @@ import {
   apiResourceList,
   apiResourceNetworks,
 } from '@/services/api/resource'
+import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 
+import { formatBillingPoints } from '@/utils/billing'
 import { formatBytes } from '@/utils/formatter'
 
 import { UpdateResourceForm } from './-components/form'
@@ -124,6 +142,93 @@ const VGPUCell: FC<{ resourceId: number; resourceType?: string }> = ({
           )}
         </Badge>
       ))}
+    </div>
+  )
+}
+
+const UnitPriceCell: FC<{ resourceId: number; unitPrice: number }> = ({
+  resourceId,
+  unitPrice,
+}) => {
+  const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const [nextPrice, setNextPrice] = useState<number>(unitPrice)
+  const isValidPrice =
+    Number.isFinite(nextPrice) &&
+    nextPrice >= 0 &&
+    Math.abs(nextPrice * 100 - Math.round(nextPrice * 100)) < 1e-8
+
+  useEffect(() => {
+    setNextPrice(unitPrice)
+  }, [unitPrice])
+
+  const { mutate: updateUnitPrice, isPending } = useMutation({
+    mutationFn: (next: number) => apiAdminUpdateResourceUnitPrice(resourceId, next),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['resources', 'billing-prices'],
+      })
+      toast.success(
+        t('resources.unitPrice.updateSuccess', {
+          defaultValue: '资源单价已更新',
+        })
+      )
+      setOpen(false)
+    },
+  })
+
+  return (
+    <div className="flex items-center">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Badge
+            className="hover:bg-primary hover:text-primary-foreground cursor-pointer font-mono select-none"
+            variant="secondary"
+          >
+            {formatBillingPoints(unitPrice)}
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 space-y-3 p-4">
+          <div className="text-sm font-medium">
+            {t('resources.unitPrice.editTitle', {
+              defaultValue: '修改小时单价',
+            })}
+          </div>
+          <p className="text-muted-foreground text-xs">资源单价单位为点数 / 单位 / 小时。</p>
+          <Input
+            type="number"
+            min={0}
+            step={0.01}
+            value={Number.isFinite(nextPrice) ? nextPrice : 0}
+            onChange={(e) => setNextPrice(Number(e.target.value))}
+          />
+          {!isValidPrice ? (
+            <p className="text-destructive text-xs">请输入非负的小时单价，最多保留两位小数。</p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-8 w-8"
+              onClick={() => {
+                setNextPrice(unitPrice)
+                setOpen(false)
+              }}
+            >
+              <XIcon className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-8 w-8"
+              disabled={isPending || !isValidPrice}
+              onClick={() => updateUnitPrice(nextPrice)}
+            >
+              <CheckIcon className="size-4" />
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   )
 }
@@ -238,6 +343,21 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
 function Resources() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const { data: billingStatus } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
+  })
+  const billingEnabled = billingStatus?.featureEnabled ?? false
+  const billingPricesQuery = useQuery({
+    queryKey: ['resources', 'billing-prices'],
+    queryFn: () => apiBillingPriceList(),
+    select: (res) =>
+      res.data.reduce<Record<number, BillingPriceResource>>((acc, item) => {
+        acc[item.id] = item
+        return acc
+      }, {}),
+    enabled: billingEnabled,
+  })
 
   const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
     return {
@@ -368,13 +488,34 @@ function Resources() {
           </Badge>
         ),
       },
+      ...(billingEnabled
+        ? [
+            {
+              accessorKey: 'unitPrice',
+              header: ({ column }) => (
+                <DataTableColumnHeader
+                  column={column}
+                  title={t('resources.columns.unitPrice', {
+                    defaultValue: '单价（点/单位/小时）',
+                  })}
+                />
+              ),
+              cell: ({ row }) => (
+                <UnitPriceCell
+                  resourceId={row.original.ID}
+                  unitPrice={billingPricesQuery.data?.[row.original.ID]?.unitPrice ?? 0}
+                />
+              ),
+            } as ColumnDef<Resource>,
+          ]
+        : []),
       {
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => <ActionsCell resource={row.original} />,
       },
     ]
-  }, [t])
+  }, [billingEnabled, billingPricesQuery.data, t])
 
   const query = useQuery({
     queryKey: ['resource', 'list'],

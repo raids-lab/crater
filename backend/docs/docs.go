@@ -464,7 +464,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.PutUserInProjectReq"
+                            "$ref": "#/definitions/internal_handler.UserPutUserInProjectReq"
                         }
                     }
                 ],
@@ -2339,6 +2339,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/projects/{aid}/billing/reset": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "立即对指定账户执行一次免费额度发放，不影响 extra 点数",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Project"
+                ],
+                "summary": "立即重置账户免费额度",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "aid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "重置成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/resources/link": {
             "post": {
                 "security": [
@@ -3156,6 +3204,64 @@ const docTemplate = `{
                         "description": "用户属性更新成功",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/users/{name}/billing/extra-balance": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员按增量调整用户 extraBalance（可正可负），使用行锁避免并发覆盖",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "调整用户额外点数",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "增量与原因",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.AdjustUserExtraBalanceReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "调整成功",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp"
                         }
                     },
                     "400": {
@@ -9641,6 +9747,20 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.AdjustUserExtraBalanceResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp": {
             "type": "object",
             "properties": {
@@ -10271,6 +10391,40 @@ const docTemplate = `{
                 },
                 "role": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Role"
+                }
+            }
+        },
+        "internal_handler.AdjustUserExtraBalanceReq": {
+            "type": "object",
+            "required": [
+                "delta"
+            ],
+            "properties": {
+                "delta": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.AdjustUserExtraBalanceResp": {
+            "type": "object",
+            "properties": {
+                "afterBalance": {
+                    "type": "number"
+                },
+                "beforeBalance": {
+                    "type": "number"
+                },
+                "delta": {
+                    "type": "number"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -11131,6 +11285,10 @@ const docTemplate = `{
                     "description": "创建时间",
                     "type": "string"
                 },
+                "extraBalance": {
+                    "description": "用户额外点数",
+                    "type": "number"
+                },
                 "group": {
                     "description": "课题组",
                     "type": "string"
@@ -11165,6 +11323,20 @@ const docTemplate = `{
                 },
                 "teacher": {
                     "description": "导师",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.UserPutUserInProjectReq": {
+            "type": "object",
+            "properties": {
+                "accessmode": {
+                    "type": "string"
+                },
+                "quota": {
+                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota"
+                },
+                "role": {
                     "type": "string"
                 }
             }

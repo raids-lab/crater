@@ -16,6 +16,8 @@ import (
 const (
 	// 占卡检测任务
 	TRIGGER_GPU_ANALYSIS_JOB = "trigger-gpu-analysis-job"
+	// Billing 基础循环
+	TRIGGER_BILLING_BASE_LOOP_JOB = "biling-base-loop"
 	// 未来可以扩展其他巡检任务，例如：
 	// CHECK_NODE_HEALTH = "check-node-health"
 )
@@ -24,12 +26,17 @@ type GpuAnalysisServiceInterface interface {
 	TriggerAllJobsAnalysis(ctx context.Context) (int, error)
 }
 
+type BillingServiceInterface interface {
+	RunBaseLoopOnce(ctx context.Context) (any, error)
+}
+
 // Clients 包含巡检任务所需的客户端
 type Clients struct {
 	Client             client.Client
 	KubeClient         kubernetes.Interface
 	PromClient         monitor.PrometheusInterface
 	GpuAnalysisService GpuAnalysisServiceInterface
+	BillingService     BillingServiceInterface
 }
 
 func NewPatrolClients(
@@ -37,12 +44,14 @@ func NewPatrolClients(
 	kubeClient kubernetes.Interface,
 	promClient monitor.PrometheusInterface,
 	gpuAnalysisService GpuAnalysisServiceInterface,
+	billingService BillingServiceInterface,
 ) *Clients {
 	return &Clients{
 		Client:             cli,
 		KubeClient:         kubeClient,
 		PromClient:         promClient,
 		GpuAnalysisService: gpuAnalysisService,
+		BillingService:     billingService,
 	}
 }
 
@@ -60,6 +69,10 @@ func GetPatrolFunc(jobName string, clients *Clients, jobConfig datatypes.JSON) (
 		}
 		f = func(ctx context.Context) (any, error) {
 			return RunTriggerGpuAnalysis(ctx, clients)
+		}
+	case TRIGGER_BILLING_BASE_LOOP_JOB:
+		f = func(ctx context.Context) (any, error) {
+			return RunTriggerBillingBaseLoop(ctx, clients)
 		}
 
 	default:

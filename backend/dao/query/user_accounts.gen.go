@@ -37,6 +37,8 @@ func newUserAccount(db *gorm.DB, opts ...gen.DOOption) userAccount {
 	_userAccount.Role = field.NewUint8(tableName, "role")
 	_userAccount.AccessMode = field.NewUint8(tableName, "access_mode")
 	_userAccount.Quota = field.NewField(tableName, "quota")
+	_userAccount.BillingIssueAmountOverride = field.NewInt64(tableName, "billing_issue_amount_override")
+	_userAccount.PeriodFreeBalance = field.NewInt64(tableName, "period_free_balance")
 
 	_userAccount.fillFieldMap()
 
@@ -46,16 +48,18 @@ func newUserAccount(db *gorm.DB, opts ...gen.DOOption) userAccount {
 type userAccount struct {
 	userAccountDo userAccountDo
 
-	ALL        field.Asterisk
-	ID         field.Uint
-	CreatedAt  field.Time
-	UpdatedAt  field.Time
-	DeletedAt  field.Field
-	UserID     field.Uint
-	AccountID  field.Uint
-	Role       field.Uint8 // 用户在账户中的角色 (user, admin)
-	AccessMode field.Uint8 // 用户在账户空间的访问模式 (na, ro, rw)
-	Quota      field.Field // 用户在账户中的资源配额
+	ALL                        field.Asterisk
+	ID                         field.Uint
+	CreatedAt                  field.Time
+	UpdatedAt                  field.Time
+	DeletedAt                  field.Field
+	UserID                     field.Uint
+	AccountID                  field.Uint
+	Role                       field.Uint8 // 用户在账户中的角色 (user, admin)
+	AccessMode                 field.Uint8 // 用户在账户空间的访问模式 (na, ro, rw)
+	Quota                      field.Field // 用户在账户中的资源配额
+	BillingIssueAmountOverride field.Int64 // 用户在账户内的周期发放额度覆盖(为空表示沿用账户配置)
+	PeriodFreeBalance          field.Int64 // 用户在当前周期的免费额度剩余
 
 	fieldMap map[string]field.Expr
 }
@@ -81,6 +85,8 @@ func (u *userAccount) updateTableName(table string) *userAccount {
 	u.Role = field.NewUint8(table, "role")
 	u.AccessMode = field.NewUint8(table, "access_mode")
 	u.Quota = field.NewField(table, "quota")
+	u.BillingIssueAmountOverride = field.NewInt64(table, "billing_issue_amount_override")
+	u.PeriodFreeBalance = field.NewInt64(table, "period_free_balance")
 
 	u.fillFieldMap()
 
@@ -107,7 +113,7 @@ func (u *userAccount) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userAccount) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 9)
+	u.fieldMap = make(map[string]field.Expr, 11)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -117,6 +123,8 @@ func (u *userAccount) fillFieldMap() {
 	u.fieldMap["role"] = u.Role
 	u.fieldMap["access_mode"] = u.AccessMode
 	u.fieldMap["quota"] = u.Quota
+	u.fieldMap["billing_issue_amount_override"] = u.BillingIssueAmountOverride
+	u.fieldMap["period_free_balance"] = u.PeriodFreeBalance
 }
 
 func (u userAccount) clone(db *gorm.DB) userAccount {
