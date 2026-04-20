@@ -63,15 +63,13 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
+	if !mgr.preCheckCreateJob(c, token, false) {
+		return
+	}
 
 	jobResources := v1.ResourceList{}
 	for i := range len(req.Tasks) {
 		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[i].Resource)
-	}
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
-	if len(exceededResources) > 0 {
-		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.NotSpecified)
-		return
 	}
 
 	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, token.AccountID); err != nil {

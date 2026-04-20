@@ -2,22 +2,20 @@ package handler
 
 import (
 	"fmt"
-	"sort"
-	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/rand"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -32,14 +30,16 @@ func init() {
 }
 
 type ContextMgr struct {
-	name   string
-	client client.Client
+	name           string
+	client         client.Client
+	billingService *service.BillingService
 }
 
 func NewContextMgr(conf *RegisterConfig) Manager {
 	return &ContextMgr{
-		name:   "context",
-		client: conf.Client,
+		name:           "context",
+		client:         conf.Client,
+		billingService: conf.BillingService,
 	}
 }
 
@@ -49,6 +49,7 @@ func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
+	g.GET("billing/summary", mgr.GetBillingSummary)
 	g.PUT("attributes", mgr.UpdateUserAttributes)
 	g.POST("email/code", mgr.SendUserVerificationCode)
 	g.POST("email/update", mgr.UpdateUserEmail)
@@ -106,21 +107,7 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 		}
 	}
 
-	// Query resource limits from user database
-	resources := make(map[v1.ResourceName]payload.ResourceResp)
-
-	// Process allocated resources
-	for name, quantity := range allocated {
-		if name == v1.ResourceCPU || name == v1.ResourceMemory || strings.Contains(string(name), "/") {
-			resources[name] = payload.ResourceResp{
-				Label: string(name),
-				Allocated: ptr.To(payload.ResourceBase{
-					Amount: quantity.Value(),
-					Format: string(quantity.Format),
-				}),
-			}
-		}
-	}
+	resources := newAllocatedQuotaResources(allocated)
 
 	// Get resource limits from database user
 	ua := query.UserAccount
@@ -130,43 +117,9 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 		return
 	}
 	capability := userAccount.Quota.Data().Capability
-	for name := range resources {
-		v, exists := capability[name]
-		if !exists {
-			continue
-		}
-		resource := resources[name]
-		resource.Capability = ptr.To(payload.ResourceBase{
-			Amount: v.Value(),
-			Format: string(v.Format),
-		})
-		resources[name] = resource
-	}
+	applyQuotaResourceList(resources, capability, setQuotaCapability)
 
-	// Extract CPU, memory and GPU resources
-	cpu := resources[v1.ResourceCPU]
-	cpu.Label = "cpu"
-	memory := resources[v1.ResourceMemory]
-	memory.Label = "mem"
-	var gpus []payload.ResourceResp
-	for name, resource := range resources {
-		if strings.Contains(string(name), "/") {
-			split := strings.Split(string(name), "/")
-			if len(split) == 2 {
-				resource.Label = split[1]
-			}
-			gpus = append(gpus, resource)
-		}
-	}
-	sort.Slice(gpus, func(i, j int) bool {
-		return gpus[i].Label < gpus[j].Label
-	})
-
-	resputil.Success(c, payload.QuotaResp{
-		CPU:    cpu,
-		Memory: memory,
-		GPUs:   gpus,
-	})
+	resputil.Success(c, buildQuotaResp(resources))
 }
 
 type (
@@ -176,6 +129,73 @@ type (
 		Attribute datatypes.JSONType[model.UserAttribute] `json:"attributes"`
 	}
 )
+
+type BillingSummaryResp struct {
+	PeriodFreeBalance          float64    `json:"periodFreeBalance"`
+	ExtraBalance               float64    `json:"extraBalance"`
+	TotalAvailable             float64    `json:"totalAvailable"`
+	LastIssuedAt               *time.Time `json:"lastIssuedAt"`
+	NextIssueAt                *time.Time `json:"nextIssueAt"`
+	EffectiveIssueAmount       float64    `json:"effectiveIssueAmount"`
+	EffectiveIssuePeriodMinute int        `json:"effectiveIssuePeriodMinutes"`
+}
+
+func (mgr *ContextMgr) GetBillingSummary(c *gin.Context) {
+	resp := BillingSummaryResp{}
+	if mgr.billingService == nil || !mgr.billingService.IsUserFacingEnabled(c.Request.Context()) {
+		resputil.Success(c, resp)
+		return
+	}
+
+	token := util.GetToken(c)
+	u := query.User
+	a := query.Account
+	uaQuery := query.UserAccount
+
+	user, err := u.WithContext(c).
+		Where(u.ID.Eq(token.UserID), u.DeletedAt.IsNull()).
+		First()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to load user: %v", err), resputil.NotSpecified)
+		return
+	}
+	account, err := a.WithContext(c).
+		Where(a.ID.Eq(token.AccountID), a.DeletedAt.IsNull()).
+		First()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to load account: %v", err), resputil.NotSpecified)
+		return
+	}
+	ua, err := uaQuery.WithContext(c).
+		Where(
+			uaQuery.UserID.Eq(token.UserID),
+			uaQuery.AccountID.Eq(token.AccountID),
+			uaQuery.DeletedAt.IsNull(),
+		).
+		First()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to load user-account relation: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	issueAmount, periodMinutes := mgr.billingService.ResolveEffectiveIssueConfigForUserAccount(
+		c.Request.Context(),
+		ua,
+		account,
+	)
+	nextIssueAt := mgr.billingService.ComputeNextIssueAt(account.BillingLastIssuedAt, periodMinutes, time.Now())
+
+	resp = BillingSummaryResp{
+		PeriodFreeBalance:          service.ToDisplayPoints(ua.PeriodFreeBalance),
+		ExtraBalance:               service.ToDisplayPoints(user.ExtraBalance),
+		TotalAvailable:             service.ToDisplayPoints(ua.PeriodFreeBalance + user.ExtraBalance),
+		LastIssuedAt:               account.BillingLastIssuedAt,
+		NextIssueAt:                nextIssueAt,
+		EffectiveIssueAmount:       service.ToDisplayPoints(issueAmount),
+		EffectiveIssuePeriodMinute: periodMinutes,
+	}
+	resputil.Success(c, resp)
+}
 
 // UpdateUserAttributes godoc
 //

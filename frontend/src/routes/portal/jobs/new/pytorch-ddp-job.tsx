@@ -51,12 +51,15 @@ import { OtherOptionsFormCard } from '@/components/form/other-options-form-field
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormPytorch } from '@/components/form/types'
+import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { publishValidateSearch } from '@/components/job/publish'
 import { PublishConfigForm } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
 
 import { apiPytorchCreate } from '@/services/api/vcjob'
+
+import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
   VolumeMountType,
@@ -72,6 +75,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/pytorch-ddp-job')({
   validateSearch: publishValidateSearch,
@@ -216,6 +220,8 @@ function RouteComponent() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const user = useAtomValue(atomUserInfo)
+  const { billingBlockDialogOpen, setBillingBlockDialogOpen, handleJobCreateError } =
+    useJobCreateBillingBlockDialog()
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
@@ -264,6 +270,12 @@ function RouteComponent() {
       ])
       toast.success(`作业 ${taskname} 创建成功`)
       router.history.back()
+    },
+    onError: (error) => {
+      if (handleJobCreateError(error)) {
+        return
+      }
+      showErrorToast(error)
     },
   })
 
@@ -358,6 +370,10 @@ function RouteComponent() {
 
   return (
     <>
+      <CreateBillingBlockDialog
+        open={billingBlockDialogOpen}
+        onOpenChange={setBillingBlockDialogOpen}
+      />
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit, onInvalid)}

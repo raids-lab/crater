@@ -28,6 +28,7 @@ type OperationsMgr struct {
 	// cron
 	cronJobManager *cronjob.CronJobManager
 	configService  *service.ConfigService
+	billingService *service.BillingService
 }
 
 func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
@@ -40,6 +41,7 @@ func NewOperationsMgr(conf *handler.RegisterConfig) handler.Manager {
 		taskController: conf.AITaskCtrl,
 		cronJobManager: conf.CronJobManager,
 		configService:  conf.ConfigService,
+		billingService: conf.BillingService,
 	}
 	return instance
 }

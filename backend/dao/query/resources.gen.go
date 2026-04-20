@@ -40,6 +40,7 @@ func newResource(db *gorm.DB, opts ...gen.DOOption) resource {
 	_resource.Format = field.NewString(tableName, "format")
 	_resource.Priority = field.NewInt(tableName, "priority")
 	_resource.Label = field.NewString(tableName, "label")
+	_resource.UnitPrice = field.NewInt64(tableName, "unit_price")
 	_resource.Type = field.NewString(tableName, "type")
 	_resource.Networks = resourceManyToManyNetworks{
 		db: db.Session(&gorm.Session{}),
@@ -73,6 +74,7 @@ type resource struct {
 	Format          field.String // 资源格式
 	Priority        field.Int    // 优先级
 	Label           field.String // 用于显示的别名
+	UnitPrice       field.Int64  // 资源单位价格(点数/单位/分钟)
 	Type            field.String // 资源类型
 	Networks        resourceManyToManyNetworks
 
@@ -103,6 +105,7 @@ func (r *resource) updateTableName(table string) *resource {
 	r.Format = field.NewString(table, "format")
 	r.Priority = field.NewInt(table, "priority")
 	r.Label = field.NewString(table, "label")
+	r.UnitPrice = field.NewInt64(table, "unit_price")
 	r.Type = field.NewString(table, "type")
 
 	r.fillFieldMap()
@@ -128,7 +131,7 @@ func (r *resource) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (r *resource) fillFieldMap() {
-	r.fieldMap = make(map[string]field.Expr, 14)
+	r.fieldMap = make(map[string]field.Expr, 15)
 	r.fieldMap["id"] = r.ID
 	r.fieldMap["created_at"] = r.CreatedAt
 	r.fieldMap["updated_at"] = r.UpdatedAt
@@ -141,6 +144,7 @@ func (r *resource) fillFieldMap() {
 	r.fieldMap["format"] = r.Format
 	r.fieldMap["priority"] = r.Priority
 	r.fieldMap["label"] = r.Label
+	r.fieldMap["unit_price"] = r.UnitPrice
 	r.fieldMap["type"] = r.Type
 
 }

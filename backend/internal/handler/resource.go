@@ -14,6 +14,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -22,15 +23,25 @@ func init() {
 }
 
 type ResourceMgr struct {
-	name       string
-	kubeClient kubernetes.Interface
+	name           string
+	kubeClient     kubernetes.Interface
+	billingService *service.BillingService
 }
 
 func NewResourceMgr(conf *RegisterConfig) Manager {
 	return &ResourceMgr{
-		name:       "resources",
-		kubeClient: conf.KubeClient,
+		name:           "resources",
+		kubeClient:     conf.KubeClient,
+		billingService: conf.BillingService,
 	}
+}
+
+func (mgr *ResourceMgr) isBillingFeatureEnabled(c *gin.Context) bool {
+	return mgr.billingService != nil && mgr.billingService.IsFeatureEnabled(c.Request.Context())
+}
+
+func (mgr *ResourceMgr) isBillingUserFacingEnabled(c *gin.Context) bool {
+	return mgr.billingService != nil && mgr.billingService.IsUserFacingEnabled(c.Request.Context())
 }
 
 func (mgr *ResourceMgr) GetName() string { return mgr.name }
@@ -39,6 +50,7 @@ func (mgr *ResourceMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ResourceMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListResource)
+	g.GET("/billing/prices", mgr.ListBillingPrices)
 	g.GET("/:id/networks", mgr.GetGPUNetworks)
 	g.GET(":id/vgpu", mgr.GetGPUVGPUResources)
 }
@@ -46,6 +58,7 @@ func (mgr *ResourceMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *ResourceMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/sync", mgr.SyncResource)
 	g.PUT("/:id", mgr.UpdateResource) // 注意这里改为新的方法名
+	g.PUT("/:id/billing/unit-price", mgr.UpdateResourceUnitPrice)
 	g.DELETE("/:id", mgr.DeleteResource)
 	g.POST("/:id/networks", mgr.LinkGPUToRDMA)
 	g.GET("/:id/networks", mgr.GetGPUNetworks)
@@ -63,7 +76,47 @@ type (
 		WithVendorDomain bool    `form:"withVendorDomain"`
 		DomainPrefix     *string `form:"domainPrefix" binding:"omitempty,hostname_rfc1123"`
 	}
+
+	ResourceResp struct {
+		ID              uint                      `json:"ID"`
+		Name            string                    `json:"name"`
+		VendorDomain    *string                   `json:"vendorDomain"`
+		ResourceType    string                    `json:"resourceType"`
+		Amount          int64                     `json:"amount"`
+		AmountSingleMax int64                     `json:"amountSingleMax"`
+		Format          string                    `json:"format"`
+		Priority        int                       `json:"priority"`
+		Label           string                    `json:"label"`
+		Type            *model.CraterResourceType `json:"type"`
+		Networks        []*model.Resource         `json:"networks"`
+	}
+
+	ResourceBillingPriceResp struct {
+		ID        uint    `json:"id"`
+		Name      string  `json:"name"`
+		Label     string  `json:"label"`
+		UnitPrice float64 `json:"unitPrice"`
+	}
 )
+
+func buildResourceResp(modelResource *model.Resource) ResourceResp {
+	if modelResource == nil {
+		return ResourceResp{}
+	}
+	return ResourceResp{
+		ID:              modelResource.ID,
+		Name:            modelResource.ResourceName,
+		VendorDomain:    modelResource.VendorDomain,
+		ResourceType:    modelResource.ResourceType,
+		Amount:          modelResource.Amount,
+		AmountSingleMax: modelResource.AmountSingleMax,
+		Format:          modelResource.Format,
+		Priority:        modelResource.Priority,
+		Label:           modelResource.Label,
+		Type:            modelResource.Type,
+		Networks:        modelResource.Networks,
+	}
+}
 
 // ListResource godoc
 //
@@ -96,7 +149,36 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("failed to list resources: %v", err), resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, resources)
+
+	resp := make([]ResourceResp, 0, len(resources))
+	for i := range resources {
+		resp = append(resp, buildResourceResp(resources[i]))
+	}
+	resputil.Success(c, resp)
+}
+
+func (mgr *ResourceMgr) ListBillingPrices(c *gin.Context) {
+	r := query.Resource
+	resources, err := r.WithContext(c).Order(r.Priority.Desc()).Find()
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list billing prices: %v", err), resputil.NotSpecified)
+		return
+	}
+
+	resp := make([]ResourceBillingPriceResp, 0, len(resources))
+	for i := range resources {
+		unitPrice := 0.0
+		if mgr.isBillingUserFacingEnabled(c) {
+			unitPrice = service.ToDisplayPoints(resources[i].UnitPrice)
+		}
+		resp = append(resp, ResourceBillingPriceResp{
+			ID:        resources[i].ID,
+			Name:      resources[i].ResourceName,
+			Label:     resources[i].Label,
+			UnitPrice: unitPrice,
+		})
+	}
+	resputil.Success(c, resp)
 }
 
 type (
@@ -314,6 +396,10 @@ type (
 	ResourcePathReq struct {
 		ID uint `uri:"id" binding:"required"`
 	}
+
+	UpdateResourceUnitPriceReq struct {
+		UnitPrice service.BillingAmountInput `json:"unitPrice"`
+	}
 )
 
 // UpdateResource godoc
@@ -362,6 +448,36 @@ func (mgr *ResourceMgr) UpdateResource(c *gin.Context) {
 	_, err := r.WithContext(c).Where(r.ID.Eq(param.ID)).Updates(updates)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to update resource: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, nil)
+}
+
+func (mgr *ResourceMgr) UpdateResourceUnitPrice(c *gin.Context) {
+	if mgr.billingService == nil || !mgr.isBillingFeatureEnabled(c) {
+		resputil.Error(c, "billing feature is disabled", resputil.BusinessLogicError)
+		return
+	}
+
+	var param ResourcePathReq
+	if err := c.ShouldBindUri(&param); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("failed to bind request: %v", err))
+		return
+	}
+
+	var req UpdateResourceUnitPriceReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("failed to bind request: %v", err))
+		return
+	}
+	unitPrice := req.UnitPrice.MicroPoints()
+	if unitPrice < 0 {
+		resputil.BadRequestError(c, "unitPrice must be >= 0")
+		return
+	}
+
+	if err := mgr.billingService.UpdateResourceUnitPrice(c.Request.Context(), param.ID, unitPrice); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to update resource unit price: %v", err), resputil.NotSpecified)
 		return
 	}
 	resputil.Success(c, nil)

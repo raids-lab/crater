@@ -52,6 +52,7 @@ type RegisterConfig struct {
 	CronJobManager *cronjob.CronJobManager
 
 	ConfigService      *service.ConfigService
+	BillingService     *service.BillingService
 	GpuAnalysisService *service.GpuAnalysisService
 }
 

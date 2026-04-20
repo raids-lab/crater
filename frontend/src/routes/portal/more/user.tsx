@@ -122,7 +122,6 @@ function RouteComponent() {
     queryFn: () => apiUserEmailVerified(),
     select: (res) => res.data,
   })
-
   const { mutate: updateUser } = useMutation({
     mutationFn: (values: IUserAttributes) => apiContextUpdateUserAttributes(values),
     onSuccess: (_data, values) => {

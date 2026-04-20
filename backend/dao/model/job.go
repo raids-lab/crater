@@ -94,6 +94,9 @@ type Job struct {
 	// 定时策略相关
 	KeepWhenLowResourceUsage bool      `gorm:"comment:当资源利用率低时是否保留"`
 	LockedTimestamp          time.Time `gorm:"comment:作业锁定时间"`
+	// Billing settlement state.
+	LastSettledAt     *time.Time `gorm:"comment:作业上次结算时间"`
+	BilledPointsTotal int64      `gorm:"not null;default:0;comment:作业累计已结算点数(内部微点)"`
 
 	// 诊断数据收集
 	ProfileData      *datatypes.JSONType[*monitor.ProfileData]          `gorm:"comment:作业的性能数据"`

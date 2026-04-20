@@ -17,7 +17,6 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -47,15 +46,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-
-	if err := aitaskctl.CheckInteractiveLimitBeforeCreate(c, token.UserID, token.AccountID); err != nil {
-		resputil.Error(c, err.Error(), resputil.ServiceError)
-		return
-	}
-
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(c, token.UserID, token.AccountID)
-	if len(exceededResources) > 0 {
-		resputil.Error(c, fmt.Sprintf("%v", exceededResources), resputil.ServiceError)
+	if !mgr.preCheckCreateJob(c, token, true) {
 		return
 	}
 

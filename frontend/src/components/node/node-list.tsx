@@ -27,7 +27,7 @@ import TooltipLink from '@/components/label/tooltip-link'
 import TooltipCopy from '@/components/label/tooltop-copy'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
-import { ProgressBar, progressTextColor } from '@/components/ui-custom/colorful-progress'
+import { MetricMeter } from '@/components/ui-custom/metric-meter'
 
 import { IClusterNodeTaint, INodeBriefInfo, NodeStatus } from '@/services/api/cluster'
 
@@ -203,14 +203,16 @@ export const UsageCell: FC<{
   }
 
   return (
-    <div className="w-20">
-      <p className={progressTextColor(usagePercent)}>
-        {usagePercent.toFixed(1)}
-        <span className="ml-0.5">%</span>
-      </p>
-      <ProgressBar percent={usagePercent} className="h-1 w-full" />
-      <p className="text-muted-foreground pt-1 font-mono text-xs">{displayValue}</p>
-    </div>
+    <MetricMeter
+      percent={usagePercent}
+      primary={
+        <>
+          {usagePercent.toFixed(1)}
+          <span className="ml-0.5">%</span>
+        </>
+      }
+      secondary={displayValue}
+    />
   )
 }
 
@@ -231,14 +233,17 @@ export const MultiGPUUsageCell: FC<{
   return (
     <div className="flex flex-col items-start justify-center gap-2">
       {gpuInfoList.map((gpuInfo, index) => (
-        <div key={index} className="w-20">
-          <p className={progressTextColor(gpuInfo.usagePercent)}>
-            {gpuInfo.usagePercent.toFixed(1)}
-            <span className="ml-0.5">%</span>
-          </p>
-          <ProgressBar percent={gpuInfo.usagePercent} className="h-1 w-full" />
-          <p className="text-muted-foreground pt-1 font-mono text-xs">{gpuInfo.displayValue}</p>
-        </div>
+        <MetricMeter
+          key={index}
+          percent={gpuInfo.usagePercent}
+          primary={
+            <>
+              {gpuInfo.usagePercent.toFixed(1)}
+              <span className="ml-0.5">%</span>
+            </>
+          }
+          secondary={gpuInfo.displayValue}
+        />
       ))}
     </div>
   )

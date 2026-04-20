@@ -90,6 +90,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	registerConfig.Client = mgr.GetClient()
 
 	registerConfig.ConfigService = service.NewConfigService(query.Q)
+	registerConfig.BillingService = service.NewBillingService(query.Q)
 
 	registerConfig.GpuAnalysisService = service.NewGpuAnalysisService(
 		query.Q,
@@ -104,9 +105,11 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 		registerConfig.KubeClient,
 		registerConfig.PrometheusClient,
 		registerConfig.GpuAnalysisService,
+		registerConfig.BillingService,
 	)
 
 	registerConfig.ConfigService.SetCronJobManager(registerConfig.CronJobManager)
+	registerConfig.BillingService.SetCronJobManager(registerConfig.CronJobManager)
 
 	go registerConfig.CronJobManager.SyncCronJob()
 

@@ -41,6 +41,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -56,6 +57,7 @@ type VcJobReconciler struct {
 	log              logr.Logger
 	prometheusClient monitor.PrometheusInterface // get monitor data
 	kubeClient       kubernetes.Interface
+	billingService   *service.BillingService
 }
 
 // NewVcJobReconciler returns a new reconcile.Reconciler
@@ -64,6 +66,7 @@ func NewVcJobReconciler(
 	scheme *runtime.Scheme,
 	prometheusClient monitor.PrometheusInterface,
 	kubeClient kubernetes.Interface,
+	billingService *service.BillingService,
 ) *VcJobReconciler {
 	return &VcJobReconciler{
 		Client:           crClient,
@@ -71,6 +74,7 @@ func NewVcJobReconciler(
 		log:              ctrl.Log.WithName("vcjob-reconciler"),
 		prometheusClient: prometheusClient,
 		kubeClient:       kubeClient,
+		billingService:   billingService,
 	}
 }
 
@@ -133,6 +137,11 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if record.Status == model.Deleted || record.Status == model.Freed ||
 			record.Status == batch.Failed || record.Status == batch.Completed ||
 			record.Status == batch.Aborted || record.Status == batch.Terminated {
+			if record.Status == model.Deleted && r.billingService != nil {
+				if settleErr := r.billingService.OnJobFinishedSettlement(ctx, record); settleErr != nil {
+					logger.Error(settleErr, "billing final settlement hook failed for deleted job")
+				}
+			}
 			if record.ProfileData == nil {
 				podName := getPodNameFromJobTemplate(record.Attributes.Data())
 				profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
@@ -174,6 +183,13 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		if info.RowsAffected == 0 {
 			logger.Info("job not found in database")
+		}
+		if r.billingService != nil {
+			record.Status = model.Freed
+			record.CompletedTimestamp = time.Now()
+			if settleErr := r.billingService.OnJobFinishedSettlement(ctx, record); settleErr != nil {
+				logger.Error(settleErr, "billing final settlement hook failed")
+			}
 		}
 		return ctrl.Result{}, nil
 	}
@@ -240,6 +256,26 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		job.Status.State.Phase == batch.Pending
 
 	if !isJobActive {
+		if r.billingService != nil && (oldRecord.Status == batch.Running || oldRecord.Status == batch.Pending) {
+			finalJob := *oldRecord
+			finalJob.Status = job.Status.State.Phase
+			if updateRecord.RunningTimestamp.IsZero() {
+				finalJob.RunningTimestamp = oldRecord.RunningTimestamp
+			} else {
+				finalJob.RunningTimestamp = updateRecord.RunningTimestamp
+			}
+			finalJob.CompletedTimestamp = updateRecord.CompletedTimestamp
+			if finalJob.CompletedTimestamp.IsZero() {
+				if !job.Status.State.LastTransitionTime.IsZero() {
+					finalJob.CompletedTimestamp = job.Status.State.LastTransitionTime.Time
+				} else if !oldRecord.CompletedTimestamp.IsZero() {
+					finalJob.CompletedTimestamp = oldRecord.CompletedTimestamp
+				}
+			}
+			if settleErr := r.billingService.OnJobFinishedSettlement(ctx, &finalJob); settleErr != nil {
+				logger.Error(settleErr, "billing final settlement hook failed")
+			}
+		}
 		r.cancelPendingApprovalOrders(ctx, job.Name, fmt.Sprintf("job is not running (status: %s), order is canceled", job.Status.State.Phase))
 	}
 
@@ -328,12 +364,24 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
 	for _, condition := range conditions {
+		if condition.LastTransitionTime == nil {
+			continue
+		}
 		switch condition.Status {
 		case batch.Running:
 			runningTimestamp = condition.LastTransitionTime.Time
 		case batch.Completed, batch.Failed, batch.Aborted, batch.Terminated:
 			completedTimestamp = condition.LastTransitionTime.Time
 		}
+	}
+	if runningTimestamp.IsZero() && job.Status.State.Phase == batch.Running && !job.Status.State.LastTransitionTime.IsZero() {
+		runningTimestamp = job.Status.State.LastTransitionTime.Time
+	}
+	if completedTimestamp.IsZero() &&
+		(job.Status.State.Phase == batch.Completed || job.Status.State.Phase == batch.Failed ||
+			job.Status.State.Phase == batch.Aborted || job.Status.State.Phase == batch.Terminated) &&
+		!job.Status.State.LastTransitionTime.IsZero() {
+		completedTimestamp = job.Status.State.LastTransitionTime.Time
 	}
 
 	nodes := make([]string, 0)

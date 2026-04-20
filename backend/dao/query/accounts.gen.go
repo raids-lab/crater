@@ -38,6 +38,9 @@ func newAccount(db *gorm.DB, opts ...gen.DOOption) account {
 	_account.ExpiredAt = field.NewTime(tableName, "expired_at")
 	_account.Quota = field.NewField(tableName, "quota")
 	_account.UserDefaultQuota = field.NewField(tableName, "user_default_quota")
+	_account.BillingIssueAmount = field.NewInt64(tableName, "billing_issue_amount")
+	_account.BillingIssuePeriodMinutes = field.NewInt(tableName, "billing_issue_period_minutes")
+	_account.BillingLastIssuedAt = field.NewTime(tableName, "billing_last_issued_at")
 	_account.UserAccounts = accountHasManyUserAccounts{
 		db: db.Session(&gorm.Session{}),
 
@@ -58,18 +61,21 @@ func newAccount(db *gorm.DB, opts ...gen.DOOption) account {
 type account struct {
 	accountDo accountDo
 
-	ALL              field.Asterisk
-	ID               field.Uint
-	CreatedAt        field.Time
-	UpdatedAt        field.Time
-	DeletedAt        field.Field
-	Name             field.String // 账户名称 (对应 Volcano Queue CRD)
-	Nickname         field.String // 账户别名 (用于显示)
-	Space            field.String // 账户空间绝对路径
-	ExpiredAt        field.Time   // 账户过期时间
-	Quota            field.Field  // 账户对应队列的资源配额
-	UserDefaultQuota field.Field  // 账户中用户默认的资源配额模版
-	UserAccounts     accountHasManyUserAccounts
+	ALL                       field.Asterisk
+	ID                        field.Uint
+	CreatedAt                 field.Time
+	UpdatedAt                 field.Time
+	DeletedAt                 field.Field
+	Name                      field.String // 账户名称 (对应 Volcano Queue CRD)
+	Nickname                  field.String // 账户别名 (用于显示)
+	Space                     field.String // 账户空间绝对路径
+	ExpiredAt                 field.Time   // 账户过期时间
+	Quota                     field.Field  // 账户对应队列的资源配额
+	UserDefaultQuota          field.Field  // 账户中用户默认的资源配额模版
+	BillingIssueAmount        field.Int64  // 账户周期发放点数额度(为空表示未配置)
+	BillingIssuePeriodMinutes field.Int    // 账户周期发放间隔分钟(<=0表示关闭, 为空表示未配置)
+	BillingLastIssuedAt       field.Time   // 账户上次发放时间
+	UserAccounts              accountHasManyUserAccounts
 
 	AccountDatasets accountHasManyAccountDatasets
 
@@ -98,6 +104,9 @@ func (a *account) updateTableName(table string) *account {
 	a.ExpiredAt = field.NewTime(table, "expired_at")
 	a.Quota = field.NewField(table, "quota")
 	a.UserDefaultQuota = field.NewField(table, "user_default_quota")
+	a.BillingIssueAmount = field.NewInt64(table, "billing_issue_amount")
+	a.BillingIssuePeriodMinutes = field.NewInt(table, "billing_issue_period_minutes")
+	a.BillingLastIssuedAt = field.NewTime(table, "billing_last_issued_at")
 
 	a.fillFieldMap()
 
@@ -122,7 +131,7 @@ func (a *account) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *account) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 12)
+	a.fieldMap = make(map[string]field.Expr, 15)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["created_at"] = a.CreatedAt
 	a.fieldMap["updated_at"] = a.UpdatedAt
@@ -133,6 +142,9 @@ func (a *account) fillFieldMap() {
 	a.fieldMap["expired_at"] = a.ExpiredAt
 	a.fieldMap["quota"] = a.Quota
 	a.fieldMap["user_default_quota"] = a.UserDefaultQuota
+	a.fieldMap["billing_issue_amount"] = a.BillingIssueAmount
+	a.fieldMap["billing_issue_period_minutes"] = a.BillingIssuePeriodMinutes
+	a.fieldMap["billing_last_issued_at"] = a.BillingLastIssuedAt
 
 }
 

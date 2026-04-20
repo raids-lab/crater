@@ -124,16 +124,16 @@ func CheckInteractiveLimitBeforeCreate(
 func CheckResourcesBeforeCreateJob(
 	c context.Context,
 	userID, accountID uint,
-) (exceededResources []v1.ResourceName) {
+) (exceededResources []v1.ResourceName, err error) {
 	uq := query.UserAccount
 	var userQueueQuota datatypes.JSONType[model.QueueQuota]
-	err := uq.WithContext(c).
+	err = uq.WithContext(c).
 		Where(uq.UserID.Eq(userID)).
 		Where(uq.AccountID.Eq(accountID)).
 		Select(uq.Quota).
 		Scan(&userQueueQuota)
 	if err != nil {
-		return exceededResources
+		return nil, err
 	}
 
 	j := query.Job
@@ -144,14 +144,14 @@ func CheckResourcesBeforeCreateJob(
 		Select(j.Resources).
 		Find()
 	if err != nil {
-		return exceededResources
+		return nil, err
 	}
 
 	const maxJobResources = 100
 	if len(jobResources) >= maxJobResources {
 		exceededResources = append(exceededResources, "作业数量超过限制")
-		return exceededResources
+		return exceededResources, nil
 	}
 
-	return exceededResources
+	return exceededResources, nil
 }
