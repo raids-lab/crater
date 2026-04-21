@@ -1,7 +1,5 @@
 package api
 
-import "fmt"
-
 // AuthClient 认证相关 API 的抽象。默认实现为 *Client（真实 HTTP；若设置 CRATER_HTTP_SIM 则传输层统一模拟，见本包 client.go）。测试可注入其它实现。
 type AuthClient interface {
 	Login(username, password, mode string) (*LoginResp, error)
@@ -63,18 +61,24 @@ func (c *Client) Login(username, password, mode string) (*LoginResp, error) {
 		Post(AuthLoginPath)
 
 	if err != nil {
-		return nil, fmt.Errorf("network error: %w", err)
+		return nil, &NetworkError{Cause: err}
 	}
 
+	status := resp.GetStatusCode()
 	if !resp.IsSuccessState() {
-		if result.Message != "" {
-			return nil, fmt.Errorf("API error (%d): %s", result.Code, result.Message)
+		return nil, &RequestError{
+			HTTPStatus: status,
+			CraterCode: result.Code,
+			Msg:        result.Message,
 		}
-		return nil, fmt.Errorf("API error: status code %d", resp.GetStatusCode())
 	}
 
 	if result.Code != 0 {
-		return nil, fmt.Errorf("API error (%d): %s", result.Code, result.Message)
+		return nil, &RequestError{
+			HTTPStatus: status,
+			CraterCode: result.Code,
+			Msg:        result.Message,
+		}
 	}
 
 	return &result.Data, nil

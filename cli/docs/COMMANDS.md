@@ -1,37 +1,42 @@
 # CLI COMMANDS REFERENCE (The Contract)
 
-这个文档是 Crater CLI 的唯一事实来源。所有代码实现必须严格遵循此处的定义。
+**职责划分**：本文档是 **Crater CLI 指令级契约** 的权威来源，包含全局通用规范，以及各命令章节对选项、处理逻辑、人类可读与 JSON 输出的行为与字段定义。开发时要完成哪些工作、这些工作如何在仓库与流程中落实，见 **[SPEC.md](./SPEC.md)**。现有代码如何组织、模块与调用链如何协作，见 **[ARCHITECTURE.md](./ARCHITECTURE.md)**。实现必须与本文档对各命令的约定一致，且不得违反 SPEC 中的跨命令公共约定。
+
+<a id="commands-global"></a>
 
 ## 全局通用规范 (Global Requirements)
 
 为了确保对 AI Agent、CI/CD 环境以及普通开发者的友好性，**所有命令（无论是否具备交互逻辑）必须统一支持以下全局选项：**
 
 - `--json`: 
-  - **行为**: 强制开启 `--no-interactive`，输出纯净的 JSON 至 `stdout`。
+  - **行为**: 强制开启 `--no-interactive`，输出纯净的 JSON 至 `stdout`。实现会在 Cobra 解析参数**之前**预扫描 `os.Args` 是否包含 `--json`（或 `--json=true` / `--json false` 等），因此 **`--json` 可出现在参数序列任意位置**；即使因未知 flag 等导致解析阶段失败，**错误输出仍可按 JSON 模式**写到 stderr。
   - **Stdout**: 输出**格式化后的 JSON (Pretty-printed, 带缩进和换行)**，确保既对人类可读，又可被 `jq` 等工具解析。禁止包含任何非 JSON 的装饰性文字。
+  - **成功体**：信封（顶层字段与 `data` 约束）见 **[SPEC.md](./SPEC.md)**「命令结果：错误与成功」；**`data` 不出现 `http_status`**。各命令章节**只**写本命令 `--json` 时 **`data` 含哪些键**；可选 **`message`**（**i18n**）；成功体**不得**使用与错误体相同的 **`category` / `code`**。
 - `--no-interactive`:
   - **行为**: 彻底禁用所有交互式 Prompt（如密码输入、确认提示、上下键选择等）。
   - **约束**: 如果缺少必要信息，立即报错并返回非零退出码。
 - `--help, -h`:
   - **行为**: 显示当前命令或子命令的帮助信息。
 
+<a id="commands-errors"></a>
+
 ### 错误处理规范 (Error Handling)
 
 所有错误必须通过 `stderr` 输出，其格式受 `--json` 影响：
 
-1. **默认模式**: 输出人类可读的 `Error: <message>`。
+1. **默认模式**: 首行 `Error:`，正文为 `err.Error()`（`*clierror.Error` 即 `Message`）。正文**允许多行**；`internal/output` 对正文**按行**统一加两格基础缩进，行首若另有空格（如列表 `  -`）会与基础缩进**叠加**。不要求整段仅占一行。
 2. **JSON 模式**: 输出单行结构化 JSON 对象。
    - **Schema**:
      ```json
      {
-       "category": "usage_error | api_error | system_error",
-       "code": "ERR_XXX_XXX",
+       "category": "usage_error | api_error | system_error | cancelled",
+       "code": "ERR_NOT_FOUND_404 | ERR_UNAUTHORIZED_401 | …（见 SPEC）",
        "message": "Human readable message",
        "context": { "key": "value" } 
      }
      ```
-   - **错误码定义**: 统一参考源码中的 `pkg/errorcodes/codes.go`。
-   - **退出码**: 发生任何错误时，进程必须以非零状态码（通常为 1）退出。
+   - **错误码定义**: 以 `pkg/errorcodes/codes.go` 为准。**`api_error`** 的 **`code`** 须与 **HTTP** 显式对应，命名形如 **`ERR_NOT_FOUND_404`**、**`ERR_SERVER_INTERNAL_5XX`** 等，完整约定见 **[SPEC.md](./SPEC.md)**「命令结果：错误与成功」中 `api_error` 与 HTTP 小节。
+   - **退出码**: 出错时非零退出；具体数值由 `Execute` 根据 `*clierror.Error` 的 `category` 映射（实现为 `pkg/errorcodes.ExitCodeForCategory`：`usage_error`→2，`cancelled`→3，`api_error`→4，`system_error`→5；非 `*clierror.Error` 的错误→1）。命令实现里不必自行 `os.Exit`。
 
 ---
 
@@ -49,6 +54,7 @@
 - **预期行为**:
   - 更新 `state.json` 中的 `language` 字段。
   - 立即应用新语言展示成功提示。
+- **`--json` 的 `data`**：`language`（字符串，目标语言代码）。
 - **状态**: [ ] Pending
 
 ---
@@ -72,6 +78,7 @@
   - 调用 `/api/auth/login` 接口。
   - 成功后将 Token 存入系统 Keyring，键名为 `crater`，子键为 `platform|user|mode`。
   - 更新 `state.json` 中的 `auth_infos` 列表，并自动将该环境设为 `active_context`。
+- **`--json` 的 `data`**：`user`（与 CLI 持久化视图一致的用户摘要对象；**不含** token 明文等敏感字段，与实现 `config.AuthInfo` 对齐）。
 - **状态**: [x] Completed
 
 ### `crater auth switch`
@@ -93,6 +100,7 @@
   - **独立性**: 该命令**仅**负责切换认证环境，不会改变全局的视图模式（View Mode）。
 - **预期行为**:
   - 更新 `state.json` 中的 `active_context` 字段。
+- **`--json` 的 `data`**：`active`（对象，与 `state.json` 中 `active_context` 同形：`platform_url`、`username`、`method`）。
 - **状态**: [x] Completed
 
 ### `crater auth ls`
@@ -107,6 +115,7 @@
   - 标记出当前激活的 (`active`) 上下文。
 - **输出格式**:
   - 表格形式显示: `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
+- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目）。
 - **状态**: [ ] Pending
 
 ### `crater auth rm`
@@ -125,6 +134,7 @@
     - 从 `state.json` 中移除对应条目。
     - 同时从系统 Keyring 中删除关联的 Token。
     - 如果删除的是当前 `active` 的上下文，则将 `active_context` 置为空。
+- **`--json` 的 `data`**：`removed_count`（整数）。
 - **状态**: [ ] Pending
 
 ### `crater auth logout`
@@ -142,6 +152,7 @@
   - **后续行为 (Auto-Switch)**:
     - 如果列表中仍有其他已保存的认证上下文，则**自动切换**到列表中的第一项作为新的 `active_context`。
     - 如果列表为空，则清空 `active_context`。
+- **`--json` 的 `data`**：`next_active`（对象，与 `active_context` 同形；登出后若已无激活项则为各字段空字符串的同一结构）。
 - **状态**: [ ] Pending
 
 ---

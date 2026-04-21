@@ -1,15 +1,17 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
+	"os"
 	"syscall"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/raids-lab/crater/cli/internal/api"
-	"github.com/raids-lab/crater/cli/internal/auth"
+	"github.com/raids-lab/crater/cli/internal/clierror"
+	"github.com/raids-lab/crater/cli/internal/credential"
 	"github.com/raids-lab/crater/cli/internal/config"
 	"github.com/raids-lab/crater/cli/internal/i18n"
+	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -54,29 +56,29 @@ var loginCmd = &cobra.Command{
 
 		if platformURL == "" {
 			if noInter {
-				return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "platform URL", "platform")}
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "platform URL", "platform")}
 			}
 			fmt.Print(i18n.T("prompt_platform"))
 			fmt.Scanln(&platformURL)
 			if platformURL == "" {
-				return errors.New(i18n.T("err_missing_required", "platform URL", "platform"))
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "platform URL", "platform")}
 			}
 		}
 
 		if username == "" {
 			if noInter {
-				return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "username", "username")}
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "username", "username")}
 			}
 			fmt.Print(i18n.T("prompt_username"))
 			fmt.Scanln(&username)
 			if username == "" {
-				return errors.New(i18n.T("err_missing_required", "username", "username"))
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "username", "username")}
 			}
 		}
 
 		if password == "" {
 			if noInter {
-				return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_password")}
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_password")}
 			}
 			fmt.Print(i18n.T("prompt_password"))
 			bytePassword, err := term.ReadPassword(int(syscall.Stdin))
@@ -90,21 +92,21 @@ var loginCmd = &cobra.Command{
 		authClient := api.NewAuthClient(platformURL)
 		loginResp, err := authClient.Login(username, password, mode)
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategoryAPI, Code: errorcodes.ErrUnauthorized, Message: i18n.T("err_unauthorized", err.Error())}
+			return cliErrFromLoginAPI(err)
 		}
 
-		authManager, err := auth.NewAuthManager()
+		credStore, err := credential.NewStore()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
 		}
 		key := fmt.Sprintf("%s|%s|%s", platformURL, username, mode)
-		if err := authManager.StoreToken("crater", key, loginResp.AccessToken); err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
+		if err := credStore.StoreToken("crater", key, loginResp.AccessToken); err != nil {
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
 		}
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		roleToStr := func(r int) string {
@@ -142,11 +144,13 @@ var loginCmd = &cobra.Command{
 		}
 
 		if err := cm.Save(); err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		if outputJSON {
-			return MarshalJSON(map[string]interface{}{"status": "success", "user": newAuth})
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"user": newAuth,
+			}))
 		}
 		fmt.Printf("%s\n", i18n.T("login_success", platformURL, username, mode, roleForAuthInfo(newAuth.Role)))
 		return nil
@@ -164,7 +168,7 @@ var switchCmd = &cobra.Command{
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		active := cm.State.ActiveContext
@@ -187,7 +191,7 @@ var switchCmd = &cobra.Command{
 		}
 
 		if len(candidates) == 0 {
-			return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_not_found")}
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_not_found")}
 		}
 
 		var target config.AuthInfo
@@ -199,7 +203,7 @@ var switchCmd = &cobra.Command{
 				for _, c := range candidates {
 					msg += fmt.Sprintf("  - %s (%s, %s, %s)\n", c.PlatformURL, c.Username, c.Method, roleForAuthInfo(c.Role))
 				}
-				return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: msg}
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: msg}
 			}
 
 			options := make([]string, len(candidates))
@@ -212,10 +216,7 @@ var switchCmd = &cobra.Command{
 				Options: options,
 			}
 			if err := survey.AskOne(prompt, &selection); err != nil {
-				if err.Error() == "interrupt" {
-					return nil
-				}
-				return err
+				return errSurveyOrSame(err)
 			}
 			for i, opt := range options {
 				if opt == selection {
@@ -231,11 +232,13 @@ var switchCmd = &cobra.Command{
 			Method:      target.Method,
 		}
 		if err := cm.Save(); err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		if outputJSON {
-			return MarshalJSON(map[string]interface{}{"status": "switched", "active": cm.State.ActiveContext})
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"active": cm.State.ActiveContext,
+			}))
 		}
 		fmt.Printf("%s\n", i18n.T("switch_success", target.PlatformURL, target.Username, target.Method, roleForAuthInfo(target.Role)))
 		return nil
@@ -252,7 +255,7 @@ var lsCmd = &cobra.Command{
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		var filtered []config.AuthInfo
@@ -264,11 +267,10 @@ var lsCmd = &cobra.Command{
 		}
 
 		if outputJSON {
-			type Result struct {
-				ActiveContext config.ActiveContext `json:"active_context"`
-				AuthInfos     []config.AuthInfo    `json:"auth_infos"`
-			}
-			return MarshalJSON(Result{ActiveContext: active, AuthInfos: filtered})
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"active_context": active,
+				"auth_infos":     filtered,
+			}))
 		}
 
 		header := fmt.Sprintf("%s %s %s %s %s",
@@ -308,7 +310,7 @@ var rmCmd = &cobra.Command{
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		var toRemove []config.AuthInfo
@@ -322,11 +324,11 @@ var rmCmd = &cobra.Command{
 		}
 
 		if len(toRemove) == 0 {
-			return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_not_found")}
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_not_found")}
 		}
 
 		if noInter && !force {
-			return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "yes", "yes")}
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "yes", "yes")}
 		}
 
 		if !force {
@@ -337,21 +339,18 @@ var rmCmd = &cobra.Command{
 			var confirm bool
 			prompt := &survey.Confirm{Message: i18n.T("remove_confirm_ask"), Default: false}
 			if err := survey.AskOne(prompt, &confirm); err != nil {
-				if err.Error() == "interrupt" {
-					return nil
-				}
-				return &CLIError{Category: errorcodes.CategoryCancelled, Code: errorcodes.ErrOperationCancelled, Message: i18n.T("err_operation_cancelled")}
+				return errSurveyOrSame(err)
 			}
 			if !confirm {
-				return &CLIError{Category: errorcodes.CategoryCancelled, Code: errorcodes.ErrOperationCancelled, Message: i18n.T("err_operation_cancelled")}
+				return errOperationCancelled()
 			}
 		}
 
-		authManager, _ := auth.NewAuthManager()
+		credStore, _ := credential.NewStore()
 		for _, r := range toRemove {
-			if authManager != nil {
+			if credStore != nil {
 				key := fmt.Sprintf("%s|%s|%s", r.PlatformURL, r.Username, r.Method)
-				_ = authManager.RemoveToken("crater", key)
+				_ = credStore.RemoveToken("crater", key)
 			}
 			if r.PlatformURL == cm.State.ActiveContext.PlatformURL && r.Username == cm.State.ActiveContext.Username && r.Method == cm.State.ActiveContext.Method {
 				cm.State.ActiveContext = config.ActiveContext{}
@@ -360,11 +359,13 @@ var rmCmd = &cobra.Command{
 
 		cm.State.AuthInfos = remaining
 		if err := cm.Save(); err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		if outputJSON {
-			return MarshalJSON(map[string]interface{}{"status": "removed", "count": len(toRemove)})
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"removed_count": len(toRemove),
+			}))
 		}
 		fmt.Printf("%s\n", i18n.T("remove_success", len(toRemove)))
 		return nil
@@ -380,36 +381,33 @@ var logoutCmd = &cobra.Command{
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		active := cm.State.ActiveContext
 		if active.PlatformURL == "" {
-			return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_no_active")}
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_no_active")}
 		}
 
 		if noInter && !force {
-			return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "yes", "yes")}
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "yes", "yes")}
 		}
 
 		if !force {
 			var confirm bool
 			prompt := &survey.Confirm{Message: i18n.T("logout_confirm", active.PlatformURL, active.Username, active.Method, roleForActiveContext(cm.State, active)), Default: true}
 			if err := survey.AskOne(prompt, &confirm); err != nil {
-				if err.Error() == "interrupt" {
-					return nil
-				}
-				return &CLIError{Category: errorcodes.CategoryCancelled, Code: errorcodes.ErrOperationCancelled, Message: i18n.T("err_operation_cancelled")}
+				return errSurveyOrSame(err)
 			}
 			if !confirm {
-				return &CLIError{Category: errorcodes.CategoryCancelled, Code: errorcodes.ErrOperationCancelled, Message: i18n.T("err_operation_cancelled")}
+				return errOperationCancelled()
 			}
 		}
 
-		authManager, _ := auth.NewAuthManager()
-		if authManager != nil {
+		credStore, _ := credential.NewStore()
+		if credStore != nil {
 			key := fmt.Sprintf("%s|%s|%s", active.PlatformURL, active.Username, active.Method)
-			_ = authManager.RemoveToken("crater", key)
+			_ = credStore.RemoveToken("crater", key)
 		}
 
 		var remaining []config.AuthInfo
@@ -438,11 +436,13 @@ var logoutCmd = &cobra.Command{
 		}
 
 		if err := cm.Save(); err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: err.Error()}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: err.Error()}
 		}
 
 		if outputJSON {
-			return MarshalJSON(map[string]interface{}{"status": "logged_out", "next_active": cm.State.ActiveContext})
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"next_active": cm.State.ActiveContext,
+			}))
 		}
 		return nil
 	},

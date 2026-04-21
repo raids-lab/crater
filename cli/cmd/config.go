@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/config"
 	"github.com/raids-lab/crater/cli/internal/i18n"
+	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -23,7 +26,7 @@ var languageCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cm, err := config.NewConfigManager()
 		if err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		var targetLang string
@@ -37,11 +40,11 @@ var languageCmd = &cobra.Command{
 				}
 			}
 			if !supported {
-				return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_lang", targetLang)}
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_lang", targetLang)}
 			}
 		} else {
 			if viper.GetBool("no-interactive") {
-				return &CLIError{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_language_arg")}
+				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_language_arg")}
 			}
 
 			langs := i18n.GetSupportedLanguages()
@@ -64,10 +67,7 @@ var languageCmd = &cobra.Command{
 				Default: defaultOption,
 			}
 			if err := survey.AskOne(prompt, &selection); err != nil {
-				if err.Error() == "interrupt" {
-					return nil
-				}
-				return err
+				return errSurveyOrSame(err)
 			}
 
 			// Extract language code from selection (e.g., "en         (English)" -> "en")
@@ -82,14 +82,16 @@ var languageCmd = &cobra.Command{
 		// Update config
 		cm.State.Language = targetLang
 		if err := cm.Save(); err != nil {
-			return &CLIError{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		// Apply language immediately for the success message
 		i18n.SetLanguage(targetLang)
 
 		if outputJSON {
-			return MarshalJSON(map[string]interface{}{"status": "success", "language": targetLang})
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"language": targetLang,
+			}))
 		}
 		fmt.Println(i18n.T("lang_switch_success", targetLang))
 		return nil

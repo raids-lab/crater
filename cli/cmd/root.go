@@ -1,15 +1,16 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-isatty"
+	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/config"
 	"github.com/raids-lab/crater/cli/internal/i18n"
+	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -21,26 +22,8 @@ var (
 	outputJSON    bool
 )
 
-type ErrorResponse struct {
-	Category string                 `json:"category"`
-	Code     string                 `json:"code"`
-	Message  string                 `json:"message"`
-	Context  map[string]interface{} `json:"context,omitempty"`
-}
-
-type CLIError struct {
-	Category string
-	Code     string
-	Message  string
-	Context  map[string]interface{}
-}
-
-func (e *CLIError) Error() string {
-	return e.Message
-}
-
 func exitCodeFor(err error) int {
-	var e *CLIError
+	var e *clierror.Error
 	if errors.As(err, &e) {
 		return errorcodes.ExitCodeForCategory(e.Category)
 	}
@@ -73,6 +56,17 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	// Ensure `--json` works regardless of argument order.
+	// Cobra/pflag may fail fast on unknown flags before PersistentPreRunE runs,
+	// so we pre-scan os.Args to decide whether errors should render as JSON.
+	bootstrapJSONFlagFromArgs()
+	if outputJSON {
+		noInteractive = true
+	}
+	// Keep viper in sync even if flag parsing fails early.
+	viper.Set("no-interactive", noInteractive)
+	viper.Set("json", outputJSON)
+
 	// Scheme A: initialize language and update help texts
 	// BEFORE Cobra decides to render help/usage.
 	initLanguageAndHelp()
@@ -83,13 +77,38 @@ func Execute() {
 	}
 }
 
+func bootstrapJSONFlagFromArgs() {
+	// 最后一次出现的 `--json` 生效；在 Cobra 解析失败前也要能识别，以便错误走 JSON。
+	args := os.Args[1:]
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if strings.HasPrefix(a, "--json=") {
+			v := strings.TrimPrefix(a, "--json=")
+			if b, err := strconv.ParseBool(v); err == nil {
+				outputJSON = b
+			}
+			continue
+		}
+		if a == "--json" {
+			if i+1 < len(args) {
+				if b, err := strconv.ParseBool(args[i+1]); err == nil {
+					outputJSON = b
+					i++
+					continue
+				}
+			}
+			outputJSON = true
+		}
+	}
+}
+
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&noInteractive, "no-interactive", false, "Disable interactive prompts")
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Output in raw JSON format")
 	rootCmd.PersistentFlags().BoolP("help", "h", false, "Help for crater")
 
 	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		return &CLIError{
+		return &clierror.Error{
 			Category: errorcodes.CategoryUsage,
 			Code:     errorcodes.ErrInvalidFlagValue,
 			Message:  err.Error(),
@@ -101,28 +120,7 @@ func init() {
 }
 
 func handleError(err error) {
-	if outputJSON {
-		category := errorcodes.CategorySystem
-		code := errorcodes.ErrCommandExecution
-		var context map[string]interface{}
-
-		if cliErr, ok := err.(*CLIError); ok {
-			category = cliErr.Category
-			code = cliErr.Code
-			context = cliErr.Context
-		}
-
-		resp := ErrorResponse{
-			Category: category,
-			Code:     code,
-			Message:  err.Error(),
-			Context:  context,
-		}
-		jsonBytes, _ := json.Marshal(resp)
-		fmt.Fprintln(os.Stderr, string(jsonBytes))
-	} else {
-		fmt.Fprintf(os.Stderr, "Error:\n  %v\n", err)
-	}
+	output.WriteError(os.Stderr, outputJSON, err)
 }
 
 func updateHelpTexts(root *cobra.Command) {
@@ -194,13 +192,4 @@ func updateAllCommands(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		updateAllCommands(sub)
 	}
-}
-
-func MarshalJSON(v interface{}) error {
-	if !outputJSON {
-		return nil
-	}
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(v)
 }
