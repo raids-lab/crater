@@ -372,6 +372,30 @@ type Config struct {
 				TimeoutSeconds int `json:"timeoutSeconds"`
 			} `json:"kubernetes"`
 		} `json:"ops"`
+
+		// ApprovalHook configures the agent-based approval evaluation for job lock orders.
+		// When enabled, the Go backend calls the Python agent service to evaluate
+		// approval orders that don't pass the simple auto-approval rules.
+		ApprovalHook struct {
+			// Enabled toggles the agent approval evaluation hook.
+			// Default: false. Enable only when the agent service is stable.
+			Enabled bool `json:"enabled"`
+			// TotalTimeoutSeconds is the maximum time to wait for agent evaluation.
+			// Default: 15.
+			TotalTimeoutSeconds int `json:"totalTimeoutSeconds"`
+			// MaxPerMinute is the rate limit for agent evaluation calls.
+			// Default: 10.
+			MaxPerMinute int `json:"maxPerMinute"`
+			// MaxConcurrent is the maximum number of concurrent agent evaluations.
+			// Default: 3.
+			MaxConcurrent int `json:"maxConcurrent"`
+			// CircuitBreakerThreshold is the number of consecutive failures before the circuit opens.
+			// Default: 5.
+			CircuitBreakerThreshold int `json:"circuitBreakerThreshold"`
+			// CircuitBreakerCooldownSeconds is the cooldown period in seconds after circuit opens.
+			// Default: 60.
+			CircuitBreakerCooldownSeconds int `json:"circuitBreakerCooldownSeconds"`
+		} `json:"approvalHook"`
 	} `json:"agent"`
 
 	// SchedulerPlugins contains configuration for Kubernetes scheduler plugin integrations.

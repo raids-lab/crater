@@ -82,6 +82,9 @@ const (
 	toolBatchStopJobs        = "batch_stop_jobs"
 	toolNotifyJobOwner       = "notify_job_owner"
 
+	// Approval tools
+	toolGetApprovalHistory = "get_approval_history"
+
 	// Write tools that require user confirmation before execution
 	agentToolResubmitJob   = "resubmit_job"
 	agentToolStopJob       = "stop_job"

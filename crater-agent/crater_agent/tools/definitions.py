@@ -219,7 +219,10 @@ def list_cluster_nodes() -> dict:
 
 @tool
 def check_quota(account_id: Optional[int] = None) -> dict:
-    """查看当前账户的资源配额使用情况（CPU/GPU/Memory 的配额和已使用量）。
+    """查看当前账户的资源配额与使用情况。
+
+    返回可能包含配额上限、已使用量、活跃作业数等信息。
+    若某项字段缺失，说明平台暂未提供该维度数据，不代表无限制或零使用。
 
     Args:
         account_id: 账户 ID，默认使用当前用户的账户
@@ -1142,6 +1145,41 @@ def k8s_taint_node(
     pass
 
 
+@tool
+def execute_admin_command(
+    command: str,
+    reason: str,
+    risk_level: str = "medium",
+) -> dict:
+    """执行通用管理命令（kubectl/helm 等），由 LLM 自行组合命令内容。需要管理员确认。
+    适用于没有专用 tool 覆盖的运维操作，如复杂的 patch、apply、helm upgrade 等。
+    命令必须以白名单中的二进制开头（kubectl / helm / velero / istioctl）。
+    禁止 delete namespace / delete node / delete pv / exec -it / port-forward 等高危操作。
+
+    Args:
+        command: 完整命令字符串，如 "kubectl patch node xxx -p '...'"
+        reason: 执行原因说明（必填，用于审计和前端展示）
+        risk_level: 风险等级 low/medium/high，默认 medium
+    """
+    pass
+
+
+# ============================================================
+# B5. Approval / Ticket Tools (auto-execute, read-only)
+# ============================================================
+
+
+@tool
+def get_approval_history(user_id: int, days: int = 7) -> dict:
+    """查询指定用户近 N 天的审批工单记录，用于评估申请频率和历史模式。
+
+    Args:
+        user_id: 用户 ID
+        days: 查询最近多少天的工单记录，默认 7
+    """
+    pass
+
+
 # ============================================================
 # Tool Registry
 # ============================================================
@@ -1154,7 +1192,6 @@ AUTO_TOOLS = [
     get_diagnostic_context,
     search_similar_failures,
     query_job_metrics,
-    analyze_queue_status,
     get_realtime_capacity,
     list_available_images,
     list_cuda_base_images,
@@ -1207,6 +1244,7 @@ AUTO_TOOLS = [
     k8s_top_nodes,
     k8s_top_pods,
     k8s_rollout_status,
+    get_approval_history,
 ]
 
 # Tools that require user confirmation before execution (write operations)
@@ -1228,6 +1266,7 @@ CONFIRM_TOOLS = [
     k8s_scale_workload,
     k8s_label_node,
     k8s_taint_node,
+    execute_admin_command,
 ]
 
 ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
@@ -1291,6 +1330,7 @@ ADMIN_ONLY_TOOL_NAMES = {
         k8s_scale_workload,
         k8s_label_node,
         k8s_taint_node,
+        execute_admin_command,
     ]
 }
 

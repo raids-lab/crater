@@ -7,9 +7,8 @@ trigger_signals:
 
 recommended_tools:
   - get_job_detail: {}
-  - analyze_queue_status: {}
-  - get_realtime_capacity: {}
   - check_quota: {}
+  - get_realtime_capacity: {}
 
 diagnosis_knowledge: |
   调度失败（Pending）的常见原因:

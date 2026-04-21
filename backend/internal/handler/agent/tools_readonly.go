@@ -53,6 +53,9 @@ func buildJobDetailResponse(job *model.Job) map[string]any {
 		"runningTimestamp":   job.RunningTimestamp,
 		"completedTimestamp": job.CompletedTimestamp,
 		"resources":          job.Resources.Data(),
+		"reminded":           job.Reminded,
+		"lockedTimestamp":    job.LockedTimestamp,
+		"alertEnabled":       job.AlertEnabled,
 	}
 	if job.Nodes.Data() != nil {
 		resp["nodes"] = job.Nodes.Data()
@@ -947,7 +950,7 @@ func (mgr *AgentMgr) toolAnalyzeQueueStatus(c *gin.Context, token util.JWTMessag
 	return resp, nil
 }
 
-// toolCheckQuota returns the current resource quota for the user.
+// toolCheckQuota returns the current resource quota and usage for the user.
 func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	accountID := token.AccountID
 	var args struct {
@@ -963,34 +966,59 @@ func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawAr
 		accountID = *args.AccountID
 	}
 
-	a := query.Account
+	// Resolve quota capability: user_account quota > account quota.
+	var capability v1.ResourceList
+	source := "none"
+
 	ua := query.UserAccount
 	userAccount, err := ua.WithContext(c).
 		Where(ua.AccountID.Eq(accountID), ua.UserID.Eq(token.UserID)).
 		First()
 	if err == nil {
-		quota := userAccount.Quota.Data()
-		return map[string]any{
-			"accountId":  accountID,
-			"source":     "user_account",
-			"capability": quota.Capability,
-		}, nil
+		capability = userAccount.Quota.Data().Capability
+		source = "user_account"
+	} else {
+		if token.RolePlatform != model.RoleAdmin {
+			return nil, fmt.Errorf("user account not found: %w", err)
+		}
+		a := query.Account
+		account, accountErr := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
+		if accountErr != nil {
+			return nil, fmt.Errorf("account not found: %w", accountErr)
+		}
+		capability = account.Quota.Data().Capability
+		source = "account"
 	}
 
-	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("user account not found: %w", err)
+	// Compute resource usage from active jobs (Running + Pending).
+	j := query.Job
+	activeJobs, _ := j.WithContext(c).
+		Where(j.AccountID.Eq(accountID), j.UserID.Eq(token.UserID)).
+		Where(j.Status.In(string(batch.Running), string(batch.Pending))).
+		Find()
+
+	used := v1.ResourceList{}
+	for _, job := range activeJobs {
+		res := job.Resources.Data()
+		for rName, rQty := range res {
+			cur := used[rName]
+			cur.Add(rQty)
+			used[rName] = cur
+		}
 	}
 
-	account, accountErr := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
-	if accountErr != nil {
-		return nil, fmt.Errorf("account not found: %w", accountErr)
-	}
-
-	return map[string]any{
+	resp := map[string]any{
 		"accountId":  accountID,
-		"source":     "account",
-		"capability": account.Quota.Data().Capability,
-	}, nil
+		"source":     source,
+		"activeJobs": len(activeJobs),
+	}
+	if len(capability) > 0 {
+		resp["capability"] = capability
+	}
+	if len(used) > 0 {
+		resp["used"] = used
+	}
+	return resp, nil
 }
 
 // toolGetHealthOverview returns a simplified health summary for the current user.
@@ -2642,4 +2670,58 @@ func getMapIntValue(m map[string]any, key string) *int {
 		return &v
 	}
 	return nil
+}
+
+// toolGetApprovalHistory returns recent approval orders for a given user.
+func (mgr *AgentMgr) toolGetApprovalHistory(_ *gin.Context, _ util.JWTMessage, rawArgs json.RawMessage) (any, error) {
+	var args struct {
+		UserID int `json:"user_id"`
+		Days   int `json:"days"`
+	}
+	if len(rawArgs) > 0 {
+		_ = json.Unmarshal(rawArgs, &args)
+	}
+	if args.UserID <= 0 {
+		return map[string]any{"orders": []any{}, "message": "user_id is required"}, nil
+	}
+	if args.Days <= 0 {
+		args.Days = 7
+	}
+
+	ao := query.ApprovalOrder
+	since := time.Now().Add(-time.Duration(args.Days) * 24 * time.Hour)
+
+	orders, err := ao.WithContext(context.Background()).
+		Where(ao.CreatorID.Eq(uint(args.UserID))).
+		Where(ao.CreatedAt.Gt(since)).
+		Order(ao.CreatedAt.Desc()).
+		Limit(20).
+		Find()
+	if err != nil {
+		return map[string]any{"orders": []any{}, "error": err.Error()}, nil
+	}
+
+	result := make([]map[string]any, 0, len(orders))
+	for _, o := range orders {
+		var content model.ApprovalOrderContent
+		raw, _ := o.Content.MarshalJSON()
+		_ = json.Unmarshal(raw, &content)
+
+		result = append(result, map[string]any{
+			"name":            o.Name,
+			"type":            o.Type,
+			"status":          o.Status,
+			"extension_hours": content.ApprovalOrderExtensionHours,
+			"reason":          content.ApprovalOrderReason,
+			"review_source":   o.ReviewSource,
+			"created_at":      o.CreatedAt.Format("2006-01-02 15:04"),
+		})
+	}
+
+	return map[string]any{
+		"user_id":     args.UserID,
+		"days":        args.Days,
+		"total_count": len(result),
+		"orders":      result,
+	}, nil
 }

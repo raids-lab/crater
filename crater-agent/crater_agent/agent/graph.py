@@ -40,9 +40,90 @@ def _truncate_text(value: str, max_chars: int = 2400) -> str:
     return f"{head}\n\n...(内容过长，已截断)...\n\n{tail}"
 
 
-def _build_tool_observation(tool_name: str, result: dict[str, Any]) -> str:
+_DEFAULT_TOOL_TOKEN_BUDGET = 3000
+
+_TOOL_TOKEN_BUDGETS: dict[str, int] = {
+    "get_job_logs": 4000,
+    "diagnose_job": 4000,
+    "get_diagnostic_context": 4000,
+    "get_job_detail": 3000,
+    "prometheus_query": 2000,
+    "query_job_metrics": 2000,
+}
+
+_TOOL_EXTRACT_PROMPT = """\
+从以下工具输出中提取与用户问题最相关的关键信息。
+
+工具: {tool_name}
+用户问题: {user_question}
+
+工具完整输出:
+{tool_output}
+
+要求：
+- 保留所有错误信息、异常堆栈、关键状态码
+- 保留与用户问题直接相关的数据
+- 保留资源名、命名空间、时间戳等关键标识
+- 删除重复的正常日志行、冗余的健康检查输出
+- 用紧凑格式输出，不要添加额外解释"""
+
+
+def _truncate_to_token_budget(text: str, budget_tokens: int) -> str:
+    """Truncate text to fit within a token budget, keeping head + tail."""
+    from crater_agent.llm.tokenizer import count_tokens
+
+    if count_tokens(text) <= budget_tokens:
+        return text
+    max_chars = budget_tokens * 3  # conservative: ~3 chars/token
+    return _truncate_text(text, max_chars=max_chars)
+
+
+async def _extract_with_llm(
+    tool_name: str,
+    raw_text: str,
+    budget_tokens: int,
+    llm: Any,
+    user_question: str,
+) -> str | None:
+    """Use LLM to intelligently extract key info from oversized tool results.
+
+    Returns extracted text on success, None on failure (caller falls back to
+    hard truncation).
+    """
+    import asyncio
+
+    prompt = _TOOL_EXTRACT_PROMPT.format(
+        tool_name=tool_name,
+        user_question=user_question or "（未知）",
+        tool_output=raw_text,
+    )
+    try:
+        response = await asyncio.wait_for(
+            llm.ainvoke([HumanMessage(content=prompt)]),
+            timeout=10.0,
+        )
+        extracted = str(getattr(response, "content", "") or "").strip()
+        if not extracted:
+            return None
+        logger.info(
+            "LLM extract for %s: %d chars -> %d chars",
+            tool_name, len(raw_text), len(extracted),
+        )
+        return extracted
+    except asyncio.TimeoutError:
+        logger.warning("LLM extract for %s timed out", tool_name)
+        return None
+    except Exception:
+        logger.warning("LLM extract for %s failed", tool_name, exc_info=True)
+        return None
+
+
+def _build_tool_observation_sync(tool_name: str, result: dict[str, Any]) -> str:
+    """Build tool observation string (synchronous, hard truncation only)."""
     if result.get("status") == "confirmation_required":
         return json.dumps(result, ensure_ascii=False)
+
+    budget = _TOOL_TOKEN_BUDGETS.get(tool_name, _DEFAULT_TOOL_TOKEN_BUDGET)
 
     if result.get("status") == "error":
         error_payload = {
@@ -56,17 +137,74 @@ def _build_tool_observation(tool_name: str, result: dict[str, Any]) -> str:
             error_payload["status_code"] = result["status_code"]
         if isinstance(result.get("result"), dict):
             error_payload["result"] = result["result"]
-        return _truncate_text(json.dumps(error_payload, ensure_ascii=False), max_chars=1200)
+        return _truncate_to_token_budget(
+            json.dumps(error_payload, ensure_ascii=False), budget
+        )
 
     result_content = result.get("result", result.get("message", ""))
     if isinstance(result_content, dict):
-        compact = dict(result_content)
-        if tool_name == "get_job_logs" and isinstance(compact.get("log"), str):
-            compact["log"] = _truncate_text(compact["log"], max_chars=1000)
-            compact["note"] = "日志内容已截断，只保留部分片段供推理使用"
-        return _truncate_text(json.dumps(compact, ensure_ascii=False), max_chars=1400)
+        return _truncate_to_token_budget(
+            json.dumps(result_content, ensure_ascii=False), budget
+        )
 
-    return _truncate_text(str(result_content), max_chars=1400)
+    return _truncate_to_token_budget(str(result_content), budget)
+
+
+async def _build_tool_observation(
+    tool_name: str,
+    result: dict[str, Any],
+    llm: Any = None,
+    user_question: str = "",
+) -> str:
+    """Build tool observation, using LLM extract for oversized results.
+
+    Flow:
+    1. Serialize the raw result
+    2. If within token budget → return as-is
+    3. If over budget AND llm provided → LLM extract (semantic compression)
+    4. If LLM extract fails or no llm → fallback to head+tail hard truncation
+    """
+    if result.get("status") == "confirmation_required":
+        return json.dumps(result, ensure_ascii=False)
+
+    budget = _TOOL_TOKEN_BUDGETS.get(tool_name, _DEFAULT_TOOL_TOKEN_BUDGET)
+    from crater_agent.llm.tokenizer import count_tokens
+
+    # Serialize the raw result
+    if result.get("status") == "error":
+        error_payload = {
+            "status": "error",
+            "tool_name": tool_name,
+            "message": result.get("message", ""),
+            "error_type": result.get("error_type", "unknown"),
+            "retryable": bool(result.get("retryable", False)),
+        }
+        if "status_code" in result:
+            error_payload["status_code"] = result["status_code"]
+        if isinstance(result.get("result"), dict):
+            error_payload["result"] = result["result"]
+        raw_text = json.dumps(error_payload, ensure_ascii=False)
+    else:
+        result_content = result.get("result", result.get("message", ""))
+        if isinstance(result_content, dict):
+            raw_text = json.dumps(result_content, ensure_ascii=False)
+        else:
+            raw_text = str(result_content)
+
+    # Fast path: within budget, return as-is
+    if count_tokens(raw_text) <= budget:
+        return raw_text
+
+    # Slow path: over budget → try LLM extract, then fallback to hard truncation
+    if llm is not None:
+        extracted = await _extract_with_llm(
+            tool_name, raw_text, budget, llm, user_question,
+        )
+        if extracted is not None:
+            # Ensure extracted result fits the budget (LLM may still overshoot)
+            return _truncate_to_token_budget(extracted, budget)
+
+    return _truncate_to_token_budget(raw_text, budget)
 
 
 def _is_context_limit_error(exc: Exception) -> bool:
@@ -117,20 +255,27 @@ def _compact_messages_for_retry(messages: list[Any]) -> list[Any]:
 
 
 def _estimate_message_tokens(messages: list[Any]) -> int:
-    """Rough token estimate: ~1 token per 2 CJK chars, ~1 token per 4 Latin chars."""
-    total = 0
-    for msg in messages:
-        content = str(getattr(msg, "content", "") or "")
-        cjk = sum(1 for c in content if "\u4e00" <= c <= "\u9fff")
-        latin = len(content) - cjk
-        total += cjk // 2 + latin // 4 + 10  # +10 for message framing overhead
-    return total
+    """Count tokens across messages using tiktoken (with heuristic fallback)."""
+    from crater_agent.llm.tokenizer import count_message_tokens
+
+    return count_message_tokens(messages)
 
 
-def _proactive_compact(messages: list[Any], max_context: int) -> list[Any]:
+def _extract_current_query(messages: list[Any]) -> str:
+    """Find the most recent user question from the message list."""
+    for msg in reversed(messages):
+        if isinstance(msg, HumanMessage):
+            return str(msg.content or "")[:300]
+    return ""
+
+
+async def _proactive_compact(
+    messages: list[Any], max_context: int, llm: Any = None,
+) -> list[Any]:
     """Proactively compact messages before hitting the API context limit.
 
     Reserves budget for tool schemas (~8000 tokens) and LLM response (~4000 tokens).
+    First attempts LLM-based summarisation; falls back to hard truncation on failure.
     """
     tool_schema_budget = 8000
     response_budget = 4000
@@ -144,6 +289,20 @@ def _proactive_compact(messages: list[Any], max_context: int) -> list[Any]:
         "Proactive compaction: estimated %d tokens > available %d, compacting",
         estimated, available,
     )
+    # Try LLM summarisation first
+    if llm is not None:
+        from crater_agent.agent.compaction import compact_messages_with_llm
+
+        compacted = await compact_messages_with_llm(
+            messages, llm, current_query=_extract_current_query(messages),
+        )
+        if compacted is not None:
+            logger.info(
+                "LLM compaction succeeded: %d -> %d messages",
+                len(messages), len(compacted),
+            )
+            return compacted
+    # Fallback to hard truncation
     return _compact_messages_for_retry(messages)
 
 
@@ -201,12 +360,21 @@ def create_agent_graph(
             messages = [SystemMessage(content=system_prompt)] + list(messages)
 
         try:
-            messages = _proactive_compact(messages, max_context=settings.max_context_tokens)
+            messages = await _proactive_compact(
+                messages, max_context=settings.max_context_tokens, llm=llm,
+            )
             response = await llm_with_tools.ainvoke(messages)
         except BadRequestError as exc:
             if not _is_context_limit_error(exc):
                 raise
-            compact_messages = _compact_messages_for_retry(messages)
+            # Try LLM compaction on context limit error before hard fallback
+            from crater_agent.agent.compaction import compact_messages_with_llm
+
+            compact_messages = await compact_messages_with_llm(
+                messages, llm, current_query=_extract_current_query(messages),
+            )
+            if compact_messages is None:
+                compact_messages = _compact_messages_for_retry(messages)
             logger.warning(
                 "Single-agent context limit hit, retrying with compacted messages: %d -> %d",
                 len(messages),
@@ -246,6 +414,12 @@ def create_agent_graph(
         messages = state["messages"]
         last_message = messages[-1]
         context = state.get("context", {})
+        # Extract user question for LLM tool result extraction context
+        _user_question = ""
+        for msg in reversed(messages):
+            if isinstance(msg, HumanMessage):
+                _user_question = str(msg.content or "")[:200]
+                break
         session_id = context.get("session_id", "unknown")
         actor = context.get("actor", {})
         user_id = actor.get("user_id", 0)
@@ -331,11 +505,11 @@ def create_agent_graph(
                     )
                 )
             else:
+                observation = await _build_tool_observation(
+                    tool_name, result, llm=llm, user_question=_user_question,
+                )
                 tool_messages.append(
-                    ToolMessage(
-                        content=_build_tool_observation(tool_name, result),
-                        tool_call_id=tc["id"],
-                    )
+                    ToolMessage(content=observation, tool_call_id=tc["id"])
                 )
 
         return {
@@ -367,7 +541,14 @@ def create_agent_graph(
         except BadRequestError as exc:
             if not _is_context_limit_error(exc):
                 raise
-            compact_messages = _compact_messages_for_retry(messages)
+            from crater_agent.agent.compaction import compact_messages_with_llm
+
+            compact_messages = await compact_messages_with_llm(
+                messages, llm, current_query=_extract_current_query(messages),
+            )
+
+            if compact_messages is None:
+                compact_messages = _compact_messages_for_retry(messages)
             logger.warning(
                 "Summarize node context limit hit, retrying with compacted messages: %d -> %d",
                 len(messages),

@@ -63,7 +63,8 @@ func isAgentReadOnlyTool(toolName string) bool {
 		agentToolHarborCheck,
 		toolGetLatestAuditReport,
 		toolListAuditItems,
-		toolSaveAuditReport:
+		toolSaveAuditReport,
+		toolGetApprovalHistory:
 		return true
 	default:
 		return false
@@ -392,6 +393,8 @@ func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req 
 		return mgr.toolListAuditItems(c, token, req.ToolArgs)
 	case toolSaveAuditReport:
 		return mgr.toolSaveAuditReport(c, token, req.ToolArgs)
+	case toolGetApprovalHistory:
+		return mgr.toolGetApprovalHistory(c, token, req.ToolArgs)
 	default:
 		return nil, fmt.Errorf("tool '%s' is not yet implemented", req.ToolName)
 	}

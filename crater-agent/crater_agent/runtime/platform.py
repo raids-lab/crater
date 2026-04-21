@@ -395,6 +395,32 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
         "k8s_get_pod_logs",
         "prometheus_query",
         "harbor_check",
+        # K8s read extensions
+        "k8s_get_service",
+        "k8s_get_endpoints",
+        "k8s_get_ingress",
+        "k8s_get_configmap",
+        "k8s_get_networkpolicy",
+        "k8s_top_nodes",
+        "k8s_top_pods",
+        "k8s_rollout_status",
+        "get_volcano_queue_state",
+        # K8s enrichment tools
+        "aggregate_image_pull_errors",
+        "detect_zombie_jobs",
+        "get_ddp_rank_mapping",
+        "get_node_kernel_diagnostics",
+        "get_rdma_interface_status",
+        # K8s write tools (local kubectl, confirmation handled at orchestrator/frontend layer)
+        "k8s_scale_workload",
+        "k8s_label_node",
+        "k8s_taint_node",
+        "cordon_node",
+        "uncordon_node",
+        "drain_node",
+        "delete_pod",
+        "restart_workload",
+        "execute_admin_command",
     }
 
     allowed_domains = _as_string_list(web_cfg.get("allowedDomains"))

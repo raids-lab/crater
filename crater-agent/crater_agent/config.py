@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     max_context_tokens: int = Field(
         default=30000, description="Estimated LLM context window budget for proactive compaction"
     )
+    tokenizer_encoding: str = Field(
+        default="cl100k_base", description="tiktoken encoding name for token counting"
+    )
 
     # Service
     host: str = Field(default="0.0.0.0")

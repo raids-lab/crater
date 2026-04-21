@@ -9,30 +9,40 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
+from crater_agent.llm.tokenizer import count_tokens
+
 
 def estimate_tokens(text: str) -> int:
-    """Rough token estimate: ~1 token per 2 Chinese chars or 4 English chars."""
-    cn_chars = sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
-    en_chars = len(text) - cn_chars
-    return cn_chars // 2 + en_chars // 4 + 1
+    """Count tokens in text using tiktoken (with heuristic fallback)."""
+    return count_tokens(text)
+
+
+def _truncate_head_tail(text: str, max_chars: int) -> str:
+    """Truncate keeping head and tail for better context preservation."""
+    if len(text) <= max_chars:
+        return text
+    half = max_chars // 2
+    return f"{text[:half]}\n\n...(内容过长，已截断)...\n\n{text[-half:]}"
 
 
 def build_history_messages(
     history: list[dict],
     max_tokens: int = 4000,
-    tool_result_max_chars: int = 200,
-    tool_error_max_chars: int = 500,
+    tool_result_max_chars: int = 1200,
+    tool_error_max_chars: int = 1600,
 ) -> list:
     """Build LangChain message objects from Go-provided history.
 
     Loads messages from most recent backwards until token budget is exhausted.
-    Tool results are truncated to save tokens.
+    Tool results are truncated (head+tail) to save tokens while preserving
+    key information at both ends of the output.
 
     Args:
         history: List of message dicts from Go backend
                  [{"role": "user", "content": "..."}, ...]
         max_tokens: Maximum token budget for history
         tool_result_max_chars: Max chars for tool result content
+        tool_error_max_chars: Max chars for tool error content
 
     Returns:
         List of LangChain message objects, in chronological order
@@ -47,12 +57,11 @@ def build_history_messages(
         role = msg.get("role", "")
         content = msg.get("content", "")
 
-        # Truncate tool results to save tokens (preserve more for errors)
+        # Truncate tool results with head+tail to preserve key info
         if role == "tool":
             is_error = any(kw in content for kw in ("error", "Error", "failed", "Failed", "错误", "失败"))
             limit = tool_error_max_chars if is_error else tool_result_max_chars
-            if len(content) > limit:
-                content = content[:limit] + "... (truncated)"
+            content = _truncate_head_tail(content, limit)
 
         msg_tokens = estimate_tokens(content)
         if token_count + msg_tokens > max_tokens:

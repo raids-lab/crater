@@ -86,6 +86,12 @@ class LocalToolExecutor:
             "k8s_scale_workload": self._handle_k8s_scale_workload,
             "k8s_label_node": self._handle_k8s_label_node,
             "k8s_taint_node": self._handle_k8s_taint_node,
+            "cordon_node": self._handle_cordon_node,
+            "uncordon_node": self._handle_uncordon_node,
+            "drain_node": self._handle_drain_node,
+            "delete_pod": self._handle_delete_pod,
+            "restart_workload": self._handle_restart_workload,
+            "execute_admin_command": self._handle_execute_admin_command,
         }
 
     def supports(self, tool_name: str) -> bool:
@@ -1641,3 +1647,177 @@ class LocalToolExecutor:
         args = ["taint", "nodes", node_name, taint_spec]
         result = await self._run_kubectl_text(args, include_namespace=False)
         return {"status": "success", "result": {"node_name": node_name, "taint": taint_spec, "output": result.get("content", "")}}
+
+    # ------------------------------------------------------------------
+    # K8s Write Tools: Node/Pod management
+    # ------------------------------------------------------------------
+
+    async def _handle_cordon_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+        args = ["cordon", node_name]
+        result = await self._run_kubectl_text(args, include_namespace=False)
+        # Verify: node should show SchedulingDisabled
+        verify = await self._run_kubectl_json(["get", "node", node_name], include_namespace=False)
+        unschedulable = (verify.get("spec") or {}).get("unschedulable", False)
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "action": "cordon",
+                "verified_unschedulable": unschedulable,
+                "output": result.get("content", ""),
+            },
+        }
+
+    async def _handle_uncordon_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+        args = ["uncordon", node_name]
+        result = await self._run_kubectl_text(args, include_namespace=False)
+        verify = await self._run_kubectl_json(["get", "node", node_name], include_namespace=False)
+        unschedulable = (verify.get("spec") or {}).get("unschedulable", False)
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "action": "uncordon",
+                "verified_unschedulable": unschedulable,
+                "output": result.get("content", ""),
+            },
+        }
+
+    async def _handle_drain_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+        args = [
+            "drain", node_name,
+            "--ignore-daemonsets",
+            "--delete-emptydir-data",
+            "--force",
+            "--grace-period=60",
+            "--timeout=300s",
+        ]
+        result = await self._run_kubectl_text(args, include_namespace=False, max_chars=50_000)
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "action": "drain",
+                "output": result.get("content", ""),
+            },
+        }
+
+    async def _handle_delete_pod(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        name = str(tool_args.get("name") or "").strip()
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        force = bool(tool_args.get("force", False))
+        grace_period = tool_args.get("grace_period_seconds")
+        if not name:
+            raise ValueError("name is required")
+        args = ["delete", "pod", name]
+        if force:
+            args.extend(["--force", "--grace-period=0"])
+        elif grace_period is not None:
+            args.extend([f"--grace-period={int(grace_period)}"])
+        result = await self._run_kubectl_text(args, namespace=namespace)
+        return {
+            "status": "success",
+            "result": {
+                "pod_name": name,
+                "namespace": namespace,
+                "action": "delete_pod",
+                "force": force,
+                "output": result.get("content", ""),
+            },
+        }
+
+    async def _handle_restart_workload(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        kind = str(tool_args.get("kind") or "").strip()
+        name = str(tool_args.get("name") or "").strip()
+        namespace = str(tool_args.get("namespace") or "").strip() or None
+        if not kind or not name:
+            raise ValueError("kind and name are required")
+        allowed_kinds = {"Deployment", "StatefulSet", "DaemonSet"}
+        if kind not in allowed_kinds:
+            raise ValueError(f"kind must be one of {allowed_kinds}, got: {kind}")
+        args = ["rollout", "restart", f"{kind.lower()}/{name}"]
+        result = await self._run_kubectl_text(args, namespace=namespace)
+        return {
+            "status": "success",
+            "result": {
+                "kind": kind,
+                "name": name,
+                "namespace": namespace,
+                "action": "restart_workload",
+                "output": result.get("content", ""),
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # execute_admin_command: Generalized admin command execution
+    # ------------------------------------------------------------------
+
+    _ADMIN_CMD_ALLOWLIST = {"kubectl", "helm", "velero", "istioctl"}
+    _ADMIN_CMD_BLOCKLIST_PATTERNS = [
+        "delete namespace",
+        "delete node",
+        "delete pv ",
+        "delete crd",
+        "cluster-info dump",
+        "auth can-i",
+        "--as=",
+        "exec -it",
+        "port-forward",
+        "proxy",
+        "apply -f http",
+    ]
+
+    async def _handle_execute_admin_command(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        command = str(tool_args.get("command") or "").strip()
+        reason = str(tool_args.get("reason") or "").strip()
+        if not command:
+            raise ValueError("command is required")
+        if not reason:
+            raise ValueError("reason is required (explain why this command is needed)")
+
+        parts = command.split()
+        if not parts:
+            raise ValueError("command cannot be empty")
+        binary = parts[0]
+        if binary not in self._ADMIN_CMD_ALLOWLIST:
+            raise ValueError(
+                f"command must start with one of {sorted(self._ADMIN_CMD_ALLOWLIST)}, got: {binary}"
+            )
+        cmd_lower = command.lower()
+        for pattern in self._ADMIN_CMD_BLOCKLIST_PATTERNS:
+            if pattern in cmd_lower:
+                raise ValueError(f"command contains blocked pattern: {pattern!r}")
+
+        # Build the actual command with kubeconfig injection
+        if binary == "kubectl":
+            base = self._kubectl_cmd(include_namespace=False)
+            # Remove the binary itself since _kubectl_cmd already includes it
+            full_cmd = base + parts[1:]
+        else:
+            full_cmd = parts
+            if self.runtime.kubeconfig_path:
+                full_cmd = [binary, "--kubeconfig", self.runtime.kubeconfig_path] + parts[1:]
+
+        code, stdout, stderr = await self._run_subprocess(full_cmd, timeout_seconds=300)
+        success = code == 0
+        output = stdout.strip() if success else stderr.strip()
+
+        return {
+            "status": "success" if success else "error",
+            "result": {
+                "command": command,
+                "reason": reason,
+                "exit_code": code,
+                "output": output[:50_000],
+                "truncated": len(output) > 50_000,
+            },
+        }

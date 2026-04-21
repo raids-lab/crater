@@ -11,12 +11,13 @@ import json
 import logging
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 
 logger = logging.getLogger(__name__)
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
+from crater_agent.agents.approval import ApprovalAgent, ApprovalEvalRequest, ApprovalEvalResponse
 from crater_agent.config import settings
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.orchestrators.multi import MultiAgentOrchestrator
@@ -121,6 +122,50 @@ async def chat(request: ChatRequest):
             }
 
     return EventSourceResponse(event_generator(), ping=0)
+
+
+# ---------------------------------------------------------------------------
+# Approval evaluation endpoint (synchronous, non-streaming)
+# ---------------------------------------------------------------------------
+import asyncio
+
+_approval_semaphore = asyncio.Semaphore(3)
+_approval_agent: ApprovalAgent | None = None
+
+
+def _get_approval_agent() -> ApprovalAgent:
+    global _approval_agent
+    if _approval_agent is None:
+        _approval_agent = ApprovalAgent()
+    return _approval_agent
+
+
+@app.post("/evaluate/approval", response_model=ApprovalEvalResponse)
+async def evaluate_approval(request: ApprovalEvalRequest):
+    """Evaluate a job lock approval order.
+
+    Called by Go backend as a synchronous hook during order creation.
+    Returns structured verdict (approve/escalate). Never returns 5xx
+    for evaluation logic failures — those are wrapped in an escalate verdict.
+    """
+    if not _approval_semaphore.locked() and _approval_semaphore._value <= 0:
+        raise HTTPException(status_code=429, detail="approval evaluation busy")
+
+    async with _approval_semaphore:
+        agent = _get_approval_agent()
+        try:
+            result = await asyncio.wait_for(
+                agent.evaluate(request),
+                timeout=20.0,
+            )
+            return result
+        except asyncio.TimeoutError:
+            logger.warning("Approval evaluation timed out for order %d", request.order_id)
+            return ApprovalEvalResponse(
+                verdict="escalate",
+                confidence=0.1,
+                reason="Agent 评估超时",
+            )
 
 
 if __name__ == "__main__":

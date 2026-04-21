@@ -24,6 +24,7 @@ import {
   ApprovalOrderStatus,
   ApprovalOrderStatusBadge,
   ApprovalOrderTypeBadge,
+  ReviewSourceBadge,
   approvalOrderStatuses,
   approvalOrderTypes,
 } from '@/components/badge/approvalorder-badge'
@@ -277,6 +278,17 @@ export function ApprovalOrderDataTable({
       ),
       cell: ({ row }) => {
         return <ApprovalOrderStatusBadge status={row.getValue('status')} />
+      },
+    },
+    {
+      accessorKey: 'reviewSource',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="审批来源" />
+      ),
+      cell: ({ row }) => {
+        const source = row.getValue('reviewSource') as string
+        if (!source) return <span className="text-muted-foreground text-sm">-</span>
+        return <ReviewSourceBadge source={source as any} />
       },
     },
     {

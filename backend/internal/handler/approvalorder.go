@@ -15,6 +15,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -29,12 +30,14 @@ func init() {
 }
 
 type ApprovalOrderMgr struct {
-	name string
+	name           string
+	agentEvaluator *service.AgentApprovalEvaluator
 }
 
 func NewApprovalOrderMgr(_ *RegisterConfig) Manager {
 	return &ApprovalOrderMgr{
-		name: "approvalorder",
+		name:           "approvalorder",
+		agentEvaluator: service.NewAgentApprovalEvaluator(), // nil if disabled
 	}
 }
 func (mgr *ApprovalOrderMgr) GetName() string { return mgr.name }
@@ -191,6 +194,9 @@ type ApprovalOrderResp struct {
 	Creator    model.UserInfo `json:"creator"`
 	ReviewerID uint           `json:"reviewerID"`
 	Reviewer   model.UserInfo `json:"reviewer"`
+
+	ReviewSource model.ReviewSource `json:"reviewSource"`
+	AgentReport  string             `json:"agentReport,omitempty"`
 }
 
 // swagger
@@ -253,14 +259,16 @@ func convertToApprovalOrderResps(orders []*model.ApprovalOrder) []ApprovalOrderR
 	var result []ApprovalOrderResp
 	for i := range orders {
 		resp := ApprovalOrderResp{
-			ID:          orders[i].ID,
-			Name:        orders[i].Name,
-			Type:        orders[i].Type,
-			Status:      orders[i].Status,
-			Content:     unmarshalApprovalOrderContent(orders[i].Content),
-			ReviewNotes: orders[i].ReviewNotes,
-			CreatedAt:   orders[i].CreatedAt,
-			CreatorID:   orders[i].CreatorID,
+			ID:           orders[i].ID,
+			Name:         orders[i].Name,
+			Type:         orders[i].Type,
+			Status:       orders[i].Status,
+			Content:      unmarshalApprovalOrderContent(orders[i].Content),
+			ReviewNotes:  orders[i].ReviewNotes,
+			CreatedAt:    orders[i].CreatedAt,
+			CreatorID:    orders[i].CreatorID,
+			ReviewSource: orders[i].ReviewSource,
+			AgentReport:  orders[i].AgentReport,
 			Creator: model.UserInfo{
 				Username: orders[i].Creator.Name,
 				Nickname: orders[i].Creator.Nickname,
@@ -389,14 +397,97 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		}
 	}
 
+	// 2.5 Agent 评估（仅在简单规则不通过且 Agent 功能开启时）
+	var agentReport string
+	if !autoApproved && mgr.agentEvaluator != nil {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					klog.Errorf("agent approval evaluation panic recovered: %v", r)
+				}
+			}()
+
+			evalReq := &service.ApprovalEvalRequest{
+				OrderID:        0, // order not yet created
+				JobName:        req.Name,
+				ExtensionHours: int(req.ExtensionHours),
+				UserReason:     req.Reason,
+				UserID:         int(token.UserID),
+				Username:       token.Username,
+			}
+
+			result, err := mgr.agentEvaluator.Evaluate(c.Request.Context(), evalReq)
+			if err != nil {
+				klog.Warningf("agent approval evaluation failed for job %s, falling back to manual: %v", req.Name, err)
+				return
+			}
+
+			// 序列化 Agent 报告
+			if reportJSON, err := json.Marshal(result); err == nil {
+				agentReport = string(reportJSON)
+			}
+
+			// 验证作业仍在 Running（所有 verdict 都需要）
+			if result.Verdict == "approve" || result.Verdict == "approve_emergency" {
+				jobDB := query.Job
+				job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+				if err != nil || !mgr.isJobRunning(job.Status) {
+					klog.Warningf("job %s no longer running during agent eval, cancelling", req.Name)
+					return
+				}
+			}
+
+			switch result.Verdict {
+			case "approve":
+				// 全量批准：锁定 approved_hours 或原始申请时长
+				lockHours := req.ExtensionHours
+				if result.ApprovedHours != nil && *result.ApprovedHours > 0 && uint(*result.ApprovedHours) < lockHours {
+					lockHours = uint(*result.ApprovedHours)
+					klog.Infof("agent adjusted lock hours for job %s: %d -> %d", req.Name, req.ExtensionHours, lockHours)
+				}
+
+				if err := mgr.lockJobForApproval(c, req.Name, lockHours); err != nil {
+					klog.Errorf("agent-approved lock failed for job %s: %v", req.Name, err)
+					return
+				}
+				autoApproved = true
+				autoApprovalReason = fmt.Sprintf("agent evaluation approved (%d hours)", lockHours)
+
+			case "approve_emergency":
+				// 应急批准：先锁 6h 保命，工单仍为 Pending 等管理员审批剩余时长
+				emergencyHours := uint(6)
+				if result.ApprovedHours != nil && *result.ApprovedHours > 0 {
+					emergencyHours = uint(*result.ApprovedHours)
+				}
+
+				if err := mgr.lockJobForApproval(c, req.Name, emergencyHours); err != nil {
+					klog.Errorf("agent-emergency lock failed for job %s: %v", req.Name, err)
+					return
+				}
+				// 注意：autoApproved 保持 false，工单仍为 Pending
+				// 管理员在审批页面能看到 AgentReport 中的应急说明
+				klog.Infof("agent emergency-locked job %s for %dh, remaining %dh pending admin",
+					req.Name, emergencyHours, req.ExtensionHours-emergencyHours)
+
+				// case "escalate": order stays Pending with report attached (no action)
+			}
+		}()
+	}
+
 	// 3. 创建审批工单
 	orderStatus := model.ApprovalOrderStatusPending
 	orderReason := ""
+	orderReviewSource := model.ReviewSourceNone
 
 	// 如果满足自动审批条件，则将工单状态设置为已批准,并添加备注
 	if autoApproved {
 		orderStatus = model.ApprovalOrderStatusApproved
 		orderReason = autoApprovalReason
+		if agentReport != "" {
+			orderReviewSource = model.ReviewSourceAgentAuto
+		} else {
+			orderReviewSource = model.ReviewSourceSystemAuto
+		}
 	}
 
 	order := model.ApprovalOrder{
@@ -408,8 +499,10 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		CreatorID:   token.UserID,
-		ReviewNotes: orderReason,
+		CreatorID:    token.UserID,
+		ReviewNotes:  orderReason,
+		ReviewSource: orderReviewSource,
+		AgentReport:  agentReport,
 	}
 
 	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
@@ -419,8 +512,12 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 	}
 
 	message := "create approvalorder successfully"
-	if autoApproved {
+	if autoApproved && orderReviewSource == model.ReviewSourceSystemAuto {
 		message = "create approvalorder successfully and auto-approved with job locked"
+	} else if autoApproved && orderReviewSource == model.ReviewSourceAgentAuto {
+		message = "create approvalorder successfully and agent-approved with job locked"
+	} else if agentReport != "" {
+		message = "create approvalorder successfully, agent evaluation attached for admin review"
 	}
 
 	resputil.Success(c, message)
@@ -482,6 +579,11 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 	}
 
 	// 2. 更新审批工单
+	reviewSource := model.ReviewSourceNone
+	if req.Status == model.ApprovalOrderStatusApproved || req.Status == model.ApprovalOrderStatusRejected {
+		reviewSource = model.ReviewSourceAdminManual
+	}
+
 	order := model.ApprovalOrder{
 		Name:   req.Name,
 		Type:   req.Type,
@@ -491,8 +593,9 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		ReviewerID:  req.ReviewerID,
-		ReviewNotes: req.ReviewNotes,
+		ReviewerID:   req.ReviewerID,
+		ReviewNotes:  req.ReviewNotes,
+		ReviewSource: reviewSource,
 	}
 
 	info, err := query.ApprovalOrder.WithContext(c).Where(query.ApprovalOrder.ID.Eq(orderID.ID)).Updates(&order)
@@ -743,14 +846,16 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrderAdmin(c *gin.Context) {
 // 新增辅助函数：将单个 ApprovalOrder 转换为 ApprovalOrderResp
 func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 	resp := ApprovalOrderResp{
-		ID:          order.ID,
-		Name:        order.Name,
-		Type:        order.Type,
-		Status:      order.Status,
-		Content:     unmarshalApprovalOrderContent(order.Content),
-		ReviewNotes: order.ReviewNotes,
-		CreatedAt:   order.CreatedAt,
-		CreatorID:   order.CreatorID,
+		ID:           order.ID,
+		Name:         order.Name,
+		Type:         order.Type,
+		Status:       order.Status,
+		Content:      unmarshalApprovalOrderContent(order.Content),
+		ReviewNotes:  order.ReviewNotes,
+		CreatedAt:    order.CreatedAt,
+		CreatorID:    order.CreatorID,
+		ReviewSource: order.ReviewSource,
+		AgentReport:  order.AgentReport,
 		Creator: model.UserInfo{
 			Username: order.Creator.Name,
 			Nickname: order.Creator.Nickname,
