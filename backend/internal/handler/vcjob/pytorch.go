@@ -10,7 +10,6 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
-	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
@@ -19,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
+//nolint:gocyclo // Parallel task assembly follows the TensorFlow handler shape.
 func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -27,7 +27,17 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	if !mgr.preCheckCreateJob(c, token, false) {
+	scheduleType, err := req.validateScheduleOptions(false)
+	if err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
+		return
+	}
+	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
 
@@ -73,9 +83,8 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		CraterJobTypePytorch,
 		token,
 		baseURL,
-		req.Name,
-		req.Template,
-		req.AlertEnabled,
+		&req.CreateJobCommon,
+		scheduleMetadata,
 	)
 
 	// 4. Create the task spec
@@ -142,10 +151,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		tasks[i] = taskSpec
 	}
 
-	queueName := token.AccountName
-	if token.AccountID != model.DefaultAccountID {
-		queueName = vcqueue.GetUserQueueName(token.AccountID, token.UserID)
-	}
+	queueName := vcqueue.ResolveJobQueueName(token)
 	// 5. Create volcano job
 	job := batch.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -172,7 +178,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.client.Create(c, &job); err != nil {
+	if err = mgr.submitJob(c, token, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

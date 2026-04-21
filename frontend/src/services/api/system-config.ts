@@ -17,6 +17,14 @@ export interface IGpuAnalysisStatus {
   enabled: boolean
 }
 
+export interface IPrequeueConfig {
+  backfillEnabled: boolean
+  queueQuotaEnabled: boolean
+  normalJobWaitingToleranceSeconds: number
+  activateTickerIntervalSeconds: number
+  maxTotalActivationsPerRound: number
+}
+
 export interface IBillingStatus {
   featureEnabled: boolean
   active: boolean
@@ -79,6 +87,14 @@ export const apiAdminGetGpuAnalysisStatus = () =>
 /** 设置 GPU 分析开关状态 */
 export const apiAdminSetGpuAnalysisStatus = (enable: boolean) =>
   apiV1Put<IResponse<string>>('admin/system-config/gpu-analysis', { enable })
+
+/** 获取预排队配置 */
+export const apiAdminGetPrequeueConfig = () =>
+  apiV1Get<IResponse<IPrequeueConfig>>('admin/system-config/prequeue')
+
+/** 更新预排队配置 */
+export const apiAdminUpdatePrequeueConfig = (data: IPrequeueConfig) =>
+  apiV1Put<IResponse<string>>('admin/system-config/prequeue', data)
 
 /** 获取 Billing 开关状态 */
 export const apiGetBillingStatus = () =>

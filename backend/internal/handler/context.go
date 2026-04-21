@@ -2,14 +2,17 @@ package handler
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/exp/rand"
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
+	apiresource "k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -19,6 +22,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/utils"
+	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
 // 邮箱验证码缓存
@@ -31,14 +35,16 @@ func init() {
 
 type ContextMgr struct {
 	name           string
-	client         client.Client
+	configService  *service.ConfigService
+	queueQuotaSvc  *service.PrequeueService
 	billingService *service.BillingService
 }
 
 func NewContextMgr(conf *RegisterConfig) Manager {
 	return &ContextMgr{
 		name:           "context",
-		client:         conf.Client,
+		configService:  conf.ConfigService,
+		queueQuotaSvc:  conf.PrequeueService,
 		billingService: conf.BillingService,
 	}
 }
@@ -48,7 +54,10 @@ func (mgr *ContextMgr) GetName() string { return mgr.name }
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("prequeue", mgr.GetPrequeueStatus)
 	g.GET("quota", mgr.GetQuota)
+	g.GET("job-resource-summary", mgr.GetJobResourceSummary)
+	g.POST("resource-limit-check", mgr.CheckResourceLimit)
 	g.GET("billing/summary", mgr.GetBillingSummary)
 	g.PUT("attributes", mgr.UpdateUserAttributes)
 	g.POST("email/code", mgr.SendUserVerificationCode)
@@ -65,7 +74,58 @@ type (
 		Email string `json:"email"`
 		Code  string `json:"code"`
 	}
+	ResourceLimitCheckReq struct {
+		RequestedResources map[string]string `json:"requestedResources"`
+	}
+	PrequeueFeatureStatusResp struct {
+		BackfillEnabled bool `json:"backfillEnabled"`
+	}
+	JobResourceSummaryUsageResp struct {
+		Used    string  `json:"used"`
+		Running string  `json:"running"`
+		Pending string  `json:"pending"`
+		Limit   *string `json:"limit,omitempty"`
+	}
+	JobResourceSummaryAcceleratorResp struct {
+		Resource string  `json:"resource"`
+		Used     string  `json:"used"`
+		Running  string  `json:"running"`
+		Pending  string  `json:"pending"`
+		Limit    *string `json:"limit,omitempty"`
+	}
+	JobResourceSummaryResp struct {
+		RunningJobs  int                                 `json:"runningJobs"`
+		PendingJobs  int                                 `json:"pendingJobs"`
+		CPU          JobResourceSummaryUsageResp         `json:"cpu"`
+		Memory       JobResourceSummaryUsageResp         `json:"memory"`
+		Accelerators []JobResourceSummaryAcceleratorResp `json:"accelerators"`
+	}
 )
+
+// GetPrequeueStatus godoc
+//
+//	@Summary		获取回填提交开关状态
+//	@Description	返回当前是否允许提交 backfill 作业
+//	@Tags			Context
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[PrequeueFeatureStatusResp]	"当前状态"
+//	@Failure		500	{object}	resputil.Response[any]						"服务器错误"
+//	@Router			/v1/context/prequeue [get]
+func (mgr *ContextMgr) GetPrequeueStatus(c *gin.Context) {
+	if mgr.configService == nil {
+		resputil.Error(c, "config service is not initialized", resputil.ServiceError)
+		return
+	}
+
+	cfg, err := mgr.configService.GetPrequeueConfig(c.Request.Context())
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	resputil.Success(c, PrequeueFeatureStatusResp{BackfillEnabled: cfg.BackfillEnabled})
+}
 
 // GetQuota godoc
 //
@@ -120,6 +180,116 @@ func (mgr *ContextMgr) GetQuota(c *gin.Context) {
 	applyQuotaResourceList(resources, capability, setQuotaCapability)
 
 	resputil.Success(c, buildQuotaResp(resources))
+}
+
+// GetJobResourceSummary godoc
+//
+//	@Summary		获取当前资源占用汇总
+//	@Description	按个人视角汇总运行中与排队中的作业资源占用，并返回队列内资源限制
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200		{object}	resputil.Response[JobResourceSummaryResp]	"当前作业资源占用汇总"
+//	@Failure		400		{object}	resputil.Response[any]					"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]					"服务器错误"
+//	@Router			/v1/context/job-resource-summary [get]
+func (mgr *ContextMgr) GetJobResourceSummary(c *gin.Context) {
+	token := util.GetToken(c)
+	scope := strings.TrimSpace(c.Query("scope"))
+	if scope != "" && scope != "personal" {
+		resputil.BadRequestError(c, fmt.Sprintf("invalid scope %q", scope))
+		return
+	}
+
+	summary, err := mgr.queueQuotaSvc.GetUserResourceUsageSummary(
+		c.Request.Context(),
+		token.UserID,
+		token.AccountID,
+		vcqueue.ResolveJobQueueName(token),
+	)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	accelerators := make([]JobResourceSummaryAcceleratorResp, 0, len(summary.Resources))
+	for resourceName, item := range summary.Resources {
+		if resourceName == string(v1.ResourceCPU) || resourceName == string(v1.ResourceMemory) {
+			continue
+		}
+		if !strings.Contains(resourceName, "/") ||
+			(!hasPositiveQuantity(item.Running) && !hasPositiveQuantity(item.Pending)) {
+			continue
+		}
+
+		accelerator := JobResourceSummaryAcceleratorResp{
+			Resource: resourceName,
+			Used:     item.Used,
+			Running:  defaultQuantityString(item.Running),
+			Pending:  defaultQuantityString(item.Pending),
+		}
+		if item.HasLimit {
+			accelerator.Limit = ptr.To(item.Limit)
+		}
+		accelerators = append(accelerators, accelerator)
+	}
+
+	sort.Slice(accelerators, func(i, j int) bool {
+		return accelerators[i].Resource < accelerators[j].Resource
+	})
+
+	cpuItem := summary.Resources[string(v1.ResourceCPU)]
+	memoryItem := summary.Resources[string(v1.ResourceMemory)]
+
+	resputil.Success(c, JobResourceSummaryResp{
+		RunningJobs:  summary.RunningJobs,
+		PendingJobs:  summary.PendingJobs,
+		CPU:          buildJobResourceSummaryUsage(&cpuItem),
+		Memory:       buildJobResourceSummaryUsage(&memoryItem),
+		Accelerators: accelerators,
+	})
+}
+
+func buildJobResourceSummaryUsage(
+	item *service.UserResourceUsageSummaryItem,
+) JobResourceSummaryUsageResp {
+	resp := JobResourceSummaryUsageResp{
+		Used:    "0",
+		Running: "0",
+		Pending: "0",
+	}
+	if item.Used != "" {
+		resp.Used = item.Used
+	}
+	if item.Running != "" {
+		resp.Running = item.Running
+	}
+	if item.Pending != "" {
+		resp.Pending = item.Pending
+	}
+	if item.HasLimit {
+		resp.Limit = ptr.To(item.Limit)
+	}
+	return resp
+}
+
+func defaultQuantityString(value string) string {
+	if value == "" {
+		return "0"
+	}
+	return value
+}
+
+func hasPositiveQuantity(value string) bool {
+	if value == "" {
+		return false
+	}
+	quantity, err := apiresource.ParseQuantity(value)
+	if err != nil {
+		return false
+	}
+	return quantity.MilliValue() > 0
 }
 
 type (
@@ -325,4 +495,40 @@ func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 	}
 
 	resputil.Success(c, "User email updated successfully")
+}
+
+// CheckResourceLimit godoc
+//
+//	@Summary		检查用户资源使用是否超限
+//	@Description	根据队列内资源限制配置，检查当前用户运行中作业资源加上本次请求资源是否超限
+//	@Tags			Context
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			body	body		ResourceLimitCheckReq							false	"本次请求的资源"
+//	@Success		200		{object}	resputil.Response[service.ResourceLimitCheckResult]	"检查结果"
+//	@Failure		500		{object}	resputil.Response[any]							"服务器错误"
+//	@Router			/v1/context/resource-limit-check [post]
+func (mgr *ContextMgr) CheckResourceLimit(c *gin.Context) {
+	token := util.GetToken(c)
+
+	var req ResourceLimitCheckReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	result, err := mgr.queueQuotaSvc.CheckUserResourceLimit(
+		c.Request.Context(),
+		token.UserID,
+		token.AccountID,
+		vcqueue.ResolveJobQueueName(token),
+		req.RequestedResources,
+	)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	resputil.Success(c, result)
 }

@@ -37,7 +37,10 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.UserID = field.NewUint(tableName, "user_id")
 	_job.AccountID = field.NewUint(tableName, "account_id")
 	_job.JobType = field.NewString(tableName, "job_type")
+	_job.ScheduleType = field.NewInt(tableName, "schedule_type")
+	_job.WaitingToleranceSeconds = field.NewInt64(tableName, "waiting_tolerance_seconds")
 	_job.Status = field.NewString(tableName, "status")
+	_job.Queue = field.NewString(tableName, "queue")
 	_job.CreationTimestamp = field.NewTime(tableName, "creation_timestamp")
 	_job.RunningTimestamp = field.NewTime(tableName, "running_timestamp")
 	_job.CompletedTimestamp = field.NewTime(tableName, "completed_timestamp")
@@ -105,7 +108,10 @@ type job struct {
 	UserID                   field.Uint
 	AccountID                field.Uint
 	JobType                  field.String // 作业类型
+	ScheduleType             field.Int    // 调度类型
+	WaitingToleranceSeconds  field.Int64  // 作业等待忍耐时间(秒)
 	Status                   field.String // 作业状态
+	Queue                    field.String // 作业提交的volcano队列
 	CreationTimestamp        field.Time   // 作业创建时间
 	RunningTimestamp         field.Time   // 作业开始运行时间
 	CompletedTimestamp       field.Time   // 作业完成时间
@@ -151,7 +157,10 @@ func (j *job) updateTableName(table string) *job {
 	j.UserID = field.NewUint(table, "user_id")
 	j.AccountID = field.NewUint(table, "account_id")
 	j.JobType = field.NewString(table, "job_type")
+	j.ScheduleType = field.NewInt(table, "schedule_type")
+	j.WaitingToleranceSeconds = field.NewInt64(table, "waiting_tolerance_seconds")
 	j.Status = field.NewString(table, "status")
+	j.Queue = field.NewString(table, "queue")
 	j.CreationTimestamp = field.NewTime(table, "creation_timestamp")
 	j.RunningTimestamp = field.NewTime(table, "running_timestamp")
 	j.CompletedTimestamp = field.NewTime(table, "completed_timestamp")
@@ -193,7 +202,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 29)
+	j.fieldMap = make(map[string]field.Expr, 31)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt
@@ -203,7 +212,10 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["user_id"] = j.UserID
 	j.fieldMap["account_id"] = j.AccountID
 	j.fieldMap["job_type"] = j.JobType
+	j.fieldMap["schedule_type"] = j.ScheduleType
+	j.fieldMap["waiting_tolerance_seconds"] = j.WaitingToleranceSeconds
 	j.fieldMap["status"] = j.Status
+	j.fieldMap["queue"] = j.Queue
 	j.fieldMap["creation_timestamp"] = j.CreationTimestamp
 	j.fieldMap["running_timestamp"] = j.RunningTimestamp
 	j.fieldMap["completed_timestamp"] = j.CompletedTimestamp

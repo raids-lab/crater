@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
 import { LayoutGridIcon } from 'lucide-react'
-import { CirclePlus } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -46,7 +45,6 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 
 import TipBadge from '@/components/badge/tip-badge'
-import LoadableButton from '@/components/button/loadable-button'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -56,14 +54,17 @@ import { ForwardFormCard } from '@/components/form/forward-form-field'
 import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { ResourceFormFields } from '@/components/form/resource-form-field'
+import { ScheduleTypeFormField } from '@/components/form/schedule-type-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
 import { MetadataFormCustom } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
+import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { PublishConfigForm, publishValidateSearch } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
 
-import { apiTrainingCreate } from '@/services/api/vcjob'
+import { apiContextPrequeueStatus } from '@/services/api/context'
+import { ScheduleType, apiTrainingCreate } from '@/services/api/vcjob'
 
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
@@ -108,6 +109,7 @@ const formSchema = z.object({
   alertEnabled: z.boolean().default(true),
   cpuPinningEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
+  scheduleType: z.nativeEnum(ScheduleType).default(ScheduleType.Normal),
 })
 
 type FormSchema = z.infer<typeof formSchema>
@@ -135,6 +137,9 @@ const dataProcessor = (data: FormSchema) => {
       enabled: false,
     }
   }
+  if (data.scheduleType === undefined) {
+    data.scheduleType = ScheduleType.Normal
+  }
   return data
 }
 
@@ -149,6 +154,11 @@ function RouteComponent() {
   const user = useAtomValue(atomUserInfo)
   const { billingBlockDialogOpen, setBillingBlockDialogOpen, handleJobCreateError } =
     useJobCreateBillingBlockDialog()
+  const { data: prequeueStatusData } = useQuery({
+    queryKey: ['context', 'prequeue'],
+    queryFn: () => apiContextPrequeueStatus().then((res) => res.data),
+  })
+  const isBackfillEnabled = prequeueStatusData?.backfillEnabled ?? false
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) =>
       apiTrainingCreate({
@@ -163,6 +173,7 @@ function RouteComponent() {
         forwards: values.forwards,
         alertEnabled: values.alertEnabled,
         cpuPinningEnabled: values.cpuPinningEnabled,
+        scheduleType: isBackfillEnabled ? values.scheduleType : ScheduleType.Normal,
         selectors: values.nodeSelector.enable
           ? [
               {
@@ -193,7 +204,6 @@ function RouteComponent() {
     },
   })
 
-  // 1. Define your form.
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -221,6 +231,7 @@ function RouteComponent() {
       envs: [],
       alertEnabled: true,
       cpuPinningEnabled: false,
+      scheduleType: ScheduleType.Normal,
       nodeSelector: {
         enable: false,
       },
@@ -228,7 +239,6 @@ function RouteComponent() {
     },
   })
 
-  // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
@@ -276,10 +286,7 @@ function RouteComponent() {
                 configform={form}
                 fromTemplate={searchParams.fromTemplate}
               />
-              <LoadableButton isLoading={isPending} isLoadingText="提交作业" type="submit">
-                <CirclePlus className="size-4" />
-                提交作业
-              </LoadableButton>
+              <JobSubmitButton isLoading={isPending} />
             </div>
           </PageTitle>
           <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
@@ -319,8 +326,10 @@ function RouteComponent() {
                     vgpuEnabled: 'task.resource.vgpu.enabled',
                     vgpuModels: 'task.resource.vgpu.models',
                   }}
+                  scheduleTypePath={isBackfillEnabled ? 'scheduleType' : undefined}
                 />
                 <ImageFormField form={form} name="task.image" />
+                {isBackfillEnabled && <ScheduleTypeFormField form={form} name="scheduleType" />}
                 <FormField
                   control={form.control}
                   name="task.shell"

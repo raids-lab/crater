@@ -351,8 +351,11 @@ func (s *BillingService) ValidateActivationReady(ctx context.Context) error {
 	return nil
 }
 
-func (s *BillingService) OnJobCreateCheck(ctx context.Context, userID, accountID uint) error {
+func (s *BillingService) OnJobCreateCheck(ctx context.Context, userID, accountID uint, scheduleType *model.ScheduleType) error {
 	if !s.IsFeatureEnabled(ctx) || !s.IsActive(ctx) {
+		return nil
+	}
+	if shouldSkipJobCreateBillingCheck(scheduleType) {
 		return nil
 	}
 	var (
@@ -1044,7 +1047,7 @@ func computeSettlementWindow(
 }
 
 func calcSettlementCharge(job *model.Job, priceMap map[string]int64, billableDuration time.Duration) (newTotalMicro, jobCost int64) {
-	windowCostMicro := calcJobCostMicroPoints(job.Resources.Data(), priceMap, billableDuration)
+	windowCostMicro := calcJobCostMicroPoints(job.Resources.Data(), priceMap, billableDuration, billingMultiplierForJob(job))
 	if windowCostMicro < 0 {
 		windowCostMicro = 0
 	}
@@ -1057,6 +1060,9 @@ func calcSettlementCharge(job *model.Job, priceMap map[string]int64, billableDur
 }
 
 func deductSettlementCost(tx *gorm.DB, job *model.Job, jobCost int64) (freeDeduct, extraDeduct, freeDebt int64, err error) {
+	if jobCost <= 0 {
+		return 0, 0, 0, nil
+	}
 	txQuery := query.Use(tx)
 	uaQuery := txQuery.UserAccount
 	ua, err := uaQuery.WithContext(tx.Statement.Context).
@@ -1182,8 +1188,14 @@ func loadUnitPriceMapTx(_ context.Context, tx *gorm.DB) (map[string]int64, error
 	return priceMap, nil
 }
 
-func calcJobCostMicroPoints(resources v1.ResourceList, priceMap map[string]int64, billableDuration time.Duration) int64 {
-	if billableDuration <= 0 || len(resources) == 0 || len(priceMap) == 0 {
+func calcJobCostMicroPoints(
+	resources v1.ResourceList,
+	priceMap map[string]int64,
+	billableDuration time.Duration,
+	billingMultiplier *big.Rat,
+) int64 {
+	if billableDuration <= 0 || len(resources) == 0 || len(priceMap) == 0 ||
+		billingMultiplier == nil || billingMultiplier.Sign() <= 0 {
 		return 0
 	}
 	total := new(big.Rat)
@@ -1199,12 +1211,31 @@ func calcJobCostMicroPoints(resources v1.ResourceList, priceMap map[string]int64
 		}
 		line := new(big.Rat).Mul(amountRat, big.NewRat(price, 1))
 		line.Mul(line, durationRat)
+		line.Mul(line, billingMultiplier)
 		total.Add(total, line)
 	}
 	if total.Sign() <= 0 {
 		return 0
 	}
 	return ratFloorToInt64(total)
+}
+
+func billingMultiplierForJob(job *model.Job) *big.Rat {
+	if job == nil {
+		return big.NewRat(1, 1)
+	}
+	return billingMultiplierForScheduleType(job.ScheduleType)
+}
+
+func billingMultiplierForScheduleType(scheduleType *model.ScheduleType) *big.Rat {
+	if scheduleType != nil && *scheduleType == model.ScheduleTypeBackfill {
+		return big.NewRat(0, 1)
+	}
+	return big.NewRat(1, 1)
+}
+
+func shouldSkipJobCreateBillingCheck(scheduleType *model.ScheduleType) bool {
+	return billingMultiplierForScheduleType(scheduleType).Sign() == 0
 }
 
 func resolveEffectiveIssueConfig(

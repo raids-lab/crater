@@ -27,6 +27,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gen"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,10 +43,12 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/service"
+	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
@@ -57,6 +60,7 @@ type VcJobReconciler struct {
 	log              logr.Logger
 	prometheusClient monitor.PrometheusInterface // get monitor data
 	kubeClient       kubernetes.Interface
+	prequeueWatcher  *prequeuewatcher.PrequeueWatcher
 	billingService   *service.BillingService
 }
 
@@ -66,6 +70,7 @@ func NewVcJobReconciler(
 	scheme *runtime.Scheme,
 	prometheusClient monitor.PrometheusInterface,
 	kubeClient kubernetes.Interface,
+	prequeueWatcher *prequeuewatcher.PrequeueWatcher,
 	billingService *service.BillingService,
 ) *VcJobReconciler {
 	return &VcJobReconciler{
@@ -74,6 +79,7 @@ func NewVcJobReconciler(
 		log:              ctrl.Log.WithName("vcjob-reconciler"),
 		prometheusClient: prometheusClient,
 		kubeClient:       kubeClient,
+		prequeueWatcher:  prequeueWatcher,
 		billingService:   billingService,
 	}
 }
@@ -86,10 +92,6 @@ func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithOptions(controller.Options{}).
 		Complete(r)
 }
-
-//+kubebuilder:rbac:groups=aisystem.github.com,resources=aijobs,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=aisystem.github.com,resources=aijobs/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=aisystem.github.com,resources=aijobs/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -132,6 +134,18 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				return ctrl.Result{Requeue: true}, err
 			}
 		}
+		if record.Status == model.Prequeue {
+			return ctrl.Result{}, nil
+		}
+
+		if record.Status == model.Deleted {
+			if err = r.updateMissingJobProfile(ctx, req.Name, record); err != nil {
+				logger.Error(err, "unable to update job profile data")
+				return ctrl.Result{Requeue: true}, err
+			}
+			r.notifyPrequeue()
+			return ctrl.Result{}, nil
+		}
 
 		// 如果数据库的纪录中，作业已经处于终止态，则无需将作业标记为被释放
 		if record.Status == model.Deleted || record.Status == model.Freed ||
@@ -143,24 +157,11 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				}
 			}
 			if record.ProfileData == nil {
-				podName := getPodNameFromJobTemplate(record.Attributes.Data())
-				profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-					Namespace: config.GetConfig().Namespaces.Job,
-					Name:      podName,
-				}, record.RunningTimestamp)
-				var info gen.ResultInfo
-				info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
-					ProfileData: ptr.To(datatypes.NewJSONType(profileData)),
-				})
-				if err != nil {
+				if err = r.updateMissingJobProfile(ctx, req.Name, record); err != nil {
 					logger.Error(err, "unable to update job profile data")
 					return ctrl.Result{Requeue: true}, err
 				}
-				if info.RowsAffected == 0 {
-					logger.Info("job not found in database")
-				}
 			}
-
 			return ctrl.Result{}, nil
 		}
 
@@ -191,6 +192,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				logger.Error(settleErr, "billing final settlement hook failed")
 			}
 		}
+		r.notifyPrequeue()
 		return ctrl.Result{}, nil
 	}
 
@@ -209,7 +211,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			logger.Error(err, "unable to generate create job model")
 			return ctrl.Result{}, err
 		}
-		err = j.WithContext(ctx).Create(newRecord)
+		err = r.createOrUpdateJobRecord(ctx, newRecord)
 		if err != nil {
 			logger.Error(err, "unable to create job record")
 			return ctrl.Result{Requeue: true}, err
@@ -279,7 +281,56 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		r.cancelPendingApprovalOrders(ctx, job.Name, fmt.Sprintf("job is not running (status: %s), order is canceled", job.Status.State.Phase))
 	}
 
+	if shouldActivatePrequeueOnPhaseChange(oldRecord.Status, job.Status.State.Phase) {
+		r.notifyPrequeue()
+	}
+
 	return ctrl.Result{}, nil
+}
+
+func shouldActivatePrequeueOnPhaseChange(oldStatus, newStatus batch.JobPhase) bool {
+	if !isReleasedJobPhase(newStatus) || isReleasedJobPhase(oldStatus) {
+		return false
+	}
+
+	return oldStatus != model.Deleted && oldStatus != model.Freed && oldStatus != model.Prequeue
+}
+
+func isReleasedJobPhase(status batch.JobPhase) bool {
+	return status == batch.Completed ||
+		status == batch.Failed ||
+		status == batch.Aborted ||
+		status == batch.Terminated
+}
+
+func (r *VcJobReconciler) notifyPrequeue() {
+	if r.prequeueWatcher == nil {
+		return
+	}
+	r.prequeueWatcher.RequestFullScan()
+}
+
+func (r *VcJobReconciler) updateMissingJobProfile(ctx context.Context, jobName string, record *model.Job) error {
+	if record == nil || record.ProfileData != nil || record.Attributes.Data() == nil {
+		return nil
+	}
+
+	podName := getPodNameFromJobTemplate(record.Attributes.Data())
+	profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
+		Namespace: config.GetConfig().Namespaces.Job,
+		Name:      podName,
+	}, record.RunningTimestamp)
+
+	info, err := query.Job.WithContext(ctx).Where(query.Job.JobName.Eq(jobName)).Updates(model.Job{
+		ProfileData: ptr.To(datatypes.NewJSONType(profileData)),
+	})
+	if err != nil {
+		return err
+	}
+	if info.RowsAffected == 0 {
+		r.log.Info("job not found in database", "job", jobName)
+	}
+	return nil
 }
 
 func (r *VcJobReconciler) cancelPendingApprovalOrders(ctx context.Context, jobName, reason string) {
@@ -298,6 +349,40 @@ func (r *VcJobReconciler) cancelPendingApprovalOrders(ctx context.Context, jobNa
 	}
 }
 
+func (r *VcJobReconciler) createOrUpdateJobRecord(ctx context.Context, record *model.Job) error {
+	return query.Job.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "job_name"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"created_at",
+			"updated_at",
+			"deleted_at",
+			"name",
+			"user_id",
+			"account_id",
+			"job_type",
+			"schedule_type",
+			"waiting_tolerance_seconds",
+			"status",
+			"queue",
+			"creation_timestamp",
+			"running_timestamp",
+			"completed_timestamp",
+			"nodes",
+			"resources",
+			"attributes",
+			"template",
+			"alert_enabled",
+			"reminded",
+			"keep_when_low_resource_usage",
+			"locked_timestamp",
+			"profile_data",
+			"schedule_data",
+			"events",
+			"terminated_states",
+		}),
+	}).Create(record)
+}
+
 func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch.Job) (*model.Job, error) {
 	resources := make(v1.ResourceList, 0)
 	for i := range job.Spec.Tasks {
@@ -311,7 +396,6 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 					resources[name] = quantity
 				} else {
 					v.Add(quantity)
-
 					resources[name] = v
 				}
 			}
@@ -320,7 +404,6 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	u := query.User
 	q := query.Account
 
-	// get user and queue
 	userName := job.Labels[crclient.LabelKeyTaskUser]
 	user, err := u.WithContext(ctx).Where(u.Name.Eq(userName)).First()
 	if err != nil {
@@ -329,37 +412,54 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	accountName := job.Labels[crclient.LalbeKeyTaskAccount]
 	queue, err := q.WithContext(ctx).Where(q.Name.Eq(accountName)).First()
 	if err != nil {
-		// fallback to job.Spec.Queue
 		queue, err = q.WithContext(ctx).Where(q.Name.Eq(job.Spec.Queue)).First()
 		if err != nil {
 			return nil, fmt.Errorf("unable to get queue %s and %s: %w", accountName, job.Spec.Queue, err)
 		}
 	}
 
-	// receive alert email or not
 	alertEnabled, err := strconv.ParseBool(job.Annotations[vcjob.AnnotationKeyAlertEnabled])
 	if err != nil {
 		alertEnabled = true
 	}
+	scheduleType := model.ScheduleTypeNormal
+	if scheduleTypeInt, err := strconv.ParseInt(
+		job.Annotations[vcjobservice.AnnotationKeyScheduleType], 10, 64,
+	); err == nil {
+		scheduleType = model.ScheduleType(scheduleTypeInt)
+	}
+	var waitingToleranceSeconds *int64
+	if waitingToleranceSecondsInt, err := strconv.ParseInt(
+		job.Annotations[vcjobservice.AnnotationKeyWaitingToleranceSeconds], 10, 64,
+	); err == nil {
+		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
+	}
 
 	return &model.Job{
-		Name:              job.Annotations[vcjob.AnnotationKeyTaskName],
-		JobName:           job.Name,
-		UserID:            user.ID,
-		AccountID:         queue.ID,
-		JobType:           model.JobType(job.Labels[crclient.LabelKeyTaskType]),
-		Status:            job.Status.State.Phase,
-		CreationTimestamp: job.CreationTimestamp.Time,
-		Resources:         datatypes.NewJSONType(resources),
-		Attributes:        datatypes.NewJSONType(job),
-		Template:          job.Annotations[vcjob.AnnotationKeyTaskTemplate],
-		AlertEnabled:      alertEnabled,
+		Name:                    job.Annotations[vcjob.AnnotationKeyTaskName],
+		JobName:                 job.Name,
+		UserID:                  user.ID,
+		AccountID:               queue.ID,
+		JobType:                 model.JobType(job.Labels[crclient.LabelKeyTaskType]),
+		ScheduleType:            ptr.To(scheduleType),
+		WaitingToleranceSeconds: waitingToleranceSeconds,
+		Status:                  job.Status.State.Phase,
+		Queue:                   job.Spec.Queue,
+		CreationTimestamp:       job.CreationTimestamp.Time,
+		Resources:               datatypes.NewJSONType(resources),
+		Attributes:              datatypes.NewJSONType(job),
+		Template:                job.Annotations[vcjob.AnnotationKeyTaskTemplate],
+		AlertEnabled:            alertEnabled,
 	}, nil
 }
 
 //nolint:gocyclo // refactor later
 func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job, oldRecord *model.Job) *model.Job {
 	conditions := job.Status.Conditions
+	status := job.Status.State.Phase
+	if status == "" && (oldRecord.Status == batch.Pending || oldRecord.Status == model.Prequeue) {
+		status = batch.Pending
+	}
 
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
@@ -403,6 +503,18 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			}
 		}
 	}
+	scheduleType := model.ScheduleTypeNormal
+	if scheduleTypeInt, err := strconv.ParseInt(
+		job.Annotations[vcjobservice.AnnotationKeyScheduleType], 10, 64,
+	); err == nil {
+		scheduleType = model.ScheduleType(scheduleTypeInt)
+	}
+	var waitingToleranceSeconds *int64
+	if waitingToleranceSecondsInt, err := strconv.ParseInt(
+		job.Annotations[vcjobservice.AnnotationKeyWaitingToleranceSeconds], 10, 64,
+	); err == nil {
+		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
+	}
 
 	// do not update nodes info if job is not running on any node
 	if len(nodes) == 0 {
@@ -422,7 +534,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 					profilePtr = ptr.To(datatypes.NewJSONType(profile))
 				}
 			}
-			if job.Status.State.Phase == batch.Failed {
+			if status == batch.Failed {
 				// 作业失败，采集事件和终止状态
 				events := r.getNewEventsForJob(ctx, job, oldRecord)
 				if len(events) > 0 {
@@ -436,17 +548,19 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		}
 
 		return &model.Job{
-			Status:             job.Status.State.Phase,
-			RunningTimestamp:   runningTimestamp,
-			CompletedTimestamp: completedTimestamp,
-			ProfileData:        profilePtr,
-			Events:             eventsPtr,
-			TerminatedStates:   terminatedStatesPtr,
+			Status:                  status,
+			RunningTimestamp:        runningTimestamp,
+			CompletedTimestamp:      completedTimestamp,
+			ProfileData:             profilePtr,
+			Events:                  eventsPtr,
+			TerminatedStates:        terminatedStatesPtr,
+			ScheduleType:            ptr.To(scheduleType),
+			WaitingToleranceSeconds: waitingToleranceSeconds,
 		}
 	}
 
 	// 作业运行，采集调度数据和事件
-	if job.Status.State.Phase == batch.Running {
+	if status == batch.Running {
 		var scheduleDataPtr *datatypes.JSONType[*model.ScheduleData]
 		var eventsPtr *datatypes.JSONType[[]v1.Event]
 		// 采集事件
@@ -469,19 +583,23 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			}
 		}
 		return &model.Job{
-			Status:             job.Status.State.Phase,
-			RunningTimestamp:   runningTimestamp,
-			CompletedTimestamp: completedTimestamp,
-			Nodes:              datatypes.NewJSONType(nodes),
-			ScheduleData:       scheduleDataPtr,
-			Events:             eventsPtr,
+			Status:                  status,
+			RunningTimestamp:        runningTimestamp,
+			CompletedTimestamp:      completedTimestamp,
+			Nodes:                   datatypes.NewJSONType(nodes),
+			ScheduleData:            scheduleDataPtr,
+			Events:                  eventsPtr,
+			ScheduleType:            ptr.To(scheduleType),
+			WaitingToleranceSeconds: waitingToleranceSeconds,
 		}
 	}
 
 	return &model.Job{
-		Status:             job.Status.State.Phase,
-		RunningTimestamp:   runningTimestamp,
-		CompletedTimestamp: completedTimestamp,
-		Nodes:              datatypes.NewJSONType(nodes),
+		Status:                  status,
+		RunningTimestamp:        runningTimestamp,
+		CompletedTimestamp:      completedTimestamp,
+		Nodes:                   datatypes.NewJSONType(nodes),
+		ScheduleType:            ptr.To(scheduleType),
+		WaitingToleranceSeconds: waitingToleranceSeconds,
 	}
 }

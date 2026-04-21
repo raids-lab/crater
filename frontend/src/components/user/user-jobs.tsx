@@ -17,6 +17,7 @@ import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
+import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
@@ -27,9 +28,11 @@ import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   IJobInfo,
+  ScheduleType,
   apiAdminGetUserJobList,
   apiGetUserJobs,
   apiJobDeleteForAdmin,
+  getUnifiedJobPhase,
 } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -96,6 +99,17 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.original.jobType} />,
       },
+      {
+        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
+        id: 'scheduleType',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
+        ),
+        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id))
+        },
+      },
       ...(isAdmin
         ? ([
             {
@@ -135,7 +149,8 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
         },
       },
       {
-        accessorKey: 'status',
+        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('jobs.headers.status')} />
         ),

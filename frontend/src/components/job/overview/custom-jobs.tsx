@@ -24,9 +24,11 @@ import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
+import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import DocsButton from '@/components/button/docs-button'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
+import JobResourceSummary from '@/components/job/job-resource-summary'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
@@ -35,8 +37,16 @@ import { DataTableColumnHeader } from '@/components/query-table/column-header'
 
 import { apiJobBillingList } from '@/services/api/billing'
 import { apiGetBillingStatus } from '@/services/api/system-config'
-import { JobPhase, apiJobBatchList, apiJobDelete, isInteracitveJob } from '@/services/api/vcjob'
-import { IJobInfo, JobType } from '@/services/api/vcjob'
+import {
+  IJobInfo,
+  JobPhase,
+  JobType,
+  ScheduleType,
+  apiJobBatchList,
+  apiJobDelete,
+  getUnifiedJobPhase,
+  isInteracitveJob,
+} from '@/services/api/vcjob'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -107,6 +117,7 @@ const VolcanoOverview = () => {
         queryClient.invalidateQueries({ queryKey: ['job', 'billing'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'quota'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
+        queryClient.invalidateQueries({ queryKey: ['context', 'job-resource-summary'] }),
       ])
     } catch (error) {
       logger.error('更新查询失败', error)
@@ -131,12 +142,24 @@ const VolcanoOverview = () => {
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
       {
+        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
+        id: 'scheduleType',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
+        ),
+        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
+        filterFn: (row, id, value) => {
+          return (value as string[]).includes(row.getValue(id))
+        },
+      },
+      {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
-        accessorKey: 'status',
+        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
@@ -228,6 +251,7 @@ const VolcanoOverview = () => {
       query={mergedBatchQuery}
       columns={batchColumns}
       toolbarConfig={jobToolbarConfig}
+      briefChildren={<JobResourceSummary />}
       multipleHandlers={[
         {
           title: (rows) => t('jobs.handlers.stopOrDeleteTitle', { count: rows.length }),

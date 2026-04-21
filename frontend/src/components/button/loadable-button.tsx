@@ -26,6 +26,7 @@ type LoadableButtonProps = React.ComponentProps<'button'> &
     asChild?: boolean
     isLoading: boolean
     isLoadingText: string
+    disabled?: boolean
   }
 
 const LoadableButton = function LoadableButton({
@@ -34,6 +35,7 @@ const LoadableButton = function LoadableButton({
   size,
   isLoading,
   isLoadingText,
+  disabled,
   children,
   ...props
 }: LoadableButtonProps) {
@@ -41,7 +43,7 @@ const LoadableButton = function LoadableButton({
     <Button
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
     >
       {isLoading ? (
         <>

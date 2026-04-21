@@ -1,3 +1,5 @@
+import { ScheduleType } from '@/services/api/vcjob'
+
 import { V1ResourceList, convertKResourceToResource } from './resource'
 
 export interface BillingPriceSource {
@@ -43,12 +45,15 @@ export const calcBillingAmount = (resourceName: string, rawValue?: string) => {
   return normalized
 }
 
+export const getBillingMultiplierForScheduleType = (scheduleType?: ScheduleType | null) =>
+  scheduleType === ScheduleType.Backfill ? 0 : 1
+
 export const summarizeBillingPriceEntries = (
   entries: BillingPriceEntryInput[],
   priceSources: Record<string, BillingPriceSource>
 ): BillingPriceEntrySummary[] =>
   entries.map((entry) => {
-    const multiplier = Math.max(1, entry.multiplier ?? 1)
+    const multiplier = Math.max(0, entry.multiplier ?? 1)
     const resourceList = entry.resourceList ?? {}
     const items = Object.entries(resourceList)
       .map(([resourceName, rawValue]) => {
