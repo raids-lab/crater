@@ -99,55 +99,40 @@
 
 [TODO] 增加日志系统
 
+---
+
 ## 人文关怀
 
 ### 多语言支持
 
-单一二进制支持中文（`zh-CN`）和英文（`en`）。文案经 i18n；`--json` 仅要求键名为英文。错误体 `Message`、成功体可选 `message` 的约定见上文「命令结果：错误与成功」与下文「约束」。
+单一二进制支持中文（`zh-CN`）与英文（`en`）。所有面向人类的文案（帮助信息、提示语、成功/失败消息等）必须走 `internal/i18n`；`--json` 模式下仅要求 JSON 键名为英文，但错误体 `message` 与成功体可选 `message` 仍应随当前语言变化（见上文「命令结果：错误与成功」与 COMMANDS 全局约定）。
 
 **翻译文件分布**
 
-翻译 key 分散在按命令域分组的 catalog 文件中，统一注册到 `internal/i18n/i18n.go`：
+翻译 key 按命令域拆分在 `internal/i18n/catalog_*.go` 中，并统一注册到 `internal/i18n/i18n.go`（`mergeCatalogs()`）：
+- `catalog_root.go`：根命令、全局选项
+- `catalog_auth.go`：`auth` 命令族
+- `catalog_config.go`：`config` 命令族
+- `catalog_errors.go`：通用错误消息
 
--   catalog_root.go   -> 根命令、全局选项
--   catalog_auth.go   -> auth 命令族
--   catalog_config.go -> config 命令族
--   catalog_errors.go -> 通用错误消息
-
-文件划分逻辑：按命令域划分，新增命令类型时在 `internal/i18n/` 下新建 `catalog_<域>.go`，并在 `i18n.go` 的 `mergeCatalogs()` 中注册。
+新增命令域时：新增 `catalog_<域>.go`，并在 `mergeCatalogs()` 注册。
 
 **Key 规范**
 
--   命令描述：`<域>_<命令>_short` / `_long`
--   选项描述（i18n key，沿用 `flag_` 前缀）：`flag_<选项名>`
--   提示语：`prompt_<字段>`
--   表格标题：`table_<列名>`
--   结果消息：`<动作>_<结果>`
+- 命令描述：`<域>_<命令>_short` 与 `<域>_<命令>_long`
+- 选项描述：`flag_<选项名>`（沿用 `flag_` 前缀）
+- 提示语：`prompt_<字段>`
+- 表格标题：`table_<列名>`
+- 结果消息：`<动作>_<结果>`
 
-**用法**
+**关于 “cmd 中硬编码文案” 的约定（重要）**
 
-命令定义（Short/Long 在 `cmd/*.go` 中）：
+在 `cmd/*.go` 中，命令的 `Short` / `Long` 允许出现硬编码英文作为**开发期占位与提示**；但**发布前必须提供**对应的 i18n key（`*_short` / `*_long`），不得依赖硬编码英文作为最终文案来源。运行时，CLI 会在执行入口根据当前语言统一覆盖命令树的 `Short` / `Long` 与 flag 的 `Usage`。
 
-```go
-var whoamiCmd = &cobra.Command{
-    Use:   "whoami",
-    Short: i18n.T("auth_whoami_short"),
-    Long:  i18n.T("auth_whoami_long"),
-}
-```
+换句话说：不要以 `cmd/*.go` 中看到的 `Short` / `Long` 字面量作为最终显示文案的权威来源；权威来源是对应的 i18n key。关于覆盖发生的具体时机与实现机制，见 `ARCHITECTURE.md` 中的 i18n/help 初始化与更新章节。
 
-选项描述（对应 Cobra `Flags()` / `PersistentFlags()` 的 Usage，文案来自 i18n）：
+**用法（按职责拆分）**
 
-```go
-cmd.PersistentFlags().String("platform", "", i18n.T("flag_platform"))
-```
-
-消息输出（在 `RunE` 或辅助函数中）：
-
-```go
-fmt.Println(i18n.T("login_success", platform, username))
-```
-
-**约束**
-
-- `--json`：JSON 键名英文；错误体中的 `message` 用 i18n（与当前语言一致）。成功体为 `status`（固定 `OK`）+ `data` + 可选 `message`，见上文「命令结果：错误与成功」；`message` 是否省略及 `data` 内键以 `COMMANDS.md` 为准。
+- 命令文案的权威来源：在 `internal/i18n/catalog_<域>.go` 中维护 `*_short` / `*_long` 等 key。
+- 交互提示、成功/失败消息：在 `RunE` 或辅助函数中使用 `i18n.T(...)` 输出（stdout/stderr 规则见本规范上文与 COMMANDS）。
+- 选项 `Usage`：在定义 flag 时使用 `i18n.T("flag_<name>")`。
