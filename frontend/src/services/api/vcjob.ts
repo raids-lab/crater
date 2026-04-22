@@ -39,6 +39,11 @@ export enum JobType {
   OpenMPI = 'openmpi',
 }
 
+export enum ScheduleType {
+  Backfill = 0,
+  Normal = 1,
+}
+
 export const isInteracitveJob = (jobType: JobType) => {
   return jobType === JobType.Jupyter || jobType === JobType.WebIDE
 }
@@ -53,6 +58,7 @@ export interface IJobInfo {
   owner: string
   userInfo: IUserInfo
   jobType: JobType
+  scheduleType: ScheduleType
   queue: string
   status: JobPhase
   createdAt: string
@@ -86,6 +92,9 @@ export const apiGetUserJobs = (username: string, days: number = 30) =>
 export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/all`)
 
 export enum JobPhase {
+  // Prequeue means Crater has accepted the job but has not submitted it to Volcano yet, so UI copy should treat it as queued.
+  Prequeue = 'Prequeue',
+  // Pending means the job is already inside Volcano and waiting for scheduling or resources, so UI copy should treat it as waiting.
   Pending = 'Pending',
   Aborting = 'Aborting',
   Aborted = 'Aborted',
@@ -110,9 +119,12 @@ export enum JobStatus {
   Unknown = 'Unknown',
 }
 
+export const getUnifiedJobPhase = (phase: JobPhase): JobPhase =>
+  phase === JobPhase.Prequeue ? JobPhase.Pending : phase
+
 export const getJobStateType = (phase: JobPhase): JobStatus => {
-  // 作业还没有开始运行的状态
-  const notStartedPhases = new Set([JobPhase.Pending, JobPhase.Init])
+  // NotStarted is a coarse lifecycle bucket; queued and waiting still need separate UI copy.
+  const notStartedPhases = new Set([JobPhase.Prequeue, JobPhase.Pending, JobPhase.Init])
 
   // 作业正在运行的状态
   const runningPhases = new Set([
@@ -280,6 +292,7 @@ export interface IJupyterDetail {
   userInfo: IUserInfo
   jobName: string
   jobType: JobType
+  scheduleType: ScheduleType
   retry: string
   queue: string
   status: JobPhase
@@ -355,6 +368,7 @@ export interface IJupyterCreate {
   alertEnabled: boolean
   cpuPinningEnabled?: boolean
   forwards: Forward[]
+  scheduleType?: ScheduleType
 }
 
 export interface ITrainingCreate extends IJupyterCreate {

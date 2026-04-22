@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { JobPhase } from '@/services/api/vcjob'
+import { t } from 'i18next'
+
+import { JobPhase, getUnifiedJobPhase } from '@/services/api/vcjob'
 
 import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
 export const jobPhases = [
   {
     value: 'Pending',
-    label: '等待中',
+    label: t('jobs.statuses.pending.label'),
     color: '#a855f7',
   },
   {
@@ -81,18 +83,20 @@ export const jobPhases = [
 ]
 
 export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
-  switch (phase) {
+  const unifiedPhase = getUnifiedJobPhase(phase)
+
+  switch (unifiedPhase) {
+    case JobPhase.Pending:
+      return {
+        label: t('jobs.statuses.pending.label'),
+        color: 'text-highlight-purple bg-highlight-purple/20',
+        description: t('jobs.statuses.pending.description'),
+      }
     case JobPhase.Init:
       return {
         label: '已创建',
         color: 'text-highlight-slate bg-highlight-slate/20',
         description: '作业已提交到集群，等待信息同步',
-      }
-    case JobPhase.Pending:
-      return {
-        label: '等待中',
-        color: 'text-highlight-purple bg-highlight-purple/20',
-        description: '作业正在排队等待执行，如果等待时间过长，可能是集群资源不足或账户配额已达限制',
       }
     case JobPhase.Aborting:
       return {

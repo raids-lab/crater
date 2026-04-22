@@ -122,6 +122,7 @@ export const JobActionsMenu = ({
           isOpen={isLockSheetOpen}
           onOpenChange={setIsLockSheetOpen}
           jobName={jobInfo.jobName}
+          scheduleType={jobInfo.scheduleType}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

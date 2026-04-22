@@ -2,6 +2,11 @@ package service
 
 import (
 	"testing"
+	"time"
+
+	"gorm.io/datatypes"
+	v1 "k8s.io/api/core/v1"
+	apiresource "k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/raids-lab/crater/dao/model"
 )
@@ -203,6 +208,73 @@ func TestShouldBlockJobCreateForBalance(t *testing.T) {
 				t.Fatalf("shouldBlockJobCreateForBalance() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestCalcSettlementChargeUsesScheduleTypeBillingMultiplier(t *testing.T) {
+	t.Parallel()
+
+	normal := model.ScheduleTypeNormal
+	backfill := model.ScheduleTypeBackfill
+	resources := v1.ResourceList{
+		v1.ResourceCPU: apiresource.MustParse("2"),
+	}
+	priceMap := map[string]int64{
+		string(v1.ResourceCPU): 3 * BillingPointScale,
+	}
+
+	normalJob := &model.Job{
+		ScheduleType:      &normal,
+		Resources:         datatypes.NewJSONType(resources),
+		BilledPointsTotal: BillingPointScale,
+	}
+	newTotalMicro, jobCost := calcSettlementCharge(normalJob, priceMap, 30*time.Minute)
+	if jobCost != 3*BillingPointScale {
+		t.Fatalf("normal jobCost = %d, want %d", jobCost, 3*BillingPointScale)
+	}
+	if newTotalMicro != 4*BillingPointScale {
+		t.Fatalf("normal newTotalMicro = %d, want %d", newTotalMicro, 4*BillingPointScale)
+	}
+
+	backfillJob := &model.Job{
+		ScheduleType:      &backfill,
+		Resources:         datatypes.NewJSONType(resources),
+		BilledPointsTotal: BillingPointScale,
+	}
+	newTotalMicro, jobCost = calcSettlementCharge(backfillJob, priceMap, 30*time.Minute)
+	if jobCost != 0 {
+		t.Fatalf("backfill jobCost = %d, want 0", jobCost)
+	}
+	if newTotalMicro != BillingPointScale {
+		t.Fatalf("backfill newTotalMicro = %d, want %d", newTotalMicro, BillingPointScale)
+	}
+}
+
+func TestDeductSettlementCostSkipsNonPositiveCost(t *testing.T) {
+	t.Parallel()
+
+	freeDeduct, extraDeduct, freeDebt, err := deductSettlementCost(nil, nil, 0)
+	if err != nil {
+		t.Fatalf("deductSettlementCost() err = %v, want nil", err)
+	}
+	if freeDeduct != 0 || extraDeduct != 0 || freeDebt != 0 {
+		t.Fatalf("deductions = (%d, %d, %d), want (0, 0, 0)", freeDeduct, extraDeduct, freeDebt)
+	}
+}
+
+func TestShouldSkipJobCreateBillingCheck(t *testing.T) {
+	t.Parallel()
+
+	backfill := model.ScheduleTypeBackfill
+	normal := model.ScheduleTypeNormal
+	if !shouldSkipJobCreateBillingCheck(&backfill) {
+		t.Fatal("expected backfill jobs to skip billing create check")
+	}
+	if shouldSkipJobCreateBillingCheck(&normal) {
+		t.Fatal("expected normal jobs to keep billing create check")
+	}
+	if shouldSkipJobCreateBillingCheck(nil) {
+		t.Fatal("expected missing schedule type to keep billing create check")
 	}
 }
 

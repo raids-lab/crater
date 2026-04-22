@@ -1,0 +1,25 @@
+---
+title: "Prequeue and User Resource Limits"
+description: "Configure prequeue, backfill jobs, and user resource limits"
+---
+
+Prequeue provides admission control before jobs enter cluster scheduling. Administrators can tune submission switches, activation cadence, and user resource limits from Admin / More / Prequeue.
+
+## Prequeue Policy
+
+- **Allow backfill submission**: lets users create backfill jobs. Backfill jobs use currently idle resources and cannot request locks.
+- **Enable user resource limits**: checks a user's resource usage in the target queue during submission and activation.
+- **Normal job wait tolerance**: controls how long a normal job may remain waiting before the current policy handles it.
+- **Activation scan interval**: sets how often the background worker scans prequeued jobs for activation.
+- **Max activations per round**: caps how many jobs can be activated in one scan round.
+
+## User Resource Limits
+
+Each limit is bound to one queue and only applies to jobs in that queue. GPU queues should usually have their own limits; CPU queues can enable limits based on local policy.
+
+- **Enabled**: disabled rules are retained but skipped during checks.
+- **Candidate job count**: limits how many jobs from one user can enter the activation candidate set in the queue.
+- **CPU / memory limits**: blank values mean unlimited; configured values are checked against current user usage plus the pending job request.
+- **Accelerator limits**: configure model and count pairs. Models not listed in the rule are not limited by that rule.
+
+After configuration, new jobs first enter prequeue. The background worker activates jobs into the cluster when queue resources, user limits, and job type rules all pass.

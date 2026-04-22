@@ -600,10 +600,11 @@ func (mgr *AccountMgr) GetQuota(c *gin.Context) {
 		return
 	}
 
+	queueName := vcqueue.ResolveAccountQueueName(account.ID, account.Name)
 	queue := scheduling.Queue{}
 
 	if err = mgr.client.Get(c, types.NamespacedName{
-		Name:      account.Name,
+		Name:      queueName,
 		Namespace: config.GetConfig().Namespaces.Job,
 	}, &queue); err != nil {
 		resputil.Error(c, "Queue not found", resputil.NotSpecified)
@@ -937,7 +938,7 @@ func (mgr *AccountMgr) updateAccountCore(
 		if req.WithoutVolcano {
 			return nil
 		}
-		return mgr.updateAccountVolcanoQueue(c, token, queue.ID, req)
+		return mgr.updateAccountVolcanoQueue(c, token, queue.ID, queue.Name, req)
 	})
 }
 
@@ -969,6 +970,7 @@ func (mgr *AccountMgr) updateAccountVolcanoQueue(
 	c *gin.Context,
 	token util.JWTMessage,
 	accountID uint,
+	accountName string,
 	req *AccountCreateOrUpdateReq,
 ) error {
 	quota := model.QueueQuota{
@@ -979,7 +981,7 @@ func (mgr *AccountMgr) updateAccountVolcanoQueue(
 	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
 		return err
 	}
-	queueName := vcqueue.GetAccountLogicQueueName(accountID)
+	queueName := vcqueue.ResolveAccountQueueName(accountID, accountName)
 	if err := vcqueue.UpdateQueue(c, mgr.client, queueName, quota); err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to update Volcano queue for account %d: %v", accountID, err), resputil.NotSpecified)
 		return err

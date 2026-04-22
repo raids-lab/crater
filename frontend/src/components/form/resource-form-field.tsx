@@ -49,7 +49,9 @@ import {
   apiResourceNetworks,
   apiResourceVGPUList,
 } from '@/services/api/resource'
+import { ScheduleType } from '@/services/api/vcjob'
 
+import { getBillingMultiplierForScheduleType } from '@/utils/billing'
 import { configGrafanaOverviewAtom } from '@/utils/store/config'
 
 import { Card, CardContent, CardHeader } from '../ui/card'
@@ -68,6 +70,7 @@ interface ResourceFormFieldsProps<T extends FieldValues> {
     vgpuEnabled: FieldPath<T>
     vgpuModels: FieldPath<T>
   }
+  scheduleTypePath?: FieldPath<T>
 }
 
 export function ResourceFormFields<T extends FieldValues>({
@@ -78,6 +81,7 @@ export function ResourceFormFields<T extends FieldValues>({
   gpuModelPath,
   rdmaPath,
   vgpuPath,
+  scheduleTypePath,
 }: ResourceFormFieldsProps<T>) {
   const { t } = useTranslation()
   const gpuCount = form.watch(gpuCountPath)
@@ -90,6 +94,7 @@ export function ResourceFormFields<T extends FieldValues>({
   const vgpuModels = (vgpuPath ? form.watch(vgpuPath.vgpuModels) : undefined) as
     | Array<{ label?: string; value?: number }>
     | undefined
+  const scheduleType = scheduleTypePath ? form.watch(scheduleTypePath) : undefined
   const grafanaOverview = useAtomValue(configGrafanaOverviewAtom)
 
   // 获取可用资源列表
@@ -136,8 +141,23 @@ export function ResourceFormFields<T extends FieldValues>({
         }
       })
     }
-    return [{ resourceList }]
-  }, [cpu, memory, gpuCount, gpuModel, rdmaEnabled, rdmaLabel, vgpuEnabled, vgpuModels])
+    return [
+      {
+        multiplier: getBillingMultiplierForScheduleType(scheduleType as ScheduleType | undefined),
+        resourceList,
+      },
+    ]
+  }, [
+    cpu,
+    memory,
+    gpuCount,
+    gpuModel,
+    rdmaEnabled,
+    rdmaLabel,
+    scheduleType,
+    vgpuEnabled,
+    vgpuModels,
+  ])
 
   return (
     <>

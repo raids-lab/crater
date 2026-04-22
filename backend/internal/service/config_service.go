@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/crypto"
 	"github.com/raids-lab/crater/pkg/patrol"
@@ -71,6 +73,9 @@ func NewConfigService(q *query.Query) *ConfigService {
 	ctx := context.Background()
 	if err := s.initDefaultConfigs(ctx); err != nil {
 		klog.Errorf("[ConfigService] Failed to seed default system configs: %v", err)
+	}
+	if err := s.initPrequeueConfig(ctx); err != nil {
+		klog.Errorf("[ConfigService] Failed to seed default prequeue config: %v", err)
 	}
 	return s
 }
@@ -215,7 +220,6 @@ func (s *ConfigService) CheckLLMConnection(ctx context.Context, cfg *LLMConfig) 
 func (s *ConfigService) SetGpuAnalysisEnabled(c *gin.Context, enable bool) error {
 	var ctx = c.Request.Context()
 
-	// 1. 开启前，必须先校验LLM连接
 	if enable {
 		cfg, err := s.GetLLMConfig(ctx)
 		if err != nil {
@@ -228,7 +232,6 @@ func (s *ConfigService) SetGpuAnalysisEnabled(c *gin.Context, enable bool) error
 
 	// 使用事务确保原子性
 	return s.q.Transaction(func(tx *query.Query) error {
-		// 2. 更新系统配置中的开关值
 		sc := tx.SystemConfig
 		value := strconv.FormatBool(enable)
 		if _, err := sc.WithContext(ctx).
@@ -237,7 +240,6 @@ func (s *ConfigService) SetGpuAnalysisEnabled(c *gin.Context, enable bool) error
 			return fmt.Errorf("更新GPU分析系统配置失败: %w", err)
 		}
 
-		// 3. 同步定时任务状态：不存在则创建，存在则更新
 		jobName := patrol.TRIGGER_GPU_ANALYSIS_JOB
 		cjc := tx.CronJobConfig
 		_, err := cjc.WithContext(ctx).Where(cjc.Name.Eq(jobName)).First()
@@ -292,7 +294,6 @@ func (s *ConfigService) IsGpuAnalysisEnabled(ctx context.Context) bool {
 // ResetLLMConfig 重置 LLM 配置并关闭 GPU 分析
 func (s *ConfigService) ResetLLMConfig(ctx context.Context) error {
 	return s.q.Transaction(func(tx *query.Query) error {
-		// 1. 清空 LLM 配置
 		llmUpdates := map[string]string{
 			model.ConfigKeyLLMBaseURL:   "",
 			model.ConfigKeyLLMAPIKey:    "",
@@ -304,14 +305,12 @@ func (s *ConfigService) ResetLLMConfig(ctx context.Context) error {
 			}
 		}
 
-		// 2. 强制关闭 GPU 分析
 		if _, err := tx.SystemConfig.WithContext(ctx).
 			Where(tx.SystemConfig.Key.Eq(model.ConfigKeyEnableGpuAnalysis)).
 			Update(tx.SystemConfig.Value, "false"); err != nil {
 			return err
 		}
 
-		// 3. 更新定时任务状态为 Suspended
 		newStatus := model.CronJobConfigStatusSuspended
 		if err := s.cronJobManager.UpdateJobConfig(
 			nil,
@@ -334,7 +333,6 @@ func (s *ConfigService) ResetLLMConfig(ctx context.Context) error {
 
 // UpdateLLMConfig 更新配置
 func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, validate bool) error {
-	// 1. 处理 API Key 的更新逻辑
 	finalKeyToSave := ""
 
 	if reqCfg.APIKey == MaskedAPIKeyPlaceholder {
@@ -357,14 +355,12 @@ func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, 
 		finalKeyToSave = encrypted
 	}
 
-	// 2. 如果需要校验，使用明文 Key 进行连接测试
 	if validate {
 		if err := s.CheckLLMConnection(ctx, reqCfg); err != nil {
 			return fmt.Errorf("validation failed: %w", err)
 		}
 	}
 
-	// 3. 入库
 	updates := map[string]any{
 		model.ConfigKeyLLMBaseURL:   reqCfg.BaseURL,
 		model.ConfigKeyLLMAPIKey:    finalKeyToSave,
@@ -393,4 +389,142 @@ func (s *ConfigService) getConfigs(ctx context.Context, keys ...string) (map[str
 		configMap[cfg.Key] = cfg.Value
 	}
 	return configMap, nil
+}
+
+// PrequeueRuntimeConfig tag should sync with keys in PrequeueConfig
+type PrequeueRuntimeConfig struct {
+	BackfillEnabled                  bool  `json:"backfill_enabled"`
+	QueueQuotaEnabled                bool  `json:"queue_quota_enabled"`
+	NormalJobWaitingToleranceSeconds int64 `json:"normal_job_waiting_tolerance_seconds"`
+	ActivateTickerIntervalSeconds    int64 `json:"activate_ticker_interval_seconds"`
+	MaxTotalActivationsPerRound      int64 `json:"max_total_activations_per_round"`
+}
+
+func (s *ConfigService) initPrequeueConfig(ctx context.Context) error {
+	return s.q.Transaction(func(tx *query.Query) error {
+		return s.shouldExistsPrequeueConfig(ctx, tx)
+	})
+}
+
+func (s *ConfigService) shouldExistsPrequeueConfig(ctx context.Context, tx *query.Query) error {
+	all := model.PrequeueAllConfigs()
+	for _, cfg := range all {
+		err := tx.PrequeueConfig.WithContext(ctx).UnderlyingDB().
+			Model(&model.PrequeueConfig{}).
+			Where("key = ?", cfg.Key).
+			First(cfg).Error
+		if err == nil {
+			continue
+		}
+
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+
+		klog.Infof("[ConfigService] missing prequeue config key: %s", cfg.Key)
+		if createErr := tx.PrequeueConfig.WithContext(ctx).Create(&model.PrequeueConfig{
+			Key:   cfg.Key,
+			Value: cfg.Value,
+		}); createErr != nil {
+			return createErr
+		}
+	}
+	return nil
+}
+
+func (s *ConfigService) GetPrequeueConfig(ctx context.Context) (*PrequeueRuntimeConfig, error) {
+	if err := s.initPrequeueConfig(ctx); err != nil {
+		return nil, err
+	}
+	records := make([]*model.PrequeueConfig, 0)
+	err := s.q.PrequeueConfig.WithContext(ctx).UnderlyingDB().
+		Model(&model.PrequeueConfig{}).
+		Where("expire_at is null OR expire_at > ?", time.Now()).
+		Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+	recordMap := lo.SliceToMap(records, func(r *model.PrequeueConfig) (string, string) {
+		return r.Key, r.Value
+	})
+	return parsePrequeueRuntimeConfig(recordMap)
+}
+
+func parsePrequeueRuntimeConfig(recordMap map[string]string) (*PrequeueRuntimeConfig, error) {
+	cfg := NewPrequeueRuntimeConfig()
+	if err := util.MapToStruct(recordMap, cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse prequeue config from database: %w", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+func NewPrequeueRuntimeConfig() *PrequeueRuntimeConfig {
+	return &PrequeueRuntimeConfig{
+		BackfillEnabled:                  model.PrequeueDefaultBackfillEnabled,
+		QueueQuotaEnabled:                model.PrequeueDefaultQueueQuotaEnabled,
+		NormalJobWaitingToleranceSeconds: model.PrequeueDefaultNormalJobWaitingToleranceSeconds,
+		ActivateTickerIntervalSeconds:    model.PrequeueDefaultActivateTickerIntervalSeconds,
+		MaxTotalActivationsPerRound:      model.PrequeueDefaultMaxTotalActivationsPerRound,
+	}
+}
+
+func (cfg *PrequeueRuntimeConfig) Validate() error {
+	if cfg == nil {
+		return fmt.Errorf("prequeue config is required")
+	}
+	positiveValues := map[string]int64{
+		model.PrequeueNormalJobWaitingToleranceSecondsKey: cfg.NormalJobWaitingToleranceSeconds,
+		model.PrequeueActivateTickerIntervalSecondsKey:    cfg.ActivateTickerIntervalSeconds,
+		model.PrequeueMaxTotalActivationsPerRoundKey:      cfg.MaxTotalActivationsPerRound,
+	}
+	for key, value := range positiveValues {
+		if value <= 0 {
+			return fmt.Errorf("%s must be greater than 0", key)
+		}
+	}
+	return nil
+}
+
+func (cfg *PrequeueRuntimeConfig) ToValueMap() map[string]string {
+	return map[string]string{
+		model.PrequeueBackfillEnabledKey:                  strconv.FormatBool(cfg.BackfillEnabled),
+		model.PrequeueQueueQuotaEnabledKey:                strconv.FormatBool(cfg.QueueQuotaEnabled),
+		model.PrequeueNormalJobWaitingToleranceSecondsKey: strconv.FormatInt(cfg.NormalJobWaitingToleranceSeconds, 10),
+		model.PrequeueActivateTickerIntervalSecondsKey:    strconv.FormatInt(cfg.ActivateTickerIntervalSeconds, 10),
+		model.PrequeueMaxTotalActivationsPerRoundKey:      strconv.FormatInt(cfg.MaxTotalActivationsPerRound, 10),
+	}
+}
+
+func (s *ConfigService) UpdatePrequeueConfig(
+	ctx context.Context,
+	cfg *PrequeueRuntimeConfig,
+) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	return s.q.Transaction(func(tx *query.Query) error {
+		err := s.shouldExistsPrequeueConfig(ctx, tx)
+		if err != nil {
+			return err
+		}
+		for key, value := range cfg.ToValueMap() {
+			result := tx.PrequeueConfig.WithContext(ctx).UnderlyingDB().
+				Model(&model.PrequeueConfig{}).
+				Where("key = ?", key).
+				UpdateColumns(map[string]any{
+					"value":     value,
+					"expire_at": nil,
+				})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return fmt.Errorf("failed to update prequeue config key %s", key)
+			}
+		}
+		return nil
+	})
 }

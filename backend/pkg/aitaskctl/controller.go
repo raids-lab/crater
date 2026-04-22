@@ -206,7 +206,7 @@ func (c *TaskController) updateTaskStatus(ctx context.Context, taskID, status, r
 
 // schedule 简单功能：从用户队列中
 //
-//nolint:gocyclo // TODO: figure out a better way to handle this
+//nolint:gocyclo // Quota snapshots and queue mutation are coupled in this scheduler loop.
 func (c *TaskController) schedule(_ context.Context) {
 	// 等待调度的队列
 	candiates := make([]*model.AITask, 0)

@@ -106,7 +106,7 @@ func (mgr *AIJobMgr) NotifyTaskUpdate(taskID uint, userName string, op util.Task
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/aijobs/quota [get]
 //
-//nolint:gocyclo // TODO: refactor
+//nolint:gocyclo // Response fields mirror the legacy quota API shape.
 func (mgr *AIJobMgr) GetQuota(c *gin.Context) {
 	token := interutil.GetToken(c)
 
