@@ -30,6 +30,7 @@ dist-ssr
 
 # Environment
 .env.development
+.pgpass
 
 # Python
 .venv
@@ -79,3 +80,17 @@ kubeconfig*
 
 # Claude Code
 .claude/
+storage/etc/config.yaml
+/todo/
+/debug_config/
+
+# Local reports / design notes not intended for VCS
+docs/agent-tool-scenarios.md
+docs/agent-tooling.md
+docs/zh-CN/ExitCodeLifecycle.md
+docs/reports/
+docs/reference/
+docs/superpowers/
+
+# One-off local helper script
+backend/hack/apply_agent_multi_mode_sql.sh

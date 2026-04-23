@@ -123,7 +123,6 @@ declare -A CONFIG_FILES=(
     ["backend/etc/debug-config.yaml"]="backend/etc/debug-config.yaml"
     ["frontend/.env.development"]="frontend/.env.development"
 )
-
 # Get project root directory
 get_project_root() {
     # Get script directory

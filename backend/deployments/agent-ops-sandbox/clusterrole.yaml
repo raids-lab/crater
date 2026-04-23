@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crater-agent-ops-sandbox-read
+  labels:
+    app.kubernetes.io/name: crater-agent-ops-sandbox
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "persistentvolumes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
