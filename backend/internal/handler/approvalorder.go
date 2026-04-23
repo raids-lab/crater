@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
@@ -32,12 +34,14 @@ func init() {
 type ApprovalOrderMgr struct {
 	name           string
 	agentEvaluator *service.AgentApprovalEvaluator
+	agentService   *service.AgentService
 }
 
 func NewApprovalOrderMgr(_ *RegisterConfig) Manager {
 	return &ApprovalOrderMgr{
 		name:           "approvalorder",
 		agentEvaluator: service.NewAgentApprovalEvaluator(), // nil if disabled
+		agentService:   service.NewAgentService(),
 	}
 }
 func (mgr *ApprovalOrderMgr) GetName() string { return mgr.name }
@@ -357,9 +361,9 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		return
 	}
 
-	if req.Type == model.ApprovalOrderTypeJob {
-		jobDB := query.Job
-		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+		if req.Type == model.ApprovalOrderTypeJob {
+			jobDB := query.Job
+			job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				resputil.BadRequestError(c, "job not found")
@@ -374,10 +378,10 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 			resputil.BadRequestError(c, err.Error())
 			return
 		}
-	}
+		}
 
-	// 2. 检查是否满足自动审批条件
-	autoApproved := false
+		// 2. 检查是否满足自动审批条件（简单规则，同步执行）
+		autoApproved := false
 	autoApprovalReason := "whitout review，approved due to system"
 
 	canAutoApprove, err := mgr.checkAutoApprovalEligibility(c, token.UserID, &req)
@@ -397,97 +401,15 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		}
 	}
 
-	// 2.5 Agent 评估（仅在简单规则不通过且 Agent 功能开启时）
-	var agentReport string
-	if !autoApproved && mgr.agentEvaluator != nil {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					klog.Errorf("agent approval evaluation panic recovered: %v", r)
-				}
-			}()
-
-			evalReq := &service.ApprovalEvalRequest{
-				OrderID:        0, // order not yet created
-				JobName:        req.Name,
-				ExtensionHours: int(req.ExtensionHours),
-				UserReason:     req.Reason,
-				UserID:         int(token.UserID),
-				Username:       token.Username,
-			}
-
-			result, err := mgr.agentEvaluator.Evaluate(c.Request.Context(), evalReq)
-			if err != nil {
-				klog.Warningf("agent approval evaluation failed for job %s, falling back to manual: %v", req.Name, err)
-				return
-			}
-
-			// 序列化 Agent 报告
-			if reportJSON, err := json.Marshal(result); err == nil {
-				agentReport = string(reportJSON)
-			}
-
-			// 验证作业仍在 Running（所有 verdict 都需要）
-			if result.Verdict == "approve" || result.Verdict == "approve_emergency" {
-				jobDB := query.Job
-				job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
-				if err != nil || !mgr.isJobRunning(job.Status) {
-					klog.Warningf("job %s no longer running during agent eval, cancelling", req.Name)
-					return
-				}
-			}
-
-			switch result.Verdict {
-			case "approve":
-				// 全量批准：锁定 approved_hours 或原始申请时长
-				lockHours := req.ExtensionHours
-				if result.ApprovedHours != nil && *result.ApprovedHours > 0 && uint(*result.ApprovedHours) < lockHours {
-					lockHours = uint(*result.ApprovedHours)
-					klog.Infof("agent adjusted lock hours for job %s: %d -> %d", req.Name, req.ExtensionHours, lockHours)
-				}
-
-				if err := mgr.lockJobForApproval(c, req.Name, lockHours); err != nil {
-					klog.Errorf("agent-approved lock failed for job %s: %v", req.Name, err)
-					return
-				}
-				autoApproved = true
-				autoApprovalReason = fmt.Sprintf("agent evaluation approved (%d hours)", lockHours)
-
-			case "approve_emergency":
-				// 应急批准：先锁 6h 保命，工单仍为 Pending 等管理员审批剩余时长
-				emergencyHours := uint(6)
-				if result.ApprovedHours != nil && *result.ApprovedHours > 0 {
-					emergencyHours = uint(*result.ApprovedHours)
-				}
-
-				if err := mgr.lockJobForApproval(c, req.Name, emergencyHours); err != nil {
-					klog.Errorf("agent-emergency lock failed for job %s: %v", req.Name, err)
-					return
-				}
-				// 注意：autoApproved 保持 false，工单仍为 Pending
-				// 管理员在审批页面能看到 AgentReport 中的应急说明
-				klog.Infof("agent emergency-locked job %s for %dh, remaining %dh pending admin",
-					req.Name, emergencyHours, req.ExtensionHours-emergencyHours)
-
-				// case "escalate": order stays Pending with report attached (no action)
-			}
-		}()
-	}
-
-	// 3. 创建审批工单
+	// 3. 先创建工单（不等待 Agent 评估）
 	orderStatus := model.ApprovalOrderStatusPending
 	orderReason := ""
 	orderReviewSource := model.ReviewSourceNone
 
-	// 如果满足自动审批条件，则将工单状态设置为已批准,并添加备注
 	if autoApproved {
 		orderStatus = model.ApprovalOrderStatusApproved
 		orderReason = autoApprovalReason
-		if agentReport != "" {
-			orderReviewSource = model.ReviewSourceAgentAuto
-		} else {
-			orderReviewSource = model.ReviewSourceSystemAuto
-		}
+		orderReviewSource = model.ReviewSourceSystemAuto
 	}
 
 	order := model.ApprovalOrder{
@@ -502,7 +424,6 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		CreatorID:    token.UserID,
 		ReviewNotes:  orderReason,
 		ReviewSource: orderReviewSource,
-		AgentReport:  agentReport,
 	}
 
 	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
@@ -511,16 +432,166 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		return
 	}
 
+	// 4. 异步触发 Agent 评估（仅在简单规则不通过且 Agent 功能开启时）
 	message := "create approvalorder successfully"
-	if autoApproved && orderReviewSource == model.ReviewSourceSystemAuto {
+	if autoApproved {
 		message = "create approvalorder successfully and auto-approved with job locked"
-	} else if autoApproved && orderReviewSource == model.ReviewSourceAgentAuto {
-		message = "create approvalorder successfully and agent-approved with job locked"
-	} else if agentReport != "" {
-		message = "create approvalorder successfully, agent evaluation attached for admin review"
+	} else if mgr.agentEvaluator != nil {
+		go mgr.runAgentEvaluation(order.ID, req.Name, req.ExtensionHours, int(token.UserID), int(token.AccountID), token.Username, req.Reason)
+		message = "create approvalorder successfully, agent evaluation in progress"
 	}
 
 	resputil.Success(c, message)
+}
+
+// runAgentEvaluation 在后台 goroutine 中执行 Agent 审批评估，完成后更新工单状态。
+// Go 端预取所有必要数据，Agent 只做一次 LLM 判断，不需要工具调用。
+func (mgr *ApprovalOrderMgr) runAgentEvaluation(orderID uint, jobName string, extensionHours uint, userID int, accountID int, username, reason string) {
+	defer func() {
+		if r := recover(); r != nil {
+			klog.Errorf("agent approval evaluation panic recovered for order %d: %v", orderID, r)
+		}
+	}()
+
+	ctx := context.Background()
+
+	// 创建 ops_audit session，让 agent 的工具调用有落库依据且不会污染聊天列表。
+	sessionID := uuid.New().String()
+	if _, err := mgr.agentService.CreateSession(
+		ctx,
+		sessionID,
+		uint(userID),
+		uint(accountID),
+		fmt.Sprintf("[audit] 审批工单 #%d: %s", orderID, jobName),
+		nil,
+		"ops_audit",
+	); err != nil {
+		klog.Warningf("failed to create audit session for order %d: %v", orderID, err)
+		// 不阻塞评估，session 缺失只影响审计
+	}
+
+	klog.Infof("agent approval evaluation started for order %d (job %s, session %s)", orderID, jobName, sessionID)
+
+	evalReq := &service.ApprovalEvalRequest{
+		OrderID:        int(orderID),
+		JobName:        jobName,
+		ExtensionHours: int(extensionHours),
+		UserReason:     reason,
+		UserID:         userID,
+		Username:       username,
+		SessionID:      sessionID,
+	}
+
+	result, err := mgr.agentEvaluator.Evaluate(ctx, evalReq)
+	if err != nil {
+		klog.Warningf("agent approval evaluation failed for order %d (job %s): %v", orderID, jobName, err)
+		return // 工单保持 Pending，等管理员手动审批
+	}
+
+	agentReport := ""
+	if reportJSON, err := json.Marshal(result); err == nil {
+		agentReport = string(reportJSON)
+	}
+
+	ao := query.ApprovalOrder
+
+	if result.Verdict == "approve" || result.Verdict == "approve_emergency" {
+		jobDB := query.Job
+		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).First()
+		if err != nil || !mgr.isJobRunning(job.Status) {
+			klog.Warningf("job %s no longer running during agent eval for order %d", jobName, orderID)
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+				"agent_report": agentReport,
+			})
+			return
+		}
+	}
+
+	switch result.Verdict {
+	case "approve":
+		lockHours := extensionHours
+		if result.ApprovedHours != nil && *result.ApprovedHours > 0 && uint(*result.ApprovedHours) < lockHours {
+			lockHours = uint(*result.ApprovedHours)
+			klog.Infof("agent adjusted lock hours for job %s: %d -> %d", jobName, extensionHours, lockHours)
+		}
+
+		if err := mgr.lockJobByCtx(ctx, jobName, lockHours); err != nil {
+			klog.Errorf("agent-approved lock failed for order %d (job %s): %v", orderID, jobName, err)
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+				"agent_report": agentReport,
+			})
+			return
+		}
+
+		reviewNotes := fmt.Sprintf("agent evaluation approved (%d hours)", lockHours)
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+			"status":        string(model.ApprovalOrderStatusApproved),
+			"review_notes":  reviewNotes,
+			"review_source": string(model.ReviewSourceAgentAuto),
+			"agent_report":  agentReport,
+		})
+		klog.Infof("agent approved order %d, locked job %s for %dh", orderID, jobName, lockHours)
+
+	case "approve_emergency":
+		emergencyHours := uint(6)
+		if result.ApprovedHours != nil && *result.ApprovedHours > 0 {
+			emergencyHours = uint(*result.ApprovedHours)
+		}
+
+		if err := mgr.lockJobByCtx(ctx, jobName, emergencyHours); err != nil {
+			klog.Errorf("agent-emergency lock failed for order %d (job %s): %v", orderID, jobName, err)
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+				"agent_report": agentReport,
+			})
+			return
+		}
+
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+			"agent_report": agentReport,
+		})
+		klog.Infof("agent emergency-locked order %d, job %s for %dh, remaining %dh pending admin",
+			orderID, jobName, emergencyHours, extensionHours-emergencyHours)
+
+	default: // "escalate"
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+			"agent_report": agentReport,
+		})
+		klog.Infof("agent escalated order %d (job %s) to admin", orderID, jobName)
+	}
+}
+
+// lockJobByCtx 使用 context.Context 锁定作业，供异步 goroutine 使用。
+func (mgr *ApprovalOrderMgr) lockJobByCtx(ctx context.Context, jobName string, extensionHours uint) error {
+	jobDB := query.Job
+
+	j, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).First()
+	if err != nil {
+		return err
+	}
+
+	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
+		return fmt.Errorf("job %s is already permanently locked", jobName)
+	}
+
+	const maxHours = 1440
+	if extensionHours > maxHours {
+		return fmt.Errorf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours)
+	}
+
+	lockTime := utils.GetLocalTime()
+	if j.LockedTimestamp.After(utils.GetLocalTime()) {
+		lockTime = j.LockedTimestamp
+	}
+
+	extensionDuration := time.Duration(extensionHours) * time.Hour
+	lockTime = lockTime.Add(extensionDuration)
+
+	if _, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
+		return err
+	}
+
+	klog.Infof("async-locked job %s until %s", jobName, lockTime.Format("2006-01-02 15:04:05"))
+	return nil
 }
 
 type UpdateApprovalOrder struct {

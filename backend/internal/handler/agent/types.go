@@ -29,6 +29,8 @@ type ExecuteToolRequest struct {
 	ToolName        string                `json:"tool_name" binding:"required"`
 	ToolArgs        json.RawMessage       `json:"tool_args" binding:"required"`
 	SessionID       string                `json:"session_id" binding:"required"`
+	SessionSource   string                `json:"session_source,omitempty"`
+	SessionTitle    string                `json:"session_title,omitempty"`
 	TurnID          string                `json:"turn_id,omitempty"`
 	ToolCallID      string                `json:"tool_call_id,omitempty"`
 	AgentID         string                `json:"agent_id,omitempty"`

@@ -25,6 +25,7 @@ type ApprovalEvalRequest struct {
 	UserID         int    `json:"user_id"`
 	Username       string `json:"username"`
 	JobType        string `json:"job_type"`
+	SessionID      string `json:"session_id,omitempty"` // audit session for tool call logging
 }
 
 // ApprovalEvalResponse is returned by the Python agent service.
@@ -70,6 +71,7 @@ type AgentApprovalEvaluator struct {
 func NewAgentApprovalEvaluator() *AgentApprovalEvaluator {
 	cfg := pkgconfig.GetConfig()
 	if !cfg.Agent.ApprovalHook.Enabled {
+		klog.Infof("agent approval hook disabled")
 		return nil
 	}
 
@@ -77,10 +79,11 @@ func NewAgentApprovalEvaluator() *AgentApprovalEvaluator {
 	if agentURL == "" {
 		agentURL = "http://localhost:8000"
 	}
+	klog.Infof("agent approval hook enabled, agentURL=%s", agentURL)
 
 	timeout := time.Duration(cfg.Agent.ApprovalHook.TotalTimeoutSeconds) * time.Second
 	if timeout <= 0 {
-		timeout = 15 * time.Second
+		timeout = 60 * time.Second
 	}
 
 	maxPerMin := cfg.Agent.ApprovalHook.MaxPerMinute

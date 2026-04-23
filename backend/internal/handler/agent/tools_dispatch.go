@@ -144,6 +144,69 @@ func normalizeInternalToolRole(role string) string {
 	}
 }
 
+func normalizeRequestedSessionSource(source string) string {
+	switch strings.TrimSpace(strings.ToLower(source)) {
+	case "ops_audit":
+		return "ops_audit"
+	case "system":
+		return "system"
+	case "benchmark":
+		return "benchmark"
+	default:
+		return "chat"
+	}
+}
+
+func defaultInternalSessionTitle(source, toolName, providedTitle string) string {
+	title := strings.TrimSpace(providedTitle)
+	if title != "" {
+		return title
+	}
+
+	prefix := "[system]"
+	switch source {
+	case "ops_audit":
+		prefix = "[audit]"
+	case "benchmark":
+		prefix = "[benchmark]"
+	}
+
+	name := strings.TrimSpace(toolName)
+	if name == "" {
+		name = "internal-task"
+	}
+	return fmt.Sprintf("%s %s", prefix, name)
+}
+
+func toolCallAuditSourceForSessionSource(sessionSource string) string {
+	if normalizeRequestedSessionSource(sessionSource) == "benchmark" {
+		return "benchmark"
+	}
+	return "backend"
+}
+
+func (mgr *AgentMgr) ensureInternalAuditSession(c *gin.Context, req ExecuteToolRequest) error {
+	if req.InternalContext == nil {
+		return nil
+	}
+
+	source := normalizeRequestedSessionSource(req.SessionSource)
+	if source == "chat" {
+		source = "system"
+	}
+
+	_, _, err := mgr.agentService.GetOrCreateSessionWithSource(
+		c.Request.Context(),
+		req.SessionID,
+		0,
+		0,
+		defaultInternalSessionTitle(source, req.ToolName, req.SessionTitle),
+		nil,
+		source,
+	)
+	return err
+}
+
 func (mgr *AgentMgr) resolveToolExecutionToken(c *gin.Context, req ExecuteToolRequest) (util.JWTMessage, error) {
 	if req.InternalContext != nil {
 		if normalizeInternalToolRole(req.InternalContext.Role) != "admin" {
@@ -221,6 +284,10 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusForbidden, accessErr.Error(), resputil.TokenInvalid)
 		return
 	}
+	if err := mgr.ensureInternalAuditSession(c, req); err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to create internal audit session: %v", err), resputil.NotSpecified)
+		return
+	}
 
 	sessionToken, tokenErr := mgr.resolveToolExecutionToken(c, req)
 	if tokenErr != nil {
@@ -251,6 +318,7 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 			ToolCallID:   req.ToolCallID,
 			AgentID:      req.AgentID,
 			AgentRole:    req.AgentRole,
+			Source:       toolCallAuditSourceForSessionSource(req.SessionSource),
 			ToolName:     req.ToolName,
 			ToolArgs:     datatypes.JSON(req.ToolArgs),
 			ToolResult:   pendingResult,
@@ -304,6 +372,7 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 		req.SessionID, req.ToolName,
 		req.ToolArgs, resultBytes,
 		status, latencyMs, req.TurnID, req.ToolCallID, req.AgentID, req.AgentRole,
+		toolCallAuditSourceForSessionSource(req.SessionSource),
 	)
 
 	resputil.Success(c, AgentToolResponse{

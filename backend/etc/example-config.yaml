@@ -157,6 +157,62 @@ smtp:
   # Required if Enable is true: Must be a valid email address
   notify: example@example.com
 
+# Crater Agent (Python service) and backend-side ops tool policy
+agent:
+  # Optional: defaults to http://localhost:8000
+  serviceURL: http://localhost:8000
+  # Optional: can be provided via CRATER_AGENT_INTERNAL_TOKEN
+  internalToken: <MASKED>
+  ops:
+    webSearch:
+      # Toggle backend-proxied web search tool
+      enabled: true
+      # Strict egress allowlist for web_search
+      allowedDomains:
+        - kubernetes.io
+        - k8s.io
+        - docs.nvidia.com
+        - developer.nvidia.com
+        - docs.ceph.com
+        - openebs.io
+        - volcano.sh
+        - prometheus.io
+        - grafana.com
+        - nvd.nist.gov
+      timeoutSeconds: 10
+    sandbox:
+      # Sandbox runtime settings for grep/script tools
+      namespace: ops
+      serviceAccount: crater-ops-agent
+      image: crater-harbor.act.buaa.edu.cn/crater/ops-toolbox:latest
+      defaultTimeoutSeconds: 300
+      maxTimeoutSeconds: 1800
+      scriptAllowlist:
+        - inspect_pvc
+        - inspect_mounts
+        - collect_events
+        - inspect_rdma_node
+        - diagnose_nccl_job
+    kubernetes:
+      # Optional shared defaults for agent-side direct kubectl diagnosis tools.
+      # Use agent-side platform-runtime.yaml to override these values when the
+      # agent is deployed separately from the backend or mounts kubeconfig elsewhere.
+      kubeconfigPath: ""
+      context: ""
+      namespace: crater-workspace
+      kubectlBin: kubectl
+      timeoutSeconds: 30
+    # Agent-assisted approval evaluation for job lock orders.
+    # When enabled, orders that don't pass simple auto-approval rules
+    # are evaluated by the agent before falling back to manual review.
+    approvalHook:
+      enabled: true
+      totalTimeoutSeconds: 60
+      maxPerMinute: 10
+      maxConcurrent: 3
+      circuitBreakerThreshold: 5
+      circuitBreakerCooldownSeconds: 60
+
 # Authentication configuration
 auth:
   # Authentication token configuration for JWT-based authentication

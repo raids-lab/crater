@@ -82,6 +82,13 @@ func NewJobMutationSubmitter(conf *RegisterConfig) JobMutationSubmitter {
 	return jobMutationSubmitterFactory(conf)
 }
 
+// InternalRouter is an optional interface for managers that expose internal-only endpoints
+// (e.g. service-to-service callbacks authenticated via X-Agent-Internal-Token).
+// Managers that do not need internal routes do not need to implement this interface.
+type InternalRouter interface {
+	RegisterInternal(group *gin.RouterGroup)
+}
+
 // Registers is a slice of Manager Init functions.
 // Each Manager should register itself by appending its Init function to this slice.
 var Registers = []func(config *RegisterConfig) Manager{}

@@ -64,6 +64,10 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
 		return
 	}
+	if !isChatSessionSource(session.Source) {
+		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		return
+	}
 	_ = mgr.agentService.UpdateSessionOrchestrationMode(c.Request.Context(), sessionID, orchestrationMode)
 
 	historyMessages, historyErr := mgr.agentService.ListMessages(c.Request.Context(), sessionID)
@@ -120,6 +124,11 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 		continuationContext,
 	)
 	mgr.streamPythonAgentResponse(c, sessionID, turnID, orchestrationMode, agentPayload, true)
+}
+
+func isChatSessionSource(source string) bool {
+	normalized := strings.TrimSpace(strings.ToLower(source))
+	return normalized == "" || normalized == "chat"
 }
 
 // ResumeAfterConfirmation godoc

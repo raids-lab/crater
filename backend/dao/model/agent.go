@@ -14,6 +14,7 @@ type AgentSession struct {
 	UserID                uint           `gorm:"not null" json:"userId"`
 	AccountID             uint           `gorm:"not null" json:"accountId"`
 	Title                 string         `gorm:"type:varchar(255)" json:"title"`
+	Source                string         `gorm:"type:varchar(32);not null;default:'chat';index" json:"source"` // chat | ops_audit | system | benchmark
 	PageContext           datatypes.JSON `json:"pageContext"`
 	MessageCount          int            `gorm:"default:0" json:"messageCount"`
 	LastOrchestrationMode string         `gorm:"type:varchar(32);default:'single_agent'" json:"lastOrchestrationMode"`
@@ -46,6 +47,7 @@ type AgentToolCall struct {
 	AgentID           string         `gorm:"type:varchar(128);index" json:"agentId,omitempty"`
 	ParentEventID     *uint          `gorm:"index" json:"parentEventId,omitempty"`
 	AgentRole         string         `gorm:"type:varchar(32);index" json:"agentRole,omitempty"`
+	Source            string         `gorm:"type:varchar(32);not null;default:'backend';index" json:"source"` // backend | local | benchmark
 	ToolName          string         `gorm:"type:varchar(100);not null;index" json:"toolName"`
 	ToolArgs          datatypes.JSON `gorm:"not null" json:"toolArgs"`
 	ToolResult        datatypes.JSON `json:"toolResult,omitempty"`
@@ -95,6 +97,48 @@ type AgentRunEvent struct {
 	StartedAt     *time.Time     `json:"startedAt,omitempty"`
 	EndedAt       *time.Time     `json:"endedAt,omitempty"`
 	CreatedAt     time.Time      `json:"createdAt"`
+}
+
+// AgentFeedback stores user feedback (thumbs up/down + optional details) for a message or turn.
+type AgentFeedback struct {
+	ID          uint           `gorm:"primarykey" json:"id"`
+	SessionID   string         `gorm:"type:uuid;index;not null" json:"sessionId"`
+	UserID      uint           `gorm:"not null;uniqueIndex:idx_feedback_unique,priority:1" json:"userId"`
+	AccountID   uint           `gorm:"not null;index" json:"accountId"`
+	TargetType  string         `gorm:"type:varchar(16);not null;uniqueIndex:idx_feedback_unique,priority:2" json:"targetType"`  // message | turn
+	TargetID    string         `gorm:"type:varchar(128);not null;uniqueIndex:idx_feedback_unique,priority:3" json:"targetId"`    // message.id or turn_id
+	Rating      int16          `gorm:"not null" json:"rating"`                              // 1 = thumbs up, -1 = thumbs down
+	Tags        datatypes.JSON `json:"tags,omitempty"`                                      // ["inaccurate","helpful",...]
+	Dimensions  datatypes.JSON `json:"dimensions,omitempty"`                                // {"relevance":4,"accuracy":3,...}
+	Comment     string         `gorm:"type:text" json:"comment,omitempty"`
+	Status      string         `gorm:"type:varchar(16);not null;default:'draft'" json:"status"` // draft | submitted
+	SubmittedAt *time.Time     `json:"submittedAt,omitempty"`
+	EnrichedAt  *time.Time     `json:"enrichedAt,omitempty"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
+}
+
+// AgentQualityEval stores LLM-as-Judge quality evaluation results for agent chat sessions.
+// trigger_source: 'feedback' (user-triggered) | 'offline_batch' | 'manual'
+// eval_status: 'pending' | 'running' | 'completed' | 'failed'
+type AgentQualityEval struct {
+	ID            uint           `gorm:"primarykey" json:"id"`
+	SessionID     string         `gorm:"type:uuid;index;not null" json:"sessionId"`
+	TurnID        string         `gorm:"type:uuid;index" json:"turnId,omitempty"`
+	FeedbackID    *uint          `gorm:"index" json:"feedbackId,omitempty"`
+	TriggerSource string         `gorm:"type:varchar(32);not null;index" json:"triggerSource"`
+	EvalStatus    string         `gorm:"type:varchar(16);not null;default:'pending';index" json:"evalStatus"`
+	ChatScores    datatypes.JSON `json:"chatScores,omitempty"`
+	ChainScores   datatypes.JSON `json:"chainScores,omitempty"`
+	ChatModel     string         `gorm:"type:varchar(64)" json:"chatModel,omitempty"`
+	ChainModel    string         `gorm:"type:varchar(64)" json:"chainModel,omitempty"`
+	Summary       string         `gorm:"type:text" json:"summary,omitempty"`
+	RawChatResp   datatypes.JSON `json:"rawChatResp,omitempty"`
+	RawChainResp  datatypes.JSON `json:"rawChainResp,omitempty"`
+	ArtifactPath  string         `gorm:"type:text" json:"artifactPath,omitempty"`
+	CreatedAt     time.Time      `gorm:"not null;default:now()" json:"createdAt"`
+	CompletedAt   *time.Time     `json:"completedAt,omitempty"`
+	UpdatedAt     time.Time      `gorm:"not null;default:now()" json:"updatedAt"`
 }
 
 // JobLogSnapshot is a persisted log snippet captured when a job reaches terminal state.

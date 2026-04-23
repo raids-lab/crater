@@ -1349,13 +1349,95 @@ func main() {
 				if err := migrator.AddColumn(&QueueQuotaLimit{}, "enabled"); err != nil {
 					return err
 				}
-				if err := migrator.AddColumn(&QueueQuotaLimit{}, "prequeue_candidate_size"); err != nil {
+					if err := migrator.AddColumn(&QueueQuotaLimit{}, "prequeue_candidate_size"); err != nil {
+						return err
+					}
+					return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type QueueQuotaLimit struct {
+					Enabled               bool `gorm:"not null;default:false;comment:是否启用配额限制"`
+					PrequeueCandidateSize int  `gorm:"not null;default:0;comment:预排队候选数量上限"`
+				}
+				migrator := tx.Table("queue_quotas").Migrator()
+				if err := migrator.DropColumn(&QueueQuotaLimit{}, "prequeue_candidate_size"); err != nil {
+					return err
+				}
+				if err := migrator.DropColumn(&QueueQuotaLimit{}, "enabled"); err != nil {
 					return err
 				}
 				return nil
 			},
 		},
-	})
+		{
+			ID: "202604220001",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.AgentFeedback{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("agent_feedbacks")
+			},
+		},
+		{
+			ID: "202604220002",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_sessions
+						ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'chat'`,
+					`UPDATE agent_sessions
+						SET source = 'chat'
+						WHERE source IS NULL OR BTRIM(source) = ''`,
+					`UPDATE agent_sessions
+						SET source = 'ops_audit'
+						WHERE title LIKE '[audit] 审批%'
+						  AND source = 'chat'`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_sessions_source
+						ON agent_sessions (source)`,
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'backend'`,
+					`UPDATE agent_tool_calls
+						SET source = 'backend'
+						WHERE source IS NULL OR BTRIM(source) = ''`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_source
+						ON agent_tool_calls (source)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_source`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS source`,
+					`DROP INDEX IF EXISTS idx_agent_sessions_source`,
+					`ALTER TABLE agent_sessions
+						DROP COLUMN IF EXISTS source`,
+				})
+			},
+		},
+		{
+			ID: "202604230001",
+			Migrate: func(tx *gorm.DB) error {
+				type AgentFeedback struct {
+					EnrichedAt *time.Time `json:"enrichedAt,omitempty"`
+				}
+				return tx.Migrator().AddColumn(&AgentFeedback{}, "EnrichedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentFeedback struct {
+					EnrichedAt *time.Time `json:"enrichedAt,omitempty"`
+				}
+				return tx.Migrator().DropColumn(&AgentFeedback{}, "EnrichedAt")
+			},
+		},
+			{
+				ID: "202604230002",
+				Migrate: func(tx *gorm.DB) error {
+					return tx.AutoMigrate(&model.AgentQualityEval{})
+				},
+				Rollback: func(tx *gorm.DB) error {
+					return tx.Migrator().DropTable("agent_quality_evals")
+				},
+			},
+		})
 
 	m.InitSchema(func(tx *gorm.DB) error {
 		err := tx.AutoMigrate(
@@ -1393,6 +1475,9 @@ func main() {
 			&model.AgentTurn{},
 			&model.AgentRunEvent{},
 			&model.JobLogSnapshot{},
+			&model.AgentFeedback{},
+			&model.AgentQualityEval{},
+			&model.OperationLog{},
 		)
 		if err != nil {
 			return err

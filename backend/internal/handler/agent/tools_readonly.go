@@ -966,28 +966,37 @@ func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawAr
 		accountID = *args.AccountID
 	}
 
-	// Resolve quota capability: user_account quota > account quota.
+	// Resolve quota capability with cascade:
+	//   user_account.Quota > account.UserDefaultQuota > account.Quota > no_limit
 	var capability v1.ResourceList
 	source := "none"
 
+	a := query.Account
 	ua := query.UserAccount
 	userAccount, err := ua.WithContext(c).
 		Where(ua.AccountID.Eq(accountID), ua.UserID.Eq(token.UserID)).
 		First()
+	if err != nil && token.RolePlatform != model.RoleAdmin {
+		return nil, fmt.Errorf("user account not found: %w", err)
+	}
 	if err == nil {
 		capability = userAccount.Quota.Data().Capability
 		source = "user_account"
-	} else {
-		if token.RolePlatform != model.RoleAdmin {
-			return nil, fmt.Errorf("user account not found: %w", err)
-		}
-		a := query.Account
+	}
+
+	// Fallback to account-level defaults when user has no quota set.
+	if len(capability) == 0 {
 		account, accountErr := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
 		if accountErr != nil {
 			return nil, fmt.Errorf("account not found: %w", accountErr)
 		}
-		capability = account.Quota.Data().Capability
-		source = "account"
+		if account.UserDefaultQuota != nil && len(account.UserDefaultQuota.Data().Capability) > 0 {
+			capability = account.UserDefaultQuota.Data().Capability
+			source = "account_default"
+		} else if len(account.Quota.Data().Capability) > 0 {
+			capability = account.Quota.Data().Capability
+			source = "account"
+		}
 	}
 
 	// Compute resource usage from active jobs (Running + Pending).
@@ -1014,6 +1023,9 @@ func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawAr
 	}
 	if len(capability) > 0 {
 		resp["capability"] = capability
+		resp["no_limit"] = false
+	} else {
+		resp["no_limit"] = true
 	}
 	if len(used) > 0 {
 		resp["used"] = used
