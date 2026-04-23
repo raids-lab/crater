@@ -13,7 +13,7 @@ import {
   ThumbsUpIcon,
   XCircleIcon,
 } from 'lucide-react'
-import { ElementType } from 'react'
+import { ElementType, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -41,13 +41,6 @@ export const Route = createFileRoute('/admin/more/agent-audit/')({
 })
 
 // ── Static option sets (match approval-order pattern) ─────────────────────────
-
-const SESSION_SOURCE_OPTIONS = [
-  { value: 'chat', label: '用户对话' },
-  { value: 'ops_audit', label: '审批审计' },
-  { value: 'system', label: '后台任务' },
-  { value: 'benchmark', label: '评测基准' },
-] as const
 
 const EVAL_STATUS_OPTIONS = [
   { value: 'completed', label: '已完成' },
@@ -206,27 +199,62 @@ function SummaryCard({
   selected,
   onClick,
   icon: Icon,
+  accent,
 }: {
   label: string
   count: number
   selected: boolean
   onClick: () => void
   icon: ElementType
+  accent: 'blue' | 'amber' | 'emerald' | 'fuchsia'
 }) {
+  const accentClasses: Record<string, { border: string; bg: string; text: string; iconBg: string }> = {
+    blue: {
+      border: 'border-blue-300',
+      bg: 'bg-blue-50/60',
+      text: 'text-blue-700',
+      iconBg: 'bg-blue-100 text-blue-600',
+    },
+    amber: {
+      border: 'border-amber-300',
+      bg: 'bg-amber-50/60',
+      text: 'text-amber-700',
+      iconBg: 'bg-amber-100 text-amber-600',
+    },
+    emerald: {
+      border: 'border-emerald-300',
+      bg: 'bg-emerald-50/60',
+      text: 'text-emerald-700',
+      iconBg: 'bg-emerald-100 text-emerald-600',
+    },
+    fuchsia: {
+      border: 'border-fuchsia-300',
+      bg: 'bg-fuchsia-50/60',
+      text: 'text-fuchsia-700',
+      iconBg: 'bg-fuchsia-100 text-fuchsia-600',
+    },
+  }
+  const c = accentClasses[accent]
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full rounded-xl border p-4 text-left transition-colors',
-        selected ? 'border-primary bg-primary/5' : 'bg-card hover:bg-muted/50 border-border'
+        'w-full rounded-xl border p-4 text-left transition-all',
+        selected
+          ? `${c.border} ${c.bg} shadow-sm`
+          : 'bg-card hover:bg-muted/40 border-border'
       )}
     >
-      <div className="text-muted-foreground flex items-center gap-2 text-sm">
-        <Icon className="h-4 w-4" />
-        {label}
+      <div className="flex items-center gap-2 text-sm">
+        <span className={cn('flex h-7 w-7 items-center justify-center rounded-md', c.iconBg)}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-muted-foreground">{label}</span>
       </div>
-      <div className="mt-2 text-2xl font-semibold">{count}</div>
+      <div className={cn('mt-2 text-2xl font-semibold tabular-nums', selected ? c.text : '')}>
+        {count}
+      </div>
     </button>
   )
 }
@@ -253,23 +281,34 @@ const getHeaderLabel = (key: string) => COLUMN_HEADERS[key] ?? key
 function AgentAuditListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [sourceFilter, setSourceFilter] = useState<AgentAuditSessionSource | 'all'>('all')
 
   // Fetch up to 100 most recent sessions (backend cap). Client-side toolbar then
   // handles search + faceted filters + pagination (matches approval-order pattern).
-  const sessionsQuery = useQuery({
-    queryKey: ['admin', 'agent-audit', 'sessions'],
-    queryFn: async () => {
-      const res = await apiAdminListAgentAuditSessions({ limit: 100 })
-      return res.data
-    },
-    select: (data) => data.items,
-  })
+  // Two selectors over the same cached fetch: one surfaces the summary block for
+  // the overview cards, one produces the pre-filtered list that feeds DataTable.
+  const SESSIONS_KEY = ['admin', 'agent-audit', 'sessions']
+  const fetchSessions = async () =>
+    (await apiAdminListAgentAuditSessions({ limit: 100 })).data
 
   const summaryQuery = useQuery({
-    queryKey: ['admin', 'agent-audit', 'summary'],
-    queryFn: async () => (await apiAdminListAgentAuditSessions({ limit: 1 })).data.summary,
+    queryKey: SESSIONS_KEY,
+    queryFn: fetchSessions,
+    select: (data) => data.summary,
   })
   const summary = summaryQuery.data
+
+  const sessionsQuery = useQuery({
+    queryKey: SESSIONS_KEY,
+    queryFn: fetchSessions,
+    select: (data) =>
+      sourceFilter === 'all'
+        ? data.items
+        : data.items.filter((s) => s.source === sourceFilter),
+  })
+
+  const toggleSource = (v: AgentAuditSessionSource) =>
+    setSourceFilter((curr) => (curr === v ? 'all' : v))
 
   const goDetail = (session: AgentAuditSessionListItem) => {
     navigate({
@@ -284,7 +323,6 @@ function AgentAuditListPage() {
       placeholder: t('agentAudit.filters.keywordPlaceholder'),
     },
     filterOptions: [
-      { key: 'source', title: COLUMN_HEADERS.source, option: [...SESSION_SOURCE_OPTIONS] },
       { key: 'evalStatus', title: COLUMN_HEADERS.evalStatus, option: [...EVAL_STATUS_OPTIONS] },
       { key: 'feedback', title: COLUMN_HEADERS.feedback, option: [...FEEDBACK_OPTIONS] },
     ],
@@ -322,7 +360,11 @@ function AgentAuditListPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeaderLabel('messageCount')} />
       ),
-      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.messageCount}</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-sky-700 dark:text-sky-400">
+          {row.original.messageCount}
+        </span>
+      ),
       enableColumnFilter: false,
     },
     {
@@ -330,7 +372,11 @@ function AgentAuditListPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeaderLabel('toolCallCount')} />
       ),
-      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.toolCallCount}</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-orange-700 dark:text-orange-400">
+          {row.original.toolCallCount}
+        </span>
+      ),
       enableColumnFilter: false,
     },
     {
@@ -338,7 +384,11 @@ function AgentAuditListPage() {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={getHeaderLabel('turnCount')} />
       ),
-      cell: ({ row }) => <span className="font-mono text-xs tabular-nums">{row.original.turnCount}</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-xs tabular-nums text-violet-700 dark:text-violet-400">
+          {row.original.turnCount}
+        </span>
+      ),
       enableColumnFilter: false,
     },
     {
@@ -394,30 +444,34 @@ function AgentAuditListPage() {
         <SummaryCard
           label={t('agentAudit.source.chat')}
           count={summary?.chat ?? 0}
-          selected={false}
-          onClick={() => {}}
+          selected={sourceFilter === 'chat'}
+          onClick={() => toggleSource('chat')}
           icon={MessageSquareMoreIcon}
+          accent="blue"
         />
         <SummaryCard
           label={t('agentAudit.source.opsAudit')}
           count={summary?.opsAudit ?? 0}
-          selected={false}
-          onClick={() => {}}
+          selected={sourceFilter === 'ops_audit'}
+          onClick={() => toggleSource('ops_audit')}
           icon={ClipboardCheckIcon}
+          accent="amber"
         />
         <SummaryCard
           label={t('agentAudit.source.system')}
           count={summary?.system ?? 0}
-          selected={false}
-          onClick={() => {}}
+          selected={sourceFilter === 'system'}
+          onClick={() => toggleSource('system')}
           icon={SettingsIcon}
+          accent="emerald"
         />
         <SummaryCard
           label={t('agentAudit.source.benchmark')}
           count={summary?.benchmark ?? 0}
-          selected={false}
-          onClick={() => {}}
+          selected={sourceFilter === 'benchmark'}
+          onClick={() => toggleSource('benchmark')}
           icon={FlaskConicalIcon}
+          accent="fuchsia"
         />
       </div>
 

@@ -256,6 +256,7 @@
   "agentAudit.session.untitled": "Untitled session",
   "agentAudit.detail.backToList": "Back to list",
   "agentAudit.detail.counts": "Counts",
+  "agentAudit.detail.createdAt": "Created",
   "agentAudit.detail.notFound": "Session not found",
   "agentAudit.detail.title": "Session audit detail",
   "agentAudit.timeline.empty": "No conversation records",

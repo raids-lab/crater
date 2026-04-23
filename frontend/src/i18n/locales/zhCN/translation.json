@@ -292,6 +292,7 @@
   "agentAudit.session.untitled": "未命名会话",
   "agentAudit.detail.backToList": "返回列表",
   "agentAudit.detail.counts": "统计",
+  "agentAudit.detail.createdAt": "创建于",
   "agentAudit.detail.notFound": "未找到该会话",
   "agentAudit.detail.title": "会话审计详情",
   "agentAudit.timeline.empty": "暂无对话记录",
