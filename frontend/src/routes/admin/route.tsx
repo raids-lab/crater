@@ -4,6 +4,7 @@ import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-
 import {
   AlarmClockIcon,
   BarChartBigIcon,
+  BotIcon,
   BoxIcon,
   ClipboardCheckIcon,
   DatabaseIcon,
@@ -184,6 +185,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.approvalOrder'),
           url: '/admin/more/orders',
           icon: ClipboardCheckIcon,
+        },
+        {
+          title: t('navigation.agentAudit'),
+          url: '/admin/more/agent-audit',
+          icon: BotIcon,
         },
         {
           title: t('navigation.operationLogs', { defaultValue: '操作日志' }),

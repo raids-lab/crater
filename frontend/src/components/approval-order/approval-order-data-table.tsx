@@ -28,9 +28,7 @@ import {
   approvalOrderStatuses,
   approvalOrderTypes,
 } from '@/components/badge/approvalorder-badge'
-import NodeBadges from '@/components/badge/node-badges'
 import NodeStatusBadge from '@/components/badge/node-status-badge'
-import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
@@ -96,10 +94,6 @@ const JobNameWithWarning = ({
     return jobNodes.filter((node) => node.status !== NodeStatus.Ready)
   }, [order.type, order.status, pods, nodes])
 
-  const resources = pods?.[0]?.resource
-  const nodeNames = pods?.map((p) => p.nodename).filter(Boolean)
-  const uniqueNodes = Array.from(new Set(nodeNames))
-
   return (
     <div className="relative flex items-center gap-2">
       <button
@@ -119,12 +113,6 @@ const JobNameWithWarning = ({
           <ClockIcon className="h-3 w-3" />
           {extHours}h
         </div>
-      )}
-      {order.type === 'job' && order.status === ApprovalOrderStatus.Pending && (
-        <>
-          <ResourceBadges resources={resources} />
-          <NodeBadges nodes={uniqueNodes} />
-        </>
       )}
       {abnormalNodes.length > 0 && (
         <TooltipProvider>

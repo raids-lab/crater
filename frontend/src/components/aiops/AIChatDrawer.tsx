@@ -48,6 +48,7 @@ import {
   apiGetSessionTurns,
   apiGetSessionToolCalls,
   apiGetTurnEvents,
+  apiListFeedbacks,
   apiListSessions,
   apiParameterUpdate,
   apiPinSession,
@@ -58,6 +59,7 @@ import type {
   AgentConfigSummary,
   AgentEvent,
   AgentConfirmationForm,
+  AgentFeedback,
   AgentMessage,
   AgentSession,
   AgentToolCall,
@@ -82,6 +84,7 @@ import { AgentTimeline } from './AgentTimeline'
 import type { TimelineEvent } from './AgentTimeline'
 import { BatchConfirmCard } from './BatchConfirmCard'
 import { ConfirmActionCard } from './ConfirmActionCard'
+import { FeedbackCard } from './FeedbackCard'
 import { ParameterReviewCard } from './ParameterReviewCard'
 import { PipelineReportCard } from './PipelineReportCard'
 import { ResourceSuggestionCard } from './ResourceSuggestionCard'
@@ -161,6 +164,8 @@ interface ConversationItem {
   pipelineReport?: PipelineReportPayload
   /** For 'batch_confirmation' */
   batchConfirmation?: BatchConfirmationPayload
+  /** For feedback — the DB message id or turn id to use as targetId */
+  feedbackTargetId?: string
   timestamp: Date
 }
 
@@ -490,6 +495,7 @@ function mapSessionHistoryToConversationItems(
         requestState === 'failed' ? failureMessage ?? getFailedRequestMessage() : undefined,
       requestSessionId: message.sessionId ?? turn?.sessionId ?? null,
       requestOrchestrationMode: turn?.orchestrationMode,
+      feedbackTargetId: message.role === 'assistant' ? String(message.id) : undefined,
       timestamp: new Date(message.createdAt),
     } satisfies ConversationItem
   })
@@ -520,6 +526,7 @@ function mapSessionHistoryToConversationItems(
         timelineEvents,
         timelineVerdict: verdict ?? null,
         timelineComplete: true,
+        feedbackTargetId: turn.turnId,
         timestamp: new Date(turn.startedAt),
       } satisfies ConversationItem
     })
@@ -750,6 +757,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const [agentHistoryLoading, setAgentHistoryLoading] = useState(false)
   const [agentHistoryError, setAgentHistoryError] = useState<string | null>(null)
   const [selectedAgentSessionId, setSelectedAgentSessionId] = useState<string | null>(null)
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, AgentFeedback>>({})
   const [orchestrationMode, setOrchestrationMode] = useState<'single_agent' | 'multi_agent'>(
     'single_agent'
   )
@@ -780,6 +788,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   /** Ref to track the current timeline item id being streamed into */
   const currentTimelineIdRef = useRef<string | null>(null)
   const hasActiveAgentTask = agentStreaming || pendingConfirmIds.length > 0
+
+  const handleFeedbackChange = useCallback((fb: AgentFeedback) => {
+    setFeedbackMap((prev) => ({ ...prev, [`${fb.targetType}:${fb.targetId}`]: fb }))
+  }, [])
 
   const { data: agentSessions = [], refetch: refetchAgentSessions } = useQuery<AgentSession[]>({
     queryKey: ['agent-sessions'],
@@ -1548,15 +1560,17 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       setAgentHistoryError(null)
       setRetryableAgentRequest(null)
       setFailedAgentRequests({})
+      setFeedbackMap({})
       cancelAgentStream()
       setPendingConfirmIds([])
       activeAgentRequestStateRef.current = null
       currentTimelineIdRef.current = null
       try {
-        const [messages, toolCalls, turns] = await Promise.all([
+        const [messages, toolCalls, turns, feedbacks] = await Promise.all([
           apiGetSessionMessages(sessionId).then((response) => response.data),
           apiGetSessionToolCalls(sessionId).then((response) => response.data),
           apiGetSessionTurns(sessionId).then((response) => response.data),
+          apiListFeedbacks(sessionId).then((response) => response.data ?? []).catch((): AgentFeedback[] => []),
         ])
         const multiAgentTurns = turns.filter((turn) => turn.orchestrationMode === 'multi_agent')
         const runEventsByTurn = Object.fromEntries(
@@ -1580,6 +1594,12 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
           runEventsByTurn
         )
         setConversationItems(items)
+        // Populate feedback map keyed by "targetType:targetId"
+        const fbMap: Record<string, AgentFeedback> = {}
+        for (const fb of feedbacks) {
+          fbMap[`${fb.targetType}:${fb.targetId}`] = fb
+        }
+        setFeedbackMap(fbMap)
         setPendingConfirmIds(
           items
             .filter((item) => item.kind === 'confirmation_required' && item.confirmId)
@@ -2577,8 +2597,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                   }
 
                   if (item.kind === 'timeline') {
+                    const fbKey = item.feedbackTargetId ? `turn:${item.feedbackTargetId}` : null
                     return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
+                      <div key={item.id} className="flex min-w-0 flex-col justify-start">
                         <AgentTimeline
                           turnId={item.turnId ?? ''}
                           orchestrationMode="multi_agent"
@@ -2586,6 +2607,17 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                           verifierVerdict={item.timelineVerdict ?? null}
                           isStreaming={!item.timelineComplete && agentStreaming}
                         />
+                        {item.feedbackTargetId && item.timelineComplete && lastLoadedAgentSessionIdRef.current && (
+                          <div className="mt-1 pl-2">
+                            <FeedbackCard
+                              sessionId={lastLoadedAgentSessionIdRef.current}
+                              targetType="turn"
+                              targetId={item.feedbackTargetId}
+                              existingFeedback={fbKey ? feedbackMap[fbKey] : null}
+                              onFeedbackChange={handleFeedbackChange}
+                            />
+                          </div>
+                        )}
                       </div>
                     )
                   }
@@ -2606,6 +2638,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                   }
 
                   if (item.kind === 'message') {
+                    const fbKey = item.feedbackTargetId ? `message:${item.feedbackTargetId}` : null
                     return (
                       <div key={item.id} className="flex min-w-0 justify-start">
                         <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
@@ -2617,6 +2650,15 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                               {item.text ?? ''}
                             </ReactMarkdown>
                           </div>
+                          {item.feedbackTargetId && lastLoadedAgentSessionIdRef.current && (
+                            <FeedbackCard
+                              sessionId={lastLoadedAgentSessionIdRef.current}
+                              targetType="message"
+                              targetId={item.feedbackTargetId}
+                              existingFeedback={fbKey ? feedbackMap[fbKey] : null}
+                              onFeedbackChange={handleFeedbackChange}
+                            />
+                          )}
                         </div>
                       </div>
                     )

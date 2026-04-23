@@ -57,6 +57,7 @@ import { Route as IngressWebideNameRouteImport } from './routes/ingress/webide.$
 import { Route as IngressJupyterNameRouteImport } from './routes/ingress/jupyter.$name'
 import { Route as AdminUsersNameRouteImport } from './routes/admin/users/$name'
 import { Route as AdminMoreVersionRouteImport } from './routes/admin/more/version'
+import { Route as AdminMoreAgentAuditRouteImport } from './routes/admin/more/agent-audit'
 import { Route as AdminMonitorNetworkRouteImport } from './routes/admin/monitor/network'
 import { Route as AdminMonitorIdleRouteImport } from './routes/admin/monitor/idle'
 import { Route as AdminMonitorGpuRouteImport } from './routes/admin/monitor/gpu'
@@ -348,6 +349,11 @@ const AdminUsersNameRoute = AdminUsersNameRouteImport.update({
 const AdminMoreVersionRoute = AdminMoreVersionRouteImport.update({
   id: '/more/version',
   path: '/more/version',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminMoreAgentAuditRoute = AdminMoreAgentAuditRouteImport.update({
+  id: '/more/agent-audit',
+  path: '/more/agent-audit',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminMonitorNetworkRoute = AdminMonitorNetworkRouteImport.update({
@@ -658,6 +664,7 @@ export interface FileRoutesByFullPath {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRoute
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
@@ -737,6 +744,7 @@ export interface FileRoutesByTo {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRoute
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
@@ -840,6 +848,7 @@ export interface FileRoutesById {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRoute
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
@@ -944,6 +953,7 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
+    | '/admin/more/agent-audit'
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
@@ -1023,6 +1033,7 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
+    | '/admin/more/agent-audit'
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
@@ -1125,6 +1136,7 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
+    | '/admin/more/agent-audit'
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
@@ -1535,6 +1547,13 @@ declare module '@tanstack/react-router' {
       path: '/more/version'
       fullPath: '/admin/more/version'
       preLoaderRoute: typeof AdminMoreVersionRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/more/agent-audit': {
+      id: '/admin/more/agent-audit'
+      path: '/more/agent-audit'
+      fullPath: '/admin/more/agent-audit'
+      preLoaderRoute: typeof AdminMoreAgentAuditRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/monitor/network': {
@@ -2070,6 +2089,7 @@ interface AdminRouteRouteChildren {
   AdminMonitorGpuRoute: typeof AdminMonitorGpuRoute
   AdminMonitorIdleRoute: typeof AdminMonitorIdleRoute
   AdminMonitorNetworkRoute: typeof AdminMonitorNetworkRoute
+  AdminMoreAgentAuditRoute: typeof AdminMoreAgentAuditRoute
   AdminMoreVersionRoute: typeof AdminMoreVersionRoute
   AdminCronjobsIndexRoute: typeof AdminCronjobsIndexRoute
   AdminMoreIndexRoute: typeof AdminMoreIndexRoute
@@ -2094,6 +2114,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminMonitorGpuRoute: AdminMonitorGpuRoute,
   AdminMonitorIdleRoute: AdminMonitorIdleRoute,
   AdminMonitorNetworkRoute: AdminMonitorNetworkRoute,
+  AdminMoreAgentAuditRoute: AdminMoreAgentAuditRoute,
   AdminMoreVersionRoute: AdminMoreVersionRoute,
   AdminCronjobsIndexRoute: AdminCronjobsIndexRoute,
   AdminMoreIndexRoute: AdminMoreIndexRoute,

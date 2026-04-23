@@ -37,6 +37,7 @@ export interface AgentSSEEvent {
 export interface AgentSession {
   sessionId: string
   title: string
+  source?: 'chat' | 'ops_audit' | 'system' | 'benchmark'
   messageCount: number
   lastOrchestrationMode?: 'single_agent' | 'multi_agent'
   pinnedAt?: string | null
@@ -97,6 +98,7 @@ export interface AgentToolCall {
   toolCallId?: string
   agentId?: string
   agentRole?: string
+  source?: 'backend' | 'local' | 'benchmark'
   toolName: string
   toolArgs?: unknown
   toolResult?: unknown
@@ -619,3 +621,82 @@ export const apiParameterUpdate = (
     action,
     parameters,
   })
+
+// ──────────────────────────────────────────────
+// Feedback
+// ──────────────────────────────────────────────
+
+export interface AgentFeedback {
+  id: number
+  sessionId: string
+  userId: number
+  accountId: number
+  targetType: 'message' | 'turn'
+  targetId: string
+  rating: 1 | -1
+  tags?: string[]
+  dimensions?: Record<string, number>
+  comment?: string
+  status: 'draft' | 'submitted'
+  submittedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FeedbackUpsertRequest {
+  sessionId: string
+  targetType: 'message' | 'turn'
+  targetId: string
+  rating: 1 | -1
+  tags?: string[]
+  dimensions?: Record<string, number>
+  comment?: string
+}
+
+export interface FeedbackStats {
+  total: number
+  thumbsUp: number
+  thumbsDown: number
+  avgDimensions: Record<string, number>
+  topTags: Array<{ tag: string; count: number }>
+}
+
+export const apiUpsertFeedback = (req: FeedbackUpsertRequest) =>
+  apiV1Put<IResponse<AgentFeedback>>('agent/feedbacks', req)
+
+export const apiSubmitFeedback = (sessionId: string, targetType: string, targetId: string) =>
+  apiV1Post<IResponse<AgentFeedback>>('agent/feedbacks/submit', {
+    sessionId,
+    targetType,
+    targetId,
+  })
+
+export const apiQuickSubmitFeedback = (req: {
+  sessionId: string
+  targetType: 'message' | 'turn'
+  targetId: string
+  rating: 1 | -1
+  tags?: string[]
+  dimensions?: Record<string, number>
+  comment?: string
+}) => apiV1Post<IResponse<AgentFeedback>>('agent/feedbacks/quick-submit', req)
+
+export const apiEnrichFeedback = (req: {
+  sessionId: string
+  targetType: 'message' | 'turn'
+  targetId: string
+  tags?: string[]
+  dimensions?: Record<string, number>
+  comment?: string
+}) => apiV1Put<IResponse<AgentFeedback>>('agent/feedbacks/enrich', req)
+
+export const apiListFeedbacks = (sessionId: string) =>
+  apiV1Get<IResponse<AgentFeedback[]>>(`agent/feedbacks?sessionId=${encodeURIComponent(sessionId)}`)
+
+export const apiGetFeedbackStats = (from?: string, to?: string) => {
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  const qs = params.toString()
+  return apiV1Get<IResponse<FeedbackStats>>(`agent/feedbacks/stats${qs ? `?${qs}` : ''}`)
+}
