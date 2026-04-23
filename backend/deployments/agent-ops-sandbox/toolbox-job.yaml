@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: agent-ops-toolbox-template
+  namespace: crater-agent-ops
+  labels:
+    app.kubernetes.io/name: crater-agent-ops-sandbox
+    app.kubernetes.io/component: toolbox
+  annotations:
+    crater.raids-lab.io/template: "true"
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: crater-agent-ops-sandbox
+        app.kubernetes.io/component: toolbox
+    spec:
+      restartPolicy: Never
+      serviceAccountName: crater-agent-ops-sandbox
+      automountServiceAccountToken: true
+      containers:
+        - name: toolbox
+          # Map to agent.ops.sandbox.image in backend config.
+          image: ghcr.io/raids-lab/crater-agent-ops-toolbox:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              SCRIPT_NAME="${SCRIPT_NAME:-}"
+              SCRIPT_ARGS_JSON="${SCRIPT_ARGS_JSON:-{}}"
+              /bin/sh /opt/ops/scripts/runner.sh "$SCRIPT_NAME" "$SCRIPT_ARGS_JSON"
+          env:
+            # Backend should override these per execution request.
+            - name: SCRIPT_NAME
+              value: inspect_pvc
+            - name: SCRIPT_ARGS_JSON
+              value: "{}"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: script-catalog
+              mountPath: /opt/ops/scripts
+              readOnly: true
+            - name: workspace
+              mountPath: /tmp
+      volumes:
+        - name: script-catalog
+          configMap:
+            name: agent-ops-script-catalog
+            defaultMode: 0444
+        - name: workspace
+          emptyDir: {}

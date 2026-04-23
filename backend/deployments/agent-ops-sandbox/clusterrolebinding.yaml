@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crater-agent-ops-sandbox-read
+  labels:
+    app.kubernetes.io/name: crater-agent-ops-sandbox
+subjects:
+  - kind: ServiceAccount
+    name: crater-agent-ops-sandbox
+    namespace: crater-agent-ops
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: crater-agent-ops-sandbox-read
