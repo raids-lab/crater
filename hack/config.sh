@@ -122,6 +122,8 @@ declare -A CONFIG_FILES=(
     ["backend/kubeconfig"]="backend/kubeconfig"
     ["backend/etc/debug-config.yaml"]="backend/etc/debug-config.yaml"
     ["frontend/.env.development"]="frontend/.env.development"
+    ["storage/.env"]="storage/.env"
+    ["storage/etc/config.yaml"]="storage/etc/config.yaml"
 )
 # Get project root directory
 get_project_root() {
