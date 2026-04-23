@@ -94,3 +94,12 @@ docs/superpowers/
 
 # One-off local helper script
 backend/hack/apply_agent_multi_mode_sql.sh
+
+# Claude Code per-repo settings
+.claude/
+
+# Compiled Go binary (local build)
+backend/crater
+
+# Local debug scripts
+crater-agent/test_openai.py
