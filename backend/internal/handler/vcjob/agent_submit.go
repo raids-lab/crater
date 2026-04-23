@@ -35,17 +35,25 @@ type agentJobSubmitter struct {
 }
 
 // NewAgentJobSubmitter creates a JobMutationSubmitter backed by VolcanojobMgr
-// internals.
+// internals. We deliberately wire the full service set (configService,
+// queueQuotaSvc, prequeueWatcher, billingService) so that scheduling helpers
+// such as resolveJobScheduleMetadata work the same way they do on the normal
+// /v1/vcjobs/* HTTP path; agent-submitted jobs should not silently bypass
+// prequeue / backfill scheduling metadata.
 func NewAgentJobSubmitter(conf *handler.RegisterConfig) handler.JobMutationSubmitter {
 	return &agentJobSubmitter{
 		mgr: &VolcanojobMgr{
-			name:           "vcjobs",
-			client:         conf.Client,
-			config:         conf.KubeConfig,
-			kubeClient:     conf.KubeClient,
-			imagePacker:    conf.ImagePacker,
-			imageRegistry:  conf.ImageRegistry,
-			serviceManager: conf.ServiceManager,
+			name:            "vcjobs",
+			client:          conf.Client,
+			config:          conf.KubeConfig,
+			kubeClient:      conf.KubeClient,
+			imagePacker:     conf.ImagePacker,
+			imageRegistry:   conf.ImageRegistry,
+			serviceManager:  conf.ServiceManager,
+			configService:   conf.ConfigService,
+			queueQuotaSvc:   conf.PrequeueService,
+			prequeueWatcher: conf.PrequeueWatcher,
+			billingService:  conf.BillingService,
 		},
 	}
 }
@@ -58,6 +66,18 @@ func (s *agentJobSubmitter) SubmitJupyterJob(
 	var req CreateJupyterReq
 	if err := json.Unmarshal(rawReq, &req); err != nil {
 		return nil, fmt.Errorf("invalid jupyter request: %w", err)
+	}
+
+	// Resolve scheduling metadata the same way the /v1/vcjobs/jupyter HTTP
+	// handler does, so agent-submitted jobs carry the same prequeue /
+	// backfill / tolerance annotations as user-submitted ones.
+	scheduleType, err := req.validateScheduleOptions(true)
+	if err != nil {
+		return nil, fmt.Errorf("invalid schedule options: %w", err)
+	}
+	scheduleMetadata, err := s.mgr.resolveJobScheduleMetadata(ctx, scheduleType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve schedule metadata: %w", err)
 	}
 
 	if err := aitaskctl.CheckInteractiveLimitBeforeCreate(ctx, token.UserID, token.AccountID); err != nil {
@@ -95,7 +115,7 @@ func (s *agentJobSubmitter) SubmitJupyterJob(
 	}
 
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
-		CraterJobTypeJupyter, token, baseURL, req.Name, req.Template, req.AlertEnabled,
+		CraterJobTypeJupyter, token, baseURL, &req.CreateJobCommon, scheduleMetadata,
 	)
 
 	podSpec, err := generateInteractivePodSpec(
@@ -182,7 +202,20 @@ func (s *agentJobSubmitter) SubmitTrainingJob(
 		return nil, fmt.Errorf("invalid training request: %w", err)
 	}
 
-	exceededResources := aitaskctl.CheckResourcesBeforeCreateJob(ctx, token.UserID, token.AccountID)
+	// Match /v1/vcjobs/custom: resolve schedule metadata before quota checks.
+	scheduleType, err := req.validateScheduleOptions(true)
+	if err != nil {
+		return nil, fmt.Errorf("invalid schedule options: %w", err)
+	}
+	scheduleMetadata, err := s.mgr.resolveJobScheduleMetadata(ctx, scheduleType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve schedule metadata: %w", err)
+	}
+
+	exceededResources, err := aitaskctl.CheckResourcesBeforeCreateJob(ctx, token.UserID, token.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check resources: %w", err)
+	}
 	if len(exceededResources) > 0 {
 		return nil, fmt.Errorf("resource quota exceeded: %v", exceededResources)
 	}
@@ -202,7 +235,7 @@ func (s *agentJobSubmitter) SubmitTrainingJob(
 	baseURL := jobName[3:]
 
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
-		CraterJobTypeCustom, token, baseURL, req.Name, req.Template, req.AlertEnabled,
+		CraterJobTypeCustom, token, baseURL, &req.CreateJobCommon, scheduleMetadata,
 	)
 
 	podSpec, err := GenerateCustomPodSpec(ctx, token, &req)

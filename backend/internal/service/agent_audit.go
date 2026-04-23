@@ -81,6 +81,7 @@ type AgentAuditSessionListItem struct {
 	ToolCallCount         int        `json:"toolCallCount"`
 	TurnCount             int        `json:"turnCount"`
 	LastOrchestrationMode string     `json:"lastOrchestrationMode,omitempty"`
+	OrchestrationModes    []string   `json:"orchestrationModes,omitempty"`
 	PinnedAt              *time.Time `json:"pinnedAt,omitempty"`
 	LatestEvalID          *uint      `json:"latestEvalId,omitempty"`
 	LatestEvalStatus      string     `json:"latestEvalStatus,omitempty"`
@@ -89,6 +90,83 @@ type AgentAuditSessionListItem struct {
 	HasFeedback           bool       `json:"hasFeedback"`
 	CreatedAt             time.Time  `json:"createdAt"`
 	UpdatedAt             time.Time  `json:"updatedAt"`
+}
+
+// agentAuditSessionListRow is the raw scan target; orchestration_modes_raw is a
+// comma-separated string aggregated from agent_turns which we split into the
+// public []string field after scanning.
+type agentAuditSessionListRow struct {
+	SessionID              string
+	Title                  string
+	Source                 string
+	UserID                 uint
+	Username               string
+	Nickname               string
+	AccountID              uint
+	AccountName            string
+	AccountNickname        string
+	MessageCount           int
+	ToolCallCount          int
+	TurnCount              int
+	LastOrchestrationMode  string
+	OrchestrationModesRaw  string
+	PinnedAt               *time.Time
+	LatestEvalID           *uint
+	LatestEvalStatus       string
+	LatestEvalCompletedAt  *time.Time
+	FeedbackRating         *int16
+	HasFeedback            bool
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+}
+
+func (r agentAuditSessionListRow) toItem() AgentAuditSessionListItem {
+	modes := splitOrchestrationModes(r.OrchestrationModesRaw)
+	return AgentAuditSessionListItem{
+		SessionID:             r.SessionID,
+		Title:                 r.Title,
+		Source:                r.Source,
+		UserID:                r.UserID,
+		Username:              r.Username,
+		Nickname:              r.Nickname,
+		AccountID:             r.AccountID,
+		AccountName:           r.AccountName,
+		AccountNickname:       r.AccountNickname,
+		MessageCount:          r.MessageCount,
+		ToolCallCount:         r.ToolCallCount,
+		TurnCount:             r.TurnCount,
+		LastOrchestrationMode: r.LastOrchestrationMode,
+		OrchestrationModes:    modes,
+		PinnedAt:              r.PinnedAt,
+		LatestEvalID:          r.LatestEvalID,
+		LatestEvalStatus:      r.LatestEvalStatus,
+		LatestEvalCompletedAt: r.LatestEvalCompletedAt,
+		FeedbackRating:        r.FeedbackRating,
+		HasFeedback:           r.HasFeedback,
+		CreatedAt:             r.CreatedAt,
+		UpdatedAt:             r.UpdatedAt,
+	}
+}
+
+func splitOrchestrationModes(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	seen := make(map[string]struct{}, len(parts))
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		v := strings.TrimSpace(p)
+		if v == "" {
+			continue
+		}
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	return out
 }
 
 type AgentAuditSessionListResult struct {
@@ -140,7 +218,7 @@ func (s *AgentService) buildAgentAuditSessionBaseQuery(ctx context.Context, keyw
 	pattern := "%" + trimmedKeyword + "%"
 	return db.Where(
 		`(
-			s.session_id ILIKE ?
+			s.session_id::text ILIKE ?
 			OR s.title ILIKE ?
 			OR COALESCE(u.name, '') ILIKE ?
 			OR COALESCE(u.nickname, '') ILIKE ?
@@ -154,6 +232,85 @@ func (s *AgentService) buildAgentAuditSessionBaseQuery(ctx context.Context, keyw
 		pattern,
 		pattern,
 	)
+}
+
+// buildAgentAuditSessionEnrichedQuery builds the SELECT that feeds both the
+// admin list and single-session detail view. The caller controls keyword /
+// filters / pagination. Scan target: []agentAuditSessionListRow.
+func (s *AgentService) buildAgentAuditSessionEnrichedQuery(ctx context.Context, keyword string) *gorm.DB {
+	messageStats := s.db.WithContext(ctx).
+		Table("agent_messages").
+		Select("session_id, COUNT(*) AS message_count").
+		Group("session_id")
+	toolCallStats := s.db.WithContext(ctx).
+		Table("agent_tool_calls").
+		Select("session_id, COUNT(*) AS tool_call_count").
+		Group("session_id")
+	turnStats := s.db.WithContext(ctx).
+		Table("agent_turns").
+		Select("session_id, COUNT(*) AS turn_count").
+		Group("session_id")
+
+	// Distinct orchestration modes seen across all turns of a session,
+	// comma-separated (split in Go). Fallback to session.last_orchestration_mode
+	// is handled by the outer SELECT.
+	turnModes := s.db.WithContext(ctx).
+		Table("agent_turns").
+		Select(`session_id,
+			STRING_AGG(DISTINCT COALESCE(NULLIF(orchestration_mode, ''), 'single_agent'), ',') AS modes`).
+		Group("session_id")
+
+	// Latest quality eval per session (DISTINCT ON picks most recent)
+	latestEval := s.db.WithContext(ctx).
+		Table("agent_quality_evals").
+		Select(`DISTINCT ON (session_id)
+			session_id,
+			id AS eval_id,
+			eval_status,
+			completed_at`).
+		Order("session_id, created_at DESC")
+
+	// Latest submitted feedback rating per session
+	latestFeedback := s.db.WithContext(ctx).
+		Table("agent_feedbacks").
+		Select(`DISTINCT ON (session_id)
+			session_id,
+			rating AS feedback_rating,
+			status AS feedback_status`).
+		Where("status = 'submitted'").
+		Order("session_id, submitted_at DESC NULLS LAST, updated_at DESC")
+
+	return s.buildAgentAuditSessionBaseQuery(ctx, keyword).
+		Joins("LEFT JOIN (?) AS msg_stats ON msg_stats.session_id = s.session_id", messageStats).
+		Joins("LEFT JOIN (?) AS tool_stats ON tool_stats.session_id = s.session_id", toolCallStats).
+		Joins("LEFT JOIN (?) AS turn_stats ON turn_stats.session_id = s.session_id", turnStats).
+		Joins("LEFT JOIN (?) AS turn_modes ON turn_modes.session_id = s.session_id", turnModes).
+		Joins("LEFT JOIN (?) AS latest_eval ON latest_eval.session_id = s.session_id", latestEval).
+		Joins("LEFT JOIN (?) AS latest_fb ON latest_fb.session_id = s.session_id", latestFeedback).
+		Select(`
+			s.session_id,
+			s.title,
+			COALESCE(NULLIF(s.source, ''), 'chat') AS source,
+			s.user_id,
+			COALESCE(u.name, '') AS username,
+			COALESCE(NULLIF(u.nickname, ''), u.name, '') AS nickname,
+			s.account_id,
+			COALESCE(a.name, '') AS account_name,
+			COALESCE(NULLIF(a.nickname, ''), a.name, '') AS account_nickname,
+			COALESCE(msg_stats.message_count, s.message_count, 0) AS message_count,
+			COALESCE(tool_stats.tool_call_count, 0) AS tool_call_count,
+			COALESCE(turn_stats.turn_count, 0) AS turn_count,
+			COALESCE(NULLIF(s.last_orchestration_mode, ''), 'single_agent') AS last_orchestration_mode,
+			COALESCE(turn_modes.modes, COALESCE(NULLIF(s.last_orchestration_mode, ''), 'single_agent')) AS orchestration_modes_raw,
+			s.pinned_at,
+			latest_eval.eval_id AS latest_eval_id,
+			COALESCE(latest_eval.eval_status, '') AS latest_eval_status,
+			latest_eval.completed_at AS latest_eval_completed_at,
+			latest_fb.feedback_rating AS feedback_rating,
+			(latest_fb.session_id IS NOT NULL) AS has_feedback,
+			s.created_at,
+			s.updated_at
+		`)
 }
 
 func (s *AgentService) ListAdminSessions(
@@ -204,74 +361,8 @@ func (s *AgentService) ListAdminSessions(
 	if source != "" {
 		countQuery = countQuery.Where("COALESCE(NULLIF(s.source, ''), 'chat') = ?", source)
 	}
-	var total int64
-	if err := countQuery.Count(&total).Error; err != nil {
-		return nil, err
-	}
 
-	messageStats := s.db.WithContext(ctx).
-		Table("agent_messages").
-		Select("session_id, COUNT(*) AS message_count").
-		Group("session_id")
-	toolCallStats := s.db.WithContext(ctx).
-		Table("agent_tool_calls").
-		Select("session_id, COUNT(*) AS tool_call_count").
-		Group("session_id")
-	turnStats := s.db.WithContext(ctx).
-		Table("agent_turns").
-		Select("session_id, COUNT(*) AS turn_count").
-		Group("session_id")
-
-	// Latest quality eval per session (DISTINCT ON picks most recent)
-	latestEval := s.db.WithContext(ctx).
-		Table("agent_quality_evals").
-		Select(`DISTINCT ON (session_id)
-			session_id,
-			id AS eval_id,
-			eval_status,
-			completed_at`).
-		Order("session_id, created_at DESC")
-
-	// Latest submitted feedback rating per session
-	latestFeedback := s.db.WithContext(ctx).
-		Table("agent_feedbacks").
-		Select(`DISTINCT ON (session_id)
-			session_id,
-			rating AS feedback_rating,
-			status AS feedback_status`).
-		Where("status = 'submitted'").
-		Order("session_id, submitted_at DESC NULLS LAST, updated_at DESC")
-
-	listQuery := s.buildAgentAuditSessionBaseQuery(ctx, opts.Keyword).
-		Joins("LEFT JOIN (?) AS msg_stats ON msg_stats.session_id = s.session_id", messageStats).
-		Joins("LEFT JOIN (?) AS tool_stats ON tool_stats.session_id = s.session_id", toolCallStats).
-		Joins("LEFT JOIN (?) AS turn_stats ON turn_stats.session_id = s.session_id", turnStats).
-		Joins("LEFT JOIN (?) AS latest_eval ON latest_eval.session_id = s.session_id", latestEval).
-		Joins("LEFT JOIN (?) AS latest_fb ON latest_fb.session_id = s.session_id", latestFeedback).
-		Select(`
-			s.session_id,
-			s.title,
-			COALESCE(NULLIF(s.source, ''), 'chat') AS source,
-			s.user_id,
-			COALESCE(u.name, '') AS username,
-			COALESCE(NULLIF(u.nickname, ''), u.name, '') AS nickname,
-			s.account_id,
-			COALESCE(a.name, '') AS account_name,
-			COALESCE(NULLIF(a.nickname, ''), a.name, '') AS account_nickname,
-			COALESCE(msg_stats.message_count, s.message_count, 0) AS message_count,
-			COALESCE(tool_stats.tool_call_count, 0) AS tool_call_count,
-			COALESCE(turn_stats.turn_count, 0) AS turn_count,
-			COALESCE(NULLIF(s.last_orchestration_mode, ''), 'single_agent') AS last_orchestration_mode,
-			s.pinned_at,
-			latest_eval.eval_id AS latest_eval_id,
-			COALESCE(latest_eval.eval_status, '') AS latest_eval_status,
-			latest_eval.completed_at AS latest_eval_completed_at,
-			latest_fb.feedback_rating AS feedback_rating,
-			(latest_fb.session_id IS NOT NULL) AS has_feedback,
-			s.created_at,
-			s.updated_at
-		`)
-
+	listQuery := s.buildAgentAuditSessionEnrichedQuery(ctx, opts.Keyword)
 	if source != "" {
 		listQuery = listQuery.Where("COALESCE(NULLIF(s.source, ''), 'chat') = ?", source)
 	}
@@ -292,13 +383,23 @@ func (s *AgentService) ListAdminSessions(
 		countQuery = countQuery.Where("NOT EXISTS (SELECT 1 FROM agent_quality_evals qe WHERE qe.session_id = s.session_id)")
 	}
 
-	var items []AgentAuditSessionListItem
+	var total int64
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	var rows []agentAuditSessionListRow
 	if err := listQuery.
 		Order("s.updated_at DESC").
 		Limit(limit).
 		Offset(offset).
-		Scan(&items).Error; err != nil {
+		Scan(&rows).Error; err != nil {
 		return nil, err
+	}
+
+	items := make([]AgentAuditSessionListItem, 0, len(rows))
+	for _, r := range rows {
+		items = append(items, r.toItem())
 	}
 
 	return &AgentAuditSessionListResult{
@@ -306,4 +407,27 @@ func (s *AgentService) ListAdminSessions(
 		Items:   items,
 		Summary: summary,
 	}, nil
+}
+
+// GetSessionDetail returns the enriched list-item for a single session. Used by
+// the detail page so it does not have to keyword-search for the session.
+func (s *AgentService) GetSessionDetail(
+	ctx context.Context,
+	sessionID string,
+) (*AgentAuditSessionListItem, error) {
+	if strings.TrimSpace(sessionID) == "" {
+		return nil, ErrSessionNotFound
+	}
+	var rows []agentAuditSessionListRow
+	if err := s.buildAgentAuditSessionEnrichedQuery(ctx, "").
+		Where("s.session_id = ?", sessionID).
+		Limit(1).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, ErrSessionNotFound
+	}
+	item := rows[0].toItem()
+	return &item, nil
 }

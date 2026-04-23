@@ -56,6 +56,255 @@
                 }
             }
         },
+        "/api/agent/tools/execute": {
+            "post": {
+                "description": "Routes tool_name to the appropriate internal handler. Write tools return confirmation_required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Execute a named tool (called by the Python Agent service)",
+                "parameters": [
+                    {
+                        "description": "Tool execution request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.ExecuteToolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentToolResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/agent/quality-evals": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "List quality eval records (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by session ID",
+                        "name": "sessionId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by trigger source (feedback|offline_batch|manual)",
+                        "name": "triggerSource",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max records to return (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/admin/agent/sessions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "List agent sessions for admin audit",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentAuditSessionListResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/agent/sessions/{sessionId}/detail": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "Get enriched detail for a single agent session (for admin audit detail page)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentAuditSessionListItem"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/agent/sessions/{sessionId}/messages": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "Get messages for an agent session as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/agent/sessions/{sessionId}/tool-calls": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "Get tool calls for an agent session as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/agent/sessions/{sessionId}/trigger-eval": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "Admin: manually trigger a quality eval for a session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/admin/agent/sessions/{sessionId}/turns": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "Get turns for an agent session as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/agent/turns/{turnId}/events": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent-admin"
+                ],
+                "summary": "Get run events for an agent turn as admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Turn ID (UUID)",
+                        "name": "turnId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/admin/aiops/chat": {
             "post": {
                 "description": "Chat with AIOps assistant in rule-based mode, optionally with a target job.",
@@ -210,6 +459,474 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/chat": {
+            "post": {
+                "description": "Create or continue an agent chat session; streams SSE events from the Python Agent service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Agent chat (SSE)",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentChatRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/chat/confirm": {
+            "post": {
+                "description": "Called by the frontend after the user confirms or rejects a write operation (e.g., stop_job).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Confirm or reject a write tool operation",
+                "parameters": [
+                    {
+                        "description": "Confirmation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.ConfirmToolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/chat/parameter-update": {
+            "post": {
+                "description": "Allows the frontend to send parameter adjustments (e.g. form field changes) to the agent mid-session.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Forward a parameter update to the Python Agent service",
+                "parameters": [
+                    {
+                        "description": "Parameter update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/chat/resume": {
+            "post": {
+                "description": "Starts a hidden follow-up turn so the agent can explain the execution result.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Resume an agent turn after a confirmation result",
+                "parameters": [
+                    {
+                        "description": "Resume request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentResumeRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/config-summary": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get agent configuration summary for the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/feedbacks": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "List feedbacks for a session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "sessionId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Create or update a feedback (draft)",
+                "parameters": [
+                    {
+                        "description": "Feedback upsert request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.FeedbackUpsertRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/feedbacks/enrich": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Add/update detail fields on any feedback (even submitted). Never changes rating or status.",
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/feedbacks/quick-submit": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Create and immediately submit feedback (single operation, no draft step)",
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/feedbacks/stats": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get aggregated feedback stats (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start time (RFC3339)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End time (RFC3339)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/feedbacks/submit": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Submit a draft feedback (makes it immutable)",
+                "parameters": [
+                    {
+                        "description": "Feedback submit request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.FeedbackSubmitRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/agent/sessions": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "List agent chat sessions for the current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Soft delete an agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/messages": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get messages for a specific agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/pin": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Pin or unpin an agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Pin request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentSessionPinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/tool-calls": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get tool calls for a specific agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/turns": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get turns for a specific agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/turns/{turnId}/events": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Get run events for a specific agent turn",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Turn ID (UUID)",
+                        "name": "turnId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     }
                 }
@@ -533,6 +1250,21 @@
                         }
                     }
                 }
+            }
+        },
+        "/internal/agent/quality-evals": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "internal"
+                ],
+                "summary": "Internal: receive quality eval result from crater-agent",
+                "responses": {}
             }
         },
         "/metrics": {
@@ -10066,6 +10798,33 @@
                 "JobTypeCustom"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.ReviewSource": {
+            "type": "string",
+            "enum": [
+                "",
+                "system_auto",
+                "agent_auto",
+                "admin_manual"
+            ],
+            "x-enum-comments": {
+                "ReviewSourceAdminManual": "管理员手动审批",
+                "ReviewSourceAgentAuto": "Agent 评估通过",
+                "ReviewSourceNone": "历史记录或未处理",
+                "ReviewSourceSystemAuto": "简单规则自动审批"
+            },
+            "x-enum-descriptions": [
+                "历史记录或未处理",
+                "简单规则自动审批",
+                "Agent 评估通过",
+                "管理员手动审批"
+            ],
+            "x-enum-varnames": [
+                "ReviewSourceNone",
+                "ReviewSourceSystemAuto",
+                "ReviewSourceAgentAuto",
+                "ReviewSourceAdminManual"
+            ]
+        },
         "github_com_raids-lab_crater_dao_model.ReviewStatus": {
             "type": "integer",
             "format": "int32",
@@ -10513,6 +11272,40 @@
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentAuditSessionListItem": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListItem"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentAuditSessionListResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListResult"
                 },
                 "msg": {
                     "type": "string"
@@ -10981,6 +11774,40 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentConfigSummary"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentToolResponse"
+                },
+                "msg": {
+                    "type": "string"
+                },
+                "msgKey": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress": {
             "type": "object",
             "properties": {
@@ -11097,6 +11924,117 @@
                 },
                 "msgKey": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentAuditSessionListItem": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "integer"
+                },
+                "accountName": {
+                    "type": "string"
+                },
+                "accountNickname": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "feedbackRating": {
+                    "type": "integer"
+                },
+                "hasFeedback": {
+                    "type": "boolean"
+                },
+                "lastOrchestrationMode": {
+                    "type": "string"
+                },
+                "latestEvalCompletedAt": {
+                    "type": "string"
+                },
+                "latestEvalId": {
+                    "type": "integer"
+                },
+                "latestEvalStatus": {
+                    "type": "string"
+                },
+                "messageCount": {
+                    "type": "integer"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "orchestrationModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "pinnedAt": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "toolCallCount": {
+                    "type": "integer"
+                },
+                "turnCount": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentAuditSessionListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListItem"
+                    }
+                },
+                "summary": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionSummary"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentAuditSessionSummary": {
+            "type": "object",
+            "properties": {
+                "benchmark": {
+                    "type": "integer"
+                },
+                "chat": {
+                    "type": "integer"
+                },
+                "opsAudit": {
+                    "type": "integer"
+                },
+                "system": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -11674,6 +12612,9 @@
         "internal_handler.ApprovalOrderResp": {
             "type": "object",
             "properties": {
+                "agentReport": {
+                    "type": "string"
+                },
                 "content": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderContent"
                 },
@@ -11694,6 +12635,9 @@
                 },
                 "reviewNotes": {
                     "type": "string"
+                },
+                "reviewSource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ReviewSource"
                 },
                 "reviewer": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
@@ -13038,6 +13982,327 @@
                 },
                 "userID": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_agent.AgentChatRequest": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "clientContext": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "orchestrationMode": {
+                    "type": "string"
+                },
+                "pageContext": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentConfigSummary": {
+            "type": "object",
+            "properties": {
+                "availableModes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "defaultOrchestrationMode": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentInternalContext": {
+            "type": "object",
+            "properties": {
+                "account_name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentResumeRequest": {
+            "type": "object",
+            "required": [
+                "confirmId"
+            ],
+            "properties": {
+                "confirmId": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentSessionPinRequest": {
+            "type": "object",
+            "properties": {
+                "pinned": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolConfirmation": {
+            "type": "object",
+            "properties": {
+                "confirm_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "form": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentToolForm"
+                },
+                "interaction": {
+                    "type": "string"
+                },
+                "risk_level": {
+                    "type": "string"
+                },
+                "tool_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolField": {
+            "type": "object",
+            "properties": {
+                "defaultValue": {},
+                "description": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_agent.AgentToolFieldOption"
+                    }
+                },
+                "placeholder": {
+                    "type": "string"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolFieldOption": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolForm": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_agent.AgentToolField"
+                    }
+                },
+                "submitLabel": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentToolResponse": {
+            "type": "object",
+            "properties": {
+                "confirmation": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentToolConfirmation"
+                },
+                "latency_ms": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tool_call_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.ConfirmToolRequest": {
+            "type": "object",
+            "required": [
+                "confirmId"
+            ],
+            "properties": {
+                "confirmId": {
+                    "type": "string"
+                },
+                "confirmed": {
+                    "type": "boolean"
+                },
+                "payload": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "internal_handler_agent.ExecuteToolRequest": {
+            "type": "object",
+            "required": [
+                "session_id",
+                "tool_args",
+                "tool_name"
+            ],
+            "properties": {
+                "agent_id": {
+                    "type": "string"
+                },
+                "agent_role": {
+                    "type": "string"
+                },
+                "internal_context": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentInternalContext"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "session_source": {
+                    "type": "string"
+                },
+                "session_title": {
+                    "type": "string"
+                },
+                "tool_args": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "tool_call_id": {
+                    "type": "string"
+                },
+                "tool_name": {
+                    "type": "string"
+                },
+                "turn_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.FeedbackSubmitRequest": {
+            "type": "object",
+            "required": [
+                "sessionId",
+                "targetId",
+                "targetType"
+            ],
+            "properties": {
+                "sessionId": {
+                    "type": "string"
+                },
+                "targetId": {
+                    "type": "string"
+                },
+                "targetType": {
+                    "type": "string",
+                    "enum": [
+                        "message",
+                        "turn"
+                    ]
+                }
+            }
+        },
+        "internal_handler_agent.FeedbackUpsertRequest": {
+            "type": "object",
+            "required": [
+                "rating",
+                "sessionId",
+                "targetId",
+                "targetType"
+            ],
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "dimensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rating": {
+                    "type": "integer",
+                    "enum": [
+                        1,
+                        -1
+                    ]
+                },
+                "sessionId": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "targetId": {
+                    "type": "string"
+                },
+                "targetType": {
+                    "type": "string",
+                    "enum": [
+                        "message",
+                        "turn"
+                    ]
                 }
             }
         },

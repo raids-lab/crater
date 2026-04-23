@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -61,6 +62,31 @@ func (mgr *AgentMgr) ListAdminSessions(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, result)
+}
+
+// GetAdminSessionDetail godoc
+// @Summary Get enriched detail for a single agent session (for admin audit detail page)
+// @Tags agent-admin
+// @Produce json
+// @Param sessionId path string true "Session ID (UUID)"
+// @Success 200 {object} resputil.Response[service.AgentAuditSessionListItem]
+// @Router /api/v1/admin/agent/sessions/{sessionId}/detail [get]
+func (mgr *AgentMgr) GetAdminSessionDetail(c *gin.Context) {
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		resputil.BadRequestError(c, "sessionId is required")
+		return
+	}
+	detail, err := mgr.agentService.GetSessionDetail(c.Request.Context(), sessionID)
+	if err != nil {
+		if errors.Is(err, service.ErrSessionNotFound) {
+			resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+			return
+		}
+		resputil.Error(c, fmt.Sprintf("failed to load session detail: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, detail)
 }
 
 // GetAdminSessionMessages godoc

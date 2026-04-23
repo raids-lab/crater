@@ -162,6 +162,7 @@ func (mgr *AgentMgr) RegisterInternal(g *gin.RouterGroup) {
 func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// Session / turn audit (group is already /api/v1/admin/agent, do NOT re-add /agent)
 	g.GET("/sessions", mgr.ListAdminSessions)
+	g.GET("/sessions/:sessionId/detail", mgr.GetAdminSessionDetail)
 	g.GET("/sessions/:sessionId/messages", mgr.GetAdminSessionMessages)
 	g.GET("/sessions/:sessionId/tool-calls", mgr.GetAdminSessionToolCalls)
 	g.GET("/sessions/:sessionId/turns", mgr.GetAdminSessionTurns)
