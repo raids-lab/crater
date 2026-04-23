@@ -146,11 +146,39 @@ func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/sessions/:sessionId/turns", mgr.GetSessionTurns)
 	g.GET("/turns/:turnId/events", mgr.GetTurnEvents)
 	g.POST("/chat/parameter-update", mgr.HandleParameterUpdate)
+
+	// Feedback
+	g.PUT("/feedbacks", mgr.UpsertFeedback)
+	g.POST("/feedbacks/submit", mgr.SubmitFeedback)
+	g.POST("/feedbacks/quick-submit", mgr.QuickSubmitFeedback)
+	g.PUT("/feedbacks/enrich", mgr.EnrichFeedback)
+	g.GET("/feedbacks", mgr.ListFeedbacks)
+}
+
+func (mgr *AgentMgr) RegisterInternal(g *gin.RouterGroup) {
+	g.POST("/quality-evals", mgr.ReceiveQualityEvalResult)
 }
 
 func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {
+	// Session / turn audit (group is already /api/v1/admin/agent, do NOT re-add /agent)
+	g.GET("/sessions", mgr.ListAdminSessions)
+	g.GET("/sessions/:sessionId/messages", mgr.GetAdminSessionMessages)
+	g.GET("/sessions/:sessionId/tool-calls", mgr.GetAdminSessionToolCalls)
+	g.GET("/sessions/:sessionId/turns", mgr.GetAdminSessionTurns)
+	g.GET("/turns/:turnId/events", mgr.GetAdminTurnEvents)
+
+	// Manual quality eval trigger (added in Task 3)
+	g.POST("/sessions/:sessionId/trigger-eval", mgr.TriggerSessionQualityEval)
+
+	// Ops reports
 	g.GET("/ops-reports", mgr.ListOpsReports)
 	g.GET("/ops-reports/latest", mgr.GetLatestOpsReport)
 	g.GET("/ops-reports/:id", mgr.GetOpsReportDetail)
 	g.GET("/ops-reports/:id/items", mgr.GetOpsReportItems)
+
+	// Feedback stats
+	g.GET("/feedbacks/stats", mgr.GetFeedbackStats)
+
+	// Quality eval records
+	g.GET("/quality-evals", mgr.ListQualityEvals)
 }
