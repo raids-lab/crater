@@ -189,15 +189,12 @@ class TicketAgent(ABC, Generic[TRequest, TVerdict]):
     # ---------------------------------------------------------------
 
     async def evaluate(self, request: TRequest) -> TVerdict:
-        """Run the full evaluation pipeline. Never raises.
-
-        1. Run ReAct loop with restricted tools
-        2. Extract verdict from LLM output
-        3. Fallback to BaseRoleAgent.run_json if needed
-        4. Return default verdict on any failure
-        """
+        """Run the full evaluation pipeline. Never raises."""
+        logger.info("[%s] starting evaluation", self.agent_id)
         try:
-            return await self._do_evaluate(request)
+            result = await self._do_evaluate(request)
+            logger.info("[%s] evaluation completed successfully", self.agent_id)
+            return result
         except asyncio.TimeoutError:
             logger.warning("[%s] evaluation timed out", self.agent_id)
             return self.default_verdict(reason="Agent 评估超时，转交人工处理")
@@ -208,6 +205,8 @@ class TicketAgent(ABC, Generic[TRequest, TVerdict]):
     async def _do_evaluate(self, request: TRequest) -> TVerdict:
         """Internal evaluation using ReAct graph."""
         context = self.build_context(request)
+        session_id = context.get("session_id", "unknown")
+        logger.info("[%s] building ReAct graph, session=%s, tools=%s", self.agent_id, session_id, self.allowed_tools())
 
         graph = create_agent_graph(
             tool_executor=self.tool_executor,
@@ -227,10 +226,13 @@ class TicketAgent(ABC, Generic[TRequest, TVerdict]):
             "trace": [],
         }
 
+        logger.info("[%s] invoking ReAct graph...", self.agent_id)
         final_state = await graph.ainvoke(initial_state)
 
         messages = final_state.get("messages", [])
+        tool_call_count = final_state.get("tool_call_count", 0)
         trace = _collect_trace(messages)
+        logger.info("[%s] ReAct graph done: %d messages, %d tool calls", self.agent_id, len(messages), tool_call_count)
 
         # Extract verdict from last AI message
         last_ai_content = ""
@@ -241,10 +243,11 @@ class TicketAgent(ABC, Generic[TRequest, TVerdict]):
 
         verdict = self.extract_verdict(last_ai_content)
         if verdict is not None:
+            logger.info("[%s] verdict extracted directly: %s", self.agent_id, getattr(verdict, "verdict", "?"))
             return self.set_trace(verdict, trace)
 
         # Fallback: BaseRoleAgent.run_json with no tools
-        logger.info("[%s] no verdict in graph output, using fallback", self.agent_id)
+        logger.info("[%s] no verdict in graph output (last_ai_content=%.200s), using fallback", self.agent_id, last_ai_content)
         return await self._fallback_conclude(messages, trace)
 
     async def _fallback_conclude(

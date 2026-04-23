@@ -221,8 +221,11 @@ def list_cluster_nodes() -> dict:
 def check_quota(account_id: Optional[int] = None) -> dict:
     """查看当前账户的资源配额与使用情况。
 
-    返回可能包含配额上限、已使用量、活跃作业数等信息。
-    若某项字段缺失，说明平台暂未提供该维度数据，不代表无限制或零使用。
+    返回字段含义：
+    - capability: 配额上限（存在时说明有限制）
+    - used: 当前活跃作业占用的资源总量
+    - activeJobs: 活跃作业数
+    - no_limit: true 表示未配置配额限制，用户可自由使用集群可用资源
 
     Args:
         account_id: 账户 ID，默认使用当前用户的账户
@@ -476,13 +479,22 @@ def diagnose_distributed_job_network(
     pass
 
 
+# --- DEPRECATED: web_search / fetch_url ---
+# These tools are superseded by LLM-native built-in capabilities:
+#   - Bailian Qwen: extra_body={"enable_search": True}
+#   - Zhipu GLM-4: tools=[{"type": "web_search"}]
+#   - Kimi K2.x: builtin_function.$web_search
+# Kept for reference; NOT registered in AUTO_TOOLS / ALL_TOOLS.
+# Will be fully removed once built-in tool integration is validated.
+
+
 @tool
 def web_search(
     query: str,
     limit: int = 5,
 ) -> dict:
-    """用 DuckDuckGo 检索外部公开信息，返回搜索结果列表（标题、摘要、链接）。
-    仅管理员可用。
+    """[DEPRECATED] 用 DuckDuckGo 检索外部公开信息，返回搜索结果列表（标题、摘要、链接）。
+    已废弃：计划迁移到模型内置联网搜索能力（enable_search）。仅管理员可用。
 
     Args:
         query: 检索关键词
@@ -496,8 +508,8 @@ def fetch_url(
     url: str,
     max_chars: int = 4000,
 ) -> dict:
-    """抓取指定 URL 的页面正文（去除脚本/样式后的可读文本）。
-    配合 web_search 使用：先搜索拿到链接，再用此工具读取具体内容。
+    """[DEPRECATED] 抓取指定 URL 的页面正文（去除脚本/样式后的可读文本）。
+    已废弃：计划迁移到模型内置网页抓取能力（web_extractor / search_strategy=agent_max）。
     仅支持 platform 白名单域名。仅管理员可用。
 
     Args:
@@ -831,6 +843,122 @@ def get_rdma_interface_status(node_name: str) -> dict:
 
 
 # ============================================================
+# B8. GPU / Distributed Training Diagnostic Tools (admin, local)
+# ============================================================
+
+
+@tool
+def get_node_gpu_info(node_name: str) -> dict:
+    """通过 kubectl debug 获取节点 GPU 硬件与驱动信息。
+
+    收集 nvidia-smi 输出：GPU 型号、驱动版本、CUDA 版本、显存大小、ECC 状态、
+    温度、功耗、利用率。适用于 CUDA 初始化失败、驱动版本不兼容、GPU 硬件故障排查。
+    仅管理员可用。需要节点已安装 nvidia-smi（K8s 1.23+）。
+
+    Args:
+        node_name: 目标节点名称
+    """
+    pass
+
+
+@tool
+def get_nccl_env_config(job_name: str) -> dict:
+    """获取分布式训练作业所有 Pod 的 NCCL 通信环境变量配置。
+
+    提取 NCCL_*、MASTER_ADDR、MASTER_PORT、WORLD_SIZE、RANK、LOCAL_RANK 等
+    分布式训练关键环境变量。适用于 NCCL 超时、通信后端配置错误、rank 初始化
+    失败等问题排查。仅管理员可用。
+
+    Args:
+        job_name: Volcano Job 名称（volcano.sh/job-name 标签值）
+    """
+    pass
+
+
+@tool
+def check_node_nic_status(
+    node_name: str,
+    include_virtual: bool = False,
+) -> dict:
+    """通过 kubectl debug 获取节点网络接口（NIC）状态。
+
+    收集物理网卡的链路状态、协商速率、错误计数器、丢包统计。
+    适用于网卡故障、交换机端口协商异常、线缆问题、丢包导致的 NCCL 超时等排查。
+    研究表明 NIC/线缆故障占分布式训练失败的约 50%（R2CCL, 2025）。
+    仅管理员可用。需要集群支持 kubectl debug node（K8s 1.23+）。
+
+    Args:
+        node_name: 目标节点名称
+        include_virtual: 是否包含虚拟网卡（veth/bridge/docker），默认 False
+    """
+    pass
+
+
+@tool
+def detect_training_anomaly_patterns(
+    job_name: str,
+    tail: int = 500,
+    container: Optional[str] = None,
+) -> dict:
+    """扫描训练作业日志，检测已知故障模式并分类汇总。
+
+    检测类别包括：
+    - loss 异常（NaN/Inf/发散）
+    - 梯度异常（overflow/underflow/exploding）
+    - 内存不足（CUDA OOM/CPU OOM/Killed）
+    - NCCL 通信错误（timeout/connection refused/unhandled system error）
+    - CUDA 运行时错误（device-side assert/illegal memory access/initialization error）
+    - 数据加载异常（DataLoader worker/broken pipe/EOF）
+    - Checkpoint 失败（save/load/corrupted）
+    - 进程卡死信号（no progress/heartbeat timeout/watchdog）
+
+    返回按类别聚合的匹配结果和严重程度评估。仅管理员可用。
+
+    Args:
+        job_name: 作业的 Volcano Job 名称
+        tail: 每个 Pod 回看的日志行数，默认 500
+        container: 可选，指定容器名
+    """
+    pass
+
+
+@tool
+def get_distributed_job_overview(job_name: str) -> dict:
+    """获取分布式训练作业的综合健康视图。
+
+    一次调用聚合：rank→Pod→Node 映射、每个 rank 的就绪状态与 IP、
+    NCCL 关键环境变量、跨节点分布情况、潜在的节点级问题标记。
+    适用于分布式训练启动失败、NCCL 超时、rank 掉线等问题的快速全景诊断。
+    仅管理员可用。
+
+    Args:
+        job_name: Volcano Job 名称（volcano.sh/job-name 标签值）
+    """
+    pass
+
+
+@tool
+def get_node_accelerator_info(node_name: str) -> dict:
+    """通过 kubectl debug 获取节点加速卡（GPU/NPU/DCU）的通用硬件信息。
+
+    自动检测节点上的加速卡类型并收集对应信息：
+    - NVIDIA GPU: nvidia-smi 查询驱动、CUDA、显存、ECC
+    - Hygon DCU (海光): rocm-smi / hy-smi 查询驱动、显存、温度
+    - Ascend NPU (华为昇腾): npu-smi info 查询芯片型号、驱动、HBM、健康状态
+    - Cambricon MLU (寒武纪): cnmon 查询型号、驱动、显存
+    - 通用 PCIe: lspci 检测所有加速卡设备
+
+    同时检查通信库安装情况（NCCL/HCCL/RCCL）和关键内核模块。
+    适用于国产卡兼容性排查、驱动安装验证、硬件故障初判。
+    仅管理员可用。需要集群支持 kubectl debug node（K8s 1.23+）。
+
+    Args:
+        node_name: 目标节点名称
+    """
+    pass
+
+
+# ============================================================
 # B7. Extended K8s Read-only Tools (admin, local kubectl)
 # ============================================================
 
@@ -885,15 +1013,23 @@ def k8s_rollout_status(
 # ============================================================
 
 
+# --- DEPRECATED: execute_code ---
+# Superseded by LLM-native code_interpreter:
+#   - Bailian Qwen: extra_body={"enable_code_interpreter": True}
+#   - Zhipu GLM-4-AllTools: tools=[{"type": "code_interpreter"}]
+# The current subprocess sandbox has no real isolation (no resource/fs/network sandboxing).
+# Kept for reference; NOT registered in AUTO_TOOLS / ALL_TOOLS.
+# Will be fully removed once built-in code interpreter integration is validated.
+
+
 @tool
 def execute_code(
     code: str,
     language: str = "python",
     timeout: int = 30,
 ) -> dict:
-    """在受控沙箱中执行代码片段，用于日志分析、指标计算、数据处理等。
-    使用 CAMEL CodeExecutionToolkit，沙箱类型由 CRATER_AGENT_CODE_SANDBOX 控制
-    （默认 subprocess；Docker 模式需要宿主机运行 Docker daemon）。
+    """[DEPRECATED] 在受控沙箱中执行代码片段，用于日志分析、指标计算、数据处理等。
+    已废弃：当前 subprocess 模式无真正隔离，计划迁移到模型内置代码解释器（code_interpreter）。
     仅管理员可用。
 
     Args:
@@ -1211,7 +1347,7 @@ AUTO_TOOLS = [
     get_admin_ops_report,
     get_latest_audit_report,
     list_audit_items,
-    save_audit_report,
+    # save_audit_report — internal pipeline tool, not exposed to LLM (see INTERNAL_TOOLS)
     list_storage_pvcs,
     get_pvc_detail,
     get_pvc_events,
@@ -1219,8 +1355,8 @@ AUTO_TOOLS = [
     get_storage_capacity_overview,
     get_node_network_summary,
     diagnose_distributed_job_network,
-    web_search,
-    fetch_url,
+    # web_search,   # DEPRECATED — use LLM-native enable_search instead
+    # fetch_url,    # DEPRECATED — use LLM-native web_extractor / search_strategy=agent_max
     get_agent_runtime_summary,
     k8s_list_nodes,
     k8s_list_pods,
@@ -1229,7 +1365,7 @@ AUTO_TOOLS = [
     k8s_get_pod_logs,
     prometheus_query,
     harbor_check,
-    execute_code,  # local CAMEL sandbox execution
+    # execute_code,  # DEPRECATED — use LLM-native code_interpreter instead
     k8s_get_service,
     k8s_get_endpoints,
     k8s_get_ingress,
@@ -1245,6 +1381,14 @@ AUTO_TOOLS = [
     k8s_top_pods,
     k8s_rollout_status,
     get_approval_history,
+    analyze_queue_status,
+    # B8: GPU / Distributed Training Diagnostics
+    get_node_gpu_info,
+    get_nccl_env_config,
+    check_node_nic_status,
+    detect_training_anomaly_patterns,
+    get_distributed_job_overview,
+    get_node_accelerator_info,
 ]
 
 # Tools that require user confirmation before execution (write operations)
@@ -1271,12 +1415,20 @@ CONFIRM_TOOLS = [
 
 ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
 
+# Deprecated tools: declared but NOT bound to LLM.
+# Pending migration to LLM-native built-in capabilities (enable_search, code_interpreter).
+DEPRECATED_TOOL_NAMES = {"web_search", "fetch_url", "execute_code"}
+
+# Internal tools: used by pipelines, not exposed to LLM reasoning.
+INTERNAL_TOOLS = [save_audit_report]
+INTERNAL_TOOL_NAMES = {t.name for t in INTERNAL_TOOLS}
+
 READ_ONLY_TOOL_NAMES = {t.name for t in AUTO_TOOLS}
 CONFIRM_TOOL_NAMES = {t.name for t in CONFIRM_TOOLS}
 WRITE_TOOL_NAMES = CONFIRM_TOOL_NAMES  # Alias used by spec
 
 # Tools that should only be accessible to executor/single_agent roles (not explorer/planner)
-EXECUTOR_ONLY_TOOL_NAMES = {"execute_code"}
+EXECUTOR_ONLY_TOOL_NAMES: set[str] = set()  # execute_code removed (deprecated)
 
 ADMIN_ONLY_TOOL_NAMES = {
     tool.name
@@ -1288,7 +1440,7 @@ ADMIN_ONLY_TOOL_NAMES = {
         get_admin_ops_report,
         get_latest_audit_report,
         list_audit_items,
-        save_audit_report,
+        # save_audit_report — internal, not in ALL_TOOLS
         list_storage_pvcs,
         get_pvc_detail,
         get_pvc_events,
@@ -1296,14 +1448,14 @@ ADMIN_ONLY_TOOL_NAMES = {
         get_storage_capacity_overview,
         get_node_network_summary,
         diagnose_distributed_job_network,
-        web_search,
-        fetch_url,
+        # web_search,    # DEPRECATED
+        # fetch_url,     # DEPRECATED
         get_agent_runtime_summary,
         k8s_list_nodes,
         k8s_list_pods,
         prometheus_query,
         harbor_check,
-        execute_code,  # local code execution, admin-only
+        # execute_code,  # DEPRECATED
         k8s_get_service,
         k8s_get_endpoints,
         k8s_get_ingress,
@@ -1315,6 +1467,12 @@ ADMIN_ONLY_TOOL_NAMES = {
         get_ddp_rank_mapping,
         get_node_kernel_diagnostics,
         get_rdma_interface_status,
+        get_node_gpu_info,
+        get_nccl_env_config,
+        check_node_nic_status,
+        detect_training_anomaly_patterns,
+        get_distributed_job_overview,
+        get_node_accelerator_info,
         cordon_node,
         uncordon_node,
         drain_node,
@@ -1357,4 +1515,5 @@ def is_actor_allowed_for_tool(actor_role: Optional[str], tool_name: str) -> bool
     if tool_name not in ADMIN_ONLY_TOOL_NAMES:
         return True
     # "roleadmin" = strings.ToLower(model.RoleAdmin.String()) from Go backend python_proxy.go
-    return normalized_role in {"roleadmin", "admin", "platform_admin", "system_admin"}
+    # "system" = internal system-level agents (e.g. approval evaluator) that bypass session lookup
+    return normalized_role in {"roleadmin", "admin", "platform_admin", "system_admin", "system"}

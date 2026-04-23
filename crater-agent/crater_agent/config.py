@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     crater_backend_internal_token: str = Field(
         default="", description="Shared token for Python Agent -> Go internal tool execution"
     )
+    agent_internal_token: str = Field(
+        default="dev-agent-internal-token",
+        description="Internal token for Go backend authentication",
+    )
 
     # Agent Behavior
     max_tool_calls_per_turn: int = Field(

@@ -59,8 +59,11 @@ class LocalToolExecutor:
         self._owns_client = client is None
         self._handlers = {
             "get_agent_runtime_summary": self._handle_get_agent_runtime_summary,
-            "web_search": self._handle_web_search,
-            "fetch_url": self._handle_fetch_url,
+            # --- DEPRECATED: migrating to LLM-native built-in tools ---
+            # "web_search": self._handle_web_search,
+            # "fetch_url": self._handle_fetch_url,
+            # "execute_code": self._handle_execute_code,
+            # ---------------------------------------------------------
             "k8s_list_nodes": self._handle_k8s_list_nodes,
             "k8s_list_pods": self._handle_k8s_list_pods,
             "k8s_get_events": self._handle_k8s_get_events,
@@ -68,7 +71,7 @@ class LocalToolExecutor:
             "k8s_get_pod_logs": self._handle_k8s_get_pod_logs,
             "prometheus_query": self._handle_prometheus_query,
             "harbor_check": self._handle_harbor_check,
-            "execute_code": self._handle_execute_code,
+            # "execute_code": self._handle_execute_code,  # DEPRECATED — see above
             "k8s_get_service": self._handle_k8s_get_service,
             "k8s_get_endpoints": self._handle_k8s_get_endpoints,
             "k8s_get_ingress": self._handle_k8s_get_ingress,
@@ -80,6 +83,13 @@ class LocalToolExecutor:
             "get_ddp_rank_mapping": self._handle_get_ddp_rank_mapping,
             "get_node_kernel_diagnostics": self._handle_get_node_kernel_diagnostics,
             "get_rdma_interface_status": self._handle_get_rdma_interface_status,
+            # B8: GPU / Distributed Training Diagnostics
+            "get_node_gpu_info": self._handle_get_node_gpu_info,
+            "get_nccl_env_config": self._handle_get_nccl_env_config,
+            "check_node_nic_status": self._handle_check_node_nic_status,
+            "detect_training_anomaly_patterns": self._handle_detect_training_anomaly_patterns,
+            "get_distributed_job_overview": self._handle_get_distributed_job_overview,
+            "get_node_accelerator_info": self._handle_get_node_accelerator_info,
             "k8s_top_nodes": self._handle_k8s_top_nodes,
             "k8s_top_pods": self._handle_k8s_top_pods,
             "k8s_rollout_status": self._handle_k8s_rollout_status,
@@ -843,6 +853,8 @@ class LocalToolExecutor:
             },
         }
 
+    # --- DEPRECATED: web_search handler ---
+    # Migrating to LLM-native enable_search. Handler kept for reference.
     async def _handle_web_search(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         if not self.runtime.web_search_enabled:
             raise PermissionError("web_search is disabled by runtime config")
@@ -857,6 +869,8 @@ class LocalToolExecutor:
         from crater_agent.tools.camel_tools import camel_web_search  # noqa: PLC0415
         return await camel_web_search(query=query, max_results=limit, timeout=timeout)
 
+    # --- DEPRECATED: fetch_url handler ---
+    # Migrating to LLM-native web_extractor / search_strategy=agent_max. Handler kept for reference.
     async def _handle_fetch_url(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         import re  # noqa: PLC0415
 
@@ -910,6 +924,8 @@ class LocalToolExecutor:
         }
 
 
+    # --- DEPRECATED: execute_code handler ---
+    # Subprocess sandbox has no real isolation. Migrating to LLM-native code_interpreter.
     async def _handle_execute_code(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         code = str(tool_args.get("code") or "").strip()
         if not code:
@@ -1540,6 +1556,715 @@ class LocalToolExecutor:
                 "ib_port_states": parse_section("IB_PORT_STATE"),
                 "ib_interfaces": parse_section("IB_LINK"),
                 "kernel_modules": parse_section("KERNEL_MODULES"),
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # B8: GPU / Distributed Training Diagnostic Tools
+    # ------------------------------------------------------------------
+
+    async def _handle_get_node_gpu_info(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+
+        commands = (
+            "echo '===GPU_QUERY===' && "
+            "(nvidia-smi --query-gpu=index,name,driver_version,pci.bus_id,memory.total,memory.used,"
+            "memory.free,utilization.gpu,utilization.memory,temperature.gpu,power.draw,power.limit,"
+            "ecc.errors.corrected.volatile.total,ecc.errors.uncorrected.volatile.total,compute_mode"
+            " --format=csv,noheader 2>/dev/null || echo '(nvidia-smi not available)') && "
+            "echo '===CUDA_VERSION===' && "
+            "(nvidia-smi 2>/dev/null | head -3 || echo '(unavailable)') && "
+            "echo '===GPU_PROCS===' && "
+            "(nvidia-smi --query-compute-apps=pid,name,used_memory --format=csv,noheader 2>/dev/null "
+            "|| echo '(none)') && "
+            "echo '===NVIDIA_MODULES===' && "
+            "(lsmod 2>/dev/null | grep -i nvidia || echo '(no nvidia modules)')"
+        )
+
+        raw = await self._run_kubectl_debug_node(node_name, commands, timeout=90)
+
+        sections: dict[str, str] = {}
+        current_section = ""
+        current_lines: list[str] = []
+        for line in raw.splitlines():
+            if line.startswith("===") and line.endswith("==="):
+                if current_section:
+                    sections[current_section] = "\n".join(current_lines)
+                current_section = line.strip("=")
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_section:
+            sections[current_section] = "\n".join(current_lines)
+
+        # Parse CSV GPU info
+        gpus: list[dict[str, Any]] = []
+        gpu_text = sections.get("GPU_QUERY", "").strip()
+        if gpu_text and not gpu_text.startswith("("):
+            for line in gpu_text.splitlines():
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 15:
+                    gpus.append({
+                        "index": parts[0],
+                        "name": parts[1],
+                        "driver_version": parts[2],
+                        "pci_bus_id": parts[3],
+                        "memory_total": parts[4],
+                        "memory_used": parts[5],
+                        "memory_free": parts[6],
+                        "gpu_utilization": parts[7],
+                        "memory_utilization": parts[8],
+                        "temperature_c": parts[9],
+                        "power_draw": parts[10],
+                        "power_limit": parts[11],
+                        "ecc_corrected": parts[12],
+                        "ecc_uncorrected": parts[13],
+                        "compute_mode": parts[14],
+                    })
+
+        # Extract CUDA version from nvidia-smi header
+        cuda_version = ""
+        header_text = sections.get("CUDA_VERSION", "").strip()
+        for line in header_text.splitlines():
+            if "CUDA Version" in line:
+                import re as _re  # noqa: PLC0415
+                match = _re.search(r"CUDA Version:\s*([\d.]+)", line)
+                if match:
+                    cuda_version = match.group(1)
+                break
+
+        procs_text = sections.get("GPU_PROCS", "").strip()
+        gpu_processes: list[str] = []
+        if procs_text and not procs_text.startswith("("):
+            gpu_processes = [l.strip() for l in procs_text.splitlines() if l.strip()]
+
+        modules_text = sections.get("NVIDIA_MODULES", "").strip()
+        nvidia_modules: list[str] = []
+        if modules_text and not modules_text.startswith("("):
+            nvidia_modules = [l.strip() for l in modules_text.splitlines() if l.strip()]
+
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "gpu_count": len(gpus),
+                "cuda_version": cuda_version,
+                "driver_version": gpus[0]["driver_version"] if gpus else "",
+                "gpus": gpus,
+                "gpu_processes": gpu_processes[:50],
+                "nvidia_modules": nvidia_modules,
+            },
+        }
+
+    async def _handle_get_nccl_env_config(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        job_name = str(tool_args.get("job_name") or "").strip()
+        if not job_name:
+            raise ValueError("job_name is required")
+
+        args = ["get", "pods", "--all-namespaces", "-l", f"volcano.sh/job-name={job_name}"]
+        payload = await self._run_kubectl_json(args, include_namespace=False)
+        items = payload.get("items") or []
+
+        _NCCL_PREFIXES = frozenset({
+            "NCCL_", "MASTER_ADDR", "MASTER_PORT", "WORLD_SIZE", "RANK",
+            "LOCAL_RANK", "LOCAL_WORLD_SIZE", "NODE_RANK", "GROUP_RANK",
+            "ROLE_RANK", "CUDA_VISIBLE_DEVICES", "OMP_NUM_THREADS",
+            "GLOO_", "MPI_",
+        })
+
+        def _is_distributed_env(name: str) -> bool:
+            return any(name.startswith(prefix) for prefix in _NCCL_PREFIXES)
+
+        ranks: list[dict[str, Any]] = []
+        for pod in items:
+            metadata = pod.get("metadata") or {}
+            spec = pod.get("spec") or {}
+            status = pod.get("status") or {}
+            labels = metadata.get("labels") or {}
+            pod_name = str(metadata.get("name") or "")
+
+            env_vars: dict[str, str] = {}
+            for container in spec.get("containers") or []:
+                for env in container.get("env") or []:
+                    name = str(env.get("name") or "")
+                    value = str(env.get("value") or "")
+                    if _is_distributed_env(name):
+                        env_vars[name] = value
+
+            # Derive ordinal
+            ordinal = 0
+            parts = pod_name.rsplit("-", 1)
+            if len(parts) == 2:
+                try:
+                    ordinal = int(parts[1])
+                except ValueError:
+                    pass
+
+            ranks.append({
+                "pod_name": pod_name,
+                "node_name": str(spec.get("nodeName") or ""),
+                "pod_ip": str(status.get("podIP") or ""),
+                "task_spec": str(labels.get("volcano.sh/task-spec") or ""),
+                "ordinal": ordinal,
+                "phase": str(status.get("phase") or ""),
+                "env_vars": env_vars,
+            })
+
+        ranks.sort(key=lambda x: (x["task_spec"], x["ordinal"]))
+
+        # Aggregate config summary
+        all_env_keys: set[str] = set()
+        for r in ranks:
+            all_env_keys.update(r["env_vars"].keys())
+
+        # Detect inconsistencies
+        inconsistencies: list[str] = []
+        for key in sorted(all_env_keys):
+            if key in ("RANK", "LOCAL_RANK", "NODE_RANK", "GROUP_RANK", "ROLE_RANK",
+                        "CUDA_VISIBLE_DEVICES", "MASTER_ADDR"):
+                continue  # Expected to differ per rank
+            values = {r["env_vars"].get(key, "(unset)") for r in ranks if key in r["env_vars"]}
+            if len(values) > 1:
+                inconsistencies.append(f"{key}: {sorted(values)}")
+
+        return {
+            "status": "success",
+            "result": {
+                "job_name": job_name,
+                "total_ranks": len(ranks),
+                "common_env_keys": sorted(all_env_keys),
+                "inconsistencies": inconsistencies,
+                "ranks": ranks,
+            },
+        }
+
+    async def _handle_check_node_nic_status(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+        include_virtual = bool(tool_args.get("include_virtual", False))
+
+        commands = (
+            "echo '===IP_LINK===' && "
+            "ip -s -d link show 2>/dev/null && "
+            "echo '===NET_STATS===' && "
+            "for iface in /sys/class/net/*; do "
+            "  name=$(basename $iface); "
+            "  carrier=$(cat $iface/carrier 2>/dev/null || echo 0); "
+            "  speed=$(cat $iface/speed 2>/dev/null || echo -1); "
+            "  rx_errors=$(cat $iface/statistics/rx_errors 2>/dev/null || echo 0); "
+            "  tx_errors=$(cat $iface/statistics/tx_errors 2>/dev/null || echo 0); "
+            "  rx_dropped=$(cat $iface/statistics/rx_dropped 2>/dev/null || echo 0); "
+            "  tx_dropped=$(cat $iface/statistics/tx_dropped 2>/dev/null || echo 0); "
+            "  rx_bytes=$(cat $iface/statistics/rx_bytes 2>/dev/null || echo 0); "
+            "  tx_bytes=$(cat $iface/statistics/tx_bytes 2>/dev/null || echo 0); "
+            "  operstate=$(cat $iface/operstate 2>/dev/null || echo unknown); "
+            "  echo \"$name|$carrier|$speed|$operstate|$rx_errors|$tx_errors|$rx_dropped|$tx_dropped|$rx_bytes|$tx_bytes\"; "
+            "done && "
+            "echo '===ETHTOOL===' && "
+            "(for iface in $(ls /sys/class/net/ 2>/dev/null); do "
+            "  echo \"--- $iface ---\"; "
+            "  ethtool $iface 2>/dev/null | grep -iE 'speed|duplex|link detected|auto-negotiation' || echo '(ethtool unavailable)'; "
+            "done)"
+        )
+
+        raw = await self._run_kubectl_debug_node(node_name, commands, timeout=90)
+
+        sections: dict[str, str] = {}
+        current_section = ""
+        current_lines: list[str] = []
+        for line in raw.splitlines():
+            if line.startswith("===") and line.endswith("==="):
+                if current_section:
+                    sections[current_section] = "\n".join(current_lines)
+                current_section = line.strip("=")
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_section:
+            sections[current_section] = "\n".join(current_lines)
+
+        _VIRTUAL_PREFIXES = ("veth", "docker", "br-", "cni", "flannel", "calico", "tunl", "kube-")
+
+        nics: list[dict[str, Any]] = []
+        net_stats_text = sections.get("NET_STATS", "").strip()
+        for line in net_stats_text.splitlines():
+            parts = line.split("|")
+            if len(parts) < 10:
+                continue
+            name = parts[0].strip()
+            if name == "lo":
+                continue
+            if not include_virtual and any(name.startswith(p) for p in _VIRTUAL_PREFIXES):
+                continue
+            rx_errors = int(parts[4] or 0)
+            tx_errors = int(parts[5] or 0)
+            rx_dropped = int(parts[6] or 0)
+            tx_dropped = int(parts[7] or 0)
+            has_errors = (rx_errors + tx_errors + rx_dropped + tx_dropped) > 0
+            nics.append({
+                "name": name,
+                "carrier": parts[1].strip() == "1",
+                "speed_mbps": int(parts[2] or -1),
+                "operstate": parts[3].strip(),
+                "rx_errors": rx_errors,
+                "tx_errors": tx_errors,
+                "rx_dropped": rx_dropped,
+                "tx_dropped": tx_dropped,
+                "rx_bytes": int(parts[8] or 0),
+                "tx_bytes": int(parts[9] or 0),
+                "has_errors": has_errors,
+            })
+
+        # Parse ethtool
+        ethtool_info: dict[str, list[str]] = {}
+        current_iface = ""
+        for line in sections.get("ETHTOOL", "").splitlines():
+            if line.startswith("--- ") and line.endswith(" ---"):
+                current_iface = line.strip("- ").strip()
+            elif current_iface and line.strip() and not line.strip().startswith("("):
+                ethtool_info.setdefault(current_iface, []).append(line.strip())
+
+        # Flag issues
+        issues: list[str] = []
+        for nic in nics:
+            if nic["operstate"] != "up" and nic["carrier"]:
+                issues.append(f"{nic['name']}: operstate={nic['operstate']} but carrier=1")
+            if not nic["carrier"] and nic["operstate"] == "up":
+                issues.append(f"{nic['name']}: no carrier but operstate=up (cable/switch issue?)")
+            if nic["has_errors"]:
+                issues.append(
+                    f"{nic['name']}: errors rx={nic['rx_errors']} tx={nic['tx_errors']} "
+                    f"drops rx={nic['rx_dropped']} tx={nic['tx_dropped']}"
+                )
+            if 0 < nic["speed_mbps"] < 10000 and not any(nic["name"].startswith(p) for p in _VIRTUAL_PREFIXES):
+                issues.append(f"{nic['name']}: low speed {nic['speed_mbps']}Mbps (expected >=10Gbps for GPU cluster)")
+
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "nic_count": len(nics),
+                "nics": nics,
+                "ethtool": ethtool_info,
+                "issues": issues,
+                "issue_count": len(issues),
+            },
+        }
+
+    _TRAINING_ANOMALY_PATTERNS: list[tuple[str, str, str]] = [
+        # (category, severity, regex_pattern)
+        # Loss anomalies
+        ("loss_nan_inf", "critical", r"(?i)\b(nan|inf)\b.*\b(loss|diverge)|\b(loss|train).*\b(nan|inf)\b"),
+        ("loss_explosion", "warning", r"(?i)loss\s*[:=]\s*[\d.]*e\+[3-9]\d*|loss\s*[:=]\s*\d{6,}"),
+        # Gradient anomalies
+        ("gradient_overflow", "warning", r"(?i)gradient.*overflow|grad.*norm.*inf|overflow.*detected"),
+        ("gradient_underflow", "warning", r"(?i)gradient.*underflow|grad.*norm.*0\.0"),
+        # Memory errors (CUDA + generic)
+        ("cuda_oom", "critical", r"(?i)CUDA\s*out\s*of\s*memory|RuntimeError.*OOM|torch\.cuda\.OutOfMemoryError"),
+        ("cpu_oom", "critical", r"(?i)Killed.*oom|oom-kill|out.of.memory.*killed|Cannot allocate memory"),
+        # NCCL communication errors
+        ("nccl_timeout", "critical", r"(?i)NCCL\s*(timeout|watchdog)|ProcessGroupNCCL.*timeout|Work.*timed out"),
+        ("nccl_connection", "critical", r"(?i)NCCL.*connection\s*(refused|reset|closed)|ncclSystemError|ncclInternalError"),
+        ("nccl_unhandled", "warning", r"(?i)NCCL.*unhandled\s*system\s*error|NCCL\s*WARN"),
+        # CUDA runtime errors
+        ("cuda_assert", "critical", r"(?i)device-side\s*assert|CUDA\s*error.*assert"),
+        ("cuda_illegal_mem", "critical", r"(?i)illegal\s*memory\s*access|CUDA.*illegal.*address"),
+        ("cuda_init_error", "critical", r"(?i)CUDA.*initialization|cudaErrorNoDevice|no\s*CUDA.*capable\s*device"),
+        ("cuda_driver", "critical", r"(?i)CUDA\s*driver\s*version.*insufficient|driver.*mismatch"),
+        # ---- Ascend NPU (华为昇腾 CANN) ----
+        ("ascend_op_not_supported", "critical",
+         r"(?i)op.*not\s*support.*on\s*(NPU|Ascend)|NotImplementedError.*acl|"
+         r"RuntimeError.*CANN.*unsupported|AscendCL.*EZ\d+|not\s*supported.*ascend"),
+        ("ascend_hccl_error", "critical",
+         r"(?i)HCCL\s*(timeout|error|failed)|HcclCommInitRootInfo.*failed|"
+         r"hccl.*connection.*refused|HCCL_WORLD_SIZE"),
+        ("ascend_device_error", "critical",
+         r"(?i)acl.*error|AscendCL.*Error|device\s*error.*Ascend|"
+         r"NPU\s*error|davinci.*error|aicore.*error"),
+        ("ascend_memory", "critical",
+         r"(?i)NPU\s*out\s*of\s*memory|Ascend.*memory.*insufficient|"
+         r"HBM.*out\s*of\s*memory|malloc.*device.*memory.*failed"),
+        # ---- Hygon DCU / AMD ROCm ----
+        ("rocm_hip_error", "critical",
+         r"(?i)HIP\s*error|hipError|ROCm.*error|"
+         r"hip.*Memory|hipErrorOutOfMemory|hipErrorNoBinaryForGpu"),
+        ("rocm_op_not_supported", "critical",
+         r"(?i)op.*not\s*support.*(ROCm|DCU|HIP)|"
+         r"NotImplementedError.*(rocm|hip)|MIOpen.*unsupported"),
+        ("rccl_error", "critical",
+         r"(?i)RCCL\s*(timeout|error|failed)|rcclSystemError|"
+         r"rcclInternalError|RCCL.*connection"),
+        # ---- Generic accelerator errors ----
+        ("device_not_available", "critical",
+         r"(?i)no\s*(GPU|NPU|DCU|accelerator)\s*(device\s*)?available|"
+         r"device\s*count.*0|RuntimeError.*Expected.*device"),
+        ("op_not_implemented", "critical",
+         r"(?i)NotImplementedError.*(?:backend|device|kernel)|"
+         r"op.*not.*implemented.*for.*(?:device|backend)|"
+         r"aten::.*not\s*implemented|could\s*not\s*run.*on\s*device"),
+        # Data loading
+        ("dataloader_error", "warning", r"(?i)DataLoader\s*worker.*exited|broken\s*pipe.*DataLoader|EOF.*DataLoader"),
+        ("data_corruption", "warning", r"(?i)corrupted.*data|unexpected\s*EOF|truncated\s*file"),
+        # Checkpoint issues
+        ("checkpoint_fail", "warning", r"(?i)checkpoint.*fail|save.*state.*error|load.*state.*error|corrupted.*checkpoint"),
+        # Hung/stuck process
+        ("process_hung", "critical", r"(?i)no\s*progress|heartbeat.*timeout|watchdog.*expired|deadlock\s*detected"),
+        ("stuck_rank", "critical", r"(?i)rank\s*\d+.*stuck|barrier.*timeout|rendezvous.*timeout"),
+    ]
+
+    async def _handle_detect_training_anomaly_patterns(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        job_name = str(tool_args.get("job_name") or "").strip()
+        if not job_name:
+            raise ValueError("job_name is required")
+        tail = max(50, min(int(tool_args.get("tail") or 500), 5000))
+        container = str(tool_args.get("container") or "").strip()
+
+        # Get all pods for this job
+        args = ["get", "pods", "--all-namespaces", "-l", f"volcano.sh/job-name={job_name}",
+                "--field-selector", "status.phase!=Pending"]
+        payload = await self._run_kubectl_json(args, include_namespace=False)
+        items = payload.get("items") or []
+
+        if not items:
+            return {
+                "status": "success",
+                "result": {"job_name": job_name, "pod_count": 0, "categories": {}, "summary": "no pods found"},
+            }
+
+        import re as _re  # noqa: PLC0415
+
+        compiled_patterns = [
+            (cat, sev, _re.compile(pat)) for cat, sev, pat in self._TRAINING_ANOMALY_PATTERNS
+        ]
+
+        categories: dict[str, dict[str, Any]] = {}
+        pod_results: list[dict[str, Any]] = []
+
+        for pod in items[:20]:  # Cap to 20 pods
+            metadata = pod.get("metadata") or {}
+            pod_name = str(metadata.get("name") or "")
+            namespace = str(metadata.get("namespace") or "")
+            if not pod_name:
+                continue
+
+            # Fetch logs
+            cmd = self._kubectl_cmd(namespace=namespace, include_namespace=True) + [
+                "logs", pod_name, "--tail", str(tail),
+            ]
+            if container:
+                cmd.extend(["-c", container])
+            try:
+                code, stdout, stderr = await self._run_subprocess(cmd, timeout_seconds=30)
+                if code != 0:
+                    pod_results.append({"pod_name": pod_name, "error": stderr.strip()[:200]})
+                    continue
+            except ValueError:
+                pod_results.append({"pod_name": pod_name, "error": "log fetch timed out"})
+                continue
+
+            pod_hits: list[dict[str, Any]] = []
+            for line_num, line in enumerate(stdout.splitlines(), 1):
+                for cat, sev, pattern in compiled_patterns:
+                    if pattern.search(line):
+                        pod_hits.append({
+                            "category": cat,
+                            "severity": sev,
+                            "line": line_num,
+                            "sample": line.strip()[:300],
+                        })
+                        # Update category aggregation
+                        if cat not in categories:
+                            categories[cat] = {"severity": sev, "count": 0, "pods": [], "samples": []}
+                        categories[cat]["count"] += 1
+                        if pod_name not in categories[cat]["pods"]:
+                            categories[cat]["pods"].append(pod_name)
+                        if len(categories[cat]["samples"]) < 3:
+                            categories[cat]["samples"].append(line.strip()[:200])
+                        break  # One match per line
+
+            pod_results.append({
+                "pod_name": pod_name,
+                "hit_count": len(pod_hits),
+                "hits": pod_hits[:30],  # Cap per-pod hits
+            })
+
+        # Determine overall severity
+        severities = [c["severity"] for c in categories.values()]
+        overall = "critical" if "critical" in severities else ("warning" if "warning" in severities else "ok")
+
+        return {
+            "status": "success",
+            "result": {
+                "job_name": job_name,
+                "pod_count": len(pod_results),
+                "overall_severity": overall,
+                "category_count": len(categories),
+                "categories": categories,
+                "pods": pod_results,
+            },
+        }
+
+    async def _handle_get_distributed_job_overview(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        job_name = str(tool_args.get("job_name") or "").strip()
+        if not job_name:
+            raise ValueError("job_name is required")
+
+        # Get all pods
+        args = ["get", "pods", "--all-namespaces", "-l", f"volcano.sh/job-name={job_name}"]
+        payload = await self._run_kubectl_json(args, include_namespace=False)
+        items = payload.get("items") or []
+
+        _DIST_ENV_PREFIXES = ("NCCL_", "MASTER_ADDR", "MASTER_PORT", "WORLD_SIZE", "RANK",
+                               "LOCAL_RANK", "CUDA_VISIBLE_DEVICES")
+
+        ranks: list[dict[str, Any]] = []
+        nodes_involved: dict[str, dict[str, Any]] = {}
+        master_addr = ""
+        master_port = ""
+        world_size = ""
+
+        for pod in items:
+            metadata = pod.get("metadata") or {}
+            spec = pod.get("spec") or {}
+            status = pod.get("status") or {}
+            labels = metadata.get("labels") or {}
+            pod_name = str(metadata.get("name") or "")
+            node_name = str(spec.get("nodeName") or "")
+            pod_ip = str(status.get("podIP") or "")
+            phase = str(status.get("phase") or "")
+
+            # Extract key env vars
+            key_env: dict[str, str] = {}
+            for container in spec.get("containers") or []:
+                for env in container.get("env") or []:
+                    name = str(env.get("name") or "")
+                    value = str(env.get("value") or "")
+                    if any(name.startswith(p) for p in _DIST_ENV_PREFIXES):
+                        key_env[name] = value
+
+            if not master_addr and "MASTER_ADDR" in key_env:
+                master_addr = key_env["MASTER_ADDR"]
+            if not master_port and "MASTER_PORT" in key_env:
+                master_port = key_env["MASTER_PORT"]
+            if not world_size and "WORLD_SIZE" in key_env:
+                world_size = key_env["WORLD_SIZE"]
+
+            # Derive ordinal
+            ordinal = 0
+            parts = pod_name.rsplit("-", 1)
+            if len(parts) == 2:
+                try:
+                    ordinal = int(parts[1])
+                except ValueError:
+                    pass
+
+            container_statuses = status.get("containerStatuses") or []
+            ready = all(cs.get("ready", False) for cs in container_statuses) if container_statuses else False
+            restart_count = sum(int(cs.get("restartCount") or 0) for cs in container_statuses)
+
+            ranks.append({
+                "pod_name": pod_name,
+                "task_spec": str(labels.get("volcano.sh/task-spec") or ""),
+                "ordinal": ordinal,
+                "node_name": node_name,
+                "pod_ip": pod_ip,
+                "host_ip": str(status.get("hostIP") or ""),
+                "phase": phase,
+                "ready": ready,
+                "restart_count": restart_count,
+                "nccl_env": {k: v for k, v in key_env.items() if k.startswith("NCCL_")},
+                "cuda_visible_devices": key_env.get("CUDA_VISIBLE_DEVICES", ""),
+            })
+
+            # Track nodes
+            if node_name and node_name not in nodes_involved:
+                nodes_involved[node_name] = {"pod_count": 0, "ready_pods": 0, "not_ready_pods": 0}
+            if node_name:
+                nodes_involved[node_name]["pod_count"] += 1
+                if ready:
+                    nodes_involved[node_name]["ready_pods"] += 1
+                else:
+                    nodes_involved[node_name]["not_ready_pods"] += 1
+
+        ranks.sort(key=lambda x: (x["task_spec"], x["ordinal"]))
+        for i, r in enumerate(ranks):
+            r["rank"] = i
+
+        # Diagnose issues
+        issues: list[str] = []
+        not_ready = [r for r in ranks if not r["ready"]]
+        if not_ready:
+            issues.append(f"{len(not_ready)}/{len(ranks)} ranks not ready: {[r['pod_name'] for r in not_ready[:5]]}")
+        restarted = [r for r in ranks if r["restart_count"] > 0]
+        if restarted:
+            issues.append(f"{len(restarted)} ranks have restarts: {[(r['pod_name'], r['restart_count']) for r in restarted[:5]]}")
+        pending = [r for r in ranks if r["phase"] == "Pending"]
+        if pending:
+            issues.append(f"{len(pending)} ranks still Pending")
+        if world_size and int(world_size) != len(ranks):
+            issues.append(f"WORLD_SIZE={world_size} but found {len(ranks)} pods")
+
+        return {
+            "status": "success",
+            "result": {
+                "job_name": job_name,
+                "total_ranks": len(ranks),
+                "master_addr": master_addr,
+                "master_port": master_port,
+                "world_size": world_size,
+                "node_count": len(nodes_involved),
+                "nodes": nodes_involved,
+                "issues": issues,
+                "issue_count": len(issues),
+                "ranks": ranks,
+            },
+        }
+
+    async def _handle_get_node_accelerator_info(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        node_name = str(tool_args.get("node_name") or "").strip()
+        if not node_name:
+            raise ValueError("node_name is required")
+
+        # Multi-vendor detection: NVIDIA, Hygon DCU, Ascend NPU, Cambricon MLU, generic PCIe
+        commands = (
+            "echo '===PCIE_DEVICES===' && "
+            "(lspci 2>/dev/null | grep -iE 'NVIDIA|AMD|Hygon|Huawei|Ascend|Cambricon|display|3D|VGA|accelerat|process' "
+            "|| echo '(lspci unavailable)') && "
+
+            "echo '===NVIDIA===' && "
+            "(nvidia-smi --query-gpu=index,name,driver_version,memory.total,memory.free,temperature.gpu,"
+            "ecc.errors.uncorrected.volatile.total --format=csv,noheader 2>/dev/null "
+            "|| echo '(nvidia-smi not found)') && "
+            "echo '===NVIDIA_CUDA===' && "
+            "(nvidia-smi 2>/dev/null | grep 'CUDA Version' || echo '(no cuda)') && "
+
+            "echo '===HYGON_DCU===' && "
+            "(rocm-smi --showid --showtemp --showuse --showmeminfo vram 2>/dev/null "
+            "|| hy-smi 2>/dev/null "
+            "|| echo '(no hygon/rocm tools)') && "
+            "echo '===HYGON_DRIVER===' && "
+            "(cat /sys/module/amdgpu/version 2>/dev/null || modinfo amdgpu 2>/dev/null | grep ^version "
+            "|| echo '(no amdgpu driver)') && "
+
+            "echo '===ASCEND_NPU===' && "
+            "(npu-smi info 2>/dev/null || echo '(npu-smi not found)') && "
+            "echo '===ASCEND_DRIVER===' && "
+            "(cat /usr/local/Ascend/driver/version.info 2>/dev/null "
+            "|| npu-smi info -t board 2>/dev/null | head -20 "
+            "|| echo '(no ascend driver)') && "
+
+            "echo '===CAMBRICON_MLU===' && "
+            "(cnmon 2>/dev/null | head -40 || echo '(cnmon not found)') && "
+
+            "echo '===COMM_LIBS===' && "
+            "(echo 'NCCL:' && (find /usr -name 'libnccl*' -o -name 'nccl.h' 2>/dev/null | head -5 || echo '  not found') && "
+            "echo 'HCCL:' && (find /usr -name 'libhccl*' -o -name 'hccl.h' 2>/dev/null | head -5 || echo '  not found') && "
+            "echo 'RCCL:' && (find /usr -name 'librccl*' -o -name 'rccl.h' 2>/dev/null | head -5 || echo '  not found') && "
+            "echo 'MPI:' && (which mpirun 2>/dev/null && mpirun --version 2>/dev/null | head -1 || echo '  not found')) && "
+
+            "echo '===ACCEL_MODULES===' && "
+            "(lsmod 2>/dev/null | grep -iE 'nvidia|amdgpu|hygon|drm_vram|habanalabs|davinci|cambricon' "
+            "|| echo '(no accelerator modules)')"
+        )
+
+        raw = await self._run_kubectl_debug_node(node_name, commands, timeout=120)
+
+        sections: dict[str, str] = {}
+        current_section = ""
+        current_lines: list[str] = []
+        for line in raw.splitlines():
+            if line.startswith("===") and line.endswith("==="):
+                if current_section:
+                    sections[current_section] = "\n".join(current_lines)
+                current_section = line.strip("=")
+                current_lines = []
+            else:
+                current_lines.append(line)
+        if current_section:
+            sections[current_section] = "\n".join(current_lines)
+
+        def is_available(key: str) -> bool:
+            text = sections.get(key, "").strip()
+            return bool(text) and not text.startswith("(")
+
+        # Detect accelerator type
+        detected_type = "unknown"
+        if is_available("NVIDIA"):
+            detected_type = "nvidia"
+        elif is_available("HYGON_DCU"):
+            detected_type = "hygon_dcu"
+        elif is_available("ASCEND_NPU"):
+            detected_type = "ascend_npu"
+        elif is_available("CAMBRICON_MLU"):
+            detected_type = "cambricon_mlu"
+
+        # Parse NVIDIA GPUs
+        nvidia_gpus: list[dict[str, str]] = []
+        if is_available("NVIDIA"):
+            for line in sections["NVIDIA"].splitlines():
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 7:
+                    nvidia_gpus.append({
+                        "index": parts[0], "name": parts[1], "driver": parts[2],
+                        "memory_total": parts[3], "memory_free": parts[4],
+                        "temp_c": parts[5], "ecc_uncorrected": parts[6],
+                    })
+
+        cuda_version = ""
+        for line in sections.get("NVIDIA_CUDA", "").splitlines():
+            if "CUDA Version" in line:
+                import re as _re  # noqa: PLC0415
+                m = _re.search(r"CUDA Version:\s*([\d.]+)", line)
+                if m:
+                    cuda_version = m.group(1)
+
+        # Parse comm lib availability
+        comm_text = sections.get("COMM_LIBS", "")
+        comm_libs: dict[str, bool] = {}
+        for lib in ("NCCL", "HCCL", "RCCL", "MPI"):
+            comm_libs[lib.lower()] = lib + ":" in comm_text and "not found" not in comm_text.split(lib + ":")[1].split("\n")[0] if lib + ":" in comm_text else False
+
+        # Parse PCIe devices
+        pcie_text = sections.get("PCIE_DEVICES", "").strip()
+        pcie_devices = [l.strip() for l in pcie_text.splitlines() if l.strip()] if not pcie_text.startswith("(") else []
+
+        # Parse kernel modules
+        modules_text = sections.get("ACCEL_MODULES", "").strip()
+        accel_modules = [l.strip() for l in modules_text.splitlines() if l.strip()] if not modules_text.startswith("(") else []
+
+        # Compatibility notes
+        compat_notes: list[str] = []
+        if detected_type == "hygon_dcu" and not comm_libs.get("rccl"):
+            compat_notes.append("Hygon DCU detected but RCCL not found — distributed training may not work")
+        if detected_type == "ascend_npu" and not comm_libs.get("hccl"):
+            compat_notes.append("Ascend NPU detected but HCCL not found — distributed training may not work")
+        if detected_type == "nvidia" and not comm_libs.get("nccl"):
+            compat_notes.append("NVIDIA GPU detected but NCCL not found — distributed training may not work")
+        if detected_type == "unknown" and pcie_devices:
+            compat_notes.append("Accelerator devices found via PCIe but no management tool (nvidia-smi/npu-smi/rocm-smi) available")
+
+        return {
+            "status": "success",
+            "result": {
+                "node_name": node_name,
+                "detected_type": detected_type,
+                "nvidia": {
+                    "gpu_count": len(nvidia_gpus),
+                    "cuda_version": cuda_version,
+                    "gpus": nvidia_gpus,
+                } if nvidia_gpus else None,
+                "hygon_dcu": sections.get("HYGON_DCU", "").strip()[:3000] if is_available("HYGON_DCU") else None,
+                "hygon_driver": sections.get("HYGON_DRIVER", "").strip()[:500] if is_available("HYGON_DRIVER") else None,
+                "ascend_npu": sections.get("ASCEND_NPU", "").strip()[:3000] if is_available("ASCEND_NPU") else None,
+                "ascend_driver": sections.get("ASCEND_DRIVER", "").strip()[:500] if is_available("ASCEND_DRIVER") else None,
+                "cambricon_mlu": sections.get("CAMBRICON_MLU", "").strip()[:3000] if is_available("CAMBRICON_MLU") else None,
+                "comm_libs": comm_libs,
+                "pcie_accelerator_devices": pcie_devices[:20],
+                "accel_kernel_modules": accel_modules,
+                "compatibility_notes": compat_notes,
             },
         }
 

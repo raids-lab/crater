@@ -1000,17 +1000,6 @@ class MultiAgentOrchestrator:
         if state.pending_confirmation:
             return "finalize"
 
-        # Simple known-target write with no prior work
-        if (
-            routing.operation_mode == "write"
-            and routing.requested_action
-            and routing.requested_action in {"resubmit", "stop", "delete"}
-            and (routing.targets.job_name or routing.targets.scope == "all")
-            and not state.observation
-            and not state.action_history
-        ):
-            return "act"
-
         # First round, no plan yet → always plan first
         if not state.plan and state.loop_round <= 1:
             return "plan"
@@ -1992,7 +1981,7 @@ class MultiAgentOrchestrator:
                             system_prompt=loop_system_prompt,
                             user_prompt=loop_user_prompt,
                             allowed_tool_names=enabled_tools,
-                            max_tool_calls=max(1, state.runtime_config.max_actions_per_round + 2),
+                            max_tool_calls=max(1, state.runtime_config.max_actions_per_round),
                             on_tool_result=on_executor_tool_result,
                             loop_history_messages=history_messages,
                         )
@@ -2329,6 +2318,7 @@ class MultiAgentOrchestrator:
                             "- 如果涉及数据/指标，要引用具体数值\n"
                             "- 如果有建议动作，要明确说明\n"
                             "- 不要重复罗列原始 JSON 字段，要做人类可读的总结\n"
+                            "- 不要在回复中暴露系统内部诊断元数据（如置信度/confidence、severity、risk_level 等），这些是工具内部字段，用户不需要看到\n"
                             "- 严禁虚构任何信息：不要编造不存在的作业名、错误码、指标数值或平台功能\n"
                             "- 只能使用工具调用原始结果中实际存在的数据；如果某些作业尚未被诊断到，如实说明而不是编造结果\n"
                             "- 如果证据不完整（例如只诊断了部分作业），明确告知用户哪些已分析、哪些尚未覆盖\n"

@@ -271,7 +271,11 @@ async def run_admin_ops_report(
     period_end = now.isoformat()
     period_start = (now - timedelta(days=days)).isoformat()
 
-    async with PipelineToolClient(timeout=120) as client:
+    async with PipelineToolClient(
+        timeout=120,
+        session_source="system",
+        session_title="[system] 智能巡检日报",
+    ) as client:
         # Step 1: Collect domain data via backend tools.
         compute_report, compute_collector = await _collect_compute_domain(
             client,

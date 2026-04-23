@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from uuid import uuid4
 from typing import Any
 
 import httpx
@@ -11,7 +12,6 @@ from crater_agent.config import settings
 
 logger = logging.getLogger(__name__)
 
-PIPELINE_SESSION_ID = "00000000-0000-0000-0000-000000000000"
 PIPELINE_INTERNAL_CONTEXT = {
     "role": "admin",
     "username": "agent-pipeline",
@@ -20,8 +20,19 @@ PIPELINE_INTERNAL_CONTEXT = {
 
 
 class PipelineToolClient:
-    def __init__(self, *, timeout: int = 60):
+    def __init__(
+        self,
+        *,
+        timeout: int = 60,
+        session_source: str = "system",
+        session_title: str = "[system] 后台任务",
+    ):
         self._client = httpx.AsyncClient(timeout=timeout)
+        self._session_id = str(uuid4())
+        self._turn_id = str(uuid4())
+        self._session_source = session_source
+        self._session_title = session_title
+        self._tool_call_index = 0
 
     async def __aenter__(self) -> "PipelineToolClient":
         return self
@@ -32,6 +43,14 @@ class PipelineToolClient:
     async def close(self) -> None:
         await self._client.aclose()
 
+    def _next_tool_call_id(self, tool_name: str) -> str:
+        self._tool_call_index += 1
+        normalized_tool_name = tool_name.replace("_", "-").strip() or "tool"
+        return (
+            f"pipeline-{self._session_id[:8]}-"
+            f"{self._tool_call_index:03d}-{normalized_tool_name}"
+        )
+
     async def execute(self, tool_name: str, tool_args: dict[str, Any]) -> dict[str, Any]:
         try:
             response = await self._client.post(
@@ -39,9 +58,11 @@ class PipelineToolClient:
                 json={
                     "tool_name": tool_name,
                     "tool_args": tool_args,
-                    "session_id": PIPELINE_SESSION_ID,
-                    "turn_id": "pipeline",
-                    "tool_call_id": f"pipeline-{tool_name}",
+                    "session_id": self._session_id,
+                    "session_source": self._session_source,
+                    "session_title": self._session_title,
+                    "turn_id": self._turn_id,
+                    "tool_call_id": self._next_tool_call_id(tool_name),
                     "agent_id": "pipeline",
                     "agent_role": "single_agent",
                     "internal_context": PIPELINE_INTERNAL_CONTEXT,

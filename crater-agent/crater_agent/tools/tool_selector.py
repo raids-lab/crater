@@ -3,8 +3,8 @@
 Instead of binding ALL tools to the LLM (which wastes context window),
 select a relevant subset based on actor role (admin vs user).
 
-Admin sees all tools; regular users see only user-level tools.
-No URL/route-based filtering — admin is admin regardless of page.
+Admin sees admin tools only when on admin pages; regular user pages
+always get user-level tools regardless of JWT role.
 """
 
 from __future__ import annotations
@@ -55,16 +55,26 @@ _ADMIN_ROLES = frozenset({"roleadmin", "admin", "platform_admin", "system_admin"
 
 
 def _resolve_actor_role(context: dict[str, Any]) -> str:
-    """Determine the effective actor role from context."""
+    """Determine the effective actor role from context.
+
+    URL/page route is the primary signal:
+      - /admin pages → admin role (admin tools available)
+      - non-admin pages → user role (user tools only)
+    JWT role is the fallback when no URL info is available.
+    """
+    page = context.get("page") or {}
+    route = str(page.get("route") or "").strip().lower()
+    url = str(page.get("url") or "").strip().lower()
+
+    # Primary: URL determines role
+    if route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url:
+        return "admin"
+    if route or url:
+        return "user"
+
+    # Fallback: JWT role when no URL info
     actor = context.get("actor") or {}
     role = str(actor.get("role") or "user").strip().lower() or "user"
-    # Also check page route for admin detection (same logic as tools_node in graph.py)
-    if role == "user":
-        page = context.get("page") or {}
-        route = str(page.get("route") or "").strip().lower()
-        url = str(page.get("url") or "").strip().lower()
-        if route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url:
-            role = "admin"
     return role
 
 

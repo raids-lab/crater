@@ -26,7 +26,11 @@ async def run_gpu_audit(
       3. Classify into stop / notify / downscale categories.
       4. If not *dry_run*, write report via Go backend.
     """
-    async with PipelineToolClient(timeout=60) as client:
+    async with PipelineToolClient(
+        timeout=60,
+        session_source="system",
+        session_title="[system] GPU 占卡巡检",
+    ) as client:
         # Step 1: Detect idle jobs
         idle_result = await client.execute(
             "detect_idle_jobs",

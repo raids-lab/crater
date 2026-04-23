@@ -43,7 +43,7 @@ class SingleAgentOrchestrator:
             },
             "tool_call_count": 0,
             "attempted_tool_calls": {},
-            "pending_confirmation": None,
+            "pending_confirmations": [],
             "trace": [],
         }
         history = context.get("history", [])
@@ -176,74 +176,79 @@ class SingleAgentOrchestrator:
                 output = event["data"].get("output", {})
                 if not pending_tool_calls:
                     continue
-                pending_confirmation = (
-                    output.get("pending_confirmation", {}) if isinstance(output, dict) else {}
-                )
-                if pending_confirmation:
-                    pending = pending_tool_calls.pop(0)
-                    tool_name = pending.get("name", "unknown")
-                    tool_call_id = pending.get("id")
-                    confirmation = pending_confirmation.get("confirmation", {})
-                    emitted_confirmation = True
-                    yield {
-                        "event": "tool_call_confirmation_required",
-                        "data": {
-                            "turnId": request.turn_id,
-                            "agentId": "single-agent",
-                            "agentRole": "single_agent",
-                            "toolCallId": tool_call_id,
-                            "confirmId": confirmation.get("confirm_id", ""),
-                            "action": confirmation.get("tool_name", tool_name),
-                            "description": confirmation.get("description", ""),
-                            "interaction": confirmation.get("interaction", "approval"),
-                            "form": confirmation.get("form"),
-                            "status": "awaiting_confirmation",
-                        },
-                    }
-                    continue
-
-                # Normal tool completion path: the LangGraph node "tools" is a custom
-                # chain, so we won't get "on_tool_end". Emit tool_call_completed from
-                # the node output trace/messages so downstream consumers (eval harness,
-                # UI) can see successful tool calls.
                 if not isinstance(output, dict):
                     continue
+
+                # Build a lookup of confirmation results keyed by tool_call_id
+                # so we can match each confirmation to the correct pending_tool_call.
+                pending_confs = output.get("pending_confirmations") or []
+                conf_by_tc_id: dict[str, dict] = {}
+                for conf in pending_confs:
+                    tc_id = conf.get("_tool_call_id")
+                    if tc_id:
+                        conf_by_tc_id[tc_id] = conf
+
                 tool_trace = [
                     entry for entry in (output.get("trace") or [])
                     if isinstance(entry, dict) and entry.get("node") == "tools"
                 ]
                 tool_messages = list(output.get("messages") or [])
+
                 for idx, entry in enumerate(tool_trace):
                     pending = pending_tool_calls.pop(0) if pending_tool_calls else {}
-                    tool_name = entry.get("tool_name") or pending.get("name") or "unknown"
                     tool_call_id = pending.get("id")
+                    tool_name = entry.get("tool_name") or pending.get("name") or "unknown"
                     tool_args = (
                         entry.get("tool_args")
                         if isinstance(entry.get("tool_args"), dict)
                         else pending.get("args") or {}
                     )
-                    result_status = str(entry.get("result_status") or "unknown").strip().lower()
-                    is_error = result_status == "error"
-                    raw_output = ""
-                    if idx < len(tool_messages):
-                        raw_output = str(getattr(tool_messages[idx], "content", "") or "")
-                    tool_result_summaries.append(f"{tool_name}: {raw_output[:300]}")
-                    yield {
-                        "event": "tool_call_completed",
-                        "data": {
-                            "turnId": request.turn_id,
-                            "agentId": "single-agent",
-                            "agentRole": "single_agent",
-                            "toolCallId": tool_call_id,
-                            "toolName": tool_name,
-                            "toolArgs": tool_args,
-                            "result": raw_output,
-                            "resultSummary": raw_output[:500],
-                            "status": "error" if is_error else "done",
-                            "isError": is_error,
-                            "latencyMs": entry.get("latency_ms", 0),
-                        },
-                    }
+
+                    # Check if this tool_call is a confirmation
+                    if tool_call_id and tool_call_id in conf_by_tc_id:
+                        conf = conf_by_tc_id[tool_call_id]
+                        confirmation = conf.get("confirmation", {})
+                        emitted_confirmation = True
+                        yield {
+                            "event": "tool_call_confirmation_required",
+                            "data": {
+                                "turnId": request.turn_id,
+                                "agentId": "single-agent",
+                                "agentRole": "single_agent",
+                                "toolCallId": tool_call_id,
+                                "confirmId": confirmation.get("confirm_id", ""),
+                                "action": confirmation.get("tool_name", tool_name),
+                                "description": confirmation.get("description", ""),
+                                "interaction": confirmation.get("interaction", "approval"),
+                                "form": confirmation.get("form"),
+                                "status": "awaiting_confirmation",
+                            },
+                        }
+                    else:
+                        # Normal tool completion
+                        result_status = str(entry.get("result_status") or "unknown").strip().lower()
+                        is_error = result_status == "error"
+                        raw_output = ""
+                        if idx < len(tool_messages):
+                            raw_output = str(getattr(tool_messages[idx], "content", "") or "")
+                        tool_result_summaries.append(f"{tool_name}: {raw_output[:300]}")
+                        yield {
+                            "event": "tool_call_completed",
+                            "data": {
+                                "turnId": request.turn_id,
+                                "agentId": "single-agent",
+                                "agentRole": "single_agent",
+                                "toolCallId": tool_call_id,
+                                "toolName": tool_name,
+                                "toolArgs": tool_args,
+                                "result": raw_output,
+                                "resultSummary": raw_output[:500],
+                                "status": "error" if is_error else "done",
+                                "isError": is_error,
+                                "latencyMs": entry.get("latency_ms", 0),
+                            },
+                        }
+                continue
 
         # Cancel any orphaned tool_call_started events that never got executed
         # (e.g., LLM requested tools but limit was hit before tools_node ran)

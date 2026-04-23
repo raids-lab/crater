@@ -363,7 +363,14 @@ def create_agent_graph(
             messages = await _proactive_compact(
                 messages, max_context=settings.max_context_tokens, llm=llm,
             )
+            llm_start = time.time()
             response = await llm_with_tools.ainvoke(messages)
+            llm_ms = int((time.time() - llm_start) * 1000)
+            logger.info(
+                "agent_node: LLM responded in %dms, tool_calls=%d, content_len=%d",
+                llm_ms, len(response.tool_calls) if response.tool_calls else 0,
+                len(response.content) if response.content else 0,
+            )
         except BadRequestError as exc:
             if not _is_context_limit_error(exc):
                 raise
@@ -423,20 +430,23 @@ def create_agent_graph(
         session_id = context.get("session_id", "unknown")
         actor = context.get("actor", {})
         user_id = actor.get("user_id", 0)
-        actor_role = str(actor.get("role") or "user").strip().lower() or "user"
         page = context.get("page", {}) if isinstance(context.get("page"), dict) else {}
         route = str(page.get("route") or "").strip().lower()
         url = str(page.get("url") or "").strip().lower()
-        if actor_role == "user" and (
-            route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url
-        ):
+
+        # URL/page route is primary for role; JWT role is fallback
+        if route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url:
             actor_role = "admin"
+        elif route or url:
+            actor_role = "user"
+        else:
+            actor_role = str(actor.get("role") or "user").strip().lower() or "user"
         turn_id = context.get("turn_id")
 
         tool_messages = []
         trace_entries = []
         new_tool_call_count = state.get("tool_call_count", 0)
-        pending_confirmation = None
+        pending_confirmations: list[dict[str, Any]] = []
         attempted_tool_calls = dict(state.get("attempted_tool_calls") or {})
 
         for tc in last_message.tool_calls:
@@ -495,9 +505,10 @@ def create_agent_graph(
                 "latency_ms": result.get("_latency_ms", 0),
             })
 
-            # Handle confirmation-required tools
+            # Collect ALL confirmation-required results, tagged with tool_call_id
+            # for correct matching in the orchestrator.
             if result.get("status") == "confirmation_required":
-                pending_confirmation = result
+                pending_confirmations.append({**result, "_tool_call_id": tc["id"]})
                 tool_messages.append(
                     ToolMessage(
                         content=json.dumps(result, ensure_ascii=False),
@@ -512,11 +523,15 @@ def create_agent_graph(
                     ToolMessage(content=observation, tool_call_id=tc["id"])
                 )
 
+        executed = [e.get("tool_name", "?") for e in trace_entries if e.get("node") == "tools"]
+        if executed:
+            logger.info("tools_node: executed %s, total_count=%d", executed, new_tool_call_count)
+
         return {
             "messages": tool_messages,
             "tool_call_count": new_tool_call_count,
             "attempted_tool_calls": attempted_tool_calls,
-            "pending_confirmation": pending_confirmation,
+            "pending_confirmations": pending_confirmations,
             "trace": trace_entries,
         }
 
@@ -594,8 +609,8 @@ def create_agent_graph(
                 return "summarize"
             return "respond"
 
-        # If there's a pending confirmation → pause and respond
-        if state.get("pending_confirmation"):
+        # If there are pending confirmations → pause and respond
+        if state.get("pending_confirmations"):
             return "respond"
 
         # If the LLM produced tool_calls → execute them
@@ -606,7 +621,7 @@ def create_agent_graph(
         return "respond"
 
     def after_tools(state: CraterAgentState) -> str:
-        if state.get("pending_confirmation"):
+        if state.get("pending_confirmations"):
             return "respond"
         return "agent"
 

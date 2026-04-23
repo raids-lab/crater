@@ -160,7 +160,11 @@ async def run_storage_audit(
     period_end = now.isoformat()
     period_start = (now - timedelta(days=days)).isoformat()
 
-    async with PipelineToolClient(timeout=90) as client:
+    async with PipelineToolClient(
+        timeout=90,
+        session_source="system",
+        session_title="[system] 存储巡检",
+    ) as client:
         pvc_result = await client.execute("list_storage_pvcs", {"limit": pvc_limit})
         if pvc_result.get("status") != "success":
             return {

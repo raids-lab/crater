@@ -51,6 +51,7 @@ class ApprovalEvalRequest(BaseModel):
     user_id: int
     username: str = ""
     job_type: str = ""  # hint from Go, agent will verify via tool
+    session_id: str = ""  # audit session for tool call logging
 
 
 class ApprovalEvalResponse(BaseModel):
@@ -79,6 +80,8 @@ _APPROVAL_SYSTEM_PROMPT = """\
    - 批处理/训练作业：调用 query_job_metrics 查 GPU 利用率
    - 交互式作业（Jupyter/WebIDE）：不以 GPU 利用率为主要依据
 3. 调用 check_quota 查用户配额与资源使用情况
+   - 若 no_limit=true 或返回错误，视为"用户无配额限制"，不作为 escalate 的理由
+   - 若有 capability 和 used，对比判断是否接近配额上限
 4. 如有需要，调用 get_approval_history 查用户近期审批频率
 5. 综合判断后输出结论
 
@@ -101,14 +104,16 @@ _APPROVAL_SYSTEM_PROMPT = """\
 - 用户已大量占用高端资源（如已有 4+ 张 A100 在跑）且本次还要加
 - 同类资源队列严重紧张
 - 批处理 GPU 利用率持续近零
-- 频繁申请（7天3+次）
-- 不在自身配额范围内
+- 近期已批准的锁定时长累计过高（7天内累计已批准 3+ 次锁定）
+- 配额已启用且明确超出自身配额范围
 
 ## 交互式作业
 Jupyter/WebIDE 不以 GPU 利用率为主要信号，默认宽松。
 
 ## 信号缺失
-查不到的数据不做假设，倾向转交。
+- 配额查询失败或返回无限制：视为无配额限制，不影响判断
+- 作业详情查不到：才需要 escalate
+- 其他非关键数据缺失：基于已有信息判断，不要仅因为某个辅助数据缺失就 escalate
 
 ## 效率要求
 4-6 次工具调用足够。不要重复调用同一工具。
@@ -223,7 +228,7 @@ class ApprovalAgent(TicketAgent[ApprovalEvalRequest, ApprovalEvalResponse]):
             "user_id": request.user_id,
             "username": request.username or f"user-{request.user_id}",
         }
-        ctx["session_id"] = f"approval-{request.order_id}"
+        ctx["session_id"] = request.session_id or f"approval-{request.order_id}"
         return ctx
 
     def fallback_prompt(self) -> str:

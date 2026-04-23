@@ -11,6 +11,14 @@ import json
 import logging
 from typing import Any
 
+# Configure logging before anything else — without this, logger.info() in agent
+# modules is silently swallowed because the root logger defaults to WARNING.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+
 from fastapi import FastAPI, HTTPException
 
 logger = logging.getLogger(__name__)
@@ -18,6 +26,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from crater_agent.agents.approval import ApprovalAgent, ApprovalEvalRequest, ApprovalEvalResponse
+from crater_agent.app_quality import router as quality_router
 from crater_agent.config import settings
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.orchestrators.multi import MultiAgentOrchestrator
@@ -26,6 +35,12 @@ from crater_agent.pipeline.router import pipeline_router
 
 app = FastAPI(title="Crater Agent Service", version="0.1.0")
 app.include_router(pipeline_router, prefix="/pipeline", tags=["pipeline"])
+app.include_router(quality_router)
+
+logger.info(
+    "agent service starting: backend=%s",
+    settings.crater_backend_url,
+)
 
 single_orchestrator = SingleAgentOrchestrator()
 multi_orchestrator = MultiAgentOrchestrator()
@@ -148,7 +163,13 @@ async def evaluate_approval(request: ApprovalEvalRequest):
     Returns structured verdict (approve/escalate). Never returns 5xx
     for evaluation logic failures — those are wrapped in an escalate verdict.
     """
+    logger.info(
+        "[approval] received evaluation request: order=%d job=%s hours=%d user=%s session=%s",
+        request.order_id, request.job_name, request.extension_hours,
+        request.username, request.session_id,
+    )
     if not _approval_semaphore.locked() and _approval_semaphore._value <= 0:
+        logger.warning("[approval] rejected: semaphore full (429)")
         raise HTTPException(status_code=429, detail="approval evaluation busy")
 
     async with _approval_semaphore:
@@ -156,11 +177,15 @@ async def evaluate_approval(request: ApprovalEvalRequest):
         try:
             result = await asyncio.wait_for(
                 agent.evaluate(request),
-                timeout=20.0,
+                timeout=120.0,
+            )
+            logger.info(
+                "[approval] completed: order=%d verdict=%s confidence=%.2f reason=%.100s",
+                request.order_id, result.verdict, result.confidence, result.reason,
             )
             return result
         except asyncio.TimeoutError:
-            logger.warning("Approval evaluation timed out for order %d", request.order_id)
+            logger.warning("[approval] timed out after 120s for order %d", request.order_id)
             return ApprovalEvalResponse(
                 verdict="escalate",
                 confidence=0.1,

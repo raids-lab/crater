@@ -88,5 +88,25 @@
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 90
+  },
+  "dialogue_eval_flash": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "tongyi-xiaomi-analysis-flash",
+    "temperature": 0.0,
+    "max_tokens": 4096,
+    "timeout": 30,
+    "_comment": "通义晓蜜对话分析-轻量版，适合在线低延迟分析和成本敏感的离线批量任务"
+  },
+  "dialogue_eval_pro": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "tongyi-xiaomi-analysis-pro",
+    "temperature": 0.0,
+    "max_tokens": 4096,
+    "timeout": 60,
+    "_comment": "通义晓蜜对话分析-专业版，适合多条件嵌套质检、深度语义推理、多轮上下文依赖分析"
   }
 }

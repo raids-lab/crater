@@ -105,7 +105,7 @@ class PlatformRuntimeConfig:
     local_core_tools: set[str] = field(
         default_factory=lambda: {
             "get_agent_runtime_summary",
-            "web_search",
+            # "web_search",  # DEPRECATED — migrating to LLM-native enable_search
             "k8s_list_nodes",
             "k8s_list_pods",
             "k8s_get_events",
@@ -124,6 +124,13 @@ class PlatformRuntimeConfig:
             "get_ddp_rank_mapping",
             "get_node_kernel_diagnostics",
             "get_rdma_interface_status",
+            # B8: GPU / Distributed Training Diagnostics
+            "get_node_gpu_info",
+            "get_nccl_env_config",
+            "check_node_nic_status",
+            "detect_training_anomaly_patterns",
+            "get_distributed_job_overview",
+            "get_node_accelerator_info",
         }
     )
     web_search_enabled: bool = False
@@ -301,9 +308,10 @@ class PlatformRuntimeConfig:
                 "warnings": warning_list,
             }
 
+        # DEPRECATED: web_search tool readiness kept for backward compat of config validation
         web_search_ready = build_state(
             missing_fields=[] if self.web_search_enabled else ["webSearch.enabled=true"],
-            warnings=[] if self.web_search_allowed_domains else ["no allowedDomains restriction configured"],
+            warnings=["DEPRECATED: web_search tool is pending migration to LLM-native enable_search"],
         )
 
         k8s_missing: list[str] = []

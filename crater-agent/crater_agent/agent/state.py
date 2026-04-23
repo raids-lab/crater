@@ -23,9 +23,11 @@ class CraterAgentState(MessagesState):
     # Track same-turn tool invocations to avoid repeated calls with identical args
     attempted_tool_calls: dict[str, int]
 
-    # When a write operation needs user confirmation, store it here
-    # The ReAct loop pauses and returns this to the frontend
-    pending_confirmation: dict[str, Any] | None
+    # When write operations need user confirmation, store them here.
+    # Each entry is the raw confirmation result dict from Go backend,
+    # tagged with "_tool_call_id" for matching to the LLM's tool_call.
+    # The ReAct loop pauses and returns these to the frontend.
+    pending_confirmations: list[dict[str, Any]]
 
     # When True, the tool call limit was reached and the agent should
     # summarize existing evidence instead of calling more tools.
