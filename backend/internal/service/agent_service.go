@@ -845,9 +845,15 @@ func (s *AgentService) EnrichFeedback(ctx context.Context, userID uint, targetTy
 }
 
 // CreateQualityEval inserts a new quality eval record with status=pending.
+// TurnID is a uuid column that rejects empty string literals, so we omit it
+// from the INSERT when the caller did not supply one (session-level eval).
 func (s *AgentService) CreateQualityEval(ctx context.Context, eval *model.AgentQualityEval) error {
 	eval.EvalStatus = "pending"
-	return s.db.WithContext(ctx).Create(eval).Error
+	tx := s.db.WithContext(ctx)
+	if eval.TurnID == "" {
+		return tx.Omit("TurnID").Create(eval).Error
+	}
+	return tx.Create(eval).Error
 }
 
 // UpdateQualityEvalResult updates a quality eval record with completed results from crater-agent.
