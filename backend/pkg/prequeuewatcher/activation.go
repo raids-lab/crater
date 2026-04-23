@@ -21,7 +21,7 @@ func (w *PrequeueWatcher) activateNextPrequeueBatch(ctx context.Context, remaini
 		return true, err
 	}
 	if len(candidates) == 0 {
-		return false, nil
+		return hasMore, nil
 	}
 	if len(candidates) > remaining {
 		candidates = candidates[:remaining]
@@ -139,7 +139,6 @@ func (w *PrequeueWatcher) selectActivationCandidates(
 				return selected, true, nil
 			}
 		}
-
 		if len(page) < pageSize {
 			return selected, false, nil
 		}

@@ -611,6 +611,23 @@ func (s *PrequeueService) CheckUserResourceLimit(
 	return buildResourceLimitCheckResult(resolved, jobs, requestedResources), nil
 }
 
+func (s *PrequeueService) CheckRequestedResourceLimit(
+	ctx context.Context,
+	userID,
+	accountID uint,
+	queueName string,
+	requestedResources map[string]string,
+) (*ResourceLimitCheckResult, error) {
+	resolved, err := s.ResolveQueueQuota(ctx, userID, accountID, queueName)
+	if err != nil {
+		return nil, err
+	}
+	if !resolved.Enabled || len(resolved.Quota) == 0 {
+		return &ResourceLimitCheckResult{Enabled: false}, nil
+	}
+	return buildResourceLimitCheckResult(resolved, nil, requestedResources), nil
+}
+
 func (s *PrequeueService) GetPrequeueCandidateSize(
 	ctx context.Context,
 	userID,

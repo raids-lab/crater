@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
+	vcjobadmission "github.com/raids-lab/crater/pkg/vcjob/admission"
 )
 
 type preemptionPlan struct {
@@ -50,7 +51,10 @@ func (w *PrequeueWatcher) findPendingNormalJobPreemptionPlan(ctx context.Context
 		}
 
 		for _, record := range page {
-			if !isTimedOutNormalJob(record, now) || !utils.IsSingleNodeJob(record) {
+			if !isTimedOutNormalJob(record, now) {
+				continue
+			}
+			if !utils.IsSingleNodeJob(record) {
 				continue
 			}
 
@@ -180,7 +184,7 @@ func (w *PrequeueWatcher) buildNodeBackfillPreemptionPlan(
 	jobRequirements *singleNodeJobRequirements,
 	backfillJobsByNode map[string][]*model.Job,
 ) (*preemptionPlan, error) {
-	canScheduleOnNode := nodeMatchesPodSchedulingConstraints(node, jobRequirements.podSpec)
+	canScheduleOnNode := vcjobadmission.NodeMatchesPodSchedulingConstraints(node, jobRequirements.podSpec)
 	if !canScheduleOnNode {
 		return nil, nil
 	}
@@ -189,7 +193,7 @@ func (w *PrequeueWatcher) buildNodeBackfillPreemptionPlan(
 	if err != nil {
 		return nil, err
 	}
-	deficit := calculateResourceDeficit(jobRequirements.requests, available)
+	deficit := utils.ResourceDeficit(jobRequirements.requests, available)
 	if len(deficit) == 0 {
 		return nil, nil
 	}
