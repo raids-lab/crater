@@ -57,7 +57,6 @@ import { Route as IngressWebideNameRouteImport } from './routes/ingress/webide.$
 import { Route as IngressJupyterNameRouteImport } from './routes/ingress/jupyter.$name'
 import { Route as AdminUsersNameRouteImport } from './routes/admin/users/$name'
 import { Route as AdminMoreVersionRouteImport } from './routes/admin/more/version'
-import { Route as AdminMoreAgentAuditRouteImport } from './routes/admin/more/agent-audit'
 import { Route as AdminMonitorNetworkRouteImport } from './routes/admin/monitor/network'
 import { Route as AdminMonitorIdleRouteImport } from './routes/admin/monitor/idle'
 import { Route as AdminMonitorGpuRouteImport } from './routes/admin/monitor/gpu'
@@ -73,6 +72,7 @@ import { Route as PortalDataModelsRouteRouteImport } from './routes/portal/data/
 import { Route as PortalDataDatasetsRouteRouteImport } from './routes/portal/data/datasets/route'
 import { Route as PortalDataBlocksRouteRouteImport } from './routes/portal/data/blocks/route'
 import { Route as AdminMoreOrdersRouteRouteImport } from './routes/admin/more/orders/route'
+import { Route as AdminMoreAgentAuditRouteRouteImport } from './routes/admin/more/agent-audit/route'
 import { Route as AdminEnvRegistryRouteRouteImport } from './routes/admin/env/registry/route'
 import { Route as AdminClusterResourcesRouteRouteImport } from './routes/admin/cluster/resources/route'
 import { Route as AdminClusterNodesRouteRouteImport } from './routes/admin/cluster/nodes/route'
@@ -85,6 +85,7 @@ import { Route as PortalDataModelsIndexRouteImport } from './routes/portal/data/
 import { Route as PortalDataDatasetsIndexRouteImport } from './routes/portal/data/datasets/index'
 import { Route as PortalDataBlocksIndexRouteImport } from './routes/portal/data/blocks/index'
 import { Route as AdminMoreOrdersIndexRouteImport } from './routes/admin/more/orders/index'
+import { Route as AdminMoreAgentAuditIndexRouteImport } from './routes/admin/more/agent-audit/index'
 import { Route as AdminEnvRegistryIndexRouteImport } from './routes/admin/env/registry/index'
 import { Route as AdminEnvImagesIndexRouteImport } from './routes/admin/env/images/index'
 import { Route as AdminClusterResourcesIndexRouteImport } from './routes/admin/cluster/resources/index'
@@ -104,6 +105,7 @@ import { Route as PortalDataModelsIdRouteImport } from './routes/portal/data/mod
 import { Route as PortalDataDatasetsIdRouteImport } from './routes/portal/data/datasets/$id'
 import { Route as PortalDataBlocksIdRouteImport } from './routes/portal/data/blocks/$id'
 import { Route as AdminMoreOrdersIdRouteImport } from './routes/admin/more/orders/$id'
+import { Route as AdminMoreAgentAuditSessionIdRouteImport } from './routes/admin/more/agent-audit/$sessionId'
 import { Route as AdminEnvRegistryNameRouteImport } from './routes/admin/env/registry/$name'
 import { Route as AdminClusterNodesNodeRouteImport } from './routes/admin/cluster/nodes/$node'
 import { Route as PortalDataModelsDownloadsIndexRouteImport } from './routes/portal/data/models/downloads/index'
@@ -351,11 +353,6 @@ const AdminMoreVersionRoute = AdminMoreVersionRouteImport.update({
   path: '/more/version',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminMoreAgentAuditRoute = AdminMoreAgentAuditRouteImport.update({
-  id: '/more/agent-audit',
-  path: '/more/agent-audit',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminMonitorNetworkRoute = AdminMonitorNetworkRouteImport.update({
   id: '/monitor/network',
   path: '/monitor/network',
@@ -431,6 +428,12 @@ const AdminMoreOrdersRouteRoute = AdminMoreOrdersRouteRouteImport.update({
   path: '/more/orders',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminMoreAgentAuditRouteRoute =
+  AdminMoreAgentAuditRouteRouteImport.update({
+    id: '/more/agent-audit',
+    path: '/more/agent-audit',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminEnvRegistryRouteRoute = AdminEnvRegistryRouteRouteImport.update({
   id: '/env/registry',
   path: '/env/registry',
@@ -492,6 +495,12 @@ const AdminMoreOrdersIndexRoute = AdminMoreOrdersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminMoreOrdersRouteRoute,
 } as any)
+const AdminMoreAgentAuditIndexRoute =
+  AdminMoreAgentAuditIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminMoreAgentAuditRouteRoute,
+  } as any)
 const AdminEnvRegistryIndexRoute = AdminEnvRegistryIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -591,6 +600,12 @@ const AdminMoreOrdersIdRoute = AdminMoreOrdersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AdminMoreOrdersRouteRoute,
 } as any)
+const AdminMoreAgentAuditSessionIdRoute =
+  AdminMoreAgentAuditSessionIdRouteImport.update({
+    id: '/$sessionId',
+    path: '/$sessionId',
+    getParentRoute: () => AdminMoreAgentAuditRouteRoute,
+  } as any)
 const AdminEnvRegistryNameRoute = AdminEnvRegistryNameRouteImport.update({
   id: '/$name',
   path: '/$name',
@@ -649,6 +664,7 @@ export interface FileRoutesByFullPath {
   '/admin/cluster/nodes': typeof AdminClusterNodesRouteRouteWithChildren
   '/admin/cluster/resources': typeof AdminClusterResourcesRouteRouteWithChildren
   '/admin/env/registry': typeof AdminEnvRegistryRouteRouteWithChildren
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRouteRouteWithChildren
   '/admin/more/orders': typeof AdminMoreOrdersRouteRouteWithChildren
   '/portal/data/blocks': typeof PortalDataBlocksRouteRouteWithChildren
   '/portal/data/datasets': typeof PortalDataDatasetsRouteRouteWithChildren
@@ -664,7 +680,6 @@ export interface FileRoutesByFullPath {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
-  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRoute
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
@@ -696,6 +711,7 @@ export interface FileRoutesByFullPath {
   '/portal/users/': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
+  '/admin/more/agent-audit/$sessionId': typeof AdminMoreAgentAuditSessionIdRoute
   '/admin/more/orders/$id': typeof AdminMoreOrdersIdRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
   '/portal/data/datasets/$id': typeof PortalDataDatasetsIdRoute
@@ -715,6 +731,7 @@ export interface FileRoutesByFullPath {
   '/admin/cluster/resources/': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry/': typeof AdminEnvRegistryIndexRoute
+  '/admin/more/agent-audit/': typeof AdminMoreAgentAuditIndexRoute
   '/admin/more/orders/': typeof AdminMoreOrdersIndexRoute
   '/portal/data/blocks/': typeof PortalDataBlocksIndexRoute
   '/portal/data/datasets/': typeof PortalDataDatasetsIndexRoute
@@ -744,7 +761,6 @@ export interface FileRoutesByTo {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
-  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRoute
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
@@ -776,6 +792,7 @@ export interface FileRoutesByTo {
   '/portal/users': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
+  '/admin/more/agent-audit/$sessionId': typeof AdminMoreAgentAuditSessionIdRoute
   '/admin/more/orders/$id': typeof AdminMoreOrdersIdRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
   '/portal/data/datasets/$id': typeof PortalDataDatasetsIdRoute
@@ -795,6 +812,7 @@ export interface FileRoutesByTo {
   '/admin/cluster/resources': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry': typeof AdminEnvRegistryIndexRoute
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditIndexRoute
   '/admin/more/orders': typeof AdminMoreOrdersIndexRoute
   '/portal/data/blocks': typeof PortalDataBlocksIndexRoute
   '/portal/data/datasets': typeof PortalDataDatasetsIndexRoute
@@ -833,6 +851,7 @@ export interface FileRoutesById {
   '/admin/cluster/nodes': typeof AdminClusterNodesRouteRouteWithChildren
   '/admin/cluster/resources': typeof AdminClusterResourcesRouteRouteWithChildren
   '/admin/env/registry': typeof AdminEnvRegistryRouteRouteWithChildren
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRouteRouteWithChildren
   '/admin/more/orders': typeof AdminMoreOrdersRouteRouteWithChildren
   '/portal/data/blocks': typeof PortalDataBlocksRouteRouteWithChildren
   '/portal/data/datasets': typeof PortalDataDatasetsRouteRouteWithChildren
@@ -848,7 +867,6 @@ export interface FileRoutesById {
   '/admin/monitor/gpu': typeof AdminMonitorGpuRoute
   '/admin/monitor/idle': typeof AdminMonitorIdleRoute
   '/admin/monitor/network': typeof AdminMonitorNetworkRoute
-  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRoute
   '/admin/more/version': typeof AdminMoreVersionRoute
   '/admin/users/$name': typeof AdminUsersNameRoute
   '/ingress/jupyter/$name': typeof IngressJupyterNameRoute
@@ -880,6 +898,7 @@ export interface FileRoutesById {
   '/portal/users/': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
+  '/admin/more/agent-audit/$sessionId': typeof AdminMoreAgentAuditSessionIdRoute
   '/admin/more/orders/$id': typeof AdminMoreOrdersIdRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
   '/portal/data/datasets/$id': typeof PortalDataDatasetsIdRoute
@@ -899,6 +918,7 @@ export interface FileRoutesById {
   '/admin/cluster/resources/': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images/': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry/': typeof AdminEnvRegistryIndexRoute
+  '/admin/more/agent-audit/': typeof AdminMoreAgentAuditIndexRoute
   '/admin/more/orders/': typeof AdminMoreOrdersIndexRoute
   '/portal/data/blocks/': typeof PortalDataBlocksIndexRoute
   '/portal/data/datasets/': typeof PortalDataDatasetsIndexRoute
@@ -938,6 +958,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/nodes'
     | '/admin/cluster/resources'
     | '/admin/env/registry'
+    | '/admin/more/agent-audit'
     | '/admin/more/orders'
     | '/portal/data/blocks'
     | '/portal/data/datasets'
@@ -953,7 +974,6 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
-    | '/admin/more/agent-audit'
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
@@ -985,6 +1005,7 @@ export interface FileRouteTypes {
     | '/portal/users/'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
+    | '/admin/more/agent-audit/$sessionId'
     | '/admin/more/orders/$id'
     | '/portal/data/blocks/$id'
     | '/portal/data/datasets/$id'
@@ -1004,6 +1025,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources/'
     | '/admin/env/images'
     | '/admin/env/registry/'
+    | '/admin/more/agent-audit/'
     | '/admin/more/orders/'
     | '/portal/data/blocks/'
     | '/portal/data/datasets/'
@@ -1033,7 +1055,6 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
-    | '/admin/more/agent-audit'
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
@@ -1065,6 +1086,7 @@ export interface FileRouteTypes {
     | '/portal/users'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
+    | '/admin/more/agent-audit/$sessionId'
     | '/admin/more/orders/$id'
     | '/portal/data/blocks/$id'
     | '/portal/data/datasets/$id'
@@ -1084,6 +1106,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources'
     | '/admin/env/images'
     | '/admin/env/registry'
+    | '/admin/more/agent-audit'
     | '/admin/more/orders'
     | '/portal/data/blocks'
     | '/portal/data/datasets'
@@ -1121,6 +1144,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/nodes'
     | '/admin/cluster/resources'
     | '/admin/env/registry'
+    | '/admin/more/agent-audit'
     | '/admin/more/orders'
     | '/portal/data/blocks'
     | '/portal/data/datasets'
@@ -1136,7 +1160,6 @@ export interface FileRouteTypes {
     | '/admin/monitor/gpu'
     | '/admin/monitor/idle'
     | '/admin/monitor/network'
-    | '/admin/more/agent-audit'
     | '/admin/more/version'
     | '/admin/users/$name'
     | '/ingress/jupyter/$name'
@@ -1168,6 +1191,7 @@ export interface FileRouteTypes {
     | '/portal/users/'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
+    | '/admin/more/agent-audit/$sessionId'
     | '/admin/more/orders/$id'
     | '/portal/data/blocks/$id'
     | '/portal/data/datasets/$id'
@@ -1187,6 +1211,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources/'
     | '/admin/env/images/'
     | '/admin/env/registry/'
+    | '/admin/more/agent-audit/'
     | '/admin/more/orders/'
     | '/portal/data/blocks/'
     | '/portal/data/datasets/'
@@ -1549,13 +1574,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMoreVersionRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/more/agent-audit': {
-      id: '/admin/more/agent-audit'
-      path: '/more/agent-audit'
-      fullPath: '/admin/more/agent-audit'
-      preLoaderRoute: typeof AdminMoreAgentAuditRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/monitor/network': {
       id: '/admin/monitor/network'
       path: '/monitor/network'
@@ -1661,6 +1679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMoreOrdersRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/more/agent-audit': {
+      id: '/admin/more/agent-audit'
+      path: '/more/agent-audit'
+      fullPath: '/admin/more/agent-audit'
+      preLoaderRoute: typeof AdminMoreAgentAuditRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/env/registry': {
       id: '/admin/env/registry'
       path: '/env/registry'
@@ -1744,6 +1769,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/more/orders/'
       preLoaderRoute: typeof AdminMoreOrdersIndexRouteImport
       parentRoute: typeof AdminMoreOrdersRouteRoute
+    }
+    '/admin/more/agent-audit/': {
+      id: '/admin/more/agent-audit/'
+      path: '/'
+      fullPath: '/admin/more/agent-audit/'
+      preLoaderRoute: typeof AdminMoreAgentAuditIndexRouteImport
+      parentRoute: typeof AdminMoreAgentAuditRouteRoute
     }
     '/admin/env/registry/': {
       id: '/admin/env/registry/'
@@ -1877,6 +1909,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/more/orders/$id'
       preLoaderRoute: typeof AdminMoreOrdersIdRouteImport
       parentRoute: typeof AdminMoreOrdersRouteRoute
+    }
+    '/admin/more/agent-audit/$sessionId': {
+      id: '/admin/more/agent-audit/$sessionId'
+      path: '/$sessionId'
+      fullPath: '/admin/more/agent-audit/$sessionId'
+      preLoaderRoute: typeof AdminMoreAgentAuditSessionIdRouteImport
+      parentRoute: typeof AdminMoreAgentAuditRouteRoute
     }
     '/admin/env/registry/$name': {
       id: '/admin/env/registry/$name'
@@ -2059,6 +2098,22 @@ const AdminEnvRegistryRouteRouteWithChildren =
     AdminEnvRegistryRouteRouteChildren,
   )
 
+interface AdminMoreAgentAuditRouteRouteChildren {
+  AdminMoreAgentAuditSessionIdRoute: typeof AdminMoreAgentAuditSessionIdRoute
+  AdminMoreAgentAuditIndexRoute: typeof AdminMoreAgentAuditIndexRoute
+}
+
+const AdminMoreAgentAuditRouteRouteChildren: AdminMoreAgentAuditRouteRouteChildren =
+  {
+    AdminMoreAgentAuditSessionIdRoute: AdminMoreAgentAuditSessionIdRoute,
+    AdminMoreAgentAuditIndexRoute: AdminMoreAgentAuditIndexRoute,
+  }
+
+const AdminMoreAgentAuditRouteRouteWithChildren =
+  AdminMoreAgentAuditRouteRoute._addFileChildren(
+    AdminMoreAgentAuditRouteRouteChildren,
+  )
+
 interface AdminMoreOrdersRouteRouteChildren {
   AdminMoreOrdersIdRoute: typeof AdminMoreOrdersIdRoute
   AdminMoreOrdersIndexRoute: typeof AdminMoreOrdersIndexRoute
@@ -2084,12 +2139,12 @@ interface AdminRouteRouteChildren {
   AdminClusterNodesRouteRoute: typeof AdminClusterNodesRouteRouteWithChildren
   AdminClusterResourcesRouteRoute: typeof AdminClusterResourcesRouteRouteWithChildren
   AdminEnvRegistryRouteRoute: typeof AdminEnvRegistryRouteRouteWithChildren
+  AdminMoreAgentAuditRouteRoute: typeof AdminMoreAgentAuditRouteRouteWithChildren
   AdminMoreOrdersRouteRoute: typeof AdminMoreOrdersRouteRouteWithChildren
   AdminFilesSplatRoute: typeof AdminFilesSplatRoute
   AdminMonitorGpuRoute: typeof AdminMonitorGpuRoute
   AdminMonitorIdleRoute: typeof AdminMonitorIdleRoute
   AdminMonitorNetworkRoute: typeof AdminMonitorNetworkRoute
-  AdminMoreAgentAuditRoute: typeof AdminMoreAgentAuditRoute
   AdminMoreVersionRoute: typeof AdminMoreVersionRoute
   AdminCronjobsIndexRoute: typeof AdminCronjobsIndexRoute
   AdminMoreIndexRoute: typeof AdminMoreIndexRoute
@@ -2109,12 +2164,12 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminClusterNodesRouteRoute: AdminClusterNodesRouteRouteWithChildren,
   AdminClusterResourcesRouteRoute: AdminClusterResourcesRouteRouteWithChildren,
   AdminEnvRegistryRouteRoute: AdminEnvRegistryRouteRouteWithChildren,
+  AdminMoreAgentAuditRouteRoute: AdminMoreAgentAuditRouteRouteWithChildren,
   AdminMoreOrdersRouteRoute: AdminMoreOrdersRouteRouteWithChildren,
   AdminFilesSplatRoute: AdminFilesSplatRoute,
   AdminMonitorGpuRoute: AdminMonitorGpuRoute,
   AdminMonitorIdleRoute: AdminMonitorIdleRoute,
   AdminMonitorNetworkRoute: AdminMonitorNetworkRoute,
-  AdminMoreAgentAuditRoute: AdminMoreAgentAuditRoute,
   AdminMoreVersionRoute: AdminMoreVersionRoute,
   AdminCronjobsIndexRoute: AdminCronjobsIndexRoute,
   AdminMoreIndexRoute: AdminMoreIndexRoute,
