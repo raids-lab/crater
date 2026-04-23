@@ -103,3 +103,6 @@ backend/crater
 
 # Local debug scripts
 crater-agent/test_openai.py
+
+# Thesis drafts (personal work, not code)
+docs/thesis/
