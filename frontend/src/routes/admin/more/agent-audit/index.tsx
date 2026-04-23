@@ -137,8 +137,8 @@ function EvalStatusBadge({ status }: { status: string }) {
 }
 
 function FeedbackIcon({ value }: { value: string }) {
-  if (value === 'up') return <ThumbsUpIcon className="mx-auto h-3.5 w-3.5 text-emerald-600" />
-  if (value === 'down') return <ThumbsDownIcon className="mx-auto h-3.5 w-3.5 text-rose-600" />
+  if (value === 'up') return <ThumbsUpIcon className="h-3.5 w-3.5 text-emerald-600" />
+  if (value === 'down') return <ThumbsDownIcon className="h-3.5 w-3.5 text-rose-600" />
   return <span className="text-muted-foreground text-xs">-</span>
 }
 

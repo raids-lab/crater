@@ -26,6 +26,7 @@ export interface AgentAuditSessionListItem {
   toolCallCount: number
   turnCount: number
   lastOrchestrationMode?: string
+  orchestrationModes?: string[]
   pinnedAt?: string | null
   latestEvalId?: number | null
   latestEvalStatus?: '' | 'pending' | 'running' | 'completed' | 'failed'
@@ -131,6 +132,10 @@ export async function apiAdminListAgentAuditSessions(params: {
   return apiV1Get<AgentAuditSessionListResult>('admin/agent/sessions', {
     searchParams,
   })
+}
+
+export async function apiAdminGetAgentAuditSessionDetail(sessionId: string) {
+  return apiV1Get<AgentAuditSessionListItem>(`admin/agent/sessions/${sessionId}/detail`)
 }
 
 export async function apiAdminGetAgentAuditSessionMessages(sessionId: string) {

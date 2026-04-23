@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ArrowLeftIcon, ExternalLinkIcon } from 'lucide-react'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { ExternalLinkIcon } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -18,14 +18,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AgentAuditMessage,
-  AgentAuditSessionListItem,
   AgentAuditSessionSource,
   AgentAuditToolCall,
   AgentAuditTurn,
+  apiAdminGetAgentAuditSessionDetail,
   apiAdminGetAgentAuditSessionMessages,
   apiAdminGetAgentAuditSessionToolCalls,
   apiAdminGetAgentAuditSessionTurns,
-  apiAdminListAgentAuditSessions,
 } from '@/services/api/admin/agentAudit'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +47,11 @@ function sourceBadgeClass(source?: AgentAuditSessionSource) {
   }
 }
 
+function orchestrationModeBadgeClass(mode: string) {
+  if (mode === 'multi_agent') return 'border-violet-200 bg-violet-50 text-violet-700'
+  return 'border-sky-200 bg-sky-50 text-sky-700'
+}
+
 function DetailField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1">
@@ -59,18 +63,13 @@ function DetailField({ label, value }: { label: string; value: React.ReactNode }
 
 function AgentAuditDetailPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { sessionId } = Route.useParams()
 
-  // Fetch the session metadata by reusing the list endpoint with a keyword hit.
-  // If the session cannot be found this way (very old sessions past pagination),
-  // we still render the tabs by relying on the detail endpoints below.
-  const sessionMetaQuery = useQuery({
-    queryKey: ['admin', 'agent-audit', 'session-meta', sessionId],
-    queryFn: async () => {
-      const res = await apiAdminListAgentAuditSessions({ keyword: sessionId, limit: 5 })
-      return res.data.items.find((s) => s.sessionId === sessionId) ?? null
-    },
+  const sessionDetailQuery = useQuery({
+    queryKey: ['admin', 'agent-audit', 'session-detail', sessionId],
+    queryFn: async () => (await apiAdminGetAgentAuditSessionDetail(sessionId)).data,
+    enabled: !!sessionId,
+    retry: false,
   })
 
   const messagesQuery = useQuery({
@@ -92,7 +91,7 @@ function AgentAuditDetailPage() {
     enabled: !!sessionId,
   })
 
-  const session: AgentAuditSessionListItem | null = sessionMetaQuery.data ?? null
+  const session = sessionDetailQuery.data ?? null
 
   const ownerText = useMemo(() => {
     if (!session) return '-'
@@ -104,19 +103,30 @@ function AgentAuditDetailPage() {
     return session.accountNickname || session.accountName || t('agentAudit.session.systemAccount')
   }, [session, t])
 
+  const modes = useMemo(() => {
+    if (!session) return []
+    if (session.orchestrationModes && session.orchestrationModes.length > 0) {
+      return session.orchestrationModes
+    }
+    if (session.lastOrchestrationMode) return [session.lastOrchestrationMode]
+    return []
+  }, [session])
+
+  // Counts: prefer server-enriched item but fall back to the live fetched arrays
+  // so the detail page remains useful even if enrichment JOIN is stale.
+  const messageCount = session?.messageCount ?? messagesQuery.data?.length ?? 0
+  const toolCallCount = session?.toolCallCount ?? toolCallsQuery.data?.length ?? 0
+  const turnCount = session?.turnCount ?? turnsQuery.data?.length ?? 0
+
+  const allLoading =
+    sessionDetailQuery.isLoading &&
+    messagesQuery.isLoading &&
+    toolCallsQuery.isLoading &&
+    turnsQuery.isLoading
+  const notFound = sessionDetailQuery.isError || (!sessionDetailQuery.isLoading && !session)
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate({ to: '/admin/more/agent-audit' })}
-        >
-          <ArrowLeftIcon className="mr-1 h-4 w-4" />
-          {t('agentAudit.detail.backToList', { defaultValue: '返回列表' })}
-        </Button>
-      </div>
-
       <PageTitle
         title={session?.title || t('agentAudit.detail.title', { defaultValue: '会话审计详情' })}
         description={sessionId}
@@ -136,26 +146,40 @@ function AgentAuditDetailPage() {
           <DetailField label={t('agentAudit.detail.account')} value={accountText} />
           <DetailField
             label={t('agentAudit.detail.orchestration')}
-            value={session?.lastOrchestrationMode || 'single_agent'}
+            value={
+              modes.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {modes.map((m) => (
+                    <Badge
+                      key={m}
+                      variant="outline"
+                      className={cn('text-[10px]', orchestrationModeBadgeClass(m))}
+                    >
+                      {m}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )
+            }
           />
           <DetailField
             label={t('agentAudit.detail.updatedAt')}
-            value={
-              session?.updatedAt ? new Date(session.updatedAt).toLocaleString() : '-'
-            }
+            value={session?.updatedAt ? new Date(session.updatedAt).toLocaleString() : '-'}
           />
           <DetailField
             label={t('agentAudit.detail.counts', { defaultValue: '统计' })}
             value={
               <div className="flex flex-wrap gap-1">
                 <Badge variant="secondary" className="text-[10px]">
-                  {t('agentAudit.metrics.messages', { count: session?.messageCount ?? 0 })}
+                  {t('agentAudit.metrics.messages', { count: messageCount })}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px]">
-                  {t('agentAudit.metrics.toolCalls', { count: session?.toolCallCount ?? 0 })}
+                  {t('agentAudit.metrics.toolCalls', { count: toolCallCount })}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px]">
-                  {t('agentAudit.metrics.turns', { count: session?.turnCount ?? 0 })}
+                  {t('agentAudit.metrics.turns', { count: turnCount })}
                 </Badge>
               </div>
             }
@@ -163,19 +187,14 @@ function AgentAuditDetailPage() {
         </CardContent>
       </Card>
 
-      {sessionMetaQuery.isLoading &&
-      messagesQuery.isLoading &&
-      toolCallsQuery.isLoading &&
-      turnsQuery.isLoading ? (
+      {allLoading ? (
         <Card>
           <CardContent className="text-muted-foreground py-12 text-center">
             <LoadingCircleIcon className="mx-auto h-6 w-6 animate-spin" />
             <p className="mt-3">{t('common.loading')}</p>
           </CardContent>
         </Card>
-      ) : !session &&
-        !messagesQuery.isLoading &&
-        (messagesQuery.data ?? []).length === 0 ? (
+      ) : notFound ? (
         <Card>
           <CardContent className="py-12">
             <NothingCore
