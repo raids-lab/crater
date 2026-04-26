@@ -124,51 +124,17 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	)
 
 	// 4. Create the task spec
-	tasks := make([]batch.TaskSpec, len(req.Tasks))
-	minAvailable := int32(0)
-	for i := range req.Tasks {
-		task := &req.Tasks[i]
-
-		// 4.1. Generate architecture-specific affinity for this task
-		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
-
-		// 4.2. Generate ports
-		ports := make([]v1.ContainerPort, len(task.Ports))
-		for j, port := range task.Ports {
-			ports[j] = v1.ContainerPort{
-				ContainerPort: port.Port,
-				Name:          port.Name,
-				Protocol:      v1.ProtocolTCP,
-			}
-		}
-		// 4.3. Generate pod spec
-		podSpec := generatePodSpecForParallelJob(task, taskAffinity, baseTolerations, volumes, volumeMounts, envs, ports, req.CpuPinningEnabled)
-
-		// 4.4. Create task spec
-		taskSpec := batch.TaskSpec{
-			Name:     task.Name,
-			Replicas: task.Replicas,
-			Template: v1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels,
-					Annotations: podAnnotations,
-				},
-				Spec: podSpec,
-			},
-		}
-
-		if task.Name == "worker" {
-			taskSpec.Policies = []batch.LifecyclePolicy{
-				{
-					Action: bus.CompleteJobAction,
-					Event:  bus.TaskCompletedEvent,
-				},
-			}
-		}
-
-		minAvailable += task.Replicas
-		tasks[i] = taskSpec
-	}
+	tasks, minAvailable := buildTensorflowTasks(
+		req.Tasks,
+		baseAffinity,
+		baseTolerations,
+		volumes,
+		volumeMounts,
+		envs,
+		labels,
+		podAnnotations,
+		req.CpuPinningEnabled,
+	)
 
 	queueName := vcqueue.ResolveJobQueueName(token)
 	// 5. Create volcano job
@@ -207,4 +173,60 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	}
 
 	resputil.Success(c, job)
+}
+
+func buildTensorflowTasks(
+	inputTasks []TaskReq,
+	baseAffinity *v1.Affinity,
+	baseTolerations []v1.Toleration,
+	volumes []v1.Volume,
+	volumeMounts []v1.VolumeMount,
+	envs []v1.EnvVar,
+	labels map[string]string,
+	podAnnotations map[string]string,
+	cpuPinningEnabled bool,
+) (tasks []batch.TaskSpec, minAvailable int32) {
+	tasks = make([]batch.TaskSpec, len(inputTasks))
+	minAvailable = int32(0)
+
+	for i := range inputTasks {
+		task := &inputTasks[i]
+		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
+
+		ports := make([]v1.ContainerPort, len(task.Ports))
+		for j, port := range task.Ports {
+			ports[j] = v1.ContainerPort{
+				ContainerPort: port.Port,
+				Name:          port.Name,
+				Protocol:      v1.ProtocolTCP,
+			}
+		}
+
+		podSpec := generatePodSpecForParallelJob(task, taskAffinity, baseTolerations, volumes, volumeMounts, envs, ports, cpuPinningEnabled)
+		taskSpec := batch.TaskSpec{
+			Name:     task.Name,
+			Replicas: task.Replicas,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+		}
+
+		if task.Name == "worker" {
+			taskSpec.Policies = []batch.LifecyclePolicy{
+				{
+					Action: bus.CompleteJobAction,
+					Event:  bus.TaskCompletedEvent,
+				},
+			}
+		}
+
+		minAvailable += task.Replicas
+		tasks[i] = taskSpec
+	}
+
+	return tasks, minAvailable
 }
