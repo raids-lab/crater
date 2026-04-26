@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
@@ -181,6 +182,9 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	if err = mgr.submitJob(c, token, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
+	}
+	if err := increaseDatasetMountCount(c, req.VolumeMounts); err != nil {
+		klog.Warningf("failed to increase dataset mount count for job %s: %v", jobName, err)
 	}
 
 	resputil.Success(c, job)

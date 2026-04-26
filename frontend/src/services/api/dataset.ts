@@ -32,6 +32,7 @@ export interface IDataset {
   describe: string
   createdAt: string
   type: 'model' | 'dataset' | 'sharefile'
+  mountCount: number
   extra: Extra
   userInfo: IUserInfo
 }
