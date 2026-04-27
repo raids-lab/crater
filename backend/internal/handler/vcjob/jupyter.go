@@ -2,14 +2,11 @@ package vcjob
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -174,41 +171,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.client.Create(c, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-	if err := increaseDatasetMountCount(c, req.VolumeMounts); err != nil {
-		klog.Warningf("failed to increase dataset mount count for job %s: %v", jobName, err)
-	}
-
-	// create jupyter notebook ingress
-	port := &v1.ServicePort{
-		Name:       "notebook",
-		Port:       JupyterPort,
-		TargetPort: intstr.FromInt(JupyterPort),
-		Protocol:   v1.ProtocolTCP,
-	}
-
-	ingressPath, err := mgr.serviceManager.CreateIngressWithPrefix(
-		c,
-		[]metav1.OwnerReference{
-			*metav1.NewControllerRef(&job, batch.SchemeGroupVersion.WithKind("Job")),
-		},
-		labels,
-		port,
-		config.GetConfig().Host,
-		baseURL,
-	)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create ingress: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	log.Printf("Ingress created at path: %s", ingressPath)
-
-	// create forward ing rules in template
-	if err := mgr.CreateForwardIngresses(c, &job, req.Forwards, labels, token.Username); err != nil {
+	if err = mgr.submitJob(c, token, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

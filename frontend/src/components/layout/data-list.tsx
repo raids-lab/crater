@@ -220,7 +220,11 @@ export default function DataList({
           <Select value={sort} onValueChange={setSort}>
             <SelectTrigger className="w-16">
               <SelectValue>
-                {sort === 'ascending' ? <ArrowDownAZIcon size={16} /> : <ArrowDownZAIcon size={16} />}
+                {sort === 'ascending' ? (
+                  <ArrowDownAZIcon size={16} />
+                ) : (
+                  <ArrowDownZAIcon size={16} />
+                )}
               </SelectValue>
             </SelectTrigger>
             <SelectContent align="end">
