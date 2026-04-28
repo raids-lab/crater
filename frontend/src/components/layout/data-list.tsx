@@ -44,7 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import TipBadge from '@/components/badge/tip-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
@@ -339,19 +339,17 @@ export default function DataList({
                     />
                   </div>
                   {item.mountCount !== undefined && (
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium">
-                            <BarChart3Icon className="size-4" />
-                            <span>{item.mountCount}</span>
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{t('dataList.mountCountTooltip')}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium">
+                          <BarChart3Icon className="size-4" />
+                          <span>{item.mountCount}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('dataList.mountCountTooltip')}</p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               </div>
