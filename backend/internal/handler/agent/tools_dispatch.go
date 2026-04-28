@@ -31,6 +31,9 @@ func isAgentReadOnlyTool(toolName string) bool {
 		agentToolListCudaBase,
 		agentToolListGPUModels,
 		agentToolRecommendImages,
+		agentToolListImageBuilds,
+		agentToolGetImageBuild,
+		agentToolGetImageAccess,
 		agentToolCheckQuota,
 		agentToolGetHealthOverview,
 		agentToolListUserJobs,
@@ -59,6 +62,9 @@ func isAgentReadOnlyTool(toolName string) bool {
 		agentToolK8sGetEvents,
 		agentToolK8sDescribe,
 		agentToolK8sPodLogs,
+		agentToolK8sGetService,
+		agentToolK8sGetEndpoints,
+		agentToolK8sGetIngress,
 		agentToolPromQuery,
 		agentToolHarborCheck,
 		toolGetLatestAuditReport,
@@ -73,11 +79,21 @@ func isAgentReadOnlyTool(toolName string) bool {
 
 func isAgentConfirmTool(toolName string) bool {
 	switch toolName {
-	case agentToolResubmitJob, agentToolStopJob, agentToolDeleteJob, agentToolCreateJupyter, agentToolCreateTrain,
-		agentToolRunOpsScript,
+	case agentToolResubmitJob, agentToolStopJob, agentToolDeleteJob,
+		agentToolCreateJupyter, agentToolCreateWebIDE, agentToolCreateTrain, agentToolCreateCustom,
+		agentToolCreatePytorch, agentToolCreateTensorflow,
+		agentToolCreateImage, agentToolManageBuild, agentToolRegisterImage, agentToolManageAccess,
 		agentToolCordonNode, agentToolUncordonNode, agentToolDrainNode, agentToolDeletePod, agentToolRestartWL,
+		agentToolK8sScaleWL, agentToolK8sLabelNode, agentToolK8sTaintNode, agentToolRunKubectl, agentToolAdminCommand,
 		toolMarkAuditHandled, toolBatchStopJobs, toolNotifyJobOwner:
 		return true
+	default:
+		return false
+	}
+}
+
+func isAgentAutoActionTool(toolName string) bool {
+	switch toolName {
 	default:
 		return false
 	}
@@ -98,15 +114,9 @@ func isAgentAdminOnlyTool(toolName string) bool {
 		agentToolStorageCapacity,
 		agentToolNodeNetwork,
 		agentToolDiagnoseJobNet,
-		agentToolWebSearch,
 		agentToolSandboxGrep,
-		agentToolRunOpsScript,
 		agentToolRuntimeSummary,
 		agentToolK8sListNodes,
-		agentToolK8sListPods,
-		agentToolK8sGetEvents,
-		agentToolK8sDescribe,
-		agentToolK8sPodLogs,
 		agentToolPromQuery,
 		agentToolHarborCheck,
 		agentToolCordonNode,
@@ -114,6 +124,11 @@ func isAgentAdminOnlyTool(toolName string) bool {
 		agentToolDrainNode,
 		agentToolDeletePod,
 		agentToolRestartWL,
+		agentToolK8sScaleWL,
+		agentToolK8sLabelNode,
+		agentToolK8sTaintNode,
+		agentToolRunKubectl,
+		agentToolAdminCommand,
 		toolGetLatestAuditReport,
 		toolListAuditItems,
 		toolSaveAuditReport,
@@ -185,6 +200,31 @@ func toolCallAuditSourceForSessionSource(sessionSource string) string {
 	return "backend"
 }
 
+func toolCallAuditSourceForExecution(sessionSource, executionBackend string) string {
+	if normalizeRequestedSessionSource(sessionSource) == "benchmark" {
+		return "benchmark"
+	}
+	if strings.TrimSpace(strings.ToLower(executionBackend)) == "python_local" {
+		return "local"
+	}
+	return "backend"
+}
+
+func normalizeExecutionBackend(toolName, executionBackend string) string {
+	normalized := strings.TrimSpace(strings.ToLower(executionBackend))
+	if !isAgentConfirmTool(toolName) {
+		return ""
+	}
+	switch normalized {
+	case "", "backend":
+		return "backend"
+	case "python_local":
+		return "python_local"
+	default:
+		return "backend"
+	}
+}
+
 func (mgr *AgentMgr) ensureInternalAuditSession(c *gin.Context, req ExecuteToolRequest) error {
 	if req.InternalContext == nil {
 		return nil
@@ -243,12 +283,15 @@ func validateAgentToolAccess(agentRole string, toolName string) error {
 		if isAgentReadOnlyTool(toolName) {
 			return nil
 		}
+		if isAgentAutoActionTool(toolName) {
+			return fmt.Errorf("agent role '%s' cannot execute auto-action tools", role)
+		}
 		if isAgentConfirmTool(toolName) {
 			return fmt.Errorf("agent role '%s' cannot execute confirmation tools", role)
 		}
 		return fmt.Errorf("agent role '%s' can only execute read-only tools", role)
 	case "executor", "single_agent":
-		if isAgentReadOnlyTool(toolName) || isAgentConfirmTool(toolName) {
+		if isAgentReadOnlyTool(toolName) || isAgentConfirmTool(toolName) || isAgentAutoActionTool(toolName) {
 			return nil
 		}
 		return fmt.Errorf("tool '%s' is not supported", toolName)
@@ -299,35 +342,30 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 		return
 	}
 
-	switch req.ToolName {
-	case agentToolResubmitJob, agentToolStopJob, agentToolDeleteJob, agentToolCreateJupyter, agentToolCreateTrain,
-		agentToolRunOpsScript,
-		agentToolCordonNode, agentToolUncordonNode, agentToolDrainNode, agentToolDeletePod, agentToolRestartWL,
-		toolMarkAuditHandled, toolBatchStopJobs, toolNotifyJobOwner:
+	if isAgentConfirmTool(req.ToolName) {
 		start := time.Now()
+		executionBackend := normalizeExecutionBackend(req.ToolName, req.ExecutionBackend)
 		confirmation := mgr.buildToolConfirmation(sessionToken, req.ToolName, req.ToolArgs)
 		pendingResult, _ := json.Marshal(map[string]any{
-			"description": confirmation.Description,
-			"riskLevel":   confirmation.RiskLevel,
-			"interaction": confirmation.Interaction,
-			"form":        confirmation.Form,
+			"description":       confirmation.Description,
+			"riskLevel":         confirmation.RiskLevel,
+			"interaction":       confirmation.Interaction,
+			"form":              confirmation.Form,
+			"execution_backend": executionBackend,
 		})
 		toolCallRecord := &model.AgentToolCall{
-			SessionID:    req.SessionID,
-			TurnID:       req.TurnID,
-			ToolCallID:   req.ToolCallID,
-			AgentID:      req.AgentID,
-			AgentRole:    req.AgentRole,
-			Source:       toolCallAuditSourceForSessionSource(req.SessionSource),
-			ToolName:     req.ToolName,
-			ToolArgs:     datatypes.JSON(req.ToolArgs),
-			ToolResult:   pendingResult,
-			ResultStatus: agentToolStatusAwaitConfirm,
-			CreatedAt:    time.Now(),
-		}
-		if req.ToolName == agentToolRunOpsScript {
-			toolCallRecord.ScriptName = extractRunOpsScriptName(req.ToolArgs)
-			toolCallRecord.ExecutionBackend = "k8s_sandbox_job"
+			SessionID:        req.SessionID,
+			TurnID:           req.TurnID,
+			ToolCallID:       req.ToolCallID,
+			AgentID:          req.AgentID,
+			AgentRole:        req.AgentRole,
+			Source:           toolCallAuditSourceForExecution(req.SessionSource, executionBackend),
+			ToolName:         req.ToolName,
+			ToolArgs:         datatypes.JSON(req.ToolArgs),
+			ToolResult:       pendingResult,
+			ResultStatus:     agentToolStatusAwaitConfirm,
+			ExecutionBackend: executionBackend,
+			CreatedAt:        time.Now(),
 		}
 		toolCall, createErr := mgr.agentService.CreateToolCall(c.Request.Context(), toolCallRecord)
 		if createErr != nil {
@@ -352,7 +390,13 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 
 	start := time.Now()
 
-	result, execErr := mgr.executeReadTool(c, sessionToken, req)
+	var result any
+	var execErr error
+	if isAgentAutoActionTool(req.ToolName) {
+		result, execErr = mgr.executeAutoActionTool(c, sessionToken, req)
+	} else {
+		result, execErr = mgr.executeReadTool(c, sessionToken, req)
+	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
 	status := agentToolStatusSuccess
@@ -384,6 +428,13 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 	})
 }
 
+func (mgr *AgentMgr) executeAutoActionTool(c *gin.Context, token util.JWTMessage, req ExecuteToolRequest) (any, error) {
+	switch req.ToolName {
+	default:
+		return nil, fmt.Errorf("auto-action tool '%s' is not supported", req.ToolName)
+	}
+}
+
 func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req ExecuteToolRequest) (any, error) {
 	switch req.ToolName {
 	case agentToolGetJobDetail:
@@ -412,6 +463,12 @@ func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req 
 		return mgr.toolListAvailableGPUModels(c, token, req.ToolArgs)
 	case agentToolRecommendImages:
 		return mgr.toolRecommendTrainingImages(c, token, req.ToolArgs)
+	case agentToolListImageBuilds:
+		return mgr.toolListImageBuilds(c, token, req.ToolArgs)
+	case agentToolGetImageBuild:
+		return mgr.toolGetImageBuildDetail(c, token, req.ToolArgs)
+	case agentToolGetImageAccess:
+		return mgr.toolGetImageAccessDetail(c, token, req.ToolArgs)
 	case agentToolCheckQuota:
 		return mgr.toolCheckQuota(c, token, req.ToolArgs)
 	case agentToolGetHealthOverview:
@@ -464,6 +521,14 @@ func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req 
 		return mgr.toolSaveAuditReport(c, token, req.ToolArgs)
 	case toolGetApprovalHistory:
 		return mgr.toolGetApprovalHistory(c, token, req.ToolArgs)
+	case agentToolK8sListPods:
+		return mgr.toolK8sListPods(c, token, req.ToolArgs)
+	case agentToolK8sGetService:
+		return mgr.toolK8sGetService(c, token, req.ToolArgs)
+	case agentToolK8sGetEndpoints:
+		return mgr.toolK8sGetEndpoints(c, token, req.ToolArgs)
+	case agentToolK8sGetIngress:
+		return mgr.toolK8sGetIngress(c, token, req.ToolArgs)
 	default:
 		return nil, fmt.Errorf("tool '%s' is not yet implemented", req.ToolName)
 	}
@@ -479,10 +544,24 @@ func (mgr *AgentMgr) executeWriteTool(c *gin.Context, token util.JWTMessage, too
 		return mgr.toolResubmitJob(c, token, rawArgs)
 	case agentToolCreateJupyter:
 		return mgr.toolCreateJupyterJob(c, token, rawArgs)
+	case agentToolCreateWebIDE:
+		return mgr.toolCreateWebIDEJob(c, token, rawArgs)
 	case agentToolCreateTrain:
 		return mgr.toolCreateTrainingJob(c, token, rawArgs)
-	case agentToolRunOpsScript:
-		return mgr.toolRunOpsScript(c, token, rawArgs)
+	case agentToolCreateCustom:
+		return mgr.toolCreateCustomJob(c, token, rawArgs)
+	case agentToolCreatePytorch:
+		return mgr.toolCreatePytorchJob(c, token, rawArgs)
+	case agentToolCreateTensorflow:
+		return mgr.toolCreateTensorflowJob(c, token, rawArgs)
+	case agentToolCreateImage:
+		return mgr.toolCreateImageBuild(c, token, rawArgs)
+	case agentToolManageBuild:
+		return mgr.toolManageImageBuild(c, token, rawArgs)
+	case agentToolRegisterImage:
+		return mgr.toolRegisterExternalImage(c, token, rawArgs)
+	case agentToolManageAccess:
+		return mgr.toolManageImageAccess(c, token, rawArgs)
 	case agentToolCordonNode:
 		return mgr.toolCordonNode(c, token, rawArgs)
 	case agentToolUncordonNode:

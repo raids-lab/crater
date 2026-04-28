@@ -57,6 +57,7 @@ func (mgr *AgentMgr) buildResumeContinuation(
 	resume := map[string]any{
 		"confirm_id":     fmt.Sprintf("%d", toolCall.ID),
 		"tool_name":      toolCall.ToolName,
+		"action_title":   mgr.buildConfirmationDescription(toolCall.ToolName, json.RawMessage(toolCall.ToolArgs)),
 		"action_intent":  agentActionIntentFromToolName(toolCall.ToolName),
 		"tool_args":      parseToolArgsMap(json.RawMessage(toolCall.ToolArgs)),
 		"result_status":  toolCall.ResultStatus,
@@ -175,8 +176,44 @@ func agentActionIntentFromToolName(toolName string) string {
 		return "delete"
 	case agentToolCreateJupyter:
 		return "create_jupyter_job"
+	case agentToolCreateWebIDE:
+		return "create_webide_job"
 	case agentToolCreateTrain:
 		return "create_training_job"
+	case agentToolCreateCustom:
+		return "create_custom_job"
+	case agentToolCreatePytorch:
+		return "create_pytorch_job"
+	case agentToolCreateTensorflow:
+		return "create_tensorflow_job"
+	case agentToolCreateImage:
+		return "create_image_build"
+	case agentToolManageBuild:
+		return "manage_image_build"
+	case agentToolRegisterImage:
+		return "register_external_image"
+	case agentToolManageAccess:
+		return "manage_image_access"
+	case agentToolCordonNode:
+		return "cordon_node"
+	case agentToolUncordonNode:
+		return "uncordon_node"
+	case agentToolDrainNode:
+		return "drain_node"
+	case agentToolDeletePod:
+		return "delete_pod"
+	case agentToolRestartWL:
+		return "restart_workload"
+	case agentToolK8sScaleWL:
+		return "k8s_scale_workload"
+	case agentToolK8sLabelNode:
+		return "k8s_label_node"
+	case agentToolK8sTaintNode:
+		return "k8s_taint_node"
+	case agentToolRunKubectl:
+		return "run_kubectl"
+	case agentToolAdminCommand:
+		return "execute_admin_command"
 	default:
 		return ""
 	}

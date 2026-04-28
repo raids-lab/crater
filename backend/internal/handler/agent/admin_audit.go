@@ -188,3 +188,116 @@ func (mgr *AgentMgr) GetAdminTurnEvents(c *gin.Context) {
 	}
 	resputil.Success(c, events)
 }
+
+func (mgr *AgentMgr) authorizeInternalAuditRead(c *gin.Context) bool {
+	if mgr.isInternalToolRequestAuthorized(c) {
+		return true
+	}
+	resputil.HTTPError(c, http.StatusUnauthorized, "invalid internal agent token", resputil.TokenInvalid)
+	return false
+}
+
+func (mgr *AgentMgr) GetInternalSessionMessages(c *gin.Context) {
+	if !mgr.authorizeInternalAuditRead(c) {
+		return
+	}
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		resputil.BadRequestError(c, "sessionId is required")
+		return
+	}
+	if _, err := mgr.agentService.GetSession(c.Request.Context(), sessionID); err != nil {
+		resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+		return
+	}
+	messages, err := mgr.agentService.ListMessages(c.Request.Context(), sessionID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list session messages: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, messages)
+}
+
+func (mgr *AgentMgr) GetInternalSessionToolCalls(c *gin.Context) {
+	if !mgr.authorizeInternalAuditRead(c) {
+		return
+	}
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		resputil.BadRequestError(c, "sessionId is required")
+		return
+	}
+	if _, err := mgr.agentService.GetSession(c.Request.Context(), sessionID); err != nil {
+		resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+		return
+	}
+	toolCalls, err := mgr.agentService.ListToolCalls(c.Request.Context(), sessionID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list session tool calls: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, toolCalls)
+}
+
+func (mgr *AgentMgr) GetInternalSessionTurns(c *gin.Context) {
+	if !mgr.authorizeInternalAuditRead(c) {
+		return
+	}
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		resputil.BadRequestError(c, "sessionId is required")
+		return
+	}
+	if _, err := mgr.agentService.GetSession(c.Request.Context(), sessionID); err != nil {
+		resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+		return
+	}
+	turns, err := mgr.agentService.ListTurns(c.Request.Context(), sessionID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list session turns: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, turns)
+}
+
+func (mgr *AgentMgr) GetInternalTurnToolCalls(c *gin.Context) {
+	if !mgr.authorizeInternalAuditRead(c) {
+		return
+	}
+	turnID := c.Param("turnId")
+	if turnID == "" {
+		resputil.BadRequestError(c, "turnId is required")
+		return
+	}
+	if _, err := mgr.agentService.GetTurn(c.Request.Context(), turnID); err != nil {
+		resputil.HTTPError(c, http.StatusNotFound, "turn not found", resputil.NotSpecified)
+		return
+	}
+	toolCalls, err := mgr.agentService.ListToolCallsByTurn(c.Request.Context(), turnID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list turn tool calls: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, toolCalls)
+}
+
+func (mgr *AgentMgr) GetInternalTurnEvents(c *gin.Context) {
+	if !mgr.authorizeInternalAuditRead(c) {
+		return
+	}
+	turnID := c.Param("turnId")
+	if turnID == "" {
+		resputil.BadRequestError(c, "turnId is required")
+		return
+	}
+	if _, err := mgr.agentService.GetTurn(c.Request.Context(), turnID); err != nil {
+		resputil.HTTPError(c, http.StatusNotFound, "turn not found", resputil.NotSpecified)
+		return
+	}
+	events, err := mgr.agentService.ListRunEvents(c.Request.Context(), turnID)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("failed to list turn events: %v", err), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, events)
+}

@@ -1,12 +1,15 @@
-# Agent-side platform/runtime override.
+# Agent-side runtime config for agent-local infrastructure tools only.
 #
 # Default behavior:
 # - crater-agent first discovers backend debug-config and reads shared endpoints/policies from there
 # - this file is optional and only overrides agent-specific runtime concerns
 #
-# Recommended for split deployment:
-# - mount this file into the agent container
-# - point CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH here only if the path is non-default
+# Recommended for production:
+# - keep deployment scalars/secrets in env / Secret / ConfigMap
+# - use this file only when agent-local tools need structured infra config
+#   (kubernetes / prometheus / harbor / storage metadata)
+# - mount this file into the agent container and point
+#   CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH here only if the path is non-default
 #
 # Shared-vs-local rule:
 # - prefer backend/etc/debug-config.yaml -> agent.ops.kubernetes / webSearch for platform-shared defaults
@@ -23,6 +26,7 @@
 # - postgres/smtp/ldap/auth/backend-only settings
 # - inline kubeconfig cert/key blobs
 # - large chart values that agent tools never read
+# - app-level simple scalars already covered by env vars
 
 toolRouting:
   localCoreTools:
@@ -30,15 +34,39 @@ toolRouting:
     - sandbox_list_dir
     - sandbox_read_file
     - get_agent_runtime_summary
-    - web_search
-    - fetch_url
     - k8s_list_nodes
     - k8s_list_pods
     - k8s_get_events
     - k8s_describe_resource
     - k8s_get_pod_logs
+    - k8s_get_service
+    - k8s_get_endpoints
+    - k8s_get_ingress
+    - k8s_get_configmap
+    - k8s_get_networkpolicy
+    - k8s_top_nodes
+    - k8s_top_pods
+    - k8s_rollout_status
+    - get_volcano_queue_state
+    - aggregate_image_pull_errors
+    - detect_zombie_jobs
+    - get_ddp_rank_mapping
+    - get_node_kernel_diagnostics
+    - get_rdma_interface_status
+    - get_node_gpu_info
+    - get_nccl_env_config
+    - check_node_nic_status
+    - detect_training_anomaly_patterns
+    - get_distributed_job_overview
+    - get_node_accelerator_info
     - prometheus_query
     - harbor_check
+  localWriteTools:
+    - k8s_scale_workload
+    - k8s_label_node
+    - k8s_taint_node
+    - run_kubectl
+    - execute_admin_command
 
 sandboxGrep:
   roots:
@@ -98,6 +126,24 @@ kubernetes:
   namespace: crater-workspace
   kubectlBin: kubectl
   timeoutSeconds: 30
+  safety:
+    protectedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    protectedNodeNames: []
+    blockedCommandPatterns:
+      - delete namespace
+      - delete node
+      - delete pv
+      - delete crd
+      - cluster-info dump
+      - auth can-i
+      - --as=
+      - exec -it
+      - port-forward
+      - proxy
+      - apply -f http
 
 webSearch:
   enabled: true

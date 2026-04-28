@@ -18,7 +18,6 @@ dist/
 /crater_bench/
 /run_bench.py
 /test_integration.py
-/config/offline-agent-profile.json
 /config/offline-bench-run.json
 /config/platform-runtime.offline.yaml
 /config/platform-runtime.local.yaml
@@ -26,6 +25,7 @@ dist/
 /config/bench-run.example.yaml
 /dataset.zip
 /crater_agent/res.tar
+/results/
 *.jsonl
 *.tar
 *.zip

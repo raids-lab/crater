@@ -38,6 +38,19 @@ func (mgr *AgentMgr) findScopedJob(ctx context.Context, token util.JWTMessage, j
 	}
 	job, err := q.First()
 	if err != nil {
+		if err == gorm.ErrRecordNotFound || strings.Contains(strings.ToLower(err.Error()), "record not found") {
+			k := query.Kaniko
+			buildQuery := k.WithContext(ctx).Where(k.ImagePackName.Eq(jobName))
+			if token.RolePlatform != model.RoleAdmin {
+				buildQuery = buildQuery.Where(k.UserID.Eq(token.UserID))
+			}
+			if _, buildErr := buildQuery.First(); buildErr == nil {
+				return nil, fmt.Errorf(
+					"%q is an image build, not a platform job; use get_image_build_detail first, then inspect its pod with k8s_get_pod_logs / k8s_get_events",
+					jobName,
+				)
+			}
+		}
 		return nil, fmt.Errorf("job not found: %w", err)
 	}
 	return job, nil

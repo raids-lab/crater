@@ -6,6 +6,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from crater_agent.orchestrators.artifacts import GoalArtifact
+from crater_agent.tools.tool_selector import (
+    sanitize_capabilities_for_context,
+    sanitize_enabled_tool_names,
+    _resolve_actor_role,
+)
 
 
 @dataclass
@@ -15,24 +20,44 @@ class MultiAgentUsageSummary:
     llm_calls: int = 0
     llm_input_tokens: int = 0
     llm_output_tokens: int = 0
+    llm_total_tokens: int = 0
+    llm_reported_token_calls: int = 0
+    llm_missing_token_calls: int = 0
+    llm_latency_ms: int = 0
+    tool_latency_ms: int = 0
     tool_calls: int = 0
     read_tool_calls: int = 0
     write_tool_calls: int = 0
     evidence_items: int = 0
+    llm_by_role: dict[str, dict[str, int]] = field(default_factory=dict)
 
     @property
     def total_tokens(self) -> int:
-        return self.llm_input_tokens + self.llm_output_tokens
+        return self.llm_total_tokens or (self.llm_input_tokens + self.llm_output_tokens)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "llm_calls": self.llm_calls,
             "llm_input_tokens": self.llm_input_tokens,
             "llm_output_tokens": self.llm_output_tokens,
+            "llm_total_tokens": self.llm_total_tokens,
+            "llm_reported_token_calls": self.llm_reported_token_calls,
+            "llm_missing_token_calls": self.llm_missing_token_calls,
+            "reported_token_coverage": (
+                self.llm_reported_token_calls / self.llm_calls
+                if self.llm_calls
+                else 0.0
+            ),
+            "llm_latency_ms": self.llm_latency_ms,
+            "tool_latency_ms": self.tool_latency_ms,
             "tool_calls": self.tool_calls,
             "read_tool_calls": self.read_tool_calls,
             "write_tool_calls": self.write_tool_calls,
             "evidence_items": self.evidence_items,
+            "llm_by_role": {
+                role: dict(values)
+                for role, values in sorted(self.llm_by_role.items())
+            },
             "total_tokens": self.total_tokens,
         }
 
@@ -44,10 +69,32 @@ class MultiAgentUsageSummary:
             llm_calls=int(payload.get("llm_calls") or 0),
             llm_input_tokens=int(payload.get("llm_input_tokens") or 0),
             llm_output_tokens=int(payload.get("llm_output_tokens") or 0),
+            llm_total_tokens=int(payload.get("llm_total_tokens") or payload.get("total_tokens") or 0),
+            llm_reported_token_calls=int(payload.get("llm_reported_token_calls") or 0),
+            llm_missing_token_calls=int(payload.get("llm_missing_token_calls") or 0),
+            llm_latency_ms=int(payload.get("llm_latency_ms") or 0),
+            tool_latency_ms=int(payload.get("tool_latency_ms") or 0),
             tool_calls=int(payload.get("tool_calls") or 0),
             read_tool_calls=int(payload.get("read_tool_calls") or 0),
             write_tool_calls=int(payload.get("write_tool_calls") or 0),
             evidence_items=int(payload.get("evidence_items") or 0),
+            llm_by_role={
+                str(role): {
+                    "llm_calls": int((values or {}).get("llm_calls") or 0),
+                    "input_tokens": int((values or {}).get("input_tokens") or 0),
+                    "output_tokens": int((values or {}).get("output_tokens") or 0),
+                    "total_tokens": int((values or {}).get("total_tokens") or 0),
+                    "reported_token_calls": int((values or {}).get("reported_token_calls") or 0),
+                    "missing_token_calls": int((values or {}).get("missing_token_calls") or 0),
+                    "latency_ms": int((values or {}).get("latency_ms") or 0),
+                }
+                for role, values in (
+                    payload.get("llm_by_role")
+                    if isinstance(payload.get("llm_by_role"), dict)
+                    else {}
+                ).items()
+                if isinstance(values, dict)
+            },
         )
 
 
@@ -204,16 +251,8 @@ class MASState:
         )
         actor = dict(context.get("actor") or {})
         page_context = dict(context.get("page") or {})
-
-        # URL/page route is primary for role; JWT role is fallback
-        route = str(page_context.get("route") or "").strip().lower()
-        url = str(page_context.get("url") or "").strip().lower()
-        if route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url:
-            actor_role = "admin"
-        elif route or url:
-            actor_role = "user"
-        else:
-            actor_role = str(actor.get("role") or "user").strip().lower() or "user"
+        actor_role = _resolve_actor_role(context)
+        sanitized_capabilities = sanitize_capabilities_for_context(context, context.get("capabilities"))
 
         # Build initial goal (routing will be set by IntentRouter)
         goal = GoalArtifact(
@@ -227,7 +266,7 @@ class MASState:
             session_id=request.session_id,
             turn_id=request.turn_id,
             goal=goal,
-            capabilities=dict(context.get("capabilities") or {}),
+            capabilities=sanitized_capabilities,
             continuation=continuation,
             history=list(context.get("history") or []),
             workflow=workflow,
@@ -287,7 +326,10 @@ class MASState:
 
     @property
     def enabled_tools(self) -> list[str]:
-        return list(self.capabilities.get("enabled_tools") or [])
+        return sanitize_enabled_tool_names(
+            {"actor": {"role": self.goal.actor_role}, "capabilities": self.capabilities, "page": self.goal.page_context},
+            self.capabilities.get("enabled_tools") or [],
+        )
 
     def build_state_view(self, for_role: str) -> "StateView":
         from crater_agent.orchestrators.artifacts import StateView
@@ -369,12 +411,49 @@ class MASState:
         if len(self.controller_trace) > 16:
             self.controller_trace = self.controller_trace[-16:]
 
-    def record_llm_usage(self, usage: dict[str, Any] | None) -> None:
+    def record_llm_usage(self, usage: dict[str, Any] | None, *, role: str = "") -> None:
         if not isinstance(usage, dict):
             return
         self.usage_summary.llm_calls += int(usage.get("llm_calls") or 0)
         self.usage_summary.llm_input_tokens += int(usage.get("input_tokens") or 0)
         self.usage_summary.llm_output_tokens += int(usage.get("output_tokens") or 0)
+        self.usage_summary.llm_total_tokens += int(
+            usage.get("total_tokens")
+            or (
+                int(usage.get("input_tokens") or 0)
+                + int(usage.get("output_tokens") or 0)
+            )
+        )
+        self.usage_summary.llm_reported_token_calls += int(usage.get("reported_token_calls") or 0)
+        self.usage_summary.llm_missing_token_calls += int(usage.get("missing_token_calls") or 0)
+        self.usage_summary.llm_latency_ms += int(usage.get("latency_ms") or 0)
+        role = str(role or "").strip()
+        if role:
+            role_usage = self.usage_summary.llm_by_role.setdefault(
+                role,
+                {
+                    "llm_calls": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_tokens": 0,
+                    "reported_token_calls": 0,
+                    "missing_token_calls": 0,
+                    "latency_ms": 0,
+                },
+            )
+            role_usage["llm_calls"] += int(usage.get("llm_calls") or 0)
+            role_usage["input_tokens"] += int(usage.get("input_tokens") or 0)
+            role_usage["output_tokens"] += int(usage.get("output_tokens") or 0)
+            role_usage["total_tokens"] += int(
+                usage.get("total_tokens")
+                or (
+                    int(usage.get("input_tokens") or 0)
+                    + int(usage.get("output_tokens") or 0)
+                )
+            )
+            role_usage["reported_token_calls"] += int(usage.get("reported_token_calls") or 0)
+            role_usage["missing_token_calls"] += int(usage.get("missing_token_calls") or 0)
+            role_usage["latency_ms"] += int(usage.get("latency_ms") or 0)
 
     def record_action_result(self, *, action: MultiAgentActionItem, result_status: str, result: dict[str, Any] | None, confirmed: bool | None = None) -> None:
         self.action_history.append({
@@ -454,6 +533,7 @@ class MASState:
             return {
                 "action_id": action.action_id,
                 "tool_name": action.tool_name,
+                "title": action.title,
                 "status": action.status,
                 "confirm_id": action.confirm_id,
                 "result": result,

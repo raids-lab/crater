@@ -7,7 +7,7 @@ passed in the request context.
 
 from __future__ import annotations
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from crater_agent.llm.tokenizer import count_tokens
 
@@ -72,10 +72,10 @@ def build_history_messages(
         elif role == "assistant":
             selected.append(AIMessage(content=content))
         elif role == "tool":
+            tool_call_id = str(msg.get("tool_call_id", "unknown") or "unknown").strip()
             selected.append(
-                ToolMessage(
-                    content=content,
-                    tool_call_id=msg.get("tool_call_id", "unknown"),
+                AIMessage(
+                    content=f"【历史工具结果 {tool_call_id}】{content}",
                 )
             )
 

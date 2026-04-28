@@ -50,6 +50,71 @@ def _looks_like_continuation_reply(user_message: str) -> bool:
     return any(token in normalized for token in ("第一个", "第1个", "第二个", "第2个", "改成", "名字叫"))
 
 
+def _looks_like_simple_help_or_chat(user_message: str) -> bool:
+    normalized = str(user_message or "").strip().lower()
+    if not normalized:
+        return True
+    compact = re.sub(r"[\s，。！？!?,.]+", "", normalized)
+    if compact in {"hi", "hello", "hey", "你好", "您好", "在吗", "谢谢", "thanks", "thx"}:
+        return True
+    help_tokens = (
+        "怎么用",
+        "怎么创建",
+        "怎么提交",
+        "怎么停止",
+        "怎么删除",
+        "怎么重提",
+        "如何使用",
+        "如何创建",
+        "如何提交",
+        "如何停止",
+        "如何删除",
+        "如何重提",
+        "在哪",
+        "哪里",
+        "支持什么",
+        "能做什么",
+        "有什么功能",
+        "区别是什么",
+        "介绍一下",
+        "说明一下",
+        "帮助",
+        "文档",
+        "what can you do",
+        "how to",
+    )
+    if any(token in normalized for token in help_tokens):
+        data_tokens = (
+            "当前",
+            "现在",
+            "这次",
+            "这个作业",
+            "我的作业",
+            "节点状态",
+            "集群状态",
+            "日志",
+            "报错",
+            "失败",
+            "为什么",
+        )
+        execution_phrases = (
+            "帮我停止",
+            "帮我删除",
+            "帮我重提",
+            "帮我重启",
+            "帮我创建",
+            "帮我提交",
+            "请停止",
+            "请删除",
+            "请重提",
+            "请重启",
+            "请创建",
+            "请提交",
+        )
+        return not any(token in normalized for token in data_tokens + execution_phrases)
+    return False
+
+
 def _resolve_job_selection_reply(
     *,
     user_message: str,
@@ -107,13 +172,21 @@ def _extract_deterministic_hints(
     continuation: dict[str, Any],
     resume_context: dict[str, Any],
     clarification_context: dict[str, Any],
+    actor_role: str = "",
 ) -> RoutingDecision:
     """Extract deterministic routing hints without LLM. No keyword tables."""
+    del actor_role
     targets = RoutingTargets()
     entry_mode = "agent"
     operation_mode = "unknown"
     requested_action: str | None = None
     confidence = 0.0
+    complexity = "normal"
+
+    if _looks_like_simple_help_or_chat(user_message):
+        entry_mode = "help"
+        complexity = "simple"
+        confidence = max(confidence, 0.75)
 
     # 1. Resume after confirmation → continue previous operation
     if resume_context:
@@ -187,6 +260,7 @@ def _extract_deterministic_hints(
     entrypoint = str(page_context.get("entryPoint") or page_context.get("entrypoint") or "").strip().lower()
     if entrypoint == "guide":
         entry_mode = "help"
+        complexity = "simple"
         confidence = max(confidence, 0.8)
 
     return RoutingDecision(
@@ -195,6 +269,7 @@ def _extract_deterministic_hints(
         targets=targets,
         requested_action=requested_action,
         confidence=confidence,
+        complexity=complexity,
     )
 
 
@@ -265,6 +340,9 @@ class IntentRouter:
         resume_context: dict[str, Any],
         clarification_context: dict[str, Any],
     ) -> bool:
+        if hints.entry_mode == "help" and hints.complexity == "simple" and hints.confidence >= 0.75:
+            return True
+
         if resume_context and hints.requested_action:
             return True
 
@@ -295,6 +373,11 @@ class IntentRouter:
     ) -> RoutingDecision:
         """Use LLM to classify intent when deterministic hints are insufficient."""
         hints_context = ""
+        if deterministic_hints.confidence > 0:
+            hints_context += (
+                f"\n上下文提示 confidence={deterministic_hints.confidence:.2f}, "
+                f"complexity={deterministic_hints.complexity}"
+            )
         if deterministic_hints.targets.job_name:
             hints_context += f"\n已知目标作业: {deterministic_hints.targets.job_name}"
         if deterministic_hints.targets.node_name:
@@ -311,22 +394,26 @@ class IntentRouter:
         result = await self.coordinator_agent.run_json(
             system_prompt=(
                 "你是意图路由器。分析用户请求，判断：\n"
-                "1. entry_mode: 'help'（纯帮助/文档/概念解释）或 'agent'（需要工具/数据/操作）\n"
+                "1. entry_mode: 'simple'（问候/闲聊/无需工具的极简单答复）、'help'（纯帮助/文档/概念解释）或 'agent'（需要工具/数据/操作）\n"
                 "2. operation_mode: 'read'（查询/诊断/查看）, 'write'（创建/停止/删除/重提交）, 'unknown'\n"
                 "3. requested_action: 具体操作名（resubmit/stop/delete/create），无则 null\n"
-                "4. confidence: 0.0-1.0\n\n"
+                "4. complexity: 'simple'（不需要 MAS 循环）、'normal'、'complex'（多轮/多工具/故障诊断/写操作）\n"
+                "5. confidence: 0.0-1.0\n\n"
                 "关键原则：\n"
                 "- '集群资源如何'、'当前作业情况'、'节点状态' → agent + read（需要工具查数据）\n"
                 "- '怎么创建作业'、'在哪看日志' → help（纯文档指引）\n"
                 "- '重提/停止/删除 xxx' → agent + write + 对应 action\n"
+                "- 纯问候、感谢、无平台数据依赖的极简单问题 → simple + unknown + simple，直接交 General，不进入 MAS 循环\n"
+                "- 帮助/文档/概念解释 → help + unknown + simple，交 Guide/General，不进入 MAS 循环\n"
+                "- 需要实时平台数据、工具结果、诊断、写操作或多步推理 → agent\n"
                 "- 如果当前输入是在追问、纠正、补充或质疑上一轮回答，要结合近期对话理解，但不要继承未经工具证实的旧结论\n"
-                "- 纯问候语、寒暄、轻量闲聊，通常判为 help + unknown\n"
                 "- 普通问答、概念解释、怎么做、去哪做，优先根据历史和页面上下文理解，不要被孤立关键词误导\n"
                 "- deterministic hints 只是上下文提示，不是必须采纳的最终结论；若与当前 message 和 history 不一致，以整体语义为准\n"
                 "- 模糊且涉及业务数据/平台状态/实际对象的请求，默认 agent + unknown\n\n"
                 "输出 JSON:\n"
-                '{"entry_mode": "help|agent", "operation_mode": "read|write|unknown", '
+                '{"entry_mode": "simple|help|agent", "operation_mode": "read|write|unknown", '
                 '"requested_action": "resubmit|stop|delete|create|null", '
+                '"complexity": "simple|normal|complex", '
                 '"confidence": 0.8, "rationale": "简短理由"}\n'
             ),
             user_prompt=(
@@ -354,7 +441,7 @@ class IntentRouter:
             return fallback
 
         entry_mode = str(result.get("entry_mode") or "agent").strip().lower()
-        if entry_mode not in {"help", "agent"}:
+        if entry_mode not in {"simple", "help", "agent"}:
             entry_mode = "agent"
 
         operation_mode = str(result.get("operation_mode") or "unknown").strip().lower()
@@ -367,6 +454,10 @@ class IntentRouter:
         if requested_action and requested_action not in {"resubmit", "stop", "delete", "create"}:
             requested_action = None
 
+        complexity = str(result.get("complexity") or fallback.complexity or "normal").strip().lower()
+        if complexity not in {"simple", "normal", "complex"}:
+            complexity = "normal"
+
         confidence = 0.5
         try:
             confidence = float(result.get("confidence") or 0.5)
@@ -375,6 +466,19 @@ class IntentRouter:
 
         # Merge with deterministic hints (deterministic targets take precedence)
         targets = fallback.targets
+        preserve_hint_bias = fallback.confidence >= 0.75
+        if preserve_hint_bias and fallback.entry_mode in {"simple", "help"} and not requested_action:
+            entry_mode = fallback.entry_mode
+            operation_mode = fallback.operation_mode
+            complexity = fallback.complexity
+        if requested_action:
+            operation_mode = "write"
+            entry_mode = "agent"
+            complexity = "complex"
+        elif entry_mode in {"simple", "help"} and operation_mode in {"read", "write"}:
+            entry_mode = "agent"
+            if complexity == "simple":
+                complexity = "normal"
         if operation_mode == "write" and not requested_action:
             requested_action = fallback.requested_action
 
@@ -385,4 +489,5 @@ class IntentRouter:
             requested_action=requested_action or fallback.requested_action,
             confidence=confidence,
             rationale=str(result.get("rationale") or "").strip(),
+            complexity=complexity,
         )

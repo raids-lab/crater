@@ -1,0 +1,147 @@
+{
+  "scenariosDir": "../crater_bench/scenarios",
+  "output": "../results/{timestamp}_mas-probe-model-routing-extended/offline-bench-summary.json",
+  "report": "../results/{timestamp}_mas-probe-model-routing-extended/offline-bench-report.json",
+  "parallel": 1,
+  "repeat": 1,
+  "repeatMetrics": "quality,tool,token,latency",
+  "stopOnZeroLlm": true,
+  "verbose": false,
+  "mode": "snapshot",
+  "orchestration": "multi",
+  "suite": "mas-probe",
+  "llm": {
+    "roleClientMap": {
+      "multi_agent.intent_router": "qwen3.6-flash-2026-04-16",
+      "multi_agent.coordinator": "qwen3.6-plus-2026-04-02",
+      "multi_agent.planner": "qwen3.6-flash-2026-04-16",
+      "multi_agent.explorer": "qwen3.6-flash-2026-04-16",
+      "multi_agent.executor": "qwen3.6-plus-2026-04-02",
+      "multi_agent.verifier": "qwen3.6-plus-2026-04-02",
+      "multi_agent.general": "qwen3.6-plus-2026-04-02",
+      "multi_agent.guide": "qwen3.6-plus-2026-04-02"
+    }
+  },
+  "benchmarkOverrides": {
+    "multi_agent.planner": {
+      "strategy": "recent",
+      "systemPromptSuffix": "输出计划时优先保持步骤短、结构稳、不要过度规划。"
+    },
+    "multi_agent.explorer": {
+      "strategy": "compact",
+      "systemPromptSuffix": "优先避免重复只读工具；若证据已经足够，就停止继续探测。"
+    },
+    "multi_agent.executor": {
+      "strategy": "last_turn_only",
+      "systemPromptSuffix": "对写操作保持保守，必须确保目标对象明确。"
+    }
+  },
+  "offlineEvaluation": {
+    "multiTurnDialogueJudgeRoles": [
+      "dialogue_eval_flash"
+    ],
+    "taskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "confirmationTaskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "difficultyWeights": {
+      "easy": 1.0,
+      "medium": 1.2,
+      "hard": 1.5
+    },
+    "tokenBudgets": {
+      "easy": 2500,
+      "medium": 4500,
+      "hard": 7000
+    },
+    "latencyBudgets": {
+      "easy": 8000,
+      "medium": 15000,
+      "hard": 25000
+    },
+    "scoreWeights": {
+      "tool_selection": 15,
+      "root_cause": 15,
+      "suggestion": 10,
+      "safety": 10,
+      "efficiency": 8,
+      "token_efficiency": 7,
+      "latency_efficiency": 2,
+      "duplicate_control": 0,
+      "completion_signal": 0,
+      "dialogue_intent": 10,
+      "dialogue_completeness": 5,
+      "dialogue_satisfaction": 5,
+      "task_chain_quality": 15
+    },
+    "missingSnapshotPolicy": "error"
+  },
+  "experiments": [
+    {
+      "name": "qwen36_max_core_flash_workers",
+      "description": "只把核心推理/执行/验证角色升到 qwen3.6-max-preview，观察质量增益是否值得更高 latency。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.coordinator": "qwen3.6-max-preview",
+          "multi_agent.executor": "qwen3.6-max-preview",
+          "multi_agent.verifier": "qwen3.6-max-preview",
+          "multi_agent.general": "qwen3.6-max-preview",
+          "multi_agent.guide": "qwen3.6-max-preview"
+        }
+      }
+    },
+    {
+      "name": "qwen35_plus_core_flash_workers",
+      "description": "Coordinator/Executor/Verifier 使用 qwen3.5-plus-2026-02-15，验证较旧 plus 是否足够。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.coordinator": "qwen3.5-plus-2026-02-15",
+          "multi_agent.executor": "qwen3.5-plus-2026-02-15",
+          "multi_agent.verifier": "qwen3.5-plus-2026-02-15",
+          "multi_agent.general": "qwen3.5-plus-2026-02-15",
+          "multi_agent.guide": "qwen3.5-plus-2026-02-15"
+        }
+      }
+    },
+    {
+      "name": "kimi_core_flash_workers",
+      "description": "Coordinator/Executor/Verifier 使用 kimi-k2.6，验证长上下文和通用推理模型在运维任务中的适配性。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.coordinator": "kimi-k2.6",
+          "multi_agent.executor": "kimi-k2.6",
+          "multi_agent.verifier": "kimi-k2.6",
+          "multi_agent.general": "kimi-k2.6",
+          "multi_agent.guide": "kimi-k2.6"
+        }
+      }
+    },
+    {
+      "name": "glm51_core_flash_workers",
+      "description": "Coordinator/Executor/Verifier 使用 glm-5.1，作为非 Qwen 中文通用模型候选。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.coordinator": "glm-5.1",
+          "multi_agent.executor": "glm-5.1",
+          "multi_agent.verifier": "glm-5.1",
+          "multi_agent.general": "glm-5.1",
+          "multi_agent.guide": "glm-5.1"
+        }
+      }
+    }
+  ]
+}

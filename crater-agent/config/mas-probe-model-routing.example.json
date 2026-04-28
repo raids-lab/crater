@@ -1,0 +1,125 @@
+{
+  "scenariosDir": "../crater_bench/scenarios",
+  "output": "../results/{timestamp}_mas-probe-model-routing/offline-bench-summary.json",
+  "report": "../results/{timestamp}_mas-probe-model-routing/offline-bench-report.json",
+  "parallel": 1,
+  "repeat": 1,
+  "repeatMetrics": "quality,tool,token,latency",
+  "stopOnZeroLlm": true,
+  "verbose": false,
+  "mode": "snapshot",
+  "orchestration": "multi",
+  "suite": "mas-probe",
+  "llm": {
+    "roleClientMap": {
+      "multi_agent.intent_router": "qwen3.6-flash-2026-04-16",
+      "multi_agent.coordinator": "qwen3.6-plus-2026-04-02",
+      "multi_agent.planner": "qwen3.6-flash-2026-04-16",
+      "multi_agent.explorer": "qwen3.6-flash-2026-04-16",
+      "multi_agent.executor": "qwen3.6-plus-2026-04-02",
+      "multi_agent.verifier": "qwen3.6-plus-2026-04-02",
+      "multi_agent.general": "qwen3.6-plus-2026-04-02",
+      "multi_agent.guide": "qwen3.6-plus-2026-04-02"
+    }
+  },
+  "benchmarkOverrides": {
+    "multi_agent.planner": {
+      "strategy": "recent",
+      "systemPromptSuffix": "输出计划时优先保持步骤短、结构稳、不要过度规划。"
+    },
+    "multi_agent.explorer": {
+      "strategy": "compact",
+      "systemPromptSuffix": "优先避免重复只读工具；若证据已经足够，就停止继续探测。"
+    },
+    "multi_agent.executor": {
+      "strategy": "last_turn_only",
+      "systemPromptSuffix": "对写操作保持保守，必须确保目标对象明确。"
+    }
+  },
+  "offlineEvaluation": {
+    "multiTurnDialogueJudgeRoles": [
+      "dialogue_eval_flash"
+    ],
+    "taskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "confirmationTaskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "difficultyWeights": {
+      "easy": 1.0,
+      "medium": 1.2,
+      "hard": 1.5
+    },
+    "tokenBudgets": {
+      "easy": 2500,
+      "medium": 4500,
+      "hard": 7000
+    },
+    "latencyBudgets": {
+      "easy": 8000,
+      "medium": 15000,
+      "hard": 25000
+    },
+    "scoreWeights": {
+      "tool_selection": 15,
+      "root_cause": 15,
+      "suggestion": 10,
+      "safety": 10,
+      "efficiency": 8,
+      "token_efficiency": 7,
+      "latency_efficiency": 2,
+      "duplicate_control": 0,
+      "completion_signal": 0,
+      "dialogue_intent": 10,
+      "dialogue_completeness": 5,
+      "dialogue_satisfaction": 5,
+      "task_chain_quality": 15
+    },
+    "missingSnapshotPolicy": "error"
+  },
+  "experiments": [
+    {
+      "name": "qwen36_plus_core_flash_workers",
+      "description": "Coordinator/Executor/Verifier 用 qwen3.6-plus-2026-04-02，Planner/Explorer/IntentRouter 用 qwen3.6-flash-2026-04-16。主线候选。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1
+    },
+    {
+      "name": "qwen36_flash_all_roles",
+      "description": "全角色使用 qwen3.6-flash-2026-04-16，衡量最低成本主线的质量底线。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.intent_router": "qwen3.6-flash-2026-04-16",
+          "multi_agent.coordinator": "qwen3.6-flash-2026-04-16",
+          "multi_agent.planner": "qwen3.6-flash-2026-04-16",
+          "multi_agent.explorer": "qwen3.6-flash-2026-04-16",
+          "multi_agent.executor": "qwen3.6-flash-2026-04-16",
+          "multi_agent.verifier": "qwen3.6-flash-2026-04-16",
+          "multi_agent.general": "qwen3.6-flash-2026-04-16",
+          "multi_agent.guide": "qwen3.6-flash-2026-04-16"
+        }
+      }
+    },
+    {
+      "name": "deepseek_core_flash_workers",
+      "description": "Coordinator/Executor/Verifier 使用 deepseek-v4-flash，验证非 Qwen 核心模型在诊断与确认任务上的性价比。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.coordinator": "deepseek-v4-flash",
+          "multi_agent.executor": "deepseek-v4-flash",
+          "multi_agent.verifier": "deepseek-v4-flash",
+          "multi_agent.general": "deepseek-v4-flash",
+          "multi_agent.guide": "deepseek-v4-flash"
+        }
+      }
+    }
+  ]
+}

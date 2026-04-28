@@ -18,23 +18,23 @@ def write_md_report(
     path.parent.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [
-        f"# Quality Eval Report",
-        f"",
+        "# Quality Eval Report",
+        "",
         f"- **Session**: `{session_id}`",
         f"- **Turn**: `{turn_id or 'session-level'}`",
         f"- **Trigger**: {trigger_source}",
         f"- **User Rating**: {'👍' if rating == 1 else '👎' if rating == -1 else 'N/A'}",
         f"- **Generated**: {ts}",
-        f"",
-        f"## Chat Quality (xiaomi)",
-        f"",
+        "",
+        "## Dialogue Quality",
+        "",
     ]
     for k, v in chat_scores.items():
         if k != "reasoning":
             lines.append(f"- **{k}**: {v}/5")
     if "reasoning" in chat_scores:
         lines += ["", f"> {chat_scores['reasoning']}"]
-    lines += ["", "## Reasoning Chain Quality (qwen)", ""]
+    lines += ["", "## Task Quality", ""]
     for k, v in chain_scores.items():
         if k != "reasoning":
             lines.append(f"- **{k}**: {v}/5")

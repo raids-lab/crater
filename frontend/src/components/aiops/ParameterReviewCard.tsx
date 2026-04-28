@@ -183,7 +183,7 @@ export function ParameterReviewCard({
       </div>
 
       {/* Parameters */}
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 max-h-60 overflow-y-auto px-1">
         {parameters.map((param) => {
           const badge = SOURCE_BADGE[param.source]
           return (

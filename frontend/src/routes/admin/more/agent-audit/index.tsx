@@ -240,7 +240,7 @@ function SummaryCard({
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full rounded-xl border p-4 text-left transition-all',
+        '@container/card flex w-full items-center justify-between rounded-xl border p-6 text-left transition-all',
         selected
           ? `${c.border} ${c.bg} shadow-sm`
           : 'bg-card hover:bg-muted/40 border-border'
@@ -252,7 +252,7 @@ function SummaryCard({
         </span>
         <span className="text-muted-foreground">{label}</span>
       </div>
-      <div className={cn('mt-2 text-2xl font-semibold tabular-nums', selected ? c.text : '')}>
+      <div className={cn('text-2xl font-semibold tabular-nums @[250px]/card:text-3xl', c.text)}>
         {count}
       </div>
     </button>

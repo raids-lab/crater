@@ -192,6 +192,106 @@ func (s *agentJobSubmitter) SubmitJupyterJob(
 	return &job, nil
 }
 
+func (s *agentJobSubmitter) SubmitWebIDEJob(
+	ctx context.Context,
+	token util.JWTMessage,
+	rawReq json.RawMessage,
+) (any, error) {
+	var req CreateJupyterReq
+	if err := json.Unmarshal(rawReq, &req); err != nil {
+		return nil, fmt.Errorf("invalid webide request: %w", err)
+	}
+
+	scheduleType, err := req.validateScheduleOptions(true)
+	if err != nil {
+		return nil, fmt.Errorf("invalid schedule options: %w", err)
+	}
+	scheduleMetadata, err := s.mgr.resolveJobScheduleMetadata(ctx, scheduleType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve schedule metadata: %w", err)
+	}
+
+	if err := aitaskctl.CheckInteractiveLimitBeforeCreate(ctx, token.UserID, token.AccountID); err != nil {
+		return nil, fmt.Errorf("interactive job limit reached: %v", err)
+	}
+	exceededResources, err := aitaskctl.CheckResourcesBeforeCreateJob(ctx, token.UserID, token.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check resources: %w", err)
+	}
+	if len(exceededResources) > 0 {
+		return nil, fmt.Errorf("resource quota exceeded: %v", exceededResources)
+	}
+
+	if err := vcqueue.EnsureAccountQueueExists(ctx, s.mgr.client, token, token.AccountID); err != nil {
+		return nil, fmt.Errorf("failed to ensure account queue exists: %v", err)
+	}
+	if err := vcqueue.EnsureUserQueueExists(ctx, s.mgr.client, token, token.AccountID, token.UserID); err != nil {
+		return nil, fmt.Errorf("failed to ensure user queue exists: %v", err)
+	}
+
+	if req.AlertEnabled && !utils.CheckUserEmail(ctx, token.UserID) {
+		return nil, fmt.Errorf("email not verified")
+	}
+
+	jobName := utils.GenerateJobName("vsc", token.Username)
+	baseURL := jobName[4:]
+	webIDECommand := fmt.Sprintf("code-server --bind-addr 0.0.0.0:%d", JupyterPort)
+	commandArgs := []string{
+		"/bin/bash",
+		"-c",
+		fmt.Sprintf("/usr/local/bin/unified-start.sh %s", webIDECommand),
+	}
+
+	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
+		CraterJobTypeWebIDE, token, baseURL, &req.CreateJobCommon, scheduleMetadata,
+	)
+
+	podSpec, err := generateInteractivePodSpec(
+		ctx, token, &req.CreateJobCommon, req.Resource, req.Image,
+		commandArgs, JupyterPort, string(CraterJobTypeWebIDE), req.CpuPinningEnabled,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	job := batch.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobName,
+			Namespace:   config.GetConfig().Namespaces.Job,
+			Labels:      labels,
+			Annotations: jobAnnotations,
+		},
+		Spec: batch.JobSpec{
+			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
+			MinAvailable:            1,
+			MaxRetry:                1,
+			Plugins:                 volcanoPlugins,
+			SchedulerName:           VolcanoSchedulerName,
+			Queue:                   vcqueue.ResolveJobQueueName(token),
+			Policies: []batch.LifecyclePolicy{
+				{Action: bus.RestartJobAction, Event: bus.PodEvictedEvent},
+			},
+			Tasks: []batch.TaskSpec{
+				{
+					Replicas: 1,
+					Template: v1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels:      labels,
+							Annotations: podAnnotations,
+						},
+						Spec: podSpec,
+					},
+				},
+			},
+		},
+	}
+
+	if err = s.mgr.submitJob(ctx, token, &job); err != nil {
+		return nil, err
+	}
+	return &job, nil
+}
+
 func (s *agentJobSubmitter) SubmitTrainingJob(
 	ctx context.Context,
 	token util.JWTMessage,
@@ -288,6 +388,299 @@ func (s *agentJobSubmitter) SubmitTrainingJob(
 	}
 
 	if err := s.mgr.CreateForwardIngresses(ctx, &job, req.Forwards, labels, token.Username); err != nil {
+		return nil, err
+	}
+	return &job, nil
+}
+
+func (s *agentJobSubmitter) SubmitTensorflowJob(
+	ctx context.Context,
+	token util.JWTMessage,
+	rawReq json.RawMessage,
+) (any, error) {
+	var req CreateTensorflowReq
+	if err := json.Unmarshal(rawReq, &req); err != nil {
+		return nil, fmt.Errorf("invalid tensorflow request: %w", err)
+	}
+
+	scheduleType, err := req.validateScheduleOptions(false)
+	if err != nil {
+		return nil, fmt.Errorf("invalid schedule options: %w", err)
+	}
+	scheduleMetadata, err := s.mgr.resolveJobScheduleMetadata(ctx, scheduleType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve schedule metadata: %w", err)
+	}
+
+	jobResources := v1.ResourceList{}
+	for idx := range req.Tasks {
+		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[idx].Resource)
+	}
+
+	exceededResources, err := aitaskctl.CheckResourcesBeforeCreateJob(ctx, token.UserID, token.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check resources: %w", err)
+	}
+	if len(exceededResources) > 0 {
+		return nil, fmt.Errorf("resource quota exceeded: %v", exceededResources)
+	}
+
+	if err := vcqueue.EnsureAccountQueueExists(ctx, s.mgr.client, token, token.AccountID); err != nil {
+		return nil, fmt.Errorf("failed to ensure account queue exists: %v", err)
+	}
+	if err := vcqueue.EnsureUserQueueExists(ctx, s.mgr.client, token, token.AccountID, token.UserID); err != nil {
+		return nil, fmt.Errorf("failed to ensure user queue exists: %v", err)
+	}
+
+	if req.AlertEnabled && !utils.CheckUserEmail(ctx, token.UserID) {
+		return nil, fmt.Errorf("email not verified")
+	}
+
+	jobName := utils.GenerateJobName("tf", token.Username)
+	baseURL := jobName[3:]
+
+	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, req.VolumeMounts, token)
+	if err != nil {
+		return nil, err
+	}
+	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
+	baseTolerations := GenerateTaintTolerationsForAccount(token)
+	envs := GenerateEnvs(ctx, token, req.Envs)
+
+	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
+		CraterJobTypeTensorflow,
+		token,
+		baseURL,
+		&req.CreateJobCommon,
+		scheduleMetadata,
+	)
+
+	tasks := make([]batch.TaskSpec, len(req.Tasks))
+	minAvailable := int32(0)
+	for idx := range req.Tasks {
+		task := &req.Tasks[idx]
+		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
+		ports := make([]v1.ContainerPort, len(task.Ports))
+		for portIdx, port := range task.Ports {
+			ports[portIdx] = v1.ContainerPort{
+				ContainerPort: port.Port,
+				Name:          port.Name,
+				Protocol:      v1.ProtocolTCP,
+			}
+		}
+
+		podSpec := generatePodSpecForParallelJob(
+			task,
+			taskAffinity,
+			baseTolerations,
+			volumes,
+			volumeMounts,
+			envs,
+			ports,
+			req.CpuPinningEnabled,
+		)
+
+		taskSpec := batch.TaskSpec{
+			Name:     task.Name,
+			Replicas: task.Replicas,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+		}
+		if task.Name == "worker" {
+			taskSpec.Policies = []batch.LifecyclePolicy{
+				{
+					Action: bus.CompleteJobAction,
+					Event:  bus.TaskCompletedEvent,
+				},
+			}
+		}
+
+		minAvailable += task.Replicas
+		tasks[idx] = taskSpec
+	}
+
+	job := batch.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobName,
+			Namespace:   config.GetConfig().Namespaces.Job,
+			Labels:      labels,
+			Annotations: jobAnnotations,
+		},
+		Spec: batch.JobSpec{
+			TTLSecondsAfterFinished: ptr.To(SevenDaySeconds),
+			MinAvailable:            minAvailable,
+			SchedulerName:           VolcanoSchedulerName,
+			Plugins: map[string][]string{
+				"env": {},
+				"svc": {},
+			},
+			Policies: []batch.LifecyclePolicy{
+				{
+					Action: bus.RestartJobAction,
+					Event:  bus.PodEvictedEvent,
+				},
+			},
+			Queue: vcqueue.ResolveJobQueueName(token),
+			Tasks: tasks,
+		},
+	}
+
+	if err = s.mgr.submitJob(ctx, token, &job); err != nil {
+		return nil, err
+	}
+	return &job, nil
+}
+
+func (s *agentJobSubmitter) SubmitPytorchJob(
+	ctx context.Context,
+	token util.JWTMessage,
+	rawReq json.RawMessage,
+) (any, error) {
+	var req CreateTensorflowReq
+	if err := json.Unmarshal(rawReq, &req); err != nil {
+		return nil, fmt.Errorf("invalid pytorch request: %w", err)
+	}
+
+	scheduleType, err := req.validateScheduleOptions(false)
+	if err != nil {
+		return nil, fmt.Errorf("invalid schedule options: %w", err)
+	}
+	scheduleMetadata, err := s.mgr.resolveJobScheduleMetadata(ctx, scheduleType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve schedule metadata: %w", err)
+	}
+
+	jobResources := v1.ResourceList{}
+	for idx := range req.Tasks {
+		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[idx].Resource)
+	}
+
+	exceededResources, err := aitaskctl.CheckResourcesBeforeCreateJob(ctx, token.UserID, token.AccountID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check resources: %w", err)
+	}
+	if len(exceededResources) > 0 {
+		return nil, fmt.Errorf("resource quota exceeded: %v", exceededResources)
+	}
+
+	if err := vcqueue.EnsureAccountQueueExists(ctx, s.mgr.client, token, token.AccountID); err != nil {
+		return nil, fmt.Errorf("failed to ensure account queue exists: %v", err)
+	}
+	if err := vcqueue.EnsureUserQueueExists(ctx, s.mgr.client, token, token.AccountID, token.UserID); err != nil {
+		return nil, fmt.Errorf("failed to ensure user queue exists: %v", err)
+	}
+
+	if req.AlertEnabled && !utils.CheckUserEmail(ctx, token.UserID) {
+		return nil, fmt.Errorf("email not verified")
+	}
+
+	jobName := utils.GenerateJobName("pyt", token.Username)
+	baseURL := jobName[4:]
+
+	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, req.VolumeMounts, token)
+	if err != nil {
+		return nil, err
+	}
+	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
+	baseTolerations := GenerateTaintTolerationsForAccount(token)
+	envs := GenerateEnvs(ctx, token, req.Envs)
+
+	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
+		CraterJobTypePytorch,
+		token,
+		baseURL,
+		&req.CreateJobCommon,
+		scheduleMetadata,
+	)
+
+	tasks := make([]batch.TaskSpec, len(req.Tasks))
+	minAvailable := int32(0)
+	for idx := range req.Tasks {
+		task := &req.Tasks[idx]
+		taskAffinity := GenerateArchitectureNodeAffinity(task.Image, baseAffinity)
+		ports := make([]v1.ContainerPort, len(task.Ports))
+		for portIdx, port := range task.Ports {
+			ports[portIdx] = v1.ContainerPort{
+				ContainerPort: port.Port,
+				Name:          port.Name,
+				Protocol:      v1.ProtocolTCP,
+			}
+		}
+
+		podSpec := generatePodSpecForParallelJob(
+			task,
+			taskAffinity,
+			baseTolerations,
+			volumes,
+			volumeMounts,
+			envs,
+			ports,
+			req.CpuPinningEnabled,
+		)
+
+		taskSpec := batch.TaskSpec{
+			Name:     task.Name,
+			Replicas: task.Replicas,
+			Template: v1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      labels,
+					Annotations: podAnnotations,
+				},
+				Spec: podSpec,
+			},
+		}
+
+		switch task.Name {
+		case "master":
+			taskSpec.Policies = []batch.LifecyclePolicy{
+				{
+					Action: bus.CompleteJobAction,
+					Event:  bus.TaskCompletedEvent,
+				},
+				{
+					Action: bus.TerminateJobAction,
+					Event:  bus.PodFailedEvent,
+				},
+			}
+		case "worker":
+			taskSpec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
+		}
+
+		minAvailable += task.Replicas
+		tasks[idx] = taskSpec
+	}
+
+	job := batch.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobName,
+			Namespace:   config.GetConfig().Namespaces.Job,
+			Labels:      labels,
+			Annotations: jobAnnotations,
+		},
+		Spec: batch.JobSpec{
+			TTLSecondsAfterFinished: ptr.To(SevenDaySeconds),
+			MinAvailable:            minAvailable,
+			SchedulerName:           VolcanoSchedulerName,
+			Plugins: map[string][]string{
+				"pytorch": {"--master=master", "--worker=worker", "--port=23456"},
+			},
+			Policies: []batch.LifecyclePolicy{
+				{
+					Action: bus.RestartJobAction,
+					Event:  bus.PodEvictedEvent,
+				},
+			},
+			Queue: vcqueue.ResolveJobQueueName(token),
+			Tasks: tasks,
+		},
+	}
+
+	if err = s.mgr.submitJob(ctx, token, &job); err != nil {
 		return nil, err
 	}
 	return &job, nil

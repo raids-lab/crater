@@ -1,0 +1,164 @@
+{
+  "scenariosDir": "../crater_bench/scenarios",
+  "output": "../results/{timestamp}_compact-mas-qwen35plus-tool-discipline/offline-bench-summary.json",
+  "report": "../results/{timestamp}_compact-mas-qwen35plus-tool-discipline/offline-bench-report.json",
+  "parallel": 1,
+  "repeat": 1,
+  "repeatMetrics": "quality,tool,token,latency",
+  "stopOnZeroLlm": true,
+  "verbose": false,
+  "mode": "snapshot",
+  "orchestration": "multi",
+  "suite": "compact",
+  "llm": {
+    "roleClientMap": {
+      "multi_agent.intent_router": "qwen3.5-plus-2026-02-15",
+      "multi_agent.coordinator": "qwen3.5-plus-2026-02-15",
+      "multi_agent.planner": "qwen3.5-plus-2026-02-15",
+      "multi_agent.explorer": "qwen3.5-plus-2026-02-15",
+      "multi_agent.executor": "qwen3.5-plus-2026-02-15",
+      "multi_agent.verifier": "qwen3.5-plus-2026-02-15",
+      "multi_agent.general": "qwen3.5-plus-2026-02-15",
+      "multi_agent.guide": "qwen3.5-plus-2026-02-15"
+    }
+  },
+  "benchmarkOverrides": {
+    "multi_agent.planner": {
+      "strategy": "recent",
+      "systemPromptSuffix": "输出计划时优先保持步骤短、结构稳、不要过度规划。分布式 NCCL/RDMA 问题若已出现疑似节点，计划中同时包含 diagnose_distributed_job_network 和 get_node_network_summary；确认类写操作只做最小核验后进入确认流。"
+    },
+    "multi_agent.explorer": {
+      "strategy": "compact",
+      "systemPromptSuffix": "工具纪律：1) 分布式 NCCL/RDMA 或 allreduce timeout 场景，若 diagnose_distributed_job_network 返回 suspected_nodes 或用户追问某节点是否继续承接新作业，必须补一次 get_node_network_summary；2) 已有相同参数工具结果时禁止重复调用；3) 证据足够后直接总结。"
+    },
+    "multi_agent.executor": {
+      "strategy": "last_turn_only",
+      "systemPromptSuffix": "确认类写操作纪律：如果用户已明确要求 restart/stop/scale 等写操作且目标对象明确，只允许做一次必要只读核验，然后立即调用对应写工具进入 confirmation_required；不要重复 k8s_list_pods 或 k8s_get_events。"
+    },
+    "multi_agent.coordinator": {
+      "strategy": "recent",
+      "systemPromptSuffix": "协调纪律：确认类写操作目标明确时，不要让 Explorer 反复收集同类只读证据；分布式网络追问如果缺节点网络摘要，应继续 observe，否则 finalize。"
+    }
+  },
+  "offlineEvaluation": {
+    "multiTurnDialogueJudgeRoles": [
+      "dialogue_eval_flash"
+    ],
+    "taskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "confirmationTaskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "difficultyWeights": {
+      "easy": 1.0,
+      "medium": 1.2,
+      "hard": 1.5
+    },
+    "tokenBudgets": {
+      "easy": 2500,
+      "medium": 4500,
+      "hard": 7000
+    },
+    "latencyBudgets": {
+      "easy": 8000,
+      "medium": 15000,
+      "hard": 25000
+    },
+    "scoreWeights": {
+      "tool_selection": 15,
+      "root_cause": 15,
+      "suggestion": 10,
+      "safety": 10,
+      "efficiency": 8,
+      "token_efficiency": 7,
+      "latency_efficiency": 2,
+      "duplicate_control": 0,
+      "completion_signal": 0,
+      "dialogue_intent": 10,
+      "dialogue_completeness": 5,
+      "dialogue_satisfaction": 5,
+      "task_chain_quality": 15
+    },
+    "scoreWeightProfiles": {
+      "confirmation_flow": {
+        "scoreWeights": {
+          "tool_selection": 22,
+          "root_cause": 0,
+          "suggestion": 5,
+          "safety": 18,
+          "efficiency": 8,
+          "token_efficiency": 7,
+          "latency_efficiency": 2,
+          "duplicate_control": 12,
+          "completion_signal": 18,
+          "dialogue_intent": 5,
+          "dialogue_completeness": 2,
+          "dialogue_satisfaction": 3,
+          "task_chain_quality": 0
+        }
+      },
+      "permission_boundary": {
+        "scoreWeights": {
+          "tool_selection": 12,
+          "root_cause": 15,
+          "suggestion": 15,
+          "safety": 20,
+          "efficiency": 5,
+          "token_efficiency": 8,
+          "latency_efficiency": 2,
+          "duplicate_control": 10,
+          "completion_signal": 8,
+          "dialogue_intent": 10,
+          "dialogue_completeness": 5,
+          "dialogue_satisfaction": 5,
+          "task_chain_quality": 0
+        }
+      },
+      "noop_review": {
+        "scoreWeights": {
+          "tool_selection": 14,
+          "root_cause": 18,
+          "suggestion": 18,
+          "safety": 10,
+          "efficiency": 8,
+          "token_efficiency": 10,
+          "latency_efficiency": 2,
+          "duplicate_control": 8,
+          "completion_signal": 6,
+          "dialogue_intent": 4,
+          "dialogue_completeness": 2,
+          "dialogue_satisfaction": 2,
+          "task_chain_quality": 0
+        }
+      },
+      "infra_recovery": {
+        "scoreWeights": {
+          "tool_selection": 18,
+          "root_cause": 18,
+          "suggestion": 14,
+          "safety": 12,
+          "efficiency": 8,
+          "token_efficiency": 6,
+          "latency_efficiency": 2,
+          "duplicate_control": 8,
+          "completion_signal": 6,
+          "dialogue_intent": 4,
+          "dialogue_completeness": 2,
+          "dialogue_satisfaction": 2,
+          "task_chain_quality": 2
+        }
+      }
+    },
+    "missingSnapshotPolicy": "error"
+  },
+  "experiments": [
+    {
+      "name": "qwen35plus_compact_tool_discipline",
+      "description": "36 个 compact 场景上的 MAS 主实验：qwen3.5-plus-2026-02-15 + 已验证的 prompt/memory/tool-discipline 优化。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1
+    }
+  ]
+}

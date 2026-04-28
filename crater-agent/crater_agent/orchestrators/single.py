@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+import time
 from typing import Any, AsyncIterator
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -13,6 +15,68 @@ from crater_agent.llm.client import ModelClientFactory
 from crater_agent.memory.session import build_history_messages
 from crater_agent.report_utils import build_pipeline_report_payload
 from crater_agent.tools.executor import CompositeToolExecutor, ToolExecutorProtocol
+from crater_agent.tools.tool_selector import sanitize_capabilities_for_context
+
+
+def _extract_llm_usage(output: Any) -> dict[str, int]:
+    usage = getattr(output, "usage_metadata", None) or {}
+    response_metadata = getattr(output, "response_metadata", None) or {}
+    token_usage = (
+        response_metadata.get("token_usage") if isinstance(response_metadata, dict) else {}
+    ) or {}
+    input_tokens = (
+        usage.get("input_tokens")
+        or usage.get("prompt_tokens")
+        or token_usage.get("prompt_tokens")
+        or token_usage.get("input_tokens")
+        or 0
+    )
+    output_tokens = (
+        usage.get("output_tokens")
+        or usage.get("completion_tokens")
+        or token_usage.get("completion_tokens")
+        or token_usage.get("output_tokens")
+        or 0
+    )
+    total_tokens = (
+        usage.get("total_tokens")
+        or token_usage.get("total_tokens")
+        or (int(input_tokens or 0) + int(output_tokens or 0))
+    )
+    has_reported_usage = bool(usage) or bool(token_usage)
+    return {
+        "llm_input_tokens": int(input_tokens or 0),
+        "llm_output_tokens": int(output_tokens or 0),
+        "total_tokens": int(total_tokens or 0),
+        "llm_reported_token_calls": 1 if has_reported_usage else 0,
+        "llm_missing_token_calls": 0 if has_reported_usage else 1,
+    }
+
+
+def _looks_like_continuation_reply(user_message: str) -> bool:
+    normalized = str(user_message or "").strip().lower()
+    if not normalized:
+        return False
+    if normalized in {"确认", "继续", "这个", "就这个", "好的", "ok", "yes", "1", "2", "3"}:
+        return True
+    if re.fullmatch(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+){2,}", normalized):
+        return True
+    return any(
+        token in normalized
+        for token in (
+            "第一个",
+            "第1个",
+            "第二个",
+            "第2个",
+            "改成",
+            "名字叫",
+            "重新来",
+            "继续刚才",
+            "按刚才",
+            "全部",
+            "所有",
+        )
+    )
 
 
 class SingleAgentOrchestrator:
@@ -29,11 +93,28 @@ class SingleAgentOrchestrator:
             llm = model_factory.create("default")
         graph = create_agent_graph(tool_executor=self.tool_executor, llm=llm)
         context = dict(request.context or {})
+        context["capabilities"] = sanitize_capabilities_for_context(context, context.get("capabilities"))
         pending_tool_calls: list[dict[str, Any]] = []
         tool_result_summaries: list[str] = []
         pending_final_content = ""
         emitted_final_answer = False
         emitted_confirmation = False
+        llm_started_at: float | None = None
+        usage_summary: dict[str, int] = {
+            "llm_calls": 0,
+            "llm_input_tokens": 0,
+            "llm_output_tokens": 0,
+            "total_tokens": 0,
+            "llm_reported_token_calls": 0,
+            "llm_missing_token_calls": 0,
+            "reported_token_coverage": 0,
+            "llm_latency_ms": 0,
+            "tool_latency_ms": 0,
+            "tool_calls": 0,
+            "read_tool_calls": 0,
+            "write_tool_calls": 0,
+            "evidence_items": 0,
+        }
         initial_state = {
             "messages": [HumanMessage(content=request.message)],
             "context": {
@@ -53,6 +134,69 @@ class SingleAgentOrchestrator:
                 max_tokens=settings.history_max_tokens,
                 tool_result_max_chars=160,
             ) + initial_state["messages"]
+        continuation = context.get("continuation") or {}
+        current_request_is_follow_up = _looks_like_continuation_reply(request.message)
+        continuation_messages: list[HumanMessage] = []
+        pending_confirmation = continuation.get("pending_confirmation") or {}
+        if isinstance(pending_confirmation, dict) and pending_confirmation and current_request_is_follow_up:
+            pending_summary = {
+                "tool_name": pending_confirmation.get("tool_name", ""),
+                "result_status": pending_confirmation.get("result_status", ""),
+                "tool_args": pending_confirmation.get("tool_args", {}),
+            }
+            continuation_messages.append(
+                HumanMessage(
+                    content=(
+                        "[系统续接上下文] 上一轮仍有待确认操作："
+                        f"{json.dumps(pending_summary, ensure_ascii=False)}。"
+                        "只有当用户当前输入明显是在继续这件事时，才沿用该上下文；否则按新请求处理。"
+                    )
+                )
+            )
+        elif isinstance(pending_confirmation, dict) and pending_confirmation:
+            continuation_messages.append(
+                HumanMessage(
+                    content=(
+                        "[系统续接上下文] 上一轮仍有待确认操作，但当前用户输入看起来是新的独立请求。"
+                        "除非用户明确说“确认/继续/这个/第一个/具体名称”，否则不要延续上一轮创建或修改计划；"
+                        "优先回答本轮问题。"
+                    )
+                )
+            )
+        resume_after_confirmation = continuation.get("resume_after_confirmation") or {}
+        if isinstance(resume_after_confirmation, dict) and resume_after_confirmation and current_request_is_follow_up:
+            resume_summary = {
+                "tool_name": resume_after_confirmation.get("tool_name", ""),
+                "result_status": resume_after_confirmation.get("result_status", ""),
+                "confirmed": resume_after_confirmation.get("confirmed"),
+                "tool_args": resume_after_confirmation.get("tool_args", {}),
+                "result": resume_after_confirmation.get("result", {}),
+            }
+            continuation_messages.append(
+                HumanMessage(
+                    content=(
+                        "[系统续接上下文] 上一轮确认结果："
+                        f"{json.dumps(resume_summary, ensure_ascii=False)}。"
+                        "当前轮应基于这个结果理解用户后续输入，但不要忽略本轮新的完整请求。"
+                    )
+                )
+            )
+        elif isinstance(resume_after_confirmation, dict) and resume_after_confirmation:
+            continuation_messages.append(
+                HumanMessage(
+                    content=(
+                        "[系统续接上下文] 上一轮确认流程已经结束，但当前用户输入看起来不是续接语句。"
+                        "不要把上一轮写操作当作当前默认目标；若本轮是在问失败原因、状态或教程，"
+                        "就按新的诊断/检索请求处理。"
+                    )
+                )
+            )
+        if continuation_messages:
+            initial_state["messages"] = (
+                initial_state["messages"][:-1]
+                + continuation_messages
+                + initial_state["messages"][-1:]
+            )
 
         yield {
             "event": "agent_run_started",
@@ -69,6 +213,7 @@ class SingleAgentOrchestrator:
         async for event in graph.astream_events(initial_state, version="v2"):
             kind = event["event"]
             if kind == "on_chat_model_start":
+                llm_started_at = time.monotonic()
                 yield {
                     "event": "agent_status",
                     "data": {
@@ -83,6 +228,35 @@ class SingleAgentOrchestrator:
 
             if kind == "on_chat_model_end":
                 output = event["data"]["output"]
+                latency_ms = (
+                    int((time.monotonic() - llm_started_at) * 1000)
+                    if llm_started_at is not None
+                    else 0
+                )
+                usage = _extract_llm_usage(output)
+                usage_summary["llm_calls"] += 1
+                usage_summary["llm_input_tokens"] += usage["llm_input_tokens"]
+                usage_summary["llm_output_tokens"] += usage["llm_output_tokens"]
+                usage_summary["total_tokens"] += usage["total_tokens"]
+                usage_summary["llm_reported_token_calls"] += usage["llm_reported_token_calls"]
+                usage_summary["llm_missing_token_calls"] += usage["llm_missing_token_calls"]
+                usage_summary["reported_token_coverage"] = (
+                    usage_summary["llm_reported_token_calls"] / usage_summary["llm_calls"]
+                    if usage_summary["llm_calls"]
+                    else 0
+                )
+                usage_summary["llm_latency_ms"] += latency_ms
+                yield {
+                    "event": "llm_call_completed",
+                    "data": {
+                        "turnId": request.turn_id,
+                        "agentId": "single-agent",
+                        "agentRole": "single_agent",
+                        "latencyMs": latency_ms,
+                        "usage": usage,
+                    },
+                }
+                llm_started_at = None
                 if isinstance(output, AIMessage):
                     if output.tool_calls:
                         for tc in output.tool_calls:
@@ -127,7 +301,12 @@ class SingleAgentOrchestrator:
 
                 if isinstance(result_data, dict) and result_data.get("status") == "confirmation_required":
                     confirmation = result_data.get("confirmation", {})
+                    tool_latency_ms = int(result_data.get("_latency_ms") or 0)
                     emitted_confirmation = True
+                    usage_summary["tool_calls"] += 1
+                    usage_summary["write_tool_calls"] += 1
+                    usage_summary["evidence_items"] += 1
+                    usage_summary["tool_latency_ms"] += tool_latency_ms
                     yield {
                         "event": "tool_call_confirmation_required",
                         "data": {
@@ -141,11 +320,21 @@ class SingleAgentOrchestrator:
                             "interaction": confirmation.get("interaction", "approval"),
                             "form": confirmation.get("form"),
                             "status": "awaiting_confirmation",
+                            "latencyMs": tool_latency_ms,
                         },
                     }
                     continue
 
                 tool_result_summaries.append(f"{tool_name}: {str(raw_output)[:300]}")
+                tool_latency_ms = (
+                    int(result_data.get("_latency_ms") or 0)
+                    if isinstance(result_data, dict)
+                    else 0
+                )
+                usage_summary["tool_calls"] += 1
+                usage_summary["read_tool_calls"] += 1
+                usage_summary["evidence_items"] += 1
+                usage_summary["tool_latency_ms"] += tool_latency_ms
                 yield {
                     "event": "tool_call_completed",
                     "data": {
@@ -158,6 +347,7 @@ class SingleAgentOrchestrator:
                         "resultSummary": str(raw_output)[:500],
                         "status": "error" if isinstance(result_data, dict) and result_data.get("status") == "error" else "done",
                         "isError": isinstance(result_data, dict) and result_data.get("status") == "error",
+                        "latencyMs": tool_latency_ms,
                     },
                 }
                 report_payload = (
@@ -209,6 +399,11 @@ class SingleAgentOrchestrator:
                         conf = conf_by_tc_id[tool_call_id]
                         confirmation = conf.get("confirmation", {})
                         emitted_confirmation = True
+                        usage_summary["tool_calls"] += 1
+                        usage_summary["write_tool_calls"] += 1
+                        usage_summary["evidence_items"] += 1
+                        tool_latency_ms = int(entry.get("latency_ms", 0) or 0)
+                        usage_summary["tool_latency_ms"] += tool_latency_ms
                         yield {
                             "event": "tool_call_confirmation_required",
                             "data": {
@@ -222,6 +417,7 @@ class SingleAgentOrchestrator:
                                 "interaction": confirmation.get("interaction", "approval"),
                                 "form": confirmation.get("form"),
                                 "status": "awaiting_confirmation",
+                                "latencyMs": tool_latency_ms,
                             },
                         }
                     else:
@@ -232,6 +428,10 @@ class SingleAgentOrchestrator:
                         if idx < len(tool_messages):
                             raw_output = str(getattr(tool_messages[idx], "content", "") or "")
                         tool_result_summaries.append(f"{tool_name}: {raw_output[:300]}")
+                        usage_summary["tool_calls"] += 1
+                        usage_summary["read_tool_calls"] += 1
+                        usage_summary["evidence_items"] += 1
+                        usage_summary["tool_latency_ms"] += int(entry.get("latency_ms", 0) or 0)
                         yield {
                             "event": "tool_call_completed",
                             "data": {
@@ -280,6 +480,7 @@ class SingleAgentOrchestrator:
                     "agentId": "single-agent",
                     "agentRole": "single_agent",
                     "content": pending_final_content,
+                    "usageSummary": dict(usage_summary),
                 },
             }
 
@@ -305,7 +506,8 @@ class SingleAgentOrchestrator:
                     "agentId": "single-agent",
                     "agentRole": "single_agent",
                     "content": fallback_content,
+                    "usageSummary": dict(usage_summary),
                 },
             }
 
-        yield {"event": "done", "data": {}}
+        yield {"event": "done", "data": {"usageSummary": dict(usage_summary)}}

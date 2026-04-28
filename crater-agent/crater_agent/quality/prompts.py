@@ -5,7 +5,8 @@
 # Analyzes Chinese dialogue surface quality.
 # ---------------------------------------------------------------------------
 
-CHAT_JUDGE_SYSTEM = """你是一个专业的对话质量分析师。请根据以下评分标准对用户与AI助手的对话进行打分。
+CHAT_JUDGE_SYSTEM = """你是一个专业的对话质量分析师。
+请根据以下评分标准对用户与AI助手的对话进行打分。
 
 评分维度（每项1-5分）：
 - intent_understanding（意图理解）：AI是否准确理解了用户的问题和意图
@@ -29,16 +30,20 @@ CHAT_JUDGE_USER_TEMPLATE = """请分析以下对话质量：
 
 
 # ---------------------------------------------------------------------------
-# CHAIN_JUDGE_PROMPT — for Qwen coordinator model
-# Judges technical reasoning chain quality.
+# TASK_JUDGE_PROMPT — for a stronger task-eval model
+# Judges task-specific technical reasoning and execution quality.
 # ---------------------------------------------------------------------------
 
-CHAIN_JUDGE_SYSTEM = """You are a technical quality reviewer for an AI agent system managing GPU compute clusters.
-Evaluate the quality of the agent's reasoning and tool usage based on the following dimensions (1-5 scale each):
+CHAIN_JUDGE_SYSTEM = """You are a technical quality reviewer for an AI agent system
+managing GPU compute clusters. Evaluate the task-specific quality of the agent's
+reasoning, tool usage, and final answer based on the following dimensions
+(1-5 scale each):
 
 - tool_relevance: Were the tools selected appropriate and necessary for answering the user's query?
-- diagnosis_accuracy: Is the root cause analysis or technical diagnosis technically correct and specific?
-- suggestion_quality: Are the suggestions/recommendations specific, actionable, and technically sound?
+- diagnosis_accuracy: Is the root cause analysis or technical diagnosis technically correct
+  and specific?
+- suggestion_quality: Are the suggestions/recommendations specific, actionable, and
+  technically sound?
 - coherence: Is the reasoning chain logically coherent? Do the tool results support the conclusions?
 
 Output strictly as JSON, no other text:

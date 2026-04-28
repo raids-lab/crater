@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -12,31 +13,48 @@ var agentUserTools = []string{
 	agentToolAnalyzeQueue,
 	agentToolCheckQuota,
 	agentToolCreateJupyter,
+	agentToolCreateWebIDE,
 	agentToolCreateTrain,
+	agentToolCreateCustom,
+	agentToolCreatePytorch,
+	agentToolCreateTensorflow,
 	agentToolDeleteJob,
 	agentToolDetectIdleJobs,
 	agentToolDiagnoseJob,
 	agentToolGetDiagnosticCtx,
 	agentToolGetFailureStats,
 	agentToolGetHealthOverview,
+	agentToolGetImageAccess,
+	agentToolGetImageBuild,
 	agentToolGetJobDetail,
 	agentToolGetJobEvents,
 	agentToolGetJobLogs,
 	agentToolGetJobTemplates,
 	agentToolListCudaBase,
 	agentToolListGPUModels,
+	agentToolListImageBuilds,
 	agentToolListImages,
 	agentToolListUserJobs,
+	agentToolManageAccess,
+	agentToolManageBuild,
+	agentToolCreateImage,
 	agentToolQueryJobMetrics,
 	agentToolRealtimeCapacity,
+	agentToolRegisterImage,
 	agentToolRecommendImages,
 	agentToolResubmitJob,
 	agentToolResourceRecommend,
 	agentToolSearchSimilarFail,
 	agentToolStopJob,
+	agentToolWebSearch,
+	agentToolFetchURL,
+	agentToolK8sListPods,
 	agentToolK8sGetEvents,
 	agentToolK8sDescribe,
 	agentToolK8sPodLogs,
+	agentToolK8sGetService,
+	agentToolK8sGetEndpoints,
+	agentToolK8sGetIngress,
 }
 
 var agentAdminTools = []string{
@@ -52,14 +70,14 @@ var agentAdminTools = []string{
 	agentToolStorageCapacity,
 	agentToolNodeNetwork,
 	agentToolDiagnoseJobNet,
-	agentToolWebSearch,
 	agentToolSandboxGrep,
 	agentToolRuntimeSummary,
 	agentToolK8sListNodes,
-	agentToolK8sListPods,
 	agentToolPromQuery,
 	agentToolHarborCheck,
-	agentToolRunOpsScript,
+	toolGetLatestAuditReport,
+	toolListAuditItems,
+	toolMarkAuditHandled,
 	agentToolCordonNode,
 	agentToolUncordonNode,
 	agentToolDrainNode,
@@ -70,20 +88,32 @@ var agentAdminTools = []string{
 }
 
 var agentConfirmToolSet = map[string]struct{}{
-	agentToolResubmitJob:   {},
-	agentToolStopJob:       {},
-	agentToolDeleteJob:     {},
-	agentToolCreateJupyter: {},
-	agentToolCreateTrain:   {},
-	agentToolRunOpsScript:  {},
-	agentToolCordonNode:    {},
-	agentToolUncordonNode:  {},
-	agentToolDrainNode:     {},
-	agentToolDeletePod:     {},
-	agentToolRestartWL:     {},
-	toolMarkAuditHandled:   {},
-	toolBatchStopJobs:      {},
-	toolNotifyJobOwner:     {},
+	agentToolResubmitJob:      {},
+	agentToolStopJob:          {},
+	agentToolDeleteJob:        {},
+	agentToolCreateJupyter:    {},
+	agentToolCreateWebIDE:     {},
+	agentToolCreateTrain:      {},
+	agentToolCreateCustom:     {},
+	agentToolCreatePytorch:    {},
+	agentToolCreateTensorflow: {},
+	agentToolCreateImage:      {},
+	agentToolManageBuild:      {},
+	agentToolRegisterImage:    {},
+	agentToolManageAccess:     {},
+	agentToolCordonNode:       {},
+	agentToolUncordonNode:     {},
+	agentToolDrainNode:        {},
+	agentToolDeletePod:        {},
+	agentToolRestartWL:        {},
+	agentToolK8sScaleWL:       {},
+	agentToolK8sLabelNode:     {},
+	agentToolK8sTaintNode:     {},
+	agentToolRunKubectl:       {},
+	agentToolAdminCommand:     {},
+	toolMarkAuditHandled:      {},
+	toolBatchStopJobs:         {},
+	toolNotifyJobOwner:        {},
 }
 
 func agentToolCompactDescription(toolName string) string {
@@ -114,6 +144,12 @@ func agentToolCompactDescription(toolName string) string {
 		return "列出当前可用 GPU 型号和数量"
 	case agentToolRecommendImages:
 		return "为训练任务推荐候选镜像"
+	case agentToolListImageBuilds:
+		return "列出当前用户提交过的镜像构建任务"
+	case agentToolGetImageBuild:
+		return "查看单个镜像构建任务详情、脚本和最终镜像关联"
+	case agentToolGetImageAccess:
+		return "查看镜像当前授权到哪些用户或账户"
 	case agentToolCheckQuota:
 		return "查看账户配额使用情况"
 	case agentToolGetHealthOverview:
@@ -145,7 +181,9 @@ func agentToolCompactDescription(toolName string) string {
 	case agentToolDiagnoseJobNet:
 		return "管理员诊断分布式作业网络问题（事件/日志/节点分布）"
 	case agentToolWebSearch:
-		return "管理员执行受白名单约束的外网文档检索"
+		return "执行受白名单或运行时配置约束的外网文档检索"
+	case agentToolFetchURL:
+		return "抓取白名单 URL 的网页正文，适合在检索后继续读取原文"
 	case agentToolSandboxGrep:
 		return "管理员在受限沙箱目录执行内容检索"
 	case agentToolRuntimeSummary:
@@ -153,19 +191,23 @@ func agentToolCompactDescription(toolName string) string {
 	case agentToolK8sListNodes:
 		return "通过 agent 侧 kubeconfig 直接列出节点摘要"
 	case agentToolK8sListPods:
-		return "通过 agent 侧 kubeconfig 直接列出 Pod 摘要"
+		return "列出当前用户可见的 Pod 摘要"
 	case agentToolK8sGetEvents:
 		return "通过 agent 侧 kubeconfig 直接查询 Kubernetes 事件"
 	case agentToolK8sDescribe:
 		return "通过 agent 侧 kubeconfig 直接执行 kubectl describe"
 	case agentToolK8sPodLogs:
 		return "通过 agent 侧 kubeconfig 直接读取 Pod 日志"
+	case agentToolK8sGetService:
+		return "列出当前用户可见的 Service 与端口映射"
+	case agentToolK8sGetEndpoints:
+		return "查看当前用户可见 Service 的 Endpoints 就绪情况"
+	case agentToolK8sGetIngress:
+		return "列出当前用户可见的 Ingress 规则与访问入口"
 	case agentToolPromQuery:
 		return "通过 agent 侧 Prometheus API 执行指标查询"
 	case agentToolHarborCheck:
 		return "检查 Harbor/OCI Registry 健康状态以及目标镜像是否存在"
-	case agentToolRunOpsScript:
-		return "管理员提交白名单运维脚本（需确认）"
 	case agentToolResourceRecommend:
 		return "根据任务描述推荐 CPU/GPU/内存配置"
 	case agentToolGetNodeDetail:
@@ -184,8 +226,24 @@ func agentToolCompactDescription(toolName string) string {
 		return "删除作业，需要确认"
 	case agentToolCreateJupyter:
 		return "创建 Jupyter 作业，需要确认"
+	case agentToolCreateWebIDE:
+		return "创建 WebIDE 作业，需要确认"
 	case agentToolCreateTrain:
-		return "创建训练作业，需要确认"
+		return "创建自定义训练作业，需要确认"
+	case agentToolCreateCustom:
+		return "创建自定义作业，需要确认"
+	case agentToolCreatePytorch:
+		return "创建 PyTorch 分布式作业，需要确认"
+	case agentToolCreateTensorflow:
+		return "创建 TensorFlow 分布式作业，需要确认"
+	case agentToolCreateImage:
+		return "创建新的镜像构建任务，需要确认"
+	case agentToolManageBuild:
+		return "取消或删除镜像构建任务，需要确认"
+	case agentToolRegisterImage:
+		return "将外部镜像登记到平台中，需要确认"
+	case agentToolManageAccess:
+		return "向用户或账户授予/撤销镜像访问权限，需要确认"
 	case agentToolCordonNode:
 		return "将节点标记为不可调度，需要确认"
 	case agentToolUncordonNode:
@@ -196,6 +254,16 @@ func agentToolCompactDescription(toolName string) string {
 		return "删除 Pod 以触发重建，需要确认"
 	case agentToolRestartWL:
 		return "滚动重启 Deployment/StatefulSet/DaemonSet，需要确认"
+	case agentToolK8sScaleWL:
+		return "调整 Deployment/StatefulSet 副本数，需要确认"
+	case agentToolK8sLabelNode:
+		return "为节点添加或修改标签，需要确认"
+	case agentToolK8sTaintNode:
+		return "为节点添加 taint，需要确认"
+	case agentToolRunKubectl:
+		return "执行高风险 kubectl 写命令，需要确认"
+	case agentToolAdminCommand:
+		return "执行非 kubectl 管理命令，需要确认"
 	case toolGetLatestAuditReport:
 		return "查看最近审计报告"
 	case toolListAuditItems:
@@ -207,26 +275,79 @@ func agentToolCompactDescription(toolName string) string {
 	case toolBatchStopJobs:
 		return "批量停止作业"
 	case toolNotifyJobOwner:
-		return "通知作业所有者"
+		return "向作业所有者发送邮件通知"
 	default:
 		return "平台工具"
 	}
 }
 
-func buildAgentToolCatalog(enabledTools []string) []map[string]any {
+func indexLocalToolCatalog(entries []agentLocalToolCatalogEntry) map[string]agentLocalToolCatalogEntry {
+	index := make(map[string]agentLocalToolCatalogEntry, len(entries))
+	for _, entry := range entries {
+		name := strings.TrimSpace(entry.Name)
+		if name == "" {
+			continue
+		}
+		index[name] = entry
+	}
+	return index
+}
+
+func buildAgentToolCatalog(
+	enabledTools []string,
+	localCatalog map[string]agentLocalToolCatalogEntry,
+) []map[string]any {
 	catalog := make([]map[string]any, 0, len(enabledTools))
 	for _, toolName := range enabledTools {
+		mode := "read_only"
+		if isAgentConfirmTool(toolName) {
+			mode = "confirm"
+		} else if isAgentAutoActionTool(toolName) {
+			mode = "auto_action"
+		}
+		description := agentToolCompactDescription(toolName)
+		if entry, ok := localCatalog[toolName]; ok {
+			if strings.TrimSpace(entry.Mode) != "" {
+				mode = strings.TrimSpace(entry.Mode)
+			}
+			if strings.TrimSpace(entry.Description) != "" {
+				description = strings.TrimSpace(entry.Description)
+			}
+		}
 		catalog = append(catalog, map[string]any{
 			"name":        toolName,
-			"mode":        map[bool]string{true: "confirm", false: "read_only"}[isAgentConfirmTool(toolName)],
-			"description": agentToolCompactDescription(toolName),
+			"mode":        mode,
+			"description": description,
 		})
 	}
 	return catalog
 }
 
 func buildAgentCapabilities(token util.JWTMessage, page map[string]any) map[string]any {
+	return buildAgentCapabilitiesWithCatalog(token, page, nil)
+}
+
+func (mgr *AgentMgr) buildAgentCapabilities(token util.JWTMessage, page map[string]any) map[string]any {
+	if mgr == nil {
+		return buildAgentCapabilities(token, page)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), agentLocalToolCatalogTimeout)
+	defer cancel()
+
+	localCatalog, err := mgr.getPythonLocalToolCatalog(ctx)
+	if err != nil {
+		localCatalog = nil
+	}
+	return buildAgentCapabilitiesWithCatalog(token, page, localCatalog)
+}
+
+func buildAgentCapabilitiesWithCatalog(
+	token util.JWTMessage,
+	page map[string]any,
+	localCatalogEntries []agentLocalToolCatalogEntry,
+) map[string]any {
 	enabledSet := make(map[string]struct{}, len(agentUserTools)+len(agentAdminTools))
+	localCatalog := indexLocalToolCatalog(localCatalogEntries)
 	addTools := func(names ...string) {
 		for _, name := range names {
 			if name == "" {
@@ -240,6 +361,16 @@ func buildAgentCapabilities(token util.JWTMessage, page map[string]any) map[stri
 	if token.RolePlatform == model.RoleAdmin {
 		addTools(agentAdminTools...)
 	}
+	for _, entry := range localCatalogEntries {
+		name := strings.TrimSpace(entry.Name)
+		if name == "" {
+			continue
+		}
+		if entry.AdminOnly && token.RolePlatform != model.RoleAdmin {
+			continue
+		}
+		addTools(name)
+	}
 
 	enabledTools := make([]string, 0, len(enabledSet))
 	for name := range enabledSet {
@@ -247,8 +378,14 @@ func buildAgentCapabilities(token util.JWTMessage, page map[string]any) map[stri
 	}
 	sort.Strings(enabledTools)
 
-	confirmTools := make([]string, 0, len(agentConfirmToolSet))
+	confirmTools := make([]string, 0, len(enabledTools))
 	for _, name := range enabledTools {
+		if entry, ok := localCatalog[name]; ok {
+			if strings.TrimSpace(entry.Mode) == "confirm" {
+				confirmTools = append(confirmTools, name)
+			}
+			continue
+		}
 		if _, ok := agentConfirmToolSet[name]; ok {
 			confirmTools = append(confirmTools, name)
 		}
@@ -264,7 +401,7 @@ func buildAgentCapabilities(token util.JWTMessage, page map[string]any) map[stri
 	return map[string]any{
 		"enabled_tools": enabledTools,
 		"confirm_tools": confirmTools,
-		"tool_catalog":  buildAgentToolCatalog(enabledTools),
+		"tool_catalog":  buildAgentToolCatalog(enabledTools, localCatalog),
 		"surface": map[string]any{
 			"page_scope": pageScope,
 			"page_route": pageRoute,

@@ -3,6 +3,8 @@ import { IResponse } from '@/services/types'
 
 export type AgentAuditSessionSource = 'chat' | 'ops_audit' | 'system' | 'benchmark'
 export type AgentAuditToolCallSource = 'backend' | 'local' | 'benchmark'
+export type AgentQualityEvalScope = 'session' | 'turn'
+export type AgentQualityEvalType = 'full' | 'dialogue' | 'task'
 
 export interface AgentAuditSessionSummary {
   chat: number
@@ -29,6 +31,8 @@ export interface AgentAuditSessionListItem {
   orchestrationModes?: string[]
   pinnedAt?: string | null
   latestEvalId?: number | null
+  latestEvalScope?: AgentQualityEvalScope | ''
+  latestEvalType?: AgentQualityEvalType | ''
   latestEvalStatus?: '' | 'pending' | 'running' | 'completed' | 'failed'
   latestEvalCompletedAt?: string | null
   feedbackRating?: number | null
@@ -120,13 +124,15 @@ export async function apiAdminListAgentAuditSessions(params: {
   source?: AgentAuditSessionSource | 'all'
   keyword?: string
   from?: string // RFC3339
-  to?: string   // RFC3339
+  to?: string // RFC3339
   hasEval?: '' | 'yes' | 'no'
   limit?: number
   offset?: number
 }) {
   const searchParams = Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== '' && value !== 'all')
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== '' && value !== 'all'
+    )
   ) as SearchParams
 
   return apiV1Get<AgentAuditSessionListResult>('admin/agent/sessions', {
@@ -160,6 +166,9 @@ export interface AgentQualityEval {
   id: number
   sessionId: string
   turnId?: string
+  evalScope?: AgentQualityEvalScope
+  evalType?: AgentQualityEvalType
+  targetId?: string
   feedbackId?: number | null
   triggerSource: 'feedback' | 'offline_batch' | 'manual' | string
   evalStatus: 'pending' | 'running' | 'completed' | 'failed'
@@ -171,6 +180,7 @@ export interface AgentQualityEval {
   rawChatResp?: unknown
   rawChainResp?: unknown
   artifactPath?: string
+  metadata?: Record<string, unknown>
   createdAt: string
   completedAt?: string | null
   updatedAt: string
@@ -182,11 +192,34 @@ export async function apiAdminListSessionQualityEvals(sessionId: string, limit =
   })
 }
 
-export async function apiAdminTriggerSessionQualityEval(sessionId: string, turnId?: string) {
-  return apiV1Post<{ evalId: number; sessionId: string; evalStatus: string; triggerSource: string; createdAt: string }>(
-    `admin/agent/sessions/${sessionId}/trigger-eval`,
-    { turnId: turnId ?? '' }
-  )
+export interface TriggerAgentQualityEvalParams {
+  turnId?: string
+  evalScope?: AgentQualityEvalScope
+  evalType?: AgentQualityEvalType
+  dialogueModelRole?: string
+  taskModelRole?: string
+}
+
+export async function apiAdminTriggerSessionQualityEval(
+  sessionId: string,
+  params: TriggerAgentQualityEvalParams = {}
+) {
+  return apiV1Post<{
+    evalId: number
+    sessionId: string
+    turnId?: string
+    evalScope: AgentQualityEvalScope
+    evalType: AgentQualityEvalType
+    evalStatus: string
+    triggerSource: string
+    createdAt: string
+  }>(`admin/agent/sessions/${sessionId}/trigger-eval`, {
+    turnId: params.turnId ?? '',
+    evalScope: params.evalScope ?? 'session',
+    evalType: params.evalType ?? 'full',
+    dialogueModelRole: params.dialogueModelRole ?? '',
+    taskModelRole: params.taskModelRole ?? '',
+  })
 }
 
 // ─── Feedback ──────────────────────────────────────────────────────────────

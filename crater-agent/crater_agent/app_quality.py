@@ -25,14 +25,22 @@ class FeedbackTriggerRequest(BaseModel):
     eval_id: int
     session_id: str
     turn_id: Optional[str] = None
+    eval_scope: str = "session"
+    eval_type: str = "full"
     feedback_id: Optional[int] = None
     rating: Optional[int] = None
+    dialogue_model_role: Optional[str] = None
+    task_model_role: Optional[str] = None
 
 
 class ManualTriggerRequest(BaseModel):
     session_id: str
     turn_id: Optional[str] = None
     eval_id: Optional[int] = None
+    eval_scope: str = "session"
+    eval_type: str = "full"
+    dialogue_model_role: Optional[str] = None
+    task_model_role: Optional[str] = None
 
 
 @router.post("/eval/quality/feedback")
@@ -51,9 +59,13 @@ async def trigger_quality_eval_from_feedback(
         eval_id=req.eval_id,
         session_id=req.session_id,
         turn_id=req.turn_id,
+        eval_scope=req.eval_scope,
+        eval_type=req.eval_type,
         trigger_source="feedback",
         rating=req.rating,
         feedback_id=req.feedback_id,
+        dialogue_model_role=req.dialogue_model_role,
+        task_model_role=req.task_model_role,
     )
     return {"status": "accepted"}
 
@@ -76,6 +88,10 @@ async def trigger_quality_eval_manual(
         eval_id=eval_id,
         session_id=req.session_id,
         turn_id=req.turn_id,
+        eval_scope=req.eval_scope,
+        eval_type=req.eval_type,
         trigger_source="manual",
+        dialogue_model_role=req.dialogue_model_role,
+        task_model_role=req.task_model_role,
     )
     return {"status": "accepted", "session_id": req.session_id}

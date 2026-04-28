@@ -59,6 +59,7 @@ export interface IChatResponse {
 export const apiGetHealthOverview = (days?: number) =>
   apiV1Get<IResponse<IHealthOverview>>('aiops/health-overview', {
     searchParams: { days: days ?? 7 },
+    timeout: 30000,
   })
 
 /**
@@ -67,6 +68,7 @@ export const apiGetHealthOverview = (days?: number) =>
 export const apiGetHealthOverviewAdmin = (days?: number) =>
   apiV1Get<IResponse<IHealthOverview>>('admin/aiops/health-overview', {
     searchParams: { days: days ?? 7 },
+    timeout: 30000,
   })
 
 /**

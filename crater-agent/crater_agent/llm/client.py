@@ -44,6 +44,8 @@ class ClientConfig:
     timeout: int = 60
     max_retries: int = 2
     verify_ssl: bool = True
+    streaming: bool = False
+    stream_usage: bool | None = None
     headers: dict[str, str] = field(default_factory=dict)
     model_kwargs: dict[str, Any] = field(default_factory=dict)
 
@@ -61,6 +63,12 @@ class ClientConfig:
             timeout=int(raw.get("timeout") or 60),
             max_retries=int(raw.get("max_retries") or 2),
             verify_ssl=bool(raw.get("verify_ssl", True)),
+            streaming=bool(raw.get("streaming", False)),
+            stream_usage=(
+                bool(raw.get("stream_usage"))
+                if raw.get("stream_usage") is not None
+                else None
+            ),
             headers={str(key): str(value) for key, value in (raw.get("headers") or {}).items()},
             model_kwargs={str(key): value for key, value in (raw.get("model_kwargs") or {}).items()},
         )
@@ -130,7 +138,10 @@ class ModelClientFactory:
             "max_tokens": config.max_tokens,
             "timeout": config.timeout,
             "max_retries": config.max_retries,
+            "streaming": config.streaming,
         }
+        if config.stream_usage is not None:
+            client_kwargs["stream_usage"] = config.stream_usage
         if not config.verify_ssl:
             client_kwargs["http_client"] = httpx.Client(verify=False)
             client_kwargs["http_async_client"] = httpx.AsyncClient(verify=False)

@@ -127,6 +127,74 @@ func getToolArgInt(args map[string]any, key string, fallback int) int {
 	return fallback
 }
 
+func getToolArgBool(args map[string]any, key string, fallback bool) bool {
+	value, ok := args[key]
+	if !ok || value == nil {
+		return fallback
+	}
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case string:
+		switch strings.ToLower(strings.TrimSpace(typed)) {
+		case "true", "1", "yes", "y", "on":
+			return true
+		case "false", "0", "no", "n", "off":
+			return false
+		}
+	}
+	return fallback
+}
+
+func getToolArgStringSlice(args map[string]any, key string) []string {
+	value, ok := args[key]
+	if !ok || value == nil {
+		return nil
+	}
+	return normalizeStringSliceValue(value)
+}
+
+func normalizeStringSliceValue(value any) []string {
+	switch typed := value.(type) {
+	case []string:
+		return uniqueStrings(trimStringSlice(typed))
+	case []any:
+		items := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if text, ok := item.(string); ok {
+				text = strings.TrimSpace(text)
+				if text != "" {
+					items = append(items, text)
+				}
+			}
+		}
+		return uniqueStrings(items)
+	case string:
+		splitter := func(r rune) bool {
+			return r == ',' || r == '\n' || r == '\r'
+		}
+		parts := strings.FieldsFunc(typed, splitter)
+		if len(parts) == 1 && strings.Contains(parts[0], " ") {
+			parts = strings.Fields(parts[0])
+		}
+		return uniqueStrings(trimStringSlice(parts))
+	default:
+		return nil
+	}
+}
+
+func trimStringSlice(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		result = append(result, value)
+	}
+	return result
+}
+
 func uniqueStrings(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	result := make([]string, 0, len(values))

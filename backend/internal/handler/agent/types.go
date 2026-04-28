@@ -26,16 +26,17 @@ type AgentSessionPinRequest struct {
 }
 
 type ExecuteToolRequest struct {
-	ToolName        string                `json:"tool_name" binding:"required"`
-	ToolArgs        json.RawMessage       `json:"tool_args" binding:"required"`
-	SessionID       string                `json:"session_id" binding:"required"`
-	SessionSource   string                `json:"session_source,omitempty"`
-	SessionTitle    string                `json:"session_title,omitempty"`
-	TurnID          string                `json:"turn_id,omitempty"`
-	ToolCallID      string                `json:"tool_call_id,omitempty"`
-	AgentID         string                `json:"agent_id,omitempty"`
-	AgentRole       string                `json:"agent_role,omitempty"`
-	InternalContext *AgentInternalContext `json:"internal_context,omitempty"`
+	ToolName         string                `json:"tool_name" binding:"required"`
+	ToolArgs         json.RawMessage       `json:"tool_args" binding:"required"`
+	SessionID        string                `json:"session_id" binding:"required"`
+	SessionSource    string                `json:"session_source,omitempty"`
+	SessionTitle     string                `json:"session_title,omitempty"`
+	ExecutionBackend string                `json:"execution_backend,omitempty"`
+	TurnID           string                `json:"turn_id,omitempty"`
+	ToolCallID       string                `json:"tool_call_id,omitempty"`
+	AgentID          string                `json:"agent_id,omitempty"`
+	AgentRole        string                `json:"agent_role,omitempty"`
+	InternalContext  *AgentInternalContext `json:"internal_context,omitempty"`
 }
 
 type AgentInternalContext struct {
@@ -95,4 +96,30 @@ type AgentToolResponse struct {
 	Message      string                 `json:"message,omitempty"`
 	Confirmation *AgentToolConfirmation `json:"confirmation,omitempty"`
 	LatencyMs    int                    `json:"latency_ms,omitempty"`
+}
+
+type agentLocalToolCatalogEntry struct {
+	Name             string `json:"name"`
+	Mode             string `json:"mode"`
+	AdminOnly        bool   `json:"admin_only"`
+	Description      string `json:"description"`
+	ExecutionBackend string `json:"execution_backend"`
+}
+
+type agentLocalToolCatalogResponse struct {
+	Tools []agentLocalToolCatalogEntry `json:"tools"`
+}
+
+type agentLocalWriteExecuteRequest struct {
+	ToolName         string          `json:"tool_name"`
+	ToolArgs         json.RawMessage `json:"tool_args"`
+	SessionID        string          `json:"session_id"`
+	TurnID           string          `json:"turn_id,omitempty"`
+	ToolCallID       string          `json:"tool_call_id,omitempty"`
+	ConfirmID        string          `json:"confirm_id,omitempty"`
+	AgentID          string          `json:"agent_id,omitempty"`
+	AgentRole        string          `json:"agent_role,omitempty"`
+	ActorRole        string          `json:"actor_role,omitempty"`
+	UserID           uint            `json:"user_id,omitempty"`
+	ExecutionBackend string          `json:"execution_backend,omitempty"`
 }

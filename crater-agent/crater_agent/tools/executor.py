@@ -42,6 +42,7 @@ class ToolExecutorProtocol(Protocol):
         agent_id: str | None = None,
         agent_role: str | None = None,
         actor_role: str | None = None,
+        execution_backend: str | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -66,6 +67,7 @@ class GoBackendToolExecutor:
         agent_id: str | None = None,
         agent_role: str | None = None,
         actor_role: str | None = None,
+        execution_backend: str | None = None,
     ) -> dict[str, Any]:
         """Execute a tool via Go backend HTTP call.
 
@@ -103,6 +105,8 @@ class GoBackendToolExecutor:
                 "agent_id": agent_id,
                 "agent_role": normalized_role,
             }
+            if execution_backend:
+                request_body["execution_backend"] = execution_backend
             # System-level agents (e.g. approval evaluator) don't have a real
             # AgentSession in the database.  Pass internal_context so the Go
             # backend resolves an admin token directly instead of doing a
@@ -236,14 +240,52 @@ class CompositeToolExecutor:
         agent_id: str | None = None,
         agent_role: str | None = None,
         actor_role: str | None = None,
+        execution_backend: str | None = None,
     ) -> dict[str, Any]:
+        del execution_backend
         default_target = (
             "local"
-            if (self._runtime.is_local_core_tool(tool_name) and self.local.supports(tool_name))
+            if (
+                self.local.supports(tool_name)
+                and self._runtime.default_route_for_tool(tool_name) == "local"
+            )
             else "backend"
         )
         target = route_for_tool(self._runtime, tool_name, default=default_target)
         if target == "local":
+            local_route_allowed = self.local.supports(tool_name)
+            if tool_name in CONFIRM_TOOL_NAMES:
+                local_route_allowed = local_route_allowed and self._runtime.is_local_write_tool(tool_name)
+            else:
+                local_route_allowed = local_route_allowed and self._runtime.is_local_core_tool(tool_name)
+            if not local_route_allowed:
+                logger.warning(
+                    "[tool] route override ignored for %s: local execution is not enabled for this tool",
+                    tool_name,
+                )
+                target = "backend"
+        if tool_name in CONFIRM_TOOL_NAMES:
+            execution_backend_name = "python_local" if target == "local" else "backend"
+            logger.info(
+                "[tool] route: %s target=%s execution_backend=%s confirm=true",
+                tool_name,
+                target,
+                execution_backend_name,
+            )
+            return await self.backend.execute(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                session_id=session_id,
+                user_id=user_id,
+                turn_id=turn_id,
+                tool_call_id=tool_call_id,
+                agent_id=agent_id,
+                agent_role=agent_role,
+                actor_role=actor_role,
+                execution_backend=execution_backend_name,
+            )
+        if target == "local":
+            logger.info("[tool] route: %s target=local execution_backend=python_local confirm=false", tool_name)
             return await self.local.execute(
                 tool_name=tool_name,
                 tool_args=tool_args,
@@ -254,7 +296,9 @@ class CompositeToolExecutor:
                 agent_id=agent_id,
                 agent_role=agent_role,
                 actor_role=actor_role,
+                execution_backend="python_local",
             )
+        logger.info("[tool] route: %s target=backend execution_backend=%s confirm=false", tool_name, "backend")
         return await self.backend.execute(
             tool_name=tool_name,
             tool_args=tool_args,
@@ -265,6 +309,7 @@ class CompositeToolExecutor:
             agent_id=agent_id,
             agent_role=agent_role,
             actor_role=actor_role,
+            execution_backend="backend" if tool_name in CONFIRM_TOOL_NAMES else None,
         )
 
     async def close(self) -> None:
@@ -297,7 +342,9 @@ class ReadOnlyToolExecutor:
         agent_id: str | None = None,
         agent_role: str | None = None,
         actor_role: str | None = None,
+        execution_backend: str | None = None,
     ) -> dict[str, Any]:
+        del execution_backend
         start_time = time.monotonic()
         if tool_name in CONFIRM_TOOL_NAMES:
             return {
@@ -341,85 +388,7 @@ class ReadOnlyToolExecutor:
             await close()
 
 
-class MockToolExecutor:
-    """Mock executor for benchmarking. Returns pre-recorded tool responses."""
-
-    def __init__(self, snapshots: dict[str, Any]):
-        """
-        Args:
-            snapshots: mapping from tool_name to pre-recorded response data.
-                       Supports arg-based lookup: {"tool_name": response} or
-                       {"tool_name": {arg_key: {arg_val: response}}}
-        """
-        self.snapshots = snapshots
-        self.call_log: list[dict[str, Any]] = []
-
-    def _resolve_snapshot(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
-        snapshot = self.snapshots[tool_name]
-        if not isinstance(snapshot, dict):
-            return snapshot
-        for arg_key, arg_map in snapshot.items():
-            if arg_key in tool_args and isinstance(arg_map, dict):
-                arg_value = tool_args[arg_key]
-                if arg_value in arg_map:
-                    return arg_map[arg_value]
-        return snapshot
-
-    async def execute(
-        self,
-        tool_name: str,
-        tool_args: dict[str, Any],
-        session_id: str,
-        user_id: int,
-        turn_id: str | None = None,
-        tool_call_id: str | None = None,
-        agent_id: str | None = None,
-        agent_role: str | None = None,
-        actor_role: str | None = None,
-    ) -> dict[str, Any]:
-        del session_id, user_id, turn_id, agent_id, agent_role
-        start_time = time.monotonic()
-
-        if not is_actor_allowed_for_tool(actor_role, tool_name):
-            return {
-                "tool_call_id": tool_call_id,
-                "status": "error",
-                "error_type": "tool_policy",
-                "retryable": False,
-                "message": f"Tool {tool_name} requires admin privileges",
-                "_latency_ms": int((time.monotonic() - start_time) * 1000),
-            }
-
-        # Record the call for evaluation
-        call_record = {
-            "tool_name": tool_name,
-            "tool_args": tool_args,
-            "timestamp": time.time(),
-        }
-
-        # Check if this is a confirm tool
-        if tool_name in CONFIRM_TOOL_NAMES:
-            result = {
-                "tool_call_id": tool_call_id,
-                "status": "confirmation_required",
-                "confirmation": {
-                    "confirm_id": f"mock_cf_{len(self.call_log)}",
-                    "tool_name": tool_name,
-                    "description": f"模拟确认请求: {tool_name}({tool_args})",
-                    "risk_level": "high",
-                },
-            }
-        elif tool_name in self.snapshots:
-            snapshot = self._resolve_snapshot(tool_name, tool_args)
-            result = {"tool_call_id": tool_call_id, "status": "success", "result": snapshot}
-        else:
-            result = {
-                "tool_call_id": tool_call_id,
-                "status": "error",
-                "message": f"Mock: no snapshot for tool '{tool_name}'",
-            }
-
-        result["_latency_ms"] = int((time.monotonic() - start_time) * 1000)
-        call_record["result"] = result
-        self.call_log.append(call_record)
-        return result
+# Backward-compatible import path for older tests and debug scripts. The
+# benchmark implementation lives under crater_agent.eval to keep mock-only
+# behavior out of production executors.
+from crater_agent.eval.mock_executor import MockToolExecutor  # noqa: E402

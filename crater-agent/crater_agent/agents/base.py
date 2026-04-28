@@ -5,9 +5,12 @@ from __future__ import annotations
 import json
 import logging
 import math
+import time
 from dataclasses import dataclass
 from typing import Any
 
+import httpcore
+import httpx
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
@@ -15,7 +18,15 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 logger = logging.getLogger(__name__)
 
-_RETRYABLE_LLM_ERRORS = (APITimeoutError, APIConnectionError, InternalServerError, RateLimitError)
+_RETRYABLE_LLM_ERRORS = (
+    APITimeoutError,
+    APIConnectionError,
+    InternalServerError,
+    RateLimitError,
+    httpx.RemoteProtocolError,
+    httpcore.RemoteProtocolError,
+    httpx.ReadTimeout,
+)
 
 
 @dataclass
@@ -46,10 +57,14 @@ class BaseRoleAgent:
             "llm_calls": 0,
             "input_tokens": 0,
             "output_tokens": 0,
+            "total_tokens": 0,
+            "reported_token_calls": 0,
+            "missing_token_calls": 0,
         }
         self.last_content = ""
         self.last_reasoning_content = ""
         self.last_selected_text = ""
+        self.last_latency_ms = 0
 
     async def run_text(
         self,
@@ -59,10 +74,18 @@ class BaseRoleAgent:
         history_messages: list | None = None,
     ) -> str:
         agent_ref = f"{self.role}/{self.agent_id}"
-        self.last_usage = {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0}
+        self.last_usage = {
+            "llm_calls": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "reported_token_calls": 0,
+            "missing_token_calls": 0,
+        }
         self.last_content = ""
         self.last_reasoning_content = ""
         self.last_selected_text = ""
+        self.last_latency_ms = 0
 
         msgs: list = [SystemMessage(content=system_prompt)]
         if history_messages:
@@ -85,7 +108,9 @@ class BaseRoleAgent:
             return await self.llm.ainvoke(msgs)
 
         try:
+            started_at = time.monotonic()
             response = await _invoke()
+            self.last_latency_ms = int((time.monotonic() - started_at) * 1000)
             content, reasoning = self._extract_response_texts(response)
             selected = self._select_response_text(content=content, reasoning=reasoning)
             self.last_content = content
@@ -166,11 +191,17 @@ class BaseRoleAgent:
             "llm_calls": int(base.get("llm_calls") or 0),
             "input_tokens": int(base.get("input_tokens") or 0),
             "output_tokens": int(base.get("output_tokens") or 0),
+            "total_tokens": int(base.get("total_tokens") or 0),
+            "reported_token_calls": int(base.get("reported_token_calls") or 0),
+            "missing_token_calls": int(base.get("missing_token_calls") or 0),
         }
         if isinstance(delta, dict):
             merged["llm_calls"] += int(delta.get("llm_calls") or 0)
             merged["input_tokens"] += int(delta.get("input_tokens") or 0)
             merged["output_tokens"] += int(delta.get("output_tokens") or 0)
+            merged["total_tokens"] += int(delta.get("total_tokens") or 0)
+            merged["reported_token_calls"] += int(delta.get("reported_token_calls") or 0)
+            merged["missing_token_calls"] += int(delta.get("missing_token_calls") or 0)
         return merged
 
     @staticmethod
@@ -276,14 +307,19 @@ class BaseRoleAgent:
             or token_usage.get("output_tokens")
             or 0
         )
-        if not input_tokens:
-            input_tokens = self._estimate_tokens(system_prompt) + self._estimate_tokens(user_prompt)
-        if not output_tokens:
-            output_tokens = self._estimate_tokens(output_text)
+        total_tokens = (
+            usage.get("total_tokens")
+            or token_usage.get("total_tokens")
+            or (int(input_tokens or 0) + int(output_tokens or 0))
+        )
+        has_reported_usage = bool(usage) or bool(token_usage)
         return {
             "llm_calls": 1,
-            "input_tokens": int(input_tokens),
-            "output_tokens": int(output_tokens),
+            "input_tokens": int(input_tokens or 0),
+            "output_tokens": int(output_tokens or 0),
+            "total_tokens": int(total_tokens or 0),
+            "reported_token_calls": 1 if has_reported_usage else 0,
+            "missing_token_calls": 0 if has_reported_usage else 1,
         }
 
     @staticmethod

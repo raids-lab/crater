@@ -26,6 +26,16 @@ def get_job_detail(job_name: str) -> dict:
 
 
 @tool
+def get_job_events(job_name: str) -> dict:
+    """获取作业关联的 Kubernetes 事件缓存。
+
+    Args:
+        job_name: 作业的系统唯一名（Job.JobName）
+    """
+    pass
+
+
+@tool
 def get_job_logs(job_name: str, tail: int = 200, keyword: Optional[str] = None) -> dict:
     """获取作业容器的日志输出。可选按关键词过滤。
 
@@ -163,8 +173,62 @@ def recommend_training_images(
 
 
 @tool
+def list_image_builds(
+    statuses: Optional[List[str]] = None,
+    keyword: Optional[str] = None,
+    limit: int = 20,
+) -> dict:
+    """列出当前用户提交过的镜像构建任务，可按状态或关键词过滤。
+
+    Args:
+        statuses: 可选，构建状态过滤，如 pending、running、finished、failed、canceled
+        keyword: 可选，按 imagePackName、imageLink、描述搜索
+        limit: 最多返回 N 条，默认 20
+    """
+    pass
+
+
+@tool
+def get_image_build_detail(
+    build_id: Optional[int] = None,
+    imagepack_name: Optional[str] = None,
+) -> dict:
+    """获取单个镜像构建任务详情，包括脚本、Pod 信息和最终镜像关联。
+
+    Args:
+        build_id: 可选，镜像构建记录 ID
+        imagepack_name: 可选，镜像构建任务名
+    """
+    pass
+
+
+@tool
+def get_image_access_detail(
+    image_id: Optional[int] = None,
+    image_link: Optional[str] = None,
+) -> dict:
+    """获取镜像当前授权到哪些用户或账户，仅镜像拥有者可查看。
+
+    Args:
+        image_id: 可选，镜像 ID
+        image_link: 可选，镜像完整链接
+    """
+    pass
+
+
+@tool
 def get_health_overview(days: int = 7) -> dict:
     """获取当前用户在当前账户下的作业健康概览：总作业数、失败数、运行中数、失败率等。
+
+    Args:
+        days: 统计最近 N 天，默认 7
+    """
+    pass
+
+
+@tool
+def get_cluster_health_overview(days: int = 7) -> dict:
+    """管理员视角的集群健康概览，聚合节点、作业、资源和主要告警。
 
     Args:
         days: 统计最近 N 天，默认 7
@@ -479,13 +543,10 @@ def diagnose_distributed_job_network(
     pass
 
 
-# --- DEPRECATED: web_search / fetch_url ---
-# These tools are superseded by LLM-native built-in capabilities:
-#   - Bailian Qwen: extra_body={"enable_search": True}
-#   - Zhipu GLM-4: tools=[{"type": "web_search"}]
-#   - Kimi K2.x: builtin_function.$web_search
-# Kept for reference; NOT registered in AUTO_TOOLS / ALL_TOOLS.
-# Will be fully removed once built-in tool integration is validated.
+# --- Web research tools ---
+# Keep explicit web_search enabled for now. Provider-native search behavior is
+# not stable across the currently configured model backends, so the agent still
+# needs a deterministic fallback that it can call directly.
 
 
 @tool
@@ -493,8 +554,7 @@ def web_search(
     query: str,
     limit: int = 5,
 ) -> dict:
-    """[DEPRECATED] 用 DuckDuckGo 检索外部公开信息，返回搜索结果列表（标题、摘要、链接）。
-    已废弃：计划迁移到模型内置联网搜索能力（enable_search）。仅管理员可用。
+    """用外部搜索引擎检索公开信息，返回搜索结果列表（标题、摘要、链接）。
 
     Args:
         query: 检索关键词
@@ -508,9 +568,8 @@ def fetch_url(
     url: str,
     max_chars: int = 4000,
 ) -> dict:
-    """[DEPRECATED] 抓取指定 URL 的页面正文（去除脚本/样式后的可读文本）。
-    已废弃：计划迁移到模型内置网页抓取能力（web_extractor / search_strategy=agent_max）。
-    仅支持 platform 白名单域名。仅管理员可用。
+    """抓取指定 URL 的页面正文（去除脚本/样式后的可读文本）。
+    仅支持 platform 白名单域名。
 
     Args:
         url: 要读取的完整 URL（https://...）
@@ -553,6 +612,7 @@ def k8s_list_pods(
     """通过 agent 侧 kubeconfig 直接列出 Pod 摘要。
 
     适用于按 namespace / label / node 聚合排查 Pod 与作业状态。
+    对普通用户会自动收敛到本人作业对应的 Pod 范围。
     """
     pass
 
@@ -614,6 +674,8 @@ def prometheus_query(
     """通过 agent 侧 Prometheus API 直接执行 instant/range 查询。
 
     适用于 GPU/节点/Pod 指标、Prometheus 自身健康、node-exporter 重启频繁等问题排查。
+    支持任意合法 PromQL；在异构加速卡场景下优先查询 unified `gpu_*` recording rules，
+    但仍可按需查询 kube-state-metrics、node-exporter、DCGM 或厂商 exporter 原生指标。
     """
     pass
 
@@ -649,7 +711,7 @@ def k8s_get_service(
     """通过 agent 侧 kubeconfig 查询 Kubernetes Service 资源。
 
     适用于 Jupyter/WebIDE 不可达时检查 Service 是否存在、端口映射是否正确、ClusterIP 是否分配。
-    仅管理员可用。
+    对普通用户会自动收敛到本人作业对应的 Service 范围。
 
     Args:
         namespace: 可选，按命名空间过滤；为空则查询默认命名空间
@@ -670,7 +732,7 @@ def k8s_get_endpoints(
     """通过 agent 侧 kubeconfig 查询 Kubernetes Endpoints 资源。
 
     适用于排查 Service 后端是否有就绪 Pod、地址是否正确、端口是否匹配。
-    仅管理员可用。
+    对普通用户会自动收敛到本人作业对应的 Endpoints 范围。
 
     Args:
         namespace: 可选，按命名空间过滤
@@ -690,7 +752,7 @@ def k8s_get_ingress(
     """通过 agent 侧 kubeconfig 查询 Kubernetes Ingress 资源。
 
     适用于 Jupyter/WebIDE 外部访问不可达时检查 Ingress 规则、TLS 配置、后端 Service 绑定。
-    仅管理员可用。
+    对普通用户会自动收敛到本人作业对应的 Ingress 范围。
 
     Args:
         namespace: 可选，按命名空间过滤
@@ -1134,6 +1196,7 @@ def create_jupyter_job(
     memory: str = "8Gi",
     gpu_count: Optional[int] = None,
     gpu_model: Optional[str] = None,
+    forwards: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
     """创建一个 Jupyter 交互式作业，需要用户确认。
     若部分字段缺失，系统可通过确认表单让用户补全。
@@ -1145,6 +1208,32 @@ def create_jupyter_job(
         memory: 内存请求量，如 "8Gi"
         gpu_count: 可选，GPU 数量
         gpu_model: 可选，GPU 型号，如 v100 / a100
+        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "grpc", "port": 19530, "type": "ingress|nodeport"}
+    """
+    pass
+
+
+@tool
+def create_webide_job(
+    name: str = "",
+    image_link: str = "",
+    cpu: str = "2",
+    memory: str = "8Gi",
+    gpu_count: Optional[int] = None,
+    gpu_model: Optional[str] = None,
+    forwards: Optional[List[Dict[str, Any]]] = None,
+) -> dict:
+    """创建一个 WebIDE 交互式作业，需要用户确认。
+    若部分字段缺失，系统可通过确认表单让用户补全。
+
+    Args:
+        name: 作业显示名称
+        image_link: 容器镜像地址
+        cpu: CPU 请求量，如 "2"
+        memory: 内存请求量，如 "8Gi"
+        gpu_count: 可选，GPU 数量
+        gpu_model: 可选，GPU 型号，如 v100 / a100
+        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "api", "port": 3000, "type": "ingress|nodeport"}
     """
     pass
 
@@ -1160,8 +1249,9 @@ def create_training_job(
     gpu_count: Optional[int] = None,
     gpu_model: Optional[str] = None,
     shell: str = "bash",
+    forwards: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
-    """创建一个全新的训练作业。Agent 可以先给出草案，用户再在表单中补全并确认。
+    """创建一个全新的自定义作业。Agent 可以先给出草案，用户再在表单中补全并确认。
 
     Args:
         name: 作业显示名称（对应后端 Job.Name）
@@ -1173,12 +1263,178 @@ def create_training_job(
         gpu_count: GPU 数量，可选
         gpu_model: GPU 型号，可选，如 v100 / a100
         shell: 运行命令时使用的 shell，默认 bash
+        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "grpc", "port": 19530, "type": "ingress|nodeport"}
+    """
+    pass
+
+
+@tool
+def create_custom_job(
+    name: str = "",
+    image_link: str = "",
+    command: str = "",
+    working_dir: str = "",
+    cpu: str = "4",
+    memory: str = "16Gi",
+    gpu_count: Optional[int] = None,
+    gpu_model: Optional[str] = None,
+    shell: str = "bash",
+    forwards: Optional[List[Dict[str, Any]]] = None,
+) -> dict:
+    """创建一个全新的自定义作业。是 `create_training_job` 的语义化别名，需要用户确认。
+
+    Args:
+        name: 作业显示名称（对应后端 Job.Name）
+        image_link: 容器镜像地址
+        command: 启动命令
+        working_dir: 容器工作目录
+        cpu: CPU 请求量
+        memory: 内存请求量
+        gpu_count: GPU 数量，可选
+        gpu_model: GPU 型号，可选，如 v100 / a100
+        shell: 运行命令时使用的 shell，默认 bash
+        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "grpc", "port": 19530, "type": "ingress|nodeport"}
+    """
+    pass
+
+
+@tool
+def create_pytorch_job(
+    name: str = "",
+    tasks: Optional[List[Dict[str, Any]]] = None,
+    tasks_json: str = "",
+    forwards: Optional[List[Dict[str, Any]]] = None,
+) -> dict:
+    """创建一个 PyTorch 分布式作业，需要用户确认。
+
+    Args:
+        name: 作业显示名称
+        tasks: 可选，任务列表。每个任务可包含 name、replicas、image_link、command、working_dir、cpu、memory、gpu_count、gpu_model、ports
+        tasks_json: 可选，任务列表的 JSON 字符串；适合通过确认表单编辑复杂拓扑
+        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "dashboard", "port": 6006, "type": "ingress|nodeport"}
+    """
+    pass
+
+
+@tool
+def create_tensorflow_job(
+    name: str = "",
+    tasks: Optional[List[Dict[str, Any]]] = None,
+    tasks_json: str = "",
+    forwards: Optional[List[Dict[str, Any]]] = None,
+) -> dict:
+    """创建一个 TensorFlow 分布式作业，需要用户确认。
+
+    Args:
+        name: 作业显示名称
+        tasks: 可选，任务列表。每个任务可包含 name、replicas、image_link、command、working_dir、cpu、memory、gpu_count、gpu_model、ports
+        tasks_json: 可选，任务列表的 JSON 字符串；适合通过确认表单编辑复杂拓扑
+        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "dashboard", "port": 6006, "type": "ingress|nodeport"}
+    """
+    pass
+
+
+@tool
+def create_image_build(
+    mode: str,
+    description: str = "",
+    image_name: str = "",
+    image_tag: str = "",
+    tags: Optional[List[str]] = None,
+    archs: Optional[List[str]] = None,
+    base_image: str = "",
+    requirements: str = "",
+    apt_packages: Optional[List[str]] = None,
+    dockerfile: str = "",
+    envd_script: str = "",
+    python_version: str = "",
+    cuda_base: str = "",
+    enable_jupyter: Optional[bool] = None,
+    enable_zsh: Optional[bool] = None,
+    volume_mounts: Optional[List[Dict[str, Any]]] = None,
+) -> dict:
+    """创建新的镜像构建任务。需要用户确认。
+    当前支持四种模式：pip_apt、dockerfile、envd、envd_raw。
+
+    Args:
+        mode: 构建模式，必须为 pip_apt / dockerfile / envd / envd_raw 之一
+        description: 镜像描述
+        image_name: 可选，镜像名
+        image_tag: 可选，镜像标签
+        tags: 可选，镜像标签列表
+        archs: 可选，目标架构列表，默认 linux/amd64
+        base_image: pip_apt 模式下的基础镜像
+        requirements: pip requirements 文本或 envd 模式的 python package 列表
+        apt_packages: 可选，APT 包列表
+        dockerfile: dockerfile 模式下的 Dockerfile 内容
+        envd_script: envd_raw 模式下的 Envd 脚本内容
+        python_version: envd 模式的 Python 版本
+        cuda_base: envd 模式的 CUDA 基础镜像，可来自 list_cuda_base_images
+        enable_jupyter: envd 模式是否开启 Jupyter
+        enable_zsh: envd 模式是否开启 Zsh
+        volume_mounts: dockerfile 模式的高级挂载配置
+    """
+    pass
+
+
+@tool
+def manage_image_build(
+    action: str,
+    build_id: Optional[int] = None,
+    imagepack_name: Optional[str] = None,
+) -> dict:
+    """取消或删除镜像构建任务。需要用户确认。
+
+    Args:
+        action: 必须为 cancel 或 delete
+        build_id: 可选，镜像构建记录 ID
+        imagepack_name: 可选，镜像构建任务名
+    """
+    pass
+
+
+@tool
+def register_external_image(
+    image_link: str = "",
+    description: str = "",
+    task_type: str = "custom",
+    tags: Optional[List[str]] = None,
+    archs: Optional[List[str]] = None,
+) -> dict:
+    """将外部 Harbor / OCI 镜像登记到平台中。需要用户确认。
+
+    Args:
+        image_link: 镜像完整链接
+        description: 镜像描述
+        task_type: 镜像任务类型，如 custom、jupyter、pytorch
+        tags: 可选，镜像标签列表
+        archs: 可选，镜像架构列表
+    """
+    pass
+
+
+@tool
+def manage_image_access(
+    action: str,
+    image_id: Optional[int] = None,
+    image_link: Optional[str] = None,
+    target_type: str = "",
+    targets: Optional[List[str]] = None,
+) -> dict:
+    """向用户或账户授予/撤销镜像访问权限。需要用户确认。
+
+    Args:
+        action: 必须为 grant 或 revoke
+        image_id: 可选，镜像 ID
+        image_link: 可选，镜像完整链接
+        target_type: 目标类型，必须为 user 或 account
+        targets: 目标标识列表，可传用户名 / 账户名 / 数字 ID
     """
     pass
 
 
 # ============================================================
-# C2. Admin Action Tools (require confirmation, admin only)
+# C2. Admin Action Tools
 # ============================================================
 
 
@@ -1195,30 +1451,8 @@ def batch_stop_jobs(job_names: str = "") -> str:
 
 
 @tool
-def notify_job_owner(job_names: str = "", message: str = "") -> str:
-    """向作业所有者发送释放资源通知。传入逗号分隔的作业名列表和通知消息。需要管理员确认。"""
-    pass
-
-
-@tool
-def run_ops_script(
-    script_name: str,
-    script_args: Optional[Dict[str, Any]] = None,
-    timeout_seconds: Optional[int] = None,
-) -> dict:
-    """执行受控运维脚本，需要管理员确认。
-    script_name 必须是以下白名单值之一，不得自行编造脚本名：
-    - inspect_pvc: 检查 PVC 挂载状态和容量
-    - inspect_mounts: 检查节点挂载点和 NFS/Lustre 状态
-    - collect_events: 收集指定命名空间的 K8s 事件
-    - inspect_rdma_node: 检查节点 RDMA/InfiniBand 状态
-    - diagnose_nccl_job: 收集分布式训练 NCCL 通信日志
-
-    Args:
-        script_name: 必须是白名单中的脚本名（inspect_pvc / inspect_mounts / collect_events / inspect_rdma_node / diagnose_nccl_job），不可传入其他值
-        script_args: 结构化参数（JSON 对象），不接受任意 shell 文本
-        timeout_seconds: 可选，脚本超时时间（秒）
-    """
+def notify_job_owner(job_names: str = "", subject: str = "", message: str = "") -> str:
+    """向作业所有者发送邮件通知。传入逗号分隔的作业名列表、可选主题和通知消息。需要管理员确认。"""
     pass
 
 
@@ -1282,18 +1516,36 @@ def k8s_taint_node(
 
 
 @tool
+def run_kubectl(
+    command: str,
+    reason: str,
+    risk_level: str = "high",
+) -> dict:
+    """执行高风险 kubectl 写命令兜底工具。需要管理员确认。
+    适用于没有专用结构化 tool 覆盖的 patch / apply / set / annotate 等写操作。
+    命令必须以 kubectl 开头；只读命令会被拒绝并提示改用专用只读工具。
+    同时会应用 protected namespace / node 与 blocked pattern 安全策略。
+
+    Args:
+        command: 完整 kubectl 命令字符串，如 "kubectl patch node xxx -p '...'"
+        reason: 执行原因说明（必填，用于审计和前端展示）
+        risk_level: 风险等级 low/medium/high，默认 high
+    """
+    pass
+
+
+@tool
 def execute_admin_command(
     command: str,
     reason: str,
     risk_level: str = "medium",
 ) -> dict:
-    """执行通用管理命令（kubectl/helm 等），由 LLM 自行组合命令内容。需要管理员确认。
-    适用于没有专用 tool 覆盖的运维操作，如复杂的 patch、apply、helm upgrade 等。
-    命令必须以白名单中的二进制开头（kubectl / helm / velero / istioctl）。
-    禁止 delete namespace / delete node / delete pv / exec -it / port-forward 等高危操作。
+    """执行非 kubectl 的通用管理命令（helm / velero / istioctl / psql）。需要管理员确认。
+    适用于没有专用 tool 覆盖的运维操作，如 helm upgrade、velero restore、istioctl install、psql 管理 SQL 等。
+    K8s 自由命令统一使用 run_kubectl；此工具不再接受 kubectl 开头的命令。
 
     Args:
-        command: 完整命令字符串，如 "kubectl patch node xxx -p '...'"
+        command: 完整命令字符串，如 "helm upgrade release chart -n ops"
         reason: 执行原因说明（必填，用于审计和前端展示）
         risk_level: 风险等级 low/medium/high，默认 medium
     """
@@ -1323,6 +1575,7 @@ def get_approval_history(user_id: int, days: int = 7) -> dict:
 # Tools that execute automatically (read-only queries)
 AUTO_TOOLS = [
     get_job_detail,
+    get_job_events,
     get_job_logs,
     diagnose_job,
     get_diagnostic_context,
@@ -1333,7 +1586,11 @@ AUTO_TOOLS = [
     list_cuda_base_images,
     list_available_gpu_models,
     recommend_training_images,
+    list_image_builds,
+    get_image_build_detail,
+    get_image_access_detail,
     get_health_overview,
+    get_cluster_health_overview,
     list_user_jobs,
     list_cluster_jobs,
     list_cluster_nodes,
@@ -1355,8 +1612,8 @@ AUTO_TOOLS = [
     get_storage_capacity_overview,
     get_node_network_summary,
     diagnose_distributed_job_network,
-    # web_search,   # DEPRECATED — use LLM-native enable_search instead
-    # fetch_url,    # DEPRECATED — use LLM-native web_extractor / search_strategy=agent_max
+    web_search,
+    fetch_url,
     get_agent_runtime_summary,
     k8s_list_nodes,
     k8s_list_pods,
@@ -1391,13 +1648,24 @@ AUTO_TOOLS = [
     get_node_accelerator_info,
 ]
 
+# Tools that execute immediately but still have external side effects.
+AUTO_ACTION_TOOLS = []
+
 # Tools that require user confirmation before execution (write operations)
 CONFIRM_TOOLS = [
     resubmit_job,
     stop_job,
     delete_job,
     create_jupyter_job,
+    create_webide_job,
     create_training_job,
+    create_custom_job,
+    create_pytorch_job,
+    create_tensorflow_job,
+    create_image_build,
+    manage_image_build,
+    register_external_image,
+    manage_image_access,
     cordon_node,
     uncordon_node,
     drain_node,
@@ -1406,24 +1674,24 @@ CONFIRM_TOOLS = [
     mark_audit_handled,
     batch_stop_jobs,
     notify_job_owner,
-    run_ops_script,
     k8s_scale_workload,
     k8s_label_node,
     k8s_taint_node,
+    run_kubectl,
     execute_admin_command,
 ]
 
-ALL_TOOLS = AUTO_TOOLS + CONFIRM_TOOLS
+ALL_TOOLS = AUTO_TOOLS + AUTO_ACTION_TOOLS + CONFIRM_TOOLS
 
 # Deprecated tools: declared but NOT bound to LLM.
-# Pending migration to LLM-native built-in capabilities (enable_search, code_interpreter).
-DEPRECATED_TOOL_NAMES = {"web_search", "fetch_url", "execute_code"}
+DEPRECATED_TOOL_NAMES = {"execute_code"}
 
 # Internal tools: used by pipelines, not exposed to LLM reasoning.
 INTERNAL_TOOLS = [save_audit_report]
 INTERNAL_TOOL_NAMES = {t.name for t in INTERNAL_TOOLS}
 
 READ_ONLY_TOOL_NAMES = {t.name for t in AUTO_TOOLS}
+AUTO_ACTION_TOOL_NAMES = {t.name for t in AUTO_ACTION_TOOLS}
 CONFIRM_TOOL_NAMES = {t.name for t in CONFIRM_TOOLS}
 WRITE_TOOL_NAMES = CONFIRM_TOOL_NAMES  # Alias used by spec
 
@@ -1435,6 +1703,7 @@ ADMIN_ONLY_TOOL_NAMES = {
     for tool in [
         list_cluster_jobs,
         list_cluster_nodes,
+        get_cluster_health_overview,
         get_cluster_health_report,
         get_node_detail,
         get_admin_ops_report,
@@ -1448,17 +1717,11 @@ ADMIN_ONLY_TOOL_NAMES = {
         get_storage_capacity_overview,
         get_node_network_summary,
         diagnose_distributed_job_network,
-        # web_search,    # DEPRECATED
-        # fetch_url,     # DEPRECATED
         get_agent_runtime_summary,
         k8s_list_nodes,
-        k8s_list_pods,
         prometheus_query,
         harbor_check,
         # execute_code,  # DEPRECATED
-        k8s_get_service,
-        k8s_get_endpoints,
-        k8s_get_ingress,
         get_volcano_queue_state,
         k8s_get_configmap,
         k8s_get_networkpolicy,
@@ -1481,13 +1744,13 @@ ADMIN_ONLY_TOOL_NAMES = {
         mark_audit_handled,
         batch_stop_jobs,
         notify_job_owner,
-        run_ops_script,
         k8s_top_nodes,
         k8s_top_pods,
         k8s_rollout_status,
         k8s_scale_workload,
         k8s_label_node,
         k8s_taint_node,
+        run_kubectl,
         execute_admin_command,
     ]
 }

@@ -7,6 +7,13 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 )
 
+type EmailNotificationResult struct {
+	Target  string `json:"target"`
+	Email   string `json:"email,omitempty"`
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}
+
 // AlertMgr 是封装好的通知组件，提供：
 // 支持四种初步场景：
 //  1. 作业开始通知（如果创建时间与开始时间间隔 > 10min）
@@ -24,6 +31,8 @@ type AlertInterface interface {
 	CleanJob(ctx context.Context, jobName string, extra map[string]any) error
 	RemindLongTimeRunningJob(ctx context.Context, jobName string, deleteTime time.Time, extra map[string]any) error
 	RemindLowUsageJob(ctx context.Context, jobName string, deleteTime time.Time, extra map[string]any) error
+	NotifyJobOwner(ctx context.Context, jobName, subject, message string) error
+	NotifyPlatformAdmins(ctx context.Context, subject, message, url, auditKey string, cooldownHours int) ([]EmailNotificationResult, error)
 	SendVerificationCode(ctx context.Context, code string, receiver *model.UserAttribute) error
 }
 

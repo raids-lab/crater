@@ -27,7 +27,11 @@ from crater_agent.llm.client import ModelClientFactory
 from crater_agent.skills.loader import load_all_skills
 from crater_agent.tools.definitions import ALL_TOOLS
 from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
-from crater_agent.tools.tool_selector import select_tools_for_context
+from crater_agent.tools.tool_selector import (
+    _resolve_actor_role,
+    sanitize_capabilities_for_context,
+    select_tools_for_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +335,7 @@ def create_agent_graph(
     skills_context = load_all_skills(skills_dir)
 
     def get_enabled_tools(context: dict[str, Any]) -> list[Any]:
-        capabilities = context.get("capabilities", {})
+        capabilities = sanitize_capabilities_for_context(context, context.get("capabilities"))
         enabled_tool_names = capabilities.get("enabled_tools") or []
         if enabled_tool_names:
             enabled_set = set(enabled_tool_names)
@@ -344,7 +348,8 @@ def create_agent_graph(
     async def agent_node(state: CraterAgentState) -> dict:
         """LLM thinks about the current state and decides next action."""
         messages = state["messages"]
-        context = state.get("context", {})
+        context = dict(state.get("context", {}) or {})
+        context["capabilities"] = sanitize_capabilities_for_context(context, context.get("capabilities"))
         llm_with_tools = llm.bind_tools(get_enabled_tools(context))
 
         # Build system prompt on first call (check if system message exists)
@@ -420,7 +425,8 @@ def create_agent_graph(
         """Execute the tool calls from the last AI message."""
         messages = state["messages"]
         last_message = messages[-1]
-        context = state.get("context", {})
+        context = dict(state.get("context", {}) or {})
+        context["capabilities"] = sanitize_capabilities_for_context(context, context.get("capabilities"))
         # Extract user question for LLM tool result extraction context
         _user_question = ""
         for msg in reversed(messages):
@@ -430,17 +436,7 @@ def create_agent_graph(
         session_id = context.get("session_id", "unknown")
         actor = context.get("actor", {})
         user_id = actor.get("user_id", 0)
-        page = context.get("page", {}) if isinstance(context.get("page"), dict) else {}
-        route = str(page.get("route") or "").strip().lower()
-        url = str(page.get("url") or "").strip().lower()
-
-        # URL/page route is primary for role; JWT role is fallback
-        if route.startswith("/admin") or "/admin/" in route or url.startswith("/admin") or "/admin/" in url:
-            actor_role = "admin"
-        elif route or url:
-            actor_role = "user"
-        else:
-            actor_role = str(actor.get("role") or "user").strip().lower() or "user"
+        actor_role = _resolve_actor_role(context)
         turn_id = context.get("turn_id")
 
         tool_messages = []
@@ -483,6 +479,7 @@ def create_agent_graph(
             attempted_tool_calls[tool_signature] = attempted_tool_calls.get(tool_signature, 0) + 1
 
             # Execute via Go backend (or mock)
+            tool_started_at = time.perf_counter()
             result = await tool_executor.execute(
                 tool_name=tool_name,
                 tool_args=tool_args,
@@ -494,6 +491,11 @@ def create_agent_graph(
                 agent_role="single_agent",
                 actor_role=actor_role,
             )
+            measured_tool_latency_ms = max(1, int((time.perf_counter() - tool_started_at) * 1000))
+            if not isinstance(result, dict):
+                result = {"status": "error", "message": str(result)}
+            if not result.get("_latency_ms"):
+                result["_latency_ms"] = measured_tool_latency_ms
 
             # Record trace
             trace_entries.append({

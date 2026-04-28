@@ -341,22 +341,6 @@ type Config struct {
 				TimeoutSeconds int `json:"timeoutSeconds"`
 			} `json:"webSearch"`
 
-			// Sandbox defines execution constraints for sandbox tools.
-			Sandbox struct {
-				// Namespace where sandbox jobs are created.
-				Namespace string `json:"namespace"`
-				// ServiceAccount used by sandbox jobs.
-				ServiceAccount string `json:"serviceAccount"`
-				// Image used by sandbox job runners.
-				Image string `json:"image"`
-				// DefaultTimeoutSeconds is the default timeout for sandbox scripts.
-				DefaultTimeoutSeconds int `json:"defaultTimeoutSeconds"`
-				// MaxTimeoutSeconds is the maximum timeout allowed for sandbox scripts.
-				MaxTimeoutSeconds int `json:"maxTimeoutSeconds"`
-				// ScriptAllowlist enumerates runnable script names.
-				ScriptAllowlist []string `json:"scriptAllowlist"`
-			} `json:"sandbox"`
-
 			// Kubernetes defines shared kubectl access hints for agent-side direct diagnosis tools.
 			// These fields are optional and mainly consumed by the Python agent runtime.
 			Kubernetes struct {
@@ -610,17 +594,6 @@ func (c *Config) ValidateConfig() error {
 	if c.Agent.Ops.WebSearch.Enabled && len(c.Agent.Ops.WebSearch.AllowedDomains) == 0 {
 		errors = append(errors, "agent.ops.webSearch.allowedDomains is required when webSearch is enabled")
 	}
-	if c.Agent.Ops.Sandbox.DefaultTimeoutSeconds < 0 {
-		errors = append(errors, "agent.ops.sandbox.defaultTimeoutSeconds must be >= 0")
-	}
-	if c.Agent.Ops.Sandbox.MaxTimeoutSeconds < 0 {
-		errors = append(errors, "agent.ops.sandbox.maxTimeoutSeconds must be >= 0")
-	}
-	if c.Agent.Ops.Sandbox.DefaultTimeoutSeconds > 0 &&
-		c.Agent.Ops.Sandbox.MaxTimeoutSeconds > 0 &&
-		c.Agent.Ops.Sandbox.DefaultTimeoutSeconds > c.Agent.Ops.Sandbox.MaxTimeoutSeconds {
-		errors = append(errors, "agent.ops.sandbox.defaultTimeoutSeconds must be <= maxTimeoutSeconds")
-	}
 	if c.Agent.Ops.Kubernetes.TimeoutSeconds < 0 {
 		errors = append(errors, "agent.ops.kubernetes.timeoutSeconds must be >= 0")
 	}
@@ -745,15 +718,6 @@ func (c *Config) PrintConfig() {
 		c.Agent.Ops.WebSearch.Enabled,
 		c.Agent.Ops.WebSearch.TimeoutSeconds,
 		c.Agent.Ops.WebSearch.AllowedDomains,
-	)
-	klog.Infof(
-		"Agent Ops Sandbox: namespace=%s serviceAccount=%s image=%s defaultTimeout=%ds maxTimeout=%ds scriptAllowlist=%v",
-		c.Agent.Ops.Sandbox.Namespace,
-		c.Agent.Ops.Sandbox.ServiceAccount,
-		c.Agent.Ops.Sandbox.Image,
-		c.Agent.Ops.Sandbox.DefaultTimeoutSeconds,
-		c.Agent.Ops.Sandbox.MaxTimeoutSeconds,
-		c.Agent.Ops.Sandbox.ScriptAllowlist,
 	)
 	klog.Infof(
 		"Agent Ops Kubernetes: kubeconfigPath=%s context=%s namespace=%s kubectlBin=%s timeout=%ds",

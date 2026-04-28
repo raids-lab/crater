@@ -12,11 +12,16 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, AsyncIterator, Awaitable, Callable
 
+import httpx
+import httpcore
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from crater_agent.agents.base import BaseRoleAgent, RoleExecutionResult
 from crater_agent.agents.executor import ExecutorAgent
@@ -24,6 +29,8 @@ from crater_agent.agents.explorer import ExplorerAgent
 from crater_agent.agents.planner import PlannerAgent
 from crater_agent.agents.general import GeneralPurposeAgent
 from crater_agent.agents.guide import GuideAgent
+from crater_agent.agents.verifier import VerifierAgent
+from crater_agent.eval.ablation import BenchmarkAblationControl
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.memory.session import build_history_messages
 from crater_agent.orchestrators.artifacts import (
@@ -46,13 +53,91 @@ from crater_agent.tools.definitions import (
     ALL_TOOLS,
     CONFIRM_TOOL_NAMES,
     READ_ONLY_TOOL_NAMES,
+    is_actor_allowed_for_tool,
     is_tool_allowed_for_role,
 )
 from crater_agent.tools.executor import CompositeToolExecutor, ToolExecutorProtocol
 
 logger = logging.getLogger(__name__)
 
-CREATE_JOB_TOOL_NAMES = {"create_training_job", "create_jupyter_job"}
+_RETRYABLE_TOOL_LOOP_LLM_ERRORS = (
+    APITimeoutError,
+    APIConnectionError,
+    InternalServerError,
+    RateLimitError,
+    httpx.ReadTimeout,
+    httpx.RemoteProtocolError,
+    httpcore.RemoteProtocolError,
+)
+
+
+def _load_eval_ablation(context: dict[str, Any]) -> BenchmarkAblationControl:
+    controls = context.get("_eval_controls") if isinstance(context.get("_eval_controls"), dict) else {}
+    return BenchmarkAblationControl.from_context(
+        controls.get("mas_ablation") if isinstance(controls, dict) else None
+    )
+
+
+def _apply_runtime_overrides(state: MASState, ablation: BenchmarkAblationControl) -> None:
+    for key, value in ablation.runtime_overrides.items():
+        if hasattr(state.runtime_config, key):
+            setattr(state.runtime_config, key, value)
+
+
+def _fallback_stage_from_state(
+    state: MASState,
+    routing: RoutingDecision,
+    ablation: BenchmarkAblationControl,
+) -> str:
+    if ablation.fallback_stage_sequence:
+        index = min(max(state.loop_round - 1, 0), len(ablation.fallback_stage_sequence) - 1)
+        return ablation.fallback_stage_sequence[index]
+    if routing.operation_mode == "write":
+        if state.tool_records or state.observation:
+            return "act"
+        return "observe"
+    if not state.tool_records:
+        return "observe"
+    return "finalize"
+
+
+def _apply_stage_ablation(
+    *,
+    candidate: str | None,
+    state: MASState,
+    routing: RoutingDecision,
+    ablation: BenchmarkAblationControl,
+) -> str | None:
+    """Override or sanitize stage transitions for offline ablations."""
+    if not ablation.enabled:
+        return candidate
+
+    fixed_stage = ablation.stage_for_round(state.loop_round)
+    if fixed_stage:
+        return fixed_stage
+
+    if state.loop_round == 1:
+        if ablation.force_plan_first:
+            candidate = "plan"
+        elif ablation.force_observe_first:
+            candidate = "observe"
+
+    if candidate in {"plan", "replan"} and ablation.disable_planner:
+        return "observe" if not state.tool_records else "finalize"
+    if candidate == "verify" and ablation.disable_verifier:
+        return "finalize"
+    if candidate is None and ablation.disable_coordinator_decision:
+        return _fallback_stage_from_state(state, routing, ablation)
+    return candidate
+
+CREATE_JOB_TOOL_NAMES = {
+    "create_training_job",
+    "create_custom_job",
+    "create_jupyter_job",
+    "create_webide_job",
+    "create_pytorch_job",
+    "create_tensorflow_job",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +155,13 @@ class ToolLoopOutcome:
     summary: str
     tool_calls: int = 0
     stop_signal: ToolLoopStopSignal | None = None
+
+
+@dataclass
+class VerifierGateDecision:
+    run_verifier: bool
+    next_stage: str
+    reason: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -149,15 +241,51 @@ def _extract_usage_from_tool_loop_response(
         or token_usage.get("output_tokens")
         or 0
     )
-    if not input_tokens:
-        input_tokens = _estimate_tokens_from_messages(messages)
-    if not output_tokens:
-        output_tokens = role_agent._estimate_tokens(output_text)
+    total_tokens = (
+        usage.get("total_tokens")
+        or token_usage.get("total_tokens")
+        or (int(input_tokens or 0) + int(output_tokens or 0))
+    )
+    has_reported_usage = bool(usage) or bool(token_usage)
     return {
         "llm_calls": 1,
-        "input_tokens": int(input_tokens),
-        "output_tokens": int(output_tokens),
+        "input_tokens": int(input_tokens or 0),
+        "output_tokens": int(output_tokens or 0),
+        "total_tokens": int(total_tokens or 0),
+        "reported_token_calls": 1 if has_reported_usage else 0,
+        "missing_token_calls": 0 if has_reported_usage else 1,
     }
+
+
+def _resume_result_status(resume_context: dict[str, Any] | None) -> str:
+    if not isinstance(resume_context, dict):
+        return ""
+    return _normalized_text(resume_context.get("result_status"))
+
+
+def _build_resume_run_started_summary(resume_context: dict[str, Any] | None) -> str:
+    status = _resume_result_status(resume_context)
+    if status == "rejected":
+        return "确认结果已回流，上一轮待确认操作已取消"
+    if status:
+        return "确认结果已回流，继续执行上一轮计划"
+    return "多 Agent 协作已启动"
+
+
+def _should_restore_routing_from_resume(resume_context: dict[str, Any] | None) -> bool:
+    return _resume_result_status(resume_context) not in {"rejected", "error"}
+
+
+def _build_rejected_resume_final_answer(
+    resumed_action: dict[str, Any] | None,
+    resume_context: dict[str, Any] | None = None,
+) -> str:
+    title = str((resumed_action or {}).get("title") or "").strip()
+    if not title and isinstance(resume_context, dict):
+        title = str(resume_context.get("action_title") or "").strip()
+    if title:
+        return f"上一轮待确认操作已取消（{title}）。我不会继续沿用上一轮计划，请告诉我接下来要做什么。"
+    return "上一轮待确认操作已取消。我不会继续沿用上一轮计划，请告诉我接下来要做什么。"
 
 
 def _compact_tool_result_for_prompt(tool_name: str, result: dict[str, Any]) -> dict[str, Any]:
@@ -309,6 +437,225 @@ def _build_evidence_summary_fallback(compact_evidence: list[dict[str, Any]]) -> 
         tool_name = str(item.get("tool_name") or "tool").strip()
         lines.append(f"- {tool_name}: {_truncate_text(item.get('result'), max_chars=180)}")
     return "\n".join(lines)
+
+
+def _build_plan_status_summary(plan: PlanArtifact | None, *, prefix: str = "已生成计划") -> str:
+    if plan is None:
+        return prefix
+    if not plan.steps:
+        return f"{prefix}：无需额外步骤，可直接收束回答。"
+    tool_preview = ", ".join(plan.candidate_tools[:4]) if plan.candidate_tools else "无"
+    first_steps = "；".join(plan.steps[:2])
+    return f"{prefix}：本次规划 {len(plan.steps)} 步。前两步: {first_steps}。候选工具: {tool_preview}。"
+
+
+def _build_verification_signature(state: MASState) -> str:
+    last_tool_call_id = state.tool_records[-1].tool_call_id if state.tool_records else ""
+    last_action_id = ""
+    last_action_status = ""
+    if state.action_history and isinstance(state.action_history[-1], dict):
+        last_action_id = str(state.action_history[-1].get("action_id") or "").strip()
+        last_action_status = str(state.action_history[-1].get("status") or "").strip()
+    return json.dumps(
+        {
+            "tool_records": len(state.tool_records),
+            "action_history": len(state.action_history),
+            "observation_summary": state.observation.summary if state.observation else "",
+            "execution_summary": state.execution.summary if state.execution else "",
+            "last_tool_call_id": last_tool_call_id,
+            "last_action_id": last_action_id,
+            "last_action_status": last_action_status,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
+
+
+def _extract_verification_verdict(result: RoleExecutionResult | None) -> str:
+    if result is None:
+        return ""
+    metadata = result.metadata if isinstance(result.metadata, dict) else {}
+    return str(metadata.get("verification_result") or result.status or "").strip().lower()
+
+
+def _action_status(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def _terminal_write_action_history(state: MASState) -> list[dict[str, Any]]:
+    terminal_statuses = {"completed", "success", "error", "failed", "rejected", "skipped"}
+    return [
+        item
+        for item in state.action_history
+        if isinstance(item, dict) and _action_status(item.get("status")) in terminal_statuses
+    ]
+
+
+def _has_awaiting_write_confirmation(state: MASState) -> bool:
+    if state.pending_confirmation:
+        return True
+    return any(action.status == "awaiting_confirmation" for action in state.actions)
+
+
+def _has_terminal_write_result(state: MASState) -> bool:
+    return bool(_terminal_write_action_history(state))
+
+
+def _has_write_intent(routing: RoutingDecision) -> bool:
+    return routing.operation_mode == "write" or bool(routing.requested_action)
+
+
+def _actor_allowed_tools(actor_role: str, enabled_tools: list[str]) -> list[str]:
+    return [
+        tool_name
+        for tool_name in enabled_tools
+        if is_actor_allowed_for_tool(actor_role, tool_name)
+    ]
+
+
+def _write_intent_has_no_allowed_write_tool(
+    *,
+    actor_role: str,
+    enabled_tools: list[str],
+    routing: RoutingDecision,
+) -> bool:
+    if not _has_write_intent(routing):
+        return False
+    write_tools = [tool_name for tool_name in enabled_tools if tool_name in CONFIRM_TOOL_NAMES]
+    if not write_tools:
+        return False
+    return not any(is_actor_allowed_for_tool(actor_role, tool_name) for tool_name in write_tools)
+
+
+def _build_actor_permission_denied_answer(state: MASState, enabled_tools: list[str]) -> str:
+    return (
+        "你当前没有管理员权限，不能直接执行这个运维写操作。\n\n"
+        "重启、删除、扩缩容或节点变更等操作需要由管理员在确认风险后执行。\n"
+        "建议联系管理员，并提供监控异常现象、目标对象、期望操作和触发原因；如果只是想排查现象，也可以先提供监控异常现象、目标对象和触发原因，让管理员帮你确认是否需要执行管理员操作。\n\n"
+    )
+
+
+def _has_tool_record(state: MASState, tool_name: str) -> bool:
+    return any(record.tool_name == tool_name for record in state.tool_records)
+
+
+def _latest_tool_result(state: MASState, tool_name: str) -> dict[str, Any] | None:
+    for record in reversed(state.tool_records):
+        if record.tool_name == tool_name and isinstance(record.result, dict):
+            result = record.result.get("result", record.result)
+            return result if isinstance(result, dict) else record.result
+    return None
+
+
+def _build_health_overview_answer(state: MASState) -> str:
+    result = _latest_tool_result(state, "get_health_overview") or {}
+    total_jobs = result.get("totalJobs", result.get("total_jobs", "未知"))
+    status_count = result.get("statusCount") if isinstance(result.get("statusCount"), dict) else {}
+    completed = status_count.get("Completed", status_count.get("completed", 0))
+    running = status_count.get("Running", status_count.get("running", 0))
+    failed = status_count.get("Failed", status_count.get("failed", 0))
+    failure_rate = result.get("failureRatePct", result.get("failure_rate_pct", "未知"))
+    recent_failures = result.get("recentFailures") if isinstance(result.get("recentFailures"), list) else []
+    failure = recent_failures[0] if recent_failures and isinstance(recent_failures[0], dict) else {}
+    failed_job = str(failure.get("jobName") or failure.get("job_name") or "那个失败作业").strip()
+    reason = str(failure.get("reason") or "").strip()
+    reason_text = f"，原因是 `{reason}`" if reason else ""
+    return (
+        "结论：最近 7 天整体健康，没有明显异常需要立即处理。\n\n"
+        "关键细节：\n"
+        f"- 过去 7 天共有 {total_jobs} 个作业，其中 {completed} 个已完成、{running} 个运行中、{failed} 个失败。\n"
+        f"- 当前只有 {failed} 个失败作业，失败率约 {failure_rate}%，不属于大面积异常。\n"
+        f"- 失败作业是 `{failed_job}`{reason_text}。\n\n"
+        "建议动作：\n"
+        "- 无需立即处理集群或批量作业，继续观察整体趋势即可。\n"
+        f"- 如果要追查可以看那个失败作业 `{failed_job}` 的事件和日志，再决定是否修正镜像、配置或重新提交。"
+    )
+
+
+def _should_run_terminal_verifier(state: MASState) -> bool:
+    """Run verifier once at the end of materialized write workflows."""
+    terminal_actions = _terminal_write_action_history(state)
+    if not terminal_actions:
+        return False
+    if any(_action_status(item.get("status")) in {"error", "failed", "rejected"} for item in terminal_actions):
+        return True
+    if len(terminal_actions) > 1:
+        return True
+    if state.plan and state.plan.risk in {"medium", "high"}:
+        return True
+    return any(
+        str(item.get("tool_name") or "").strip() in CONFIRM_TOOL_NAMES
+        for item in terminal_actions
+    )
+
+
+def _determine_verifier_gate(
+    *,
+    state: MASState,
+    routing: RoutingDecision,
+    current_progress_signature: str,
+    last_verification_signature: str,
+    last_verification_result: RoleExecutionResult | None,
+) -> VerifierGateDecision:
+    """Decide whether the expensive verifier stage is justified.
+
+    Verifier is meant to challenge write/action outcomes, not to become a
+    default second opinion for every read-only investigation.
+    """
+    has_state_to_check = bool(
+        state.tool_records
+        or state.action_history
+        or state.execution
+        or state.observation
+        or state.pending_confirmation
+    )
+    if not has_state_to_check:
+        return VerifierGateDecision(False, "observe", "no_evidence")
+
+    verification_verdict = _extract_verification_verdict(last_verification_result)
+    if current_progress_signature == last_verification_signature and verification_verdict:
+        if verification_verdict == "missing_evidence":
+            frontier = state.action_frontier()
+            return VerifierGateDecision(
+                False,
+                "act" if frontier else "observe",
+                "same_state_missing_evidence",
+            )
+        return VerifierGateDecision(False, "finalize", "same_state_already_verified")
+
+    if _has_awaiting_write_confirmation(state):
+        return VerifierGateDecision(False, "finalize", "awaiting_confirmation")
+
+    if _has_terminal_write_result(state):
+        if _should_run_terminal_verifier(state):
+            return VerifierGateDecision(True, "verify", "terminal_write_result")
+        return VerifierGateDecision(False, "finalize", "terminal_write_low_risk")
+
+    if _has_write_intent(routing):
+        frontier = state.action_frontier()
+        return VerifierGateDecision(
+            False,
+            "act" if frontier or state.loop_round < state.runtime_config.lead_max_rounds else "finalize",
+            "write_intent_without_action_result",
+        )
+
+    if state.observation and state.observation.open_questions:
+        return VerifierGateDecision(
+            False,
+            "observe" if state.loop_round < state.runtime_config.lead_max_rounds else "finalize",
+            "read_only_missing_evidence",
+        )
+
+    return VerifierGateDecision(False, "finalize", "read_only_sufficient_evidence")
+
+
+def _latest_controller_stage(state: MASState) -> str:
+    if not state.controller_trace:
+        return ""
+    latest = state.controller_trace[-1]
+    if not isinstance(latest, dict):
+        return ""
+    return str(latest.get("stage") or "").strip().lower()
 
 
 def _extract_evidence_from_tool_records(tool_records: list[Any]) -> list[dict[str, Any]]:
@@ -833,10 +1180,24 @@ def _fallback_submission_actions(
     evidence: list[dict[str, Any]],
     enabled_tools: list[str],
 ) -> list[dict[str, Any]]:
-    prefers_jupyter = any(token in _normalized_text(user_message) for token in ("jupyter", "notebook", "交互式"))
+    normalized = _normalized_text(user_message)
+    prefers_jupyter = any(token in normalized for token in ("jupyter", "notebook", "交互式"))
+    prefers_webide = any(token in normalized for token in ("webide", "code-server", "vscode", "ide"))
+    prefers_pytorch = any(
+        token in normalized for token in ("pytorch", "torchrun", "ddp", "deepspeed", "分布式训练", "distributed")
+    )
+    prefers_tensorflow = any(token in normalized for token in ("tensorflow", "tfjob", "parameter server", "ps"))
     tool_name = ""
-    if prefers_jupyter and "create_jupyter_job" in enabled_tools:
+    if prefers_webide and "create_webide_job" in enabled_tools:
+        tool_name = "create_webide_job"
+    elif prefers_tensorflow and "create_tensorflow_job" in enabled_tools:
+        tool_name = "create_tensorflow_job"
+    elif prefers_pytorch and "create_pytorch_job" in enabled_tools:
+        tool_name = "create_pytorch_job"
+    elif prefers_jupyter and "create_jupyter_job" in enabled_tools:
         tool_name = "create_jupyter_job"
+    elif "create_custom_job" in enabled_tools:
+        tool_name = "create_custom_job"
     elif "create_training_job" in enabled_tools:
         tool_name = "create_training_job"
     elif "create_jupyter_job" in enabled_tools:
@@ -846,9 +1207,9 @@ def _fallback_submission_actions(
 
     gpu_model = _extract_requested_gpu_model(user_message)
     image_link = _extract_recommended_image(evidence)
-    if tool_name == "create_jupyter_job":
+    if tool_name in {"create_jupyter_job", "create_webide_job"}:
         tool_args: dict[str, Any] = {
-            "name": "workspace-notebook",
+            "name": "workspace-notebook" if tool_name == "create_jupyter_job" else "workspace-webide",
             "cpu": "4",
             "memory": "16Gi",
             "gpu_count": 1 if gpu_model else None,
@@ -856,6 +1217,32 @@ def _fallback_submission_actions(
         }
         if image_link:
             tool_args["image_link"] = image_link
+    elif tool_name in {"create_pytorch_job", "create_tensorflow_job"}:
+        base_image = image_link or ""
+        default_tasks = [
+            {
+                "name": "master" if tool_name == "create_pytorch_job" else "chief",
+                "replicas": 1,
+                "image_link": base_image,
+                "cpu": "8",
+                "memory": "32Gi",
+                "gpu_count": 1 if gpu_model else 0,
+                "gpu_model": gpu_model or None,
+            },
+            {
+                "name": "worker",
+                "replicas": 1,
+                "image_link": base_image,
+                "cpu": "8",
+                "memory": "32Gi",
+                "gpu_count": 1 if gpu_model else 0,
+                "gpu_model": gpu_model or None,
+            },
+        ]
+        tool_args = {
+            "name": "distributed-training",
+            "tasks": default_tasks,
+        }
     else:
         tool_args = {
             "name": "llm-training",
@@ -952,7 +1339,7 @@ def _build_runtime_fallback_final_answer(state: MASState) -> str:
 
 def _derive_runtime_scenario_from_routing(routing: RoutingDecision) -> str:
     """Map routing decision to a runtime scenario label for SSE events."""
-    if routing.entry_mode == "help":
+    if routing.entry_mode in {"help", "simple"}:
         return "guide"
     if routing.operation_mode == "write":
         return "action"
@@ -990,7 +1377,8 @@ class MultiAgentOrchestrator:
 
         Returns a stage string if a fast path matches, None if Coordinator should decide.
         """
-        # Confirmation resume
+        # Confirmation resume: continue only when there is still a pending frontier.
+        # Terminal verification remains a Coordinator decision guarded by verifier gate.
         if resumed_action and not any(a.status == "pending" for a in state.actions):
             return "finalize"
         if resumed_action and state.actions:
@@ -1000,13 +1388,18 @@ class MultiAgentOrchestrator:
         if state.pending_confirmation:
             return "finalize"
 
-        # First round, no plan yet → always plan first
-        if not state.plan and state.loop_round <= 1:
-            return "plan"
-
         # Force finalize if we have evidence and most tools are already attempted
         # (prevents the coordinator from endlessly looping)
         if state.tool_records and state.loop_round >= 3 and len(state.attempted_tool_signatures) >= 10:
+            return "finalize"
+
+        # Health overview is already an aggregate answer. Avoid repeated
+        # low-value list_user_jobs probes unless a write/action flow needs them.
+        if (
+            _has_tool_record(state, "get_health_overview")
+            and state.observation
+            and not _has_write_intent(routing)
+        ):
             return "finalize"
 
         # Everything else → Coordinator decides
@@ -1019,6 +1412,8 @@ class MultiAgentOrchestrator:
         model_factory: ModelClientFactory,
     ) -> AsyncIterator[dict]:
         state = MASState.from_request(request)
+        ablation = _load_eval_ablation(dict(request.context or {}))
+        _apply_runtime_overrides(state, ablation)
         page_context = dict(state.goal.page_context)
         capabilities = state.capabilities
         enabled_tools = state.enabled_tools
@@ -1032,12 +1427,19 @@ class MultiAgentOrchestrator:
             )
 
         coordinator = make_agent(BaseRoleAgent, "coordinator-1", "coordinator")
+        intent_agent = make_agent(BaseRoleAgent, "intent-router-1", "intent_router")
         planner = make_agent(PlannerAgent, "planner-1", "planner")
         explorer = make_agent(ExplorerAgent, "explorer-1", "explorer")
         executor = make_agent(ExecutorAgent, "executor-1", "executor")
+        verifier = make_agent(VerifierAgent, "verifier-1", "verifier")
+        last_verification_signature = ""
+        last_verification_result: RoleExecutionResult | None = None
+        last_replan_signature = ""
 
         def record_agent_usage(agent: Any) -> None:
-            state.record_llm_usage(getattr(agent, "last_usage", None))
+            usage = dict(getattr(agent, "last_usage", None) or {})
+            usage["latency_ms"] = int(getattr(agent, "last_latency_ms", 0) or 0)
+            state.record_llm_usage(usage, role=str(getattr(agent, "role", "") or ""))
 
         async def emit(event: str, data: dict[str, Any]) -> dict[str, Any]:
             return {"event": event, "data": {"turnId": request.turn_id, **data}}
@@ -1129,6 +1531,7 @@ class MultiAgentOrchestrator:
                 state.usage_summary.read_tool_calls += 1
             else:
                 state.usage_summary.write_tool_calls += 1
+            tool_started_at = time.perf_counter()
             result = await self.tool_executor.execute(
                 tool_name=tool_name,
                 tool_args=tool_args,
@@ -1142,6 +1545,12 @@ class MultiAgentOrchestrator:
                 agent_role=role_name,
                 actor_role=state.goal.actor_role,
             )
+            measured_tool_latency_ms = max(1, int((time.perf_counter() - tool_started_at) * 1000))
+            if not isinstance(result, dict):
+                result = {"status": "error", "message": str(result)}
+            if not result.get("_latency_ms"):
+                result["_latency_ms"] = measured_tool_latency_ms
+            state.usage_summary.tool_latency_ms += int(result.get("_latency_ms") or 0)
             if result.get("status") == "confirmation_required":
                 confirmation = result.get("confirmation", {})
                 events.append(
@@ -1157,6 +1566,7 @@ class MultiAgentOrchestrator:
                             "interaction": confirmation.get("interaction", "approval"),
                             "form": confirmation.get("form"),
                             "status": "awaiting_confirmation",
+                            "latencyMs": result.get("_latency_ms", 0),
                         },
                     )
                 )
@@ -1175,6 +1585,7 @@ class MultiAgentOrchestrator:
                         "resultSummary": str(result.get("result", result.get("message", "")))[:500],
                         "status": "error" if result.get("status") == "error" else "done",
                         "isError": result.get("status") == "error",
+                        "latencyMs": result.get("_latency_ms", 0),
                     },
                 )
             )
@@ -1194,6 +1605,15 @@ class MultiAgentOrchestrator:
             on_tool_result: Callable[[str, dict[str, Any], str, dict[str, Any]], Awaitable[ToolLoopStopSignal | None]],
             loop_history_messages: list | None = None,
         ) -> tuple[ToolLoopOutcome, list[dict[str, Any]]]:
+            role_agent.last_usage = {
+                "llm_calls": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "reported_token_calls": 0,
+                "missing_token_calls": 0,
+            }
+            role_agent.last_latency_ms = 0
             tool_map = {
                 tool.name: tool
                 for tool in ALL_TOOLS
@@ -1210,12 +1630,38 @@ class MultiAgentOrchestrator:
             messages.append(HumanMessage(content=user_prompt))
             llm_with_tools = role_agent.llm.bind_tools(list(tool_map.values()))
             collected_events: list[dict[str, Any]] = []
-            aggregate_usage: dict[str, int] = {"llm_calls": 0, "input_tokens": 0, "output_tokens": 0}
+            aggregate_usage: dict[str, int] = {
+                "llm_calls": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "reported_token_calls": 0,
+                "missing_token_calls": 0,
+            }
+            aggregate_latency_ms = 0
             invoked_tool_calls = 0
             stalled_tool_rounds = 0
 
+            @retry(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=1, max=8),
+                retry=retry_if_exception_type(_RETRYABLE_TOOL_LOOP_LLM_ERRORS),
+                before_sleep=lambda rs: logger.warning(
+                    "[%s/%s] tool-loop LLM retry #%d after %s: %s",
+                    role_name,
+                    role_agent.agent_id,
+                    rs.attempt_number,
+                    type(rs.outcome.exception()).__name__,
+                    rs.outcome.exception(),
+                ),
+            )
+            async def _invoke_tool_loop_llm(current_messages: list[Any]) -> Any:
+                return await llm_with_tools.ainvoke(current_messages)
+
             for loop_index in range(max(1, max_tool_calls + 1)):
-                response = await llm_with_tools.ainvoke(messages)
+                llm_started_at = time.monotonic()
+                response = await _invoke_tool_loop_llm(messages)
+                aggregate_latency_ms += int((time.monotonic() - llm_started_at) * 1000)
                 content, reasoning = role_agent._extract_response_texts(response)
                 selected = role_agent._select_response_text(content=content, reasoning=reasoning)
                 aggregate_usage = role_agent._merge_usage(
@@ -1235,6 +1681,7 @@ class MultiAgentOrchestrator:
                 tool_calls = list(getattr(response, "tool_calls", []) or [])
                 if not tool_calls:
                     role_agent.last_usage = aggregate_usage
+                    role_agent.last_latency_ms = aggregate_latency_ms
                     return ToolLoopOutcome(
                         summary=selected or role_agent.latest_reasoning_summary(),
                         tool_calls=invoked_tool_calls,
@@ -1242,6 +1689,7 @@ class MultiAgentOrchestrator:
 
                 if invoked_tool_calls >= max_tool_calls:
                     role_agent.last_usage = aggregate_usage
+                    role_agent.last_latency_ms = aggregate_latency_ms
                     summary = selected or role_agent.latest_reasoning_summary()
                     if not summary:
                         summary = "已达到工具调用上限，请基于已有结果继续下一步。"
@@ -1343,6 +1791,7 @@ class MultiAgentOrchestrator:
                     stop_signal = await on_tool_result(tool_name, tool_args, tool_call_id, result)
                     if stop_signal and stop_signal.should_stop:
                         role_agent.last_usage = aggregate_usage
+                        role_agent.last_latency_ms = aggregate_latency_ms
                         return ToolLoopOutcome(
                             summary=stop_signal.summary or selected or role_agent.latest_reasoning_summary(),
                             tool_calls=invoked_tool_calls,
@@ -1358,6 +1807,7 @@ class MultiAgentOrchestrator:
                     stalled_tool_rounds += 1
                     if stalled_tool_rounds >= 1:
                         role_agent.last_usage = aggregate_usage
+                        role_agent.last_latency_ms = aggregate_latency_ms
                         summary = selected or role_agent.latest_reasoning_summary()
                         if not summary:
                             summary = "工具调用连续重复且没有产生新结果，已停止继续调用。"
@@ -1367,6 +1817,7 @@ class MultiAgentOrchestrator:
                         ), collected_events
 
             role_agent.last_usage = aggregate_usage
+            role_agent.last_latency_ms = aggregate_latency_ms
             return ToolLoopOutcome(
                 summary=role_agent.latest_reasoning_summary() or "已完成工具执行。",
                 tool_calls=invoked_tool_calls,
@@ -1397,11 +1848,8 @@ class MultiAgentOrchestrator:
                 "agentId": coordinator.agent_id,
                 "agentRole": coordinator.role,
                 "status": "started",
-                "summary": (
-                    "确认结果已回流，继续执行上一轮计划"
-                    if state.resume_context
-                    else "多 Agent 协作已启动"
-                ),
+                "summary": _build_resume_run_started_summary(state.resume_context),
+                "evalAblation": ablation.to_context() if ablation.enabled else None,
             },
         )
 
@@ -1414,14 +1862,14 @@ class MultiAgentOrchestrator:
         if state.resume_context:
             # Restore routing from workflow checkpoint
             routing = state.goal.routing
-            if not routing.requested_action:
+            if _should_restore_routing_from_resume(state.resume_context) and not routing.requested_action:
                 routing.requested_action = (
                     str(state.resume_context.get("action_intent") or "").strip().lower() or None
                 )
                 if routing.requested_action:
                     routing.operation_mode = "write"
         else:
-            intent_router = IntentRouter(coordinator_agent=coordinator)
+            intent_router = IntentRouter(coordinator_agent=intent_agent)
             try:
                 routing = await intent_router.route(
                     user_message=request.message,
@@ -1432,7 +1880,7 @@ class MultiAgentOrchestrator:
                     history_context=history_context,
                     clarification_context=state.clarification_context,
                 )
-                record_agent_usage(coordinator)
+                record_agent_usage(intent_agent)
             except Exception:
                 logger.exception("IntentRouter failed, using default routing")
                 routing = RoutingDecision(
@@ -1467,6 +1915,30 @@ class MultiAgentOrchestrator:
             page_context["job_name"] = routing.targets.job_name
             state.goal.page_context = page_context
 
+        if _write_intent_has_no_allowed_write_tool(
+            actor_role=state.goal.actor_role,
+            enabled_tools=enabled_tools,
+            routing=routing,
+        ):
+            state.stop_reason = "completed"
+            state.final_answer = _build_actor_permission_denied_answer(state, enabled_tools)
+            yield await emit(
+                "agent_status",
+                {
+                    "agentId": coordinator.agent_id,
+                    "agentRole": coordinator.role,
+                    "status": "permission_denied",
+                    "summary": "当前用户没有执行该管理员写操作的权限，已阻止工具调用。",
+                },
+            )
+            yield await emit_final_answer(
+                agent_id=coordinator.agent_id,
+                agent_role=coordinator.role,
+                content=state.final_answer,
+            )
+            yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
+            return
+
         # =================================================================
         # STEP 3: Apply resume outcome
         # =================================================================
@@ -1483,15 +1955,43 @@ class MultiAgentOrchestrator:
                     ),
                 },
             )
+            if resumed_action["status"] == "rejected":
+                state.stop_reason = "completed"
+                state.final_answer = _build_rejected_resume_final_answer(resumed_action, state.resume_context)
+                yield await emit_final_answer(
+                    agent_id=coordinator.agent_id,
+                    agent_role=coordinator.role,
+                    content=state.final_answer,
+                )
+                yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
+                return
+        elif _resume_result_status(state.resume_context) == "rejected":
+            state.stop_reason = "completed"
+            state.final_answer = _build_rejected_resume_final_answer(None, state.resume_context)
+            yield await emit_final_answer(
+                agent_id=coordinator.agent_id,
+                agent_role=coordinator.role,
+                content=state.final_answer,
+            )
+            yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
+            return
         if state.resume_context:
             state.stop_reason = ""
 
         # =================================================================
-        # STEP 4: Help fast path
+        # STEP 4: Simple/help fast path
         # =================================================================
-        if routing.entry_mode == "help" and not state.workflow and not state.resume_context:
-            entrypoint = str(page_context.get("entryPoint") or page_context.get("entrypoint") or "").strip().lower()
-            if entrypoint == "guide":
+        if (
+            routing.entry_mode in {"simple", "help"}
+            and routing.operation_mode == "unknown"
+            and not state.workflow
+            and not state.resume_context
+            and not ablation.bypass_help_fast_path
+        ):
+            if routing.entry_mode == "simple":
+                help_agent = make_agent(GeneralPurposeAgent, "general-1", "general")
+                summary_msg = "Coordinator 将极简问题交给 General 直接答复"
+            elif routing.entry_mode == "help":
                 help_agent = make_agent(GuideAgent, "guide-1", "guide")
                 summary_msg = "Coordinator 将帮助类问题交给 Guide 处理"
             else:
@@ -1538,7 +2038,7 @@ class MultiAgentOrchestrator:
                 agent_role=help_agent.role,
                 content=state.final_answer,
             )
-            yield {"event": "done", "data": {}}
+            yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
             return
 
         # =================================================================
@@ -1556,10 +2056,20 @@ class MultiAgentOrchestrator:
 
             # Try deterministic fast-paths first
             next_stage = self._determine_next_stage_fast(state, routing, resumed_action)
+            next_stage = _apply_stage_ablation(
+                candidate=next_stage,
+                state=state,
+                routing=routing,
+                ablation=ablation,
+            )
 
             # If no fast-path matched, ask Coordinator LLM to decide
             if next_stage is None:
                 state_view = state.build_state_view("coordinator")
+                verification_verdict = _extract_verification_verdict(last_verification_result)
+                verification_summary = (
+                    last_verification_result.summary if last_verification_result else ""
+                )
                 tool_stats = (
                     f"\n\n当前进度统计：\n"
                     f"- 已调用工具次数: {len(state.attempted_tool_signatures)}\n"
@@ -1567,24 +2077,36 @@ class MultiAgentOrchestrator:
                     f"- 当前轮次: {state.loop_round}/{state.runtime_config.lead_max_rounds}\n"
                     f"- 连续无进展轮数: {state.no_progress_count}\n"
                 )
+                if verification_verdict:
+                    tool_stats += (
+                        f"- 最近验证结论: {verification_verdict}\n"
+                        f"- 最近验证摘要: {_truncate_text(verification_summary, max_chars=180)}\n"
+                    )
                 try:
                     coordinator_decision = await coordinator.run_json(
                         system_prompt=(
                             "你是 Crater MAS 的 Coordinator 协调者。你根据当前状态决定下一步。\n\n"
                             "可选动作：\n"
+                            '- "plan": 问题复杂、工具链不明确、或需要先拆解步骤\n'
                             '- "observe": 需要收集更多信息（调用只读工具）\n'
                             '- "act": 需要执行操作（调用写工具，或 executor 先读后写）\n'
+                            '- "verify": 需要对当前结论做一次验证/挑战\n'
                             '- "replan": 当前计划与实际收集的证据不匹配，需要 Planner 重新规划\n'
                             '- "finalize": 信息已足够，可以回答用户了\n\n'
                             "决策原则：\n"
-                            "- 有计划就按计划推进，不要无故偏离\n"
+                            "- 第一轮不一定要 plan；简单查询可直接 observe，写操作目标明确可直接 act，信息足够可 finalize\n"
+                            "- 只有当工具链不明确、多阶段任务、故障复杂、或已有证据无法支持下一步时才选 plan/replan\n"
+                            "- 有计划就按计划推进，不要无故偏离；如果计划明显不匹配最新证据，才 replan\n"
+                            "- verify 不是必选项；只有在高风险写操作完成后、证据冲突、或结论需要额外核实时才选 verify\n"
+                            "- 简单问答、普通查询、证据直接充分的场景可以直接 finalize，不要机械要求 verify\n"
                             "- 如果已收集的证据足以回答用户，选 finalize\n"
                             "- 如果证据和用户请求明显不匹配、计划走偏了，选 replan\n"
                             "- 如果需要执行写操作且目标明确，选 act\n"
                             "- 如果还缺关键信息，选 observe\n"
+                            "- 如果当前能力或证据明确无法满足请求，不要空转；说明限制并 finalize\n"
                             "- 不要反复 observe/act 相同内容，如果工具已调用超过 10 次且证据充分，应当 finalize\n"
                             "- 连续无进展 ≥ 1 轮时，强烈建议 finalize，不要继续空转\n\n"
-                            '输出 JSON: {"next": "observe|act|replan|finalize", "reason": "简短理由"}\n'
+                            '输出 JSON: {"next": "plan|observe|act|verify|replan|finalize", "reason": "简短理由"}\n'
                             + tool_stats
                         ),
                         user_prompt=state_view.for_prompt(),
@@ -1593,8 +2115,14 @@ class MultiAgentOrchestrator:
                     record_agent_usage(coordinator)
                     next_stage = str(coordinator_decision.get("next") or "finalize").strip().lower()
                     reason = str(coordinator_decision.get("reason") or "").strip()
-                    if next_stage not in {"observe", "act", "replan", "finalize", "plan"}:
+                    if next_stage not in {"observe", "act", "verify", "replan", "finalize", "plan"}:
                         next_stage = "finalize"
+                    next_stage = _apply_stage_ablation(
+                        candidate=next_stage,
+                        state=state,
+                        routing=routing,
+                        ablation=ablation,
+                    )
                     logger.info(
                         "Coordinator decision round=%d: %s (%s)",
                         state.loop_round, next_stage, reason,
@@ -1602,10 +2130,157 @@ class MultiAgentOrchestrator:
                 except Exception:
                     logger.exception("Coordinator decision failed, falling back to finalize")
                     next_stage = "finalize"
+            else:
+                next_stage = _apply_stage_ablation(
+                    candidate=next_stage,
+                    state=state,
+                    routing=routing,
+                    ablation=ablation,
+                )
 
             # After the first iteration, clear resumed_action
             if state.loop_round > 1:
                 resumed_action = None
+
+            current_progress_signature = _build_verification_signature(state)
+            if next_stage == "plan" and state.plan and current_progress_signature == last_replan_signature:
+                next_stage = "observe" if not state.tool_records else "finalize"
+                state.remember_controller_decision({
+                    "round": state.loop_round,
+                    "stage": "plan_skipped",
+                    "reason": "state_unchanged_since_existing_plan",
+                    "next_stage": next_stage,
+                })
+                yield await emit(
+                    "agent_status",
+                    {
+                        "agentId": coordinator.agent_id,
+                        "agentRole": coordinator.role,
+                        "status": "plan_skipped",
+                        "summary": "Planner 已跳过：已有计划且状态没有变化",
+                    },
+                )
+            if next_stage == "replan" and current_progress_signature == last_replan_signature:
+                frontier = state.action_frontier()
+                if frontier or (_has_write_intent(routing) and not _has_terminal_write_result(state)):
+                    next_stage = "act"
+                elif state.tool_records or state.observation or state.execution or state.action_history:
+                    next_stage = "finalize"
+                else:
+                    next_stage = "observe"
+                state.remember_controller_decision({
+                    "round": state.loop_round,
+                    "stage": "replan_skipped",
+                    "reason": "state_unchanged_since_last_replan",
+                    "next_stage": next_stage,
+                })
+                yield await emit(
+                    "agent_status",
+                    {
+                        "agentId": coordinator.agent_id,
+                        "agentRole": coordinator.role,
+                        "status": "replan_skipped",
+                        "summary": "Planner 已跳过：状态自上次重规划后没有新增证据或执行结果",
+                    },
+                )
+
+            if next_stage == "verify":
+                if ablation.disable_verifier:
+                    next_stage = "finalize"
+                    state.remember_controller_decision({
+                        "round": state.loop_round,
+                        "stage": "verify_disabled",
+                        "next_stage": next_stage,
+                    })
+                if next_stage != "verify":
+                    pass
+                else:
+                    gate = _determine_verifier_gate(
+                        state=state,
+                        routing=routing,
+                        current_progress_signature=current_progress_signature,
+                        last_verification_signature=last_verification_signature,
+                        last_verification_result=last_verification_result,
+                    )
+                    if not gate.run_verifier:
+                        next_stage = gate.next_stage
+                        state.remember_controller_decision({
+                            "round": state.loop_round,
+                            "stage": "verify_skipped",
+                            "reason": gate.reason,
+                            "next_stage": next_stage,
+                        })
+                        yield await emit(
+                            "agent_status",
+                            {
+                                "agentId": coordinator.agent_id,
+                                "agentRole": coordinator.role,
+                                "status": "verify_skipped",
+                                "summary": f"Verifier 已跳过：{gate.reason}",
+                            },
+                        )
+                    else:
+                        yield await emit(
+                            "agent_handoff",
+                            {
+                                "agentId": coordinator.agent_id,
+                                "agentRole": coordinator.role,
+                                "targetAgentId": verifier.agent_id,
+                                "targetAgentRole": verifier.role,
+                                "summary": "Coordinator 要求 Verifier 复核当前证据与执行结果",
+                                "status": "completed",
+                            },
+                        )
+                        evidence_dicts = _extract_evidence_from_tool_records(state.tool_records)
+                        compact_evidence = _compact_evidence_for_prompt(evidence_dicts)
+                        evidence_summary_text = (
+                            state.observation.summary if state.observation
+                            else _build_evidence_summary_fallback(compact_evidence)
+                        )
+                        executor_summary_text = (
+                            state.execution.summary if state.execution
+                            else _build_action_history_summary(state.action_history)
+                        )
+                        try:
+                            last_verification_result = await verifier.verify(
+                                user_message=goal_message,
+                                plan_summary=state.plan.summary if state.plan else "",
+                                evidence_summary=evidence_summary_text,
+                                compact_evidence=compact_evidence,
+                                executor_summary=executor_summary_text,
+                            )
+                            record_agent_usage(verifier)
+                        except Exception:
+                            logger.exception("Verifier failed")
+                            last_verification_result = RoleExecutionResult(
+                                summary="验证阶段执行失败，当前视为证据不足。",
+                                status="missing_evidence",
+                                metadata={"verification_result": "missing_evidence"},
+                            )
+                        last_verification_signature = current_progress_signature
+                        verification_verdict = _extract_verification_verdict(last_verification_result) or "missing_evidence"
+                        yield await emit(
+                            "agent_status",
+                            {
+                                "agentId": verifier.agent_id,
+                                "agentRole": verifier.role,
+                                "status": verification_verdict,
+                                "summary": last_verification_result.summary,
+                            },
+                        )
+                        state.remember_controller_decision({
+                            "round": state.loop_round,
+                            "stage": "verify",
+                            "verdict": verification_verdict,
+                        })
+                        if verification_verdict == "missing_evidence":
+                            if state.loop_round < state.runtime_config.lead_max_rounds:
+                                next_stage = "replan"
+                            else:
+                                state.stop_reason = "insufficient_evidence"
+                                next_stage = "finalize"
+                        else:
+                            next_stage = "finalize"
 
             if next_stage == "finalize":
                 break
@@ -1653,13 +2328,14 @@ class MultiAgentOrchestrator:
                     candidate_tools=plan_output.get("candidate_tools", []),
                     risk=plan_output.get("risk", "low"),
                 )
+                last_replan_signature = current_progress_signature
                 yield await emit(
                     "agent_status",
                     {
                         "agentId": planner.agent_id,
                         "agentRole": planner.role,
                         "status": "completed",
-                        "summary": state.plan.summary,
+                        "summary": _build_plan_status_summary(state.plan),
                     },
                 )
                 continue
@@ -1841,7 +2517,7 @@ class MultiAgentOrchestrator:
                                 requested_all_scope=False,
                             ),
                         )
-                        yield {"event": "done", "data": {}}
+                        yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
                         return
 
                 # Build observation artifact
@@ -1911,6 +2587,10 @@ class MultiAgentOrchestrator:
                 frontier = state.action_frontier()
 
                 if not frontier:
+                    executor_enabled_tools = _actor_allowed_tools(
+                        state.goal.actor_role,
+                        enabled_tools,
+                    )
                     # Try executor tool loop (can use read + write tools)
                     native_execution_summary = ""
                     native_tool_calls = 0
@@ -1926,7 +2606,8 @@ class MultiAgentOrchestrator:
                             requested_scope=routing.targets.scope,
                             action_history=state.action_history,
                             pending_actions=pending_actions,
-                            enabled_tools=enabled_tools,
+                            enabled_tools=executor_enabled_tools,
+                            actor_role=state.goal.actor_role,
                         )
 
                         async def on_executor_tool_result(
@@ -1980,7 +2661,7 @@ class MultiAgentOrchestrator:
                             role_name=executor.role,
                             system_prompt=loop_system_prompt,
                             user_prompt=loop_user_prompt,
-                            allowed_tool_names=enabled_tools,
+                            allowed_tool_names=executor_enabled_tools,
                             max_tool_calls=max(1, state.runtime_config.max_actions_per_round),
                             on_tool_result=on_executor_tool_result,
                             loop_history_messages=history_messages,
@@ -2016,7 +2697,7 @@ class MultiAgentOrchestrator:
                                 "summary": "Executor 已发起高风险操作，等待用户确认",
                             },
                         )
-                        yield {"event": "done", "data": {}}
+                        yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
                         return
 
                     # If native tool loop produced results, record execution
@@ -2045,14 +2726,14 @@ class MultiAgentOrchestrator:
                             resolved_job_name=routing.targets.job_name,
                             candidate_jobs=candidate_jobs,
                             requested_scope=routing.targets.scope,
-                            enabled_tools=enabled_tools,
+                            enabled_tools=executor_enabled_tools,
                         )
 
                     if not proposals and routing.requested_action == "create":
                         proposals = _fallback_submission_actions(
                             user_message=goal_message,
                             evidence=evidence_dicts,
-                            enabled_tools=enabled_tools,
+                            enabled_tools=executor_enabled_tools,
                         )
 
                     if not proposals:
@@ -2068,8 +2749,9 @@ class MultiAgentOrchestrator:
                                 requested_scope=routing.targets.scope,
                                 action_history=state.action_history,
                                 pending_actions=pending_actions,
-                                enabled_tools=enabled_tools,
+                                enabled_tools=executor_enabled_tools,
                                 history_messages=history_messages,
+                                actor_role=state.goal.actor_role,
                             )
                             record_agent_usage(executor)
                         except Exception:
@@ -2081,7 +2763,7 @@ class MultiAgentOrchestrator:
                             proposals = _fallback_submission_actions(
                                 user_message=goal_message,
                                 evidence=evidence_dicts,
-                                enabled_tools=enabled_tools,
+                                enabled_tools=executor_enabled_tools,
                             )
                         else:
                             proposals = _fallback_executor_actions(
@@ -2089,7 +2771,7 @@ class MultiAgentOrchestrator:
                                 resolved_job_name=routing.targets.job_name,
                                 candidate_jobs=candidate_jobs,
                                 requested_scope=routing.targets.scope,
-                                enabled_tools=enabled_tools,
+                                enabled_tools=executor_enabled_tools,
                             )
 
                     _merge_action_proposals(state.actions, proposals)
@@ -2143,7 +2825,7 @@ class MultiAgentOrchestrator:
                                 "summary": "Executor 已发起高风险操作，等待用户确认",
                             },
                         )
-                        yield {"event": "done", "data": {}}
+                        yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}
                         return
 
                     action.result = result
@@ -2228,6 +2910,7 @@ class MultiAgentOrchestrator:
                     else _build_evidence_summary_fallback(compact_evidence)
                 )
                 action_history_summary = _build_action_history_summary(state.action_history)
+                last_replan_signature = current_progress_signature
                 try:
                     plan_result = await planner.plan(
                         user_message=goal_message,
@@ -2271,7 +2954,7 @@ class MultiAgentOrchestrator:
                             "agentId": planner.agent_id,
                             "agentRole": planner.role,
                             "status": "completed",
-                            "summary": f"Replan: {state.plan.summary}",
+                            "summary": _build_plan_status_summary(state.plan, prefix="重规划完成"),
                         },
                     )
                     break  # → finalize
@@ -2290,7 +2973,7 @@ class MultiAgentOrchestrator:
                         "agentId": planner.agent_id,
                         "agentRole": planner.role,
                         "status": "completed",
-                        "summary": f"Replan: {state.plan.summary} (剩余 {len(new_steps)} 步)",
+                        "summary": _build_plan_status_summary(state.plan, prefix="重规划完成"),
                     },
                 )
                 continue
@@ -2299,8 +2982,34 @@ class MultiAgentOrchestrator:
         # STEP 6: Finalize
         # =================================================================
         if not state.final_answer:
+            verification_summary = last_verification_result.summary if last_verification_result else ""
+            verification_verdict = _extract_verification_verdict(last_verification_result)
             if state.stop_reason in {"max_rounds", "no_progress"}:
                 state.final_answer = _build_runtime_fallback_final_answer(state)
+            elif (
+                _has_tool_record(state, "get_health_overview")
+                and not _has_write_intent(routing)
+            ):
+                state.final_answer = _build_health_overview_answer(state)
+            elif routing.operation_mode == "write" and not state.tool_records and not state.action_history and not state.execution:
+                state.final_answer = (
+                    "当前没有任何已落地的工具执行或确认记录，不能声称写操作已经完成。"
+                    "请重新发起，并以确认卡与工具结果为准。"
+                )
+            elif verification_verdict == "missing_evidence":
+                grounded_summary = _build_terminal_action_answer(state)
+                if not grounded_summary:
+                    if state.execution:
+                        grounded_summary = state.execution.summary
+                    elif state.observation:
+                        grounded_summary = state.observation.summary
+                    else:
+                        grounded_summary = ""
+                state.final_answer = "当前不能确认任务已经完成。"
+                if verification_summary:
+                    state.final_answer += f"\n\n原因：{verification_summary}"
+                if grounded_summary:
+                    state.final_answer += f"\n\n已知信息：\n{grounded_summary}"
             else:
                 # Coordinator LLM synthesizes final answer from all artifacts
                 state_view = state.build_state_view("coordinator")
@@ -2308,6 +3017,10 @@ class MultiAgentOrchestrator:
                 terminal_answer = _build_terminal_action_answer(state)
                 if terminal_answer:
                     user_prompt += f"\n\n动作执行摘要:\n{terminal_answer}"
+                if verification_summary:
+                    user_prompt += (
+                        f"\n\n验证结论:\n[{verification_verdict or 'pass'}] {verification_summary}"
+                    )
                 try:
                     state.final_answer = await coordinator.run_text(
                         system_prompt=(
@@ -2317,12 +3030,16 @@ class MultiAgentOrchestrator:
                             "- 先给结论，再给关键细节\n"
                             "- 如果涉及数据/指标，要引用具体数值\n"
                             "- 如果有建议动作，要明确说明\n"
+                            "- 健康概览类查询如果只有少量失败且无系统性故障，要明确说整体健康、没有明显异常、无需立即处理、继续观察；如果要追查可以看具体失败作业\n"
+                            "- 诊断类查询要把结论和证据对应起来，说明哪个工具结果支持哪个判断，并引用关键指标或日志\n"
+                            "- 不要把未由工具证据支持的常见原因写成已确认原因；只能作为可能性或后续排查方向\n"
                             "- 不要重复罗列原始 JSON 字段，要做人类可读的总结\n"
                             "- 不要在回复中暴露系统内部诊断元数据（如置信度/confidence、severity、risk_level 等），这些是工具内部字段，用户不需要看到\n"
                             "- 严禁虚构任何信息：不要编造不存在的作业名、错误码、指标数值或平台功能\n"
                             "- 只能使用工具调用原始结果中实际存在的数据；如果某些作业尚未被诊断到，如实说明而不是编造结果\n"
                             "- 如果证据不完整（例如只诊断了部分作业），明确告知用户哪些已分析、哪些尚未覆盖\n"
-                            "- 如果近期对话里出现过错误结论，本轮必须直接纠正；不要重复沿用旧答案中的作业名或示例"
+                            "- 如果近期对话里出现过错误结论，本轮必须直接纠正；不要重复沿用旧答案中的作业名或示例\n"
+                            "- 如果验证阶段标记了 risk，必须显式说明风险或未完成项，不能包装成已完全成功"
                         ),
                         user_prompt=user_prompt,
                         history_messages=history_messages,
@@ -2345,4 +3062,4 @@ class MultiAgentOrchestrator:
             agent_role=coordinator.role,
             content=state.final_answer,
         )
-        yield {"event": "done", "data": {}}
+        yield {"event": "done", "data": {"usageSummary": state.usage_summary.to_dict()}}

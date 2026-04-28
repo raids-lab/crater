@@ -39,28 +39,24 @@ type AgentMessage struct {
 
 // AgentToolCall is an audit log for tool executions, also used for benchmark data collection.
 type AgentToolCall struct {
-	ID                uint           `gorm:"primarykey" json:"id"`
-	SessionID         string         `gorm:"type:uuid;index;not null" json:"sessionId"`
-	TurnID            string         `gorm:"type:uuid;index" json:"turnId,omitempty"`
-	MessageID         *uint          `json:"messageId,omitempty"`
-	ToolCallID        string         `gorm:"type:varchar(128);index" json:"toolCallId,omitempty"`
-	AgentID           string         `gorm:"type:varchar(128);index" json:"agentId,omitempty"`
-	ParentEventID     *uint          `gorm:"index" json:"parentEventId,omitempty"`
-	AgentRole         string         `gorm:"type:varchar(32);index" json:"agentRole,omitempty"`
-	Source            string         `gorm:"type:varchar(32);not null;default:'backend';index" json:"source"` // backend | local | benchmark
-	ToolName          string         `gorm:"type:varchar(100);not null;index" json:"toolName"`
-	ToolArgs          datatypes.JSON `gorm:"not null" json:"toolArgs"`
-	ToolResult        datatypes.JSON `json:"toolResult,omitempty"`
-	ResultStatus      string         `gorm:"type:varchar(32);not null;default:'success'" json:"resultStatus"`
-	ExecutionBackend  string         `gorm:"type:varchar(64)" json:"executionBackend,omitempty"`
-	SandboxJobName    string         `gorm:"type:varchar(255);index" json:"sandboxJobName,omitempty"`
-	ScriptName        string         `gorm:"type:varchar(128);index" json:"scriptName,omitempty"`
-	ResultArtifactRef string         `gorm:"type:text" json:"resultArtifactRef,omitempty"`
-	EgressDomains     datatypes.JSON `json:"egressDomains,omitempty"`
-	LatencyMs         int            `json:"latencyMs,omitempty"`
-	TokenCount        int            `json:"tokenCount,omitempty"`
-	UserConfirmed     *bool          `json:"userConfirmed,omitempty"`
-	CreatedAt         time.Time      `json:"createdAt"`
+	ID               uint           `gorm:"primarykey" json:"id"`
+	SessionID        string         `gorm:"type:uuid;index;not null" json:"sessionId"`
+	TurnID           string         `gorm:"type:uuid;index" json:"turnId,omitempty"`
+	MessageID        *uint          `json:"messageId,omitempty"`
+	ToolCallID       string         `gorm:"type:varchar(128);index" json:"toolCallId,omitempty"`
+	AgentID          string         `gorm:"type:varchar(128);index" json:"agentId,omitempty"`
+	ParentEventID    *uint          `gorm:"index" json:"parentEventId,omitempty"`
+	AgentRole        string         `gorm:"type:varchar(32);index" json:"agentRole,omitempty"`
+	Source           string         `gorm:"type:varchar(32);not null;default:'backend';index" json:"source"` // backend | local | benchmark
+	ToolName         string         `gorm:"type:varchar(100);not null;index" json:"toolName"`
+	ToolArgs         datatypes.JSON `gorm:"not null" json:"toolArgs"`
+	ToolResult       datatypes.JSON `json:"toolResult,omitempty"`
+	ResultStatus     string         `gorm:"type:varchar(32);not null;default:'success'" json:"resultStatus"`
+	ExecutionBackend string         `gorm:"type:varchar(64)" json:"executionBackend,omitempty"`
+	LatencyMs        int            `json:"latencyMs,omitempty"`
+	TokenCount       int            `json:"tokenCount,omitempty"`
+	UserConfirmed    *bool          `json:"userConfirmed,omitempty"`
+	CreatedAt        time.Time      `json:"createdAt"`
 }
 
 // AgentTurn represents one agent execution turn within a session.
@@ -105,11 +101,11 @@ type AgentFeedback struct {
 	SessionID   string         `gorm:"type:uuid;index;not null" json:"sessionId"`
 	UserID      uint           `gorm:"not null;uniqueIndex:idx_feedback_unique,priority:1" json:"userId"`
 	AccountID   uint           `gorm:"not null;index" json:"accountId"`
-	TargetType  string         `gorm:"type:varchar(16);not null;uniqueIndex:idx_feedback_unique,priority:2" json:"targetType"`  // message | turn
-	TargetID    string         `gorm:"type:varchar(128);not null;uniqueIndex:idx_feedback_unique,priority:3" json:"targetId"`    // message.id or turn_id
-	Rating      int16          `gorm:"not null" json:"rating"`                              // 1 = thumbs up, -1 = thumbs down
-	Tags        datatypes.JSON `json:"tags,omitempty"`                                      // ["inaccurate","helpful",...]
-	Dimensions  datatypes.JSON `json:"dimensions,omitempty"`                                // {"relevance":4,"accuracy":3,...}
+	TargetType  string         `gorm:"type:varchar(16);not null;uniqueIndex:idx_feedback_unique,priority:2" json:"targetType"` // message | turn
+	TargetID    string         `gorm:"type:varchar(128);not null;uniqueIndex:idx_feedback_unique,priority:3" json:"targetId"`  // message.id or turn_id
+	Rating      int16          `gorm:"not null" json:"rating"`                                                                 // 1 = thumbs up, -1 = thumbs down
+	Tags        datatypes.JSON `json:"tags,omitempty"`                                                                         // ["inaccurate","helpful",...]
+	Dimensions  datatypes.JSON `json:"dimensions,omitempty"`                                                                   // {"relevance":4,"accuracy":3,...}
 	Comment     string         `gorm:"type:text" json:"comment,omitempty"`
 	Status      string         `gorm:"type:varchar(16);not null;default:'draft'" json:"status"` // draft | submitted
 	SubmittedAt *time.Time     `json:"submittedAt,omitempty"`
@@ -119,12 +115,17 @@ type AgentFeedback struct {
 }
 
 // AgentQualityEval stores LLM-as-Judge quality evaluation results for agent chat sessions.
+// eval_scope: 'session' | 'turn'
+// eval_type: 'full' | 'dialogue' | 'task'
 // trigger_source: 'feedback' (user-triggered) | 'offline_batch' | 'manual'
 // eval_status: 'pending' | 'running' | 'completed' | 'failed'
 type AgentQualityEval struct {
 	ID            uint           `gorm:"primarykey" json:"id"`
 	SessionID     string         `gorm:"type:uuid;index;not null" json:"sessionId"`
 	TurnID        string         `gorm:"type:uuid;index" json:"turnId,omitempty"`
+	EvalScope     string         `gorm:"type:varchar(16);not null;default:'session';index" json:"evalScope"`
+	EvalType      string         `gorm:"type:varchar(32);not null;default:'full';index" json:"evalType"`
+	TargetID      string         `gorm:"type:varchar(128);index" json:"targetId,omitempty"`
 	FeedbackID    *uint          `gorm:"index" json:"feedbackId,omitempty"`
 	TriggerSource string         `gorm:"type:varchar(32);not null;index" json:"triggerSource"`
 	EvalStatus    string         `gorm:"type:varchar(16);not null;default:'pending';index" json:"evalStatus"`
@@ -136,6 +137,7 @@ type AgentQualityEval struct {
 	RawChatResp   datatypes.JSON `json:"rawChatResp,omitempty"`
 	RawChainResp  datatypes.JSON `json:"rawChainResp,omitempty"`
 	ArtifactPath  string         `gorm:"type:text" json:"artifactPath,omitempty"`
+	Metadata      datatypes.JSON `json:"metadata,omitempty"`
 	CreatedAt     time.Time      `gorm:"not null;default:now()" json:"createdAt"`
 	CompletedAt   *time.Time     `json:"completedAt,omitempty"`
 	UpdatedAt     time.Time      `gorm:"not null;default:now()" json:"updatedAt"`

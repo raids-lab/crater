@@ -28,7 +28,21 @@ from typing import Any
 import httpx
 
 from crater_agent.runtime.platform import PlatformRuntimeConfig, load_platform_runtime_config
-from crater_agent.tools.definitions import is_actor_allowed_for_tool, is_tool_allowed_for_role
+from crater_agent.tools.definitions import (
+    ADMIN_ONLY_TOOL_NAMES,
+    ALL_TOOLS,
+    CONFIRM_TOOL_NAMES,
+    READ_ONLY_TOOL_NAMES,
+    WRITE_TOOL_NAMES,
+    is_actor_allowed_for_tool,
+    is_tool_allowed_for_role,
+)
+from crater_agent.tools.k8s_policy import (
+    enforce_namespace_policy,
+    enforce_node_policy,
+    parse_shell_command,
+    validate_kubectl_write_command,
+)
 
 
 
@@ -43,6 +57,8 @@ def _extract_involved_object_name(field_selector: str) -> str | None:
 
 
 _SCOPED_K8S_TOOLS = frozenset({"k8s_get_events", "k8s_describe_resource", "k8s_get_pod_logs"})
+_TOOL_REGISTRY = {tool.name: tool for tool in ALL_TOOLS}
+_LOCAL_WRITE_EXECUTION_BACKEND = "python_local"
 
 
 class LocalToolExecutor:
@@ -59,11 +75,9 @@ class LocalToolExecutor:
         self._owns_client = client is None
         self._handlers = {
             "get_agent_runtime_summary": self._handle_get_agent_runtime_summary,
-            # --- DEPRECATED: migrating to LLM-native built-in tools ---
-            # "web_search": self._handle_web_search,
-            # "fetch_url": self._handle_fetch_url,
+            "web_search": self._handle_web_search,
+            "fetch_url": self._handle_fetch_url,
             # "execute_code": self._handle_execute_code,
-            # ---------------------------------------------------------
             "k8s_list_nodes": self._handle_k8s_list_nodes,
             "k8s_list_pods": self._handle_k8s_list_pods,
             "k8s_get_events": self._handle_k8s_get_events,
@@ -96,11 +110,7 @@ class LocalToolExecutor:
             "k8s_scale_workload": self._handle_k8s_scale_workload,
             "k8s_label_node": self._handle_k8s_label_node,
             "k8s_taint_node": self._handle_k8s_taint_node,
-            "cordon_node": self._handle_cordon_node,
-            "uncordon_node": self._handle_uncordon_node,
-            "drain_node": self._handle_drain_node,
-            "delete_pod": self._handle_delete_pod,
-            "restart_workload": self._handle_restart_workload,
+            "run_kubectl": self._handle_run_kubectl,
             "execute_admin_command": self._handle_execute_admin_command,
         }
 
@@ -110,6 +120,43 @@ class LocalToolExecutor:
     @property
     def supported_tool_names(self) -> set[str]:
         return set(self._handlers.keys())
+
+    def _tool_target(self, tool_name: str) -> str:
+        return self.runtime.default_route_for_tool(tool_name)
+
+    def _tool_target_with_overrides(self, tool_name: str) -> str:
+        from crater_agent.runtime.platform import route_for_tool
+
+        return route_for_tool(
+            self.runtime,
+            tool_name,
+            default=self.runtime.default_route_for_tool(tool_name),
+        )
+
+    def build_tool_catalog(self) -> list[dict[str, Any]]:
+        entries: list[dict[str, Any]] = []
+        for tool_name in sorted(self.supported_tool_names):
+            if self._tool_target_with_overrides(tool_name) != "local":
+                continue
+            mode = "confirm" if tool_name in CONFIRM_TOOL_NAMES else "read_only"
+            tool_obj = _TOOL_REGISTRY.get(tool_name)
+            description = ""
+            if tool_obj is not None:
+                description = str(getattr(tool_obj, "description", "") or "").strip()
+            if description:
+                description = description.splitlines()[0].strip()
+            if not description:
+                description = tool_name
+            entries.append(
+                {
+                    "name": tool_name,
+                    "mode": mode,
+                    "admin_only": tool_name in ADMIN_ONLY_TOOL_NAMES,
+                    "description": description,
+                    "execution_backend": _LOCAL_WRITE_EXECUTION_BACKEND,
+                }
+            )
+        return entries
 
     async def execute(
         self,
@@ -122,8 +169,11 @@ class LocalToolExecutor:
         agent_id: str | None = None,
         agent_role: str | None = None,
         actor_role: str | None = None,
+        execution_backend: str | None = None,
+        confirmed_dispatch: bool = False,
+        confirm_id: str | None = None,
     ) -> dict[str, Any]:
-        del session_id, turn_id, agent_id
+        del session_id, turn_id, agent_id, confirm_id
         # user_id retained for ownership checks in scoped k8s handlers
 
         start_time = time.monotonic()
@@ -144,6 +194,35 @@ class LocalToolExecutor:
                 "message": f"Tool {tool_name} requires admin privileges",
                 "_latency_ms": int((time.monotonic() - start_time) * 1000),
             }
+        if tool_name in WRITE_TOOL_NAMES:
+            if not confirmed_dispatch:
+                return {
+                    "status": "error",
+                    "error_type": "tool_policy",
+                    "retryable": False,
+                    "message": (
+                        f"Tool {tool_name} requires Go confirmation dispatch and cannot be executed directly in LocalToolExecutor"
+                    ),
+                    "_latency_ms": int((time.monotonic() - start_time) * 1000),
+                }
+            if execution_backend != _LOCAL_WRITE_EXECUTION_BACKEND:
+                return {
+                    "status": "error",
+                    "error_type": "tool_policy",
+                    "retryable": False,
+                    "message": (
+                        f"Tool {tool_name} requires execution_backend={_LOCAL_WRITE_EXECUTION_BACKEND!r} for confirmed local dispatch"
+                    ),
+                    "_latency_ms": int((time.monotonic() - start_time) * 1000),
+                }
+            if self._tool_target_with_overrides(tool_name) != "local":
+                return {
+                    "status": "error",
+                    "error_type": "tool_policy",
+                    "retryable": False,
+                    "message": f"Tool {tool_name} is not configured for local confirmed execution",
+                    "_latency_ms": int((time.monotonic() - start_time) * 1000),
+                }
 
         handler = self._handlers.get(tool_name)
         if handler is None:
@@ -204,6 +283,12 @@ class LocalToolExecutor:
             }
 
         result.setdefault("status", "success")
+        if tool_name in WRITE_TOOL_NAMES:
+            result.setdefault("_audit", {})
+            if isinstance(result["_audit"], dict):
+                result["_audit"].setdefault(
+                    "execution_backend", _LOCAL_WRITE_EXECUTION_BACKEND
+                )
         result["_latency_ms"] = int((time.monotonic() - start_time) * 1000)
         if tool_call_id:
             result.setdefault("tool_call_id", tool_call_id)
@@ -328,6 +413,54 @@ class LocalToolExecutor:
             "content": content[:max_chars],
             "truncated": len(content) > max_chars,
         }
+
+    def _effective_k8s_namespace(self, namespace: str | None) -> str:
+        return (
+            str(namespace or "").strip()
+            or str(self.runtime.kube_namespace or "").strip()
+            or str(self.runtime.namespaces.get("job") or "").strip()
+        )
+
+    def _enforce_k8s_namespace_policy(
+        self,
+        namespace: str | None,
+        *,
+        operation: str,
+    ) -> None:
+        enforce_namespace_policy(
+            self.runtime,
+            self._effective_k8s_namespace(namespace),
+            operation=operation,
+        )
+
+    def _enforce_k8s_node_policy(self, node_name: str | None, *, operation: str) -> None:
+        enforce_node_policy(self.runtime, node_name, operation=operation)
+
+    def _inject_kubeconfig_into_command(self, parts: list[str]) -> list[str]:
+        if not parts:
+            raise ValueError("command cannot be empty")
+        binary = parts[0]
+        if binary == "kubectl":
+            return self._kubectl_cmd(include_namespace=False) + parts[1:]
+        kubeconfig_aware_binaries = {"helm", "velero", "istioctl"}
+        if binary in kubeconfig_aware_binaries and self.runtime.kubeconfig_path:
+            return [binary, "--kubeconfig", self.runtime.kubeconfig_path] + parts[1:]
+        return list(parts)
+
+    async def _run_shell_command(
+        self,
+        command: str,
+        *,
+        timeout_seconds: int = 300,
+    ) -> tuple[int, str]:
+        parts = parse_shell_command(command)
+        full_cmd = self._inject_kubeconfig_into_command(parts)
+        code, stdout, stderr = await self._run_subprocess(
+            full_cmd,
+            timeout_seconds=timeout_seconds,
+        )
+        output = stdout.strip() if code == 0 else stderr.strip()
+        return code, output
 
     @staticmethod
     def _node_ready_status(item: dict[str, Any]) -> str:
@@ -853,8 +986,6 @@ class LocalToolExecutor:
             },
         }
 
-    # --- DEPRECATED: web_search handler ---
-    # Migrating to LLM-native enable_search. Handler kept for reference.
     async def _handle_web_search(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         if not self.runtime.web_search_enabled:
             raise PermissionError("web_search is disabled by runtime config")
@@ -869,8 +1000,6 @@ class LocalToolExecutor:
         from crater_agent.tools.camel_tools import camel_web_search  # noqa: PLC0415
         return await camel_web_search(query=query, max_results=limit, timeout=timeout)
 
-    # --- DEPRECATED: fetch_url handler ---
-    # Migrating to LLM-native web_extractor / search_strategy=agent_max. Handler kept for reference.
     async def _handle_fetch_url(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         import re  # noqa: PLC0415
 
@@ -1439,7 +1568,7 @@ class LocalToolExecutor:
         if not self.runtime.kubeconfig_path:
             raise PermissionError("no kubeconfig configured for kubectl debug")
         cmd = self._kubectl_cmd(include_namespace=False) + [
-            "debug", f"node/{node_name}", "-it", "--image", image,
+            "debug", f"node/{node_name}", "--image", image,
             "--", "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "--",
             "sh", "-c", commands,
         ]
@@ -1547,6 +1676,12 @@ class LocalToolExecutor:
                 return []
             return [l.strip() for l in text.splitlines() if l.strip()]
 
+        capability_notes: list[str] = []
+        for key in ("IB_DEVICES", "RDMA_LINKS", "IB_PORT_STATE", "IB_LINK", "KERNEL_MODULES"):
+            text = sections.get(key, "").strip()
+            if text.startswith("("):
+                capability_notes.append(text.strip("()"))
+
         return {
             "status": "success",
             "result": {
@@ -1556,6 +1691,13 @@ class LocalToolExecutor:
                 "ib_port_states": parse_section("IB_PORT_STATE"),
                 "ib_interfaces": parse_section("IB_LINK"),
                 "kernel_modules": parse_section("KERNEL_MODULES"),
+                "capability_notes": capability_notes,
+                "rdma_detected": bool(
+                    parse_section("IB_DEVICES")
+                    or parse_section("RDMA_LINKS")
+                    or parse_section("IB_PORT_STATE")
+                    or parse_section("IB_LINK")
+                ),
             },
         }
 
@@ -2246,11 +2388,28 @@ class LocalToolExecutor:
         if detected_type == "unknown" and pcie_devices:
             compat_notes.append("Accelerator devices found via PCIe but no management tool (nvidia-smi/npu-smi/rocm-smi) available")
 
+        capability_notes: list[str] = []
+        for key in (
+            "PCIE_DEVICES",
+            "NVIDIA",
+            "NVIDIA_CUDA",
+            "HYGON_DCU",
+            "HYGON_DRIVER",
+            "ASCEND_NPU",
+            "ASCEND_DRIVER",
+            "CAMBRICON_MLU",
+            "ACCEL_MODULES",
+        ):
+            text = sections.get(key, "").strip()
+            if text.startswith("("):
+                capability_notes.append(text.strip("()"))
+
         return {
             "status": "success",
             "result": {
                 "node_name": node_name,
                 "detected_type": detected_type,
+                "accelerator_detected": detected_type != "unknown" or bool(pcie_devices),
                 "nvidia": {
                     "gpu_count": len(nvidia_gpus),
                     "cuda_version": cuda_version,
@@ -2265,6 +2424,7 @@ class LocalToolExecutor:
                 "pcie_accelerator_devices": pcie_devices[:20],
                 "accel_kernel_modules": accel_modules,
                 "compatibility_notes": compat_notes,
+                "capability_notes": capability_notes,
             },
         }
 
@@ -2341,6 +2501,7 @@ class LocalToolExecutor:
             raise ValueError(f"kind must be Deployment or StatefulSet, got: {kind}")
         if replicas < 0 or replicas > 100:
             raise ValueError(f"replicas must be 0-100, got: {replicas}")
+        self._enforce_k8s_namespace_policy(namespace, operation="scale workload")
         args = ["scale", f"{kind.lower()}/{name}", f"--replicas={replicas}"]
         result = await self._run_kubectl_text(args, namespace=namespace)
         return {"status": "success", "result": {"kind": kind, "name": name, "replicas": replicas, "output": result.get("content", "")}}
@@ -2352,6 +2513,7 @@ class LocalToolExecutor:
         overwrite = bool(tool_args.get("overwrite", False))
         if not node_name or not key:
             raise ValueError("node_name and key are required")
+        self._enforce_k8s_node_policy(node_name, operation="label node")
         args = ["label", "nodes", node_name, f"{key}={value}"]
         if overwrite:
             args.append("--overwrite")
@@ -2368,138 +2530,39 @@ class LocalToolExecutor:
         allowed_effects = {"NoSchedule", "PreferNoSchedule", "NoExecute"}
         if effect not in allowed_effects:
             raise ValueError(f"effect must be one of {allowed_effects}, got: {effect}")
+        self._enforce_k8s_node_policy(node_name, operation="taint node")
         taint_spec = f"{key}={value}:{effect}" if value else f"{key}:{effect}"
         args = ["taint", "nodes", node_name, taint_spec]
         result = await self._run_kubectl_text(args, include_namespace=False)
         return {"status": "success", "result": {"node_name": node_name, "taint": taint_spec, "output": result.get("content", "")}}
 
     # ------------------------------------------------------------------
-    # K8s Write Tools: Node/Pod management
+    # run_kubectl / execute_admin_command: high-risk admin command execution
     # ------------------------------------------------------------------
 
-    async def _handle_cordon_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        node_name = str(tool_args.get("node_name") or "").strip()
-        if not node_name:
-            raise ValueError("node_name is required")
-        args = ["cordon", node_name]
-        result = await self._run_kubectl_text(args, include_namespace=False)
-        # Verify: node should show SchedulingDisabled
-        verify = await self._run_kubectl_json(["get", "node", node_name], include_namespace=False)
-        unschedulable = (verify.get("spec") or {}).get("unschedulable", False)
+    _ADMIN_CMD_ALLOWLIST = {"helm", "velero", "istioctl", "psql"}
+
+    async def _handle_run_kubectl(self, tool_args: dict[str, Any]) -> dict[str, Any]:
+        command = str(tool_args.get("command") or "").strip()
+        reason = str(tool_args.get("reason") or "").strip()
+        if not command:
+            raise ValueError("command is required")
+        if not reason:
+            raise ValueError("reason is required (explain why this command is needed)")
+
+        validate_kubectl_write_command(self.runtime, command)
+        code, output = await self._run_shell_command(command)
+        success = code == 0
         return {
-            "status": "success",
+            "status": "success" if success else "error",
             "result": {
-                "node_name": node_name,
-                "action": "cordon",
-                "verified_unschedulable": unschedulable,
-                "output": result.get("content", ""),
+                "command": command,
+                "reason": reason,
+                "exit_code": code,
+                "output": output[:50_000],
+                "truncated": len(output) > 50_000,
             },
         }
-
-    async def _handle_uncordon_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        node_name = str(tool_args.get("node_name") or "").strip()
-        if not node_name:
-            raise ValueError("node_name is required")
-        args = ["uncordon", node_name]
-        result = await self._run_kubectl_text(args, include_namespace=False)
-        verify = await self._run_kubectl_json(["get", "node", node_name], include_namespace=False)
-        unschedulable = (verify.get("spec") or {}).get("unschedulable", False)
-        return {
-            "status": "success",
-            "result": {
-                "node_name": node_name,
-                "action": "uncordon",
-                "verified_unschedulable": unschedulable,
-                "output": result.get("content", ""),
-            },
-        }
-
-    async def _handle_drain_node(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        node_name = str(tool_args.get("node_name") or "").strip()
-        if not node_name:
-            raise ValueError("node_name is required")
-        args = [
-            "drain", node_name,
-            "--ignore-daemonsets",
-            "--delete-emptydir-data",
-            "--force",
-            "--grace-period=60",
-            "--timeout=300s",
-        ]
-        result = await self._run_kubectl_text(args, include_namespace=False, max_chars=50_000)
-        return {
-            "status": "success",
-            "result": {
-                "node_name": node_name,
-                "action": "drain",
-                "output": result.get("content", ""),
-            },
-        }
-
-    async def _handle_delete_pod(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        name = str(tool_args.get("name") or "").strip()
-        namespace = str(tool_args.get("namespace") or "").strip() or None
-        force = bool(tool_args.get("force", False))
-        grace_period = tool_args.get("grace_period_seconds")
-        if not name:
-            raise ValueError("name is required")
-        args = ["delete", "pod", name]
-        if force:
-            args.extend(["--force", "--grace-period=0"])
-        elif grace_period is not None:
-            args.extend([f"--grace-period={int(grace_period)}"])
-        result = await self._run_kubectl_text(args, namespace=namespace)
-        return {
-            "status": "success",
-            "result": {
-                "pod_name": name,
-                "namespace": namespace,
-                "action": "delete_pod",
-                "force": force,
-                "output": result.get("content", ""),
-            },
-        }
-
-    async def _handle_restart_workload(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        kind = str(tool_args.get("kind") or "").strip()
-        name = str(tool_args.get("name") or "").strip()
-        namespace = str(tool_args.get("namespace") or "").strip() or None
-        if not kind or not name:
-            raise ValueError("kind and name are required")
-        allowed_kinds = {"Deployment", "StatefulSet", "DaemonSet"}
-        if kind not in allowed_kinds:
-            raise ValueError(f"kind must be one of {allowed_kinds}, got: {kind}")
-        args = ["rollout", "restart", f"{kind.lower()}/{name}"]
-        result = await self._run_kubectl_text(args, namespace=namespace)
-        return {
-            "status": "success",
-            "result": {
-                "kind": kind,
-                "name": name,
-                "namespace": namespace,
-                "action": "restart_workload",
-                "output": result.get("content", ""),
-            },
-        }
-
-    # ------------------------------------------------------------------
-    # execute_admin_command: Generalized admin command execution
-    # ------------------------------------------------------------------
-
-    _ADMIN_CMD_ALLOWLIST = {"kubectl", "helm", "velero", "istioctl"}
-    _ADMIN_CMD_BLOCKLIST_PATTERNS = [
-        "delete namespace",
-        "delete node",
-        "delete pv ",
-        "delete crd",
-        "cluster-info dump",
-        "auth can-i",
-        "--as=",
-        "exec -it",
-        "port-forward",
-        "proxy",
-        "apply -f http",
-    ]
 
     async def _handle_execute_admin_command(self, tool_args: dict[str, Any]) -> dict[str, Any]:
         command = str(tool_args.get("command") or "").strip()
@@ -2509,32 +2572,14 @@ class LocalToolExecutor:
         if not reason:
             raise ValueError("reason is required (explain why this command is needed)")
 
-        parts = command.split()
-        if not parts:
-            raise ValueError("command cannot be empty")
+        parts = parse_shell_command(command)
         binary = parts[0]
         if binary not in self._ADMIN_CMD_ALLOWLIST:
             raise ValueError(
                 f"command must start with one of {sorted(self._ADMIN_CMD_ALLOWLIST)}, got: {binary}"
             )
-        cmd_lower = command.lower()
-        for pattern in self._ADMIN_CMD_BLOCKLIST_PATTERNS:
-            if pattern in cmd_lower:
-                raise ValueError(f"command contains blocked pattern: {pattern!r}")
-
-        # Build the actual command with kubeconfig injection
-        if binary == "kubectl":
-            base = self._kubectl_cmd(include_namespace=False)
-            # Remove the binary itself since _kubectl_cmd already includes it
-            full_cmd = base + parts[1:]
-        else:
-            full_cmd = parts
-            if self.runtime.kubeconfig_path:
-                full_cmd = [binary, "--kubeconfig", self.runtime.kubeconfig_path] + parts[1:]
-
-        code, stdout, stderr = await self._run_subprocess(full_cmd, timeout_seconds=300)
+        code, output = await self._run_shell_command(command)
         success = code == 0
-        output = stdout.strip() if success else stderr.strip()
 
         return {
             "status": "success" if success else "error",

@@ -84,6 +84,8 @@ type AgentAuditSessionListItem struct {
 	OrchestrationModes    []string   `json:"orchestrationModes,omitempty"`
 	PinnedAt              *time.Time `json:"pinnedAt,omitempty"`
 	LatestEvalID          *uint      `json:"latestEvalId,omitempty"`
+	LatestEvalScope       string     `json:"latestEvalScope,omitempty"`
+	LatestEvalType        string     `json:"latestEvalType,omitempty"`
 	LatestEvalStatus      string     `json:"latestEvalStatus,omitempty"`
 	LatestEvalCompletedAt *time.Time `json:"latestEvalCompletedAt,omitempty"`
 	FeedbackRating        *int16     `json:"feedbackRating,omitempty"`
@@ -96,28 +98,30 @@ type AgentAuditSessionListItem struct {
 // comma-separated string aggregated from agent_turns which we split into the
 // public []string field after scanning.
 type agentAuditSessionListRow struct {
-	SessionID              string
-	Title                  string
-	Source                 string
-	UserID                 uint
-	Username               string
-	Nickname               string
-	AccountID              uint
-	AccountName            string
-	AccountNickname        string
-	MessageCount           int
-	ToolCallCount          int
-	TurnCount              int
-	LastOrchestrationMode  string
-	OrchestrationModesRaw  string
-	PinnedAt               *time.Time
-	LatestEvalID           *uint
-	LatestEvalStatus       string
-	LatestEvalCompletedAt  *time.Time
-	FeedbackRating         *int16
-	HasFeedback            bool
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	SessionID             string
+	Title                 string
+	Source                string
+	UserID                uint
+	Username              string
+	Nickname              string
+	AccountID             uint
+	AccountName           string
+	AccountNickname       string
+	MessageCount          int
+	ToolCallCount         int
+	TurnCount             int
+	LastOrchestrationMode string
+	OrchestrationModesRaw string
+	PinnedAt              *time.Time
+	LatestEvalID          *uint
+	LatestEvalScope       string
+	LatestEvalType        string
+	LatestEvalStatus      string
+	LatestEvalCompletedAt *time.Time
+	FeedbackRating        *int16
+	HasFeedback           bool
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 func (r agentAuditSessionListRow) toItem() AgentAuditSessionListItem {
@@ -139,6 +143,8 @@ func (r agentAuditSessionListRow) toItem() AgentAuditSessionListItem {
 		OrchestrationModes:    modes,
 		PinnedAt:              r.PinnedAt,
 		LatestEvalID:          r.LatestEvalID,
+		LatestEvalScope:       r.LatestEvalScope,
+		LatestEvalType:        r.LatestEvalType,
 		LatestEvalStatus:      r.LatestEvalStatus,
 		LatestEvalCompletedAt: r.LatestEvalCompletedAt,
 		FeedbackRating:        r.FeedbackRating,
@@ -266,6 +272,8 @@ func (s *AgentService) buildAgentAuditSessionEnrichedQuery(ctx context.Context, 
 		Select(`DISTINCT ON (session_id)
 			session_id,
 			id AS eval_id,
+			COALESCE(NULLIF(eval_scope, ''), CASE WHEN turn_id IS NULL THEN 'session' ELSE 'turn' END) AS eval_scope,
+			COALESCE(NULLIF(eval_type, ''), 'full') AS eval_type,
 			eval_status,
 			completed_at`).
 		Order("session_id, created_at DESC")
@@ -304,6 +312,8 @@ func (s *AgentService) buildAgentAuditSessionEnrichedQuery(ctx context.Context, 
 			COALESCE(turn_modes.modes, COALESCE(NULLIF(s.last_orchestration_mode, ''), 'single_agent')) AS orchestration_modes_raw,
 			s.pinned_at,
 			latest_eval.eval_id AS latest_eval_id,
+			COALESCE(latest_eval.eval_scope, '') AS latest_eval_scope,
+			COALESCE(latest_eval.eval_type, '') AS latest_eval_type,
 			COALESCE(latest_eval.eval_status, '') AS latest_eval_status,
 			latest_eval.completed_at AS latest_eval_completed_at,
 			latest_fb.feedback_rating AS feedback_rating,

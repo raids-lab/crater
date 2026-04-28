@@ -1,11 +1,7 @@
 """CAMEL toolkit adapters for Crater Agent.
 
-DEPRECATED: This module is pending removal.
-web_search → migrating to LLM-native enable_search (Bailian/GLM/Kimi built-in)
-execute_code → migrating to LLM-native code_interpreter (no real sandbox in subprocess mode)
-
-The handlers in local_executor.py that call into this module have been unregistered.
-This file is kept for reference until built-in tool integration is validated.
+web_search remains enabled as the explicit agent-side internet search path.
+execute_code stays disabled pending a real sandboxed replacement.
 
 ---
 

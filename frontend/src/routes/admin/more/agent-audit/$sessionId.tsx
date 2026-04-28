@@ -16,18 +16,20 @@ import {
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Badge } from '@/components/ui/badge'
+
 import { SessionConversationTimeline } from '@/components/agent-audit/SessionConversationTimeline'
 import { SessionFeedbackPanel } from '@/components/agent-audit/SessionFeedbackPanel'
 import { SessionQualityEvalPanel } from '@/components/agent-audit/SessionQualityEvalPanel'
 import { SessionToolCallsPanel } from '@/components/agent-audit/SessionToolCallsPanel'
 import { SessionTurnsPanel } from '@/components/agent-audit/SessionTurnsPanel'
 import { TimeDistance } from '@/components/custom/time-distance'
-import PageTitle from '@/components/layout/page-title'
 import DetailPage, {
   detailLinkOptions,
   detailValidateSearch,
 } from '@/components/layout/detail-page'
-import { Badge } from '@/components/ui/badge'
+import PageTitle from '@/components/layout/page-title'
+
 import {
   AgentAuditMessage,
   AgentAuditSessionSource,
@@ -38,16 +40,26 @@ import {
   apiAdminGetAgentAuditSessionToolCalls,
   apiAdminGetAgentAuditSessionTurns,
 } from '@/services/api/admin/agentAudit'
+
 import { cn } from '@/lib/utils'
+
+function compactBreadcrumbTitle(title: string | undefined, fallback: string) {
+  const normalized = title?.trim() || fallback
+  return normalized.length > 18 ? `${normalized.slice(0, 18)}…` : normalized
+}
 
 export const Route = createFileRoute('/admin/more/agent-audit/$sessionId')({
   validateSearch: detailValidateSearch,
   component: AgentAuditDetailPage,
-  loader: ({ params }) => ({
-    // The breadcrumb is rendered by the shell; keep it short so it doesn't
-    // push the rest of the path off screen on narrow viewports.
-    crumb: params.sessionId.slice(0, 8) + '…',
-  }),
+  loader: async ({ params }) => {
+    const fallback = params.sessionId.slice(0, 8) + '…'
+    try {
+      const detail = await apiAdminGetAgentAuditSessionDetail(params.sessionId)
+      return { crumb: compactBreadcrumbTitle(detail.data?.title, fallback) }
+    } catch {
+      return { crumb: fallback }
+    }
+  },
 })
 
 function sourceBadgeClass(source?: AgentAuditSessionSource) {
@@ -191,31 +203,19 @@ function AgentAuditDetailPage() {
       value: <span>{evalLabel}</span>,
     },
     {
-      title: t('agentAudit.metrics.messages', { count: messageCount }),
+      title: t('agentAudit.tabs.messages'),
       icon: MessageSquareIcon,
-      value: (
-        <span className="font-mono tabular-nums text-sky-700 dark:text-sky-400">
-          {messageCount}
-        </span>
-      ),
+      value: <span className="tabular-nums">{messageCount}</span>,
     },
     {
-      title: t('agentAudit.metrics.toolCalls', { count: toolCallCount }),
+      title: t('agentAudit.tabs.toolCalls'),
       icon: WrenchIcon,
-      value: (
-        <span className="font-mono tabular-nums text-orange-700 dark:text-orange-400">
-          {toolCallCount}
-        </span>
-      ),
+      value: <span className="tabular-nums">{toolCallCount}</span>,
     },
     {
-      title: t('agentAudit.metrics.turns', { count: turnCount }),
+      title: t('agentAudit.tabs.turns'),
       icon: ActivityIcon,
-      value: (
-        <span className="font-mono tabular-nums text-violet-700 dark:text-violet-400">
-          {turnCount}
-        </span>
-      ),
+      value: <span className="tabular-nums">{turnCount}</span>,
     },
     {
       title: t('agentAudit.feedback.title'),
@@ -245,9 +245,7 @@ function AgentAuditDetailPage() {
           messages={messagesQuery.data ?? []}
           toolCalls={toolCallsQuery.data ?? []}
           turns={turnsQuery.data ?? []}
-          isLoading={
-            messagesQuery.isLoading || toolCallsQuery.isLoading || turnsQuery.isLoading
-          }
+          isLoading={messagesQuery.isLoading || toolCallsQuery.isLoading || turnsQuery.isLoading}
         />
       ),
     },
@@ -256,7 +254,7 @@ function AgentAuditDetailPage() {
       icon: SparklesIcon,
       label: t('agentAudit.tabs.qualityEval'),
       scrollable: true,
-      children: <SessionQualityEvalPanel sessionId={sessionId} />,
+      children: <SessionQualityEvalPanel sessionId={sessionId} turns={turnsQuery.data ?? []} />,
     },
     {
       key: 'feedback',

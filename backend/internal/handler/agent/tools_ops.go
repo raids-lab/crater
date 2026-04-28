@@ -7,7 +7,6 @@ import (
 	"html"
 	"io"
 	"io/fs"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,7 +18,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	kbatchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,8 +34,6 @@ const (
 	agentOpsAuditMetaKey = "_audit"
 
 	defaultOpsWebSearchTimeoutSeconds = 3600
-	defaultOpsScriptTimeoutSeconds    = 300
-	defaultOpsScriptMaxTimeoutSeconds = 1800
 	defaultSandboxGrepMaxMatches      = 50
 	defaultSandboxGrepRootPath        = "/"
 )
@@ -99,14 +95,6 @@ func isAllowedDomain(host string, allowedDomains []string) bool {
 	return false
 }
 
-func extractRunOpsScriptName(rawArgs json.RawMessage) string {
-	var args struct {
-		ScriptName string `json:"script_name"`
-	}
-	_ = json.Unmarshal(rawArgs, &args)
-	return strings.TrimSpace(args.ScriptName)
-}
-
 func sanitizeSandboxRelativePath(rawPath string) (string, string, error) {
 	trimmed := strings.TrimSpace(rawPath)
 	if trimmed == "" {
@@ -146,23 +134,8 @@ func isPathWithinRoot(path, root string) bool {
 	return strings.HasPrefix(path, root+string(os.PathSeparator))
 }
 
-func buildAuditMetadata(executionBackend, sandboxJobName, scriptName, resultArtifactRef string, egressDomains []string) map[string]any {
-	meta := map[string]any{
-		"execution_backend": executionBackend,
-	}
-	if sandboxJobName != "" {
-		meta["sandbox_job_name"] = sandboxJobName
-	}
-	if scriptName != "" {
-		meta["script_name"] = scriptName
-	}
-	if resultArtifactRef != "" {
-		meta["result_artifact_ref"] = resultArtifactRef
-	}
-	if len(egressDomains) > 0 {
-		meta["egress_domains"] = uniqueStrings(egressDomains)
-	}
-	return meta
+func buildAuditMetadata(executionBackend string) map[string]any {
+	return map[string]any{"execution_backend": executionBackend}
 }
 
 func safeEventTimestamp(event corev1.Event) time.Time {
@@ -193,31 +166,6 @@ func matchAnyKeyword(line string, keywords []string) bool {
 		}
 	}
 	return false
-}
-
-func sanitizeForK8sName(name string) string {
-	name = strings.ToLower(strings.TrimSpace(name))
-	if name == "" {
-		return "script"
-	}
-	var b strings.Builder
-	for _, r := range name {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			b.WriteRune(r)
-			continue
-		}
-		if r == '-' || r == '_' || r == '.' {
-			b.WriteRune('-')
-		}
-	}
-	cleaned := strings.Trim(b.String(), "-")
-	if cleaned == "" {
-		return "script"
-	}
-	if len(cleaned) > 40 {
-		return cleaned[:40]
-	}
-	return cleaned
 }
 
 func (mgr *AgentMgr) toolListStoragePVCs(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
@@ -286,7 +234,7 @@ func (mgr *AgentMgr) toolListStoragePVCs(c *gin.Context, token util.JWTMessage, 
 		"total":              len(items),
 		"namespace":          ns,
 		"status":             args.Status,
-		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -335,7 +283,7 @@ func (mgr *AgentMgr) toolGetPVCDetail(c *gin.Context, token util.JWTMessage, raw
 		"resource_version":   pvc.ResourceVersion,
 		"finalizers":         pvc.Finalizers,
 		"deletion_timestamp": pvc.DeletionTimestamp,
-		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -391,7 +339,7 @@ func (mgr *AgentMgr) toolGetPVCEvents(c *gin.Context, token util.JWTMessage, raw
 		"pvc_name":           pvcName,
 		"items":              items,
 		"total":              len(items),
-		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -537,7 +485,7 @@ func (mgr *AgentMgr) toolInspectJobStorage(c *gin.Context, token util.JWTMessage
 		"pvc_states":         pvcStates,
 		"pod_bindings":       podBindings,
 		"total_volumes":      len(volumes),
-		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -644,7 +592,7 @@ func (mgr *AgentMgr) toolGetStorageCapacityOverview(c *gin.Context, token util.J
 		"by_storage_class":      byStorageClass,
 		"top_requested_pvcs":    topPVCs,
 		"summary":               summary,
-		agentOpsAuditMetaKey:    buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey:    buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -771,7 +719,7 @@ func (mgr *AgentMgr) toolGetNodeNetworkSummary(c *gin.Context, token util.JWTMes
 		"network_alerts":            networkAlertCount,
 		"items":                     summaryItems,
 		"nodes":                     summaryItems,
-		agentOpsAuditMetaKey:        buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey:        buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -991,7 +939,7 @@ func (mgr *AgentMgr) diagnoseDistributedJobNetworkForJob(
 		"event_match_count":  len(eventMatches),
 		"log_match_count":    len(logMatches),
 		"issues":             issues,
-		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey: buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -1106,7 +1054,7 @@ func (mgr *AgentMgr) toolDiagnoseDistributedJobNetwork(c *gin.Context, token uti
 		"high_risk_jobs":      highRiskJobs,
 		"lookback_hours":      lookbackHours,
 		"requested_job_limit": jobLimit,
-		agentOpsAuditMetaKey:  buildAuditMetadata("backend_k8s_read", "", "", "", nil),
+		agentOpsAuditMetaKey:  buildAuditMetadata("backend_k8s_read"),
 	}, nil
 }
 
@@ -1209,10 +1157,7 @@ func newWebSearchClient(timeoutSeconds int, allowedDomains []string) *http.Clien
 	}
 }
 
-func (mgr *AgentMgr) toolWebSearch(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	if err := ensureOpsAdmin(token, agentToolWebSearch); err != nil {
-		return nil, err
-	}
+func (mgr *AgentMgr) toolWebSearch(c *gin.Context, _ util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	var args struct {
 		Query          string   `json:"query"`
 		URLs           []string `json:"urls"`
@@ -1285,14 +1230,12 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, token util.JWTMessage, rawArg
 	}
 	client := newWebSearchClient(timeoutSeconds, allowedDomains)
 	results := make([]map[string]any, 0, len(urls))
-	egress := make([]string, 0, len(urls))
 
 	for _, target := range urls {
 		u, _ := url.Parse(target)
 		if u == nil || !isAllowedDomain(u.Hostname(), allowedDomains) {
 			return nil, fmt.Errorf("target url %q is not allowed", target)
 		}
-		egress = append(egress, u.Hostname())
 
 		req, reqErr := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, target, nil)
 		if reqErr != nil {
@@ -1363,7 +1306,7 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, token util.JWTMessage, rawArg
 		"query":              query,
 		"results":            results,
 		"summary":            summary,
-		agentOpsAuditMetaKey: buildAuditMetadata("backend_web_search_proxy", "", "", "", uniqueStrings(egress)),
+		agentOpsAuditMetaKey: buildAuditMetadata("backend_web_search_proxy"),
 	}, nil
 }
 
@@ -1494,157 +1437,13 @@ func (mgr *AgentMgr) toolSandboxGrep(_ *gin.Context, token util.JWTMessage, rawA
 	}
 
 	return map[string]any{
-		"path":          cleanedPath,
-		"pattern":       pattern,
-		"matches":       matches,
-		"total_matches": len(matches),
-		"truncated":     truncated,
-		"scanned_files": scannedFiles,
-		agentOpsAuditMetaKey: buildAuditMetadata(
-			"sandbox_grep_restricted",
-			"",
-			"",
-			fmt.Sprintf("sandbox://%s", cleanedPath),
-			nil,
-		),
-	}, nil
-}
-
-func normalizeOpsScriptAllowlist(scripts []string) map[string]struct{} {
-	result := make(map[string]struct{}, len(scripts))
-	for _, script := range scripts {
-		s := strings.TrimSpace(script)
-		if s == "" {
-			continue
-		}
-		result[s] = struct{}{}
-	}
-	return result
-}
-
-func (mgr *AgentMgr) toolRunOpsScript(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	if err := ensureOpsAdmin(token, agentToolRunOpsScript); err != nil {
-		return nil, err
-	}
-	var args struct {
-		ScriptName     string         `json:"script_name"`
-		ScriptArgs     map[string]any `json:"script_args"`
-		TimeoutSeconds int            `json:"timeout_seconds"`
-	}
-	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
-	}
-	args.ScriptName = strings.TrimSpace(args.ScriptName)
-	if args.ScriptName == "" {
-		return nil, fmt.Errorf("script_name is required")
-	}
-	allowlist := normalizeOpsScriptAllowlist(pkgconfig.GetConfig().Agent.Ops.Sandbox.ScriptAllowlist)
-	if _, ok := allowlist[args.ScriptName]; !ok {
-		return nil, fmt.Errorf("script %q is not in sandbox.scriptAllowlist", args.ScriptName)
-	}
-	if args.ScriptArgs == nil {
-		args.ScriptArgs = map[string]any{}
-	}
-
-	sandboxCfg := pkgconfig.GetConfig().Agent.Ops.Sandbox
-	namespace := strings.TrimSpace(sandboxCfg.Namespace)
-	image := strings.TrimSpace(sandboxCfg.Image)
-	if namespace == "" {
-		return nil, fmt.Errorf("agent.ops.sandbox.namespace is required")
-	}
-	if image == "" {
-		return nil, fmt.Errorf("agent.ops.sandbox.image is required")
-	}
-
-	defaultTimeout := sandboxCfg.DefaultTimeoutSeconds
-	if defaultTimeout <= 0 {
-		defaultTimeout = defaultOpsScriptTimeoutSeconds
-	}
-	maxTimeout := sandboxCfg.MaxTimeoutSeconds
-	if maxTimeout <= 0 {
-		maxTimeout = defaultOpsScriptMaxTimeoutSeconds
-	}
-	timeoutSeconds := args.TimeoutSeconds
-	if timeoutSeconds <= 0 {
-		timeoutSeconds = defaultTimeout
-	}
-	if timeoutSeconds > maxTimeout {
-		timeoutSeconds = maxTimeout
-	}
-
-	argsJSON, err := json.Marshal(args.ScriptArgs)
-	if err != nil {
-		return nil, fmt.Errorf("invalid script_args: %w", err)
-	}
-	backoffLimit := int32(0)
-	ttlSeconds := int32(3600)
-	activeDeadline := int64(timeoutSeconds + 60)
-	scriptPart := sanitizeForK8sName(args.ScriptName)
-	jobName := fmt.Sprintf("ops-%s-%d-%d", scriptPart, time.Now().Unix(), rand.Intn(1000))
-
-	job := &kbatchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      jobName,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"crater.raids.io/managed-by": "agent-ops",
-				"crater.raids.io/tool-name":  agentToolRunOpsScript,
-				"crater.raids.io/script":     scriptPart,
-			},
-			Annotations: map[string]string{
-				"crater.raids.io/ops-script-name": args.ScriptName,
-			},
-		},
-		Spec: kbatchv1.JobSpec{
-			BackoffLimit:            &backoffLimit,
-			TTLSecondsAfterFinished: &ttlSeconds,
-			ActiveDeadlineSeconds:   &activeDeadline,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"crater.raids.io/managed-by": "agent-ops",
-					},
-				},
-				Spec: corev1.PodSpec{
-					RestartPolicy:      corev1.RestartPolicyNever,
-					ServiceAccountName: strings.TrimSpace(sandboxCfg.ServiceAccount),
-					Containers: []corev1.Container{
-						{
-							Name:    "ops-script",
-							Image:   image,
-							Command: []string{"/ops-tools/run-ops-script"},
-							Args: []string{
-								"--script", args.ScriptName,
-								"--timeout-seconds", fmt.Sprintf("%d", timeoutSeconds),
-								"--args-json-env", "CRATER_OPS_SCRIPT_ARGS_JSON",
-							},
-							Env: []corev1.EnvVar{
-								{Name: "CRATER_OPS_SCRIPT_ARGS_JSON", Value: string(argsJSON)},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	if _, err := mgr.kubeClient.BatchV1().Jobs(namespace).Create(c, job, metav1.CreateOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to create sandbox job: %w", err)
-	}
-	resultRef := fmt.Sprintf("k8s://%s/job/%s", namespace, jobName)
-	return map[string]any{
-		"status":              "submitted",
-		"script_name":         args.ScriptName,
-		"sandbox_job_name":    jobName,
-		"namespace":           namespace,
-		"timeout_seconds":     timeoutSeconds,
-		"result_artifact_ref": resultRef,
-		agentOpsAuditMetaKey: buildAuditMetadata(
-			"k8s_sandbox_job",
-			jobName,
-			args.ScriptName,
-			resultRef,
-			nil,
-		),
+		"path":               cleanedPath,
+		"pattern":            pattern,
+		"matches":            matches,
+		"total_matches":      len(matches),
+		"truncated":          truncated,
+		"scanned_files":      scannedFiles,
+		agentOpsAuditMetaKey: buildAuditMetadata("sandbox_grep_restricted"),
 	}, nil
 }
 
@@ -1692,6 +1491,22 @@ func (mgr *AgentMgr) K8sOwnershipCheck(c *gin.Context) {
 
 	for _, job := range jobs {
 		if job.JobName != "" && (strings.HasPrefix(podName, job.JobName+"-") || podName == job.JobName) {
+			c.JSON(http.StatusOK, gin.H{"allowed": true})
+			return
+		}
+	}
+
+	k := query.Kaniko
+	builds, err := k.WithContext(c.Request.Context()).
+		Where(k.UserID.Eq(uint(userID))).
+		Select(k.ImagePackName).
+		Find()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
+		return
+	}
+	for _, build := range builds {
+		if build.ImagePackName != "" && (strings.HasPrefix(podName, build.ImagePackName+"-") || podName == build.ImagePackName) {
 			c.JSON(http.StatusOK, gin.H{"allowed": true})
 			return
 		}

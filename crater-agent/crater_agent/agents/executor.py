@@ -25,6 +25,7 @@ class ExecutorAgent(BaseRoleAgent):
         action_history: list[dict],
         pending_actions: list[dict],
         enabled_tools: list[str],
+        actor_role: str = "user",
     ) -> tuple[str, str]:
         allowed_tools = sorted(set(enabled_tools))
         visible_tools = allowed_tools[:10]
@@ -38,10 +39,11 @@ class ExecutorAgent(BaseRoleAgent):
             + (f"；其余 {hidden_tool_count} 个暂不展开" if hidden_tool_count > 0 else "")
             + "\n\n"
             "执行要求：\n"
+            "- 当前用户角色不是管理员时，不要尝试执行管理员专属写操作；应说明权限限制并建议联系管理员。\n"
             "- 纯查询/诊断请求不要擅自执行写操作。\n"
             "- 若仅需补充事实证据，优先继续用只读工具，不要直接进入写操作。\n"
             "- 写操作前应确保目标对象明确；如果不明确，先补最小只读核验。\n"
-            "- run_ops_script 属于受控高风险动作：应先说明触发原因，并等待确认流，不得构造任意 shell 文本。\n"
+            "- run_kubectl / execute_admin_command 属于受控高风险动作：应先说明触发原因，并等待确认流，不得构造任意 shell 文本。\n"
             "- 如果工具返回需要用户确认，你应停止继续调用，等待系统接管确认流程。\n"
             "- 避免重复调用相同参数的工具，除非世界状态明显变化。\n"
         )
@@ -55,6 +57,7 @@ class ExecutorAgent(BaseRoleAgent):
             f"- action_intent={action_intent}\n"
             f"- selected_job_name={selected_job_name}\n"
             f"- requested_scope={requested_scope}\n\n"
+            f"- actor_role={actor_role}\n\n"
             f"已有执行历史:\n{action_history or []}\n\n"
             f"待执行动作:\n{pending_actions or []}\n\n"
             "请直接推进执行；若需要工具就调用工具，否则直接总结。"
@@ -76,6 +79,7 @@ class ExecutorAgent(BaseRoleAgent):
         pending_actions: list[dict],
         enabled_tools: list[str],
         history_messages: list | None = None,
+        actor_role: str = "user",
     ) -> list[dict]:
         """Use LLM to decide whether write actions are needed, and if so, which ones."""
         write_tools = sorted({t for t in enabled_tools if t in CONFIRM_TOOL_NAMES})
@@ -103,10 +107,11 @@ class ExecutorAgent(BaseRoleAgent):
                 "注意：\n"
                 "- actions 里每个元素都必须是原子动作。\n"
                 "- depends_on 使用 1-based 下标，表示依赖本次输出中更早的动作；没有依赖就输出空数组。\n"
+                "- 当前用户角色不是管理员时，不要输出管理员专属写操作；应返回空 actions。\n"
                 "- 只有用户明确要求操作时才选择写操作。\n"
                 "- 纯诊断/查询请求不应产生写操作。\n"
                 '- "帮我看看这个作业" ≠ "帮我停止这个作业"。\n'
-                "- 当选择 run_ops_script 时，reason 必须体现“平台只读证据不足，需要受控脚本补证”。\n"
+                "- 当选择 run_kubectl / execute_admin_command 时，reason 必须体现“结构化工具和只读证据不足，必须执行受控命令”。\n"
                 "- 如果已经有 pending_actions，不要重复生成等价动作。\n"
                 "- 如果 requested_scope=all 且证据里已经列出候选对象，可以输出多条动作。"
             ),
@@ -120,6 +125,7 @@ class ExecutorAgent(BaseRoleAgent):
                 f"- action_intent={action_intent}\n"
                 f"- selected_job_name={selected_job_name}\n"
                 f"- requested_scope={requested_scope}\n\n"
+                f"- actor_role={actor_role}\n\n"
                 f"已有执行历史:\n{action_history or []}\n\n"
                 f"待执行动作:\n{pending_actions or []}\n\n"
                 "请输出下一批写操作计划。"

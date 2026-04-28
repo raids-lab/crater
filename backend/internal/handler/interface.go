@@ -66,7 +66,10 @@ type RegisterConfig struct {
 
 type JobMutationSubmitter interface {
 	SubmitJupyterJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitWebIDEJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
 	SubmitTrainingJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitPytorchJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitTensorflowJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
 }
 
 var jobMutationSubmitterFactory func(conf *RegisterConfig) JobMutationSubmitter

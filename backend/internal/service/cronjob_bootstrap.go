@@ -27,11 +27,23 @@ func (s *ConfigService) EnsureBuiltinCronJobs(ctx context.Context) error {
 				Config: datatypes.JSON(`{
 						"days": 1,
 						"lookback_hours": 1,
-					"gpu_threshold": 5,
-					"idle_hours": 1,
-					"running_limit": 20,
-					"node_limit": 10
-				}`),
+						"gpu_threshold": 5,
+						"idle_hours": 1,
+						"running_limit": 20,
+						"node_limit": 10,
+						"notification": {
+							"enabled": false,
+							"notify_admins": true,
+							"notify_job_owners": true,
+							"failure_job_threshold": 10,
+							"failure_rate_threshold_percent": 15,
+							"unhealthy_node_threshold": 1,
+							"network_alert_threshold": 3,
+							"high_risk_network_job_threshold": 1,
+							"max_job_owner_emails": 10,
+							"cooldown_hours": 12
+						}
+					}`),
 			},
 			{
 				Name:    patrol.TRIGGER_STORAGE_DAILY_AUDIT_JOB,

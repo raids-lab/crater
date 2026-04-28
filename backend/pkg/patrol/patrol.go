@@ -40,13 +40,54 @@ type AdminOpsReportServiceInterface interface {
 }
 
 type TriggerAdminOpsReportRequest struct {
-	Days          int  `json:"days,omitempty"`
-	LookbackHours int  `json:"lookback_hours,omitempty"`
-	GPUThreshold  int  `json:"gpu_threshold,omitempty"`
-	IdleHours     int  `json:"idle_hours,omitempty"`
-	RunningLimit  int  `json:"running_limit,omitempty"`
-	NodeLimit     int  `json:"node_limit,omitempty"`
-	DryRun        bool `json:"dry_run,omitempty"`
+	Days          int                          `json:"days,omitempty"`
+	LookbackHours int                          `json:"lookback_hours,omitempty"`
+	GPUThreshold  int                          `json:"gpu_threshold,omitempty"`
+	IdleHours     int                          `json:"idle_hours,omitempty"`
+	RunningLimit  int                          `json:"running_limit,omitempty"`
+	NodeLimit     int                          `json:"node_limit,omitempty"`
+	DryRun        bool                         `json:"dry_run,omitempty"`
+	Notification  *OpsReportNotificationPolicy `json:"notification,omitempty"`
+}
+
+type OpsReportNotificationPolicy struct {
+	Enabled                     bool `json:"enabled,omitempty"`
+	NotifyAdmins                bool `json:"notify_admins,omitempty"`
+	NotifyJobOwners             bool `json:"notify_job_owners,omitempty"`
+	FailureJobThreshold         int  `json:"failure_job_threshold,omitempty"`
+	FailureRateThresholdPercent int  `json:"failure_rate_threshold_percent,omitempty"`
+	UnhealthyNodeThreshold      int  `json:"unhealthy_node_threshold,omitempty"`
+	NetworkAlertThreshold       int  `json:"network_alert_threshold,omitempty"`
+	HighRiskNetworkJobThreshold int  `json:"high_risk_network_job_threshold,omitempty"`
+	MaxJobOwnerEmails           int  `json:"max_job_owner_emails,omitempty"`
+	CooldownHours               int  `json:"cooldown_hours,omitempty"`
+}
+
+func normalizeOpsReportNotificationPolicy(policy *OpsReportNotificationPolicy) {
+	if policy == nil {
+		return
+	}
+	if policy.FailureJobThreshold <= 0 {
+		policy.FailureJobThreshold = 10
+	}
+	if policy.FailureRateThresholdPercent <= 0 {
+		policy.FailureRateThresholdPercent = 15
+	}
+	if policy.UnhealthyNodeThreshold <= 0 {
+		policy.UnhealthyNodeThreshold = 1
+	}
+	if policy.NetworkAlertThreshold <= 0 {
+		policy.NetworkAlertThreshold = 3
+	}
+	if policy.HighRiskNetworkJobThreshold <= 0 {
+		policy.HighRiskNetworkJobThreshold = 1
+	}
+	if policy.MaxJobOwnerEmails <= 0 {
+		policy.MaxJobOwnerEmails = 10
+	}
+	if policy.CooldownHours <= 0 {
+		policy.CooldownHours = 12
+	}
 }
 
 type TriggerStorageAuditRequest struct {
@@ -134,6 +175,7 @@ func GetPatrolFunc(jobName string, clients *Clients, jobConfig datatypes.JSON) (
 		if req.NodeLimit <= 0 {
 			req.NodeLimit = 10
 		}
+		normalizeOpsReportNotificationPolicy(req.Notification)
 		f = func(ctx context.Context) (any, error) {
 			return RunTriggerAdminOpsReport(ctx, clients, req)
 		}

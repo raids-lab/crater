@@ -1,6 +1,6 @@
 'use client'
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   CheckCircle,
@@ -456,6 +456,87 @@ function mapToolCallToTimelineEvent(toolCall: AgentToolCall): TimelineEvent {
   }
 }
 
+function mapSingleAgentRunEventsToToolItems(
+  turns: AgentTurn[],
+  toolCalls: AgentToolCall[],
+  runEventsByTurn: Record<string, AgentEvent[]>
+): ConversationItem[] {
+  const multiAgentTurnIds = new Set(
+    turns.filter((t) => t.orchestrationMode === 'multi_agent').map((t) => t.turnId)
+  )
+  const persistedToolCallIds = new Set(
+    toolCalls
+      .filter((toolCall) => !toolCall.turnId || !multiAgentTurnIds.has(toolCall.turnId))
+      .map((toolCall) => String(toolCall.toolCallId || '').trim())
+      .filter(Boolean)
+  )
+
+  const itemsById = new Map<string, ConversationItem>()
+
+  for (const turn of turns) {
+    if (turn.orchestrationMode === 'multi_agent') continue
+    const turnEvents = runEventsByTurn[turn.turnId] ?? []
+    for (const event of turnEvents) {
+      if (
+        event.eventType !== 'tool_call_started' &&
+        event.eventType !== 'tool_call_completed' &&
+        event.eventType !== 'tool_call_confirmation_required'
+      ) {
+        continue
+      }
+
+      const metadata = parseAgentJSON(event.metadata)
+      const toolCallId = String(metadata?.toolCallId || '').trim()
+      if (!toolCallId || persistedToolCallIds.has(toolCallId)) continue
+
+      const itemId = `toolcall-${toolCallId}`
+      const previous = itemsById.get(itemId)
+      const toolName =
+        typeof metadata?.toolName === 'string' && metadata.toolName.trim()
+          ? metadata.toolName
+          : event.title || 'unknown'
+      const toolArgs =
+        (typeof metadata?.toolArgs === 'object' && metadata.toolArgs !== null
+          ? (metadata.toolArgs as Record<string, unknown>)
+          : typeof metadata?.args === 'object' && metadata.args !== null
+            ? (metadata.args as Record<string, unknown>)
+            : typeof metadata?.arguments === 'object' && metadata.arguments !== null
+              ? (metadata.arguments as Record<string, unknown>)
+              : previous?.toolArgs) ?? {}
+
+      let toolStatus: ConversationItem['toolStatus'] = previous?.toolStatus ?? 'executing'
+      if (event.eventType === 'tool_call_started') {
+        toolStatus = 'executing'
+      } else if (event.eventType === 'tool_call_confirmation_required') {
+        toolStatus = 'awaiting_confirmation'
+      } else if (event.eventStatus === 'error' || metadata?.isError === true) {
+        toolStatus = 'error'
+      } else {
+        toolStatus = 'done'
+      }
+
+      const resultValue =
+        typeof metadata?.resultSummary === 'string'
+          ? metadata.resultSummary
+          : typeof metadata?.result === 'string'
+            ? metadata.result
+            : event.content || previous?.toolResult
+
+      itemsById.set(itemId, {
+        id: itemId,
+        kind: 'tool_call',
+        toolName,
+        toolArgs,
+        toolStatus,
+        toolResult: resultValue,
+        timestamp: previous?.timestamp ?? new Date(event.startedAt || event.createdAt),
+      })
+    }
+  }
+
+  return Array.from(itemsById.values())
+}
+
 function isTimelineEvent(value: TimelineEvent | null): value is TimelineEvent {
   return value !== null
 }
@@ -561,6 +642,12 @@ function mapSessionHistoryToConversationItems(
     return items
   })
 
+  const derivedSingleAgentToolItems = mapSingleAgentRunEventsToToolItems(
+    turns,
+    toolCalls,
+    runEventsByTurn
+  )
+
   const confirmationItems = toolCalls.flatMap((toolCall) => {
     if (
       toolCall.resultStatus !== 'await_confirm' &&
@@ -590,7 +677,13 @@ function mapSessionHistoryToConversationItems(
     ]
   })
 
-  return [...timelineItems, ...messageItems, ...toolItems, ...confirmationItems].sort((a, b) => {
+  return [
+    ...timelineItems,
+    ...messageItems,
+    ...toolItems,
+    ...derivedSingleAgentToolItems,
+    ...confirmationItems,
+  ].sort((a, b) => {
     const timestampDiff = a.timestamp.getTime() - b.timestamp.getTime()
     if (timestampDiff !== 0) return timestampDiff
     return getConversationItemSortWeight(a) - getConversationItemSortWeight(b)
@@ -682,6 +775,7 @@ const markdownComponents = {
 
 export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const adminHintText = t('aiops.chat.adminHint', {
     defaultValue: '管理员账号可前往 Admin 页面使用 Chat 诊断（/admin/aiops）。',
   })
@@ -785,6 +879,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const activeAgentRequestStateRef = useRef<ActiveAgentRequestState | null>(null)
   const pendingInterruptActionRef = useRef<(() => void) | null>(null)
   const agentSessionIdRef = useRef<string | null>(null)
+  const conversationItemsRef = useRef<ConversationItem[]>([])
   /** Ref to track the current timeline item id being streamed into */
   const currentTimelineIdRef = useRef<string | null>(null)
   const hasActiveAgentTask = agentStreaming || pendingConfirmIds.length > 0
@@ -1090,8 +1185,16 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       switch (event.event) {
         case 'agent_run_started': {
           if (orchestrationMode === 'multi_agent') {
-            // Create a new timeline item for this turn
-            const timelineId = `timeline-${eventData.turnId || Date.now()}`
+            const turnId =
+              typeof eventData.turnId === 'string' && eventData.turnId.trim()
+                ? eventData.turnId
+                : undefined
+            const existingTimeline = turnId
+              ? conversationItemsRef.current.find(
+                  (item) => item.kind === 'timeline' && item.turnId === turnId
+                )
+              : undefined
+            const timelineId = existingTimeline?.id ?? `timeline-${turnId || Date.now()}`
             currentTimelineIdRef.current = timelineId
             clearThinkingItems()
             const newEvent: TimelineEvent = {
@@ -1108,18 +1211,33 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               status: eventData.status,
               timestamp: new Date(),
             }
-            setConversationItems((prev) => [
-              ...prev,
-              {
-                id: timelineId,
-                kind: 'timeline',
-                turnId: eventData.turnId,
-                timelineEvents: [newEvent],
-                timelineVerdict: null,
-                timelineComplete: false,
-                timestamp: new Date(),
-              },
-            ])
+            setConversationItems((prev) => {
+              const existing = prev.find((item) => item.id === timelineId)
+              if (existing?.kind === 'timeline') {
+                return prev.map((item) =>
+                  item.id === timelineId
+                    ? {
+                        ...item,
+                        turnId: turnId ?? item.turnId,
+                        timelineEvents: [...(item.timelineEvents || []), newEvent],
+                        timelineComplete: false,
+                      }
+                    : item
+                )
+              }
+              return [
+                ...prev,
+                {
+                  id: timelineId,
+                  kind: 'timeline',
+                  turnId,
+                  timelineEvents: [newEvent],
+                  timelineVerdict: null,
+                  timelineComplete: false,
+                  timestamp: new Date(),
+                },
+              ]
+            })
           }
           break
         }
@@ -1572,10 +1690,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
           apiGetSessionTurns(sessionId).then((response) => response.data),
           apiListFeedbacks(sessionId).then((response) => response.data ?? []).catch((): AgentFeedback[] => []),
         ])
-        const multiAgentTurns = turns.filter((turn) => turn.orchestrationMode === 'multi_agent')
         const runEventsByTurn = Object.fromEntries(
           await Promise.all(
-            multiAgentTurns.map(async (turn) => [
+            turns.map(async (turn) => [
               turn.turnId,
               await apiGetTurnEvents(turn.turnId).then((response) => response.data),
             ])
@@ -1802,19 +1919,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   )
 
   const startAgentResume = useCallback(
-    (confirmId: string, fallbackText: string) => {
+    (confirmId: string) => {
       if (!confirmId || agentStreaming) {
-        if (fallbackText) {
-          setConversationItems((prev) => [
-            ...prev,
-            {
-              id: `confirm-result-${Date.now()}`,
-              kind: 'message',
-              text: fallbackText,
-              timestamp: new Date(),
-            },
-          ])
-        }
         return
       }
 
@@ -1832,33 +1938,15 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         (err: Error) => {
           agentAbortRef.current = null
           clearThinkingItems()
-          if (fallbackText) {
-            setConversationItems((prev) => [
-              ...prev,
-              {
-                id: `confirm-result-${Date.now()}`,
-                kind: 'message',
-                text: fallbackText,
-                timestamp: new Date(),
-              },
-              {
-                id: `confirm-error-${Date.now()}`,
-                kind: 'error',
-                text: err.message,
-                timestamp: new Date(),
-              },
-            ])
-          } else {
-            setConversationItems((prev) => [
-              ...prev,
-              {
-                id: `confirm-error-${Date.now()}`,
-                kind: 'error',
-                text: err.message,
-                timestamp: new Date(),
-              },
-            ])
-          }
+          setConversationItems((prev) => [
+            ...prev,
+            {
+              id: `confirm-error-${Date.now()}`,
+              kind: 'error',
+              text: err.message,
+              timestamp: new Date(),
+            },
+          ])
           setAgentStreaming(false)
         },
         () => {
@@ -2001,6 +2089,37 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     ]
   )
 
+  const invalidateAgentAffectedQueries = useCallback(
+    (toolName: string, status: string) => {
+      const normalizedTool = String(toolName || '').trim()
+      const normalizedStatus = String(status || '').trim().toLowerCase()
+
+      if (!normalizedTool) {
+        return
+      }
+
+      void queryClient.invalidateQueries({ queryKey: ['operation-logs'] })
+
+      if (normalizedStatus === 'rejected') {
+        return
+      }
+
+      const nodeAffectingTools = new Set([
+        'cordon_node',
+        'uncordon_node',
+        'drain_node',
+        'k8s_label_node',
+        'k8s_taint_node',
+        'run_kubectl',
+        'execute_admin_command',
+      ])
+      if (nodeAffectingTools.has(normalizedTool)) {
+        void queryClient.invalidateQueries({ queryKey: ['overview', 'nodes'] })
+      }
+    },
+    [queryClient]
+  )
+
   const handleConfirmationSettled = useCallback(
     (
       item: ConversationItem,
@@ -2029,10 +2148,21 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             : ci
         )
       )
-      startAgentResume(item.confirmId ?? '', result.message ?? fallbackText)
+      invalidateAgentAffectedQueries(item.confirmAction ?? '', result.status)
+      startAgentResume(item.confirmId ?? '')
     },
-    [resolveConfirmation, startAgentResume, updateTimelineToolEvent, updateToolCallItem]
+    [
+      invalidateAgentAffectedQueries,
+      resolveConfirmation,
+      startAgentResume,
+      updateTimelineToolEvent,
+      updateToolCallItem,
+    ]
   )
+
+  useEffect(() => {
+    conversationItemsRef.current = conversationItems
+  }, [conversationItems])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -2597,7 +2727,6 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                   }
 
                   if (item.kind === 'timeline') {
-                    const fbKey = item.feedbackTargetId ? `turn:${item.feedbackTargetId}` : null
                     return (
                       <div key={item.id} className="flex min-w-0 flex-col justify-start">
                         <AgentTimeline
@@ -2607,17 +2736,6 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                           verifierVerdict={item.timelineVerdict ?? null}
                           isStreaming={!item.timelineComplete && agentStreaming}
                         />
-                        {item.feedbackTargetId && item.timelineComplete && lastLoadedAgentSessionIdRef.current && (
-                          <div className="mt-1 pl-2">
-                            <FeedbackCard
-                              sessionId={lastLoadedAgentSessionIdRef.current}
-                              targetType="turn"
-                              targetId={item.feedbackTargetId}
-                              existingFeedback={fbKey ? feedbackMap[fbKey] : null}
-                              onFeedbackChange={handleFeedbackChange}
-                            />
-                          </div>
-                        )}
                       </div>
                     )
                   }

@@ -28,6 +28,7 @@ from sse_starlette.sse import EventSourceResponse
 from crater_agent.agents.approval import ApprovalAgent, ApprovalEvalRequest, ApprovalEvalResponse
 from crater_agent.app_quality import router as quality_router
 from crater_agent.config import settings
+from crater_agent.internal_tools_router import internal_tools_router
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.orchestrators.multi import MultiAgentOrchestrator
 from crater_agent.orchestrators.single import SingleAgentOrchestrator
@@ -36,10 +37,13 @@ from crater_agent.pipeline.router import pipeline_router
 app = FastAPI(title="Crater Agent Service", version="0.1.0")
 app.include_router(pipeline_router, prefix="/pipeline", tags=["pipeline"])
 app.include_router(quality_router)
+app.include_router(internal_tools_router, prefix="/internal", tags=["internal-tools"])
 
 logger.info(
-    "agent service starting: backend=%s",
+    "agent service starting: backend=%s eval_artifacts=%s eval_artifact_dir=%s",
     settings.crater_backend_url,
+    settings.quality_eval_write_artifacts,
+    settings.resolve_quality_eval_output_dir(),
 )
 
 single_orchestrator = SingleAgentOrchestrator()
@@ -111,6 +115,7 @@ async def chat(request: ChatRequest):
     """
     async def event_generator():
         request_context = build_request_context(request)
+        request.context = request_context
         orchestration_mode = get_orchestration_mode(request_context)
         model_factory = ModelClientFactory()
         orchestrator = (

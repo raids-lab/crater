@@ -75,6 +75,11 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("failed to load session history: %v", historyErr), resputil.NotSpecified)
 		return
 	}
+	historyToolCalls, toolCallErr := mgr.agentService.ListToolCalls(c.Request.Context(), sessionID)
+	if toolCallErr != nil {
+		resputil.Error(c, fmt.Sprintf("failed to load session tool calls: %v", toolCallErr), resputil.NotSpecified)
+		return
+	}
 
 	historyForPrompt := filterHistoryMessagesForRequest(historyMessages, req.RequestID)
 
@@ -121,6 +126,7 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 		normalizeClientContext(req.ClientContext),
 		orchestrationMode,
 		historyForPrompt,
+		historyToolCalls,
 		continuationContext,
 	)
 	mgr.streamPythonAgentResponse(c, sessionID, turnID, orchestrationMode, agentPayload, true)
@@ -133,7 +139,7 @@ func isChatSessionSource(source string) bool {
 
 // ResumeAfterConfirmation godoc
 // @Summary Resume an agent turn after a confirmation result
-// @Description Starts a hidden follow-up turn so the agent can explain the execution result.
+// @Description Resumes a paused agent turn after the confirmation result has been recorded.
 // @Tags agent
 // @Accept json
 // @Produce text/event-stream
@@ -169,7 +175,8 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 	}
 
 	sourceTurn, sourceTurnErr := mgr.agentService.GetTurn(c.Request.Context(), toolCall.TurnID)
-	if sourceTurnErr == nil && normalizeOrchestrationMode(sourceTurn.OrchestrationMode) == "multi_agent" {
+	if sourceTurnErr == nil {
+		orchestrationMode := normalizeOrchestrationMode(sourceTurn.OrchestrationMode)
 		sessionToken, tokenErr := mgr.getSessionToken(c.Request.Context(), session)
 		if tokenErr != nil {
 			resputil.Error(c, fmt.Sprintf("failed to resolve session actor: %v", tokenErr), resputil.NotSpecified)
@@ -180,37 +187,30 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 			resputil.Error(c, fmt.Sprintf("failed to load session history: %v", historyErr), resputil.NotSpecified)
 			return
 		}
-
-		resumeTurnID := uuid.New().String()
-		turnMetadata, _ := json.Marshal(map[string]any{
-			"resumeFromConfirmId": req.ConfirmID,
-			"sourceTurnId":        sourceTurn.TurnID,
-		})
-		if _, err := mgr.agentService.CreateTurn(c.Request.Context(), &model.AgentTurn{
-			TurnID:            resumeTurnID,
-			SessionID:         toolCall.SessionID,
-			OrchestrationMode: "multi_agent",
-			Status:            "running",
-			StartedAt:         time.Now(),
-			Metadata:          datatypes.JSON(turnMetadata),
-		}); err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to create resume turn: %v", err), resputil.NotSpecified)
+		historyToolCalls, toolCallErr := mgr.agentService.ListToolCalls(c.Request.Context(), toolCall.SessionID)
+		if toolCallErr != nil {
+			resputil.Error(c, fmt.Sprintf("failed to load session tool calls: %v", toolCallErr), resputil.NotSpecified)
 			return
 		}
-		_ = mgr.agentService.UpdateTurnStatus(c.Request.Context(), sourceTurn.TurnID, "completed", nil, nil)
+
+		if err := mgr.agentService.UpdateTurnStatus(c.Request.Context(), sourceTurn.TurnID, "running", nil, nil); err != nil {
+			resputil.Error(c, fmt.Sprintf("failed to resume source turn: %v", err), resputil.NotSpecified)
+			return
+		}
 
 		agentPayload := mgr.buildPythonAgentPayload(
 			toolCall.SessionID,
-			resumeTurnID,
+			sourceTurn.TurnID,
 			"继续完成上一轮计划",
 			sessionToken,
 			normalizePageContext(json.RawMessage(session.PageContext)),
 			normalizeClientContext(json.RawMessage(sourceTurn.Metadata)),
-			"multi_agent",
+			orchestrationMode,
 			historyMessages,
+			historyToolCalls,
 			mgr.buildResumeContinuation(c.Request.Context(), sourceTurn, toolCall),
 		)
-		mgr.streamPythonAgentResponse(c, toolCall.SessionID, resumeTurnID, "multi_agent", agentPayload, true)
+		mgr.streamPythonAgentResponse(c, toolCall.SessionID, sourceTurn.TurnID, orchestrationMode, agentPayload, true)
 		return
 	}
 
@@ -280,7 +280,6 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 			Result:  resultBytes,
 			Message: summary,
 		})
-		mgr.persistAssistantToolMessage(c.Request.Context(), toolCall.SessionID, toolCall.ToolName, "rejected", summary)
 		return
 	}
 
@@ -303,7 +302,40 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 	}
 
 	start := time.Now()
-	result, execErr := mgr.executeWriteTool(c, sessionToken, toolCall.ToolName, mergedArgs)
+	executionBackend := strings.TrimSpace(toolCall.ExecutionBackend)
+	if executionBackend == "" {
+		executionBackend = normalizeExecutionBackend(toolCall.ToolName, "")
+	}
+
+	var (
+		result  any
+		execErr error
+	)
+	if executionBackend == "python_local" {
+		localResp, localErr := mgr.executePythonLocalWrite(
+			c.Request.Context(),
+			agentLocalWriteExecuteRequest{
+				ToolName:         toolCall.ToolName,
+				ToolArgs:         mergedArgs,
+				SessionID:        toolCall.SessionID,
+				TurnID:           toolCall.TurnID,
+				ToolCallID:       toolCall.ToolCallID,
+				ConfirmID:        req.ConfirmID,
+				AgentID:          toolCall.AgentID,
+				AgentRole:        toolCall.AgentRole,
+				ActorRole:        strings.ToLower(sessionToken.RolePlatform.String()),
+				UserID:           session.UserID,
+				ExecutionBackend: executionBackend,
+			},
+		)
+		if localErr != nil {
+			execErr = localErr
+		} else {
+			result, execErr = normalizePythonLocalWriteOutcome(localResp)
+		}
+	} else {
+		result, execErr = mgr.executeWriteTool(c, sessionToken, toolCall.ToolName, mergedArgs)
+	}
 	latencyMs := int(time.Since(start).Milliseconds())
 
 	status := agentToolStatusSuccess
@@ -313,8 +345,13 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 	if execErr != nil {
 		status = agentToolStatusError
 		responseMsg = mgr.buildToolOutcomeMessage(toolCall.ToolName, status, nil, execErr.Error())
-		errJSON, _ := json.Marshal(map[string]string{"error": execErr.Error()})
-		resultBytes = errJSON
+		if result != nil {
+			resultBytes, _ = json.Marshal(result)
+		}
+		if len(resultBytes) == 0 {
+			errJSON, _ := json.Marshal(map[string]string{"error": execErr.Error()})
+			resultBytes = errJSON
+		}
 	} else {
 		resultBytes, _ = json.Marshal(result)
 		responseMsg = mgr.buildToolOutcomeMessage(toolCall.ToolName, status, result, "")
@@ -331,6 +368,15 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 		resputil.Error(c, fmt.Sprintf("failed to update pending action: %v", updateErr), resputil.NotSpecified)
 		return
 	}
+	recordAgentMutationOperationLog(
+		c,
+		toolCall.ToolName,
+		mergedArgs,
+		result,
+		execErr,
+		executionBackend,
+		req.ConfirmID,
+	)
 
 	resputil.Success(c, AgentToolResponse{
 		Status:    status,
@@ -338,7 +384,67 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 		Message:   responseMsg,
 		LatencyMs: latencyMs,
 	})
-	mgr.persistAssistantToolMessage(c.Request.Context(), toolCall.SessionID, toolCall.ToolName, status, responseMsg)
+}
+
+func normalizePythonLocalWriteOutcome(payload map[string]any) (any, error) {
+	resultStatus := strings.TrimSpace(fmt.Sprintf("%v", payload["status"]))
+	if resultStatus == "" {
+		resultStatus = agentToolStatusSuccess
+	}
+	message := ""
+	if rawMessage, ok := payload["message"].(string); ok {
+		message = strings.TrimSpace(rawMessage)
+	}
+
+	if rawResult, ok := payload["result"]; ok && rawResult != nil {
+		switch typed := rawResult.(type) {
+		case map[string]any:
+			result := make(map[string]any, len(typed)+1)
+			for key, value := range typed {
+				result[key] = value
+			}
+			if _, ok := result["_audit"]; !ok {
+				result["_audit"] = map[string]any{"execution_backend": "python_local"}
+			}
+			if resultStatus == agentToolStatusError {
+				if message == "" {
+					message = "python local write failed"
+				}
+				result["error"] = message
+				return result, fmt.Errorf("%s", message)
+			}
+			return result, nil
+		default:
+			if resultStatus == agentToolStatusError {
+				if message == "" {
+					message = "python local write failed"
+				}
+				return map[string]any{
+					"error":   message,
+					"details": rawResult,
+					"_audit":  map[string]any{"execution_backend": "python_local"},
+				}, fmt.Errorf("%s", message)
+			}
+			return map[string]any{
+				"result": rawResult,
+				"_audit": map[string]any{"execution_backend": "python_local"},
+			}, nil
+		}
+	}
+
+	if resultStatus == agentToolStatusError {
+		if message == "" {
+			message = "python local write failed"
+		}
+		return map[string]any{
+			"error":  message,
+			"_audit": map[string]any{"execution_backend": "python_local"},
+		}, fmt.Errorf("%s", message)
+	}
+
+	return map[string]any{
+		"_audit": map[string]any{"execution_backend": "python_local"},
+	}, nil
 }
 
 // ListSessions godoc

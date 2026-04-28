@@ -130,10 +130,10 @@ registry:
       buildx: ghcr.io/raids-lab/buildx-client:latest
       # Nerdctl image for containerd-based builds
       # Required if Registry.Enable is true
-      nerdctl: ghcr.io/raids-lab/envd-client:latest
+      nerdctl: ghcr.io/raids-lab/nerdctl-client:latest
       # Envd image for environment-based development builds
       # Required if Registry.Enable is true
-      envd: ghcr.io/raids-lab/nerdctl-client:latest
+      envd: ghcr.io/raids-lab/envd-client:latest
 
 # Configuration for email notifications via SMTP
 # Optional: If Enable is false, email notifications will be disabled
@@ -180,19 +180,6 @@ agent:
         - grafana.com
         - nvd.nist.gov
       timeoutSeconds: 10
-    sandbox:
-      # Sandbox runtime settings for grep/script tools
-      namespace: ops
-      serviceAccount: crater-ops-agent
-      image: crater-harbor.act.buaa.edu.cn/crater/ops-toolbox:latest
-      defaultTimeoutSeconds: 300
-      maxTimeoutSeconds: 1800
-      scriptAllowlist:
-        - inspect_pvc
-        - inspect_mounts
-        - collect_events
-        - inspect_rdma_node
-        - diagnose_nccl_job
     kubernetes:
       # Optional shared defaults for agent-side direct kubectl diagnosis tools.
       # Use agent-side platform-runtime.yaml to override these values when the

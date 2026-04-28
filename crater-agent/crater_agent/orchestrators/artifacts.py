@@ -15,12 +15,13 @@ class RoutingTargets:
 
 @dataclass
 class RoutingDecision:
-    entry_mode: str = "agent"  # "help" | "agent"
+    entry_mode: str = "agent"  # "help" | "agent" | "simple"
     operation_mode: str = "unknown"  # "read" | "write" | "unknown"
     targets: RoutingTargets = field(default_factory=RoutingTargets)
     requested_action: str | None = None  # "resubmit" | "stop" | "delete" | "create" etc.
     confidence: float = 0.5
     rationale: str = ""
+    complexity: str = "normal"  # "simple" | "normal" | "complex"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -34,6 +35,7 @@ class RoutingDecision:
             "requested_action": self.requested_action,
             "confidence": self.confidence,
             "rationale": self.rationale,
+            "complexity": self.complexity,
         }
 
     @classmethod
@@ -54,6 +56,7 @@ class RoutingDecision:
             requested_action=str(data.get("requested_action") or "").strip() or None,
             confidence=float(data.get("confidence") or 0.5),
             rationale=str(data.get("rationale") or "").strip(),
+            complexity=str(data.get("complexity") or "normal").strip() or "normal",
         )
 
 
@@ -189,6 +192,16 @@ class StateView:
             parts.append(f"页面上下文: {self.goal.page_context}")
         if self.goal.routing.requested_action:
             parts.append(f"请求动作: {self.goal.routing.requested_action}")
+        if self.goal.routing.entry_mode or self.goal.routing.operation_mode:
+            parts.append(
+                "路由判断: "
+                f"entry={self.goal.routing.entry_mode}, "
+                f"operation={self.goal.routing.operation_mode}, "
+                f"complexity={self.goal.routing.complexity}, "
+                f"confidence={self.goal.routing.confidence:.2f}"
+            )
+        if self.goal.routing.rationale:
+            parts.append(f"路由理由: {self.goal.routing.rationale}")
         if self.goal.routing.targets.job_name:
             parts.append(f"目标作业: {self.goal.routing.targets.job_name}")
         if self.goal.routing.targets.node_name:

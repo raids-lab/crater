@@ -21,6 +21,62 @@ import yaml
 from crater_agent.config import settings
 
 
+DEFAULT_LOCAL_CORE_TOOLS = {
+    "get_agent_runtime_summary",
+    "web_search",
+    "fetch_url",
+    "k8s_list_nodes",
+    "k8s_list_pods",
+    "k8s_get_events",
+    "k8s_describe_resource",
+    "k8s_get_pod_logs",
+    "prometheus_query",
+    "harbor_check",
+    "k8s_get_service",
+    "k8s_get_endpoints",
+    "k8s_get_ingress",
+    "get_volcano_queue_state",
+    "k8s_get_configmap",
+    "k8s_get_networkpolicy",
+    "aggregate_image_pull_errors",
+    "detect_zombie_jobs",
+    "get_ddp_rank_mapping",
+    "get_node_kernel_diagnostics",
+    "get_rdma_interface_status",
+    "get_node_gpu_info",
+    "get_nccl_env_config",
+    "check_node_nic_status",
+    "detect_training_anomaly_patterns",
+    "get_distributed_job_overview",
+    "get_node_accelerator_info",
+    "k8s_top_nodes",
+    "k8s_top_pods",
+    "k8s_rollout_status",
+}
+
+DEFAULT_LOCAL_WRITE_TOOLS: set[str] = set()
+
+DEFAULT_PROTECTED_NAMESPACES = [
+    "kube-system",
+    "kube-public",
+    "kube-node-lease",
+]
+
+DEFAULT_BLOCKED_COMMAND_PATTERNS = [
+    "delete namespace",
+    "delete node",
+    "delete pv",
+    "delete crd",
+    "cluster-info dump",
+    "auth can-i",
+    "--as=",
+    "exec -it",
+    "port-forward",
+    "proxy",
+    "apply -f http",
+]
+
+
 def _load_json_dict(path: Path | None) -> dict[str, Any]:
     if path is None or not path.exists():
         return {}
@@ -103,36 +159,9 @@ class PlatformRuntimeConfig:
     """Resolved runtime config for agent-local tools."""
 
     local_core_tools: set[str] = field(
-        default_factory=lambda: {
-            "get_agent_runtime_summary",
-            # "web_search",  # DEPRECATED — migrating to LLM-native enable_search
-            "k8s_list_nodes",
-            "k8s_list_pods",
-            "k8s_get_events",
-            "k8s_describe_resource",
-            "k8s_get_pod_logs",
-            "prometheus_query",
-            "harbor_check",
-            "k8s_get_service",
-            "k8s_get_endpoints",
-            "k8s_get_ingress",
-            "get_volcano_queue_state",
-            "k8s_get_configmap",
-            "k8s_get_networkpolicy",
-            "aggregate_image_pull_errors",
-            "detect_zombie_jobs",
-            "get_ddp_rank_mapping",
-            "get_node_kernel_diagnostics",
-            "get_rdma_interface_status",
-            # B8: GPU / Distributed Training Diagnostics
-            "get_node_gpu_info",
-            "get_nccl_env_config",
-            "check_node_nic_status",
-            "detect_training_anomaly_patterns",
-            "get_distributed_job_overview",
-            "get_node_accelerator_info",
-        }
+        default_factory=lambda: set(DEFAULT_LOCAL_CORE_TOOLS)
     )
+    local_write_tools: set[str] = field(default_factory=lambda: set(DEFAULT_LOCAL_WRITE_TOOLS))
     web_search_enabled: bool = False
     web_search_allowed_domains: list[str] = field(default_factory=list)
     web_search_seed_urls: list[str] = field(default_factory=list)
@@ -160,6 +189,11 @@ class PlatformRuntimeConfig:
     kube_namespace: str = ""
     kubectl_bin: str = "kubectl"
     kubectl_timeout_seconds: int = 30
+    k8s_protected_namespaces: list[str] = field(default_factory=lambda: list(DEFAULT_PROTECTED_NAMESPACES))
+    k8s_protected_node_names: list[str] = field(default_factory=list)
+    k8s_blocked_command_patterns: list[str] = field(
+        default_factory=lambda: list(DEFAULT_BLOCKED_COMMAND_PATTERNS)
+    )
     namespaces: dict[str, str] = field(default_factory=dict)
     storage_prefixes: dict[str, str] = field(default_factory=dict)
     storage_pvcs: dict[str, str] = field(default_factory=dict)
@@ -167,6 +201,14 @@ class PlatformRuntimeConfig:
 
     def is_local_core_tool(self, tool_name: str) -> bool:
         return tool_name in self.local_core_tools
+
+    def is_local_write_tool(self, tool_name: str) -> bool:
+        return tool_name in self.local_write_tools
+
+    def default_route_for_tool(self, tool_name: str) -> str:
+        if self.is_local_core_tool(tool_name) or self.is_local_write_tool(tool_name):
+            return "local"
+        return "backend"
 
     def is_allowed_web_url(self, url: str) -> bool:
         if not self.web_search_allowed_domains:
@@ -182,6 +224,7 @@ class PlatformRuntimeConfig:
     def to_summary(self) -> dict[str, Any]:
         return {
             "localCoreTools": sorted(self.local_core_tools),
+            "localWriteTools": sorted(self.local_write_tools),
             "recommendedPlatformRuntimeFields": self.recommended_platform_runtime_fields(),
             "discouragedConfigSections": self.discouraged_platform_runtime_fields(),
             "toolReadiness": self.tool_readiness(),
@@ -214,6 +257,11 @@ class PlatformRuntimeConfig:
                 "namespace": self.kube_namespace,
                 "kubectlBin": self.kubectl_bin,
                 "timeoutSeconds": self.kubectl_timeout_seconds,
+                "safety": {
+                    "protectedNamespaces": list(self.k8s_protected_namespaces),
+                    "protectedNodeNames": list(self.k8s_protected_node_names),
+                    "blockedCommandPatterns": list(self.k8s_blocked_command_patterns),
+                },
             },
             "namespaces": dict(self.namespaces),
             "storage": {
@@ -231,6 +279,10 @@ class PlatformRuntimeConfig:
     @staticmethod
     def recommended_platform_runtime_fields() -> dict[str, list[str]]:
         return {
+            "toolRouting": [
+                "toolRouting.localCoreTools",
+                "toolRouting.localWriteTools",
+            ],
             "sharedPlatformBaseline": [
                 "host",
                 "modelDownloadImage",
@@ -248,6 +300,9 @@ class PlatformRuntimeConfig:
                 "kubernetes.namespace",
                 "kubernetes.kubectlBin",
                 "kubernetes.timeoutSeconds",
+                "kubernetes.safety.protectedNamespaces",
+                "kubernetes.safety.protectedNodeNames",
+                "kubernetes.safety.blockedCommandPatterns",
             ],
             "localPrometheusTools": [
                 "prometheus.baseURL",
@@ -308,12 +363,6 @@ class PlatformRuntimeConfig:
                 "warnings": warning_list,
             }
 
-        # DEPRECATED: web_search tool readiness kept for backward compat of config validation
-        web_search_ready = build_state(
-            missing_fields=[] if self.web_search_enabled else ["webSearch.enabled=true"],
-            warnings=["DEPRECATED: web_search tool is pending migration to LLM-native enable_search"],
-        )
-
         k8s_missing: list[str] = []
         k8s_blocking: list[str] = []
         if not self.kubeconfig_path:
@@ -352,7 +401,6 @@ class PlatformRuntimeConfig:
 
         return {
             "get_agent_runtime_summary": build_state(),
-            "web_search": web_search_ready,
             "k8s_list_nodes": k8s_ready,
             "k8s_list_pods": k8s_ready,
             "k8s_get_events": k8s_ready,
@@ -393,43 +441,8 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
     backend_namespace_cfg = backend_payload.get("namespaces") or {}
     model_download_cfg = backend_payload.get("modelDownload") or {}
 
-    local_core_tools = set(_as_string_list(routing_cfg.get("localCoreTools"))) or {
-        "get_agent_runtime_summary",
-        "web_search",
-        "k8s_list_nodes",
-        "k8s_list_pods",
-        "k8s_get_events",
-        "k8s_describe_resource",
-        "k8s_get_pod_logs",
-        "prometheus_query",
-        "harbor_check",
-        # K8s read extensions
-        "k8s_get_service",
-        "k8s_get_endpoints",
-        "k8s_get_ingress",
-        "k8s_get_configmap",
-        "k8s_get_networkpolicy",
-        "k8s_top_nodes",
-        "k8s_top_pods",
-        "k8s_rollout_status",
-        "get_volcano_queue_state",
-        # K8s enrichment tools
-        "aggregate_image_pull_errors",
-        "detect_zombie_jobs",
-        "get_ddp_rank_mapping",
-        "get_node_kernel_diagnostics",
-        "get_rdma_interface_status",
-        # K8s write tools (local kubectl, confirmation handled at orchestrator/frontend layer)
-        "k8s_scale_workload",
-        "k8s_label_node",
-        "k8s_taint_node",
-        "cordon_node",
-        "uncordon_node",
-        "drain_node",
-        "delete_pod",
-        "restart_workload",
-        "execute_admin_command",
-    }
+    local_core_tools = set(_as_string_list(routing_cfg.get("localCoreTools"))) or set(DEFAULT_LOCAL_CORE_TOOLS)
+    local_write_tools = set(_as_string_list(routing_cfg.get("localWriteTools"))) or set(DEFAULT_LOCAL_WRITE_TOOLS)
 
     allowed_domains = _as_string_list(web_cfg.get("allowedDomains"))
     if not allowed_domains:
@@ -468,8 +481,29 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
     if env_domains:
         allowed_domains = [d.strip().lower() for d in env_domains.split(",") if d.strip()]
 
+    safety_cfg = k8s_cfg.get("safety") or {}
+    backend_safety_cfg = backend_k8s_cfg.get("safety") or {}
+    protected_namespaces = _as_string_list(safety_cfg.get("protectedNamespaces"))
+    if not protected_namespaces:
+        protected_namespaces = _as_string_list(backend_safety_cfg.get("protectedNamespaces"))
+    if not protected_namespaces:
+        protected_namespaces = list(DEFAULT_PROTECTED_NAMESPACES)
+
+    protected_node_names = _as_string_list(safety_cfg.get("protectedNodeNames"))
+    if not protected_node_names:
+        protected_node_names = _as_string_list(backend_safety_cfg.get("protectedNodeNames"))
+
+    blocked_command_patterns = _as_string_list(safety_cfg.get("blockedCommandPatterns"))
+    if not blocked_command_patterns:
+        blocked_command_patterns = _as_string_list(
+            backend_safety_cfg.get("blockedCommandPatterns")
+        )
+    if not blocked_command_patterns:
+        blocked_command_patterns = list(DEFAULT_BLOCKED_COMMAND_PATTERNS)
+
     config = PlatformRuntimeConfig(
         local_core_tools=local_core_tools,
+        local_write_tools=local_write_tools,
         web_search_enabled=web_enabled,
         web_search_allowed_domains=allowed_domains,
         web_search_seed_urls=seed_urls,
@@ -528,6 +562,9 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
         kubectl_timeout_seconds=int(
             k8s_cfg.get("timeoutSeconds") or backend_k8s_cfg.get("timeoutSeconds") or 30
         ),
+        k8s_protected_namespaces=protected_namespaces,
+        k8s_protected_node_names=protected_node_names,
+        k8s_blocked_command_patterns=blocked_command_patterns,
         namespaces={
             "job": str(namespace_cfg.get("job") or backend_namespace_cfg.get("job") or "").strip(),
             "image": str(namespace_cfg.get("image") or backend_namespace_cfg.get("image") or "").strip(),

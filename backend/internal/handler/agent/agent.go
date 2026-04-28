@@ -2,6 +2,8 @@ package agent
 
 import (
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"k8s.io/client-go/kubernetes"
@@ -10,7 +12,9 @@ import (
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/packer"
 )
 
 //nolint:gochecknoinits // Handler managers are registered during package initialization.
@@ -41,6 +45,9 @@ const (
 	agentToolListCudaBase      = "list_cuda_base_images"
 	agentToolListGPUModels     = "list_available_gpu_models"
 	agentToolRecommendImages   = "recommend_training_images"
+	agentToolListImageBuilds   = "list_image_builds"
+	agentToolGetImageBuild     = "get_image_build_detail"
+	agentToolGetImageAccess    = "get_image_access_detail"
 	agentToolCheckQuota        = "check_quota"
 	agentToolGetHealthOverview = "get_health_overview"
 	agentToolListUserJobs      = "list_user_jobs"
@@ -64,6 +71,7 @@ const (
 	agentToolNodeNetwork       = "get_node_network_summary"
 	agentToolDiagnoseJobNet    = "diagnose_distributed_job_network"
 	agentToolWebSearch         = "web_search"
+	agentToolFetchURL          = "fetch_url"
 	agentToolSandboxGrep       = "sandbox_grep"
 	agentToolRuntimeSummary    = "get_agent_runtime_summary"
 	agentToolK8sListNodes      = "k8s_list_nodes"
@@ -71,6 +79,9 @@ const (
 	agentToolK8sGetEvents      = "k8s_get_events"
 	agentToolK8sDescribe       = "k8s_describe_resource"
 	agentToolK8sPodLogs        = "k8s_get_pod_logs"
+	agentToolK8sGetService     = "k8s_get_service"
+	agentToolK8sGetEndpoints   = "k8s_get_endpoints"
+	agentToolK8sGetIngress     = "k8s_get_ingress"
 	agentToolPromQuery         = "prometheus_query"
 	agentToolHarborCheck       = "harbor_check"
 
@@ -86,39 +97,59 @@ const (
 	toolGetApprovalHistory = "get_approval_history"
 
 	// Write tools that require user confirmation before execution
-	agentToolResubmitJob   = "resubmit_job"
-	agentToolStopJob       = "stop_job"
-	agentToolDeleteJob     = "delete_job"
-	agentToolCreateJupyter = "create_jupyter_job"
-	agentToolCreateTrain   = "create_training_job"
-	agentToolRunOpsScript  = "run_ops_script"
-	agentToolCordonNode    = "cordon_node"
-	agentToolUncordonNode  = "uncordon_node"
-	agentToolDrainNode     = "drain_node"
-	agentToolDeletePod     = "delete_pod"
-	agentToolRestartWL     = "restart_workload"
+	agentToolResubmitJob      = "resubmit_job"
+	agentToolStopJob          = "stop_job"
+	agentToolDeleteJob        = "delete_job"
+	agentToolCreateJupyter    = "create_jupyter_job"
+	agentToolCreateWebIDE     = "create_webide_job"
+	agentToolCreateTrain      = "create_training_job"
+	agentToolCreateCustom     = "create_custom_job"
+	agentToolCreatePytorch    = "create_pytorch_job"
+	agentToolCreateTensorflow = "create_tensorflow_job"
+	agentToolCreateImage      = "create_image_build"
+	agentToolManageBuild      = "manage_image_build"
+	agentToolRegisterImage    = "register_external_image"
+	agentToolManageAccess     = "manage_image_access"
+	agentToolCordonNode       = "cordon_node"
+	agentToolUncordonNode     = "uncordon_node"
+	agentToolDrainNode        = "drain_node"
+	agentToolDeletePod        = "delete_pod"
+	agentToolRestartWL        = "restart_workload"
+	agentToolK8sScaleWL       = "k8s_scale_workload"
+	agentToolK8sLabelNode     = "k8s_label_node"
+	agentToolK8sTaintNode     = "k8s_taint_node"
+	agentToolRunKubectl       = "run_kubectl"
+	agentToolAdminCommand     = "execute_admin_command"
 )
 
 type AgentMgr struct {
-	name         string
-	client       client.Client
-	kubeClient   kubernetes.Interface
-	nodeClient   *crclient.NodeClient
-	promClient   monitor.PrometheusInterface
-	agentService *service.AgentService
-	jobSubmitter handler.JobMutationSubmitter
-	httpClient   *http.Client
+	name          string
+	client        client.Client
+	kubeClient    kubernetes.Interface
+	nodeClient    *crclient.NodeClient
+	promClient    monitor.PrometheusInterface
+	agentService  *service.AgentService
+	jobSubmitter  handler.JobMutationSubmitter
+	imagePacker   packer.ImagePackerInterface
+	imageRegistry imageregistry.ImageRegistryInterface
+	httpClient    *http.Client
+
+	localToolCatalogMu        sync.RWMutex
+	localToolCatalog          []agentLocalToolCatalogEntry
+	localToolCatalogExpiresAt time.Time
 }
 
 func NewAgentMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &AgentMgr{
-		name:         "agent",
-		client:       conf.Client,
-		kubeClient:   conf.KubeClient,
-		nodeClient:   &crclient.NodeClient{Client: conf.Client, KubeClient: conf.KubeClient, PrometheusClient: conf.PrometheusClient},
-		promClient:   conf.PrometheusClient,
-		agentService: service.NewAgentService(),
-		jobSubmitter: handler.NewJobMutationSubmitter(conf),
+		name:          "agent",
+		client:        conf.Client,
+		kubeClient:    conf.KubeClient,
+		nodeClient:    &crclient.NodeClient{Client: conf.Client, KubeClient: conf.KubeClient, PrometheusClient: conf.PrometheusClient},
+		promClient:    conf.PrometheusClient,
+		agentService:  service.NewAgentService(),
+		jobSubmitter:  handler.NewJobMutationSubmitter(conf),
+		imagePacker:   conf.ImagePacker,
+		imageRegistry: conf.ImageRegistry,
 		// Do not use Client.Timeout for agent SSE streaming. The Python side may
 		// legitimately take minutes for multi-agent runs, and the per-request
 		// context in python_proxy.go provides the actual upper bound.
@@ -157,6 +188,11 @@ func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *AgentMgr) RegisterInternal(g *gin.RouterGroup) {
 	g.POST("/quality-evals", mgr.ReceiveQualityEvalResult)
+	g.GET("/sessions/:sessionId/messages", mgr.GetInternalSessionMessages)
+	g.GET("/sessions/:sessionId/tool-calls", mgr.GetInternalSessionToolCalls)
+	g.GET("/sessions/:sessionId/turns", mgr.GetInternalSessionTurns)
+	g.GET("/turns/:turnId/tool-calls", mgr.GetInternalTurnToolCalls)
+	g.GET("/turns/:turnId/events", mgr.GetInternalTurnEvents)
 }
 
 func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {

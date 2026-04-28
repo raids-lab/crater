@@ -93,6 +93,7 @@ func (mgr *AgentMgr) buildPythonAgentPayload(
 	clientContext map[string]any,
 	orchestrationMode string,
 	historyMessages []*model.AgentMessage,
+	historyToolCalls []*model.AgentToolCall,
 	continuation map[string]any,
 ) AgentTurnRequest {
 	return AgentTurnRequest{
@@ -109,9 +110,9 @@ func (mgr *AgentMgr) buildPythonAgentPayload(
 			},
 			"page":          pageContext,
 			"client":        clientContext,
-			"history":       buildAgentHistory(historyMessages),
+			"history":       buildAgentHistory(historyMessages, historyToolCalls),
 			"continuation":  continuation,
-			"capabilities":  buildAgentCapabilities(token, pageContext),
+			"capabilities":  mgr.buildAgentCapabilities(token, pageContext),
 			"orchestration": map[string]any{"mode": normalizeOrchestrationMode(orchestrationMode)},
 		},
 	}

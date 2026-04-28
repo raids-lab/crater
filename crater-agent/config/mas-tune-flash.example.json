@@ -1,0 +1,102 @@
+{
+  "scenariosDir": "../crater_bench/scenarios",
+  "output": "../results/{timestamp}_mas-tune-flash/offline-bench-summary.json",
+  "report": "../results/{timestamp}_mas-tune-flash/offline-bench-report.json",
+  "parallel": 2,
+  "repeat": 1,
+  "repeatMetrics": "quality,tool,token,latency",
+  "stopOnZeroLlm": true,
+  "verbose": false,
+  "mode": "snapshot",
+  "orchestration": "multi",
+  "suite": "mas-tune-lite",
+  "llm": {
+    "roleClientMap": {
+      "multi_agent.intent_router": "qwen3.6-flash",
+      "multi_agent.coordinator": "qwen3.6-flash",
+      "multi_agent.planner": "qwen3.6-flash",
+      "multi_agent.explorer": "qwen3.6-flash",
+      "multi_agent.executor": "qwen3.6-flash",
+      "multi_agent.verifier": "qwen3.6-flash",
+      "multi_agent.general": "qwen3.6-flash",
+      "multi_agent.guide": "qwen3.6-flash"
+    }
+  },
+  "benchmarkOverrides": {
+    "multi_agent.planner": {
+      "strategy": "recent",
+      "systemPromptSuffix": "输出计划时优先保持步骤短、结构稳、不要过度规划。"
+    },
+    "multi_agent.explorer": {
+      "strategy": "compact",
+      "systemPromptSuffix": "优先避免重复只读工具；若证据已经足够，就停止继续探测。"
+    },
+    "multi_agent.executor": {
+      "strategy": "last_turn_only",
+      "systemPromptSuffix": "对写操作保持保守，必须确保目标对象明确。"
+    }
+  },
+  "offlineEvaluation": {
+    "multiTurnDialogueJudgeRoles": [
+      "dialogue_eval_flash"
+    ],
+    "taskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "confirmationTaskJudgeRoles": [
+      "general_eval_flash"
+    ],
+    "difficultyWeights": {
+      "easy": 1.0,
+      "medium": 1.2,
+      "hard": 1.5
+    },
+    "tokenBudgets": {
+      "easy": 2500,
+      "medium": 4500,
+      "hard": 7000
+    },
+    "latencyBudgets": {
+      "easy": 8000,
+      "medium": 15000,
+      "hard": 25000
+    },
+    "scoreWeights": {
+      "tool_selection": 15,
+      "root_cause": 15,
+      "suggestion": 10,
+      "safety": 10,
+      "efficiency": 8,
+      "token_efficiency": 7,
+      "latency_efficiency": 2,
+      "duplicate_control": 0,
+      "completion_signal": 0,
+      "dialogue_intent": 10,
+      "dialogue_completeness": 5,
+      "dialogue_satisfaction": 5,
+      "task_chain_quality": 15
+    },
+    "missingSnapshotPolicy": "error"
+  },
+  "experiments": [
+    {
+      "name": "mas_flash_all_roles",
+      "description": "MAS 全角色使用 qwen3.6-flash。当前配置下的质量、token、latency 基线。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1
+    },
+    {
+      "name": "mas_flash_intent_light",
+      "description": "除 IntentRouter 使用轻量意图模型外，其余 MAS 角色使用 qwen3.6-flash。",
+      "mode": "snapshot",
+      "orchestration": "multi",
+      "repeat": 1,
+      "llm": {
+        "roleClientMap": {
+          "multi_agent.intent_router": "intent_router"
+        }
+      }
+    }
+  ]
+}

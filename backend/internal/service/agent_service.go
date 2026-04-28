@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -18,58 +17,19 @@ import (
 )
 
 type toolCallAuditMetadata struct {
-	ExecutionBackend  string
-	SandboxJobName    string
-	ScriptName        string
-	ResultArtifactRef string
-	EgressDomains     []string
+	ExecutionBackend string
 }
 
 var agentToolAuditCompatFields = []string{
 	"ExecutionBackend",
-	"SandboxJobName",
-	"ScriptName",
-	"ResultArtifactRef",
-	"EgressDomains",
 }
 
 var agentToolAuditCompatColumns = []string{
 	"execution_backend",
-	"sandbox_job_name",
-	"script_name",
-	"result_artifact_ref",
-	"egress_domains",
 }
 
-func parseStringSlice(value any) []string {
-	switch typed := value.(type) {
-	case []string:
-		return typed
-	case []any:
-		result := make([]string, 0, len(typed))
-		for _, item := range typed {
-			if s, ok := item.(string); ok {
-				s = strings.TrimSpace(s)
-				if s != "" {
-					result = append(result, s)
-				}
-			}
-		}
-		return result
-	default:
-		return nil
-	}
-}
-
-func parseToolCallAuditMeta(toolArgs, toolResult json.RawMessage) toolCallAuditMetadata {
+func parseToolCallAuditMeta(_ json.RawMessage, toolResult json.RawMessage) toolCallAuditMetadata {
 	meta := toolCallAuditMetadata{}
-	argsMap := map[string]any{}
-	if len(toolArgs) > 0 {
-		_ = json.Unmarshal(toolArgs, &argsMap)
-		if scriptName, ok := argsMap["script_name"].(string); ok {
-			meta.ScriptName = strings.TrimSpace(scriptName)
-		}
-	}
 
 	resultMap := map[string]any{}
 	if len(toolResult) > 0 {
@@ -82,39 +42,10 @@ func parseToolCallAuditMeta(toolArgs, toolResult json.RawMessage) toolCallAuditM
 		if v, ok := source["execution_backend"].(string); ok && strings.TrimSpace(v) != "" {
 			meta.ExecutionBackend = strings.TrimSpace(v)
 		}
-		if v, ok := source["sandbox_job_name"].(string); ok && strings.TrimSpace(v) != "" {
-			meta.SandboxJobName = strings.TrimSpace(v)
-		}
-		if v, ok := source["script_name"].(string); ok && strings.TrimSpace(v) != "" {
-			meta.ScriptName = strings.TrimSpace(v)
-		}
-		if v, ok := source["result_artifact_ref"].(string); ok && strings.TrimSpace(v) != "" {
-			meta.ResultArtifactRef = strings.TrimSpace(v)
-		}
-		if domains := parseStringSlice(source["egress_domains"]); len(domains) > 0 {
-			meta.EgressDomains = append(meta.EgressDomains, domains...)
-		}
 	}
 	readMeta(resultMap)
 	if nested, ok := resultMap["_audit"].(map[string]any); ok {
 		readMeta(nested)
-	}
-	if len(meta.EgressDomains) > 0 {
-		seen := make(map[string]struct{}, len(meta.EgressDomains))
-		uniq := make([]string, 0, len(meta.EgressDomains))
-		for _, domain := range meta.EgressDomains {
-			trimmed := strings.TrimSpace(domain)
-			if trimmed == "" {
-				continue
-			}
-			if _, ok := seen[trimmed]; ok {
-				continue
-			}
-			seen[trimmed] = struct{}{}
-			uniq = append(uniq, trimmed)
-		}
-		sort.Strings(uniq)
-		meta.EgressDomains = uniq
 	}
 	return meta
 }
@@ -405,28 +336,17 @@ func (s *AgentService) UpdateToolCallOutcome(
 	if meta.ExecutionBackend != "" {
 		updates["execution_backend"] = meta.ExecutionBackend
 	}
-	if meta.SandboxJobName != "" {
-		updates["sandbox_job_name"] = meta.SandboxJobName
+	updateWithFields := func(fields map[string]any) error {
+		return s.db.WithContext(ctx).
+			Model(&model.AgentToolCall{}).
+			Where("id = ?", id).
+			Updates(fields).Error
 	}
-	if meta.ScriptName != "" {
-		updates["script_name"] = meta.ScriptName
-	}
-	if meta.ResultArtifactRef != "" {
-		updates["result_artifact_ref"] = meta.ResultArtifactRef
-	}
-	if len(meta.EgressDomains) > 0 {
-		if payload, err := json.Marshal(meta.EgressDomains); err == nil {
-			updates["egress_domains"] = datatypes.JSON(payload)
-		}
-	}
-	db := s.db.WithContext(ctx).
-		Model(&model.AgentToolCall{}).
-		Where("id = ?", id)
-	err := db.Updates(updates).Error
+	err := updateWithFields(updates)
 	if err == nil || !isMissingAgentToolAuditColumnError(err) {
 		return err
 	}
-	return db.Updates(stripUnsupportedAgentToolAuditUpdates(updates)).Error
+	return updateWithFields(stripUnsupportedAgentToolAuditUpdates(updates))
 }
 
 func (s *AgentService) UpdateToolCallArgs(ctx context.Context, id uint, toolArgs json.RawMessage) error {
@@ -567,20 +487,6 @@ func (s *AgentService) LogToolCallAsync(
 		}
 		if meta.ExecutionBackend != "" {
 			tc.ExecutionBackend = meta.ExecutionBackend
-		}
-		if meta.SandboxJobName != "" {
-			tc.SandboxJobName = meta.SandboxJobName
-		}
-		if meta.ScriptName != "" {
-			tc.ScriptName = meta.ScriptName
-		}
-		if meta.ResultArtifactRef != "" {
-			tc.ResultArtifactRef = meta.ResultArtifactRef
-		}
-		if len(meta.EgressDomains) > 0 {
-			if payload, err := json.Marshal(meta.EgressDomains); err == nil {
-				tc.EgressDomains = datatypes.JSON(payload)
-			}
 		}
 		if err := s.createToolCallWithCompat(context.Background(), tc); err != nil {
 			klog.Warningf("[AgentService] Failed to log tool call %s for session %s: %v", toolName, sessionID, err)
@@ -849,6 +755,15 @@ func (s *AgentService) EnrichFeedback(ctx context.Context, userID uint, targetTy
 // from the INSERT when the caller did not supply one (session-level eval).
 func (s *AgentService) CreateQualityEval(ctx context.Context, eval *model.AgentQualityEval) error {
 	eval.EvalStatus = "pending"
+	eval.EvalScope = normalizeAgentQualityEvalScope(eval.EvalScope, eval.TurnID)
+	eval.EvalType = normalizeAgentQualityEvalType(eval.EvalType)
+	if strings.TrimSpace(eval.TargetID) == "" {
+		if eval.EvalScope == AgentQualityEvalScopeTurn && strings.TrimSpace(eval.TurnID) != "" {
+			eval.TargetID = eval.TurnID
+		} else {
+			eval.TargetID = eval.SessionID
+		}
+	}
 	tx := s.db.WithContext(ctx)
 	if eval.TurnID == "" {
 		return tx.Omit("TurnID").Create(eval).Error
@@ -856,8 +771,27 @@ func (s *AgentService) CreateQualityEval(ctx context.Context, eval *model.AgentQ
 	return tx.Create(eval).Error
 }
 
+func (s *AgentService) SetQualityEvalStatus(ctx context.Context, id uint, status string, summary string) error {
+	now := time.Now()
+	updates := map[string]any{
+		"eval_status": status,
+		"updated_at":  now,
+	}
+	if summary != "" {
+		updates["summary"] = summary
+	}
+	if status == "completed" || status == "failed" {
+		updates["completed_at"] = &now
+	}
+	return s.db.WithContext(ctx).Model(&model.AgentQualityEval{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (s *AgentService) FailQualityEval(ctx context.Context, id uint, summary string) error {
+	return s.SetQualityEvalStatus(ctx, id, "failed", summary)
+}
+
 // UpdateQualityEvalResult updates a quality eval record with completed results from crater-agent.
-func (s *AgentService) UpdateQualityEvalResult(ctx context.Context, id uint, chatScores, chainScores datatypes.JSON, chatModel, chainModel, summary string, rawChat, rawChain datatypes.JSON, artifactPath string) error {
+func (s *AgentService) UpdateQualityEvalResult(ctx context.Context, id uint, chatScores, chainScores datatypes.JSON, chatModel, chainModel, summary string, rawChat, rawChain datatypes.JSON, artifactPath string, metadata datatypes.JSON) error {
 	now := time.Now()
 	updates := map[string]any{
 		"eval_status":    "completed",
@@ -871,6 +805,9 @@ func (s *AgentService) UpdateQualityEvalResult(ctx context.Context, id uint, cha
 		"artifact_path":  artifactPath,
 		"completed_at":   &now,
 		"updated_at":     now,
+	}
+	if len(metadata) > 0 && string(metadata) != "null" {
+		updates["metadata"] = metadata
 	}
 	return s.db.WithContext(ctx).Model(&model.AgentQualityEval{}).Where("id = ?", id).Updates(updates).Error
 }

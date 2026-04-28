@@ -109,8 +109,18 @@ async def compact_messages_with_llm(
         return None
 
     # Partition into compactable and preserved sections
-    to_compact = body[:-preserve_tail]
-    tail = body[-preserve_tail:]
+    # We need to keep at least `preserve_tail` messages
+    start_idx = max(0, len(body) - preserve_tail)
+
+    # CRITICAL: Never start the tail with a ToolMessage.
+    # If the cutoff point lands on a ToolMessage, we must include the preceding AIMessage
+    # that made the tool_calls, otherwise the LLM API will reject the sequence.
+    from langchain_core.messages import ToolMessage
+    while start_idx > 0 and isinstance(body[start_idx], ToolMessage):
+        start_idx -= 1
+
+    to_compact = body[:start_idx]
+    tail = body[start_idx:]
 
     # Ensure the last user message is in the preserved section
     last_human = next(

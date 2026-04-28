@@ -281,6 +281,7 @@ func (mgr *AgentMgr) EnrichFeedback(c *gin.Context) {
 
 type QualityEvalResultRequest struct {
 	EvalID       uint            `json:"evalId" binding:"required"`
+	EvalStatus   string          `json:"evalStatus,omitempty"`
 	ChatScores   json.RawMessage `json:"chatScores,omitempty"`
 	ChainScores  json.RawMessage `json:"chainScores,omitempty"`
 	ChatModel    string          `json:"chatModel,omitempty"`
@@ -289,6 +290,7 @@ type QualityEvalResultRequest struct {
 	RawChatResp  json.RawMessage `json:"rawChatResp,omitempty"`
 	RawChainResp json.RawMessage `json:"rawChainResp,omitempty"`
 	ArtifactPath string          `json:"artifactPath,omitempty"`
+	Metadata     json.RawMessage `json:"metadata,omitempty"`
 }
 
 // ReceiveQualityEvalResult godoc
@@ -309,18 +311,24 @@ func (mgr *AgentMgr) ReceiveQualityEvalResult(c *gin.Context) {
 		return
 	}
 
-	err := mgr.agentService.UpdateQualityEvalResult(
-		c.Request.Context(),
-		req.EvalID,
-		datatypes.JSON(req.ChatScores),
-		datatypes.JSON(req.ChainScores),
-		req.ChatModel,
-		req.ChainModel,
-		req.Summary,
-		datatypes.JSON(req.RawChatResp),
-		datatypes.JSON(req.RawChainResp),
-		req.ArtifactPath,
-	)
+	var err error
+	if req.EvalStatus == "failed" {
+		err = mgr.agentService.FailQualityEval(c.Request.Context(), req.EvalID, req.Summary)
+	} else {
+		err = mgr.agentService.UpdateQualityEvalResult(
+			c.Request.Context(),
+			req.EvalID,
+			datatypes.JSON(req.ChatScores),
+			datatypes.JSON(req.ChainScores),
+			req.ChatModel,
+			req.ChainModel,
+			req.Summary,
+			datatypes.JSON(req.RawChatResp),
+			datatypes.JSON(req.RawChainResp),
+			req.ArtifactPath,
+			datatypes.JSON(req.Metadata),
+		)
+	}
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -373,8 +381,15 @@ func (mgr *AgentMgr) triggerQualityEval(fb *model.AgentFeedback) {
 	eval := &model.AgentQualityEval{
 		SessionID:     fb.SessionID,
 		TurnID:        turnID,
+		EvalScope:     service.AgentQualityEvalScopeSession,
+		EvalType:      service.AgentQualityEvalTypeFull,
+		TargetID:      fb.SessionID,
 		FeedbackID:    &fb.ID,
 		TriggerSource: "feedback",
+	}
+	if turnID != "" {
+		eval.EvalScope = service.AgentQualityEvalScopeTurn
+		eval.TargetID = turnID
 	}
 	if err := mgr.agentService.CreateQualityEval(context.Background(), eval); err != nil {
 		klog.Warningf("[AgentMgr] triggerQualityEval: failed to create quality eval record for session %s: %v", fb.SessionID, err)
@@ -383,8 +398,10 @@ func (mgr *AgentMgr) triggerQualityEval(fb *model.AgentFeedback) {
 
 	payload := map[string]any{
 		"eval_id":     eval.ID,
-		"session_id":  fb.SessionID,
-		"turn_id":     turnID,
+		"session_id":  eval.SessionID,
+		"turn_id":     eval.TurnID,
+		"eval_scope":  eval.EvalScope,
+		"eval_type":   eval.EvalType,
 		"feedback_id": fb.ID,
 		"rating":      fb.Rating,
 	}
@@ -398,6 +415,7 @@ func (mgr *AgentMgr) triggerQualityEval(fb *model.AgentFeedback) {
 		bytes.NewReader(body),
 	)
 	if err != nil {
+		_ = mgr.agentService.FailQualityEval(context.Background(), eval.ID, fmt.Sprintf("build crater-agent request failed: %v", err))
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -406,7 +424,13 @@ func (mgr *AgentMgr) triggerQualityEval(fb *model.AgentFeedback) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		_ = mgr.agentService.FailQualityEval(context.Background(), eval.ID, fmt.Sprintf("call crater-agent failed: %v", err))
 		return
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		_ = mgr.agentService.FailQualityEval(context.Background(), eval.ID, fmt.Sprintf("crater-agent returned status %d", resp.StatusCode))
+		return
+	}
+	_ = mgr.agentService.SetQualityEvalStatus(context.Background(), eval.ID, "running", "")
 }

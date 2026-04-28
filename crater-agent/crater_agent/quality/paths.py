@@ -1,17 +1,35 @@
 """Output path management for quality eval artifacts."""
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from pathlib import Path
 
+from crater_agent.config import settings
+
+
+def _ensure_writable_dir(path: Path) -> Path | None:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None
+    return path
+
 
 def get_eval_output_dir() -> Path:
-    base = os.environ.get("CRATER_EVAL_OUTPUT_DIR", "/var/log/crater-agent/eval")
-    return Path(base)
+    configured = settings.resolve_quality_eval_output_dir()
+    resolved = _ensure_writable_dir(configured)
+    if resolved is not None:
+        return resolved
+    raise PermissionError(
+        f"quality eval artifact directory is not writable: {configured}"
+    )
 
 
-def feedback_artifact_path(session_id: str, turn_id: str | None, ts: datetime | None = None) -> Path:
+def feedback_artifact_path(
+    session_id: str,
+    turn_id: str | None,
+    ts: datetime | None = None,
+) -> Path:
     ts = ts or datetime.now()
     date_str = ts.strftime("%Y-%m-%d")
     suffix = f"{session_id}_{turn_id or 'session'}_{ts.strftime('%H%M%S')}"

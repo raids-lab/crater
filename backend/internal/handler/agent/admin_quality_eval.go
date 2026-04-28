@@ -12,12 +12,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog/v2"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 )
 
 type triggerSessionQualityEvalRequest struct {
-	TurnID string `json:"turnId,omitempty"`
+	TurnID            string `json:"turnId,omitempty"`
+	EvalScope         string `json:"evalScope,omitempty"`
+	EvalType          string `json:"evalType,omitempty"`
+	DialogueModelRole string `json:"dialogueModelRole,omitempty"`
+	TaskModelRole     string `json:"taskModelRole,omitempty"`
 }
 
 // TriggerSessionQualityEval godoc
@@ -39,9 +44,15 @@ func (mgr *AgentMgr) TriggerSessionQualityEval(c *gin.Context) {
 
 	eval, err := mgr.agentService.TriggerSessionQualityEval(
 		c.Request.Context(),
-		sessionID,
-		req.TurnID,
-		"manual",
+		service.AgentQualityEvalTriggerOptions{
+			SessionID:         sessionID,
+			TurnID:            req.TurnID,
+			TriggerSource:     "manual",
+			EvalScope:         req.EvalScope,
+			EvalType:          req.EvalType,
+			DialogueModelRole: req.DialogueModelRole,
+			TaskModelRole:     req.TaskModelRole,
+		},
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrSessionNotFound) {
@@ -53,23 +64,29 @@ func (mgr *AgentMgr) TriggerSessionQualityEval(c *gin.Context) {
 	}
 
 	// Fire and forget: call crater-agent so the analyzer starts running.
-	go mgr.dispatchManualQualityEval(eval.ID, sessionID, req.TurnID)
+	go mgr.dispatchManualQualityEval(eval, req.DialogueModelRole, req.TaskModelRole)
 
 	resputil.Success(c, gin.H{
 		"evalId":        eval.ID,
 		"sessionId":     sessionID,
-		"turnId":        req.TurnID,
+		"turnId":        eval.TurnID,
+		"evalScope":     eval.EvalScope,
+		"evalType":      eval.EvalType,
 		"evalStatus":    eval.EvalStatus,
 		"triggerSource": eval.TriggerSource,
 		"createdAt":     eval.CreatedAt,
 	})
 }
 
-func (mgr *AgentMgr) dispatchManualQualityEval(evalID uint, sessionID, turnID string) {
+func (mgr *AgentMgr) dispatchManualQualityEval(eval *model.AgentQualityEval, dialogueModelRole, taskModelRole string) {
 	payload := map[string]any{
-		"eval_id":    evalID,
-		"session_id": sessionID,
-		"turn_id":    turnID,
+		"eval_id":             eval.ID,
+		"session_id":          eval.SessionID,
+		"turn_id":             eval.TurnID,
+		"eval_scope":          eval.EvalScope,
+		"eval_type":           eval.EvalType,
+		"dialogue_model_role": dialogueModelRole,
+		"task_model_role":     taskModelRole,
 	}
 	body, _ := json.Marshal(payload)
 
@@ -84,7 +101,9 @@ func (mgr *AgentMgr) dispatchManualQualityEval(evalID uint, sessionID, turnID st
 		bytes.NewReader(body),
 	)
 	if err != nil {
-		klog.Warningf("[AgentMgr] dispatchManualQualityEval: build request for session %s failed: %v", sessionID, err)
+		msg := fmt.Sprintf("build crater-agent request failed: %v", err)
+		_ = mgr.agentService.FailQualityEval(context.Background(), eval.ID, msg)
+		klog.Warningf("[AgentMgr] dispatchManualQualityEval: %s", msg)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -93,11 +112,17 @@ func (mgr *AgentMgr) dispatchManualQualityEval(evalID uint, sessionID, turnID st
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		klog.Warningf("[AgentMgr] dispatchManualQualityEval: call crater-agent for session %s failed: %v", sessionID, err)
+		msg := fmt.Sprintf("call crater-agent failed: %v", err)
+		_ = mgr.agentService.FailQualityEval(context.Background(), eval.ID, msg)
+		klog.Warningf("[AgentMgr] dispatchManualQualityEval: session %s %s", eval.SessionID, msg)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		klog.Warningf("[AgentMgr] dispatchManualQualityEval: crater-agent returned %d for session %s", resp.StatusCode, sessionID)
+		msg := fmt.Sprintf("crater-agent returned status %d", resp.StatusCode)
+		_ = mgr.agentService.FailQualityEval(context.Background(), eval.ID, msg)
+		klog.Warningf("[AgentMgr] dispatchManualQualityEval: %s for session %s", msg, eval.SessionID)
+		return
 	}
+	_ = mgr.agentService.SetQualityEvalStatus(context.Background(), eval.ID, "running", "")
 }

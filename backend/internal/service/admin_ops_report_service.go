@@ -37,7 +37,14 @@ func (s *AdminOpsReportService) TriggerAdminOpsReport(
 	ctx context.Context,
 	req patrol.TriggerAdminOpsReportRequest,
 ) (map[string]any, error) {
-	return s.triggerPipeline(ctx, adminOpsReportPipelinePath, req, "admin ops patrol")
+	result, err := s.triggerPipeline(ctx, adminOpsReportPipelinePath, req, "admin ops patrol")
+	if err != nil {
+		return nil, err
+	}
+	if notificationResult := s.notifyAdminOpsReport(ctx, req, result); notificationResult != nil {
+		result["notifications"] = notificationResult
+	}
+	return result, nil
 }
 
 func (s *AdminOpsReportService) TriggerStorageAudit(
