@@ -46,18 +46,14 @@ type QueueQuotaResp struct {
 }
 
 type QueueQuotaConfigItemResp struct {
-	ID                    uint              `json:"id"`
-	Name                  string            `json:"name"`
-	Enabled               bool              `json:"enabled"`
-	PrequeueCandidateSize int               `json:"prequeueCandidateSize"`
-	Quota                 map[string]string `json:"quota"`
+	ID    uint              `json:"id"`
+	Name  string            `json:"name"`
+	Quota map[string]string `json:"quota"`
 }
 
 type QueueQuotaReq struct {
-	Name                  string            `json:"name"`
-	Enabled               bool              `json:"enabled"`
-	PrequeueCandidateSize int               `json:"prequeueCandidateSize"`
-	Quota                 map[string]string `json:"quota"`
+	Name  string            `json:"name"`
+	Quota map[string]string `json:"quota"`
 }
 
 type QueueQuotaIDReq struct {
@@ -105,10 +101,8 @@ func (mgr *QueueQuotaMgr) CreateQueueQuota(c *gin.Context) {
 	}
 
 	item := &service.QueueQuotaConfigItem{
-		Name:                  req.Name,
-		Enabled:               req.Enabled,
-		PrequeueCandidateSize: req.PrequeueCandidateSize,
-		Quota:                 req.Quota,
+		Name:  req.Name,
+		Quota: req.Quota,
 	}
 
 	quota, err := mgr.service.CreateConfig(c, item)
@@ -151,11 +145,9 @@ func (mgr *QueueQuotaMgr) UpdateQueueQuota(c *gin.Context) {
 	}
 
 	item := &service.QueueQuotaConfigItem{
-		ID:                    uri.ID,
-		Name:                  req.Name,
-		Enabled:               req.Enabled,
-		PrequeueCandidateSize: req.PrequeueCandidateSize,
-		Quota:                 req.Quota,
+		ID:    uri.ID,
+		Name:  req.Name,
+		Quota: req.Quota,
 	}
 
 	quota, err := mgr.service.UpdateConfig(c, item)
@@ -227,11 +219,9 @@ func toQueueQuotaConfigItemResp(item *service.QueueQuotaConfigItem) QueueQuotaCo
 	}
 
 	return QueueQuotaConfigItemResp{
-		ID:                    item.ID,
-		Name:                  item.Name,
-		Enabled:               item.Enabled,
-		PrequeueCandidateSize: item.PrequeueCandidateSize,
-		Quota:                 item.Quota,
+		ID:    item.ID,
+		Name:  item.Name,
+		Quota: item.Quota,
 	}
 }
 

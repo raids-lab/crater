@@ -63,7 +63,10 @@ func CopyResources(resources v1.ResourceList) v1.ResourceList {
 }
 
 func SubtractResource(base, sub v1.ResourceList) v1.ResourceList {
-	result := CopyResources(base)
+	result := make(v1.ResourceList, len(base))
+	for name, qty := range base {
+		result[name] = qty.DeepCopy()
+	}
 	for name, qty := range sub {
 		current := resource.Quantity{}
 		if existing, ok := result[name]; ok {

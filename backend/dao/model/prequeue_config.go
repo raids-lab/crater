@@ -13,11 +13,13 @@ const (
 	PrequeueNormalJobWaitingToleranceSecondsKey           = "normal_job_waiting_tolerance_seconds"
 	PrequeueActivateTickerIntervalSecondsKey              = "activate_ticker_interval_seconds"
 	PrequeueMaxTotalActivationsPerRoundKey                = "max_total_activations_per_round"
+	PrequeueCandidateSizeKey                              = "prequeue_candidate_size"
 	PrequeueDefaultBackfillEnabled                        = false
 	PrequeueDefaultQueueQuotaEnabled                      = false
 	PrequeueDefaultNormalJobWaitingToleranceSeconds int64 = 300
 	PrequeueDefaultActivateTickerIntervalSeconds    int64 = 5
 	PrequeueDefaultMaxTotalActivationsPerRound      int64 = 500
+	DefaultPrequeueCandidateSize                          = 10
 )
 
 type PrequeueConfig struct {
@@ -38,5 +40,6 @@ func PrequeueAllConfigs() []*PrequeueConfig {
 		{Key: PrequeueNormalJobWaitingToleranceSecondsKey, Value: strconv.FormatInt(PrequeueDefaultNormalJobWaitingToleranceSeconds, 10)},
 		{Key: PrequeueActivateTickerIntervalSecondsKey, Value: strconv.FormatInt(PrequeueDefaultActivateTickerIntervalSeconds, 10)},
 		{Key: PrequeueMaxTotalActivationsPerRoundKey, Value: strconv.FormatInt(PrequeueDefaultMaxTotalActivationsPerRound, 10)},
+		{Key: PrequeueCandidateSizeKey, Value: strconv.Itoa(DefaultPrequeueCandidateSize)},
 	}
 }

@@ -45,6 +45,7 @@ import {
 import { IAccount } from '@/services/api/account'
 import { apiAdminAccountList } from '@/services/api/account'
 import { apiProjectDelete } from '@/services/api/account'
+import { apiAdminGetQueueQuotas } from '@/services/api/queue-quota'
 
 // Link Options for admin account navigation
 const adminAccountDetailLinkOptions = linkOptions({
@@ -62,6 +63,8 @@ const getHeader = (key: string): string => {
       return 'table.headers.guaranteed'
     case 'capability':
       return 'table.headers.capability'
+    case 'queueLimit':
+      return 'table.headers.queueLimit'
     default:
       return key
   }
@@ -90,6 +93,11 @@ export const AccountTable = ({
     queryKey: ['admin', 'accounts'],
     queryFn: apiAdminAccountList,
     select: (res) => res.data,
+  })
+  const defaultQueueQuotaQuery = useQuery({
+    queryKey: ['admin', 'queue-quotas'],
+    queryFn: () => apiAdminGetQueueQuotas().then((res) => res.data),
+    select: (data) => (data.quotas || []).find((quota) => quota.name === 'default')?.quota,
   })
 
   const { mutate: deleteAccount } = useMutation({
@@ -150,6 +158,19 @@ export const AccountTable = ({
         ),
         cell: ({ row }) => {
           return <ResourceBadges resources={row.original.quota.capability} />
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'queueLimit',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t('table.headers.queueLimit')} />
+        ),
+        cell: ({ row }) => {
+          if (row.original.name !== 'default') {
+            return null
+          }
+          return <ResourceBadges resources={defaultQueueQuotaQuery.data} />
         },
         enableSorting: false,
       },
@@ -218,7 +239,7 @@ export const AccountTable = ({
       },
     ]
     return cols
-  }, [deleteAccount, setCurrentAccount, setIsOpen, t])
+  }, [defaultQueueQuotaQuery.data, deleteAccount, setCurrentAccount, setIsOpen, t])
 
   return (
     <DataTable

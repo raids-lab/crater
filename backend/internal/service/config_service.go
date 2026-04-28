@@ -398,6 +398,7 @@ type PrequeueRuntimeConfig struct {
 	NormalJobWaitingToleranceSeconds int64 `json:"normal_job_waiting_tolerance_seconds"`
 	ActivateTickerIntervalSeconds    int64 `json:"activate_ticker_interval_seconds"`
 	MaxTotalActivationsPerRound      int64 `json:"max_total_activations_per_round"`
+	PrequeueCandidateSize            int64 `json:"prequeue_candidate_size"`
 }
 
 func (s *ConfigService) initPrequeueConfig(ctx context.Context) error {
@@ -468,6 +469,7 @@ func NewPrequeueRuntimeConfig() *PrequeueRuntimeConfig {
 		NormalJobWaitingToleranceSeconds: model.PrequeueDefaultNormalJobWaitingToleranceSeconds,
 		ActivateTickerIntervalSeconds:    model.PrequeueDefaultActivateTickerIntervalSeconds,
 		MaxTotalActivationsPerRound:      model.PrequeueDefaultMaxTotalActivationsPerRound,
+		PrequeueCandidateSize:            int64(model.DefaultPrequeueCandidateSize),
 	}
 }
 
@@ -479,6 +481,7 @@ func (cfg *PrequeueRuntimeConfig) Validate() error {
 		model.PrequeueNormalJobWaitingToleranceSecondsKey: cfg.NormalJobWaitingToleranceSeconds,
 		model.PrequeueActivateTickerIntervalSecondsKey:    cfg.ActivateTickerIntervalSeconds,
 		model.PrequeueMaxTotalActivationsPerRoundKey:      cfg.MaxTotalActivationsPerRound,
+		model.PrequeueCandidateSizeKey:                    cfg.PrequeueCandidateSize,
 	}
 	for key, value := range positiveValues {
 		if value <= 0 {
@@ -495,6 +498,7 @@ func (cfg *PrequeueRuntimeConfig) ToValueMap() map[string]string {
 		model.PrequeueNormalJobWaitingToleranceSecondsKey: strconv.FormatInt(cfg.NormalJobWaitingToleranceSeconds, 10),
 		model.PrequeueActivateTickerIntervalSecondsKey:    strconv.FormatInt(cfg.ActivateTickerIntervalSeconds, 10),
 		model.PrequeueMaxTotalActivationsPerRoundKey:      strconv.FormatInt(cfg.MaxTotalActivationsPerRound, 10),
+		model.PrequeueCandidateSizeKey:                    strconv.FormatInt(cfg.PrequeueCandidateSize, 10),
 	}
 }
 

@@ -16,15 +16,21 @@ import (
 )
 
 func (w *PrequeueWatcher) activateNextPrequeueBatch(ctx context.Context, remaining int) (bool, error) {
-	candidates, hasMore, err := w.selectActivationCandidates(ctx, remaining+1)
+	cfg, err := w.configService.GetPrequeueConfig(ctx)
+	if err != nil {
+		return true, err
+	}
+	prequeueCandidateSize := cfg.PrequeueCandidateSize
+	limit := max(0, min(remaining, int(prequeueCandidateSize)))
+	candidates, hasMore, err := w.selectActivationCandidates(ctx, limit+1)
 	if err != nil {
 		return true, err
 	}
 	if len(candidates) == 0 {
 		return hasMore, nil
 	}
-	if len(candidates) > remaining {
-		candidates = candidates[:remaining]
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
 		hasMore = true
 	}
 
