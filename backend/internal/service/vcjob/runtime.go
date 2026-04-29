@@ -18,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 type ForwardType uint
@@ -47,24 +48,15 @@ const (
 )
 
 func CalculateJobResources(job *batch.Job) v1.ResourceList {
-	resources := make(v1.ResourceList)
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		for j := range task.Template.Spec.Containers {
-			container := &task.Template.Spec.Containers[j]
-			for name, quantity := range container.Resources.Requests {
-				requested := quantity.DeepCopy()
-				requested.Mul(int64(task.Replicas))
-				if current, ok := resources[name]; ok {
-					current.Add(requested)
-					resources[name] = current
-					continue
-				}
-				resources[name] = requested
-			}
-		}
-	}
-	return resources
+	return utils.CalculateReplicatedResources(
+		job.Spec.Tasks,
+		func(task batch.TaskSpec) v1.ResourceList {
+			return utils.CalculateRequsetsByContainers(task.Template.Spec.Containers)
+		},
+		func(task batch.TaskSpec) int32 {
+			return task.Replicas
+		},
+	)
 }
 
 func GenerateJobRecord(

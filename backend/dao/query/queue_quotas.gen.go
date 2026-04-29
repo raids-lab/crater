@@ -33,8 +33,6 @@ func newQueueQuotaLimit(db *gorm.DB, opts ...gen.DOOption) queueQuotaLimit {
 	_queueQuotaLimit.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_queueQuotaLimit.DeletedAt = field.NewField(tableName, "deleted_at")
 	_queueQuotaLimit.Name = field.NewString(tableName, "name")
-	_queueQuotaLimit.Enabled = field.NewBool(tableName, "enabled")
-	_queueQuotaLimit.PrequeueCandidateSize = field.NewInt(tableName, "prequeue_candidate_size")
 	_queueQuotaLimit.Quota = field.NewField(tableName, "quota")
 
 	_queueQuotaLimit.fillFieldMap()
@@ -45,15 +43,13 @@ func newQueueQuotaLimit(db *gorm.DB, opts ...gen.DOOption) queueQuotaLimit {
 type queueQuotaLimit struct {
 	queueQuotaLimitDo queueQuotaLimitDo
 
-	ALL                   field.Asterisk
-	ID                    field.Uint
-	CreatedAt             field.Time
-	UpdatedAt             field.Time
-	DeletedAt             field.Field
-	Name                  field.String // 队列名字
-	Enabled               field.Bool   // 是否启用队列资源限制
-	PrequeueCandidateSize field.Int    // Prequeue 候选作业集大小
-	Quota                 field.Field  // 队列内资源限制
+	ALL       field.Asterisk
+	ID        field.Uint
+	CreatedAt field.Time
+	UpdatedAt field.Time
+	DeletedAt field.Field
+	Name      field.String // 队列名字
+	Quota     field.Field  // 队列内资源限制
 
 	fieldMap map[string]field.Expr
 }
@@ -75,8 +71,6 @@ func (q *queueQuotaLimit) updateTableName(table string) *queueQuotaLimit {
 	q.UpdatedAt = field.NewTime(table, "updated_at")
 	q.DeletedAt = field.NewField(table, "deleted_at")
 	q.Name = field.NewString(table, "name")
-	q.Enabled = field.NewBool(table, "enabled")
-	q.PrequeueCandidateSize = field.NewInt(table, "prequeue_candidate_size")
 	q.Quota = field.NewField(table, "quota")
 
 	q.fillFieldMap()
@@ -106,14 +100,12 @@ func (q *queueQuotaLimit) GetFieldByName(fieldName string) (field.OrderExpr, boo
 }
 
 func (q *queueQuotaLimit) fillFieldMap() {
-	q.fieldMap = make(map[string]field.Expr, 8)
+	q.fieldMap = make(map[string]field.Expr, 6)
 	q.fieldMap["id"] = q.ID
 	q.fieldMap["created_at"] = q.CreatedAt
 	q.fieldMap["updated_at"] = q.UpdatedAt
 	q.fieldMap["deleted_at"] = q.DeletedAt
 	q.fieldMap["name"] = q.Name
-	q.fieldMap["enabled"] = q.Enabled
-	q.fieldMap["prequeue_candidate_size"] = q.PrequeueCandidateSize
 	q.fieldMap["quota"] = q.Quota
 }
 
