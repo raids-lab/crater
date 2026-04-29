@@ -37,18 +37,24 @@ export const quotaSchema = z.array(
     guaranteed: nonNegativeNumberSchema,
     deserved: nonNegativeNumberSchema,
     capability: nonNegativeNumberSchema,
+    queueLimit: nonNegativeNumberSchema,
   })
 )
 
 export type QuotaSchema = z.infer<typeof quotaSchema>
 
-export const convertQuotaToForm = (quota: IQuota, resourceTypes?: string[]): QuotaSchema => {
+export const convertQuotaToForm = (
+  quota: IQuota,
+  resourceTypes?: string[],
+  queueQuota?: Record<string, string>
+): QuotaSchema => {
   return (
     resourceTypes?.map((name) => ({
       name,
       guaranteed: convertKResourceToResource(name, quota.guaranteed?.[name]),
       deserved: convertKResourceToResource(name, quota.deserved?.[name]),
       capability: convertKResourceToResource(name, quota.capability?.[name]),
+      queueLimit: convertKResourceToResource(name, queueQuota?.[name]),
     })) ?? []
   )
 }
@@ -87,6 +93,22 @@ export const convertFormToQuota = (form: QuotaSchema): IQuota => {
         resource.name,
         resource.capability
       )
+    }
+  })
+
+  return quota
+}
+
+export const convertFormToQueueQuota = (form: QuotaSchema): Record<string, string> => {
+  const quota: Record<string, string> = {}
+
+  form.forEach((resource) => {
+    if (
+      resource.queueLimit !== undefined &&
+      resource.queueLimit !== null &&
+      !isNaN(resource.queueLimit)
+    ) {
+      quota[resource.name] = convertResourceToKResource(resource.name, resource.queueLimit)
     }
   })
 

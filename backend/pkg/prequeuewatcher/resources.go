@@ -2,7 +2,6 @@ package prequeuewatcher
 
 import (
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -32,7 +31,7 @@ func searchPreemptionSubset(
 	sum v1.ResourceList,
 ) ([]*model.Job, bool) {
 	if remaining == 0 {
-		if resourceListCovers(sum, deficit) {
+		if utils.ResourceListCovers(sum, deficit) {
 			result := make([]*model.Job, len(current))
 			copy(result, current)
 			return result, true
@@ -54,35 +53,4 @@ func searchPreemptionSubset(
 	}
 
 	return nil, false
-}
-
-func calculateResourceDeficit(required, available v1.ResourceList) v1.ResourceList {
-	deficit := make(v1.ResourceList)
-	for name, req := range required {
-		availableQty := resource.Quantity{}
-		if qty, ok := available[name]; ok {
-			availableQty = qty.DeepCopy()
-		}
-		if availableQty.Cmp(req) >= 0 {
-			continue
-		}
-
-		missing := req.DeepCopy()
-		missing.Sub(availableQty)
-		deficit[name] = missing
-	}
-	return deficit
-}
-
-func resourceListCovers(available, required v1.ResourceList) bool {
-	for name, req := range required {
-		availableQty := resource.Quantity{}
-		if qty, ok := available[name]; ok {
-			availableQty = qty.DeepCopy()
-		}
-		if availableQty.Cmp(req) < 0 {
-			return false
-		}
-	}
-	return true
 }

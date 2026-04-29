@@ -8,20 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Card } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 
 import WarningAlert from '@/components/custom/warning-alert'
 
-import {
-  type IQueueQuota,
-  type IQueueQuotaConfig,
-  type IQueueQuotaPayload,
-  type QueueQuotaDraft,
-  apiAdminCreateQueueQuota,
-  apiAdminDeleteQueueQuota,
-  apiAdminGetQueueQuotas,
-  apiAdminUpdateQueueQuota,
-} from '@/services/api/queue-quota'
 import {
   apiAdminGetBillingStatus,
   apiAdminGetGpuAnalysisStatus,
@@ -45,16 +34,10 @@ import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { PrequeueSettings } from './-components/prequeue-settings'
-import { UserResourceLimit } from './-components/user-resource-limit'
 
 export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
   loader: () => ({ crumb: t('navigation.platformSettings') }),
-})
-
-const toQueueQuotaDraft = (quota: IQueueQuota): QueueQuotaDraft => ({
-  ...quota,
-  savedName: quota.name,
 })
 
 function RouteComponent() {
@@ -88,25 +71,12 @@ function RouteComponent() {
     queryFn: () => apiAdminGetPrequeueConfig().then((res) => res.data),
   })
 
-  const { data: resourceLimitData } = useQuery({
-    queryKey: ['admin', 'queue-quotas'],
-    queryFn: () => apiAdminGetQueueQuotas().then((res) => res.data),
-  })
-
   const [backfillEnabled, setBackfillEnabled] = useState(false)
   const [queueQuotaEnabled, setQueueQuotaEnabled] = useState(false)
   const [prequeueWaitingToleranceSeconds, setPrequeueWaitingToleranceSeconds] = useState('')
   const [activateTickerIntervalSeconds, setActivateTickerIntervalSeconds] = useState('')
   const [maxTotalActivationsPerRound, setMaxTotalActivationsPerRound] = useState('')
-  const [rlConfigs, setRlConfigs] = useState<QueueQuotaDraft[]>([])
-  const [hasLoadedQueueQuotas, setHasLoadedQueueQuotas] = useState(false)
-
-  useEffect(() => {
-    if (resourceLimitData && !hasLoadedQueueQuotas) {
-      setRlConfigs((resourceLimitData.quotas || []).map(toQueueQuotaDraft))
-      setHasLoadedQueueQuotas(true)
-    }
-  }, [hasLoadedQueueQuotas, resourceLimitData])
+  const [prequeueCandidateSize, setPrequeueCandidateSize] = useState('')
 
   const { data: billingStatusData } = useQuery({
     queryKey: ['admin', 'system-config', 'billing-status'],
@@ -134,6 +104,7 @@ function RouteComponent() {
         String(prequeueConfigData.activateTickerIntervalSeconds ?? '')
       )
       setMaxTotalActivationsPerRound(String(prequeueConfigData.maxTotalActivationsPerRound ?? ''))
+      setPrequeueCandidateSize(String(prequeueConfigData.prequeueCandidateSize ?? ''))
     }
   }, [prequeueConfigData])
 
@@ -271,6 +242,7 @@ function RouteComponent() {
     normalJobWaitingToleranceSeconds: Number(prequeueWaitingToleranceSeconds),
     activateTickerIntervalSeconds: Number(activateTickerIntervalSeconds),
     maxTotalActivationsPerRound: Number(maxTotalActivationsPerRound),
+    prequeueCandidateSize: Number(prequeueCandidateSize),
   })
 
   const validatePrequeuePositiveIntegers = () => {
@@ -278,6 +250,7 @@ function RouteComponent() {
       prequeueWaitingToleranceSeconds,
       activateTickerIntervalSeconds,
       maxTotalActivationsPerRound,
+      prequeueCandidateSize,
     ]
     for (const item of positiveIntegerValues) {
       const value = Number(item)
@@ -311,99 +284,6 @@ function RouteComponent() {
     updatePrequeueMutation.mutate()
   }
 
-  const updateQueueQuotaCache = (updater: (quotas: IQueueQuota[]) => IQueueQuota[]) => {
-    queryClient.setQueryData<IQueueQuotaConfig | undefined>(['admin', 'queue-quotas'], (prev) => {
-      if (!prev) {
-        return prev
-      }
-      return {
-        ...prev,
-        quotas: updater(prev.quotas || []),
-      }
-    })
-  }
-
-  const createResourceLimitMutation = useMutation({
-    mutationFn: ({ data }: { index: number; data: IQueueQuotaPayload }) =>
-      apiAdminCreateQueueQuota(data),
-    onSuccess: (res, vars) => {
-      const createdQuota = res.data
-      const createdQuotaDraft = toQueueQuotaDraft(createdQuota)
-      setRlConfigs((prev) =>
-        prev.map((cfg, index) => (index === vars.index ? createdQuotaDraft : cfg))
-      )
-      updateQueueQuotaCache((quotas) => [...quotas, createdQuota])
-      toast.success(t('systemConfig.userResourceLimit.createSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const updateResourceLimitMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: IQueueQuotaPayload }) =>
-      apiAdminUpdateQueueQuota(id, data),
-    onSuccess: (res) => {
-      const updatedQuota = res.data
-      const updatedQuotaDraft = toQueueQuotaDraft(updatedQuota)
-      setRlConfigs((prev) =>
-        prev.map((cfg) => (cfg.id === updatedQuota.id ? updatedQuotaDraft : cfg))
-      )
-      updateQueueQuotaCache((quotas) =>
-        quotas.map((cfg) => (cfg.id === updatedQuota.id ? updatedQuota : cfg))
-      )
-      toast.success(t('systemConfig.userResourceLimit.updateSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const deleteResourceLimitMutation = useMutation({
-    mutationFn: (id: number) => apiAdminDeleteQueueQuota(id),
-    onSuccess: (_res, id) => {
-      setRlConfigs((prev) => prev.filter((cfg) => cfg.id !== id))
-      updateQueueQuotaCache((quotas) => quotas.filter((cfg) => cfg.id !== id))
-      toast.success(t('systemConfig.userResourceLimit.deleteSuccess'))
-    },
-    onError: handleError,
-  })
-
-  const handleResourceLimitCreate = (config: QueueQuotaDraft, index: number) => {
-    createResourceLimitMutation.mutate({
-      index,
-      data: {
-        name: config.name,
-        enabled: config.enabled,
-        prequeueCandidateSize: config.prequeueCandidateSize,
-        quota: config.quota,
-      },
-    })
-  }
-
-  const handleResourceLimitUpdate = (config: QueueQuotaDraft) => {
-    if (!config.id) {
-      return
-    }
-    updateResourceLimitMutation.mutate({
-      id: config.id,
-      data: {
-        name: config.name,
-        enabled: config.enabled,
-        prequeueCandidateSize: config.prequeueCandidateSize,
-        quota: config.quota,
-      },
-    })
-  }
-
-  const handleResourceLimitRemove = (config: QueueQuotaDraft, index: number) => {
-    if (!config.id) {
-      setRlConfigs((prev) => prev.filter((_, i) => i !== index))
-      return
-    }
-    deleteResourceLimitMutation.mutate(config.id)
-  }
-
-  const isResourceLimitPending =
-    createResourceLimitMutation.isPending ||
-    updateResourceLimitMutation.isPending ||
-    deleteResourceLimitMutation.isPending
   const isPrequeueConfigPending = updatePrequeueMutation.isPending
 
   return (
@@ -440,23 +320,14 @@ function RouteComponent() {
           waitingToleranceSeconds={prequeueWaitingToleranceSeconds}
           activateTickerIntervalSeconds={activateTickerIntervalSeconds}
           maxTotalActivationsPerRound={maxTotalActivationsPerRound}
+          prequeueCandidateSize={prequeueCandidateSize}
           onBackfillEnabledChange={setBackfillEnabled}
           onQueueQuotaEnabledChange={setQueueQuotaEnabled}
           onWaitingToleranceSecondsChange={setPrequeueWaitingToleranceSeconds}
           onActivateTickerIntervalSecondsChange={setActivateTickerIntervalSeconds}
           onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
+          onPrequeueCandidateSizeChange={setPrequeueCandidateSize}
           onSubmit={handlePrequeueSubmit}
-        />
-
-        <Separator />
-
-        <UserResourceLimit
-          configs={rlConfigs}
-          isPending={isResourceLimitPending}
-          onConfigsChange={setRlConfigs}
-          onCreate={handleResourceLimitCreate}
-          onUpdate={handleResourceLimitUpdate}
-          onRemove={handleResourceLimitRemove}
         />
       </Card>
 

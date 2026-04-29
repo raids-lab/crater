@@ -23,6 +23,7 @@ export interface IPrequeueConfig {
   normalJobWaitingToleranceSeconds: number
   activateTickerIntervalSeconds: number
   maxTotalActivationsPerRound: number
+  prequeueCandidateSize: number
 }
 
 export interface IBillingStatus {

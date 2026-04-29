@@ -96,6 +96,7 @@ type PrequeueConfigResp struct {
 	NormalJobWaitingToleranceSeconds int64 `json:"normalJobWaitingToleranceSeconds"`
 	ActivateTickerIntervalSeconds    int64 `json:"activateTickerIntervalSeconds"`
 	MaxTotalActivationsPerRound      int64 `json:"maxTotalActivationsPerRound"`
+	PrequeueCandidateSize            int64 `json:"prequeueCandidateSize"`
 }
 
 type UpdatePrequeueConfigReq struct {
@@ -104,6 +105,7 @@ type UpdatePrequeueConfigReq struct {
 	NormalJobWaitingToleranceSeconds *int64 `json:"normalJobWaitingToleranceSeconds" binding:"required,gt=0"`
 	ActivateTickerIntervalSeconds    *int64 `json:"activateTickerIntervalSeconds" binding:"required,gt=0"`
 	MaxTotalActivationsPerRound      *int64 `json:"maxTotalActivationsPerRound" binding:"required,gt=0"`
+	PrequeueCandidateSize            *int64 `json:"prequeueCandidateSize" binding:"required,gt=0"`
 }
 
 type BillingStatusResp struct {
@@ -306,6 +308,7 @@ func (mgr *SystemConfigMgr) GetPrequeueConfig(c *gin.Context) {
 		NormalJobWaitingToleranceSeconds: cfg.NormalJobWaitingToleranceSeconds,
 		ActivateTickerIntervalSeconds:    cfg.ActivateTickerIntervalSeconds,
 		MaxTotalActivationsPerRound:      cfg.MaxTotalActivationsPerRound,
+		PrequeueCandidateSize:            cfg.PrequeueCandidateSize,
 	})
 }
 
@@ -328,12 +331,13 @@ func (mgr *SystemConfigMgr) UpdatePrequeueConfig(c *gin.Context) {
 		return
 	}
 
-	cfg := &service.PrequeueRuntimeConfig{
-		BackfillEnabled:                  *req.BackfillEnabled,
-		QueueQuotaEnabled:                *req.QueueQuotaEnabled,
-		NormalJobWaitingToleranceSeconds: *req.NormalJobWaitingToleranceSeconds,
-		ActivateTickerIntervalSeconds:    *req.ActivateTickerIntervalSeconds,
-		MaxTotalActivationsPerRound:      *req.MaxTotalActivationsPerRound,
+	cfg := &service.UpdatePrequeueConfigReq{
+		BackfillEnabled:                  req.BackfillEnabled,
+		QueueQuotaEnabled:                req.QueueQuotaEnabled,
+		NormalJobWaitingToleranceSeconds: req.NormalJobWaitingToleranceSeconds,
+		ActivateTickerIntervalSeconds:    req.ActivateTickerIntervalSeconds,
+		MaxTotalActivationsPerRound:      req.MaxTotalActivationsPerRound,
+		PrequeueCandidateSize:            req.PrequeueCandidateSize,
 	}
 	if err := mgr.service.UpdatePrequeueConfig(c.Request.Context(), cfg); err != nil {
 		if strings.Contains(err.Error(), "must be greater than 0") {
