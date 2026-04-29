@@ -10,9 +10,10 @@ CYAN := \033[36m
 WHITE := \033[37m
 RESET := \033[0m
 
+PYTHON ?= $(shell if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then echo python3; elif command -v python >/dev/null 2>&1; then echo python; fi)
+
 # 设置端口号变量
 PORT := $(shell if [ -f .env.development ]; then grep PORT .env.development | cut -d '=' -f2; else echo "5180"; fi)
-
 .PHONY: help
 help: ## 💡 Display this help message
 	@echo "$(CYAN)🌋 Crater Frontend Development Commands$(RESET)"
@@ -105,7 +106,11 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 .PHONY: pre-commit-check
 pre-commit-check: ## Run pre-commit checks (lint and lint-staged).
 	@echo "$(BLUE)Checking translation file format...$(RESET)"
-	@if ! python3 hack/format_translation.py --check; then \
+	@if [ -z "$(PYTHON)" ]; then \
+		echo "$(RED)❌ Python interpreter not found (python3/python).$(RESET)"; \
+		exit 1; \
+	fi
+	@if ! $(PYTHON) hack/format_translation.py --check; then \
 		echo ""; \
 		echo "$(RED)❌ Translation files are not properly formatted!$(RESET)"; \
 		echo ""; \
@@ -146,7 +151,11 @@ format: ## ✨ Format code with Prettier
 .PHONY: format-translation
 format-translation: ## 🌐 Format translation files
 	@echo "$(BLUE)Formatting translation files...$(RESET)"
-	@if python3 hack/format_translation.py; then \
+	@if [ -z "$(PYTHON)" ]; then \
+		echo "$(RED)❌ Python interpreter not found (python3/python).$(RESET)"; \
+		exit 1; \
+	fi
+	@if $(PYTHON) hack/format_translation.py; then \
 		echo "$(GREEN)✅ Translation files formatted$(RESET)"; \
 	else \
 		echo "$(RED)❌ Translation file formatting failed!$(RESET)"; \
@@ -162,7 +171,11 @@ test: ## 🧪 Run tests
 .PHONY: generate-error-code
 generate-error-code: ## 🛠️ Generate error codes from backend
 	@echo "$(BLUE)Generating error codes from backend...$(RESET)"
-	python3 ./src/services/generator.py ../backend/internal/resputil/code.go ./src/services/error_code.ts
+	@if [ -z "$(PYTHON)" ]; then \
+		echo "$(RED)❌ Python interpreter not found (python3/python).$(RESET)"; \
+		exit 1; \
+	fi
+	$(PYTHON) ./src/services/generator.py ../backend/internal/resputil/code.go ./src/services/error_code.ts
 
 .PHONY: backend-help
 backend-help: ## ❓ Show backend server startup instructions

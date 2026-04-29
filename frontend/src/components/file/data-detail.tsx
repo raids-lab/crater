@@ -20,6 +20,7 @@ import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
 import {
   ArrowLeftIcon,
+  BarChart3Icon,
   BotIcon,
   CalendarIcon,
   DatabaseIcon,
@@ -560,6 +561,11 @@ export function SharedResourceTable({
           title: t('sharedResource.createdAt'),
           icon: CalendarIcon,
           value: <TimeDistance date={data?.createdAt} />,
+        },
+        {
+          title: t('sharedResource.mountCount'),
+          icon: BarChart3Icon,
+          value: data?.mountCount ?? 0,
         },
       ]}
       tabs={[

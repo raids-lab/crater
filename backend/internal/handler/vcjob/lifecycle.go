@@ -29,7 +29,10 @@ func (mgr *VolcanojobMgr) submitJob(
 	scheduleType := model.ScheduleType(scheduleTypeInt)
 
 	if mgr.prequeueWatcher == nil {
-		return vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job)
+		if err := vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	jobResources := vcjobservice.CalculateJobResources(job)

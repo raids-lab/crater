@@ -14,10 +14,17 @@
  * limitations under the License.
  */
 import { useAtomValue } from 'jotai'
-import { ArrowDownAZIcon, ArrowDownZAIcon, EllipsisVerticalIcon, SearchIcon } from 'lucide-react'
+import {
+  ArrowDownAZIcon,
+  ArrowDownZAIcon,
+  BarChart3Icon,
+  EllipsisVerticalIcon,
+  SearchIcon,
+} from 'lucide-react'
 import { Trash2Icon } from 'lucide-react'
 import { motion } from 'motion/react'
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,6 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import TipBadge from '@/components/badge/tip-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
@@ -64,6 +72,7 @@ export interface DataItem {
   name: string
   desc: string
   createdAt?: string
+  mountCount?: number
   tag: string[]
   url?: string
   template?: string
@@ -83,11 +92,29 @@ export default function DataList({
   actionArea?: ReactNode
   handleDelete?: (id: number) => void
 }) {
-  const [sort, setSort] = useState('ascending')
+  const { t } = useTranslation()
+  const [sort, setSort] = useState('descending')
+  const hasMountCount = useMemo(() => items.some((item) => item.mountCount !== undefined), [items])
+  const [sortField, setSortField] = useState<'createdAt' | 'mountCount'>(
+    hasMountCount ? 'mountCount' : 'createdAt'
+  )
+  const [sortFieldManuallyChanged, setSortFieldManuallyChanged] = useState(false)
   const [modelType, setModelType] = useState('所有标签')
   const [searchTerm, setSearchTerm] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('所有') // 修改默认值为"所有"
   const user = useAtomValue(atomUserInfo)
+
+  useEffect(() => {
+    const nextDefaultSortField = hasMountCount ? 'mountCount' : 'createdAt'
+
+    if (!sortFieldManuallyChanged && sortField !== nextDefaultSortField) {
+      setSortField(nextDefaultSortField)
+    }
+
+    if (!hasMountCount && sortField === 'mountCount') {
+      setSortField('createdAt')
+    }
+  }, [hasMountCount, sortField, sortFieldManuallyChanged])
 
   const tags = useMemo(() => {
     const tags = new Set<string>()
@@ -97,12 +124,42 @@ export default function DataList({
     return Array.from(tags)
   }, [items])
 
-  const filteredItems = items
-    .sort((a, b) =>
-      sort === 'descending'
-        ? new Date(a.createdAt || '').getTime() - new Date(b.createdAt || '').getTime()
-        : new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
-    )
+  const toSortableNumber = (value: unknown): number => {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : 0
+    }
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue : 0
+  }
+
+  const filteredItems = [...items]
+    .sort((a, b) => {
+      const direction = sort === 'descending' ? -1 : 1
+
+      if (sortField === 'mountCount') {
+        const aCount = toSortableNumber(a.mountCount)
+        const bCount = toSortableNumber(b.mountCount)
+
+        if (aCount !== bCount) {
+          return (aCount - bCount) * direction
+        }
+      } else {
+        const aTime = toSortableNumber(new Date(a.createdAt || '').getTime())
+        const bTime = toSortableNumber(new Date(b.createdAt || '').getTime())
+
+        if (aTime !== bTime) {
+          return (aTime - bTime) * direction
+        }
+      }
+
+      const aCreatedAt = toSortableNumber(new Date(a.createdAt || '').getTime())
+      const bCreatedAt = toSortableNumber(new Date(b.createdAt || '').getTime())
+      if (aCreatedAt !== bCreatedAt) {
+        return (aCreatedAt - bCreatedAt) * direction
+      }
+
+      return (a.id - b.id) * direction
+    })
     .filter((item) =>
       modelType === '所有标签' ? true : item.tag.includes(modelType) ? true : false
     )
@@ -163,27 +220,50 @@ export default function DataList({
             </SelectContent>
           </Select>
         </div>
-        <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger className="w-16">
-            <SelectValue>
-              {sort === 'ascending' ? <ArrowDownAZIcon size={16} /> : <ArrowDownZAIcon size={16} />}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectItem value="ascending">
-              <div className="flex items-center gap-4">
-                <ArrowDownAZIcon size={16} />
-                <span>升序</span>
-              </div>
-            </SelectItem>
-            <SelectItem value="descending">
-              <div className="flex items-center gap-4">
-                <ArrowDownZAIcon size={16} />
-                <span>降序</span>
-              </div>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select
+            value={sortField}
+            onValueChange={(value) => {
+              setSortFieldManuallyChanged(true)
+              setSortField(value as 'createdAt' | 'mountCount')
+            }}
+          >
+            <SelectTrigger className="min-w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="createdAt">{t('dataList.sortField.createdAt')}</SelectItem>
+              {hasMountCount && (
+                <SelectItem value="mountCount">{t('dataList.sortField.mountCount')}</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={setSort}>
+            <SelectTrigger className="w-16">
+              <SelectValue>
+                {sort === 'ascending' ? (
+                  <ArrowDownAZIcon size={16} />
+                ) : (
+                  <ArrowDownZAIcon size={16} />
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="ascending">
+                <div className="flex items-center gap-4">
+                  <ArrowDownAZIcon size={16} />
+                  <span>{t('dataList.sortDirection.ascending')}</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="descending">
+                <div className="flex items-center gap-4">
+                  <ArrowDownZAIcon size={16} />
+                  <span>{t('dataList.sortDirection.descending')}</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <Separator />
       {filteredItems.length === 0 ? (
@@ -192,7 +272,7 @@ export default function DataList({
         <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
           {filteredItems.map((item, index) => (
             <motion.li
-              key={item.name}
+              key={item.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
@@ -264,19 +344,38 @@ export default function DataList({
                 {item.desc}
               </p>
               <div>
-                <div className="flex flex-row flex-wrap gap-1 p-4 pt-0">
-                  <TipBadge
-                    title={
-                      <UserLabel
-                        info={item.owner}
-                        className="hover:text-highlight-orange text-xs"
-                      />
-                    }
-                  />
-                  <TipBadge
-                    title={<TimeDistance date={item.createdAt || '2023'} />}
-                    className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
-                  />
+                <div className="flex items-end justify-between gap-2 p-4 pt-0">
+                  <div className="flex flex-row flex-wrap gap-1">
+                    <TipBadge
+                      title={
+                        <UserLabel
+                          info={item.owner}
+                          className="hover:text-highlight-orange text-xs"
+                        />
+                      }
+                    />
+                    <TipBadge
+                      title={<TimeDistance date={item.createdAt || '2023'} />}
+                      className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
+                    />
+                  </div>
+                  {item.mountCount !== undefined && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={t('dataList.mountCount', { count: item.mountCount })}
+                          className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
+                        >
+                          <BarChart3Icon className="size-4" aria-hidden="true" />
+                          <span>{item.mountCount}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('dataList.mountCountTooltip')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
               </div>
             </motion.li>

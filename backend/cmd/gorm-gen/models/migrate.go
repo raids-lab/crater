@@ -1092,6 +1092,21 @@ func main() {
 				}).Delete(nil).Error
 			},
 		},
+		{
+			ID: "202604141700",
+			Migrate: func(tx *gorm.DB) error {
+				type Dataset struct {
+					MountCount int `gorm:"column:mount_count;not null;default:0;comment:mount count"`
+				}
+				return tx.Migrator().AddColumn(&Dataset{}, "MountCount")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Dataset struct {
+					MountCount int `gorm:"column:mount_count;not null;default:0;comment:mount count"`
+				}
+				return tx.Migrator().DropColumn(&Dataset{}, "MountCount")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

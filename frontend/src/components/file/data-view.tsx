@@ -85,6 +85,7 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
           desc: dataset.describe,
           tag: dataset.extra.tag || [],
           createdAt: dataset.createdAt,
+          mountCount: dataset.mountCount,
           owner: dataset.userInfo,
         })) || []
       }

@@ -44,7 +44,8 @@ def process_folder(folder_path, check_only=False):
                     processed_files.append(relative_path)
                 else:
                     # 格式化模式：写回文件
-                    with open(file_path, 'w', encoding='utf-8') as f:
+                    # Always write LF to keep Prettier/lint consistent across platforms.
+                    with open(file_path, 'w', encoding='utf-8', newline='\n') as f:
                         f.write(formatted_content)
                     processed_files.append(relative_path)
     
