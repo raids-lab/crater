@@ -391,15 +391,6 @@ func (s *ConfigService) getConfigs(ctx context.Context, keys ...string) (map[str
 	return configMap, nil
 }
 
-// PrequeueRuntimeConfig tag should sync with keys in PrequeueConfig
-type PrequeueRuntimeConfig struct {
-	BackfillEnabled                  bool  `json:"backfill_enabled"`
-	QueueQuotaEnabled                bool  `json:"queue_quota_enabled"`
-	NormalJobWaitingToleranceSeconds int64 `json:"normal_job_waiting_tolerance_seconds"`
-	ActivateTickerIntervalSeconds    int64 `json:"activate_ticker_interval_seconds"`
-	MaxTotalActivationsPerRound      int64 `json:"max_total_activations_per_round"`
-}
-
 func (s *ConfigService) initPrequeueConfig(ctx context.Context) error {
 	return s.q.Transaction(func(tx *query.Query) error {
 		return s.shouldExistsPrequeueConfig(ctx, tx)
@@ -432,7 +423,7 @@ func (s *ConfigService) shouldExistsPrequeueConfig(ctx context.Context, tx *quer
 	return nil
 }
 
-func (s *ConfigService) GetPrequeueConfig(ctx context.Context) (*PrequeueRuntimeConfig, error) {
+func (s *ConfigService) GetPrequeueConfig(ctx context.Context) (*model.PrequeueRuntimeConfig, error) {
 	if err := s.initPrequeueConfig(ctx); err != nil {
 		return nil, err
 	}
@@ -450,8 +441,8 @@ func (s *ConfigService) GetPrequeueConfig(ctx context.Context) (*PrequeueRuntime
 	return parsePrequeueRuntimeConfig(recordMap)
 }
 
-func parsePrequeueRuntimeConfig(recordMap map[string]string) (*PrequeueRuntimeConfig, error) {
-	cfg := NewPrequeueRuntimeConfig()
+func parsePrequeueRuntimeConfig(recordMap map[string]string) (*model.PrequeueRuntimeConfig, error) {
+	cfg := model.NewPrequeueRuntimeConfig()
 	if err := util.MapToStruct(recordMap, cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse prequeue config from database: %w", err)
 	}
@@ -461,48 +452,61 @@ func parsePrequeueRuntimeConfig(recordMap map[string]string) (*PrequeueRuntimeCo
 	return cfg, nil
 }
 
-func NewPrequeueRuntimeConfig() *PrequeueRuntimeConfig {
-	return &PrequeueRuntimeConfig{
-		BackfillEnabled:                  model.PrequeueDefaultBackfillEnabled,
-		QueueQuotaEnabled:                model.PrequeueDefaultQueueQuotaEnabled,
-		NormalJobWaitingToleranceSeconds: model.PrequeueDefaultNormalJobWaitingToleranceSeconds,
-		ActivateTickerIntervalSeconds:    model.PrequeueDefaultActivateTickerIntervalSeconds,
-		MaxTotalActivationsPerRound:      model.PrequeueDefaultMaxTotalActivationsPerRound,
-	}
+type UpdatePrequeueConfigReq struct {
+	BackfillEnabled                  *bool  `json:"backfill_enabled,omitempty"`
+	QueueQuotaEnabled                *bool  `json:"queue_quota_enabled,omitempty"`
+	NormalJobWaitingToleranceSeconds *int64 `json:"normal_job_waiting_tolerance_seconds,omitempty"`
+	ActivateTickerIntervalSeconds    *int64 `json:"activate_ticker_interval_seconds,omitempty"`
+	MaxTotalActivationsPerRound      *int64 `json:"max_total_activations_per_round,omitempty"`
+	PrequeueCandidateSize            *int64 `json:"prequeue_candidate_size,omitempty"`
 }
 
-func (cfg *PrequeueRuntimeConfig) Validate() error {
-	if cfg == nil {
-		return fmt.Errorf("prequeue config is required")
+func (r *UpdatePrequeueConfigReq) Validate() error {
+	if r == nil {
+		return fmt.Errorf("prequeue config update is required")
 	}
-	positiveValues := map[string]int64{
-		model.PrequeueNormalJobWaitingToleranceSecondsKey: cfg.NormalJobWaitingToleranceSeconds,
-		model.PrequeueActivateTickerIntervalSecondsKey:    cfg.ActivateTickerIntervalSeconds,
-		model.PrequeueMaxTotalActivationsPerRoundKey:      cfg.MaxTotalActivationsPerRound,
+	positiveValues := map[string]*int64{
+		model.PrequeueNormalJobWaitingToleranceSecondsKey: r.NormalJobWaitingToleranceSeconds,
+		model.PrequeueActivateTickerIntervalSecondsKey:    r.ActivateTickerIntervalSeconds,
+		model.PrequeueMaxTotalActivationsPerRoundKey:      r.MaxTotalActivationsPerRound,
+		model.PrequeueCandidateSizeKey:                    r.PrequeueCandidateSize,
 	}
 	for key, value := range positiveValues {
-		if value <= 0 {
+		if value != nil && *value <= 0 {
 			return fmt.Errorf("%s must be greater than 0", key)
 		}
 	}
 	return nil
 }
 
-func (cfg *PrequeueRuntimeConfig) ToValueMap() map[string]string {
-	return map[string]string{
-		model.PrequeueBackfillEnabledKey:                  strconv.FormatBool(cfg.BackfillEnabled),
-		model.PrequeueQueueQuotaEnabledKey:                strconv.FormatBool(cfg.QueueQuotaEnabled),
-		model.PrequeueNormalJobWaitingToleranceSecondsKey: strconv.FormatInt(cfg.NormalJobWaitingToleranceSeconds, 10),
-		model.PrequeueActivateTickerIntervalSecondsKey:    strconv.FormatInt(cfg.ActivateTickerIntervalSeconds, 10),
-		model.PrequeueMaxTotalActivationsPerRoundKey:      strconv.FormatInt(cfg.MaxTotalActivationsPerRound, 10),
+func (r *UpdatePrequeueConfigReq) ToValueMap() map[string]string {
+	valueMap := make(map[string]string)
+	if r.BackfillEnabled != nil {
+		valueMap[model.PrequeueBackfillEnabledKey] = strconv.FormatBool(*r.BackfillEnabled)
 	}
+	if r.QueueQuotaEnabled != nil {
+		valueMap[model.PrequeueQueueQuotaEnabledKey] = strconv.FormatBool(*r.QueueQuotaEnabled)
+	}
+	if r.NormalJobWaitingToleranceSeconds != nil {
+		valueMap[model.PrequeueNormalJobWaitingToleranceSecondsKey] = strconv.FormatInt(*r.NormalJobWaitingToleranceSeconds, 10)
+	}
+	if r.ActivateTickerIntervalSeconds != nil {
+		valueMap[model.PrequeueActivateTickerIntervalSecondsKey] = strconv.FormatInt(*r.ActivateTickerIntervalSeconds, 10)
+	}
+	if r.MaxTotalActivationsPerRound != nil {
+		valueMap[model.PrequeueMaxTotalActivationsPerRoundKey] = strconv.FormatInt(*r.MaxTotalActivationsPerRound, 10)
+	}
+	if r.PrequeueCandidateSize != nil {
+		valueMap[model.PrequeueCandidateSizeKey] = strconv.FormatInt(*r.PrequeueCandidateSize, 10)
+	}
+	return valueMap
 }
 
 func (s *ConfigService) UpdatePrequeueConfig(
 	ctx context.Context,
-	cfg *PrequeueRuntimeConfig,
+	req *UpdatePrequeueConfigReq,
 ) error {
-	if err := cfg.Validate(); err != nil {
+	if err := req.Validate(); err != nil {
 		return err
 	}
 	return s.q.Transaction(func(tx *query.Query) error {
@@ -510,7 +514,7 @@ func (s *ConfigService) UpdatePrequeueConfig(
 		if err != nil {
 			return err
 		}
-		for key, value := range cfg.ToValueMap() {
+		for key, value := range req.ToValueMap() {
 			result := tx.PrequeueConfig.WithContext(ctx).UnderlyingDB().
 				Model(&model.PrequeueConfig{}).
 				Where("key = ?", key).

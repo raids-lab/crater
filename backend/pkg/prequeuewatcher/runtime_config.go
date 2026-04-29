@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/dao/model"
 )
 
 func (w *PrequeueWatcher) refreshRuntimeConfig(ctx context.Context) error {
@@ -19,7 +19,7 @@ func (w *PrequeueWatcher) refreshRuntimeConfig(ctx context.Context) error {
 	return w.applyRuntimeConfig(cfg)
 }
 
-func (w *PrequeueWatcher) applyRuntimeConfig(cfg *service.PrequeueRuntimeConfig) error {
+func (w *PrequeueWatcher) applyRuntimeConfig(cfg *model.PrequeueRuntimeConfig) error {
 	if err := cfg.Validate(); err != nil {
 		return err
 	}
@@ -28,19 +28,15 @@ func (w *PrequeueWatcher) applyRuntimeConfig(cfg *service.PrequeueRuntimeConfig)
 	w.runtimeConfig.Store(&next)
 	if w.activateTicker != nil && current.ActivateTickerIntervalSeconds != next.ActivateTickerIntervalSeconds {
 		w.activateTicker.Stop()
-		w.activateTicker = time.NewTicker(seconds(next.ActivateTickerIntervalSeconds))
+		w.activateTicker = time.NewTicker(time.Duration(next.ActivateTickerIntervalSeconds) * time.Second)
 	}
 	return nil
 }
 
-func (w *PrequeueWatcher) currentRuntimeConfig() *service.PrequeueRuntimeConfig {
-	cfg, ok := w.runtimeConfig.Load().(*service.PrequeueRuntimeConfig)
+func (w *PrequeueWatcher) currentRuntimeConfig() *model.PrequeueRuntimeConfig {
+	cfg, ok := w.runtimeConfig.Load().(*model.PrequeueRuntimeConfig)
 	if !ok || cfg == nil {
-		return service.NewPrequeueRuntimeConfig()
+		return model.NewPrequeueRuntimeConfig()
 	}
 	return cfg
-}
-
-func seconds(value int64) time.Duration {
-	return time.Duration(value) * time.Second
 }

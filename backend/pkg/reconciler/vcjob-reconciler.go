@@ -534,8 +534,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 					profilePtr = ptr.To(datatypes.NewJSONType(profile))
 				}
 			}
-			if status == batch.Failed {
-				// 作业失败，采集事件和终止状态
+			if isReleasedJobPhase(status) {
 				events := r.getNewEventsForJob(ctx, job, oldRecord)
 				if len(events) > 0 {
 					eventsPtr = ptr.To(datatypes.NewJSONType(events))

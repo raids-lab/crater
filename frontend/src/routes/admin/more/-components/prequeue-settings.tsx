@@ -20,11 +20,13 @@ interface PrequeueSettingsProps {
   waitingToleranceSeconds: string
   activateTickerIntervalSeconds: string
   maxTotalActivationsPerRound: string
+  prequeueCandidateSize: string
   onBackfillEnabledChange: (enabled: boolean) => void
   onQueueQuotaEnabledChange: (enabled: boolean) => void
   onWaitingToleranceSecondsChange: (value: string) => void
   onActivateTickerIntervalSecondsChange: (value: string) => void
   onMaxTotalActivationsPerRoundChange: (value: string) => void
+  onPrequeueCandidateSizeChange: (value: string) => void
   onSubmit: () => void
 }
 
@@ -35,11 +37,13 @@ export function PrequeueSettings({
   waitingToleranceSeconds,
   activateTickerIntervalSeconds,
   maxTotalActivationsPerRound,
+  prequeueCandidateSize,
   onBackfillEnabledChange,
   onQueueQuotaEnabledChange,
   onWaitingToleranceSecondsChange,
   onActivateTickerIntervalSecondsChange,
   onMaxTotalActivationsPerRoundChange,
+  onPrequeueCandidateSizeChange,
   onSubmit,
 }: PrequeueSettingsProps) {
   const { t } = useTranslation()
@@ -134,6 +138,21 @@ export function PrequeueSettings({
               min={1}
               value={maxTotalActivationsPerRound}
               onChange={(event) => onMaxTotalActivationsPerRoundChange(event.target.value)}
+              disabled={isPending}
+              placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="prequeue-candidate-size">
+              {t('systemConfig.prequeue.candidateSizeLabel')}
+            </Label>
+            <Input
+              id="prequeue-candidate-size"
+              type="number"
+              min={1}
+              value={prequeueCandidateSize}
+              onChange={(event) => onPrequeueCandidateSizeChange(event.target.value)}
               disabled={isPending}
               placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
             />

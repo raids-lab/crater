@@ -54,10 +54,16 @@ import {
   apiAdminGetAccountBillingConfig,
   apiAdminUpdateAccountBillingConfig,
 } from '@/services/api/billing'
+import {
+  apiAdminCreateQueueQuota,
+  apiAdminDeleteQueueQuota,
+  apiAdminGetQueueQuotas,
+  apiAdminUpdateQueueQuota,
+} from '@/services/api/queue-quota'
 import { apiResourceList } from '@/services/api/resource'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 
-import { convertFormToQuota, convertQuotaToForm } from '@/utils/quota'
+import { convertFormToQueueQuota, convertFormToQuota, convertQuotaToForm } from '@/utils/quota'
 import { globalSettings } from '@/utils/store'
 
 import { cn } from '@/lib/utils'
@@ -135,8 +141,15 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
   })
   const accountBillingConfig = accountBillingConfigQuery.data
   const hydratedFormKeyRef = useRef<string | null>(null)
+  const isPublicAccount = account?.name === 'default'
+  const publicQueueQuotaQuery = useQuery({
+    queryKey: ['admin', 'queue-quotas'],
+    queryFn: () => apiAdminGetQueueQuotas().then((res) => res.data),
+    select: (data) => (data.quotas || []).find((quota) => quota.name === 'default'),
+    enabled: Boolean(isPublicAccount && account?.id),
+  })
+  const publicQueueQuota = publicQueueQuotaQuery.data
 
-  // 1. Define your form.
   const form = useForm<AccountFormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -158,7 +171,11 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       name: account?.nickname || '',
       resources:
         account && resourceDimension
-          ? convertQuotaToForm(account.quota, resourceDimension)
+          ? convertQuotaToForm(
+              account.quota,
+              resourceDimension,
+              isPublicAccount ? publicQueueQuota?.quota : undefined
+            )
           : resourceDimension?.map((name) => ({ name })) || [{ name: 'cpu' }, { name: 'memory' }],
       expiredAt: account?.expiredAt ? new Date(account.expiredAt) : undefined,
       admins: [],
@@ -166,14 +183,16 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       billingIssuePeriodMinutes: accountBillingConfig?.issuePeriodMinutes,
       ...(account ? { id: account.id } : {}),
     }),
-    [account, accountBillingConfig, resourceDimension]
+    [account, accountBillingConfig, isPublicAccount, publicQueueQuota, resourceDimension]
   )
   const needsBillingHydration = billingEnabled && Boolean(account?.id)
+  const needsQueueQuotaHydration = isPublicAccount && Boolean(account?.id)
   const hydrationReady =
     resourceDimensionQuery.isFetched &&
-    (!needsBillingHydration || accountBillingConfigQuery.isFetched)
+    (!needsBillingHydration || accountBillingConfigQuery.isFetched) &&
+    (!needsQueueQuotaHydration || publicQueueQuotaQuery.isFetched)
   const hydrationKey = hydrationReady
-    ? `${account?.id ?? 'create'}:${resourceDimensionQuery.dataUpdatedAt}:${accountBillingConfigQuery.dataUpdatedAt}`
+    ? `${account?.id ?? 'create'}:${resourceDimensionQuery.dataUpdatedAt}:${accountBillingConfigQuery.dataUpdatedAt}:${publicQueueQuotaQuery.dataUpdatedAt}`
     : null
 
   useEffect(() => {
@@ -232,6 +251,45 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     }
   }
 
+  const savePublicQueueQuota = async (values: AccountFormSchema): Promise<string | null> => {
+    if (!isPublicAccount) {
+      return null
+    }
+
+    const quota = convertFormToQueueQuota(values.resources)
+    const hasQuota = Object.keys(quota).length > 0
+
+    try {
+      const existingQuota = publicQueueQuotaQuery.isFetched
+        ? publicQueueQuota
+        : (await apiAdminGetQueueQuotas()).data.quotas?.find((quota) => quota.name === 'default')
+
+      if (existingQuota?.id) {
+        if (!hasQuota) {
+          await apiAdminDeleteQueueQuota(existingQuota.id)
+          return null
+        }
+        await apiAdminUpdateQueueQuota(existingQuota.id, {
+          name: 'default',
+          quota,
+        })
+        return null
+      }
+      if (hasQuota) {
+        await apiAdminCreateQueueQuota({
+          name: 'default',
+          quota,
+        })
+      }
+      return null
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        return error.message
+      }
+      return 'unknown error'
+    }
+  }
+
   const { mutate: createAccount, isPending: isCreatePending } = useMutation({
     mutationFn: async (values: AccountFormSchema) => {
       const resp = await apiAccountCreate({
@@ -255,9 +313,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
         queryKey: ['admin', 'accounts'],
       })
       if (billingConfigError) {
-        toast.warning(
-          `账户 ${name} 已创建，但 Billing 配置保存失败，请进入账户后重试：${billingConfigError}`
-        )
+        toast.warning(t('toast.accountCreatedPartialFailure', { name, error: billingConfigError }))
       } else {
         toast.success(t('toast.accountCreated', { name }))
       }
@@ -274,30 +330,47 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
         admins: values.admins?.map((id) => parseInt(id)),
         withoutVolcano: scheduler !== 'volcano',
       })
-      if ((values.id ?? 0) > 0) {
-        const billingConfigError = await saveAccountBillingConfig(values.id ?? 0, values)
-        if (billingConfigError) {
-          throw new Error(billingConfigError)
-        }
+      const queueQuotaError = await savePublicQueueQuota(values)
+      const billingConfigError =
+        (values.id ?? 0) > 0 ? await saveAccountBillingConfig(values.id ?? 0, values) : null
+      return {
+        billingConfigError,
+        queueQuotaError,
+        resp,
       }
-      return resp
     },
-    onSuccess: async (_, { name }) => {
-      await queryClient.invalidateQueries({
-        queryKey: ['admin', 'accounts'],
-      })
-      await queryClient.invalidateQueries({
-        queryKey: ['admin', 'accounts', account?.id, 'billing-config'],
-      })
-      toast.success(t('toast.accountUpdated', { name }))
+    onSuccess: async ({ billingConfigError, queueQuotaError }, { name }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['admin', 'accounts'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['admin', 'queue-quotas'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['context', 'job-resource-summary'],
+        }),
+      ])
+      if (account?.id) {
+        await queryClient.invalidateQueries({
+          queryKey: ['admin', 'accounts', account?.id, 'billing-config'],
+        })
+      }
+      if (queueQuotaError || billingConfigError) {
+        toast.warning(
+          t('toast.accountUpdatedPartialFailure', {
+            name,
+            error: queueQuotaError || billingConfigError,
+          })
+        )
+      } else {
+        toast.success(t('toast.accountUpdated', { name }))
+      }
       onOpenChange(false)
     },
   })
 
-  // 2. Define a submit handler.
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
     if (values.id) {
       updateAccount(values)
     } else {
@@ -579,6 +652,27 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                     </FormItem>
                   )}
                 />
+                {isPublicAccount && (
+                  <FormField
+                    control={form.control}
+                    name={`resources.${index}.queueLimit`}
+                    render={() => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            type="string"
+                            placeholder={t('accountForm.queueLimitPlaceholder')}
+                            className="font-mono"
+                            {...form.register(`resources.${index}.queueLimit`, {
+                              valueAsNumber: true,
+                            })}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <div>
                   <Button
                     size="icon"

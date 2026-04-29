@@ -86,7 +86,7 @@ func (w *PrequeueWatcher) Start(ctx context.Context) error {
 	defer w.finalize()
 	cfg := w.currentRuntimeConfig()
 	w.needScan = true
-	w.activateTicker = time.NewTicker(seconds(cfg.ActivateTickerIntervalSeconds))
+	w.activateTicker = time.NewTicker(time.Duration(cfg.ActivateTickerIntervalSeconds) * time.Second)
 
 	w.logger.Info("prequeue watcher started",
 		"activateTickerIntervalSeconds", cfg.ActivateTickerIntervalSeconds,

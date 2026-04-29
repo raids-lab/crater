@@ -12,7 +12,6 @@ import (
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
 	"github.com/raids-lab/crater/pkg/vcqueue"
@@ -76,10 +75,15 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		return
 	}
 
-	jobResources := v1.ResourceList{}
-	for i := range len(req.Tasks) {
-		jobResources = aitaskctl.AddResourceList(jobResources, req.Tasks[i].Resource)
-	}
+	jobResources := utils.CalculateReplicatedResources(
+		req.Tasks,
+		func(task TaskReq) v1.ResourceList {
+			return task.Resource
+		},
+		func(task TaskReq) int32 {
+			return task.Replicas
+		},
+	)
 
 	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, token.AccountID); err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to ensure account queue exists: %v", err), resputil.NotSpecified)
