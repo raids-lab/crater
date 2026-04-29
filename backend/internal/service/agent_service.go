@@ -278,7 +278,7 @@ func (s *AgentService) ListToolCalls(ctx context.Context, sessionID string) ([]*
 	var toolCalls []*model.AgentToolCall
 	if err := s.db.WithContext(ctx).
 		Where("session_id = ?", sessionID).
-		Order("created_at ASC").
+		Order("created_at ASC, id ASC").
 		Find(&toolCalls).Error; err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (s *AgentService) ListToolCallsByTurn(ctx context.Context, turnID string) (
 	var toolCalls []*model.AgentToolCall
 	if err := s.db.WithContext(ctx).
 		Where("turn_id = ?", turnID).
-		Order("created_at ASC").
+		Order("created_at ASC, id ASC").
 		Find(&toolCalls).Error; err != nil {
 		return nil, err
 	}

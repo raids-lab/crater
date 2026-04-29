@@ -43,8 +43,14 @@ class ExecutorAgent(BaseRoleAgent):
             "- 纯查询/诊断请求不要擅自执行写操作。\n"
             "- 若仅需补充事实证据，优先继续用只读工具，不要直接进入写操作。\n"
             "- 写操作前应确保目标对象明确；如果不明确，先补最小只读核验。\n"
+            "- 用户自述、页面状态或上一轮口头结论都不是已验证事实；对 restart/stop/scale/uncordon/create 这类写操作，应先补一到两条与当前动作直接相关的事实。\n"
+            "- 每次只读调用都必须服务于一个未决字段或风险点；不要为了求稳扩散到无关 read。\n"
+            "- 对 create_jupyter_job / create_webide_job：如果模板默认值、配额、镜像匹配关系还没核实，不要猜 CPU/内存/GPU 型号，优先补 get_job_templates / check_quota / list_available_images 这类相关证据；若用户给的参数已基本齐全，最小合格核验就是这三项，不要省略 get_job_templates。\n"
+            "- 对 uncordon_node / restart_workload / k8s_scale_workload：至少先补一次与节点或工作负载健康直接相关的核验，不要只根据用户一句“已经恢复”就进入确认。\n"
             "- run_kubectl / execute_admin_command 属于受控高风险动作：应先说明触发原因，并等待确认流，不得构造任意 shell 文本。\n"
-            "- 如果工具返回需要用户确认，你应停止继续调用，等待系统接管确认流程。\n"
+            "- 如果同一轮明确需要多个互相独立的确认型写动作，可以一次性调用这些写工具生成多张确认卡；系统会统一暂停等待用户确认。\n"
+            "- 这不是强制多确认：只有一个必要写动作时，正常生成一张确认卡即可。\n"
+            "- 动作存在明确依赖（例如先创建再修改同一新对象）时，不要并列发确认；先推进当前可执行的最小动作，等待后续轮次。\n"
             "- 避免重复调用相同参数的工具，除非世界状态明显变化。\n"
         )
         user_prompt = (
@@ -111,6 +117,12 @@ class ExecutorAgent(BaseRoleAgent):
                 "- 只有用户明确要求操作时才选择写操作。\n"
                 "- 纯诊断/查询请求不应产生写操作。\n"
                 '- "帮我看看这个作业" ≠ "帮我停止这个作业"。\n'
+                "- 如果用户明确要求多个独立写动作（例如同时 label 和 taint 同一节点），可以在 actions 中同时列出这些动作，depends_on 为空。\n"
+                "- 这不是强制多动作：只有一个必要写动作时，actions 只输出一个元素。\n"
+                "- 如果动作有先后依赖，不要并列输出为独立动作；用 depends_on 标出依赖，或只输出当前可执行的最小动作。\n"
+                "- 不要把用户自述状态当作已验证证据；如果写操作还依赖关键事实未核实，应先返回空 actions，把机会留给前面的只读探索。\n"
+                "- create_jupyter_job / create_webide_job 在模板默认值、配额或镜像匹配关系未核实时，不要凭空猜 CPU/内存/GPU 型号后直接创建。\n"
+                "- uncordon_node / restart_workload / k8s_scale_workload 在节点或工作负载健康未核实时，不要直接输出写动作。\n"
                 "- 当选择 run_kubectl / execute_admin_command 时，reason 必须体现“结构化工具和只读证据不足，必须执行受控命令”。\n"
                 "- 如果已经有 pending_actions，不要重复生成等价动作。\n"
                 "- 如果 requested_scope=all 且证据里已经列出候选对象，可以输出多条动作。"

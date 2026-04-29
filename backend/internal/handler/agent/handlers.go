@@ -167,6 +167,13 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 		resputil.BadRequestError(c, "confirmation has not completed yet")
 		return
 	}
+	if mgr.hasOtherPendingConfirmations(c.Request.Context(), toolCall.TurnID, toolCall.ID) {
+		resputil.Success(c, AgentToolResponse{
+			Status:  "awaiting_confirmation",
+			Message: "仍有其他待确认操作，请处理完本轮所有确认卡后再继续。",
+		})
+		return
+	}
 
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), toolCall.SessionID, token.UserID)
 	if err != nil || session.AccountID != token.AccountID {

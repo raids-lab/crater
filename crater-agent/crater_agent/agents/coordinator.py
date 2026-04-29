@@ -20,6 +20,38 @@ def _looks_like_system_job_name(value: str) -> bool:
     return any(ch.isdigit() for ch in normalized)
 
 
+_EMPTY_SUMMARY_MARKERS = {
+    "",
+    "(empty)",
+    "暂无执行动作",
+    "无需执行写操作，继续进入验证。",
+    "已完成最终总结。",
+}
+
+
+def _is_effectively_empty_summary(value: str) -> bool:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return True
+    return normalized in _EMPTY_SUMMARY_MARKERS
+
+
+def _looks_complete_user_summary(value: str) -> bool:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return False
+    has_conclusion = any(token in normalized for token in ("结论", "运行正常", "无需额外处理", "建议下一步"))
+    has_guidance = any(token in normalized for token in ("建议下一步", "建议", "后续观察", "继续观察"))
+    return has_conclusion and has_guidance
+
+
+def _prepare_explorer_summary_for_user(value: str) -> str:
+    lines = [line for line in str(value or "").splitlines()]
+    while lines and lines[0].strip() in {"## 探索总结", "**探索总结**", "探索总结"}:
+        lines.pop(0)
+    return "\n".join(lines).strip()
+
+
 @dataclass
 class TurnContextDecision:
     route: str = "diagnostic"
@@ -165,6 +197,10 @@ class CoordinatorAgent(BaseRoleAgent):
                 "- 只有在证据或世界状态变化导致原计划不再成立时才 replan。\n"
                 "- verify 通常在已经有结论或动作结果之后再做。\n"
                 "- 不要因为历史动作而忽略当前输入，但 continuation 可以表示这是确认后的继续执行。\n"
+                "- 如果用户在问“为什么失败 / 卡在哪 / 现在正常吗 / 有没有 / 用什么配置 / 能不能提交 / 给我完整配置”，且相关只读工具可用，但 evidence_summary 仍为空或只覆盖了部分关键事实，不能 finalize，优先 explore。\n"
+                "- 对新建/配置咨询类问题，只要还没覆盖推荐或模板、配额、镜像这些关键事实桶中的大部分，就不能 finalize 成为泛化建议或页面导航。\n"
+                "- 对具名对象或明确目标（如 rollout、Prometheus、某作业、某 GPU 型号）的核实请求，只要还没做直接取证，就不能 finalize。\n"
+                "- 若当前证据只来自单一推荐类工具，而用户问题还涉及提交可行性、镜像存在性或容量/配额判断，优先继续 explore，而不是直接总结。\n"
                 "输出 JSON:\n"
                 '{\n'
                 '  "step": "explore|execute|verify|replan|finalize",\n'
@@ -208,11 +244,24 @@ class CoordinatorAgent(BaseRoleAgent):
         executor_summary: str,
         verifier_summary: str,
     ) -> RoleExecutionResult:
+        if (
+            _looks_complete_user_summary(evidence_summary)
+            and _is_effectively_empty_summary(executor_summary)
+            and _is_effectively_empty_summary(verifier_summary)
+        ):
+            return RoleExecutionResult(summary=_prepare_explorer_summary_for_user(evidence_summary))
+
         summary = await self.run_text(
             system_prompt=(
                 "你是 Crater 的 Coordinator Agent。你负责整合 Planner、Explorer、Executor、Verifier "
                 "的输出，向用户给出最终答复。要求中文、结论在前、证据在后、建议最后。\n"
-                "请优先基于实际证据作答，不要只复述其他 agent 的摘要。"
+                "请优先基于实际证据作答，不要只复述其他 agent 的摘要。\n"
+                "如果 Explorer 摘要里已经出现了准确的结论句、根因关键词或建议短语，优先直接复用原句；宁可少量整理，也不要把关键短语润色成同义表达。\n"
+                "- 如果证据表明对象运行正常或当前无需动作，结论句优先直接写成“运行正常、指标正常、无需额外处理”。如果对象是单个作业，优先写成“作业 <name> 当前运行正常、指标正常、无需额外处理”。不要改写成“无需您立即处理”“当前无需干预”“无需操作”等同义说法来替代“无需额外处理”。若只是状态确认类问题，建议里尽量原样包含“如果只是确认状态，则无需额外操作”或“继续观察”，并补一句具体 watchpoint（如状态转 Failed/Pending、GPU 利用率明显下跌或显存异常飙升时再排查）。如果 Explorer 摘要里已经包含这些短语，优先沿用，不要改写成同义表达。\n"
+                "- 如果是 Kubernetes rollout / workload 发布卡住，且证据已经指向 ErrImagePull、manifest unknown、ProgressDeadlineExceeded，结论或证据段里必须尽量保留这些原词，并明确写出这是 `rollout` 卡住。建议段优先直接列出这些动作短语，不要用近义改写替代：1) “修正镜像 tag”；2) “重新发布镜像”；3) “确认新 Pod 拉取成功”；必要时再补“回滚到上一版本”。同时明确补一句“镜像修复后 rollout 会继续推进/恢复”。不要把这些建议改写成“修复镜像推送”“检查流水线”“观察是否恢复”这种泛化说法来替代。如果 Explorer 摘要里已经给出了准确根因或建议，优先沿用其关键词和动作短语，不要弱化成泛化表述。\n"
+                "- 如果用户问的是推荐配置、完整提交配置、镜像是否存在、能不能提交，回答必须体现已经核实到的平台事实；不要退化成“能做什么 / 去哪做 / 注意什么”的帮助说明。\n"
+                "- 不要把用户自述、页面信息或常识默认值写成已验证事实；未核实的信息必须明确标注为建议或待确认。\n"
+                "- 若关键事实尚不充分，不要假装已经闭环；应如实指出缺口并给出下一步最小核验。"
             ),
             user_prompt=(
                 f"用户请求:\n{user_message}\n\n"

@@ -880,6 +880,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const pendingInterruptActionRef = useRef<(() => void) | null>(null)
   const agentSessionIdRef = useRef<string | null>(null)
   const conversationItemsRef = useRef<ConversationItem[]>([])
+  const pendingConfirmIdsRef = useRef<string[]>([])
   /** Ref to track the current timeline item id being streamed into */
   const currentTimelineIdRef = useRef<string | null>(null)
   const hasActiveAgentTask = agentStreaming || pendingConfirmIds.length > 0
@@ -987,6 +988,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const resolveConfirmation = useCallback((confirmId: string) => {
     setPendingConfirmIds((prev) => prev.filter((id) => id !== confirmId))
   }, [])
+
+  useEffect(() => {
+    pendingConfirmIdsRef.current = pendingConfirmIds
+  }, [pendingConfirmIds])
 
   const bumpAgentInteractionVersion = useCallback(() => {
     agentInteractionVersionRef.current += 1
@@ -2141,15 +2146,20 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         toolStatus: nextStatus,
         toolResult: nextToolResult,
       })
-      setConversationItems((prev) =>
-        prev.map((ci) =>
-          ci.kind === 'user' && ci.requestState === 'awaiting_confirmation'
-            ? { ...ci, requestState: 'done' }
-            : ci
-        )
-      )
       invalidateAgentAffectedQueries(item.confirmAction ?? '', result.status)
-      startAgentResume(item.confirmId ?? '')
+      const remainingConfirmIds = pendingConfirmIdsRef.current.filter(
+        (id) => id !== (item.confirmId ?? '')
+      )
+      if (remainingConfirmIds.length === 0) {
+        setConversationItems((prev) =>
+          prev.map((ci) =>
+            ci.kind === 'user' && ci.requestState === 'awaiting_confirmation'
+              ? { ...ci, requestState: 'done' }
+              : ci
+          )
+        )
+        startAgentResume(item.confirmId ?? '')
+      }
     },
     [
       invalidateAgentAffectedQueries,

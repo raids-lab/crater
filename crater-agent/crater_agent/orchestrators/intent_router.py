@@ -83,6 +83,37 @@ def _looks_like_simple_help_or_chat(user_message: str) -> bool:
         "what can you do",
         "how to",
     )
+    agent_required_tokens = (
+        "为什么",
+        "失败",
+        "报错",
+        "异常",
+        "卡住",
+        "卡在哪",
+        "rollout",
+        "正常吗",
+        "需要我处理",
+        "能不能提交",
+        "帮我看看",
+        "帮我看下",
+        "有没有",
+        "推荐",
+        "配置",
+        "a100",
+        "v100",
+        "deepspeed",
+        "llama",
+        "配额",
+        "镜像",
+        "提交配置",
+        "完整配置",
+        "完整提交配置",
+        "分布式训练",
+        "torchrun",
+        "资源",
+    )
+    if any(token in normalized for token in agent_required_tokens):
+        return False
     if any(token in normalized for token in help_tokens):
         data_tokens = (
             "当前",
@@ -113,6 +144,179 @@ def _looks_like_simple_help_or_chat(user_message: str) -> bool:
         )
         return not any(token in normalized for token in data_tokens + execution_phrases)
     return False
+
+
+def _looks_like_scale_write_intent(user_message: str) -> bool:
+    normalized = str(user_message or "").strip().lower()
+    if not normalized:
+        return False
+    scale_tokens = ("缩容", "扩容", "scale", "replica", "replicas", "副本")
+    write_tokens = ("帮我", "请", "把", "调整", "调到", "改成", "改为", "设为", "缩到", "扩到")
+    return any(token in normalized for token in scale_tokens) and any(
+        token in normalized for token in write_tokens
+    )
+
+
+def _looks_like_admin_write_intent(user_message: str) -> bool:
+    normalized = str(user_message or "").strip().lower()
+    if not normalized:
+        return False
+
+    write_verbs = (
+        "重启",
+        "restart",
+        "reboot",
+        "删除",
+        "delete",
+        "停止",
+        "stop",
+        "终止",
+        "kill",
+        "扩容",
+        "缩容",
+        "scale",
+        "cordon",
+        "uncordon",
+        "drain",
+        "隔离",
+        "驱逐",
+        "下线",
+        "恢复调度",
+    )
+    write_context = (
+        "帮我",
+        "请",
+        "直接",
+        "把",
+        "一下",
+        "执行",
+        "处理",
+        "操作",
+    )
+    return any(token in normalized for token in write_verbs) and any(
+        token in normalized for token in write_context
+    )
+
+
+def _has_task_bound_page_context(page_context: dict[str, Any]) -> bool:
+    if not isinstance(page_context, dict):
+        return False
+    for key in ("job_name", "jobName", "node_name", "nodeName"):
+        if str(page_context.get(key) or "").strip():
+            return True
+    page_markers = (
+        str(page_context.get("path") or "").strip().lower(),
+        str(page_context.get("pathname") or "").strip().lower(),
+        str(page_context.get("route") or "").strip().lower(),
+        str(page_context.get("entryPoint") or page_context.get("entrypoint") or "").strip().lower(),
+    )
+    task_paths = (
+        "/jobs",
+        "/admin",
+        "/nodes",
+        "/monitor",
+        "/inspection",
+        "job_detail",
+        "job_create",
+        "admin",
+        "ops",
+    )
+    return any(marker and any(token in marker for token in task_paths) for marker in page_markers)
+
+
+def is_strict_toolless_fast_path_candidate(
+    *,
+    user_message: str,
+    page_context: dict[str, Any],
+    routing: RoutingDecision,
+) -> bool:
+    normalized = str(user_message or "").strip().lower()
+    compact = re.sub(r"[\s，。！？!?,.]+", "", normalized)
+    if not normalized:
+        return False
+    if routing.requested_action or routing.operation_mode in {"read", "write"}:
+        return False
+    if routing.targets.job_name or routing.targets.node_name or routing.targets.scope != "unspecified":
+        return False
+    if _has_task_bound_page_context(page_context):
+        return False
+
+    social_exact = {
+        "hi",
+        "hello",
+        "hey",
+        "你好",
+        "您好",
+        "在吗",
+        "谢谢",
+        "thanks",
+        "thx",
+    }
+    if routing.entry_mode == "simple":
+        return compact in social_exact
+
+    if routing.entry_mode != "help":
+        return False
+
+    generic_help_tokens = (
+        "你能做什么",
+        "你会什么",
+        "有什么功能",
+        "支持什么能力",
+        "支持哪些能力",
+        "怎么用这个助手",
+        "如何使用这个助手",
+        "这个助手怎么用",
+        "帮助文档",
+        "使用说明",
+        "功能介绍",
+        "介绍一下你",
+        "介绍下你",
+        "文档入口",
+    )
+    task_tokens = (
+        "作业",
+        "job",
+        "节点",
+        "node",
+        "rollout",
+        "prometheus",
+        "gpu",
+        "a100",
+        "v100",
+        "镜像",
+        "配额",
+        "日志",
+        "指标",
+        "监控",
+        "k8s",
+        "提交",
+        "创建",
+        "重提",
+        "删除",
+        "停止",
+        "重启",
+        "扩容",
+        "缩容",
+        "训练",
+        "jupyter",
+        "webide",
+        "资源",
+        "配置",
+        "模型",
+        "llama",
+        "deepspeed",
+        "pvc",
+        "rdma",
+        "容量",
+        "异常",
+        "失败",
+        "正常吗",
+        "帮我",
+    )
+    return any(token in normalized for token in generic_help_tokens) and not any(
+        token in normalized for token in task_tokens
+    )
 
 
 def _resolve_job_selection_reply(
@@ -263,6 +467,22 @@ def _extract_deterministic_hints(
         complexity = "simple"
         confidence = max(confidence, 0.8)
 
+    # 5. K8s workload scaling is a write operation even if the target is
+    # supplied by page context rather than a jobName-style identifier.
+    if _looks_like_scale_write_intent(user_message):
+        entry_mode = "agent"
+        operation_mode = "write"
+        requested_action = "scale"
+        complexity = "complex"
+        confidence = max(confidence, 0.78)
+    elif _looks_like_admin_write_intent(user_message):
+        entry_mode = "agent"
+        operation_mode = "write"
+        complexity = "complex"
+        confidence = max(confidence, 0.78)
+        if any(token in str(user_message or "").strip().lower() for token in ("隔离", "isolate", "taint")):
+            requested_action = "node_isolation"
+
     return RoutingDecision(
         entry_mode=entry_mode,
         operation_mode=operation_mode,
@@ -318,13 +538,24 @@ class IntentRouter:
 
         # LLM classification for ambiguous requests
         try:
-            return await self._classify_with_llm(
+            classified = await self._classify_with_llm(
                 user_message=user_message,
                 page_context=page_context,
                 actor_role=actor_role,
                 history_context=history_context,
                 deterministic_hints=hints,
             )
+            if classified.entry_mode in {"simple", "help"} and not is_strict_toolless_fast_path_candidate(
+                user_message=user_message,
+                page_context=page_context,
+                routing=classified,
+            ):
+                classified.entry_mode = "agent"
+                if classified.complexity == "simple":
+                    classified.complexity = "normal"
+                if classified.confidence < 0.6:
+                    classified.confidence = 0.6
+            return classified
         except Exception:
             logger.exception("IntentRouter LLM classification failed, using hints")
             # Fallback: ambiguous → agent mode
@@ -340,9 +571,6 @@ class IntentRouter:
         resume_context: dict[str, Any],
         clarification_context: dict[str, Any],
     ) -> bool:
-        if hints.entry_mode == "help" and hints.complexity == "simple" and hints.confidence >= 0.75:
-            return True
-
         if resume_context and hints.requested_action:
             return True
 
@@ -396,23 +624,27 @@ class IntentRouter:
                 "你是意图路由器。分析用户请求，判断：\n"
                 "1. entry_mode: 'simple'（问候/闲聊/无需工具的极简单答复）、'help'（纯帮助/文档/概念解释）或 'agent'（需要工具/数据/操作）\n"
                 "2. operation_mode: 'read'（查询/诊断/查看）, 'write'（创建/停止/删除/重提交）, 'unknown'\n"
-                "3. requested_action: 具体操作名（resubmit/stop/delete/create），无则 null\n"
+                "3. requested_action: 具体操作名（resubmit/stop/delete/create/scale），无则 null\n"
                 "4. complexity: 'simple'（不需要 MAS 循环）、'normal'、'complex'（多轮/多工具/故障诊断/写操作）\n"
                 "5. confidence: 0.0-1.0\n\n"
                 "关键原则：\n"
                 "- '集群资源如何'、'当前作业情况'、'节点状态' → agent + read（需要工具查数据）\n"
                 "- '怎么创建作业'、'在哪看日志' → help（纯文档指引）\n"
-                "- '重提/停止/删除 xxx' → agent + write + 对应 action\n"
+                "- '重提/停止/删除/扩容/缩容 xxx' → agent + write + 对应 action\n"
+                "- 'rollout 卡在哪'、'有没有带 DeepSpeed 的镜像'、'LLaMA-7B 应该用什么配置'、'这个配置能不能提交'、'现在正常吗' 这类请求都不是 help，而是 agent；因为它们依赖平台实时工具结果\n"
+                "- '我需要 8 张 A100 做分布式训练，要怎么配置？最好给我一个完整的提交配置' 也不是 help，而是 agent；这类问题需要结合实时配额、模板、镜像或容量信息，不能只做页面导航\n"
                 "- 纯问候、感谢、无平台数据依赖的极简单问题 → simple + unknown + simple，直接交 General，不进入 MAS 循环\n"
                 "- 帮助/文档/概念解释 → help + unknown + simple，交 Guide/General，不进入 MAS 循环\n"
                 "- 需要实时平台数据、工具结果、诊断、写操作或多步推理 → agent\n"
+                "- 只要用户问题是在问某个对象“现在怎样/是否存在/该怎么配/能不能做”，且平台工具能直接核实，就必须判为 agent，不要输出页面导航式帮助\n"
+                "- 如果页面上下文已在新建作业/提交配置页，而用户在问推荐配置、镜像是否存在、某种 GPU 怎么配、能不能提交、给我完整配置，默认判为 agent，不要判成 help\n"
                 "- 如果当前输入是在追问、纠正、补充或质疑上一轮回答，要结合近期对话理解，但不要继承未经工具证实的旧结论\n"
                 "- 普通问答、概念解释、怎么做、去哪做，优先根据历史和页面上下文理解，不要被孤立关键词误导\n"
                 "- deterministic hints 只是上下文提示，不是必须采纳的最终结论；若与当前 message 和 history 不一致，以整体语义为准\n"
                 "- 模糊且涉及业务数据/平台状态/实际对象的请求，默认 agent + unknown\n\n"
                 "输出 JSON:\n"
                 '{"entry_mode": "simple|help|agent", "operation_mode": "read|write|unknown", '
-                '"requested_action": "resubmit|stop|delete|create|null", '
+                '"requested_action": "resubmit|stop|delete|create|scale|node_isolation|null", '
                 '"complexity": "simple|normal|complex", '
                 '"confidence": 0.8, "rationale": "简短理由"}\n'
             ),
@@ -451,7 +683,14 @@ class IntentRouter:
         requested_action = str(result.get("requested_action") or "").strip().lower() or None
         if requested_action in {"null", "none", ""}:
             requested_action = None
-        if requested_action and requested_action not in {"resubmit", "stop", "delete", "create"}:
+        if requested_action and requested_action not in {
+            "resubmit",
+            "stop",
+            "delete",
+            "create",
+            "scale",
+            "node_isolation",
+        }:
             requested_action = None
 
         complexity = str(result.get("complexity") or fallback.complexity or "normal").strip().lower()
@@ -467,7 +706,7 @@ class IntentRouter:
         # Merge with deterministic hints (deterministic targets take precedence)
         targets = fallback.targets
         preserve_hint_bias = fallback.confidence >= 0.75
-        if preserve_hint_bias and fallback.entry_mode in {"simple", "help"} and not requested_action:
+        if preserve_hint_bias and fallback.entry_mode == "simple" and not requested_action:
             entry_mode = fallback.entry_mode
             operation_mode = fallback.operation_mode
             complexity = fallback.complexity

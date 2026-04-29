@@ -179,6 +179,7 @@ class StateView:
     plan: PlanArtifact | None = None
     execution: ExecutionArtifact | None = None
     compact_evidence: list[dict[str, Any]] = field(default_factory=list)
+    decision_context: dict[str, Any] = field(default_factory=dict)
     loop_round: int = 0
     max_rounds: int = 6
 
@@ -223,5 +224,11 @@ class StateView:
         if self.compact_evidence:
             import json
             parts.append(f"\n工具调用原始结果:\n{json.dumps(self.compact_evidence, ensure_ascii=False, indent=None)}")
+        if self.decision_context:
+            import json
+            parts.append(
+                "\nCoordinator 决策上下文:\n"
+                f"{json.dumps(self.decision_context, ensure_ascii=False, indent=None)}"
+            )
         parts.append(f"\n当前轮次: {self.loop_round}/{self.max_rounds}")
         return "\n".join(parts)

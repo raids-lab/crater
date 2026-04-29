@@ -1115,7 +1115,11 @@ def cordon_node(node_name: str, reason: Optional[str] = None) -> dict:
 
 @tool
 def uncordon_node(node_name: str, reason: Optional[str] = None) -> dict:
-    """恢复节点调度。需要管理员确认。"""
+    """恢复节点调度。需要管理员确认。
+
+    调用前宜先用只读工具确认节点仍处于 Ready，且导致隔离的关键风险（如网络/RDMA 异常）已经解除；
+    不要仅凭用户口头描述直接进入恢复调度。
+    """
     pass
 
 
@@ -1192,14 +1196,15 @@ def delete_job(job_name: str) -> dict:
 def create_jupyter_job(
     name: str = "",
     image_link: str = "",
-    cpu: str = "2",
-    memory: str = "8Gi",
+    cpu: str = "4",
+    memory: str = "16Gi",
     gpu_count: Optional[int] = None,
     gpu_model: Optional[str] = None,
     forwards: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
     """创建一个 Jupyter 交互式作业，需要用户确认。
     若部分字段缺失，系统可通过确认表单让用户补全。
+    但若模板默认值、配额或镜像匹配关系尚未核实，宜先补相关只读证据，不要直接猜资源参数。
 
     Args:
         name: 作业显示名称（对应后端 Job.Name），可先留空交给确认表单补全
@@ -1217,14 +1222,15 @@ def create_jupyter_job(
 def create_webide_job(
     name: str = "",
     image_link: str = "",
-    cpu: str = "2",
-    memory: str = "8Gi",
+    cpu: str = "4",
+    memory: str = "16Gi",
     gpu_count: Optional[int] = None,
     gpu_model: Optional[str] = None,
     forwards: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
     """创建一个 WebIDE 交互式作业，需要用户确认。
     若部分字段缺失，系统可通过确认表单让用户补全。
+    但若模板默认值、配额或镜像匹配关系尚未核实，宜先补相关只读证据，不要直接猜资源参数。
 
     Args:
         name: 作业显示名称

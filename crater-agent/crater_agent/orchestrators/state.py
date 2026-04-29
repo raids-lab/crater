@@ -13,6 +13,86 @@ from crater_agent.tools.tool_selector import (
 )
 
 
+def _normalize_source_turn_event(event: dict[str, Any]) -> dict[str, Any] | None:
+    event_type = str(event.get("event_type") or event.get("eventType") or "").strip()
+    if not event_type:
+        return None
+    metadata = event.get("metadata") if isinstance(event.get("metadata"), dict) else {}
+    content = str(event.get("content") or metadata.get("content") or metadata.get("summary") or "").strip()
+    if not content:
+        if result_summary := str(metadata.get("resultSummary") or "").strip():
+            content = result_summary
+        elif description := str(metadata.get("description") or "").strip():
+            content = description
+    role = "assistant"
+    prefix = event_type
+    if event_type.startswith("tool_call"):
+        role = "tool"
+        tool_name = str(metadata.get("toolName") or metadata.get("action") or event.get("title") or "").strip()
+        status = str(event.get("status") or metadata.get("status") or "").strip()
+        parts = [f"event={event_type}"]
+        if tool_name:
+            parts.append(f"tool={tool_name}")
+        if status:
+            parts.append(f"status={status}")
+        if metadata.get("toolArgs") is not None:
+            parts.append(f"args={metadata.get('toolArgs')}")
+        if content:
+            parts.append(f"result={content}")
+        content = " ; ".join(parts)
+    else:
+        agent_role = str(event.get("agent_role") or metadata.get("agentRole") or "").strip()
+        if agent_role:
+            prefix = f"{event_type}/{agent_role}"
+        content = f"[{prefix}] {content}" if content else f"[{prefix}]"
+    if not content:
+        return None
+    return {
+        "role": role,
+        "content": content,
+        "tool_call_id": str(metadata.get("toolCallId") or metadata.get("tool_call_id") or "").strip(),
+    }
+
+
+def _source_turn_history_from_continuation(continuation: dict[str, Any]) -> list[dict[str, Any]]:
+    source_context = continuation.get("source_turn_context")
+    if not isinstance(source_context, dict):
+        resume = continuation.get("resume_after_confirmation")
+        source_context = resume.get("source_turn_context") if isinstance(resume, dict) else None
+    if not isinstance(source_context, dict):
+        return []
+    events = source_context.get("events")
+    if not isinstance(events, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for item in events:
+        if isinstance(item, dict):
+            event = _normalize_source_turn_event(item)
+            if event:
+                normalized.append(event)
+    return normalized
+
+
+def _source_turn_context_from_continuation(continuation: dict[str, Any]) -> dict[str, Any]:
+    source_context = continuation.get("source_turn_context")
+    if isinstance(source_context, dict):
+        return source_context
+    resume = continuation.get("resume_after_confirmation")
+    if isinstance(resume, dict) and isinstance(resume.get("source_turn_context"), dict):
+        return resume["source_turn_context"]
+    return {}
+
+
+def _tool_signature(tool_name: str, tool_args: dict[str, Any]) -> str:
+    import json
+
+    try:
+        args = json.dumps(tool_args or {}, ensure_ascii=False, sort_keys=True)
+    except TypeError:
+        args = str(tool_args or {})
+    return f"{tool_name}:{args}"
+
+
 @dataclass
 class MultiAgentUsageSummary:
     """Runtime usage summary tracked across a multi-agent turn."""
@@ -161,6 +241,34 @@ class MultiAgentToolRecord:
     tool_call_id: str
     result: dict[str, Any] | None = None
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "agent_id": self.agent_id,
+            "agent_role": self.agent_role,
+            "tool_name": self.tool_name,
+            "tool_args": dict(self.tool_args),
+            "tool_call_id": self.tool_call_id,
+            "result": self.result,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any] | None) -> MultiAgentToolRecord | None:
+        if not isinstance(payload, dict):
+            return None
+        tool_name = str(payload.get("tool_name") or "").strip()
+        tool_call_id = str(payload.get("tool_call_id") or "").strip()
+        if not tool_name or not tool_call_id:
+            return None
+        tool_args = payload.get("tool_args") if isinstance(payload.get("tool_args"), dict) else {}
+        return cls(
+            agent_id=str(payload.get("agent_id") or "").strip(),
+            agent_role=str(payload.get("agent_role") or "").strip(),
+            tool_name=tool_name,
+            tool_args=tool_args,
+            tool_call_id=tool_call_id,
+            result=payload.get("result") if isinstance(payload.get("result"), dict) else None,
+        )
+
 
 @dataclass
 class MASRuntimeConfig:
@@ -232,8 +340,9 @@ class MASState:
     attempted_tool_signatures: list[str] = field(default_factory=list)
     controller_trace: list[dict[str, Any]] = field(default_factory=list)
 
-    # Confirmation
-    pending_confirmation: dict[str, Any] | None = None
+    # Confirmations waiting for user approval. A single confirmation is stored
+    # as a one-item list so MAS uses the same shape as the single-agent graph.
+    pending_confirmations: list[dict[str, Any]] = field(default_factory=list)
 
     # Clarification (from previous turn's final_answer continuation)
     clarification_context: dict[str, Any] = field(default_factory=dict)
@@ -249,6 +358,11 @@ class MASState:
             or continuation.get("workflow")
             or {}
         )
+        original_user_message = (
+            str(workflow.get("original_user_message") or "").strip()
+            or str(resume_context.get("original_user_message") or "").strip()
+            or str(continuation.get("original_user_message") or "").strip()
+        )
         actor = dict(context.get("actor") or {})
         page_context = dict(context.get("page") or {})
         actor_role = _resolve_actor_role(context)
@@ -257,7 +371,7 @@ class MASState:
         # Build initial goal (routing will be set by IntentRouter)
         goal = GoalArtifact(
             user_message=request.message,
-            original_user_message=str(workflow.get("original_user_message") or "").strip() or request.message,
+            original_user_message=original_user_message or request.message,
             actor_role=actor_role,
             page_context=page_context,
         )
@@ -273,9 +387,25 @@ class MASState:
             resume_context=resume_context,
             clarification_context=dict(continuation.get("clarification") or {}),
         )
+        if resume_context:
+            source_history = _source_turn_history_from_continuation(continuation)
+            if source_history:
+                state.history.extend(source_history)
 
         # Restore from checkpoint if resuming
         state._restore_from_workflow(workflow)
+        if resume_context:
+            state._restore_source_turn_tool_context(
+                _source_turn_context_from_continuation(continuation)
+            )
+        if resume_context and not state.pending_confirmations:
+            pending_confirmations = continuation.get("pending_confirmations")
+            if isinstance(pending_confirmations, list):
+                state.pending_confirmations = [
+                    item for item in pending_confirmations if isinstance(item, dict)
+                ]
+            elif isinstance(continuation.get("pending_confirmation"), dict):
+                state.pending_confirmations = [continuation["pending_confirmation"]]
 
         return state
 
@@ -316,6 +446,13 @@ class MASState:
             for item in (workflow.get("attempted_tool_signatures") or [])
             if str(item).strip()
         ]
+        self.tool_records = [
+            record for record in (
+                MultiAgentToolRecord.from_dict(item)
+                for item in (workflow.get("tool_records") or [])
+            )
+            if record is not None
+        ]
         self.actions = [
             action for action in (
                 MultiAgentActionItem.from_dict(item)
@@ -323,6 +460,91 @@ class MASState:
             )
             if action is not None
         ]
+        pending_confirmations = workflow.get("pending_confirmations")
+        if isinstance(pending_confirmations, list):
+            self.pending_confirmations = [
+                item for item in pending_confirmations if isinstance(item, dict)
+            ]
+        elif isinstance(workflow.get("pending_confirmation"), dict):
+            self.pending_confirmations = [workflow["pending_confirmation"]]
+
+    def _restore_source_turn_tool_context(self, source_context: dict[str, Any]) -> None:
+        if not isinstance(source_context, dict):
+            return
+        tool_calls = source_context.get("tool_calls")
+        if not isinstance(tool_calls, list):
+            return
+
+        existing_tool_call_ids = {
+            record.tool_call_id for record in self.tool_records if record.tool_call_id
+        }
+        existing_signatures = set(self.attempted_tool_signatures)
+        existing_action_confirm_ids = {
+            str(item.get("confirm_id") or "").strip()
+            for item in self.action_history
+            if isinstance(item, dict)
+        }
+        for index, item in enumerate(tool_calls, start=1):
+            if not isinstance(item, dict):
+                continue
+            tool_name = str(item.get("tool_name") or item.get("toolName") or "").strip()
+            if not tool_name:
+                continue
+            tool_args = item.get("tool_args") if isinstance(item.get("tool_args"), dict) else {}
+            tool_call_id = str(
+                item.get("tool_call_id")
+                or item.get("toolCallId")
+                or f"source-turn-tool-{index}"
+            ).strip()
+            signature = _tool_signature(tool_name, tool_args)
+            if signature not in existing_signatures:
+                self.attempted_tool_signatures.append(signature)
+                existing_signatures.add(signature)
+
+            result_status = str(item.get("result_status") or item.get("resultStatus") or "").strip()
+            result = item.get("result") if isinstance(item.get("result"), dict) else {}
+            if result_status in {"success", "completed", "error", "failed"} and tool_call_id not in existing_tool_call_ids:
+                self.tool_records.append(
+                    MultiAgentToolRecord(
+                        agent_id=str(item.get("agent_id") or item.get("agentId") or "").strip(),
+                        agent_role=str(item.get("agent_role") or item.get("agentRole") or "").strip(),
+                        tool_name=tool_name,
+                        tool_args=tool_args,
+                        tool_call_id=tool_call_id,
+                        result=result,
+                    )
+                )
+                existing_tool_call_ids.add(tool_call_id)
+
+            confirm_id = str(item.get("id") or item.get("confirm_id") or item.get("confirmId") or "").strip()
+            if (
+                result_status in {"success", "completed", "error", "failed", "rejected"}
+                and confirm_id
+                and confirm_id not in existing_action_confirm_ids
+            ):
+                action = next((a for a in self.actions if a.confirm_id == confirm_id), None)
+                if action is None:
+                    action = next(
+                        (
+                            a for a in self.actions
+                            if a.tool_name == tool_name and a.tool_args == tool_args
+                        ),
+                        None,
+                    )
+                self.action_history.append({
+                    "action_id": action.action_id if action else "",
+                    "tool_name": tool_name,
+                    "tool_args": tool_args,
+                    "title": action.title if action else "",
+                    "reason": action.reason if action else "source_turn_tool_call",
+                    "status": "completed" if result_status == "success" else result_status,
+                    "confirmed": item.get("confirmed"),
+                    "confirm_id": confirm_id,
+                    "result": result,
+                })
+                existing_action_confirm_ids.add(confirm_id)
+
+        self.usage_summary.evidence_items = len(self.tool_records)
 
     @property
     def enabled_tools(self) -> list[str]:
@@ -483,8 +705,18 @@ class MASState:
         return frontier
 
     def build_workflow_checkpoint(self) -> dict[str, Any]:
+        awaiting_action_ids = [
+            action.action_id
+            for action in self.actions
+            if action.status == "awaiting_confirmation"
+        ]
+        pending_confirmation_ids = [
+            action.confirm_id
+            for action in self.actions
+            if action.status == "awaiting_confirmation" and action.confirm_id
+        ]
         return {
-            "version": 3,
+            "version": 5,
             "original_user_message": self.goal.original_user_message,
             "routing": self.goal.routing.to_dict(),
             "observation": self.observation.to_dict() if self.observation else None,
@@ -499,14 +731,65 @@ class MASState:
             "action_history": list(self.action_history),
             "controller_trace": list(self.controller_trace),
             "attempted_tool_signatures": list(self.attempted_tool_signatures),
+            "tool_records": [record.to_dict() for record in self.tool_records],
+            "pending_confirmations": list(self.pending_confirmations),
+            "current_action_ids": awaiting_action_ids,
+            "pending_confirmation_ids": pending_confirmation_ids,
         }
 
     def apply_resume_outcome(self) -> dict[str, Any] | None:
         if not self.resume_context:
             return None
-        confirm_id = str(self.resume_context.get("confirm_id") or "").strip()
-        result_status = str(self.resume_context.get("result_status") or "").strip() or "completed"
-        result = self.resume_context.get("result")
+
+        outcomes = self.resume_context.get("confirmation_results")
+        if not isinstance(outcomes, list) or not outcomes:
+            outcomes = [self.resume_context]
+        outcomes = self._order_resume_outcomes(outcomes)
+
+        applied: list[dict[str, Any]] = []
+        for outcome in outcomes:
+            if not isinstance(outcome, dict):
+                continue
+            applied_action = self._apply_single_resume_outcome(outcome)
+            if applied_action:
+                applied.append(applied_action)
+        return applied[-1] if applied else None
+
+    def _order_resume_outcomes(self, outcomes: list[Any]) -> list[dict[str, Any]]:
+        clean = [outcome for outcome in outcomes if isinstance(outcome, dict)]
+        if len(clean) <= 1:
+            return clean
+        confirm_rank = {
+            action.confirm_id: index
+            for index, action in enumerate(self.actions)
+            if action.confirm_id
+        }
+        action_rank = {
+            action.action_id: index
+            for index, action in enumerate(self.actions)
+            if action.action_id
+        }
+
+        def rank(outcome: dict[str, Any]) -> int:
+            confirm_id = str(outcome.get("confirm_id") or "").strip()
+            if confirm_id and confirm_id in confirm_rank:
+                return confirm_rank[confirm_id]
+            action_id = str(outcome.get("action_id") or "").strip()
+            if action_id and action_id in action_rank:
+                return action_rank[action_id]
+            tool_name = str(outcome.get("tool_name") or "").strip()
+            tool_args = outcome.get("tool_args") if isinstance(outcome.get("tool_args"), dict) else {}
+            for index, action in enumerate(self.actions):
+                if action.tool_name == tool_name and action.tool_args == tool_args:
+                    return index
+            return 1 << 20
+
+        return sorted(clean, key=rank)
+
+    def _apply_single_resume_outcome(self, outcome: dict[str, Any]) -> dict[str, Any] | None:
+        confirm_id = str(outcome.get("confirm_id") or "").strip()
+        result_status = str(outcome.get("result_status") or "").strip() or "completed"
+        result = outcome.get("result")
         if not isinstance(result, dict):
             result = {"result": result} if result is not None else {}
 
@@ -525,11 +808,20 @@ class MASState:
                 action.status = "rejected"
             else:
                 action.status = "error"
+            self.pending_confirmations = [
+                item for item in self.pending_confirmations
+                if str((item.get("confirmation") or {}).get("confirm_id") or "").strip() != action.confirm_id
+            ]
             if not any(
                 str(item.get("confirm_id") or "").strip() == action.confirm_id and action.confirm_id
                 for item in self.action_history
             ):
-                self.record_action_result(action=action, result_status=action.status, result=result, confirmed=self.resume_context.get("confirmed"))
+                self.record_action_result(
+                    action=action,
+                    result_status=action.status,
+                    result=result,
+                    confirmed=outcome.get("confirmed"),
+                )
             return {
                 "action_id": action.action_id,
                 "tool_name": action.tool_name,
