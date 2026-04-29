@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { Trash2Icon } from 'lucide-react'
 import { motion } from 'motion/react'
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -94,11 +94,27 @@ export default function DataList({
 }) {
   const { t } = useTranslation()
   const [sort, setSort] = useState('descending')
-  const [sortField, setSortField] = useState<'createdAt' | 'mountCount'>('mountCount')
+  const hasMountCount = useMemo(() => items.some((item) => item.mountCount !== undefined), [items])
+  const [sortField, setSortField] = useState<'createdAt' | 'mountCount'>(
+    hasMountCount ? 'mountCount' : 'createdAt'
+  )
+  const [sortFieldManuallyChanged, setSortFieldManuallyChanged] = useState(false)
   const [modelType, setModelType] = useState('所有标签')
   const [searchTerm, setSearchTerm] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('所有') // 修改默认值为"所有"
   const user = useAtomValue(atomUserInfo)
+
+  useEffect(() => {
+    const nextDefaultSortField = hasMountCount ? 'mountCount' : 'createdAt'
+
+    if (!sortFieldManuallyChanged && sortField !== nextDefaultSortField) {
+      setSortField(nextDefaultSortField)
+    }
+
+    if (!hasMountCount && sortField === 'mountCount') {
+      setSortField('createdAt')
+    }
+  }, [hasMountCount, sortField, sortFieldManuallyChanged])
 
   const tags = useMemo(() => {
     const tags = new Set<string>()
@@ -207,14 +223,19 @@ export default function DataList({
         <div className="flex items-center gap-2">
           <Select
             value={sortField}
-            onValueChange={(value) => setSortField(value as 'createdAt' | 'mountCount')}
+            onValueChange={(value) => {
+              setSortFieldManuallyChanged(true)
+              setSortField(value as 'createdAt' | 'mountCount')
+            }}
           >
             <SelectTrigger className="min-w-28">
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
               <SelectItem value="createdAt">{t('dataList.sortField.createdAt')}</SelectItem>
-              <SelectItem value="mountCount">{t('dataList.sortField.mountCount')}</SelectItem>
+              {hasMountCount && (
+                <SelectItem value="mountCount">{t('dataList.sortField.mountCount')}</SelectItem>
+              )}
             </SelectContent>
           </Select>
           <Select value={sort} onValueChange={setSort}>
@@ -341,10 +362,13 @@ export default function DataList({
                   {item.mountCount !== undefined && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium">
+                        <span
+                          className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
+                          tabIndex={0}
+                        >
                           <BarChart3Icon className="size-4" />
                           <span>{item.mountCount}</span>
-                        </div>
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{t('dataList.mountCountTooltip')}</p>
