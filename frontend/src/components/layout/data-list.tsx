@@ -362,13 +362,14 @@ export default function DataList({
                   {item.mountCount !== undefined && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span
+                        <button
+                          type="button"
+                          aria-label={t('dataList.mountCount', { count: item.mountCount })}
                           className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
-                          tabIndex={0}
                         >
-                          <BarChart3Icon className="size-4" />
+                          <BarChart3Icon className="size-4" aria-hidden="true" />
                           <span>{item.mountCount}</span>
-                        </span>
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>{t('dataList.mountCountTooltip')}</p>
