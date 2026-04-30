@@ -141,8 +141,8 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
 
             <Separator className="mt-6" />
 
-            <div className="mt-6 grid grid-cols-2 gap-x-8">
-              <div className="col-span-1">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-8">
+              <div>
                 <div className="flex items-center">
                   <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
                     <HardDriveIcon className="size-4" />
@@ -153,7 +153,7 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                   </Badge>
                 </div>
               </div>
-              <div className="col-span-1">
+              <div>
                 <div className="flex items-center">
                   <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
                     <ServerIcon className="size-4" />
@@ -228,8 +228,8 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                 </div>
               )}
             </div>
-            <div className="flex flex-1 flex-col justify-center gap-4 pl-6">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-1 flex-col justify-center gap-4 pl-0 sm:pl-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
                     {t('nodeDetail.info.architecture')}
@@ -299,7 +299,7 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                      <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
                         {[
                           {
                             icon: Cable,

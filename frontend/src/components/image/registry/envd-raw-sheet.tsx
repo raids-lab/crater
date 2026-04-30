@@ -217,7 +217,7 @@ def build():
             description={`为镜像添加标签，以便分类和搜索`}
             customTags={allImageTags}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               control={form.control}
               name="imageName"

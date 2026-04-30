@@ -100,7 +100,7 @@ const Quota = () => {
 
   return (
     <div
-      className={cn('grid grid-cols-2 gap-4', {
+      className={cn('grid grid-cols-1 gap-4 sm:grid-cols-2', {
         'md:grid-cols-3': quota?.gpus?.length === 1,
         'md:grid-cols-4': quota?.gpus?.length !== 1,
       })}

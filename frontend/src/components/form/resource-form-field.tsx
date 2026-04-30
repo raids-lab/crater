@@ -161,7 +161,7 @@ export function ResourceFormFields<T extends FieldValues>({
 
   return (
     <>
-      <div className="grid grid-cols-3 items-start gap-3">
+      <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-3">
         <FormField
           control={form.control}
           name={cpuPath}

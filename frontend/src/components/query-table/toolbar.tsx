@@ -61,11 +61,11 @@ export function DataTableToolbar<TData>({
     (globalSearch?.enabled && Boolean(table.getState().globalFilter))
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-row items-center space-x-2">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
         {children}
         {(globalSearch?.enabled || filterInput) && (
-          <div className="relative ml-auto h-9 flex-1 md:grow-0">
+          <div className="relative h-9 w-full min-w-0 sm:ml-auto sm:w-auto sm:flex-none">
             <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
             {globalSearch?.enabled && (
               <Input
@@ -74,7 +74,7 @@ export function DataTableToolbar<TData>({
                 }
                 value={table.getState().globalFilter || ''}
                 onChange={(event) => table.setGlobalFilter(event.target.value)}
-                className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
+                className="bg-background h-9 w-full min-w-0 pl-8 sm:w-[150px] lg:w-[250px]"
               />
             )}
             {filterInput && (
@@ -84,7 +84,7 @@ export function DataTableToolbar<TData>({
                 onChange={(event) =>
                   table.getColumn(filterInput.key)?.setFilterValue(event.target.value)
                 }
-                className="bg-background h-9 w-[150px] pl-8 lg:w-[250px]"
+                className="bg-background h-9 w-full min-w-0 pl-8 sm:w-[150px] lg:w-[250px]"
               />
             )}
           </div>
@@ -119,7 +119,9 @@ export function DataTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <DataTableViewOptions table={table} getHeader={getHeader} />
+      <div className="shrink-0 self-start sm:self-auto">
+        <DataTableViewOptions table={table} getHeader={getHeader} />
+      </div>
     </div>
   )
 }

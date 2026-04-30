@@ -147,8 +147,8 @@ export function DataTablePagination<TData>({
   }
 
   return (
-    <div className="flex w-full items-center justify-between">
-      <div className="flex flex-row items-center space-x-1.5 text-xs">
+    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
         {table.getFilteredSelectedRowModel().rows.length > 0 &&
           multipleHandlers &&
           multipleHandlers?.length > 0 &&
@@ -217,7 +217,7 @@ export function DataTablePagination<TData>({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground pl-1.5 font-medium">
+        <p className="text-muted-foreground min-w-0 pl-1.5 font-medium">
           {t('dataTablePagination.updatedAt', { time: updatedAt })}
           {', '}
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
@@ -236,8 +236,8 @@ export function DataTablePagination<TData>({
           )}
         </p>
       </div>
-      <div className="flex items-center space-x-6">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center sm:space-x-6">
+        <div className="flex max-w-full items-center overflow-x-auto sm:space-x-2">
           <Pagination>
             <PaginationContent>
               {/* Previous button */}

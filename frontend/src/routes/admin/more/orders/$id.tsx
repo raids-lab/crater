@@ -505,15 +505,15 @@ function RouteComponent() {
             <DialogTitle>拒绝工单</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="rejection-reason" className="text-right">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <Label htmlFor="rejection-reason" className="sm:text-right">
                 拒绝理由
               </Label>
               <Input
                 id="rejection-reason"
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                className="col-span-3"
+                className="sm:col-span-3"
                 placeholder="例如：资源不足"
                 disabled={rejectMutation.isPending}
               />

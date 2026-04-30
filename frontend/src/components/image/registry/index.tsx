@@ -480,7 +480,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         }
       >
         {!isAdminMode ? (
-          <div className="flex flex-row gap-3">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
             <DocsButton title="查看文档" url="image/imageCreate" />
             <ListedButton
               icon={<PackagePlusIcon />}
@@ -520,7 +520,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             />
           </div>
         ) : (
-          <div className="flex flex-row gap-3">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
             <Button onClick={() => setOpenCudaBaseImageSheet(true)} variant="default">
               <DatabaseIcon />
               导入CUDA Base镜像

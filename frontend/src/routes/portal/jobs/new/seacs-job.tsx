@@ -315,8 +315,8 @@ function RouteComponent() {
           onSubmit={form.handleSubmit(onSubmit)}
           className="grid flex-1 items-start gap-4 md:col-span-3 md:gap-x-6 lg:grid-cols-3"
         >
-          <div className="items-centor flex flex-row justify-between lg:col-span-3">
-            <div className="flex flex-row items-center gap-3">
+          <div className="items-centor flex flex-col gap-3 sm:flex-row sm:justify-between lg:col-span-3">
+            <div className="flex min-w-0 flex-row items-center gap-3">
               <Button
                 variant="outline"
                 size="icon"
@@ -326,11 +326,11 @@ function RouteComponent() {
               >
                 <ChevronLeftIcon className="size-4" />
               </Button>
-              <h1 className="flex-1 shrink-0 text-xl font-semibold tracking-tight whitespace-nowrap sm:grow-0">
+              <h1 className="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight sm:grow-0 sm:whitespace-nowrap">
                 训练作业
               </h1>
             </div>
-            <div className="flex flex-row gap-3">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
               <Button variant="outline" type="button" className="relative cursor-pointer">
                 <Input
                   onChange={(e) => {
@@ -451,7 +451,7 @@ function RouteComponent() {
                   </FormItem>
                 )}
               /> */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="task.resource.cpu"
@@ -518,7 +518,7 @@ function RouteComponent() {
                   )}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="macs"
@@ -636,7 +636,7 @@ function RouteComponent() {
                   </Button>
                 </div>
                 {analyze && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <Card>
                       <CardHeader className="pt-4 pb-3">
                         <CardTitle icon={CpuIcon}>P100 资源占用预测</CardTitle>

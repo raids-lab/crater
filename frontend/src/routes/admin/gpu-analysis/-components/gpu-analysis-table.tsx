@@ -208,7 +208,7 @@ const DetailsHoverCard = ({
   return (
     <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>{children}</HoverCardTrigger>
-      <HoverCardContent className="w-[500px]" side="top" align="start">
+      <HoverCardContent className="w-[calc(100vw-2rem)] sm:w-[500px]" side="top" align="start">
         <div className="grid max-h-[55vh] w-full gap-4 overflow-x-hidden overflow-y-auto p-1">
           <div className="space-y-2">
             <h4 className="text-sm font-medium">{t('gpuAnalysis.detailsDialog.commandTitle')}</h4>

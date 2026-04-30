@@ -385,7 +385,7 @@ function RouteComponent() {
             className="lg:col-span-3"
             tipContent={`版本 ${MetadataFormPytorch.version}`}
           >
-            <div className="items-centor flex w-fit flex-row justify-end gap-3">
+            <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
               <FormImportButton
                 metadata={MetadataFormPytorch}
                 form={form}

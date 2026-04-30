@@ -124,13 +124,13 @@ export default function DataList({
       >
         {actionArea}
       </PageTitle>
-      <div className="my-4 flex items-end justify-between sm:my-0 sm:items-center">
-        <div className="flex flex-col gap-4 sm:my-4 sm:flex-row">
-          <div className="relative ml-auto h-9 flex-1 md:grow-0">
+      <div className="my-4 flex flex-col gap-3 sm:my-0 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:my-4 sm:w-auto sm:flex-row sm:flex-nowrap sm:items-center">
+          <div className="relative h-9 w-full min-w-0 sm:ml-auto sm:w-auto sm:flex-none">
             <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
             <Input
               placeholder={`搜索${title}...`}
-              className="h-9 w-40 pl-8 lg:w-[250px]"
+              className="h-9 w-full min-w-0 pl-8 sm:w-40 lg:w-[250px]"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -189,7 +189,7 @@ export default function DataList({
       {filteredItems.length === 0 ? (
         <Nothing />
       ) : (
-        <ul className="faded-bottom no-scrollbar grid gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="faded-bottom no-scrollbar grid min-w-0 gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
           {filteredItems.map((item, index) => (
             <motion.li
               key={item.name}
@@ -197,9 +197,9 @@ export default function DataList({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
               whileHover={{ y: -5 }}
-              className="bg-card flex flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
+              className="bg-card flex min-w-0 flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
             >
-              <div className="flex flex-row items-center justify-between p-4 pb-0">
+              <div className="flex min-w-0 flex-row items-center justify-between gap-2 p-4 pb-0">
                 {mainArea ? <>{mainArea(item)}</> : <></>}
                 {user?.name === item.owner.username && (
                   <AlertDialog>

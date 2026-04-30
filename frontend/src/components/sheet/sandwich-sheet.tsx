@@ -109,7 +109,7 @@ export const SandwichLayout = ({
         </ScrollArea>
       </div>
       {footer && (
-        <SheetFooter className="absolute right-0 bottom-0 left-0 h-auto flex-row justify-end gap-2 p-6">
+        <SheetFooter className="absolute right-0 bottom-0 left-0 h-auto flex-col-reverse gap-2 p-6 sm:flex-row sm:justify-end">
           {footer}
         </SheetFooter>
       )}

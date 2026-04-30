@@ -99,7 +99,7 @@ export function Refresh({ icon, title }: { icon: ReactNode; title: string }) {
         <CardContent className="space-y-4">
           {data && data.fullURL && <CopyableCommand label={title} isLink command={data.fullURL} />}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button onClick={handleRefresh}>
               <RefreshCw className="h-4 w-4 animate-spin" />
               立即刷新页面

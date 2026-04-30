@@ -106,7 +106,11 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
             <TooltipLink
               {...getLinkOptions(sourceType || 'dataset')}
               params={{ id: `${item.id}` }}
-              name={<p className="max-w-[400px] truncate text-left font-semibold">{item.name}</p>}
+              name={
+                <p className="max-w-full truncate text-left font-semibold sm:max-w-[400px]">
+                  {item.name}
+                </p>
+              }
               tooltip={`查看${sourceTitle}详情`}
               className="min-w-0"
             />
@@ -114,7 +118,7 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
         )
       }}
       actionArea={
-        <div className="flex flex-row gap-3">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
           {!isShareFile && (
             <Link
               to={

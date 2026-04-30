@@ -190,7 +190,7 @@ function LoginPage() {
       {/* 右侧表单部分 */}
       <div className="flex items-center justify-center py-12">
         {showSignup && selectedMode === AuthMode.NORMAL ? (
-          <div className="mx-auto w-[350px] space-y-6">
+          <div className="mx-auto w-full max-w-[350px] space-y-6 px-4 sm:px-0">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户注册</h1>
               <p className="text-muted-foreground text-sm">注册您在 Crater 平台的账号</p>
@@ -204,7 +204,7 @@ function LoginPage() {
             </div>
           </div>
         ) : showForgotPassword && selectedMode === AuthMode.NORMAL ? (
-          <div className="mx-auto w-[350px] space-y-6">
+          <div className="mx-auto w-full max-w-[350px] space-y-6 px-4 sm:px-0">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">重置密码</h1>
               <p className="text-muted-foreground text-sm">我们将向您的邮箱发送密码重置链接</p>
@@ -218,7 +218,7 @@ function LoginPage() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-[350px] space-y-6">
+          <div className="mx-auto w-full max-w-[350px] space-y-6 px-4 sm:px-0">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户登录</h1>
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm">
