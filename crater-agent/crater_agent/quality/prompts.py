@@ -46,6 +46,12 @@ reasoning, tool usage, and final answer based on the following dimensions
   technically sound?
 - coherence: Is the reasoning chain logically coherent? Do the tool results support the conclusions?
 
+Use the scenario expectations as the grading target. Do not penalize an agent
+for not doing deeper investigation when the expected task is a high-level
+overview, a no-op review, a confirmation pause, or when the expected/optional
+tools are already sufficient. Extra tools are not automatically better; judge
+whether the chosen tools were necessary and aligned with the user's request.
+
 Output strictly as JSON, no other text:
 {
   "tool_relevance": <1-5 integer>,
@@ -59,6 +65,9 @@ Output strictly as JSON, no other text:
 CHAIN_JUDGE_USER_TEMPLATE = """Evaluate this agent interaction:
 
 User query: {user_query}
+
+Scenario expectations:
+{ground_truth_summary}
 
 Tool calls made:
 {tool_calls_summary}

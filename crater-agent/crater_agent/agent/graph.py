@@ -24,7 +24,7 @@ from crater_agent.agent.prompts import build_system_prompt
 from crater_agent.agent.state import CraterAgentState
 from crater_agent.config import settings
 from crater_agent.llm.client import ModelClientFactory
-from crater_agent.skills.loader import load_all_skills
+from crater_agent.skills.loader import load_relevant_skills
 from crater_agent.tools.definitions import ALL_TOOLS
 from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
 from crater_agent.tools.tool_selector import (
@@ -331,9 +331,6 @@ def create_agent_graph(
 
     llm = llm or create_llm()
 
-    # Load skills knowledge for system prompt
-    skills_context = load_all_skills(skills_dir)
-
     def get_enabled_tools(context: dict[str, Any]) -> list[Any]:
         capabilities = sanitize_capabilities_for_context(context, context.get("capabilities"))
         enabled_tool_names = capabilities.get("enabled_tools") or []
@@ -356,11 +353,12 @@ def create_agent_graph(
         if not messages or not isinstance(messages[0], SystemMessage):
             actor = context.get("actor", {})
             is_first_time = actor.get("is_first_time", False)
+            current_query = str(messages[-1].content) if messages else ""
             system_prompt = build_system_prompt(
                 context=context,
-                skills_context=skills_context,
+                skills_context=load_relevant_skills(current_query, skills_dir),
                 is_first_time=is_first_time,
-                user_message=str(messages[-1].content) if messages else "",
+                user_message=current_query,
             )
             messages = [SystemMessage(content=system_prompt)] + list(messages)
 

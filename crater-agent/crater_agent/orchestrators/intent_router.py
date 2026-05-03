@@ -169,6 +169,9 @@ def _looks_like_admin_write_intent(user_message: str) -> bool:
         "删除",
         "delete",
         "停止",
+        "停掉",
+        "停机",
+        "停用",
         "stop",
         "终止",
         "kill",
@@ -179,6 +182,11 @@ def _looks_like_admin_write_intent(user_message: str) -> bool:
         "uncordon",
         "drain",
         "隔离",
+        "打标签",
+        "加标签",
+        "label",
+        "taint",
+        "noschedule",
         "驱逐",
         "下线",
         "恢复调度",
@@ -192,6 +200,8 @@ def _looks_like_admin_write_intent(user_message: str) -> bool:
         "执行",
         "处理",
         "操作",
+        "加",
+        "打上",
     )
     return any(token in normalized for token in write_verbs) and any(
         token in normalized for token in write_context
@@ -476,12 +486,25 @@ def _extract_deterministic_hints(
         complexity = "complex"
         confidence = max(confidence, 0.78)
     elif _looks_like_admin_write_intent(user_message):
+        normalized_message = str(user_message or "").strip().lower()
         entry_mode = "agent"
         operation_mode = "write"
         complexity = "complex"
         confidence = max(confidence, 0.78)
-        if any(token in str(user_message or "").strip().lower() for token in ("隔离", "isolate", "taint")):
+        if any(token in normalized_message for token in ("隔离", "isolate", "taint", "noschedule", "打标签", "加标签", "label")):
             requested_action = "node_isolation"
+        elif any(token in normalized_message for token in ("重启", "restart")):
+            requested_action = "restart"
+        elif any(token in normalized_message for token in ("停止", "停掉", "停机", "停用", "stop", "终止", "kill")):
+            requested_action = "stop"
+            if _message_requests_all(user_message) or any(
+                token in normalized_message for token in ("都", "全部", "所有", "批量", "低于", "超过")
+            ):
+                targets.scope = "all"
+        elif any(token in normalized_message for token in ("删除", "delete")):
+            requested_action = "delete"
+        elif any(token in normalized_message for token in ("重提", "resubmit")):
+            requested_action = "resubmit"
 
     return RoutingDecision(
         entry_mode=entry_mode,
@@ -624,7 +647,7 @@ class IntentRouter:
                 "你是意图路由器。分析用户请求，判断：\n"
                 "1. entry_mode: 'simple'（问候/闲聊/无需工具的极简单答复）、'help'（纯帮助/文档/概念解释）或 'agent'（需要工具/数据/操作）\n"
                 "2. operation_mode: 'read'（查询/诊断/查看）, 'write'（创建/停止/删除/重提交）, 'unknown'\n"
-                "3. requested_action: 具体操作名（resubmit/stop/delete/create/scale），无则 null\n"
+                "3. requested_action: 具体操作名（resubmit/stop/delete/create/scale/restart），无则 null\n"
                 "4. complexity: 'simple'（不需要 MAS 循环）、'normal'、'complex'（多轮/多工具/故障诊断/写操作）\n"
                 "5. confidence: 0.0-1.0\n\n"
                 "关键原则：\n"
@@ -644,7 +667,7 @@ class IntentRouter:
                 "- 模糊且涉及业务数据/平台状态/实际对象的请求，默认 agent + unknown\n\n"
                 "输出 JSON:\n"
                 '{"entry_mode": "simple|help|agent", "operation_mode": "read|write|unknown", '
-                '"requested_action": "resubmit|stop|delete|create|scale|node_isolation|null", '
+                '"requested_action": "resubmit|stop|delete|create|scale|restart|node_isolation|null", '
                 '"complexity": "simple|normal|complex", '
                 '"confidence": 0.8, "rationale": "简短理由"}\n'
             ),
@@ -689,6 +712,7 @@ class IntentRouter:
             "delete",
             "create",
             "scale",
+            "restart",
             "node_isolation",
         }:
             requested_action = None

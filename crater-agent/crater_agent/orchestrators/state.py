@@ -11,6 +11,7 @@ from crater_agent.tools.tool_selector import (
     sanitize_enabled_tool_names,
     _resolve_actor_role,
 )
+from crater_agent.tools.definitions import CONFIRM_TOOL_NAMES
 
 
 def _normalize_source_turn_event(event: dict[str, Any]) -> dict[str, Any] | None:
@@ -460,6 +461,17 @@ class MASState:
             )
             if action is not None
         ]
+        if self.resume_context:
+            writable_signatures = {
+                _tool_signature(action.tool_name, action.tool_args)
+                for action in self.actions
+                if action.tool_name in CONFIRM_TOOL_NAMES
+            }
+            self.attempted_tool_signatures = [
+                signature
+                for signature in self.attempted_tool_signatures
+                if signature in writable_signatures
+            ]
         pending_confirmations = workflow.get("pending_confirmations")
         if isinstance(pending_confirmations, list):
             self.pending_confirmations = [
@@ -497,13 +509,21 @@ class MASState:
                 or f"source-turn-tool-{index}"
             ).strip()
             signature = _tool_signature(tool_name, tool_args)
-            if signature not in existing_signatures:
+            # Source-turn read tools describe the state before a confirmed
+            # action. Keep them as evidence, but do not let their signatures
+            # block post-action rechecks in the resume turn. Write/confirm
+            # tools remain protected so a resume cannot repeat the action.
+            if tool_name in CONFIRM_TOOL_NAMES and signature not in existing_signatures:
                 self.attempted_tool_signatures.append(signature)
                 existing_signatures.add(signature)
 
             result_status = str(item.get("result_status") or item.get("resultStatus") or "").strip()
             result = item.get("result") if isinstance(item.get("result"), dict) else {}
-            if result_status in {"success", "completed", "error", "failed"} and tool_call_id not in existing_tool_call_ids:
+            if (
+                result_status in {"success", "completed", "error", "failed"}
+                and result_status != "skipped"
+                and tool_call_id not in existing_tool_call_ids
+            ):
                 self.tool_records.append(
                     MultiAgentToolRecord(
                         agent_id=str(item.get("agent_id") or item.get("agentId") or "").strip(),

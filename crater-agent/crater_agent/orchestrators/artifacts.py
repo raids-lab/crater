@@ -125,6 +125,7 @@ class PlanArtifact:
     summary: str = ""
     steps: list[str] = field(default_factory=list)
     candidate_tools: list[str] = field(default_factory=list)
+    tool_hints: list[dict[str, Any]] = field(default_factory=list)
     risk: str = "low"
 
     def to_dict(self) -> dict[str, Any]:
@@ -132,6 +133,7 @@ class PlanArtifact:
             "summary": self.summary,
             "steps": list(self.steps),
             "candidate_tools": list(self.candidate_tools),
+            "tool_hints": list(self.tool_hints),
             "risk": self.risk,
         }
 
@@ -143,6 +145,11 @@ class PlanArtifact:
             summary=str(data.get("summary") or "").strip(),
             steps=[str(s) for s in (data.get("steps") or []) if s],
             candidate_tools=[str(t) for t in (data.get("candidate_tools") or []) if t],
+            tool_hints=[
+                dict(item)
+                for item in (data.get("tool_hints") or data.get("toolHints") or [])
+                if isinstance(item, dict)
+            ],
             risk=str(data.get("risk") or "low").strip(),
         )
 
@@ -219,6 +226,12 @@ class StateView:
                 parts.append("计划步骤:\n" + "\n".join(f"{i+1}. {s}" for i, s in enumerate(self.plan.steps)))
             if self.plan.candidate_tools:
                 parts.append(f"推荐工具: {', '.join(self.plan.candidate_tools)}")
+            if self.plan.tool_hints:
+                import json
+                parts.append(
+                    "计划工具提示:\n"
+                    f"{json.dumps(self.plan.tool_hints, ensure_ascii=False, indent=None)}"
+                )
         if self.execution:
             parts.append(f"\n执行结果:\n{self.execution.summary}")
         if self.compact_evidence:

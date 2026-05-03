@@ -6,6 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from langchain_core.messages import AIMessage, HumanMessage
+
 from crater_agent.agents.base import BaseRoleAgent, RoleExecutionResult
 
 logger = logging.getLogger(__name__)
@@ -50,6 +52,22 @@ def _prepare_explorer_summary_for_user(value: str) -> str:
     while lines and lines[0].strip() in {"## 探索总结", "**探索总结**", "探索总结"}:
         lines.pop(0)
     return "\n".join(lines).strip()
+
+
+def _filter_summary_history_messages(history_messages: list | None) -> list:
+    if not history_messages:
+        return []
+    filtered: list = []
+    for message in history_messages:
+        content = str(getattr(message, "content", "") or "").strip()
+        if not content:
+            continue
+        if isinstance(message, HumanMessage):
+            filtered.append(message)
+            continue
+        if isinstance(message, AIMessage) and content.startswith("【历史工具结果"):
+            filtered.append(message)
+    return filtered
 
 
 @dataclass
@@ -243,11 +261,13 @@ class CoordinatorAgent(BaseRoleAgent):
         compact_evidence: list[dict[str, Any]] | None = None,
         executor_summary: str,
         verifier_summary: str,
+        history_messages: list | None = None,
     ) -> RoleExecutionResult:
         if (
             _looks_complete_user_summary(evidence_summary)
             and _is_effectively_empty_summary(executor_summary)
             and _is_effectively_empty_summary(verifier_summary)
+            and not history_messages
         ):
             return RoleExecutionResult(summary=_prepare_explorer_summary_for_user(evidence_summary))
 
@@ -256,9 +276,29 @@ class CoordinatorAgent(BaseRoleAgent):
                 "你是 Crater 的 Coordinator Agent。你负责整合 Planner、Explorer、Executor、Verifier "
                 "的输出，向用户给出最终答复。要求中文、结论在前、证据在后、建议最后。\n"
                 "请优先基于实际证据作答，不要只复述其他 agent 的摘要。\n"
-                "如果 Explorer 摘要里已经出现了准确的结论句、根因关键词或建议短语，优先直接复用原句；宁可少量整理，也不要把关键短语润色成同义表达。\n"
-                "- 如果证据表明对象运行正常或当前无需动作，结论句优先直接写成“运行正常、指标正常、无需额外处理”。如果对象是单个作业，优先写成“作业 <name> 当前运行正常、指标正常、无需额外处理”。不要改写成“无需您立即处理”“当前无需干预”“无需操作”等同义说法来替代“无需额外处理”。若只是状态确认类问题，建议里尽量原样包含“如果只是确认状态，则无需额外操作”或“继续观察”，并补一句具体 watchpoint（如状态转 Failed/Pending、GPU 利用率明显下跌或显存异常飙升时再排查）。如果 Explorer 摘要里已经包含这些短语，优先沿用，不要改写成同义表达。\n"
-                "- 如果是 Kubernetes rollout / workload 发布卡住，且证据已经指向 ErrImagePull、manifest unknown、ProgressDeadlineExceeded，结论或证据段里必须尽量保留这些原词，并明确写出这是 `rollout` 卡住。建议段优先直接列出这些动作短语，不要用近义改写替代：1) “修正镜像 tag”；2) “重新发布镜像”；3) “确认新 Pod 拉取成功”；必要时再补“回滚到上一版本”。同时明确补一句“镜像修复后 rollout 会继续推进/恢复”。不要把这些建议改写成“修复镜像推送”“检查流水线”“观察是否恢复”这种泛化说法来替代。如果 Explorer 摘要里已经给出了准确根因或建议，优先沿用其关键词和动作短语，不要弱化成泛化表述。\n"
+                "- 如果当前轮证据已经给出直接根因或直接目标对象，必须以当前轮证据为准；历史里早期的待确认、低置信度或泛化建议只能作为背景，不能和当前结论并列拼接。\n"
+                "- 最终答复第一句话必须直接回答用户核心问题；默认按“结论 / 关键证据 / 建议下一步 / 仍缺口或观察点”组织。\n"
+                "- 诊断类答复必须覆盖根因、排除依据、用户或管理员下一步；指标对比类必须列出双方数值、差异方向、结论和可优化项；确认/续接类必须说明确认动作、目标对象、执行结果和已有验证证据。\n"
+                "- Evicted/DiskPressure/ephemeral-storage 类答复不能只说重提或换节点；应结合证据判断是否存在临时目录、debug 输出、日志、checkpoint 或临时文件写爆节点，并给出平台可执行的存储/日志/资源限制建议。\n"
+                "- 当证据已经明确是 Prometheus/PVC/TSDB 存储满导致 no data 或 CrashLoopBackOff 时，建议顺序必须是：先恢复或扩容存储，再校验 TSDB/数据写入是否恢复，最后再决定是否谨慎重启；不要把“检查集群健康”放在第一步，也不要建议删除用户作业作为主要处理方式。\n"
+                "- 节点 NotReady、RDMA/GPU 驱动死锁、reboot 后仍异常类答复应区分平台内缓解动作和带外恢复边界；不要只给 SSH 排查命令。\n"
+                "- 集群健康概览要保留健康等级、关键数字、异常对象、影响范围和紧急程度；建议段直接说明哪些需要马上关注、哪些只是计划维护。\n"
+                "- 性能/指标对比类答复的建议段要复述最重要的比较结论，例如双方利用率、吞吐量差异、哪一侧更高效，以及低效一侧可能的 I/O、dataloader、batch size 或同步等待瓶颈，避免只写泛化优化建议。\n"
+                "- 指标对比类答复如果证据中包含 throughput、samples/sec、吞吐量、显存占用或效率字段，必须在关键证据或结论里保留这些数值和倍数；不要只写 GPU 利用率或“更高效”。\n"
+                "如果 Explorer 摘要里已经出现了准确的结论、根因关键词、状态值或建议动作，优先保留这些事实和动作，不要在润色时丢失关键含义。\n"
+                "- 最终答复要保留证据中的对象名、状态值、数值、单位、错误码、关键动作短语；不要把 degraded/healthy、"
+                "Pending/Running、OOM、FileNotFoundError、No FailedMount、确认/已执行/已拒绝 等关键信号改写丢失。\n"
+                "- 开放式健康、统计、对比和诊断类问题必须覆盖：结论、关键证据、影响范围、建议动作、后续观察点；"
+                "如果证据本身已经足以回答，不要再扩展成无关操作清单。\n"
+                "- 如果本轮用户是在追问上一轮结论，例如“那为什么/然后呢/还需要做什么/这个是不是说明...”，"
+                "必须结合历史消息和本轮证据，先直接回答本轮追问；只保留必要的上一轮背景，不要重新完整复述上一轮诊断、证据和建议。\n"
+                "- 多轮对话里，最终答复应围绕当前用户输入的新问题、新确认结果或新增证据收束；"
+                "除非用户要求回顾全过程，否则不要把历史回答拼接成一份长报告。\n"
+                "- 如果 Executor 里已有确认型写操作的真实结果，最终答复必须优先引用该结果；不要因为后续核查不足或运行时收束，就把已完成动作说成没有结果。\n"
+                "- 确认/续接类答复如果涉及执行后验证，必须区分目标状态证据和症状/指标证据；Kubernetes 扩缩容、重启、节点隔离/解除隔离等动作不能只用 Prometheus 指标证明动作已完全落地，应保留 Pod、Endpoints、节点或工作负载状态等直接证据；若缺少这类直接证据，要把它写成仍缺口，而不是说已经完全验证。\n"
+                "- 如果执行结果显示新建作业是 Pending，只能说“已提交/已创建且当前 Pending”，不能写成 Running、运行正常或指标正常；若后续证据解释了 Pending 原因，要直接回答排队/资源原因。\n"
+                "- 如果证据表明对象运行正常或当前无需动作，结论句必须明确说明对象状态、关键指标是否正常、当前是否需要额外处理。若只是状态确认类问题，建议里给出继续观察或无需额外操作的判断，并补一句具体观察点。\n"
+                "- 如果是 Kubernetes rollout / workload 发布卡住，且证据已经指向镜像拉取或发布超时，结论或证据段里要保留原始错误信号，并明确写出 rollout 卡住。建议段要覆盖修正镜像、重新发布或回滚、确认新 Pod 拉取成功，并说明镜像修复后 rollout 才会继续推进。\n"
                 "- 如果用户问的是推荐配置、完整提交配置、镜像是否存在、能不能提交，回答必须体现已经核实到的平台事实；不要退化成“能做什么 / 去哪做 / 注意什么”的帮助说明。\n"
                 "- 不要把用户自述、页面信息或常识默认值写成已验证事实；未核实的信息必须明确标注为建议或待确认。\n"
                 "- 若关键事实尚不充分，不要假装已经闭环；应如实指出缺口并给出下一步最小核验。"
@@ -272,5 +312,6 @@ class CoordinatorAgent(BaseRoleAgent):
                 f"Verifier:\n{verifier_summary}\n\n"
                 "请输出最终面向用户的自然语言回复。"
             ),
+            history_messages=_filter_summary_history_messages(history_messages),
         )
         return RoleExecutionResult(summary=summary or "已完成最终总结。")

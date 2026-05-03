@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import yaml
@@ -56,6 +57,72 @@ def format_skill_for_prompt(skill: dict) -> str:
                 lines.append(f"  - {suggestion}")
 
     return "\n".join(lines)
+
+
+def _skill_match_score(skill: dict, query: str) -> int:
+    normalized = str(query or "").strip().lower()
+    if not normalized:
+        return 0
+
+    haystacks: list[tuple[str, int]] = [
+        (str(skill.get("name") or ""), 3),
+        (str(skill.get("description") or ""), 2),
+        (str(skill.get("diagnosis_knowledge") or ""), 1),
+    ]
+    triggers = skill.get("trigger_signals") if isinstance(skill.get("trigger_signals"), dict) else {}
+    for key in ("exit_codes", "event_reasons", "log_keywords", "job_status"):
+        values = triggers.get(key) or []
+        if isinstance(values, list):
+            haystacks.extend((str(value), 4) for value in values)
+
+    score = 0
+    compact_query = re.sub(r"\s+", "", normalized)
+    for text, weight in haystacks:
+        text_normalized = str(text or "").strip().lower()
+        if not text_normalized:
+            continue
+        if text_normalized in normalized or re.sub(r"\s+", "", text_normalized) in compact_query:
+            score += weight
+            continue
+        for token in re.findall(r"[a-z0-9_./-]{3,}|[\u4e00-\u9fff]{2,}", text_normalized):
+            if token and token in normalized:
+                score += weight
+                break
+    return score
+
+
+def load_relevant_skills(
+    user_message: str,
+    skills_dir: str | Path | None = None,
+    *,
+    max_skills: int = 2,
+) -> str:
+    """Load only skills that are relevant to the current user message."""
+    if skills_dir is None:
+        skills_dir = SKILLS_DIR
+
+    skills_dir = Path(skills_dir)
+    if not skills_dir.exists():
+        return ""
+
+    ranked: list[tuple[int, str]] = []
+    for yaml_file in sorted(skills_dir.glob("*.yaml")):
+        try:
+            skill = load_skill(yaml_file)
+            if not skill:
+                continue
+            score = _skill_match_score(skill, user_message)
+            if score > 0:
+                ranked.append((score, format_skill_for_prompt(skill)))
+        except Exception:
+            continue
+
+    if not ranked:
+        return ""
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    selected = [text for _, text in ranked[: max(1, int(max_skills))]]
+    return "## 诊断参考知识\n\n" + "\n\n".join(selected)
 
 
 def load_all_skills(skills_dir: str | Path | None = None) -> str:

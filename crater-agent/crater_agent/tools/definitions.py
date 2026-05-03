@@ -95,6 +95,8 @@ def query_job_metrics(
     time_range: str = "last_2h",
 ) -> dict:
     """查询作业的 GPU/CPU/Memory 性能指标。返回聚合值（avg, max, stddev）。
+    两个具名作业做利用率、显存、吞吐或资源效率对比时，通常直接对每个 job 调用一次本工具即可；
+    不需要先调用 get_job_detail，除非用户还要求确认资源规格、节点或作业身份。
 
     Args:
         job_name: 作业的系统唯一名（Job.JobName）
@@ -326,11 +328,12 @@ def get_job_templates(limit: int = 20) -> dict:
 
 @tool
 def get_failure_statistics(days: int = 7, limit: int = 10) -> dict:
-    """统计近期失败作业的故障类别分布，返回按频次排序的故障分类及示例作业。
+    """统计近期作业失败率、失败作业数、账户/团队失败率排名和故障类别分布。
+    当用户询问“失败率多少”“哪个账户/团队失败率最高”“主要失败原因”时优先使用本工具。
 
     Args:
         days: 统计最近 N 天，默认 7
-        limit: 最多返回 N 个分类，默认 10
+        limit: 最多返回 N 个分类或账户/团队排名项，默认 10
     """
     pass
 
@@ -338,6 +341,8 @@ def get_failure_statistics(days: int = 7, limit: int = 10) -> dict:
 @tool
 def get_cluster_health_report(days: int = 7) -> dict:
     """获取集群整体健康报告，聚合作业概览、节点容量、GPU 型号分布和故障统计。
+    适合回答管理员“集群现在是否健康、是否需要马上处理、有哪些异常和影响范围”的开放式巡检问题；
+    返回结果本身通常足以支撑健康等级、异常对象、影响范围和建议动作。
     需要管理员权限。
 
     Args:
@@ -382,6 +387,8 @@ def get_admin_ops_report(
     idle_hours: int = 24,
 ) -> dict:
     """获取管理员视角的智能运维分析报告，聚合成功/失败/闲置作业及资源差异。
+    适合周报、资源浪费治理、成功/失败/闲置样本综述；不适合精确回答账户失败率排名。
+    若用户明确问失败率、最高失败率账户或失败原因统计，优先使用 get_failure_statistics。
     需要管理员权限。
 
     Args:
@@ -415,6 +422,7 @@ def list_audit_items(
     limit: int = 20,
 ) -> str:
     """筛选审计条目列表。可按 action_type(stop/notify/downscale)、severity(critical/warning/info)、handled(true/false) 过滤。
+    当管理员要求批量治理低利用率、闲置、可清理或需要停机的审计对象时，优先用本工具定位候选作业范围。
     返回作业名、用户、GPU利用率、建议操作等。仅管理员可用。"""
     pass
 
@@ -676,6 +684,13 @@ def prometheus_query(
     适用于 GPU/节点/Pod 指标、Prometheus 自身健康、node-exporter 重启频繁等问题排查。
     支持任意合法 PromQL；在异构加速卡场景下优先查询 unified `gpu_*` recording rules，
     但仍可按需查询 kube-state-metrics、node-exporter、DCGM 或厂商 exporter 原生指标。
+    对直接核实类问题应优先使用带 namespace/job/pod/PVC 等范围的窄查询；PVC/存储容量核实
+    应优先用 kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes 的逐 PVC
+    比值并保留 persistentvolumeclaim 标签，不要先查 TSDB/WAL/head 等间接指标。空 series 只表示
+    该 PromQL 未命中可用指标，不能直接证明系统稳定或异常。避免连续尝试多个语义等价 PromQL。
+    服务或 Ingress 低流量核实时，优先查询服务维度请求速率（如
+    nginx_ingress_controller_requests{service="..."} 的 rate）；没有 ingress 指标时再退到
+    服务自身的 http_requests_total。
     """
     pass
 
@@ -1146,7 +1161,9 @@ def restart_workload(
     name: str,
     namespace: Optional[str] = None,
 ) -> dict:
-    """对 Deployment/StatefulSet/DaemonSet 执行滚动重启。需要管理员确认。"""
+    """对 Deployment/StatefulSet/DaemonSet 执行滚动重启。需要管理员确认。
+    适用于管理员明确要求重启某个 Kubernetes 工作负载；发起前应已有最小健康/风险证据。
+    """
     pass
 
 
@@ -1452,7 +1469,9 @@ def mark_audit_handled(item_ids: str = "", handled_by: str = "") -> str:
 
 @tool
 def batch_stop_jobs(job_names: str = "") -> str:
-    """批量停止多个作业。传入逗号分隔的作业名列表。需要管理员确认，每个作业都会被停止。"""
+    """批量停止多个作业。传入逗号分隔的作业名列表。需要管理员确认，每个作业都会被停止。
+    适用于管理员已通过 list_audit_items 或候选列表确认多个低利用率/闲置/可清理作业后，一次性发起批量停止确认。
+    """
     pass
 
 
@@ -1475,6 +1494,8 @@ def k8s_scale_workload(
     namespace: Optional[str] = None,
 ) -> dict:
     """调整 Deployment/StatefulSet 的副本数。需要管理员确认。
+    适用于管理员明确要求扩缩容具名工作负载。确认后若用户要求验证，应重新读取端点/Pod/指标状态；
+    不要再次发起相同 scale 确认。
 
     Args:
         kind: 资源类型（Deployment / StatefulSet）
@@ -1493,6 +1514,9 @@ def k8s_label_node(
     overwrite: bool = False,
 ) -> dict:
     """为节点添加或更新标签。需要管理员确认。
+    常与 k8s_taint_node 搭配用于节点隔离：label 只用于标记/审计节点状态，不能阻止新 Pod 调度；
+    用户明确要求“隔离标签/label”并且同时要求 “NoSchedule taint/不再调度新任务” 时，应同时发起
+    k8s_label_node 与 k8s_taint_node(effect="NoSchedule") 两个并列确认动作。
 
     Args:
         node_name: 节点名称
@@ -1511,6 +1535,9 @@ def k8s_taint_node(
     effect: str = "NoSchedule",
 ) -> dict:
     """为节点添加 taint。需要管理员确认。
+    常与 k8s_label_node 搭配用于节点隔离：NoSchedule taint 会阻止新的 Pod 调度到该节点；
+    如果用户只是要求审计标记，不一定需要 taint；如果是“隔离/阻止调度/NoSchedule”，taint 是核心动作。
+    当用户同时要求标签和 NoSchedule taint 时，不要只调用 k8s_label_node，应并列调用本工具。
 
     Args:
         node_name: 节点名称

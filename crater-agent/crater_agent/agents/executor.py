@@ -3,11 +3,36 @@
 from __future__ import annotations
 
 import logging
+import json
 
 from crater_agent.agents.base import BaseRoleAgent, RoleExecutionResult
 from crater_agent.tools.definitions import CONFIRM_TOOL_NAMES
 
 logger = logging.getLogger(__name__)
+
+
+def _format_plan_tool_hints(plan_tool_hints: list[dict] | None) -> str:
+    if not plan_tool_hints:
+        return "(无)"
+    lines: list[str] = []
+    for index, item in enumerate(plan_tool_hints, start=1):
+        if not isinstance(item, dict):
+            continue
+        tool_name = str(item.get("tool") or item.get("tool_name") or "").strip()
+        if not tool_name:
+            continue
+        args = item.get("args") or item.get("tool_args") or {}
+        if not isinstance(args, dict):
+            args = {}
+        purpose = str(item.get("purpose") or "").strip()
+        stop_condition = str(item.get("stop_condition") or item.get("stopCondition") or "").strip()
+        detail = f"{tool_name}({json.dumps(args, ensure_ascii=False, sort_keys=True)})"
+        if purpose:
+            detail += f"；目的：{purpose}"
+        if stop_condition:
+            detail += f"；停止条件：{stop_condition}"
+        lines.append(f"  {index}. {detail}")
+    return "\n".join(lines) or "(无)"
 
 
 class ExecutorAgent(BaseRoleAgent):
@@ -26,10 +51,12 @@ class ExecutorAgent(BaseRoleAgent):
         pending_actions: list[dict],
         enabled_tools: list[str],
         actor_role: str = "user",
+        plan_tool_hints: list[dict] | None = None,
     ) -> tuple[str, str]:
         allowed_tools = sorted(set(enabled_tools))
         visible_tools = allowed_tools[:10]
         hidden_tool_count = max(0, len(allowed_tools) - len(visible_tools))
+        plan_tool_detail = _format_plan_tool_hints(plan_tool_hints)
         system_prompt = (
             "你是 Crater 的 Executor Agent。你的职责是根据用户请求和现有证据，直接推进下一步工具执行。\n"
             "你可以连续多轮调用工具，并且每拿到一次工具结果，都要继续基于结果判断下一步。\n"
@@ -47,16 +74,26 @@ class ExecutorAgent(BaseRoleAgent):
             "- 每次只读调用都必须服务于一个未决字段或风险点；不要为了求稳扩散到无关 read。\n"
             "- 对 create_jupyter_job / create_webide_job：如果模板默认值、配额、镜像匹配关系还没核实，不要猜 CPU/内存/GPU 型号，优先补 get_job_templates / check_quota / list_available_images 这类相关证据；若用户给的参数已基本齐全，最小合格核验就是这三项，不要省略 get_job_templates。\n"
             "- 对 uncordon_node / restart_workload / k8s_scale_workload：至少先补一次与节点或工作负载健康直接相关的核验，不要只根据用户一句“已经恢复”就进入确认。\n"
+            "- 对 stop/resubmit/delete：如果用户要求处理单个作业，目标 jobName 必须明确；如果用户明确要求处理全部候选对象，应优先使用可用的批量工具，否则逐个生成确认动作。不要在目标不清时猜测。\n"
+            "- 对管理员批量停机治理：若证据来自 list_audit_items 且包含多个 action_type=stop 的候选作业，优先使用 batch_stop_jobs(job_names=\"a,b,c\") 一次性发起确认；不要逐个停，也不要停留在口头建议。\n"
+            "- 对 create_jupyter_job / create_webide_job / create_training_job / create_pytorch_job / create_tensorflow_job：优先复用模板、配额、镜像和用户给定参数；缺关键字段时可以生成需要用户确认/补全的提交动作，但不要凭空捏造镜像或资源。\n"
+            "- 对 k8s_scale_workload：只有当 workload 名称、kind、目标 replicas、namespace（如需要）已经从页面、用户输入或证据里确定时才调用；否则先补只读核验或返回空动作。\n"
+            "- 对节点隔离类操作：如果用户明确要求隔离且证据显示网络/RDMA/调度风险，使用结构化节点标签/污点工具发起确认；label 只负责标记，NoSchedule taint 才阻止新 Pod 调度。若两类工具都可用且用户要求隔离/NoSchedule，应把 k8s_label_node 与 k8s_taint_node 作为并列动作一次性发起；不要只发 label，也不要构造裸命令替代结构化工具。\n"
+            "- 节点隔离场景中，如果用户同时提到“隔离标签/label”和“NoSchedule taint/不再调度”，且 k8s_label_node 与 k8s_taint_node 都可用，必须在同一批次发起两张确认卡：先 k8s_label_node 标记审计状态，再 k8s_taint_node(effect=\"NoSchedule\") 阻止新 Pod 调度；只发 label 会遗漏阻止调度的核心动作。\n"
             "- run_kubectl / execute_admin_command 属于受控高风险动作：应先说明触发原因，并等待确认流，不得构造任意 shell 文本。\n"
             "- 如果同一轮明确需要多个互相独立的确认型写动作，可以一次性调用这些写工具生成多张确认卡；系统会统一暂停等待用户确认。\n"
             "- 这不是强制多确认：只有一个必要写动作时，正常生成一张确认卡即可。\n"
+            "- 如果用户把节点 label/taint、cordon/drain、或多个彼此独立的治理动作并列要求，且目标和风险证据已经明确，应在同一批次发起这些独立确认；不要只做第一个动作后遗漏后续动作。\n"
+            "- 如果 Planner 工具计划里列出多个写工具，先检查这些动作是并列还是依赖；并列动作应在同一批次全部发起，依赖动作才分轮推进。\n"
             "- 动作存在明确依赖（例如先创建再修改同一新对象）时，不要并列发确认；先推进当前可执行的最小动作，等待后续轮次。\n"
+            "- 确认型写操作完成后，如果用户要求继续检查或验证，不要再次发起同一个写操作；应先用只读工具核验目标状态是否落地，再核验用户关心的流量、错误率、队列或健康症状。\n"
             "- 避免重复调用相同参数的工具，除非世界状态明显变化。\n"
         )
         user_prompt = (
             f"用户请求:\n{user_message}\n\n"
             f"页面上下文:\n{page_context}\n\n"
             f"规划摘要:\n{plan_summary or '(empty)'}\n\n"
+            f"Planner 工具计划（非强制，但用于检查并列动作完整性）:\n{plan_tool_detail}\n\n"
             f"Explorer 证据摘要:\n{evidence_summary or '(empty)'}\n\n"
             f"紧凑证据:\n{compact_evidence}\n\n"
             f"结构化意图:\n"
@@ -86,11 +123,13 @@ class ExecutorAgent(BaseRoleAgent):
         enabled_tools: list[str],
         history_messages: list | None = None,
         actor_role: str = "user",
+        plan_tool_hints: list[dict] | None = None,
     ) -> list[dict]:
         """Use LLM to decide whether write actions are needed, and if so, which ones."""
         write_tools = sorted({t for t in enabled_tools if t in CONFIRM_TOOL_NAMES})
         if not write_tools:
             return []
+        plan_tool_detail = _format_plan_tool_hints(plan_tool_hints)
 
         result = await self.run_json(
             system_prompt=(
@@ -119,10 +158,19 @@ class ExecutorAgent(BaseRoleAgent):
                 '- "帮我看看这个作业" ≠ "帮我停止这个作业"。\n'
                 "- 如果用户明确要求多个独立写动作（例如同时 label 和 taint 同一节点），可以在 actions 中同时列出这些动作，depends_on 为空。\n"
                 "- 这不是强制多动作：只有一个必要写动作时，actions 只输出一个元素。\n"
+                "- 如果用户明确并列要求节点 label/taint、cordon/drain、或多个彼此独立的治理动作，且目标对象和风险证据已经明确，应一次性列出这些独立动作；不要只输出其中第一个。\n"
+                "- 节点隔离/NoSchedule 场景里，label 是审计标记，taint 才阻止新调度；当 k8s_label_node 与 k8s_taint_node 都可用且目标节点明确，应同时输出两个并列 actions。\n"
+                "- 如果用户同时提到“隔离标签/label”和“NoSchedule taint/不再调度”，actions 必须同时包含 k8s_label_node 与 k8s_taint_node，depends_on 均为空；k8s_taint_node 的 effect 应为 NoSchedule。不要只输出其中一个，也不要把 taint 当成 label 的备注。\n"
+                "- 如果 Planner 工具计划里列出多个写工具，先检查这些动作是并列还是依赖；并列动作应在同一批 actions 里全部列出，依赖动作才分轮推进。\n"
                 "- 如果动作有先后依赖，不要并列输出为独立动作；用 depends_on 标出依赖，或只输出当前可执行的最小动作。\n"
                 "- 不要把用户自述状态当作已验证证据；如果写操作还依赖关键事实未核实，应先返回空 actions，把机会留给前面的只读探索。\n"
                 "- create_jupyter_job / create_webide_job 在模板默认值、配额或镜像匹配关系未核实时，不要凭空猜 CPU/内存/GPU 型号后直接创建。\n"
                 "- uncordon_node / restart_workload / k8s_scale_workload 在节点或工作负载健康未核实时，不要直接输出写动作。\n"
+                "- stop/resubmit/delete/create/scale/restart/node isolation 都必须由你根据用户输入、页面上下文、证据和工具描述选择具体工具及参数；不要依赖外部 controller 替你补默认参数。\n"
+                "- 若 requested_scope=all 且证据中有待处理审计项或候选作业，优先选择语义最贴合的批量确认工具；若没有批量工具，再输出多条原子动作。\n"
+                "- 对 list_audit_items 产生的多个 stop 候选，优先输出一个 batch_stop_jobs 动作，job_names 为候选 job_name 的逗号分隔字符串。\n"
+                "- 对 k8s_scale_workload，args 至少应包含 kind、name、replicas；namespace 无法确定且工具/页面需要 namespace 时返回空 actions。\n"
+                "- 对 create 类工具，尽量使用模板/镜像/配额证据中的字段；缺失字段不要编造，可返回空 actions 让只读阶段补证据。\n"
                 "- 当选择 run_kubectl / execute_admin_command 时，reason 必须体现“结构化工具和只读证据不足，必须执行受控命令”。\n"
                 "- 如果已经有 pending_actions，不要重复生成等价动作。\n"
                 "- 如果 requested_scope=all 且证据里已经列出候选对象，可以输出多条动作。"
@@ -131,6 +179,7 @@ class ExecutorAgent(BaseRoleAgent):
                 f"用户请求:\n{user_message}\n\n"
                 f"页面上下文:\n{page_context}\n\n"
                 f"规划摘要:\n{plan_summary or '(empty)'}\n\n"
+                f"Planner 工具计划（非强制，但用于检查并列动作完整性）:\n{plan_tool_detail}\n\n"
                 f"Explorer 证据总结:\n{evidence_summary}\n\n"
                 f"紧凑证据:\n{compact_evidence}\n\n"
                 f"结构化意图:\n"

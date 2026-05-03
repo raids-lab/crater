@@ -63,7 +63,7 @@ _BASE_PROMPT = """\
 ## 工具选择指引
 - 作业基本信息 → get_job_detail（轻量快速）；完整诊断上下文 → get_diagnostic_context（含日志+事件+指标）
 - 规则化故障分析 → diagnose_job（返回故障分类+置信度+修复建议）
-- 集群容量/GPU 分布 → get_cluster_health_report；失败/闲置分析 → get_admin_ops_report
+- 集群容量/GPU 分布 → get_cluster_health_report；失败率/最高失败账户/主要失败原因统计 → get_failure_statistics；成功/失败/闲置/资源浪费治理综述 → get_admin_ops_report
 - 节点列表 → k8s_list_nodes（轻量）；单节点深入 → get_node_detail（含 workload 分析）
 - 实时 K8s 事件 → k8s_get_events（实时数据，优于缓存事件）
 - 存储诊断 → list_storage_pvcs → get_pvc_detail → get_pvc_events
