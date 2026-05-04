@@ -2,8 +2,6 @@
 
 **职责划分**：本文档是 **Crater CLI 指令级契约** 的权威来源，包含全局通用规范，以及各命令章节对选项、处理逻辑、人类可读与 JSON 输出的行为与字段定义。开发时要完成哪些工作、这些工作如何在仓库与流程中落实，见 **[SPEC.md](./SPEC.md)**。现有代码如何组织、模块与调用链如何协作，见 **[ARCHITECTURE.md](./ARCHITECTURE.md)**。实现必须与本文档对各命令的约定一致，且不得违反 SPEC 中的跨命令公共约定。
 
-<a id="commands-global"></a>
-
 ## 全局通用规范 (Global Requirements)
 
 为了确保对 AI Agent、CI/CD 环境以及普通开发者的友好性，**所有命令（无论是否具备交互逻辑）必须统一支持以下全局选项：**
@@ -17,8 +15,6 @@
   - **约束**: 如果缺少必要信息，立即报错并返回非零退出码。
 - `--help, -h`:
   - **行为**: 显示当前命令或子命令的帮助信息。
-
-<a id="commands-errors"></a>
 
 ### 错误处理规范 (Error Handling)
 
@@ -59,7 +55,57 @@
 
 ---
 
-## 2. 认证模块 (auth)
+## 2. 补全模块 (completion)
+
+本模块负责为不同 shell 提供 Tab 补全能力。主命令为 `completion`，并提供等价别名 `comp`：两者参数与行为完全一致。
+
+当前实现状态：`bash` 与 `zsh` 已落地（含 `install/uninstall`）。**PowerShell（`pwsh`）下的 Tab 补全当前不在产品范围内**：CLI 不提供 `completion powershell` 子命令，亦不约定 `__complete powershell`。在 Windows 上若需要 Tab 补全，请使用 **Git Bash** 并按 **bash** 路径安装（`completion install bash`）。实现与工程约定见 [SPEC.md](./SPEC.md) 与 [ARCHITECTURE.md](./ARCHITECTURE.md)；**指令契约以本节为准**。
+
+### `crater completion <SHELL>` / `crater comp <SHELL>`
+- **描述**: 输出指定 shell 的补全脚本到 stdout（无副作用）。
+- **位置参数**:
+  - `<SHELL>` (positional, required): `bash | zsh`。
+- **处理逻辑**:
+  - 生成并输出该 shell 的补全脚本内容。
+  - 不执行安装/卸载；不修改任何本地文件或 shell 配置。
+- **输出约束**:
+  - 默认模式：stdout 为脚本内容本身（可能包含多行），不得夹杂其他装饰性文字。
+  - `--json`：stdout 输出成功信封 JSON；脚本内容放入 `data.script`（字符串）。
+- **`--json` 的 `data`**：`shell`（字符串）、`script`（字符串）。
+- **状态**: bash/zsh [x] Completed
+
+### `crater completion install <SHELL>` / `crater comp install <SHELL>`
+- **描述**: 安装/更新指定 shell 的补全脚本（有副作用，幂等）。
+- **位置参数**:
+  - `<SHELL>` (positional, required): `bash | zsh`。
+- **选项**:
+  - `--yes, -y` (bool): 跳过确认并直接执行安装/更新。
+- **处理逻辑**:
+  - **zsh/bash（当前实现）**：在用户的 `~/.zshrc` / `~/.bashrc` 中写入/更新一段带固定起止标记（marker）的内联补全块；不额外落盘 `~/.zsh/completions/_crater` 或 `~/.bash/completions/crater.bash` 等独立脚本文件。
+  - 若 marker 块已存在，则替换块内脚本为当前版本（重复执行应安全、可重复）。
+  - 交互模式下可展示将要写入/修改的位置并请求确认；`--no-interactive` 下必须提供 `--yes`，否则报错。
+- **`--json` 的 `data`**：
+  - `shell`（字符串）
+  - `installed_paths`（字符串数组：当前为被修改的 rc 文件路径，例如 `~/.zshrc`）
+  - `updated`（布尔：**marker 块在本次调用前已存在**，或 **本次为替换已有块**（非“首次追加块”）时为 `true`；首次向 rc 追加 marker 块时为 `false`）
+  - `inserted_zshrc` / `inserted_bashrc`（布尔：是否通过“追加新块”完成安装；若为 `false` 通常表示替换了既有 marker 块）
+- **状态**: bash/zsh [x] Completed
+
+### `crater completion uninstall <SHELL>` / `crater comp uninstall <SHELL>`
+- **描述**: 卸载指定 shell 的补全脚本（有副作用，幂等）。
+- **位置参数**:
+  - `<SHELL>` (positional, required): `bash | zsh`。
+- **选项**:
+  - `--yes, -y` (bool): 跳过确认并直接执行卸载。
+- **处理逻辑**:
+  - **zsh/bash（当前实现）**：从 `~/.zshrc` / `~/.bashrc` 中移除由 `install` 写入的 marker 块（只移除 crater 写入片段；若未找到块则无副作用）。
+  - 交互模式下可展示将要删除/回滚的对象并请求确认；`--no-interactive` 下必须提供 `--yes`，否则报错。
+- **`--json` 的 `data`**：`shell`（字符串）、`removed_paths`（字符串数组：**实际发生写回修改**的 rc 文件路径；不是“删除整个文件”的语义）。
+- **状态**: bash/zsh [x] Completed
+
+---
+
+## 3. 认证模块 (auth)
 
 ### `crater auth login`
 - **描述**: 登录到一个 Crater platform 实例并获取 Token。
@@ -116,7 +162,7 @@
 - **输出格式**:
   - 表格形式显示: `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
 - **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目）。
-- **状态**: [ ] Pending
+- **状态**: [x] Completed
 
 ### `crater auth rm`
 - **描述**: 删除指定的认证上下文。
@@ -135,7 +181,7 @@
     - 同时从系统 Keyring 中删除关联的 Token。
     - 如果删除的是当前 `active` 的上下文，则将 `active_context` 置为空。
 - **`--json` 的 `data`**：`removed_count`（整数）。
-- **状态**: [ ] Pending
+- **状态**: [x] Completed
 
 ### `crater auth logout`
 - **描述**: 登出并注销当前激活的认证上下文。
@@ -153,6 +199,6 @@
     - 如果列表中仍有其他已保存的认证上下文，则**自动切换**到列表中的第一项作为新的 `active_context`。
     - 如果列表为空，则清空 `active_context`。
 - **`--json` 的 `data`**：`next_active`（对象，与 `active_context` 同形；登出后若已无激活项则为各字段空字符串的同一结构）。
-- **状态**: [ ] Pending
+- **状态**: [x] Completed
 
 ---

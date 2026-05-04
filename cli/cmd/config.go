@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/raids-lab/crater/cli/internal/clierror"
+	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/config"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
@@ -101,4 +103,28 @@ var languageCmd = &cobra.Command{
 func init() {
 	configCmd.AddCommand(languageCmd)
 	rootCmd.AddCommand(configCmd)
+
+	// Advanced completion (phase 1): crater config language [LANG]
+	// token 不翻译；description 使用语言展示名，当前语言带 UI 语言下的简短标记。
+	completion.RegisterPositional([]string{"config", "language"}, 0, func(ctx completion.Context) ([]completion.Candidate, error) {
+		prefix := completion.CurrentWordPrefix(ctx)
+		langs := i18n.GetSupportedLanguages()
+		display := i18n.GetLanguageDisplay()
+		current := i18n.GetCurrentLanguage()
+		var out []completion.Candidate
+		for _, l := range langs {
+			if prefix != "" && !strings.HasPrefix(strings.ToLower(l), strings.ToLower(prefix)) {
+				continue
+			}
+			desc := display[l]
+			if l == current {
+				desc = i18n.T("lang_completion_label_current", display[l])
+			}
+			out = append(out, completion.Candidate{
+				Value:       l,
+				Description: desc,
+			})
+		}
+		return out, nil
+	})
 }

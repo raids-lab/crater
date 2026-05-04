@@ -137,10 +137,9 @@ func updateHelpTexts(root *cobra.Command) {
 	updateAllCommands(root)
 }
 
-func initLanguageAndHelp() {
+// initLanguageOnly 仅设置 i18n 语言（供 crater __complete 快路径使用，不做 help 全树覆盖）。
+func initLanguageOnly() {
 	cm, _ := config.NewConfigManager()
-
-	// Priority (Scheme A): Config > Env > Detect
 	lang := ""
 	if cm != nil && cm.State.Language != "" {
 		lang = cm.State.Language
@@ -149,7 +148,10 @@ func initLanguageAndHelp() {
 		lang = i18n.DetectLanguage()
 	}
 	i18n.SetLanguage(lang)
+}
 
+func initLanguageAndHelp() {
+	initLanguageOnly()
 	updateHelpTexts(rootCmd)
 }
 

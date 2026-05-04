@@ -21,6 +21,7 @@ var translations = mergeCatalogs(
 	catalogRoot,
 	catalogAuth,
 	catalogConfig,
+	catalogCompletion,
 	catalogErrors,
 )
 

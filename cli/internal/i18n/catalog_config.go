@@ -10,6 +10,7 @@ var catalogConfig = map[Language]map[string]string{
 		"lang_short":              "Change CLI display language",
 		"select_language":         "Select language:",
 		"lang_switch_success":     "Language switched to: %s",
+		"lang_completion_label_current": "%s (current)",
 	},
 	ZhCN: {
 		// Command Descriptions
@@ -19,6 +20,7 @@ var catalogConfig = map[Language]map[string]string{
 		"lang_short":              "修改 CLI 显示语言",
 		"select_language":         "选择语言：",
 		"lang_switch_success":     "语言已切换为：%s",
+		"lang_completion_label_current": "%s（当前）",
 	},
 }
 

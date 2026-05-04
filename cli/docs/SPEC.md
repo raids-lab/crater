@@ -28,7 +28,7 @@
 
 ## API
 
-本节只规定**开发者**在扩展或修改「与 Crater 平台的 HTTP 交互」时必须怎么做。包分工见 [「模块分层」](./ARCHITECTURE.md#arch-layers)；`internal/api` 组织、错误边界、`cmd` 映射与 `CRATER_HTTP_SIM` 等实现说明见 [「网络通信」](./ARCHITECTURE.md#arch-network)。
+本节只规定**开发者**在扩展或修改「与 Crater 平台的 HTTP 交互」时必须怎么做。包分工与实现叙事见 [ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ### 与平台 HTTP 相关的实现约束
 
@@ -40,9 +40,64 @@
 
 ---
 
+## Tab 补全（开发者约定）
+
+本节说明：**开发新命令或改交互时，为适配当前 Tab 补全机制开发者需要做什么**。端到端行为见 [ARCHITECTURE.md](./ARCHITECTURE.md)；对外子命令契约见 [COMMANDS.md](./COMMANDS.md)。
+
+**产品范围（与实现一致）**：当前仅 **bash / zsh**；不包含 PowerShell（`pwsh`）。Windows 上若需 Tab 补全，以 **Git Bash + bash** 路径为准。
+
+### 默认行为
+
+- 子命令名：从 Cobra 命令树枚举可见子命令（尊重 `Hidden` 等）。
+- flag 名（如 `--json`、`--platform`、`-m`）：从 `pflag` 元数据生成候选。
+
+只要命令树和 flags 正确挂在对应的 `*cobra.Command` 上，就会有基本补全。
+
+### 什么时候需要注册
+
+当候选无法仅靠命令树静态得出时（枚举值、读取 `state.json`、按前缀过滤、业务语义候选等），在对应命令域的 `cmd/*.go` 的 `init()` 中注册动态补全函数。
+
+当前只保留两类局部注册点（不引入命令级接管接口；`Completer` 方案已移除）：
+
+- 位置参数候选：`completion.RegisterPositional(...)`（参考实现：`cmd/config.go` 的 `init()`）
+- flag 值候选：`completion.RegisterFlagValue(...)`（参考实现：`cmd/auth.go` 的 `init()`）
+
+### RegisterPositional（位置参数）
+
+`completion.RegisterPositional(commandKey, argIndex, fn)`：
+
+- `commandKey`：不含根命令名 `crater`；与 `cobra.Command.CommandPath()` 按空格拆分后去掉第一段一致。例如 `crater config language` → `[]string{"config","language"}`。
+- `argIndex`：从 0 开始，表示该子命令下第 \(N\) 个纯位置参数。引擎会跳过已出现的 flag 及其取值后再计数。
+- `fn(ctx)`：返回 `[]completion.Candidate`，其中 `Value` 为插入 token（不翻译，应稳定），`Description` 为可选说明（zsh 展示，bash 通常忽略）。按前缀过滤时可用 `completion.CurrentWordPrefix(ctx)` 取当前正在补全词中的已输入片段（可能为空）。
+
+实例：`crater config language [LANG]` 在 `cmd/config.go` 的 `init()` 里注册 `argIndex=0`，候选来自 `i18n.GetSupportedLanguages()`（Value），展示名来自 `i18n.GetLanguageDisplay()`（Description），并按 `CurrentWordPrefix` 过滤。
+
+### RegisterFlagValue（flag 取值）
+
+`completion.RegisterFlagValue(commandKey, flagName, fn)`：
+
+- `commandKey`：同上（不含 `crater`）。
+- `flagName`：Cobra 的长选项名（不含 `--`），例如 `mode` / `platform`。
+- `fn(ctx)`：返回 `[]Candidate`；`Value` 为值 token（不翻译）。值前缀过滤可用 `completion.CurrentWordPrefix(ctx)`（与归一后的当前槽位一致，可能为空）。
+
+引擎会自动适配多种输入形态，并路由到同一个 `RegisterFlagValue`（实现见 `internal/completion/engine.go` 的 `completeFlagValues`，对应三种分支：行内长选项、flag 与值相邻两词、bash 下 flag / `=` / 值 三词）：
+
+- `--flag=valuePrefix`（**长选项** `--…` 与 `=` 在同一 token；短选项 `-f=value` 若未被拆成多词，当前不归入本路由）
+- `--flag valuePrefix` / `-f valuePrefix`（flag 与值分两词）
+- `--flag = valuePrefix` / `-f = valuePrefix`（`=` 为独立 token；常见于 bash：`COMP_WORDBREAKS` 含 `=`）
+
+`fn(ctx)` 收到的上下文中，引擎已将当前槽位规范为正在补全的**纯值前缀**（不含 `--flag=`）；`completion.CurrentWordPrefix(ctx)` 与该字符串一致。
+
+### 工程约束
+
+- 补全查询路径不得发起网络请求；读取本地配置需轻量且可快速返回。
+- 补全子进程 stdout 只输出 shell 协议要求的候选行，不得混入业务成功 JSON 信封或无关提示。
+
+---
+
 ## 命令结果：错误与成功
 
-**相关章节**：[COMMANDS「全局通用规范」](./COMMANDS.md#commands-global)、[COMMANDS「错误处理规范」](./COMMANDS.md#commands-errors)、[ARCHITECTURE「终端输出」](./ARCHITECTURE.md#arch-terminal)。
+**相关章节**：[COMMANDS.md](./COMMANDS.md)、[ARCHITECTURE.md](./ARCHITECTURE.md)。
 
 ### 责任路由
 
@@ -55,7 +110,7 @@
 
 ### 失败：`return` 什么
 
-需要稳定错误 JSON 与退出码时，优先 `return` 已组装好的 `*clierror.Error`：`Category`、`Code`（`pkg/errorcodes`）、`Message`（`i18n`）、可选 `Context`。脚本应消费 `Context` 等结构化字段，勿依赖解析自然语言 `Message`。`Message` **允许多行**；人类可读 stderr 由 `internal/output` 在 `Error:` 下对每行统一加基础缩进，行内额外空格由你写入 `Message` 即可，会与基础缩进叠加（见 [COMMANDS「错误处理规范」](./COMMANDS.md#commands-errors) 默认模式说明）。
+需要稳定错误 JSON 与退出码时，优先 `return` 已组装好的 `*clierror.Error`：`Category`、`Code`（`pkg/errorcodes`）、`Message`（`i18n`）、可选 `Context`。脚本应消费 `Context` 等结构化字段，勿依赖解析自然语言 `Message`。`Message` **允许多行**；人类可读 stderr 由 `internal/output` 在 `Error:` 下对每行统一加基础缩进，行内额外空格由你写入 `Message` 即可，会与基础缩进叠加（见 [COMMANDS.md](./COMMANDS.md)）。
 
 若不是 `*clierror.Error`：JSON 模式下退化为 `system_error` 与 `ERR_COMMAND_EXECUTION`，`message` 取自 `err.Error()`；字段名与整体形状仍须满足 COMMANDS「错误处理规范」。
 
@@ -113,6 +168,7 @@
 - `catalog_root.go`：根命令、全局选项
 - `catalog_auth.go`：`auth` 命令族
 - `catalog_config.go`：`config` 命令族
+- `catalog_completion.go`：`completion` / `comp` 命令族
 - `catalog_errors.go`：通用错误消息
 
 新增命令域时：新增 `catalog_<域>.go`，并在 `mergeCatalogs()` 注册。

@@ -21,6 +21,10 @@ var catalogAuth = map[Language]map[string]string{
 		"flag_password":  "Password (non-interactive only)",
 		"flag_yes":       "Force operation without confirmation",
 
+		// Completion candidate descriptions
+		"auth_mode_ldap_desc":   "Authenticate via an LDAP server (recommended for ACT Lab clusters).",
+		"auth_mode_normal_desc": "Authenticate against Crater's internal database.",
+
 		// Prompts
 		"prompt_platform": "Platform URL: ",
 		"prompt_username": "Username: ",
@@ -64,6 +68,10 @@ var catalogAuth = map[Language]map[string]string{
 		"flag_mode":      "认证模式 (ldap | normal)",
 		"flag_password":  "密码 (仅限非交互模式)",
 		"flag_yes":       "强制执行操作，无需确认",
+
+		// Completion candidate descriptions
+		"auth_mode_ldap_desc":   "通过 LDAP 服务器进行认证（推荐用于 ACT 实验室集群）",
+		"auth_mode_normal_desc": "通过 Crater 内置数据库进行认证",
 
 		// Prompts
 		"prompt_platform": "平台 URL: ",

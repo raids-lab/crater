@@ -3,13 +3,16 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"slices"
+	"strings"
 	"syscall"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
-	"github.com/raids-lab/crater/cli/internal/credential"
+	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/config"
+	"github.com/raids-lab/crater/cli/internal/credential"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
@@ -34,6 +37,27 @@ func roleForActiveContext(st config.State, ac config.ActiveContext) string {
 		}
 	}
 	return "-"
+}
+
+const (
+	authModeLDAP    = "ldap"
+	authModeNormal  = "normal"
+	authModeDefault = authModeLDAP
+)
+
+// authLoginModes 为 login / 补全 / 校验共用的认证方式 token 有序列表（唯一来源）。
+var authLoginModes = []string{authModeLDAP, authModeNormal}
+
+func authModeOrdered() []string {
+	return slices.Clone(authLoginModes)
+}
+
+func authModeValid(m string) bool {
+	return slices.Contains(authLoginModes, m)
+}
+
+func authModeDescI18nKey(mode string) string {
+	return "auth_mode_" + mode + "_desc"
 }
 
 var authCmd = &cobra.Command{
@@ -87,6 +111,11 @@ var loginCmd = &cobra.Command{
 			}
 			password = string(bytePassword)
 			fmt.Println()
+		}
+
+		mode = strings.TrimSpace(mode)
+		if !authModeValid(mode) {
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", mode)}
 		}
 
 		authClient := api.NewAuthClient(platformURL)
@@ -165,6 +194,10 @@ var switchCmd = &cobra.Command{
 		p, _ := cmd.Flags().GetString("platform")
 		u, _ := cmd.Flags().GetString("username")
 		m, _ := cmd.Flags().GetString("mode")
+		m = strings.TrimSpace(m)
+		if m != "" && !authModeValid(m) {
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", m)}
+		}
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
@@ -252,6 +285,10 @@ var lsCmd = &cobra.Command{
 		p, _ := cmd.Flags().GetString("platform")
 		u, _ := cmd.Flags().GetString("username")
 		m, _ := cmd.Flags().GetString("mode")
+		m = strings.TrimSpace(m)
+		if m != "" && !authModeValid(m) {
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", m)}
+		}
 
 		cm, err := config.NewConfigManager()
 		if err != nil {
@@ -305,6 +342,10 @@ var rmCmd = &cobra.Command{
 		p, _ := cmd.Flags().GetString("platform")
 		u, _ := cmd.Flags().GetString("username")
 		m, _ := cmd.Flags().GetString("mode")
+		m = strings.TrimSpace(m)
+		if m != "" && !authModeValid(m) {
+			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", m)}
+		}
 		force, _ := cmd.Flags().GetBool("yes")
 		noInter := viper.GetBool("no-interactive")
 
@@ -451,7 +492,7 @@ var logoutCmd = &cobra.Command{
 func init() {
 	loginCmd.Flags().StringP("platform", "p", "", "Platform base URL")
 	loginCmd.Flags().StringP("username", "u", "", "Username")
-	loginCmd.Flags().StringP("mode", "m", "ldap", "Authentication mode")
+	loginCmd.Flags().StringP("mode", "m", authModeDefault, "Authentication mode")
 	loginCmd.Flags().String("password", "", "Password")
 
 	switchCmd.Flags().StringP("platform", "p", "", "Platform URL")
@@ -468,6 +509,27 @@ func init() {
 	rmCmd.Flags().BoolP("yes", "y", false, "Force removal")
 
 	logoutCmd.Flags().BoolP("yes", "y", false, "Force logout")
+
+	// Advanced completion: crater auth * --mode/-m（候选与 authLoginModes 一致）
+	modeCompleter := func(ctx completion.Context) ([]completion.Candidate, error) {
+		prefix := completion.CurrentWordPrefix(ctx)
+		modes := authModeOrdered()
+		out := make([]completion.Candidate, 0, len(modes))
+		for _, m := range modes {
+			if prefix != "" && !strings.HasPrefix(strings.ToLower(m), strings.ToLower(prefix)) {
+				continue
+			}
+			out = append(out, completion.Candidate{
+				Value:       m,
+				Description: i18n.T(authModeDescI18nKey(m)),
+			})
+		}
+		return out, nil
+	}
+	completion.RegisterFlagValue([]string{"auth", "login"}, "mode", modeCompleter)
+	completion.RegisterFlagValue([]string{"auth", "switch"}, "mode", modeCompleter)
+	completion.RegisterFlagValue([]string{"auth", "ls"}, "mode", modeCompleter)
+	completion.RegisterFlagValue([]string{"auth", "rm"}, "mode", modeCompleter)
 
 	authCmd.AddCommand(loginCmd)
 	authCmd.AddCommand(switchCmd)
