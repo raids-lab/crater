@@ -256,7 +256,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       })
       if (billingConfigError) {
         toast.warning(
-          `账户 ${name} 已创建，但 Billing 配置保存失败，请进入账户后重试：${billingConfigError}`
+          `账户 ${name} 已创建，但计费配置保存失败，请进入账户后重试：${billingConfigError}`
         )
       } else {
         toast.success(t('toast.accountCreated', { name }))

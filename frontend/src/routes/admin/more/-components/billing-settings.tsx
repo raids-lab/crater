@@ -151,7 +151,7 @@ export function BillingSettings({
           <CoinsIcon className="text-primary h-5 w-5" />
           <CardTitle>
             {t('systemConfig.billing.title', {
-              defaultValue: 'Billing 设置',
+              defaultValue: '计费设置',
             })}
           </CardTitle>
         </div>
@@ -167,12 +167,12 @@ export function BillingSettings({
           <div className="space-y-0.5">
             <Label className="text-base">
               {t('systemConfig.billing.featureSwitch', {
-                defaultValue: '开启 Billing 功能',
+                defaultValue: '开启计费功能',
               })}
             </Label>
             <p className="text-muted-foreground text-[0.8rem]">
               {t('systemConfig.billing.featureSwitchDesc', {
-                defaultValue: '关闭时，Billing 相关字段与操作不显示。',
+                defaultValue: '关闭时，计费相关字段与操作不显示。',
               })}
             </p>
           </div>
@@ -248,7 +248,7 @@ export function BillingSettings({
                 <div className="space-y-0.5">
                   <Label className="text-base">
                     {t('systemConfig.billing.baseLoopTitle', {
-                      defaultValue: 'Billing 基础循环',
+                      defaultValue: '计费基础循环',
                     })}
                   </Label>
                   <p className="text-muted-foreground text-[0.8rem]">

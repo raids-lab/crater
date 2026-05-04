@@ -196,7 +196,7 @@ function RouteComponent() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'billing-status'] })
       toast.success(
         t('systemConfig.billing.saveSuccess', {
-          defaultValue: 'Billing 配置已更新',
+          defaultValue: '计费配置已更新',
         })
       )
     },

@@ -96,19 +96,19 @@ export const apiAdminGetPrequeueConfig = () =>
 export const apiAdminUpdatePrequeueConfig = (data: IPrequeueConfig) =>
   apiV1Put<IResponse<string>>('admin/system-config/prequeue', data)
 
-/** 获取 Billing 开关状态 */
+/** 获取计费开关状态 */
 export const apiGetBillingStatus = () =>
   apiV1Get<IResponse<IBillingStatus>>('system-config/billing')
 
-/** 获取 Billing 开关状态 */
+/** 获取计费开关状态 */
 export const apiAdminGetBillingStatus = () =>
   apiV1Get<IResponse<IBillingStatus>>('admin/system-config/billing')
 
-/** 设置 Billing 开关状态 */
+/** 设置计费开关状态 */
 export const apiAdminSetBillingStatus = (data: ISetBillingStatusReq) =>
   apiV1Put<IResponse<string>>('admin/system-config/billing', data)
 
-/** 手动执行一次 Billing 基础循环 */
+/** 手动执行一次计费基础循环 */
 export const apiAdminTriggerBillingReconcile = () =>
   apiV1Post<IResponse<unknown>>('admin/system-config/billing/reconcile')
 
