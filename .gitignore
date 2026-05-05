@@ -104,5 +104,11 @@ backend/crater
 # Local debug scripts
 crater-agent/test_openai.py
 
+# Agent offline experiment artifacts
+/results/
+crater-agent/results/
+crater-agent/config/exp*.txt
+crater-agent/config/mops*.json
+crater-agent/config/*plan-execute*.json
 # Thesis drafts (personal work, not code)
 docs/thesis/

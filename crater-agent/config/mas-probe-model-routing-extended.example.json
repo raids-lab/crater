@@ -41,10 +41,10 @@
       "dialogue_eval_flash"
     ],
     "taskJudgeRoles": [
-      "general_eval_flash"
+      "task_eval"
     ],
     "confirmationTaskJudgeRoles": [
-      "general_eval_flash"
+      "task_eval"
     ],
     "difficultyWeights": {
       "easy": 1.0,
@@ -97,17 +97,17 @@
     },
     {
       "name": "qwen35_plus_core_flash_workers",
-      "description": "Coordinator/Executor/Verifier 使用 qwen3.5-plus-2026-02-15，验证较旧 plus 是否足够。",
+      "description": "Coordinator/Executor/Verifier 使用 qwen3.5-plus-2026-04-20，验证较旧 plus 是否足够。",
       "mode": "snapshot",
       "orchestration": "multi",
       "repeat": 1,
       "llm": {
         "roleClientMap": {
-          "multi_agent.coordinator": "qwen3.5-plus-2026-02-15",
-          "multi_agent.executor": "qwen3.5-plus-2026-02-15",
-          "multi_agent.verifier": "qwen3.5-plus-2026-02-15",
-          "multi_agent.general": "qwen3.5-plus-2026-02-15",
-          "multi_agent.guide": "qwen3.5-plus-2026-02-15"
+          "multi_agent.coordinator": "qwen3.5-plus-2026-04-20",
+          "multi_agent.executor": "qwen3.5-plus-2026-04-20",
+          "multi_agent.verifier": "qwen3.5-plus-2026-04-20",
+          "multi_agent.general": "qwen3.5-plus-2026-04-20",
+          "multi_agent.guide": "qwen3.5-plus-2026-04-20"
         }
       }
     },

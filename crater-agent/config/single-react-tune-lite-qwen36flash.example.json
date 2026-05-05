@@ -25,10 +25,10 @@
       "dialogue_eval_flash"
     ],
     "taskJudgeRoles": [
-      "general_eval_flash"
+      "task_eval"
     ],
     "confirmationTaskJudgeRoles": [
-      "general_eval_flash"
+      "task_eval"
     ],
     "difficultyWeights": {
       "easy": 1.0,
