@@ -51,6 +51,57 @@ def _format_plan_tool_hints(plan_tool_hints: list[dict] | None) -> str:
     return "\n".join(lines) or "(无)"
 
 
+def _compact_guidance_for_tools(user_message: str, visible_tools: list[str]) -> str:
+    normalized_message = str(user_message or "").lower()
+    visible = set(visible_tools)
+    rules: list[str] = [
+        "- 只调用能回答当前未决字段的只读工具；每次调用前确认它与用户目标、Planner 计划项或最新证据缺口直接相关。",
+        "- 只围绕用户问题和 Planner 工具计划取证；证据足够后立即总结，不要为了完整性继续横向查询。",
+        "- 避免语义重复：不同参数、不同工具如果仍在验证同一已满足事实，也不要继续调用。",
+        "- 如果只有一个可用工具，且它能直接回答当前问题，优先调用它；不要先输出泛化建议。",
+        "- 最终总结必须包含：结论、关键证据、建议下一步；如果无需处理，要明确写出无需立即操作。",
+    ]
+    if visible & {"get_health_overview", "get_cluster_health_report", "get_cluster_health_overview"}:
+        rules.append(
+            "- 健康/noop 场景要直接说明 healthy/degraded、异常对象、影响范围、是否需要立即处理和观察项；healthy 且无告警时不要建议重启或批量处置。"
+        )
+    if visible & {"query_job_metrics"}:
+        rules.append(
+            "- 指标对比要保留双方核心数值、差异方向/倍数、哪个更好，以及低效一侧可能的 I/O、dataloader、batch size 或同步等待瓶颈。"
+        )
+    if visible & {"analyze_queue_status"}:
+        rules.append(
+            "- 排队、公平调度、优先级或为什么别人先跑的问题，优先使用 analyze_queue_status；总结要保留优先级/配额/公平调度策略、被比较对象和可执行建议。"
+        )
+    if visible & {"get_job_detail", "get_job_logs", "get_job_events", "diagnose_job", "get_diagnostic_context"}:
+        rules.append(
+            "- 作业诊断优先保留状态、退出码、日志/事件里的直接错误和根因；不要在已经确认根因后又声称缺少同一类证据。"
+        )
+    if visible & {"prometheus_query"}:
+        rules.append(
+            "- Prometheus 查询要窄化到用户给出的 namespace/job/pod/PVC/service；PVC 使用率保留逐 PVC series，空 series 只能表示指标未命中，不能当作正常证明。"
+        )
+    if visible & {"k8s_list_pods", "k8s_get_events", "k8s_describe_resource", "k8s_get_endpoints", "k8s_rollout_status"}:
+        rules.append(
+            "- Kubernetes 场景优先核验与目标对象直接相关的 Pod、Endpoints、Events 或 rollout 状态；不要扩散成全量巡检。"
+        )
+    if visible & {"k8s_top_nodes", "k8s_top_pods"}:
+        rules.append(
+            "- 资源热点查询要同时给出节点排名和 Pod 排名，保留对象名、namespace/节点归属、CPU/内存/GPU 等关键数值；不要只回答第一名。"
+        )
+    if visible & {"k8s_list_nodes", "k8s_describe_resource", "k8s_list_pods"}:
+        rules.append(
+            "- 节点 NotReady、reboot 后仍异常、RDMA/GPU 驱动类问题要覆盖节点 Ready 状态、节点上 Pod 影响、平台内缓解动作（如 cordon/drain 评估）和带外 reset/机房介入边界。"
+        )
+    if visible & {"check_quota", "get_job_templates", "list_available_images", "get_resource_recommendation", "get_realtime_capacity"}:
+        rules.append(
+            "- 提交/配置场景按问题覆盖模板或推荐、配额、镜像；镜像事实必须来自 list_available_images，get_resource_recommendation 不能替代镜像核实；只有用户关心立即调度或容量时才补实时容量。"
+        )
+    if "为什么" in normalized_message or "失败" in normalized_message or "报错" in normalized_message:
+        rules.append("- 用户问原因时，回答要先给根因判断，再列证据和可执行修复路径。")
+    return "\n".join(rules)
+
+
 class ExplorerAgent(BaseRoleAgent):
     def build_tool_loop_prompts(
         self,
@@ -86,6 +137,28 @@ class ExplorerAgent(BaseRoleAgent):
         evidence_detail = _format_compact_evidence(compact_evidence or [])
         plan_tool_detail = _format_plan_tool_hints(plan_tool_hints)
 
+        if len(visible_tools) <= 5:
+            compact_guidance = _compact_guidance_for_tools(user_message, visible_tools)
+            system_prompt = (
+                "你是 Crater 的 Explorer Agent，负责用只读工具收集最小必要证据并总结。\n"
+                "你只能使用下列只读工具，不能执行写操作。\n\n"
+                f"可用只读工具: {', '.join(visible_tools) or '(empty)'}\n"
+                f"{candidates_hint}"
+                f"{steps_hint}\n\n"
+                "工作要求：\n"
+                f"{compact_guidance}\n"
+            )
+            user_prompt = (
+                f"用户请求:\n{user_message}\n\n"
+                f"页面上下文:\n{page_context}\n\n"
+                f"Planner 工具计划（如需取证，优先照此推进）:\n{plan_tool_detail}\n\n"
+                f"已获取的工具结果（不要重复调用这些）:\n{evidence_detail}\n\n"
+                f"证据文本摘要:\n{evidence_summary or '(empty)'}\n\n"
+                f"最近已执行工具签名:\n{recent_attempts or []}\n\n"
+                "请调用必要工具；若已有证据足够，就直接给出中文总结。"
+            )
+            return system_prompt, user_prompt
+
         system_prompt = (
             "你是 Crater 的 Explorer Agent。你的职责是通过只读工具主动收集证据，并在证据足够时直接给出探索总结。\n"
             "你可以连续多轮调用工具。每次拿到工具结果后，你必须继续基于结果判断下一步，而不是机械重复同一个工具。\n"
@@ -96,7 +169,11 @@ class ExplorerAgent(BaseRoleAgent):
             f"{steps_hint}\n\n"
             "工作要求：\n"
             "- 对存储/网络/节点/作业问题，优先调用平台内只读工具。\n"
-            "- 如果用户只是在确认“当前这个作业现在正常吗、还需不需要处理”，默认先看 get_job_detail；只有在需要补健康佐证时，再二选一补 query_job_metrics 或 get_job_events，不要把 metrics 和 events 都查满。若最终结论健康，探索总结要直接说明作业当前状态、指标是否正常、是否需要额外处理，并补一句具体 watchpoint（如状态变为 Failed/Pending、GPU 利用率明显下跌、显存异常飙升时再排查）。\n"
+                "- 如果用户只是在确认“当前这个作业现在正常吗、还需不需要处理”，默认先看 get_job_detail；只有在需要补健康佐证时，再二选一补 query_job_metrics 或 get_job_events，不要把 metrics 和 events 都查满。若最终结论健康，探索总结要直接说明作业当前状态、指标是否正常、是否需要额外处理，并补一句具体 watchpoint（如状态变为 Failed/Pending、GPU 利用率明显下跌、显存异常飙升时再排查）。\n"
+            "- 每次只读调用都必须服务于一个未决字段、计划项或最新证据缺口；相同参数会被系统拦截，但你还要避免不同工具/参数反复验证同一已满足事实。\n"
+            "- 如果已有工具结果、resume_after_confirmation.result 或 source_turn_context.tool_calls 已覆盖根因、状态或建议，先消费这些证据；除非有明确新缺口，不要补读同义工具。\n"
+            "- 直接工具存在时不要退化成无关列表、菜单或泛化建议；核心指标类问题先取一个最能回答问题的证据，必要时最多补一个旁证。\n"
+            "- 证据覆盖根因、状态、建议后立即停止探索并交给 Coordinator finalize。\n"
             "- 如果用户在问“为什么他比我晚排队却先跑了 / 这不公平 / 为什么优先级更低却先调度”，优先用 analyze_queue_status 解释调度原因，再用 check_quota 补充是否存在配额超额或 WeightedFairShare 影响；analyze_queue_status 已经能给出双方优先级、公平调度和配额线索时，不要再额外对两个作业都调用 get_job_detail。\n"
             "- Pending/FailedScheduling 且问题涉及 PVC、StorageClass、配额或队列时，analyze_queue_status 是优先工具；它已经返回 PVC/StorageClass 根因、可用资源或配额排除时，不要再补同义事件查询。\n"
             "- 日志已经明确给出 FileNotFoundError、OOMKilled、ImagePullBackOff 等根因时，应基于日志和最少旁证总结；diagnose_job 只在原始信号不够确定时使用，避免 detail/logs/events/diagnose 全量堆叠。\n"
@@ -123,9 +200,9 @@ class ExplorerAgent(BaseRoleAgent):
             "- 如果 list_user_jobs 已经列出多个失败作业，而用户问题本身没有指明 jobName，应尽快停在澄清上；可以给每个失败作业补一句基于 exit_code / failure_reason 的初步线索，但不要直接把所有作业说成同一个根因。\n"
             "- 多轮追问里，如果用户说“第一个/最新/刚才那个/这个为什么失败”，必须从最近历史或已获取列表中解析具体 jobName，再调用 get_job_detail、get_job_events、get_job_logs 或 diagnose_job 中最直接的只读工具；不要只说“需要获取证据”却不调用工具。\n"
             "- 如果是 Kubernetes rollout / workload 发布卡住，且证据显示镜像拉取错误或发布超时，探索总结里要保留原始错误信号，并明确写出这是 rollout 卡住；建议覆盖修正镜像、重新发布或回滚、确认新 Pod 拉取成功。\n"
-            "- 如果用户在新建页询问“有没有某种镜像 / 应该用什么配置 / 这个配置能不能提交 / 最好给我完整提交配置”，至少覆盖与问题直接相关的三类事实：配置建议或模板、配额、可用镜像；只有在用户明确关心是否能立即调度或节点可用性时，再补 get_realtime_capacity。\n"
+            "- 如果用户在新建页询问“有没有某种镜像 / 应该用什么配置 / 这个配置能不能提交 / 最好给我完整提交配置”，至少覆盖与问题直接相关的三类事实：配置建议或模板、配额、可用镜像；可用镜像必须来自 list_available_images，不能用 get_resource_recommendation 的推荐说明替代；只有在用户明确关心是否能立即调度或节点可用性时，再补 get_realtime_capacity。\n"
             "- 如果用户明确提到“8 张 A100 / 8 卡 / 分布式训练 / 完整提交配置”这类高资源训练规划，不要停在模板+配额+镜像三件套；应继续补 get_realtime_capacity，并在可用时补 get_resource_recommendation，用来回答能否立即调度、单节点还是多节点、以及 A100-40G / A100-80G 的取舍。\n"
-            "- 对“8 张 A100 / 8 卡 / 分布式训练 / 完整提交配置”这类场景，优先使用 4 个事实源：get_job_templates、check_quota、get_realtime_capacity、get_resource_recommendation。只有当用户明确追问镜像选择、或模板/推荐里没有可直接使用的镜像时，再额外调用 list_available_images。\n"
+            "- 对“8 张 A100 / 8 卡 / 分布式训练 / 完整提交配置”这类场景，优先使用 get_job_templates、check_quota、list_available_images、get_realtime_capacity、get_resource_recommendation 这些事实源；如果必须控制调用数，也不能省略 list_available_images 对镜像的核实。\n"
             "- 如果当前证据表明单个节点已经有 8 张 GPU 全空闲，默认先给“单节点 8 卡 DDP”方案，并补一句“如果你实际需要跨节点分布式，再继续补多节点参数”。\n"
             "- 当示例 entrypoint 使用 `torchrun --nproc_per_node=8` 这类 launcher 时，除非平台模板明确要求手动绑卡，否则不要额外写 `CUDA_VISIBLE_DEVICES`；保留 NCCL/OMP 等必要环境变量即可。\n"
             "- 联网搜索能力由模型内置提供，仅用于厂商文档、公告、CVE 对照，不能替代平台实时状态查询。\n"
@@ -214,11 +291,11 @@ class ExplorerAgent(BaseRoleAgent):
                 "如果是两个或多个具名作业指标对比，优先直接查询聚合指标；若一次工具结果已经覆盖所有对象，就不要再对每个对象重复调用同类工具或详情工具。总结必须保留双方核心数值、差异倍数/方向、winner，以及低效一侧可能的 I/O/dataloader/batch size/同步等待瓶颈。\n"
                 "指标对比工具结果里如果包含 throughput、samples/sec、吞吐量、显存占用或效率字段，最终总结必须保留这些直接数值；不要只摘要 GPU 利用率。比较倍数要按原始数值估算，避免漏掉吞吐量差异。\n"
                 "如果是 Kubernetes rollout / workload 发布卡住，且 rollout 或事件里出现镜像拉取错误或发布超时，回答里要保留原始错误信号，并明确写出 rollout 卡住；建议覆盖修正镜像、重新发布或回滚、确认新 Pod 拉取成功。\n"
-                "如果用户在新建页询问镜像、推荐配置、提交可行性或完整提交配置，默认优先覆盖配置建议/模板、配额、可用镜像三类事实；若问题未要求立即调度，不要额外选择 get_realtime_capacity。\n"
+                "如果用户在新建页询问镜像、推荐配置、提交可行性或完整提交配置，默认优先覆盖配置建议/模板、配额、可用镜像三类事实；可用镜像必须由 list_available_images 核实，不能由 get_resource_recommendation 替代；若问题未要求立即调度，不要额外选择 get_realtime_capacity。\n"
                 "如果用户是在做提交前参数校验，不要产出异构混搭 GPU 的替代方案，除非证据明确显示平台支持这种混搭；默认优先给“减少数量”或“整体切换到另一种单一 GPU 型号”的建议。\n"
                 "多轮追问里，如果用户说“第一个/最新/刚才那个/这个为什么失败”，必须从最近历史或已获取列表中解析具体 jobName，再调用 get_job_detail、get_job_events、get_job_logs 或 diagnose_job 中最直接的只读工具；不要只输出空数组或只说需要继续取证。\n"
                 "如果用户明确提到“8 张 A100 / 8 卡 / 分布式训练 / 完整提交配置”这类高资源训练规划，应继续补 get_realtime_capacity，并在可用时补 get_resource_recommendation；不要只停在模板、配额、镜像三项。\n"
-                "对“8 张 A100 / 8 卡 / 分布式训练 / 完整提交配置”这类场景，优先选择 get_job_templates、check_quota、get_realtime_capacity、get_resource_recommendation 这 4 个工具；只有当用户明确追问镜像选择，或前述结果里没有足够镜像信息时，才再加 list_available_images。\n"
+                "对“8 张 A100 / 8 卡 / 分布式训练 / 完整提交配置”这类场景，优先选择 get_job_templates、check_quota、list_available_images、get_realtime_capacity、get_resource_recommendation；如果必须减少调用数，也不要省略 list_available_images。\n"
                 "如果是创建 Jupyter / WebIDE 这类轻量交互作业，优先把 get_job_templates、check_quota、list_available_images 作为最小核验集合；除非用户追问容量，不要主动选 get_realtime_capacity。\n"
                 "优先平台内只读工具；联网搜索由模型内置提供，仅用于外部文档/CVE 对照。\n"
                 "不要重复调用已经以相同参数执行过的工具，除非页面上下文或世界状态明确变化。\n\n"

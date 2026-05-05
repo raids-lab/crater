@@ -42,6 +42,8 @@ def _looks_complete_user_summary(value: str) -> bool:
     normalized = str(value or "").strip()
     if not normalized:
         return False
+    if normalized.startswith(("## 探索总结", "**探索总结**", "探索总结")):
+        return False
     has_conclusion = any(token in normalized for token in ("结论", "运行正常", "无需额外处理", "建议下一步"))
     has_guidance = any(token in normalized for token in ("建议下一步", "建议", "后续观察", "继续观察"))
     return has_conclusion and has_guidance
@@ -58,6 +60,7 @@ def _filter_summary_history_messages(history_messages: list | None) -> list:
     if not history_messages:
         return []
     filtered: list = []
+    assistant_summaries_kept = 0
     for message in history_messages:
         content = str(getattr(message, "content", "") or "").strip()
         if not content:
@@ -67,6 +70,17 @@ def _filter_summary_history_messages(history_messages: list | None) -> list:
             continue
         if isinstance(message, AIMessage) and content.startswith("【历史工具结果"):
             filtered.append(message)
+            continue
+        if isinstance(message, AIMessage) and assistant_summaries_kept < 2:
+            filtered.append(
+                AIMessage(
+                    content=(
+                        "【历史助手结论：仅作已确认事实和追问上下文，若无新增反证不得推翻】"
+                        f"{content[:1200]}"
+                    )
+                )
+            )
+            assistant_summaries_kept += 1
     return filtered
 
 
@@ -212,9 +226,13 @@ class CoordinatorAgent(BaseRoleAgent):
                 "决策原则：\n"
                 "- 如果已经存在 pending_actions，优先 execute，不要重复 explore。\n"
                 "- 如果证据明显不够、参数不明确或目标对象未定位，优先 explore。\n"
+                "- explore 只允许用于明确列出的未决事实，并且必须能指出一个直接相关的只读工具；不要把语义相同的缺口拆成多轮 observe/explore。\n"
+                "- 如果已有证据能回答、对象健康无需动作、权限不允许、能力边界明确、或没有相关只读工具，优先 finalize。\n"
                 "- 只有在证据或世界状态变化导致原计划不再成立时才 replan。\n"
-                "- verify 通常在已经有结论或动作结果之后再做。\n"
+                "- verify 是低频复核，只在写后验证、证据冲突、复杂根因链或确认流安全风险明显时使用；普通只读查询、权限拒绝、noop 健康概览和证据已足够的诊断不要强行 verify。\n"
+                "- 对 scale/restart/stop/uncordon/resubmit/create/label/taint 这类明确写意图，如果可用工具里存在真实确认工具且没有权限/风险阻断，必须 execute 推进确认，不能用泛化建议替代。\n"
                 "- 不要因为历史动作而忽略当前输入，但 continuation 可以表示这是确认后的继续执行。\n"
+                "- continuation、workflow、source_turn_context、confirmation_results、action_history 都是一等上下文；续接时不要丢失已完成/已等待工具和计划进度，也不要重复同一写工具。\n"
                 "- 如果用户在问“为什么失败 / 卡在哪 / 现在正常吗 / 有没有 / 用什么配置 / 能不能提交 / 给我完整配置”，且相关只读工具可用，但 evidence_summary 仍为空或只覆盖了部分关键事实，不能 finalize，优先 explore。\n"
                 "- 对新建/配置咨询类问题，只要还没覆盖推荐或模板、配额、镜像这些关键事实桶中的大部分，就不能 finalize 成为泛化建议或页面导航。\n"
                 "- 对具名对象或明确目标（如 rollout、Prometheus、某作业、某 GPU 型号）的核实请求，只要还没做直接取证，就不能 finalize。\n"
@@ -277,8 +295,10 @@ class CoordinatorAgent(BaseRoleAgent):
                 "的输出，向用户给出最终答复。要求中文、结论在前、证据在后、建议最后。\n"
                 "请优先基于实际证据作答，不要只复述其他 agent 的摘要。\n"
                 "- 如果当前轮证据已经给出直接根因或直接目标对象，必须以当前轮证据为准；历史里早期的待确认、低置信度或泛化建议只能作为背景，不能和当前结论并列拼接。\n"
+                "- 如果本轮是追问上一轮诊断结论，且历史助手结论或历史工具结果已经明确给出根因、错误码、日志关键词或建议动作，在没有新增反证时必须继承这些已确认事实；不要重新说“缺少现场数据”或把已排除的原因重新并列。\n"
                 "- 最终答复第一句话必须直接回答用户核心问题；默认按“结论 / 关键证据 / 建议下一步 / 仍缺口或观察点”组织。\n"
                 "- 诊断类答复必须覆盖根因、排除依据、用户或管理员下一步；指标对比类必须列出双方数值、差异方向、结论和可优化项；确认/续接类必须说明确认动作、目标对象、执行结果和已有验证证据。\n"
+                "- 最终答复必须以成功工具结果为事实源；如果证据无法支持某个结论，必须写成“未命中/无法验证/仍缺少”，不要用空结果或泛化推测支撑正向结论。\n"
                 "- Evicted/DiskPressure/ephemeral-storage 类答复不能只说重提或换节点；应结合证据判断是否存在临时目录、debug 输出、日志、checkpoint 或临时文件写爆节点，并给出平台可执行的存储/日志/资源限制建议。\n"
                 "- 当证据已经明确是 Prometheus/PVC/TSDB 存储满导致 no data 或 CrashLoopBackOff 时，建议顺序必须是：先恢复或扩容存储，再校验 TSDB/数据写入是否恢复，最后再决定是否谨慎重启；不要把“检查集群健康”放在第一步，也不要建议删除用户作业作为主要处理方式。\n"
                 "- 节点 NotReady、RDMA/GPU 驱动死锁、reboot 后仍异常类答复应区分平台内缓解动作和带外恢复边界；不要只给 SSH 排查命令。\n"
@@ -300,6 +320,8 @@ class CoordinatorAgent(BaseRoleAgent):
                 "- 如果证据表明对象运行正常或当前无需动作，结论句必须明确说明对象状态、关键指标是否正常、当前是否需要额外处理。若只是状态确认类问题，建议里给出继续观察或无需额外操作的判断，并补一句具体观察点。\n"
                 "- 如果是 Kubernetes rollout / workload 发布卡住，且证据已经指向镜像拉取或发布超时，结论或证据段里要保留原始错误信号，并明确写出 rollout 卡住。建议段要覆盖修正镜像、重新发布或回滚、确认新 Pod 拉取成功，并说明镜像修复后 rollout 才会继续推进。\n"
                 "- 如果用户问的是推荐配置、完整提交配置、镜像是否存在、能不能提交，回答必须体现已经核实到的平台事实；不要退化成“能做什么 / 去哪做 / 注意什么”的帮助说明。\n"
+                "- 提交/配置建议类答复必须明确覆盖：推荐配置或模板、配额是否满足、可用镜像或镜像缺口、是否能提交、还需要用户确认哪些参数。"
+                "其中 `get_resource_recommendation` 只能证明配置建议，不能替代 `list_available_images` 对平台可用镜像的核实；如果镜像未核实，必须直接写成“镜像仍需核实”，不要暗示已有可用镜像。\n"
                 "- 不要把用户自述、页面信息或常识默认值写成已验证事实；未核实的信息必须明确标注为建议或待确认。\n"
                 "- 若关键事实尚不充分，不要假装已经闭环；应如实指出缺口并给出下一步最小核验。"
             ),

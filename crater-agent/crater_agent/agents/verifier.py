@@ -31,6 +31,13 @@ class VerifierAgent(BaseRoleAgent):
                 "read-only 查询、healthy/noop、权限拒绝、以及低风险确认结果通常不需要额外验证。"
                 "只有证据与结论矛盾、真实高风险写操作结果不可信、或复杂根因会影响用户决策时，才判 risk 或 missing_evidence。\n"
                 "如果现有工具结果已经直接支持结论，即使仍存在更深层排查可能，也应判 pass，并在 note 中给出后续观察建议。\n\n"
+                "重点只检查四类失败：1) 成功工具结果与准备输出的结论是否矛盾；"
+                "2) 明确写意图是否缺少真实 confirmation_required 或 completed 工具结果；"
+                "3) 已有证据是否足够但仍在继续探索；"
+                "4) resume 后是否重复调用了 source_turn_context 或 action_history 中已完成的同一写工具。\n"
+                "若用户问确认后的状态、剩余项或原因，resume_after_confirmation.result 是有效执行结果证据；"
+                "当前工具集中不可见的额外健康信号不能被强行列为必须证据。\n"
+                "Prometheus 空结果不能证明流量稳定或异常；只有 confirmation_required 也不能声称写操作 completed。\n\n"
                 "如果证据不足，要明确指出还缺哪类证据；如果发现风险，要指出冲突点或不一致点。\n\n"
                 "你必须输出严格的 JSON 格式:\n"
                 '{"verdict": "pass|risk|missing_evidence", "note": "验证说明"}\n\n'

@@ -774,6 +774,67 @@ def _build_evidence_summary_fallback(compact_evidence: list[dict[str, Any]]) -> 
     return "\n".join(lines)
 
 
+def _result_text_for_stop_check(result: Any) -> str:
+    if not isinstance(result, dict):
+        return str(result or "").lower()
+    payload = result.get("result", result.get("message", result))
+    return str(payload or "").lower()
+
+
+def _has_all_tools(state: MASState, tool_names: set[str]) -> bool:
+    if not tool_names:
+        return False
+    called = {record.tool_name for record in state.tool_records}
+    return tool_names.issubset(called)
+
+
+def _should_stop_read_exploration_after_tool(
+    *,
+    state: MASState,
+    user_message: str,
+    tool_name: str,
+    result: dict[str, Any],
+) -> str:
+    normalized = _normalized_text(user_message)
+    result_text = _result_text_for_stop_check(result)
+
+    if (
+        tool_name in {"k8s_top_nodes", "k8s_top_pods"}
+        and _has_all_tools(state, {"k8s_top_nodes", "k8s_top_pods"})
+        and any(token in normalized for token in ("资源占用", "占用最高", "top", "热点", "最高"))
+    ):
+        return "已获得节点和 Pod 资源占用排行，停止补无关容量查询。"
+
+    if tool_name == "diagnose_job" and any(token in result_text for token in ("oomkilled", "imagepullbackoff", "datanotfound")):
+        return "诊断工具已返回明确根因，停止继续横向取证。"
+
+    capacity_required_tokens = (
+        "立刻调度",
+        "立即调度",
+        "现在哪",
+        "哪台",
+        "空闲",
+        "容量",
+        "8 张",
+        "8卡",
+        "8 卡",
+        "多节点",
+        "跨节点",
+    )
+    if (
+        tool_name in {"get_job_templates", "check_quota", "list_available_images", "get_resource_recommendation"}
+        and _has_all_tools(
+            state,
+            {"get_job_templates", "check_quota", "list_available_images", "get_resource_recommendation"},
+        )
+        and any(token in normalized for token in ("提交", "配置", "模板", "训练", "pytorch", "ddp"))
+        and not any(token in normalized for token in capacity_required_tokens)
+    ):
+        return "提交配置所需的模板、配额、镜像和资源建议已覆盖，停止补实时容量。"
+
+    return ""
+
+
 def _tool_args_for_decision(tool_args: dict[str, Any] | None) -> dict[str, Any]:
     if not isinstance(tool_args, dict):
         return {}
@@ -889,6 +950,202 @@ def _looks_like_job_health_noop_request(
         "no-op",
     )
     return any(token in normalized for token in health_tokens)
+
+
+def _looks_like_job_diagnostic_evidence_request(
+    *,
+    user_message: str,
+    routing: RoutingDecision,
+    page_context: dict[str, Any],
+) -> bool:
+    if _has_write_intent(routing):
+        return False
+    if not _job_target_for_decision(routing=routing, page_context=page_context):
+        return False
+    if _looks_like_history_followup_request(user_message) and not (
+        routing.targets.job_name or page_context.get("job_name") or page_context.get("jobName")
+    ):
+        return False
+    normalized = _normalized_text(user_message)
+    diagnostic_tokens = (
+        "为什么",
+        "原因",
+        "失败",
+        "报错",
+        "异常",
+        "卡住",
+        "卡在哪",
+        "evicted",
+        "驱逐",
+        "terminated",
+        "终止",
+        "oom",
+        "oomkilled",
+        "crashloop",
+        "crashloopbackoff",
+        "imagepull",
+        "pending",
+        "failed",
+        "error",
+        "exit",
+        "退出码",
+        "日志",
+        "事件",
+        "diagnose",
+    )
+    return any(token in normalized for token in diagnostic_tokens)
+
+
+def _relevant_read_tools_for_request(
+    *,
+    user_message: str,
+    routing: RoutingDecision,
+    page_context: dict[str, Any],
+    enabled_tools: list[str],
+) -> set[str]:
+    if _has_write_intent(routing):
+        return set()
+    if (
+        routing.entry_mode in {"simple", "help"}
+        and routing.operation_mode == "unknown"
+        and not routing.requested_action
+    ):
+        return set()
+
+    normalized = _normalized_text(user_message)
+    enabled_set = set(enabled_tools)
+    relevant: set[str] = set()
+    page_markers = " ".join(
+        str(page_context.get(key) or "").strip().lower()
+        for key in ("route", "url", "page", "entryPoint", "entrypoint")
+    )
+    task_bound_page = any(
+        token in page_markers
+        for token in ("/jobs", "/admin", "/nodes", "/monitor", "/inspection", "job_detail", "job_create")
+    )
+    platform_fact_cues = (
+        "当前",
+        "现在",
+        "这次",
+        "这个",
+        "这台",
+        "我的",
+        "我们",
+        "帮我",
+        "帮忙",
+        "看下",
+        "看看",
+        "查",
+        "查询",
+        "列出",
+        "显示",
+        "有没有",
+        "是否",
+        "能不能",
+        "能否",
+        "可不可以",
+        "为什么",
+        "原因",
+        "失败",
+        "报错",
+        "异常",
+        "卡住",
+        "卡在哪",
+        "正常吗",
+        "推荐",
+        "提交配置",
+        "完整配置",
+        "最新",
+        "最近",
+        "空闲",
+        "排队",
+        "还有多少",
+        "剩余",
+    )
+    requires_platform_fact = (
+        task_bound_page
+        or routing.operation_mode == "read"
+        or bool(_job_target_for_decision(routing=routing, page_context=page_context))
+        or bool(_node_target_for_decision(routing=routing, page_context=page_context))
+        or any(token in normalized for token in platform_fact_cues)
+    )
+    if not requires_platform_fact:
+        return set()
+
+    def add(*tool_names: str) -> None:
+        relevant.update(tool_names)
+
+    job_target = _job_target_for_decision(routing=routing, page_context=page_context)
+    if job_target:
+        if _looks_like_job_diagnostic_evidence_request(
+            user_message=user_message,
+            routing=routing,
+            page_context=page_context,
+        ):
+            add(
+                "get_job_detail",
+                "get_job_events",
+                "get_job_logs",
+                "diagnose_job",
+                "get_diagnostic_context",
+            )
+        if _looks_like_job_health_noop_request(
+            user_message=user_message,
+            routing=routing,
+            page_context=page_context,
+        ):
+            add("get_job_detail", "query_job_metrics")
+
+    if _looks_like_ambiguous_failure_query(user_message, routing):
+        add("list_user_jobs", "get_health_overview")
+
+    if _followup_needs_tool_resolution(user_message):
+        add("get_job_detail", "get_job_events", "get_job_logs", "diagnose_job", "list_user_jobs")
+
+    if any(token in normalized for token in ("我的作业", "作业列表", "哪些作业", "失败作业", "最近作业", "最新作业", "job list")):
+        add("list_user_jobs", "get_health_overview")
+
+    if any(token in normalized for token in ("日志", "事件", "详情", "状态", "指标", "metrics", "metric", "gpu 利用", "显存", "吞吐")):
+        add("get_job_detail", "get_job_events", "get_job_logs", "query_job_metrics", "prometheus_query")
+
+    if any(token in normalized for token in ("镜像", "image", "cuda", "pytorch", "tensorflow", "deepspeed")):
+        add("list_available_images", "recommend_training_images")
+
+    if any(token in normalized for token in ("配额", "quota", "能不能提交", "能否提交", "可不可以提交")):
+        add("check_quota")
+
+    if any(token in normalized for token in ("配置", "模板", "资源", "gpu", "a100", "v100", "分布式", "提交配置", "完整配置")):
+        add(
+            "get_job_templates",
+            "get_resource_recommendation",
+            "get_realtime_capacity",
+            "list_available_gpu_models",
+            "list_available_images",
+            "check_quota",
+        )
+
+    if any(token in normalized for token in ("节点", "node", "集群", "cluster", "容量", "空闲", "排队", "queue")):
+        add(
+            "get_cluster_health_report",
+            "get_cluster_health_overview",
+            "list_cluster_nodes",
+            "list_cluster_jobs",
+            "get_node_detail",
+            "k8s_list_nodes",
+            "analyze_queue_status",
+            "get_realtime_capacity",
+        )
+
+    if any(token in normalized for token in ("rollout", "deployment", "statefulset", "pod", "service", "endpoint", "k8s", "kubernetes")):
+        add(
+            "k8s_rollout_status",
+            "k8s_list_pods",
+            "k8s_get_events",
+            "k8s_describe_resource",
+            "k8s_get_endpoints",
+        )
+
+    return {tool_name for tool_name in relevant if tool_name in enabled_set and tool_name in READ_ONLY_TOOL_NAMES}
 
 
 def _count_recent_stage(state: MASState, stage: str) -> int:
@@ -1159,6 +1416,12 @@ def _build_coordinator_decision_context(
         }
         for record in state.tool_records[-8:]
     ]
+    relevant_read_tools = _relevant_read_tools_for_request(
+        user_message=user_message,
+        routing=routing,
+        page_context=page_context,
+        enabled_tools=enabled_tools,
+    )
 
     missing_facts: list[str] = []
     if write_intent:
@@ -1211,6 +1474,29 @@ def _build_coordinator_decision_context(
             missing_facts.append("健康/noop 状态确认尚未核验运行指标。")
 
     if (
+        _looks_like_job_diagnostic_evidence_request(
+            user_message=user_message,
+            routing=routing,
+            page_context=page_context,
+        )
+        and not _has_recent_answer_context(state)
+    ):
+        diagnostic_available_tools = (
+            "get_job_events",
+            "get_job_detail",
+            "get_job_logs",
+            "diagnose_job",
+            "get_diagnostic_context",
+        )
+        diagnostic_enabled_tools = tuple(
+            tool_name for tool_name in diagnostic_available_tools if tool_name in enabled_set
+        )
+        if diagnostic_enabled_tools and not any(
+            _has_tool_record(state, tool_name) for tool_name in diagnostic_enabled_tools
+        ):
+            missing_facts.append("具名作业失败/终止/驱逐类诊断尚未调用作业详情、事件、日志或诊断工具取证；如工具可用且历史没有充分证据，应先补最小证据。")
+
+    if (
         not write_intent
         and not state.tool_records
         and _followup_needs_tool_resolution(user_message)
@@ -1231,8 +1517,22 @@ def _build_coordinator_decision_context(
         and _looks_like_low_risk_sequence_followup(user_message)
         and _has_recent_answer_context(state)
     )
+    toolless_finalize_reason = ""
+    if not write_intent and not state.tool_records:
+        if history_followup_with_context:
+            toolless_finalize_reason = "history_followup_with_context"
+        elif low_risk_sequence_followup:
+            toolless_finalize_reason = "low_risk_sequence_followup"
+        elif not relevant_read_tools:
+            toolless_finalize_reason = "no_relevant_read_tool_or_toolless_question"
 
-    if not write_intent and not state.tool_records and not history_followup_with_context and not low_risk_sequence_followup:
+    if (
+        not write_intent
+        and not state.tool_records
+        and not history_followup_with_context
+        and not low_risk_sequence_followup
+        and relevant_read_tools
+    ):
         missing_facts.append("尚未进行直接只读取证。")
 
     repeated_warnings = _build_over_exploration_warnings(state)
@@ -1277,6 +1577,8 @@ def _build_coordinator_decision_context(
         recommended_next = "act"
     elif history_followup_with_context or low_risk_sequence_followup:
         recommended_next = "finalize"
+    elif not write_intent and not state.tool_records and not relevant_read_tools:
+        recommended_next = "finalize"
     elif missing_facts:
         recommended_next = "observe"
     elif state.no_progress_count >= 1 or repeated_warnings:
@@ -1292,6 +1594,7 @@ def _build_coordinator_decision_context(
             "attempted_signatures": len(state.attempted_tool_signatures),
             "recent_tools": recent_tools,
             "coverage": _build_tool_coverage_labels(state),
+            "available_relevant_read_tools": sorted(relevant_read_tools),
             "recent_controller_stages": [
                 str(item.get("stage") or "").strip()
                 for item in state.controller_trace[-6:]
@@ -1316,6 +1619,8 @@ def _build_coordinator_decision_context(
         "missing_facts": missing_facts,
         "over_exploration_warnings": repeated_warnings,
         "recommended_next_stage_hint": recommended_next,
+        "toolless_finalize_allowed": bool(toolless_finalize_reason),
+        "toolless_finalize_reason": toolless_finalize_reason,
         "history_followup_with_context": history_followup_with_context,
     }
     if verification_verdict:
@@ -1324,6 +1629,65 @@ def _build_coordinator_decision_context(
             "summary": _truncate_text(verification_summary, max_chars=220),
         }
     return context
+
+
+def _fallback_stage_from_decision_context(
+    *,
+    state: MASState,
+    routing: RoutingDecision,
+    decision_context: dict[str, Any],
+    ablation: BenchmarkAblationControl,
+) -> str:
+    hint = str(decision_context.get("recommended_next_stage_hint") or "").strip().lower()
+    if hint not in {"observe", "act", "verify", "replan", "finalize", "plan"}:
+        hint = _fallback_stage_from_state(state, routing, ablation)
+
+    if _has_awaiting_write_confirmation(state):
+        return "finalize"
+    if state.no_progress_count >= 1 or _build_over_exploration_warnings(state):
+        return "finalize"
+    if state.loop_round >= state.runtime_config.lead_max_rounds:
+        return "finalize"
+
+    progress = decision_context.get("progress") if isinstance(decision_context.get("progress"), dict) else {}
+    action_readiness = (
+        decision_context.get("action_readiness")
+        if isinstance(decision_context.get("action_readiness"), dict)
+        else {}
+    )
+    missing_facts = decision_context.get("missing_facts")
+    if not isinstance(missing_facts, list):
+        missing_facts = []
+    relevant_read_tools = progress.get("available_relevant_read_tools")
+    if not isinstance(relevant_read_tools, list):
+        relevant_read_tools = []
+
+    if hint == "act":
+        can_act = (
+            bool(action_readiness.get("pending_actions"))
+            or (
+                _has_write_intent(routing)
+                and bool(action_readiness.get("target_known"))
+                and bool(action_readiness.get("allowed_confirmation_tools"))
+                and not bool(action_readiness.get("write_permission_gap"))
+            )
+        )
+        return "act" if can_act else "finalize"
+
+    if hint in {"plan", "replan", "verify"}:
+        if state.plan and hint in {"plan", "replan"}:
+            return "finalize" if (state.tool_records or state.observation or state.execution) else "observe"
+        return hint
+
+    if hint == "observe":
+        has_actionable_gap = bool(missing_facts) and (
+            bool(relevant_read_tools)
+            or _has_write_intent(routing)
+            or any("目标对象" in str(item) for item in missing_facts)
+        )
+        return "observe" if has_actionable_gap else "finalize"
+
+    return "finalize"
 
 
 def _build_plan_status_summary(plan: PlanArtifact | None, *, prefix: str = "已生成计划") -> str:
@@ -3725,7 +4089,7 @@ class MultiAgentOrchestrator:
                 verification_summary = (
                     last_verification_result.summary if last_verification_result else ""
                 )
-                state_view.decision_context = _build_coordinator_decision_context(
+                decision_context = _build_coordinator_decision_context(
                     state=state,
                     routing=routing,
                     enabled_tools=enabled_tools,
@@ -3736,6 +4100,7 @@ class MultiAgentOrchestrator:
                     verification_summary=verification_summary,
                     post_action_check_tool_baseline=post_action_check_tool_baseline,
                 )
+                state_view.decision_context = decision_context
                 tool_stats = (
                     f"\n\n当前进度统计：\n"
                     f"- 已调用工具次数: {len(state.attempted_tool_signatures)}\n"
@@ -3790,8 +4155,20 @@ class MultiAgentOrchestrator:
                         history_messages=history_messages,
                     )
                     record_agent_usage(coordinator)
-                    next_stage = str(coordinator_decision.get("next") or "finalize").strip().lower()
-                    reason = str(coordinator_decision.get("reason") or "").strip()
+                    if not isinstance(coordinator_decision, dict) or (
+                        "raw" in coordinator_decision and len(coordinator_decision) == 1
+                    ):
+                        logger.warning("Coordinator decision invalid, using context fallback: %s", coordinator_decision)
+                        next_stage = _fallback_stage_from_decision_context(
+                            state=state,
+                            routing=routing,
+                            decision_context=decision_context,
+                            ablation=ablation,
+                        )
+                        reason = "invalid_coordinator_decision"
+                    else:
+                        next_stage = str(coordinator_decision.get("next") or "finalize").strip().lower()
+                        reason = str(coordinator_decision.get("reason") or "").strip()
                     if next_stage not in {"observe", "act", "verify", "replan", "finalize", "plan"}:
                         next_stage = "finalize"
                     next_stage = _apply_stage_ablation(
@@ -3805,8 +4182,19 @@ class MultiAgentOrchestrator:
                         state.loop_round, next_stage, reason,
                     )
                 except Exception:
-                    logger.exception("Coordinator decision failed, falling back to finalize")
-                    next_stage = "finalize"
+                    logger.exception("Coordinator decision failed, using context fallback")
+                    next_stage = _fallback_stage_from_decision_context(
+                        state=state,
+                        routing=routing,
+                        decision_context=decision_context,
+                        ablation=ablation,
+                    )
+                    next_stage = _apply_stage_ablation(
+                        candidate=next_stage,
+                        state=state,
+                        routing=routing,
+                        ablation=ablation,
+                    )
             else:
                 next_stage = _apply_stage_ablation(
                     candidate=next_stage,
@@ -4155,6 +4543,22 @@ class MultiAgentOrchestrator:
                                     )
                                 ),
                             )
+                        if tool_name in READ_ONLY_TOOL_NAMES:
+                            stop_reason = _should_stop_read_exploration_after_tool(
+                                state=state,
+                                user_message=goal_message,
+                                tool_name=tool_name,
+                                result=result,
+                            )
+                            if stop_reason:
+                                return ToolLoopStopSignal(
+                                    should_stop=True,
+                                    summary=_build_evidence_summary_fallback(
+                                        _compact_evidence_for_prompt(
+                                            _extract_evidence_from_tool_records(state.tool_records)
+                                        )
+                                    ),
+                                )
                         return None
 
                     loop_outcome, loop_events = await run_role_tool_loop(

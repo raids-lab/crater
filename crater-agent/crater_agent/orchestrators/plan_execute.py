@@ -211,39 +211,6 @@ def _make_history_messages(state: MASState) -> list[Any]:
     )
 
 
-def _infer_operation_mode(user_message: str, enabled_tools: list[str]) -> str:
-    normalized = str(user_message or "").strip().lower()
-    write_intent_tokens = (
-        "stop",
-        "delete",
-        "restart",
-        "resubmit",
-        "create",
-        "submit",
-        "scale",
-        "taint",
-        "label",
-        "uncordon",
-        "drain",
-        "重启",
-        "停止",
-        "删除",
-        "重提",
-        "提交",
-        "创建",
-        "扩容",
-        "缩容",
-        "打标",
-        "加污点",
-        "解封",
-    )
-    if any(token in normalized for token in write_intent_tokens) and any(
-        tool in CONFIRM_TOOL_NAMES for tool in enabled_tools
-    ):
-        return "write"
-    return "read"
-
-
 @dataclass
 class ToolLoopOutcome:
     summary: str
@@ -261,10 +228,6 @@ class PlanExecuteOrchestrator:
             state.goal.original_user_message
             if state.resume_context
             else state.goal.user_message
-        )
-        state.goal.routing.operation_mode = _infer_operation_mode(
-            goal_message,
-            state.enabled_tools,
         )
         page_context = dict(state.goal.page_context)
         capabilities = state.capabilities
@@ -490,6 +453,8 @@ class PlanExecuteOrchestrator:
                 pending_actions=[item.to_dict() for item in state.actions if item.status == "pending"],
                 enabled_tools=allowed_tool_names,
                 actor_role=state.goal.actor_role,
+                plan_tool_hints=list(state.plan.tool_hints if state.plan else []),
+                prompt_profile="plan_execute",
             )
 
             messages: list[Any] = [SystemMessage(content=system_prompt)]
@@ -716,6 +681,7 @@ class PlanExecuteOrchestrator:
                             else ""
                         ),
                         history_messages=history_messages,
+                        prompt_profile="plan_execute",
                     )
                     _record_agent_usage(state, planner)
                     yield await emit_llm_completed(
@@ -736,6 +702,7 @@ class PlanExecuteOrchestrator:
                     summary=plan_output.get("raw_summary") or plan_result.summary,
                     steps=plan_output.get("steps", []),
                     candidate_tools=plan_output.get("candidate_tools", []),
+                    tool_hints=plan_output.get("tool_hints", []),
                     risk=plan_output.get("risk", "low"),
                 )
                 yield await emit(
@@ -806,9 +773,7 @@ class PlanExecuteOrchestrator:
             if loop_outcome.made_progress and not getattr(state.execution, "awaiting_confirmation", False):
                 if not state.plan or not state.plan.steps:
                     should_finalize = True
-                elif state.goal.routing.operation_mode == "read" and state.tool_records:
-                    should_finalize = True
-                elif state.goal.routing.operation_mode == "write" and state.tool_records:
+                elif state.tool_records:
                     should_finalize = True
 
             if should_finalize:
