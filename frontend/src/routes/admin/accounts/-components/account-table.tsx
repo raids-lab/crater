@@ -53,30 +53,21 @@ const adminAccountDetailLinkOptions = linkOptions({
   params: { id: '' },
 })
 
-const getHeader = (key: string): string => {
+const getHeader = (key: string, t: (key: string) => string): string => {
   switch (key) {
     case 'nickname':
-      return 'table.headers.nickname'
+      return t('table.headers.nickname')
     case 'deserved':
-      return 'table.headers.deserved'
+      return t('table.headers.deserved')
     case 'guaranteed':
-      return 'table.headers.guaranteed'
+      return t('table.headers.guaranteed')
     case 'capability':
-      return 'table.headers.capability'
+      return t('table.headers.capability')
     case 'queueLimit':
-      return 'table.headers.queueLimit'
+      return t('table.headers.queueLimit')
     default:
       return key
   }
-}
-
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    key: 'nickname',
-    placeholder: '搜索账户名称',
-  },
-  filterOptions: [],
-  getHeader: (key: string) => getHeader(key),
 }
 
 export const AccountTable = ({
@@ -88,6 +79,17 @@ export const AccountTable = ({
 }) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const toolbarConfig = useMemo<DataTableToolbarConfig>(
+    () => ({
+      filterInput: {
+        key: 'nickname',
+        placeholder: '搜索账户名称',
+      },
+      filterOptions: [],
+      getHeader: (key: string) => getHeader(key, t),
+    }),
+    [t]
+  )
 
   const query = useQuery({
     queryKey: ['admin', 'accounts'],

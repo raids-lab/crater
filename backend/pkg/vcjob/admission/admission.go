@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	v1 "k8s.io/api/core/v1"
+	apiresource "k8s.io/apimachinery/pkg/api/resource"
 	nodeutil "k8s.io/component-helpers/node/util"
 	corev1helpers "k8s.io/component-helpers/scheduling/corev1"
 	"k8s.io/component-helpers/scheduling/corev1/nodeaffinity"
@@ -30,6 +31,13 @@ type placementTask struct {
 	requests   v1.ResourceList
 	candidates []int
 	score      float64
+}
+
+func quantityRatio(numerator, denominator apiresource.Quantity) float64 {
+	if denominator.Sign() <= 0 {
+		return 0
+	}
+	return numerator.AsApproximateFloat64() / denominator.AsApproximateFloat64()
 }
 
 func CheckJobAdmission(ctx context.Context, k8sClient client.Client, job *batch.Job) (*Result, error) {
@@ -101,9 +109,8 @@ func buildPlacementTasks(nodes []v1.Node, job *batch.Job) []*placementTask {
 		}
 		score := 0.0
 		for name, quantity := range resource {
-			if maxQuantity, ok := maxResourceMap[name]; ok && maxQuantity.Value() > 0 {
-				s := float64(quantity.Value()) / float64(maxQuantity.Value())
-				score += s
+			if maxQuantity, ok := maxResourceMap[name]; ok {
+				score += quantityRatio(quantity, maxQuantity)
 			}
 		}
 		p := &placementTask{
@@ -132,11 +139,10 @@ func bestFitNode(nodes []v1.Node, remaining []v1.ResourceList, task *placementTa
 				continue
 			}
 			capacity := nodes[nodeIndex].Status.Allocatable[name]
-			if capacity.Value() <= 0 {
-				continue
-			}
 			left := next[name]
-			score += float64(capacity.Value()-left.Value()) / float64(capacity.Value())
+			used := capacity.DeepCopy()
+			used.Sub(left)
+			score += quantityRatio(used, capacity)
 		}
 		if bestNodeIndex < 0 || score > bestScore {
 			bestNodeIndex = nodeIndex

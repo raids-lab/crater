@@ -7,6 +7,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/sets"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -14,6 +15,18 @@ import (
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/utils"
 )
+
+type blockingScope struct {
+	accountID uint
+	queue     string
+}
+
+type timedOutNormalBlocker struct {
+	domain string
+	nodes  sets.Set[string]
+}
+
+type timedOutNormalBlockers map[blockingScope][]timedOutNormalBlocker
 
 func (w *PrequeueWatcher) activateNextPrequeueBatch(ctx context.Context, remaining int) (bool, error) {
 	cfg, err := w.configService.GetPrequeueConfig(ctx)
@@ -87,13 +100,21 @@ func (w *PrequeueWatcher) selectActivationCandidates(
 	}
 
 	now := utils.GetLocalTime()
-	pendingBlockingDomains, err := w.loadTimedOutNormalBlockingDomainsByStatus(ctx, batch.Pending, now)
-	if err != nil {
-		return nil, false, err
-	}
-	prequeueBlockingDomains, err := w.loadTimedOutNormalBlockingDomainsByStatus(ctx, model.Prequeue, now)
-	if err != nil {
-		return nil, false, err
+	cfg := w.currentRuntimeConfig()
+	pendingBlockers := timedOutNormalBlockers{}
+	prequeueBlockers := timedOutNormalBlockers{}
+	if cfg.ShouldBlockByTimedOutPendingNormalJob() {
+		loaded, err := w.loadTimedOutNormalBlockersByStatus(ctx, batch.Pending, now)
+		if err != nil {
+			return nil, false, err
+		}
+		pendingBlockers = loaded
+
+		loaded, err = w.loadTimedOutNormalBlockersByStatus(ctx, model.Prequeue, now)
+		if err != nil {
+			return nil, false, err
+		}
+		prequeueBlockers = loaded
 	}
 
 	pageSize := limit
@@ -103,7 +124,6 @@ func (w *PrequeueWatcher) selectActivationCandidates(
 
 	selected := make([]*model.Job, 0, limit)
 	selectedResources := make(map[string]v1.ResourceList)
-	cfg := w.currentRuntimeConfig()
 	offset := 0
 	for {
 		page, err := w.listPrequeueJobPage(ctx, offset, pageSize)
@@ -123,11 +143,11 @@ func (w *PrequeueWatcher) selectActivationCandidates(
 				continue
 			}
 
-			if isCandidateBlockedByTimedOutDomains(
+			if isCandidateBlockedByTimedOutBlockers(
 				candidate,
 				cfg.BackfillEnabled,
-				pendingBlockingDomains[candidate.AccountID],
-				prequeueBlockingDomains[candidate.AccountID],
+				pendingBlockers,
+				prequeueBlockers,
 				now,
 			) {
 				continue
@@ -152,38 +172,56 @@ func (w *PrequeueWatcher) selectActivationCandidates(
 	}
 }
 
-func isBlockedByTimedOutDomains(blockingDomains map[string]struct{}, candidateDomain string) bool {
-	if len(blockingDomains) == 0 {
+func isBlockedByTimedOutBlockers(blockersByScope timedOutNormalBlockers, candidate *model.Job) bool {
+	if len(blockersByScope) == 0 {
 		return false
 	}
-	for blockingDomain := range blockingDomains {
-		if utils.CanResourceDomainBlock(blockingDomain, candidateDomain) {
+	if candidate == nil {
+		return false
+	}
+	blockers := blockersByScope[blockingScope{accountID: candidate.AccountID, queue: candidate.Queue}]
+	if len(blockers) == 0 {
+		return false
+	}
+	candidateDomain := utils.GetJobResourceDomain(candidate)
+	candidateNodes := utils.GetJobRecordExplicitNodeNames(candidate)
+	for _, blocker := range blockers {
+		if utils.CanResourceDomainBlock(blocker.domain, candidateDomain) &&
+			nodeConstraintsOverlap(blocker.nodes, candidateNodes) {
 			return true
 		}
 	}
 	return false
 }
 
-func isCandidateBlockedByTimedOutDomains(
+func isCandidateBlockedByTimedOutBlockers(
 	candidate *model.Job,
 	backfillEnabled bool,
-	pendingDomains map[string]struct{},
-	prequeueDomains map[string]struct{},
+	pendingBlockers timedOutNormalBlockers,
+	prequeueBlockers timedOutNormalBlockers,
 	now time.Time,
 ) bool {
 	if candidate == nil {
 		return false
 	}
+	// Already-prequeued backfill jobs are not held by fairness blockers when backfill is disabled.
 	if candidate.ScheduleType != nil && *candidate.ScheduleType == model.ScheduleTypeBackfill && !backfillEnabled {
 		return false
 	}
 
-	candidateDomain := utils.GetJobResourceDomain(candidate)
-	if isBlockedByTimedOutDomains(pendingDomains, candidateDomain) {
+	// Timed-out pending normal jobs have priority over all overlapping prequeue candidates.
+	if isBlockedByTimedOutBlockers(pendingBlockers, candidate) {
 		return true
 	}
-	return len(prequeueDomains) > 0 && !isTimedOutNormalJob(candidate, now) &&
-		isBlockedByTimedOutDomains(prequeueDomains, candidateDomain)
+	// A timed-out prequeue normal job should not block itself or peers that already reached tolerance.
+	return !isTimedOutNormalJob(candidate, now) && isBlockedByTimedOutBlockers(prequeueBlockers, candidate)
+}
+
+func nodeConstraintsOverlap(left, right sets.Set[string]) bool {
+	if left.Len() == 0 || right.Len() == 0 {
+		return true
+	}
+	return left.Intersection(right).Len() > 0
 }
 
 func (w *PrequeueWatcher) listPrequeueJobPage(
@@ -202,14 +240,14 @@ func (w *PrequeueWatcher) listPrequeueJobPage(
 	return records, err
 }
 
-func (w *PrequeueWatcher) loadTimedOutNormalBlockingDomainsByStatus(
+func (w *PrequeueWatcher) loadTimedOutNormalBlockersByStatus(
 	ctx context.Context,
 	status batch.JobPhase,
 	now time.Time,
-) (map[uint]map[string]struct{}, error) {
+) (timedOutNormalBlockers, error) {
 	pageSize := defaultPageSize
 	offset := 0
-	blockingDomains := make(map[uint]map[string]struct{})
+	blockers := make(timedOutNormalBlockers)
 
 	for {
 		page, err := w.listNormalJobsByStatusPage(ctx, status, nil, nil, offset, pageSize)
@@ -217,21 +255,22 @@ func (w *PrequeueWatcher) loadTimedOutNormalBlockingDomainsByStatus(
 			return nil, err
 		}
 		if len(page) == 0 {
-			return blockingDomains, nil
+			return blockers, nil
 		}
 
 		for _, record := range page {
 			if !isTimedOutNormalJob(record, now) {
 				continue
 			}
-			if blockingDomains[record.AccountID] == nil {
-				blockingDomains[record.AccountID] = make(map[string]struct{})
-			}
-			blockingDomains[record.AccountID][utils.GetJobResourceDomain(record)] = struct{}{}
+			scope := blockingScope{accountID: record.AccountID, queue: record.Queue}
+			blockers[scope] = append(blockers[scope], timedOutNormalBlocker{
+				domain: utils.GetJobResourceDomain(record),
+				nodes:  utils.GetJobRecordExplicitNodeNames(record),
+			})
 		}
 
 		if len(page) < pageSize {
-			return blockingDomains, nil
+			return blockers, nil
 		}
 		offset += len(page)
 	}

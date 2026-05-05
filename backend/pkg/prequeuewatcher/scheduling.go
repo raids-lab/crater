@@ -8,14 +8,13 @@ import (
 	"github.com/samber/lo"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/indexer"
 	"github.com/raids-lab/crater/pkg/utils"
 )
-
-const volcanoJobNameLabelKey = "volcano.sh/job-name"
 
 func (w *PrequeueWatcher) getAssignedNodes(
 	ctx context.Context,
@@ -38,7 +37,7 @@ func (w *PrequeueWatcher) getAssignedNodes(
 		ctx,
 		podList,
 		client.InNamespace(config.GetConfig().Namespaces.Job),
-		client.MatchingLabels{volcanoJobNameLabelKey: record.JobName},
+		client.MatchingLabels{batch.JobNameKey: record.JobName},
 	); err != nil {
 		return nil, err
 	}

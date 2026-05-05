@@ -83,6 +83,10 @@ func (cfg *PrequeueRuntimeConfig) Validate() error {
 	return nil
 }
 
+func (cfg *PrequeueRuntimeConfig) ShouldBlockByTimedOutPendingNormalJob() bool {
+	return cfg != nil && (cfg.BackfillEnabled || cfg.QueueQuotaEnabled)
+}
+
 func (cfg *PrequeueRuntimeConfig) ToValueMap() map[string]string {
 	return map[string]string{
 		PrequeueBackfillEnabledKey:                  strconv.FormatBool(cfg.BackfillEnabled),

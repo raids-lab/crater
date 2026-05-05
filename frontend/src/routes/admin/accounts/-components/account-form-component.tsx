@@ -23,7 +23,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -68,11 +67,18 @@ import { globalSettings } from '@/utils/store'
 
 import { cn } from '@/lib/utils'
 
-import { AccountFormSchema, formSchema } from './account-form'
+import { AccountFormSchema, createAccountFormSchema } from './account-form'
 
 interface AccountFormProps {
   onOpenChange: (open: boolean) => void
   account?: IAccount | null
+}
+
+const parseOptionalQuotaNumber = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) {
+    return undefined
+  }
+  return Number(value)
 }
 
 export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
@@ -80,6 +86,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [cachedFormName, setCachedFormName] = useState<string | null>(null)
+  const formSchema = useMemo(() => createAccountFormSchema(t), [t])
 
   const { data: userList } = useQuery({
     queryKey: ['admin', 'userlist'],
@@ -370,7 +377,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     },
   })
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = (values: AccountFormSchema) => {
     if (values.id) {
       updateAccount(values)
     } else {
@@ -603,10 +610,12 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       <FormControl>
                         <Input
                           type="number"
+                          min={0}
+                          step="any"
                           placeholder={t('accountForm.guaranteedPlaceholder')}
                           className="font-mono"
                           {...form.register(`resources.${index}.guaranteed`, {
-                            valueAsNumber: true,
+                            setValueAs: parseOptionalQuotaNumber,
                           })}
                         />
                       </FormControl>
@@ -621,11 +630,13 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                     <FormItem>
                       <FormControl>
                         <Input
-                          type="string"
+                          type="number"
+                          min={0}
+                          step="any"
                           placeholder={t('accountForm.deservedPlaceholder')}
                           className="font-mono"
                           {...form.register(`resources.${index}.deserved`, {
-                            valueAsNumber: true,
+                            setValueAs: parseOptionalQuotaNumber,
                           })}
                         />
                       </FormControl>
@@ -640,11 +651,13 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                     <FormItem>
                       <FormControl>
                         <Input
-                          type="string"
+                          type="number"
+                          min={0}
+                          step="any"
                           placeholder={t('accountForm.capabilityPlaceholder')}
                           className="font-mono"
                           {...form.register(`resources.${index}.capability`, {
-                            valueAsNumber: true,
+                            setValueAs: parseOptionalQuotaNumber,
                           })}
                         />
                       </FormControl>
@@ -660,11 +673,13 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       <FormItem>
                         <FormControl>
                           <Input
-                            type="string"
+                            type="number"
+                            min={0}
+                            step="any"
                             placeholder={t('accountForm.queueLimitPlaceholder')}
                             className="font-mono"
                             {...form.register(`resources.${index}.queueLimit`, {
-                              valueAsNumber: true,
+                              setValueAs: parseOptionalQuotaNumber,
                             })}
                           />
                         </FormControl>

@@ -19,29 +19,36 @@ import { IQuota } from '@/services/api/account'
 
 import { convertKResourceToResource, convertResourceToKResource } from './resource'
 
-const nonNegativeNumberSchema = z
-  .union([
-    z.number().min(0, {
-      message: '资源配额至少为 0',
-    }),
-    z.nan(),
-    z.nullable(z.undefined()),
-  ])
-  .optional()
+type TranslationFn = (key: string) => string
 
-export const quotaSchema = z.array(
-  z.object({
-    name: z.string().min(1, {
-      message: '资源名称不能为空',
-    }),
-    guaranteed: nonNegativeNumberSchema,
-    deserved: nonNegativeNumberSchema,
-    capability: nonNegativeNumberSchema,
-    queueLimit: nonNegativeNumberSchema,
-  })
-)
+const createNonNegativeNumberSchema = (t: TranslationFn) =>
+  z
+    .number()
+    .finite({
+      message: t('accountForm.validation.quotaFinite'),
+    })
+    .min(0, {
+      message: t('accountForm.validation.quotaMin'),
+    })
+    .nullish()
 
-export type QuotaSchema = z.infer<typeof quotaSchema>
+export const createQuotaSchema = (t: TranslationFn) => {
+  const nonNegativeNumberSchema = createNonNegativeNumberSchema(t)
+
+  return z.array(
+    z.object({
+      name: z.string().min(1, {
+        message: t('accountForm.validation.resourceNameRequired'),
+      }),
+      guaranteed: nonNegativeNumberSchema,
+      deserved: nonNegativeNumberSchema,
+      capability: nonNegativeNumberSchema,
+      queueLimit: nonNegativeNumberSchema,
+    })
+  )
+}
+
+export type QuotaSchema = z.infer<ReturnType<typeof createQuotaSchema>>
 
 export const convertQuotaToForm = (
   quota: IQuota,

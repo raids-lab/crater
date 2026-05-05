@@ -3,7 +3,6 @@ package vcjob
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -24,8 +23,9 @@ func (mgr *VolcanojobMgr) submitJob(
 	token util.JWTMessage,
 	job *batch.Job,
 ) error {
-	scheduleType, err := parseSubmissionScheduleType(job)
+	scheduleType, err := model.ParseScheduleType(job.Annotations[vcjobservice.AnnotationKeyScheduleType])
 	if err != nil {
+		klog.Errorf("invalid schedule type annotation for job %s: %v", job.Name, err)
 		return err
 	}
 
@@ -48,7 +48,7 @@ func (mgr *VolcanojobMgr) submitJob(
 		return err
 	}
 
-	hasTimedOutPendingJob, err := mgr.hasBlockingTimedOutPendingNormalJob(ctx, token, jobResources)
+	hasTimedOutPendingJob, err := mgr.hasBlockingTimedOutPendingNormalJob(ctx, token, job, jobResources)
 	if err != nil {
 		return err
 	}
@@ -61,19 +61,6 @@ func (mgr *VolcanojobMgr) submitJob(
 		return err
 	}
 	return nil
-}
-
-func parseSubmissionScheduleType(job *batch.Job) (model.ScheduleType, error) {
-	if job == nil {
-		return 0, fmt.Errorf("invalid job: nil")
-	}
-	scheduleTypeInt, err := strconv.ParseInt(
-		job.Annotations[vcjobservice.AnnotationKeyScheduleType], 10, 64,
-	)
-	if err != nil {
-		return 0, fmt.Errorf("invalid schedule type annotation value: %w", err)
-	}
-	return model.ScheduleType(scheduleTypeInt), nil
 }
 
 func (mgr *VolcanojobMgr) ensureJobAdmitted(ctx context.Context, job *batch.Job) error {
@@ -128,14 +115,26 @@ func (mgr *VolcanojobMgr) checkSubmissionQuota(
 func (mgr *VolcanojobMgr) hasBlockingTimedOutPendingNormalJob(
 	ctx context.Context,
 	token util.JWTMessage,
+	job *batch.Job,
 	jobResources v1.ResourceList,
 ) (bool, error) {
 	if mgr.prequeueWatcher == nil {
 		return false, nil
 	}
+	if mgr.configService == nil {
+		return false, fmt.Errorf("config service is not initialized")
+	}
+	cfg, err := mgr.configService.GetPrequeueConfig(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !cfg.ShouldBlockByTimedOutPendingNormalJob() {
+		return false, nil
+	}
 	hasTimedOutPendingJob, err := mgr.prequeueWatcher.HasBlockingTimedOutPendingNormalJob(
 		ctx,
 		token.AccountID,
+		job,
 		jobResources,
 	)
 	if err != nil {
@@ -180,11 +179,9 @@ func shouldPrequeueSubmittedJob(
 	quotaExceeded bool,
 	hasTimedOutPendingNormalJob bool,
 ) bool {
-	// 队列内每个用户的资源配额
 	if scheduleType == model.ScheduleTypeNormal && quotaExceeded {
 		return true
 	}
-	// volcano队列中存在等待时间超过阈值的pending normal job
 	if hasTimedOutPendingNormalJob {
 		return scheduleType == model.ScheduleTypeNormal || scheduleType == model.ScheduleTypeBackfill
 	}
