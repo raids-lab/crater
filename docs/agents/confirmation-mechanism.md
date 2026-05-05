@@ -1,13 +1,13 @@
 # 确认机制（Confirmation Mechanism）
 
 > 记录写操作确认卡片的完整前后端+Agent链路，包括当前行为和已知缺陷。
-> 最后更新: 2026-04-21
+> 最后更新: 2026-04-28
 
 ---
 
 ## 1. 设计意图
 
-所有写操作（停止/删除/重提/创建作业、节点 cordon/drain、运维脚本等）**不直接执行**，而是先返回确认卡片，让用户审查参数后手动确认。
+会修改平台资源或产生外部影响的 Agent 工具（停止/删除/重提/创建作业、创建/取消/删除镜像构建、登记外部镜像、镜像授权、节点 cordon/drain、自由管理命令、发送邮件等）**不直接执行**，而是先返回确认卡片，让用户审查参数后手动确认。系统巡检自动邮件不属于聊天 Agent 工具目录，由 Go 后台策略单独控制。
 
 ---
 
@@ -19,18 +19,30 @@
 |------|---------|---------|
 | `resubmit_job` | high | form（可编辑参数） |
 | `create_jupyter_job` | high | form |
+| `create_webide_job` | high | form |
 | `create_training_job` | high | form |
+| `create_custom_job` | high | form |
+| `create_pytorch_job` | high | form |
+| `create_tensorflow_job` | high | form |
+| `create_image_build` | high | form |
+| `register_external_image` | medium | form |
+| `manage_image_build` | high | approval |
+| `manage_image_access` | medium | approval |
 | `stop_job` | high | approval（确认/拒绝） |
 | `delete_job` | high | approval |
 | `batch_stop_jobs` | high | approval |
-| `notify_job_owner` | high | approval |
 | `cordon_node` | high | approval |
 | `uncordon_node` | medium | approval |
 | `drain_node` | critical | approval |
 | `delete_pod` | critical | approval |
 | `restart_workload` | high | approval |
-| `run_ops_script` | critical | approval |
+| `k8s_scale_workload` | high | approval |
+| `k8s_label_node` | high | approval |
+| `k8s_taint_node` | high | approval |
+| `run_kubectl` | critical | approval |
+| `execute_admin_command` | critical | approval |
 | `mark_audit_handled` | high | approval |
+| `notify_job_owner` | medium | approval |
 
 ---
 

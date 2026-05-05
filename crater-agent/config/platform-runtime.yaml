@@ -30,6 +30,8 @@
 
 toolRouting:
   localCoreTools:
+    - web_search
+    - fetch_url
     - sandbox_grep
     - sandbox_list_dir
     - sandbox_read_file

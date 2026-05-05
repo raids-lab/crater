@@ -18,7 +18,6 @@
 - History 分级截断（错误信息保留 500 字符，普通结果 200 字符）
 - Multi-agent evidence 滑动窗口（最多 30 条）
 - System Prompt 补全 Prometheus/工具选择指引
-- run_ops_script 确认卡片增加脚本功能描述和参数
 
 ---
 
@@ -273,17 +272,14 @@ query = str(tool_args.get("query") or "").strip()  # LLM 自由写 PromQL
 | `drain_node` | `DrainNode()` | 仅 node_name + reason |
 | `delete_pod` | `CoreV1().Pods().Delete()` | pod_name, namespace, force, grace_period |
 | `restart_workload` | 更新 Pod template annotation 触发滚动重启 | kind (Deployment/StatefulSet/DaemonSet), name, namespace |
-| `run_ops_script` | 执行白名单脚本 | script_name（白名单校验）+ 结构化参数 |
-
-**白名单脚本**（`agent.ops.sandbox.scriptAllowlist`）：
-`inspect_pvc`, `inspect_mounts`, `collect_events`, `inspect_rdma_node`, `diagnose_nccl_job`
+| `run_kubectl` | 执行高风险 kubectl 写命令 | command + reason（统一走确认与策略校验） |
 
 **核心问题**：
 
-1. **LLM 不能自由判断需要什么运维操作**——只能在这 6 个固定动作中选择
-2. **不支持**：`kubectl scale`、`kubectl rollout`、`kubectl apply`、`kubectl patch`、`kubectl exec`、`kubectl top` 等
-3. **不支持**：基于诊断结果自动编排多步运维流程（如：发现 OOM → 自动调整 resource limits → 重提作业）
-4. **不支持**：自由的 K8s API 操作——所有操作都硬编码在 Go Backend 中
+1. **LLM 不能只靠单一 Go 写工具闭环所有场景**——仍需要结构化工具 + 高风险兜底命令并存
+2. **高风险自由命令必须显式确认**：不能把 `kubectl patch/apply/scale` 等混进普通查询链路
+3. **复杂多步运维仍需编排能力**：例如发现 OOM 后自动调整 resource limits 并重提作业
+4. **K8s 写路径需要统一审计**：不管最终在 Go 还是 Python local 执行，都要先进入确认与落库链路
 
 ---
 

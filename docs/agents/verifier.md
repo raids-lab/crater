@@ -8,6 +8,8 @@
 
 The Verifier reviews the full pipeline output (plan, evidence, execution results) and produces a verdict. It acts as a quality gate before the Coordinator finalizes the answer.
 
+In the current `multi.py` runtime, the Verifier is optional. The Coordinator may invoke it before finalization when the case is higher-risk, evidence is potentially incomplete, or conclusions need challenge-style validation.
+
 ---
 
 ## Verdicts

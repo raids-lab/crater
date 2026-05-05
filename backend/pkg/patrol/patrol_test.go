@@ -69,3 +69,38 @@ func TestGetPatrolFuncStorageAuditReadsPVCConfig(t *testing.T) {
 		t.Fatalf("unexpected storage audit request: %+v", req)
 	}
 }
+
+func TestGetPatrolFuncAdminOpsReportReadsNotificationPolicy(t *testing.T) {
+	service := &stubAdminOpsService{}
+	clients := &Clients{AdminOpsService: service}
+
+	f, err := GetPatrolFunc(
+		TRIGGER_ADMIN_OPS_REPORT_JOB,
+		clients,
+		datatypes.JSON([]byte(`{
+			"days":1,
+			"notification":{
+				"enabled":true,
+				"notify_admins":true,
+				"notify_job_owners":true
+			}
+		}`)),
+	)
+	if err != nil {
+		t.Fatalf("GetPatrolFunc() error = %v", err)
+	}
+	if _, err := f(context.Background()); err != nil {
+		t.Fatalf("patrol func returned error = %v", err)
+	}
+
+	if len(service.adminReqs) != 1 {
+		t.Fatalf("expected one admin ops report call, got %d", len(service.adminReqs))
+	}
+	policy := service.adminReqs[0].Notification
+	if policy == nil || !policy.Enabled || !policy.NotifyAdmins || !policy.NotifyJobOwners {
+		t.Fatalf("expected notification policy to be preserved, got %+v", policy)
+	}
+	if policy.FailureJobThreshold != 10 || policy.CooldownHours != 12 || policy.MaxJobOwnerEmails != 10 {
+		t.Fatalf("expected notification defaults to be normalized, got %+v", policy)
+	}
+}

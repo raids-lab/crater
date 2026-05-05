@@ -203,7 +203,7 @@ The frontend (`OpsReportTab.tsx`) renders this JSON with fixed components — ea
 | `idle_hours` | 1 | Time window for idle detection |
 | `running_limit` | 20 | Max running job samples |
 | `node_limit` | 10 | Max node snapshots |
-| `use_llm` | true | Enable/disable LLM analysis |
+| `use_llm` | true | Python `/pipeline/admin-ops-report` parameter; Go patrol cron currently uses the Python default |
 
 ### Scheduling
 
@@ -247,13 +247,73 @@ Backend event (cron tick)
 
 ---
 
+## Notifications & Email
+
+### Current State
+
+The inspection pipeline now saves reports and can send policy-gated email for `admin_ops_report`:
+- `GpuAuditRequest.auto_notify` is reserved and not implemented.
+- Chat tool `notify_job_owner` sends job-owner email through Go `pkg/alert`, but remains a confirmed Agent tool.
+- `AdminOpsReportService.TriggerAdminOpsReport()` can load the saved report and send deterministic patrol notifications when `cron_job_configs.config.notification.enabled=true`.
+- Backend SMTP already exists in `pkg/alert` for job lifecycle, low-utilization, and long-running-job alerts, with per-job alert dedupe through the `Alert` table.
+
+### Implemented Design
+
+Automated patrol email does not rely on a user-facing chat tool as the scheduler. SMTP credentials, recipient resolution, severity gates, and cooldown stay in Go; Python provides the structured report plus optional natural-language copy.
+
+```
+CronJobManager
+  → AdminOpsReportService.TriggerAdminOpsReport()
+  → Python pipeline returns report_json + ops_audit_items
+  → Go persists/loads the report
+  → admin_ops_report_notifications.go applies deterministic policy
+      ├─ Admin email for critical cluster/storage/network/capacity issues
+      └─ User email for failed jobs when failure-count or failure-rate thresholds are reached
+  → pkg/alert SMTP handler + notification audit/dedupe
+```
+
+Rules:
+- Keep `smtp.*` in Go backend config, not `platform-runtime.yaml`.
+- System patrol notifications do not need HITL, but they need severity gates, recipient rules, dedupe, cooldown, and max-emails-per-run limits.
+- LLM may write the summary text, but recipients, severity thresholds, and cooldown are deterministic.
+- Store notification policy with the cron job config because thresholds depend on the patrol schedule.
+
+Example `cron_job_configs.config`:
+
+```json
+{
+  "days": 1,
+  "lookback_hours": 1,
+  "notification": {
+    "enabled": true,
+    "notify_admins": true,
+    "notify_job_owners": true,
+    "failure_job_threshold": 10,
+    "failure_rate_threshold_percent": 15,
+    "unhealthy_node_threshold": 1,
+    "network_alert_threshold": 3,
+    "high_risk_network_job_threshold": 1,
+    "max_job_owner_emails": 10,
+    "cooldown_hours": 12
+  }
+}
+```
+
+Implementation:
+- `backend/internal/service/admin_ops_report_notifications.go` reads `ops_audit_reports` and `ops_audit_items` after the Python pipeline finishes.
+- Admin recipients are active platform admins with configured email, with fallback to `smtp.notify`.
+- Job-owner recipients are resolved by `pkg/alert.NotifyJobOwner()` from `job_name`; owner emails missing are skipped.
+- Cooldown reuses the `Alert` table. Admin notifications use a stable `ops-report:admin_ops_report:admins` key; job-owner notifications use the job name.
+
+---
+
 ## Safety & Reliability
 
 ### Timeout Chain
 
 ```
 Go backend HTTP timeout: 3 minutes
-  └─ crater-agent pipeline timeout: covers all 7 steps
+  └─ PipelineToolClient: each backend tool call defaults to 120 seconds
       └─ LLM analysis timeout: 45 seconds
           └─ Fallback: deterministic report (no LLM)
 ```
@@ -267,10 +327,11 @@ Go backend HTTP timeout: 3 minutes
 | LLM returns invalid JSON | Falls back to deterministic report |
 | LLM partially succeeds | Merges only valid fields, rest from deterministic |
 | Database save fails | Pipeline returns success but logs warning; report not persisted |
+| Email send fails | Report remains saved; notification results record per-recipient errors for retry/manual handling |
 
 ### Read-Only Guarantee
 
-The pipeline only calls read-only tools for data collection. The only write operation is `save_audit_report` for persisting the final report. No jobs are stopped, no resources are modified.
+The pipeline only calls read-only tools for data collection. The current writes are `save_audit_report` for persisting the final report and optional SMTP/audit records for notifications; no jobs are stopped and no resources are modified.
 
 ---
 

@@ -6,18 +6,21 @@
 
 ## 1. 上下文流转
 
-上下文从 Go 后端经过 FastAPI 应用流转到 Agent 的系统提示词：
+上下文从 Go 后端经过 FastAPI 应用流转到 Agent。Go 后端负责会话归属、历史裁剪和能力集生成；Python Agent 只消费本轮请求中携带的 `context`，不维护跨请求全局记忆：
 
 ```
-Go Backend (用户会话, 页面状态)
+Go Backend (JWT, session_id, 页面状态)
+  ↓ GetOrCreateSession + owner/account 校验
+AgentSession / AgentMessage / AgentToolCall
+  ↓ buildAgentHistory() + buildAgentCapabilities()
   ↓ POST /chat
 ChatRequest { session_id, message, context, user_id, page_context }
   ↓ build_request_context()
-context dict { actor, page, capabilities, orchestration }
-  ↓ build_system_prompt(context, skills_context)
-系统提示词 (注入用户/页面/能力详情)
+context dict { actor, page, history, continuation, capabilities, orchestration }
+  ↓ single_agent 或 multi_agent 编排
+系统提示词 / MAS StateView / tool loop messages
   ↓
-LLM 在首次调用时接收完整上下文
+LLM 只看到本 session、本 turn 显式传入的上下文
 ```
 
 ### 上下文结构
@@ -42,8 +45,12 @@ LLM 在首次调用时接收完整上下文
     },
     "capabilities": {
         "enabled_tools": [...],  # 可选：限制工具集
-        "confirm_tools": [...]   # 需要用户确认的工具
+        "confirm_tools": [...],  # 需要用户确认的工具
+        "tool_catalog": [...],   # Go 合并静态工具与 Python 本地工具目录
+        "surface": { "page_scope": "user" }
     },
+    "history": [...],            # Go 从本 session 读取并裁剪
+    "continuation": {...},       # 澄清、待确认操作或 MAS workflow checkpoint
     "orchestration": {
         "mode": "single_agent"   # "single_agent" | "multi_agent"
     }
@@ -60,14 +67,36 @@ LLM 在首次调用时接收完整上下文
 | `page.url` | 管理员路由检测（`/admin/*` → admin 角色） |
 | `capabilities.enabled_tools` | 限制绑定到 LLM 的工具集 |
 | `capabilities.confirm_tools` | 列入提示词，使 Agent 知道哪些工具需要确认 |
+| `capabilities.tool_catalog[].mode` | 区分 `read_only`、预留的 `auto_action` 和 `confirm`；聊天触发的邮件动作如 `notify_job_owner` 会出现在 `confirm_tools` |
+| `continuation` | 仅来自同一 session 最新 turn，用于澄清、确认恢复和 MAS workflow 续跑 |
 
 ---
 
 ## 2. 对话历史（记忆）
 
-每轮对话时从 Go 后端加载对话历史。Agent 侧没有持久化记忆 —— Go 后端是唯一数据源。
+每轮对话时从 Go 后端加载对话历史。Agent 侧没有持久化记忆，Go 后端数据库是唯一数据源。
+
+### 会话隔离结论
+
+- `Chat` 入口按 `session_id` 调用 `GetOrCreateSession()`，随后校验 `session.UserID == token.UserID` 且 `session.AccountID == token.AccountID`；不匹配直接返回 403。
+- 会话列表、置顶、删除、确认恢复等入口也通过 `GetOwnedSession()` 或同等 owner/account 校验。
+- 历史消息和工具调用均按 `session_id` 查询；确认恢复先通过 `confirm_id` 找到 tool call，再校验该 tool call 所属 session 的 owner/account。
+- Python 侧的 `SingleAgentOrchestrator`、`MASState`、`ModelClientFactory` 都是按请求/turn 接收上下文；全局对象只保留无用户数据的执行器、工具目录缓存和 `.env` 缓存。
+
+因此，在后端不复用他人 `session_id` 且 owner/account 校验生效的前提下，不同用户、不同会话的历史、workflow checkpoint 和确认状态不会互相串线。
 
 ### 加载策略
+
+Go 侧先把 `AgentMessage` 与 `AgentToolCall` 合并成最多 24 条历史条目：
+
+| Go 侧限制 | 当前值 |
+|-----------|--------|
+| 历史条目数 | 24 |
+| 普通消息最大长度 | 1600 字符 |
+| Assistant 最大长度 | 1200 字符 |
+| Tool call 历史最大长度 | 480 字符 |
+
+然后 Python 侧再按 token 预算转换为 LangChain 消息：
 
 ```python
 build_history_messages(
@@ -80,10 +109,11 @@ build_history_messages(
 
 **算法**：
 1. **逆序**遍历历史（最新的优先）
-2. 将每条 dict 转换为 LangChain 消息（`HumanMessage`、`AIMessage`、`ToolMessage`）
-3. 使用首尾截断策略截断工具结果
-4. 累计 token 计数；预算耗尽时停止
-5. 反转回时间顺序
+2. 将 `user` 转成 `HumanMessage`，`assistant` 转成 `AIMessage`
+3. 将历史 `tool` 结果包装成 `AIMessage("【历史工具结果 ...】...")`，避免生成孤立 `ToolMessage`
+4. 使用首尾截断策略截断工具结果
+5. 累计 token 计数；预算耗尽时停止
+6. 反转回时间顺序
 
 ### 截断
 
@@ -95,12 +125,22 @@ build_history_messages(
 
 错误消息获得更多空间（1600 字符），因为错误详情对诊断至关重要。
 
+### 单智能体与多智能体差异
+
+| 模式 | 历史使用方式 | 工作记忆 |
+|------|--------------|----------|
+| `single_agent` | 将 `build_history_messages()` 结果直接拼到当前用户消息前 | LangGraph `CraterAgentState`，只在本 turn 内存在；过长时可触发 LLM 压缩 |
+| `multi_agent` | IntentRouter 额外使用文本历史摘要；各 role tool loop 使用结构化 history messages | `MASState` 持有 observation/plan/execution/action/evidence；确认时通过 Go 持久化 workflow checkpoint 续跑 |
+
+MAS 的工作记忆会限制 `tool_records` 最近 30 条，并把证据压缩为 `StateView` 传给不同角色。Planner、Explorer、Executor、Coordinator 看到的是投影后的状态，不是完整无限历史。
+
 ### 为何不使用 Agent 侧记忆
 
 - Go 后端已存储完整会话历史（`AgentSession`、`AgentMessage`、`AgentToolCall`）
 - Agent 侧记忆会与后端数据库产生一致性问题
 - token 预算机制确保历史在任意对话长度下都能放入上下文窗口
 - 多轮连续性由 Go 后端的会话管理处理
+- MAS 需要跨确认恢复时，只持久化当前 workflow checkpoint，而不是把其他会话的状态放入全局内存
 
 ---
 

@@ -25,7 +25,7 @@
   "benchmarkOverrides": {
     "multi_agent.planner": {
       "strategy": "recent",
-      "systemPromptSuffix": "输出计划时优先保持步骤短、结构稳、不要过度规划。分布式 NCCL/RDMA 问题若已出现疑似节点，计划中同时包含 diagnose_distributed_job_network 和 get_node_network_summary；确认类写操作只做最小核验后进入确认流。"
+      "systemPromptSuffix": "输出计划时优先保持步骤短、结构稳、不要过度规划。分布式 NCCL/RDMA 问题若已出现疑似节点，计划中同时包含 diagnose_distributed_job_network 和 get_node_network_summary。确认类写操作先列出仍未核实的关键字段或风险点，再安排一到两次直接相关的只读核验；不要把用户自述或页面状态当成已验证事实，也不要扩散到无关 read。"
     },
     "multi_agent.explorer": {
       "strategy": "compact",
@@ -33,7 +33,7 @@
     },
     "multi_agent.executor": {
       "strategy": "last_turn_only",
-      "systemPromptSuffix": "确认类写操作纪律：如果用户已明确要求 restart/stop/scale 等写操作且目标对象明确，只允许做一次必要只读核验，然后立即调用对应写工具进入 confirmation_required；不要重复 k8s_list_pods 或 k8s_get_events。"
+      "systemPromptSuffix": "确认类写操作纪律：目标明确时，不是立刻进确认，而是先补齐与该动作直接相关的最小事实。不要把用户自述当作已验证证据；不要猜默认资源参数。对 uncordon/restart/scale 等管理员写操作，先做一次风险相关核验；对 create_jupyter_job/create_webide_job 等创建类写操作，优先核实模板默认值、配额、镜像是否匹配，只有关键信息齐全后才调用写工具进入 confirmation_required。不要做与当前操作无关的只读调用。"
     },
     "multi_agent.coordinator": {
       "strategy": "recent",
@@ -45,10 +45,10 @@
       "dialogue_eval_flash"
     ],
     "taskJudgeRoles": [
-      "general_eval_flash"
+      "task_eval"
     ],
     "confirmationTaskJudgeRoles": [
-      "general_eval_flash"
+      "task_eval"
     ],
     "difficultyWeights": {
       "easy": 1.0,

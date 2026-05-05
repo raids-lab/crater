@@ -47,19 +47,25 @@ class TurnContextDecision:
 |-------|------|-------------------|
 | `guide` | "How do I...", "What can you do" | Guide Agent only |
 | `general` | Greetings, simple Q&A | General Agent only |
-| `diagnostic` | Job failures, resource issues, operations | Planner → Explorer → Executor → Verifier |
+| `diagnostic` | Job failures, resource issues, operations | Planner → Explorer → Executor → optional Verifier → Final answer |
 
 ---
 
 ## Flow Control
 
-After each diagnostic pipeline iteration, the Coordinator evaluates the Verifier's verdict:
+When the diagnostic pipeline believes it is ready to finalize, the Coordinator may choose to run the Verifier first for higher-risk or lower-confidence cases:
 
 | Verdict | Coordinator action |
 |---------|-------------------|
 | `pass` | Finalize — emit answer to user |
-| `risk` | Emit answer with warning annotation |
+| `risk` | Finalize, but surface caveats / incomplete items |
 | `missing_evidence` | Loop back to Planner for replanning (up to `lead_max_rounds`) |
+
+Additional routing safety:
+
+- `guide/general` are only used for non-operational help/Q&A turns
+- If LLM routing returns an inconsistent combination such as `help + write`, runtime coercion forces it back to `agent`
+- `replan` should not repeat forever without new evidence; runtime now blocks consecutive no-progress replans and pushes the loop back to `observe` / `act`
 
 ### Termination conditions
 

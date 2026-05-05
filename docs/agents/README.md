@@ -132,7 +132,7 @@ No existing code needs modification — the graph, tool executor, and token mana
 ### Adding a New Tool
 
 1. Define the tool function in `tools/definitions.py` with `@tool` decorator
-2. Add to `AUTO_TOOLS` (read-only) or `CONFIRM_TOOLS` (write)
+2. Add to `AUTO_TOOLS` (read-only), reserved `AUTO_ACTION_TOOLS` (system-only side effect without HITL), or `CONFIRM_TOOLS` (confirmed write/external action)
 3. Add the Go backend handler in `handler/agent/tools_readonly.go` or `tools_dispatch.go`
 4. If portable (no Go dependency), implement in `tools/local_executor.py`
 
@@ -221,6 +221,7 @@ crater-agent/
 
 ### Engineering
 - [evaluation.md](evaluation.md) — Benchmark harness, scenarios, metrics, data collection
+- [image-authoring-testing.md](image-authoring-testing.md) — Natural-language and offline-replay test cases for image build / import / sharing workflows
 
 ### Specifications
 - [../specs/agent-approval-hook.md](../specs/agent-approval-hook.md) — Approval agent design spec

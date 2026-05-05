@@ -42,10 +42,3 @@ func TestSanitizeSandboxRelativePath(t *testing.T) {
 		}
 	}
 }
-
-func TestExtractRunOpsScriptName(t *testing.T) {
-	raw := []byte(`{"script_name":"inspect_pvc","script_args":{"namespace":"ops"}}`)
-	if got := extractRunOpsScriptName(raw); got != "inspect_pvc" {
-		t.Fatalf("extractRunOpsScriptName()=%q, want inspect_pvc", got)
-	}
-}

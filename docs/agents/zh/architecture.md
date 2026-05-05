@@ -190,13 +190,14 @@ is_actor_allowed_for_tool(actor_role, tool_name)?
   ├─ 否 → 错误：需要管理员权限
   └─ 是
       ↓
-LocalToolExecutor.supports(tool_name)?
-  ├─ 是 → 本地执行 (kubectl, PromQL, web)
-  └─ 否 → GoBackendToolExecutor (HTTP POST)
-              ↓
-          Go 后端验证、执行并返回结果
-              ↓
-          状态：success | error | confirmation_required
+CompositeToolExecutor 读取 platform runtime 路由
+  ├─ 只读 + target=local → LocalToolExecutor (kubectl, PromQL, web)
+  ├─ 只读 + target=backend → GoBackendToolExecutor (HTTP POST)
+  └─ 需确认写工具 → GoBackendToolExecutor 先创建 pending confirmation
+         ↓ 用户确认后
+      backend 写操作或 python_local confirmed dispatch
+         ↓
+      状态：success | error | confirmation_required
 ```
 
 ### 4.2 工具分类
@@ -208,7 +209,8 @@ LocalToolExecutor.supports(tool_name)?
 | 管理员只读 | ~20 | Go 后端 | 仅管理员 | `list_cluster_nodes`, `get_node_detail` |
 | K8s 直连 | ~15 | 本地 kubectl | 仅管理员 | `k8s_list_pods`, `k8s_describe_resource` |
 | Prometheus 直连 | 1 | 本地 HTTP | 仅管理员 | `prometheus_query` |
-| 写操作（需确认） | ~15 | Go 后端 | 用户+确认 | `stop_job`, `cordon_node` |
+| 写操作/外部动作（需确认） | 26 | Go 后端确认；部分可转 Python 本地执行 | 用户+确认 | `stop_job`, `cordon_node`, `run_kubectl`, `notify_job_owner` |
+| 自动动作 | 0 | 预留给 system-only 后台直执 | System | 当前无 |
 | 审批 | 1 | Go 后端 | 系统 | `get_approval_history` |
 
 ### 4.3 确认流程
@@ -248,9 +250,11 @@ Go 后端执行操作
 ```
 来自 Go 后端的对话历史（逆时间序）
   ↓
+Go buildAgentHistory(): 最多 24 条，普通消息 1600 字符、assistant 1200 字符、tool 480 字符
+  ↓
 build_history_messages(max_tokens=4000)
   ↓
-将工具结果截断为 160 字符（首尾拼接）
+Python 再按 token 预算装配消息；tool 历史包装成 AIMessage
   ↓
 token 预算耗尽时停止加载
   ↓
@@ -303,20 +307,20 @@ if estimated_tokens > available:
 ### 6.1 工具策略（智能体级别）
 
 智能体角色定义了可调用的工具范围：
-- Explorer：仅限只读工具（硬编码检查）
-- Executor：可使用读写工具
+- Coordinator / Planner / Explorer / Verifier / General：仅限只读工具
+- Executor / Single Agent：可使用只读、自动动作和写工具；资源变更写工具必须走确认流
 - Approval：固定白名单，共 8 个工具
-- General/Guide/Verifier/Planner：无工具（纯 LLM）
+- Guide：无工具，纯说明型回答
 
 ### 6.2 操作者策略（用户级别）
 
 用户角色定义了可见的工具范围：
 - 管理员：所有工具
-- 普通用户：约 30 个安全工具（无集群管理、无节点操作）
+- 普通用户：用户域工具 + 带所有权收敛的 K8s 只读工具（无集群管理、无节点写操作）
 
 ### 6.3 确认屏障（操作级别）
 
-写操作工具（停止、删除、创建、封锁、驱逐等）在执行前始终需要用户确认。图会暂停运行，必须获得明确批准后才能继续。
+资源变更工具（停止、删除、创建、封锁、驱逐等）以及聊天 Agent 触发的外部动作（如 `notify_job_owner`）在执行前都需要用户确认。系统巡检邮件是独立的后端自动化，由确定性阈值和冷却策略控制。
 
 ### 6.4 速率限制（系统级别）
 
@@ -349,40 +353,72 @@ func() {
 
 ### 7.1 LLM 客户端 (`config/llm-clients.json`)
 
-可为每个智能体角色配置多个 LLM 提供商：
+LLM 配置的唯一入口是 `crater-agent/config/llm-clients.json`，由 `Settings.load_llm_client_configs()` 读取，再交给 `ModelClientFactory` 创建 `ChatOpenAI` 客户端。当前是直接的 `client_key -> config` 映射，不再有多层 provider/profile 解析。
 
 ```json
 {
-  "default": { "model": "...", "base_url": "...", "temperature": 0.1 },
-  "planner": { "model": "...", "temperature": 0.0 },
-  "explorer": { "model": "...", "max_tokens": 2048 }
+  "default": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-09-11",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "planner": { "model": "...", "temperature": 0.05 },
+  "ops_report": { "model": "...", "timeout": 90 }
 }
 ```
 
-### 7.2 MAS 运行时 (`config/agent-runtime.json`)
+当前使用点：
+- `/chat` 每次请求都会新建 `ModelClientFactory()`，因此 role client 选择不会跨请求保留用户状态。
+- 单智能体使用 `default`。
+- MAS 使用 `intent_router`、`coordinator`、`planner`、`explorer`、`executor`、`verifier` 等 key；缺失时 fallback 到 `default`。
+- 巡检流水线的 LLM 增强使用 `ops_report` key，并在 45 秒超时时回退到确定性报告。
+- `/health` 和 `/config-summary` 会读取同一份配置做运行状态展示。
 
-多智能体编排的护栏参数：
+安全边界：
+- client 配置只决定模型、base URL、token、超时和流式参数，不携带用户会话。
+- API key 优先从环境变量或 `.env` 读取；`.env` 只在模块级缓存一次。
+- ChatOpenAI 客户端由 factory 按请求创建，历史和用户上下文来自本次 payload。
 
-```json
-{
-  "lead_max_rounds": 8,
-  "subagent_max_iterations": 25,
-  "no_progress_rounds": 2,
-  "max_actions_per_round": 4
-}
+### 7.2 MAS 运行时
+
+多智能体编排的护栏参数目前在代码里的 `MASRuntimeConfig` 定义，并可从 workflow checkpoint / eval ablation context 恢复或覆盖；仓库中旧的 `config/agent-runtime.json` 已删除，不再作为运行时配置源。
+
+```python
+MASRuntimeConfig(
+    lead_max_rounds=8,
+    subagent_max_iterations=25,
+    no_progress_rounds=2,
+    tool_timeout_seconds=60,
+    max_actions_per_round=4,
+)
 ```
 
 ### 7.3 平台运行时 (`config/platform-runtime.yaml`)
 
-平台特定的端点和访问配置：
+平台运行时只用于 agent-local 工具的结构化基础设施配置和工具路由。SMTP、DB、认证密钥等 backend-only 配置不应放入这里。
 
 ```yaml
+toolRouting:
+  localCoreTools:
+    - k8s_list_nodes
+    - prometheus_query
+  localWriteTools:
+    - k8s_scale_workload
+    - run_kubectl
 kubernetes:
-  kubeconfig_path: /path/to/kubeconfig
+  kubeconfigPath: /path/to/kubeconfig
+  context: kubernetes-admin@kubernetes
+  namespace: crater-workspace
 prometheus:
-  endpoint: http://prometheus:9090
-harbor:
-  endpoint: https://harbor.example.com
+  baseURL: http://prometheus:9090
+registry:
+  server: harbor.example.com
 ```
 
 ---

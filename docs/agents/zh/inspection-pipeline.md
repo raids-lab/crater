@@ -203,7 +203,7 @@ _merge_llm_report() — 仅在 LLM 字段非空时覆盖
 | `idle_hours` | 1 | 空闲检测时间窗口 |
 | `running_limit` | 20 | 运行中作业最大采样数 |
 | `node_limit` | 10 | 节点快照最大数量 |
-| `use_llm` | true | 启用/禁用 LLM 分析 |
+| `use_llm` | true | Python `/pipeline/admin-ops-report` 参数；Go 巡检 cron 当前总是使用默认值 true |
 
 ### 调度
 
@@ -247,13 +247,85 @@ Cron 调度表达式存储在 `cron_job_configs` 数据库表中，由 `CronJobM
 
 ---
 
+## 通知与邮件设计
+
+### 当前状态
+
+巡检流水线当前会生成并保存报告，并且 `admin_ops_report` 已支持按策略发送邮件：
+- `GpuAuditRequest.auto_notify` 是保留字段，尚未实现自动通知。
+- 对话工具 `notify_job_owner` 已通过 Go `pkg/alert` 向作业所有者发邮件，但仍是需要确认的 Agent 工具。
+- `AdminOpsReportService.TriggerAdminOpsReport()` 会在 `cron_job_configs.config.notification.enabled=true` 时读取已保存的报告并触发确定性巡检通知。
+- backend 已有 SMTP 能力，集中在 `pkg/alert`：作业开始、失败、完成、低利用率提醒、长时间运行提醒和删除通知会复用 `Alert` 表做每个 `job_name + alert_type` 的去重。
+
+### 已实现设计
+
+自动巡检邮件不依赖用户聊天 tool 作为调度入口。SMTP 凭据、收件人解析、严重度阈值、去重和冷却都在 Go 后端；Python Agent 只负责给出结构化报告和可选的自然语言摘要。
+
+```
+CronJobManager
+  ↓
+AdminOpsReportService.TriggerAdminOpsReport()
+  ↓
+Python pipeline 生成 report_json + ops_audit_items
+  ↓
+Go 保存/读取报告
+↓
+admin_ops_report_notifications.go 按策略筛选通知项
+  ├─ 管理员邮件：严重集群/存储/网络/容量问题
+  └─ 用户邮件：失败作业数或失败率达到阈值时通知对应作业 owner
+  ↓
+pkg/alert SMTP handler + notification audit/dedupe
+```
+
+关键原则：
+- **SMTP 配置只放 Go 后端**。`platform-runtime.yaml` 明确不承载 `smtp.*`；Python 不应直接持有邮件账号密码。
+- **系统巡检不走 HITL**。触发源是 cron/system，发送动作由确定性阈值、去重和频控保护；普通聊天中的写操作仍保持确认机制。
+- **LLM 只写表达，不决定权限边界**。邮件正文中的摘要、影响分析和建议可以来自 `report_json.executive_summary` / `recommendations`，但收件人、严重级别、冷却窗口由后端规则决定。
+- **复用现有邮件风格**。沿用 `generateHTMLEmail()` 的标题、正文、CTA 按钮结构；新增模板时提取公共 header/footer，避免每个告警复制一段 HTML。
+
+### 收件人与策略
+
+通知策略作为巡检任务配置的一部分，而不是新增一份独立 agent 配置。原因是阈值和调度强相关：每天巡检、每小时巡检、GPU 专项巡检需要不同的严重度门槛和冷却时间。
+
+示例 `cron_job_configs.config`：
+
+```json
+{
+  "days": 1,
+  "lookback_hours": 1,
+  "gpu_threshold": 5,
+  "idle_hours": 1,
+  "running_limit": 20,
+  "node_limit": 10,
+  "notification": {
+    "enabled": true,
+    "notify_admins": true,
+    "notify_job_owners": true,
+    "failure_job_threshold": 10,
+    "failure_rate_threshold_percent": 15,
+    "unhealthy_node_threshold": 1,
+    "network_alert_threshold": 3,
+    "high_risk_network_job_threshold": 1,
+    "max_job_owner_emails": 10,
+    "cooldown_hours": 12
+  }
+}
+```
+
+收件人解析：
+- 管理员：优先平台 admin 用户邮箱；无可用 admin 邮箱时 fallback 到 `smtp.notify`。
+- 用户：从 `ops_audit_items.job_name` 反查 Job Owner；owner 邮箱缺失时跳过。
+- 去重：复用 `Alert` 表。管理员通知使用稳定 key `ops-report:admin_ops_report:admins`，作业所有者通知使用 `job_name + alert_type`，配合 `cooldown_hours` 防止同一问题每轮重复轰炸。
+
+---
+
 ## 安全性与可靠性
 
 ### 超时链
 
 ```
 Go 后端 HTTP 超时: 3 分钟
-  └─ crater-agent 流水线超时: 覆盖全部 7 个步骤
+  └─ PipelineToolClient: 单个后端工具调用默认 120 秒
       └─ LLM 分析超时: 45 秒
           └─ 回退: 确定性报告（无 LLM）
 ```
@@ -267,10 +339,11 @@ Go 后端 HTTP 超时: 3 分钟
 | LLM 返回无效 JSON | 回退到确定性报告 |
 | LLM 部分成功 | 仅合并有效字段，其余来自确定性报告 |
 | 数据库保存失败 | 流水线返回成功但记录警告；报告未持久化 |
+| 邮件发送失败（设计目标） | 不影响报告保存；记录 notification audit 和错误原因，等待下轮或人工重试 |
 
 ### 只读保证
 
-流水线在数据收集阶段仅调用只读工具。唯一的写操作是 `save_audit_report`，用于持久化最终报告。不会停止任何作业，不会修改任何资源。
+流水线在数据收集阶段仅调用只读工具。当前唯一的写操作是 `save_audit_report`，用于持久化最终报告。新增邮件通知后也应只发送通知和写审计记录，不停止任何作业，不修改任何资源。
 
 ---
 

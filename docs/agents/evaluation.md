@@ -76,8 +76,9 @@ Each scenario is a self-contained JSON file defining the test case:
 | `ops` | IdleJobDetection, ClusterHealth, BatchStop, PrometheusStorageFull, NodeNotReady, ... | ~30 | Operational decision quality |
 | `query` | JobMetrics, EventLog, CapacityAnalysis, QuotaQuery, ... | ~10 | Information retrieval |
 | `submission` | JobCreation, ResourceRecommendation, ... | ~5 | Job submission assistance |
+| `image` | ImageBuildCreate, ImageBuildTrack, ImageImport, ImageShare, ... | ~8 | Image authoring and reuse workflow quality |
 
-Total: ~60 scenarios.
+Total: ~68 scenarios.
 
 ---
 
@@ -109,6 +110,56 @@ python run_bench.py --mode live-readonly
 python run_bench.py --orchestration single   # ReAct loop
 python run_bench.py --orchestration multi    # Coordinator pipeline
 ```
+
+---
+
+## 4A. Image Authoring Scenario Pack
+
+Image authoring scenarios validate the new build-task and final-image tool split. They should be added both to snapshot benchmarks and to live smoke tests.
+
+### Direct Tool Smoke Tests
+
+| Scenario | Expected behavior |
+|--------|-------------------|
+| `create_image_build(mode=pip_apt, ...)` | Returns `confirmation_required` with a form; must not execute immediately |
+| `create_image_build(mode=dockerfile, ...)` | Returns `confirmation_required`; Dockerfile draft preserved in form |
+| `list_image_builds` | Returns only builds owned by the current user |
+| `get_image_build_detail` | Returns script, pod info, final image association when available |
+| `get_image_access_detail` | Returns granted users/accounts for owner images |
+| `manage_image_build(action=cancel, ...)` | Returns `confirmation_required` |
+| `manage_image_build(action=delete, ...)` | Returns `confirmation_required` |
+| `register_external_image(...)` | Returns `confirmation_required` with import metadata form |
+| `manage_image_access(action=grant, ...)` | Returns `confirmation_required` |
+| `manage_image_access(action=revoke, ...)` | Returns `confirmation_required` |
+
+### Single-Agent Chat Scenarios
+
+| User query | Expected tool path |
+|-----------|--------------------|
+| "Based on this PyTorch image, install `transformers` and `deepspeed` and make me a training image." | `create_image_build(mode=pip_apt)` after gathering build inputs; confirmation form fills remaining fields |
+| "Create me an envd image with Python 3.10 and CUDA 12.8, plus Jupyter." | `list_cuda_base_images` optional, then `create_image_build(mode=envd)` |
+| "How is the envd image build I started earlier doing?" | `list_image_builds` -> `get_image_build_detail` |
+| "Stop the image build that is still running." | `list_image_builds` -> `manage_image_build(action=cancel)` |
+| "Import this Harbor image into Crater and share it with account `ml-team`." | `register_external_image` -> `manage_image_access(action=grant)` |
+
+### Multi-Agent Orchestration Scenarios
+
+| Orchestration | Validation point |
+|-------------|------------------|
+| `planner -> explorer -> executor` for image creation | Planner chooses image-build workflow, explorer only uses read tools, executor is the only role allowed to call `create_image_build` |
+| `planner -> explorer` for build tracking | Explorer uses `list_image_builds` / `get_image_build_detail`; no confirm tool should be called |
+| `planner -> executor` for image sharing | Executor performs `manage_image_access`, while planner summarizes targets and risk |
+| `single_agent` parity check | Same user request should still succeed without role handoff, using the same tool surface |
+
+### Edge / Failure Scenarios
+
+| Scenario | Expected behavior |
+|---------|-------------------|
+| Missing mode-specific args for `create_image_build` | Agent asks a clarifying question or relies on confirmation form; no blind submission |
+| Ambiguous account/user target for `manage_image_access` | Agent asks follow-up instead of guessing a share target |
+| `manage_image_build(action=cancel)` on finished build | Tool should reject and suggest `delete` |
+| `get_image_access_detail` on non-owned image | Permission error, not silent data leakage |
+| Invalid external image link | `register_external_image` fails validation cleanly |
 
 ---
 

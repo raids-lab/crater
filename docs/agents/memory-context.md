@@ -6,18 +6,21 @@
 
 ## 1. Context Flow
 
-Context flows from the Go backend through the FastAPI application to the agent's system prompt:
+Context flows from the Go backend through the FastAPI application to the agent. The Go backend owns session authorization, history trimming, and capability construction; the Python agent consumes only the context explicitly included in the current request:
 
 ```
-Go Backend (user session, page state)
+Go Backend (JWT, session_id, page state)
+  ↓ GetOrCreateSession + owner/account check
+AgentSession / AgentMessage / AgentToolCall
+  ↓ buildAgentHistory() + buildAgentCapabilities()
   ↓ POST /chat
 ChatRequest { session_id, message, context, user_id, page_context }
   ↓ build_request_context()
-context dict { actor, page, capabilities, orchestration }
-  ↓ build_system_prompt(context, skills_context)
-System prompt (injected with user/page/capability details)
+context dict { actor, page, history, continuation, capabilities, orchestration }
+  ↓ single_agent or multi_agent orchestration
+System prompt / MAS StateView / tool loop messages
   ↓
-LLM receives full context on first call
+LLM sees only the context for this session and turn
 ```
 
 ### Context Structure
@@ -42,8 +45,12 @@ LLM receives full context on first call
     },
     "capabilities": {
         "enabled_tools": [...],  # optional: restrict tool set
-        "confirm_tools": [...]   # tools requiring user confirmation
+        "confirm_tools": [...],  # tools requiring user confirmation
+        "tool_catalog": [...],   # Go merges static tools with Python local catalog
+        "surface": { "page_scope": "user" }
     },
+    "history": [...],            # loaded and trimmed by Go for this session
+    "continuation": {...},       # clarification, pending confirmation, MAS workflow checkpoint
     "orchestration": {
         "mode": "single_agent"   # "single_agent" | "multi_agent"
     }
@@ -60,6 +67,8 @@ LLM receives full context on first call
 | `page.url` | Admin route detection (`/admin/*` → admin role) |
 | `capabilities.enabled_tools` | Restricts which tools are bound to LLM |
 | `capabilities.confirm_tools` | Listed in prompt so agent knows which tools need confirmation |
+| `capabilities.tool_catalog[].mode` | Distinguishes `read_only`, reserved `auto_action`, and `confirm`; chat-triggered email actions such as `notify_job_owner` appear in `confirm_tools` |
+| `continuation` | Same-session clarification, confirmation resume, and MAS workflow state |
 
 ---
 
@@ -67,7 +76,27 @@ LLM receives full context on first call
 
 Conversation history is loaded from the Go backend on each turn. There is no agent-side persistent memory — the Go backend is the source of truth.
 
+### Session Isolation
+
+- `Chat` loads or creates the session by `session_id`, then verifies `session.UserID` and `session.AccountID` against the current JWT.
+- Session list, pin, delete, and confirmation resume paths perform owner/account checks.
+- Messages and tool calls are queried by `session_id`; confirmation resume looks up the tool call, then verifies ownership of that call's session.
+- Python orchestrators receive history and workflow state in the request payload. Global objects keep only stateless executors, local tool catalog cache, and dotenv cache.
+
+Under those backend checks, users and sessions do not share history, pending confirmation state, or MAS workflow checkpoints.
+
 ### Loading Strategy
+
+Go first merges `AgentMessage` and `AgentToolCall` into a bounded history list:
+
+| Go-side limit | Current value |
+|---------------|---------------|
+| History entries | 24 |
+| Normal message max length | 1600 chars |
+| Assistant max length | 1200 chars |
+| Tool call history max length | 480 chars |
+
+Python then converts the bounded list into LangChain messages:
 
 ```python
 build_history_messages(
@@ -80,10 +109,11 @@ build_history_messages(
 
 **Algorithm**:
 1. Iterate history in **reverse** (most recent first)
-2. Convert each dict to LangChain message (`HumanMessage`, `AIMessage`, `ToolMessage`)
-3. Truncate tool results with head+tail strategy
-4. Accumulate token count; stop when budget exhausted
-5. Reverse back to chronological order
+2. Convert `user` to `HumanMessage` and `assistant` to `AIMessage`
+3. Wrap historical `tool` entries as `AIMessage("【历史工具结果 ...】...")`
+4. Truncate tool results with head+tail strategy
+5. Accumulate token count; stop when budget exhausted
+6. Reverse back to chronological order
 
 ### Truncation
 
@@ -94,6 +124,15 @@ Tool results are truncated using head+tail to preserve both the beginning (conte
 ```
 
 Error messages get more room (1600 chars) because error details are critical for diagnosis.
+
+### Single-Agent vs MAS
+
+| Mode | History usage | Working memory |
+|------|---------------|----------------|
+| `single_agent` | `build_history_messages()` is prepended to the current user message | LangGraph state for one turn; can trigger LLM compaction |
+| `multi_agent` | IntentRouter also receives a text history excerpt; role tool loops use structured history messages | `MASState` stores observation/plan/execution/actions/evidence and can persist a workflow checkpoint for confirmation resume |
+
+MAS keeps only the latest 30 tool records in working state and projects evidence through role-specific `StateView` objects.
 
 ### Why No Agent-Side Memory
 

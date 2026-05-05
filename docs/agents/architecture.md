@@ -190,13 +190,14 @@ is_actor_allowed_for_tool(actor_role, tool_name)?
   ├─ NO → error: requires admin privileges
   └─ YES
       ↓
-LocalToolExecutor.supports(tool_name)?
-  ├─ YES → execute locally (kubectl, PromQL, web)
-  └─ NO → GoBackendToolExecutor (HTTP POST)
-              ↓
-          Go Backend validates, executes, returns result
-              ↓
-          status: success | error | confirmation_required
+CompositeToolExecutor reads platform-runtime routing
+  ├─ read + target=local → LocalToolExecutor (kubectl, PromQL, web)
+  ├─ read + target=backend → GoBackendToolExecutor (HTTP POST)
+  └─ confirm write → GoBackendToolExecutor creates pending confirmation first
+         ↓ after user approval
+      backend write handler or python_local confirmed dispatch
+         ↓
+      status: success | error | confirmation_required
 ```
 
 ### 4.2 Tool Categories
@@ -208,7 +209,8 @@ LocalToolExecutor.supports(tool_name)?
 | Admin read | ~20 | Go backend | Admin only | `list_cluster_nodes`, `get_node_detail` |
 | K8s direct | ~15 | Local kubectl | Admin only | `k8s_list_pods`, `k8s_describe_resource` |
 | Prometheus direct | 1 | Local HTTP | Admin only | `prometheus_query` |
-| Write (confirm) | ~15 | Go backend | User+Confirm | `stop_job`, `cordon_node` |
+| Write / external action (confirm) | 26 | Go confirmation; some dispatch to Python local | User+Confirm | `stop_job`, `cordon_node`, `run_kubectl`, `notify_job_owner` |
+| Auto action | 0 | Reserved for system-only direct execution | System | None currently |
 | Approval | 1 | Go backend | System | `get_approval_history` |
 
 ### 4.3 Confirmation Flow
@@ -248,9 +250,11 @@ Context window is a finite resource. The system manages it at four levels:
 ```
 Conversation history from Go backend (reverse chronological)
   ↓
+Go buildAgentHistory(): max 24 entries, normal 1600 chars, assistant 1200 chars, tool 480 chars
+  ↓
 build_history_messages(max_tokens=4000)
   ↓
-Truncate tool results to 160 chars (head+tail)
+Python fits messages into the token budget; tool history is wrapped as AIMessage
   ↓
 Stop loading when token budget exhausted
   ↓
@@ -303,20 +307,20 @@ catch error
 ### 6.1 Tool Policy (Agent Level)
 
 Agent roles define which tools they can call:
-- Explorer: read-only tools only (hardcoded check)
-- Executor: read + write tools
+- Coordinator / Planner / Explorer / Verifier / General: read-only tools only
+- Executor / Single Agent: read + confirmed write/external action tools
 - Approval: fixed whitelist of 8 tools
-- General/Guide/Verifier/Planner: no tools (LLM-only)
+- Guide: no tools, explanation-only
 
 ### 6.2 Actor Policy (User Level)
 
 User roles define which tools are visible:
 - Admin: all tools
-- User: ~30 safe tools (no cluster management, no node operations)
+- User: user-domain tools plus ownership-scoped K8s read tools; no cluster management or node writes
 
 ### 6.3 Confirmation Barrier (Operation Level)
 
-Write tools (stop, delete, create, cordon, drain, ...) always require user confirmation before execution. The graph pauses and cannot proceed without explicit approval.
+Resource mutation tools (stop, delete, create, cordon, drain, ...) and chat-triggered external actions such as `notify_job_owner` require user confirmation before execution. System patrol notifications are separate backend automation with deterministic thresholds and cooldowns.
 
 ### 6.4 Rate Limiting (System Level)
 
@@ -349,40 +353,66 @@ Agent failures never crash the main application or block user operations.
 
 ### 7.1 LLM Clients (`config/llm-clients.json`)
 
-Multiple LLM providers can be configured per agent role:
+The single source of truth is `crater-agent/config/llm-clients.json`, loaded by `Settings.load_llm_client_configs()` and normalized by `ModelClientFactory`. The current shape is a direct `client_key -> config` map:
 
 ```json
 {
-  "default": { "model": "...", "base_url": "...", "temperature": 0.1 },
-  "planner": { "model": "...", "temperature": 0.0 },
-  "explorer": { "model": "...", "max_tokens": 2048 }
+  "default": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-09-11",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "planner": { "model": "...", "temperature": 0.05 },
+  "ops_report": { "model": "...", "timeout": 90 }
 }
 ```
 
-### 7.2 MAS Runtime (`config/agent-runtime.json`)
+Usage today:
+- `/chat` creates a fresh `ModelClientFactory()` for each request.
+- Single-agent mode uses `default`.
+- MAS uses `intent_router`, `coordinator`, `planner`, `explorer`, `executor`, and `verifier`, falling back to `default` if a key is missing.
+- The inspection pipeline uses `ops_report`.
 
-Guardrails for multi-agent orchestration:
+### 7.2 MAS Runtime
 
-```json
-{
-  "lead_max_rounds": 8,
-  "subagent_max_iterations": 25,
-  "no_progress_rounds": 2,
-  "max_actions_per_round": 4
-}
+MAS guardrails currently live in code as `MASRuntimeConfig` and can be restored from workflow checkpoints or overridden by evaluation controls. The old `config/agent-runtime.json` file has been removed and is no longer a runtime source.
+
+```python
+MASRuntimeConfig(
+    lead_max_rounds=8,
+    subagent_max_iterations=25,
+    no_progress_rounds=2,
+    tool_timeout_seconds=60,
+    max_actions_per_round=4,
+)
 ```
 
 ### 7.3 Platform Runtime (`config/platform-runtime.yaml`)
 
-Platform-specific endpoints and access:
+Agent-local infrastructure config and tool routing. SMTP, database, auth, and backend-only secrets should stay in Go backend config.
 
 ```yaml
+toolRouting:
+  localCoreTools:
+    - k8s_list_nodes
+    - prometheus_query
+  localWriteTools:
+    - k8s_scale_workload
+    - run_kubectl
 kubernetes:
-  kubeconfig_path: /path/to/kubeconfig
+  kubeconfigPath: /path/to/kubeconfig
+  context: kubernetes-admin@kubernetes
+  namespace: crater-workspace
 prometheus:
-  endpoint: http://prometheus:9090
-harbor:
-  endpoint: https://harbor.example.com
+  baseURL: http://prometheus:9090
+registry:
+  server: harbor.example.com
 ```
 
 ---

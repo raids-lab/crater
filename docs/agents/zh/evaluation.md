@@ -76,8 +76,9 @@ run_bench.py                # CLI 入口
 | `ops` | IdleJobDetection、ClusterHealth、BatchStop、PrometheusStorageFull、NodeNotReady 等 | 约 30 | 运维决策质量 |
 | `query` | JobMetrics、EventLog、CapacityAnalysis、QuotaQuery 等 | 约 10 | 信息检索 |
 | `submission` | JobCreation、ResourceRecommendation 等 | 约 5 | 作业提交辅助 |
+| `image` | ImageBuildCreate、ImageBuildTrack、ImageImport、ImageShare 等 | 约 8 | 镜像创建与复用工作流质量 |
 
-总计：约 60 个场景。
+总计：约 68 个场景。
 
 ---
 
@@ -109,6 +110,56 @@ python run_bench.py --mode live-readonly
 python run_bench.py --orchestration single   # ReAct 循环
 python run_bench.py --orchestration multi    # Coordinator 流水线
 ```
+
+---
+
+## 4A. 镜像创建场景包
+
+镜像创建场景用于验证新增的“构建任务”和“最终镜像”两层工具面。它们应同时进入 snapshot benchmark 和 live smoke test。
+
+### Direct Tool 冒烟场景
+
+| 场景 | 预期行为 |
+|------|----------|
+| `create_image_build(mode=pip_apt, ...)` | 返回 `confirmation_required`，且带表单；不能直接执行 |
+| `create_image_build(mode=dockerfile, ...)` | 返回 `confirmation_required`，并保留 Dockerfile 草案 |
+| `list_image_builds` | 仅返回当前用户拥有的镜像构建任务 |
+| `get_image_build_detail` | 返回脚本、Pod 信息和最终镜像关联 |
+| `get_image_access_detail` | 返回镜像授权到的用户/账户列表 |
+| `manage_image_build(action=cancel, ...)` | 返回 `confirmation_required` |
+| `manage_image_build(action=delete, ...)` | 返回 `confirmation_required` |
+| `register_external_image(...)` | 返回 `confirmation_required`，带镜像登记表单 |
+| `manage_image_access(action=grant, ...)` | 返回 `confirmation_required` |
+| `manage_image_access(action=revoke, ...)` | 返回 `confirmation_required` |
+
+### Single-Agent 对话场景
+
+| 用户问题 | 预期工具路径 |
+|----------|--------------|
+| “基于这个 PyTorch 镜像帮我装 `transformers` 和 `deepspeed`，做一个训练镜像。” | 先补齐构建信息，再调用 `create_image_build(mode=pip_apt)`；剩余字段走确认表单 |
+| “帮我做一个 Python 3.10、CUDA 12.8、带 Jupyter 的 envd 镜像。” | 可先 `list_cuda_base_images`，再 `create_image_build(mode=envd)` |
+| “我刚才启动的 envd 镜像构建现在怎么样了？” | `list_image_builds` -> `get_image_build_detail` |
+| “把那个还在 running 的镜像构建停掉。” | `list_image_builds` -> `manage_image_build(action=cancel)` |
+| “把这个 Harbor 镜像导入 Crater，再分享给 `ml-team` 账户。” | `register_external_image` -> `manage_image_access(action=grant)` |
+
+### Multi-Agent 编排场景
+
+| 编排方式 | 验证点 |
+|---------|--------|
+| `planner -> explorer -> executor` 创建镜像 | planner 选择镜像创建工作流，explorer 只读探查，executor 才允许调用 `create_image_build` |
+| `planner -> explorer` 跟踪构建状态 | explorer 只调用 `list_image_builds` / `get_image_build_detail`，不应触发 confirm tool |
+| `planner -> executor` 处理镜像分享 | planner 整理目标和风险，executor 执行 `manage_image_access` |
+| `single_agent` 对照验证 | 同一用户请求在单智能体模式下也应使用同一套工具面完成 |
+
+### 边界 / 失败场景
+
+| 场景 | 预期行为 |
+|------|----------|
+| `create_image_build` 缺少 mode-specific 参数 | Agent 应继续追问，或依赖确认表单补全，不能盲目提交 |
+| `manage_image_access` 的目标账户/用户存在歧义 | Agent 应追问，不允许猜测分享目标 |
+| 对已结束构建执行 `manage_image_build(action=cancel)` | 工具应拒绝，并提示改用 `delete` |
+| 对非本人镜像调用 `get_image_access_detail` | 返回权限错误，避免静默泄漏授权信息 |
+| 外部镜像链接不合法 | `register_external_image` 应清晰返回校验错误 |
 
 ---
 
@@ -206,6 +257,17 @@ class TraceStep:
 ---
 
 ## 7. 数据采集
+
+---
+
+## 8. 实操手册
+
+如果需要直接执行当前工程里的离线或线上验证，优先参考以下两份中文手册：
+
+- 离线评测命令与 rerun 说明：
+  [OFFLINE_EVAL_GUIDE.zh-CN.md](../../../crater-agent/crater_agent/eval/OFFLINE_EVAL_GUIDE.zh-CN.md)
+- 线上真实环境验证流程、身份与中文输入模板：
+  [ONLINE_EVAL_GUIDE.zh-CN.md](../../../crater-agent/crater_agent/eval/ONLINE_EVAL_GUIDE.zh-CN.md)
 
 ### 原始数据采集
 
