@@ -1,0 +1,60 @@
+# ============================================================
+# Crater 平台约定配置
+# 该文件定义了 AI Agent 在推荐作业配置时必须遵循的平台约定
+# ============================================================
+
+# 挂载路径约定
+# 定义作业容器中可用的存储挂载点
+mounts:
+  # 用户个人持久化主目录（锁定，不可移除）
+  user:
+    mount_path: "/home/{user_name}"
+    sub_path: "user"
+    type: "file"
+    locked: true
+    description: "用户个人持久化主目录，作业运行期间始终挂载，不可移除"
+
+  # 账户级共享数据目录
+  account:
+    mount_path: "/data/account"
+    locked: false
+    access_mode: "configurable"
+    description: "账户级共享数据目录，同一账户下的用户均可访问"
+
+  # 公共数据集目录
+  public:
+    mount_path: "/data/public"
+    locked: false
+    access_mode: "configurable"
+    description: "公共数据集目录，所有用户均可访问的只读数据"
+
+# 默认值配置
+# 当用户未明确指定时，Agent 应使用以下默认值
+defaults:
+  # 默认工作目录
+  working_dir: "/home/{user_name}"
+  # 默认 CPU 核心数
+  cpu: 4
+  # 默认内存大小
+  memory: "16Gi"
+  # 默认 GPU 数量
+  gpu_count: 1
+  # 默认 Shell 类型
+  shell: "/bin/bash"
+
+# 资源约束
+# Agent 推荐的配置不得超过以下限制
+constraints:
+  # 单个作业最大 GPU 数量
+  max_gpu_per_job: 8
+  # 单个作业最大 CPU 核心数
+  max_cpu_per_job: 64
+  # 单个作业最大内存
+  max_memory_per_job: "512Gi"
+  # 最大并发作业数
+  max_concurrent_jobs: 100
+
+# 镜像相关约定
+image_conventions:
+  # Notebook 类型作业的默认工作目录
+  default_notebook_dir: "/home/{user_name}"

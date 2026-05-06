@@ -24,19 +24,18 @@ import {
   ApprovalOrderStatus,
   ApprovalOrderStatusBadge,
   ApprovalOrderTypeBadge,
+  ReviewSourceBadge,
   approvalOrderStatuses,
   approvalOrderTypes,
 } from '@/components/badge/approvalorder-badge'
-import NodeBadges from '@/components/badge/node-badges'
 import NodeStatusBadge from '@/components/badge/node-status-badge'
-import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { type ApprovalOrder } from '@/services/api/approvalorder'
+import { type ApprovalOrder, type ReviewSource } from '@/services/api/approvalorder'
 import { NodeStatus } from '@/services/api/cluster'
 import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
@@ -95,10 +94,6 @@ const JobNameWithWarning = ({
     return jobNodes.filter((node) => node.status !== NodeStatus.Ready)
   }, [order.type, order.status, pods, nodes])
 
-  const resources = pods?.[0]?.resource
-  const nodeNames = pods?.map((p) => p.nodename).filter(Boolean)
-  const uniqueNodes = Array.from(new Set(nodeNames))
-
   return (
     <div className="relative flex items-center gap-2">
       <button
@@ -118,12 +113,6 @@ const JobNameWithWarning = ({
           <ClockIcon className="h-3 w-3" />
           {extHours}h
         </div>
-      )}
-      {order.type === 'job' && order.status === ApprovalOrderStatus.Pending && (
-        <>
-          <ResourceBadges resources={resources} />
-          <NodeBadges nodes={uniqueNodes} />
-        </>
       )}
       {abnormalNodes.length > 0 && (
         <TooltipProvider>
@@ -277,6 +266,15 @@ export function ApprovalOrderDataTable({
       ),
       cell: ({ row }) => {
         return <ApprovalOrderStatusBadge status={row.getValue('status')} />
+      },
+    },
+    {
+      accessorKey: 'reviewSource',
+      header: ({ column }) => <DataTableColumnHeader column={column} title="审批来源" />,
+      cell: ({ row }) => {
+        const source = row.getValue('reviewSource') as ReviewSource
+        if (!source) return <span className="text-muted-foreground text-sm">-</span>
+        return <ReviewSourceBadge source={source} />
       },
     },
     {

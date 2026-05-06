@@ -1,0 +1,223 @@
+# Agent-side runtime config for agent-local infrastructure tools only.
+#
+# Default behavior:
+# - crater-agent first discovers backend debug-config and reads shared endpoints/policies from there
+# - this file is optional and only overrides agent-specific runtime concerns
+#
+# Recommended for production:
+# - keep deployment scalars/secrets in env / Secret / ConfigMap
+# - use this file only when agent-local tools need structured infra config
+#   (kubernetes / prometheus / harbor / storage metadata)
+# - mount this file into the agent container and point
+#   CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH here only if the path is non-default
+#
+# Shared-vs-local rule:
+# - prefer backend/etc/debug-config.yaml -> agent.ops.kubernetes / webSearch for platform-shared defaults
+# - use this file only for agent-local overrides plus a small amount of durable
+#   platform baseline metadata that the agent may need even when backend config
+#   is unavailable
+#
+# What belongs here:
+# - agent-consumable runtime endpoints and binaries
+# - k8s/Prometheus/Harbor access needed by agent-local read-only tools
+# - stable platform metadata such as namespaces, storage prefixes, build images
+#
+# What should stay out:
+# - postgres/smtp/ldap/auth/backend-only settings
+# - inline kubeconfig cert/key blobs
+# - large chart values that agent tools never read
+# - app-level simple scalars already covered by env vars
+
+toolRouting:
+  localCoreTools:
+    - sandbox_grep
+    - sandbox_list_dir
+    - sandbox_read_file
+    - get_agent_runtime_summary
+    - k8s_list_nodes
+    - k8s_list_pods
+    - k8s_get_events
+    - k8s_describe_resource
+    - k8s_get_pod_logs
+    - k8s_get_service
+    - k8s_get_endpoints
+    - k8s_get_ingress
+    - k8s_get_configmap
+    - k8s_get_networkpolicy
+    - k8s_top_nodes
+    - k8s_top_pods
+    - k8s_rollout_status
+    - get_volcano_queue_state
+    - aggregate_image_pull_errors
+    - detect_zombie_jobs
+    - get_ddp_rank_mapping
+    - get_node_kernel_diagnostics
+    - get_rdma_interface_status
+    - get_node_gpu_info
+    - get_nccl_env_config
+    - check_node_nic_status
+    - detect_training_anomaly_patterns
+    - get_distributed_job_overview
+    - get_node_accelerator_info
+    - prometheus_query
+    - harbor_check
+  localWriteTools:
+    - k8s_scale_workload
+    - k8s_label_node
+    - k8s_taint_node
+    - run_kubectl
+    - execute_admin_command
+
+sandboxGrep:
+  roots:
+    - ../dataset
+  maxFileSizeBytes: 1000000
+
+# Optional durable platform baseline. Prefer filling only fields the agent will
+# actually consume or summarize.
+host: crater.act.buaa.edu.cn
+modelDownloadImage: crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim
+
+namespaces:
+  job: crater-workspace
+  image: crater-images
+
+storage:
+  prefix:
+    user: sugon-gpu-home-lab
+    account: crater-accounts
+    public: sugon-gpu-incoming
+  pvc:
+    readWriteMany: crater-storage
+    readOnlyMany: crater-rox-storage
+
+prometheus:
+  baseURL: http://192.168.5.60:31110
+  timeoutSeconds: 15
+  headers: {}
+  verifyTLS: true
+
+registry:
+  enabled: true
+  server: crater-harbor.act.buaa.edu.cn
+  project: ""
+  username: ""
+  password: ""
+  verifyTLS: true
+  buildProxy:
+    httpsProxy: http://192.168.5.58:1080
+    httpProxy: ""
+    noProxy: ""
+  buildToolImages:
+    buildx: crater-harbor.act.buaa.edu.cn/user-huangsy/buildkit/buildctl:v0.18.2
+    nerdctl: crater-harbor.act.buaa.edu.cn/crater/nerdctl:2.0.1-retry
+    envd: gpu-harbor.act.buaa.edu.cn/user-huangsy/envd-build-frontend:v1.2.0
+
+grafana:
+  address: ""
+  host: ""
+  token: ""
+
+kubernetes:
+  # Keep kubeconfig in a separate file, e.g. crater-agent/config/kubeconfig.
+  # Do not inline certificate/key material into this YAML.
+  kubeconfigPath: ./kubeconfig
+  context: kubernetes-admin@kubernetes
+  namespace: crater-workspace
+  kubectlBin: kubectl
+  timeoutSeconds: 30
+  safety:
+    protectedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    protectedNodeNames: []
+    blockedCommandPatterns:
+      - delete namespace
+      - delete node
+      - delete pv
+      - delete crd
+      - cluster-info dump
+      - auth can-i
+      - --as=
+      - exec -it
+      - port-forward
+      - proxy
+      - apply -f http
+
+webSearch:
+  enabled: true
+  allowedDomains:
+    # Search engines
+    - bing.com
+    - baidu.com
+    - google.com
+    - duckduckgo.com
+    # AI / ML official
+    - huggingface.co
+    - pytorch.org
+    - tensorflow.org
+    - keras.io
+    - openai.com
+    - anthropic.com
+    - mistral.ai
+    - ollama.com
+    - cohere.com
+    - langchain.com
+    # Research
+    - arxiv.org
+    - paperswithcode.com
+    - semanticscholar.org
+    - openreview.net
+    # Hardware (nvidia.com covers docs/developer/nccl subdomains)
+    - nvidia.com
+    - amd.com
+    - intel.com
+    # Kubernetes / containers
+    - kubernetes.io
+    - k8s.io
+    - docker.com
+    - helm.sh
+    - istio.io
+    # Storage
+    - ceph.com
+    - openebs.io
+    - longhorn.io
+    - min.io
+    # Observability
+    - prometheus.io
+    - grafana.com
+    - opentelemetry.io
+    # Job scheduling
+    - volcano.sh
+    - apache.org
+    # Cloud providers
+    - aws.amazon.com
+    - learn.microsoft.com
+    - azure.microsoft.com
+    - alibabacloud.com
+    - aliyun.com
+    - cloud.tencent.com
+    - huaweicloud.com
+    # Developer community (global)
+    - github.com
+    - stackoverflow.com
+    - medium.com
+    - readthedocs.io
+    - dev.to
+    # Chinese tech community
+    - zhihu.com
+    - csdn.net
+    - cnblogs.com
+    - segmentfault.com
+    - juejin.cn
+    - jianshu.com
+    # Language / framework docs
+    - python.org
+    - go.dev
+    - pypi.org
+    - rust-lang.org
+    - npmjs.com
+  seedUrls: []
+  timeoutSeconds: 15
+  maxContentChars: 4000

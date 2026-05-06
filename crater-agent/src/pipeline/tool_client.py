@@ -1,0 +1,82 @@
+"""Shared backend tool client for internal pipeline runs."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+from uuid import uuid4
+
+import httpx
+
+from config import settings
+from internal_auth import expected_internal_token
+
+logger = logging.getLogger(__name__)
+
+PIPELINE_INTERNAL_CONTEXT = {
+    "role": "admin",
+    "username": "agent-pipeline",
+    "account_name": "system",
+}
+
+
+class PipelineToolClient:
+    def __init__(
+        self,
+        *,
+        timeout: int = 60,
+        session_source: str = "system",
+        session_title: str = "[system] 后台任务",
+    ):
+        self._client = httpx.AsyncClient(timeout=timeout)
+        self._session_id = str(uuid4())
+        self._turn_id = str(uuid4())
+        self._session_source = session_source
+        self._session_title = session_title
+        self._tool_call_index = 0
+
+    async def __aenter__(self) -> "PipelineToolClient":
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        await self._client.aclose()
+
+    def _next_tool_call_id(self, tool_name: str) -> str:
+        self._tool_call_index += 1
+        normalized_tool_name = tool_name.replace("_", "-").strip() or "tool"
+        return (
+            f"pipeline-{self._session_id[:8]}-"
+            f"{self._tool_call_index:03d}-{normalized_tool_name}"
+        )
+
+    async def execute(self, tool_name: str, tool_args: dict[str, Any]) -> dict[str, Any]:
+        try:
+            response = await self._client.post(
+                f"{settings.crater_backend_url}/api/agent/tools/execute",
+                json={
+                    "tool_name": tool_name,
+                    "tool_args": tool_args,
+                    "session_id": self._session_id,
+                    "session_source": self._session_source,
+                    "session_title": self._session_title,
+                    "turn_id": self._turn_id,
+                    "tool_call_id": self._next_tool_call_id(tool_name),
+                    "agent_id": "pipeline",
+                    "agent_role": "single_agent",
+                    "internal_context": PIPELINE_INTERNAL_CONTEXT,
+                },
+                headers={
+                    "X-Agent-Internal-Token": expected_internal_token(),
+                    "Content-Type": "application/json",
+                },
+            )
+            if response.status_code == 200:
+                payload = response.json()
+                return payload.get("data", payload)
+            return {"status": "error", "message": f"HTTP {response.status_code}"}
+        except Exception as exc:
+            logger.error("Pipeline tool execution failed: %s - %s", tool_name, exc)
+            return {"status": "error", "message": str(exc)}

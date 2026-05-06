@@ -18,6 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import {
+  BotIcon,
   CheckCircle,
   ClipboardListIcon,
   Clock,
@@ -43,6 +44,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import { ApprovalOrderStatusBadge } from '@/components/badge/approvalorder-badge'
+import { ReviewSourceBadge } from '@/components/badge/approvalorder-badge'
 import NodeStatusBadge from '@/components/badge/node-status-badge'
 import ResourceBadges from '@/components/badge/resource-badges'
 import JobOrderList from '@/components/job/detail/job-order-list'
@@ -50,6 +52,7 @@ import DetailPage from '@/components/layout/detail-page'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 
 import {
+  type AgentReportData,
   type ApprovalOrder,
   type ApprovalOrderReq,
   adminGetApprovalOrder,
@@ -335,6 +338,12 @@ function RouteComponent() {
           },
           { title: '创建者', icon: User, value: creatorName },
           {
+            title: '审批来源',
+            icon: BotIcon,
+            value: <ReviewSourceBadge source={order.reviewSource || ''} />,
+            hidden: !order.reviewSource,
+          },
+          {
             title: '创建时间',
             icon: Clock,
             value: new Date(order.createdAt).toLocaleString(),
@@ -433,6 +442,75 @@ function RouteComponent() {
                 </Card>
               </div>
             ),
+          },
+          {
+            key: 'agent',
+            label: 'Agent 评估',
+            icon: BotIcon,
+            scrollable: true,
+            hidden: !order.agentReport,
+            children: (() => {
+              let report: AgentReportData | null = null
+              try {
+                if (order.agentReport) report = JSON.parse(order.agentReport)
+              } catch {
+                /* ignore parse errors */
+              }
+              if (!report) return <div className="text-muted-foreground p-4">无评估数据</div>
+              return (
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">评估结论</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground text-sm">判断</span>
+                        <span className="font-medium">
+                          {report.verdict === 'approve' ? '通过' : '转交管理员'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground text-sm">置信度</span>
+                        <span className="font-medium">{(report.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">判断依据</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap">{report.reason || '-'}</p>
+                      {report.admin_summary && (
+                        <div className="mt-3 border-t pt-3">
+                          <span className="text-muted-foreground text-sm">管理员摘要</span>
+                          <p className="mt-1 text-sm">{report.admin_summary}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  {report.trace && report.trace.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">调查过程</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-1">
+                          {report.trace.map((t, i) => (
+                            <div key={i} className="text-muted-foreground flex gap-2 text-sm">
+                              <span className="font-mono text-xs">{i + 1}.</span>
+                              <span className="text-foreground font-medium">{t.tool}</span>
+                              <span className="truncate">{t.args_summary}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )
+            })(),
           },
           {
             key: 'order',

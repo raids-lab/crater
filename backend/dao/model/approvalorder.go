@@ -30,6 +30,16 @@ type ApprovalOrderContent struct {
 	ApprovalOrderReason         string `json:"approvalorderReason"`         // 审批原因
 }
 
+// ReviewSource 审批来源
+type ReviewSource string
+
+const (
+	ReviewSourceNone        ReviewSource = ""             // 历史记录或未处理
+	ReviewSourceSystemAuto  ReviewSource = "system_auto"  // 简单规则自动审批
+	ReviewSourceAgentAuto   ReviewSource = "agent_auto"   // Agent 评估通过
+	ReviewSourceAdminManual ReviewSource = "admin_manual" // 管理员手动审批
+)
+
 // ApprovalOrder 审批订单模型
 type ApprovalOrder struct {
 	gorm.Model
@@ -43,4 +53,7 @@ type ApprovalOrder struct {
 	Creator    User `gorm:"foreignKey:CreatorID"`
 	ReviewerID uint `gorm:"comment:审批者ID"`
 	Reviewer   User `gorm:"foreignKey:ReviewerID"`
+
+	ReviewSource ReviewSource `gorm:"type:varchar(32);default:'';comment:审批来源(system_auto/agent_auto/admin_manual)"`
+	AgentReport  string       `gorm:"type:text;default:'';comment:Agent评估报告JSON"`
 }

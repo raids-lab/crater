@@ -1,0 +1,41 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+src/*.egg-info/
+dist/
+.venv/
+.env
+.env.example
+*.log
+.ruff_cache/
+.pytest_cache/
+
+# Local source/runtime artifacts for the flat src layout.
+/src/res/
+/src/dataset/
+/src/eval/
+/src/res.tar
+
+# Legacy local experiment tree from the old crater_agent package layout.
+/crater_agent/
+
+# Offline experiments and local-only test harnesses.
+/docs/
+/tests/
+/scripts/
+/dataset/
+/crater_bench/
+/run_bench.py
+/test_integration.py
+/dataset.zip
+/results/
+
+# Local/runtime config, not PR material.
+/config/offline-bench-run.json
+/config/platform-runtime.offline.yaml
+/config/platform-runtime.local.yaml
+/config/kubeconfig
+/config/bench-run.example.yaml
+*.jsonl
+*.tar
+*.zip

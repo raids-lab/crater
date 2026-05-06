@@ -318,6 +318,70 @@ type Config struct {
 		} `json:"normal"`
 	} `json:"auth"`
 
+	// Agent contains configuration for the Crater Agent (Python) service.
+	// Optional: Defaults to http://localhost:8000 if not specified.
+	Agent struct {
+		// ServiceURL is the base URL of the Python Agent service.
+		// Optional: Defaults to "http://localhost:8000".
+		ServiceURL string `json:"serviceURL"`
+		// InternalToken is the shared secret used by the Python Agent service when calling
+		// internal tool execution endpoints exposed by the Go backend.
+		// Optional: Can also be supplied via CRATER_AGENT_INTERNAL_TOKEN.
+		InternalToken string `json:"internalToken"`
+
+		// Ops contains backend-side operational tool controls for the ops-agent.
+		Ops struct {
+			// WebSearch defines policy and limits for backend-proxied web search.
+			WebSearch struct {
+				// Enabled toggles web_search tool availability.
+				Enabled bool `json:"enabled"`
+				// AllowedDomains limits outbound web search egress to these domains.
+				AllowedDomains []string `json:"allowedDomains"`
+				// TimeoutSeconds controls per-request timeout for web search requests.
+				TimeoutSeconds int `json:"timeoutSeconds"`
+			} `json:"webSearch"`
+
+			// Kubernetes defines shared kubectl access hints for agent-side direct diagnosis tools.
+			// These fields are optional and mainly consumed by the Python agent runtime.
+			Kubernetes struct {
+				// KubeconfigPath is the kubeconfig file path visible to the agent runtime.
+				KubeconfigPath string `json:"kubeconfigPath"`
+				// Context is the default kubeconfig context for kubectl operations.
+				Context string `json:"context"`
+				// Namespace is the default namespace for kubectl operations.
+				Namespace string `json:"namespace"`
+				// KubectlBin is the kubectl executable name/path.
+				KubectlBin string `json:"kubectlBin"`
+				// TimeoutSeconds is the default timeout for kubectl invocations.
+				TimeoutSeconds int `json:"timeoutSeconds"`
+			} `json:"kubernetes"`
+		} `json:"ops"`
+
+		// ApprovalHook configures the agent-based approval evaluation for job lock orders.
+		// When enabled, the Go backend calls the Python agent service to evaluate
+		// approval orders that don't pass the simple auto-approval rules.
+		ApprovalHook struct {
+			// Enabled toggles the agent approval evaluation hook.
+			// Default: false. Enable only when the agent service is stable.
+			Enabled bool `json:"enabled"`
+			// TotalTimeoutSeconds is the maximum time to wait for agent evaluation.
+			// Default: 15.
+			TotalTimeoutSeconds int `json:"totalTimeoutSeconds"`
+			// MaxPerMinute is the rate limit for agent evaluation calls.
+			// Default: 10.
+			MaxPerMinute int `json:"maxPerMinute"`
+			// MaxConcurrent is the maximum number of concurrent agent evaluations.
+			// Default: 3.
+			MaxConcurrent int `json:"maxConcurrent"`
+			// CircuitBreakerThreshold is the number of consecutive failures before the circuit opens.
+			// Default: 5.
+			CircuitBreakerThreshold int `json:"circuitBreakerThreshold"`
+			// CircuitBreakerCooldownSeconds is the cooldown period in seconds after circuit opens.
+			// Default: 60.
+			CircuitBreakerCooldownSeconds int `json:"circuitBreakerCooldownSeconds"`
+		} `json:"approvalHook"`
+	} `json:"agent"`
+
 	// SchedulerPlugins contains configuration for Kubernetes scheduler plugin integrations.
 	// Optional: Individual plugins can be enabled/disabled independently.
 	SchedulerPlugins struct {
@@ -523,6 +587,17 @@ func (c *Config) ValidateConfig() error {
 		}
 	}
 
+	// Validate agent.ops configuration
+	if c.Agent.Ops.WebSearch.TimeoutSeconds < 0 {
+		errors = append(errors, "agent.ops.webSearch.timeoutSeconds must be >= 0")
+	}
+	if c.Agent.Ops.WebSearch.Enabled && len(c.Agent.Ops.WebSearch.AllowedDomains) == 0 {
+		errors = append(errors, "agent.ops.webSearch.allowedDomains is required when webSearch is enabled")
+	}
+	if c.Agent.Ops.Kubernetes.TimeoutSeconds < 0 {
+		errors = append(errors, "agent.ops.kubernetes.timeoutSeconds must be >= 0")
+	}
+
 	// Return validation errors if any
 	if len(errors) > 0 {
 		return fmt.Errorf("configuration validation failed:\n- %s", strings.Join(errors, "\n- "))
@@ -626,6 +701,32 @@ func (c *Config) PrintConfig() {
 	} else {
 		klog.Info("SMTP: Disabled")
 	}
+
+	// Agent
+	if c.Agent.ServiceURL != "" {
+		klog.Infof("Agent Service URL: %s", c.Agent.ServiceURL)
+	} else {
+		klog.Info("Agent Service URL: <default: http://localhost:8000>")
+	}
+	if c.Agent.InternalToken != "" {
+		klog.Info("Agent Internal Token: <configured>")
+	} else {
+		klog.Info("Agent Internal Token: <not configured, env fallback supported>")
+	}
+	klog.Infof(
+		"Agent Ops WebSearch: enabled=%t timeout=%ds allowedDomains=%v",
+		c.Agent.Ops.WebSearch.Enabled,
+		c.Agent.Ops.WebSearch.TimeoutSeconds,
+		c.Agent.Ops.WebSearch.AllowedDomains,
+	)
+	klog.Infof(
+		"Agent Ops Kubernetes: kubeconfigPath=%s context=%s namespace=%s kubectlBin=%s timeout=%ds",
+		c.Agent.Ops.Kubernetes.KubeconfigPath,
+		c.Agent.Ops.Kubernetes.Context,
+		c.Agent.Ops.Kubernetes.Namespace,
+		c.Agent.Ops.Kubernetes.KubectlBin,
+		c.Agent.Ops.Kubernetes.TimeoutSeconds,
+	)
 
 	// Authentication
 	if c.Auth.LDAP.Enable {

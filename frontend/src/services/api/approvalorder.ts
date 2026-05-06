@@ -24,6 +24,17 @@ export interface Content {
   approvalorderExtensionHours: number
 }
 
+export type ReviewSource = '' | 'system_auto' | 'agent_auto' | 'admin_manual'
+
+export interface AgentReportData {
+  verdict: 'approve' | 'escalate'
+  confidence: number
+  reason: string
+  user_message?: string
+  admin_summary?: string
+  trace?: Array<{ tool: string; args_summary: string }>
+}
+
 export interface ApprovalOrder {
   id: number
   name: string
@@ -34,6 +45,8 @@ export interface ApprovalOrder {
   creator: IUserInfo
   reviewer: IUserInfo
   createdAt: string
+  reviewSource: ReviewSource
+  agentReport: string // JSON string of AgentReportData, empty if no report
 }
 export interface ApprovalOrderReq {
   name: string

@@ -19,17 +19,20 @@ import { Route as PortalUsersRouteRouteImport } from './routes/portal/users/rout
 import { Route as PortalTemplatesRouteRouteImport } from './routes/portal/templates/route'
 import { Route as PortalOverviewRouteRouteImport } from './routes/portal/overview/route'
 import { Route as PortalMoreRouteRouteImport } from './routes/portal/more/route'
+import { Route as PortalAiopsRouteRouteImport } from './routes/portal/aiops/route'
 import { Route as PortalAccountRouteRouteImport } from './routes/portal/account/route'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
 import { Route as AdminStatisticsRouteRouteImport } from './routes/admin/statistics/route'
 import { Route as AdminJobsRouteRouteImport } from './routes/admin/jobs/route'
 import { Route as AdminGpuAnalysisRouteRouteImport } from './routes/admin/gpu-analysis/route'
 import { Route as AdminDataRouteRouteImport } from './routes/admin/data/route'
+import { Route as AdminAiopsRouteRouteImport } from './routes/admin/aiops/route'
 import { Route as AdminAccountsRouteRouteImport } from './routes/admin/accounts/route'
 import { Route as PortalUsersIndexRouteImport } from './routes/portal/users/index'
 import { Route as PortalTemplatesIndexRouteImport } from './routes/portal/templates/index'
 import { Route as PortalOverviewIndexRouteImport } from './routes/portal/overview/index'
 import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
+import { Route as PortalAiopsIndexRouteImport } from './routes/portal/aiops/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminStatisticsIndexRouteImport } from './routes/admin/statistics/index'
 import { Route as AdminOperationLogsIndexRouteImport } from './routes/admin/operation-logs/index'
@@ -38,6 +41,7 @@ import { Route as AdminJobsIndexRouteImport } from './routes/admin/jobs/index'
 import { Route as AdminGpuAnalysisIndexRouteImport } from './routes/admin/gpu-analysis/index'
 import { Route as AdminDataIndexRouteImport } from './routes/admin/data/index'
 import { Route as AdminCronjobsIndexRouteImport } from './routes/admin/cronjobs/index'
+import { Route as AdminAiopsIndexRouteImport } from './routes/admin/aiops/index'
 import { Route as AdminAccountsIndexRouteImport } from './routes/admin/accounts/index'
 import { Route as PortalUsersNameRouteImport } from './routes/portal/users/$name'
 import { Route as PortalOverviewNodeRouteImport } from './routes/portal/overview/$node'
@@ -68,6 +72,7 @@ import { Route as PortalDataModelsRouteRouteImport } from './routes/portal/data/
 import { Route as PortalDataDatasetsRouteRouteImport } from './routes/portal/data/datasets/route'
 import { Route as PortalDataBlocksRouteRouteImport } from './routes/portal/data/blocks/route'
 import { Route as AdminMoreOrdersRouteRouteImport } from './routes/admin/more/orders/route'
+import { Route as AdminMoreAgentAuditRouteRouteImport } from './routes/admin/more/agent-audit/route'
 import { Route as AdminEnvRegistryRouteRouteImport } from './routes/admin/env/registry/route'
 import { Route as AdminClusterResourcesRouteRouteImport } from './routes/admin/cluster/resources/route'
 import { Route as AdminClusterNodesRouteRouteImport } from './routes/admin/cluster/nodes/route'
@@ -80,6 +85,7 @@ import { Route as PortalDataModelsIndexRouteImport } from './routes/portal/data/
 import { Route as PortalDataDatasetsIndexRouteImport } from './routes/portal/data/datasets/index'
 import { Route as PortalDataBlocksIndexRouteImport } from './routes/portal/data/blocks/index'
 import { Route as AdminMoreOrdersIndexRouteImport } from './routes/admin/more/orders/index'
+import { Route as AdminMoreAgentAuditIndexRouteImport } from './routes/admin/more/agent-audit/index'
 import { Route as AdminEnvRegistryIndexRouteImport } from './routes/admin/env/registry/index'
 import { Route as AdminEnvImagesIndexRouteImport } from './routes/admin/env/images/index'
 import { Route as AdminClusterResourcesIndexRouteImport } from './routes/admin/cluster/resources/index'
@@ -99,6 +105,7 @@ import { Route as PortalDataModelsIdRouteImport } from './routes/portal/data/mod
 import { Route as PortalDataDatasetsIdRouteImport } from './routes/portal/data/datasets/$id'
 import { Route as PortalDataBlocksIdRouteImport } from './routes/portal/data/blocks/$id'
 import { Route as AdminMoreOrdersIdRouteImport } from './routes/admin/more/orders/$id'
+import { Route as AdminMoreAgentAuditSessionIdRouteImport } from './routes/admin/more/agent-audit/$sessionId'
 import { Route as AdminEnvRegistryNameRouteImport } from './routes/admin/env/registry/$name'
 import { Route as AdminClusterNodesNodeRouteImport } from './routes/admin/cluster/nodes/$node'
 import { Route as PortalDataModelsDownloadsIndexRouteImport } from './routes/portal/data/models/downloads/index'
@@ -156,6 +163,11 @@ const PortalMoreRouteRoute = PortalMoreRouteRouteImport.update({
   path: '/more',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const PortalAiopsRouteRoute = PortalAiopsRouteRouteImport.update({
+  id: '/aiops',
+  path: '/aiops',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
 const PortalAccountRouteRoute = PortalAccountRouteRouteImport.update({
   id: '/account',
   path: '/account',
@@ -186,6 +198,11 @@ const AdminDataRouteRoute = AdminDataRouteRouteImport.update({
   path: '/data',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAiopsRouteRoute = AdminAiopsRouteRouteImport.update({
+  id: '/aiops',
+  path: '/aiops',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminAccountsRouteRoute = AdminAccountsRouteRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -210,6 +227,11 @@ const PortalMoreIndexRoute = PortalMoreIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PortalMoreRouteRoute,
+} as any)
+const PortalAiopsIndexRoute = PortalAiopsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalAiopsRouteRoute,
 } as any)
 const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
   id: '/',
@@ -250,6 +272,11 @@ const AdminCronjobsIndexRoute = AdminCronjobsIndexRouteImport.update({
   id: '/cronjobs/',
   path: '/cronjobs/',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAiopsIndexRoute = AdminAiopsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminAiopsRouteRoute,
 } as any)
 const AdminAccountsIndexRoute = AdminAccountsIndexRouteImport.update({
   id: '/',
@@ -401,6 +428,12 @@ const AdminMoreOrdersRouteRoute = AdminMoreOrdersRouteRouteImport.update({
   path: '/more/orders',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminMoreAgentAuditRouteRoute =
+  AdminMoreAgentAuditRouteRouteImport.update({
+    id: '/more/agent-audit',
+    path: '/more/agent-audit',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminEnvRegistryRouteRoute = AdminEnvRegistryRouteRouteImport.update({
   id: '/env/registry',
   path: '/env/registry',
@@ -462,6 +495,12 @@ const AdminMoreOrdersIndexRoute = AdminMoreOrdersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminMoreOrdersRouteRoute,
 } as any)
+const AdminMoreAgentAuditIndexRoute =
+  AdminMoreAgentAuditIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminMoreAgentAuditRouteRoute,
+  } as any)
 const AdminEnvRegistryIndexRoute = AdminEnvRegistryIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -561,6 +600,12 @@ const AdminMoreOrdersIdRoute = AdminMoreOrdersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AdminMoreOrdersRouteRoute,
 } as any)
+const AdminMoreAgentAuditSessionIdRoute =
+  AdminMoreAgentAuditSessionIdRouteImport.update({
+    id: '/$sessionId',
+    path: '/$sessionId',
+    getParentRoute: () => AdminMoreAgentAuditRouteRoute,
+  } as any)
 const AdminEnvRegistryNameRoute = AdminEnvRegistryNameRouteImport.update({
   id: '/$name',
   path: '/$name',
@@ -601,12 +646,14 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
   '/admin/accounts': typeof AdminAccountsRouteRouteWithChildren
+  '/admin/aiops': typeof AdminAiopsRouteRouteWithChildren
   '/admin/data': typeof AdminDataRouteRouteWithChildren
   '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/statistics': typeof AdminStatisticsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
+  '/portal/aiops': typeof PortalAiopsRouteRouteWithChildren
   '/portal/more': typeof PortalMoreRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
@@ -617,6 +664,7 @@ export interface FileRoutesByFullPath {
   '/admin/cluster/nodes': typeof AdminClusterNodesRouteRouteWithChildren
   '/admin/cluster/resources': typeof AdminClusterResourcesRouteRouteWithChildren
   '/admin/env/registry': typeof AdminEnvRegistryRouteRouteWithChildren
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRouteRouteWithChildren
   '/admin/more/orders': typeof AdminMoreOrdersRouteRouteWithChildren
   '/portal/data/blocks': typeof PortalDataBlocksRouteRouteWithChildren
   '/portal/data/datasets': typeof PortalDataDatasetsRouteRouteWithChildren
@@ -647,6 +695,7 @@ export interface FileRoutesByFullPath {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
+  '/admin/aiops/': typeof AdminAiopsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
@@ -655,12 +704,14 @@ export interface FileRoutesByFullPath {
   '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
+  '/portal/aiops/': typeof PortalAiopsIndexRoute
   '/portal/more/': typeof PortalMoreIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
   '/portal/templates/': typeof PortalTemplatesIndexRoute
   '/portal/users/': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
+  '/admin/more/agent-audit/$sessionId': typeof AdminMoreAgentAuditSessionIdRoute
   '/admin/more/orders/$id': typeof AdminMoreOrdersIdRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
   '/portal/data/datasets/$id': typeof PortalDataDatasetsIdRoute
@@ -680,6 +731,7 @@ export interface FileRoutesByFullPath {
   '/admin/cluster/resources/': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry/': typeof AdminEnvRegistryIndexRoute
+  '/admin/more/agent-audit/': typeof AdminMoreAgentAuditIndexRoute
   '/admin/more/orders/': typeof AdminMoreOrdersIndexRoute
   '/portal/data/blocks/': typeof PortalDataBlocksIndexRoute
   '/portal/data/datasets/': typeof PortalDataDatasetsIndexRoute
@@ -724,6 +776,7 @@ export interface FileRoutesByTo {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts': typeof AdminAccountsIndexRoute
+  '/admin/aiops': typeof AdminAiopsIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data': typeof AdminDataIndexRoute
   '/admin/gpu-analysis': typeof AdminGpuAnalysisIndexRoute
@@ -732,12 +785,14 @@ export interface FileRoutesByTo {
   '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics': typeof AdminStatisticsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
+  '/portal/aiops': typeof PortalAiopsIndexRoute
   '/portal/more': typeof PortalMoreIndexRoute
   '/portal/overview': typeof PortalOverviewIndexRoute
   '/portal/templates': typeof PortalTemplatesIndexRoute
   '/portal/users': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
+  '/admin/more/agent-audit/$sessionId': typeof AdminMoreAgentAuditSessionIdRoute
   '/admin/more/orders/$id': typeof AdminMoreOrdersIdRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
   '/portal/data/datasets/$id': typeof PortalDataDatasetsIdRoute
@@ -757,6 +812,7 @@ export interface FileRoutesByTo {
   '/admin/cluster/resources': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry': typeof AdminEnvRegistryIndexRoute
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditIndexRoute
   '/admin/more/orders': typeof AdminMoreOrdersIndexRoute
   '/portal/data/blocks': typeof PortalDataBlocksIndexRoute
   '/portal/data/datasets': typeof PortalDataDatasetsIndexRoute
@@ -777,12 +833,14 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
   '/admin/accounts': typeof AdminAccountsRouteRouteWithChildren
+  '/admin/aiops': typeof AdminAiopsRouteRouteWithChildren
   '/admin/data': typeof AdminDataRouteRouteWithChildren
   '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/statistics': typeof AdminStatisticsRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
+  '/portal/aiops': typeof PortalAiopsRouteRouteWithChildren
   '/portal/more': typeof PortalMoreRouteRouteWithChildren
   '/portal/overview': typeof PortalOverviewRouteRouteWithChildren
   '/portal/templates': typeof PortalTemplatesRouteRouteWithChildren
@@ -793,6 +851,7 @@ export interface FileRoutesById {
   '/admin/cluster/nodes': typeof AdminClusterNodesRouteRouteWithChildren
   '/admin/cluster/resources': typeof AdminClusterResourcesRouteRouteWithChildren
   '/admin/env/registry': typeof AdminEnvRegistryRouteRouteWithChildren
+  '/admin/more/agent-audit': typeof AdminMoreAgentAuditRouteRouteWithChildren
   '/admin/more/orders': typeof AdminMoreOrdersRouteRouteWithChildren
   '/portal/data/blocks': typeof PortalDataBlocksRouteRouteWithChildren
   '/portal/data/datasets': typeof PortalDataDatasetsRouteRouteWithChildren
@@ -823,6 +882,7 @@ export interface FileRoutesById {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
+  '/admin/aiops/': typeof AdminAiopsIndexRoute
   '/admin/cronjobs/': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
@@ -831,12 +891,14 @@ export interface FileRoutesById {
   '/admin/operation-logs/': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
+  '/portal/aiops/': typeof PortalAiopsIndexRoute
   '/portal/more/': typeof PortalMoreIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
   '/portal/templates/': typeof PortalTemplatesIndexRoute
   '/portal/users/': typeof PortalUsersIndexRoute
   '/admin/cluster/nodes/$node': typeof AdminClusterNodesNodeRoute
   '/admin/env/registry/$name': typeof AdminEnvRegistryNameRoute
+  '/admin/more/agent-audit/$sessionId': typeof AdminMoreAgentAuditSessionIdRoute
   '/admin/more/orders/$id': typeof AdminMoreOrdersIdRoute
   '/portal/data/blocks/$id': typeof PortalDataBlocksIdRoute
   '/portal/data/datasets/$id': typeof PortalDataDatasetsIdRoute
@@ -856,6 +918,7 @@ export interface FileRoutesById {
   '/admin/cluster/resources/': typeof AdminClusterResourcesIndexRoute
   '/admin/env/images/': typeof AdminEnvImagesIndexRoute
   '/admin/env/registry/': typeof AdminEnvRegistryIndexRoute
+  '/admin/more/agent-audit/': typeof AdminMoreAgentAuditIndexRoute
   '/admin/more/orders/': typeof AdminMoreOrdersIndexRoute
   '/portal/data/blocks/': typeof PortalDataBlocksIndexRoute
   '/portal/data/datasets/': typeof PortalDataDatasetsIndexRoute
@@ -877,12 +940,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/portal'
     | '/admin/accounts'
+    | '/admin/aiops'
     | '/admin/data'
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/statistics'
     | '/admin/users'
     | '/portal/account'
+    | '/portal/aiops'
     | '/portal/more'
     | '/portal/overview'
     | '/portal/templates'
@@ -893,6 +958,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/nodes'
     | '/admin/cluster/resources'
     | '/admin/env/registry'
+    | '/admin/more/agent-audit'
     | '/admin/more/orders'
     | '/portal/data/blocks'
     | '/portal/data/datasets'
@@ -923,6 +989,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts/'
+    | '/admin/aiops/'
     | '/admin/cronjobs'
     | '/admin/data/'
     | '/admin/gpu-analysis/'
@@ -931,12 +998,14 @@ export interface FileRouteTypes {
     | '/admin/operation-logs'
     | '/admin/statistics/'
     | '/admin/users/'
+    | '/portal/aiops/'
     | '/portal/more/'
     | '/portal/overview/'
     | '/portal/templates/'
     | '/portal/users/'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
+    | '/admin/more/agent-audit/$sessionId'
     | '/admin/more/orders/$id'
     | '/portal/data/blocks/$id'
     | '/portal/data/datasets/$id'
@@ -956,6 +1025,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources/'
     | '/admin/env/images'
     | '/admin/env/registry/'
+    | '/admin/more/agent-audit/'
     | '/admin/more/orders/'
     | '/portal/data/blocks/'
     | '/portal/data/datasets/'
@@ -1000,6 +1070,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts'
+    | '/admin/aiops'
     | '/admin/cronjobs'
     | '/admin/data'
     | '/admin/gpu-analysis'
@@ -1008,12 +1079,14 @@ export interface FileRouteTypes {
     | '/admin/operation-logs'
     | '/admin/statistics'
     | '/admin/users'
+    | '/portal/aiops'
     | '/portal/more'
     | '/portal/overview'
     | '/portal/templates'
     | '/portal/users'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
+    | '/admin/more/agent-audit/$sessionId'
     | '/admin/more/orders/$id'
     | '/portal/data/blocks/$id'
     | '/portal/data/datasets/$id'
@@ -1033,6 +1106,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources'
     | '/admin/env/images'
     | '/admin/env/registry'
+    | '/admin/more/agent-audit'
     | '/admin/more/orders'
     | '/portal/data/blocks'
     | '/portal/data/datasets'
@@ -1052,12 +1126,14 @@ export interface FileRouteTypes {
     | '/admin'
     | '/portal'
     | '/admin/accounts'
+    | '/admin/aiops'
     | '/admin/data'
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/statistics'
     | '/admin/users'
     | '/portal/account'
+    | '/portal/aiops'
     | '/portal/more'
     | '/portal/overview'
     | '/portal/templates'
@@ -1068,6 +1144,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/nodes'
     | '/admin/cluster/resources'
     | '/admin/env/registry'
+    | '/admin/more/agent-audit'
     | '/admin/more/orders'
     | '/portal/data/blocks'
     | '/portal/data/datasets'
@@ -1098,6 +1175,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts/'
+    | '/admin/aiops/'
     | '/admin/cronjobs/'
     | '/admin/data/'
     | '/admin/gpu-analysis/'
@@ -1106,12 +1184,14 @@ export interface FileRouteTypes {
     | '/admin/operation-logs/'
     | '/admin/statistics/'
     | '/admin/users/'
+    | '/portal/aiops/'
     | '/portal/more/'
     | '/portal/overview/'
     | '/portal/templates/'
     | '/portal/users/'
     | '/admin/cluster/nodes/$node'
     | '/admin/env/registry/$name'
+    | '/admin/more/agent-audit/$sessionId'
     | '/admin/more/orders/$id'
     | '/portal/data/blocks/$id'
     | '/portal/data/datasets/$id'
@@ -1131,6 +1211,7 @@ export interface FileRouteTypes {
     | '/admin/cluster/resources/'
     | '/admin/env/images/'
     | '/admin/env/registry/'
+    | '/admin/more/agent-audit/'
     | '/admin/more/orders/'
     | '/portal/data/blocks/'
     | '/portal/data/datasets/'
@@ -1227,6 +1308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalMoreRouteRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/portal/aiops': {
+      id: '/portal/aiops'
+      path: '/aiops'
+      fullPath: '/portal/aiops'
+      preLoaderRoute: typeof PortalAiopsRouteRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/account': {
       id: '/portal/account'
       path: '/account'
@@ -1269,6 +1357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDataRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/aiops': {
+      id: '/admin/aiops'
+      path: '/aiops'
+      fullPath: '/admin/aiops'
+      preLoaderRoute: typeof AdminAiopsRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/accounts': {
       id: '/admin/accounts'
       path: '/accounts'
@@ -1303,6 +1398,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/more/'
       preLoaderRoute: typeof PortalMoreIndexRouteImport
       parentRoute: typeof PortalMoreRouteRoute
+    }
+    '/portal/aiops/': {
+      id: '/portal/aiops/'
+      path: '/'
+      fullPath: '/portal/aiops/'
+      preLoaderRoute: typeof PortalAiopsIndexRouteImport
+      parentRoute: typeof PortalAiopsRouteRoute
     }
     '/admin/users/': {
       id: '/admin/users/'
@@ -1359,6 +1461,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/cronjobs'
       preLoaderRoute: typeof AdminCronjobsIndexRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/aiops/': {
+      id: '/admin/aiops/'
+      path: '/'
+      fullPath: '/admin/aiops/'
+      preLoaderRoute: typeof AdminAiopsIndexRouteImport
+      parentRoute: typeof AdminAiopsRouteRoute
     }
     '/admin/accounts/': {
       id: '/admin/accounts/'
@@ -1570,6 +1679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMoreOrdersRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/more/agent-audit': {
+      id: '/admin/more/agent-audit'
+      path: '/more/agent-audit'
+      fullPath: '/admin/more/agent-audit'
+      preLoaderRoute: typeof AdminMoreAgentAuditRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/env/registry': {
       id: '/admin/env/registry'
       path: '/env/registry'
@@ -1653,6 +1769,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/more/orders/'
       preLoaderRoute: typeof AdminMoreOrdersIndexRouteImport
       parentRoute: typeof AdminMoreOrdersRouteRoute
+    }
+    '/admin/more/agent-audit/': {
+      id: '/admin/more/agent-audit/'
+      path: '/'
+      fullPath: '/admin/more/agent-audit/'
+      preLoaderRoute: typeof AdminMoreAgentAuditIndexRouteImport
+      parentRoute: typeof AdminMoreAgentAuditRouteRoute
     }
     '/admin/env/registry/': {
       id: '/admin/env/registry/'
@@ -1787,6 +1910,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMoreOrdersIdRouteImport
       parentRoute: typeof AdminMoreOrdersRouteRoute
     }
+    '/admin/more/agent-audit/$sessionId': {
+      id: '/admin/more/agent-audit/$sessionId'
+      path: '/$sessionId'
+      fullPath: '/admin/more/agent-audit/$sessionId'
+      preLoaderRoute: typeof AdminMoreAgentAuditSessionIdRouteImport
+      parentRoute: typeof AdminMoreAgentAuditRouteRoute
+    }
     '/admin/env/registry/$name': {
       id: '/admin/env/registry/$name'
       path: '/$name'
@@ -1844,6 +1974,18 @@ const AdminAccountsRouteRouteChildren: AdminAccountsRouteRouteChildren = {
 
 const AdminAccountsRouteRouteWithChildren =
   AdminAccountsRouteRoute._addFileChildren(AdminAccountsRouteRouteChildren)
+
+interface AdminAiopsRouteRouteChildren {
+  AdminAiopsIndexRoute: typeof AdminAiopsIndexRoute
+}
+
+const AdminAiopsRouteRouteChildren: AdminAiopsRouteRouteChildren = {
+  AdminAiopsIndexRoute: AdminAiopsIndexRoute,
+}
+
+const AdminAiopsRouteRouteWithChildren = AdminAiopsRouteRoute._addFileChildren(
+  AdminAiopsRouteRouteChildren,
+)
 
 interface AdminDataRouteRouteChildren {
   AdminDataIdRoute: typeof AdminDataIdRoute
@@ -1956,6 +2098,22 @@ const AdminEnvRegistryRouteRouteWithChildren =
     AdminEnvRegistryRouteRouteChildren,
   )
 
+interface AdminMoreAgentAuditRouteRouteChildren {
+  AdminMoreAgentAuditSessionIdRoute: typeof AdminMoreAgentAuditSessionIdRoute
+  AdminMoreAgentAuditIndexRoute: typeof AdminMoreAgentAuditIndexRoute
+}
+
+const AdminMoreAgentAuditRouteRouteChildren: AdminMoreAgentAuditRouteRouteChildren =
+  {
+    AdminMoreAgentAuditSessionIdRoute: AdminMoreAgentAuditSessionIdRoute,
+    AdminMoreAgentAuditIndexRoute: AdminMoreAgentAuditIndexRoute,
+  }
+
+const AdminMoreAgentAuditRouteRouteWithChildren =
+  AdminMoreAgentAuditRouteRoute._addFileChildren(
+    AdminMoreAgentAuditRouteRouteChildren,
+  )
+
 interface AdminMoreOrdersRouteRouteChildren {
   AdminMoreOrdersIdRoute: typeof AdminMoreOrdersIdRoute
   AdminMoreOrdersIndexRoute: typeof AdminMoreOrdersIndexRoute
@@ -1971,6 +2129,7 @@ const AdminMoreOrdersRouteRouteWithChildren =
 
 interface AdminRouteRouteChildren {
   AdminAccountsRouteRoute: typeof AdminAccountsRouteRouteWithChildren
+  AdminAiopsRouteRoute: typeof AdminAiopsRouteRouteWithChildren
   AdminDataRouteRoute: typeof AdminDataRouteRouteWithChildren
   AdminGpuAnalysisRouteRoute: typeof AdminGpuAnalysisRouteRouteWithChildren
   AdminJobsRouteRoute: typeof AdminJobsRouteRouteWithChildren
@@ -1980,6 +2139,7 @@ interface AdminRouteRouteChildren {
   AdminClusterNodesRouteRoute: typeof AdminClusterNodesRouteRouteWithChildren
   AdminClusterResourcesRouteRoute: typeof AdminClusterResourcesRouteRouteWithChildren
   AdminEnvRegistryRouteRoute: typeof AdminEnvRegistryRouteRouteWithChildren
+  AdminMoreAgentAuditRouteRoute: typeof AdminMoreAgentAuditRouteRouteWithChildren
   AdminMoreOrdersRouteRoute: typeof AdminMoreOrdersRouteRouteWithChildren
   AdminFilesSplatRoute: typeof AdminFilesSplatRoute
   AdminMonitorGpuRoute: typeof AdminMonitorGpuRoute
@@ -1994,6 +2154,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAccountsRouteRoute: AdminAccountsRouteRouteWithChildren,
+  AdminAiopsRouteRoute: AdminAiopsRouteRouteWithChildren,
   AdminDataRouteRoute: AdminDataRouteRouteWithChildren,
   AdminGpuAnalysisRouteRoute: AdminGpuAnalysisRouteRouteWithChildren,
   AdminJobsRouteRoute: AdminJobsRouteRouteWithChildren,
@@ -2003,6 +2164,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminClusterNodesRouteRoute: AdminClusterNodesRouteRouteWithChildren,
   AdminClusterResourcesRouteRoute: AdminClusterResourcesRouteRouteWithChildren,
   AdminEnvRegistryRouteRoute: AdminEnvRegistryRouteRouteWithChildren,
+  AdminMoreAgentAuditRouteRoute: AdminMoreAgentAuditRouteRouteWithChildren,
   AdminMoreOrdersRouteRoute: AdminMoreOrdersRouteRouteWithChildren,
   AdminFilesSplatRoute: AdminFilesSplatRoute,
   AdminMonitorGpuRoute: AdminMonitorGpuRoute,
@@ -2031,6 +2193,17 @@ const PortalAccountRouteRouteChildren: PortalAccountRouteRouteChildren = {
 
 const PortalAccountRouteRouteWithChildren =
   PortalAccountRouteRoute._addFileChildren(PortalAccountRouteRouteChildren)
+
+interface PortalAiopsRouteRouteChildren {
+  PortalAiopsIndexRoute: typeof PortalAiopsIndexRoute
+}
+
+const PortalAiopsRouteRouteChildren: PortalAiopsRouteRouteChildren = {
+  PortalAiopsIndexRoute: PortalAiopsIndexRoute,
+}
+
+const PortalAiopsRouteRouteWithChildren =
+  PortalAiopsRouteRoute._addFileChildren(PortalAiopsRouteRouteChildren)
 
 interface PortalMoreOrdersRouteRouteChildren {
   PortalMoreOrdersIdRoute: typeof PortalMoreOrdersIdRoute
@@ -2213,6 +2386,7 @@ const PortalJobsNewRouteRouteWithChildren =
 
 interface PortalRouteRouteChildren {
   PortalAccountRouteRoute: typeof PortalAccountRouteRouteWithChildren
+  PortalAiopsRouteRoute: typeof PortalAiopsRouteRouteWithChildren
   PortalMoreRouteRoute: typeof PortalMoreRouteRouteWithChildren
   PortalOverviewRouteRoute: typeof PortalOverviewRouteRouteWithChildren
   PortalTemplatesRouteRoute: typeof PortalTemplatesRouteRouteWithChildren
@@ -2235,6 +2409,7 @@ interface PortalRouteRouteChildren {
 
 const PortalRouteRouteChildren: PortalRouteRouteChildren = {
   PortalAccountRouteRoute: PortalAccountRouteRouteWithChildren,
+  PortalAiopsRouteRoute: PortalAiopsRouteRouteWithChildren,
   PortalMoreRouteRoute: PortalMoreRouteRouteWithChildren,
   PortalOverviewRouteRoute: PortalOverviewRouteRouteWithChildren,
   PortalTemplatesRouteRoute: PortalTemplatesRouteRouteWithChildren,

@@ -4,6 +4,7 @@ import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-
 import {
   AlarmClockIcon,
   BarChartBigIcon,
+  BotIcon,
   BoxIcon,
   ClipboardCheckIcon,
   DatabaseIcon,
@@ -14,6 +15,7 @@ import {
   ScrollText,
   ServerIcon,
   SettingsIcon,
+  Sparkles,
   UserRoundIcon,
   UsersRoundIcon,
 } from 'lucide-react'
@@ -110,6 +112,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           url: '/admin/cronjobs',
           icon: AlarmClockIcon,
         },
+        {
+          title: t('navigation.aiops'),
+          url: '/admin/aiops',
+          icon: Sparkles,
+        },
         // [修改] 条件渲染：只有开启时才把该对象加入数组
         ...(showGpuAnalysis
           ? [
@@ -178,6 +185,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.approvalOrder'),
           url: '/admin/more/orders',
           icon: ClipboardCheckIcon,
+        },
+        {
+          title: t('navigation.agentAudit'),
+          url: '/admin/more/agent-audit',
+          icon: BotIcon,
         },
         {
           title: t('navigation.operationLogs', { defaultValue: '操作日志' }),

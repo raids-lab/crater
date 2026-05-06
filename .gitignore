@@ -29,9 +29,50 @@ dist-ssr
 
 # Environment
 .env.development
+.pgpass
 
 # Python
 .venv
+crater-agent/.venv/
+crater-agent/.ruff_cache/
+crater-agent/.pytest_cache/
+crater-agent/__pycache__/
+crater-agent/src/**/__pycache__/
+crater-agent/src/**/*.py[cod]
+crater-agent/*.egg-info/
+crater-agent/src/*.egg-info/
+crater-agent/dist/
+crater-agent/results/
+crater-agent/logs/
+crater-agent/docs/
+crater-agent/tests/
+crater-agent/scripts/
+crater-agent/dataset/
+crater-agent/crater_bench/
+crater-agent/src/dataset/
+crater-agent/src/eval/
+crater-agent/src/res/
+crater-agent/crater_agent/dataset/
+crater-agent/crater_agent/eval/
+crater-agent/crater_agent/res/
+/results/
+crater-agent/run_bench.py
+crater-agent/test_integration.py
+crater-agent/config/kubeconfig
+crater-agent/config/platform-runtime.local.yaml
+crater-agent/config/offline-bench-run.json
+crater-agent/config/platform-runtime.offline.yaml
+crater-agent/config/bench-run.example.yaml
+crater-agent/config/*probe*.json
+crater-agent/config/*tune*.json
+crater-agent/config/*bench*.json
+crater-agent/config/*ab*.json
+crater-agent/config/*mas*.json
+crater-agent/config/exp*.txt
+crater-agent/config/mops*.json
+crater-agent/*.jsonl
+crater-agent/*.tar
+crater-agent/*.zip
 
 # Binaries for programs and plugins
 *.exe
@@ -75,4 +116,30 @@ kubeconfig*
 # statistic files
 *.csv
 storage/etc/config.yaml
+/todo/
+/debug_config/
+
+# Local reports / design notes not intended for VCS
+docs/agent-tool-scenarios.md
+docs/agent-tooling.md
+docs/zh-CN/ExitCodeLifecycle.md
+docs/reports/
+docs/reference/
+docs/superpowers/
+
+# One-off local helper script
+backend/hack/apply_agent_multi_mode_sql.sh
+
+# Claude Code per-repo settings
+.claude/
+
+# Compiled Go binary (local build)
+backend/crater
+
+# Local debug scripts
+crater-agent/test_openai.py
+
+# Codex CLI artifacts
 .codex
+# Thesis drafts (personal work, not code)
+docs/thesis/
