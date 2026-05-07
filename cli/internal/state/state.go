@@ -1,4 +1,4 @@
-package config
+package state
 
 import (
 	"encoding/json"
@@ -31,12 +31,13 @@ type State struct {
 	Language      string        `json:"language"` // en | zh-CN
 }
 
-type ConfigManager struct {
+// Manager manages reading/writing state.json.
+type Manager struct {
 	Path  string
 	State State
 }
 
-func NewConfigManager() (*ConfigManager, error) {
+func NewManager() (*Manager, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user config dir: %w", err)
@@ -47,28 +48,28 @@ func NewConfigManager() (*ConfigManager, error) {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	cm := &ConfigManager{Path: path}
-	if err := cm.Load(); err != nil {
+	m := &Manager{Path: path}
+	if err := m.Load(); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
 	}
 
-	return cm, nil
+	return m, nil
 }
 
-func (cm *ConfigManager) Load() error {
-	data, err := os.ReadFile(cm.Path)
+func (m *Manager) Load() error {
+	data, err := os.ReadFile(m.Path)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(data, &cm.State)
+	return json.Unmarshal(data, &m.State)
 }
 
-func (cm *ConfigManager) Save() error {
-	data, err := json.MarshalIndent(cm.State, "", "  ")
+func (m *Manager) Save() error {
+	data, err := json.MarshalIndent(m.State, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(cm.Path, data, 0600)
+	return os.WriteFile(m.Path, data, 0600)
 }

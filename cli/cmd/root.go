@@ -8,9 +8,9 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/raids-lab/crater/cli/internal/clierror"
-	"github.com/raids-lab/crater/cli/internal/config"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
+	"github.com/raids-lab/crater/cli/internal/session"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -35,10 +35,7 @@ var rootCmd = &cobra.Command{
 	Short: "Crater CLI",
 	Long:  "Crater CLI is an AI-friendly command line tool.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		cm, _ := config.NewConfigManager()
-
 		// Language is initialized before Execute(), so no need to set it here.
-		_ = cm
 
 		if outputJSON {
 			noInteractive = true
@@ -139,10 +136,10 @@ func updateHelpTexts(root *cobra.Command) {
 
 // initLanguageOnly 仅设置 i18n 语言（供 crater __complete 快路径使用，不做 help 全树覆盖）。
 func initLanguageOnly() {
-	cm, _ := config.NewConfigManager()
 	lang := ""
-	if cm != nil && cm.State.Language != "" {
-		lang = cm.State.Language
+	st, err := session.LoadState()
+	if err == nil && st.Language != "" {
+		lang = st.Language
 	}
 	if lang == "" {
 		lang = i18n.DetectLanguage()

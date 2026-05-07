@@ -1,0 +1,111 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-missing-platform-nojson/argv --
+crater auth login --no-interactive --username u --password p
+-- zh-CN/01-missing-platform-nojson/exit --
+2
+-- zh-CN/01-missing-platform-nojson/stdout --
+-- zh-CN/01-missing-platform-nojson/stderr --
+Error:
+  缺少必要参数：platform URL (--platform)
+-- zh-CN/02-missing-platform-json/argv --
+crater auth login --no-interactive --json --username u --password p
+-- zh-CN/02-missing-platform-json/exit --
+2
+-- zh-CN/02-missing-platform-json/stdout --
+-- zh-CN/02-missing-platform-json/stderr --
+{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"缺少必要参数：platform URL (--platform)"}
+-- zh-CN/03-missing-username-nojson/argv --
+crater auth login --no-interactive --platform http://example --password p
+-- zh-CN/03-missing-username-nojson/exit --
+2
+-- zh-CN/03-missing-username-nojson/stdout --
+-- zh-CN/03-missing-username-nojson/stderr --
+Error:
+  缺少必要参数：username (--username)
+-- zh-CN/04-missing-username-json/argv --
+crater auth login --no-interactive --json --platform http://example --password p
+-- zh-CN/04-missing-username-json/exit --
+2
+-- zh-CN/04-missing-username-json/stdout --
+-- zh-CN/04-missing-username-json/stderr --
+{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"缺少必要参数：username (--username)"}
+-- zh-CN/05-missing-password-nojson/argv --
+crater auth login --no-interactive --platform http://example --username u
+-- zh-CN/05-missing-password-nojson/exit --
+2
+-- zh-CN/05-missing-password-nojson/stdout --
+-- zh-CN/05-missing-password-nojson/stderr --
+Error:
+  非交互模式下必须提供密码 (--password)
+-- zh-CN/06-missing-password-json/argv --
+crater auth login --no-interactive --json --platform http://example --username u
+-- zh-CN/06-missing-password-json/exit --
+2
+-- zh-CN/06-missing-password-json/stdout --
+-- zh-CN/06-missing-password-json/stderr --
+{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"非交互模式下必须提供密码 (--password)"}
+-- zh-CN/07-invalid-mode-nojson/argv --
+crater auth login --no-interactive --platform http://example --username u --password p --mode bad
+-- zh-CN/07-invalid-mode-nojson/exit --
+2
+-- zh-CN/07-invalid-mode-nojson/stdout --
+-- zh-CN/07-invalid-mode-nojson/stderr --
+Error:
+  无效的认证方式：bad
+-- zh-CN/08-invalid-mode-json/argv --
+crater auth login --no-interactive --json --platform http://example --username u --password p --mode bad
+-- zh-CN/08-invalid-mode-json/exit --
+2
+-- zh-CN/08-invalid-mode-json/stdout --
+-- zh-CN/08-invalid-mode-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+-- zh-CN/09-http-sim-timeout-nojson/argv --
+crater auth login --no-interactive --platform http://example --username u --password p --mode ldap
+-- zh-CN/09-http-sim-timeout-nojson/exit --
+4
+-- zh-CN/09-http-sim-timeout-nojson/stdout --
+-- zh-CN/09-http-sim-timeout-nojson/stderr --
+Error:
+  无法连接服务器：Post "http://example/api/auth/login": context deadline exceeded
+-- zh-CN/10-http-sim-timeout-json/argv --
+crater auth login --no-interactive --json --platform http://example --username u --password p --mode ldap
+-- zh-CN/10-http-sim-timeout-json/exit --
+4
+-- zh-CN/10-http-sim-timeout-json/stdout --
+-- zh-CN/10-http-sim-timeout-json/stderr --
+{"category":"api_error","code":"ERR_NETWORK_FAILURE","message":"无法连接服务器：Post \"http://example/api/auth/login\": context deadline exceeded","context":{"msg":"network error: Post \"http://example/api/auth/login\": context deadline exceeded"}}
+-- zh-CN/11-http-sim-404-nojson/argv --
+crater auth login --no-interactive --platform http://example --username u --password p --mode ldap
+-- zh-CN/11-http-sim-404-nojson/exit --
+4
+-- zh-CN/11-http-sim-404-nojson/stdout --
+-- zh-CN/11-http-sim-404-nojson/stderr --
+Error:
+  请求失败（HTTP 404）：simulated
+-- zh-CN/12-http-sim-404-json/argv --
+crater auth login --no-interactive --json --platform http://example --username u --password p --mode ldap
+-- zh-CN/12-http-sim-404-json/exit --
+4
+-- zh-CN/12-http-sim-404-json/stdout --
+-- zh-CN/12-http-sim-404-json/stderr --
+{"category":"api_error","code":"ERR_NOT_FOUND_404","message":"请求失败（HTTP 404）：simulated","context":{"crater_code":404,"http_status":404,"msg":"simulated"}}
+-- zh-CN/13-subcommand-typo-logni-nojson/argv --
+crater auth logni --no-interactive
+-- zh-CN/13-subcommand-typo-logni-nojson/exit --
+2
+-- zh-CN/13-subcommand-typo-logni-nojson/stdout --
+-- zh-CN/13-subcommand-typo-logni-nojson/stderr --
+Error:
+  unknown command "logni" for "crater auth"
+  
+  Did you mean this?
+  	login
+  
+  Run "crater auth --help" for usage.
+-- zh-CN/14-subcommand-typo-logni-json/argv --
+crater auth logni --no-interactive --json
+-- zh-CN/14-subcommand-typo-logni-json/exit --
+2
+-- zh-CN/14-subcommand-typo-logni-json/stdout --
+-- zh-CN/14-subcommand-typo-logni-json/stderr --
+{"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"logni\" for \"crater auth\"\n\nDid you mean this?\n\tlogin\n\nRun \"crater auth --help\" for usage."}

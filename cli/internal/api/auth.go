@@ -1,6 +1,6 @@
 package api
 
-// AuthClient 认证相关 API 的抽象。默认实现为 *Client（真实 HTTP；若设置 CRATER_HTTP_SIM 则传输层统一模拟，见本包 client.go）。测试可注入其它实现。
+// AuthClient 认证相关 API 的抽象。默认实现为 *Client（真实 HTTP；若设置 CRATER_TEST_SANDBOX_HTTP 则传输层统一模拟，见本包 client.go）。测试可注入其它实现。
 type AuthClient interface {
 	Login(username, password, mode string) (*LoginResp, error)
 }

@@ -1,0 +1,115 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-missing-language-arg-nojson/argv --
+crater config language --no-interactive
+-- en/01-missing-language-arg-nojson/exit --
+2
+-- en/01-missing-language-arg-nojson/stdout --
+-- en/01-missing-language-arg-nojson/stderr --
+Error:
+  language code is required in non-interactive mode
+-- en/02-missing-language-arg-json/argv --
+crater config language --no-interactive --json
+-- en/02-missing-language-arg-json/exit --
+2
+-- en/02-missing-language-arg-json/stdout --
+-- en/02-missing-language-arg-json/stderr --
+{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"language code is required in non-interactive mode"}
+-- en/03-invalid-lang-nojson/argv --
+crater config language --no-interactive not-a-lang
+-- en/03-invalid-lang-nojson/exit --
+2
+-- en/03-invalid-lang-nojson/stdout --
+-- en/03-invalid-lang-nojson/stderr --
+Error:
+  invalid language code: not-a-lang
+-- en/04-invalid-lang-json/argv --
+crater config language --no-interactive --json not-a-lang
+-- en/04-invalid-lang-json/exit --
+2
+-- en/04-invalid-lang-json/stdout --
+-- en/04-invalid-lang-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid language code: not-a-lang"}
+-- en/05-lang-typo-nojson/argv --
+crater config language --no-interactive englush
+-- en/05-lang-typo-nojson/exit --
+2
+-- en/05-lang-typo-nojson/stdout --
+-- en/05-lang-typo-nojson/stderr --
+Error:
+  invalid language code: englush
+-- en/06-lang-typo-json/argv --
+crater config language --no-interactive --json englush
+-- en/06-lang-typo-json/exit --
+2
+-- en/06-lang-typo-json/stdout --
+-- en/06-lang-typo-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid language code: englush"}
+-- en/07-no-interactive-flag-typo-nojson/argv --
+crater config language --no-interactiv
+-- en/07-no-interactive-flag-typo-nojson/exit --
+2
+-- en/07-no-interactive-flag-typo-nojson/stdout --
+-- en/07-no-interactive-flag-typo-nojson/stderr --
+Error:
+  unknown flag: --no-interactiv
+-- en/08-no-interactive-flag-typo-json/argv --
+crater config language --no-interactiv --json
+-- en/08-no-interactive-flag-typo-json/exit --
+2
+-- en/08-no-interactive-flag-typo-json/stdout --
+-- en/08-no-interactive-flag-typo-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"unknown flag: --no-interactiv"}
+-- en/09-no-interactive-bool-invalid-nojson/argv --
+crater config language --no-interactive=maybe
+-- en/09-no-interactive-bool-invalid-nojson/exit --
+2
+-- en/09-no-interactive-bool-invalid-nojson/stdout --
+-- en/09-no-interactive-bool-invalid-nojson/stderr --
+Error:
+  invalid argument "maybe" for "--no-interactive" flag: strconv.ParseBool: parsing "maybe": invalid syntax
+-- en/10-no-interactive-bool-invalid-json/argv --
+crater config language --no-interactive=maybe --json
+-- en/10-no-interactive-bool-invalid-json/exit --
+2
+-- en/10-no-interactive-bool-invalid-json/stdout --
+-- en/10-no-interactive-bool-invalid-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid argument \"maybe\" for \"--no-interactive\" flag: strconv.ParseBool: parsing \"maybe\": invalid syntax"}
+-- en/11-subcommand-typo-langauge-nojson/argv --
+crater config langauge --no-interactive
+-- en/11-subcommand-typo-langauge-nojson/exit --
+2
+-- en/11-subcommand-typo-langauge-nojson/stdout --
+-- en/11-subcommand-typo-langauge-nojson/stderr --
+Error:
+  unknown command "langauge" for "crater config"
+  
+  Did you mean this?
+  	language
+  
+  Run "crater config --help" for usage.
+-- en/12-subcommand-typo-langauge-json/argv --
+crater config langauge --no-interactive --json
+-- en/12-subcommand-typo-langauge-json/exit --
+2
+-- en/12-subcommand-typo-langauge-json/stdout --
+-- en/12-subcommand-typo-langauge-json/stderr --
+{"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."}
+-- en/13-set-language-success-nojson/argv --
+crater config language --no-interactive en
+-- en/13-set-language-success-nojson/exit --
+0
+-- en/13-set-language-success-nojson/stdout --
+Language switched to: en
+-- en/13-set-language-success-nojson/stderr --
+-- en/14-set-language-success-json/argv --
+crater config language --no-interactive --json en
+-- en/14-set-language-success-json/exit --
+0
+-- en/14-set-language-success-json/stdout --
+{
+  "data": {
+    "language": "en"
+  },
+  "status": "OK"
+}
+-- en/14-set-language-success-json/stderr --

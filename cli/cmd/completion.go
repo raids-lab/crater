@@ -21,6 +21,12 @@ var completionCmd = &cobra.Command{
 	Aliases: []string{"comp"},
 	Short:   i18n.T("completion_short"),
 	Long:    i18n.T("completion_long"),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return errUnknownSubcommand(cmd, args[0])
+		}
+		return cmd.Help()
+	},
 }
 
 var completionZshCmd = &cobra.Command{
@@ -217,8 +223,8 @@ func runCompletionInstallZsh(cmd *cobra.Command, args []string) error {
 	block := zshrcBlock(inline)
 
 	if !noInter && !yes {
-		fmt.Printf(i18n.T("completion_install_plan", zshrc, block))
-		fmt.Printf(i18n.T("completion_install_confirm"))
+		fmt.Print(i18n.T("completion_install_plan", zshrc, block))
+		fmt.Print(i18n.T("completion_install_confirm"))
 		var s string
 		if _, err := fmt.Scanln(&s); err != nil {
 			return err
@@ -267,9 +273,9 @@ func runCompletionInstallZsh(cmd *cobra.Command, args []string) error {
 			"inserted_zshrc":  inserted,
 		}))
 	}
-	fmt.Printf(i18n.T("completion_install_done", zshrc))
-	fmt.Printf(i18n.T("completion_install_next_steps"))
-	fmt.Printf(i18n.T("completion_install_uninstall_hint"))
+	fmt.Print(i18n.T("completion_install_done", zshrc))
+	fmt.Print(i18n.T("completion_install_next_steps"))
+	fmt.Print(i18n.T("completion_install_uninstall_hint"))
 	return nil
 }
 
@@ -294,8 +300,8 @@ func runCompletionUninstallZsh(cmd *cobra.Command, args []string) error {
 	}
 
 	if !noInter && !yes {
-		fmt.Printf(i18n.T("completion_uninstall_plan", zshrc))
-		fmt.Printf(i18n.T("completion_uninstall_confirm"))
+		fmt.Print(i18n.T("completion_uninstall_plan", zshrc))
+		fmt.Print(i18n.T("completion_uninstall_confirm"))
 		var s string
 		if _, err := fmt.Scanln(&s); err != nil {
 			return err
@@ -347,8 +353,8 @@ func runCompletionUninstallZsh(cmd *cobra.Command, args []string) error {
 		}))
 	}
 	if len(removed) > 0 {
-		fmt.Printf(i18n.T("completion_uninstall_done", strings.Join(removed, "\n")))
-		fmt.Printf(i18n.T("completion_uninstall_next_steps"))
+		fmt.Print(i18n.T("completion_uninstall_done", strings.Join(removed, "\n")))
+		fmt.Print(i18n.T("completion_uninstall_next_steps"))
 	}
 	return nil
 }
@@ -437,8 +443,8 @@ func runCompletionInstallBash(cmd *cobra.Command, args []string) error {
 	inline := compshell.BashInlineBlock(exe)
 	block := bashrcBlock(inline)
 	if !noInter && !yes {
-		fmt.Printf(i18n.T("completion_bash_install_plan", bashrc, block))
-		fmt.Printf(i18n.T("completion_install_confirm"))
+		fmt.Print(i18n.T("completion_bash_install_plan", bashrc, block))
+		fmt.Print(i18n.T("completion_install_confirm"))
 		var s string
 		if _, err := fmt.Scanln(&s); err != nil {
 			return err
@@ -470,9 +476,9 @@ func runCompletionInstallBash(cmd *cobra.Command, args []string) error {
 			"inserted_bashrc": inserted,
 		}))
 	}
-	fmt.Printf(i18n.T("completion_bash_install_done", bashrc))
-	fmt.Printf(i18n.T("completion_bash_install_next_steps"))
-	fmt.Printf(i18n.T("completion_install_uninstall_hint_bash"))
+	fmt.Print(i18n.T("completion_bash_install_done", bashrc))
+	fmt.Print(i18n.T("completion_bash_install_next_steps"))
+	fmt.Print(i18n.T("completion_install_uninstall_hint_bash"))
 	return nil
 }
 
@@ -488,8 +494,8 @@ func runCompletionUninstallBash(cmd *cobra.Command, args []string) error {
 		return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "yes", "yes")}
 	}
 	if !noInter && !yes {
-		fmt.Printf(i18n.T("completion_bash_uninstall_plan", bashrc))
-		fmt.Printf(i18n.T("completion_uninstall_confirm"))
+		fmt.Print(i18n.T("completion_bash_uninstall_plan", bashrc))
+		fmt.Print(i18n.T("completion_uninstall_confirm"))
 		var s string
 		if _, err := fmt.Scanln(&s); err != nil {
 			return err
@@ -525,8 +531,8 @@ func runCompletionUninstallBash(cmd *cobra.Command, args []string) error {
 		}))
 	}
 	if len(removed) > 0 {
-		fmt.Printf(i18n.T("completion_uninstall_done", strings.Join(removed, "\n")))
-		fmt.Printf(i18n.T("completion_bash_uninstall_next_steps"))
+		fmt.Print(i18n.T("completion_uninstall_done", strings.Join(removed, "\n")))
+		fmt.Print(i18n.T("completion_bash_uninstall_next_steps"))
 	}
 	return nil
 }

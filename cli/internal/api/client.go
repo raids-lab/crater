@@ -4,10 +4,10 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/imroc/req/v3"
+	"github.com/raids-lab/crater/cli/internal/testenv"
 )
 
 // Response 定义标准的 API 响应包装结构
@@ -23,12 +23,13 @@ type Client struct {
 	BaseURL    string
 }
 
-// EnvHTTPSim 为启用传输层错误模拟时读取的环境变量名；取值与行为见 docs/SPEC.md。
-const EnvHTTPSim = "CRATER_HTTP_SIM"
-
-// applyHTTPSim 按 CRATER_HTTP_SIM 在 req Transport 上注册拦截（仅影响经 NewClient 创建的客户端）。
+// applyHTTPSim 按环境变量在 req Transport 上注册拦截（仅影响经 NewClient 创建的客户端）。
+//
+// - CRATER_TEST_SANDBOX_HTTP=timeout     => timeout
+// - CRATER_TEST_SANDBOX_HTTP=error404    => 404
 func applyHTTPSim(rc *req.Client) {
-	switch strings.TrimSpace(os.Getenv(EnvHTTPSim)) {
+	mode := testenv.SandboxHTTPMode()
+	switch strings.TrimSpace(mode) {
 	case "error404", "404":
 		wrapSim404(rc)
 	case "timeout", "hang":

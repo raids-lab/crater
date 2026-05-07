@@ -11,10 +11,9 @@ import (
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/completion"
-	"github.com/raids-lab/crater/cli/internal/config"
-	"github.com/raids-lab/crater/cli/internal/credential"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
+	"github.com/raids-lab/crater/cli/internal/session"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -30,7 +29,7 @@ func roleForAuthInfo(role string) string {
 }
 
 // roleForActiveContext 根据 state 中匹配的 AuthInfo 解析当前激活账号的权限级别。
-func roleForActiveContext(st config.State, ac config.ActiveContext) string {
+func roleForActiveContext(st session.State, ac session.ActiveContext) string {
 	for _, info := range st.AuthInfos {
 		if info.PlatformURL == ac.PlatformURL && info.Username == ac.Username && info.Method == ac.Method {
 			return roleForAuthInfo(info.Role)
@@ -64,6 +63,12 @@ var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Authentication and credentials management",
 	Long:  "Manage login sessions and switch between different saved credentials (platform, identity, and method).",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return errUnknownSubcommand(cmd, args[0])
+		}
+		return cmd.Help()
+	},
 }
 
 var loginCmd = &cobra.Command{
@@ -124,19 +129,7 @@ var loginCmd = &cobra.Command{
 			return cliErrFromLoginAPI(err)
 		}
 
-		credStore, err := credential.NewStore()
-		if err != nil {
-			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
-		}
-		key := fmt.Sprintf("%s|%s|%s", platformURL, username, mode)
-		if err := credStore.StoreToken("crater", key, loginResp.AccessToken); err != nil {
-			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
-		}
-
-		cm, err := config.NewConfigManager()
-		if err != nil {
-			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
-		}
+		// NOTE: we intentionally don't need to load state here; SaveLogin will load and persist.
 
 		roleToStr := func(r int) string {
 			if r == 3 {
@@ -145,7 +138,7 @@ var loginCmd = &cobra.Command{
 			return "user"
 		}
 
-		newAuth := config.AuthInfo{
+		newAuth := session.AuthInfo{
 			PlatformURL: platformURL,
 			Username:    username,
 			Method:      mode,
@@ -154,26 +147,9 @@ var loginCmd = &cobra.Command{
 			Role:        roleToStr(loginResp.Context.RolePlatform),
 		}
 
-		found := false
-		for i, info := range cm.State.AuthInfos {
-			if info.PlatformURL == platformURL && info.Username == username && info.Method == mode {
-				cm.State.AuthInfos[i] = newAuth
-				found = true
-				break
-			}
-		}
-		if !found {
-			cm.State.AuthInfos = append(cm.State.AuthInfos, newAuth)
-		}
-
-		cm.State.ActiveContext = config.ActiveContext{
-			PlatformURL: platformURL,
-			Username:    username,
-			Method:      mode,
-		}
-
-		if err := cm.Save(); err != nil {
-			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
+		if err := session.SaveLogin(newAuth, loginResp.AccessToken); err != nil {
+			// session.SaveLogin touches both secure storage and state; map errors to system_error.
+			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
 		}
 
 		if outputJSON {
@@ -199,22 +175,22 @@ var switchCmd = &cobra.Command{
 			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", m)}
 		}
 
-		cm, err := config.NewConfigManager()
+		st, err := session.LoadState()
 		if err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
-		active := cm.State.ActiveContext
+		active := st.ActiveContext
 		if !viper.GetBool("json") && !viper.GetBool("no-interactive") {
 			if active.PlatformURL != "" {
-				fmt.Printf("%s\n", i18n.T("current_active_context", active.PlatformURL, active.Username, active.Method, roleForActiveContext(cm.State, active)))
+				fmt.Printf("%s\n", i18n.T("current_active_context", active.PlatformURL, active.Username, active.Method, roleForActiveContext(st, active)))
 			} else {
 				fmt.Println(i18n.T("no_active_context"))
 			}
 		}
 
-		var candidates []config.AuthInfo
-		for _, info := range cm.State.AuthInfos {
+		var candidates []session.AuthInfo
+		for _, info := range st.AuthInfos {
 			if info.PlatformURL == active.PlatformURL && info.Username == active.Username && info.Method == active.Method {
 				continue
 			}
@@ -227,7 +203,7 @@ var switchCmd = &cobra.Command{
 			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_not_found")}
 		}
 
-		var target config.AuthInfo
+		var target session.AuthInfo
 		if len(candidates) == 1 {
 			target = candidates[0]
 		} else {
@@ -259,18 +235,18 @@ var switchCmd = &cobra.Command{
 			}
 		}
 
-		cm.State.ActiveContext = config.ActiveContext{
+		st.ActiveContext = session.ActiveContext{
 			PlatformURL: target.PlatformURL,
 			Username:    target.Username,
 			Method:      target.Method,
 		}
-		if err := cm.Save(); err != nil {
+		if err := session.SaveState(st); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		if outputJSON {
 			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-				"active": cm.State.ActiveContext,
+				"active": st.ActiveContext,
 			}))
 		}
 		fmt.Printf("%s\n", i18n.T("switch_success", target.PlatformURL, target.Username, target.Method, roleForAuthInfo(target.Role)))
@@ -290,14 +266,14 @@ var lsCmd = &cobra.Command{
 			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", m)}
 		}
 
-		cm, err := config.NewConfigManager()
+		st, err := session.LoadState()
 		if err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
-		var filtered []config.AuthInfo
-		active := cm.State.ActiveContext
-		for _, info := range cm.State.AuthInfos {
+		var filtered []session.AuthInfo
+		active := st.ActiveContext
+		for _, info := range st.AuthInfos {
 			if (p == "" || info.PlatformURL == p) && (u == "" || info.Username == u) && (m == "" || info.Method == m) {
 				filtered = append(filtered, info)
 			}
@@ -349,14 +325,14 @@ var rmCmd = &cobra.Command{
 		force, _ := cmd.Flags().GetBool("yes")
 		noInter := viper.GetBool("no-interactive")
 
-		cm, err := config.NewConfigManager()
+		st, err := session.LoadState()
 		if err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
-		var toRemove []config.AuthInfo
-		var remaining []config.AuthInfo
-		for _, info := range cm.State.AuthInfos {
+		var toRemove []session.AuthInfo
+		var remaining []session.AuthInfo
+		for _, info := range st.AuthInfos {
 			if (p == "" || info.PlatformURL == p) && (u == "" || info.Username == u) && (m == "" || info.Method == m) {
 				toRemove = append(toRemove, info)
 			} else {
@@ -387,19 +363,15 @@ var rmCmd = &cobra.Command{
 			}
 		}
 
-		credStore, _ := credential.NewStore()
 		for _, r := range toRemove {
-			if credStore != nil {
-				key := fmt.Sprintf("%s|%s|%s", r.PlatformURL, r.Username, r.Method)
-				_ = credStore.RemoveToken("crater", key)
-			}
-			if r.PlatformURL == cm.State.ActiveContext.PlatformURL && r.Username == cm.State.ActiveContext.Username && r.Method == cm.State.ActiveContext.Method {
-				cm.State.ActiveContext = config.ActiveContext{}
+			_ = session.DeleteToken(session.ActiveContext{PlatformURL: r.PlatformURL, Username: r.Username, Method: r.Method})
+			if r.PlatformURL == st.ActiveContext.PlatformURL && r.Username == st.ActiveContext.Username && r.Method == st.ActiveContext.Method {
+				st.ActiveContext = session.ActiveContext{}
 			}
 		}
 
-		cm.State.AuthInfos = remaining
-		if err := cm.Save(); err != nil {
+		st.AuthInfos = remaining
+		if err := session.SaveState(st); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
@@ -420,12 +392,12 @@ var logoutCmd = &cobra.Command{
 		force, _ := cmd.Flags().GetBool("yes")
 		noInter := viper.GetBool("no-interactive")
 
-		cm, err := config.NewConfigManager()
+		st, err := session.LoadState()
 		if err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
-		active := cm.State.ActiveContext
+		active := st.ActiveContext
 		if active.PlatformURL == "" {
 			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrNotFound, Message: i18n.T("err_no_active")}
 		}
@@ -436,7 +408,7 @@ var logoutCmd = &cobra.Command{
 
 		if !force {
 			var confirm bool
-			prompt := &survey.Confirm{Message: i18n.T("logout_confirm", active.PlatformURL, active.Username, active.Method, roleForActiveContext(cm.State, active)), Default: true}
+			prompt := &survey.Confirm{Message: i18n.T("logout_confirm", active.PlatformURL, active.Username, active.Method, roleForActiveContext(st, active)), Default: true}
 			if err := survey.AskOne(prompt, &confirm); err != nil {
 				return errSurveyOrSame(err)
 			}
@@ -445,44 +417,40 @@ var logoutCmd = &cobra.Command{
 			}
 		}
 
-		credStore, _ := credential.NewStore()
-		if credStore != nil {
-			key := fmt.Sprintf("%s|%s|%s", active.PlatformURL, active.Username, active.Method)
-			_ = credStore.RemoveToken("crater", key)
-		}
+		_ = session.DeleteToken(active)
 
-		var remaining []config.AuthInfo
-		for _, info := range cm.State.AuthInfos {
+		var remaining []session.AuthInfo
+		for _, info := range st.AuthInfos {
 			if info.PlatformURL == active.PlatformURL && info.Username == active.Username && info.Method == active.Method {
 				continue
 			}
 			remaining = append(remaining, info)
 		}
-		cm.State.AuthInfos = remaining
+		st.AuthInfos = remaining
 
 		if len(remaining) > 0 {
-			cm.State.ActiveContext = config.ActiveContext{
+			st.ActiveContext = session.ActiveContext{
 				PlatformURL: remaining[0].PlatformURL,
 				Username:    remaining[0].Username,
 				Method:      remaining[0].Method,
 			}
 			if !outputJSON {
-				fmt.Printf("%s\n", i18n.T("logout_success_switched", cm.State.ActiveContext.PlatformURL, cm.State.ActiveContext.Username, cm.State.ActiveContext.Method, roleForAuthInfo(remaining[0].Role)))
+				fmt.Printf("%s\n", i18n.T("logout_success_switched", st.ActiveContext.PlatformURL, st.ActiveContext.Username, st.ActiveContext.Method, roleForAuthInfo(remaining[0].Role)))
 			}
 		} else {
-			cm.State.ActiveContext = config.ActiveContext{}
+			st.ActiveContext = session.ActiveContext{}
 			if !outputJSON {
 				fmt.Println(i18n.T("logout_success_no_other"))
 			}
 		}
 
-		if err := cm.Save(); err != nil {
+		if err := session.SaveState(st); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: err.Error()}
 		}
 
 		if outputJSON {
 			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-				"next_active": cm.State.ActiveContext,
+				"next_active": st.ActiveContext,
 			}))
 		}
 		return nil

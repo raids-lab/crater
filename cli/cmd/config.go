@@ -8,9 +8,9 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/completion"
-	"github.com/raids-lab/crater/cli/internal/config"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
+	"github.com/raids-lab/crater/cli/internal/session"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,13 +20,22 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: i18n.T("config_short"),
 	Long:  i18n.T("config_long"),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// If user mistypes a subcommand (e.g. `crater config langauge`), avoid
+		// Cobra's default "print usage and exit 0" behavior. Instead, return a
+		// structured usage error so --json and exit codes remain consistent.
+		if len(args) > 0 {
+			return errUnknownSubcommand(cmd, args[0])
+		}
+		return cmd.Help()
+	},
 }
 
 var languageCmd = &cobra.Command{
 	Use:   "language [LANG]",
 	Short: i18n.T("lang_short"),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cm, err := config.NewConfigManager()
+		st, err := session.LoadState()
 		if err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
@@ -82,8 +91,8 @@ var languageCmd = &cobra.Command{
 		}
 
 		// Update config
-		cm.State.Language = targetLang
-		if err := cm.Save(); err != nil {
+		st.Language = targetLang
+		if err := session.SaveState(st); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 

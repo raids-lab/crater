@@ -42,5 +42,37 @@ tidy: ## 整理 Go 依赖
 	@go mod tidy
 	@echo "$(GREEN)✅ 依赖整理完成$(RESET)"
 
+##@ 快照测试（txtar，见 testdata/snapshots/ 与 test/snapshots）
+
+.PHONY: snapshot-check
+snapshot-check: ## 校验 golden：go test ./test/snapshots/...（不修改文件）
+	@echo "$(BLUE)📸 快照校验...$(RESET)"
+	@go test ./test/snapshots/... -count=1
+	@echo "$(GREEN)✅ 快照校验通过$(RESET)"
+
+.PHONY: snapshot-update
+snapshot-update: ## 重写 golden：UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...（提交前请 git diff）
+	@echo "$(YELLOW)📸 更新快照 golden...$(RESET)"
+	@UPDATE_SNAPSHOTS=1 go test ./test/snapshots/... -count=1
+	@echo "$(GREEN)✅ 已更新 testdata/snapshots/$(RESET)"
+
+##@ 测试
+
+# 单元测试：显式列出当前包含单测的包（避免依赖 grep / shell 过滤）。
+# 新增单测时，将对应包路径加入此列表即可。
+UNIT_TEST_PKGS := \
+	./internal/completion \
+	./internal/testenv
+
+.PHONY: unit-test
+unit-test: ## 运行 cli 的所有单元测试（排除 ./test/snapshots）
+	@echo "$(BLUE)🧪 运行单元测试（排除 ./test/snapshots）...$(RESET)"
+	@go test $(UNIT_TEST_PKGS) -count=1
+	@echo "$(GREEN)✅ 单元测试通过$(RESET)"
+
+.PHONY: test
+test: unit-test snapshot-check ## 依次运行单元测试与快照校验
+	@echo "$(GREEN)✅ 全部测试通过$(RESET)"
+
 # 默认目标
 .DEFAULT_GOAL := help

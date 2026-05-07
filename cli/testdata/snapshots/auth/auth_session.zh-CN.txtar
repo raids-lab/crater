@@ -1,0 +1,286 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-ls-nojson/argv --
+crater auth ls --no-interactive
+-- zh-CN/01-ls-nojson/exit --
+0
+-- zh-CN/01-ls-nojson/stdout --
+激活     平台                           用户名          认证方式   权限级别  
+*        https://example.invalid        alice           normal     admin     
+         https://example.invalid        bob             ldap       user      
+         https://staging.invalid        carol           normal     user      
+-- zh-CN/01-ls-nojson/stderr --
+-- zh-CN/02-ls-json/argv --
+crater auth ls --no-interactive --json
+-- zh-CN/02-ls-json/exit --
+0
+-- zh-CN/02-ls-json/stdout --
+{
+  "data": {
+    "active_context": {
+      "platform_url": "https://example.invalid",
+      "username": "alice",
+      "method": "normal"
+    },
+    "auth_infos": [
+      {
+        "platform_url": "https://example.invalid",
+        "username": "alice",
+        "method": "normal",
+        "user_id": 1001,
+        "nickname": "Alice",
+        "role": "admin"
+      },
+      {
+        "platform_url": "https://example.invalid",
+        "username": "bob",
+        "method": "ldap",
+        "user_id": 1002,
+        "nickname": "Bob",
+        "role": "user"
+      },
+      {
+        "platform_url": "https://staging.invalid",
+        "username": "carol",
+        "method": "normal",
+        "user_id": 1003,
+        "nickname": "Carol",
+        "role": "user"
+      }
+    ]
+  },
+  "status": "OK"
+}
+-- zh-CN/02-ls-json/stderr --
+-- zh-CN/03-ls-filter-platform-nojson/argv --
+crater auth ls --no-interactive --platform https://example.invalid
+-- zh-CN/03-ls-filter-platform-nojson/exit --
+0
+-- zh-CN/03-ls-filter-platform-nojson/stdout --
+激活     平台                           用户名          认证方式   权限级别  
+*        https://example.invalid        alice           normal     admin     
+         https://example.invalid        bob             ldap       user      
+-- zh-CN/03-ls-filter-platform-nojson/stderr --
+-- zh-CN/04-ls-filter-platform-json/argv --
+crater auth ls --no-interactive --json --platform https://example.invalid
+-- zh-CN/04-ls-filter-platform-json/exit --
+0
+-- zh-CN/04-ls-filter-platform-json/stdout --
+{
+  "data": {
+    "active_context": {
+      "platform_url": "https://example.invalid",
+      "username": "alice",
+      "method": "normal"
+    },
+    "auth_infos": [
+      {
+        "platform_url": "https://example.invalid",
+        "username": "alice",
+        "method": "normal",
+        "user_id": 1001,
+        "nickname": "Alice",
+        "role": "admin"
+      },
+      {
+        "platform_url": "https://example.invalid",
+        "username": "bob",
+        "method": "ldap",
+        "user_id": 1002,
+        "nickname": "Bob",
+        "role": "user"
+      }
+    ]
+  },
+  "status": "OK"
+}
+-- zh-CN/04-ls-filter-platform-json/stderr --
+-- zh-CN/05-ls-invalid-mode-nojson/argv --
+crater auth ls --no-interactive --mode bad
+-- zh-CN/05-ls-invalid-mode-nojson/exit --
+2
+-- zh-CN/05-ls-invalid-mode-nojson/stdout --
+-- zh-CN/05-ls-invalid-mode-nojson/stderr --
+Error:
+  无效的认证方式：bad
+-- zh-CN/06-ls-invalid-mode-json/argv --
+crater auth ls --no-interactive --json --mode bad
+-- zh-CN/06-ls-invalid-mode-json/exit --
+2
+-- zh-CN/06-ls-invalid-mode-json/stdout --
+-- zh-CN/06-ls-invalid-mode-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+-- zh-CN/07-switch-multiple-matches-nojson/argv --
+crater auth switch --no-interactive
+-- zh-CN/07-switch-multiple-matches-nojson/exit --
+2
+-- zh-CN/07-switch-multiple-matches-nojson/stdout --
+-- zh-CN/07-switch-multiple-matches-nojson/stderr --
+Error:
+  存在多个匹配的已保存账号，请提供更具体的信息：
+    - https://example.invalid (bob, ldap, user)
+    - https://staging.invalid (carol, normal, user)
+-- zh-CN/08-switch-multiple-matches-json/argv --
+crater auth switch --no-interactive --json
+-- zh-CN/08-switch-multiple-matches-json/exit --
+2
+-- zh-CN/08-switch-multiple-matches-json/stdout --
+-- zh-CN/08-switch-multiple-matches-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"存在多个匹配的已保存账号，请提供更具体的信息：\n  - https://example.invalid (bob, ldap, user)\n  - https://staging.invalid (carol, normal, user)\n"}
+-- zh-CN/09-switch-single-match-nojson/argv --
+crater auth switch --no-interactive --platform https://staging.invalid
+-- zh-CN/09-switch-single-match-nojson/exit --
+0
+-- zh-CN/09-switch-single-match-nojson/stdout --
+已切换到以下账号：
+  https://staging.invalid (carol, normal, user)
+-- zh-CN/09-switch-single-match-nojson/stderr --
+-- zh-CN/10-switch-single-match-json/argv --
+crater auth switch --no-interactive --json --platform https://staging.invalid
+-- zh-CN/10-switch-single-match-json/exit --
+0
+-- zh-CN/10-switch-single-match-json/stdout --
+{
+  "data": {
+    "active": {
+      "platform_url": "https://staging.invalid",
+      "username": "carol",
+      "method": "normal"
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/10-switch-single-match-json/stderr --
+-- zh-CN/11-switch-invalid-mode-nojson/argv --
+crater auth switch --no-interactive --mode bad
+-- zh-CN/11-switch-invalid-mode-nojson/exit --
+2
+-- zh-CN/11-switch-invalid-mode-nojson/stdout --
+-- zh-CN/11-switch-invalid-mode-nojson/stderr --
+Error:
+  无效的认证方式：bad
+-- zh-CN/12-switch-invalid-mode-json/argv --
+crater auth switch --no-interactive --json --mode bad
+-- zh-CN/12-switch-invalid-mode-json/exit --
+2
+-- zh-CN/12-switch-invalid-mode-json/stdout --
+-- zh-CN/12-switch-invalid-mode-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+-- zh-CN/13-switch-no-matches-nojson/argv --
+crater auth switch --no-interactive --platform https://nope.invalid
+-- zh-CN/13-switch-no-matches-nojson/exit --
+2
+-- zh-CN/13-switch-no-matches-nojson/stdout --
+-- zh-CN/13-switch-no-matches-nojson/stderr --
+Error:
+  未找到匹配的已保存账号
+-- zh-CN/14-switch-no-matches-json/argv --
+crater auth switch --no-interactive --json --platform https://nope.invalid
+-- zh-CN/14-switch-no-matches-json/exit --
+2
+-- zh-CN/14-switch-no-matches-json/stdout --
+-- zh-CN/14-switch-no-matches-json/stderr --
+{"category":"usage_error","code":"ERR_NOT_FOUND","message":"未找到匹配的已保存账号"}
+-- zh-CN/15-logout-missing-yes-nojson/argv --
+crater auth logout --no-interactive
+-- zh-CN/15-logout-missing-yes-nojson/exit --
+2
+-- zh-CN/15-logout-missing-yes-nojson/stdout --
+-- zh-CN/15-logout-missing-yes-nojson/stderr --
+Error:
+  缺少必要参数：yes (--yes)
+-- zh-CN/16-logout-missing-yes-json/argv --
+crater auth logout --no-interactive --json
+-- zh-CN/16-logout-missing-yes-json/exit --
+2
+-- zh-CN/16-logout-missing-yes-json/stdout --
+-- zh-CN/16-logout-missing-yes-json/stderr --
+{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"缺少必要参数：yes (--yes)"}
+-- zh-CN/17-logout-yes-nojson/argv --
+crater auth logout --no-interactive --yes
+-- zh-CN/17-logout-yes-nojson/exit --
+0
+-- zh-CN/17-logout-yes-nojson/stdout --
+已登出。已自动切换到以下账号：
+  https://example.invalid (bob, ldap, user)
+-- zh-CN/17-logout-yes-nojson/stderr --
+-- zh-CN/18-logout-yes-json/argv --
+crater auth logout --no-interactive --json --yes
+-- zh-CN/18-logout-yes-json/exit --
+0
+-- zh-CN/18-logout-yes-json/stdout --
+{
+  "data": {
+    "next_active": {
+      "platform_url": "https://example.invalid",
+      "username": "bob",
+      "method": "ldap"
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/18-logout-yes-json/stderr --
+-- zh-CN/19-rm-missing-yes-nojson/argv --
+crater auth rm --no-interactive --platform https://example.invalid
+-- zh-CN/19-rm-missing-yes-nojson/exit --
+2
+-- zh-CN/19-rm-missing-yes-nojson/stdout --
+-- zh-CN/19-rm-missing-yes-nojson/stderr --
+Error:
+  缺少必要参数：yes (--yes)
+-- zh-CN/20-rm-missing-yes-json/argv --
+crater auth rm --no-interactive --json --platform https://example.invalid
+-- zh-CN/20-rm-missing-yes-json/exit --
+2
+-- zh-CN/20-rm-missing-yes-json/stdout --
+-- zh-CN/20-rm-missing-yes-json/stderr --
+{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"缺少必要参数：yes (--yes)"}
+-- zh-CN/21-rm-invalid-mode-nojson/argv --
+crater auth rm --no-interactive --platform https://example.invalid --mode bad
+-- zh-CN/21-rm-invalid-mode-nojson/exit --
+2
+-- zh-CN/21-rm-invalid-mode-nojson/stdout --
+-- zh-CN/21-rm-invalid-mode-nojson/stderr --
+Error:
+  无效的认证方式：bad
+-- zh-CN/22-rm-invalid-mode-json/argv --
+crater auth rm --no-interactive --json --platform https://example.invalid --mode bad
+-- zh-CN/22-rm-invalid-mode-json/exit --
+2
+-- zh-CN/22-rm-invalid-mode-json/stdout --
+-- zh-CN/22-rm-invalid-mode-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+-- zh-CN/23-rm-yes-nojson/argv --
+crater auth rm --no-interactive --yes --platform https://example.invalid
+-- zh-CN/23-rm-yes-nojson/exit --
+0
+-- zh-CN/23-rm-yes-nojson/stdout --
+成功删除：
+  2 个账号
+-- zh-CN/23-rm-yes-nojson/stderr --
+-- zh-CN/24-rm-yes-json/argv --
+crater auth rm --no-interactive --json --yes --platform https://example.invalid
+-- zh-CN/24-rm-yes-json/exit --
+0
+-- zh-CN/24-rm-yes-json/stdout --
+{
+  "data": {
+    "removed_count": 2
+  },
+  "status": "OK"
+}
+-- zh-CN/24-rm-yes-json/stderr --
+-- zh-CN/25-rm-not-found-nojson/argv --
+crater auth rm --no-interactive --yes --platform https://nope.invalid
+-- zh-CN/25-rm-not-found-nojson/exit --
+2
+-- zh-CN/25-rm-not-found-nojson/stdout --
+-- zh-CN/25-rm-not-found-nojson/stderr --
+Error:
+  未找到匹配的已保存账号
+-- zh-CN/26-rm-not-found-json/argv --
+crater auth rm --no-interactive --json --yes --platform https://nope.invalid
+-- zh-CN/26-rm-not-found-json/exit --
+2
+-- zh-CN/26-rm-not-found-json/stdout --
+-- zh-CN/26-rm-not-found-json/stderr --
+{"category":"usage_error","code":"ERR_NOT_FOUND","message":"未找到匹配的已保存账号"}

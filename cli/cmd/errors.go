@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
+	"github.com/spf13/cobra"
 )
 
 // apiCodeForHTTP 将 HTTP 状态映射为 SPEC 约定的 ERR_* 字符串（含档位后缀）。
@@ -102,4 +105,45 @@ func errSurveyOrSame(err error) error {
 		return errOperationCancelled()
 	}
 	return err
+}
+
+// errUnknownSubcommand returns a docker/git-style short error for a mistyped subcommand.
+//
+// - No usage is printed automatically (root sets SilenceUsage/SilenceErrors).
+// - Exit code is derived from CategoryUsage (ExitUsage).
+// - When --json is enabled, the error is rendered as JSON by internal/output.
+func errUnknownSubcommand(parent *cobra.Command, typed string) *clierror.Error {
+	if parent == nil {
+		return &clierror.Error{
+			Category: errorcodes.CategoryUsage,
+			Code:     errorcodes.ErrUnknownCommand,
+			Message:  fmt.Sprintf("unknown command %q", typed),
+		}
+	}
+
+	// Match Cobra's style, but keep output under our error/rendering pipeline.
+	var b strings.Builder
+	_, _ = fmt.Fprintf(&b, "unknown command %q for %q", typed, parent.CommandPath())
+
+	// Cobra only computes Levenshtein suggestions when SuggestionsMinimumDistance > 0.
+	// The upstream default (when unset) is effectively 2, but that default is applied
+	// in an internal helper, not in SuggestionsFor itself. We mirror that behavior here.
+	if parent.SuggestionsMinimumDistance <= 0 {
+		parent.SuggestionsMinimumDistance = 2
+	}
+	if suggestions := parent.SuggestionsFor(typed); len(suggestions) > 0 {
+		b.WriteString("\n\nDid you mean this?\n")
+		for _, s := range suggestions {
+			_, _ = fmt.Fprintf(&b, "\t%v\n", s)
+		}
+	}
+
+	// Keep this line stable for users and snapshots.
+	_, _ = fmt.Fprintf(&b, "\nRun %q for usage.", parent.CommandPath()+" --help")
+
+	return &clierror.Error{
+		Category: errorcodes.CategoryUsage,
+		Code:     errorcodes.ErrUnknownCommand,
+		Message:  b.String(),
+	}
 }
