@@ -1459,6 +1459,8 @@ definitions:
         type: integer
       normalJobWaitingToleranceSeconds:
         type: integer
+      prequeueCandidateSize:
+        type: integer
       queueQuotaEnabled:
         type: boolean
     type: object
@@ -1497,14 +1499,10 @@ definitions:
     type: object
   internal_handler.QueueQuotaConfigItemResp:
     properties:
-      enabled:
-        type: boolean
       id:
         type: integer
       name:
         type: string
-      prequeueCandidateSize:
-        type: integer
       quota:
         additionalProperties:
           type: string
@@ -1512,12 +1510,8 @@ definitions:
     type: object
   internal_handler.QueueQuotaReq:
     properties:
-      enabled:
-        type: boolean
       name:
         type: string
-      prequeueCandidateSize:
-        type: integer
       quota:
         additionalProperties:
           type: string
@@ -1708,6 +1702,8 @@ definitions:
         type: integer
       normalJobWaitingToleranceSeconds:
         type: integer
+      prequeueCandidateSize:
+        type: integer
       queueQuotaEnabled:
         type: boolean
     required:
@@ -1715,6 +1711,7 @@ definitions:
     - backfillEnabled
     - maxTotalActivationsPerRound
     - normalJobWaitingToleranceSeconds
+    - prequeueCandidateSize
     - queueQuotaEnabled
     type: object
   internal_handler.UpdateResourceReq:

@@ -17,26 +17,29 @@ import { z } from 'zod'
 
 import { IAccount } from '@/services/api/account'
 
-import { convertQuotaToForm, quotaSchema } from '@/utils/quota'
+import { convertQuotaToForm, createQuotaSchema } from '@/utils/quota'
 
-export const formSchema = z.object({
-  id: z.number().optional(),
-  name: z
-    .string()
-    .min(1, {
-      message: '账户名称不能为空',
-    })
-    .max(16, {
-      message: '账户名称最多16个字符',
-    }),
-  resources: quotaSchema,
-  expiredAt: z.date().optional(),
-  admins: z.array(z.string()).optional(),
-  billingIssueAmount: z.number().int().nonnegative().optional(),
-  billingIssuePeriodMinutes: z.number().int().nonnegative().optional(),
-})
+type TranslationFn = (key: string) => string
 
-export type AccountFormSchema = z.infer<typeof formSchema>
+export const createAccountFormSchema = (t: TranslationFn) =>
+  z.object({
+    id: z.number().optional(),
+    name: z
+      .string()
+      .min(1, {
+        message: t('accountForm.validation.nameRequired'),
+      })
+      .max(16, {
+        message: t('accountForm.validation.nameMax'),
+      }),
+    resources: createQuotaSchema(t),
+    expiredAt: z.date().optional(),
+    admins: z.array(z.string()).optional(),
+    billingIssueAmount: z.number().int().nonnegative().optional(),
+    billingIssuePeriodMinutes: z.number().int().nonnegative().optional(),
+  })
+
+export type AccountFormSchema = z.infer<ReturnType<typeof createAccountFormSchema>>
 
 export const accountToForm = (resourceTypes: string[], account: IAccount): AccountFormSchema => {
   const formData: AccountFormSchema = {

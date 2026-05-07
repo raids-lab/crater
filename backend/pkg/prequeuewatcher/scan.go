@@ -5,6 +5,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -28,12 +29,14 @@ func (w *PrequeueWatcher) runScanIfRequested(ctx context.Context) error {
 
 // runFullScanRound handles pending preemption before activating prequeue candidates.
 func (w *PrequeueWatcher) runFullScanRound(ctx context.Context, remaining int) (bool, error) {
-	preemptionPlan, err := w.findPendingNormalJobPreemptionPlan(ctx)
-	if err != nil {
-		return true, err
-	}
-	if preemptionPlan != nil {
-		return w.deletePreemptedBackfillJobs(ctx, preemptionPlan)
+	if w.currentRuntimeConfig().ShouldBlockByTimedOutPendingNormalJob() {
+		preemptionPlan, err := w.findPendingNormalJobPreemptionPlan(ctx)
+		if err != nil {
+			return true, err
+		}
+		if preemptionPlan != nil {
+			return w.deletePreemptedBackfillJobs(ctx, preemptionPlan)
+		}
 	}
 
 	return w.activateNextPrequeueBatch(ctx, remaining)
@@ -42,12 +45,19 @@ func (w *PrequeueWatcher) runFullScanRound(ctx context.Context, remaining int) (
 func (w *PrequeueWatcher) HasBlockingTimedOutPendingNormalJob(
 	ctx context.Context,
 	accountID uint,
+	candidateJob *batch.Job,
 	candidateResources v1.ResourceList,
 ) (bool, error) {
+	queue := ""
+	if candidateJob != nil {
+		queue = candidateJob.Spec.Queue
+	}
 	return w.hasBlockingTimedOutPendingNormalJob(
 		ctx,
 		accountID,
+		queue,
 		utils.GetResourceDomain(candidateResources),
+		utils.GetJobExplicitNodeNames(candidateJob),
 	)
 }
 
