@@ -24,6 +24,28 @@
 
 需要保证指令的具体行为，和指令文档中所描述的严格一致。
 
+### AI Agent Skills（分发约定）
+
+`cli/skills/` 存放面向平台用户及其 AI Agent 的可分发 Skills，用于指导 AI 安全、稳定地调用 `crater` 命令；它们不是开发者内部规则，也不替代 [COMMANDS.md](./COMMANDS.md) 的命令契约。
+
+- 顶层 Skill 按用户任务域组织，命名使用 `crater-cli-<domain>`；共享基础规则使用 `crater-cli-shared`。
+- `crater-cli-shared` 承载全局调用规则（如 `--json`、`--no-interactive`、`--help`、错误输出、敏感信息与确认规则）；领域 Skill 应在开头要求先读取或应用它。
+- 领域 Skill 的 `SKILL.md` 保持精炼，负责适用场景、核心概念、安全边界、工作流索引和常用范例；具体流程放在同目录的 `references/` 下。
+- `references/` 按用户任务场景拆分，而不是机械按子命令拆分；例如查看身份与切换身份可以放在同一参考文档中。
+- Skill 中可以给出相对路径作为定位提示，同时保留 Skill 或 reference 名称，兼容不同 AI 工具的路径解析能力。
+- 新增或调整 Skill 时，应避免写入面向 Skill 作者的元说明；措辞应直接面向执行任务的 AI Agent。
+- 变更跨命令公共契约时（如错误码、退出码、`--json` 形状、全局选项、安全确认规则），必须同步更新 `crater-cli-shared` 及其 references。
+- 修改任何已分发 Skill 内容时，必须提升该 Skill frontmatter 中的 `version`；若变更 shared 规则影响多个领域，也应同步评估相关领域 Skill 是否需要提升版本。
+
+`cli/skill-template/` 存放编写领域 Skill 与 reference 的模板；模板仅用于维护分发内容，不参与 CLI 运行时行为。
+
+新增 Skill 时：
+
+- 先阅读 `cli/skill-template/skill-template.md` 与 `cli/skill-template/reference-template.md`，再参考 `cli/skills/` 下已有 Skill 的实际写法。
+- 先判断是否需要新增顶层领域 Skill；若只是现有领域内的新场景，优先在该领域的 `references/` 下新增或更新场景文档。
+- 新领域应同时补齐 `SKILL.md` 中的适用场景、安全边界、工作流参考和常用范例；涉及复杂流程时再拆出一个或多个 reference。
+- 若新增命令改变了用户可见行为，仍须先更新 [COMMANDS.md](./COMMANDS.md)；Skill 只能说明 Agent 如何调用既有契约，不能单独定义命令行为。
+
 ---
 
 ## API

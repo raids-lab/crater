@@ -13,6 +13,19 @@
 | `internal/state/`、`internal/credential/`、`internal/i18n/` | 本地状态、凭据存储、文案与语言。 |
 | `internal/snaptest/` | 快照测试工具库：构建 `crater` 二进制、运行子进程、收集 `stdout/stderr/exit`、读写与比对 `txtar` golden。仅供测试包使用。 |
 | `pkg/errorcodes/` | 稳定字符串错误码、`Category` 常量、与退出码映射 `ExitCodeForCategory`。 |
+| `skills/` | 面向平台用户 AI Agent 分发的 Skills，按 `crater-cli-<domain>` 组织；用于说明如何安全调用 CLI，不参与二进制运行时。 |
+| `skill-template/` | 编写 Skills 时复用的模板材料，用于保持领域 Skill 与 references 的结构一致。 |
+
+## AI Agent Skills
+
+Skills 是随 CLI 仓库分发给用户 AI Agent 的操作指南，帮助 Agent 在终端中选择正确命令、遵守安全边界并处理常见错误。它们与 Go 代码解耦，不被 `main` 或 `cmd` 加载。
+
+当前目录结构遵循“共享基础 + 领域 Skill + 场景 reference”：
+
+- `skills/crater-cli-shared/`：全局调用规则，包括 `--json`、`--no-interactive`、`--help`、错误输出、敏感信息与确认规则。
+- `skills/crater-cli-<domain>/`：具体任务域的 Agent 指引，命名与 CLI 能力域保持一致。
+- `skills/crater-cli-<domain>/references/`：同一领域下按用户任务场景拆分的参考文档。
+- `skill-template/skill-template.md` 与 `skill-template/reference-template.md`：维护新领域 Skill 与 reference 时的起始模板。
 
 ## Tab 补全
 
