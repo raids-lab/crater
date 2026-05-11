@@ -840,6 +840,8 @@
   "nodeManagement.drainNode": "Drain Node",
   "nodeManagement.drainSuccess": "Node drained successfully",
   "nodeManagement.enableScheduling": "Resume Scheduling",
+  "nodeManagement.enableSchedulingDialogTitle": "Resume Scheduling",
+  "nodeManagement.confirmEnableScheduling": "Allow this node to resume scheduling?",
   "nodeManagement.gpuDriver": "Accelerator Driver",
   "nodeManagement.kernelVersion": "Kernel",
   "nodeManagement.occupationDialogTitle": "Account occupation",

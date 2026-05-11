@@ -840,6 +840,8 @@
   "nodeManagement.drainNode": "排空节点",
   "nodeManagement.drainSuccess": "排空节点成功",
   "nodeManagement.enableScheduling": "恢复调度",
+  "nodeManagement.enableSchedulingDialogTitle": "允许节点调度",
+  "nodeManagement.confirmEnableScheduling": "确认允许该节点恢复调度？",
   "nodeManagement.gpuDriver": "加速卡驱动版本",
   "nodeManagement.kernelVersion": "内核版本",
   "nodeManagement.occupationDialogTitle": "账户占有",

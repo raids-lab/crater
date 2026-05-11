@@ -840,6 +840,8 @@
   "nodeManagement.drainNode": "ノードをドレイン",
   "nodeManagement.drainSuccess": "ノードのドレインに成功しました",
   "nodeManagement.enableScheduling": "スケジューリングを有効化",
+  "nodeManagement.enableSchedulingDialogTitle": "スケジューリングを有効化",
+  "nodeManagement.confirmEnableScheduling": "このノードのスケジューリングを再開しますか？",
   "nodeManagement.gpuDriver": "アクセラレータドライバー",
   "nodeManagement.kernelVersion": "カーネル",
   "nodeManagement.occupationDialogTitle": "アカウント専有",

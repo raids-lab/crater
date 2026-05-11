@@ -840,6 +840,8 @@
   "nodeManagement.drainNode": "노드 드레인",
   "nodeManagement.drainSuccess": "노드 드레인 성공",
   "nodeManagement.enableScheduling": "스케줄링 복구",
+  "nodeManagement.enableSchedulingDialogTitle": "스케줄링 허용",
+  "nodeManagement.confirmEnableScheduling": "이 노드의 스케줄링을 다시 허용하시겠습니까?",
   "nodeManagement.gpuDriver": "가속기 드라이버",
   "nodeManagement.kernelVersion": "커널",
   "nodeManagement.occupationDialogTitle": "계정 점유",

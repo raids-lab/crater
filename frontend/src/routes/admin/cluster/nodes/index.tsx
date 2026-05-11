@@ -91,6 +91,7 @@ function NodesForAdmin() {
   const [occupationReason, setOccupationReason] = useState('')
   const [occupationReasonError, setOccupationReasonError] = useState('')
   const [schedulingDialogOpen, setSchedulingDialogOpen] = useState(false)
+  const [schedulingEnableDialogOpen, setSchedulingEnableDialogOpen] = useState(false)
   const [schedulingNodeId, setSchedulingNodeId] = useState('')
   const [schedulingIsCurrentlyUnschedule, setSchedulingIsCurrentlyUnschedule] = useState(false)
   const [schedulingReason, setSchedulingReason] = useState('')
@@ -127,6 +128,7 @@ function NodesForAdmin() {
         }
       } finally {
         setSchedulingDialogOpen(false)
+        setSchedulingEnableDialogOpen(false)
         setSchedulingNodeId('')
         setSchedulingReason('')
         setSchedulingReasonError('')
@@ -353,7 +355,7 @@ function NodesForAdmin() {
                     setSchedulingNodeId(nodeId)
                     setSchedulingIsCurrentlyUnschedule(unscheduleTaint)
                     if (unscheduleTaint) {
-                      handleNodeScheduling(nodeId, '')
+                      setSchedulingEnableDialogOpen(true)
                       return
                     }
                     setSchedulingReason('')
@@ -524,6 +526,31 @@ function NodesForAdmin() {
               }}
             >
               确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* 允许调度确认弹窗 */}
+      <Dialog open={schedulingEnableDialogOpen} onOpenChange={setSchedulingEnableDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('nodeManagement.enableSchedulingDialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center gap-4">
+              <span>{t('nodeManagement.confirmEnableScheduling')}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">{t('nodeManagement.cancel')}</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                handleNodeScheduling(schedulingNodeId, '')
+              }}
+            >
+              {t('nodeManagement.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>
