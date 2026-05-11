@@ -20,8 +20,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { BanIcon, CloudDrizzleIcon, Users, ZapIcon } from 'lucide-react'
-import { useState } from 'react'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -469,13 +468,13 @@ function NodesForAdmin() {
       <Dialog open={schedulingDialogOpen} onOpenChange={setSchedulingDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>禁止节点调度</DialogTitle>
+            <DialogTitle>{t('nodeManagement.disableSchedulingDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {/* 禁止调度原因输入 */}
             <div className="grid gap-2">
               <Label htmlFor="scheduling-reason" className="text-muted-foreground text-sm">
-                原因
+                {t('nodeManagement.schedulingReasonLabel')}
               </Label>
               <Input
                 id="scheduling-reason"
@@ -487,7 +486,7 @@ function NodesForAdmin() {
                     setSchedulingReasonError('')
                   }
                 }}
-                placeholder="请输入原因"
+                placeholder={t('nodeManagement.schedulingReasonPlaceholder')}
                 className={schedulingReasonError ? 'border-red-500' : ''}
               />
               {schedulingReasonError && (
@@ -515,21 +514,21 @@ function NodesForAdmin() {
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">取消</Button>
+              <Button variant="outline">{t('nodeManagement.cancel')}</Button>
             </DialogClose>
             <Button
               disabled={schedulingSubmitting}
               onClick={() => {
                 // 验证原因不得为空
                 if (!schedulingReason || schedulingReason.trim() === '') {
-                  setSchedulingReasonError('请填写禁止调度原因')
+                  setSchedulingReasonError(t('nodeManagement.disableSchedulingReasonRequired'))
                   return
                 }
                 // 将 reason 作为 body 发送；handleNodeScheduling 已实现相应逻辑
                 handleNodeScheduling(schedulingNodeId, schedulingReason)
               }}
             >
-              确认
+              {t('nodeManagement.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>
