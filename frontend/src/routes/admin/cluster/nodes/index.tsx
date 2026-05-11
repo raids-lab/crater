@@ -102,7 +102,14 @@ function NodesForAdmin() {
   const [drainNodeId, setDrainNodeId] = useState('')
 
   // 常用的禁止调度原因
-  const commonSchedulingReasons = ['内核/驱动升级', 'GPU 驱动升级', 'GPU 故障']
+  const commonSchedulingReasons = useMemo(
+    () => [
+      t('nodeManagement.disableSchedulingReasonKernel'),
+      t('nodeManagement.disableSchedulingReasonGpuDriver'),
+      t('nodeManagement.disableSchedulingReasonGpuFault'),
+    ],
+    [t]
+  )
 
   const refetchTaskList = useCallback(async () => {
     try {
@@ -383,7 +390,7 @@ function NodesForAdmin() {
         },
       },
     ],
-    [handleNodeScheduling, getNicknameByName, nodeColumns, t]
+    [getNicknameByName, nodeColumns, t]
   ) // 确保依赖项是稳定的
 
   return (
