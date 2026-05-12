@@ -1,0 +1,84 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="title" value="图 3-5 多源异构数据与三层上下文获取机制" style="text;html=1;align=center;fontSize=16;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="180" y="10" width="600" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="user_layer" value="① 用户上下文（可信源，整轮不变）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6" vertex="1" parent="1">
+      <mxGeometry x="60" y="60" width="840" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="u1" value="JWT 鉴权&#10;user_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="100" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="u2" value="账户/角色&#10;account_id, role" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="225" y="100" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="u3" value="工具能力域&#10;capabilities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="360" y="100" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="u4" value="用户偏好&#10;历史交互" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="495" y="100" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="u_note" value="任何 LLM 输出或前端字段&#10;均不可覆盖此层" style="text;html=1;align=left;fontSize=10;fontStyle=2;fontColor=#666" vertex="1" parent="1">
+      <mxGeometry x="640" y="100" width="240" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="page_layer" value="② 页面上下文（每请求更新，隐式参数）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6" vertex="1" parent="1">
+      <mxGeometry x="60" y="190" width="840" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="p1" value="route&#10;/jobs/jobX" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="230" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="p2" value="目标对象&#10;job_name / node_name / pvc_name" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="225" y="230" width="180" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="p3" value="入口动作&#10;查看 / 编辑 / 调试" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="420" y="230" width="140" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="p4" value="时区 / 语言" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="575" y="230" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="p_note" value="例：用户在'作业详情页'问&#10;'为什么失败'，无需再说作业名" style="text;html=1;align=left;fontSize=10;fontStyle=2;fontColor=#666" vertex="1" parent="1">
+      <mxGeometry x="710" y="230" width="180" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="sess_layer" value="③ 会话上下文（跨轮持久化）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6" vertex="1" parent="1">
+      <mxGeometry x="60" y="320" width="840" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="s1" value="对话历史&#10;agent_turns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="360" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2" value="工具结果摘要&#10;头部+尾部截断" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="225" y="360" width="140" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="s3" value="任务快照&#10;workflow checkpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="380" y="360" width="150" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="s4" value="待确认动作&#10;pending_confirmations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="545" y="360" width="160" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="s_note" value="按 token 预算&#10;头+尾+省略号截断" style="text;html=1;align=left;fontSize=10;fontStyle=2;fontColor=#666" vertex="1" parent="1">
+      <mxGeometry x="720" y="360" width="160" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="tool_layer" value="④ 工具返回数据 ＋ 平台元数据（按需注入）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=6" vertex="1" parent="1">
+      <mxGeometry x="60" y="450" width="840" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="t1" value="K8s/Volcano&#10;事件 / 调度" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="490" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="t2" value="Prometheus&#10;GPU/容器指标" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="225" y="490" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="t3" value="PostgreSQL&#10;配额/告警/作业" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="360" y="490" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="t4" value="Harbor / NFS&#10;镜像 / 共享存储" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="495" y="490" width="140" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="t5" value="LDAP / SMTP&#10;身份 / 通知" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="650" y="490" width="120" height="50" as="geometry"/>
+    </mxCell>
+    <mxCell id="bottom" value="MASState 统一建模 → StateView 按角色投影 → LLM 提示词 + 工具调用" style="text;html=1;align=center;fontSize=12;fontStyle=1;fontColor=#444" vertex="1" parent="1">
+      <mxGeometry x="60" y="580" width="840" height="20" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

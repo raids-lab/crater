@@ -1,0 +1,259 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+
+    <!-- ============================================================ -->
+    <!-- LAYER 1: 用户交互层 — 三种触发入口 -->
+    <!-- ============================================================ -->
+    <mxCell id="l1-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=25;" vertex="1" parent="1">
+      <mxGeometry x="25" y="20" width="1120" height="130" as="geometry"/>
+    </mxCell>
+    <mxCell id="l1-title" value="&lt;b&gt;用户交互层&lt;/b&gt;" style="text;html=1;fontSize=13;fillColor=none;strokeColor=none;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="36" y="23" width="100" height="25" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="entry-chat" value="&lt;b&gt;即时对话（Chat）&lt;/b&gt;&lt;br&gt;自然语言交互 · SSE 流式" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="80" y="55" width="185" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="entry-cron" value="&lt;b&gt;定时触发（Cron Job）&lt;/b&gt;&lt;br&gt;巡检流水线定时运行" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="310" y="55" width="185" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="entry-webhook" value="&lt;b&gt;事件触发（Webhook）&lt;/b&gt;&lt;br&gt;工单自动审批回调" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="540" y="55" width="185" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="sse-response" value="&lt;b&gt;SSE 流式响应&lt;/b&gt;&lt;br&gt;思考过程 · 工具调用 · 确认卡片 · 最终回答" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;arcSize=12;" vertex="1" parent="1">
+      <mxGeometry x="790" y="55" width="270" height="65" as="geometry"/>
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- LAYER 2: 智能体角色层 — Hub-and-Spoke -->
+    <!-- ============================================================ -->
+    <mxCell id="l2-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;opacity=20;" vertex="1" parent="1">
+      <mxGeometry x="25" y="168" width="1120" height="330" as="geometry"/>
+    </mxCell>
+    <mxCell id="l2-title" value="&lt;b&gt;智能体角色层&lt;/b&gt;" style="text;html=1;fontSize=13;fillColor=none;strokeColor=none;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="36" y="172" width="120" height="25" as="geometry"/>
+    </mxCell>
+
+    <!-- Coordinator Hub -->
+    <mxCell id="coordinator" value="&lt;b&gt;协调智能体&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;意图路由（两级分类）&lt;br&gt;编排决策 · 状态管理&lt;br&gt;（MASState）&lt;br&gt;工件汇总 · 最终回答" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="210" width="175" height="210" as="geometry"/>
+    </mxCell>
+
+    <!-- Core role agents row 1 -->
+    <mxCell id="planner" value="&lt;b&gt;规划智能体&lt;/b&gt;&lt;br&gt;任务分解 · 步骤生成&lt;br&gt;候选工具推荐" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="295" y="210" width="155" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="explorer" value="&lt;b&gt;探索智能体&lt;/b&gt;&lt;br&gt;只读工具 · 证据收集&lt;br&gt;因果链构建" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="485" y="210" width="155" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="executor" value="&lt;b&gt;执行智能体&lt;/b&gt;&lt;br&gt;写操作决策 · 确认流&lt;br&gt;动作编排与执行" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad9e6;strokeColor=#c94f6a;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="675" y="210" width="155" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="verifier" value="&lt;b&gt;验证智能体&lt;/b&gt;&lt;br&gt;结论复核 · 挑战验证&lt;br&gt;证据充分性评估" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="865" y="210" width="155" height="80" as="geometry"/>
+    </mxCell>
+
+    <!-- Task agents row 2 -->
+    <mxCell id="approval-agent" value="&lt;b&gt;工单智能体&lt;/b&gt;&lt;br&gt;审批评估 · 自动判决" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="295" y="335" width="155" height="58" as="geometry"/>
+    </mxCell>
+    <mxCell id="guide-agent" value="&lt;b&gt;帮助智能体&lt;/b&gt;&lt;br&gt;产品问答 · 操作引导" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="485" y="335" width="155" height="58" as="geometry"/>
+    </mxCell>
+    <mxCell id="inspection-agent" value="&lt;b&gt;巡检智能体&lt;/b&gt;&lt;br&gt;定时巡检 · 报告生成" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="675" y="335" width="155" height="58" as="geometry"/>
+    </mxCell>
+
+    <!-- Artifact note -->
+    <mxCell id="artifact-note" value="工件驱动：Coordinator 分发 → 角色产出工件（PlanArtifact / EvidenceArtifact / ActionArtifact / VerificationArtifact）→ Coordinator 汇总决策" style="text;html=1;fontSize=8;fillColor=none;strokeColor=none;fontColor=#999999;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="290" y="435" width="700" height="20" as="geometry"/>
+    </mxCell>
+
+    <!-- Hub → all agents dispatch arrows -->
+    <mxCell id="c2p" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="planner" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="c2e" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="explorer" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="c2ex" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="executor" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="c2v" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="verifier" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="c2app" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#9673a6;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="approval-agent" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="c2g" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#9673a6;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="guide-agent" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="c2i" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#9673a6;endArrow=classic;rounded=1;" edge="1" source="coordinator" target="inspection-agent" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Entries → Coordinator -->
+    <mxCell id="chat2c" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#333333;endArrow=classic;rounded=1;" edge="1" source="entry-chat" target="coordinator" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="cron2c" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d79b00;endArrow=classic;rounded=1;dashed=1;" edge="1" source="entry-cron" target="coordinator" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="wh2c" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;endArrow=classic;rounded=1;dashed=1;" edge="1" source="entry-webhook" target="coordinator" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- SSE response back -->
+    <mxCell id="coord2sse" value="SSE 事件流" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#6c8ebf;endArrow=classic;fontSize=9;fontColor=#6c8ebf;rounded=1;" edge="1" source="coordinator" target="sse-response" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="148" y="150"/>
+          <mxPoint x="925" y="150"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- LAYER 3: 工具与知识层（含质量评估） -->
+    <!-- ============================================================ -->
+    <mxCell id="l3-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=22;" vertex="1" parent="1">
+      <mxGeometry x="25" y="515" width="1120" height="210" as="geometry"/>
+    </mxCell>
+    <mxCell id="l3-title" value="&lt;b&gt;工具与知识层&lt;/b&gt;" style="text;html=1;fontSize=13;fillColor=none;strokeColor=none;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="36" y="518" width="130" height="25" as="geometry"/>
+    </mxCell>
+
+    <!-- Tool sub-modules -->
+    <mxCell id="tool-registry" value="&lt;b&gt;工具声明注册表&lt;/b&gt;&lt;br&gt;93 个工具统一 Schema" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="555" width="155" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="local-executor" value="&lt;b&gt;本地工具执行器&lt;/b&gt;&lt;br&gt;kubectl · PromQL&lt;br&gt;Harbor API · Web Search" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;arcSize=8;" vertex="1" parent="1">
+      <mxGeometry x="245" y="550" width="165" height="75" as="geometry"/>
+    </mxCell>
+    <mxCell id="backend-executor" value="&lt;b&gt;后端工具执行器&lt;/b&gt;&lt;br&gt;Go Backend REST&lt;br&gt;复用鉴权与权限校验" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;arcSize=8;" vertex="1" parent="1">
+      <mxGeometry x="440" y="550" width="165" height="75" as="geometry"/>
+    </mxCell>
+    <mxCell id="skill-base" value="&lt;b&gt;技能知识库&lt;/b&gt;&lt;br&gt;YAML 诊断规则" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="635" y="555" width="140" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="history-search" value="&lt;b&gt;历史故障检索&lt;/b&gt;&lt;br&gt;相似案例匹配" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10;arcSize=8;" vertex="1" parent="1">
+      <mxGeometry x="810" y="555" width="140" height="65" as="geometry"/>
+    </mxCell>
+
+    <!-- Quality Evaluation — INTERNAL sub-module spanning bottom of tool layer -->
+    <mxCell id="quality-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5deb3;strokeColor=#d79b00;opacity=25;dashed=1;dashPattern=6 4;" vertex="1" parent="1">
+      <mxGeometry x="60" y="640" width="980" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="quality-eval" value="&lt;b&gt;质量评估模块（内置核心）&lt;/b&gt;&lt;hr size=&quot;1&quot;&gt;离线基准测试（85+ 场景，稳定复现实验） | 在线评估路由（追踪 Agent 表现） | 双轨评分：规则指标 + LLM 判官 | 场景级评分 Profile" style="text;html=1;fontSize=10;fillColor=none;strokeColor=none;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="70" y="648" width="960" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- Agent → Tool connectors -->
+    <mxCell id="ag2local" value="工具调用" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;endArrow=classic;fontSize=9;fontColor=#82b366;dashed=1;rounded=1;" edge="1" source="explorer" target="local-executor" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="ag2backend" value="工具调用" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;endArrow=classic;fontSize=9;fontColor=#82b366;dashed=1;rounded=1;" edge="1" source="executor" target="backend-executor" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- Quality eval connections -->
+    <mxCell id="eval2tools" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d79b00;endArrow=classic;dashed=1;rounded=1;" edge="1" source="quality-bg" target="backend-executor" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eval2agents" value="在线评估" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#d79b00;endArrow=classic;fontSize=8;fontColor=#d79b00;dashed=1;rounded=1;" edge="1" source="quality-bg" target="coordinator" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="550" y="630"/>
+          <mxPoint x="148" y="630"/>
+        </Array>
+      </mxGeometry>
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- LAYER 4: 平台基础设施层（云原生图标） -->
+    <!-- ============================================================ -->
+    <mxCell id="l4-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;opacity=18;" vertex="1" parent="1">
+      <mxGeometry x="25" y="742" width="1120" height="280" as="geometry"/>
+    </mxCell>
+    <mxCell id="l4-title" value="&lt;b&gt;平台基础设施层（智算中心底座）&lt;/b&gt;" style="text;html=1;fontSize=13;fillColor=none;strokeColor=none;fontColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="36" y="746" width="250" height="25" as="geometry"/>
+    </mxCell>
+
+    <!-- Infra row 1 — Kubernetes shapes + colored rects -->
+    <mxCell id="k8s" value="&lt;b&gt;Kubernetes&lt;/b&gt;&lt;br&gt;集群编排" style="shape=mxgraph.kubernetes.pod;whiteSpace=wrap;html=1;fillColor=#326ce5;strokeColor=#1a4db5;fontColor=#ffffff;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="60" y="785" width="110" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="volcano" value="&lt;b&gt;Volcano&lt;/b&gt;&lt;br&gt;批调度" style="shape=mxgraph.kubernetes.deploy;whiteSpace=wrap;html=1;fillColor=#326ce5;strokeColor=#1a4db5;fontColor=#ffffff;fontSize=9;" vertex="1" parent="1">
+      <mxGeometry x="185" y="785" width="110" height="110" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="gpu" value="&lt;b&gt;GPU 节点&lt;/b&gt;&lt;br&gt;Device Plugin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#76b900;strokeColor=#5a8f00;fontColor=#ffffff;fontSize=10;arcSize=10;" vertex="1" parent="1">
+      <mxGeometry x="320" y="790" width="145" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="rdma" value="&lt;b&gt;RDMA / InfiniBand&lt;/b&gt;&lt;br&gt;高性能网络" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#6c8ebf;strokeColor=#4a6a9a;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="490" y="785" width="145" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="harbor" value="&lt;b&gt;Harbor / PVC&lt;/b&gt;&lt;br&gt;镜像·存储" style="shape=parallelogram;whiteSpace=wrap;html=1;fillColor=#60b932;strokeColor=#4a8f25;fontColor=#ffffff;fontSize=10;perimeter=parallelogramPerimeter;" vertex="1" parent="1">
+      <mxGeometry x="660" y="788" width="145" height="68" as="geometry"/>
+    </mxCell>
+    <mxCell id="prometheus" value="&lt;b&gt;Prometheus&lt;/b&gt;&lt;br&gt;可观测性" style="shape=hexagon;whiteSpace=wrap;html=1;fillColor=#e6522c;strokeColor=#b84020;fontColor=#ffffff;fontSize=10;perimeter=hexagonPerimeter2;size=12;" vertex="1" parent="1">
+      <mxGeometry x="830" y="783" width="130" height="75" as="geometry"/>
+    </mxCell>
+    <mxCell id="grafana" value="&lt;b&gt;Grafana&lt;/b&gt;&lt;br&gt;仪表板" style="shape=ellipse;whiteSpace=wrap;html=1;fillColor=#f46800;strokeColor=#c05000;fontColor=#ffffff;fontSize=10;aspect=fixed;" vertex="1" parent="1">
+      <mxGeometry x="968" y="790" width="70" height="70" as="geometry"/>
+    </mxCell>
+
+    <!-- Infra row 2 -->
+    <mxCell id="go-backend" value="&lt;b&gt;Go Backend API&lt;/b&gt;&lt;br&gt;鉴权 · 会话 · 审计" style="shape=process;whiteSpace=wrap;html=1;fillColor=#00add8;strokeColor=#0088aa;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="60" y="910" width="155" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="audit-db" value="&lt;b&gt;PostgreSQL&lt;/b&gt;&lt;br&gt;审计数据库" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#336791;strokeColor=#224466;fontColor=#ffffff;fontSize=10;size=10;" vertex="1" parent="1">
+      <mxGeometry x="245" y="905" width="140" height="75" as="geometry"/>
+    </mxCell>
+    <mxCell id="jupyter" value="&lt;b&gt;Jupyter / WebIDE&lt;/b&gt;&lt;br&gt;交互式开发门户" style="shape=mxgraph.kubernetes.ns;whiteSpace=wrap;html=1;fillColor=#f37726;strokeColor=#c05e1a;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+      <mxGeometry x="420" y="905" width="145" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="approval-system" value="&lt;b&gt;审批系统&lt;/b&gt;&lt;br&gt;工单流程" style="shape=step;whiteSpace=wrap;html=1;fillColor=#9673a6;strokeColor=#765080;fontColor=#ffffff;fontSize=10;size=12;" vertex="1" parent="1">
+      <mxGeometry x="600" y="910" width="130" height="65" as="geometry"/>
+    </mxCell>
+
+    <!-- Tool → Infra connectors -->
+    <mxCell id="local2k8s" value="kubectl" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;endArrow=classic;fontSize=8;fontColor=#999999;rounded=1;" edge="1" source="local-executor" target="k8s" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="local2prom" value="PromQL" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;endArrow=classic;fontSize=8;fontColor=#999999;rounded=1;" edge="1" source="local-executor" target="prometheus" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="backend2api" value="REST" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#666666;endArrow=classic;fontSize=8;fontColor=#999999;rounded=1;" edge="1" source="backend-executor" target="go-backend" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+    <!-- ============================================================ -->
+    <!-- EXTERNAL SUPPORT (right column) -->
+    <!-- ============================================================ -->
+    <mxCell id="support-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#cccccc;dashed=1;dashPattern=8 4;" vertex="1" parent="1">
+      <mxGeometry x="1165" y="168" width="160" height="330" as="geometry"/>
+    </mxCell>
+    <mxCell id="support-title" value="&lt;b&gt;外部支撑&lt;/b&gt;" style="text;html=1;fontSize=12;fillColor=none;strokeColor=none;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1195" y="174" width="100" height="20" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="llm-gateway" value="&lt;b&gt;LLM 网关&lt;/b&gt;&lt;br&gt;多模型统一接入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#b85450;fontSize=10;arcSize=8;" vertex="1" parent="1">
+      <mxGeometry x="1175" y="205" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="web-search" value="&lt;b&gt;Web Search&lt;/b&gt;&lt;br&gt;外部知识检索" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#82b366;fontSize=10;arcSize=8;" vertex="1" parent="1">
+      <mxGeometry x="1175" y="285" width="140" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="ext-knowledge" value="&lt;b&gt;外部文档 / 论文&lt;/b&gt;&lt;br&gt;受控白名单访问" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#6c8ebf;fontSize=10;arcSize=8;" vertex="1" parent="1">
+      <mxGeometry x="1175" y="365" width="140" height="55" as="geometry"/>
+    </mxCell>
+
+    <!-- LLM → Agents -->
+    <mxCell id="llm2agent" value="模型调用" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;endArrow=classic;fontSize=9;fontColor=#b85450;dashed=1;rounded=1;" edge="1" source="llm-gateway" target="coordinator" parent="1">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+
+  </root>
+</mxGraphModel>

@@ -1,0 +1,178 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="多智能体协作范式对比" id="fig2-4">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 2-4 多智能体协作范式对比与本文选型" style="text;html=1;align=center;fontSize=17;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="700" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- (a) Supervisor-Worker -->
+        <mxCell id="aBox" value="(a) 主管-工人模式&#10;Supervisor-Worker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="320" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="aSup" value="Supervisor&#10;主管" style="ellipse;whiteSpace=wrap;html=1;fillColor=#6c8ebf;strokeColor=#3a6dbf;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="170" y="120" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="aW1" value="Worker 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="60" y="240" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="aW2" value="Worker 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="170" y="240" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="aW3" value="Worker 3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="280" y="240" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="aE1" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="aSup" target="aW1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="aE2" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="aSup" target="aW2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="aE3" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="aSup" target="aW3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="aNote" value="代表：LangGraph · CrewAI&#10;✓ 控制流清晰　✗ Supervisor 易成瓶颈　✗ Worker 间无法直接协同" style="text;html=1;fontSize=10;fontStyle=2;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="50" y="300" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- (b) Conversational -->
+        <mxCell id="bBox" value="(b) 对话式模式&#10;Conversational" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="380" y="70" width="320" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="bA1" value="Agent 1&#10;产品经理" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="410" y="120" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bA2" value="Agent 2&#10;架构师" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="540" y="120" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bA3" value="Agent 3&#10;工程师" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="410" y="220" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bA4" value="Agent 4&#10;测试员" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="540" y="220" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="bE12" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="bA1" target="bA2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bE13" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="bA1" target="bA3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bE14" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="bA2" target="bA4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bE23" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="bA2" target="bA3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bE34" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="bA3" target="bA4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bE24" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="bA2" target="bA4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bNote" value="代表：AutoGen · MetaGPT&#10;✓ 富表达 · 灵活　✗ Token 成本高　✗ 对话发散难收敛" style="text;html=1;fontSize=10;fontStyle=2;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="390" y="300" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- (c) State Machine -->
+        <mxCell id="cBox" value="(c) 状态机模式&#10;State Machine" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="720" y="70" width="320" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="cS1" value="Detect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="750" y="130" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cS2" value="Diagnose" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="870" y="130" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cS3" value="Mitigate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="870" y="220" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cS4" value="Undo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="750" y="220" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="cE12" style="endArrow=classic;html=1" edge="1" parent="1" source="cS1" target="cS2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="cE23" style="endArrow=classic;html=1" edge="1" parent="1" source="cS2" target="cS3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="cE34" style="endArrow=classic;html=1;dashed=1;strokeColor=#B85450" edge="1" parent="1" source="cS3" target="cS4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="cE34l" value="失败回滚" style="text;html=1;fontSize=9;fontStyle=2;fontColor=#B85450" vertex="1" parent="1">
+          <mxGeometry x="785" y="245" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="cE41" style="endArrow=classic;html=1;dashed=1" edge="1" parent="1" source="cS4" target="cS1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="cNote" value="代表：STRATUS · LangGraph 高级用法&#10;✓ 可形式化分析 · 可撤销　✗ 扩展新角色须改图　✗ 灵活度有限" style="text;html=1;fontSize=10;fontStyle=2;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="730" y="300" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- (d) Artifact-based -->
+        <mxCell id="dBox" value="(d) 工件共享模式&#10;Artifact-shared（本文 Mops 采用）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1060" y="70" width="320" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="dM" value="MASState&#10;共享工件&#10;Goal/Plan/Obs/Exec" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#b85450;strokeWidth=3;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1180" y="170" width="120" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dA1" value="Planner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="130" width="70" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="dA2" value="Explorer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1330" y="130" width="70" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="dA3" value="Executor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1330" y="255" width="70" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="dA4" value="Verifier" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="255" width="70" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="dE1" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="dA1" target="dM"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dE2" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="dA2" target="dM"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dE3" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="dA3" target="dM"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dE4" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1" source="dA4" target="dM"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="dNote" value="✓ 信息结构化 · 可序列化&#10;✓ 状态可回放 · 易审计&#10;✓ Coordinator 状态机驱动 · 支持 replan/重新指派" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#82b366;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="1070" y="300" width="300" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 选型对比表 -->
+        <mxCell id="tblTitle" value="本文选型论证：四种范式适用度评估" style="text;html=1;align=center;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="450" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tblBox" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="490" width="1340" height="320" as="geometry" />
+        </mxCell>
+
+        <mxCell id="th0" value="评估维度" style="rounded=0;fillColor=#666666;strokeColor=#666666;fontSize=12;fontStyle=1;fontColor=#FFFFFF;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="60" y="510" width="280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="th01" value="(a) 主管-工人" style="rounded=0;fillColor=#6c8ebf;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;fontColor=#FFFFFF;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="340" y="510" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="th02" value="(b) 对话式" style="rounded=0;fillColor=#82b366;strokeColor=#82b366;fontSize=12;fontStyle=1;fontColor=#FFFFFF;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="580" y="510" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="th03" value="(c) 状态机" style="rounded=0;fillColor=#d6b656;strokeColor=#d6b656;fontSize=12;fontStyle=1;fontColor=#FFFFFF;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="820" y="510" width="240" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="th04" value="(d) 工件共享（本文）" style="rounded=0;fillColor=#b85450;strokeColor=#b85450;fontSize=12;fontStyle=1;fontColor=#FFFFFF;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="1060" y="510" width="300" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t1a" value="角色可扩展性" style="rounded=0;fillColor=#EEEEEE;fontSize=11;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="550" width="280" height="40" as="geometry" /></mxCell>
+        <mxCell id="t1b" value="● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="340" y="550" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t1c" value="● ● ● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="580" y="550" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t1d" value="● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="820" y="550" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t1e" value="● ● ● ●" style="rounded=0;fillColor=#FFE6CC;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1060" y="550" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="t2a" value="Token 成本" style="rounded=0;fillColor=#EEEEEE;fontSize=11;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="590" width="280" height="40" as="geometry" /></mxCell>
+        <mxCell id="t2b" value="● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="340" y="590" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t2c" value="● ● ● ● ●（高）" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="580" y="590" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t2d" value="● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="820" y="590" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t2e" value="● ● （低，按视图过滤）" style="rounded=0;fillColor=#FFE6CC;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1060" y="590" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="t3a" value="状态可序列化（HITL/恢复）" style="rounded=0;fillColor=#EEEEEE;fontSize=11;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="630" width="280" height="40" as="geometry" /></mxCell>
+        <mxCell id="t3b" value="● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="340" y="630" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t3c" value="●（对话历史难序列化）" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="580" y="630" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t3d" value="● ● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="820" y="630" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t3e" value="● ● ● ● ●" style="rounded=0;fillColor=#FFE6CC;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1060" y="630" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="t4a" value="审计与可解释性" style="rounded=0;fillColor=#EEEEEE;fontSize=11;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="670" width="280" height="40" as="geometry" /></mxCell>
+        <mxCell id="t4b" value="● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="340" y="670" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t4c" value="● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="580" y="670" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t4d" value="● ● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="820" y="670" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t4e" value="● ● ● ● ●（结构化工件）" style="rounded=0;fillColor=#FFE6CC;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1060" y="670" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="t5a" value="复杂回退（replan/重新指派）" style="rounded=0;fillColor=#EEEEEE;fontSize=11;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="710" width="280" height="40" as="geometry" /></mxCell>
+        <mxCell id="t5b" value="●（Supervisor 单点）" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="340" y="710" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t5c" value="● ●（隐式）" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="580" y="710" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t5d" value="● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="820" y="710" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t5e" value="● ● ● ● ●（Coordinator 显式）" style="rounded=0;fillColor=#FFE6CC;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1060" y="710" width="300" height="40" as="geometry" /></mxCell>
+
+        <mxCell id="t6a" value="生产部署成熟度" style="rounded=0;fillColor=#EEEEEE;fontSize=11;fontStyle=1;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="750" width="280" height="40" as="geometry" /></mxCell>
+        <mxCell id="t6b" value="● ● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="340" y="750" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t6c" value="● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="580" y="750" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t6d" value="● ● ●" style="rounded=0;fillColor=#FFFFFF;fontSize=14;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="820" y="750" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="t6e" value="● ● ● ●（已在 Crater 上线）" style="rounded=0;fillColor=#FFE6CC;fontSize=14;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1060" y="750" width="300" height="40" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

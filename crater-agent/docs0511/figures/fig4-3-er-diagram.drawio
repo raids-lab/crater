@@ -1,0 +1,179 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="ER 数据模型" id="fig4-3">
+    <mxGraphModel dx="1422" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 4-3 Mops 数据持久化 ER 模型（PostgreSQL · 6 张新增表 + 与 Crater 原表关联）" style="text;html=1;align=center;fontSize=17;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="240" y="20" width="920" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Crater 原有表（虚线） -->
+        <mxCell id="t_users" value="users（原 Crater 表）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="240" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="t_users_f" value="🔑 id  (PK · uint)&#10;name  varchar(64)&#10;email  varchar(128)&#10;role  enum(user, admin)&#10;ldap_uid  varchar(64)&#10;created_at  timestamp" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="50" y="115" width="220" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t_jobs" value="jobs（原 Crater 表）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="240" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="t_jobs_f" value="🔑 id  (PK · uint)&#10;name  varchar(128)&#10;user_id  uint  → users.id&#10;status  enum(...)&#10;exit_code  int&#10;gpu_request  int&#10;started_at / ended_at" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="50" y="315" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- agent_sessions -->
+        <mxCell id="t_sess" value="agent_sessions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="370" y="80" width="280" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="t_sess_f" value="🔑 id            uuid (PK)&#10;user_id        uint → users.id&#10;account_id    uint&#10;title           varchar(256)&#10;source        enum(portal, admin, api)&#10;orchestration  jsonb&#10;created_at     timestamp&#10;last_active_at  timestamp&#10;status         enum(active, closed)" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="380" y="115" width="260" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- agent_turns -->
+        <mxCell id="t_turns" value="agent_turns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="370" y="310" width="280" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="t_turns_f" value="🔑 id              uuid (PK)&#10;session_id      uuid → sessions.id&#10;turn_id         varchar(64)&#10;user_message  text&#10;final_answer   text&#10;page_context  jsonb&#10;continuation   jsonb&#10;workflow       jsonb  (checkpoint v5)&#10;usage_summary jsonb&#10;status   enum(running, paused,&#10;              completed, failed)&#10;started_at  ended_at" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="380" y="345" width="260" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- agent_messages -->
+        <mxCell id="t_msg" value="agent_messages" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="370" y="580" width="280" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="t_msg_f" value="🔑 id          uuid (PK)&#10;turn_id      uuid → turns.id&#10;role  enum(user, assistant,&#10;            tool, system)&#10;content      text&#10;tool_calls   jsonb&#10;agent_role  varchar(32)&#10;created_at  timestamp" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="380" y="615" width="260" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- agent_audit -->
+        <mxCell id="t_audit" value="agent_audit&#10;（运维操作审计核心表）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=3;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="740" y="80" width="320" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="t_audit_f" value="🔑 id              uuid (PK)&#10;session_id      uuid → sessions.id&#10;turn_id         uuid → turns.id&#10;actor_id        uint → users.id&#10;actor_role      varchar(16)&#10;tool_name      varchar(64)&#10;tool_args        jsonb&#10;result           jsonb&#10;error           text&#10;latency_ms     int&#10;risk_level      enum(low, med, high)&#10;permission     enum(read, write,&#10;                  admin_read, approve)&#10;confirmation_id  uuid?&#10;tool_call_id   varchar(64)&#10;agent_id       varchar(16)&#10;created_at     timestamp" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="750" y="115" width="300" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- agent_confirmations -->
+        <mxCell id="t_conf" value="agent_confirmations&#10;（高风险操作确认表）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=3;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="740" y="400" width="320" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="t_conf_f" value="🔑 id              uuid (PK)&#10;session_id      uuid → sessions.id&#10;turn_id         uuid → turns.id&#10;action_id      varchar(64)&#10;tool_name      varchar(64)&#10;action_payload  jsonb&#10;     (操作 / 影响 / 历史)&#10;checkpoint     jsonb (workflow v5)&#10;risk_level      enum(med, high)&#10;status  enum(pending, confirmed,&#10;              rejected, timeout)&#10;confirmed_by   uint → users.id&#10;confirmed_at  timestamp&#10;reject_reason  text&#10;expires_at     timestamp&#10;created_at     timestamp" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="750" y="435" width="300" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- agent_inspection_runs -->
+        <mxCell id="t_insp" value="agent_inspection_runs&#10;（定时巡检任务）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="280" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="t_insp_f" value="🔑 id              uuid (PK)&#10;scope  enum(failed_jobs,&#10;             idle_jupyter,&#10;             gpu_low_util,&#10;             quota_review)&#10;cron_expression  varchar(32)&#10;triggered_by  enum(cron, manual)&#10;triggered_by_id  uint?&#10;target_count   int&#10;summary        jsonb&#10;report_url      varchar(256)&#10;status  enum(running, completed,&#10;              failed)&#10;tokens_used   int&#10;started_at&#10;ended_at" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="1110" y="115" width="260" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- agent_quality_eval -->
+        <mxCell id="t_qe" value="agent_quality_eval&#10;（质量评分回流）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8" vertex="1" parent="1">
+          <mxGeometry x="1100" y="400" width="280" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="t_qe_f" value="🔑 id          uuid (PK)&#10;session_id  uuid → sessions.id&#10;turn_id      uuid → turns.id&#10;user_id     uint → users.id&#10;eval_type   enum(feedback,&#10;            manual, automatic)&#10;chat_judge_score  float&#10;chain_judge_score  float&#10;tool_f1     float&#10;root_cause_hit  bool&#10;permission_compliance  bool&#10;user_feedback  enum(up, down)&#10;feedback_comment  text&#10;model_used     varchar(64)&#10;created_at      timestamp" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10" vertex="1" parent="1">
+          <mxGeometry x="1110" y="435" width="260" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- Relationships -->
+        <mxCell id="r1" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" parent="1" source="t_users" target="t_sess">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r1l" value="user 拥有 N 会话" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="290" y="160" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r2" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0" edge="1" parent="1" source="t_sess" target="t_turns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2l" value="session 含 N 轮" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="650" y="285" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r3" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0" edge="1" parent="1" source="t_turns" target="t_msg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3l" value="turn 含 N 消息" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="650" y="555" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r4" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.4;entryX=0;entryY=0.5" edge="1" parent="1" source="t_turns" target="t_audit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4l" value="turn 含 N 审计" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="660" y="370" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r5" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.7;entryX=0;entryY=0.5" edge="1" parent="1" source="t_turns" target="t_conf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r5l" value="turn 含 N 确认" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="660" y="540" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r6" style="endArrow=ERone;startArrow=ERzeroToOne;html=1;strokeColor=#B85450;strokeWidth=2;dashed=1" edge="1" parent="1">
+          <mxGeometry as="geometry">
+            <Array as="points">
+              <mxPoint x="900" y="370" />
+              <mxPoint x="900" y="385" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r6l" value="confirmation_id&#10;(可选关联)" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#B85450" vertex="1" parent="1">
+          <mxGeometry x="905" y="370" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r7" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" parent="1" source="t_users" target="t_audit">
+          <mxGeometry as="geometry">
+            <Array as="points">
+              <mxPoint x="280" y="170" />
+              <mxPoint x="690" y="170" />
+              <mxPoint x="690" y="225" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r7l" value="user 是 N 审计的 actor" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="290" y="80" width="160" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r8" style="endArrow=ERone;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5" edge="1" parent="1" source="t_audit" target="t_insp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r8l" value="巡检 → 写多条审计" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1065" y="215" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r9" style="endArrow=ERmany;startArrow=ERone;html=1;strokeColor=#666666;strokeWidth=2" edge="1" parent="1" source="t_turns" target="t_qe">
+          <mxGeometry as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="510" />
+              <mxPoint x="1100" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r9l" value="turn 含 N 评测" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="900" y="495" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- 索引说明 -->
+        <mxCell id="idxBox" value="主要索引设计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="40" y="490" width="320" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="idx" value="agent_sessions&#10;  · idx_user_id  (user_id, last_active_at desc)&#10;  · idx_status_active  (status, last_active_at)&#10;&#10;agent_turns&#10;  · idx_session  (session_id, started_at)&#10;  · idx_status_running  (status) WHERE status=&#39;running&#39;&#10;&#10;agent_audit  (查询热点)&#10;  · idx_session_turn  (session_id, turn_id)&#10;  · idx_actor_time  (actor_id, created_at desc)&#10;  · idx_tool_failures&#10;       (tool_name, created_at) WHERE error IS NOT NULL&#10;  · gin_args  (tool_args)  GIN&#10;&#10;agent_confirmations&#10;  · idx_pending  (status, expires_at) WHERE status=&#39;pending&#39;&#10;&#10;agent_inspection_runs&#10;  · idx_scope_time  (scope, started_at desc)" style="text;html=1;fontSize=10;fontFamily=Courier New;align=left;spacingLeft=10;verticalAlign=top;spacingTop=5" vertex="1" parent="1">
+          <mxGeometry x="50" y="525" width="300" height="250" as="geometry" />
+        </mxCell>
+
+        <!-- 设计要点 -->
+        <mxCell id="design" value="设计要点：① 6 张新表均使用 uuid 主键 + jsonb 大字段，避免与原 Crater 表强耦合；② agent_audit / agent_confirmations 与 agent_turns 是&quot;一对多&quot;关系而非&quot;一对一&quot;，单轮可能产生多次工具调用与多个确认；&#10;③ tool_args 与 result 使用 jsonb + GIN 索引支持运维分析；④ workflow 字段保留完整 MASState checkpoint v5，是续接与回放的基础；⑤ agent_quality_eval 既存线上反馈也存离线评测，与 agent_turns 一对多" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;strokeWidth=2;dashed=1;fontSize=11;fontStyle=2;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="40" y="800" width="1340" height="100" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

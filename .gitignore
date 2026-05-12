@@ -115,6 +115,8 @@ docs/thesis/
 /output/
 crater-agent/crater-agent/
 *.drawio.bkp
+*.drawio.dtmp
 .$*.drawio.bkp
+.$*.drawio.dtmp
 .venv/
 __pycache__/

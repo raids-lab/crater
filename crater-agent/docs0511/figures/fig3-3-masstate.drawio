@@ -1,0 +1,58 @@
+<mxfile host="Electron" agent="Mops-Thesis">
+  <diagram name="MASState 工件流转" id="fig3-3">
+    <mxGraphModel dx="731" dy="632" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;fontSize=18;fontStyle=1" value="图 3-3 MASState 共享状态对象与工件流转" vertex="1">
+          <mxGeometry height="30" width="700" x="350" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="mas" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top;spacingLeft=20;spacingTop=10" value="MASState（多智能体共享状态对象 · dataclass）" vertex="1">
+          <mxGeometry height="640" width="1320" x="40" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="secA" parent="1" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#B85450" value="A. 四阶段工件（按时序填充）" vertex="1">
+          <mxGeometry height="20" width="400" x="60" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="goal" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="GoalArtifact 目标工件&#xa;━━━━━━━━━━━&#xa;user_message: str&#xa;actor_role: &#39;user&#39; | &#39;admin&#39;&#xa;account_id: str&#xa;page_context:&#xa;  · route: str&#xa;  · job_name: str?&#xa;  · node_name: str?&#xa;  · pvc_name: str?&#xa;routing_decision:&#xa;  · entry_mode&#xa;  · operation_mode&#xa;  · complexity&#xa;━━━━━━━━━━━&#xa;✏ 写入：IntentRouter&#xa;👁 读取：全部角色" vertex="1">
+          <mxGeometry height="320" width="290" x="60" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="plan" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="PlanArtifact 计划工件&#xa;━━━━━━━━━━━&#xa;steps[]:&#xa;  · step_id, description&#xa;  · expected_tool&#xa;  · pre_condition&#xa;candidate_tools[]: list[str]&#xa;risk_assessment:&#xa;  · low | medium | high&#xa;  · reasoning&#xa;stage_complete: bool&#xa;━━━━━━━━━━━&#xa;✏ 写入：Planner&#xa;👁 读取：Explorer, Executor, Verifier&#xa;🔄 回退入口：Verifier(replan)" vertex="1">
+          <mxGeometry height="320" width="290" x="370" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="obs" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="ObservationArtifact 观察工件&#xa;━━━━━━━━━━━&#xa;evidence[]:&#xa;  · tool_name, tool_args&#xa;  · result (头部+尾部截断)&#xa;  · timestamp&#xa;facts[]: list[str]&#xa;  （LLM 从证据提炼）&#xa;open_questions[]: list[str]&#xa;stage_complete: bool&#xa;━━━━━━━━━━━&#xa;✏ 写入：Explorer（迭代）&#xa;👁 读取：Executor, Verifier&#xa;🔄 回退入口：Verifier(补充探索)" vertex="1">
+          <mxGeometry height="320" width="290" x="680" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="exec" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="ExecutionArtifact 执行工件&#xa;━━━━━━━━━━━&#xa;actions[]:&#xa;  · action_id, tool_name&#xa;  · status: pending /&#xa;    awaiting_confirmation /&#xa;    completed / rejected / error&#xa;  · confirm_id?, result?&#xa;results[]: list[dict]&#xa;summary: str&#xa;━━━━━━━━━━━&#xa;✏ 写入：Executor&#xa;👁 读取：Verifier, Coordinator&#xa;🔄 回退入口：Verifier(retry)" vertex="1">
+          <mxGeometry height="320" width="290" x="990" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="flow1" edge="1" parent="1" source="goal" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666" target="plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow2" edge="1" parent="1" source="plan" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666" target="obs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow3" edge="1" parent="1" source="obs" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#666666" target="exec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="secB" parent="1" style="text;html=1;align=left;fontSize=12;fontStyle=1;fontColor=#B85450" value="B. 运行时控制 / 证据 / 续接 / 统计" vertex="1">
+          <mxGeometry height="20" width="400" x="60" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="rt" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="运行时控制&#xa;━━━━━━━━━━&#xa;loop_round: int&#xa;no_progress_count: int&#xa;stop_reason: str&#xa;  (completed / max_rounds /&#xa;   no_progress / awaiting_confirm)&#xa;attempted_tool_signatures[]&#xa;  （工具+参数指纹去重）" vertex="1">
+          <mxGeometry height="180" width="300" x="60" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="audit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="证据 / 审计轨迹&#xa;━━━━━━━━━━&#xa;tool_records[]:&#xa;  · agent_id, agent_role&#xa;  · tool_name, tool_args&#xa;  · tool_call_id&#xa;  · result, latency_ms&#xa;action_history[]:&#xa;  · 写动作完整变迁记录&#xa;  · confirmation_id 关联" vertex="1">
+          <mxGeometry height="180" width="300" x="380" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="resume" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="确认与恢复&#xa;━━━━━━━━━━&#xa;pending_confirmations[]:&#xa;  · confirm_id, action_payload&#xa;  · risk_level, hint, history&#xa;resume_context:&#xa;  · confirmation_results[]&#xa;workflow（checkpoint v5）:&#xa;  · 整个 MASState 序列化&#xa;  · 由 Backend 持久化" vertex="1">
+          <mxGeometry height="180" width="300" x="700" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="usage" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" value="使用统计&#xa;━━━━━━━━━━&#xa;usage_summary:&#xa;  · llm_calls, input_tokens&#xa;  · output_tokens, total_tokens&#xa;  · latency_ms&#xa;  · tool_calls (read / write)&#xa;  · evidence_items 数量&#xa;llm_by_role:&#xa;  · 按角色细分 Token 与时延" vertex="1">
+          <mxGeometry height="180" width="260" x="1020" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="sv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10;fontFamily=Courier New" value="StateView 按角色视图过滤（节省 Token / 角色隔离）&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;Planner    👁 Goal · Capabilities                                              ✏ Plan&#xa;Explorer   👁 Goal · Plan · 已有 Observation                          ✏ Observation（追加）&#xa;Executor   👁 Goal · Plan · Observation                                 ✏ Execution&#xa;Verifier   👁 Goal · Plan · Observation · Execution                   ✏ verdict&#xa;Coordinator   👁 全工件 + 运行时控制                                       ✏ stop_reason · next_action" vertex="1">
+          <mxGeometry height="160" width="1320" x="40" y="730" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

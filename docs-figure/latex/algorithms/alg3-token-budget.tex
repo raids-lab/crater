@@ -1,0 +1,37 @@
+% Algorithm 3: Token 预算装载 TokenBudgetLoader
+\begin{algorithm}[t]
+\caption{Token 预算装载 TokenBudgetLoader}
+\label{alg:token-budget}
+\DontPrintSemicolon
+\KwData{消息序列 $H = (h_1, \dots, h_n)$ 按时间逆序，工具结果集合 $T$，总预算 $B$，单工具预算 $b_t$}
+\KwResult{装载后的上下文 $\mathcal{C}$}
+
+$\mathcal{C} \leftarrow \emptyset$ ; $u \leftarrow 0$ \tcp*{已用 Token}
+
+\ForEach{$h_i \in H$}{
+  $\ell \leftarrow \textsc{TokenCount}(h_i)$ \;
+  \If{$u + \ell > B$}{
+    \textbf{break} \tcp*{超出总预算停止装载}
+  }
+  $\mathcal{C} \leftarrow \mathcal{C} \cup \{h_i\}$ ; $u \leftarrow u + \ell$ \;
+}
+
+\ForEach{$t \in T$}{
+  $r \leftarrow t.result$ ;
+  $\ell_t \leftarrow \textsc{TokenCount}(r)$ \;
+
+  \uIf{$\ell_t \leq b_t$}{
+    $r' \leftarrow r$ \tcp*{原样保留}
+  }
+  \uElseIf{\textsc{IsStructured}(r)}{
+    $r' \leftarrow \textsc{HeadTailTruncate}(r, b_t)$ \tcp*{首尾截断}
+  }
+  \Else{
+    $r' \leftarrow \textsc{LLMSummarize}(r, b_t)$ \tcp*{LLM 智能提取}
+  }
+
+  $\mathcal{C} \leftarrow \mathcal{C} \cup \{t \,\text{with}\, r'\}$ \;
+}
+
+\Return $\mathcal{C}$
+\end{algorithm}

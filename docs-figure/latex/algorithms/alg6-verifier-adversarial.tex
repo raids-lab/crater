@@ -1,0 +1,33 @@
+% Algorithm 6: 验证器挑战式验证 VerifierAdversarial
+\begin{algorithm}[t]
+\caption{验证器挑战式验证 VerifierAdversarial}
+\label{alg:verifier}
+\DontPrintSemicolon
+\KwData{规划 $\mathcal{P}$，观察 $\mathcal{O}$，执行 $\mathcal{E}$，最终回答 $a$}
+\KwResult{$\nu \in \{\text{pass}, \text{insufficient\_evidence}, \text{risk}\}$，重规划提示 $\rho$}
+
+\tcc{1) 证据-结论一致性}
+$s_1 \leftarrow \textsc{ChallengeEvidence}(\mathcal{O}, a)$ \;
+
+\tcc{2) 遗漏排查路径}
+$s_2 \leftarrow \textsc{ChallengeMissingPaths}(\mathcal{P}, \mathcal{O})$ \;
+
+\tcc{3) 建议风险评估}
+$s_3 \leftarrow \textsc{ChallengeRisk}(\mathcal{E}, a)$ \;
+
+\tcc{4) 安全合规复核}
+$s_4 \leftarrow \textsc{ChallengeCompliance}(\mathcal{E}, a)$ \;
+
+$score \leftarrow w_1 s_1 + w_2 s_2 + w_3 s_3 + w_4 s_4$ ;
+$\rho \leftarrow \emptyset$ \;
+
+\uIf{$s_4 < \theta_{safe}$ \textbf{or} $s_3 < \theta_{risk}$}{
+  \Return $(\text{risk}, \textsc{ExplainRisk}(s_3, s_4))$ \;
+}
+\uElseIf{$s_1 < \theta_{evi}$ \textbf{or} $s_2 < \theta_{miss}$}{
+  $\rho \leftarrow \textsc{ProposeRePlan}(\mathcal{P}, s_1, s_2)$ ;
+  \Return $(\text{insufficient\_evidence}, \rho)$ \;
+}
+
+\Return $(\text{pass}, \emptyset)$
+\end{algorithm}

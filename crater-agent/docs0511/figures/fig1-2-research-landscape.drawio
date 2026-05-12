@@ -1,0 +1,149 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="研究现状综述图" id="fig1-2">
+    <mxGraphModel dx="1422" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 1-2 智能运维研究演进与本文工作定位" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="700" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Time axis -->
+        <mxCell id="tax" style="endArrow=classic;html=1;strokeWidth=3" edge="1" parent="1">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="60" y="820" /><mxPoint x="1340" y="820" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="taxlbl" value="时间轴 →" style="text;html=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1250" y="835" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Year markers -->
+        <mxCell id="y17" value="2017" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="100" y="800" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y20" value="2020" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="800" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y22" value="2022" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="500" y="800" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y23" value="2023" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="680" y="800" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y24" value="2024" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="880" y="800" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y25" value="2025" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="800" width="50" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="y26" value="2026 (本文)" style="text;html=1;fontSize=12;fontStyle=1;align=center;fontColor=#B85450" vertex="1" parent="1">
+          <mxGeometry x="1230" y="800" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Track 1: 传统 ML AIOps -->
+        <mxCell id="t1lbl" value="① 传统 ML AIOps&#10;（任务专用 / 端到端学习）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t1a" value="DeepLog&#10;[CCS'17]&#10;日志异常检测" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="90" y="180" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t1b" value="MicroRCA&#10;[NOMS'20]&#10;调用链根因" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="280" y="180" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t1c" value="DeepTraLog&#10;[ICSE'22]&#10;Trace+Log 图融合" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="480" y="180" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t1d" value="Eadro&#10;[ICSE'23]&#10;检测+定位&#10;联合训练" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="660" y="180" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t1e" value="AnoFusion&#10;[KDD'23]&#10;Metric+Log+Trace&#10;多模态融合" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f1fb;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="830" y="180" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t1lim" value="局限：需大量标注数据 · 模型与场景紧绑定 · 不支持开放任务" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="40" y="245" width="950" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Track 2: LLM 增强 AIOps -->
+        <mxCell id="t2lbl" value="② LLM 增强 AIOps&#10;（数据增强 / 单步推理）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2a" value="ReAct&#10;[ICLR'23]&#10;推理+行动" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="660" y="370" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2b" value="Plan-and-Solve&#10;[ACL'23]&#10;先规划后执行" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="780" y="370" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2c" value="RCACopilot&#10;[EuroSys'24]&#10;事故根因 LLM&#10;微软部署 4 年" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="900" y="370" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2d" value="OpsEval&#10;[FSE'25]&#10;9 子域 24 模型&#10;运维基准" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6f3e1;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1040" y="370" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t2lim" value="局限：单 Agent 长链易迷失 · 仅离线问答评测 · 难处理多轮风险决策" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="40" y="435" width="950" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Track 3: Agentic AIOps / 多智能体 -->
+        <mxCell id="t3lbl" value="③ Agentic AIOps&#10;（多智能体协作）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="495" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3a" value="AIOpsLab&#10;[MLSys'25]&#10;Agent-Cloud&#10;评测框架" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1010" y="495" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3b" value="STRATUS&#10;[NeurIPS'25]&#10;TNR 事务安全&#10;Detect/Diag/Mit/Undo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1130" y="495" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3c" value="KubeIntellect&#10;[arXiv'25]&#10;K8s 多 Agent&#10;动态工具合成" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="900" y="565" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3d" value="Autonomous SRE&#10;[ICSSSM'25]&#10;CrewAI 四 Agent&#10;自动生成 PR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5d9;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1030" y="565" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t3lim" value="局限：均面向微服务 / 通用云 · 无 GPU 训练故障建模 · 缺乏可扩展工具体系与生产级安全设计" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="40" y="635" width="950" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Track 4: 智算平台运维 -->
+        <mxCell id="t4lbl" value="④ 智算平台运维&#10;（GPU 训练栈 / 一站式 AI 平台）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="690" width="190" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t4a" value="一站式 AI 平台&#10;[硕士论文'20/'23]&#10;K8s + Jupyter + 镜像" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="280" y="700" width="130" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t4b" value="信通院白皮书&#10;[2024]&#10;智算运维成熟度" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="870" y="700" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="t4c" value="端网协同运维&#10;[杜量 2026]&#10;万卡 RDMA 网络层" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0db;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1100" y="700" width="130" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Our work -->
+        <mxCell id="ours" value="本文 Mops&#10;面向智算平台&#10;多智能体协作&#10;+ HITL 安全控制&#10;+ 85 场景评测" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#7a3a3a;fontSize=12;fontStyle=1;fontColor=#FFFFFF;align=center" vertex="1" parent="1">
+          <mxGeometry x="1240" y="595" width="120" height="155" as="geometry" />
+        </mxCell>
+
+        <!-- Convergence arrows pointing to "ours" -->
+        <mxCell id="ca1" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=2;dashed=1" edge="1" parent="1">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="890" y="400" /><mxPoint x="1240" y="630" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="ca2" style="endArrow=classic;html=1;strokeColor=#d6b656;strokeWidth=2;dashed=1" edge="1" parent="1">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="1260" y="555" /><mxPoint x="1255" y="600" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="ca3" style="endArrow=classic;html=1;strokeColor=#b85450;strokeWidth=2;dashed=1" edge="1" parent="1">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="1230" y="730" /><mxPoint x="1240" y="710" /></Array></mxGeometry>
+        </mxCell>
+
+        <!-- Gap statement -->
+        <mxCell id="gap" value="研究空白：智算平台特有故障（OOM / NCCL / 镜像污染 / Gang Scheduling）&#10;尚无 Agentic 解决方案，且缺乏 HITL 安全设计与跨平台工具体系" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8DC;strokeColor=#B85450;fontSize=11;fontStyle=1;align=center;verticalAlign=middle;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="270" y="490" width="600" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="实心箭头：研究演进路径   虚线箭头：本文工作融合的研究主线" style="text;html=1;align=left;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="60" y="860" width="600" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
