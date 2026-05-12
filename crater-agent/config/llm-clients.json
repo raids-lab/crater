@@ -255,6 +255,17 @@
     "streaming": true,
     "stream_usage": true
   },
+  "glm-4.5": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "glm-4.5",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
   "glm-4.6-newkey": {
     "provider": "openai_compatible",
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -656,6 +667,17 @@
     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "api_key_env": "DASHSCOPE_API_KEY_NEW",
     "model": "qwen-max",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 180,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "qvq-max-2025-03-25": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "model": "qvq-max-2025-03-25",
     "temperature": 0.1,
     "max_tokens": 8192,
     "timeout": 180,
