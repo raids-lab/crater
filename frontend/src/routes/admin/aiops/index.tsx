@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { t } from 'i18next'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HealthOverviewAdmin } from '@/components/aiops/HealthOverviewAdmin'
@@ -6,6 +7,7 @@ import { OpsReportTab } from '@/components/aiops/OpsReportTab'
 
 export const Route = createFileRoute('/admin/aiops/')({
   component: RouteComponent,
+  loader: () => ({ crumb: t('navigation.aiops') }),
 })
 
 function RouteComponent() {

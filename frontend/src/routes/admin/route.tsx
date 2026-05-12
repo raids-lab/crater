@@ -112,11 +112,6 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           url: '/admin/cronjobs',
           icon: AlarmClockIcon,
         },
-        {
-          title: t('navigation.aiops'),
-          url: '/admin/aiops',
-          icon: Sparkles,
-        },
         // [修改] 条件渲染：只有开启时才把该对象加入数组
         ...(showGpuAnalysis
           ? [
@@ -176,6 +171,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
     {
       title: t('navigation.more'),
       items: [
+        {
+          title: t('navigation.aiops'),
+          url: '/admin/aiops',
+          icon: Sparkles,
+        },
         {
           title: t('navigation.platformSettings'),
           icon: SettingsIcon,

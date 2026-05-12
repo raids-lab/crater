@@ -24,7 +24,6 @@ import {
   LayoutDashboard,
   SettingsIcon,
   ShoppingBagIcon,
-  Sparkles,
   SquareChartGanttIcon,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -105,11 +104,6 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           url: '/portal/users/' + user?.name,
           icon: LayoutDashboard,
         },
-        {
-          title: t('navigation.aiops'),
-          url: '/portal/aiops',
-          icon: Sparkles,
-        },
       ],
     },
     {
@@ -185,6 +179,10 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.more'),
           icon: SettingsIcon,
           items: [
+            {
+              title: t('navigation.aiops'),
+              url: '/portal/aiops',
+            },
             {
               title: t('navigation.userSettings'),
               url: '/portal/more/user',
