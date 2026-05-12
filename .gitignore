@@ -112,3 +112,11 @@ crater-agent/config/mops*.json
 crater-agent/config/*plan-execute*.json
 # Thesis drafts (personal work, not code)
 docs/thesis/
+
+# Local generated/working artifacts
+/output/
+crater-agent/crater-agent/
+*.drawio.bkp
+.$*.drawio.bkp
+.venv/
+__pycache__/
