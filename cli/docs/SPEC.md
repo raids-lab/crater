@@ -186,6 +186,8 @@
 
 需要稳定错误 JSON 与退出码时，优先 `return` 已组装好的 `*clierror.Error`：`Category`、`Code`（`pkg/errorcodes`）、`Message`（`i18n`）、可选 `Context`。脚本应消费 `Context` 等结构化字段，勿依赖解析自然语言 `Message`。`Message` **允许多行**；人类可读 stderr 由 `internal/output` 在 `Error:` 下对每行统一加基础缩进，行内额外空格由你写入 `Message` 即可，会与基础缩进叠加（见 [COMMANDS.md](./COMMANDS.md)）。
 
+`Context` 只能放 JSON 可序列化的事实值（如字符串、数字、布尔值、数组、对象，以及 `nil`），禁止放入 `error`、函数、channel、包含循环引用的对象或其它无法被 `encoding/json` 编码的值。与后端响应相关的错误应倾向于直接提供后端返回的事实字段（如 `http_status`、`crater_code`、`msg` 等），不要把原始响应对象或 Go 错误对象塞入 `Context`。若开发者违反该约定导致错误 `Context` 无法 JSON 化，渲染层会保留原始 `category` / `code` / `message`，并将 `context` 替换为“错误 context JSON 化失败，请联系开发者修复”的诊断信息，以保证 stderr 仍是合法 JSON。
+
 若不是 `*clierror.Error`：JSON 模式下退化为 `system_error` 与 `ERR_COMMAND_EXECUTION`，`message` 取自 `err.Error()`；字段名与整体形状仍须满足 COMMANDS「错误处理规范」。
 
 ### `api_error` 与 HTTP：公共 `Code` 档位

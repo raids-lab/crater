@@ -7,7 +7,7 @@
 为了确保对 AI Agent、CI/CD 环境以及普通开发者的友好性，**所有命令（无论是否具备交互逻辑）必须统一支持以下全局选项：**
 
 - `--json`: 
-  - **行为**: 强制开启 `--no-interactive`，输出纯净的 JSON 至 `stdout`。实现会在 Cobra 解析参数**之前**预扫描 `os.Args` 是否包含 `--json`（或 `--json=true` / `--json false` 等），因此 **`--json` 可出现在参数序列任意位置**；即使因未知 flag 等导致解析阶段失败，**错误输出仍可按 JSON 模式**写到 stderr。
+  - **行为**: 强制开启 `--no-interactive`，输出纯净的 JSON 至 `stdout`。实现会在 Cobra 解析参数**之前**按 pflag bool flag 语义预扫描 `os.Args` 是否包含 `--json` 或 `--json=<bool>`，因此 **`--json` 可出现在参数序列任意位置**；即使因未知 flag 等导致解析阶段失败，**错误输出仍可按 JSON 模式**写到 stderr。空格分隔的 `--json false` 不属于支持形式，等价于 `--json` 后跟普通参数 `false`。
   - **Stdout**: 输出**格式化后的 JSON (Pretty-printed, 带缩进和换行)**，确保既对人类可读，又可被 `jq` 等工具解析。禁止包含任何非 JSON 的装饰性文字。
   - **成功体**：信封（顶层字段与 `data` 约束）见 **[SPEC.md](./SPEC.md)**「命令结果：错误与成功」；**`data` 不出现 `http_status`**。各命令章节**只**写本命令 `--json` 时 **`data` 含哪些键**；可选 **`message`**（**i18n**）；成功体**不得**使用与错误体相同的 **`category` / `code`**。
 - `--no-interactive`:

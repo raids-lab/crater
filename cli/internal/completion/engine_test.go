@@ -184,6 +184,82 @@ func TestComplete_flagValue_bashSplitEquals(t *testing.T) {
 	}
 }
 
+func TestComplete_flagValueAfterLeadingPersistentBoolFlag(t *testing.T) {
+	withRegistryReset(t)
+	root := testTreeFlagMode(t)
+	root.PersistentFlags().Bool("no-interactive", false, "")
+	RegisterFlagValue([]string{"grp", "leaf"}, "mode", modeCompleterLDAPNormal)
+
+	ctx := Context{
+		Words:   []string{"crater", "--no-interactive", "grp", "leaf", "--mode", "n"},
+		Current: 6,
+	}
+	cands, err := Complete(root, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := candidateValues(cands); len(got) != 1 || got[0] != "normal" {
+		t.Fatalf("got %v want [normal]", got)
+	}
+}
+
+func TestComplete_flagValueAfterLeadingPersistentStringFlag(t *testing.T) {
+	withRegistryReset(t)
+	root := testTreeFlagMode(t)
+	root.PersistentFlags().String("platform", "", "")
+	RegisterFlagValue([]string{"grp", "leaf"}, "mode", modeCompleterLDAPNormal)
+
+	ctx := Context{
+		Words:   []string{"crater", "--platform", "https://gpu.example", "grp", "leaf", "--mode", "n"},
+		Current: 7,
+	}
+	cands, err := Complete(root, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := candidateValues(cands); len(got) != 1 || got[0] != "normal" {
+		t.Fatalf("got %v want [normal]", got)
+	}
+}
+
+func TestComplete_subcommandsAfterLeadingPersistentBoolFlag(t *testing.T) {
+	root := testTreeUnknownSub(t)
+	root.PersistentFlags().Bool("json", false, "")
+
+	ctx := Context{
+		Words:   []string{"crater", "--json", "box", ""},
+		Current: 4,
+	}
+	cands, err := Complete(root, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := candidateValues(cands)
+	want := []string{"alpha", "beta"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
+func TestComplete_subcommandsAfterLeadingPersistentBoolFlagEquals(t *testing.T) {
+	root := testTreeUnknownSub(t)
+	root.PersistentFlags().Bool("json", false, "")
+
+	ctx := Context{
+		Words:   []string{"crater", "--json=true", "box", ""},
+		Current: 4,
+	}
+	cands, err := Complete(root, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := candidateValues(cands)
+	want := []string{"alpha", "beta"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
 func TestComplete_positionalAfterPersistentBoolFlag(t *testing.T) {
 	withRegistryReset(t)
 	root := &cobra.Command{Use: "crater", Short: "root"}

@@ -65,12 +65,7 @@ func completeFlagValues(cmd *cobra.Command, ctx Context) ([]Candidate, bool) {
 		return nil, false
 	}
 
-	// Build available flag lookup table (local + inherited).
-	flags := pflag.NewFlagSet("completion", pflag.ContinueOnError)
-	for _, a := range ancestors(cmd) {
-		flags.AddFlagSet(a.PersistentFlags())
-	}
-	flags.AddFlagSet(cmd.LocalFlags())
+	flags := visibleFlags(cmd)
 
 	cur := words[completingIdx]
 	prev := ""
@@ -175,8 +170,18 @@ func walkToCommand(root *cobra.Command, words []string, completingIdx int) (*cob
 	// 从第一个子词开始（跳过程序名 words[0]），直到 completingIdx 之前。
 	for i := 1; i < completingIdx && i < len(words); i++ {
 		w := words[i]
-		if w == "" || strings.HasPrefix(w, "-") {
+		if w == "" {
 			break
+		}
+		if w == "--" {
+			break
+		}
+		if strings.HasPrefix(w, "-") {
+			flags := visibleFlags(cmd)
+			if flagConsumesNext(flags, w) {
+				i++
+			}
+			continue
 		}
 		next := findChildByName(cmd, w)
 		if next == nil {
@@ -186,6 +191,38 @@ func walkToCommand(root *cobra.Command, words []string, completingIdx int) (*cob
 		cmd = next
 	}
 	return cmd, nil
+}
+
+func visibleFlags(cmd *cobra.Command) *pflag.FlagSet {
+	flags := pflag.NewFlagSet("completion", pflag.ContinueOnError)
+	for _, a := range ancestors(cmd) {
+		flags.AddFlagSet(a.PersistentFlags())
+	}
+	flags.AddFlagSet(cmd.LocalFlags())
+	return flags
+}
+
+func flagConsumesNext(flags *pflag.FlagSet, token string) bool {
+	if flags == nil || token == "" || token == "--" {
+		return false
+	}
+	if strings.HasPrefix(token, "--") {
+		name := strings.TrimPrefix(token, "--")
+		if name == "" || strings.Contains(name, "=") {
+			return false
+		}
+		if f := flags.Lookup(name); f != nil {
+			return f.Value.Type() != "bool"
+		}
+		return false
+	}
+	if strings.HasPrefix(token, "-") && len(token) == 2 {
+		sh := strings.TrimPrefix(token, "-")
+		if f := flags.ShorthandLookup(sh); f != nil {
+			return f.Value.Type() != "bool"
+		}
+	}
+	return false
 }
 
 func findChildByName(parent *cobra.Command, name string) *cobra.Command {
@@ -261,12 +298,7 @@ func positionalArgIndex(cmd *cobra.Command, words []string, completingIdx int) i
 		return 0
 	}
 
-	// 构建可用 flag 查找表（local + inherited）。
-	flags := pflag.NewFlagSet("completion", pflag.ContinueOnError)
-	for _, a := range ancestors(cmd) {
-		flags.AddFlagSet(a.PersistentFlags())
-	}
-	flags.AddFlagSet(cmd.LocalFlags())
+	flags := visibleFlags(cmd)
 
 	count := 0
 	for i := start; i < completingIdx && i < len(words); i++ {

@@ -25,6 +25,8 @@ type errorResponse struct {
 	Context  map[string]interface{} `json:"context,omitempty"`
 }
 
+const errorContextEncodeFailedMessage = "错误 context JSON 化失败，请联系开发者修复错误 context"
+
 // WriteError 将 err 写入 writer（通常为 stderr：人类可读或单行 JSON）。
 // 注意：该函数只负责渲染，不负责计算退出码或 os.Exit。
 func WriteError(w io.Writer, jsonEnabled bool, err error) {
@@ -46,7 +48,22 @@ func WriteError(w io.Writer, jsonEnabled bool, err error) {
 			Message:  err.Error(),
 			Context:  context,
 		}
-		jsonBytes, _ := json.Marshal(resp)
+		jsonBytes, marshalErr := json.Marshal(resp)
+		if marshalErr != nil && resp.Context != nil {
+			resp.Context = map[string]interface{}{
+				"msg":          errorContextEncodeFailedMessage,
+				"encode_error": marshalErr.Error(),
+			}
+			jsonBytes, marshalErr = json.Marshal(resp)
+		}
+		if marshalErr != nil {
+			resp = errorResponse{
+				Category: errorcodes.CategorySystem,
+				Code:     errorcodes.ErrJSONEncodeFailed,
+				Message:  errorContextEncodeFailedMessage,
+			}
+			jsonBytes, _ = json.Marshal(resp)
+		}
 		fmt.Fprintln(w, string(jsonBytes))
 		return
 	}

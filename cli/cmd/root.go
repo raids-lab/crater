@@ -76,9 +76,14 @@ func Execute() {
 
 func bootstrapJSONFlagFromArgs() {
 	// 最后一次出现的 `--json` 生效；在 Cobra 解析失败前也要能识别，以便错误走 JSON。
+	// 预扫描必须与 pflag 的 bool flag 语义一致：支持 `--json` 与 `--json=<bool>`，
+	// 不支持空格分隔的 `--json <bool>`，并在 `--` 后停止解析 flag。
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		a := args[i]
+		if a == "--" {
+			return
+		}
 		if strings.HasPrefix(a, "--json=") {
 			v := strings.TrimPrefix(a, "--json=")
 			if b, err := strconv.ParseBool(v); err == nil {
@@ -87,13 +92,6 @@ func bootstrapJSONFlagFromArgs() {
 			continue
 		}
 		if a == "--json" {
-			if i+1 < len(args) {
-				if b, err := strconv.ParseBool(args[i+1]); err == nil {
-					outputJSON = b
-					i++
-					continue
-				}
-			}
 			outputJSON = true
 		}
 	}

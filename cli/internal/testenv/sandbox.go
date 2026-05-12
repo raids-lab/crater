@@ -18,16 +18,18 @@ func SandboxEnabled() bool {
 func SandboxHTTPMode() string {
 	// When sandboxing HTTP, set CRATER_TEST_SANDBOX_HTTP:
 	// - "1"/"true"/... => default "timeout"
-	// - "timeout"|"hang"|"error404"|... => explicit mode
-	v := strings.TrimSpace(os.Getenv("CRATER_TEST_SANDBOX_HTTP"))
-	if truthyEnv(v) {
+	// - "timeout"|"hang"|"error404"|... => explicit mode (case-insensitive)
+	raw := strings.TrimSpace(os.Getenv("CRATER_TEST_SANDBOX_HTTP"))
+	if truthyEnv(raw) {
 		return "timeout"
 	}
 	// If sandbox is enabled but no explicit/valid mode is given, fallback to timeout.
-	if SandboxEnabled() && v == "" {
+	if SandboxEnabled() && raw == "" {
 		return "timeout"
 	}
-	switch strings.ToLower(v) {
+
+	mode := strings.ToLower(raw)
+	switch mode {
 	case "", "timeout", "hang", "error404", "404":
 		// ok ("" already handled above)
 	default:
@@ -35,7 +37,7 @@ func SandboxHTTPMode() string {
 			return "timeout"
 		}
 	}
-	return v
+	return mode
 }
 
 func SandboxSessionEnabled() bool {
@@ -52,4 +54,3 @@ func truthyEnv(v string) bool {
 		return false
 	}
 }
-

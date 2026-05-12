@@ -27,6 +27,8 @@
 - `context`：结构化上下文，例如 `http_status`。
 - `message`：只用于向用户解释，不作为稳定程序接口。
 
+`context` 应始终是 JSON 可序列化对象。如果开发者错误地放入无法 JSON 化的值，CLI 会保留原始 `category` / `code` / `message`，并把 `context` 替换为诊断信息，提示错误 context JSON 编码失败、需要联系开发者修复。
+
 ## 退出码
 
 | 退出码 | 含义 | 优先处理 |

@@ -61,7 +61,9 @@ snapshot-update: ## 重写 golden：UPDATE_SNAPSHOTS=1 go test ./test/snapshots/
 # 单元测试：显式列出当前包含单测的包（避免依赖 grep / shell 过滤）。
 # 新增单测时，将对应包路径加入此列表即可。
 UNIT_TEST_PKGS := \
+	./cmd \
 	./internal/completion \
+	./internal/output \
 	./internal/testenv
 
 .PHONY: unit-test

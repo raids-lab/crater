@@ -9,7 +9,8 @@ import (
 )
 
 // RunCompleteFast 处理 `crater __complete ...` 快路径（不经 Execute / rootCmd.Execute）。
-// 成功时 stdout 仅输出候选（每行一个 value）；错误写到 stderr 并返回非零退出码。
+// 成功时 stdout 仅输出 shell 补全协议内容：bash 为每行一个 value，
+// zsh 为 value:description 行（供 _describe 使用）；错误写到 stderr 并返回非零退出码。
 func RunCompleteFast(argv []string) int {
 	if len(argv) < 1 {
 		fmt.Fprintln(os.Stderr, "usage: crater __complete <shell> ...")

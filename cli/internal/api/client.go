@@ -29,7 +29,7 @@ type Client struct {
 // - CRATER_TEST_SANDBOX_HTTP=error404    => 404
 func applyHTTPSim(rc *req.Client) {
 	mode := testenv.SandboxHTTPMode()
-	switch strings.TrimSpace(mode) {
+	switch mode {
 	case "error404", "404":
 		wrapSim404(rc)
 	case "timeout", "hang":

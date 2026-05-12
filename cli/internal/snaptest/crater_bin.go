@@ -25,7 +25,12 @@ func CraterExecutable(t *testing.T) string {
 			craterBin.err = err
 			return
 		}
-		bin := filepath.Join(os.TempDir(), "crater_snapshot_cli")
+		dir, err := os.MkdirTemp("", "crater-snapshot-*")
+		if err != nil {
+			craterBin.err = fmt.Errorf("snaptest: create temp dir: %w", err)
+			return
+		}
+		bin := filepath.Join(dir, "crater")
 		if runtime.GOOS == "windows" {
 			bin += ".exe"
 		}

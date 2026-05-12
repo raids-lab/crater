@@ -4,7 +4,7 @@ package i18n
 var catalogCompletion = map[Language]map[string]string{
 	En: {
 		"completion_short": "Generate or install shell completion scripts",
-		"completion_long":  "Manage shell tab completion for Crater (zsh supported in this phase).",
+		"completion_long":  "Manage shell tab completion for Crater (bash and zsh supported).",
 
 		"completion_zsh_short": "Print zsh completion snippet",
 		"completion_zsh_long":  "Print the zsh rc snippet to enable crater tab completion (delegates to crater __complete).",
@@ -51,7 +51,7 @@ var catalogCompletion = map[Language]map[string]string{
 	},
 	ZhCN: {
 		"completion_short": "生成或安装 shell 补全脚本",
-		"completion_long":  "管理 Crater 的 Tab 补全（当前阶段仅支持 zsh）。",
+		"completion_long":  "管理 Crater 的 Tab 补全（支持 bash 和 zsh）。",
 
 		"completion_zsh_short": "输出 zsh 补全片段",
 		"completion_zsh_long":  "输出写入 ~/.zshrc 的补全片段，通过 crater __complete 快路径获取候选。",
