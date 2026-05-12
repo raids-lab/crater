@@ -1,0 +1,195 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="三方法整体对比" id="fig5-1">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 5-1 Mops · Plan-and-Solve · Single-ReAct 三方法整体效果对比" style="text;html=1;align=center;fontSize=17;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="280" y="20" width="840" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="subt" value="Qwen3-Coder-Plus · 30 核心场景 · 数据来源 results/exp30-qwen3-coder-plus-*-20260505-v1" style="text;html=1;align=center;fontSize=11;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="280" y="50" width="840" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- 主柱状图区域 -->
+        <mxCell id="chartBox" value="主对比指标（柱状图）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="900" height="540" as="geometry" />
+        </mxCell>
+
+        <!-- Y axis -->
+        <mxCell id="yax" style="endArrow=none;html=1;strokeWidth=2" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="150" /><mxPoint x="120" y="560" /></Array></mxGeometry></mxCell>
+        <mxCell id="xax" style="endArrow=none;html=1;strokeWidth=2" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="560" /><mxPoint x="900" y="560" /></Array></mxGeometry></mxCell>
+
+        <!-- Y ticks (height = 410, range = 100 → 4.1 px per point)  baseline y=560 -->
+        <mxCell id="y100" value="100" style="text;html=1;fontSize=10;align=right" vertex="1" parent="1"><mxGeometry x="80" y="145" width="35" height="15" as="geometry" /></mxCell>
+        <mxCell id="y80" value="80" style="text;html=1;fontSize=10;align=right" vertex="1" parent="1"><mxGeometry x="80" y="227" width="35" height="15" as="geometry" /></mxCell>
+        <mxCell id="y60" value="60" style="text;html=1;fontSize=10;align=right" vertex="1" parent="1"><mxGeometry x="80" y="309" width="35" height="15" as="geometry" /></mxCell>
+        <mxCell id="y40" value="40" style="text;html=1;fontSize=10;align=right" vertex="1" parent="1"><mxGeometry x="80" y="391" width="35" height="15" as="geometry" /></mxCell>
+        <mxCell id="y20" value="20" style="text;html=1;fontSize=10;align=right" vertex="1" parent="1"><mxGeometry x="80" y="473" width="35" height="15" as="geometry" /></mxCell>
+        <mxCell id="y0" value="0" style="text;html=1;fontSize=10;align=right" vertex="1" parent="1"><mxGeometry x="80" y="555" width="35" height="15" as="geometry" /></mxCell>
+
+        <mxCell id="ylab" value="得分 Score (0-100)" style="text;html=1;align=center;fontSize=11;rotation=-90" vertex="1" parent="1">
+          <mxGeometry x="35" y="320" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Y grid lines -->
+        <mxCell id="gl1" style="endArrow=none;html=1;strokeColor=#CCCCCC;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="150" /><mxPoint x="900" y="150" /></Array></mxGeometry></mxCell>
+        <mxCell id="gl2" style="endArrow=none;html=1;strokeColor=#CCCCCC;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="232" /><mxPoint x="900" y="232" /></Array></mxGeometry></mxCell>
+        <mxCell id="gl3" style="endArrow=none;html=1;strokeColor=#CCCCCC;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="314" /><mxPoint x="900" y="314" /></Array></mxGeometry></mxCell>
+        <mxCell id="gl4" style="endArrow=none;html=1;strokeColor=#CCCCCC;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="396" /><mxPoint x="900" y="396" /></Array></mxGeometry></mxCell>
+        <mxCell id="gl5" style="endArrow=none;html=1;strokeColor=#CCCCCC;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="120" y="478" /><mxPoint x="900" y="478" /></Array></mxGeometry></mxCell>
+
+        <!-- Groups: 5 groups, 3 bars each -->
+        <!-- Group offsets: each group 140px wide, bars 30px wide -->
+
+        <!-- Group 1: Overall (Mops 92.78, PS 88.30, React 84.10) -->
+        <mxCell id="g1_lab" value="整体&#10;Overall" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="155" y="565" width="120" height="35" as="geometry" />
+        </mxCell>
+        <!-- y_top_92.78 = 560 - 92.78*4.1 = 560 - 380.398 = 179.6 -->
+        <mxCell id="g1_m" style="rounded=0;fillColor=#82b366;strokeColor=#3d7e29;" vertex="1" parent="1"><mxGeometry x="155" y="180" width="38" height="380" as="geometry" /></mxCell>
+        <mxCell id="g1_ml" value="92.78" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1"><mxGeometry x="148" y="160" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 88.30 = 560 - 362.03 = 197.97 -->
+        <mxCell id="g1_p" style="rounded=0;fillColor=#6c8ebf;strokeColor=#3a6dbf;" vertex="1" parent="1"><mxGeometry x="195" y="198" width="38" height="362" as="geometry" /></mxCell>
+        <mxCell id="g1_pl" value="88.30" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="188" y="178" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 84.10 = 560 - 344.81 = 215.19 -->
+        <mxCell id="g1_r" style="rounded=0;fillColor=#b85450;strokeColor=#7a3a3a;" vertex="1" parent="1"><mxGeometry x="235" y="215" width="38" height="345" as="geometry" /></mxCell>
+        <mxCell id="g1_rl" value="84.10" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="228" y="195" width="52" height="20" as="geometry" /></mxCell>
+
+        <!-- Group 2: Diagnosis (Mops 91.83, PS 93.56, React 82.30) -->
+        <mxCell id="g2_lab" value="诊断&#10;Diagnosis" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="565" width="120" height="35" as="geometry" />
+        </mxCell>
+        <!-- 91.83 → top = 560 - 376.5 = 183.5 -->
+        <mxCell id="g2_m" style="rounded=0;fillColor=#82b366;strokeColor=#3d7e29" vertex="1" parent="1"><mxGeometry x="290" y="183" width="38" height="377" as="geometry" /></mxCell>
+        <mxCell id="g2_ml" value="91.83" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1"><mxGeometry x="283" y="163" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 93.56 → top = 560 - 383.6 = 176.4 -->
+        <mxCell id="g2_p" style="rounded=0;fillColor=#6c8ebf;strokeColor=#3a6dbf" vertex="1" parent="1"><mxGeometry x="330" y="176" width="38" height="384" as="geometry" /></mxCell>
+        <mxCell id="g2_pl" value="93.56" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="323" y="156" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 82.30 → top = 560 - 337.4 = 222.6 -->
+        <mxCell id="g2_r" style="rounded=0;fillColor=#b85450;strokeColor=#7a3a3a" vertex="1" parent="1"><mxGeometry x="370" y="222" width="38" height="338" as="geometry" /></mxCell>
+        <mxCell id="g2_rl" value="82.30" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="363" y="202" width="52" height="20" as="geometry" /></mxCell>
+
+        <!-- Group 3: Ops (Mops 94.05, PS 83.38, React 77.60) -->
+        <mxCell id="g3_lab" value="运维&#10;Ops" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="425" y="565" width="120" height="35" as="geometry" />
+        </mxCell>
+        <!-- 94.05 → 560-385.6=174.4 -->
+        <mxCell id="g3_m" style="rounded=0;fillColor=#82b366;strokeColor=#3d7e29" vertex="1" parent="1"><mxGeometry x="425" y="174" width="38" height="386" as="geometry" /></mxCell>
+        <mxCell id="g3_ml" value="94.05" style="text;html=1;fontSize=11;fontStyle=1;fontColor=#3d7e29;align=center" vertex="1" parent="1"><mxGeometry x="418" y="154" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 83.38 → 560-341.9=218.1 -->
+        <mxCell id="g3_p" style="rounded=0;fillColor=#6c8ebf;strokeColor=#3a6dbf" vertex="1" parent="1"><mxGeometry x="465" y="218" width="38" height="342" as="geometry" /></mxCell>
+        <mxCell id="g3_pl" value="83.38" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="458" y="198" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 77.60 → 560-318.2=241.8 -->
+        <mxCell id="g3_r" style="rounded=0;fillColor=#b85450;strokeColor=#7a3a3a" vertex="1" parent="1"><mxGeometry x="505" y="241" width="38" height="319" as="geometry" /></mxCell>
+        <mxCell id="g3_rl" value="77.60" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="498" y="221" width="52" height="20" as="geometry" /></mxCell>
+
+        <!-- Group 4: Query (93.66, 92.67, 86.83) -->
+        <mxCell id="g4_lab" value="查询&#10;Query" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="560" y="565" width="120" height="35" as="geometry" />
+        </mxCell>
+        <!-- 93.66 → 175.0 -->
+        <mxCell id="g4_m" style="rounded=0;fillColor=#82b366;strokeColor=#3d7e29" vertex="1" parent="1"><mxGeometry x="560" y="175" width="38" height="385" as="geometry" /></mxCell>
+        <mxCell id="g4_ml" value="93.66" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1"><mxGeometry x="553" y="155" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 92.67 → 179.1 -->
+        <mxCell id="g4_p" style="rounded=0;fillColor=#6c8ebf;strokeColor=#3a6dbf" vertex="1" parent="1"><mxGeometry x="600" y="179" width="38" height="381" as="geometry" /></mxCell>
+        <mxCell id="g4_pl" value="92.67" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="593" y="159" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 86.83 → 203.0 -->
+        <mxCell id="g4_r" style="rounded=0;fillColor=#b85450;strokeColor=#7a3a3a" vertex="1" parent="1"><mxGeometry x="640" y="203" width="38" height="357" as="geometry" /></mxCell>
+        <mxCell id="g4_rl" value="86.83" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="633" y="183" width="52" height="20" as="geometry" /></mxCell>
+
+        <!-- Group 5: Submission (90.56, 86.54, 82.00) -->
+        <mxCell id="g5_lab" value="提交&#10;Submission" style="text;html=1;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="695" y="565" width="120" height="35" as="geometry" />
+        </mxCell>
+        <!-- 90.56 → 188.7 -->
+        <mxCell id="g5_m" style="rounded=0;fillColor=#82b366;strokeColor=#3d7e29" vertex="1" parent="1"><mxGeometry x="695" y="189" width="38" height="371" as="geometry" /></mxCell>
+        <mxCell id="g5_ml" value="90.56" style="text;html=1;fontSize=11;fontStyle=1;fontColor=#3d7e29;align=center" vertex="1" parent="1"><mxGeometry x="688" y="169" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 86.54 → 205.2 -->
+        <mxCell id="g5_p" style="rounded=0;fillColor=#6c8ebf;strokeColor=#3a6dbf" vertex="1" parent="1"><mxGeometry x="735" y="205" width="38" height="355" as="geometry" /></mxCell>
+        <mxCell id="g5_pl" value="86.54" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="728" y="185" width="52" height="20" as="geometry" /></mxCell>
+        <!-- 82.00 → 223.8 -->
+        <mxCell id="g5_r" style="rounded=0;fillColor=#b85450;strokeColor=#7a3a3a" vertex="1" parent="1"><mxGeometry x="775" y="224" width="38" height="336" as="geometry" /></mxCell>
+        <mxCell id="g5_rl" value="82.00" style="text;html=1;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="768" y="204" width="52" height="20" as="geometry" /></mxCell>
+
+        <!-- Legend -->
+        <mxCell id="leg" value="" style="rounded=1;fillColor=#F5F5F5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="140" y="100" width="640" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1c" style="rounded=0;fillColor=#82b366;strokeColor=#3d7e29" vertex="1" parent="1"><mxGeometry x="170" y="110" width="20" height="20" as="geometry" /></mxCell>
+        <mxCell id="leg1l" value="Mops（本文）" style="text;html=1;fontSize=11;fontStyle=1" vertex="1" parent="1"><mxGeometry x="195" y="110" width="120" height="20" as="geometry" /></mxCell>
+        <mxCell id="leg2c" style="rounded=0;fillColor=#6c8ebf;strokeColor=#3a6dbf" vertex="1" parent="1"><mxGeometry x="340" y="110" width="20" height="20" as="geometry" /></mxCell>
+        <mxCell id="leg2l" value="Plan-and-Solve" style="text;html=1;fontSize=11" vertex="1" parent="1"><mxGeometry x="365" y="110" width="120" height="20" as="geometry" /></mxCell>
+        <mxCell id="leg3c" style="rounded=0;fillColor=#b85450;strokeColor=#7a3a3a" vertex="1" parent="1"><mxGeometry x="510" y="110" width="20" height="20" as="geometry" /></mxCell>
+        <mxCell id="leg3l" value="Single-ReAct" style="text;html=1;fontSize=11" vertex="1" parent="1"><mxGeometry x="535" y="110" width="120" height="20" as="geometry" /></mxCell>
+
+        <!-- 旁注关键指标 -->
+        <mxCell id="sideBox" value="关键效率与成本指标对比" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="960" y="80" width="400" height="540" as="geometry" />
+        </mxCell>
+
+        <mxCell id="kh1" value="指标" style="rounded=0;fillColor=#666666;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="120" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kh2" value="Mops" style="rounded=0;fillColor=#82b366;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="120" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kh3" value="PS" style="rounded=0;fillColor=#6c8ebf;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="120" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kh4" value="ReAct" style="rounded=0;fillColor=#b85450;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="120" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr1a" value="整体得分" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="150" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr1b" value="92.78" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="150" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr1c" value="88.30" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="150" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr1d" value="84.10" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="150" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr2a" value="覆盖率 (30 场景)" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="180" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr2b" value="30/30" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="180" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr2c" value="29/30" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="180" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr2d" value="28/30" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="180" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr3a" value="工具 F1" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="210" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr3b" value="0.989" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="210" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr3c" value="0.930" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="210" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr3d" value="0.863" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="210" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr4a" value="根因命中率" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="240" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr4b" value="100%" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="240" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr4c" value="96.6%" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="240" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr4d" value="91.5%" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="240" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr5a" value="权限合规率" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="270" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr5b" value="100%" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="270" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr5c" value="100%" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="270" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr5d" value="96.4%" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="270" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr6a" value="平均 Tokens" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="300" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr6b" value="921" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="300" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr6c" value="992" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="300" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr6d" value="1 482" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="300" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr7a" value="平均时延 (ms)" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="330" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr7b" value="24 600" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="330" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr7c" value="26 089" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="330" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr7d" value="39 217" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="330" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr8a" value="平均工具调用" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="360" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr8b" value="2.67" style="rounded=0;fillColor=#FFFFFF;fontSize=11;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="360" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr8c" value="2.69" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="360" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr8d" value="4.21" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="360" width="70" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="kr9a" value="多轮通过率" style="rounded=0;fillColor=#FFE6CC;fontSize=10;fontStyle=1;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="980" y="390" width="170" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr9b" value="92.9%" style="rounded=0;fillColor=#FFE6CC;fontSize=12;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1150" y="390" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr9c" value="71.4%" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1210" y="390" width="60" height="30" as="geometry" /></mxCell>
+        <mxCell id="kr9d" value="50.0%" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1270" y="390" width="70" height="30" as="geometry" /></mxCell>
+
+        <!-- Highlight box -->
+        <mxCell id="hl" value="关键结论&#10;━━━━━━━━━━&#10;● Mops 整体得分领先 +4.5 / +8.7&#10;● 运维（+10.7）、提交（+4.0）&#10;  类别优势最大&#10;● 同时获得最低 Token 与时延&#10;● 多轮通过率显著领先" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="980" y="440" width="380" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- Sources -->
+        <mxCell id="src" value="数据出处：exp30-qwen3-coder-plus-newkey-prod-{mops,ps,react}-20260505-v1 系列 offline-bench-summary.*.json" style="text;html=1;align=center;fontSize=10;fontStyle=2;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="40" y="630" width="1320" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

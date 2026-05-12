@@ -1,0 +1,80 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="title" value="图 4-5 Crater-Bench 离线评测流水线与六维加权评分" style="text;html=1;align=center;fontSize=16;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="180" y="10" width="600" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="raw" value="真实运行数据&#10;K8s API + PostgreSQL&#10;采集 SQL / shell" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="60" y="80" width="180" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="snap" value="工具快照库&#10;raw/*.json&#10;后端 API 真实返回" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="280" y="80" width="180" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="anno" value="人工标注&#10;期望工具序列 (must/nice)&#10;答案关键要素 / 风险等级" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="500" y="80" width="200" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="trial" value="3-5 次 Mops 试跑&#10;盲审 + 第三人裁决" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="740" y="80" width="180" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="scenarios" value="real_scenarios/&#10;85 个评测场景 (JSON)&#10;{id, category, difficulty, turns,&#10; ground_truth, score_profile}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="60" y="220" width="280" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="mockbe" value="Mock Backend&#10;FastAPI · 与生产 API 等价&#10;按 scenario 回放快照" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="400" y="220" width="220" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="runtime" value="Agent Runtime&#10;复用生产代码&#10;MockExecutor 注入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="680" y="220" width="220" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="runner" value="eval/runner.py&#10;顺序 run_benchmark&#10;并行 run_benchmark_parallel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="60" y="370" width="240" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="trace" value="trace.jsonl&#10;完整推理轨迹&#10;tool_calls + actions + tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="340" y="370" width="240" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="judge" value="LLM-as-Judge&#10;ChatJudge (对话质量)&#10;ChainJudge (任务完成度)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="620" y="370" width="240" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="score_title" value="eval/scoring.py — 六维加权评分" style="text;html=1;align=center;fontSize=13;fontStyle=1;fontColor=#444" vertex="1" parent="1">
+      <mxGeometry x="60" y="475" width="900" height="25" as="geometry"/>
+    </mxCell>
+    <mxCell id="m1" value="① Tool F1&#10;期望 vs 实际工具集合" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="60" y="505" width="170" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="m2" value="② RootCauseHit&#10;关键词覆盖" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="240" y="505" width="170" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="m3" value="③ ChatJudge&#10;LLM 评对话" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="420" y="505" width="170" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="m4" value="④ PermissionCompliance&#10;违规一票否决" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="600" y="505" width="170" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="m5" value="⑤ Efficiency&#10;工具调用规模" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="60" y="570" width="170" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="m6" value="⑥ MultiTurnPass&#10;含确认场景通过率" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="240" y="570" width="170" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="weight" value="按 score_profile 加权 + 难度归一化&#10;easy×1.0 / medium×1.2 / hard×1.5" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=10;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="420" y="570" width="350" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="report" value="离线报告&#10;offline-bench-report.{mode}.{name}&#10;.scenarios.csv / .turns.csv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="800" y="570" width="240" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="feedback" value="agent_quality_eval（生产质量库）  ←  /eval/quality/feedback （👍/👎）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff5f5;strokeColor=#b85450;fontSize=11;fontStyle=2;dashed=1" vertex="1" parent="1">
+      <mxGeometry x="60" y="640" width="980" height="35" as="geometry"/>
+    </mxCell>
+    <mxCell id="ed1" style="endArrow=classic;html=1" edge="1" parent="1" source="raw" target="snap"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed2" style="endArrow=classic;html=1" edge="1" parent="1" source="snap" target="anno"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed3" style="endArrow=classic;html=1" edge="1" parent="1" source="anno" target="trial"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed4" style="endArrow=classic;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0" edge="1" parent="1" source="trial" target="runtime"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed5" style="endArrow=classic;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0" edge="1" parent="1" source="snap" target="mockbe"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed6" style="endArrow=classic;html=1" edge="1" parent="1" source="scenarios" target="mockbe"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed7" style="endArrow=classic;html=1" edge="1" parent="1" source="mockbe" target="runtime"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed8" style="endArrow=classic;html=1;exitX=0.2;exitY=1;entryX=0.5;entryY=0" edge="1" parent="1" source="scenarios" target="runner"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed9" style="endArrow=classic;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0" edge="1" parent="1" source="runtime" target="trace"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed10" style="endArrow=classic;html=1" edge="1" parent="1" source="trace" target="judge"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="ed11" style="endArrow=classic;html=1" edge="1" parent="1" source="judge" target="report"><mxGeometry relative="1" as="geometry"/></mxCell>
+  </root>
+</mxGraphModel>

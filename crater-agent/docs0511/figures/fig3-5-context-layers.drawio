@@ -1,0 +1,102 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="三类上下文分层" id="fig3-5">
+    <mxGraphModel dx="1422" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 3-5 三类上下文的获取、维护与注入路径" style="text;html=1;align=center;fontSize=17;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="640" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- 来源行 -->
+        <mxCell id="srcLbl" value="数据来源（外部）" style="text;html=1;align=center;fontSize=13;fontStyle=1;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="40" y="65" width="200" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- 用户上下文来源 -->
+        <mxCell id="src1" value="JWT 鉴权信息&#10;（Crater Backend 解析）&#10;━━━━━━━━━&#10;user_id · account_id&#10;role ∈ {user, admin}&#10;groups · scope" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 页面上下文来源 -->
+        <mxCell id="src2" value="前端页面状态&#10;（Frontend 实时上报）&#10;━━━━━━━━━&#10;route：/jobs/jobX&#10;选中对象：job_name&#10;node_name · pvc_name&#10;is_admin_page: bool" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="380" y="100" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 会话上下文来源 -->
+        <mxCell id="src3" value="PostgreSQL 会话表&#10;（Backend 持久化）&#10;━━━━━━━━━&#10;sessions · turns · messages&#10;tool_calls · final_answer&#10;continuation · resume_ctx" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="700" y="100" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 工具结果来源 -->
+        <mxCell id="src4" value="工具执行返回&#10;（Runtime 累积）&#10;━━━━━━━━━&#10;tool_records[]&#10;evidence · facts&#10;confirmation_results" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="1020" y="100" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 中间处理层 -->
+        <mxCell id="midLbl" value="规范化与安全处理（Runtime · 不可被前端覆盖）" style="text;html=1;align=center;fontSize=13;fontStyle=1;fontColor=#B85450" vertex="1" parent="1">
+          <mxGeometry x="380" y="260" width="640" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mid1" value="actor_role 解析&#10;━━━━━━━━━&#10;_resolve_actor_role(context)&#10;● 仅信任 JWT actor.role&#10;● 页面 scope 可收窄不可放大&#10;● 忽略 LLM 输出的角色字段" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;strokeWidth=2;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="300" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mid2" value="page_context 提取&#10;━━━━━━━━━&#10;scenarios.py&#10;● extract_job_name(route)&#10;● extract_node_name(route)&#10;● is_admin_page(route)&#10;● 入口检测：节点分析/巡检/分布式" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;strokeWidth=2;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="380" y="300" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mid3" value="历史压缩&#10;━━━━━━━━━&#10;memory/session.py&#10;build_history_messages&#10;● 4000 Token 预算&#10;● 工具结果头尾各 1200 字符&#10;● 错误结果留 1600 字符" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;strokeWidth=2;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="700" y="300" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mid4" value="证据沉淀&#10;━━━━━━━━━&#10;Explorer 调用结果&#10;● 头尾截断后写入 evidence&#10;● Verifier 抽取 facts&#10;● 跨轮通过 checkpoint 续接" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;strokeWidth=2;fontSize=10;align=left;verticalAlign=top;spacingLeft=10;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="1020" y="300" width="280" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 注入到三类上下文 -->
+        <mxCell id="inLbl" value="注入到 MASState 三层上下文" style="text;html=1;align=center;fontSize=13;fontStyle=1;fontColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="500" y="460" width="400" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- C1 用户上下文 -->
+        <mxCell id="c1" value="① 用户上下文 User Context&#10;━━━━━━━━━━━━&#10;MASState.goal.actor_role&#10;MASState.goal.account_id&#10;capabilities.surface_role&#10;━━━━━━━━━━━━&#10;用途：&#10;● 工具选择过滤（tool_selector）&#10;● 系统提示词中显式角色声明&#10;● 审计日志 actor 字段&#10;&#10;特性：可信源，整轮不变" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="320" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- C2 页面上下文 -->
+        <mxCell id="c2" value="② 页面上下文 Page Context&#10;━━━━━━━━━━━━&#10;MASState.goal.page_context&#10;  · route&#10;  · job_name?&#10;  · node_name?&#10;  · pvc_name?&#10;━━━━━━━━━━━━&#10;用途：&#10;● 隐式参数注入&#10;  （&quot;为什么失败？&quot; → 自动绑定&#10;   当前页面的 job_name）&#10;● Planner 候选工具偏置&#10;● Inspection 巡检定位入口&#10;&#10;特性：每请求更新" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="380" y="500" width="320" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- C3 会话上下文 -->
+        <mxCell id="c3" value="③ 会话上下文 Session Context&#10;━━━━━━━━━━━━&#10;MASState.history[ ]&#10;MASState.continuation&#10;MASState.workflow （checkpoint）&#10;━━━━━━━━━━━━&#10;用途：&#10;● 多轮对话连贯性&#10;● 续接已暂停任务&#10;  （PAUSE → RESUME）&#10;● 跨轮 attempted_tool_signatures&#10;&#10;特性：&#10;● 跨轮持久&#10;● Token 预算化截断&#10;● 由 Backend 表 turns/messages 重建" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="720" y="500" width="320" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- 工具结果（短期） -->
+        <mxCell id="c4" value="（轮内）工具与证据&#10;━━━━━━━━━━━━&#10;MASState.observation.evidence&#10;MASState.tool_records&#10;━━━━━━━━━━━━&#10;用途：&#10;● Explorer 迭代证据池&#10;● Verifier 验证依据&#10;● 完整审计回放&#10;&#10;特性：&#10;● 单轮内累积&#10;● 跨轮通过 checkpoint 保留&#10;● StateView 按角色裁剪可见性" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="1060" y="500" width="300" height="280" as="geometry" />
+        </mxCell>
+
+        <!-- Edges from sources to mid -->
+        <mxCell id="e11" style="endArrow=classic;html=1" edge="1" parent="1" source="src1" target="mid1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e22" style="endArrow=classic;html=1" edge="1" parent="1" source="src2" target="mid2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e33" style="endArrow=classic;html=1" edge="1" parent="1" source="src3" target="mid3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e44" style="endArrow=classic;html=1" edge="1" parent="1" source="src4" target="mid4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Edges from mid to context -->
+        <mxCell id="e1c1" style="endArrow=classic;html=1" edge="1" parent="1" source="mid1" target="c1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2c2" style="endArrow=classic;html=1" edge="1" parent="1" source="mid2" target="c2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3c3" style="endArrow=classic;html=1" edge="1" parent="1" source="mid3" target="c3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4c4" style="endArrow=classic;html=1" edge="1" parent="1" source="mid4" target="c4"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="设计要点：①+②+③ 三类上下文均纳入系统提示词的 &lt;actor_role&gt; / &lt;page_context&gt; / &lt;session_history&gt; 三个槽位；不同 Agent 通过 StateView 只看到自己关心的子集；&#10;高风险操作发生 PAUSE 时，整个 MASState（含全部上下文）通过 workflow checkpoint 序列化由 Backend 持久化，RESUME 时由 from_request() 完整重建，保证多轮稳健性" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;fontSize=11;fontStyle=2;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="40" y="800" width="1320" height="70" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

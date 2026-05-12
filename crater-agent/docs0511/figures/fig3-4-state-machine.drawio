@@ -1,0 +1,210 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="协调器状态机" id="fig3-4">
+    <mxGraphModel dx="1422" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 3-4 Coordinator 状态机：含 replan / reassign / retry / HITL 暂停的完整转移图" style="text;html=1;align=center;fontSize=17;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="220" y="20" width="960" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Start -->
+        <mxCell id="s_init" value="● INIT 初始化" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;strokeColor=#000000;fontColor=#FFFFFF;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ROUTE -->
+        <mxCell id="s_route" value="ROUTE&#10;意图路由分类" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="300" y="100" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- PLAN -->
+        <mxCell id="s_plan" value="PLAN 规划&#10;━━━━━&#10;Planner 写 PlanArtifact&#10;risk_assessment 标注" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="540" y="90" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- EXPLORE -->
+        <mxCell id="s_explore" value="EXPLORE 探索&#10;━━━━━&#10;Explorer 迭代调用只读工具&#10;追加 evidence / facts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="820" y="90" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- EXECUTE -->
+        <mxCell id="s_execute" value="EXECUTE 执行&#10;━━━━━&#10;Executor 调用写工具&#10;awaiting_confirmation?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="820" y="280" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- PAUSE -->
+        <mxCell id="s_pause" value="PAUSE 暂停&#10;━━━━━&#10;序列化 workflow checkpoint&#10;发送 SSE pause 事件&#10;等待用户确认" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1100" y="280" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- RESUME -->
+        <mxCell id="s_resume" value="RESUME 续接&#10;━━━━━&#10;apply_resume_outcome&#10;更新 action.status&#10;attempted_tool_signatures 去重" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1100" y="430" width="240" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- VERIFY -->
+        <mxCell id="s_verify" value="VERIFY 验证&#10;━━━━━&#10;Verifier 判定&#10;pass / missing / risk / retry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="820" y="450" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- SUMMARIZE -->
+        <mxCell id="s_sum" value="SUMMARIZE 总结&#10;━━━━━&#10;Coordinator 整合 4 工件&#10;生成最终自然语言答复" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="540" y="450" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- END -->
+        <mxCell id="s_end" value="● END 终止&#10;审计落库" style="ellipse;whiteSpace=wrap;html=1;fillColor=#82b366;strokeColor=#3d7e29;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="300" y="460" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ABORT -->
+        <mxCell id="s_abort" value="● ABORT 中止&#10;返回错误 / 拒绝原因" style="ellipse;whiteSpace=wrap;html=1;fillColor=#B85450;strokeColor=#7a3a3a;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="100" y="460" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Forward edges -->
+        <mxCell id="e1" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_init" target="s_route"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_route" target="s_plan"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2l" value="entry_mode=agent" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="460" y="80" width="120" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_plan" target="s_explore"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_explore" target="s_execute"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4l" value="证据充分&#10;stage_complete" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1050" y="200" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_execute" target="s_pause"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5l" value="高风险&#10;需确认" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#D79B00" vertex="1" parent="1">
+          <mxGeometry x="1045" y="295" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_pause" target="s_resume"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6l" value="用户确认&#10;(批准 / 拒绝)" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#D79B00" vertex="1" parent="1">
+          <mxGeometry x="1350" y="370" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_resume" target="s_verify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7l" value="续接&#10;recover state" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#D79B00" vertex="1" parent="1">
+          <mxGeometry x="1050" y="480" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_execute" target="s_verify"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8l" value="低风险&#10;直接执行" style="text;html=1;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="850" y="370" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_verify" target="s_sum"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9l" value="verdict=pass&#10;✓ 验证通过" style="text;html=1;fontSize=10;fontStyle=1;fontColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="770" y="480" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="endArrow=classic;html=1;strokeWidth=2" edge="1" parent="1" source="s_sum" target="s_end"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- Feedback loop 1: VERIFY → EXPLORE (missing evidence) -->
+        <mxCell id="fb_me" style="endArrow=classic;html=1;strokeColor=#B85450;strokeWidth=2;dashed=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1" edge="1" parent="1" source="s_verify" target="s_explore">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="930" y="430" /><mxPoint x="930" y="200" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="fb_mel" value="① 补充探索&#10;verdict = missing_evidence&#10;（证据不足 / open_question 未解决）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;fontSize=10;fontStyle=1;fontColor=#B85450;align=center" vertex="1" parent="1">
+          <mxGeometry x="730" y="230" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Feedback loop 2: VERIFY → PLAN (replan) -->
+        <mxCell id="fb_rp" style="endArrow=classic;html=1;strokeColor=#B85450;strokeWidth=2;dashed=1" edge="1" parent="1" source="s_verify" target="s_plan">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="620" y="490" /><mxPoint x="620" y="190" /><mxPoint x="640" y="170" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="fb_rpl" value="② replan&#10;verdict = risk&#10;（计划本身存在风险，&#10;需重新拆解）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;fontSize=10;fontStyle=1;fontColor=#B85450;align=center" vertex="1" parent="1">
+          <mxGeometry x="455" y="260" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Feedback loop 3: VERIFY → EXECUTE (retry) -->
+        <mxCell id="fb_rt" style="endArrow=classic;html=1;strokeColor=#B85450;strokeWidth=2;dashed=1;exitX=1;exitY=0.3;entryX=1;entryY=0.7" edge="1" parent="1" source="s_verify" target="s_execute">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="1080" y="475" /><mxPoint x="1080" y="335" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="fb_rtl" value="③ retry&#10;verdict = retry&#10;（可恢复错误 / 工具临时失败）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;fontSize=10;fontStyle=1;fontColor=#B85450;align=center" vertex="1" parent="1">
+          <mxGeometry x="1100" y="380" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Feedback loop 4: Coordinator REASSIGN -->
+        <mxCell id="fb_ra" style="endArrow=classic;html=1;strokeColor=#9673A6;strokeWidth=2;dashed=1" edge="1" parent="1">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="540" y="130" /><mxPoint x="480" y="130" /><mxPoint x="480" y="60" /><mxPoint x="740" y="60" /><mxPoint x="740" y="90" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="fb_ral" value="④ 重新指派 reassign&#10;Coordinator 检测到&#10;Planner 产出无效 → 切换模型&#10;或换为 Plan-Execute 编排" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673A6;fontSize=10;fontStyle=1;fontColor=#9673A6;align=center" vertex="1" parent="1">
+          <mxGeometry x="490" y="0" width="280" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Abort paths -->
+        <mxCell id="ab1" style="endArrow=classic;html=1;strokeColor=#B85450;strokeWidth=2" edge="1" parent="1" source="s_verify" target="s_abort">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="820" y="490" /><mxPoint x="260" y="490" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="ab1l" value="loop_round ≥ 8&#10;或 no_progress ≥ 2" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#B85450" vertex="1" parent="1">
+          <mxGeometry x="420" y="495" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ab2" style="endArrow=classic;html=1;strokeColor=#B85450;strokeWidth=2" edge="1" parent="1" source="s_pause" target="s_abort">
+          <mxGeometry as="geometry"><Array as="points"><mxPoint x="1100" y="420" /><mxPoint x="180" y="420" /></Array></mxGeometry>
+        </mxCell>
+        <mxCell id="ab2l" value="用户拒绝 confirm" style="text;html=1;fontSize=10;fontStyle=2;fontColor=#B85450" vertex="1" parent="1">
+          <mxGeometry x="650" y="395" width="160" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- Annotations: trigger conditions table -->
+        <mxCell id="legend" value="状态转移规则与触发条件" style="text;html=1;align=center;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="450" y="560" width="500" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="tbl" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="595" width="1320" height="340" as="geometry" />
+        </mxCell>
+
+        <!-- Headers -->
+        <mxCell id="h1" value="转移" style="rounded=0;fillColor=#666666;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="610" width="220" height="35" as="geometry" /></mxCell>
+        <mxCell id="h2" value="触发条件" style="rounded=0;fillColor=#666666;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="610" width="500" height="35" as="geometry" /></mxCell>
+        <mxCell id="h3" value="副作用 / MASState 变更" style="rounded=0;fillColor=#666666;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="610" width="380" height="35" as="geometry" /></mxCell>
+        <mxCell id="h4" value="参考实现" style="rounded=0;fillColor=#666666;fontColor=#FFFFFF;fontSize=12;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="610" width="180" height="35" as="geometry" /></mxCell>
+
+        <!-- Rows -->
+        <mxCell id="r1a" value="PLAN → EXPLORE" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="645" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r1b" value="PlanArtifact.steps 非空 且 stage_complete=true" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="645" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r1c" value="Coordinator 把控制权交给 Explorer" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="645" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r1d" value="multi.py · _route_to_explore" style="rounded=0;fillColor=#FFFFFF;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="645" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r2a" value="EXPLORE → EXECUTE" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="675" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r2b" value="Observation.stage_complete 且 open_questions 为空" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="675" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r2c" value="Explorer.subagent_iterations 计入 usage" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="675" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r2d" value="agents/explorer.py" style="rounded=0;fillColor=#EEEEEE;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="675" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r3a" value="EXECUTE → PAUSE" style="rounded=0;fillColor=#FFE6CC;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="705" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r3b" value="任一 action.status = awaiting_confirmation" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="705" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r3c" value="序列化 workflow checkpoint v5 · 发 SSE pause" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="705" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r3d" value="state.py · build_workflow_checkpoint" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="705" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r4a" value="PAUSE → RESUME" style="rounded=0;fillColor=#FFE6CC;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="735" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r4b" value="后端推送 confirmation_results 到 /chat 新轮次" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="735" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r4c" value="apply_resume_outcome 更新 action.status；attempted_tool_signatures 去重" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="735" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r4d" value="state.py · apply_resume_outcome" style="rounded=0;fillColor=#FFE6CC;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="735" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r5a" value="① VERIFY → EXPLORE" style="rounded=0;fillColor=#F8E0DD;fontSize=10;fontStyle=1;fontColor=#B85450;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="765" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r5b" value="verdict = missing_evidence 且 Observation.open_questions ≠ ∅" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="765" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r5c" value="loop_round += 1；保留 Plan，追加新 evidence" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="765" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r5d" value="verifier.py · _verdict_missing" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="765" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r6a" value="② VERIFY → PLAN (replan)" style="rounded=0;fillColor=#F8E0DD;fontSize=10;fontStyle=1;fontColor=#B85450;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="795" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r6b" value="verdict = risk 或 Coordinator 判定 Plan.risk_assessment 不可接受" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="795" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r6c" value="清空 ExecutionArtifact 待处理动作；Planner 重写 Plan" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="795" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r6d" value="coordinator.py · _trigger_replan" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="795" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r7a" value="③ VERIFY → EXECUTE (retry)" style="rounded=0;fillColor=#F8E0DD;fontSize=10;fontStyle=1;fontColor=#B85450;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="825" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r7b" value="verdict = retry 且 失败原因为可恢复错误 (timeout / rate-limit)" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="825" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r7c" value="action 保留为 pending，Executor 重新触发；指纹仍在 attempted（避免无限重试）" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="825" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r7d" value="executor.py · _maybe_retry" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="825" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r8a" value="④ Coordinator 重新指派" style="rounded=0;fillColor=#EBE0F0;fontSize=10;fontStyle=1;fontColor=#9673A6;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="855" width="220" height="30" as="geometry" /></mxCell>
+        <mxCell id="r8b" value="同一角色连续两轮 stage_complete=false 或 LLM 返回空响应" style="rounded=0;fillColor=#EBE0F0;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="855" width="500" height="30" as="geometry" /></mxCell>
+        <mxCell id="r8c" value="切换该角色使用的 LLM 模型 / 调整提示词 / 降级到 Plan-Execute 模式" style="rounded=0;fillColor=#EBE0F0;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="855" width="380" height="30" as="geometry" /></mxCell>
+        <mxCell id="r8d" value="coordinator.py · _reassign_role" style="rounded=0;fillColor=#EBE0F0;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="855" width="180" height="30" as="geometry" /></mxCell>
+
+        <mxCell id="r9a" value="*** → ABORT" style="rounded=0;fillColor=#F8E0DD;fontSize=10;fontStyle=1;fontColor=#B85450;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="60" y="885" width="220" height="40" as="geometry" /></mxCell>
+        <mxCell id="r9b" value="loop_round ≥ lead_max_rounds (8) 或 no_progress_count ≥ 2 或 用户拒绝 confirm" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="280" y="885" width="500" height="40" as="geometry" /></mxCell>
+        <mxCell id="r9c" value="stop_reason 设置；Coordinator 总结现有证据 + 错误说明，不执行未决动作" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=left;spacingLeft=10;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="780" y="885" width="380" height="40" as="geometry" /></mxCell>
+        <mxCell id="r9d" value="coordinator.py · _finalize" style="rounded=0;fillColor=#F8E0DD;fontSize=10;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1"><mxGeometry x="1160" y="885" width="180" height="40" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,256 @@
+<mxfile host="app.diagrams.net" modified="2026-05-11T00:00:00.000Z" agent="Mops-Thesis" version="22.0">
+  <diagram name="典型案例时序" id="fig5-4">
+    <mxGraphModel dx="1422" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="图 5-4 典型案例时序对比：用户作业 OOM 诊断（左）vs. 管理员批量关停（右）" style="text;html=1;align=center;fontSize=17;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="220" y="20" width="960" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ============ Case 1 ============ -->
+        <mxCell id="c1box" value="案例 1：用户作业 OOMKilled 诊断（诊断类·难度 3·单轮·无确认）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#82b366;strokeWidth=3;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="30" y="65" width="670" height="850" as="geometry" />
+        </mxCell>
+
+        <!-- Case 1 lifelines top -->
+        <mxCell id="c1u" value="用户&#10;zhangsan" style="shape=umlActor;html=1;fontSize=10;verticalLabelPosition=bottom;align=center" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="30" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c1c" value="Coordinator" style="rounded=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="140" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c1p" value="Planner" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c1e" value="Explorer" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="360" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c1v" value="Verifier" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="470" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c1t" value="工具/K8s" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="580" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Lifelines vertical -->
+        <mxCell id="c1lu" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="75" y="155" /><mxPoint x="75" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1lc" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="180" y="145" /><mxPoint x="180" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1lp" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="290" y="145" /><mxPoint x="290" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1le" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="400" y="145" /><mxPoint x="400" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1lv" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="510" y="145" /><mxPoint x="510" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1lt" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="620" y="145" /><mxPoint x="620" y="850" /></Array></mxGeometry></mxCell>
+
+        <!-- Messages -->
+        <mxCell id="c1m1" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="75" y="170" /><mxPoint x="180" y="170" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m1l" value="① &quot;为什么 jobX 训练 30 秒就退出了？&quot;&#10;page_context = {job_name: jobX}" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="80" y="155" width="240" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m2" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="180" y="200" /><mxPoint x="290" y="200" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m2l" value="② 调度 Planner" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="190" y="180" width="110" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m3" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="290" y="230" /><mxPoint x="180" y="230" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m3l" value="③ Plan：&#10;[diagnose_job → query_metrics → search_similar]" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="190" y="210" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m4" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="180" y="265" /><mxPoint x="400" y="265" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m4l" value="④ 调度 Explorer" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="190" y="245" width="220" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m5" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="400" y="295" /><mxPoint x="620" y="295" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m5l" value="⑤ diagnose_job(jobX)" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="410" y="275" width="220" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="c1m6" style="endArrow=open;html=1;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="620" y="325" /><mxPoint x="400" y="325" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m6l" value="⑥ exit_code=137 OOMKilled&#10;peak_memory=39.8 GB" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="410" y="305" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m7" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="400" y="365" /><mxPoint x="620" y="365" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m7l" value="⑦ query_job_metrics(jobX, gpu_mem, 5min)" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="410" y="345" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="c1m8" style="endArrow=open;html=1;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="620" y="395" /><mxPoint x="400" y="395" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m8l" value="⑧ GPU 显存峰值 39.8/40 GB&#10;batch_size=128 (训练脚本)" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="410" y="375" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m9" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="400" y="435" /><mxPoint x="620" y="435" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m9l" value="⑨ search_similar_failures(OOM, batch=128)" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="410" y="415" width="280" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="c1m10" style="endArrow=open;html=1;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="620" y="465" /><mxPoint x="400" y="465" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m10l" value="⑩ 4 个相似失败，建议减半 bs" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="410" y="445" width="220" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m11" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="400" y="500" /><mxPoint x="180" y="500" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m11l" value="⑪ Observation：3 项证据 + 1 项 facts&#10;facts: [&quot;OOM 原因: batch_size 过大&quot;]" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="190" y="475" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m12" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="180" y="535" /><mxPoint x="510" y="535" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m12l" value="⑫ 调度 Verifier" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="190" y="515" width="320" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m13" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="510" y="570" /><mxPoint x="180" y="570" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m13l" value="⑬ verdict = pass（证据充分，根因明确，无风险）" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#82b366;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="190" y="550" width="320" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1m14" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#82b366" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="180" y="605" /><mxPoint x="75" y="605" /></Array></mxGeometry></mxCell>
+        <mxCell id="c1m14l" value="⑭ 最终答复：&#10;&quot;jobX 因第 30 秒被 OOMKilled，&#10; batch_size=128 接近 A100 显存上限。&#10; 建议减半 bs 或开启梯度累积。&quot;" style="text;html=1;fontSize=10;align=left;spacingLeft=5;fontColor=#82b366;fontStyle=1;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="80" y="585" width="350" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Stats panel -->
+        <mxCell id="c1stat" value="案例 1 统计指标&#10;━━━━━━━━━&#10;● 全流程耗时 5.4 秒&#10;● 3 次工具调用（全部 read）&#10;● Token 消耗 887&#10;● Verifier 一次通过，无 replan&#10;● 用户反馈：👍" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#82b366;strokeWidth=2;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="680" width="290" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1diff" value="对比基线（同场景）&#10;━━━━━━━━━&#10;● PS：5.2 秒 / 3 调用 / 答复一致&#10;  但 batch_size 推荐值偏保守&#10;● ReAct：8.1 秒 / 5 调用&#10;  其中 2 次重复 diagnose_job&#10;  最终根因正确但答复啰嗦" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;fontSize=11;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="370" y="680" width="310" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- ============ Case 2 ============ -->
+        <mxCell id="c2box" value="案例 2：管理员批量关停长时空闲 Jupyter（运维类·难度 4·多轮·需确认）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D79B00;strokeWidth=3;fontSize=13;fontStyle=1;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="710" y="65" width="660" height="850" as="geometry" />
+        </mxCell>
+
+        <!-- Case 2 lifelines top -->
+        <mxCell id="c2u" value="管理员&#10;wjh" style="shape=umlActor;html=1;fontSize=10;verticalLabelPosition=bottom;align=center" vertex="1" parent="1">
+          <mxGeometry x="730" y="100" width="30" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="c2c" value="Coordinator" style="rounded=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="810" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c2e" value="Executor" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="920" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c2v" value="Verifier" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="1030" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c2h" value="HITL UI" style="rounded=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="1140" y="105" width="80" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="c2t" value="K8s/Volcano" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="1250" y="105" width="100" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- vertical lines -->
+        <mxCell id="c2lu" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="745" y="155" /><mxPoint x="745" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2lc" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="850" y="145" /><mxPoint x="850" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2le" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="960" y="145" /><mxPoint x="960" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2lv" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1070" y="145" /><mxPoint x="1070" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2lh" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1180" y="145" /><mxPoint x="1180" y="850" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2lt" style="endArrow=none;dashed=1;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1300" y="145" /><mxPoint x="1300" y="850" /></Array></mxGeometry></mxCell>
+
+        <!-- Phase markers -->
+        <mxCell id="ph1" value="第 1 轮（规划+探索）" style="rounded=1;fillColor=#F5F5F5;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="730" y="160" width="140" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m1" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="745" y="195" /><mxPoint x="850" y="195" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m1l" value="① &quot;把空闲超过 24 小时的 Jupyter 都关掉&quot;" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="755" y="180" width="270" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m2" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="850" y="220" /><mxPoint x="1300" y="220" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m2l" value="② list_idle_jupyter_jobs(threshold=24h) →" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="860" y="205" width="350" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="c2m3" style="endArrow=open;html=1;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1300" y="245" /><mxPoint x="850" y="245" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m3l" value="③ 12 个候选作业 (姓名/最近活跃/GPU 占用)" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="860" y="230" width="350" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ph2" value="第 1 轮（执行提议→暂停）" style="rounded=1;fillColor=#FFE6CC;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="730" y="270" width="170" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m4" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="850" y="310" /><mxPoint x="960" y="310" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m4l" value="④ 调度 Executor" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="860" y="295" width="110" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m5" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="960" y="345" /><mxPoint x="850" y="345" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m5l" value="⑤ 提议 12 个 confirm_terminate_idle_job 动作&#10;risk_level = HIGH（影响他人工作）" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#D79B00;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="320" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note4" value="序列化 workflow checkpoint v5&#10;构造 confirmation_payload" style="rounded=1;fillColor=#FFFFFF;strokeColor=#D79B00;dashed=1;fontSize=9;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="780" y="380" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m6" style="endArrow=open;html=1;strokeColor=#FF6600;strokeWidth=2" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="850" y="440" /><mxPoint x="1180" y="440" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m6l" value="⑥ SSE pause（confirm_id, 12 actions, hint）" style="text;html=1;fontSize=9;fontStyle=1;align=left;spacingLeft=5;fontColor=#FF6600" vertex="1" parent="1">
+          <mxGeometry x="860" y="425" width="320" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m7" style="endArrow=open;html=1;strokeColor=#FF6600;strokeWidth=2" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1180" y="470" /><mxPoint x="745" y="470" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m7l" value="⑦ 渲染确认卡片：12 项可勾选" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#FF6600" vertex="1" parent="1">
+          <mxGeometry x="760" y="455" width="350" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ph3" value="第 2 轮（用户确认）" style="rounded=1;fillColor=#FFE6CC;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="730" y="500" width="170" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m8" style="endArrow=classic;html=1;strokeColor=#D79B00;strokeWidth=2" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="745" y="540" /><mxPoint x="1180" y="540" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m8l" value="⑧ 取消 2 个（关键评测），批准其余 10 个" style="text;html=1;fontSize=9;fontStyle=1;align=left;spacingLeft=5;fontColor=#D79B00" vertex="1" parent="1">
+          <mxGeometry x="760" y="525" width="350" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m9" style="endArrow=classic;html=1;strokeColor=#D79B00;strokeWidth=2" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1180" y="570" /><mxPoint x="850" y="570" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m9l" value="⑨ resume_context: 10 confirmed / 2 rejected" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="860" y="555" width="320" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note5" value="apply_resume_outcome：&#10;重建 MASState · attempted_tool_signatures 去重" style="rounded=1;fillColor=#FFFFFF;strokeColor=#D79B00;dashed=1;fontSize=9;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="790" y="590" width="250" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ph4" value="第 2 轮（执行+验证+总结）" style="rounded=1;fillColor=#F5F5F5;fontSize=10;fontStyle=1;align=center;whiteSpace=wrap;html=1" vertex="1" parent="1">
+          <mxGeometry x="730" y="640" width="180" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m10" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="960" y="680" /><mxPoint x="1300" y="680" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m10l" value="⑩ 逐个调用 confirm_terminate_idle_job × 10" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="970" y="665" width="330" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="c2m11" style="endArrow=open;html=1;dashed=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1300" y="705" /><mxPoint x="960" y="705" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m11l" value="⑪ 10 个 Job.status = Terminated（每次写审计）" style="text;html=1;fontSize=9;align=left;spacingLeft=5;fontColor=#666666" vertex="1" parent="1">
+          <mxGeometry x="970" y="690" width="330" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m12" style="endArrow=classic;html=1" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="960" y="740" /><mxPoint x="1070" y="740" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m12l" value="⑫ Verifier" style="text;html=1;fontSize=9;align=left;spacingLeft=5" vertex="1" parent="1">
+          <mxGeometry x="970" y="725" width="100" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m13" style="endArrow=classic;html=1;startArrow=classic" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="1070" y="770" /><mxPoint x="850" y="770" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m13l" value="⑬ verdict = pass（10/10 Terminated 确认）" style="text;html=1;fontSize=9;fontStyle=1;align=left;spacingLeft=5;fontColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="860" y="755" width="320" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c2m14" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#82b366" edge="1" parent="1"><mxGeometry as="geometry"><Array as="points"><mxPoint x="850" y="805" /><mxPoint x="745" y="805" /></Array></mxGeometry></mxCell>
+        <mxCell id="c2m14l" value="⑭ 执行报告：10 关停 / 2 保留 / 释放 24 张 GPU" style="text;html=1;fontSize=10;fontStyle=1;align=left;spacingLeft=5;fontColor=#82b366" vertex="1" parent="1">
+          <mxGeometry x="760" y="790" width="350" height="15" as="geometry" />
+        </mxCell>
+
+        <!-- Stats panel right -->
+        <mxCell id="c2stat" value="案例 2 统计指标&#10;━━━━━━━━━&#10;● 全流程跨 2 轮，1 分 12 秒&#10;● 14 次工具调用（2 read + 10 write + 2 verify）&#10;● Token 消耗 2 143&#10;● 1 次确认暂停 / 0 次 replan&#10;● 释放 24 张 V100 卡（节省 280 卡时/日）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#D79B00;strokeWidth=2;fontSize=10;align=left;verticalAlign=top;spacingLeft=15;spacingTop=10" vertex="1" parent="1">
+          <mxGeometry x="725" y="850" width="630" height="55" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

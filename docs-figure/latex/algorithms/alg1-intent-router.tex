@@ -1,0 +1,38 @@
+% Algorithm 1: 两级意图路由 IntentRouter
+% 嵌入论文时：直接 \input{...}（已带 algorithm 环境）。
+\begin{algorithm}[t]
+\caption{两级意图路由 IntentRouter}
+\label{alg:intent-router}
+\DontPrintSemicolon
+\KwData{用户请求 $u$，用户角色 $r$，页面上下文 $\mathcal{P}$，会话状态 $\mathcal{S}$}
+\KwResult{路由决策 $\mathcal{R} = \langle \texttt{entry\_mode}, \texttt{op\_mode}, \texttt{action}, c \rangle$}
+
+$\mathcal{R}_{det} \leftarrow \emptyset$ ;
+$c_{det} \leftarrow 0$ \tcp*{确定性提示与置信度}
+
+\If{$\mathcal{S}.pending\_confirmation \neq \varnothing$}{
+  \Return $\langle \text{resume}, \mathcal{S}.last\_op, \mathcal{S}.last\_action, 1.0 \rangle$ \tcp*{续接优先}
+}
+
+\If{$\mathcal{P}.route \in \{\text{job\_detail}, \text{node\_detail}\}$}{
+  $\mathcal{R}_{det} \leftarrow \langle \text{agent}, \text{read}, \text{diagnose}, 0.85 \rangle$ ;
+  绑定目标 $\mathcal{R}_{det}.target \leftarrow \mathcal{P}.entity$ \;
+}
+\ElseIf{$\textsc{MatchGreeting}(u)$}{
+  $\mathcal{R}_{det} \leftarrow \langle \text{help}, \text{read}, \text{guide}, 0.80 \rangle$ \;
+}
+
+\If{$\mathcal{R}_{det} \neq \emptyset$ \textbf{and} $\mathcal{R}_{det}.c \geq 0.75$}{
+  \Return $\mathcal{R}_{det}$ \tcp*{高置信启发式直通}
+}
+
+$\mathcal{R}_{llm} \leftarrow \textsc{LLMClassify}(u, r, \mathcal{P}; \text{schema})$ \tcp*{轻量分类模型}
+
+\eIf{$\mathcal{R}_{llm}$ \textbf{is valid}}{
+  $\mathcal{R} \leftarrow \textsc{Merge}(\mathcal{R}_{det}, \mathcal{R}_{llm})$ \tcp*{保留确定性提示}
+}{
+  $\mathcal{R} \leftarrow \langle \text{agent}, \text{unknown}, \text{none}, 0.3 \rangle$ \tcp*{兜底}
+}
+
+\Return $\mathcal{R}$
+\end{algorithm}

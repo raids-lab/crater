@@ -1,0 +1,78 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="title" value="图 3-4 MASState 字段结构与按角色 StateView 投影" style="text;html=1;align=center;fontSize=16;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="180" y="10" width="600" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="container" value="MASState（多智能体共享状态对象）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;verticalAlign=top;align=center;spacingTop=8" vertex="1" parent="1">
+      <mxGeometry x="60" y="60" width="840" height="280" as="geometry"/>
+    </mxCell>
+    <mxCell id="g_artifacts" value="① 四阶段工件" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4" vertex="1" parent="1">
+      <mxGeometry x="80" y="100" width="200" height="220" as="geometry"/>
+    </mxCell>
+    <mxCell id="goal_f" value="GoalArtifact&#10;{actor, page, capabilities,&#10;intent_label, mode}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="130" width="180" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="plan_f" value="PlanArtifact&#10;{steps[], stage_complete,&#10;candidate_tools}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="175" width="180" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="obs_f" value="ObservationArtifact&#10;{evidence[], summary,&#10;open_questions}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="220" width="180" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="exec_f" value="ExecutionArtifact&#10;{actions[], verdict,&#10;result_summary}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="90" y="265" width="180" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="g_ctrl" value="② 运行控制" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4" vertex="1" parent="1">
+      <mxGeometry x="295" y="100" width="200" height="105" as="geometry"/>
+    </mxCell>
+    <mxCell id="ctrl_f" value="loop_round&#10;no_progress_count&#10;stop_reason&#10;attempted_tool_signatures" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="305" y="130" width="180" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="g_audit" value="③ 证据与审计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4" vertex="1" parent="1">
+      <mxGeometry x="295" y="215" width="200" height="105" as="geometry"/>
+    </mxCell>
+    <mxCell id="audit_f" value="tool_records[]&#10;action_history[]&#10;trace_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="305" y="245" width="180" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="g_conf" value="④ 确认与恢复" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4" vertex="1" parent="1">
+      <mxGeometry x="510" y="100" width="200" height="105" as="geometry"/>
+    </mxCell>
+    <mxCell id="conf_f" value="pending_confirmations&#10;resume_context&#10;workflow_checkpoint (jsonb)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="520" y="130" width="180" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="g_usage" value="⑤ 使用统计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4" vertex="1" parent="1">
+      <mxGeometry x="510" y="215" width="200" height="105" as="geometry"/>
+    </mxCell>
+    <mxCell id="usage_f" value="llm_calls, tokens (in/out)&#10;tool_latency_ms&#10;llm_by_role{}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="520" y="245" width="180" height="65" as="geometry"/>
+    </mxCell>
+    <mxCell id="g_persist" value="⑥ 持久化字段" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;fontStyle=1;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4" vertex="1" parent="1">
+      <mxGeometry x="720" y="100" width="170" height="220" as="geometry"/>
+    </mxCell>
+    <mxCell id="persist_f" value="session_id&#10;turn_id&#10;page_context_snapshot&#10;history_token_budget&#10;serialization version 5&#10;to_request_payload()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b46504;fontSize=10" vertex="1" parent="1">
+      <mxGeometry x="730" y="130" width="150" height="180" as="geometry"/>
+    </mxCell>
+    <mxCell id="sv_title" value="StateView：按角色投影后传给 LLM 的子集（Σ 各 ≤ token budget）" style="text;html=1;align=center;fontSize=12;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="60" y="360" width="840" height="20" as="geometry"/>
+    </mxCell>
+    <mxCell id="sv1" value="Planner View&#10;Goal + Capabilities&#10;≈ 20% budget" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="80" y="395" width="140" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="sv2" value="Explorer View&#10;+ Plan + Observation&#10;≈ 45% budget" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="240" y="395" width="140" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="sv3" value="Executor View&#10;+ Execution.actions&#10;≈ 25% budget" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="400" y="395" width="140" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="sv4" value="Verifier View&#10;Plan + Obs + Execution&#10;≈ 10% budget" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="560" y="395" width="140" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="sv5" value="Coordinator View&#10;全状态（轻量摘要）&#10;＜ 1k tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="720" y="395" width="140" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="note" value="按需视图（View）= 角色看到的字段子集 + Token 预算截断；既减少 token 占用，也避免跨角色干扰" style="text;html=1;align=center;fontSize=11;fontStyle=2;fontColor=#666" vertex="1" parent="1">
+      <mxGeometry x="60" y="475" width="840" height="20" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

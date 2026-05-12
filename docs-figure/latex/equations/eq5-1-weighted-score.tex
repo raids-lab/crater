@@ -1,0 +1,14 @@
+% Equation 5.1: 综合加权评分 (含难度权重)
+\text{OS}_{i}^{\text{norm}} \;=\;
+\frac{
+  w_{d(i)} \cdot \sum_{m \in \mathcal{M}} w_m\, s_{i,m}
+}{
+  w_{d(i)} \cdot \sum_{m \in \mathcal{M}} w_m
+},
+\qquad
+w_{d(i)} =
+\begin{cases}
+  1.0, & d(i) = \text{easy} \\[1pt]
+  1.2, & d(i) = \text{medium} \\[1pt]
+  1.5, & d(i) = \text{hard}
+\end{cases}

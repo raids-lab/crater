@@ -1,0 +1,36 @@
+% Algorithm 2: 协调器阶段决策 CoordinatorPhase
+\begin{algorithm}[t]
+\caption{协调器阶段决策 CoordinatorPhase}
+\label{alg:coordinator-phase}
+\DontPrintSemicolon
+\KwData{共享状态 $M$ (MASState)，护栏配置 $\Theta$，路由结果 $\mathcal{R}$}
+\KwResult{下一阶段 $\phi \in \{\text{plan}, \text{explore}, \text{execute}, \text{verify}, \text{finalize}\}$}
+
+\If{$M.round = 1$ \textbf{and} $M.plan = \varnothing$}{
+  \Return $\text{plan}$ \tcp*{首轮无计划 $\to$ 规划}
+}
+
+\If{$\mathcal{R}.action = \text{resume}$ \textbf{and} $M.pending\_actions = \varnothing$}{
+  \Return $\text{finalize}$ \tcp*{确认后无遗留动作 $\to$ 收束}
+}
+
+\If{$M.execution.ready$ \textbf{and} $M.observation.sufficient$}{
+  \Return $\text{execute}$ \tcp*{已知写操作 $\to$ 直接执行}
+}
+
+\If{$M.round \geq \Theta.lead\_max\_rounds$}{
+  \Return $\text{finalize}$ \tcp*{超过最大协调轮数}
+}
+
+\If{$M.no\_progress\_rounds \geq \Theta.no\_progress\_rounds$}{
+  \Return $\text{finalize}$ \tcp*{无新证据则停止}
+}
+
+$\phi \leftarrow \textsc{LLMDecide}(M.view\_coordinator(), \Theta)$ \tcp*{LLM 兜底}
+
+\If{$\phi \notin \{\text{plan}, \text{explore}, \text{execute}, \text{verify}, \text{finalize}\}$}{
+  $\phi \leftarrow \text{finalize}$ \tcp*{非法值回退}
+}
+
+\Return $\phi$
+\end{algorithm}

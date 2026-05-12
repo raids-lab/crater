@@ -1,0 +1,42 @@
+<mxfile host="app.diagrams.net" modified="2026-05-12T00:00:00.000Z" agent="codex" version="24.0.0" compressed="false">
+  <diagram id="main" name="智能体核心组件关系">
+    <mxGraphModel dx="1200" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="960" pageHeight="520" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="request" value="用户请求&#10;页面上下文" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CFE3EA;strokeColor=#2B6CB0;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="50" y="210" width="130" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="memory" value="记忆与状态&#10;身份  页面  会话  任务" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF3FF;strokeColor=#5B8CC9;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="245" y="70" width="170" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="tools" value="工具体系&#10;声明  过滤  适配  结果" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF3FF;strokeColor=#5B8CC9;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="245" y="340" width="170" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="agent" value="多智能体协作&#10;计划  取证  执行  复核" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#374151;strokeWidth=1.5;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=14;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="475" y="205" width="190" height="82" as="geometry"/>
+        </mxCell>
+        <mxCell id="platform" value="平台事实与操作&#10;作业  指标  队列  存储  网络" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#64748B;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="735" y="340" width="180" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="eval" value="质量评估&#10;轨迹  证据  安全  反馈" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#818CF8;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="735" y="70" width="180" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="security" value="安全控制&#10;权限  HITL  审计" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#E6A23C;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="480" y="55" width="180" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="harness" value="运行时约束&#10;轮次  超时  回退  收敛" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4D6;strokeColor=#E6A23C;strokeWidth=1.3;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="480" y="360" width="180" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="endArrow=classic;endFill=1;html=1;strokeColor=#2563EB;strokeWidth=1.4;edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" parent="1" source="request" target="memory"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" style="endArrow=classic;endFill=1;html=1;strokeColor=#2563EB;strokeWidth=1.4;edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" parent="1" source="memory" target="agent"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" style="endArrow=classic;endFill=1;html=1;strokeColor=#2563EB;strokeWidth=1.4;edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" parent="1" source="agent" target="tools"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" style="endArrow=classic;endFill=1;html=1;strokeColor=#2563EB;strokeWidth=1.4;edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" parent="1" source="tools" target="platform"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="约束" style="endArrow=classic;endFill=1;html=1;strokeColor=#E6A23C;strokeWidth=1.3;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=11;" edge="1" parent="1" source="security" target="agent"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" value="约束" style="endArrow=classic;endFill=1;html=1;strokeColor=#E6A23C;strokeWidth=1.3;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=11;" edge="1" parent="1" source="harness" target="agent"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" value="反馈" style="endArrow=classic;endFill=1;html=1;strokeColor=#818CF8;strokeWidth=1.3;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;fontFamily=Source Han Sans SC,Noto Sans CJK SC,PingFang SC,Hiragino Sans GB,Microsoft YaHei,sans-serif;fontSize=11;" edge="1" parent="1" source="eval" target="agent"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" style="endArrow=classic;endFill=1;html=1;strokeColor=#818CF8;strokeWidth=1.3;dashed=1;edgeStyle=orthogonalEdgeStyle;rounded=1;" edge="1" parent="1" source="agent" target="eval"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

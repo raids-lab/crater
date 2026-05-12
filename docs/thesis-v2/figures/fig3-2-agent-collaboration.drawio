@@ -1,0 +1,81 @@
+<mxGraphModel adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="title" value="图 3-2 多智能体角色与工件共享协作机制" style="text;html=1;align=center;fontSize=16;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="220" y="10" width="520" height="30" as="geometry"/>
+    </mxCell>
+    <mxCell id="coord" value="Coordinator&#10;协调器&#10;（状态机驱动）" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=13" vertex="1" parent="1">
+      <mxGeometry x="420" y="240" width="160" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="planner" value="Planner&#10;规划器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12" vertex="1" parent="1">
+      <mxGeometry x="80" y="100" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="explorer" value="Explorer&#10;探索器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=12" vertex="1" parent="1">
+      <mxGeometry x="80" y="430" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="executor" value="Executor&#10;执行器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12" vertex="1" parent="1">
+      <mxGeometry x="790" y="430" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="verifier" value="Verifier&#10;验证器" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=12" vertex="1" parent="1">
+      <mxGeometry x="790" y="100" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="masstate" value="MASState（共享状态）&#10;Goal · Plan · Observation · Execution&#10;control / audit / confirm 五组字段" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;fontStyle=1" vertex="1" parent="1">
+      <mxGeometry x="400" y="430" width="200" height="100" as="geometry"/>
+    </mxCell>
+    <mxCell id="goal" value="GoalArtifact" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="270" y="260" width="110" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="plan" value="PlanArtifact" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="270" y="345" width="110" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="obs" value="ObservationArtifact" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="620" y="260" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="exec" value="ExecutionArtifact" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="620" y="345" width="130" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="task_box" value="任务型智能体（独立于 MAS 主循环）" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=none;strokeColor=#666;fontSize=11;fontStyle=2;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5" vertex="1" parent="1">
+      <mxGeometry x="80" y="580" width="840" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="guide" value="Guide&#10;帮助" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="120" y="610" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="approval" value="Approval&#10;审批" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="320" y="610" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="quota" value="Quota&#10;配额分析" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="520" y="610" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="inspect" value="Inspection&#10;cron 巡检" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+      <mxGeometry x="720" y="610" width="120" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_cp" style="endArrow=classic;html=1;startArrow=classic;strokeColor=#9673a6;strokeWidth=1.5" edge="1" parent="1" source="coord" target="planner">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_ce" style="endArrow=classic;html=1;startArrow=classic;strokeColor=#82b366;strokeWidth=1.5" edge="1" parent="1" source="coord" target="explorer">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_cx" style="endArrow=classic;html=1;startArrow=classic;strokeColor=#d6b656;strokeWidth=1.5" edge="1" parent="1" source="coord" target="executor">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_cv" style="endArrow=classic;html=1;startArrow=classic;strokeColor=#b85450;strokeWidth=1.5" edge="1" parent="1" source="coord" target="verifier">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_pg" value="读 Goal &#10;写 Plan" style="endArrow=classic;html=1;fontSize=10;fontColor=#444" edge="1" parent="1" source="planner" target="plan">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_ex" value="读 Plan&#10;写 Observation" style="endArrow=classic;html=1;fontSize=10;fontColor=#444" edge="1" parent="1" source="explorer" target="obs">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_xc" value="读 Plan+Obs&#10;写 Execution" style="endArrow=classic;html=1;fontSize=10;fontColor=#444" edge="1" parent="1" source="executor" target="exec">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e_vc" value="读全部&#10;裁决" style="endArrow=classic;html=1;fontSize=10;fontColor=#444" edge="1" parent="1" source="verifier" target="exec">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="note" value="回退路径：missing_evidence→Explorer ｜ risk→Planner（replan）｜ retry→Executor ｜ 连续失败→reassign" style="text;html=1;align=center;fontSize=11;fontStyle=2;fontColor=#b85450" vertex="1" parent="1">
+      <mxGeometry x="120" y="540" width="800" height="30" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>
