@@ -120,3 +120,11 @@ crater-agent/crater-agent/
 .$*.drawio.dtmp
 .venv/
 __pycache__/
+
+# Thesis mindmaps and figure-source local edits kept in working tree only
+# (carried across branches; not part of the agent codebase commit history)
+*-mindmap.drawio
+*-mindmap.drawio.png
+/zhisuan-platform-ops-challenges-mindmap.drawio*
+docs-figure/ch3/fig3-1-platform-five-layer-rewrite.drawio*
+docs-figure/ch4/fig4-1-crater-core-capabilities-mindmap.drawio*
