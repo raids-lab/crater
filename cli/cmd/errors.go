@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/i18n"
@@ -97,12 +98,24 @@ func errOperationCancelled() *clierror.Error {
 	}
 }
 
+func errTooManyArgs(cmd *cobra.Command, got, max int) *clierror.Error {
+	name := ""
+	if cmd != nil {
+		name = cmd.CommandPath()
+	}
+	return &clierror.Error{
+		Category: errorcodes.CategoryUsage,
+		Code:     errorcodes.ErrInvalidFlagValue,
+		Message:  i18n.T("err_too_many_args", name, got, max),
+	}
+}
+
 // errSurveyOrSame 将 Survey 在终端被中断（如 Ctrl+C）映射为用户取消；其它错误原样返回。
 func errSurveyOrSame(err error) error {
 	if err == nil {
 		return nil
 	}
-	if err.Error() == "interrupt" {
+	if errors.Is(err, terminal.InterruptErr) {
 		return errOperationCancelled()
 	}
 	return err

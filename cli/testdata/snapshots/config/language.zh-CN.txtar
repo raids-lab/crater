@@ -94,22 +94,37 @@ crater config langauge --no-interactive --json
 -- zh-CN/12-subcommand-typo-langauge-json/stdout --
 -- zh-CN/12-subcommand-typo-langauge-json/stderr --
 {"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."}
--- zh-CN/13-set-language-success-nojson/argv --
+-- zh-CN/13-too-many-args-nojson/argv --
+crater config language --no-interactive zh-CN extra
+-- zh-CN/13-too-many-args-nojson/exit --
+2
+-- zh-CN/13-too-many-args-nojson/stdout --
+-- zh-CN/13-too-many-args-nojson/stderr --
+Error:
+  crater config language 的参数过多：收到 2 个，最多允许 1 个
+-- zh-CN/14-too-many-args-json/argv --
+crater config language --no-interactive --json zh-CN extra
+-- zh-CN/14-too-many-args-json/exit --
+2
+-- zh-CN/14-too-many-args-json/stdout --
+-- zh-CN/14-too-many-args-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"crater config language 的参数过多：收到 2 个，最多允许 1 个"}
+-- zh-CN/15-set-language-success-nojson/argv --
 crater config language --no-interactive zh-CN
--- zh-CN/13-set-language-success-nojson/exit --
+-- zh-CN/15-set-language-success-nojson/exit --
 0
--- zh-CN/13-set-language-success-nojson/stdout --
+-- zh-CN/15-set-language-success-nojson/stdout --
 语言已切换为：zh-CN
--- zh-CN/13-set-language-success-nojson/stderr --
--- zh-CN/14-set-language-success-json/argv --
+-- zh-CN/15-set-language-success-nojson/stderr --
+-- zh-CN/16-set-language-success-json/argv --
 crater config language --no-interactive --json zh-CN
--- zh-CN/14-set-language-success-json/exit --
+-- zh-CN/16-set-language-success-json/exit --
 0
--- zh-CN/14-set-language-success-json/stdout --
+-- zh-CN/16-set-language-success-json/stdout --
 {
   "data": {
     "language": "zh-CN"
   },
   "status": "OK"
 }
--- zh-CN/14-set-language-success-json/stderr --
+-- zh-CN/16-set-language-success-json/stderr --

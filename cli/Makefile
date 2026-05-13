@@ -64,6 +64,7 @@ UNIT_TEST_PKGS := \
 	./cmd \
 	./internal/completion \
 	./internal/output \
+	./internal/state \
 	./internal/testenv
 
 .PHONY: unit-test

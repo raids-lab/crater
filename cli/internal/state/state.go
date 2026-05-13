@@ -44,10 +44,6 @@ func NewManager() (*Manager, error) {
 	}
 
 	path := filepath.Join(configDir, "crater", "state.json")
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, fmt.Errorf("failed to create config directory: %w", err)
-	}
-
 	m := &Manager{Path: path}
 	if err := m.Load(); err != nil {
 		if !os.IsNotExist(err) {
@@ -70,6 +66,9 @@ func (m *Manager) Save() error {
 	data, err := json.MarshalIndent(m.State, "", "  ")
 	if err != nil {
 		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(m.Path), 0755); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 	return os.WriteFile(m.Path, data, 0600)
 }

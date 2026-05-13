@@ -11,8 +11,8 @@ import (
 const goldenStem = "language"
 
 // 快照默认经 snaptest.EnvMinimal 启用 CRATER_TEST_SANDBOX=1（存储隔离）。
-// 01–12：错误与边界（用法、非法值、未知子命令等）。
-// 13–14：成功路径（沙箱下不落盘，输出稳定）。
+// 01–14：错误与边界（用法、非法值、未知子命令等）。
+// 15–16：成功路径（沙箱下不落盘，输出稳定）。
 
 func TestConfigLanguageSnapshotsEN(t *testing.T) {
 	path := snaptest.GoldenFileT(t, "config", goldenStem, "en")
@@ -33,8 +33,10 @@ func TestConfigLanguageSnapshotsEN(t *testing.T) {
 		{ID: "10-no-interactive-bool-invalid-json", Args: []string{"config", "language", "--no-interactive=maybe", "--json"}},
 		{ID: "11-subcommand-typo-langauge-nojson", Args: []string{"config", "langauge", "--no-interactive"}},
 		{ID: "12-subcommand-typo-langauge-json", Args: []string{"config", "langauge", "--no-interactive", "--json"}},
-		{ID: "13-set-language-success-nojson", Args: []string{"config", "language", "--no-interactive", "en"}},
-		{ID: "14-set-language-success-json", Args: []string{"config", "language", "--no-interactive", "--json", "en"}},
+		{ID: "13-too-many-args-nojson", Args: []string{"config", "language", "--no-interactive", "en", "extra"}},
+		{ID: "14-too-many-args-json", Args: []string{"config", "language", "--no-interactive", "--json", "en", "extra"}},
+		{ID: "15-set-language-success-nojson", Args: []string{"config", "language", "--no-interactive", "en"}},
+		{ID: "16-set-language-success-json", Args: []string{"config", "language", "--no-interactive", "--json", "en"}},
 	}
 
 	results := runConfigLanguageCases(t, bin, baseEnv, cases)
@@ -63,8 +65,10 @@ func TestConfigLanguageSnapshotsZhCN(t *testing.T) {
 		{ID: "10-no-interactive-bool-invalid-json", Args: []string{"config", "language", "--no-interactive=maybe", "--json"}},
 		{ID: "11-subcommand-typo-langauge-nojson", Args: []string{"config", "langauge", "--no-interactive"}},
 		{ID: "12-subcommand-typo-langauge-json", Args: []string{"config", "langauge", "--no-interactive", "--json"}},
-		{ID: "13-set-language-success-nojson", Args: []string{"config", "language", "--no-interactive", "zh-CN"}},
-		{ID: "14-set-language-success-json", Args: []string{"config", "language", "--no-interactive", "--json", "zh-CN"}},
+		{ID: "13-too-many-args-nojson", Args: []string{"config", "language", "--no-interactive", "zh-CN", "extra"}},
+		{ID: "14-too-many-args-json", Args: []string{"config", "language", "--no-interactive", "--json", "zh-CN", "extra"}},
+		{ID: "15-set-language-success-nojson", Args: []string{"config", "language", "--no-interactive", "zh-CN"}},
+		{ID: "16-set-language-success-json", Args: []string{"config", "language", "--no-interactive", "--json", "zh-CN"}},
 	}
 
 	results := runConfigLanguageCases(t, bin, baseEnv, cases)

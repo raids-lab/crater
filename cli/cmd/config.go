@@ -34,6 +34,12 @@ var configCmd = &cobra.Command{
 var languageCmd = &cobra.Command{
 	Use:   "language [LANG]",
 	Short: i18n.T("lang_short"),
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 {
+			return errTooManyArgs(cmd, len(args), 1)
+		}
+		return nil
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		st, err := session.LoadState()
 		if err != nil {

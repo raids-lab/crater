@@ -18,6 +18,7 @@ var catalogErrors = map[Language]map[string]string{
 		"err_invalid_auth_mode":    "invalid authentication mode: %s",
 		"err_multiple_matches":     "multiple credentials match, please be more specific:",
 		"err_missing_language_arg": "language code is required in non-interactive mode",
+		"err_too_many_args":        "too many arguments for %s: got %d, want at most %d",
 	},
 	ZhCN: {
 		"err_not_found":            "未找到匹配的已保存账号",
@@ -35,5 +36,6 @@ var catalogErrors = map[Language]map[string]string{
 		"err_invalid_auth_mode":    "无效的认证方式：%s",
 		"err_multiple_matches":     "存在多个匹配的已保存账号，请提供更具体的信息：",
 		"err_missing_language_arg": "非交互模式下必须提供语言代码",
+		"err_too_many_args":        "%s 的参数过多：收到 %d 个，最多允许 %d 个",
 	},
 }

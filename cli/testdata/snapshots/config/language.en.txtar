@@ -94,22 +94,37 @@ crater config langauge --no-interactive --json
 -- en/12-subcommand-typo-langauge-json/stdout --
 -- en/12-subcommand-typo-langauge-json/stderr --
 {"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."}
--- en/13-set-language-success-nojson/argv --
+-- en/13-too-many-args-nojson/argv --
+crater config language --no-interactive en extra
+-- en/13-too-many-args-nojson/exit --
+2
+-- en/13-too-many-args-nojson/stdout --
+-- en/13-too-many-args-nojson/stderr --
+Error:
+  too many arguments for crater config language: got 2, want at most 1
+-- en/14-too-many-args-json/argv --
+crater config language --no-interactive --json en extra
+-- en/14-too-many-args-json/exit --
+2
+-- en/14-too-many-args-json/stdout --
+-- en/14-too-many-args-json/stderr --
+{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"too many arguments for crater config language: got 2, want at most 1"}
+-- en/15-set-language-success-nojson/argv --
 crater config language --no-interactive en
--- en/13-set-language-success-nojson/exit --
+-- en/15-set-language-success-nojson/exit --
 0
--- en/13-set-language-success-nojson/stdout --
+-- en/15-set-language-success-nojson/stdout --
 Language switched to: en
--- en/13-set-language-success-nojson/stderr --
--- en/14-set-language-success-json/argv --
+-- en/15-set-language-success-nojson/stderr --
+-- en/16-set-language-success-json/argv --
 crater config language --no-interactive --json en
--- en/14-set-language-success-json/exit --
+-- en/16-set-language-success-json/exit --
 0
--- en/14-set-language-success-json/stdout --
+-- en/16-set-language-success-json/stdout --
 {
   "data": {
     "language": "en"
   },
   "status": "OK"
 }
--- en/14-set-language-success-json/stderr --
+-- en/16-set-language-success-json/stderr --
