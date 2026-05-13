@@ -171,6 +171,7 @@ func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/config-summary", mgr.GetAgentConfigSummary)
 	g.GET("/sessions", mgr.ListSessions)
 	g.PUT("/sessions/:sessionId/pin", mgr.UpdateSessionPin)
+	g.PUT("/sessions/:sessionId/title", mgr.UpdateSessionTitle)
 	g.DELETE("/sessions/:sessionId", mgr.DeleteSession)
 	g.GET("/sessions/:sessionId/messages", mgr.GetSessionMessages)
 	g.GET("/sessions/:sessionId/tool-calls", mgr.GetSessionToolCalls)

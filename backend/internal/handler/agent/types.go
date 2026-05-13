@@ -25,6 +25,10 @@ type AgentSessionPinRequest struct {
 	Pinned bool `json:"pinned"`
 }
 
+type AgentSessionTitleRequest struct {
+	Title string `json:"title" binding:"required"`
+}
+
 type ExecuteToolRequest struct {
 	ToolName         string                `json:"tool_name" binding:"required"`
 	ToolArgs         json.RawMessage       `json:"tool_args" binding:"required"`

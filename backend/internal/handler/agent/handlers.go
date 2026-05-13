@@ -513,6 +513,45 @@ func (mgr *AgentMgr) UpdateSessionPin(c *gin.Context) {
 	resputil.Success(c, session)
 }
 
+// UpdateSessionTitle godoc
+// @Summary Rename an agent session
+// @Tags agent
+// @Accept json
+// @Produce json
+// @Param sessionId path string true "Session ID (UUID)"
+// @Param request body AgentSessionTitleRequest true "Rename request"
+// @Success 200 {object} resputil.Response[any]
+// @Router /api/v1/agent/sessions/{sessionId}/title [put]
+func (mgr *AgentMgr) UpdateSessionTitle(c *gin.Context) {
+	sessionID := c.Param("sessionId")
+	if sessionID == "" {
+		resputil.BadRequestError(c, "sessionId is required")
+		return
+	}
+
+	var req AgentSessionTitleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	token := util.GetToken(c)
+	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
+		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		return
+	}
+	if err := mgr.agentService.UpdateSessionTitle(c.Request.Context(), sessionID, req.Title); err != nil {
+		resputil.BadRequestError(c, fmt.Sprintf("failed to update session title: %v", err))
+		return
+	}
+	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID)
+	if err != nil {
+		resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, session)
+}
+
 // DeleteSession godoc
 // @Summary Soft delete an agent session
 // @Tags agent
