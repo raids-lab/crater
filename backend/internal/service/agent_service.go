@@ -185,14 +185,23 @@ func (s *AgentService) ListSessions(ctx context.Context, userID uint) ([]*model.
 }
 
 // UpdateSessionTitle updates the title of a session.
+//
+// Trims whitespace, rejects empty input, truncates to 100 runes (with "…"
+// suffix) to match CreateSession's validation. Uses UpdateColumn so the
+// session's UpdatedAt timestamp is NOT bumped — a rename is not "new activity"
+// and should not reorder the session list.
 func (s *AgentService) UpdateSessionTitle(ctx context.Context, sessionID string, title string) error {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return errors.New("title cannot be empty")
+	}
 	if runeTitle := []rune(title); len(runeTitle) > 100 {
-		title = string(runeTitle[:100]) + "..."
+		title = string(runeTitle[:100]) + "…"
 	}
 	return s.db.WithContext(ctx).
 		Model(&model.AgentSession{}).
 		Where("session_id = ?", sessionID).
-		Update("title", title).Error
+		UpdateColumn("title", title).Error
 }
 
 func (s *AgentService) UpdateSessionOrchestrationMode(

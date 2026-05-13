@@ -9,6 +9,7 @@ import {
   History,
   Loader2,
   PanelLeftClose,
+  Pencil,
   Pin,
   Plus,
   Send,
@@ -22,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -52,6 +54,7 @@ import {
   apiListSessions,
   apiParameterUpdate,
   apiPinSession,
+  apiRenameSession,
   connectAgentChat,
   connectAgentResume,
 } from '@/services/api/agent'
@@ -867,8 +870,13 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     useState<SessionDeleteConfirmState | null>(null)
   const [sessionActionLoading, setSessionActionLoading] = useState<{
     sessionId: string
-    action: 'pin' | 'delete'
+    action: 'pin' | 'delete' | 'rename'
   } | null>(null)
+  const [renameState, setRenameState] = useState<{
+    sessionId: string
+    draftTitle: string
+  } | null>(null)
+  const renameInputRef = useRef<HTMLInputElement | null>(null)
   const [sessionPanelOpen, setSessionPanelOpen] = useState(true)
   const agentAbortRef = useRef<AbortController | null>(null)
   const agentHistoryRequestIdRef = useRef(0)
@@ -1051,6 +1059,51 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       }
     },
     [agentHistoryLoading, refetchAgentSessions, sessionActionLoading]
+  )
+
+  const beginRenameSession = useCallback((session: AgentSession) => {
+    setRenameState({
+      sessionId: session.sessionId,
+      draftTitle: session.title ?? '',
+    })
+    // Focus the input on the next tick after it has rendered.
+    requestAnimationFrame(() => {
+      renameInputRef.current?.focus()
+      renameInputRef.current?.select()
+    })
+  }, [])
+
+  const cancelRenameSession = useCallback(() => {
+    setRenameState(null)
+  }, [])
+
+  const commitRenameSession = useCallback(
+    async (session: AgentSession) => {
+      if (!renameState || renameState.sessionId !== session.sessionId) return
+      const next = renameState.draftTitle.trim()
+      if (next === '' || next === (session.title ?? '')) {
+        setRenameState(null)
+        return
+      }
+      setSessionActionLoading({ sessionId: session.sessionId, action: 'rename' })
+      try {
+        await apiRenameSession(session.sessionId, next)
+        await refetchAgentSessions()
+        setRenameState(null)
+      } catch (err) {
+        toast.error(
+          t('aiops.agent.renameSessionFailed', {
+            defaultValue: '会话改名失败：{{msg}}',
+            msg: err instanceof Error ? err.message : String(err),
+          })
+        )
+      } finally {
+        setSessionActionLoading((current) =>
+          current?.sessionId === session.sessionId && current.action === 'rename' ? null : current
+        )
+      }
+    },
+    [refetchAgentSessions, renameState, t]
   )
 
   const requestDeleteAgentSession = useCallback((session: AgentSession) => {
@@ -2511,6 +2564,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                     const isDeleting =
                       sessionActionLoading?.sessionId === session.sessionId &&
                       sessionActionLoading.action === 'delete'
+                    const isRenaming =
+                      sessionActionLoading?.sessionId === session.sessionId &&
+                      sessionActionLoading.action === 'rename'
+                    const isEditing = renameState?.sessionId === session.sessionId
                     const sessionTitle =
                       session.title ||
                       t('aiops.agent.untitledSession', { defaultValue: '未命名' })
@@ -2533,35 +2590,82 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                           hasActiveAgentTask && !isSelected && 'border-amber-200/70 opacity-60'
                         )}
                       >
-                        <button
-                          className="w-full min-w-0 text-left"
-                          onClick={() => handleSelectAgentSession(session.sessionId)}
-                          disabled={agentHistoryLoading || isDeleting}
-                        >
+                        {isEditing ? (
                           <div className="flex items-center gap-1">
-                            <span
-                              className="min-w-0 flex-1 truncate text-[11px] font-medium"
-                              title={sessionTitle}
-                            >
-                              {displayTitle}
-                            </span>
-                            {isDeleting && (
+                            <Input
+                              ref={renameInputRef}
+                              className="h-6 flex-1 text-[11px]"
+                              value={renameState?.draftTitle ?? ''}
+                              maxLength={100}
+                              onChange={(e) =>
+                                setRenameState({
+                                  sessionId: session.sessionId,
+                                  draftTitle: e.target.value,
+                                })
+                              }
+                              onBlur={() => void commitRenameSession(session)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  void commitRenameSession(session)
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault()
+                                  cancelRenameSession()
+                                }
+                              }}
+                              disabled={isRenaming}
+                            />
+                            {isRenaming && (
                               <Loader2 className="text-muted-foreground h-3 w-3 shrink-0 animate-spin" />
                             )}
                           </div>
-                          {hasActiveAgentTask && !isSelected && (
-                            <p className="mt-0.5 text-[9px] text-amber-700">
-                              {t('aiops.agent.sessionSwitchInterruptHint', {
-                                defaultValue: '点击后将提示中断当前执行',
-                              })}
-                            </p>
-                          )}
-                        </button>
+                        ) : (
+                          <button
+                            className="w-full min-w-0 text-left"
+                            onClick={() => handleSelectAgentSession(session.sessionId)}
+                            disabled={agentHistoryLoading || isDeleting}
+                          >
+                            <div className="flex items-center gap-1">
+                              <span
+                                className="min-w-0 flex-1 truncate text-[11px] font-medium"
+                                title={sessionTitle}
+                              >
+                                {displayTitle}
+                              </span>
+                              {isDeleting && (
+                                <Loader2 className="text-muted-foreground h-3 w-3 shrink-0 animate-spin" />
+                              )}
+                            </div>
+                            {hasActiveAgentTask && !isSelected && (
+                              <p className="mt-0.5 text-[9px] text-amber-700">
+                                {t('aiops.agent.sessionSwitchInterruptHint', {
+                                  defaultValue: '点击后将提示中断当前执行',
+                                })}
+                              </p>
+                            )}
+                          </button>
+                        )}
                         <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[9px]">
                           <span className="min-w-0 shrink truncate">
                             {formatAgentSessionDate(session.updatedAt)}
                           </span>
                           <span className="ml-auto flex shrink-0 items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground group-hover:opacity-100 hover:text-sky-600 h-4 w-4 opacity-0 transition-opacity"
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                beginRenameSession(session)
+                              }}
+                              disabled={
+                                agentHistoryLoading || isDeleting || isRenaming || isEditing
+                              }
+                              title={t('aiops.agent.renameSession', { defaultValue: '重命名会话' })}
+                            >
+                              <Pencil className="h-2.5 w-2.5" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"

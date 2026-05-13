@@ -585,6 +585,11 @@ export const apiPinSession = (sessionId: string, pinned: boolean) =>
     pinned,
   })
 
+export const apiRenameSession = (sessionId: string, title: string) =>
+  apiV1Put<IResponse<AgentSession>>(`agent/sessions/${encodeURIComponent(sessionId)}/title`, {
+    title,
+  })
+
 export const apiDeleteSession = (sessionId: string) =>
   apiV1Delete<IResponse<string>>(`agent/sessions/${encodeURIComponent(sessionId)}`)
 
