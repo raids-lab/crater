@@ -126,7 +126,7 @@ var loginCmd = &cobra.Command{
 		authClient := api.NewAuthClient(platformURL)
 		loginResp, err := authClient.Login(username, password, mode)
 		if err != nil {
-			return cliErrFromLoginAPI(err)
+			return cliErrFromAPI(err)
 		}
 
 		// NOTE: we intentionally don't need to load state here; SaveLogin will load and persist.

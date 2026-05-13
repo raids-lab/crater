@@ -70,8 +70,9 @@ func cliErrFromAPINetwork(e *api.NetworkError) *clierror.Error {
 	}
 }
 
-// cliErrFromLoginAPI 映射 Login 返回的 api 错误；未知类型退化为 api_error + ERR_API_OTHER。
-func cliErrFromLoginAPI(err error) *clierror.Error {
+// cliErrFromAPI 将 internal/api 返回的错误映射为 CLI 稳定错误契约。
+// 已知 API 错误会按 RequestError / NetworkError 保留结构化事实；未知错误退化为 ERR_API_OTHER。
+func cliErrFromAPI(err error) *clierror.Error {
 	var req *api.RequestError
 	if errors.As(err, &req) {
 		return cliErrFromAPIRequest(req)

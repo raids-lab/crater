@@ -57,7 +57,7 @@
 - 所有对外请求的 path 常量写在 `internal/api/paths.go`，禁止在方法体内手写未集中管理的 `"/api/..."` 片段。
 - 通用客户端、`Response[T]`、与连接/传输层直接相关的入口（如 `NewClient`、`SetToken`）放在 `internal/api/client.go`；新增域接口时，该域的 DTO、小接口（如 `AuthClient`）、`NewXxxClient` 与同域的 `(*Client)` 方法放在**同一域文件**（如 `auth.go`），避免在 `cmd` 或无关包中散落 HTTP 细节。
 - `internal/api` 的导出方法只返回业务数据与 `error`；使用本包错误类型表达「已收到 HTTP 响应但未成功」「网络层失败」等语义。**禁止**在 `internal/api` 内构造 `*clierror.Error`、向 stdout/stderr 输出、或调用 `i18n`。
-- 将 `internal/api` 返回的错误映射为 `*clierror.Error` 并在 `RunE` 中 `return` 的工作留在 `cmd`（例如 `cmd/errors.go`）；HTTP 档位与 `Code` 的对应关系遵循本文档「命令结果」中的 `api_error` 约定。
+- 通过 `cmd/errors.go` 的 `cliErrFromAPI` 等 helper 将 `internal/api` 返回的错误映射为 `*clierror.Error`，并在 `RunE` 中 `return`；命令实现不得自行分散处理 API 错误码映射。HTTP 档位与 `Code` 的对应关系遵循本文档「命令结果」中的 `api_error` 约定。
 - 仅在本地开发或自测需要**伪造传输层结果**时，使用环境变量 `CRATER_TEST_SANDBOX_HTTP`（如 `timeout` / `error404` 等）；**允许取值与行为以架构文档「网络通信」节为准**。契约验证与前后端联调须使用真实服务或后端提供的 mock，不得把模拟响应当作平台契约。
 
 ---
@@ -203,7 +203,7 @@
 | 500–599 | `ERR_SERVER_INTERNAL_5XX` |
 | 其它或无法归类 | `ERR_API_OTHER` |
 
-有 HTTP 时，`Context` 建议包含整数 `http_status`；能读到响应体时再带 `crater_code`、`msg` 等事实。映射以 `cmd/errors.go` 的 `apiCodeForHTTP` 为准；新增档位须同步修改 `pkg/errorcodes/codes.go`、上表，以及 COMMANDS 中引用本节的表述。
+有 HTTP 时，`Context` 建议包含整数 `http_status`；能读到响应体时再带 `crater_code`、`msg` 等事实。无 HTTP 响应时不得写入 `http_status`；超时、DNS、连接失败等传输层失败使用 `ERR_NETWORK_FAILURE`，并只在 `Context` 中放可序列化的错误事实（如 `msg`）。映射以 `cmd/errors.go` 的 `cliErrFromAPI` / `apiCodeForHTTP` 为准；新增档位须同步修改 `pkg/errorcodes/codes.go`、上表，以及 COMMANDS 中引用本节的表述。
 
 ### 成功：`--json` 的公共形状
 

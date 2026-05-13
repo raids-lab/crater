@@ -56,20 +56,21 @@ const (
 	ErrMutuallyExclusiveFlags = "ERR_MUTUALLY_EXCLUSIVE_FLAGS"
 
 	// API Errors（与 HTTP 语义对齐的后缀约定，见 docs/SPEC.md）
-	ErrUnauthorized401    = "ERR_UNAUTHORIZED_401"
-	ErrForbidden403       = "ERR_FORBIDDEN_403"
+	ErrUnauthorized401   = "ERR_UNAUTHORIZED_401"
+	ErrForbidden403      = "ERR_FORBIDDEN_403"
 	ErrNotFound404       = "ERR_NOT_FOUND_404"
-	ErrClient4XX         = "ERR_CLIENT_4XX"        // 除 401/403/404 外的客户端 4xx（含 400、409 等），与 _5XX 对称
+	ErrClient4XX         = "ERR_CLIENT_4XX" // 除 401/403/404 外的客户端 4xx（含 400、409 等），与 _5XX 对称
 	ErrServerInternal5XX = "ERR_SERVER_INTERNAL_5XX"
 	// ErrAPIOther 表示 api_error，但 HTTP 档位不属于已约定的 401/403/404、4xx 桶、5xx 桶（如 1xx/2xx/3xx/0），或错误类型无法归类时的后备。
 	ErrAPIOther           = "ERR_API_OTHER"
 	ErrAPIVersionMismatch = "ERR_API_VERSION_MISMATCH"
+	// ErrNetworkFailure 表示 API 请求在传输阶段失败，未拿到有效 HTTP 语义。
+	ErrNetworkFailure = "ERR_NETWORK_FAILURE"
 
 	// ErrNotFound 用于 usage_error 等本地状态「未找到」，不带 HTTP 后缀。
 	ErrNotFound = "ERR_NOT_FOUND"
 
 	// System Errors
-	ErrNetworkFailure     = "ERR_NETWORK_FAILURE"
 	ErrConfigWriteFailed  = "ERR_CONFIG_WRITE_FAILED"
 	ErrSecureStorageError = "ERR_SECURE_STORAGE_ERROR"
 	ErrBinaryNotFound     = "ERR_BINARY_NOT_FOUND"

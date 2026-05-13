@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	compshell "github.com/raids-lab/crater/cli/internal/completion/shell"
 	"github.com/raids-lab/crater/cli/internal/i18n"
@@ -196,6 +197,25 @@ func removeZshrcBlock(content []byte) ([]byte, bool, error) {
 	return out, true, nil
 }
 
+func confirmCompletionAction(message string) error {
+	var confirmed bool
+	prompt := &survey.Confirm{Message: message, Default: false}
+	if err := survey.AskOne(prompt, &confirmed); err != nil {
+		if mapped := errSurveyOrSame(err); mapped != err {
+			return mapped
+		}
+		return &clierror.Error{
+			Category: errorcodes.CategorySystem,
+			Code:     errorcodes.ErrCommandExecution,
+			Message:  err.Error(),
+		}
+	}
+	if !confirmed {
+		return errOperationCancelled()
+	}
+	return nil
+}
+
 func runCompletionInstallZsh(cmd *cobra.Command, args []string) error {
 	yes, _ := cmd.Flags().GetBool("yes")
 	noInter := viper.GetBool("no-interactive")
@@ -224,17 +244,8 @@ func runCompletionInstallZsh(cmd *cobra.Command, args []string) error {
 
 	if !noInter && !yes {
 		fmt.Print(i18n.T("completion_install_plan", zshrc, block))
-		fmt.Print(i18n.T("completion_install_confirm"))
-		var s string
-		if _, err := fmt.Scanln(&s); err != nil {
+		if err := confirmCompletionAction(i18n.T("completion_install_confirm")); err != nil {
 			return err
-		}
-		if s != "y" && s != "Y" {
-			return &clierror.Error{
-				Category: errorcodes.CategoryCancelled,
-				Code:     errorcodes.ErrOperationCancelled,
-				Message:  i18n.T("err_operation_cancelled"),
-			}
 		}
 	}
 
@@ -301,17 +312,8 @@ func runCompletionUninstallZsh(cmd *cobra.Command, args []string) error {
 
 	if !noInter && !yes {
 		fmt.Print(i18n.T("completion_uninstall_plan", zshrc))
-		fmt.Print(i18n.T("completion_uninstall_confirm"))
-		var s string
-		if _, err := fmt.Scanln(&s); err != nil {
+		if err := confirmCompletionAction(i18n.T("completion_uninstall_confirm")); err != nil {
 			return err
-		}
-		if s != "y" && s != "Y" {
-			return &clierror.Error{
-				Category: errorcodes.CategoryCancelled,
-				Code:     errorcodes.ErrOperationCancelled,
-				Message:  i18n.T("err_operation_cancelled"),
-			}
 		}
 	}
 
@@ -444,13 +446,8 @@ func runCompletionInstallBash(cmd *cobra.Command, args []string) error {
 	block := bashrcBlock(inline)
 	if !noInter && !yes {
 		fmt.Print(i18n.T("completion_bash_install_plan", bashrc, block))
-		fmt.Print(i18n.T("completion_install_confirm"))
-		var s string
-		if _, err := fmt.Scanln(&s); err != nil {
+		if err := confirmCompletionAction(i18n.T("completion_install_confirm")); err != nil {
 			return err
-		}
-		if s != "y" && s != "Y" {
-			return &clierror.Error{Category: errorcodes.CategoryCancelled, Code: errorcodes.ErrOperationCancelled, Message: i18n.T("err_operation_cancelled")}
 		}
 	}
 
@@ -495,13 +492,8 @@ func runCompletionUninstallBash(cmd *cobra.Command, args []string) error {
 	}
 	if !noInter && !yes {
 		fmt.Print(i18n.T("completion_bash_uninstall_plan", bashrc))
-		fmt.Print(i18n.T("completion_uninstall_confirm"))
-		var s string
-		if _, err := fmt.Scanln(&s); err != nil {
+		if err := confirmCompletionAction(i18n.T("completion_uninstall_confirm")); err != nil {
 			return err
-		}
-		if s != "y" && s != "Y" {
-			return &clierror.Error{Category: errorcodes.CategoryCancelled, Code: errorcodes.ErrOperationCancelled, Message: i18n.T("err_operation_cancelled")}
 		}
 	}
 
