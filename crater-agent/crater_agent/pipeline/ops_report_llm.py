@@ -95,6 +95,76 @@ def _avg(values: list[float]) -> float:
     return round(sum(values) / len(values), 3)
 
 
+# Memory suffix conversions to MiB (1 MiB = 1024 * 1024 bytes).
+# Binary suffixes (Ki/Mi/Gi/Ti/Pi) are the Kubernetes default; decimal suffixes
+# (K/M/G/T/P) are also accepted per resource.Quantity. Numeric without suffix is
+# treated as raw bytes.
+_MEM_BINARY_TO_MIB: dict[str, float] = {
+    "Ki": 1 / 1024,
+    "Mi": 1.0,
+    "Gi": 1024.0,
+    "Ti": 1024.0 * 1024,
+    "Pi": 1024.0**3,
+}
+_MEM_DECIMAL_TO_MIB: dict[str, float] = {
+    "K": 1000.0 / (1024**2),
+    "M": 1_000_000.0 / (1024**2),
+    "G": 1_000_000_000.0 / (1024**2),
+    "T": 1_000_000_000_000.0 / (1024**2),
+    "P": 1_000_000_000_000_000.0 / (1024**2),
+}
+
+
+def _parse_cpu_cores(value: Any) -> float:
+    """Parse a Kubernetes CPU quantity to cores. '500m'→0.5, '2'→2.0."""
+    text = str(value or "").strip()
+    if not text:
+        return 0.0
+    try:
+        if text.endswith("m"):
+            return float(text[:-1]) / 1000.0
+        return float(text)
+    except ValueError:
+        return 0.0
+
+
+def _parse_memory_mib(value: Any) -> float:
+    """Parse a Kubernetes memory quantity to MiB. '32Gi'→32768, '512Mi'→512."""
+    text = str(value or "").strip()
+    if not text:
+        return 0.0
+    for suffix, mult in _MEM_BINARY_TO_MIB.items():
+        if text.endswith(suffix):
+            try:
+                return float(text[: -len(suffix)]) * mult
+            except ValueError:
+                return 0.0
+    for suffix, mult in _MEM_DECIMAL_TO_MIB.items():
+        if text.endswith(suffix):
+            try:
+                return float(text[: -len(suffix)]) * mult
+            except ValueError:
+                return 0.0
+    try:
+        # Raw bytes (Kubernetes treats unitless quantities as bytes).
+        return float(text) / (1024.0**2)
+    except ValueError:
+        return 0.0
+
+
+def _normalize_gpu_util_ratio(value: Any) -> float:
+    """Convert a raw gpu_util_avg field to a 0.0-1.0 ratio.
+
+    The backend Prometheus query already divides DCGM_FI_DEV_GPU_UTIL by 100, so
+    values are typically 0.0-1.0. We still accept legacy callers that pass a
+    0-100 percentage and renormalize defensively.
+    """
+    numeric = _to_float(value)
+    if numeric > 1.0:
+        numeric = numeric / 100.0
+    return max(0.0, min(numeric, 1.0))
+
+
 def _normalize_percentage(value: Any, fallback_total: int = 0, fallback_hit: int = 0) -> float:
     numeric = _to_float(value)
     if numeric <= 1.0 and fallback_total > 0:
@@ -199,9 +269,26 @@ def _build_success_analysis(raw_report: dict[str, Any]) -> dict[str, Any]:
             duration_by_type[job_type].append(float(running_minutes * 60))
 
         actual = _as_dict(job.get("actual_usage"))
-        cpu_ratios.append(round(_to_float(actual.get("cpu_usage_avg")) / 100.0, 3))
-        gpu_ratios.append(round(_to_float(actual.get("gpu_util_avg")) / 100.0, 3))
-        memory_ratios.append(round(_to_float(actual.get("mem_usage_avg")) / 100.0, 3))
+        requested = _as_dict(job.get("requested_resources"))
+
+        # gpu_util_avg from backend is already a 0..1 ratio (the Prometheus
+        # DCGM_FI_DEV_GPU_UTIL query divides by 100 server-side). Use it as-is.
+        gpu_ratios.append(round(_normalize_gpu_util_ratio(actual.get("gpu_util_avg")), 3))
+
+        # cpu_usage_avg is *absolute cores* (Prometheus irate, not a percentage).
+        # Derive a utilization ratio against the requested CPU. Skip the sample
+        # when no request is declared — averaging a 0/0 case skews everything.
+        cpu_used_cores = _to_float(actual.get("cpu_usage_avg"))
+        cpu_request_cores = _parse_cpu_cores(requested.get("cpu"))
+        if cpu_request_cores > 0:
+            cpu_ratios.append(round(cpu_used_cores / cpu_request_cores, 3))
+
+        # mem_usage_avg is *absolute MiB* (Prometheus container_memory_usage_bytes
+        # divided by 1Mi server-side). Derive ratio against the parsed request.
+        mem_used_mib = _to_float(actual.get("mem_usage_avg"))
+        mem_request_mib = _parse_memory_mib(requested.get("memory"))
+        if mem_request_mib > 0:
+            memory_ratios.append(round(mem_used_mib / mem_request_mib, 3))
 
     return {
         "avg_duration_by_type": {
@@ -218,14 +305,22 @@ def _build_success_analysis(raw_report: dict[str, Any]) -> dict[str, Any]:
 
 
 def _estimate_over_provisioned_count(raw_report: dict[str, Any]) -> int:
+    """Count multi-GPU successful jobs whose actual GPU utilization is suspiciously low.
+
+    `gpu_util` from `actual_usage` is a 0.0-1.0 ratio (see backend Prometheus
+    query). The previous implementation compared it against 40.0, which was
+    always true and over-counted every multi-GPU job.
+    """
     count = 0
     for raw_job in _as_list(raw_report.get("successful_jobs")):
         job = _as_dict(raw_job)
         requested = _to_int(job.get("gpu_requested"))
         actual = _to_int(job.get("gpu_actual_used"))
         actual_usage = _as_dict(job.get("actual_usage"))
-        gpu_util = _to_float(actual_usage.get("gpu_util_avg"))
-        if requested > 1 and (requested - actual >= 1 or gpu_util < 40.0):
+        gpu_util_ratio = _normalize_gpu_util_ratio(actual_usage.get("gpu_util_avg"))
+        # Flag jobs that requested >1 GPU but either left >=1 unused OR utilized
+        # the fleet under 40% on average.
+        if requested > 1 and (requested - actual >= 1 or gpu_util_ratio < 0.40):
             count += 1
     return count
 
@@ -477,6 +572,26 @@ def _build_analysis_prompt(
         for job in success_jobs[:10]:
             item = _as_dict(job)
             actual = _as_dict(item.get("actual_usage"))
+            requested = _as_dict(item.get("requested_resources"))
+            # Use proper units: GPU util is a 0..1 ratio (render as %), CPU is
+            # absolute cores (with request for context), memory is absolute MiB
+            # (with request for context). Previously all three were rendered
+            # with a bare "%" suffix, which misled the LLM.
+            gpu_pct = _normalize_gpu_util_ratio(actual.get("gpu_util_avg")) * 100.0
+            cpu_cores = _to_float(actual.get("cpu_usage_avg"))
+            cpu_request_cores = _parse_cpu_cores(requested.get("cpu"))
+            mem_mib = _to_float(actual.get("mem_usage_avg"))
+            mem_request_mib = _parse_memory_mib(requested.get("memory"))
+            cpu_label = (
+                f"{cpu_cores:.2f}/{cpu_request_cores:.2f}核"
+                if cpu_request_cores > 0
+                else f"{cpu_cores:.2f}核"
+            )
+            mem_label = (
+                f"{mem_mib:.0f}/{mem_request_mib:.0f}MiB"
+                if mem_request_mib > 0
+                else f"{mem_mib:.0f}MiB"
+            )
             parts.append(
                 f"- {item.get('job_name', 'unknown')}: "
                 f"user={item.get('user', 'N/A')}, "
@@ -484,9 +599,9 @@ def _build_analysis_prompt(
                 f"运行{item.get('running_minutes', 'N/A')}分钟, "
                 f"GPU请求={item.get('gpu_requested', 0)}, "
                 f"GPU实际估计={item.get('gpu_actual_used', 0)}, "
-                f"GPU利用率={actual.get('gpu_util_avg', 'N/A')}%, "
-                f"CPU={actual.get('cpu_usage_avg', 'N/A')}%, "
-                f"内存={actual.get('mem_usage_avg', 'N/A')}%"
+                f"GPU利用率={gpu_pct:.1f}%, "
+                f"CPU={cpu_label}, "
+                f"内存={mem_label}"
             )
 
     parts.append("\n## 节点与资源")
