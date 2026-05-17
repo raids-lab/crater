@@ -31,6 +31,10 @@ func TestAuthLoginSnapshotsEN(t *testing.T) {
 		{ID: "12-http-sim-404-json", Args: []string{"auth", "login", "--no-interactive", "--json", "--platform", "http://example", "--username", "u", "--password", "p", "--mode", "ldap"}},
 		{ID: "13-subcommand-typo-logni-nojson", Args: []string{"auth", "logni", "--no-interactive"}},
 		{ID: "14-subcommand-typo-logni-json", Args: []string{"auth", "logni", "--no-interactive", "--json"}},
+		{ID: "15-missing-user-pass-nojson", Args: []string{"auth", "login", "--no-interactive", "--platform", "http://example"}},
+		{ID: "16-missing-user-pass-json", Args: []string{"auth", "login", "--no-interactive", "--json", "--platform", "http://example"}},
+		{ID: "17-invalid-mode-missing-pass-nojson", Args: []string{"auth", "login", "--no-interactive", "--platform", "http://example", "--username", "u", "--mode", "bad"}},
+		{ID: "18-invalid-mode-missing-pass-json", Args: []string{"auth", "login", "--no-interactive", "--json", "--platform", "http://example", "--username", "u", "--mode", "bad"}},
 	}
 
 	results := runAuthCases(t, bin, baseEnv, cases)
@@ -61,6 +65,10 @@ func TestAuthLoginSnapshotsZhCN(t *testing.T) {
 		{ID: "12-http-sim-404-json", Args: []string{"auth", "login", "--no-interactive", "--json", "--platform", "http://example", "--username", "u", "--password", "p", "--mode", "ldap"}},
 		{ID: "13-subcommand-typo-logni-nojson", Args: []string{"auth", "logni", "--no-interactive"}},
 		{ID: "14-subcommand-typo-logni-json", Args: []string{"auth", "logni", "--no-interactive", "--json"}},
+		{ID: "15-missing-user-pass-nojson", Args: []string{"auth", "login", "--no-interactive", "--platform", "http://example"}},
+		{ID: "16-missing-user-pass-json", Args: []string{"auth", "login", "--no-interactive", "--json", "--platform", "http://example"}},
+		{ID: "17-invalid-mode-missing-pass-nojson", Args: []string{"auth", "login", "--no-interactive", "--platform", "http://example", "--username", "u", "--mode", "bad"}},
+		{ID: "18-invalid-mode-missing-pass-json", Args: []string{"auth", "login", "--no-interactive", "--json", "--platform", "http://example", "--username", "u", "--mode", "bad"}},
 	}
 
 	results := runAuthCases(t, bin, baseEnv, cases)

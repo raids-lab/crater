@@ -1,7 +1,6 @@
 package output
 
 import (
-	"encoding/json"
 	"io"
 
 	"github.com/raids-lab/crater/cli/internal/clierror"
@@ -20,12 +19,11 @@ func SuccessEnvelope(data map[string]interface{}) map[string]interface{} {
 	}
 }
 
-// WriteSuccessJSON 将成功体写入 writer（Pretty-printed）。
+// WriteSuccessJSON 将成功体写入 writer（格式化、人类可读的 JSON）。
 // 编码失败时返回 *clierror.Error（system_error + ERR_JSON_ENCODE_FAILED）。
 func WriteSuccessJSON(w io.Writer, v interface{}) error {
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(v); err != nil {
+	b, err := MarshalJSONPretty(v)
+	if err != nil {
 		return &clierror.Error{
 			Category: errorcodes.CategorySystem,
 			Code:     errorcodes.ErrJSONEncodeFailed,
@@ -33,6 +31,14 @@ func WriteSuccessJSON(w io.Writer, v interface{}) error {
 			Context:  map[string]interface{}{"msg": err.Error()},
 		}
 	}
+	_, writeErr := w.Write(b)
+	if writeErr != nil {
+		return &clierror.Error{
+			Category: errorcodes.CategorySystem,
+			Code:     errorcodes.ErrJSONEncodeFailed,
+			Message:  i18n.T("err_json_encode", writeErr.Error()),
+			Context:  map[string]interface{}{"msg": writeErr.Error()},
+		}
+	}
 	return nil
 }
-

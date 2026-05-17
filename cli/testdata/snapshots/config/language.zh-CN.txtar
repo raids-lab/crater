@@ -13,7 +13,11 @@ crater config language --no-interactive --json
 2
 -- zh-CN/02-missing-language-arg-json/stdout --
 -- zh-CN/02-missing-language-arg-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"非交互模式下必须提供语言代码"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供语言代码"
+}
 -- zh-CN/03-invalid-lang-nojson/argv --
 crater config language --no-interactive not-a-lang
 -- zh-CN/03-invalid-lang-nojson/exit --
@@ -28,7 +32,11 @@ crater config language --no-interactive --json not-a-lang
 2
 -- zh-CN/04-invalid-lang-json/stdout --
 -- zh-CN/04-invalid-lang-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的语言代码：not-a-lang"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的语言代码：not-a-lang"
+}
 -- zh-CN/05-lang-typo-nojson/argv --
 crater config language --no-interactive englush
 -- zh-CN/05-lang-typo-nojson/exit --
@@ -43,7 +51,11 @@ crater config language --no-interactive --json englush
 2
 -- zh-CN/06-lang-typo-json/stdout --
 -- zh-CN/06-lang-typo-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的语言代码：englush"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的语言代码：englush"
+}
 -- zh-CN/07-no-interactive-flag-typo-nojson/argv --
 crater config language --no-interactiv
 -- zh-CN/07-no-interactive-flag-typo-nojson/exit --
@@ -58,7 +70,11 @@ crater config language --no-interactiv --json
 2
 -- zh-CN/08-no-interactive-flag-typo-json/stdout --
 -- zh-CN/08-no-interactive-flag-typo-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"unknown flag: --no-interactiv"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "unknown flag: --no-interactiv"
+}
 -- zh-CN/09-no-interactive-bool-invalid-nojson/argv --
 crater config language --no-interactive=maybe
 -- zh-CN/09-no-interactive-bool-invalid-nojson/exit --
@@ -73,7 +89,11 @@ crater config language --no-interactive=maybe --json
 2
 -- zh-CN/10-no-interactive-bool-invalid-json/stdout --
 -- zh-CN/10-no-interactive-bool-invalid-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid argument \"maybe\" for \"--no-interactive\" flag: strconv.ParseBool: parsing \"maybe\": invalid syntax"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid argument \"maybe\" for \"--no-interactive\" flag: strconv.ParseBool: parsing \"maybe\": invalid syntax"
+}
 -- zh-CN/11-subcommand-typo-langauge-nojson/argv --
 crater config langauge --no-interactive
 -- zh-CN/11-subcommand-typo-langauge-nojson/exit --
@@ -93,7 +113,11 @@ crater config langauge --no-interactive --json
 2
 -- zh-CN/12-subcommand-typo-langauge-json/stdout --
 -- zh-CN/12-subcommand-typo-langauge-json/stderr --
-{"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."}
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."
+}
 -- zh-CN/13-too-many-args-nojson/argv --
 crater config language --no-interactive zh-CN extra
 -- zh-CN/13-too-many-args-nojson/exit --
@@ -108,7 +132,11 @@ crater config language --no-interactive --json zh-CN extra
 2
 -- zh-CN/14-too-many-args-json/stdout --
 -- zh-CN/14-too-many-args-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"crater config language 的参数过多：收到 2 个，最多允许 1 个"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater config language 的参数过多：收到 2 个，最多允许 1 个"
+}
 -- zh-CN/15-set-language-success-nojson/argv --
 crater config language --no-interactive zh-CN
 -- zh-CN/15-set-language-success-nojson/exit --

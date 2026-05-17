@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"syscall"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/raids-lab/crater/cli/internal/api"
@@ -98,6 +99,66 @@ func errOperationCancelled() *clierror.Error {
 	}
 }
 
+// usageIssue 表示一条可在本地判定的用法错误，供聚合输出。
+type usageIssue struct {
+	Code    string
+	Message string
+	Field   string
+}
+
+func primaryUsageCode(issues []usageIssue) string {
+	hasMissing := false
+	hasInvalid := false
+	for _, iss := range issues {
+		switch iss.Code {
+		case errorcodes.ErrMissingRequiredFlag:
+			hasMissing = true
+		case errorcodes.ErrInvalidFlagValue:
+			hasInvalid = true
+		}
+	}
+	switch {
+	case hasMissing && !hasInvalid:
+		return errorcodes.ErrMissingRequiredFlag
+	case hasInvalid && !hasMissing:
+		return errorcodes.ErrInvalidFlagValue
+	default:
+		return errorcodes.ErrInvalidFlagValue
+	}
+}
+
+// errUsageFromIssues 将多条用法错误合并为一次 *clierror.Error（多行 message；多条时 JSON 带 context.issues）。
+func errUsageFromIssues(issues []usageIssue) *clierror.Error {
+	if len(issues) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	ctxIssues := make([]map[string]interface{}, len(issues))
+	for i, iss := range issues {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(iss.Message)
+		item := map[string]interface{}{
+			"code":    iss.Code,
+			"message": iss.Message,
+		}
+		if iss.Field != "" {
+			item["field"] = iss.Field
+		}
+		ctxIssues[i] = item
+	}
+	e := &clierror.Error{
+		Category: errorcodes.CategoryUsage,
+		Code:     primaryUsageCode(issues),
+		Message:  b.String(),
+	}
+	if len(issues) > 1 {
+		e.Context = map[string]interface{}{"issues": ctxIssues}
+	}
+	return e
+}
+
 func errTooManyArgs(cmd *cobra.Command, got, max int) *clierror.Error {
 	name := ""
 	if cmd != nil {
@@ -110,12 +171,17 @@ func errTooManyArgs(cmd *cobra.Command, got, max int) *clierror.Error {
 	}
 }
 
-// errSurveyOrSame 将 Survey 在终端被中断（如 Ctrl+C）映射为用户取消；其它错误原样返回。
+// i18nPromptLabel 将 catalog 中带尾随冒号的提示语转为 Survey Message（Survey 会自行追加 ": "）。
+func i18nPromptLabel(key string) string {
+	return strings.TrimSuffix(strings.TrimSpace(i18n.T(key)), ":")
+}
+
+// errSurveyOrSame 将交互式输入被用户中断（如 Ctrl+C）映射为用户取消；其它错误原样返回。
 func errSurveyOrSame(err error) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, terminal.InterruptErr) {
+	if errors.Is(err, terminal.InterruptErr) || errors.Is(err, syscall.EINTR) {
 		return errOperationCancelled()
 	}
 	return err

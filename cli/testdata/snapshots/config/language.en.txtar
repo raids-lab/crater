@@ -13,7 +13,11 @@ crater config language --no-interactive --json
 2
 -- en/02-missing-language-arg-json/stdout --
 -- en/02-missing-language-arg-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"language code is required in non-interactive mode"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "language code is required in non-interactive mode"
+}
 -- en/03-invalid-lang-nojson/argv --
 crater config language --no-interactive not-a-lang
 -- en/03-invalid-lang-nojson/exit --
@@ -28,7 +32,11 @@ crater config language --no-interactive --json not-a-lang
 2
 -- en/04-invalid-lang-json/stdout --
 -- en/04-invalid-lang-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid language code: not-a-lang"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid language code: not-a-lang"
+}
 -- en/05-lang-typo-nojson/argv --
 crater config language --no-interactive englush
 -- en/05-lang-typo-nojson/exit --
@@ -43,7 +51,11 @@ crater config language --no-interactive --json englush
 2
 -- en/06-lang-typo-json/stdout --
 -- en/06-lang-typo-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid language code: englush"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid language code: englush"
+}
 -- en/07-no-interactive-flag-typo-nojson/argv --
 crater config language --no-interactiv
 -- en/07-no-interactive-flag-typo-nojson/exit --
@@ -58,7 +70,11 @@ crater config language --no-interactiv --json
 2
 -- en/08-no-interactive-flag-typo-json/stdout --
 -- en/08-no-interactive-flag-typo-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"unknown flag: --no-interactiv"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "unknown flag: --no-interactiv"
+}
 -- en/09-no-interactive-bool-invalid-nojson/argv --
 crater config language --no-interactive=maybe
 -- en/09-no-interactive-bool-invalid-nojson/exit --
@@ -73,7 +89,11 @@ crater config language --no-interactive=maybe --json
 2
 -- en/10-no-interactive-bool-invalid-json/stdout --
 -- en/10-no-interactive-bool-invalid-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid argument \"maybe\" for \"--no-interactive\" flag: strconv.ParseBool: parsing \"maybe\": invalid syntax"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid argument \"maybe\" for \"--no-interactive\" flag: strconv.ParseBool: parsing \"maybe\": invalid syntax"
+}
 -- en/11-subcommand-typo-langauge-nojson/argv --
 crater config langauge --no-interactive
 -- en/11-subcommand-typo-langauge-nojson/exit --
@@ -93,7 +113,11 @@ crater config langauge --no-interactive --json
 2
 -- en/12-subcommand-typo-langauge-json/stdout --
 -- en/12-subcommand-typo-langauge-json/stderr --
-{"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."}
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"langauge\" for \"crater config\"\n\nDid you mean this?\n\tlanguage\n\nRun \"crater config --help\" for usage."
+}
 -- en/13-too-many-args-nojson/argv --
 crater config language --no-interactive en extra
 -- en/13-too-many-args-nojson/exit --
@@ -108,7 +132,11 @@ crater config language --no-interactive --json en extra
 2
 -- en/14-too-many-args-json/stdout --
 -- en/14-too-many-args-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"too many arguments for crater config language: got 2, want at most 1"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater config language: got 2, want at most 1"
+}
 -- en/15-set-language-success-nojson/argv --
 crater config language --no-interactive en
 -- en/15-set-language-success-nojson/exit --

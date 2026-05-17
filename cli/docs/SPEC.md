@@ -164,6 +164,8 @@
 
 其中快照测试的实现入口与用例定义由 `cli/test/snapshots/**` 下的测试代码驱动。**golden 快照测试默认开启存储沙箱（`CRATER_TEST_SANDBOX=1`）**；除非在文档中明确说明并给出替代隔离方案，否则不得在快照 harness 中关闭该默认设置。
 
+**禁止手改 golden**：`cli/testdata/snapshots/**/*.txtar` 须通过 `make snapshot-update`（或 `UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...`）由测试运行生成；不得直接编辑 golden 文本冒充快照结果。
+
 新增命令或新增包时：
 
 - 若引入了关键的**与进程无关的纯逻辑**（例如解析、映射、筛选、补全引擎等），应视需要补充对应的**代码单元测试**（包内 `_test.go`）。
@@ -186,9 +188,32 @@
 
 需要稳定错误 JSON 与退出码时，优先 `return` 已组装好的 `*clierror.Error`：`Category`、`Code`（`pkg/errorcodes`）、`Message`（`i18n`）、可选 `Context`。脚本应消费 `Context` 等结构化字段，勿依赖解析自然语言 `Message`。`Message` **允许多行**；人类可读 stderr 由 `internal/output` 在 `Error:` 下对每行统一加基础缩进，行内额外空格由你写入 `Message` 即可，会与基础缩进叠加（见 [COMMANDS.md](./COMMANDS.md)）。
 
+交互过程中用户中止（如 Ctrl+C，无论 `survey` 还是其它 TTY 读入）须统一 `return` `cancelled` / `ERR_OPERATION_CANCELLED`（退出码 3，经 `cmd/errors.go` 的 `errSurveyOrSame` 等集中映射），不得以 130 或未分类错误结束。
+
 `Context` 只能放 JSON 可序列化的事实值（如字符串、数字、布尔值、数组、对象，以及 `nil`），禁止放入 `error`、函数、channel、包含循环引用的对象或其它无法被 `encoding/json` 编码的值。与后端响应相关的错误应倾向于直接提供后端返回的事实字段（如 `http_status`、`crater_code`、`msg` 等），不要把原始响应对象或 Go 错误对象塞入 `Context`。若开发者违反该约定导致错误 `Context` 无法 JSON 化，渲染层会保留原始 `category` / `code` / `message`，并将 `context` 替换为“错误 context JSON 化失败，请联系开发者修复”的诊断信息，以保证 stderr 仍是合法 JSON。
 
 若不是 `*clierror.Error`：JSON 模式下退化为 `system_error` 与 `ERR_COMMAND_EXECUTION`，`message` 取自 `err.Error()`；字段名与整体形状仍须满足 COMMANDS「错误处理规范」。
+
+### 用法错误聚合（本地校验）
+
+对**可在发起副作用之前本地判定**的用法问题（缺 flag、非法枚举值、互斥选项等），命令应**先收集、再一次报错**，避免「修一个参数再运行又冒出下一个」的 fail-fast 体验。该约定适用于各命令域；具体命令哪些字段在非交互下必填、交互下是否 prompt，写在 [COMMANDS.md](./COMMANDS.md) 的指令级说明中，聚合机制本身以本节为准。
+
+**适用范围**
+
+- 优先用于 `--no-interactive` 或 `--json`（二者均会强制非交互）下、依赖多个 flag 或本地规则的场景。
+- 仅汇总**尚未发请求、未写存储**前能确定的错误；API / 网络 / Keyring 等失败仍按单条 `api_error` / `system_error` 返回。
+- 交互模式下：缺项一般改为 survey / prompt；用户在提示后仍提交空值时，用「不能为空」类文案（`err_prompt_empty`），**不要**写成「非交互模式下必须提供 `--…`」。
+
+**实现**
+
+- 在 `cmd/errors.go` 用 `usageIssue` 描述单条问题，经 `errUsageFromIssues` 合并为一条 `*clierror.Error`（`category` 为 `usage_error`）。
+- 顶层 `code` 由 `primaryUsageCode` 从各条 `usageIssue.Code` 推导（全为缺参时用 `ERR_MISSING_REQUIRED_FLAG`，全为非法值时用 `ERR_INVALID_FLAG_VALUE`，混合时取 `ERR_INVALID_FLAG_VALUE`）。
+- `message` 为多行文本（每条一行），人类可读 stderr 按既有规则缩进（见 COMMANDS「错误处理规范」）。
+- `--json`：**仅一条**问题时与往常相同，**不**附加 `context.issues`；**两条及以上**时在 `context.issues` 中给出数组，元素含 `field`（可选）、`code`、`message`，供脚本与 Agent 解析；仍只输出**一个** JSON 错误对象、一次退出（`usage_error` → 2）。
+
+**测试**
+
+- 多问题聚合路径须有快照或单元测试覆盖；golden 须通过 `make snapshot-update` 生成，禁止手改（见上文「快照测试」）。
 
 ### `api_error` 与 HTTP：公共 `Code` 档位
 
@@ -207,7 +232,9 @@
 
 ### 成功：`--json` 的公共形状
 
-在 stdout 只出合法 JSON、禁止混入装饰性文字等前提下，须满足 COMMANDS 全局与各命令对成功体的规定。实现上：
+在 stdout / stderr 只出合法 JSON、禁止混入装饰性文字等前提下，须满足 COMMANDS 全局与各命令对成功 / 错误体的规定。编码统一经 `internal/output.MarshalJSONPretty`（两空格缩进、尾随换行），成功与失败路径均适用，禁止在命令内自行 `json.Marshal` 紧凑输出。
+
+实现上：
 
 - 使用 `output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(payload))`。顶层 `status` 使用常量 `output.JSONSuccessStatus`；业务载荷只进 `data` 对象。成功体不使用错误体的 `category` / `code`；`data` 不得含 `http_status`。
 - `data` 允许哪些键、是否可为 `{}`、顶层是否带 `message`、敏感字段能否出现等，**只以 COMMANDS 为准**，本规范不列举。

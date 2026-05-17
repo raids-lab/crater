@@ -108,7 +108,11 @@ crater auth ls --no-interactive --json --mode bad
 2
 -- zh-CN/06-ls-invalid-mode-json/stdout --
 -- zh-CN/06-ls-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的认证方式：bad"
+}
 -- zh-CN/07-switch-multiple-matches-nojson/argv --
 crater auth switch --no-interactive
 -- zh-CN/07-switch-multiple-matches-nojson/exit --
@@ -125,7 +129,11 @@ crater auth switch --no-interactive --json
 2
 -- zh-CN/08-switch-multiple-matches-json/stdout --
 -- zh-CN/08-switch-multiple-matches-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"存在多个匹配的已保存账号，请提供更具体的信息：\n  - https://example.invalid (bob, ldap, user)\n  - https://staging.invalid (carol, normal, user)\n"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "存在多个匹配的已保存账号，请提供更具体的信息：\n  - https://example.invalid (bob, ldap, user)\n  - https://staging.invalid (carol, normal, user)\n"
+}
 -- zh-CN/09-switch-single-match-nojson/argv --
 crater auth switch --no-interactive --platform https://staging.invalid
 -- zh-CN/09-switch-single-match-nojson/exit --
@@ -164,7 +172,11 @@ crater auth switch --no-interactive --json --mode bad
 2
 -- zh-CN/12-switch-invalid-mode-json/stdout --
 -- zh-CN/12-switch-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的认证方式：bad"
+}
 -- zh-CN/13-switch-no-matches-nojson/argv --
 crater auth switch --no-interactive --platform https://nope.invalid
 -- zh-CN/13-switch-no-matches-nojson/exit --
@@ -179,7 +191,11 @@ crater auth switch --no-interactive --json --platform https://nope.invalid
 2
 -- zh-CN/14-switch-no-matches-json/stdout --
 -- zh-CN/14-switch-no-matches-json/stderr --
-{"category":"usage_error","code":"ERR_NOT_FOUND","message":"未找到匹配的已保存账号"}
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "未找到匹配的已保存账号"
+}
 -- zh-CN/15-logout-missing-yes-nojson/argv --
 crater auth logout --no-interactive
 -- zh-CN/15-logout-missing-yes-nojson/exit --
@@ -194,7 +210,11 @@ crater auth logout --no-interactive --json
 2
 -- zh-CN/16-logout-missing-yes-json/stdout --
 -- zh-CN/16-logout-missing-yes-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"缺少必要参数：yes (--yes)"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：yes (--yes)"
+}
 -- zh-CN/17-logout-yes-nojson/argv --
 crater auth logout --no-interactive --yes
 -- zh-CN/17-logout-yes-nojson/exit --
@@ -233,7 +253,11 @@ crater auth rm --no-interactive --json --platform https://example.invalid
 2
 -- zh-CN/20-rm-missing-yes-json/stdout --
 -- zh-CN/20-rm-missing-yes-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"缺少必要参数：yes (--yes)"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：yes (--yes)"
+}
 -- zh-CN/21-rm-invalid-mode-nojson/argv --
 crater auth rm --no-interactive --platform https://example.invalid --mode bad
 -- zh-CN/21-rm-invalid-mode-nojson/exit --
@@ -248,7 +272,11 @@ crater auth rm --no-interactive --json --platform https://example.invalid --mode
 2
 -- zh-CN/22-rm-invalid-mode-json/stdout --
 -- zh-CN/22-rm-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"无效的认证方式：bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的认证方式：bad"
+}
 -- zh-CN/23-rm-yes-nojson/argv --
 crater auth rm --no-interactive --yes --platform https://example.invalid
 -- zh-CN/23-rm-yes-nojson/exit --
@@ -283,4 +311,8 @@ crater auth rm --no-interactive --json --yes --platform https://nope.invalid
 2
 -- zh-CN/26-rm-not-found-json/stdout --
 -- zh-CN/26-rm-not-found-json/stderr --
-{"category":"usage_error","code":"ERR_NOT_FOUND","message":"未找到匹配的已保存账号"}
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "未找到匹配的已保存账号"
+}

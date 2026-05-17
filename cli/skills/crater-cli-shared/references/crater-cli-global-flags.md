@@ -41,7 +41,7 @@ crater auth ls --json
 
 规则：
 
-- 成功输出写到 stdout，且是纯 JSON。
+- 成功输出会被写到 stdout，且是纯 JSON。
 - `--json` 会强制 `--no-interactive`。
 - `--json` 可以出现在参数序列任意位置。
 - 成功体使用顶层信封，业务数据在 `data` 内。
@@ -63,7 +63,7 @@ crater auth logout --yes --no-interactive
 
 ## 错误输出
 
-失败输出写到 stderr：
+失败输出会被写到 stderr：
 
 - 默认模式：人类可读错误。
 - `--json` 模式：结构化错误对象，包含 `category`、`code`、`message`、可选 `context`。

@@ -24,7 +24,7 @@
 
 - `category`：错误大类。
 - `code`：稳定错误码。
-- `context`：结构化上下文，例如 `http_status`。
+- `context`：结构化上下文，例如 `http_status`；多条本地用法错误时可能有 `issues`（`field` / `code` / `message` 数组，见 `auth login` 等非交互聚合校验）。
 - `message`：只用于向用户解释，不作为稳定程序接口。
 
 `context` 应始终是 JSON 可序列化对象。如果开发者错误地放入无法 JSON 化的值，CLI 会保留原始 `category` / `code` / `message`，并把 `context` 替换为诊断信息，提示错误 context JSON 编码失败、需要联系开发者修复。
@@ -59,4 +59,4 @@
 3. 若是 `api_error` 且 HTTP 为 401，优先检查登录状态或重新登录。
 4. 若是 `api_error` 且 HTTP 为 403，优先检查当前账号权限。
 5. 若是 `system_error`，优先检查本地配置文件、Keyring、HOME 和文件权限。
-6. 若是 `cancelled`，告知用户操作已取消，不要擅自添加 `--yes` 重试。
+6. 若是 `cancelled`，说明操作被用户主动取消，不要擅自添加 `--yes` 重试。

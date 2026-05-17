@@ -30,6 +30,11 @@ var catalogAuth = map[Language]map[string]string{
 		"prompt_username": "Username: ",
 		"prompt_password": "Password: ",
 
+		// Login validation labels (for err_missing_flag_non_interactive / err_prompt_empty)
+		"login_label_platform": "platform URL",
+		"login_label_username": "username",
+		"login_label_password": "password",
+
 		// Human-readable messages
 		"login_success":           "Successfully logged into:\n  %s\nAs:\n  %s (%s, %s)",
 		"switch_success":          "Switched active credentials to:\n  %s (%s, %s, %s)",
@@ -77,6 +82,11 @@ var catalogAuth = map[Language]map[string]string{
 		"prompt_platform": "平台 URL: ",
 		"prompt_username": "用户名: ",
 		"prompt_password": "密码: ",
+
+		// Login validation labels
+		"login_label_platform": "平台 URL",
+		"login_label_username": "用户名",
+		"login_label_password": "密码",
 
 		// Human-readable messages
 		"login_success":           "成功登录到：\n  %s\n身份为：\n  %s (%s, %s)",

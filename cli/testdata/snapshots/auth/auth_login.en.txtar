@@ -6,14 +6,18 @@ crater auth login --no-interactive --username u --password p
 -- en/01-missing-platform-nojson/stdout --
 -- en/01-missing-platform-nojson/stderr --
 Error:
-  platform URL is required (--platform)
+  platform URL is required in non-interactive mode (--platform)
 -- en/02-missing-platform-json/argv --
 crater auth login --no-interactive --json --username u --password p
 -- en/02-missing-platform-json/exit --
 2
 -- en/02-missing-platform-json/stdout --
 -- en/02-missing-platform-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"platform URL is required (--platform)"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "platform URL is required in non-interactive mode (--platform)"
+}
 -- en/03-missing-username-nojson/argv --
 crater auth login --no-interactive --platform http://example --password p
 -- en/03-missing-username-nojson/exit --
@@ -21,14 +25,18 @@ crater auth login --no-interactive --platform http://example --password p
 -- en/03-missing-username-nojson/stdout --
 -- en/03-missing-username-nojson/stderr --
 Error:
-  username is required (--username)
+  username is required in non-interactive mode (--username)
 -- en/04-missing-username-json/argv --
 crater auth login --no-interactive --json --platform http://example --password p
 -- en/04-missing-username-json/exit --
 2
 -- en/04-missing-username-json/stdout --
 -- en/04-missing-username-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"username is required (--username)"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "username is required in non-interactive mode (--username)"
+}
 -- en/05-missing-password-nojson/argv --
 crater auth login --no-interactive --platform http://example --username u
 -- en/05-missing-password-nojson/exit --
@@ -36,14 +44,18 @@ crater auth login --no-interactive --platform http://example --username u
 -- en/05-missing-password-nojson/stdout --
 -- en/05-missing-password-nojson/stderr --
 Error:
-  password is required (--password) in non-interactive mode
+  password is required in non-interactive mode (--password)
 -- en/06-missing-password-json/argv --
 crater auth login --no-interactive --json --platform http://example --username u
 -- en/06-missing-password-json/exit --
 2
 -- en/06-missing-password-json/stdout --
 -- en/06-missing-password-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"password is required (--password) in non-interactive mode"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "password is required in non-interactive mode (--password)"
+}
 -- en/07-invalid-mode-nojson/argv --
 crater auth login --no-interactive --platform http://example --username u --password p --mode bad
 -- en/07-invalid-mode-nojson/exit --
@@ -58,7 +70,11 @@ crater auth login --no-interactive --json --platform http://example --username u
 2
 -- en/08-invalid-mode-json/stdout --
 -- en/08-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid authentication mode: bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
 -- en/09-http-sim-timeout-nojson/argv --
 crater auth login --no-interactive --platform http://example --username u --password p --mode ldap
 -- en/09-http-sim-timeout-nojson/exit --
@@ -73,7 +89,14 @@ crater auth login --no-interactive --json --platform http://example --username u
 4
 -- en/10-http-sim-timeout-json/stdout --
 -- en/10-http-sim-timeout-json/stderr --
-{"category":"api_error","code":"ERR_NETWORK_FAILURE","message":"could not reach server: Post \"http://example/api/auth/login\": context deadline exceeded","context":{"msg":"network error: Post \"http://example/api/auth/login\": context deadline exceeded"}}
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Post \"http://example/api/auth/login\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"http://example/api/auth/login\": context deadline exceeded"
+  }
+}
 -- en/11-http-sim-404-nojson/argv --
 crater auth login --no-interactive --platform http://example --username u --password p --mode ldap
 -- en/11-http-sim-404-nojson/exit --
@@ -88,7 +111,16 @@ crater auth login --no-interactive --json --platform http://example --username u
 4
 -- en/12-http-sim-404-json/stdout --
 -- en/12-http-sim-404-json/stderr --
-{"category":"api_error","code":"ERR_NOT_FOUND_404","message":"HTTP 404: simulated","context":{"crater_code":404,"http_status":404,"msg":"simulated"}}
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
 -- en/13-subcommand-typo-logni-nojson/argv --
 crater auth logni --no-interactive
 -- en/13-subcommand-typo-logni-nojson/exit --
@@ -108,4 +140,76 @@ crater auth logni --no-interactive --json
 2
 -- en/14-subcommand-typo-logni-json/stdout --
 -- en/14-subcommand-typo-logni-json/stderr --
-{"category":"usage_error","code":"ERR_UNKNOWN_COMMAND","message":"unknown command \"logni\" for \"crater auth\"\n\nDid you mean this?\n\tlogin\n\nRun \"crater auth --help\" for usage."}
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"logni\" for \"crater auth\"\n\nDid you mean this?\n\tlogin\n\nRun \"crater auth --help\" for usage."
+}
+-- en/15-missing-user-pass-nojson/argv --
+crater auth login --no-interactive --platform http://example
+-- en/15-missing-user-pass-nojson/exit --
+2
+-- en/15-missing-user-pass-nojson/stdout --
+-- en/15-missing-user-pass-nojson/stderr --
+Error:
+  username is required in non-interactive mode (--username)
+  password is required in non-interactive mode (--password)
+-- en/16-missing-user-pass-json/argv --
+crater auth login --no-interactive --json --platform http://example
+-- en/16-missing-user-pass-json/exit --
+2
+-- en/16-missing-user-pass-json/stdout --
+-- en/16-missing-user-pass-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "username is required in non-interactive mode (--username)\npassword is required in non-interactive mode (--password)",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "username",
+        "message": "username is required in non-interactive mode (--username)"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "password",
+        "message": "password is required in non-interactive mode (--password)"
+      }
+    ]
+  }
+}
+-- en/17-invalid-mode-missing-pass-nojson/argv --
+crater auth login --no-interactive --platform http://example --username u --mode bad
+-- en/17-invalid-mode-missing-pass-nojson/exit --
+2
+-- en/17-invalid-mode-missing-pass-nojson/stdout --
+-- en/17-invalid-mode-missing-pass-nojson/stderr --
+Error:
+  invalid authentication mode: bad
+  password is required in non-interactive mode (--password)
+-- en/18-invalid-mode-missing-pass-json/argv --
+crater auth login --no-interactive --json --platform http://example --username u --mode bad
+-- en/18-invalid-mode-missing-pass-json/exit --
+2
+-- en/18-invalid-mode-missing-pass-json/stdout --
+-- en/18-invalid-mode-missing-pass-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad\npassword is required in non-interactive mode (--password)",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "mode",
+        "message": "invalid authentication mode: bad"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "password",
+        "message": "password is required in non-interactive mode (--password)"
+      }
+    ]
+  }
+}

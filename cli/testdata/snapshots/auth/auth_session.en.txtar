@@ -108,7 +108,11 @@ crater auth ls --no-interactive --json --mode bad
 2
 -- en/06-ls-invalid-mode-json/stdout --
 -- en/06-ls-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid authentication mode: bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
 -- en/07-switch-multiple-matches-nojson/argv --
 crater auth switch --no-interactive
 -- en/07-switch-multiple-matches-nojson/exit --
@@ -125,7 +129,11 @@ crater auth switch --no-interactive --json
 2
 -- en/08-switch-multiple-matches-json/stdout --
 -- en/08-switch-multiple-matches-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"multiple credentials match, please be more specific:\n  - https://example.invalid (bob, ldap, user)\n  - https://staging.invalid (carol, normal, user)\n"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "multiple credentials match, please be more specific:\n  - https://example.invalid (bob, ldap, user)\n  - https://staging.invalid (carol, normal, user)\n"
+}
 -- en/09-switch-single-match-nojson/argv --
 crater auth switch --no-interactive --platform https://staging.invalid
 -- en/09-switch-single-match-nojson/exit --
@@ -164,7 +172,11 @@ crater auth switch --no-interactive --json --mode bad
 2
 -- en/12-switch-invalid-mode-json/stdout --
 -- en/12-switch-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid authentication mode: bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
 -- en/13-switch-no-matches-nojson/argv --
 crater auth switch --no-interactive --platform https://nope.invalid
 -- en/13-switch-no-matches-nojson/exit --
@@ -179,7 +191,11 @@ crater auth switch --no-interactive --json --platform https://nope.invalid
 2
 -- en/14-switch-no-matches-json/stdout --
 -- en/14-switch-no-matches-json/stderr --
-{"category":"usage_error","code":"ERR_NOT_FOUND","message":"no saved credentials match the criteria"}
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no saved credentials match the criteria"
+}
 -- en/15-logout-missing-yes-nojson/argv --
 crater auth logout --no-interactive
 -- en/15-logout-missing-yes-nojson/exit --
@@ -194,7 +210,11 @@ crater auth logout --no-interactive --json
 2
 -- en/16-logout-missing-yes-json/stdout --
 -- en/16-logout-missing-yes-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"yes is required (--yes)"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "yes is required (--yes)"
+}
 -- en/17-logout-yes-nojson/argv --
 crater auth logout --no-interactive --yes
 -- en/17-logout-yes-nojson/exit --
@@ -234,7 +254,11 @@ crater auth rm --no-interactive --json --platform https://example.invalid
 2
 -- en/20-rm-missing-yes-json/stdout --
 -- en/20-rm-missing-yes-json/stderr --
-{"category":"usage_error","code":"ERR_MISSING_REQUIRED_FLAG","message":"yes is required (--yes)"}
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "yes is required (--yes)"
+}
 -- en/21-rm-invalid-mode-nojson/argv --
 crater auth rm --no-interactive --platform https://example.invalid --mode bad
 -- en/21-rm-invalid-mode-nojson/exit --
@@ -249,7 +273,11 @@ crater auth rm --no-interactive --json --platform https://example.invalid --mode
 2
 -- en/22-rm-invalid-mode-json/stdout --
 -- en/22-rm-invalid-mode-json/stderr --
-{"category":"usage_error","code":"ERR_INVALID_FLAG_VALUE","message":"invalid authentication mode: bad"}
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
 -- en/23-rm-yes-nojson/argv --
 crater auth rm --no-interactive --yes --platform https://example.invalid
 -- en/23-rm-yes-nojson/exit --
@@ -284,4 +312,8 @@ crater auth rm --no-interactive --json --yes --platform https://nope.invalid
 2
 -- en/26-rm-not-found-json/stdout --
 -- en/26-rm-not-found-json/stderr --
-{"category":"usage_error","code":"ERR_NOT_FOUND","message":"no saved credentials match the criteria"}
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no saved credentials match the criteria"
+}

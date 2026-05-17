@@ -5,10 +5,8 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"syscall"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/i18n"
@@ -17,7 +15,6 @@ import (
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"golang.org/x/term"
 )
 
 // roleForAuthInfo 返回用于展示的权限级别字符串（与 auth ls 最后一列一致）。
@@ -75,91 +72,7 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to a Crater platform instance",
 	Long:  "Authenticate with a platform using Platform URL, Username, and Method.",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		platformURL, _ := cmd.Flags().GetString("platform")
-		username, _ := cmd.Flags().GetString("username")
-		mode, _ := cmd.Flags().GetString("mode")
-		password, _ := cmd.Flags().GetString("password")
-
-		noInter := viper.GetBool("no-interactive")
-
-		if platformURL == "" {
-			if noInter {
-				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "platform URL", "platform")}
-			}
-			fmt.Print(i18n.T("prompt_platform"))
-			fmt.Scanln(&platformURL)
-			if platformURL == "" {
-				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "platform URL", "platform")}
-			}
-		}
-
-		if username == "" {
-			if noInter {
-				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "username", "username")}
-			}
-			fmt.Print(i18n.T("prompt_username"))
-			fmt.Scanln(&username)
-			if username == "" {
-				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_required", "username", "username")}
-			}
-		}
-
-		if password == "" {
-			if noInter {
-				return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrMissingRequiredFlag, Message: i18n.T("err_missing_password")}
-			}
-			fmt.Print(i18n.T("prompt_password"))
-			bytePassword, err := term.ReadPassword(int(syscall.Stdin))
-			if err != nil {
-				return fmt.Errorf("failed to read password: %w", err)
-			}
-			password = string(bytePassword)
-			fmt.Println()
-		}
-
-		mode = strings.TrimSpace(mode)
-		if !authModeValid(mode) {
-			return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_invalid_auth_mode", mode)}
-		}
-
-		authClient := api.NewAuthClient(platformURL)
-		loginResp, err := authClient.Login(username, password, mode)
-		if err != nil {
-			return cliErrFromAPI(err)
-		}
-
-		// NOTE: we intentionally don't need to load state here; SaveLogin will load and persist.
-
-		roleToStr := func(r int) string {
-			if r == 3 {
-				return "admin"
-			}
-			return "user"
-		}
-
-		newAuth := session.AuthInfo{
-			PlatformURL: platformURL,
-			Username:    username,
-			Method:      mode,
-			UserID:      loginResp.User.ID,
-			Nickname:    loginResp.User.Nickname,
-			Role:        roleToStr(loginResp.Context.RolePlatform),
-		}
-
-		if err := session.SaveLogin(newAuth, loginResp.AccessToken); err != nil {
-			// session.SaveLogin touches both secure storage and state; map errors to system_error.
-			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrSecureStorageError, Message: err.Error()}
-		}
-
-		if outputJSON {
-			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-				"user": newAuth,
-			}))
-		}
-		fmt.Printf("%s\n", i18n.T("login_success", platformURL, username, mode, roleForAuthInfo(newAuth.Role)))
-		return nil
-	},
+	RunE: runAuthLogin,
 }
 
 var switchCmd = &cobra.Command{
