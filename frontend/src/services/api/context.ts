@@ -13,11 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { getDefaultStore } from 'jotai'
-
 import { apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
-
-import { globalSettings } from '@/utils/store'
 
 import { IResponse } from '../types'
 import { IUserAttributes } from './admin/user'
@@ -78,16 +74,8 @@ export interface PrequeueFeatureStatusResp {
   backfillEnabled: boolean
 }
 
-const store = getDefaultStore()
-const { scheduler } = store.get(globalSettings)
-
 export const apiContextPrequeueStatus = () =>
   apiV1Get<IResponse<PrequeueFeatureStatusResp>>('context/prequeue')
-
-export const apiContextQuota = () => {
-  const url = scheduler === 'volcano' ? 'context/quota' : 'aijobs/quota'
-  return apiV1Get<IResponse<QuotaResp>>(url)
-}
 
 export const apiContextBillingSummary = () =>
   apiV1Get<IResponse<BillingSummaryResp>>('context/billing/summary')

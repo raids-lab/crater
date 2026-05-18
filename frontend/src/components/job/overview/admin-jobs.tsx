@@ -55,7 +55,7 @@ import {
   ScheduleType,
   apiAdminGetJobList,
   apiJobDeleteForAdmin,
-  getUnifiedJobPhase,
+  getDisplayJobPhase,
 } from '@/services/api/vcjob'
 
 import { isBillingVisibleForAdmin } from '@/utils/billing-visibility'
@@ -315,7 +315,7 @@ const AdminJobOverview = () => {
           ]
         : []),
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        accessorFn: (row) => getDisplayJobPhase(row.status),
         id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />

@@ -54,7 +54,7 @@ import {
   JobType,
   ScheduleType,
   apiJobAllList,
-  getUnifiedJobPhase,
+  getDisplayJobPhase,
 } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
@@ -201,7 +201,7 @@ function Overview() {
           ]
         : []),
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        accessorFn: (row) => getDisplayJobPhase(row.status),
         id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
@@ -432,10 +432,15 @@ function Overview() {
               icon: FlaskConicalIcon,
             },
             {
-              title: t('statuses.waiting'),
-              value:
-                jobQuery.data?.filter((job) => getUnifiedJobPhase(job.status) === JobPhase.Pending)
-                  .length ?? 0,
+              title: t('statuses.awaitingAdmission'),
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Prequeue).length ?? 0,
+              className: 'text-highlight-violet',
+              description: t('jobs.statuses.prequeue.description'),
+              icon: ClockIcon,
+            },
+            {
+              title: t('statuses.pendingScheduling'),
+              value: jobQuery.data?.filter((job) => job.status === JobPhase.Pending).length ?? 0,
               className: 'text-highlight-purple',
               description: t('jobs.statuses.pending.description'),
               icon: ClockIcon,

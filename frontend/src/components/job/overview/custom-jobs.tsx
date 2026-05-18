@@ -44,7 +44,7 @@ import {
   ScheduleType,
   apiJobBatchList,
   apiJobDelete,
-  getUnifiedJobPhase,
+  getDisplayJobPhase,
   isInteracitveJob,
 } from '@/services/api/vcjob'
 
@@ -158,7 +158,7 @@ const VolcanoOverview = () => {
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        accessorFn: (row) => getDisplayJobPhase(row.status),
         id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />

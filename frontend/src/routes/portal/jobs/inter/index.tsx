@@ -52,7 +52,7 @@ import {
   ScheduleType,
   apiJobDelete,
   apiJobInteractiveList,
-  getUnifiedJobPhase,
+  getDisplayJobPhase,
   isInteracitveJob,
 } from '@/services/api/vcjob'
 
@@ -135,9 +135,6 @@ function RouteComponent() {
           queryClient.invalidateQueries({ queryKey: ['job', 'billing'] })
         ),
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
-          queryClient.invalidateQueries({ queryKey: ['context', 'quota'] })
-        ),
-        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({ queryKey: ['context', 'job-resource-summary'] })
         ),
       ])
@@ -180,7 +177,7 @@ function RouteComponent() {
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        accessorFn: (row) => getDisplayJobPhase(row.status),
         id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
