@@ -1,0 +1,319 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-ls-nojson/argv --
+crater auth ls --no-interactive
+-- en/01-ls-nojson/exit --
+0
+-- en/01-ls-nojson/stdout --
+ACTIVE   PLATFORM                       USERNAME        METHOD     PRIVILEGE 
+*        https://example.invalid        alice           normal     admin     
+         https://example.invalid        bob             ldap       user      
+         https://staging.invalid        carol           normal     user      
+-- en/01-ls-nojson/stderr --
+-- en/02-ls-json/argv --
+crater auth ls --no-interactive --json
+-- en/02-ls-json/exit --
+0
+-- en/02-ls-json/stdout --
+{
+  "data": {
+    "active_context": {
+      "platform_url": "https://example.invalid",
+      "username": "alice",
+      "method": "normal"
+    },
+    "auth_infos": [
+      {
+        "platform_url": "https://example.invalid",
+        "username": "alice",
+        "method": "normal",
+        "user_id": 1001,
+        "nickname": "Alice",
+        "role": "admin"
+      },
+      {
+        "platform_url": "https://example.invalid",
+        "username": "bob",
+        "method": "ldap",
+        "user_id": 1002,
+        "nickname": "Bob",
+        "role": "user"
+      },
+      {
+        "platform_url": "https://staging.invalid",
+        "username": "carol",
+        "method": "normal",
+        "user_id": 1003,
+        "nickname": "Carol",
+        "role": "user"
+      }
+    ]
+  },
+  "status": "OK"
+}
+-- en/02-ls-json/stderr --
+-- en/03-ls-filter-platform-nojson/argv --
+crater auth ls --no-interactive --platform https://example.invalid
+-- en/03-ls-filter-platform-nojson/exit --
+0
+-- en/03-ls-filter-platform-nojson/stdout --
+ACTIVE   PLATFORM                       USERNAME        METHOD     PRIVILEGE 
+*        https://example.invalid        alice           normal     admin     
+         https://example.invalid        bob             ldap       user      
+-- en/03-ls-filter-platform-nojson/stderr --
+-- en/04-ls-filter-platform-json/argv --
+crater auth ls --no-interactive --json --platform https://example.invalid
+-- en/04-ls-filter-platform-json/exit --
+0
+-- en/04-ls-filter-platform-json/stdout --
+{
+  "data": {
+    "active_context": {
+      "platform_url": "https://example.invalid",
+      "username": "alice",
+      "method": "normal"
+    },
+    "auth_infos": [
+      {
+        "platform_url": "https://example.invalid",
+        "username": "alice",
+        "method": "normal",
+        "user_id": 1001,
+        "nickname": "Alice",
+        "role": "admin"
+      },
+      {
+        "platform_url": "https://example.invalid",
+        "username": "bob",
+        "method": "ldap",
+        "user_id": 1002,
+        "nickname": "Bob",
+        "role": "user"
+      }
+    ]
+  },
+  "status": "OK"
+}
+-- en/04-ls-filter-platform-json/stderr --
+-- en/05-ls-invalid-mode-nojson/argv --
+crater auth ls --no-interactive --mode bad
+-- en/05-ls-invalid-mode-nojson/exit --
+2
+-- en/05-ls-invalid-mode-nojson/stdout --
+-- en/05-ls-invalid-mode-nojson/stderr --
+Error:
+  invalid authentication mode: bad
+-- en/06-ls-invalid-mode-json/argv --
+crater auth ls --no-interactive --json --mode bad
+-- en/06-ls-invalid-mode-json/exit --
+2
+-- en/06-ls-invalid-mode-json/stdout --
+-- en/06-ls-invalid-mode-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
+-- en/07-switch-multiple-matches-nojson/argv --
+crater auth switch --no-interactive
+-- en/07-switch-multiple-matches-nojson/exit --
+2
+-- en/07-switch-multiple-matches-nojson/stdout --
+-- en/07-switch-multiple-matches-nojson/stderr --
+Error:
+  multiple credentials match, please be more specific:
+    - https://example.invalid (bob, ldap, user)
+    - https://staging.invalid (carol, normal, user)
+-- en/08-switch-multiple-matches-json/argv --
+crater auth switch --no-interactive --json
+-- en/08-switch-multiple-matches-json/exit --
+2
+-- en/08-switch-multiple-matches-json/stdout --
+-- en/08-switch-multiple-matches-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "multiple credentials match, please be more specific:\n  - https://example.invalid (bob, ldap, user)\n  - https://staging.invalid (carol, normal, user)\n"
+}
+-- en/09-switch-single-match-nojson/argv --
+crater auth switch --no-interactive --platform https://staging.invalid
+-- en/09-switch-single-match-nojson/exit --
+0
+-- en/09-switch-single-match-nojson/stdout --
+Switched active credentials to:
+  https://staging.invalid (carol, normal, user)
+-- en/09-switch-single-match-nojson/stderr --
+-- en/10-switch-single-match-json/argv --
+crater auth switch --no-interactive --json --platform https://staging.invalid
+-- en/10-switch-single-match-json/exit --
+0
+-- en/10-switch-single-match-json/stdout --
+{
+  "data": {
+    "active": {
+      "platform_url": "https://staging.invalid",
+      "username": "carol",
+      "method": "normal"
+    }
+  },
+  "status": "OK"
+}
+-- en/10-switch-single-match-json/stderr --
+-- en/11-switch-invalid-mode-nojson/argv --
+crater auth switch --no-interactive --mode bad
+-- en/11-switch-invalid-mode-nojson/exit --
+2
+-- en/11-switch-invalid-mode-nojson/stdout --
+-- en/11-switch-invalid-mode-nojson/stderr --
+Error:
+  invalid authentication mode: bad
+-- en/12-switch-invalid-mode-json/argv --
+crater auth switch --no-interactive --json --mode bad
+-- en/12-switch-invalid-mode-json/exit --
+2
+-- en/12-switch-invalid-mode-json/stdout --
+-- en/12-switch-invalid-mode-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
+-- en/13-switch-no-matches-nojson/argv --
+crater auth switch --no-interactive --platform https://nope.invalid
+-- en/13-switch-no-matches-nojson/exit --
+2
+-- en/13-switch-no-matches-nojson/stdout --
+-- en/13-switch-no-matches-nojson/stderr --
+Error:
+  no saved credentials match the criteria
+-- en/14-switch-no-matches-json/argv --
+crater auth switch --no-interactive --json --platform https://nope.invalid
+-- en/14-switch-no-matches-json/exit --
+2
+-- en/14-switch-no-matches-json/stdout --
+-- en/14-switch-no-matches-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no saved credentials match the criteria"
+}
+-- en/15-logout-missing-yes-nojson/argv --
+crater auth logout --no-interactive
+-- en/15-logout-missing-yes-nojson/exit --
+2
+-- en/15-logout-missing-yes-nojson/stdout --
+-- en/15-logout-missing-yes-nojson/stderr --
+Error:
+  yes is required (--yes)
+-- en/16-logout-missing-yes-json/argv --
+crater auth logout --no-interactive --json
+-- en/16-logout-missing-yes-json/exit --
+2
+-- en/16-logout-missing-yes-json/stdout --
+-- en/16-logout-missing-yes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "yes is required (--yes)"
+}
+-- en/17-logout-yes-nojson/argv --
+crater auth logout --no-interactive --yes
+-- en/17-logout-yes-nojson/exit --
+0
+-- en/17-logout-yes-nojson/stdout --
+Logged out.
+Automatically switched credentials to:
+  https://example.invalid (bob, ldap, user)
+-- en/17-logout-yes-nojson/stderr --
+-- en/18-logout-yes-json/argv --
+crater auth logout --no-interactive --json --yes
+-- en/18-logout-yes-json/exit --
+0
+-- en/18-logout-yes-json/stdout --
+{
+  "data": {
+    "next_active": {
+      "platform_url": "https://example.invalid",
+      "username": "bob",
+      "method": "ldap"
+    }
+  },
+  "status": "OK"
+}
+-- en/18-logout-yes-json/stderr --
+-- en/19-rm-missing-yes-nojson/argv --
+crater auth rm --no-interactive --platform https://example.invalid
+-- en/19-rm-missing-yes-nojson/exit --
+2
+-- en/19-rm-missing-yes-nojson/stdout --
+-- en/19-rm-missing-yes-nojson/stderr --
+Error:
+  yes is required (--yes)
+-- en/20-rm-missing-yes-json/argv --
+crater auth rm --no-interactive --json --platform https://example.invalid
+-- en/20-rm-missing-yes-json/exit --
+2
+-- en/20-rm-missing-yes-json/stdout --
+-- en/20-rm-missing-yes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "yes is required (--yes)"
+}
+-- en/21-rm-invalid-mode-nojson/argv --
+crater auth rm --no-interactive --platform https://example.invalid --mode bad
+-- en/21-rm-invalid-mode-nojson/exit --
+2
+-- en/21-rm-invalid-mode-nojson/stdout --
+-- en/21-rm-invalid-mode-nojson/stderr --
+Error:
+  invalid authentication mode: bad
+-- en/22-rm-invalid-mode-json/argv --
+crater auth rm --no-interactive --json --platform https://example.invalid --mode bad
+-- en/22-rm-invalid-mode-json/exit --
+2
+-- en/22-rm-invalid-mode-json/stdout --
+-- en/22-rm-invalid-mode-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid authentication mode: bad"
+}
+-- en/23-rm-yes-nojson/argv --
+crater auth rm --no-interactive --yes --platform https://example.invalid
+-- en/23-rm-yes-nojson/exit --
+0
+-- en/23-rm-yes-nojson/stdout --
+Successfully removed:
+  2 credentials
+-- en/23-rm-yes-nojson/stderr --
+-- en/24-rm-yes-json/argv --
+crater auth rm --no-interactive --json --yes --platform https://example.invalid
+-- en/24-rm-yes-json/exit --
+0
+-- en/24-rm-yes-json/stdout --
+{
+  "data": {
+    "removed_count": 2
+  },
+  "status": "OK"
+}
+-- en/24-rm-yes-json/stderr --
+-- en/25-rm-not-found-nojson/argv --
+crater auth rm --no-interactive --yes --platform https://nope.invalid
+-- en/25-rm-not-found-nojson/exit --
+2
+-- en/25-rm-not-found-nojson/stdout --
+-- en/25-rm-not-found-nojson/stderr --
+Error:
+  no saved credentials match the criteria
+-- en/26-rm-not-found-json/argv --
+crater auth rm --no-interactive --json --yes --platform https://nope.invalid
+-- en/26-rm-not-found-json/exit --
+2
+-- en/26-rm-not-found-json/stdout --
+-- en/26-rm-not-found-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no saved credentials match the criteria"
+}

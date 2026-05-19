@@ -1,0 +1,97 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-subcommand-typo-lss-nojson/argv --
+crater auth lss --no-interactive
+-- en/01-subcommand-typo-lss-nojson/exit --
+2
+-- en/01-subcommand-typo-lss-nojson/stdout --
+-- en/01-subcommand-typo-lss-nojson/stderr --
+Error:
+  unknown command "lss" for "crater auth"
+  
+  Did you mean this?
+  	ls
+  
+  Run "crater auth --help" for usage.
+-- en/02-subcommand-typo-lss-json/argv --
+crater auth lss --no-interactive --json
+-- en/02-subcommand-typo-lss-json/exit --
+2
+-- en/02-subcommand-typo-lss-json/stdout --
+-- en/02-subcommand-typo-lss-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"lss\" for \"crater auth\"\n\nDid you mean this?\n\tls\n\nRun \"crater auth --help\" for usage."
+}
+-- en/03-subcommand-typo-swtich-nojson/argv --
+crater auth swtich --no-interactive
+-- en/03-subcommand-typo-swtich-nojson/exit --
+2
+-- en/03-subcommand-typo-swtich-nojson/stdout --
+-- en/03-subcommand-typo-swtich-nojson/stderr --
+Error:
+  unknown command "swtich" for "crater auth"
+  
+  Did you mean this?
+  	switch
+  
+  Run "crater auth --help" for usage.
+-- en/04-subcommand-typo-swtich-json/argv --
+crater auth swtich --no-interactive --json
+-- en/04-subcommand-typo-swtich-json/exit --
+2
+-- en/04-subcommand-typo-swtich-json/stdout --
+-- en/04-subcommand-typo-swtich-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"swtich\" for \"crater auth\"\n\nDid you mean this?\n\tswitch\n\nRun \"crater auth --help\" for usage."
+}
+-- en/05-subcommand-typo-loguot-nojson/argv --
+crater auth loguot --no-interactive
+-- en/05-subcommand-typo-loguot-nojson/exit --
+2
+-- en/05-subcommand-typo-loguot-nojson/stdout --
+-- en/05-subcommand-typo-loguot-nojson/stderr --
+Error:
+  unknown command "loguot" for "crater auth"
+  
+  Did you mean this?
+  	logout
+  
+  Run "crater auth --help" for usage.
+-- en/06-subcommand-typo-loguot-json/argv --
+crater auth loguot --no-interactive --json
+-- en/06-subcommand-typo-loguot-json/exit --
+2
+-- en/06-subcommand-typo-loguot-json/stdout --
+-- en/06-subcommand-typo-loguot-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"loguot\" for \"crater auth\"\n\nDid you mean this?\n\tlogout\n\nRun \"crater auth --help\" for usage."
+}
+-- en/07-subcommand-typo-rmm-nojson/argv --
+crater auth rmm --no-interactive
+-- en/07-subcommand-typo-rmm-nojson/exit --
+2
+-- en/07-subcommand-typo-rmm-nojson/stdout --
+-- en/07-subcommand-typo-rmm-nojson/stderr --
+Error:
+  unknown command "rmm" for "crater auth"
+  
+  Did you mean this?
+  	rm
+  
+  Run "crater auth --help" for usage.
+-- en/08-subcommand-typo-rmm-json/argv --
+crater auth rmm --no-interactive --json
+-- en/08-subcommand-typo-rmm-json/exit --
+2
+-- en/08-subcommand-typo-rmm-json/stdout --
+-- en/08-subcommand-typo-rmm-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"rmm\" for \"crater auth\"\n\nDid you mean this?\n\trm\n\nRun \"crater auth --help\" for usage."
+}
