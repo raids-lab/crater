@@ -502,9 +502,15 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
-                    <Input autoComplete="off" {...field} className="w-full" autoFocus={true} />
+                    <Input
+                      autoComplete="off"
+                      placeholder={t('accountForm.namePlaceholder')}
+                      maxLength={16}
+                      {...field}
+                      className="w-full"
+                      autoFocus={true}
+                    />
                   </FormControl>
-                  <FormDescription>{t('accountForm.nameDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -547,7 +553,6 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>{t('accountForm.expiredAtDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -573,81 +578,66 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       onChange={(value) => form.setValue('admins', value)}
                     />
                   </FormControl>
-                  <FormDescription>{t('accountForm.adminsDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           )}
 
-          {billingEnabled && (
+          {billingEnabled && (amountOverrideEnabled || periodOverrideEnabled) && (
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="billingIssueAmount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('accountForm.billingIssueAmountLabel', {
-                        defaultValue: '周期发放额度',
-                      })}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        disabled={!amountOverrideEnabled}
-                        value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(e.target.value === '' ? undefined : Number(e.target.value))
-                        }
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {amountOverrideEnabled
-                        ? t('accountForm.billingIssueAmountDescription', {
-                            defaultValue: '每个发放周期发放的免费点数额度。',
-                          })
-                        : t('accountForm.billingIssueAmountDisabledDescription', {
-                            defaultValue: '当前由系统默认发放额度控制。',
-                          })}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="billingIssuePeriodMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('accountForm.billingIssuePeriodMinutesLabel', {
-                        defaultValue: '发放周期（分钟）',
-                      })}
-                    </FormLabel>
-                    <FormControl>
-                      <BillingPeriodFields
-                        totalMinutes={field.value ?? 0}
-                        disabled={!periodOverrideEnabled}
-                        onChange={(value) => {
-                          field.onChange(value.totalMinutes)
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {periodOverrideEnabled
-                        ? t('accountForm.billingIssuePeriodMinutesDescription', {
-                            defaultValue: '填 0 表示关闭该账户的周期发放。',
-                          })
-                        : t('accountForm.billingIssuePeriodMinutesDisabledDescription', {
-                            defaultValue: '当前由系统默认发放周期控制。',
-                          })}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {amountOverrideEnabled && (
+                <FormField
+                  control={form.control}
+                  name="billingIssueAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('accountForm.billingIssueAmountLabel', {
+                          defaultValue: '周期发放额度',
+                        })}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === '' ? undefined : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {periodOverrideEnabled && (
+                <FormField
+                  control={form.control}
+                  name="billingIssuePeriodMinutes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('accountForm.billingIssuePeriodMinutesLabel', {
+                          defaultValue: '发放周期（分钟，设为 0 关闭）',
+                        })}
+                      </FormLabel>
+                      <FormControl>
+                        <BillingPeriodFields
+                          totalMinutes={field.value ?? 0}
+                          onChange={(value) => {
+                            field.onChange(value.totalMinutes)
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
           )}
           <div className="space-y-2">

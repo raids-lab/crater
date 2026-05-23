@@ -41,7 +41,6 @@ function Component() {
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title={currentAccount ? t('accountForm.editTitle') : t('accountForm.createTitle')}
-        description={t('accountForm.description')}
         className="sm:max-w-4xl"
       >
         <AccountForm onOpenChange={setIsOpen} account={currentAccount} />
