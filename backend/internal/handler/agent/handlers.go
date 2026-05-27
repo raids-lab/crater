@@ -176,7 +176,7 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 	}
 
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), toolCall.SessionID, token.UserID)
-	if err != nil || session.AccountID != token.AccountID {
+	if err != nil {
 		resputil.HTTPError(c, http.StatusForbidden, "confirmation result not found", resputil.TokenInvalid)
 		return
 	}
@@ -256,7 +256,7 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 		return
 	}
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), toolCall.SessionID, token.UserID)
-	if err != nil || session.AccountID != token.AccountID {
+	if err != nil {
 		resputil.HTTPError(c, http.StatusForbidden, "pending action not found", resputil.TokenInvalid)
 		return
 	}
@@ -790,8 +790,8 @@ func (mgr *AgentMgr) GetTurnEvents(c *gin.Context) {
 		resputil.HTTPError(c, http.StatusNotFound, "turn not found", resputil.NotSpecified)
 		return
 	}
-	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), turn.SessionID, token.UserID)
-	if err != nil || session.AccountID != token.AccountID {
+	_, err = mgr.agentService.GetOwnedSession(c.Request.Context(), turn.SessionID, token.UserID)
+	if err != nil {
 		resputil.HTTPError(c, http.StatusForbidden, "turn not found", resputil.TokenInvalid)
 		return
 	}
