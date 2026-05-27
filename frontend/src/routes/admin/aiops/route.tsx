@@ -1,7 +1,5 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 
-import { AIChatAssistantProvider } from '@/components/aiops/AIChatAssistantProvider'
-
 import { Role } from '@/services/api/auth'
 
 export const Route = createFileRoute('/admin/aiops')({
@@ -21,9 +19,5 @@ export const Route = createFileRoute('/admin/aiops')({
 })
 
 function RouteComponent() {
-  return (
-    <AIChatAssistantProvider>
-      <Outlet />
-    </AIChatAssistantProvider>
-  )
+  return <Outlet />
 }

@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-// [新增]
 import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-router'
 import {
   AlarmClockIcon,
@@ -22,6 +21,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import AppLayout from '@/components/layout/app-layout'
+import { AIChatAssistantProvider } from '@/components/aiops/AIChatAssistantProvider'
 import { NavGroupProps } from '@/components/sidebar/types'
 
 import { Role } from '@/services/api/auth'
@@ -214,7 +214,9 @@ function RouteComponent() {
 
   return (
     <AppLayout groups={groups} rawPath={pathname}>
-      <Outlet />
+      <AIChatAssistantProvider>
+        <Outlet />
+      </AIChatAssistantProvider>
     </AppLayout>
   )
 }
