@@ -48,6 +48,7 @@ func newJob(db *gorm.DB, opts ...gen.DOOption) job {
 	_job.Resources = field.NewField(tableName, "resources")
 	_job.Attributes = field.NewField(tableName, "attributes")
 	_job.Template = field.NewString(tableName, "template")
+	_job.Checkpoint = field.NewField(tableName, "checkpoint")
 	_job.AlertEnabled = field.NewBool(tableName, "alert_enabled")
 	_job.Reminded = field.NewBool(tableName, "reminded")
 	_job.KeepWhenLowResourceUsage = field.NewBool(tableName, "keep_when_low_resource_usage")
@@ -119,6 +120,7 @@ type job struct {
 	Resources                field.Field  // 作业的资源需求
 	Attributes               field.Field  // 作业的原始属性
 	Template                 field.String // 作业的模板配置
+	Checkpoint               field.Field  // checkpoint配置和运行信息
 	AlertEnabled             field.Bool   // 是否启用通知
 	Reminded                 field.Bool   // 是否已经处于发送了提醒的状态
 	KeepWhenLowResourceUsage field.Bool   // 当资源利用率低时是否保留
@@ -168,6 +170,7 @@ func (j *job) updateTableName(table string) *job {
 	j.Resources = field.NewField(table, "resources")
 	j.Attributes = field.NewField(table, "attributes")
 	j.Template = field.NewString(table, "template")
+	j.Checkpoint = field.NewField(table, "checkpoint")
 	j.AlertEnabled = field.NewBool(table, "alert_enabled")
 	j.Reminded = field.NewBool(table, "reminded")
 	j.KeepWhenLowResourceUsage = field.NewBool(table, "keep_when_low_resource_usage")
@@ -202,7 +205,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 31)
+	j.fieldMap = make(map[string]field.Expr, 32)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt
@@ -223,6 +226,7 @@ func (j *job) fillFieldMap() {
 	j.fieldMap["resources"] = j.Resources
 	j.fieldMap["attributes"] = j.Attributes
 	j.fieldMap["template"] = j.Template
+	j.fieldMap["checkpoint"] = j.Checkpoint
 	j.fieldMap["alert_enabled"] = j.AlertEnabled
 	j.fieldMap["reminded"] = j.Reminded
 	j.fieldMap["keep_when_low_resource_usage"] = j.KeepWhenLowResourceUsage

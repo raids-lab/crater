@@ -284,6 +284,91 @@ export interface ScheduleData {
   imageSize?: string
 }
 
+export type CheckpointFramework =
+  | 'pytorch'
+  | 'hf-trainer'
+  | 'deepspeed'
+  | 'verl'
+  | 'lightning'
+  | 'custom'
+
+export type CheckpointResumeMode = 'none' | 'manual' | 'latest' | 'auto'
+
+export interface CheckpointConfig {
+  enabled: boolean
+  framework: CheckpointFramework
+  projectName?: string
+  experimentName?: string
+  outputDir?: string
+  checkpointDir?: string
+  resumeMode: CheckpointResumeMode
+  resumeFrom?: string
+  latestCheckpoint?: string
+  saveSteps: number
+  maxToKeep: number
+  maxBytes?: number
+  lastScannedAt?: string
+}
+
+export interface JobCheckpoint {
+  ID: number
+  CreatedAt: string
+  UpdatedAt: string
+  DeletedAt?: string | null
+  jobID: number
+  jobName: string
+  userID: number
+  accountID: number
+  framework: string
+  name: string
+  path: string
+  storagePath: string
+  step: number
+  sizeBytes: number
+  modTime: string
+  status: 'ready' | 'missing' | 'deleted'
+  latest: boolean
+  source: string
+  metadata?: Record<string, unknown>
+}
+
+export interface CheckpointQuota {
+  maxToKeep: number
+  maxBytes: number
+  currentCount: number
+  excessCount: number
+  excessBytes: number
+  currentBytes: number
+}
+
+export interface JobCheckpointListResp {
+  items: JobCheckpoint[]
+  latest?: JobCheckpoint
+  total: number
+  totalSizeBytes: number
+  quota: CheckpointQuota
+  lastScannedAt?: string
+  checkpoint?: CheckpointConfig
+}
+
+export interface CheckpointCleanupReq {
+  keepLast?: number
+  maxAgeDays?: number
+  dryRun?: boolean
+}
+
+export interface CheckpointCleanupResp {
+  deleted: JobCheckpoint[]
+  reclaimedBytes: number
+  dryRun: boolean
+}
+
+export interface CheckpointRestoreResp {
+  jobName: string
+  name: string
+  checkpointPath: string
+}
+
 export interface IJupyterDetail {
   name: string
   namespace: string
@@ -299,6 +384,7 @@ export interface IJupyterDetail {
   resources?: Record<string, string>
   profileData?: ProfileData
   scheduleData?: ScheduleData
+  checkpoint?: CheckpointConfig
   events?: KubernetesEvent[]
   terminatedStates?: TerminatedState[]
   createdAt: string
@@ -369,6 +455,7 @@ export interface IJupyterCreate {
   cpuPinningEnabled?: boolean
   forwards: Forward[]
   scheduleType?: ScheduleType
+  checkpoint?: CheckpointConfig
 }
 
 export interface ITrainingCreate extends IJupyterCreate {
@@ -408,6 +495,7 @@ export interface ITensorflowCreate {
   alertEnabled: boolean
   template?: string
   forwards: Forward[]
+  checkpoint?: CheckpointConfig
 }
 
 export const apiJupyterCreate = (task: IJupyterCreate) =>
@@ -459,6 +547,30 @@ export const apiJobGetEvent = (jobName: string) =>
 
 export const apiJobTemplate = (jobName: string) =>
   apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/template`)
+
+export const apiJobCheckpoints = (jobName: string, autoScan: boolean = true) =>
+  apiV1Get<IResponse<JobCheckpointListResp>>(`${JOB_URL}/${jobName}/checkpoints`, {
+    searchParams: { autoScan },
+  })
+
+export const apiJobCheckpointScan = (jobName: string) =>
+  apiV1Post<IResponse<JobCheckpointListResp>>(`${JOB_URL}/${jobName}/checkpoints/scan`)
+
+export const apiJobCheckpointRestore = (
+  jobName: string,
+  checkpointID: number,
+  payload?: { name?: string }
+) =>
+  apiV1Post<IResponse<CheckpointRestoreResp>>(
+    `${JOB_URL}/${jobName}/checkpoints/${checkpointID}/restore`,
+    payload ?? {}
+  )
+
+export const apiJobCheckpointDelete = (jobName: string, checkpointID: number) =>
+  apiV1Delete<IResponse<JobCheckpoint>>(`${JOB_URL}/${jobName}/checkpoints/${checkpointID}`)
+
+export const apiJobCheckpointCleanup = (jobName: string, payload: CheckpointCleanupReq) =>
+  apiV1Post<IResponse<CheckpointCleanupResp>>(`${JOB_URL}/${jobName}/checkpoints/cleanup`, payload)
 
 export const apiJTaskImageList = (imageTaskType: string) =>
   apiV1Get<IResponse<{ images: ImageInfoResponse[] }>>(`images/available?type=${imageTaskType}`)

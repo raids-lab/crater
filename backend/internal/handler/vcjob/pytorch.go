@@ -75,11 +75,16 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
+	checkpoint, err := prepareCheckpointConfig(token, &req.CreateJobCommon, volumeMounts)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
 
 	// 2. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
 	baseTolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(c, token, req.Envs)
+	envs := AppendCheckpointEnvs(GenerateEnvs(c, token, req.Envs), checkpoint, jobName)
 
 	// 3. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
@@ -89,6 +94,10 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		&req.CreateJobCommon,
 		scheduleMetadata,
 	)
+	if err := ApplyCheckpointAnnotations(jobAnnotations, req.Checkpoint); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
 
 	// 4. Create the task spec
 	tasks := make([]batch.TaskSpec, len(req.Tasks))

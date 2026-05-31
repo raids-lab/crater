@@ -75,6 +75,13 @@ Generate backend config with images from top-level images section
 {{- end -}}
 {{- $_ := set $config "host" .Values.host -}}
 {{- $_ := set $config "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image) -}}
+{{- if .Values.checkpointScanner.enabled -}}
+  {{- $scanner := default (dict) $config.checkpointScanner -}}
+  {{- if not $scanner.endpoint -}}
+    {{- $_ := set $scanner "endpoint" (printf "http://checkpoint-scanner-service.%s.svc.cluster.local:%v" .Values.namespaces.job .Values.checkpointScanner.port) -}}
+  {{- end -}}
+  {{- $_ := set $config "checkpointScanner" $scanner -}}
+{{- end -}}
 {{- $config | toYaml -}}
 {{- end -}}
 
@@ -101,4 +108,3 @@ Avoid rendering full backend config into ss-config.
 -}}
 {{- $config | toYaml -}}
 {{- end -}}
-

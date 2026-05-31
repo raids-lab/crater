@@ -45,6 +45,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 
 import TipBadge from '@/components/badge/tip-badge'
+import { CheckpointFormCard } from '@/components/form/checkpoint-form-field'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -70,7 +71,9 @@ import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-b
 
 import {
   VolumeMountType,
+  checkpointSchema,
   convertToResourceList,
+  defaultCheckpoint,
   defaultResource,
   ensureImageCompatibility,
   envsSchema,
@@ -106,6 +109,7 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
+  checkpoint: checkpointSchema,
   alertEnabled: z.boolean().default(true),
   cpuPinningEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
@@ -140,6 +144,9 @@ const dataProcessor = (data: FormSchema) => {
   if (data.scheduleType === undefined) {
     data.scheduleType = ScheduleType.Normal
   }
+  if (!data.checkpoint) {
+    data.checkpoint = defaultCheckpoint
+  }
   return data
 }
 
@@ -148,6 +155,7 @@ export const EnvCard = '环境变量'
 function RouteComponent() {
   const searchParams = Route.useSearch()
   const [envOpen, setEnvOpen] = useState<boolean>(false)
+  const [checkpointOpen, setCheckpointOpen] = useState<boolean>(false)
   const [otherOpen, setOtherOpen] = useState<boolean>(true)
   const navigate = Route.useNavigate()
   const queryClient = useQueryClient()
@@ -171,6 +179,7 @@ function RouteComponent() {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         forwards: values.forwards,
+        checkpoint: values.checkpoint,
         alertEnabled: values.alertEnabled,
         cpuPinningEnabled: values.cpuPinningEnabled,
         scheduleType: isBackfillEnabled ? values.scheduleType : ScheduleType.Normal,
@@ -229,6 +238,7 @@ function RouteComponent() {
         },
       ],
       envs: [],
+      checkpoint: defaultCheckpoint,
       alertEnabled: true,
       cpuPinningEnabled: false,
       scheduleType: ScheduleType.Normal,
@@ -274,6 +284,9 @@ function RouteComponent() {
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
                     setEnvOpen(true)
+                  }
+                  if (data.checkpoint?.enabled) {
+                    setCheckpointOpen(true)
                   }
                   if (data.nodeSelector.enable) {
                     setOtherOpen(true)
@@ -436,6 +449,11 @@ conda activate base;
                   value: true,
                 },
                 {
+                  condition: (data) => data.checkpoint?.enabled === true,
+                  setter: setCheckpointOpen,
+                  value: true,
+                },
+                {
                   condition: (data) => data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: true,
@@ -448,6 +466,11 @@ conda activate base;
           </div>
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
+            <CheckpointFormCard
+              form={form}
+              open={checkpointOpen}
+              setOpen={setCheckpointOpen}
+            />
             <ForwardFormCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard

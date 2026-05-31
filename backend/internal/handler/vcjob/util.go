@@ -606,9 +606,14 @@ func generateInteractivePodSpec(
 	port int32,
 	containerName string,
 	cpuPinningEnabled bool,
+	jobName string,
 ) (v1.PodSpec, error) {
 	// 1. Volume Mounts
 	volumes, volumeMounts, err := GenerateVolumeMounts(c, req.VolumeMounts, token)
+	if err != nil {
+		return v1.PodSpec{}, err
+	}
+	checkpoint, err := prepareCheckpointConfig(token, req, volumeMounts)
 	if err != nil {
 		return v1.PodSpec{}, err
 	}
@@ -634,7 +639,7 @@ func generateInteractivePodSpec(
 	})
 
 	// 2. Env Vars
-	envs := GenerateEnvs(c, token, req.Envs)
+	envs := AppendCheckpointEnvs(GenerateEnvs(c, token, req.Envs), checkpoint, jobName)
 
 	// 3. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, resourceList)

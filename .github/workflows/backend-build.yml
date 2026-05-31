@@ -126,6 +126,7 @@ jobs:
           mkdir -p bin/${{ matrix.platform.image_platform }}
           go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/migrate cmd/gorm-gen/models/migrate.go
           go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/controller cmd/crater/main.go
+          go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/checkpoint-scanner cmd/checkpoint-scanner/main.go
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.platform.goos }}

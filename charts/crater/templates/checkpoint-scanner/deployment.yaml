@@ -1,0 +1,66 @@
+{{- if .Values.checkpointScanner.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkpoint-scanner
+  namespace: {{ .Values.namespaces.job }}
+  labels:
+    app: checkpoint-scanner
+spec:
+  replicas: {{ .Values.checkpointScanner.replicas }}
+  selector:
+    matchLabels:
+      app: checkpoint-scanner
+  template:
+    metadata:
+      labels:
+        app: checkpoint-scanner
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+        - name: checkpoint-scanner
+          image: {{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+            - /checkpoint-scanner
+          env:
+            - name: CRATER_CHECKPOINT_SCANNER_ROOT
+              value: /crater
+            - name: CRATER_CHECKPOINT_SCANNER_PORT
+              value: "{{ .Values.checkpointScanner.port }}"
+            - name: CRATER_CHECKPOINT_SCANNER_CONCURRENCY
+              value: "{{ .Values.checkpointScanner.concurrency }}"
+          ports:
+            - containerPort: {{ .Values.checkpointScanner.port }}
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.checkpointScanner.resources | nindent 12 }}
+          volumeMounts:
+            - name: storage
+              mountPath: /crater
+              readOnly: true
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.pvcName }}
+            readOnly: true
+{{- end }}

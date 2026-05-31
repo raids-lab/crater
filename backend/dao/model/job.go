@@ -102,6 +102,22 @@ type ScheduleData struct {
 	ImageSize     *string `json:"imageSize"`
 }
 
+type CheckpointInfo struct {
+	Enabled          bool      `json:"enabled"`
+	Framework        string    `json:"framework"`
+	ProjectName      string    `json:"projectName"`
+	ExperimentName   string    `json:"experimentName"`
+	OutputDir        string    `json:"outputDir"`
+	CheckpointDir    string    `json:"checkpointDir"`
+	ResumeMode       string    `json:"resumeMode"`
+	ResumeFrom       string    `json:"resumeFrom"`
+	LatestCheckpoint string    `json:"latestCheckpoint"`
+	SaveSteps        int       `json:"saveSteps"`
+	MaxToKeep        int       `json:"maxToKeep"`
+	MaxBytes         int64     `json:"maxBytes"`
+	LastScannedAt    time.Time `json:"lastScannedAt,omitempty"`
+}
+
 // 从事件中获取镜像拉取数据，重点关注 Pod Pulled 事件
 func (s *ScheduleData) Init(msg string) error {
 	if strings.Contains(msg, "already present on machine") {
@@ -146,13 +162,14 @@ type Job struct {
 	// TODO(perf): Evaluate adding composite indexes for statistics queries:
 	// (user_id, running_timestamp), (account_id, running_timestamp),
 	// and potentially (running_timestamp, completed_timestamp).
-	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
-	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
-	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
-	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`
-	Resources          datatypes.JSONType[v1.ResourceList] `gorm:"comment:作业的资源需求"`
-	Attributes         datatypes.JSONType[*batch.Job]      `gorm:"comment:作业的原始属性"`
-	Template           string                              `gorm:"type:text;comment:作业的模板配置"`
+	CreationTimestamp  time.Time                            `gorm:"not null;comment:作业创建时间"`
+	RunningTimestamp   time.Time                            `gorm:"comment:作业开始运行时间"`
+	CompletedTimestamp time.Time                            `gorm:"comment:作业完成时间"`
+	Nodes              datatypes.JSONType[[]string]         `gorm:"comment:作业运行的节点"`
+	Resources          datatypes.JSONType[v1.ResourceList]  `gorm:"comment:作业的资源需求"`
+	Attributes         datatypes.JSONType[*batch.Job]       `gorm:"comment:作业的原始属性"`
+	Template           string                               `gorm:"type:text;comment:作业的模板配置"`
+	Checkpoint         *datatypes.JSONType[*CheckpointInfo] `gorm:"comment:checkpoint配置和运行信息"`
 
 	// 通知相关
 	AlertEnabled bool `gorm:"type:boolean;default:false;comment:是否启用通知"`

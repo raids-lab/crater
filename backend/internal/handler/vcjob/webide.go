@@ -108,8 +108,13 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		JupyterPort,
 		string(CraterJobTypeWebIDE),
 		req.CpuPinningEnabled,
+		jobName,
 	)
 	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	if err := ApplyCheckpointAnnotations(jobAnnotations, req.Checkpoint); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

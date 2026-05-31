@@ -80,6 +80,24 @@ images:
     # -- DBBackup image tag
     tag: "16.4"
 
+# -- Checkpoint scanner service configuration
+checkpointScanner:
+  # -- Whether to deploy the always-on checkpoint scanner service
+  enabled: true
+  # -- Number of checkpoint scanner replicas
+  replicas: 1
+  # -- HTTP port exposed by the scanner service
+  port: 7330
+  # -- Max concurrent scan requests handled by one scanner pod
+  concurrency: 4
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
 # -- Persistent Volume Claim configuration
 storage:
   # -- Whether to create PVC or use existing pvc.
@@ -179,6 +197,13 @@ backendConfig:
     # Default: python:3.11-slim (public Docker Hub)
     # Internal deployment uses: crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim
     image: "crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim"
+
+  # -- Always-on checkpoint scanner service used by backend checkpoint scan APIs
+  checkpointScanner:
+    # -- HTTP base URL for the scanner service. If empty, helper templates fill the in-cluster service endpoint.
+    endpoint: ""
+    # -- Backend-to-scanner request timeout in seconds
+    timeoutSeconds: 30
 
   # -- Endpoint URL for Prometheus API used for metrics and monitoring
   # If not specified, Prometheus integration will be disabled

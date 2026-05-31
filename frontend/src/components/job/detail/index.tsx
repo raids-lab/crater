@@ -18,6 +18,7 @@ import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import {
   ActivityIcon,
+  ArchiveIcon,
   BarChartBigIcon,
   CalendarIcon,
   CheckCircleIcon,
@@ -103,6 +104,7 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import { getNewJobLink } from '../new-job-button'
 import JobOrderList from './job-order-list'
+import CheckpointPanel from './checkpoint-panel'
 import { PodTable } from './pod-table'
 import { SSHPortDialog } from './s-s-h-port-dialog'
 
@@ -460,6 +462,14 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
               )}
             />
           ),
+        },
+        {
+          key: 'checkpoint',
+          icon: ArchiveIcon,
+          label: 'Checkpoint',
+          children: <CheckpointPanel jobName={jobName} />,
+          scrollable: true,
+          hidden: !data.checkpoint?.enabled,
         },
         {
           key: 'event',

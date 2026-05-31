@@ -29,7 +29,8 @@ WORKDIR /
 ENV GIN_MODE=release
 COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/controller .
 COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/migrate .
-RUN chmod +x controller migrate
+COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/checkpoint-scanner .
+RUN chmod +x controller migrate checkpoint-scanner
 
 EXPOSE 8088:8088
 

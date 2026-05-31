@@ -40,6 +40,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
+import { CheckpointFormCard } from '@/components/form/checkpoint-form-field'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -63,7 +64,9 @@ import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-b
 
 import {
   VolumeMountType,
+  checkpointSchema,
   convertToResourceList,
+  defaultCheckpoint,
   defaultResource,
   ensureImageCompatibility,
   envsSchema,
@@ -166,6 +169,7 @@ const formSchema = z.object({
   worker: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
+  checkpoint: checkpointSchema,
   alertEnabled: z.boolean().default(true),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
@@ -210,12 +214,16 @@ const dataProcessor = (data: FormSchema) => {
       enabled: false,
     }
   }
+  if (!data.checkpoint) {
+    data.checkpoint = defaultCheckpoint
+  }
   return data
 }
 
 function RouteComponent() {
   const searchParams = Route.useSearch()
   const [envOpen, setEnvOpen] = useState<boolean>(false)
+  const [checkpointOpen, setCheckpointOpen] = useState<boolean>(false)
   const [otherOpen, setOtherOpen] = useState<boolean>(true)
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -249,6 +257,7 @@ function RouteComponent() {
         ],
         volumeMounts: values.volumeMounts,
         envs: values.envs,
+        checkpoint: values.checkpoint,
         alertEnabled: values.alertEnabled,
         selectors: values.nodeSelector.enable
           ? [
@@ -312,6 +321,7 @@ function RouteComponent() {
         },
       ],
       envs: [],
+      checkpoint: { ...defaultCheckpoint, framework: 'pytorch' },
       alertEnabled: true,
       nodeSelector: {
         enable: false,
@@ -393,6 +403,9 @@ function RouteComponent() {
                 afterImport={(data) => {
                   if (data.envs.length > 0) {
                     setEnvOpen(true)
+                  }
+                  if (data.checkpoint?.enabled) {
+                    setCheckpointOpen(true)
                   }
                   if (data.nodeSelector.enable) {
                     setOtherOpen(true)
@@ -711,6 +724,11 @@ function RouteComponent() {
                   value: true,
                 },
                 {
+                  condition: (data) => data.checkpoint?.enabled === true,
+                  setter: setCheckpointOpen,
+                  value: true,
+                },
+                {
                   condition: (data) => data.nodeSelector.enable || data.alertEnabled,
                   setter: setOtherOpen,
                   value: true,
@@ -723,6 +741,11 @@ function RouteComponent() {
 
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
+            <CheckpointFormCard
+              form={form}
+              open={checkpointOpen}
+              setOpen={setCheckpointOpen}
+            />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}

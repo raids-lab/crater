@@ -157,6 +157,12 @@ build: fmt lint docs ## Build manager binary.
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/controller cmd/crater/main.go
 	@echo "$(GREEN)✅ Controller binary built successfully: bin/controller$(RESET)"
 
+.PHONY: build-checkpoint-scanner
+build-checkpoint-scanner: fmt lint ## Build checkpoint scanner binary.
+	@echo "$(YELLOW)🔨 Building checkpoint scanner binary...$(RESET)"
+	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/checkpoint-scanner cmd/checkpoint-scanner/main.go
+	@echo "$(GREEN)✅ Checkpoint scanner binary built successfully: bin/checkpoint-scanner$(RESET)"
+
 .PHONY: build-migrate
 build-migrate: fmt lint ## Build migration binary.
 	@echo "$(YELLOW)🔨 Building migration binary...$(RESET)"

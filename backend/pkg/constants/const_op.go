@@ -9,6 +9,10 @@ const (
 	OpTypeDrainNode           = "DrainNode"
 	OpTypeUpdateVPA           = "UpdateVPA"
 	OpTypeDeleteJob           = "DeleteJob"
+	OpTypeScanCheckpoint      = "ScanCheckpoint"
+	OpTypeRestoreCheckpoint   = "RestoreCheckpoint"
+	OpTypeDeleteCheckpoint    = "DeleteCheckpoint"
+	OpTypeCleanupCheckpoint   = "CleanupCheckpoint"
 
 	// Execution Status
 	OpStatusSuccess = "Success"

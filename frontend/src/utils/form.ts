@@ -213,6 +213,51 @@ export const nodeSelectorSchema = z
 
 export type NodeSelectorSchema = z.infer<typeof nodeSelectorSchema>
 
+export const checkpointSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    framework: z
+      .enum(['pytorch', 'hf-trainer', 'deepspeed', 'verl', 'lightning', 'custom'])
+      .default('custom'),
+    projectName: z.string().optional(),
+    experimentName: z.string().optional(),
+    outputDir: z.string().optional(),
+    checkpointDir: z.string().optional(),
+    resumeMode: z.enum(['none', 'manual', 'latest', 'auto']).default('none'),
+    resumeFrom: z.string().optional(),
+    saveSteps: z.number().int().positive().default(500),
+    maxToKeep: z.number().int().positive().default(3),
+    maxBytes: z.number().int().nonnegative().default(0),
+  })
+  .superRefine((value, ctx) => {
+    if (!value.enabled) {
+      return
+    }
+    if (value.resumeMode === 'manual' && !value.resumeFrom) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '手动恢复时必须填写 checkpoint 路径',
+        path: ['resumeFrom'],
+      })
+    }
+  })
+
+export type CheckpointSchema = z.infer<typeof checkpointSchema>
+
+export const defaultCheckpoint: CheckpointSchema = {
+  enabled: false,
+  framework: 'custom',
+  projectName: '',
+  experimentName: '',
+  outputDir: '',
+  checkpointDir: '',
+  resumeMode: 'none',
+  resumeFrom: '',
+  saveSteps: 500,
+  maxToKeep: 3,
+  maxBytes: 0,
+}
+
 export interface JobSubmitJson<T> {
   version: string
   type: string

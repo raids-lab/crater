@@ -17,11 +17,15 @@ limitations under the License.
 package main
 
 import (
+	"os"
+	"strings"
+
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/raids-lab/crater/cmd/crater/helper"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/storage"
 )
 
 // Version information injected at build time via ldflags
@@ -66,6 +70,7 @@ func main() {
 	if err := configInit.LoadDebugEnvironment(); err != nil {
 		klog.Fatalf("Failed to load env: %s", err)
 	}
+	setupStorageRoot()
 
 	// Initialize register config and dependencies
 	registerConfig, err := configInit.InitializeRegisterConfig()
@@ -104,4 +109,18 @@ func main() {
 
 	// Start HTTP server
 	serverRunner.StartServer(registerConfig)
+}
+
+func setupStorageRoot() {
+	rootDir := strings.TrimSpace(os.Getenv("CRATER_STORAGE_ROOT"))
+	if rootDir == "" {
+		rootDir = strings.TrimSpace(os.Getenv("ROOTDIR"))
+	}
+	if rootDir == "" {
+		return
+	}
+	if err := os.MkdirAll(rootDir, os.ModePerm); err != nil {
+		klog.Fatalf("failed to create storage root directory %s: %v", rootDir, err)
+	}
+	storage.SetRootDir(rootDir)
 }
