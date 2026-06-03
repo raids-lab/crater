@@ -21,6 +21,8 @@ var (
 	BuildTime  string
 )
 
+const readHeaderTimeout = 10 * time.Second
+
 type scanServer struct {
 	scanner checkpointsvc.FileSystemScanner
 	sem     chan struct{}
@@ -52,7 +54,12 @@ func main() {
 	addr := normalizePort(port)
 	klog.Infof("checkpoint-scanner starting on %s root=%s concurrency=%d version=%s commit=%s buildType=%s buildTime=%s",
 		addr, root, concurrency, AppVersion, CommitSHA, BuildType, BuildTime)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: readHeaderTimeout,
+	}
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		klog.Fatalf("checkpoint-scanner failed: %v", err)
 	}
 }

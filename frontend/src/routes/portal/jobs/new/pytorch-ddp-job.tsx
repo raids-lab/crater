@@ -741,11 +741,7 @@ function RouteComponent() {
 
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
-            <CheckpointFormCard
-              form={form}
-              open={checkpointOpen}
-              setOpen={setCheckpointOpen}
-            />
+            <CheckpointFormCard form={form} open={checkpointOpen} setOpen={setCheckpointOpen} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
               form={form}

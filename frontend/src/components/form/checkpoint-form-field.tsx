@@ -15,6 +15,7 @@
  */
 import { SaveIcon } from 'lucide-react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 
 import {
   FormControl,
@@ -54,18 +55,19 @@ export function CheckpointFormCard<T extends FieldValues>({
   open,
   setOpen,
 }: CheckpointFormCardProps<T>) {
+  const { t } = useTranslation()
   const enabled = form.watch(path<T>(basePath, 'enabled'))
   const resumeMode = form.watch(path<T>(basePath, 'resumeMode'))
 
   return (
-    <AccordionCard cardTitle="Checkpoint" icon={SaveIcon} open={open} setOpen={setOpen}>
+    <AccordionCard cardTitle={t('checkpoint.title')} icon={SaveIcon} open={open} setOpen={setOpen}>
       <div className="mt-3 space-y-4">
         <FormField
           control={form.control}
           name={path<T>(basePath, 'enabled')}
           render={({ field }) => (
             <FormItem className="flex flex-row items-center justify-between space-y-0">
-              <FormLabel className="font-normal">启用 checkpoint</FormLabel>
+              <FormLabel className="font-normal">{t('checkpoint.form.enabled')}</FormLabel>
               <FormControl>
                 <Switch checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
@@ -79,7 +81,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'framework')}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>框架</FormLabel>
+                  <FormLabel>{t('checkpoint.form.framework')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -104,7 +106,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'resumeMode')}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>恢复策略</FormLabel>
+                  <FormLabel>{t('checkpoint.form.resumeMode')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -112,10 +114,12 @@ export function CheckpointFormCard<T extends FieldValues>({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">不恢复</SelectItem>
+                      <SelectItem value="none">{t('checkpoint.form.resumeModes.none')}</SelectItem>
                       <SelectItem value="latest">Latest</SelectItem>
                       <SelectItem value="auto">Auto</SelectItem>
-                      <SelectItem value="manual">指定 checkpoint</SelectItem>
+                      <SelectItem value="manual">
+                        {t('checkpoint.form.resumeModes.manual')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -129,7 +133,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'projectName')}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>项目名</FormLabel>
+                  <FormLabel>{t('checkpoint.form.projectName')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -142,7 +146,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'experimentName')}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>实验名</FormLabel>
+                  <FormLabel>{t('checkpoint.form.experimentName')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -156,11 +160,11 @@ export function CheckpointFormCard<T extends FieldValues>({
             name={path<T>(basePath, 'checkpointDir')}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Checkpoint 目录</FormLabel>
+                <FormLabel>{t('checkpoint.form.checkpointDir')}</FormLabel>
                 <FormControl>
                   <Input {...field} className="font-mono" placeholder="/workspace/checkpoints" />
                 </FormControl>
-                <FormDescription>留空时由平台选择第一个可写挂载路径生成默认目录</FormDescription>
+                <FormDescription>{t('checkpoint.form.checkpointDirDescription')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -170,11 +174,11 @@ export function CheckpointFormCard<T extends FieldValues>({
             name={path<T>(basePath, 'outputDir')}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Output 目录</FormLabel>
+                <FormLabel>{t('checkpoint.form.outputDir')}</FormLabel>
                 <FormControl>
                   <Input {...field} className="font-mono" placeholder="/workspace/checkpoints" />
                 </FormControl>
-                <FormDescription>HF Trainer 等框架会将 output_dir 与 checkpoint 目录对齐</FormDescription>
+                <FormDescription>{t('checkpoint.form.outputDirDescription')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -185,7 +189,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'resumeFrom')}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>恢复路径</FormLabel>
+                  <FormLabel>{t('checkpoint.form.resumeFrom')}</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
@@ -204,7 +208,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'saveSteps')}
               render={() => (
                 <FormItem>
-                  <FormLabel>保存间隔</FormLabel>
+                  <FormLabel>{t('checkpoint.form.saveSteps')}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -221,7 +225,7 @@ export function CheckpointFormCard<T extends FieldValues>({
               name={path<T>(basePath, 'maxToKeep')}
               render={() => (
                 <FormItem>
-                  <FormLabel>保留数量</FormLabel>
+                  <FormLabel>{t('checkpoint.form.maxToKeep')}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -239,7 +243,7 @@ export function CheckpointFormCard<T extends FieldValues>({
             name={path<T>(basePath, 'maxBytes')}
             render={() => (
               <FormItem>
-                <FormLabel>容量配额</FormLabel>
+                <FormLabel>{t('checkpoint.form.maxBytes')}</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -247,7 +251,7 @@ export function CheckpointFormCard<T extends FieldValues>({
                     {...form.register(path<T>(basePath, 'maxBytes'), { valueAsNumber: true })}
                   />
                 </FormControl>
-                <FormDescription>单位为 Byte，0 表示不启用容量配额</FormDescription>
+                <FormDescription>{t('checkpoint.form.maxBytesDescription')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

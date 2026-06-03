@@ -22,6 +22,7 @@ import {
   ShieldCheckIcon,
   Trash2Icon,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -34,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +66,7 @@ interface CheckpointPanelProps {
 }
 
 export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const queryKey = ['job', 'detail', jobName, 'checkpoints']
@@ -83,7 +86,7 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
   const scanMutation = useMutation({
     mutationFn: () => apiJobCheckpointScan(jobName),
     onSuccess: async () => {
-      toast.success('Checkpoint 扫描完成')
+      toast.success(t('checkpoint.panel.toast.scanSuccess'))
       await refreshQueries()
     },
   })
@@ -94,7 +97,11 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
         keepLast: data?.quota.maxToKeep || data?.checkpoint?.maxToKeep || 3,
       }),
     onSuccess: async (res) => {
-      toast.success(`清理完成，释放 ${formatBytes(res.data.reclaimedBytes)}`)
+      toast.success(
+        t('checkpoint.panel.toast.cleanupSuccess', {
+          bytes: formatBytes(res.data.reclaimedBytes),
+        })
+      )
       await refreshQueries()
     },
   })
@@ -105,7 +112,7 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
         name: `${checkpoint.name}-resume`,
       }),
     onSuccess: async (res) => {
-      toast.success(`已提交恢复作业 ${res.data.jobName}`)
+      toast.success(t('checkpoint.panel.toast.restoreSuccess', { jobName: res.data.jobName }))
       await queryClient.invalidateQueries({ queryKey: ['job'] })
       navigate({
         to: '/portal/jobs/detail/$name',
@@ -117,7 +124,7 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
   const deleteMutation = useMutation({
     mutationFn: (checkpoint: JobCheckpoint) => apiJobCheckpointDelete(jobName, checkpoint.ID),
     onSuccess: async () => {
-      toast.success('Checkpoint 已删除')
+      toast.success(t('checkpoint.panel.toast.deleteSuccess'))
       await refreshQueries()
     },
   })
@@ -130,22 +137,31 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
     <div className="flex flex-col gap-4 p-4 md:p-6">
       <div className="grid gap-3 md:grid-cols-4">
         <Metric label="Latest" value={data?.latest?.name ?? '-'} mono />
-        <Metric label="数量" value={`${data?.quota.currentCount ?? 0}/${maxToKeep || '-'}`} />
         <Metric
-          label="容量"
+          label={t('checkpoint.panel.metric.count')}
+          value={`${data?.quota.currentCount ?? 0}/${maxToKeep || '-'}`}
+        />
+        <Metric
+          label={t('checkpoint.panel.metric.storage')}
           value={`${formatBytes(data?.quota.currentBytes ?? 0)}${
             data?.quota.maxBytes ? ` / ${formatBytes(data.quota.maxBytes)}` : ''
           }`}
         />
-        <Metric label="上次扫描" value={lastScannedAt} />
+        <Metric label={t('checkpoint.panel.metric.lastScannedAt')} value={lastScannedAt} />
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <ShieldCheckIcon className="size-4" />
           <span>
-            保留策略按最新 checkpoint 优先，超额数量 {data?.quota.excessCount ?? 0}
-            {data?.quota.excessBytes ? `，超额容量 ${formatBytes(data.quota.excessBytes)}` : ''}
+            {t('checkpoint.panel.retentionSummary', {
+              count: data?.quota.excessCount ?? 0,
+            })}
+            {data?.quota.excessBytes
+              ? t('checkpoint.panel.retentionExcessBytes', {
+                  bytes: formatBytes(data.quota.excessBytes),
+                })
+              : ''}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -155,7 +171,7 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
             disabled={scanMutation.isPending || isFetching}
           >
             <RefreshCwIcon className={cn('size-4', scanMutation.isPending && 'animate-spin')} />
-            扫描
+            {t('checkpoint.panel.actions.scan')}
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -164,20 +180,20 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
                 disabled={cleanupMutation.isPending || checkpoints.length === 0}
               >
                 <Trash2Icon className="size-4" />
-                清理
+                {t('checkpoint.panel.actions.cleanup')}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>清理 checkpoint</AlertDialogTitle>
+                <AlertDialogTitle>{t('checkpoint.panel.cleanupDialog.title')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  将保留最新 {maxToKeep || 3} 个 checkpoint，删除超出配额的历史项。
+                  {t('checkpoint.panel.cleanupDialog.description', { count: maxToKeep || 3 })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={() => cleanupMutation.mutate()}>
-                  清理
+                  {t('checkpoint.panel.actions.cleanup')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -188,19 +204,19 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>名称</TableHead>
+            <TableHead>{t('checkpoint.panel.table.name')}</TableHead>
             <TableHead>Step</TableHead>
-            <TableHead>大小</TableHead>
-            <TableHead>更新时间</TableHead>
-            <TableHead>路径</TableHead>
-            <TableHead className="text-right">操作</TableHead>
+            <TableHead>{t('checkpoint.panel.table.size')}</TableHead>
+            <TableHead>{t('checkpoint.panel.table.updatedAt')}</TableHead>
+            <TableHead>{t('checkpoint.panel.table.path')}</TableHead>
+            <TableHead className="text-right">{t('common.actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {checkpoints.length === 0 && (
             <TableRow>
               <TableCell colSpan={6} className="text-muted-foreground h-24 text-center">
-                暂无 checkpoint
+                {t('checkpoint.panel.empty')}
               </TableCell>
             </TableRow>
           )}
@@ -224,20 +240,24 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
                     <AlertDialogTrigger asChild>
                       <Button variant="secondary" size="sm" disabled={restoreMutation.isPending}>
                         <ArchiveRestoreIcon className="size-4" />
-                        恢复
+                        {t('checkpoint.panel.actions.restore')}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>从 checkpoint 恢复</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          {t('checkpoint.panel.restoreDialog.title')}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          将基于当前作业配置提交一个新作业，并设置恢复路径为 {checkpoint.path}。
+                          {t('checkpoint.panel.restoreDialog.description', {
+                            path: checkpoint.path,
+                          })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction onClick={() => restoreMutation.mutate(checkpoint)}>
-                          提交恢复作业
+                          {t('checkpoint.panel.actions.submitRestore')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -250,18 +270,22 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>删除 checkpoint</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          {t('checkpoint.panel.deleteDialog.title')}
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          将删除 {checkpoint.name} 对应的存储目录，并记录审计日志。
+                          {t('checkpoint.panel.deleteDialog.description', {
+                            name: checkpoint.name,
+                          })}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                           variant="destructive"
                           onClick={() => deleteMutation.mutate(checkpoint)}
                         >
-                          删除
+                          {t('common.delete')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -276,7 +300,7 @@ export default function CheckpointPanel({ jobName }: CheckpointPanelProps) {
       {isFetching && (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <RotateCcwIcon className="size-4 animate-spin" />
-          正在同步 checkpoint 列表
+          {t('checkpoint.panel.syncing')}
         </div>
       )}
     </div>

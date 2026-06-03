@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { t } from 'i18next'
 import { z } from 'zod'
 
 import { MetadataFormType } from '@/components/form/types'
@@ -236,7 +237,7 @@ export const checkpointSchema = z
     if (value.resumeMode === 'manual' && !value.resumeFrom) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: '手动恢复时必须填写 checkpoint 路径',
+        message: t('checkpoint.validation.manualResumeFromRequired'),
         path: ['resumeFrom'],
       })
     }

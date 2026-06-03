@@ -90,6 +90,7 @@ checkpointScanner:
   port: 7330
   # -- Max concurrent scan requests handled by one scanner pod
   concurrency: 4
+  # -- Resource requests and limits for checkpoint scanner pods
   resources:
     limits:
       cpu: 500m

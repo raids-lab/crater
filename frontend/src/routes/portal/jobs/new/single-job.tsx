@@ -466,11 +466,7 @@ conda activate base;
           </div>
           <div className="flex flex-col gap-4 md:gap-6">
             <VolumeMountsCard form={form} />
-            <CheckpointFormCard
-              form={form}
-              open={checkpointOpen}
-              setOpen={setCheckpointOpen}
-            />
+            <CheckpointFormCard form={form} open={checkpointOpen} setOpen={setCheckpointOpen} />
             <ForwardFormCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
