@@ -1,6 +1,6 @@
 # Crater CLI 架构说明
 
-本文档从**行为与模块边界**说明当前 CLI 代码如何组织。**必须遵守的写法与契约**以 [SPEC.md](./SPEC.md) 与 [COMMANDS.md](./COMMANDS.md) 为准；若与本文档叙述冲突，请在 ISSUE 中报告。
+本文档从**行为与模块边界**说明当前 CLI 代码如何组织。**必须遵守的写法与契约**以 [SPEC.md](./SPEC.md) 与 [COMMANDS.md](./COMMANDS.md) 为准；阶段性开发完成后的审查流程见 [REVIEW.md](./REVIEW.md)。若与本文档叙述冲突，请在 ISSUE 中报告。
 
 ## 模块分层
 
