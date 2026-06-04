@@ -21,7 +21,11 @@ var (
 	BuildTime  string
 )
 
-const readHeaderTimeout = 10 * time.Second
+const (
+	defaultScannerConcurrency = 4
+	maxScanRequestBytes       = 1 << 20
+	readHeaderTimeout         = 10 * time.Second
+)
 
 type scanServer struct {
 	scanner checkpointsvc.FileSystemScanner
@@ -39,7 +43,7 @@ func main() {
 	if port == "" {
 		port = checkpointsvc.DefaultScannerPort
 	}
-	concurrency := positiveIntEnv("CRATER_CHECKPOINT_SCANNER_CONCURRENCY", 4)
+	concurrency := positiveIntEnv("CRATER_CHECKPOINT_SCANNER_CONCURRENCY", defaultScannerConcurrency)
 
 	server := &scanServer{
 		scanner: checkpointsvc.NewFileSystemScanner(root),
@@ -79,7 +83,7 @@ func (s *scanServer) scan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, maxScanRequestBytes)
 	var req checkpointsvc.ServiceScanRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid request body: %v", err))

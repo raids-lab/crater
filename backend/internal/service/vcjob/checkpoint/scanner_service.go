@@ -85,24 +85,43 @@ func (s FileSystemScanner) Scan(ctx context.Context, req ServiceScanRequest) (Se
 	}
 
 	if !info.IsDir() {
-		size, modTime, err := scanLocalTree(ctx, base)
-		if err != nil {
-			return ServiceScanResponse{}, err
-		}
-		name := filepath.Base(base)
-		return ServiceScanResponse{Items: []ServiceScanItem{{
-			Name:        name,
-			Path:        checkpointPath(checkpointDir, name, false),
-			StoragePath: storagePath,
-			Step:        stepFromName(name),
-			SizeBytes:   size,
-			ModTime:     modTime,
-		}}}, nil
+		item, err := scanSingleFileCheckpoint(ctx, base, checkpointDir, storagePath)
+		return ServiceScanResponse{Items: []ServiceScanItem{item}}, err
 	}
 
-	entries, err := os.ReadDir(base)
+	items, err := scanCheckpointEntries(ctx, req.Framework, base, checkpointDir, storagePath)
 	if err != nil {
 		return ServiceScanResponse{}, err
+	}
+	return ServiceScanResponse{Items: items}, nil
+}
+
+func scanSingleFileCheckpoint(
+	ctx context.Context,
+	base, checkpointDir, storagePath string,
+) (ServiceScanItem, error) {
+	size, modTime, err := scanLocalTree(ctx, base)
+	if err != nil {
+		return ServiceScanItem{}, err
+	}
+	name := filepath.Base(base)
+	return ServiceScanItem{
+		Name:        name,
+		Path:        checkpointPath(checkpointDir, name, false),
+		StoragePath: storagePath,
+		Step:        stepFromName(name),
+		SizeBytes:   size,
+		ModTime:     modTime,
+	}, nil
+}
+
+func scanCheckpointEntries(
+	ctx context.Context,
+	framework, base, checkpointDir, storagePath string,
+) ([]ServiceScanItem, error) {
+	entries, err := os.ReadDir(base)
+	if err != nil {
+		return nil, err
 	}
 	sort.SliceStable(entries, func(i, j int) bool {
 		return entries[i].Name() < entries[j].Name()
@@ -111,43 +130,58 @@ func (s FileSystemScanner) Scan(ctx context.Context, req ServiceScanRequest) (Se
 	items := make([]ServiceScanItem, 0, len(entries))
 	for _, entry := range entries {
 		if err := ctx.Err(); err != nil {
-			return ServiceScanResponse{}, err
+			return nil, err
 		}
-		name := entry.Name()
-		if shouldSkipCheckpointChild(name) {
+		item, ok, err := scanCheckpointEntry(ctx, framework, base, checkpointDir, storagePath, entry)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
 			continue
 		}
-		childPath := filepath.Join(base, name)
-		childInfo, err := entry.Info()
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			return ServiceScanResponse{}, err
-		}
-		if !looksLikeCheckpointEntry(req.Framework, name, childInfo.IsDir()) {
-			continue
-		}
-		size, modTime, err := scanLocalTree(ctx, childPath)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			return ServiceScanResponse{}, err
-		}
-		if modTime.IsZero() {
-			modTime = childInfo.ModTime()
-		}
-		items = append(items, ServiceScanItem{
-			Name:        name,
-			Path:        checkpointPath(checkpointDir, name, true),
-			StoragePath: filepath.ToSlash(filepath.Join(storagePath, name)),
-			Step:        stepFromName(name),
-			SizeBytes:   size,
-			ModTime:     modTime,
-		})
+		items = append(items, item)
 	}
-	return ServiceScanResponse{Items: items}, nil
+	return items, nil
+}
+
+func scanCheckpointEntry(
+	ctx context.Context,
+	framework, base, checkpointDir, storagePath string,
+	entry os.DirEntry,
+) (ServiceScanItem, bool, error) {
+	name := entry.Name()
+	if shouldSkipCheckpointChild(name) {
+		return ServiceScanItem{}, false, nil
+	}
+	childPath := filepath.Join(base, name)
+	childInfo, err := entry.Info()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ServiceScanItem{}, false, nil
+		}
+		return ServiceScanItem{}, false, err
+	}
+	if !looksLikeCheckpointEntry(framework, name, childInfo.IsDir()) {
+		return ServiceScanItem{}, false, nil
+	}
+	size, modTime, err := scanLocalTree(ctx, childPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ServiceScanItem{}, false, nil
+		}
+		return ServiceScanItem{}, false, err
+	}
+	if modTime.IsZero() {
+		modTime = childInfo.ModTime()
+	}
+	return ServiceScanItem{
+		Name:        name,
+		Path:        checkpointPath(checkpointDir, name, true),
+		StoragePath: filepath.ToSlash(filepath.Join(storagePath, name)),
+		Step:        stepFromName(name),
+		SizeBytes:   size,
+		ModTime:     modTime,
+	}, true, nil
 }
 
 func cleanStoragePath(raw string) string {
@@ -160,7 +194,7 @@ func cleanStoragePath(raw string) string {
 	return cleaned
 }
 
-func checkpointPath(checkpointDir string, name string, joinName bool) string {
+func checkpointPath(checkpointDir, name string, joinName bool) string {
 	checkpointDir = filepath.ToSlash(filepath.Clean(strings.TrimSpace(checkpointDir)))
 	if checkpointDir == "." {
 		checkpointDir = ""
@@ -177,15 +211,15 @@ func checkpointPath(checkpointDir string, name string, joinName bool) string {
 	return filepath.ToSlash(filepath.Join(checkpointDir, name))
 }
 
-func looksLikeCheckpointEntry(framework string, name string, isDir bool) bool {
+func looksLikeCheckpointEntry(framework, name string, isDir bool) bool {
 	if stepFromName(name) >= 0 {
 		return true
 	}
 	switch strings.ToLower(framework) {
 	case FrameworkPytorch, FrameworkLightning:
-		return !isDir && (strings.HasSuffix(name, ".pt") || strings.HasSuffix(name, ".pth") || strings.HasSuffix(name, ".ckpt"))
+		return !isDir && isCheckpointFileName(name)
 	case FrameworkCustom:
-		return isDir || strings.HasSuffix(name, ".pt") || strings.HasSuffix(name, ".pth") || strings.HasSuffix(name, ".ckpt")
+		return isDir || isCheckpointFileName(name)
 	default:
 		return isDir
 	}
@@ -202,7 +236,7 @@ func scanLocalTree(ctx context.Context, root string) (int64, time.Time, error) {
 
 	total := int64(0)
 	newest := info.ModTime()
-	err = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+	err = filepath.WalkDir(root, func(_ string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

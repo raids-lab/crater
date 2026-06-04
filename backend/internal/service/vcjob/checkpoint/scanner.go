@@ -13,6 +13,7 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm/clause"
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -112,25 +113,7 @@ func ResolveStoragePath(record *model.Job, containerPath string) (string, error)
 		return "", fmt.Errorf("checkpoint path %q must be absolute", containerPath)
 	}
 
-	var bestMountPath string
-	var bestSubPath string
-	for _, task := range record.Attributes.Data().Spec.Tasks {
-		for _, container := range task.Template.Spec.Containers {
-			for _, mount := range container.VolumeMounts {
-				mountPath := filepath.Clean(strings.TrimSpace(mount.MountPath))
-				if mountPath == "." || mount.SubPath == "" || mount.ReadOnly {
-					continue
-				}
-				if !isPathUnderOrEqual(containerPath, mountPath) {
-					continue
-				}
-				if len(mountPath) > len(bestMountPath) {
-					bestMountPath = mountPath
-					bestSubPath = mount.SubPath
-				}
-			}
-		}
-	}
+	bestMountPath, bestSubPath := bestWritableMountForCheckpoint(record, containerPath)
 	if bestMountPath == "" {
 		return "", fmt.Errorf("checkpoint path %s is not under a writable persistent mount", containerPath)
 	}
@@ -145,6 +128,47 @@ func ResolveStoragePath(record *model.Job, containerPath string) (string, error)
 	return filepath.ToSlash(filepath.Clean(filepath.Join(bestSubPath, rel))), nil
 }
 
+func bestWritableMountForCheckpoint(record *model.Job, containerPath string) (bestMountPath, bestSubPath string) {
+	tasks := record.Attributes.Data().Spec.Tasks
+	for taskIndex := range tasks {
+		containers := tasks[taskIndex].Template.Spec.Containers
+		for containerIndex := range containers {
+			mountPath, subPath := bestWritableMountInContainer(
+				containers[containerIndex].VolumeMounts,
+				containerPath,
+				bestMountPath,
+			)
+			if mountPath != "" {
+				bestMountPath = mountPath
+				bestSubPath = subPath
+			}
+		}
+	}
+	return bestMountPath, bestSubPath
+}
+
+func bestWritableMountInContainer(
+	mounts []v1.VolumeMount,
+	containerPath, currentBest string,
+) (bestMountPath, bestSubPath string) {
+	for mountIndex := range mounts {
+		mount := &mounts[mountIndex]
+		mountPath := filepath.Clean(strings.TrimSpace(mount.MountPath))
+		if mountPath == "." || mount.SubPath == "" || mount.ReadOnly {
+			continue
+		}
+		if !isPathUnderOrEqual(containerPath, mountPath) {
+			continue
+		}
+		if len(mountPath) > len(currentBest) {
+			currentBest = mountPath
+			bestMountPath = mountPath
+			bestSubPath = mount.SubPath
+		}
+	}
+	return bestMountPath, bestSubPath
+}
+
 func discoverCheckpoints(
 	ctx context.Context,
 	record *model.Job,
@@ -157,7 +181,16 @@ func discoverCheckpoints(
 		if err != nil {
 			return nil, err
 		}
-		return []model.JobCheckpoint{newCheckpointRecord(record, info, filepath.Base(storagePath), info.CheckpointDir, storagePath, size, modTime)}, nil
+		item := newCheckpointRecord(
+			record,
+			info,
+			filepath.Base(storagePath),
+			info.CheckpointDir,
+			storagePath,
+			size,
+			modTime,
+		)
+		return []model.JobCheckpoint{item}, nil
 	}
 
 	children, err := storage.ListRelativePath(ctx, storagePath)
@@ -197,12 +230,18 @@ func looksLikeCheckpoint(framework string, file storage.Files) bool {
 	}
 	switch strings.ToLower(framework) {
 	case FrameworkPytorch, FrameworkLightning:
-		return !file.IsDir && (strings.HasSuffix(file.Name, ".pt") || strings.HasSuffix(file.Name, ".pth") || strings.HasSuffix(file.Name, ".ckpt"))
+		return !file.IsDir && isCheckpointFileName(file.Name)
 	case FrameworkCustom:
-		return file.IsDir || strings.HasSuffix(file.Name, ".pt") || strings.HasSuffix(file.Name, ".pth") || strings.HasSuffix(file.Name, ".ckpt")
+		return file.IsDir || isCheckpointFileName(file.Name)
 	default:
 		return file.IsDir
 	}
+}
+
+func isCheckpointFileName(name string) bool {
+	return strings.HasSuffix(name, ".pt") ||
+		strings.HasSuffix(name, ".pth") ||
+		strings.HasSuffix(name, ".ckpt")
 }
 
 func scanTree(ctx context.Context, root string) (int64, time.Time, error) {
@@ -310,8 +349,8 @@ func persistScan(
 	db := query.GetDB().WithContext(ctx)
 	now := time.Now()
 	seenPaths := make([]string, 0, len(items))
-	for _, item := range items {
-		seenPaths = append(seenPaths, item.Path)
+	for i := range items {
+		seenPaths = append(seenPaths, items[i].Path)
 		if err := db.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "job_id"}, {Name: "path"}},
 			DoUpdates: clause.AssignmentColumns([]string{
@@ -330,7 +369,7 @@ func persistScan(
 				"metadata",
 				"updated_at",
 			}),
-		}).Create(&item).Error; err != nil {
+		}).Create(&items[i]).Error; err != nil {
 			return err
 		}
 	}

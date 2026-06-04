@@ -17,12 +17,13 @@ const (
 
 type JobCheckpoint struct {
 	gorm.Model
-	JobID       uint                `json:"jobID" gorm:"not null;index:idx_job_checkpoints_job;uniqueIndex:idx_job_checkpoint_job_path;comment:作业ID"`
-	JobName     string              `json:"jobName" gorm:"type:varchar(256);not null;index;comment:作业集群名称"`
-	UserID      uint                `json:"userID" gorm:"not null;index;comment:用户ID"`
-	AccountID   uint                `json:"accountID" gorm:"not null;index;comment:账户ID"`
-	Framework   string              `json:"framework" gorm:"type:varchar(32);index;comment:训练框架"`
-	Name        string              `json:"name" gorm:"type:varchar(256);not null;comment:checkpoint名称"`
+	JobID     uint   `json:"jobID" gorm:"not null;index:idx_job_checkpoints_job;uniqueIndex:idx_job_checkpoint_job_path;comment:作业ID"`
+	JobName   string `json:"jobName" gorm:"type:varchar(256);not null;index;comment:作业集群名称"`
+	UserID    uint   `json:"userID" gorm:"not null;index;comment:用户ID"`
+	AccountID uint   `json:"accountID" gorm:"not null;index;comment:账户ID"`
+	Framework string `json:"framework" gorm:"type:varchar(32);index;comment:训练框架"`
+	Name      string `json:"name" gorm:"type:varchar(256);not null;comment:checkpoint名称"`
+	//nolint:lll // gorm tags are intentionally kept inline for schema generation.
 	Path        string              `json:"path" gorm:"type:varchar(1024);not null;uniqueIndex:idx_job_checkpoint_job_path;comment:容器内checkpoint路径"`
 	StoragePath string              `json:"storagePath" gorm:"type:varchar(1024);not null;comment:存储根目录下的相对路径"`
 	Step        int64               `json:"step" gorm:"index;comment:checkpoint步数，无法识别时为-1"`

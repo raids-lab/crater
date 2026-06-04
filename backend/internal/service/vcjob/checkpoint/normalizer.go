@@ -27,6 +27,32 @@ func (n Normalizer) Normalize(input PrepareInput) (*Config, error) {
 	cfg.Framework = normalizeKeyword(cfg.Framework, defaultFramework)
 	cfg.ResumeMode = normalizeKeyword(cfg.ResumeMode, defaultResume)
 
+	normalizeNames(&cfg, input)
+
+	if cfg.SaveSteps <= 0 {
+		cfg.SaveSteps = defaultSaveSteps
+	}
+	if cfg.MaxToKeep <= 0 {
+		cfg.MaxToKeep = defaultMaxToKeep
+	}
+
+	cfg.OutputDir = strings.TrimSpace(cfg.OutputDir)
+	cfg.CheckpointDir = strings.TrimSpace(cfg.CheckpointDir)
+	n.applyDefaultDirectories(input, &cfg)
+	if cfg.OutputDir == "" {
+		cfg.OutputDir = cfg.CheckpointDir
+	}
+	if cfg.CheckpointDir == "" {
+		cfg.CheckpointDir = cfg.OutputDir
+	}
+
+	cfg.OutputDir = cleanOptionalPath(cfg.OutputDir)
+	cfg.CheckpointDir = cleanOptionalPath(cfg.CheckpointDir)
+	cfg.ResumeFrom = cleanOptionalPath(strings.TrimSpace(cfg.ResumeFrom))
+	return &cfg, nil
+}
+
+func normalizeNames(cfg *Config, input PrepareInput) {
 	cfg.ProjectName = strings.TrimSpace(cfg.ProjectName)
 	if cfg.ProjectName == "" {
 		cfg.ProjectName = strings.TrimSpace(input.AccountName)
@@ -42,36 +68,23 @@ func (n Normalizer) Normalize(input PrepareInput) (*Config, error) {
 	if cfg.ExperimentName == "" {
 		cfg.ExperimentName = "experiment"
 	}
+}
 
-	if cfg.SaveSteps <= 0 {
-		cfg.SaveSteps = defaultSaveSteps
+func (n Normalizer) applyDefaultDirectories(input PrepareInput, cfg *Config) {
+	if cfg.OutputDir != "" || cfg.CheckpointDir != "" {
+		return
 	}
-	if cfg.MaxToKeep <= 0 {
-		cfg.MaxToKeep = defaultMaxToKeep
+	policy, ok := n.Policies.Get(cfg.Framework)
+	if !ok {
+		return
 	}
-
-	cfg.OutputDir = strings.TrimSpace(cfg.OutputDir)
-	cfg.CheckpointDir = strings.TrimSpace(cfg.CheckpointDir)
-	if cfg.OutputDir == "" && cfg.CheckpointDir == "" {
-		if policy, ok := n.Policies.Get(cfg.Framework); ok {
-			if mountPath := firstWritableMount(input.VolumeMounts); mountPath != "" {
-				defaultDir := policy.DefaultDirectory(input, &cfg, mountPath)
-				cfg.OutputDir = defaultDir
-				cfg.CheckpointDir = defaultDir
-			}
-		}
+	mountPath := firstWritableMount(input.VolumeMounts)
+	if mountPath == "" {
+		return
 	}
-	if cfg.OutputDir == "" {
-		cfg.OutputDir = cfg.CheckpointDir
-	}
-	if cfg.CheckpointDir == "" {
-		cfg.CheckpointDir = cfg.OutputDir
-	}
-
-	cfg.OutputDir = cleanOptionalPath(cfg.OutputDir)
-	cfg.CheckpointDir = cleanOptionalPath(cfg.CheckpointDir)
-	cfg.ResumeFrom = cleanOptionalPath(strings.TrimSpace(cfg.ResumeFrom))
-	return &cfg, nil
+	defaultDir := policy.DefaultDirectory(input, cfg, mountPath)
+	cfg.OutputDir = defaultDir
+	cfg.CheckpointDir = defaultDir
 }
 
 func normalizeKeyword(value, fallback string) string {
