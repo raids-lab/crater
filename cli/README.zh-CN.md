@@ -11,39 +11,39 @@
  ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝     ╚═════╝╚══════╝╚═╝
 ```
 
-Crater CLI is the command-line client for Crater. It talks to the Crater platform through HTTP APIs and is designed for both human terminal users and AI Agents.
+Crater CLI 是 Crater 的命令行客户端，通过 HTTP API 与 Crater 平台通信，面向终端用户和 AI Agent。
 
-## Features
+## 功能特性
 
-- Agent-friendly `--json` and `--no-interactive` modes.
-- Local authentication context management.
-- Bash and zsh completion.
-- Chinese and English display language support.
+- 面向 Agent 的 `--json` 与 `--no-interactive` 模式。
+- 本地认证上下文管理。
+- Bash 与 zsh 补全。
+- 中文与英文显示语言支持。
 
-## Usage
+## 使用
 
-View available commands and options:
+查看可用命令和选项：
 
 ```bash
 crater -h
 ```
 
-For day-to-day use, you can ask an AI Agent to operate Crater after installing the bundled Skills.
+日常使用时，安装随 CLI 提供的 Skills 后，可以直接让 AI Agent 操作 Crater。
 
 ## Agent Skills
 
-List the Skills available in this directory:
+列出本目录下可安装的 Skills：
 
 ```bash
 npx skills add https://github.com/raids-lab/crater/tree/main/cli -l
 ```
 
-Install all Crater CLI Skills globally for supported agents:
+为支持的 Agent 全局安装全部 Crater CLI Skills：
 
 ```bash
 npx skills add https://github.com/raids-lab/crater/tree/main/cli -g --all
 ```
 
-## License
+## 许可证
 
-Crater CLI is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
+Crater CLI 使用 Apache License 2.0 许可证，详见 [LICENSE](LICENSE)。
