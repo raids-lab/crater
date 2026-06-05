@@ -18,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
-import { CalendarIcon, CirclePlusIcon, XIcon } from 'lucide-react'
+import { CalendarIcon, Check, ChevronsUpDown, CirclePlusIcon, XIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +26,14 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 import {
   Form,
   FormControl,
@@ -81,6 +89,68 @@ const parseOptionalQuotaNumber = (value: unknown) => {
   return Number(value)
 }
 
+interface ResourceNamePickerProps {
+  options: { name: string; label: string }[]
+  current: string
+  onSelect: (value: string) => void
+}
+
+const ResourceNamePicker = ({ options, current, onSelect }: ResourceNamePickerProps) => {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const formTitle = t('accountForm.resourceName')
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          tabIndex={-1}
+          className="text-muted-foreground hover:text-foreground absolute top-0 right-0 h-full px-2 hover:bg-transparent"
+        >
+          <ChevronsUpDown className="size-4 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="end" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <Command>
+          <CommandInput placeholder={t('combobox.search', { formTitle })} className="h-9" />
+          <CommandList>
+            <CommandEmpty>{t('combobox.noResults', { formTitle })}</CommandEmpty>
+            <CommandGroup>
+              {options.map((opt) => (
+                <CommandItem
+                  key={opt.name}
+                  value={`${opt.label} ${opt.name}`}
+                  onSelect={() => {
+                    onSelect(opt.name)
+                    setOpen(false)
+                  }}
+                >
+                  <div className="flex w-full min-w-0 flex-col">
+                    <span className="truncate">{opt.label}</span>
+                    {opt.label !== opt.name && (
+                      <span className="text-muted-foreground truncate font-mono text-xs">
+                        {opt.name}
+                      </span>
+                    )}
+                  </div>
+                  <Check
+                    className={cn(
+                      'ml-auto size-4 shrink-0',
+                      opt.name === current ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
   const { scheduler } = useAtomValue(globalSettings)
   const { t } = useTranslation()
@@ -104,35 +174,36 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     queryFn: () => apiResourceList(false),
     select: (res) => {
       return res.data
-        .map((item) => item.name)
         .filter(
-          (name) =>
-            name != 'ephemeral-storage' &&
-            name != 'hugepages-1Gi' &&
-            name != 'hugepages-2Mi' &&
-            name != 'pods'
+          (item) =>
+            item.name != 'ephemeral-storage' &&
+            item.name != 'hugepages-1Gi' &&
+            item.name != 'hugepages-2Mi' &&
+            item.name != 'pods'
         )
+        .map((item) => ({ name: item.name, label: item.label || item.name }))
         .sort(
           // cpu > memory > xx/xx > pods
           (a, b) => {
-            if (a === 'cpu') {
+            if (a.name === 'cpu') {
               return -1
             }
-            if (b === 'cpu') {
+            if (b.name === 'cpu') {
               return 1
             }
-            if (a === 'memory') {
+            if (a.name === 'memory') {
               return -1
             }
-            if (b === 'memory') {
+            if (b.name === 'memory') {
               return 1
             }
-            return a.localeCompare(b)
+            return a.name.localeCompare(b.name)
           }
         )
     },
   })
   const resourceDimension = resourceDimensionQuery.data
+  const resourceNames = useMemo(() => resourceDimension?.map((r) => r.name), [resourceDimension])
 
   const { data: billingStatus } = useQuery({
     queryKey: ['admin', 'system-config', 'billing-status'],
@@ -161,10 +232,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: account?.nickname || '',
-      resources: resourceDimension?.map((name) => ({ name })) || [
-        { name: 'cpu' },
-        { name: 'memory' },
-      ],
+      resources: resourceNames?.map((name) => ({ name })) || [{ name: 'cpu' }, { name: 'memory' }],
       expiredAt: account?.expiredAt ? new Date(account.expiredAt) : undefined,
       admins: [],
       billingIssueAmount: accountBillingConfig?.issueAmount,
@@ -177,20 +245,20 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     () => ({
       name: account?.nickname || '',
       resources:
-        account && resourceDimension
+        account && resourceNames
           ? convertQuotaToForm(
               account.quota,
-              resourceDimension,
+              resourceNames,
               isPublicAccount ? publicQueueQuota?.quota : undefined
             )
-          : resourceDimension?.map((name) => ({ name })) || [{ name: 'cpu' }, { name: 'memory' }],
+          : resourceNames?.map((name) => ({ name })) || [{ name: 'cpu' }, { name: 'memory' }],
       expiredAt: account?.expiredAt ? new Date(account.expiredAt) : undefined,
       admins: [],
       billingIssueAmount: accountBillingConfig?.issueAmount,
       billingIssuePeriodMinutes: accountBillingConfig?.issuePeriodMinutes,
       ...(account ? { id: account.id } : {}),
     }),
-    [account, accountBillingConfig, isPublicAccount, publicQueueQuota, resourceDimension]
+    [account, accountBillingConfig, isPublicAccount, publicQueueQuota, resourceNames]
   )
   const needsBillingHydration = billingEnabled && Boolean(account?.id)
   const needsQueueQuotaHydration = isPublicAccount && Boolean(account?.id)
@@ -434,9 +502,15 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                     <FormLabelMust />
                   </FormLabel>
                   <FormControl>
-                    <Input autoComplete="off" {...field} className="w-full" autoFocus={true} />
+                    <Input
+                      autoComplete="off"
+                      placeholder={t('accountForm.namePlaceholder')}
+                      maxLength={16}
+                      {...field}
+                      className="w-full"
+                      autoFocus={true}
+                    />
                   </FormControl>
-                  <FormDescription>{t('accountForm.nameDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -479,7 +553,6 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       />
                     </PopoverContent>
                   </Popover>
-                  <FormDescription>{t('accountForm.expiredAtDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -505,81 +578,66 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                       onChange={(value) => form.setValue('admins', value)}
                     />
                   </FormControl>
-                  <FormDescription>{t('accountForm.adminsDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           )}
 
-          {billingEnabled && (
+          {billingEnabled && (amountOverrideEnabled || periodOverrideEnabled) && (
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="billingIssueAmount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('accountForm.billingIssueAmountLabel', {
-                        defaultValue: '周期发放额度',
-                      })}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={0}
-                        disabled={!amountOverrideEnabled}
-                        value={field.value ?? ''}
-                        onChange={(e) =>
-                          field.onChange(e.target.value === '' ? undefined : Number(e.target.value))
-                        }
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {amountOverrideEnabled
-                        ? t('accountForm.billingIssueAmountDescription', {
-                            defaultValue: '每个发放周期发放的免费点数额度。',
-                          })
-                        : t('accountForm.billingIssueAmountDisabledDescription', {
-                            defaultValue: '当前由系统默认发放额度控制。',
-                          })}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="billingIssuePeriodMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('accountForm.billingIssuePeriodMinutesLabel', {
-                        defaultValue: '发放周期（分钟）',
-                      })}
-                    </FormLabel>
-                    <FormControl>
-                      <BillingPeriodFields
-                        totalMinutes={field.value ?? 0}
-                        disabled={!periodOverrideEnabled}
-                        onChange={(value) => {
-                          field.onChange(value.totalMinutes)
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      {periodOverrideEnabled
-                        ? t('accountForm.billingIssuePeriodMinutesDescription', {
-                            defaultValue: '填 0 表示关闭该账户的周期发放。',
-                          })
-                        : t('accountForm.billingIssuePeriodMinutesDisabledDescription', {
-                            defaultValue: '当前由系统默认发放周期控制。',
-                          })}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {amountOverrideEnabled && (
+                <FormField
+                  control={form.control}
+                  name="billingIssueAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('accountForm.billingIssueAmountLabel', {
+                          defaultValue: '周期发放额度',
+                        })}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={field.value ?? ''}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === '' ? undefined : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              {periodOverrideEnabled && (
+                <FormField
+                  control={form.control}
+                  name="billingIssuePeriodMinutes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t('accountForm.billingIssuePeriodMinutesLabel', {
+                          defaultValue: '发放周期（分钟，设为 0 关闭）',
+                        })}
+                      </FormLabel>
+                      <FormControl>
+                        <BillingPeriodFields
+                          totalMinutes={field.value ?? 0}
+                          onChange={(value) => {
+                            field.onChange(value.totalMinutes)
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
           )}
           <div className="space-y-2">
@@ -589,18 +647,36 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
                 <FormField
                   control={form.control}
                   name={`resources.${index}.name`}
-                  render={({ field }) => (
-                    <FormItem className="w-fit">
-                      <FormControl>
-                        <Input
-                          {...field}
-                          placeholder={t('accountForm.resourcePlaceholder')}
-                          className="font-mono"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const usedNames = new Set(
+                      (currentValues.resources ?? [])
+                        .map((r, i) => (i !== index ? r?.name : ''))
+                        .filter((n): n is string => !!n)
+                    )
+                    const pickerOptions = (resourceDimension ?? []).filter(
+                      (r) => !usedNames.has(r.name)
+                    )
+                    return (
+                      <FormItem className="w-56">
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder={t('accountForm.resourcePlaceholder')}
+                              className="pr-9 font-mono"
+                            />
+                            <ResourceNamePicker
+                              options={pickerOptions}
+                              current={field.value ?? ''}
+                              onSelect={field.onChange}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
                 <FormField
                   control={form.control}
@@ -707,11 +783,15 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
             <Button
               type="button"
               variant="secondary"
-              onClick={() =>
+              onClick={() => {
+                const used = new Set(
+                  (currentValues.resources ?? []).map((r) => r?.name).filter(Boolean)
+                )
+                const next = resourceDimension?.find((r) => !used.has(r.name))
                 resourcesAppend({
-                  name: '',
+                  name: next?.name ?? '',
                 })
-              }
+              }}
             >
               <CirclePlusIcon className="size-4" />
               {t('accountForm.addQuotaButton')}

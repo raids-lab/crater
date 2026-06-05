@@ -32,7 +32,7 @@ import {
   apiAdminGetUserJobList,
   apiGetUserJobs,
   apiJobDeleteForAdmin,
-  getUnifiedJobPhase,
+  getDisplayJobPhase,
 } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -149,7 +149,7 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
         },
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        accessorFn: (row) => getDisplayJobPhase(row.status),
         id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('jobs.headers.status')} />

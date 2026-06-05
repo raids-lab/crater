@@ -324,7 +324,6 @@ function RouteComponent() {
     onSuccess: async (_, { jobName: taskname }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
-        queryClient.invalidateQueries({ queryKey: ['context', 'quota'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
       toast.success(`作业 ${taskname} 创建成功`)

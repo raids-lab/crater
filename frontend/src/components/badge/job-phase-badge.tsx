@@ -15,11 +15,16 @@
  */
 import { t } from 'i18next'
 
-import { JobPhase, getUnifiedJobPhase } from '@/services/api/vcjob'
+import { JobPhase } from '@/services/api/vcjob'
 
 import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
 export const jobPhases = [
+  {
+    value: 'Prequeue',
+    label: t('jobs.statuses.prequeue.label'),
+    color: '#8b5cf6',
+  },
   {
     value: 'Pending',
     label: t('jobs.statuses.pending.label'),
@@ -83,9 +88,13 @@ export const jobPhases = [
 ]
 
 export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
-  const unifiedPhase = getUnifiedJobPhase(phase)
-
-  switch (unifiedPhase) {
+  switch (phase) {
+    case JobPhase.Prequeue:
+      return {
+        label: t('jobs.statuses.prequeue.label'),
+        color: 'text-highlight-violet bg-highlight-violet/20',
+        description: t('jobs.statuses.prequeue.description'),
+      }
     case JobPhase.Pending:
       return {
         label: t('jobs.statuses.pending.label'),
