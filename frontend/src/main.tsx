@@ -43,36 +43,17 @@ const queryClient = new QueryClient({
   },
 })
 
-async function enableMocking() {
-  // Enable mocking in development when VITE_USE_MSW is true
-  if (process.env.NODE_ENV !== 'development' || import.meta.env.VITE_USE_MSW !== 'true') {
-    return
-  }
-
-  const { worker } = await import('./mocks/browser')
-
-  // `worker.start()` returns a Promise that resolves
-  // once the Service Worker is up and ready to intercept requests.
-  return worker.start()
-}
-
-enableMocking()
-  .then(() => {
-    ReactDOM.createRoot(document.getElementById('root')!).render(
-      <React.StrictMode>
-        <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
-          <QueryClientProvider client={queryClient}>
-            <App queryClient={queryClient} />
-            <Toaster richColors closeButton />
-            {import.meta.env.MODE === 'development' &&
-              import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
-                <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
-              )}
-          </QueryClientProvider>
-        </ThemeProvider>
-      </React.StrictMode>
-    )
-  })
-  .catch((err) => {
-    logger.error(err)
-  })
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ThemeProvider storageKey={VITE_UI_THEME_KEY}>
+      <QueryClientProvider client={queryClient}>
+        <App queryClient={queryClient} />
+        <Toaster richColors closeButton />
+        {import.meta.env.MODE === 'development' &&
+          import.meta.env.VITE_TANSTACK_QUERY_DEVTOOLS === 'true' && (
+            <ReactQueryDevtools initialIsOpen={false} buttonPosition="top-right" />
+          )}
+      </QueryClientProvider>
+    </ThemeProvider>
+  </React.StrictMode>
+)

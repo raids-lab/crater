@@ -24,9 +24,6 @@ func (mgr *AgentMgr) buildToolConfirmation(token util.JWTMessage, toolName strin
 	case agentToolCreateWebIDE:
 		confirmation.Interaction = "form"
 		confirmation.Form = buildCreateWebIDEJobForm(rawArgs)
-	case agentToolCreateTrain:
-		confirmation.Interaction = "form"
-		confirmation.Form = buildCreateTrainingJobForm(token, rawArgs)
 	case agentToolCreateCustom:
 		confirmation.Interaction = "form"
 		confirmation.Form = buildCreateCustomJobForm(token, rawArgs)
@@ -189,7 +186,7 @@ func buildCreateWebIDEJobForm(rawArgs json.RawMessage) *AgentToolForm {
 	return form
 }
 
-func buildCreateTrainingJobForm(token util.JWTMessage, rawArgs json.RawMessage) *AgentToolForm {
+func buildCreateCustomJobForm(token util.JWTMessage, rawArgs json.RawMessage) *AgentToolForm {
 	args := parseToolArgsMap(rawArgs)
 
 	defaultWorkingDir := "/workspace"
@@ -199,7 +196,7 @@ func buildCreateTrainingJobForm(token util.JWTMessage, rawArgs json.RawMessage) 
 
 	return &AgentToolForm{
 		Title:       "补全自定义作业配置",
-		Description: "Agent 已生成一个自定义作业草案，你可以在这里补全镜像、命令、资源和附加端口暴露后再提交。",
+		Description: "Agent 已生成一个自定义作业草案。你可以在这里补全镜像、启动命令、工作目录、资源和附加端口暴露后再提交。适合单机批处理、脚本训练、数据处理、评测或服务调试。",
 		SubmitLabel: "提交自定义作业",
 		Fields: []AgentToolField{
 			{Key: "name", Label: "作业名称", Type: "text", Required: true, DefaultValue: getToolArgString(args, "name", "")},
@@ -227,10 +224,6 @@ func buildCreateTrainingJobForm(token util.JWTMessage, rawArgs json.RawMessage) 
 			},
 		},
 	}
-}
-
-func buildCreateCustomJobForm(token util.JWTMessage, rawArgs json.RawMessage) *AgentToolForm {
-	return buildCreateTrainingJobForm(token, rawArgs)
 }
 
 func buildCreatePytorchJobForm(rawArgs json.RawMessage) *AgentToolForm {
@@ -611,12 +604,6 @@ func (mgr *AgentMgr) buildConfirmationDescription(toolName string, rawArgs json.
 			imageRef = fmt.Sprintf("image#%d", imageID)
 		}
 		return fmt.Sprintf("对镜像 %s 执行 %s %s 权限，目标：%s", imageRef, action, targetType, strings.Join(targets, "，"))
-	case agentToolCreateTrain:
-		name := getToolArgString(args, "name", "")
-		if name == "" {
-			name = "新的自定义作业"
-		}
-		return fmt.Sprintf("创建自定义作业 %s", name)
 	case agentToolCreateCustom:
 		name := getToolArgString(args, "name", "")
 		if name == "" {
@@ -814,8 +801,6 @@ func (mgr *AgentMgr) buildToolOutcomeMessage(toolName, status string, result any
 			return "已取消创建 Jupyter 作业。"
 		case agentToolCreateWebIDE:
 			return "已取消创建 WebIDE 作业。"
-		case agentToolCreateTrain:
-			return "已取消创建训练作业。"
 		case agentToolCreateCustom:
 			return "已取消创建自定义作业。"
 		case agentToolCreatePytorch:
@@ -888,8 +873,8 @@ func (mgr *AgentMgr) buildToolOutcomeMessage(toolName, status string, result any
 		return "已重新提交作业。"
 	case agentToolCreateJupyter:
 		return "已提交新的 Jupyter 作业。"
-	case agentToolCreateTrain:
-		return "已提交新的训练作业。"
+	case agentToolCreateCustom:
+		return "已提交新的自定义作业。"
 	case agentToolCreateImage:
 		if imagePackName, _ := resultMap["imagePackName"].(string); imagePackName != "" {
 			return fmt.Sprintf("已提交镜像构建任务 %s。", imagePackName)

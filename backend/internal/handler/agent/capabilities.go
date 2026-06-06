@@ -14,7 +14,6 @@ var agentUserTools = []string{
 	agentToolCheckQuota,
 	agentToolCreateJupyter,
 	agentToolCreateWebIDE,
-	agentToolCreateTrain,
 	agentToolCreateCustom,
 	agentToolCreatePytorch,
 	agentToolCreateTensorflow,
@@ -47,11 +46,7 @@ var agentUserTools = []string{
 	agentToolSearchSimilarFail,
 	agentToolStopJob,
 	agentToolWebSearch,
-	agentToolFetchURL,
 	agentToolK8sListPods,
-	agentToolK8sGetEvents,
-	agentToolK8sDescribe,
-	agentToolK8sPodLogs,
 	agentToolK8sGetService,
 	agentToolK8sGetEndpoints,
 	agentToolK8sGetIngress,
@@ -60,6 +55,7 @@ var agentUserTools = []string{
 var agentAdminTools = []string{
 	agentToolGetClusterHealth,
 	agentToolGetClusterReport,
+	agentToolGetAdminOpsReport,
 	agentToolGetNodeDetail,
 	agentToolListClusterJobs,
 	agentToolListClusterNodes,
@@ -70,11 +66,6 @@ var agentAdminTools = []string{
 	agentToolStorageCapacity,
 	agentToolNodeNetwork,
 	agentToolDiagnoseJobNet,
-	agentToolSandboxGrep,
-	agentToolRuntimeSummary,
-	agentToolK8sListNodes,
-	agentToolPromQuery,
-	agentToolHarborCheck,
 	toolGetLatestAuditReport,
 	toolListAuditItems,
 	toolMarkAuditHandled,
@@ -93,7 +84,6 @@ var agentConfirmToolSet = map[string]struct{}{
 	agentToolDeleteJob:        {},
 	agentToolCreateJupyter:    {},
 	agentToolCreateWebIDE:     {},
-	agentToolCreateTrain:      {},
 	agentToolCreateCustom:     {},
 	agentToolCreatePytorch:    {},
 	agentToolCreateTensorflow: {},
@@ -182,32 +172,14 @@ func agentToolCompactDescription(toolName string) string {
 		return "管理员诊断分布式作业网络问题（事件/日志/节点分布）"
 	case agentToolWebSearch:
 		return "执行受白名单或运行时配置约束的外网文档检索"
-	case agentToolFetchURL:
-		return "抓取白名单 URL 的网页正文，适合在检索后继续读取原文"
-	case agentToolSandboxGrep:
-		return "管理员在受限沙箱目录执行内容检索"
-	case agentToolRuntimeSummary:
-		return "读取 agent 运行时配置摘要（本地工具、k8s、prometheus 等）"
-	case agentToolK8sListNodes:
-		return "通过 agent 侧 kubeconfig 直接列出节点摘要"
 	case agentToolK8sListPods:
 		return "列出当前用户可见的 Pod 摘要"
-	case agentToolK8sGetEvents:
-		return "通过 agent 侧 kubeconfig 直接查询 Kubernetes 事件"
-	case agentToolK8sDescribe:
-		return "通过 agent 侧 kubeconfig 直接执行 kubectl describe"
-	case agentToolK8sPodLogs:
-		return "通过 agent 侧 kubeconfig 直接读取 Pod 日志"
 	case agentToolK8sGetService:
 		return "列出当前用户可见的 Service 与端口映射"
 	case agentToolK8sGetEndpoints:
 		return "查看当前用户可见 Service 的 Endpoints 就绪情况"
 	case agentToolK8sGetIngress:
 		return "列出当前用户可见的 Ingress 规则与访问入口"
-	case agentToolPromQuery:
-		return "通过 agent 侧 Prometheus API 执行指标查询"
-	case agentToolHarborCheck:
-		return "检查 Harbor/OCI Registry 健康状态以及目标镜像是否存在"
 	case agentToolResourceRecommend:
 		return "根据任务描述推荐 CPU/GPU/内存配置"
 	case agentToolGetNodeDetail:
@@ -228,10 +200,8 @@ func agentToolCompactDescription(toolName string) string {
 		return "创建 Jupyter 作业，需要确认"
 	case agentToolCreateWebIDE:
 		return "创建 WebIDE 作业，需要确认"
-	case agentToolCreateTrain:
-		return "创建自定义训练作业，需要确认"
 	case agentToolCreateCustom:
-		return "创建自定义作业，需要确认"
+		return "创建自定义作业，需要确认；适合单机批处理、脚本训练、数据处理或评测"
 	case agentToolCreatePytorch:
 		return "创建 PyTorch 分布式作业，需要确认"
 	case agentToolCreateTensorflow:

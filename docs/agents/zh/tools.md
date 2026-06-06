@@ -15,8 +15,7 @@ Tool Selector (基于角色过滤)
   ↓
 Tool Executor (路由到后端)
   ├─ GoBackendToolExecutor  → Go 后端 HTTP API
-  ├─ LocalToolExecutor      → kubectl / PromQL / Harbor（可移植）
-  ├─ MockToolExecutor       → 预录制响应（基准测试）
+  ├─ LocalToolExecutor      → kubectl / PromQL / Harbor / web search
   └─ CompositeToolExecutor  → 按 platform runtime 路由；需确认写工具先进入 Go 确认流
 ```
 
@@ -47,8 +46,8 @@ def get_job_detail(job_name: str) -> dict:
 | `AUTO_ACTION_TOOLS` | 0 | 预留给 system-only、无需 HITL 的后台副作用动作 |
 | `CONFIRM_TOOLS` | 26 | 写操作/外部动作，需要用户确认 |
 | `ALL_TOOLS` | 95 | `AUTO_TOOLS + AUTO_ACTION_TOOLS + CONFIRM_TOOLS` |
-| `DEPRECATED_TOOL_NAMES` | 1 | 已废弃，不绑定到 LLM |
 | `INTERNAL_TOOLS` | 1 | Pipeline 内部使用，不暴露给 LLM |
+| `DEPRECATED_TOOL_NAMES` | 0 | 已废弃 callable 直接删除，不再保留声明 |
 
 ---
 
@@ -320,22 +319,6 @@ return go_backend_executor.execute(...)
 - 用户确认后，如果 `execution_backend=python_local`，Go 调用 Python `/internal/tools/execute-local-write`；否则调用 Go 的 `executeWriteTool()`。
 - Go 会缓存 Python `/internal/tools/catalog` 30 秒，用于把本地工具动态并入 `capabilities.tool_catalog`。
 
-### MockToolExecutor
-
-为基准测试返回预录制响应：
-- 从 `crater_bench/mock_responses/` 加载
-- 支持基于参数的快照查找
-- 在 `call_log` 中记录所有调用供评估使用
-- 需确认的工具始终返回 `confirmation_required`
-
-### ReadOnlyToolExecutor
-
-包装另一个执行器以强制只读模式：
-- 阻止所有写工具，返回 `confirmation_required`
-- 用于 `live-readonly` 评估模式
-
----
-
 ## 5. 工具选择
 
 ### 基于角色的过滤
@@ -452,15 +435,14 @@ Actor 角色 = user? → 返回所有非 admin-only 工具
 
 ---
 
-## 8. 遗留 / 暂缓工具
+## 8. 本地 Web 工具
 
-以下工具要么继续作为显式 Agent 工具保留，要么暂缓开放，等待行为和沙箱能力进一步校验。
+以下本地 Web 工具继续作为显式 Agent 工具保留。
 
 | 工具 | 替代方案 | 状态 |
 |------|---------|------|
 | `web_search` | 暂无 | 已启用并绑定到 LLM，不再 admin-only |
 | `fetch_url` | 暂无 | 已启用，绑定到 LLM |
-| `execute_code` | 受限沙箱解释器 | 暂缓开放，不绑定 |
 
 ### 内部工具
 

@@ -589,7 +589,7 @@ def fetch_url(
 
 @tool
 def get_agent_runtime_summary() -> dict:
-    """返回 agent 侧运行时配置摘要（backend/k8s/prometheus、本地工具沙箱规则等）。
+    """返回 agent 侧运行时配置摘要（backend/k8s/prometheus、本地工具路由等）。
 
     该工具为平台无关工具，本地执行，不依赖 Crater 后端。
     """
@@ -1086,38 +1086,6 @@ def k8s_rollout_status(
 
 
 # ============================================================
-# B5. Local Code Execution Tool (admin, local CAMEL sandbox)
-# ============================================================
-
-
-# --- DEPRECATED: execute_code ---
-# Superseded by LLM-native code_interpreter:
-#   - Bailian Qwen: extra_body={"enable_code_interpreter": True}
-#   - Zhipu GLM-4-AllTools: tools=[{"type": "code_interpreter"}]
-# The current subprocess sandbox has no real isolation (no resource/fs/network sandboxing).
-# Kept for reference; NOT registered in AUTO_TOOLS / ALL_TOOLS.
-# Will be fully removed once built-in code interpreter integration is validated.
-
-
-@tool
-def execute_code(
-    code: str,
-    language: str = "python",
-    timeout: int = 30,
-) -> dict:
-    """[DEPRECATED] 在受控沙箱中执行代码片段，用于日志分析、指标计算、数据处理等。
-    已废弃：当前 subprocess 模式无真正隔离，计划迁移到模型内置代码解释器（code_interpreter）。
-    仅管理员可用。
-
-    Args:
-        code: 要执行的代码内容（Python）
-        language: 编程语言，默认 python（当前仅支持 python）
-        timeout: 超时秒数，默认 30
-    """
-    pass  # Executed by LocalToolExecutor._handle_execute_code
-
-
-# ============================================================
 # C. Action Tools (require user confirmation)
 # ============================================================
 
@@ -1262,36 +1230,6 @@ def create_webide_job(
 
 
 @tool
-def create_training_job(
-    name: str = "",
-    image_link: str = "",
-    command: str = "",
-    working_dir: str = "",
-    cpu: str = "4",
-    memory: str = "16Gi",
-    gpu_count: Optional[int] = None,
-    gpu_model: Optional[str] = None,
-    shell: str = "bash",
-    forwards: Optional[List[Dict[str, Any]]] = None,
-) -> dict:
-    """创建一个全新的自定义作业。Agent 可以先给出草案，用户再在表单中补全并确认。
-
-    Args:
-        name: 作业显示名称（对应后端 Job.Name）
-        image_link: 容器镜像地址
-        command: 启动命令
-        working_dir: 容器工作目录
-        cpu: CPU 请求量
-        memory: 内存请求量
-        gpu_count: GPU 数量，可选
-        gpu_model: GPU 型号，可选，如 v100 / a100
-        shell: 运行命令时使用的 shell，默认 bash
-        forwards: 可选，附加端口暴露规则列表，元素形如 {"name": "grpc", "port": 19530, "type": "ingress|nodeport"}
-    """
-    pass
-
-
-@tool
 def create_custom_job(
     name: str = "",
     image_link: str = "",
@@ -1304,7 +1242,12 @@ def create_custom_job(
     shell: str = "bash",
     forwards: Optional[List[Dict[str, Any]]] = None,
 ) -> dict:
-    """创建一个全新的自定义作业。是 `create_training_job` 的语义化别名，需要用户确认。
+    """创建自定义作业，需要用户确认。
+    适合用户提供镜像、启动命令、工作目录和资源规格的自定义任务；常见场景包括
+    单机批处理、脚本训练、数据处理、评测、服务调试等单 Pod 作业。
+    若用户要开交互式开发环境，使用 create_jupyter_job 或
+    create_webide_job；若用户明确要多机多卡、DDP、Parameter Server 或 worker/chief
+    拓扑，使用 create_pytorch_job 或 create_tensorflow_job。
 
     Args:
         name: 作业显示名称（对应后端 Job.Name）
@@ -1655,7 +1598,6 @@ AUTO_TOOLS = [
     k8s_get_pod_logs,
     prometheus_query,
     harbor_check,
-    # execute_code,  # DEPRECATED — use LLM-native code_interpreter instead
     k8s_get_service,
     k8s_get_endpoints,
     k8s_get_ingress,
@@ -1691,7 +1633,6 @@ CONFIRM_TOOLS = [
     delete_job,
     create_jupyter_job,
     create_webide_job,
-    create_training_job,
     create_custom_job,
     create_pytorch_job,
     create_tensorflow_job,
@@ -1716,8 +1657,8 @@ CONFIRM_TOOLS = [
 
 ALL_TOOLS = AUTO_TOOLS + AUTO_ACTION_TOOLS + CONFIRM_TOOLS
 
-# Deprecated tools: declared but NOT bound to LLM.
-DEPRECATED_TOOL_NAMES = {"execute_code"}
+# Deprecated tools are not retained as callable definitions.
+DEPRECATED_TOOL_NAMES: set[str] = set()
 
 # Internal tools: used by pipelines, not exposed to LLM reasoning.
 INTERNAL_TOOLS = [save_audit_report]
@@ -1729,7 +1670,7 @@ CONFIRM_TOOL_NAMES = {t.name for t in CONFIRM_TOOLS}
 WRITE_TOOL_NAMES = CONFIRM_TOOL_NAMES  # Alias used by spec
 
 # Tools that should only be accessible to executor/single_agent roles (not explorer/planner)
-EXECUTOR_ONLY_TOOL_NAMES: set[str] = set()  # execute_code removed (deprecated)
+EXECUTOR_ONLY_TOOL_NAMES: set[str] = set()
 
 ADMIN_ONLY_TOOL_NAMES = {
     tool.name
@@ -1754,7 +1695,6 @@ ADMIN_ONLY_TOOL_NAMES = {
         k8s_list_nodes,
         prometheus_query,
         harbor_check,
-        # execute_code,  # DEPRECATED
         get_volcano_queue_state,
         k8s_get_configmap,
         k8s_get_networkpolicy,

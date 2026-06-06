@@ -15,8 +15,7 @@ Tool Selector (role-based filtering)
   |
 Tool Executor (routes to backend)
   |-- GoBackendToolExecutor  -> Go backend HTTP API
-  |-- LocalToolExecutor      -> kubectl / PromQL / Harbor (portable)
-  |-- MockToolExecutor       -> pre-recorded responses (benchmark)
+  |-- LocalToolExecutor      -> kubectl / PromQL / Harbor / web search
   +-- CompositeToolExecutor  -> platform-runtime routing; confirm writes enter Go confirmation first
 ```
 
@@ -48,7 +47,7 @@ The decorator generates an OpenAI-compatible function schema from the docstring 
 | `CONFIRM_TOOLS` | 26 | Write/external action tools requiring user confirmation |
 | `ALL_TOOLS` | 95 | `AUTO_TOOLS + AUTO_ACTION_TOOLS + CONFIRM_TOOLS` |
 | `INTERNAL_TOOLS` | 1 | Pipeline-internal tools, not exposed to LLM |
-| `DEPRECATED_TOOL_NAMES` | 1 | Declared but not bound to LLM |
+| `DEPRECATED_TOOL_NAMES` | 0 | Deprecated callable definitions are removed instead of retained |
 
 ---
 
@@ -325,22 +324,6 @@ Notes:
 - After approval, Go either executes a backend write handler or dispatches to Python `/internal/tools/execute-local-write` when `execution_backend=python_local`.
 - Go caches Python `/internal/tools/catalog` for 30 seconds and merges it into `capabilities.tool_catalog`.
 
-### MockToolExecutor
-
-Returns pre-recorded responses for benchmarking:
-- Loaded from `crater_bench/mock_responses/`
-- Supports arg-based snapshot lookup
-- Records all calls in `call_log` for evaluation
-- Confirm tools always return `confirmation_required`
-
-### ReadOnlyToolExecutor
-
-Wraps another executor to enforce read-only mode:
-- Blocks all write tools with `confirmation_required`
-- Used in `live-readonly` evaluation mode
-
----
-
 ## 5. Tool Selection
 
 ### Role-Based Filtering
@@ -449,15 +432,14 @@ Within per-tool token budget?
 
 ---
 
-## 8. Legacy / Deferred Tools
+## 8. Local Web Tools
 
-The following tools are either still supported as explicit agent tools, or kept deferred until their behavior and sandboxing are re-validated.
+The following local web tools are explicitly supported as agent tools.
 
 | Tool | Replacement | Status |
 |------|-------------|--------|
 | `web_search` | None | Active, bound to LLM and no longer admin-only |
 | `fetch_url` | None | Active, bound to LLM |
-| `execute_code` | Sandboxed interpreter | Deferred, not bound |
 
 ### Internal Tools
 

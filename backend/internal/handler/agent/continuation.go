@@ -507,8 +507,6 @@ func agentActionIntentFromToolName(toolName string) string {
 		return "create_jupyter_job"
 	case agentToolCreateWebIDE:
 		return "create_webide_job"
-	case agentToolCreateTrain:
-		return "create_training_job"
 	case agentToolCreateCustom:
 		return "create_custom_job"
 	case agentToolCreatePytorch:

@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -34,17 +31,9 @@ const (
 	agentOpsAuditMetaKey = "_audit"
 
 	defaultOpsWebSearchTimeoutSeconds = 3600
-	defaultSandboxGrepMaxMatches      = 50
-	defaultSandboxGrepRootPath        = "/"
 )
 
 var (
-	sandboxGrepAllowedRoots = map[string]struct{}{
-		"runbooks":          {},
-		"collected-bundles": {},
-		"mounted-config":    {},
-	}
-
 	distributedNetworkKeywords = []string{
 		"nccl", "rdma", "ibv", "ib", "network", "cni", "multus",
 		"connection", "timeout", "unreachable", "broken pipe",
@@ -93,45 +82,6 @@ func isAllowedDomain(host string, allowedDomains []string) bool {
 		}
 	}
 	return false
-}
-
-func sanitizeSandboxRelativePath(rawPath string) (string, string, error) {
-	trimmed := strings.TrimSpace(rawPath)
-	if trimmed == "" {
-		trimmed = "runbooks/"
-	}
-	if strings.Contains(trimmed, "\x00") {
-		return "", "", fmt.Errorf("invalid path")
-	}
-	trimmed = strings.ReplaceAll(trimmed, "\\", "/")
-	if strings.HasPrefix(trimmed, "/") {
-		return "", "", fmt.Errorf("absolute path is not allowed")
-	}
-	cleaned := filepath.Clean(trimmed)
-	cleaned = strings.ReplaceAll(cleaned, "\\", "/")
-	if cleaned == "." || cleaned == "" {
-		return "", "", fmt.Errorf("path is required")
-	}
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return "", "", fmt.Errorf("path traversal is not allowed")
-	}
-	root := cleaned
-	if idx := strings.Index(cleaned, "/"); idx >= 0 {
-		root = cleaned[:idx]
-	}
-	if _, ok := sandboxGrepAllowedRoots[root]; !ok {
-		return "", "", fmt.Errorf("path must start with one of: runbooks/, collected-bundles/, mounted-config/")
-	}
-	return cleaned, root, nil
-}
-
-func isPathWithinRoot(path, root string) bool {
-	path = filepath.Clean(path)
-	root = filepath.Clean(root)
-	if path == root {
-		return true
-	}
-	return strings.HasPrefix(path, root+string(os.PathSeparator))
 }
 
 func buildAuditMetadata(executionBackend string) map[string]any {
@@ -1307,143 +1257,6 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, _ util.JWTMessage, rawArgs js
 		"results":            results,
 		"summary":            summary,
 		agentOpsAuditMetaKey: buildAuditMetadata("backend_web_search_proxy"),
-	}, nil
-}
-
-func (mgr *AgentMgr) toolSandboxGrep(_ *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	if err := ensureOpsAdmin(token, agentToolSandboxGrep); err != nil {
-		return nil, err
-	}
-	var args struct {
-		Path         string `json:"path"`
-		TargetPath   string `json:"target_path"`
-		Pattern      string `json:"pattern"`
-		IgnoreCase   bool   `json:"ignore_case"`
-		MaxMatches   int    `json:"max_matches"`
-		Limit        int    `json:"limit"`
-		ContextLines int    `json:"context_lines"`
-	}
-	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
-	}
-	pattern := strings.TrimSpace(args.Pattern)
-	if pattern == "" {
-		return nil, fmt.Errorf("pattern is required")
-	}
-	maxMatches := args.MaxMatches
-	if maxMatches <= 0 {
-		maxMatches = args.Limit
-	}
-	if maxMatches <= 0 {
-		maxMatches = defaultSandboxGrepMaxMatches
-	}
-	if maxMatches > 1000 {
-		maxMatches = 1000
-	}
-
-	targetPath := strings.TrimSpace(args.Path)
-	if targetPath == "" {
-		targetPath = strings.TrimSpace(args.TargetPath)
-	}
-	cleanedPath, rootSegment, err := sanitizeSandboxRelativePath(targetPath)
-	if err != nil {
-		return nil, err
-	}
-	rootAbs := filepath.Clean(filepath.Join(defaultSandboxGrepRootPath, rootSegment))
-	targetAbs := filepath.Clean(filepath.Join(defaultSandboxGrepRootPath, filepath.FromSlash(cleanedPath)))
-	if !isPathWithinRoot(targetAbs, rootAbs) {
-		return nil, fmt.Errorf("path escapes allowed root")
-	}
-
-	info, err := os.Stat(targetAbs)
-	if err != nil {
-		return nil, fmt.Errorf("target path is not accessible in sandbox: %w", err)
-	}
-	regexPattern := pattern
-	if args.IgnoreCase {
-		regexPattern = "(?i)" + regexPattern
-	}
-	regex, err := regexp.Compile(regexPattern)
-	if err != nil {
-		return nil, fmt.Errorf("invalid pattern: %w", err)
-	}
-
-	matches := make([]map[string]any, 0, min(maxMatches, 200))
-	scannedFiles := 0
-	truncated := false
-	searchFile := func(path string) error {
-		realPath, evalErr := filepath.EvalSymlinks(path)
-		if evalErr == nil {
-			if !isPathWithinRoot(realPath, rootAbs) {
-				return nil
-			}
-		}
-		file, openErr := os.Open(path)
-		if openErr != nil {
-			return nil
-		}
-		defer file.Close()
-		scannedFiles++
-		scanner := bufio.NewScanner(file)
-		scanner.Buffer(make([]byte, 0, 64*1024), 2*1024*1024)
-		lineNumber := 0
-		for scanner.Scan() {
-			lineNumber++
-			line := scanner.Text()
-			if !regex.MatchString(line) {
-				continue
-			}
-			matches = append(matches, map[string]any{
-				"file":        strings.TrimPrefix(path, defaultSandboxGrepRootPath),
-				"line_number": lineNumber,
-				"line":        line,
-			})
-			if len(matches) >= maxMatches {
-				truncated = true
-				return io.EOF
-			}
-		}
-		return nil
-	}
-
-	if info.IsDir() {
-		walkErr := filepath.WalkDir(targetAbs, func(path string, d fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return nil
-			}
-			if d.IsDir() {
-				return nil
-			}
-			if d.Type()&fs.ModeSymlink != 0 {
-				realPath, evalErr := filepath.EvalSymlinks(path)
-				if evalErr != nil || !isPathWithinRoot(realPath, rootAbs) {
-					return nil
-				}
-			}
-			if err := searchFile(path); err != nil {
-				if err == io.EOF {
-					return io.EOF
-				}
-			}
-			return nil
-		})
-		if walkErr != nil && walkErr != io.EOF {
-			return nil, fmt.Errorf("failed to scan files: %w", walkErr)
-		}
-	} else {
-		if err := searchFile(targetAbs); err != nil && err != io.EOF {
-			return nil, fmt.Errorf("failed to scan file: %w", err)
-		}
-	}
-
-	return map[string]any{
-		"path":               cleanedPath,
-		"pattern":            pattern,
-		"matches":            matches,
-		"total_matches":      len(matches),
-		"truncated":          truncated,
-		"scanned_files":      scannedFiles,
-		agentOpsAuditMetaKey: buildAuditMetadata("sandbox_grep_restricted"),
 	}, nil
 }
 

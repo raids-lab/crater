@@ -14,7 +14,7 @@ type AgentSession struct {
 	UserID                uint           `gorm:"not null" json:"userId"`
 	AccountID             uint           `gorm:"not null" json:"accountId"`
 	Title                 string         `gorm:"type:varchar(255)" json:"title"`
-	Source                string         `gorm:"type:varchar(32);not null;default:'chat';index" json:"source"` // chat | ops_audit | system | benchmark
+	Source                string         `gorm:"type:varchar(32);not null;default:'chat';index" json:"source"` // chat | ops_audit | system
 	PageContext           datatypes.JSON `json:"pageContext"`
 	MessageCount          int            `gorm:"default:0" json:"messageCount"`
 	LastOrchestrationMode string         `gorm:"type:varchar(32);default:'single_agent'" json:"lastOrchestrationMode"`
@@ -37,7 +37,7 @@ type AgentMessage struct {
 	CreatedAt  time.Time      `json:"createdAt"`
 }
 
-// AgentToolCall is an audit log for tool executions, also used for benchmark data collection.
+// AgentToolCall is an audit log for tool executions.
 type AgentToolCall struct {
 	ID               uint           `gorm:"primarykey" json:"id"`
 	SessionID        string         `gorm:"type:uuid;index;not null" json:"sessionId"`
@@ -47,7 +47,7 @@ type AgentToolCall struct {
 	AgentID          string         `gorm:"type:varchar(128);index" json:"agentId,omitempty"`
 	ParentEventID    *uint          `gorm:"index" json:"parentEventId,omitempty"`
 	AgentRole        string         `gorm:"type:varchar(32);index" json:"agentRole,omitempty"`
-	Source           string         `gorm:"type:varchar(32);not null;default:'backend';index" json:"source"` // backend | local | benchmark
+	Source           string         `gorm:"type:varchar(32);not null;default:'backend';index" json:"source"` // backend | local
 	ToolName         string         `gorm:"type:varchar(100);not null;index" json:"toolName"`
 	ToolArgs         datatypes.JSON `gorm:"not null" json:"toolArgs"`
 	ToolResult       datatypes.JSON `json:"toolResult,omitempty"`
@@ -117,7 +117,7 @@ type AgentFeedback struct {
 // AgentQualityEval stores LLM-as-Judge quality evaluation results for agent chat sessions.
 // eval_scope: 'session' | 'turn'
 // eval_type: 'full' | 'dialogue' | 'task'
-// trigger_source: 'feedback' (user-triggered) | 'offline_batch' | 'manual'
+// trigger_source: 'feedback' (user-triggered) | 'manual'
 // eval_status: 'pending' | 'running' | 'completed' | 'failed'
 type AgentQualityEval struct {
 	ID            uint           `gorm:"primarykey" json:"id"`

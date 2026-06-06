@@ -342,7 +342,7 @@ func (mgr *AgentMgr) ReceiveQualityEvalResult(c *gin.Context) {
 // @Tags agent
 // @Produce json
 // @Param sessionId query string false "Filter by session ID"
-// @Param triggerSource query string false "Filter by trigger source (feedback|offline_batch|manual)"
+// @Param triggerSource query string false "Filter by trigger source (feedback|manual)"
 // @Param limit query int false "Max records to return (default 50)"
 // @Router /api/v1/admin/agent/quality-evals [get]
 func (mgr *AgentMgr) ListQualityEvals(c *gin.Context) {

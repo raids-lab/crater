@@ -84,13 +84,7 @@ class SingleAgentOrchestrator:
         self.tool_executor = tool_executor or CompositeToolExecutor()
 
     async def stream(self, *, request: Any, model_factory: ModelClientFactory) -> AsyncIterator[dict]:
-        # Support both:
-        # - ModelClientFactory.create(client_key: str)
-        # - role-aware factories with create(purpose=..., orchestration_mode=...)
-        try:
-            llm = model_factory.create(purpose="default", orchestration_mode="single_agent")
-        except TypeError:
-            llm = model_factory.create("default")
+        llm = model_factory.create("default")
         graph = create_agent_graph(tool_executor=self.tool_executor, llm=llm)
         context = dict(request.context or {})
         context["capabilities"] = sanitize_capabilities_for_context(context, context.get("capabilities"))

@@ -32,7 +32,6 @@ from crater_agent.agents.planner import PlannerAgent
 from crater_agent.agents.general import GeneralPurposeAgent
 from crater_agent.agents.guide import GuideAgent
 from crater_agent.agents.verifier import VerifierAgent
-from crater_agent.eval.ablation import BenchmarkAblationControl
 from crater_agent.llm.client import ModelClientFactory
 from crater_agent.memory.session import build_history_messages
 from crater_agent.orchestrators.artifacts import (
@@ -76,27 +75,10 @@ _RETRYABLE_TOOL_LOOP_LLM_ERRORS = (
 )
 
 
-def _load_eval_ablation(context: dict[str, Any]) -> BenchmarkAblationControl:
-    controls = context.get("_eval_controls") if isinstance(context.get("_eval_controls"), dict) else {}
-    return BenchmarkAblationControl.from_context(
-        controls.get("mas_ablation") if isinstance(controls, dict) else None
-    )
-
-
-def _apply_runtime_overrides(state: MASState, ablation: BenchmarkAblationControl) -> None:
-    for key, value in ablation.runtime_overrides.items():
-        if hasattr(state.runtime_config, key):
-            setattr(state.runtime_config, key, value)
-
-
 def _fallback_stage_from_state(
     state: MASState,
     routing: RoutingDecision,
-    ablation: BenchmarkAblationControl,
 ) -> str:
-    if ablation.fallback_stage_sequence:
-        index = min(max(state.loop_round - 1, 0), len(ablation.fallback_stage_sequence) - 1)
-        return ablation.fallback_stage_sequence[index]
     if routing.operation_mode == "write":
         if state.tool_records or state.observation:
             return "act"
@@ -106,37 +88,16 @@ def _fallback_stage_from_state(
     return "finalize"
 
 
-def _apply_stage_ablation(
+def _normalize_stage_candidate(
     *,
     candidate: str | None,
     state: MASState,
     routing: RoutingDecision,
-    ablation: BenchmarkAblationControl,
 ) -> str | None:
-    """Override or sanitize stage transitions for offline ablations."""
-    if not ablation.enabled:
-        return candidate
-
-    fixed_stage = ablation.stage_for_round(state.loop_round)
-    if fixed_stage:
-        return fixed_stage
-
-    if state.loop_round == 1:
-        if ablation.force_plan_first:
-            candidate = "plan"
-        elif ablation.force_observe_first:
-            candidate = "observe"
-
-    if candidate in {"plan", "replan"} and ablation.disable_planner:
-        return "observe" if not state.tool_records else "finalize"
-    if candidate == "verify" and ablation.disable_verifier:
-        return "finalize"
-    if candidate is None and ablation.disable_coordinator_decision:
-        return _fallback_stage_from_state(state, routing, ablation)
+    del state, routing
     return candidate
 
 CREATE_JOB_TOOL_NAMES = {
-    "create_training_job",
     "create_custom_job",
     "create_jupyter_job",
     "create_webide_job",
@@ -573,9 +534,9 @@ def _has_equivalent_tool_evidence(
 ) -> bool:
     """Return true when a prior tool result already covers this target.
 
-    Some backend/mock tools return multiple named objects even when invoked
-    with one object. Avoid charging another LLM/tool round for the same
-    factual payload.
+    Some platform tools return multiple named objects even when invoked with
+    one object. Avoid charging another LLM/tool round for the same factual
+    payload.
     """
     start = max(0, int(baseline or 0))
     records = state.tool_records[start:] if baseline is not None else state.tool_records
@@ -1295,7 +1256,7 @@ def _post_action_target_state_check_missing(
     if action_tools & {
         "create_jupyter_job",
         "create_webide_job",
-        "create_training_job",
+        "create_custom_job",
         "create_pytorch_job",
         "create_tensorflow_job",
         "resubmit_job",
@@ -1636,11 +1597,10 @@ def _fallback_stage_from_decision_context(
     state: MASState,
     routing: RoutingDecision,
     decision_context: dict[str, Any],
-    ablation: BenchmarkAblationControl,
 ) -> str:
     hint = str(decision_context.get("recommended_next_stage_hint") or "").strip().lower()
     if hint not in {"observe", "act", "verify", "replan", "finalize", "plan"}:
-        hint = _fallback_stage_from_state(state, routing, ablation)
+        hint = _fallback_stage_from_state(state, routing)
 
     if _has_awaiting_write_confirmation(state):
         return "finalize"
@@ -3164,16 +3124,8 @@ class MultiAgentOrchestrator:
 
     @staticmethod
     def _create_role_llm(model_factory: Any, role: str):
-        """Create a role-specific LLM client.
-
-        Supports both:
-        - ModelClientFactory.create(client_key: str)
-        - A role-aware factory with create(purpose=..., orchestration_mode=...)
-        """
-        try:
-            return model_factory.create(purpose=role, orchestration_mode="multi_agent")
-        except TypeError:
-            return model_factory.create(role)
+        """Create a role-specific LLM client."""
+        return model_factory.create(role)
 
     @staticmethod
     def _build_plan_artifact(
@@ -3232,8 +3184,6 @@ class MultiAgentOrchestrator:
         model_factory: ModelClientFactory,
     ) -> AsyncIterator[dict]:
         state = MASState.from_request(request)
-        ablation = _load_eval_ablation(dict(request.context or {}))
-        _apply_runtime_overrides(state, ablation)
         page_context = dict(state.goal.page_context)
         capabilities = state.capabilities
         enabled_tools = state.enabled_tools
@@ -3861,7 +3811,6 @@ class MultiAgentOrchestrator:
                 "agentRole": coordinator.role,
                 "status": "started",
                 "summary": _build_resume_run_started_summary(state.resume_context),
-                "evalAblation": ablation.to_context() if ablation.enabled else None,
             },
         )
 
@@ -3991,7 +3940,6 @@ class MultiAgentOrchestrator:
             and routing.operation_mode == "unknown"
             and not state.workflow
             and not state.resume_context
-            and not ablation.bypass_help_fast_path
             and is_strict_toolless_fast_path_candidate(
                 user_message=goal_message,
                 page_context=page_context,
@@ -4075,11 +4023,10 @@ class MultiAgentOrchestrator:
 
             # Try deterministic fast-paths first
             next_stage = self._determine_next_stage_fast(state, routing, resumed_action)
-            next_stage = _apply_stage_ablation(
+            next_stage = _normalize_stage_candidate(
                 candidate=next_stage,
                 state=state,
                 routing=routing,
-                ablation=ablation,
             )
 
             # If no fast-path matched, ask Coordinator LLM to decide
@@ -4163,7 +4110,6 @@ class MultiAgentOrchestrator:
                             state=state,
                             routing=routing,
                             decision_context=decision_context,
-                            ablation=ablation,
                         )
                         reason = "invalid_coordinator_decision"
                     else:
@@ -4171,11 +4117,10 @@ class MultiAgentOrchestrator:
                         reason = str(coordinator_decision.get("reason") or "").strip()
                     if next_stage not in {"observe", "act", "verify", "replan", "finalize", "plan"}:
                         next_stage = "finalize"
-                    next_stage = _apply_stage_ablation(
+                    next_stage = _normalize_stage_candidate(
                         candidate=next_stage,
                         state=state,
                         routing=routing,
-                        ablation=ablation,
                     )
                     logger.info(
                         "Coordinator decision round=%d: %s (%s)",
@@ -4187,20 +4132,17 @@ class MultiAgentOrchestrator:
                         state=state,
                         routing=routing,
                         decision_context=decision_context,
-                        ablation=ablation,
                     )
-                    next_stage = _apply_stage_ablation(
+                    next_stage = _normalize_stage_candidate(
                         candidate=next_stage,
                         state=state,
                         routing=routing,
-                        ablation=ablation,
                     )
             else:
-                next_stage = _apply_stage_ablation(
+                next_stage = _normalize_stage_candidate(
                     candidate=next_stage,
                     state=state,
                     routing=routing,
-                    ablation=ablation,
                 )
 
             # After the first iteration, clear resumed_action
@@ -4249,102 +4191,92 @@ class MultiAgentOrchestrator:
                 )
 
             if next_stage == "verify":
-                if ablation.disable_verifier:
-                    next_stage = "finalize"
+                gate = _determine_verifier_gate(
+                    state=state,
+                    routing=routing,
+                    current_progress_signature=current_progress_signature,
+                    last_verification_signature=last_verification_signature,
+                    last_verification_result=last_verification_result,
+                )
+                if not gate.run_verifier:
+                    next_stage = gate.next_stage
                     state.remember_controller_decision({
                         "round": state.loop_round,
-                        "stage": "verify_disabled",
+                        "stage": "verify_skipped",
+                        "reason": gate.reason,
                         "next_stage": next_stage,
                     })
-                if next_stage != "verify":
-                    pass
-                else:
-                    gate = _determine_verifier_gate(
-                        state=state,
-                        routing=routing,
-                        current_progress_signature=current_progress_signature,
-                        last_verification_signature=last_verification_signature,
-                        last_verification_result=last_verification_result,
+                    yield await emit(
+                        "agent_status",
+                        {
+                            "agentId": coordinator.agent_id,
+                            "agentRole": coordinator.role,
+                            "status": "verify_skipped",
+                            "summary": f"Verifier 已跳过：{gate.reason}",
+                        },
                     )
-                    if not gate.run_verifier:
-                        next_stage = gate.next_stage
-                        state.remember_controller_decision({
-                            "round": state.loop_round,
-                            "stage": "verify_skipped",
-                            "reason": gate.reason,
-                            "next_stage": next_stage,
-                        })
-                        yield await emit(
-                            "agent_status",
-                            {
-                                "agentId": coordinator.agent_id,
-                                "agentRole": coordinator.role,
-                                "status": "verify_skipped",
-                                "summary": f"Verifier 已跳过：{gate.reason}",
-                            },
+                else:
+                    yield await emit(
+                        "agent_handoff",
+                        {
+                            "agentId": coordinator.agent_id,
+                            "agentRole": coordinator.role,
+                            "targetAgentId": verifier.agent_id,
+                            "targetAgentRole": verifier.role,
+                            "summary": "Coordinator 要求 Verifier 复核当前证据与执行结果",
+                            "status": "completed",
+                        },
+                    )
+                    evidence_dicts = _extract_evidence_from_tool_records(state.tool_records)
+                    compact_evidence = _compact_evidence_for_prompt(evidence_dicts)
+                    evidence_summary_text = (
+                        state.observation.summary if state.observation
+                        else _build_evidence_summary_fallback(compact_evidence)
+                    )
+                    executor_summary_text = (
+                        state.execution.summary if state.execution
+                        else _build_action_history_summary(state.action_history)
+                    )
+                    try:
+                        last_verification_result = await verifier.verify(
+                            user_message=goal_message,
+                            plan_summary=state.plan.summary if state.plan else "",
+                            evidence_summary=evidence_summary_text,
+                            compact_evidence=compact_evidence,
+                            executor_summary=executor_summary_text,
                         )
-                    else:
-                        yield await emit(
-                            "agent_handoff",
-                            {
-                                "agentId": coordinator.agent_id,
-                                "agentRole": coordinator.role,
-                                "targetAgentId": verifier.agent_id,
-                                "targetAgentRole": verifier.role,
-                                "summary": "Coordinator 要求 Verifier 复核当前证据与执行结果",
-                                "status": "completed",
-                            },
+                        record_agent_usage(verifier)
+                    except Exception:
+                        logger.exception("Verifier failed")
+                        last_verification_result = RoleExecutionResult(
+                            summary="验证阶段执行失败，当前视为证据不足。",
+                            status="missing_evidence",
+                            metadata={"verification_result": "missing_evidence"},
                         )
-                        evidence_dicts = _extract_evidence_from_tool_records(state.tool_records)
-                        compact_evidence = _compact_evidence_for_prompt(evidence_dicts)
-                        evidence_summary_text = (
-                            state.observation.summary if state.observation
-                            else _build_evidence_summary_fallback(compact_evidence)
-                        )
-                        executor_summary_text = (
-                            state.execution.summary if state.execution
-                            else _build_action_history_summary(state.action_history)
-                        )
-                        try:
-                            last_verification_result = await verifier.verify(
-                                user_message=goal_message,
-                                plan_summary=state.plan.summary if state.plan else "",
-                                evidence_summary=evidence_summary_text,
-                                compact_evidence=compact_evidence,
-                                executor_summary=executor_summary_text,
-                            )
-                            record_agent_usage(verifier)
-                        except Exception:
-                            logger.exception("Verifier failed")
-                            last_verification_result = RoleExecutionResult(
-                                summary="验证阶段执行失败，当前视为证据不足。",
-                                status="missing_evidence",
-                                metadata={"verification_result": "missing_evidence"},
-                            )
-                        last_verification_signature = current_progress_signature
-                        verification_verdict = _extract_verification_verdict(last_verification_result) or "missing_evidence"
-                        yield await emit(
-                            "agent_status",
-                            {
-                                "agentId": verifier.agent_id,
-                                "agentRole": verifier.role,
-                                "status": verification_verdict,
-                                "summary": last_verification_result.summary,
-                            },
-                        )
-                        state.remember_controller_decision({
-                            "round": state.loop_round,
-                            "stage": "verify",
-                            "verdict": verification_verdict,
-                        })
-                        if verification_verdict == "missing_evidence":
-                            if state.loop_round < state.runtime_config.lead_max_rounds:
-                                next_stage = "replan"
-                            else:
-                                state.stop_reason = "insufficient_evidence"
-                                next_stage = "finalize"
+                    last_verification_signature = current_progress_signature
+                    verification_verdict = _extract_verification_verdict(last_verification_result) or "missing_evidence"
+                    yield await emit(
+                        "agent_status",
+                        {
+                            "agentId": verifier.agent_id,
+                            "agentRole": verifier.role,
+                            "status": verification_verdict,
+                            "summary": last_verification_result.summary,
+                        },
+                    )
+                    state.remember_controller_decision({
+                        "round": state.loop_round,
+                        "stage": "verify",
+                        "verdict": verification_verdict,
+                    })
+                    if verification_verdict == "missing_evidence":
+                        if state.loop_round < state.runtime_config.lead_max_rounds:
+                            next_stage = "replan"
                         else:
+                            state.stop_reason = "insufficient_evidence"
                             next_stage = "finalize"
+                    else:
+                        next_stage = "finalize"
 
             if next_stage == "finalize":
                 break
@@ -4405,12 +4337,8 @@ class MultiAgentOrchestrator:
 
             # ----- OBSERVE stage -----
             if next_stage == "observe":
-                observe_agent = executor if ablation.merge_explorer_executor else explorer
-                observe_summary = (
-                    "Coordinator 要求 Executor 以合并读写角色收集证据"
-                    if ablation.merge_explorer_executor
-                    else "Coordinator 要求 Explorer 继续收集证据"
-                )
+                observe_agent = explorer
+                observe_summary = "Coordinator 要求 Explorer 继续收集证据"
                 yield await emit(
                     "agent_handoff",
                     {
@@ -4444,33 +4372,17 @@ class MultiAgentOrchestrator:
                 exploration_summary = ""
                 loop_outcome: ToolLoopOutcome | None = None
                 try:
-                    if ablation.merge_explorer_executor:
-                        loop_system_prompt, loop_user_prompt = executor.build_tool_loop_prompts(
-                            user_message=goal_message,
-                            page_context=page_context,
-                            plan_summary=state.plan.summary if state.plan else "",
-                            evidence_summary=evidence_summary_text,
-                            compact_evidence=compact_evidence,
-                            action_intent=routing.requested_action,
-                            selected_job_name=routing.targets.job_name,
-                            requested_scope=routing.targets.scope,
-                            action_history=state.action_history,
-                            pending_actions=_pending_action_dicts(state.actions),
-                            enabled_tools=_actor_allowed_tools(state.goal.actor_role, enabled_tools),
-                            actor_role=state.goal.actor_role,
-                        )
-                    else:
-                        loop_system_prompt, loop_user_prompt = explorer.build_tool_loop_prompts(
-                            user_message=goal_message,
-                            page_context=page_context,
-                            plan_candidate_tools=prompt_candidate_tools,
-                            plan_steps=state.plan.steps if state.plan else [],
-                            enabled_tools=enabled_tools,
-                            evidence_summary=evidence_summary_text,
-                            attempted_tool_signatures=state.attempted_tool_signatures,
-                            compact_evidence=compact_evidence,
-                            plan_tool_hints=plan_tool_hints,
-                        )
+                    loop_system_prompt, loop_user_prompt = explorer.build_tool_loop_prompts(
+                        user_message=goal_message,
+                        page_context=page_context,
+                        plan_candidate_tools=prompt_candidate_tools,
+                        plan_steps=state.plan.steps if state.plan else [],
+                        enabled_tools=enabled_tools,
+                        evidence_summary=evidence_summary_text,
+                        attempted_tool_signatures=state.attempted_tool_signatures,
+                        compact_evidence=compact_evidence,
+                        plan_tool_hints=plan_tool_hints,
+                    )
 
                     async def on_explorer_tool_result(
                         tool_name: str,
@@ -4485,34 +4397,6 @@ class MultiAgentOrchestrator:
                                 tool_name=tool_name,
                                 tool_args=tool_args,
                                 tool_call_id=tool_call_id,
-                                result=result,
-                            )
-                        elif tool_name in CONFIRM_TOOL_NAMES and ablation.merge_explorer_executor:
-                            action = ensure_action_item(tool_name, tool_args)
-                            action.confirm_id = action.confirm_id or str(
-                                (result.get("confirmation") or {}).get("confirm_id") or ""
-                            ).strip()
-                            if result.get("status") == "confirmation_required":
-                                action.status = "awaiting_confirmation"
-                                _append_pending_confirmation(state, result)
-                                return ToolLoopStopSignal(
-                                    should_stop=True,
-                                    summary="已发起确认型操作，当前轮次暂停，等待用户确认。",
-                                    allow_current_batch=True,
-                                )
-                            action.result = result
-                            action.status = "error" if result.get("status") == "error" else "completed"
-                            state.remember_tool(
-                                agent_id=observe_agent.agent_id,
-                                agent_role=observe_agent.role,
-                                tool_name=tool_name,
-                                tool_args=tool_args,
-                                tool_call_id=tool_call_id,
-                                result=result,
-                            )
-                            state.record_action_result(
-                                action=action,
-                                result_status=action.status,
                                 result=result,
                             )
                         else:
@@ -4566,11 +4450,7 @@ class MultiAgentOrchestrator:
                         role_name=observe_agent.role,
                         system_prompt=loop_system_prompt,
                         user_prompt=loop_user_prompt,
-                        allowed_tool_names=(
-                            _actor_allowed_tools(state.goal.actor_role, enabled_tools)
-                            if ablation.merge_explorer_executor
-                            else [t for t in enabled_tools if t in READ_ONLY_TOOL_NAMES]
-                        ),
+                        allowed_tool_names=[t for t in enabled_tools if t in READ_ONLY_TOOL_NAMES],
                         max_tool_calls=state.runtime_config.subagent_max_iterations,
                         on_tool_result=on_explorer_tool_result,
                         loop_history_messages=history_messages,
@@ -4582,42 +4462,27 @@ class MultiAgentOrchestrator:
                 except Exception:
                     logger.exception("Explorer native tool loop failed")
 
-                if ablation.merge_explorer_executor:
-                    awaiting_action = next(
-                        (a for a in reversed(state.actions) if a.status == "awaiting_confirmation"),
-                        None,
-                    )
-                    if awaiting_action is not None:
-                        async for pause_event in emit_confirmation_pause(
-                            role_agent_id=observe_agent.agent_id,
-                            role_name=observe_agent.role,
-                            summary="合并执行角色已发起确认型操作，等待用户确认",
-                        ):
-                            yield pause_event
-                        return
-
                 new_evidence = len(state.tool_records) - evidence_before
 
                 # If tool loop produced nothing, try select_tools_with_llm fallback
                 if new_evidence <= 0:
                     selected_tools: list[tuple[str, dict[str, Any]]] = []
-                    if not ablation.merge_explorer_executor:
-                        try:
-                            selected_tools = await explorer.select_tools_with_llm(
-                                user_message=goal_message,
-                                page_context=page_context,
-                                plan_candidate_tools=prompt_candidate_tools,
-                                plan_steps=state.plan.steps if state.plan else [],
-                                enabled_tools=enabled_tools,
-                                evidence_summary=evidence_summary_text,
-                                attempted_tool_signatures=state.attempted_tool_signatures,
-                                plan_tool_hints=plan_tool_hints,
-                                history_messages=history_messages,
-                            )
-                            record_agent_usage(explorer)
-                        except Exception:
-                            logger.exception("Explorer select_tools_with_llm failed")
-                            selected_tools = []
+                    try:
+                        selected_tools = await explorer.select_tools_with_llm(
+                            user_message=goal_message,
+                            page_context=page_context,
+                            plan_candidate_tools=prompt_candidate_tools,
+                            plan_steps=state.plan.steps if state.plan else [],
+                            enabled_tools=enabled_tools,
+                            evidence_summary=evidence_summary_text,
+                            attempted_tool_signatures=state.attempted_tool_signatures,
+                            plan_tool_hints=plan_tool_hints,
+                            history_messages=history_messages,
+                        )
+                        record_agent_usage(explorer)
+                    except Exception:
+                        logger.exception("Explorer select_tools_with_llm failed")
+                        selected_tools = []
                     executed_count, direct_events = await execute_read_tool_pairs(
                         pairs=selected_tools,
                         role_agent=observe_agent,

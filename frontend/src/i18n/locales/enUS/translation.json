@@ -226,7 +226,6 @@
   "agentAudit.eval.triggerFailed": "Trigger failed: {{error}}",
   "agentAudit.eval.triggerSource.feedback": "User feedback",
   "agentAudit.eval.triggerSource.manual": "Admin manual",
-  "agentAudit.eval.triggerSource.offline_batch": "Offline batch",
   "agentAudit.eval.triggerWorking": "Analyzing…",
   "agentAudit.eval.triggered": "Analysis submitted",
   "agentAudit.eval.type.dialogue": "Dialogue quality",

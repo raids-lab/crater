@@ -54,36 +54,8 @@ class PlannerAgent(BaseRoleAgent):
 
         is_replan = bool(replan_reason)
         replan_section = f"重规划原因:\n{replan_reason}" if is_replan else "（首次规划）"
-        profile = str(prompt_profile or "mops").strip().lower()
-        if profile in {"plan_execute", "plan-and-execute", "ps", "generic"}:
-            system_prompt = (
-                "你是 Crater 的 Plan-and-Execute Planner。你只负责为一个可调用工具的执行器制定通用计划。\n\n"
-                "规划原则：\n"
-                "- 先理解用户目标，再决定是否需要工具；不要因为出现关键词就机械选择工具。\n"
-                "- steps 描述要完成的事实核验、操作或回答动作，保持简短可执行。\n"
-                "- 如果已有上下文或证据足够回答，可以只输出一步「总结回复用户」。\n"
-                "- candidate_tools 只能从当前可用工具中选择，不能编造工具名。\n"
-                "- tool_hints 是给执行器的非强制建议；只填当前请求、页面上下文或已有证据能确定的参数，不确定就省略。\n"
-                "- 对查询、诊断或状态确认，规划最小必要证据；证据足够后停止。\n"
-                "- 对写操作或确认型操作，只有用户明确要求时才规划；目标对象和关键参数不明确时，先规划最小只读核验或让用户补充。\n"
-                "- 对多轮追问，结合近期上下文，不要脱离已确认事实重新编造对象或原因。\n"
-                "- 如果没有合适工具，计划应转为直接回答或澄清，不要伪造平台事实。\n"
-                "- 不要把场景 id、测试期望、评分标准或数据集细节写进计划。\n\n"
-                "请输出 JSON 格式：\n"
-                '{\n'
-                '  "goal": "本次目标（一句话）",\n'
-                '  "steps": ["步骤1", "步骤2", ...],\n'
-                '  "candidate_tools": ["tool_name1", "tool_name2"],\n'
-                '  "tool_hints": [\n'
-                '    {"tool": "tool_name1", "args": {"key": "value"}, "purpose": "为什么需要这个工具", "stop_condition": "什么情况下停止"}\n'
-                '  ],\n'
-                '  "risk": "low|medium|high",\n'
-                '  "raw_summary": "面向执行器的自然语言摘要"\n'
-                '}\n\n'
-                "使用中文。"
-            )
-        else:
-            system_prompt = (
+        del prompt_profile
+        system_prompt = (
                 "你是 Crater 的 Planner Agent。你负责分析用户请求并制定执行计划。\n\n"
                 "你的计划会被 Coordinator 协调者审查，由 Explorer（只读工具收集证据）和 "
                 "Executor（读+写工具执行操作）分别执行。\n\n"
@@ -136,7 +108,7 @@ class PlannerAgent(BaseRoleAgent):
                 '  "raw_summary": "面向 Coordinator 的自然语言摘要"\n'
                 '}\n\n'
                 "使用中文。"
-            )
+        )
 
         result = await self.run_json(
             system_prompt=system_prompt,

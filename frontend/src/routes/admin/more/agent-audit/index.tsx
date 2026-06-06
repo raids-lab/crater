@@ -6,7 +6,6 @@ import {
   ChevronRightIcon,
   CircleDashedIcon,
   ClipboardCheckIcon,
-  FlaskConicalIcon,
   MessageSquareMoreIcon,
   SettingsIcon,
   ThumbsDownIcon,
@@ -17,12 +16,7 @@ import { ElementType, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { TimeDistance } from '@/components/custom/time-distance'
 import { DataTable } from '@/components/query-table'
@@ -34,6 +28,7 @@ import {
   AgentAuditSessionSource,
   apiAdminListAgentAuditSessions,
 } from '@/services/api/admin/agentAudit'
+
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/admin/more/agent-audit/')({
@@ -81,8 +76,6 @@ function sourceBadgeClass(source: AgentAuditSessionSource) {
       return 'border-amber-200 bg-amber-50 text-amber-700'
     case 'system':
       return 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    case 'benchmark':
-      return 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700'
   }
 }
 
@@ -100,7 +93,10 @@ function EvalStatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'completed':
       return (
-        <Badge variant="outline" className="gap-1 border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700">
+        <Badge
+          variant="outline"
+          className="gap-1 border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
+        >
           <CheckCircle2Icon className="h-3 w-3" />
           {t('agentAudit.eval.status.completed')}
         </Badge>
@@ -108,14 +104,20 @@ function EvalStatusBadge({ status }: { status: string }) {
     case 'running':
     case 'pending':
       return (
-        <Badge variant="outline" className="gap-1 border-sky-200 bg-sky-50 text-[11px] text-sky-700">
+        <Badge
+          variant="outline"
+          className="gap-1 border-sky-200 bg-sky-50 text-[11px] text-sky-700"
+        >
           <CircleDashedIcon className="h-3 w-3 animate-spin" />
           {t(`agentAudit.eval.status.${status}`)}
         </Badge>
       )
     case 'failed':
       return (
-        <Badge variant="outline" className="gap-1 border-rose-200 bg-rose-50 text-[11px] text-rose-700">
+        <Badge
+          variant="outline"
+          className="gap-1 border-rose-200 bg-rose-50 text-[11px] text-rose-700"
+        >
           <XCircleIcon className="h-3 w-3" />
           {t('agentAudit.eval.status.failed')}
         </Badge>
@@ -154,7 +156,7 @@ function TitleCell({
           <button
             type="button"
             onClick={onClick}
-            className="group flex min-w-0 max-w-[260px] flex-col gap-0.5 text-left"
+            className="group flex max-w-[260px] min-w-0 flex-col gap-0.5 text-left"
           >
             <span className="truncate text-sm font-medium group-hover:underline group-hover:underline-offset-4">
               {title}
@@ -179,7 +181,9 @@ function UserCell({ session }: { session: AgentAuditSessionListItem }) {
   const { t } = useTranslation()
   const name = session.nickname || session.username
   if (!name) {
-    return <span className="text-muted-foreground text-sm">{t('agentAudit.session.systemActor')}</span>
+    return (
+      <span className="text-muted-foreground text-sm">{t('agentAudit.session.systemActor')}</span>
+    )
   }
   return <span className="truncate text-sm">{name}</span>
 }
@@ -188,7 +192,9 @@ function AccountCell({ session }: { session: AgentAuditSessionListItem }) {
   const { t } = useTranslation()
   const name = session.accountNickname || session.accountName
   if (!name) {
-    return <span className="text-muted-foreground text-sm">{t('agentAudit.session.systemAccount')}</span>
+    return (
+      <span className="text-muted-foreground text-sm">{t('agentAudit.session.systemAccount')}</span>
+    )
   }
   return <span className="truncate text-sm">{name}</span>
 }
@@ -208,7 +214,10 @@ function SummaryCard({
   icon: ElementType
   accent: 'blue' | 'amber' | 'emerald' | 'fuchsia'
 }) {
-  const accentClasses: Record<string, { border: string; bg: string; text: string; iconBg: string }> = {
+  const accentClasses: Record<
+    string,
+    { border: string; bg: string; text: string; iconBg: string }
+  > = {
     blue: {
       border: 'border-blue-300',
       bg: 'bg-blue-50/60',
@@ -241,9 +250,7 @@ function SummaryCard({
       onClick={onClick}
       className={cn(
         '@container/card flex w-full items-center justify-between rounded-xl border p-6 text-left transition-all',
-        selected
-          ? `${c.border} ${c.bg} shadow-sm`
-          : 'bg-card hover:bg-muted/40 border-border'
+        selected ? `${c.border} ${c.bg} shadow-sm` : 'bg-card hover:bg-muted/40 border-border'
       )}
     >
       <div className="flex items-center gap-2 text-sm">
@@ -288,8 +295,7 @@ function AgentAuditListPage() {
   // Two selectors over the same cached fetch: one surfaces the summary block for
   // the overview cards, one produces the pre-filtered list that feeds DataTable.
   const SESSIONS_KEY = ['admin', 'agent-audit', 'sessions']
-  const fetchSessions = async () =>
-    (await apiAdminListAgentAuditSessions({ limit: 100 })).data
+  const fetchSessions = async () => (await apiAdminListAgentAuditSessions({ limit: 100 })).data
 
   const summaryQuery = useQuery({
     queryKey: SESSIONS_KEY,
@@ -302,9 +308,7 @@ function AgentAuditListPage() {
     queryKey: SESSIONS_KEY,
     queryFn: fetchSessions,
     select: (data) =>
-      sourceFilter === 'all'
-        ? data.items
-        : data.items.filter((s) => s.source === sourceFilter),
+      sourceFilter === 'all' ? data.items : data.items.filter((s) => s.source === sourceFilter),
   })
 
   const toggleSource = (v: AgentAuditSessionSource) =>
@@ -332,13 +336,19 @@ function AgentAuditListPage() {
   const columns: ColumnDef<AgentAuditSessionListItem>[] = [
     {
       accessorKey: 'title',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeaderLabel('title')} />,
-      cell: ({ row }) => <TitleCell session={row.original} onClick={() => goDetail(row.original)} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeaderLabel('title')} />
+      ),
+      cell: ({ row }) => (
+        <TitleCell session={row.original} onClick={() => goDetail(row.original)} />
+      ),
       enableColumnFilter: false,
     },
     {
       accessorKey: 'source',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeaderLabel('source')} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeaderLabel('source')} />
+      ),
       cell: ({ row }) => <SourceBadge source={row.original.source} />,
       filterFn: (row, id, value) =>
         Array.isArray(value) ? value.includes(row.getValue(id)) : true,
@@ -346,13 +356,17 @@ function AgentAuditListPage() {
     {
       accessorKey: 'owner',
       accessorFn: (row) => row.nickname || row.username || '',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeaderLabel('owner')} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeaderLabel('owner')} />
+      ),
       cell: ({ row }) => <UserCell session={row.original} />,
     },
     {
       accessorKey: 'account',
       accessorFn: (row) => row.accountNickname || row.accountName || '',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={getHeaderLabel('account')} />,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={getHeaderLabel('account')} />
+      ),
       cell: ({ row }) => <AccountCell session={row.original} />,
     },
     {
@@ -361,7 +375,7 @@ function AgentAuditListPage() {
         <DataTableColumnHeader column={column} title={getHeaderLabel('messageCount')} />
       ),
       cell: ({ row }) => (
-        <span className="font-mono text-xs tabular-nums text-sky-700 dark:text-sky-400">
+        <span className="font-mono text-xs text-sky-700 tabular-nums dark:text-sky-400">
           {row.original.messageCount}
         </span>
       ),
@@ -373,7 +387,7 @@ function AgentAuditListPage() {
         <DataTableColumnHeader column={column} title={getHeaderLabel('toolCallCount')} />
       ),
       cell: ({ row }) => (
-        <span className="font-mono text-xs tabular-nums text-orange-700 dark:text-orange-400">
+        <span className="font-mono text-xs text-orange-700 tabular-nums dark:text-orange-400">
           {row.original.toolCallCount}
         </span>
       ),
@@ -385,7 +399,7 @@ function AgentAuditListPage() {
         <DataTableColumnHeader column={column} title={getHeaderLabel('turnCount')} />
       ),
       cell: ({ row }) => (
-        <span className="font-mono text-xs tabular-nums text-violet-700 dark:text-violet-400">
+        <span className="font-mono text-xs text-violet-700 tabular-nums dark:text-violet-400">
           {row.original.turnCount}
         </span>
       ),
@@ -464,14 +478,6 @@ function AgentAuditListPage() {
           onClick={() => toggleSource('system')}
           icon={SettingsIcon}
           accent="emerald"
-        />
-        <SummaryCard
-          label={t('agentAudit.source.benchmark')}
-          count={summary?.benchmark ?? 0}
-          selected={sourceFilter === 'benchmark'}
-          onClick={() => toggleSource('benchmark')}
-          icon={FlaskConicalIcon}
-          accent="fuchsia"
         />
       </div>
 

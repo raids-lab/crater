@@ -107,9 +107,22 @@ crater-agent/test_openai.py
 # Agent offline experiment artifacts
 /results/
 crater-agent/results/
+crater-agent/dataset/
+crater-agent/crater_bench/
+crater-agent/crater_agent/dataset/
+crater-agent/crater_agent/eval/
 crater-agent/config/exp*.txt
+crater-agent/config/*.json
+!crater-agent/config/llm-clients.json
 crater-agent/config/mops*.json
 crater-agent/config/*plan-execute*.json
+crater-agent/config/*offline*.yaml
+crater-agent/config/kubeconfig
+crater-agent/docs0511/
+crater-agent/tests/
+
+# Codex CLI artifacts
+.codex
 # Thesis drafts (personal work, not code)
 docs/thesis/
 

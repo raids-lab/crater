@@ -37,7 +37,7 @@ export interface AgentSSEEvent {
 export interface AgentSession {
   sessionId: string
   title: string
-  source?: 'chat' | 'ops_audit' | 'system' | 'benchmark'
+  source?: 'chat' | 'ops_audit' | 'system'
   messageCount: number
   lastOrchestrationMode?: 'single_agent' | 'multi_agent'
   pinnedAt?: string | null
@@ -98,7 +98,7 @@ export interface AgentToolCall {
   toolCallId?: string
   agentId?: string
   agentRole?: string
-  source?: 'backend' | 'local' | 'benchmark'
+  source?: 'backend' | 'local'
   toolName: string
   toolArgs?: unknown
   toolResult?: unknown

@@ -165,7 +165,7 @@ func (s *AgentService) GetOrCreateSession(ctx context.Context, sessionID string,
 }
 
 // ListSessions returns all chat sessions for a given user, ordered by most recent.
-// Only returns source='chat' sessions; ops_audit/system/benchmark sessions are excluded from the UI.
+// Only returns source='chat' sessions; ops_audit/system sessions are excluded from the UI.
 func (s *AgentService) ListSessions(ctx context.Context, userID uint) ([]*model.AgentSession, error) {
 	var sessions []*model.AgentSession
 	query := s.db.WithContext(ctx).Where("user_id = ?", userID)
