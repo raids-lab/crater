@@ -164,7 +164,6 @@ class PlatformRuntimeConfig:
     local_write_tools: set[str] = field(default_factory=lambda: set(DEFAULT_LOCAL_WRITE_TOOLS))
     web_search_enabled: bool = False
     web_search_allowed_domains: list[str] = field(default_factory=list)
-    web_search_seed_urls: list[str] = field(default_factory=list)
     web_search_timeout_seconds: int = 10
     web_search_max_content_chars: int = 4_000
     backend_url: str = ""
@@ -230,7 +229,6 @@ class PlatformRuntimeConfig:
             "toolReadiness": self.tool_readiness(),
             "webSearchEnabled": self.web_search_enabled,
             "webSearchAllowedDomains": list(self.web_search_allowed_domains),
-            "webSearchSeedUrls": list(self.web_search_seed_urls),
             "backendURL": self.backend_url,
             "agentServiceURL": self.agent_service_url,
             "platformHost": self.platform_host,
@@ -329,7 +327,6 @@ class PlatformRuntimeConfig:
             "optionalWebSearch": [
                 "webSearch.enabled",
                 "webSearch.allowedDomains",
-                "webSearch.seedUrls",
                 "webSearch.timeoutSeconds",
                 "webSearch.maxContentChars",
             ],
@@ -448,8 +445,6 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
     if not allowed_domains:
         allowed_domains = _as_string_list(backend_web_cfg.get("allowedDomains"))
 
-    seed_urls = _as_string_list(web_cfg.get("seedUrls"))
-
     web_enabled = bool(web_cfg.get("enabled", backend_web_cfg.get("enabled", False)))
     web_timeout = int(web_cfg.get("timeoutSeconds") or backend_web_cfg.get("timeoutSeconds") or 10)
 
@@ -506,7 +501,6 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
         local_write_tools=local_write_tools,
         web_search_enabled=web_enabled,
         web_search_allowed_domains=allowed_domains,
-        web_search_seed_urls=seed_urls,
         web_search_timeout_seconds=web_timeout,
         web_search_max_content_chars=int(web_cfg.get("maxContentChars") or 4_000),
         backend_url=str(settings.crater_backend_url or "").strip(),

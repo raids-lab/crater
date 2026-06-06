@@ -19,6 +19,8 @@ dist/
 /run_bench.py
 /test_integration.py
 /config/offline-bench-run.json
+/config/*.json
+!/config/llm-clients.json
 /config/platform-runtime.offline.yaml
 /config/platform-runtime.local.yaml
 /config/kubeconfig

@@ -13,14 +13,12 @@ import (
 )
 
 const (
-	agentSessionSourceChat      = "chat"
-	agentSessionSourceOpsAudit  = "ops_audit"
-	agentSessionSourceSystem    = "system"
-	agentSessionSourceBenchmark = "benchmark"
+	agentSessionSourceChat     = "chat"
+	agentSessionSourceOpsAudit = "ops_audit"
+	agentSessionSourceSystem   = "system"
 
-	agentToolCallSourceBackend   = "backend"
-	agentToolCallSourceLocal     = "local"
-	agentToolCallSourceBenchmark = "benchmark"
+	agentToolCallSourceBackend = "backend"
+	agentToolCallSourceLocal   = "local"
 )
 
 func normalizeAgentSessionSource(source string) string {
@@ -31,8 +29,6 @@ func normalizeAgentSessionSource(source string) string {
 		return agentSessionSourceOpsAudit
 	case agentSessionSourceSystem:
 		return agentSessionSourceSystem
-	case agentSessionSourceBenchmark:
-		return agentSessionSourceBenchmark
 	default:
 		return agentSessionSourceChat
 	}
@@ -42,8 +38,6 @@ func normalizeAgentToolCallSource(source string) string {
 	switch strings.TrimSpace(strings.ToLower(source)) {
 	case agentToolCallSourceLocal:
 		return agentToolCallSourceLocal
-	case agentToolCallSourceBenchmark:
-		return agentToolCallSourceBenchmark
 	default:
 		return agentToolCallSourceBackend
 	}
@@ -60,11 +54,10 @@ type AgentAuditSessionListOptions struct {
 }
 
 type AgentAuditSessionSummary struct {
-	Chat      int64 `json:"chat"`
-	OpsAudit  int64 `json:"opsAudit"`
-	System    int64 `json:"system"`
-	Benchmark int64 `json:"benchmark"`
-	Total     int64 `json:"total"`
+	Chat     int64 `json:"chat"`
+	OpsAudit int64 `json:"opsAudit"`
+	System   int64 `json:"system"`
+	Total    int64 `json:"total"`
 }
 
 type AgentAuditSessionListItem struct {
@@ -361,11 +354,9 @@ func (s *AgentService) ListAdminSessions(
 			summary.OpsAudit = row.Count
 		case agentSessionSourceSystem:
 			summary.System = row.Count
-		case agentSessionSourceBenchmark:
-			summary.Benchmark = row.Count
 		}
 	}
-	summary.Total = summary.Chat + summary.OpsAudit + summary.System + summary.Benchmark
+	summary.Total = summary.Chat + summary.OpsAudit + summary.System
 
 	countQuery := s.buildAgentAuditSessionBaseQuery(ctx, opts.Keyword)
 	if source != "" {

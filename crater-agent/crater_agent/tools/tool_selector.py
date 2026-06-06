@@ -62,8 +62,6 @@ def _resolve_actor_role(context: dict[str, Any]) -> str:
         return trusted_role
 
     page_scope = _infer_page_scope(context)
-    if page_scope == "user":
-        return "user"
     if page_scope == "admin" and not is_privileged_actor_role(trusted_role):
         return "user"
     return trusted_role
@@ -114,7 +112,7 @@ def sanitize_capabilities_for_context(
 
     surface = dict(raw.get("surface") or {})
     page_scope = _infer_page_scope({"capabilities": {"surface": surface}, "page": context.get("page")})
-    surface["page_scope"] = "admin" if page_scope == "admin" and is_privileged_actor_role(effective_role) else "user"
+    surface["page_scope"] = "admin" if is_privileged_actor_role(effective_role) else "user"
     sanitized["surface"] = surface
     return sanitized
 

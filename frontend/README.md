@@ -80,15 +80,6 @@ make run
   - Flowbite (Tailwind templates)
   - TanStack Table (headless tables)
 
-### API Mocking 🧪
-
-Use MSW for API simulation during development:
-
-1. Set `VITE_USE_MSW=true` in `.env.development`
-2. Add handlers in `src/mocks/handlers.ts`
-
-**Note:** It is recommended to manage the `.env.development` file through the unified configuration management system in the main repository. For details, please refer to the main repository README.
-
 ### Dependency Management 📦
 
 Check updates:

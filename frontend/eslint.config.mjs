@@ -38,8 +38,6 @@ export default tseslint.config({
     'src/components/ui/*',
     'src/components/ui-custom/*',
     'src/hooks/use-mobile.tsx',
-    // msw
-    'public/mockServiceWorker.js',
     // router
     'src/routeTree.gen.ts',
   ],

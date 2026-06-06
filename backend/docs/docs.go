@@ -116,7 +116,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Filter by trigger source (feedback|offline_batch|manual)",
+                        "description": "Filter by trigger source (feedback|manual)",
                         "name": "triggerSource",
                         "in": "query"
                     },
@@ -11885,9 +11885,6 @@ const docTemplate = `{
         "github_com_raids-lab_crater_internal_service.AgentAuditSessionSummary": {
             "type": "object",
             "properties": {
-                "benchmark": {
-                    "type": "integer"
-                },
                 "chat": {
                     "type": "integer"
                 },

@@ -737,7 +737,7 @@ func (mgr *AgentMgr) toolNotifyJobOwner(c *gin.Context, _ util.JWTMessage, rawAr
 	}, nil
 }
 
-func (mgr *AgentMgr) toolCreateTrainingJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
+func (mgr *AgentMgr) toolCreateCustomJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	argsMap := parseToolArgsMap(rawArgs)
 	var args struct {
 		Name       string  `json:"name"`
@@ -808,7 +808,7 @@ func (mgr *AgentMgr) toolCreateTrainingJob(c *gin.Context, token util.JWTMessage
 		"forwards": forwards,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal training request: %w", err)
+		return nil, fmt.Errorf("failed to marshal custom job request: %w", err)
 	}
 
 	result, err := mgr.jobSubmitter.SubmitTrainingJob(c, token, requestBody)
@@ -820,10 +820,6 @@ func (mgr *AgentMgr) toolCreateTrainingJob(c *gin.Context, token util.JWTMessage
 		"status": "created",
 		"job":    result,
 	}, nil
-}
-
-func (mgr *AgentMgr) toolCreateCustomJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	return mgr.toolCreateTrainingJob(c, token, rawArgs)
 }
 
 func (mgr *AgentMgr) toolCreatePytorchJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {

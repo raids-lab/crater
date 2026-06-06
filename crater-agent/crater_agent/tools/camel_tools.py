@@ -1,26 +1,20 @@
 """CAMEL toolkit adapters for Crater Agent.
 
 web_search remains enabled as the explicit agent-side internet search path.
-execute_code stays disabled pending a real sandboxed replacement.
 
----
-
-Async-safe wrappers around CAMEL's SearchToolkit and CodeExecutionToolkit.
+Async-safe wrappers around CAMEL's SearchToolkit.
 Each public function returns {"status": ..., "result": ...} matching the
 LocalToolExecutor contract.
 
-Internal helpers (_ddg_search, _run_code_in_thread) are module-level so
-tests can patch them independently of the CAMEL import.
+Internal helpers are module-level so tests can patch them independently of the
+CAMEL import.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-import os
 from typing import Any
-
-_SUPPORTED_CODE_LANGUAGES = frozenset({"python"})
 
 
 def _ddg_search(query: str, max_results: int) -> list[dict[str, Any]]:
@@ -47,25 +41,6 @@ def _ddg_search(query: str, max_results: int) -> list[dict[str, Any]]:
         except (json.JSONDecodeError, ValueError):
             raise TypeError(f"SearchToolkit returned non-JSON string: {raw[:100]!r}")
     raise TypeError(f"Unexpected result type from SearchToolkit: {type(raw).__name__}")
-
-
-def _run_code_in_thread(
-    code: str,
-    language: str,
-    sandbox: str,
-    timeout: int,
-) -> str:
-    """Synchronous code execution via CAMEL CodeExecutionToolkit.
-
-    Raises ImportError if camel-ai is not installed.
-
-    CodeExecutionToolkit.execute_code(code: str, code_type: str = 'python') -> str
-    """
-    from camel.toolkits import CodeExecutionToolkit  # noqa: PLC0415
-
-    toolkit = CodeExecutionToolkit(sandbox=sandbox, timeout=timeout, verbose=False)
-    result = toolkit.execute_code(code=code, code_type=language)
-    return str(result) if result is not None else ""
 
 
 async def camel_web_search(
@@ -109,62 +84,5 @@ async def camel_web_search(
         return {
             "status": "error",
             "error_type": "search_error",
-            "message": str(exc),
-        }
-
-
-def _default_sandbox() -> str:
-    """Read sandbox type from CRATER_AGENT_CODE_SANDBOX env var. Default: subprocess."""
-    return os.getenv("CRATER_AGENT_CODE_SANDBOX", "subprocess").strip().lower() or "subprocess"
-
-
-async def camel_execute_code(
-    code: str,
-    language: str = "python",
-    sandbox: str | None = None,
-    timeout: int = 30,
-) -> dict[str, Any]:
-    """Execute code using CAMEL's CodeExecutionToolkit.
-
-    Returns:
-        {"status": "success", "result": {"output": ..., "language": ..., "sandbox": ...}}
-        {"status": "error", "error_type": "dependency_missing"|"execution_error", "message": ...}
-    """
-    if language not in _SUPPORTED_CODE_LANGUAGES:
-        return {
-            "status": "error",
-            "error_type": "invalid_input",
-            "message": f"Unsupported language: {language!r}. Supported: {sorted(_SUPPORTED_CODE_LANGUAGES)}",
-        }
-    resolved_sandbox = sandbox or _default_sandbox()
-    try:
-        output = await asyncio.wait_for(
-            asyncio.to_thread(_run_code_in_thread, code, language, resolved_sandbox, timeout),
-            timeout=timeout + 5,
-        )
-        return {
-            "status": "success",
-            "result": {
-                "output": output,
-                "language": language,
-                "sandbox": resolved_sandbox,
-            },
-        }
-    except asyncio.TimeoutError:
-        return {
-            "status": "error",
-            "error_type": "execution_error",
-            "message": f"Code execution timed out after {timeout + 5}s",
-        }
-    except ImportError as exc:
-        return {
-            "status": "error",
-            "error_type": "dependency_missing",
-            "message": f"camel-ai not installed: {exc}",
-        }
-    except Exception as exc:
-        return {
-            "status": "error",
-            "error_type": "execution_error",
             "message": str(exc),
         }

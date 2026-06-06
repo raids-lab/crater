@@ -957,8 +957,6 @@ definitions:
     type: object
   github_com_raids-lab_crater_internal_service.AgentAuditSessionSummary:
     properties:
-      benchmark:
-        type: integer
       chat:
         type: integer
       opsAudit:
@@ -3598,7 +3596,7 @@ paths:
         in: query
         name: sessionId
         type: string
-      - description: Filter by trigger source (feedback|offline_batch|manual)
+      - description: Filter by trigger source (feedback|manual)
         in: query
         name: triggerSource
         type: string

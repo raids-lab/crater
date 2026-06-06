@@ -1,9 +1,0 @@
-% Equation 3.1: 路由置信度合并
-% 嵌入：\begin{equation}\input{...}\end{equation}
-c_{\text{router}} =
-\begin{cases}
-  c_{\text{det}}, & c_{\text{det}} \geq 0.75 \\[2pt]
-  \lambda\, c_{\text{det}} + (1-\lambda)\, c_{\text{llm}}, & 0.5 \leq c_{\text{det}} < 0.75 \\[2pt]
-  c_{\text{llm}}, & c_{\text{det}} < 0.5 \;\text{且}\; \mathcal{R}_{\text{llm}}\;\text{合法} \\[2pt]
-  0.3, & \text{LLM 输出非法（兜底）}
-\end{cases}

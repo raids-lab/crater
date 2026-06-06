@@ -2,8 +2,6 @@
 
 All tool executions are proxied through Go's /v1/agent/tools/execute endpoint,
 which handles permission checks, data access, and audit logging.
-
-For benchmarking, a MockToolExecutor is provided that returns pre-recorded responses.
 """
 
 from __future__ import annotations
@@ -21,15 +19,26 @@ from crater_agent.config import settings
 from crater_agent.runtime.platform import route_for_tool
 from crater_agent.tools.definitions import (
     CONFIRM_TOOL_NAMES,
-    READ_ONLY_TOOL_NAMES,
     is_actor_allowed_for_tool,
     is_tool_allowed_for_role,
 )
 from crater_agent.tools.local_executor import LocalToolExecutor
 
 
+def normalize_tool_args_for_backend(tool_name: str, tool_args: dict[str, Any]) -> dict[str, Any]:
+    """Normalize provider-specific argument variants before backend dispatch."""
+    normalized = dict(tool_args or {})
+    if (
+        tool_name == "notify_job_owner"
+        and "job_names" not in normalized
+        and normalized.get("job_name")
+    ):
+        normalized["job_names"] = normalized["job_name"]
+    return normalized
+
+
 class ToolExecutorProtocol(Protocol):
-    """Protocol for tool executors (real and mock)."""
+    """Protocol for production tool executors."""
 
     async def execute(
         self,
@@ -77,6 +86,7 @@ class GoBackendToolExecutor:
             On error: {"status": "error", "message": "..."}
         """
         start_time = time.monotonic()
+        tool_args = normalize_tool_args_for_backend(tool_name, tool_args)
         logger.info("[tool] execute: %s args=%s session=%s actor=%s", tool_name, tool_args, session_id, actor_role)
         normalized_role = (agent_role or "single_agent").strip().lower() or "single_agent"
         if not is_tool_allowed_for_role(normalized_role, tool_name):
@@ -319,76 +329,3 @@ class CompositeToolExecutor:
         close = getattr(self.backend, "close", None)
         if callable(close):
             await close()
-
-
-class ReadOnlyToolExecutor:
-    """Proxy executor that denies any non-read-only tools.
-
-    Intended for eval harness live-readonly mode to prevent accidental mutations.
-    """
-
-    def __init__(self, inner: ToolExecutorProtocol, *, allowed_tools: set[str] | None = None):
-        self.inner = inner
-        self.allowed_tools = allowed_tools or set(READ_ONLY_TOOL_NAMES)
-
-    async def execute(
-        self,
-        tool_name: str,
-        tool_args: dict[str, Any],
-        session_id: str,
-        user_id: int,
-        turn_id: str | None = None,
-        tool_call_id: str | None = None,
-        agent_id: str | None = None,
-        agent_role: str | None = None,
-        actor_role: str | None = None,
-        execution_backend: str | None = None,
-    ) -> dict[str, Any]:
-        del execution_backend
-        start_time = time.monotonic()
-        if tool_name in CONFIRM_TOOL_NAMES:
-            return {
-                "tool_call_id": tool_call_id,
-                "status": "confirmation_required",
-                "confirmation": {
-                    "confirm_id": f"eval_ro_{tool_name}_{tool_call_id or 'pending'}",
-                    "tool_name": tool_name,
-                    "description": (
-                        f"live-readonly evaluation blocks write tool '{tool_name}' "
-                        f"with args {tool_args}"
-                    ),
-                    "interaction": "approval",
-                    "risk_level": "high",
-                },
-                "_latency_ms": int((time.monotonic() - start_time) * 1000),
-            }
-        if tool_name not in self.allowed_tools:
-            return {
-                "status": "error",
-                "error_type": "tool_policy",
-                "retryable": False,
-                "message": f"Tool {tool_name} is not allowed in live-readonly mode",
-                "_latency_ms": int((time.monotonic() - start_time) * 1000),
-            }
-        return await self.inner.execute(
-            tool_name=tool_name,
-            tool_args=tool_args,
-            session_id=session_id,
-            user_id=user_id,
-            turn_id=turn_id,
-            tool_call_id=tool_call_id,
-            agent_id=agent_id,
-            agent_role=agent_role,
-            actor_role=actor_role,
-        )
-
-    async def close(self) -> None:
-        close = getattr(self.inner, "close", None)
-        if callable(close):
-            await close()
-
-
-# Backward-compatible import path for older tests and debug scripts. The
-# benchmark implementation lives under crater_agent.eval to keep mock-only
-# behavior out of production executors.
-from crater_agent.eval.mock_executor import MockToolExecutor  # noqa: E402

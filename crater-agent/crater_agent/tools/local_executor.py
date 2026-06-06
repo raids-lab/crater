@@ -6,7 +6,7 @@ Goal:
 
 Currently supported:
 - web_search: DuckDuckGo search via CAMEL SearchToolkit.
-- execute_code: run Python in CAMEL CodeExecutionToolkit sandbox.
+- fetch_url: fetch allowlisted URLs through the configured HTTP client.
 - get_agent_runtime_summary: return agent + runtime config summaries.
 
 Extended local/core tools (platform-agnostic):
@@ -77,7 +77,6 @@ class LocalToolExecutor:
             "get_agent_runtime_summary": self._handle_get_agent_runtime_summary,
             "web_search": self._handle_web_search,
             "fetch_url": self._handle_fetch_url,
-            # "execute_code": self._handle_execute_code,
             "k8s_list_nodes": self._handle_k8s_list_nodes,
             "k8s_list_pods": self._handle_k8s_list_pods,
             "k8s_get_events": self._handle_k8s_get_events,
@@ -85,7 +84,6 @@ class LocalToolExecutor:
             "k8s_get_pod_logs": self._handle_k8s_get_pod_logs,
             "prometheus_query": self._handle_prometheus_query,
             "harbor_check": self._handle_harbor_check,
-            # "execute_code": self._handle_execute_code,  # DEPRECATED — see above
             "k8s_get_service": self._handle_k8s_get_service,
             "k8s_get_endpoints": self._handle_k8s_get_endpoints,
             "k8s_get_ingress": self._handle_k8s_get_ingress,
@@ -1051,23 +1049,6 @@ class LocalToolExecutor:
             "content": body[:max_chars],
             "truncated": len(body) > max_chars,
         }
-
-
-    # --- DEPRECATED: execute_code handler ---
-    # Subprocess sandbox has no real isolation. Migrating to LLM-native code_interpreter.
-    async def _handle_execute_code(self, tool_args: dict[str, Any]) -> dict[str, Any]:
-        code = str(tool_args.get("code") or "").strip()
-        if not code:
-            raise ValueError("execute_code requires non-empty code")
-
-        language = str(tool_args.get("language") or "python").strip().lower() or "python"
-        if language not in {"python"}:
-            raise ValueError(f"execute_code: unsupported language '{language}' (only 'python' supported)")
-
-        timeout = max(5, min(int(tool_args.get("timeout") or 30), 120))
-
-        from crater_agent.tools.camel_tools import camel_execute_code  # noqa: PLC0415
-        return await camel_execute_code(code=code, language=language, timeout=timeout)
 
     # ------------------------------------------------------------------
     # P1: K8s Resource Query Tools

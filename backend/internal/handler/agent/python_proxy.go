@@ -423,7 +423,7 @@ func (mgr *AgentMgr) buildConfirmationFinalAnswer(toolCall *model.AgentToolCall)
 		switch toolCall.ToolName {
 		case agentToolResubmitJob:
 			answer += " 你可以调整资源配置后再试，或先查看原作业详情确认失败原因。"
-		case agentToolCreateJupyter, agentToolCreateTrain:
+		case agentToolCreateJupyter, agentToolCreateCustom:
 			answer += " 你可以修改表单参数后再试一次。"
 		}
 	}

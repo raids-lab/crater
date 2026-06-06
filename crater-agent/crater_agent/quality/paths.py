@@ -36,14 +36,6 @@ def feedback_artifact_path(
     return get_eval_output_dir() / "quality" / "feedback" / date_str / f"{suffix}.md"
 
 
-def offline_artifact_path(batch_id: str, ts: datetime | None = None) -> tuple[Path, Path]:
-    """Returns (md_path, csv_path)."""
-    ts = ts or datetime.now()
-    date_str = ts.strftime("%Y-%m-%d")
-    base = get_eval_output_dir() / "quality" / "offline" / date_str
-    return base / f"{batch_id}.md", base / f"{batch_id}.csv"
-
-
 def manual_artifact_path(session_id: str, ts: datetime | None = None) -> Path:
     ts = ts or datetime.now()
     date_str = ts.strftime("%Y-%m-%d")

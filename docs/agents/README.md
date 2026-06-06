@@ -6,7 +6,7 @@
 
 ## Overview
 
-Mops is the multi-agent operations framework powering Crater's intelligent computing platform. It provides a composable architecture for building, orchestrating, and evaluating LLM-powered agents that perform fault diagnosis, resource optimization, proactive inspection, and automated operations on GPU/accelerator clusters.
+Mops is the multi-agent operations framework powering Crater's intelligent computing platform. It provides a composable architecture for building and orchestrating LLM-powered agents that perform fault diagnosis, resource optimization, proactive inspection, and automated operations on GPU/accelerator clusters.
 
 The framework is designed with three core principles:
 
@@ -22,7 +22,7 @@ The framework is designed with three core principles:
                          ┌─────────────────────────────────────┐
                          │        Application Layer            │
                          │   FastAPI /chat (SSE streaming)     │
-                         │   FastAPI /evaluate/* (synchronous) │
+                         │   FastAPI task hooks (synchronous)   │
                          └──────────────┬──────────────────────┘
                                         │
                     ┌───────────────────┼───────────────────┐
@@ -52,10 +52,10 @@ The framework is designed with three core principles:
          ┌──────────┼──────────┐
          │          │          │
    ┌─────▼────┐ ┌──▼─────┐ ┌──▼──────────┐
-   │  Local    │ │   Go   │ │    Mock     │
-   │ Executor  │ │Backend │ │  Executor   │
-   │(kubectl,  │ │Executor│ │(benchmark)  │
-   │PromQL,web)│ │(HTTP)  │ │             │
+   │  Local    │ │   Go   │ │ Composite   │
+   │ Executor  │ │Backend │ │  Routing    │
+   │(kubectl,  │ │Executor│ │(runtime     │
+   │PromQL,web)│ │(HTTP)  │ │ policy)     │
    └──────────┘ └────────┘ └─────────────┘
 ```
 

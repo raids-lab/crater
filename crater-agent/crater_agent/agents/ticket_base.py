@@ -102,12 +102,7 @@ class TicketAgent(ABC, Generic[TRequest, TVerdict]):
         self.agent_id = agent_id
         self.tool_executor = tool_executor or GoBackendToolExecutor()
         if llm is None:
-            try:
-                llm = ModelClientFactory().create(
-                    purpose=llm_purpose, orchestration_mode="single_agent"
-                )
-            except (TypeError, KeyError):
-                llm = ModelClientFactory().create("default")
+            llm = ModelClientFactory().create(llm_purpose)
         self.llm = llm
         self._fallback_agent = BaseRoleAgent(
             agent_id=f"{agent_id}-fallback",

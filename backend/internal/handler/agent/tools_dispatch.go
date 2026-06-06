@@ -55,18 +55,10 @@ func isAgentReadOnlyTool(toolName string) bool {
 		agentToolNodeNetwork,
 		agentToolDiagnoseJobNet,
 		agentToolWebSearch,
-		agentToolSandboxGrep,
-		agentToolRuntimeSummary,
-		agentToolK8sListNodes,
 		agentToolK8sListPods,
-		agentToolK8sGetEvents,
-		agentToolK8sDescribe,
-		agentToolK8sPodLogs,
 		agentToolK8sGetService,
 		agentToolK8sGetEndpoints,
 		agentToolK8sGetIngress,
-		agentToolPromQuery,
-		agentToolHarborCheck,
 		toolGetLatestAuditReport,
 		toolListAuditItems,
 		toolSaveAuditReport,
@@ -80,7 +72,7 @@ func isAgentReadOnlyTool(toolName string) bool {
 func isAgentConfirmTool(toolName string) bool {
 	switch toolName {
 	case agentToolResubmitJob, agentToolStopJob, agentToolDeleteJob,
-		agentToolCreateJupyter, agentToolCreateWebIDE, agentToolCreateTrain, agentToolCreateCustom,
+		agentToolCreateJupyter, agentToolCreateWebIDE, agentToolCreateCustom,
 		agentToolCreatePytorch, agentToolCreateTensorflow,
 		agentToolCreateImage, agentToolManageBuild, agentToolRegisterImage, agentToolManageAccess,
 		agentToolCordonNode, agentToolUncordonNode, agentToolDrainNode, agentToolDeletePod, agentToolRestartWL,
@@ -114,11 +106,6 @@ func isAgentAdminOnlyTool(toolName string) bool {
 		agentToolStorageCapacity,
 		agentToolNodeNetwork,
 		agentToolDiagnoseJobNet,
-		agentToolSandboxGrep,
-		agentToolRuntimeSummary,
-		agentToolK8sListNodes,
-		agentToolPromQuery,
-		agentToolHarborCheck,
 		agentToolCordonNode,
 		agentToolUncordonNode,
 		agentToolDrainNode,
@@ -165,8 +152,6 @@ func normalizeRequestedSessionSource(source string) string {
 		return "ops_audit"
 	case "system":
 		return "system"
-	case "benchmark":
-		return "benchmark"
 	default:
 		return "chat"
 	}
@@ -182,8 +167,6 @@ func defaultInternalSessionTitle(source, toolName, providedTitle string) string 
 	switch source {
 	case "ops_audit":
 		prefix = "[audit]"
-	case "benchmark":
-		prefix = "[benchmark]"
 	}
 
 	name := strings.TrimSpace(toolName)
@@ -194,16 +177,12 @@ func defaultInternalSessionTitle(source, toolName, providedTitle string) string 
 }
 
 func toolCallAuditSourceForSessionSource(sessionSource string) string {
-	if normalizeRequestedSessionSource(sessionSource) == "benchmark" {
-		return "benchmark"
-	}
+	_ = normalizeRequestedSessionSource(sessionSource)
 	return "backend"
 }
 
 func toolCallAuditSourceForExecution(sessionSource, executionBackend string) string {
-	if normalizeRequestedSessionSource(sessionSource) == "benchmark" {
-		return "benchmark"
-	}
+	_ = normalizeRequestedSessionSource(sessionSource)
 	if strings.TrimSpace(strings.ToLower(executionBackend)) == "python_local" {
 		return "local"
 	}
@@ -511,8 +490,6 @@ func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req 
 		return mgr.toolDiagnoseDistributedJobNetwork(c, token, req.ToolArgs)
 	case agentToolWebSearch:
 		return mgr.toolWebSearch(c, token, req.ToolArgs)
-	case agentToolSandboxGrep:
-		return mgr.toolSandboxGrep(c, token, req.ToolArgs)
 	case toolGetLatestAuditReport:
 		return mgr.toolGetLatestAuditReport(c, token, req.ToolArgs)
 	case toolListAuditItems:
@@ -546,8 +523,6 @@ func (mgr *AgentMgr) executeWriteTool(c *gin.Context, token util.JWTMessage, too
 		return mgr.toolCreateJupyterJob(c, token, rawArgs)
 	case agentToolCreateWebIDE:
 		return mgr.toolCreateWebIDEJob(c, token, rawArgs)
-	case agentToolCreateTrain:
-		return mgr.toolCreateTrainingJob(c, token, rawArgs)
 	case agentToolCreateCustom:
 		return mgr.toolCreateCustomJob(c, token, rawArgs)
 	case agentToolCreatePytorch:

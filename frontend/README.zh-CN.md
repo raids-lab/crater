@@ -66,7 +66,6 @@ http://localhost:5180
 
 - `VITE_SERVER_PROXY_BACKEND`：后端 API 网关地址
 - `VITE_SERVER_PROXY_STORAGE`：对象存储 / 文件服务地址
-- 将 `VITE_USE_MSW` 设为 `true` 可启用本地 Mock（见后文）
 - DevTools 配置用于开发调试，可按需关闭
 
 ---
@@ -91,28 +90,6 @@ Crater Frontend 基于现代 React 技术栈构建，主要包括：
 - 类型安全
 - 与后端 API 解耦
 - 易于扩展、适配不同集群与业务场景
-
----
-
-## 🧪 API Mock（MSW）
-
-当后端服务尚未就绪或本地联调不便时，可通过 [MSW](https://mswjs.io/) 进行接口模拟，方便开发调试。
-
-**注意：** 建议通过主仓库的统一配置文件管理系统来管理 `.env.development` 文件，详见主仓库 README。
-
-使用步骤：
-
-1. 在 `.env.development` 中设置：
-
-   ```env
-   VITE_USE_MSW=true
-   ```
-
-2. 在 `src/mocks/handlers.ts` 中编写或扩展接口 Mock 逻辑：
-   - 可根据后端接口路径定义对应的 `rest.get/post/put/delete` 等处理函数
-   - 建议按模块拆分，保持 Mock 代码可维护
-
----
 
 ## 📦 依赖管理
 

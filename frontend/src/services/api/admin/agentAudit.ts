@@ -1,8 +1,8 @@
 import { apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'
 
-export type AgentAuditSessionSource = 'chat' | 'ops_audit' | 'system' | 'benchmark'
-export type AgentAuditToolCallSource = 'backend' | 'local' | 'benchmark'
+export type AgentAuditSessionSource = 'chat' | 'ops_audit' | 'system'
+export type AgentAuditToolCallSource = 'backend' | 'local'
 export type AgentQualityEvalScope = 'session' | 'turn'
 export type AgentQualityEvalType = 'full' | 'dialogue' | 'task'
 
@@ -10,7 +10,6 @@ export interface AgentAuditSessionSummary {
   chat: number
   opsAudit: number
   system: number
-  benchmark: number
   total: number
 }
 
@@ -170,7 +169,7 @@ export interface AgentQualityEval {
   evalType?: AgentQualityEvalType
   targetId?: string
   feedbackId?: number | null
-  triggerSource: 'feedback' | 'offline_batch' | 'manual' | string
+  triggerSource: 'feedback' | 'manual' | string
   evalStatus: 'pending' | 'running' | 'completed' | 'failed'
   chatScores?: Record<string, unknown>
   chainScores?: Record<string, unknown>

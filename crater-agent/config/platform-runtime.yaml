@@ -32,9 +32,6 @@ toolRouting:
   localCoreTools:
     - web_search
     - fetch_url
-    - sandbox_grep
-    - sandbox_list_dir
-    - sandbox_read_file
     - get_agent_runtime_summary
     - k8s_list_nodes
     - k8s_list_pods
@@ -69,11 +66,6 @@ toolRouting:
     - k8s_taint_node
     - run_kubectl
     - execute_admin_command
-
-sandboxGrep:
-  roots:
-    - ../dataset
-  maxFileSizeBytes: 1000000
 
 # Optional durable platform baseline. Prefer filling only fields the agent will
 # actually consume or summarize.
@@ -220,6 +212,5 @@ webSearch:
     - pypi.org
     - rust-lang.org
     - npmjs.com
-  seedUrls: []
   timeoutSeconds: 15
   maxContentChars: 4000

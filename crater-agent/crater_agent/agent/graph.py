@@ -476,7 +476,7 @@ def create_agent_graph(
                 continue
             attempted_tool_calls[tool_signature] = attempted_tool_calls.get(tool_signature, 0) + 1
 
-            # Execute via Go backend (or mock)
+            # Execute via the configured production tool executor.
             tool_started_at = time.perf_counter()
             result = await tool_executor.execute(
                 tool_name=tool_name,
