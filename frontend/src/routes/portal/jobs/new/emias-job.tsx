@@ -186,7 +186,6 @@ function RouteComponent() {
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
-        queryClient.invalidateQueries({ queryKey: ['context', 'quota'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'stats'] }),
       ])
       toast.success(`作业 ${jobName} 创建成功`)
@@ -259,7 +258,7 @@ function RouteComponent() {
             className="lg:col-span-3"
             tipContent={`版本 ${VERSION}`}
           >
-            <div className="items-centor flex w-fit flex-row justify-end gap-3">
+            <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
               <FormImportButton
                 metadata={{ version: VERSION, type: JOB_TYPE }}
                 form={form}

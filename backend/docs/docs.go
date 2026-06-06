@@ -13297,6 +13297,9 @@ const docTemplate = `{
                 "normalJobWaitingToleranceSeconds": {
                     "type": "integer"
                 },
+                "prequeueCandidateSize": {
+                    "type": "integer"
+                },
                 "queueQuotaEnabled": {
                     "type": "boolean"
                 }
@@ -13356,17 +13359,11 @@ const docTemplate = `{
         "internal_handler.QueueQuotaConfigItemResp": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "integer"
                 },
                 "name": {
                     "type": "string"
-                },
-                "prequeueCandidateSize": {
-                    "type": "integer"
                 },
                 "quota": {
                     "type": "object",
@@ -13379,14 +13376,8 @@ const docTemplate = `{
         "internal_handler.QueueQuotaReq": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
                 "name": {
                     "type": "string"
-                },
-                "prequeueCandidateSize": {
-                    "type": "integer"
                 },
                 "quota": {
                     "type": "object",
@@ -13665,6 +13656,7 @@ const docTemplate = `{
                 "backfillEnabled",
                 "maxTotalActivationsPerRound",
                 "normalJobWaitingToleranceSeconds",
+                "prequeueCandidateSize",
                 "queueQuotaEnabled"
             ],
             "properties": {
@@ -13678,6 +13670,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "normalJobWaitingToleranceSeconds": {
+                    "type": "integer"
+                },
+                "prequeueCandidateSize": {
                     "type": "integer"
                 },
                 "queueQuotaEnabled": {

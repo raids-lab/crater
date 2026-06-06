@@ -57,8 +57,13 @@ import {
 
 import { apiJobBillingList } from '@/services/api/billing'
 import { apiGetBillingStatus } from '@/services/api/system-config'
-import { apiJobBatchList, apiJobDelete } from '@/services/api/vcjob'
-import { IJobInfo, JobType, getUnifiedJobPhase } from '@/services/api/vcjob'
+import {
+  IJobInfo,
+  JobType,
+  apiJobBatchList,
+  apiJobDelete,
+  getDisplayJobPhase,
+} from '@/services/api/vcjob'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -255,7 +260,7 @@ const ColocateOverview = () => {
         cell: ({ row }) => <div>{row.getValue('owner')}</div>,
       },
       {
-        accessorFn: (row) => getUnifiedJobPhase(row.status),
+        accessorFn: (row) => getDisplayJobPhase(row.status),
         id: 'status',
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />

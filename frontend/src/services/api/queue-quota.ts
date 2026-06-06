@@ -5,13 +5,7 @@ import { IResponse } from '../types'
 export interface IQueueQuota {
   id?: number
   name: string
-  enabled: boolean
-  prequeueCandidateSize: number
   quota: Record<string, string>
-}
-
-export type QueueQuotaDraft = IQueueQuota & {
-  savedName?: string
 }
 
 export type IQueueQuotaPayload = Omit<IQueueQuota, 'id'>

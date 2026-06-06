@@ -116,7 +116,7 @@ function Directory({ name, path = '', onPathChange, selectedPath }: DirectoryPro
   return (
     <div>
       <Button
-        className={`left-0 w-[500px] justify-start px-1 py-2.5 text-left ${isSelected ? 'bg-blue-50' : ''}`}
+        className={`left-0 w-full justify-start px-1 py-2.5 text-left sm:w-[500px] ${isSelected ? 'bg-blue-50' : ''}`}
         variant="ghost"
         onClick={toggleOpen}
       >
@@ -183,16 +183,16 @@ export function FileSelect({ onClose, handleSubpathInfo, handleSubpath }: FileSe
   }, [FileList, isLoading])
 
   return (
-    <div className="left-0 flex h-[410px] w-[590px] max-w-(--breakpoint-sm) flex-col">
+    <div className="left-0 flex h-[410px] w-full max-w-[590px] flex-col">
       {/* ...保留FileSelect组件的其他部分代码 */}
       <div className="bg-slate-150 left-0 flex h-[50px] w-full items-center gap-2.5 rounded-lg border-2 px-1 py-2.5">
         <ChevronRightIcon className="size-4" />
-        <div className="flex-1">{selectedPath || ''}</div>
+        <div className="min-w-0 flex-1 truncate">{selectedPath || ''}</div>
         <Button aria-label={t('refreshButton.ariaLabel')} size="icon" onClick={handleRefreshClick}>
           <RefreshCwIcon className="size-4" />
         </Button>
       </div>
-      <div className="w-[590px] flex-1 overflow-auto">
+      <div className="w-full flex-1 overflow-auto">
         <div>
           {topLevelDirectorieList &&
             topLevelDirectorieList.map((item, index) => (

@@ -19,7 +19,9 @@ import { UseQueryResult } from '@tanstack/react-query'
 import {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
   SortingState,
+  Updater,
   VisibilityState,
   flexRender,
   getCoreRowModel,
@@ -55,6 +57,10 @@ import { cn } from '@/lib/utils'
 
 import { DataTablePagination, MultipleHandler } from './pagination'
 import { DataTableToolbar, DataTableToolbarConfig } from './toolbar'
+
+const resolveUpdater = <TState,>(updater: Updater<TState>, state: TState) => {
+  return typeof updater === 'function' ? (updater as (state: TState) => TState)(state) : updater
+}
 
 interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   info?: {
@@ -93,6 +99,7 @@ export function DataTable<TData, TValue>({
     []
   )
   const [sorting, setSorting] = useState<SortingState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
   const { data: queryData, isLoading, dataUpdatedAt, refetch } = query
   const updatedAt = new Date(dataUpdatedAt).toLocaleString([], {
     hour: '2-digit',
@@ -133,6 +140,34 @@ export function DataTable<TData, TValue>({
     ]
   }, [columns, multipleHandlers])
 
+  const resetPageIndex = React.useCallback(() => {
+    setPagination((state) => ({ ...state, pageIndex: 0 }))
+  }, [setPagination])
+
+  const handleSortingChange = React.useCallback<OnChangeFn<SortingState>>(
+    (updater) => {
+      setSorting((state) => resolveUpdater(updater, state))
+      resetPageIndex()
+    },
+    [resetPageIndex]
+  )
+
+  const handleColumnFiltersChange = React.useCallback<OnChangeFn<ColumnFiltersState>>(
+    (updater) => {
+      setColumnFilters((state) => resolveUpdater(updater, state))
+      resetPageIndex()
+    },
+    [resetPageIndex, setColumnFilters]
+  )
+
+  const handleGlobalFilterChange = React.useCallback<OnChangeFn<string>>(
+    (updater) => {
+      setGlobalFilter((state) => resolveUpdater(updater, state))
+      resetPageIndex()
+    },
+    [resetPageIndex]
+  )
+
   const table = useReactTable({
     data: data,
     columns: columnsWithSelection,
@@ -141,12 +176,15 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
       columnFilters,
+      globalFilter,
       pagination,
     },
     enableRowSelection: true,
+    autoResetPageIndex: false,
     onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onSortingChange: handleSortingChange,
+    onColumnFiltersChange: handleColumnFiltersChange,
+    onGlobalFilterChange: handleGlobalFilterChange,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -156,6 +194,14 @@ export function DataTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  const pageCount = table.getPageCount()
+  React.useEffect(() => {
+    const lastPageIndex = Math.max(pageCount - 1, 0)
+    if (pagination.pageIndex > lastPageIndex) {
+      setPagination((state) => ({ ...state, pageIndex: lastPageIndex }))
+    }
+  }, [pageCount, pagination.pageIndex, setPagination])
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>

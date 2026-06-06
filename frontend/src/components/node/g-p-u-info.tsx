@@ -32,7 +32,7 @@ export function NvidiaGpuInfoCard({ labels }: NvidiaGpuInfoProps) {
       </CardHeader>
       <Separator />
       <CardContent>
-        <div className="mt-4 grid grid-cols-2 gap-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col space-y-2">
             <div className="text-primary-foreground/75 flex items-center space-x-2">
               <Memory className="size-4" />

@@ -698,15 +698,15 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
                 <DialogDescription>{t('fileActions.createFolder.description')}</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+                  <Label htmlFor="name" className="sm:text-right">
                     {t('fileActions.createFolder.nameLabel')}
                   </Label>
                   <Input
                     id="name"
                     type="text"
                     defaultValue=""
-                    className="col-span-3"
+                    className="sm:col-span-3"
                     ref={refInput2}
                     onChange={handleChange}
                   />

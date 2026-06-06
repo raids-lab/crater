@@ -20,8 +20,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
 import { BanIcon, CloudDrizzleIcon, Users, ZapIcon } from 'lucide-react'
-import { useState } from 'react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -91,17 +90,26 @@ function NodesForAdmin() {
   const [occupationReason, setOccupationReason] = useState('')
   const [occupationReasonError, setOccupationReasonError] = useState('')
   const [schedulingDialogOpen, setSchedulingDialogOpen] = useState(false)
+  const [schedulingEnableDialogOpen, setSchedulingEnableDialogOpen] = useState(false)
   const [schedulingNodeId, setSchedulingNodeId] = useState('')
-  const [schedulingIsCurrentlyUnschedule, setSchedulingIsCurrentlyUnschedule] = useState(false)
   const [schedulingReason, setSchedulingReason] = useState('')
   const [schedulingReasonError, setSchedulingReasonError] = useState('')
+  const [schedulingSubmitting, setSchedulingSubmitting] = useState(false)
+  const schedulingSubmittingRef = useRef(false)
 
   // 排空节点对话框状态
   const [drainDialogOpen, setDrainDialogOpen] = useState(false)
   const [drainNodeId, setDrainNodeId] = useState('')
 
   // 常用的禁止调度原因
-  const commonSchedulingReasons = ['内核/驱动升级', 'GPU 驱动升级', 'GPU 故障']
+  const commonSchedulingReasons = useMemo(
+    () => [
+      t('nodeManagement.disableSchedulingReasonKernel'),
+      t('nodeManagement.disableSchedulingReasonGpuDriver'),
+      t('nodeManagement.disableSchedulingReasonGpuFault'),
+    ],
+    [t]
+  )
 
   const refetchTaskList = useCallback(async () => {
     try {
@@ -117,6 +125,13 @@ function NodesForAdmin() {
 
   const handleNodeScheduling = useCallback(
     async (nodeId: string, reason?: string) => {
+      if (!nodeId || schedulingSubmittingRef.current) {
+        return
+      }
+      schedulingSubmittingRef.current = true
+      setSchedulingSubmitting(true)
+      setSchedulingDialogOpen(false)
+      setSchedulingEnableDialogOpen(false)
       try {
         await apichangeNodeScheduling(nodeId, { reason })
         await refetchTaskList()
@@ -126,7 +141,8 @@ function NodesForAdmin() {
           toast.error(t('nodeManagement.operationFailed', { error: error.message }))
         }
       } finally {
-        setSchedulingDialogOpen(false)
+        schedulingSubmittingRef.current = false
+        setSchedulingSubmitting(false)
         setSchedulingNodeId('')
         setSchedulingReason('')
         setSchedulingReasonError('')
@@ -351,9 +367,8 @@ function NodesForAdmin() {
                 <DropdownMenuItem
                   onClick={() => {
                     setSchedulingNodeId(nodeId)
-                    setSchedulingIsCurrentlyUnschedule(unscheduleTaint)
                     if (unscheduleTaint) {
-                      handleNodeScheduling(nodeId, '')
+                      setSchedulingEnableDialogOpen(true)
                       return
                     }
                     setSchedulingReason('')
@@ -375,7 +390,7 @@ function NodesForAdmin() {
         },
       },
     ],
-    [handleNodeScheduling, getNicknameByName, nodeColumns, t]
+    [getNicknameByName, nodeColumns, t]
   ) // 确保依赖项是稳定的
 
   return (
@@ -460,15 +475,13 @@ function NodesForAdmin() {
       <Dialog open={schedulingDialogOpen} onOpenChange={setSchedulingDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {schedulingIsCurrentlyUnschedule ? '允许节点调度' : '禁止节点调度'}
-            </DialogTitle>
+            <DialogTitle>{t('nodeManagement.disableSchedulingDialogTitle')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {/* 禁止调度原因输入 */}
             <div className="grid gap-2">
               <Label htmlFor="scheduling-reason" className="text-muted-foreground text-sm">
-                原因
+                {t('nodeManagement.schedulingReasonLabel')}
               </Label>
               <Input
                 id="scheduling-reason"
@@ -480,50 +493,75 @@ function NodesForAdmin() {
                     setSchedulingReasonError('')
                   }
                 }}
-                placeholder="请输入原因"
+                placeholder={t('nodeManagement.schedulingReasonPlaceholder')}
                 className={schedulingReasonError ? 'border-red-500' : ''}
               />
               {schedulingReasonError && (
                 <p className="text-sm text-red-500">{schedulingReasonError}</p>
               )}
               {/* 常用原因快捷按钮 */}
-              {!schedulingIsCurrentlyUnschedule && (
-                <div className="flex gap-2 overflow-x-auto pt-2 pb-1">
-                  {commonSchedulingReasons.map((reason) => (
-                    <Badge
-                      key={reason}
-                      variant="outline"
-                      className="shrink-0 cursor-pointer border-orange-600 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-400 dark:hover:bg-orange-900"
-                      onClick={() => {
-                        setSchedulingReason(reason)
-                        if (schedulingReasonError) {
-                          setSchedulingReasonError('')
-                        }
-                      }}
-                    >
-                      {reason}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              <div className="flex gap-2 overflow-x-auto pt-2 pb-1">
+                {commonSchedulingReasons.map((reason) => (
+                  <Badge
+                    key={reason}
+                    variant="outline"
+                    className="shrink-0 cursor-pointer border-orange-600 bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100 dark:border-orange-500 dark:bg-orange-950 dark:text-orange-400 dark:hover:bg-orange-900"
+                    onClick={() => {
+                      setSchedulingReason(reason)
+                      if (schedulingReasonError) {
+                        setSchedulingReasonError('')
+                      }
+                    }}
+                  >
+                    {reason}
+                  </Badge>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">取消</Button>
+              <Button variant="outline">{t('nodeManagement.cancel')}</Button>
             </DialogClose>
             <Button
+              disabled={schedulingSubmitting}
               onClick={() => {
                 // 验证原因不得为空
                 if (!schedulingReason || schedulingReason.trim() === '') {
-                  setSchedulingReasonError('请填写禁止调度原因')
+                  setSchedulingReasonError(t('nodeManagement.disableSchedulingReasonRequired'))
                   return
                 }
                 // 将 reason 作为 body 发送；handleNodeScheduling 已实现相应逻辑
                 handleNodeScheduling(schedulingNodeId, schedulingReason)
               }}
             >
-              确认
+              {t('nodeManagement.submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* 允许调度确认弹窗 */}
+      <Dialog open={schedulingEnableDialogOpen} onOpenChange={setSchedulingEnableDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('nodeManagement.enableSchedulingDialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center gap-4">
+              <span>{t('nodeManagement.confirmEnableScheduling')}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">{t('nodeManagement.cancel')}</Button>
+            </DialogClose>
+            <Button
+              disabled={schedulingSubmitting}
+              onClick={() => {
+                handleNodeScheduling(schedulingNodeId, '')
+              }}
+            >
+              {t('nodeManagement.submit')}
             </Button>
           </DialogFooter>
         </DialogContent>

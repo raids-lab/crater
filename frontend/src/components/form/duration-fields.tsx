@@ -76,7 +76,7 @@ export function DurationFields({
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="duration-days" className="mb-2 block">
             天数

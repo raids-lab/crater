@@ -40,11 +40,9 @@ type ResourceLimitCheckResult struct {
 }
 
 type QueueQuotaConfigItem struct {
-	ID                    uint              `json:"id"`
-	Name                  string            `json:"name"`
-	Enabled               bool              `json:"enabled"`
-	PrequeueCandidateSize int               `json:"prequeueCandidateSize"`
-	Quota                 map[string]string `json:"quota"`
+	ID    uint              `json:"id"`
+	Name  string            `json:"name"`
+	Quota map[string]string `json:"quota"`
 }
 
 type QueueQuotaConfig struct {
@@ -52,10 +50,9 @@ type QueueQuotaConfig struct {
 }
 
 type ResolvedQueueQuota struct {
-	Name                  string
-	Enabled               bool
-	PrequeueCandidateSize int
-	Quota                 map[string]string
+	Name    string
+	Enabled bool
+	Quota   map[string]string
 }
 
 type UserResourceUsageSummaryItem struct {
@@ -293,34 +290,23 @@ func buildUserResourceUsageSummary(
 	return buildResourceUsageSummary(runningJobs, pendingJobs, metrics)
 }
 
-func (s *PrequeueService) isQueueQuotaGloballyEnabled(ctx context.Context) (bool, error) {
-	if s.configService == nil {
-		return false, fmt.Errorf("config service is not initialized")
-	}
-
-	cfg, err := s.configService.GetPrequeueConfig(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	return cfg.QueueQuotaEnabled, nil
-}
-
 func (s *PrequeueService) ResolveQueueQuota(
 	ctx context.Context,
 	userID,
 	accountID uint,
 	queueName string,
 ) (*ResolvedQueueQuota, error) {
-	queueQuotaEnabled, err := s.isQueueQuotaGloballyEnabled(ctx)
+	if s.configService == nil {
+		return nil, fmt.Errorf("config service is not initialized")
+	}
+	cfg, err := s.configService.GetPrequeueConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	resolved := &ResolvedQueueQuota{
-		Name:                  resolveQueueQuotaName(queueName, accountID, userID),
-		PrequeueCandidateSize: model.DefaultPrequeueCandidateSize,
-		Quota:                 map[string]string{},
+		Name:  resolveQueueQuotaName(queueName, accountID, userID),
+		Quota: map[string]string{},
 	}
 
 	qql := s.q.QueueQuotaLimit
@@ -332,11 +318,8 @@ func (s *PrequeueService) ResolveQueueQuota(
 		return nil, err
 	}
 
-	resolved.Enabled = queueQuotaEnabled && record.Enabled
-	if record.PrequeueCandidateSize > 0 {
-		resolved.PrequeueCandidateSize = record.PrequeueCandidateSize
-	}
 	resolved.Quota = sanitizeQueueQuota(record.Quota.Data())
+	resolved.Enabled = cfg.QueueQuotaEnabled && len(resolved.Quota) > 0
 	return resolved, nil
 }
 
@@ -350,17 +333,10 @@ func (s *PrequeueService) GetConfig(ctx context.Context) (*QueueQuotaConfig, err
 	}
 
 	items := lo.Map(quotas, func(quota *model.QueueQuotaLimit, _ int) QueueQuotaConfigItem {
-		size := lo.Ternary(
-			quota.PrequeueCandidateSize > 0,
-			quota.PrequeueCandidateSize,
-			model.DefaultPrequeueCandidateSize,
-		)
 		return QueueQuotaConfigItem{
-			ID:                    quota.ID,
-			Name:                  quota.Name,
-			Enabled:               quota.Enabled,
-			PrequeueCandidateSize: size,
-			Quota:                 sanitizeQueueQuota(quota.Quota.Data()),
+			ID:    quota.ID,
+			Name:  quota.Name,
+			Quota: sanitizeQueueQuota(quota.Quota.Data()),
 		}
 	})
 
@@ -378,11 +354,6 @@ func (s *PrequeueService) CreateConfig(
 		return nil, err
 	}
 	item.Quota = sanitizeQueueQuota(item.Quota)
-	item.PrequeueCandidateSize = lo.Ternary(
-		item.PrequeueCandidateSize > 0,
-		item.PrequeueCandidateSize,
-		model.DefaultPrequeueCandidateSize,
-	)
 
 	qql := s.q.QueueQuotaLimit
 	if _, err := qql.WithContext(ctx).Where(qql.Name.Eq(item.Name)).First(); err == nil {
@@ -392,21 +363,17 @@ func (s *PrequeueService) CreateConfig(
 	}
 
 	record := &model.QueueQuotaLimit{
-		Name:                  item.Name,
-		Enabled:               item.Enabled,
-		PrequeueCandidateSize: item.PrequeueCandidateSize,
-		Quota:                 datatypes.NewJSONType(item.Quota),
+		Name:  item.Name,
+		Quota: datatypes.NewJSONType(item.Quota),
 	}
 	if err := s.q.QueueQuotaLimit.WithContext(ctx).Create(record); err != nil {
 		return nil, err
 	}
 
 	return &QueueQuotaConfigItem{
-		ID:                    record.ID,
-		Name:                  record.Name,
-		Enabled:               record.Enabled,
-		PrequeueCandidateSize: record.PrequeueCandidateSize,
-		Quota:                 item.Quota,
+		ID:    record.ID,
+		Name:  record.Name,
+		Quota: item.Quota,
 	}, nil
 }
 
@@ -419,11 +386,6 @@ func (s *PrequeueService) UpdateConfig(
 		return nil, err
 	}
 	item.Quota = sanitizeQueueQuota(item.Quota)
-	item.PrequeueCandidateSize = lo.Ternary(
-		item.PrequeueCandidateSize > 0,
-		item.PrequeueCandidateSize,
-		model.DefaultPrequeueCandidateSize,
-	)
 
 	var updated *QueueQuotaConfigItem
 	err = s.q.Transaction(func(tx *query.Query) error {
@@ -447,22 +409,18 @@ func (s *PrequeueService) UpdateConfig(
 			QueueQuotaLimit.
 			WithContext(ctx).
 			Where(qql.ID.Eq(item.ID)).
-			UpdateSimple(
-				qql.Name.Value(item.Name),
-				qql.Enabled.Value(item.Enabled),
-				qql.PrequeueCandidateSize.Value(item.PrequeueCandidateSize),
-				qql.Quota.Value(datatypes.NewJSONType(item.Quota)),
-			)
+			Updates(map[string]any{
+				"name":  item.Name,
+				"quota": datatypes.NewJSONType(item.Quota),
+			})
 		if err != nil {
 			return err
 		}
 		if info.RowsAffected > 0 {
 			updated = &QueueQuotaConfigItem{
-				ID:                    item.ID,
-				Name:                  item.Name,
-				Enabled:               item.Enabled,
-				PrequeueCandidateSize: item.PrequeueCandidateSize,
-				Quota:                 item.Quota,
+				ID:    item.ID,
+				Name:  item.Name,
+				Quota: item.Quota,
 			}
 		}
 		return nil
@@ -611,15 +569,19 @@ func (s *PrequeueService) CheckUserResourceLimit(
 	return buildResourceLimitCheckResult(resolved, jobs, requestedResources), nil
 }
 
-func (s *PrequeueService) GetPrequeueCandidateSize(
+func (s *PrequeueService) CheckRequestedResourceLimit(
 	ctx context.Context,
 	userID,
 	accountID uint,
 	queueName string,
-) (int, error) {
+	requestedResources map[string]string,
+) (*ResourceLimitCheckResult, error) {
 	resolved, err := s.ResolveQueueQuota(ctx, userID, accountID, queueName)
 	if err != nil {
-		return model.DefaultPrequeueCandidateSize, err
+		return nil, err
 	}
-	return resolved.PrequeueCandidateSize, nil
+	if !resolved.Enabled || len(resolved.Quota) == 0 {
+		return &ResourceLimitCheckResult{Enabled: false}, nil
+	}
+	return buildResourceLimitCheckResult(resolved, nil, requestedResources), nil
 }

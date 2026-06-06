@@ -344,7 +344,10 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
                 <span className="text-sm">{t('cronJob.record.table.dateRange')}:</span>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[280px] justify-start text-left">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left sm:w-[280px]"
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateRange?.from ? (
                         dateRange?.to ? (

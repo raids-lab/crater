@@ -347,8 +347,8 @@ function RouteComponent() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="reject-reason" className="text-right">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+              <Label htmlFor="reject-reason" className="sm:text-right">
                 拒绝理由
               </Label>
               <Input
@@ -356,7 +356,7 @@ function RouteComponent() {
                 value={rejectReason}
                 onChange={(event) => setRejectReason(event.target.value)}
                 placeholder="请输入拒绝原因"
-                className="col-span-3"
+                className="sm:col-span-3"
                 disabled={isRejecting}
               />
             </div>

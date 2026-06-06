@@ -41,33 +41,38 @@ const PageTitle: FC<PageTitleProps> = ({
 }) => {
   return (
     <div
-          className={cn(
-            'flex flex-row items-start justify-between gap-4 py-2 mb-2',
-            className
-          )}
-        >
-          <div className="flex flex-col gap-2">
-            {title && (
-              <div className="flex items-center gap-2 text-xl font-bold">
-                <p>{title}</p>
-                {tipComponent}
-                {tipContent && <TipBadge title={tipContent} />}
-              </div>
-            )}
-            {description && (
-              <p
-                className={cn(
-                  'text-muted-foreground hidden items-center gap-1.5 md:flex',
-                  title ? 'text-sm' : 'text-base'
-                )}
-              >
-                {description}
-                {descriptionCopiable && <CopyButton content={description} />}
-              </p>
-            )}
+      className={cn(
+        'flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between',
+        title ? 'sm:h-12' : '',
+        className
+      )}
+    >
+      <div className="min-w-0">
+        {title && (
+          <div className="flex min-w-0 items-center gap-1.5 text-xl font-bold">
+            <p className="min-w-0 truncate">{title}</p>
+            {tipComponent}
+            {tipContent && <TipBadge title={tipContent} />}
           </div>
+        )}
+        {description && (
+          <p
+            className={cn(
+              'text-muted-foreground hidden items-center gap-1 md:flex',
+              title ? 'text-sm' : 'text-base'
+            )}
+          >
+            {description}
+            {descriptionCopiable && <CopyButton content={description} />}
+          </p>
+        )}
+      </div>
+      {children && (
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
           {children}
         </div>
+      )}
+    </div>
   )
 }
 

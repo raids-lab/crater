@@ -62,14 +62,15 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type DatasetResp struct {
-	Name      string                                 `json:"name"`
-	ID        uint                                   `json:"id"`
-	URL       string                                 `json:"url"`
-	Describe  string                                 `json:"describe"`
-	CreatedAt time.Time                              `json:"createdAt"`
-	Type      model.DataType                         `json:"type"`
-	Extra     datatypes.JSONType[model.ExtraContent] `json:"extra"`
-	UserInfo  model.UserInfo                         `json:"userInfo"`
+	Name       string                                 `json:"name"`
+	ID         uint                                   `json:"id"`
+	URL        string                                 `json:"url"`
+	Describe   string                                 `json:"describe"`
+	CreatedAt  time.Time                              `json:"createdAt"`
+	Type       model.DataType                         `json:"type"`
+	MountCount int                                    `json:"mountCount"`
+	Extra      datatypes.JSONType[model.ExtraContent] `json:"extra"`
+	UserInfo   model.UserInfo                         `json:"userInfo"`
 }
 
 // GetDatasets godoc
@@ -1044,13 +1045,14 @@ func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 
 func convertDataset(dataset *model.Dataset) DatasetResp {
 	return DatasetResp{
-		Name:      dataset.Name,
-		Describe:  dataset.Describe,
-		URL:       dataset.URL,
-		ID:        dataset.ID,
-		CreatedAt: dataset.CreatedAt,
-		Type:      dataset.Type,
-		Extra:     dataset.Extra,
+		Name:       dataset.Name,
+		Describe:   dataset.Describe,
+		URL:        dataset.URL,
+		ID:         dataset.ID,
+		CreatedAt:  dataset.CreatedAt,
+		Type:       dataset.Type,
+		MountCount: dataset.MountCount,
+		Extra:      dataset.Extra,
 		UserInfo: model.UserInfo{
 			Username: dataset.User.Name,
 			Nickname: dataset.User.Nickname,

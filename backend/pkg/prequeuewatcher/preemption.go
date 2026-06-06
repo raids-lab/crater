@@ -8,11 +8,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
+	vcjobadmission "github.com/raids-lab/crater/pkg/vcjob/admission"
 )
 
 type preemptionPlan struct {
@@ -73,7 +75,9 @@ func (w *PrequeueWatcher) findPendingNormalJobPreemptionPlan(ctx context.Context
 func (w *PrequeueWatcher) hasBlockingTimedOutPendingNormalJob(
 	ctx context.Context,
 	accountID uint,
+	candidateQueue string,
 	candidateDomain string,
+	candidateNodes sets.Set[string],
 ) (bool, error) {
 	pageSize := defaultPageSize
 	offset := 0
@@ -92,8 +96,13 @@ func (w *PrequeueWatcher) hasBlockingTimedOutPendingNormalJob(
 			if !isTimedOutNormalJob(record, now) {
 				continue
 			}
+			if record.Queue != candidateQueue {
+				continue
+			}
 			recordResourceDomain := utils.GetJobResourceDomain(record)
-			if utils.CanResourceDomainBlock(recordResourceDomain, candidateDomain) {
+			recordExplicitNodes := utils.GetJobRecordExplicitNodeNames(record)
+			if utils.CanResourceDomainBlock(recordResourceDomain, candidateDomain) &&
+				nodeConstraintsOverlap(recordExplicitNodes, candidateNodes) {
 				return true, nil
 			}
 		}
@@ -180,7 +189,7 @@ func (w *PrequeueWatcher) buildNodeBackfillPreemptionPlan(
 	jobRequirements *singleNodeJobRequirements,
 	backfillJobsByNode map[string][]*model.Job,
 ) (*preemptionPlan, error) {
-	canScheduleOnNode := nodeMatchesPodSchedulingConstraints(node, jobRequirements.podSpec)
+	canScheduleOnNode := vcjobadmission.NodeMatchesPodSchedulingConstraints(node, jobRequirements.podSpec)
 	if !canScheduleOnNode {
 		return nil, nil
 	}
@@ -189,7 +198,7 @@ func (w *PrequeueWatcher) buildNodeBackfillPreemptionPlan(
 	if err != nil {
 		return nil, err
 	}
-	deficit := calculateResourceDeficit(jobRequirements.requests, available)
+	deficit := utils.ResourceDeficit(jobRequirements.requests, available)
 	if len(deficit) == 0 {
 		return nil, nil
 	}

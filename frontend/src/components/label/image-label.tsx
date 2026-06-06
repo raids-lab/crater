@@ -33,7 +33,7 @@ const ImageLabel = ({
         {shortenImageName(url)}
       </span>
       <span className="text-muted-foreground truncate font-mono text-xs">
-        <div className="flex max-w-[500px] flex-wrap gap-1">
+        <div className="flex max-w-full flex-wrap gap-1 sm:max-w-[500px]">
           {tags != null &&
             tags.length !== 0 &&
             tags.map((tag) => (

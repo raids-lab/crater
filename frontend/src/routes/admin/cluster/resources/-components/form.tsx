@@ -141,7 +141,7 @@ export function UpdateResourceForm({ open, onOpenChange, current }: UpdateTaskFo
                 </FormItem>
               )}
             />
-            <DialogFooter className="grid grid-cols-2">
+            <DialogFooter className="grid grid-cols-1 sm:grid-cols-2">
               <Button onClick={closeDialog} variant={'secondary'}>
                 {t('updateResourceForm.cancelButton')}
               </Button>
@@ -662,7 +662,7 @@ export const VGPUAssociationForm: FC<VGPUAssociationFormProps> = ({
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
                       control={form.control}
                       name="min"

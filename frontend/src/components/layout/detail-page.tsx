@@ -126,14 +126,16 @@ export default function DetailPage({
     <div className="flex h-full w-full flex-col gap-6 overflow-hidden">
       <div className="shrink-0 space-y-6">
         {header}
-        <div className="text-muted-foreground grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
-          {info.filter((data) => !data.hidden).map((data, index) => (
-            <div key={index} className={cn('flex min-w-0 items-center', data.className)}>
-              <data.icon className="text-muted-foreground mr-1.5 size-4 shrink-0" />
-              <span className="text-muted-foreground mr-1.5 truncate text-sm">{data.title}:</span>
-              <span className="min-w-0 truncate">{data.value}</span>
-            </div>
-          ))}
+        <div className="text-muted-foreground grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
+          {info
+            .filter((data) => !data.hidden)
+            .map((data, index) => (
+              <div key={index} className={cn('flex min-w-0 items-center', data.className)}>
+                <data.icon className="text-muted-foreground mr-1.5 size-4 shrink-0" />
+                <span className="text-muted-foreground mr-1.5 truncate text-sm">{data.title}:</span>
+                <span className="min-w-0 truncate">{data.value}</span>
+              </div>
+            ))}
         </div>
       </div>
       <Tabs

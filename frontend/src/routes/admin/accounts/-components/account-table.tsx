@@ -45,6 +45,7 @@ import {
 import { IAccount } from '@/services/api/account'
 import { apiAdminAccountList } from '@/services/api/account'
 import { apiProjectDelete } from '@/services/api/account'
+import { apiAdminGetQueueQuotas } from '@/services/api/queue-quota'
 
 // Link Options for admin account navigation
 const adminAccountDetailLinkOptions = linkOptions({
@@ -52,28 +53,21 @@ const adminAccountDetailLinkOptions = linkOptions({
   params: { id: '' },
 })
 
-const getHeader = (key: string): string => {
+const getHeader = (key: string, t: (key: string) => string): string => {
   switch (key) {
     case 'nickname':
-      return 'table.headers.nickname'
+      return t('table.headers.nickname')
     case 'deserved':
-      return 'table.headers.deserved'
+      return t('table.headers.deserved')
     case 'guaranteed':
-      return 'table.headers.guaranteed'
+      return t('table.headers.guaranteed')
     case 'capability':
-      return 'table.headers.capability'
+      return t('table.headers.capability')
+    case 'queueLimit':
+      return t('table.headers.queueLimit')
     default:
       return key
   }
-}
-
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    key: 'nickname',
-    placeholder: '搜索账户名称',
-  },
-  filterOptions: [],
-  getHeader: (key: string) => getHeader(key),
 }
 
 export const AccountTable = ({
@@ -85,11 +79,27 @@ export const AccountTable = ({
 }) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const toolbarConfig = useMemo<DataTableToolbarConfig>(
+    () => ({
+      filterInput: {
+        key: 'nickname',
+        placeholder: '搜索账户名称',
+      },
+      filterOptions: [],
+      getHeader: (key: string) => getHeader(key, t),
+    }),
+    [t]
+  )
 
   const query = useQuery({
     queryKey: ['admin', 'accounts'],
     queryFn: apiAdminAccountList,
     select: (res) => res.data,
+  })
+  const defaultQueueQuotaQuery = useQuery({
+    queryKey: ['admin', 'queue-quotas'],
+    queryFn: () => apiAdminGetQueueQuotas().then((res) => res.data),
+    select: (data) => (data.quotas || []).find((quota) => quota.name === 'default')?.quota,
   })
 
   const { mutate: deleteAccount } = useMutation({
@@ -150,6 +160,19 @@ export const AccountTable = ({
         ),
         cell: ({ row }) => {
           return <ResourceBadges resources={row.original.quota.capability} />
+        },
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'queueLimit',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t('table.headers.queueLimit')} />
+        ),
+        cell: ({ row }) => {
+          if (row.original.name !== 'default') {
+            return null
+          }
+          return <ResourceBadges resources={defaultQueueQuotaQuery.data} />
         },
         enableSorting: false,
       },
@@ -218,7 +241,7 @@ export const AccountTable = ({
       },
     ]
     return cols
-  }, [deleteAccount, setCurrentAccount, setIsOpen, t])
+  }, [defaultQueueQuotaQuery.data, deleteAccount, setCurrentAccount, setIsOpen, t])
 
   return (
     <DataTable

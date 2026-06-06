@@ -38,6 +38,7 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 	_dataset.Type = field.NewString(tableName, "type")
 	_dataset.Extra = field.NewField(tableName, "extra")
 	_dataset.UserID = field.NewUint(tableName, "user_id")
+	_dataset.MountCount = field.NewInt(tableName, "mount_count")
 	_dataset.UserDatasets = datasetHasManyUserDatasets{
 		db: db.Session(&gorm.Session{}),
 
@@ -85,6 +86,7 @@ type dataset struct {
 	Type         field.String // 数据类型
 	Extra        field.Field  // 额外信息(tags、weburl等)
 	UserID       field.Uint
+	MountCount   field.Int // mount count
 	UserDatasets datasetHasManyUserDatasets
 
 	AccountDatasets datasetHasManyAccountDatasets
@@ -116,6 +118,7 @@ func (d *dataset) updateTableName(table string) *dataset {
 	d.Type = field.NewString(table, "type")
 	d.Extra = field.NewField(table, "extra")
 	d.UserID = field.NewUint(table, "user_id")
+	d.MountCount = field.NewInt(table, "mount_count")
 
 	d.fillFieldMap()
 
@@ -140,7 +143,7 @@ func (d *dataset) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (d *dataset) fillFieldMap() {
-	d.fieldMap = make(map[string]field.Expr, 13)
+	d.fieldMap = make(map[string]field.Expr, 14)
 	d.fieldMap["id"] = d.ID
 	d.fieldMap["created_at"] = d.CreatedAt
 	d.fieldMap["updated_at"] = d.UpdatedAt
@@ -151,6 +154,7 @@ func (d *dataset) fillFieldMap() {
 	d.fieldMap["type"] = d.Type
 	d.fieldMap["extra"] = d.Extra
 	d.fieldMap["user_id"] = d.UserID
+	d.fieldMap["mount_count"] = d.MountCount
 
 }
 

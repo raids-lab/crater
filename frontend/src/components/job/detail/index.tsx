@@ -229,7 +229,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           descriptionCopiable
         >
           {
-            <div className="flex flex-row gap-3">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
               {data.status === JobPhase.Running && (
                 <>
                   {isSingleJob(data.jobType) && (

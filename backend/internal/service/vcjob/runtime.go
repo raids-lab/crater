@@ -11,6 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -18,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 type ForwardType uint
@@ -40,6 +42,8 @@ const (
 	annotationKeyAlertEnabled = "crater.raids.io/alert-enabled"
 	annotationKeyUserID       = "crater.raids.io/user-id"
 	annotationKeyForwards     = "crater.raids.io/forwards"
+	// AnnotationKeyMountedDatasetIDs stores mounted dataset IDs as JSON array on job annotations.
+	AnnotationKeyMountedDatasetIDs = "crater.raids.io/mounted-dataset-ids"
 
 	jobTypeJupyter = "jupyter"
 	jobTypeWebIDE  = "webide"
@@ -47,24 +51,15 @@ const (
 )
 
 func CalculateJobResources(job *batch.Job) v1.ResourceList {
-	resources := make(v1.ResourceList)
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		for j := range task.Template.Spec.Containers {
-			container := &task.Template.Spec.Containers[j]
-			for name, quantity := range container.Resources.Requests {
-				requested := quantity.DeepCopy()
-				requested.Mul(int64(task.Replicas))
-				if current, ok := resources[name]; ok {
-					current.Add(requested)
-					resources[name] = current
-					continue
-				}
-				resources[name] = requested
-			}
-		}
-	}
-	return resources
+	return utils.CalculateReplicatedResources(
+		job.Spec.Tasks,
+		func(task batch.TaskSpec) v1.ResourceList {
+			return utils.CalculateRequsetsByContainers(task.Template.Spec.Containers)
+		},
+		func(task batch.TaskSpec) int32 {
+			return task.Replicas
+		},
+	)
 }
 
 func GenerateJobRecord(
@@ -184,6 +179,9 @@ func ActivateJob(
 	}
 
 	cleanup = false
+	if err := increaseDatasetMountCount(ctx, job); err != nil {
+		klog.Warningf("failed to increase dataset mount count for job %s: %v", job.Name, err)
+	}
 	return nil
 }
 

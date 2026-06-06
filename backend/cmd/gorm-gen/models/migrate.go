@@ -1424,6 +1424,52 @@ func main() {
 			},
 		},
 		{
+			ID: "202604141700",
+			Migrate: func(tx *gorm.DB) error {
+				type Dataset struct {
+					MountCount int `gorm:"column:mount_count;not null;default:0;comment:mount count"`
+				}
+				return tx.Migrator().AddColumn(&Dataset{}, "MountCount")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Dataset struct {
+					MountCount int `gorm:"column:mount_count;not null;default:0;comment:mount count"`
+				}
+				return tx.Migrator().DropColumn(&Dataset{}, "MountCount")
+			},
+		},
+		{
+			ID: "202604261000",
+			Migrate: func(tx *gorm.DB) error {
+				type QueueQuotaLimit struct {
+					Enabled               bool
+					PrequeueCandidateSize int `gorm:"not null;default:10;comment:Prequeue 候选作业集大小"`
+				}
+				migrator := tx.Table("queue_quotas").Migrator()
+				if err := migrator.DropColumn(&QueueQuotaLimit{}, "enabled"); err != nil {
+					return err
+				}
+				if err := migrator.DropColumn(&QueueQuotaLimit{}, "prequeue_candidate_size"); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type QueueQuotaLimit struct {
+					Enabled               bool `gorm:"not null;default:false;comment:是否启用队列资源限制"`
+					PrequeueCandidateSize int  `gorm:"not null;default:10;comment:Prequeue 候选作业集大小"`
+				}
+				migrator := tx.Table("queue_quotas").Migrator()
+				if err := migrator.AddColumn(&QueueQuotaLimit{}, "enabled"); err != nil {
+					return err
+				}
+				if err := migrator.AddColumn(&QueueQuotaLimit{}, "prequeue_candidate_size"); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
 			ID: "202604270001",
 			Migrate: func(tx *gorm.DB) error {
 				return runStatements(tx, []string{

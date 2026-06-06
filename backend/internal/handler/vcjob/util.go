@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -563,11 +564,35 @@ func getLabelAndAnnotations(
 			jobAnnotations[AnnotationKeyForwards] = string(data)
 		}
 	}
+	if datasetIDs := collectMountedDatasetIDs(c.VolumeMounts); len(datasetIDs) > 0 {
+		if data, err := json.Marshal(datasetIDs); err == nil {
+			jobAnnotations[vcjobservice.AnnotationKeyMountedDatasetIDs] = string(data)
+		}
+	}
 	podAnnotations = map[string]string{
 		AnnotationKeyTaskName: c.Name,
 		AnnotationKeyUser:     token.Username,
 	}
 	return labels, jobAnnotations, podAnnotations
+}
+
+func collectMountedDatasetIDs(mounts []util.VolumeMount) []uint {
+	idSet := make(map[uint]struct{})
+	for _, vm := range mounts {
+		if vm.Type != util.DataType || vm.DatasetID == 0 {
+			continue
+		}
+		idSet[vm.DatasetID] = struct{}{}
+	}
+
+	ids := make([]uint, 0, len(idSet))
+	for datasetID := range idSet {
+		ids = append(ids, datasetID)
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		return ids[i] < ids[j]
+	})
+	return ids
 }
 
 // generateInteractivePodSpec generates the pod spec for interactive jobs (Jupyter, WebIDE)

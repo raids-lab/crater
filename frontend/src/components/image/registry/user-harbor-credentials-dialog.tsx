@@ -145,7 +145,7 @@ export const UserHarborCredentialsDialog: FC<UserHarborCredentialsDialogProps> =
         </DialogContent>
       </Dialog>
       <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-        <AlertDialogContent className="max-w-[350px]">
+        <AlertDialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[350px]">
           <AlertDialogHeader>
             <AlertDialogTitle>确认重置密码</AlertDialogTitle>
             <AlertDialogDescription>您确定要重置密码吗？此操作无法撤销。</AlertDialogDescription>

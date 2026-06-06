@@ -92,9 +92,7 @@ export const apiGetUserJobs = (username: string, days: number = 30) =>
 export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/all`)
 
 export enum JobPhase {
-  // Prequeue means Crater has accepted the job but has not submitted it to Volcano yet, so UI copy should treat it as queued.
   Prequeue = 'Prequeue',
-  // Pending means the job is already inside Volcano and waiting for scheduling or resources, so UI copy should treat it as waiting.
   Pending = 'Pending',
   Aborting = 'Aborting',
   Aborted = 'Aborted',
@@ -118,6 +116,8 @@ export enum JobStatus {
   MetadataOnly = 'MetadataOnly',
   Unknown = 'Unknown',
 }
+
+export const getDisplayJobPhase = (phase: JobPhase): JobPhase => phase
 
 export const getUnifiedJobPhase = (phase: JobPhase): JobPhase =>
   phase === JobPhase.Prequeue ? JobPhase.Pending : phase

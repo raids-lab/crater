@@ -196,12 +196,12 @@ export function DatasetUpdateForm({ type, initialData, onSuccess }: UpdateFormPr
             />
 
             <div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="url"
                   render={({ field }) => (
-                    <FormItem className="col-span-2">
+                    <FormItem className="sm:col-span-2">
                       <FormLabel>
                         {t('dataset.form.urlLabel', { type: typestring })}
                         <FormLabelMust />

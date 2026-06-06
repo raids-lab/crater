@@ -13289,6 +13289,9 @@
                 "normalJobWaitingToleranceSeconds": {
                     "type": "integer"
                 },
+                "prequeueCandidateSize": {
+                    "type": "integer"
+                },
                 "queueQuotaEnabled": {
                     "type": "boolean"
                 }
@@ -13348,17 +13351,11 @@
         "internal_handler.QueueQuotaConfigItemResp": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
                 "id": {
                     "type": "integer"
                 },
                 "name": {
                     "type": "string"
-                },
-                "prequeueCandidateSize": {
-                    "type": "integer"
                 },
                 "quota": {
                     "type": "object",
@@ -13371,14 +13368,8 @@
         "internal_handler.QueueQuotaReq": {
             "type": "object",
             "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
                 "name": {
                     "type": "string"
-                },
-                "prequeueCandidateSize": {
-                    "type": "integer"
                 },
                 "quota": {
                     "type": "object",
@@ -13657,6 +13648,7 @@
                 "backfillEnabled",
                 "maxTotalActivationsPerRound",
                 "normalJobWaitingToleranceSeconds",
+                "prequeueCandidateSize",
                 "queueQuotaEnabled"
             ],
             "properties": {
@@ -13670,6 +13662,9 @@
                     "type": "integer"
                 },
                 "normalJobWaitingToleranceSeconds": {
+                    "type": "integer"
+                },
+                "prequeueCandidateSize": {
                     "type": "integer"
                 },
                 "queueQuotaEnabled": {

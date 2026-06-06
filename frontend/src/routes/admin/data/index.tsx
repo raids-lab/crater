@@ -96,6 +96,8 @@ const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig =>
         return t('adminDatasetTable.column.creator')
       case 'createdAt':
         return t('adminDatasetTable.column.createdAt')
+      case 'mountCount':
+        return t('adminDatasetTable.column.mountCount')
       default:
         return key
     }
@@ -174,6 +176,13 @@ function RouteComponent() {
         return <TimeDistance date={row.getValue('createdAt')}></TimeDistance>
       },
       sortingFn: 'datetime',
+    },
+    {
+      accessorKey: 'mountCount',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('adminDatasetTable.column.mountCount')} />
+      ),
+      cell: ({ row }) => <span>{row.original.mountCount ?? 0}</span>,
     },
     {
       id: 'actions',

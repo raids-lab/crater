@@ -141,16 +141,16 @@ export const TableCellForm = ({
   }, [selectedContainer])
 
   return (
-    <div className="grid grid-cols-3 content-start gap-4 px-1 text-sm">
+    <div className="grid grid-cols-1 content-start gap-2 px-1 text-sm sm:grid-cols-3 sm:gap-4">
       <p className="text-muted-foreground">状态</p>
-      <div className="group col-span-2 flex flex-row items-center justify-start gap-1">
+      <div className="group flex flex-row items-center justify-start gap-1 sm:col-span-2">
         <ContainerStatusBadge containerStatus={containerStatus} />
       </div>
       <p className="text-muted-foreground">名称</p>
-      <p className="col-span-2 font-mono">{selectedContainer.name}</p>
+      <p className="font-mono break-all sm:col-span-2">{selectedContainer.name}</p>
       <p className="text-muted-foreground">镜像</p>
       <p
-        className="col-span-2 overflow-hidden font-mono break-words whitespace-normal"
+        className="overflow-hidden font-mono break-words whitespace-normal sm:col-span-2"
         title={selectedContainer.image}
       >
         {shortenImageName(selectedContainer.image)}
@@ -158,13 +158,13 @@ export const TableCellForm = ({
       {appendInfos?.map((info, index) => (
         <Fragment key={index}>
           <div className="text-muted-foreground">{info.title}</div>
-          <div className="col-span-2 font-mono break-all whitespace-normal">{info.content}</div>
+          <div className="font-mono break-all whitespace-normal sm:col-span-2">{info.content}</div>
         </Fragment>
       ))}
       {!!selectedContainer.resources && (
         <>
           <div className="text-muted-foreground">申请资源</div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <ResourceBadges
               namespace={namespace}
               podName={podName}
@@ -175,29 +175,31 @@ export const TableCellForm = ({
         </>
       )}
       <div className="text-muted-foreground">重启次数</div>
-      <div className="col-span-2 font-mono">{selectedContainer.restartCount}</div>
+      <div className="font-mono sm:col-span-2">{selectedContainer.restartCount}</div>
       {selectedContainer.state.terminated && (
         <>
           <div className="text-muted-foreground">退出代码</div>
-          <div className="col-span-2 font-mono">{selectedContainer.state.terminated.exitCode}</div>
+          <div className="font-mono sm:col-span-2">
+            {selectedContainer.state.terminated.exitCode}
+          </div>
           <div className="text-muted-foreground">退出原因</div>
-          <div className="col-span-2 font-mono break-all whitespace-normal">
+          <div className="font-mono break-all whitespace-normal sm:col-span-2">
             {selectedContainer.state.terminated.reason}
           </div>
           {!!selectedContainer.state.terminated.message && (
             <>
               <div className="text-muted-foreground">退出消息</div>
-              <div className="col-span-2 font-mono break-all whitespace-normal">
+              <div className="font-mono break-all whitespace-normal sm:col-span-2">
                 {selectedContainer.state.terminated.message}
               </div>
             </>
           )}
           <div className="text-muted-foreground">开始时间</div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <TimeDistance date={selectedContainer.state.terminated.startedAt} />
           </div>
           <div className="text-muted-foreground">结束时间</div>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <TimeDistance date={selectedContainer.state.terminated.finishedAt} />
           </div>
         </>
@@ -207,7 +209,7 @@ export const TableCellForm = ({
           {!!selectedContainer.state.waiting.reason && (
             <>
               <div className="text-muted-foreground">等待原因</div>
-              <div className="col-span-2 font-mono break-all whitespace-normal">
+              <div className="font-mono break-all whitespace-normal sm:col-span-2">
                 {selectedContainer.state.waiting.reason}
               </div>
             </>
@@ -215,7 +217,7 @@ export const TableCellForm = ({
           {!!selectedContainer.state.waiting.message && (
             <>
               <div className="text-muted-foreground">等待消息</div>
-              <div className="col-span-2 font-mono break-all whitespace-normal">
+              <div className="font-mono break-all whitespace-normal sm:col-span-2">
                 {selectedContainer.state.waiting.message}
               </div>
             </>
@@ -267,7 +269,7 @@ function Content({
           <LoadingCircleIcon />
         </div>
       ) : (
-        <div className="grid h-[calc(100vh_-190px)] w-[calc(100vw_-154px)] gap-6 md:grid-cols-3 xl:grid-cols-4">
+        <div className="grid h-[calc(100vh_-190px)] w-full min-w-0 gap-6 md:grid-cols-3 xl:grid-cols-4">
           {namespacedName && selectedContainer && (
             <ActionComponent
               namespacedName={namespacedName}
@@ -315,7 +317,7 @@ export function PodContainerDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <DialogContent
-        className="h-[calc(100vh_-104px)] w-[calc(100vw_-104px)] gap-5 sm:max-w-full"
+        className="h-[calc(100vh_-2rem)] w-[calc(100vw_-2rem)] max-w-[calc(100vw_-2rem)] gap-5 sm:h-[calc(100vh_-104px)] sm:w-[calc(100vw_-104px)] sm:max-w-full"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => {
           // 当类型为 shell 时，阻止 ESC 关闭对话框
