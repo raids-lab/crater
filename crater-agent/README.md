@@ -1,10 +1,10 @@
 # Crater Agent 运维智能体交接说明
 
-本文档交接 `feature/crater-agent` 分支中的生产向运维智能体。当前分支保留论文系统实现能力：AI 运维助手、巡检与健康分析、审计追踪与质量评估、审批评估、确认/恢复、前后端 agent 接入、Python agent 服务、多智能体 MOPS 编排和生产工具代理。离线实验、Plan-and-Execute 基线、dataset、results、本地回放 mock 等第 5 章实验资产不在交接范围。
+本文档交接 `feature/crater-agent` 分支中的运维智能体生产代码。当前系统包含 AI 运维助手、巡检与健康分析、审计追踪、审批评估、确认/恢复、前后端 agent 接入、Python agent 服务、多智能体 MOPS 编排和生产工具代理。
 
 ## 1. 系统边界
 
-`crater-agent/` 是独立 Python FastAPI 服务，负责 LLM 推理、ReAct/MOPS 编排、agent-local 平台诊断工具、巡检流水线和质量评估。Go backend 是权限、数据、审计和写操作边界；frontend 只连接 Go API，不直连 Python。
+`crater-agent/` 是独立 Python FastAPI 服务，负责 LLM 推理、ReAct/MOPS 编排、agent-local 平台诊断工具、巡检流水线和质量评估。Go backend 是权限、数据、审计和写操作边界；frontend 只连接 Go API。
 
 ```mermaid
 flowchart LR
@@ -24,7 +24,7 @@ flowchart LR
   BE --> AUDIT[Agent Sessions/Turns/Tool Calls/Quality Evals]
 ```
 
-核心原则是“模型负责编排，后端负责裁决”。读/写工具经过角色、权限、工具策略和确认态检查；高风险写操作由 Go 生成确认表单，用户确认后执行并恢复流程。`frontend` 原有 MSW mock 保持和 main 一致，它不是 agent 离线回放 mock。
+核心原则是“模型负责编排，后端负责裁决”。读/写工具经过角色、权限、策略和确认态检查；高风险写操作由 Go 生成确认表单，用户确认后执行并恢复流程。
 
 ## 2. 一次请求链路
 
@@ -53,7 +53,7 @@ sequenceDiagram
   BE-->>FE: 转发 SSE 并持久化消息
 ```
 
-`single_agent` 使用 `crater_agent/agent` 下的 LangGraph ReAct 图，适合普通问答、诊断和明确工具调用。`multi_agent` 使用 `crater_agent/orchestrators/multi.py`，由 coordinator 统筹 planner、explorer、executor、verifier、guide/general，适合复杂运维和多工具 MOPS 编排。
+`single_agent` 使用 `crater_agent/agent` 下的 LangGraph ReAct 图，适合问答、诊断和明确工具调用。`multi_agent` 使用 `crater_agent/orchestrators/multi.py`，由 coordinator 统筹 planner、explorer、executor、verifier、guide/general，适合复杂运维和多工具 MOPS 编排。
 
 ## 3. Python 服务结构
 
@@ -76,22 +76,37 @@ crater-agent/
     runtime/                  # 平台运行配置发现和合并
 ```
 
-后续迭代按职责落点：新增工具先改 `tools/definitions.py` 和后端 `backend/internal/handler/agent/tools_*.go`，再补前端展示；新增多智能体角色放 `agents/` 并在 `orchestrators/multi.py` 接入；新增定时巡检放 `pipeline/`，由 Go cron/patrol 调用。
+迭代按职责落点：新增工具先改 `tools/definitions.py` 和后端 `backend/internal/handler/agent/tools_*.go`，再补前端展示；新增多智能体角色放 `agents/` 并在 `orchestrators/multi.py` 接入；新增定时巡检放 `pipeline/`，由 Go cron/patrol 调用。
 
-## 4. 启动与配置
+## 4. 环境与启动
 
-Python 要求 3.11+。本地可在 `crater-agent` 下使用已有 `.venv`，或重新安装：
+Python 要求 3.11+。从 `crater-agent` 目录启动，`.env` 和相对配置路径都按该目录解析；`pyproject.toml` 已声明 FastAPI、uvicorn、LangGraph、LangChain、Pydantic、httpx、CAMEL、ddgs 等依赖。
 
 ```bash
 cd crater-agent
+python3.11 -m venv .venv
 .venv/bin/python -m pip install -e .
-export DASHSCOPE_API_KEY_NEW=...
-export CRATER_AGENT_LLM_CLIENTS_CONFIG_PATH=./config/llm-clients.json
-export CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH=./config/platform-runtime.yaml
-export CRATER_AGENT_CRATER_BACKEND_URL=http://localhost:8080
-export CRATER_AGENT_CRATER_BACKEND_INTERNAL_TOKEN=dev-agent-internal-token
-export CRATER_AGENT_AGENT_INTERNAL_TOKEN=dev-agent-internal-token
 .venv/bin/python -m uvicorn crater_agent.app:app --host 0.0.0.0 --port 8000
+```
+
+`crater_agent.config.Settings` 会读取当前目录下的 `.env`。业务配置变量统一用 `CRATER_AGENT_` 前缀；LLM 密钥变量可不加前缀，因为它们由 `config/llm-clients.json` 的 `api_key_env` 引用。`.env` 不提交版本库，本地和部署环境都由 Secret 或环境变量注入。
+
+```dotenv
+# LLM clients; name must match config/llm-clients.json -> api_key_env
+DASHSCOPE_API_KEY_NEW=replace-with-real-key
+
+# Agent service
+CRATER_AGENT_DEFAULT_ORCHESTRATION_MODE=single_agent
+CRATER_AGENT_LLM_CLIENTS_CONFIG_PATH=./config/llm-clients.json
+CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH=./config/platform-runtime.yaml
+CRATER_AGENT_BACKEND_DEBUG_CONFIG_PATH=../backend/etc/debug-config.yaml
+CRATER_AGENT_HOST=0.0.0.0
+CRATER_AGENT_PORT=8000
+
+# Go backend integration
+CRATER_AGENT_CRATER_BACKEND_URL=http://localhost:8080
+CRATER_AGENT_CRATER_BACKEND_INTERNAL_TOKEN=dev-agent-internal-token
+CRATER_AGENT_AGENT_INTERNAL_TOKEN=dev-agent-internal-token
 ```
 
 健康检查：
@@ -125,7 +140,7 @@ agent:
     maxConcurrent: 3
 ```
 
-两个 token 方向不同：`CRATER_AGENT_CRATER_BACKEND_INTERNAL_TOKEN` 用于 Python 调 Go 内部工具；`CRATER_AGENT_AGENT_INTERNAL_TOKEN` 用于 Go 调 Python 内部接口。开发环境可相同，生产环境用 Secret 注入。`platform-runtime.yaml` 只放 agent-local 工具需要的 kubeconfig、Prometheus、Harbor、存储前缀和 allowlist，不放数据库、LDAP、SMTP 或证书明文。
+两个 token 方向不同：`CRATER_AGENT_CRATER_BACKEND_INTERNAL_TOKEN` 用于 Python 调 Go 内部工具；`CRATER_AGENT_AGENT_INTERNAL_TOKEN` 用于 Go 调 Python 内部接口。开发环境可相同，生产环境用 Secret 注入。`platform-runtime.yaml` 只放 agent-local 工具需要的 kubeconfig、Prometheus、Harbor、存储前缀和 allowlist。
 
 Frontend 启动仍按主项目流程：
 
@@ -137,21 +152,21 @@ pnpm dev
 
 ## 5. Backend 改动说明
 
-Backend 新增 `AgentMgr` 路由和服务层，主要入口在 `backend/internal/handler/agent/`、`backend/internal/service/agent_*`、`backend/dao/model/agent.go` 和 `backend/hack/sql/*agent*.sql`。它负责会话/轮次/消息持久化、SSE 代理、工具执行、权限校验、确认/恢复、操作日志、质量评估和管理员审计。
+Backend 新增 `AgentMgr` 路由和服务层，主要入口在 `backend/internal/handler/agent/`、`backend/internal/service/agent_*`、`backend/dao/model/agent.go` 和 `backend/hack/sql/*agent*.sql`。它负责会话/轮次/消息持久化、SSE 代理、工具执行、权限校验、确认/恢复、操作日志、质量评估和审计。
 
-工具层分三类：只读诊断工具查询作业、日志、事件、配额、健康概览、Prometheus 与存储；确认型写工具创建/停止/重提作业、镜像构建和集群变更；系统巡检工具由 `/pipeline/*` 触发并写入报告。审批单增强在 `agent_approval.go`，简单规则未覆盖时调用 `/evaluate/approval` 给出 approve/escalate 建议。
+工具层分三类：只读诊断工具查询作业、日志、事件、配额、健康概览、Prometheus 与存储；确认型写工具创建/停止/重提作业、镜像构建和集群变更；巡检工具由 `/pipeline/*` 触发并写入报告。审批单增强在 `agent_approval.go`，简单规则未覆盖时调用 `/evaluate/approval`。
 
 ## 6. Frontend 改动说明
 
-Frontend 主要入口是 `frontend/src/components/aiops/AIChatDrawer.tsx` 和 `frontend/src/services/api/agent.ts`。它支持规则/LLM/Agent 模式切换、SSE 流式渲染、单/多 Agent、历史会话、工具时间线、确认表单、恢复执行、失败重试和用户反馈。
+Frontend 主要入口是 `frontend/src/components/aiops/AIChatDrawer.tsx` 和 `frontend/src/services/api/agent.ts`。它支持规则/LLM/Agent 模式、SSE 流式渲染、单/多 Agent、历史会话、工具时间线、确认表单、恢复执行、失败重试和用户反馈。
 
-管理员与用户页面分别在 `frontend/src/routes/admin/aiops/`、`frontend/src/routes/portal/aiops/`；管理员审计在 `frontend/src/routes/admin/more/agent-audit/` 与 `frontend/src/components/agent-audit/`；运维报告展示在 `OpsReportTab`；审批单页面展示 agent 评估；cronjob 卡片增加手动触发巡检。前端只依赖 Go API，状态来自 backend 持久化结果。
+管理员与用户页面在 `frontend/src/routes/admin/aiops/`、`frontend/src/routes/portal/aiops/`；管理员审计在 `frontend/src/routes/admin/more/agent-audit/` 与 `frontend/src/components/agent-audit/`；运维报告展示在 `OpsReportTab`；审批单页面展示 agent 评估；cronjob 卡片可手动触发巡检。前端只依赖 Go API，状态来自 backend。
 
 ## 7. 维护注意事项
 
-不要把实验数据、离线评测、临时报告、dataset/results/logs 或本地 mock 回放重新提交。线上质量评估保留在 `quality/` 和 backend `quality-evals` 链路中，服务反馈与人工审计，不是离线 benchmark。`crater_agent/skills` YAML 已移除，提示词、工具策略和平台运行配置分别在代码、`tools/definitions.py`、`config/platform-runtime.yaml` 中维护。
+提示词在 `crater_agent/agent/prompts.py` 和各角色 agent 中维护；工具白名单、确认策略、角色权限在 `crater_agent/tools/definitions.py` 和 Go `tools_dispatch.go` 中维护；平台运行参数在 `config/platform-runtime.yaml` 与 backend `agent.ops` 中维护；质量评估走 `quality/` 和 backend `quality-evals` 链路。
 
-提交前建议跑：
+改动后运行：
 
 ```bash
 cd crater-agent && .venv/bin/python -c "import crater_agent.app; print('ok')"
