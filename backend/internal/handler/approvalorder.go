@@ -446,7 +446,13 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 
 // runAgentEvaluation 在后台 goroutine 中执行 Agent 审批评估，完成后更新工单状态。
 // Go 端预取所有必要数据，Agent 只做一次 LLM 判断，不需要工具调用。
-func (mgr *ApprovalOrderMgr) runAgentEvaluation(orderID uint, jobName string, extensionHours uint, userID int, accountID int, username, reason string) {
+func (mgr *ApprovalOrderMgr) runAgentEvaluation(
+	orderID uint,
+	jobName string,
+	extensionHours uint,
+	userID, accountID int,
+	username, reason string,
+) {
 	defer func() {
 		if r := recover(); r != nil {
 			klog.Errorf("agent approval evaluation panic recovered for order %d: %v", orderID, r)
@@ -500,7 +506,7 @@ func (mgr *ApprovalOrderMgr) runAgentEvaluation(orderID uint, jobName string, ex
 		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).First()
 		if err != nil || !mgr.isJobRunning(job.Status) {
 			klog.Warningf("job %s no longer running during agent eval for order %d", jobName, orderID)
-			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
 				"agent_report": agentReport,
 			})
 			return
@@ -517,14 +523,14 @@ func (mgr *ApprovalOrderMgr) runAgentEvaluation(orderID uint, jobName string, ex
 
 		if err := mgr.lockJobByCtx(ctx, jobName, lockHours); err != nil {
 			klog.Errorf("agent-approved lock failed for order %d (job %s): %v", orderID, jobName, err)
-			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
 				"agent_report": agentReport,
 			})
 			return
 		}
 
 		reviewNotes := fmt.Sprintf("agent evaluation approved (%d hours)", lockHours)
-		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
 			"status":        string(model.ApprovalOrderStatusApproved),
 			"review_notes":  reviewNotes,
 			"review_source": string(model.ReviewSourceAgentAuto),
@@ -540,20 +546,20 @@ func (mgr *ApprovalOrderMgr) runAgentEvaluation(orderID uint, jobName string, ex
 
 		if err := mgr.lockJobByCtx(ctx, jobName, emergencyHours); err != nil {
 			klog.Errorf("agent-emergency lock failed for order %d (job %s): %v", orderID, jobName, err)
-			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
 				"agent_report": agentReport,
 			})
 			return
 		}
 
-		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
 			"agent_report": agentReport,
 		})
 		klog.Infof("agent emergency-locked order %d, job %s for %dh, remaining %dh pending admin",
 			orderID, jobName, emergencyHours, extensionHours-emergencyHours)
 
 	default: // "escalate"
-		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]interface{}{
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
 			"agent_report": agentReport,
 		})
 		klog.Infof("agent escalated order %d (job %s) to admin", orderID, jobName)

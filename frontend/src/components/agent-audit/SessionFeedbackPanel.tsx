@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { ThumbsDownIcon, ThumbsUpIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
-import { NothingCore } from '@/components/placeholder/nothing'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+
+import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
+import { NothingCore } from '@/components/placeholder/nothing'
+
 import { AgentFeedback, apiAdminListSessionFeedbacks } from '@/services/api/admin/agentAudit'
 
 interface Props {
@@ -72,22 +74,34 @@ export function SessionFeedbackPanel({ sessionId }: Props) {
                     <ThumbsDownIcon className="h-3 w-3" /> {t('agentAudit.feedback.ratingDown')}
                   </Badge>
                 )}
-                <span className="text-muted-foreground text-xs">{fb.targetType}:{fb.targetId}</span>
+                <span className="text-muted-foreground text-xs">
+                  {fb.targetType}:{fb.targetId}
+                </span>
                 <span className="text-muted-foreground ml-auto text-xs">
-                  {fb.submittedAt ? t('agentAudit.feedback.submittedAt', { time: new Date(fb.submittedAt).toLocaleString() }) : '-'}
+                  {fb.submittedAt
+                    ? t('agentAudit.feedback.submittedAt', {
+                        time: new Date(fb.submittedAt).toLocaleString(),
+                      })
+                    : '-'}
                 </span>
               </div>
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
-                  <span className="text-muted-foreground text-xs">{t('agentAudit.feedback.tags')}：</span>
+                  <span className="text-muted-foreground text-xs">
+                    {t('agentAudit.feedback.tags')}：
+                  </span>
                   {tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-[10px]">{tag}</Badge>
+                    <Badge key={tag} variant="secondary" className="text-[10px]">
+                      {tag}
+                    </Badge>
                   ))}
                 </div>
               )}
               {dims.length > 0 && (
                 <div>
-                  <div className="text-muted-foreground mb-1 text-xs">{t('agentAudit.feedback.dimensions')}</div>
+                  <div className="text-muted-foreground mb-1 text-xs">
+                    {t('agentAudit.feedback.dimensions')}
+                  </div>
                   <div className="grid grid-cols-2 gap-1 text-xs">
                     {dims.map(([k, v]) => (
                       <div key={k} className="bg-muted/40 flex justify-between rounded px-2 py-1">
@@ -100,8 +114,12 @@ export function SessionFeedbackPanel({ sessionId }: Props) {
               )}
               {fb.comment && (
                 <div>
-                  <div className="text-muted-foreground mb-1 text-xs">{t('agentAudit.feedback.comment')}</div>
-                  <pre className="bg-muted/40 max-h-40 overflow-auto whitespace-pre-wrap rounded p-2 text-xs">{fb.comment}</pre>
+                  <div className="text-muted-foreground mb-1 text-xs">
+                    {t('agentAudit.feedback.comment')}
+                  </div>
+                  <pre className="bg-muted/40 max-h-40 overflow-auto rounded p-2 text-xs whitespace-pre-wrap">
+                    {fb.comment}
+                  </pre>
                 </div>
               )}
             </CardContent>

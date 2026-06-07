@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 export interface ParameterReviewParameter {
   key: string
   label: string
-  value: any
+  value: unknown
   source: 'recommended' | 'default' | 'user'
   editable: boolean
   type: 'text' | 'number' | 'select' | 'textarea'
@@ -38,21 +38,28 @@ export interface ParameterReviewCardProps {
   title: string
   description: string
   parameters: ParameterReviewParameter[]
-  onConfirm: (reviewId: string, parameters: Record<string, any>) => void
-  onModify?: (reviewId: string, parameters: Record<string, any>) => void
+  onConfirm: (reviewId: string, parameters: Record<string, unknown>) => void
+  onModify?: (reviewId: string, parameters: Record<string, unknown>) => void
   settled?: 'confirmed' | null
 }
 
 const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
-  recommended: { label: '推荐', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' },
-  default: { label: '默认', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
-  user: { label: '用户', className: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
+  recommended: {
+    label: '推荐',
+    className: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
+  },
+  default: {
+    label: '默认',
+    className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  },
+  user: {
+    label: '用户',
+    className: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+  },
 }
 
 export function ParameterReviewCard({
   reviewId,
-  scenario: _scenario,
-  complexity: _complexity,
   step,
   totalSteps,
   title,
@@ -62,8 +69,8 @@ export function ParameterReviewCard({
   onModify,
   settled,
 }: ParameterReviewCardProps) {
-  const [values, setValues] = useState<Record<string, any>>(() => {
-    const init: Record<string, any> = {}
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    const init: Record<string, unknown> = {}
     for (const p of parameters) {
       init[p.key] = p.value
     }
@@ -75,8 +82,8 @@ export function ParameterReviewCard({
     return p.editable && String(current) !== String(p.value)
   })
 
-  const collectValues = (): Record<string, any> => {
-    const result: Record<string, any> = {}
+  const collectValues = (): Record<string, unknown> => {
+    const result: Record<string, unknown> = {}
     for (const p of parameters) {
       result[p.key] = values[p.key]
     }
@@ -91,7 +98,7 @@ export function ParameterReviewCard({
     }
   }
 
-  const updateValue = (key: string, val: any) => {
+  const updateValue = (key: string, val: string | number) => {
     setValues((prev) => ({ ...prev, [key]: val }))
   }
 
@@ -109,10 +116,7 @@ export function ParameterReviewCard({
 
     if (param.type === 'select' && param.options) {
       return (
-        <Select
-          value={String(val) || undefined}
-          onValueChange={(v) => updateValue(param.key, v)}
-        >
+        <Select value={String(val) || undefined} onValueChange={(v) => updateValue(param.key, v)}>
           <SelectTrigger className="h-8 w-full text-sm">
             <SelectValue placeholder={param.label} />
           </SelectTrigger>
@@ -144,10 +148,7 @@ export function ParameterReviewCard({
         min={param.constraints?.min}
         max={param.constraints?.max}
         onChange={(e) =>
-          updateValue(
-            param.key,
-            param.type === 'number' ? Number(e.target.value) : e.target.value
-          )
+          updateValue(param.key, param.type === 'number' ? Number(e.target.value) : e.target.value)
         }
         className="h-8 text-sm"
       />
@@ -156,7 +157,7 @@ export function ParameterReviewCard({
 
   if (settled === 'confirmed') {
     return (
-      <Card className="border-green-300/60 bg-green-50/30 min-w-0 p-4 dark:border-green-800/40 dark:bg-green-950/20">
+      <Card className="min-w-0 border-green-300/60 bg-green-50/30 p-4 dark:border-green-800/40 dark:bg-green-950/20">
         <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
           <Check className="h-3.5 w-3.5" />
           配置已确认
@@ -170,10 +171,8 @@ export function ParameterReviewCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm font-semibold leading-snug">{title}</p>
-          {description && (
-            <p className="text-muted-foreground text-xs">{description}</p>
-          )}
+          <p className="text-sm leading-snug font-semibold">{title}</p>
+          {description && <p className="text-muted-foreground text-xs">{description}</p>}
         </div>
         {totalSteps > 1 && (
           <Badge variant="outline" className="shrink-0 text-[10px]">
@@ -183,7 +182,7 @@ export function ParameterReviewCard({
       </div>
 
       {/* Parameters */}
-      <div className="space-y-2.5 max-h-60 overflow-y-auto px-1">
+      <div className="max-h-60 space-y-2.5 overflow-y-auto px-1">
         {parameters.map((param) => {
           const badge = SOURCE_BADGE[param.source]
           return (
@@ -191,15 +190,15 @@ export function ParameterReviewCard({
               <div className="flex items-center gap-2">
                 <Label className="text-xs font-medium">{param.label}</Label>
                 {badge && (
-                  <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}>
+                  <span
+                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}
+                  >
                     {badge.label}
                   </span>
                 )}
               </div>
               {renderInput(param)}
-              {param.hint && (
-                <p className="text-muted-foreground text-[11px]">{param.hint}</p>
-              )}
+              {param.hint && <p className="text-muted-foreground text-[11px]">{param.hint}</p>}
             </div>
           )
         })}

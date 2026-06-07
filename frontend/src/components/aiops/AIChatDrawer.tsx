@@ -25,9 +25,6 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { toast } from 'sonner'
 
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,17 +35,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import {
   apiDeleteSession,
   apiGetAgentConfigSummary,
   apiGetSessionMessages,
-  apiGetSessionTurns,
   apiGetSessionToolCalls,
+  apiGetSessionTurns,
   apiGetTurnEvents,
   apiListFeedbacks,
   apiListSessions,
@@ -60,8 +60,8 @@ import {
 } from '@/services/api/agent'
 import type {
   AgentConfigSummary,
-  AgentEvent,
   AgentConfirmationForm,
+  AgentEvent,
   AgentFeedback,
   AgentMessage,
   AgentSession,
@@ -347,9 +347,7 @@ function getTurnFailureMessage(turn: AgentTurn | undefined): string | undefined 
   if (!turn) return undefined
   const metadata = parseAgentJSON(turn.metadata)
   const errorMessage = metadata?.errorMessage
-  return typeof errorMessage === 'string' && errorMessage.trim()
-    ? errorMessage
-    : undefined
+  return typeof errorMessage === 'string' && errorMessage.trim() ? errorMessage : undefined
 }
 
 function getConversationItemSortWeight(item: ConversationItem): number {
@@ -554,10 +552,7 @@ function mapSessionHistoryToConversationItems(
   for (const turn of turns) {
     if (!turn.requestId) continue
     const existing = latestTurnByRequestId.get(turn.requestId)
-    if (
-      !existing ||
-      new Date(turn.startedAt).getTime() >= new Date(existing.startedAt).getTime()
-    ) {
+    if (!existing || new Date(turn.startedAt).getTime() >= new Date(existing.startedAt).getTime()) {
       latestTurnByRequestId.set(turn.requestId, turn)
     }
   }
@@ -576,7 +571,7 @@ function mapSessionHistoryToConversationItems(
       requestId,
       requestState,
       requestError:
-        requestState === 'failed' ? failureMessage ?? getFailedRequestMessage() : undefined,
+        requestState === 'failed' ? (failureMessage ?? getFailedRequestMessage()) : undefined,
       requestSessionId: message.sessionId ?? turn?.sessionId ?? null,
       requestOrchestrationMode: turn?.orchestrationMode,
       feedbackTargetId: message.role === 'assistant' ? String(message.id) : undefined,
@@ -599,9 +594,11 @@ function mapSessionHistoryToConversationItems(
       // Extract verifier verdict from events
       const verifierEvent = turnEvents.find((e) => e.agentRole === 'verifier')
       const verifierMetadata = parseAgentJSON(verifierEvent?.metadata)
-      const verdict = (typeof verifierMetadata?.verificationResult === 'string'
-        ? verifierMetadata.verificationResult
-        : verifierEvent?.eventStatus) as 'pass' | 'risk' | 'missing_evidence' | undefined
+      const verdict = (
+        typeof verifierMetadata?.verificationResult === 'string'
+          ? verifierMetadata.verificationResult
+          : verifierEvent?.eventStatus
+      ) as 'pass' | 'risk' | 'missing_evidence' | undefined
 
       return {
         id: `history-timeline-${turn.turnId}`,
@@ -697,14 +694,10 @@ function mapSessionHistoryToConversationItems(
 
 const markdownComponents = {
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="mb-2 [overflow-wrap:anywhere] break-words last:mb-0">
-      {children}
-    </p>
+    <p className="mb-2 [overflow-wrap:anywhere] break-words last:mb-0">{children}</p>
   ),
   strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="text-foreground font-semibold">
-      {children}
-    </strong>
+    <strong className="text-foreground font-semibold">{children}</strong>
   ),
   ul: ({ children }: { children?: React.ReactNode }) => (
     <ul className="my-2 list-inside list-disc space-y-1 [overflow-wrap:anywhere] break-words">
@@ -717,14 +710,10 @@ const markdownComponents = {
     </ol>
   ),
   li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="text-sm [overflow-wrap:anywhere] break-words">
-      {children}
-    </li>
+    <li className="text-sm [overflow-wrap:anywhere] break-words">{children}</li>
   ),
   pre: ({ children }: { children?: React.ReactNode }) => (
-    <pre className="bg-background my-2 max-w-full overflow-x-auto rounded p-2">
-      {children}
-    </pre>
+    <pre className="bg-background my-2 max-w-full overflow-x-auto rounded p-2">{children}</pre>
   ),
   code: ({ children, className }: { children?: React.ReactNode; className?: string }) => {
     const isInline = !className
@@ -733,9 +722,7 @@ const markdownComponents = {
         {children}
       </code>
     ) : (
-      <code className="block min-w-max font-mono text-xs whitespace-pre">
-        {children}
-      </code>
+      <code className="block min-w-max font-mono text-xs whitespace-pre">{children}</code>
     )
   },
   h1: ({ children }: { children?: React.ReactNode }) => (
@@ -757,9 +744,7 @@ const markdownComponents = {
   ),
   table: ({ children }: { children?: React.ReactNode }) => (
     <div className="my-2 max-w-full overflow-x-auto">
-      <table className="w-full min-w-max border-collapse text-left text-sm">
-        {children}
-      </table>
+      <table className="w-full min-w-max border-collapse text-left text-sm">{children}</table>
     </div>
   ),
   th: ({ children }: { children?: React.ReactNode }) => (
@@ -864,8 +849,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const [failedAgentRequests, setFailedAgentRequests] = useState<
     Record<string, AgentPendingRequest>
   >({})
-  const [interruptConfirmState, setInterruptConfirmState] =
-    useState<InterruptConfirmState | null>(null)
+  const [interruptConfirmState, setInterruptConfirmState] = useState<InterruptConfirmState | null>(
+    null
+  )
   const [sessionDeleteConfirmState, setSessionDeleteConfirmState] =
     useState<SessionDeleteConfirmState | null>(null)
   const [sessionActionLoading, setSessionActionLoading] = useState<{
@@ -908,7 +894,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     enabled: isOpen && chatMode === 'agent',
   })
 
-  const getPageContext = () => {
+  const getPageContext = useCallback(() => {
     const pathname = window.location.pathname
     const jobMatch = pathname.match(/\/jobs\/detail\/([^/?#]+)/)
     const nodeMatch = pathname.match(/\/nodes\/([^/?#]+)/)
@@ -919,15 +905,16 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       nodeName: nodeMatch?.[1],
       entryPoint: inferAgentEntryPoint(pathname),
     }
-  }
+  }, [currentJobName])
 
-  const getClientContext = () => ({
-    locale: typeof navigator !== 'undefined' ? navigator.language : undefined,
-    timezone:
-      typeof Intl !== 'undefined'
-        ? Intl.DateTimeFormat().resolvedOptions().timeZone
-        : undefined,
-  })
+  const getClientContext = useCallback(
+    () => ({
+      locale: typeof navigator !== 'undefined' ? navigator.language : undefined,
+      timezone:
+        typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined,
+    }),
+    []
+  )
 
   const cancelAgentStream = useCallback(() => {
     agentAbortRef.current?.abort()
@@ -1006,10 +993,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   }, [])
 
   const requestInterruptConfirmation = useCallback(
-    (
-      action: () => void,
-      options?: Partial<InterruptConfirmState>
-    ) => {
+    (action: () => void, options?: Partial<InterruptConfirmState>) => {
       if (!hasActiveAgentTask) {
         action()
         return
@@ -1174,14 +1158,16 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     }
 
     const deletingCurrentSession =
-      selectedAgentSessionId === pending.sessionId || agentSessionIdRef.current === pending.sessionId
+      selectedAgentSessionId === pending.sessionId ||
+      agentSessionIdRef.current === pending.sessionId
     if (deletingCurrentSession && hasActiveAgentTask) {
       requestInterruptConfirmation(runDelete, {
         title: t('aiops.agent.interruptDeleteSessionTitle', {
           defaultValue: '删除当前会话会中断当前执行',
         }),
         description: t('aiops.agent.interruptDeleteSessionDescription', {
-          defaultValue: '当前 Agent 仍在执行或等待确认。删除这个会话会立即中断本轮流程，并从历史中移除该会话。',
+          defaultValue:
+            '当前 Agent 仍在执行或等待确认。删除这个会话会立即中断本轮流程，并从历史中移除该会话。',
         }),
         confirmLabel: t('aiops.agent.interruptDeleteSessionConfirm', {
           defaultValue: '中断并删除',
@@ -1421,7 +1407,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                     return {
                       ...item,
                       timelineEvents: item.timelineEvents!.map((e) =>
-                        e.id === newEvent.id ? { ...e, toolName, toolArgs, toolStatus: 'executing' } : e
+                        e.id === newEvent.id
+                          ? { ...e, toolName, toolArgs, toolStatus: 'executing' }
+                          : e
                       ),
                     }
                   }
@@ -1491,7 +1479,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                           eventType: 'tool_call' as const,
                           agentRole: eventData.agentRole ?? 'explorer',
                           toolName,
-                          toolArgs: eventData.toolArgs ?? eventData.args ?? eventData.arguments ?? {},
+                          toolArgs:
+                            eventData.toolArgs ?? eventData.args ?? eventData.arguments ?? {},
                           toolStatus: isError ? ('error' as const) : ('done' as const),
                           toolResult: result,
                           timestamp: new Date(),
@@ -1503,7 +1492,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                     ...item,
                     timelineEvents: item.timelineEvents!.map((e) =>
                       e.id === eventId
-                        ? { ...e, toolStatus: isError ? ('error' as const) : ('done' as const), toolResult: result }
+                        ? {
+                            ...e,
+                            toolStatus: isError ? ('error' as const) : ('done' as const),
+                            toolResult: result,
+                          }
                         : e
                     ),
                   }
@@ -1531,7 +1524,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               }
               return prev.map((item) =>
                 item.id === itemId
-                  ? { ...item, toolStatus: isError ? ('error' as const) : ('done' as const), toolResult: result }
+                  ? {
+                      ...item,
+                      toolStatus: isError ? ('error' as const) : ('done' as const),
+                      toolResult: result,
+                    }
                   : item
               )
             })
@@ -1746,7 +1743,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
           apiGetSessionMessages(sessionId).then((response) => response.data),
           apiGetSessionToolCalls(sessionId).then((response) => response.data),
           apiGetSessionTurns(sessionId).then((response) => response.data),
-          apiListFeedbacks(sessionId).then((response) => response.data ?? []).catch((): AgentFeedback[] => []),
+          apiListFeedbacks(sessionId)
+            .then((response) => response.data ?? [])
+            .catch((): AgentFeedback[] => []),
         ])
         const runEventsByTurn = Object.fromEntries(
           await Promise.all(
@@ -1854,7 +1853,14 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     if (!sessionId || lastLoadedAgentSessionIdRef.current === sessionId) return
     if (!agentSessions.some((session) => session.sessionId === sessionId)) return
     void loadAgentSession(sessionId)
-  }, [agentHistoryLoading, conversationItems.length, agentSessions, chatMode, isOpen, loadAgentSession])
+  }, [
+    agentHistoryLoading,
+    conversationItems.length,
+    agentSessions,
+    chatMode,
+    isOpen,
+    loadAgentSession,
+  ])
 
   const startAgentRequest = useCallback(
     (request: AgentPendingRequest, options?: { appendUserBubble?: boolean }) => {
@@ -2095,6 +2101,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       agentStreaming,
       clearFailedAgentRequest,
       failedAgentRequests,
+      getClientContext,
+      getPageContext,
       orchestrationMode,
       pendingConfirmIds.length,
       retryableAgentRequest,
@@ -2139,6 +2147,8 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       agentStreaming,
       clearFailedAgentRequest,
       failedAgentRequests,
+      getClientContext,
+      getPageContext,
       orchestrationMode,
       pendingConfirmIds.length,
       resetAgentConversation,
@@ -2150,7 +2160,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const invalidateAgentAffectedQueries = useCallback(
     (toolName: string, status: string) => {
       const normalizedTool = String(toolName || '').trim()
-      const normalizedStatus = String(status || '').trim().toLowerCase()
+      const normalizedStatus = String(status || '')
+        .trim()
+        .toLowerCase()
 
       if (!normalizedTool) {
         return
@@ -2342,10 +2354,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
           title: t('aiops.agent.interruptModeTitle', {
             defaultValue: '切换模式会中断当前执行',
           }),
-        description: t('aiops.agent.interruptModeDescription', {
-          defaultValue:
+          description: t('aiops.agent.interruptModeDescription', {
+            defaultValue:
               '当前 Agent 还在执行或等待确认。切换到其他聊天模式会立刻中断这轮 Agent 流程。',
-        }),
+          }),
           confirmLabel: t('aiops.agent.interruptModeConfirm', {
             defaultValue: '中断并切换',
           }),
@@ -2389,8 +2401,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
           defaultValue: '新会话会中断当前执行',
         }),
         description: t('aiops.agent.interruptNewSessionDescription', {
-          defaultValue:
-            '当前 Agent 还在执行或等待确认。创建新会话会清空当前上下文并中断这轮执行。',
+          defaultValue: '当前 Agent 还在执行或等待确认。创建新会话会清空当前上下文并中断这轮执行。',
         }),
         confirmLabel: t('aiops.agent.interruptNewSessionConfirm', {
           defaultValue: '中断并新建',
@@ -2471,7 +2482,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
           </div>
           <div className="flex items-center gap-1">
-            <Tabs value={chatMode} onValueChange={(v) => handleAgentModeSwitch(v as 'rule' | 'llm' | 'agent')}>
+            <Tabs
+              value={chatMode}
+              onValueChange={(v) => handleAgentModeSwitch(v as 'rule' | 'llm' | 'agent')}
+            >
               <TabsList className="h-7">
                 <TabsTrigger value="rule" className="h-6 px-2.5 text-[11px]">
                   {t('aiops.chat.mode.rule')}
@@ -2571,8 +2585,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                       sessionActionLoading.action === 'rename'
                     const isEditing = renameState?.sessionId === session.sessionId
                     const sessionTitle =
-                      session.title ||
-                      t('aiops.agent.untitledSession', { defaultValue: '未命名' })
+                      session.title || t('aiops.agent.untitledSession', { defaultValue: '未命名' })
 
                     // Truncate title: show first 10 chars + ellipsis if longer
                     const displayTitle =
@@ -2655,7 +2668,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="text-muted-foreground group-hover:opacity-100 hover:text-sky-600 h-4 w-4 opacity-0 transition-opacity"
+                              className="text-muted-foreground h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sky-600"
                               onClick={(event) => {
                                 event.preventDefault()
                                 event.stopPropagation()
@@ -2673,9 +2686,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                               size="icon"
                               className={cn(
                                 'h-4 w-4 hover:text-amber-700',
-                                session.pinnedAt
-                                  ? 'text-amber-600'
-                                  : 'text-muted-foreground'
+                                session.pinnedAt ? 'text-amber-600' : 'text-muted-foreground'
                               )}
                               onClick={(event) => {
                                 event.preventDefault()
@@ -2698,7 +2709,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-4 w-4 text-muted-foreground hover:text-red-600"
+                              className="text-muted-foreground h-4 w-4 hover:text-red-600"
                               onClick={(event) => {
                                 event.preventDefault()
                                 event.stopPropagation()
@@ -2796,18 +2807,18 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                                 </Button>
                               )}
                               {canRetry && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-[11px]"
-                                    onClick={() => retryAgentRequestInNewSession(item)}
-                                    disabled={agentStreaming || pendingConfirmIds.length > 0}
-                                  >
-                                    {t('aiops.agent.retryInNewSession', {
-                                      defaultValue: '新会话重试',
-                                    })}
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-[11px]"
+                                  onClick={() => retryAgentRequestInNewSession(item)}
+                                  disabled={agentStreaming || pendingConfirmIds.length > 0}
+                                >
+                                  {t('aiops.agent.retryInNewSession', {
+                                    defaultValue: '新会话重试',
+                                  })}
+                                </Button>
+                              )}
                             </div>
                           )}
                           {item.requestState === 'failed' && item.requestError && (
@@ -2955,7 +2966,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                                     ? {
                                         ...ci,
                                         parameterReview: ci.parameterReview
-                                          ? { ...ci.parameterReview, _settled: 'confirmed' as const }
+                                          ? {
+                                              ...ci.parameterReview,
+                                              _settled: 'confirmed' as const,
+                                            }
                                           : ci.parameterReview,
                                       }
                                     : ci
@@ -2975,14 +2989,22 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                                     ? {
                                         ...ci,
                                         parameterReview: ci.parameterReview
-                                          ? { ...ci.parameterReview, _settled: 'confirmed' as const }
+                                          ? {
+                                              ...ci.parameterReview,
+                                              _settled: 'confirmed' as const,
+                                            }
                                           : ci.parameterReview,
                                       }
                                     : ci
                                 )
                               )
                             }}
-                            settled={(pr as ParameterReviewPayload & { _settled?: string })._settled === 'confirmed' ? 'confirmed' : null}
+                            settled={
+                              (pr as ParameterReviewPayload & { _settled?: string })._settled ===
+                              'confirmed'
+                                ? 'confirmed'
+                                : null
+                            }
                           />
                         </div>
                       </div>
@@ -3033,28 +3055,34 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                             action={bc.action}
                             description={bc.description}
                             items={bc.items}
-                            onConfirmSelected={(_batchId, _selectedJobNames) => {
+                            onConfirmSelected={() => {
                               setConversationItems((prev) =>
                                 prev.map((ci) =>
                                   ci.id === item.id
                                     ? {
                                         ...ci,
                                         batchConfirmation: ci.batchConfirmation
-                                          ? { ...ci.batchConfirmation, _settled: 'confirmed' as const }
+                                          ? {
+                                              ...ci.batchConfirmation,
+                                              _settled: 'confirmed' as const,
+                                            }
                                           : ci.batchConfirmation,
                                       }
                                     : ci
                                 )
                               )
                             }}
-                            onRejectAll={(_batchId) => {
+                            onRejectAll={() => {
                               setConversationItems((prev) =>
                                 prev.map((ci) =>
                                   ci.id === item.id
                                     ? {
                                         ...ci,
                                         batchConfirmation: ci.batchConfirmation
-                                          ? { ...ci.batchConfirmation, _settled: 'rejected' as const }
+                                          ? {
+                                              ...ci.batchConfirmation,
+                                              _settled: 'rejected' as const,
+                                            }
                                           : ci.batchConfirmation,
                                       }
                                     : ci
@@ -3062,9 +3090,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                               )
                             }}
                             settled={
-                              (bc as BatchConfirmationPayload & { _settled?: string })._settled === 'confirmed'
+                              (bc as BatchConfirmationPayload & { _settled?: string })._settled ===
+                              'confirmed'
                                 ? 'confirmed'
-                                : (bc as BatchConfirmationPayload & { _settled?: string })._settled === 'rejected'
+                                : (bc as BatchConfirmationPayload & { _settled?: string })
+                                      ._settled === 'rejected'
                                   ? 'rejected'
                                   : null
                             }
@@ -3126,7 +3156,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                   className="h-8 w-8 shrink-0"
                   onClick={() => setOrchestrationMode('single_agent')}
                   disabled={agentStreaming || pendingConfirmIds.length > 0}
-                  title={t('aiops.agent.singleModeDesc', { defaultValue: '标准模式：单 Agent 执行' })}
+                  title={t('aiops.agent.singleModeDesc', {
+                    defaultValue: '标准模式：单 Agent 执行',
+                  })}
                 >
                   <Zap className="h-3.5 w-3.5" />
                 </Button>
@@ -3136,7 +3168,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                   className="h-8 w-8 shrink-0"
                   onClick={() => setOrchestrationMode('multi_agent')}
                   disabled={agentStreaming || pendingConfirmIds.length > 0}
-                  title={t('aiops.agent.multiModeDesc', { defaultValue: '协作模式：多 Agent 分工' })}
+                  title={t('aiops.agent.multiModeDesc', {
+                    defaultValue: '协作模式：多 Agent 分工',
+                  })}
                 >
                   <Users className="h-3.5 w-3.5" />
                 </Button>
@@ -3204,7 +3238,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
           </div>
           <div className="flex items-center gap-1">
-            <Tabs value={chatMode} onValueChange={(v) => setChatMode(v as 'rule' | 'llm' | 'agent')}>
+            <Tabs
+              value={chatMode}
+              onValueChange={(v) => setChatMode(v as 'rule' | 'llm' | 'agent')}
+            >
               <TabsList className="h-7">
                 <TabsTrigger value="rule" className="h-6 px-2.5 text-[11px]">
                   {t('aiops.chat.mode.rule')}
@@ -3297,9 +3334,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               <div className="flex min-w-0 justify-start">
                 <div className="bg-muted flex min-w-0 items-center gap-2 overflow-hidden rounded-lg px-4 py-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-muted-foreground text-sm">
-                    {t('aiops.chat.thinking')}
-                  </span>
+                  <span className="text-muted-foreground text-sm">{t('aiops.chat.thinking')}</span>
                 </div>
               </div>
             )}
@@ -3413,13 +3448,7 @@ function GuideIcon({ mode }: { mode: string }) {
   }
 }
 
-function ModeGuideCard({
-  mode,
-  onClose,
-}: {
-  mode: 'rule' | 'llm' | 'agent'
-  onClose: () => void
-}) {
+function ModeGuideCard({ mode, onClose }: { mode: 'rule' | 'llm' | 'agent'; onClose: () => void }) {
   const { t } = useTranslation()
   const [guideMode, setGuideMode] = useState<'rule' | 'llm' | 'agent'>(mode)
 
@@ -3431,7 +3460,7 @@ function ModeGuideCard({
   const modeKey = `aiops.chat.guide.${guideMode}`
 
   return (
-    <div className="border-b bg-gradient-to-b from-muted/40 to-transparent px-4 py-3">
+    <div className="from-muted/40 border-b bg-gradient-to-b to-transparent px-4 py-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <GuideIcon mode={guideMode} />
@@ -3440,12 +3469,7 @@ function ModeGuideCard({
             <p className="text-muted-foreground text-[11px]">{t(`${modeKey}.desc`)}</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5 shrink-0"
-          onClick={onClose}
-        >
+        <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0" onClick={onClose}>
           <X className="h-3 w-3" />
         </Button>
       </div>
@@ -3463,9 +3487,7 @@ function ModeGuideCard({
           <span>{t(`${modeKey}.feat3`)}</span>
         </li>
       </ul>
-      <p className="text-muted-foreground mt-2 text-[11px] italic">
-        {t(`${modeKey}.hint`)}
-      </p>
+      <p className="text-muted-foreground mt-2 text-[11px] italic">{t(`${modeKey}.hint`)}</p>
       {/* Dot indicators */}
       <div className="mt-2 flex items-center justify-center gap-1.5">
         {GUIDE_MODES.map((m) => (

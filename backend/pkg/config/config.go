@@ -416,8 +416,6 @@ type Config struct {
 }
 
 // ValidateConfig validates the configuration structure and checks for required fields
-//
-//nolint:gocyclo // This is long but simple.
 func (c *Config) ValidateConfig() error {
 	var errors []string
 

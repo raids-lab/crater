@@ -267,14 +267,14 @@ export function ConfirmActionCard({
                   t('aiops.agent.confirm.confirmBtn', { defaultValue: '确认执行' })}
               </Button>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="max-w-2xl flex flex-col max-h-[85vh]">
+                <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col">
                   <DialogHeader>
                     <DialogTitle>{form?.title || '补全配置'}</DialogTitle>
                     <DialogDescription className="max-h-32 overflow-y-auto [overflow-wrap:anywhere] break-words">
                       {form?.description || description || action}
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 overflow-y-auto px-1 py-2 flex-1">
+                  <div className="flex-1 space-y-4 overflow-y-auto px-1 py-2">
                     {fields.map((field) => (
                       <div key={field.key} className="space-y-1.5">
                         <div className="flex items-center gap-1 text-sm font-medium">

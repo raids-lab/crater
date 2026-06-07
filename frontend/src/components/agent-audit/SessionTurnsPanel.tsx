@@ -2,16 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
-import { NothingCore } from '@/components/placeholder/nothing'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+
+import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
+import { NothingCore } from '@/components/placeholder/nothing'
+
 import {
   AgentAuditEvent,
   AgentAuditTurn,
   apiAdminGetAgentAuditSessionTurns,
   apiAdminGetAgentAuditTurnEvents,
 } from '@/services/api/admin/agentAudit'
+
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -21,7 +24,11 @@ interface Props {
 function stringify(v: unknown): string {
   if (v === null || v === undefined || v === '') return ''
   if (typeof v === 'string') return v
-  try { return JSON.stringify(v, null, 2) } catch { return String(v) }
+  try {
+    return JSON.stringify(v, null, 2)
+  } catch {
+    return String(v)
+  }
 }
 
 export function SessionTurnsPanel({ sessionId }: Props) {
@@ -29,7 +36,8 @@ export function SessionTurnsPanel({ sessionId }: Props) {
   const [selectedTurnId, setSelectedTurnId] = useState('')
   const turnsQuery = useQuery({
     queryKey: ['admin', 'agent-audit', 'turns', sessionId],
-    queryFn: async () => (await apiAdminGetAgentAuditSessionTurns(sessionId)).data as AgentAuditTurn[],
+    queryFn: async () =>
+      (await apiAdminGetAgentAuditSessionTurns(sessionId)).data as AgentAuditTurn[],
     enabled: !!sessionId,
   })
   const turns = turnsQuery.data ?? []
@@ -37,7 +45,8 @@ export function SessionTurnsPanel({ sessionId }: Props) {
 
   const eventsQuery = useQuery({
     queryKey: ['admin', 'agent-audit', 'events', activeTurnId],
-    queryFn: async () => (await apiAdminGetAgentAuditTurnEvents(activeTurnId)).data as AgentAuditEvent[],
+    queryFn: async () =>
+      (await apiAdminGetAgentAuditTurnEvents(activeTurnId)).data as AgentAuditEvent[],
     enabled: !!activeTurnId,
   })
 
@@ -68,10 +77,14 @@ export function SessionTurnsPanel({ sessionId }: Props) {
             )}
           >
             <div className="flex items-center justify-between gap-1">
-              <Badge variant="outline" className="text-[10px]">{turn.status}</Badge>
+              <Badge variant="outline" className="text-[10px]">
+                {turn.status}
+              </Badge>
               <span className="text-muted-foreground text-[10px]">{turn.orchestrationMode}</span>
             </div>
-            <div className="text-muted-foreground mt-1 text-[10px]">{new Date(turn.startedAt).toLocaleString()}</div>
+            <div className="text-muted-foreground mt-1 text-[10px]">
+              {new Date(turn.startedAt).toLocaleString()}
+            </div>
           </button>
         ))}
       </div>
@@ -89,10 +102,12 @@ export function SessionTurnsPanel({ sessionId }: Props) {
               </div>
               {ev.title && <div className="font-medium">{ev.title}</div>}
               {ev.content && (
-                <pre className="bg-muted/40 max-h-40 overflow-auto whitespace-pre-wrap rounded p-2">{ev.content}</pre>
+                <pre className="bg-muted/40 max-h-40 overflow-auto rounded p-2 whitespace-pre-wrap">
+                  {ev.content}
+                </pre>
               )}
               {ev.metadata !== null && ev.metadata !== undefined && (
-                <pre className="bg-muted/20 text-muted-foreground max-h-32 overflow-auto whitespace-pre-wrap rounded p-2">
+                <pre className="bg-muted/20 text-muted-foreground max-h-32 overflow-auto rounded p-2 whitespace-pre-wrap">
                   {stringify(ev.metadata)}
                 </pre>
               )}

@@ -68,7 +68,7 @@ export function BatchConfirmCard({
 
   if (settled === 'confirmed') {
     return (
-      <Card className="border-green-300/60 bg-green-50/30 min-w-0 p-4 dark:border-green-800/40 dark:bg-green-950/20">
+      <Card className="min-w-0 border-green-300/60 bg-green-50/30 p-4 dark:border-green-800/40 dark:bg-green-950/20">
         <p className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
           <Check className="h-3.5 w-3.5" />
           已确认执行选中的 {selectedCount} 项操作
@@ -79,7 +79,7 @@ export function BatchConfirmCard({
 
   if (settled === 'rejected') {
     return (
-      <Card className="border-red-300/60 bg-red-50/30 min-w-0 p-4 dark:border-red-800/40 dark:bg-red-950/20">
+      <Card className="min-w-0 border-red-300/60 bg-red-50/30 p-4 dark:border-red-800/40 dark:bg-red-950/20">
         <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
           <X className="h-3.5 w-3.5" />
           已拒绝全部操作
@@ -94,7 +94,7 @@ export function BatchConfirmCard({
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm font-semibold leading-snug">{action}</p>
+          <p className="text-sm leading-snug font-semibold">{action}</p>
           <p className="text-muted-foreground text-xs [overflow-wrap:anywhere] break-words">
             {description}
           </p>
@@ -103,15 +103,8 @@ export function BatchConfirmCard({
 
       {/* Select all */}
       <div className="flex items-center gap-2 border-b pb-2">
-        <Checkbox
-          checked={allSelected}
-          onCheckedChange={toggleAll}
-          id={`batch-${batchId}-all`}
-        />
-        <label
-          htmlFor={`batch-${batchId}-all`}
-          className="cursor-pointer text-xs font-medium"
-        >
+        <Checkbox checked={allSelected} onCheckedChange={toggleAll} id={`batch-${batchId}-all`} />
+        <label htmlFor={`batch-${batchId}-all`} className="cursor-pointer text-xs font-medium">
           {allSelected ? '取消全选' : '全选'} ({items.length})
         </label>
       </div>

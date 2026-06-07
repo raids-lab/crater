@@ -70,9 +70,7 @@ export function FeedbackCard({
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // Track whether the quick-submit path was used
-  const [quickSubmitted, setQuickSubmitted] = useState(
-    existingFeedback?.status === 'submitted'
-  )
+  const [quickSubmitted, setQuickSubmitted] = useState(existingFeedback?.status === 'submitted')
 
   const isSubmitted = status === 'submitted'
 
@@ -110,7 +108,7 @@ export function FeedbackCard({
     return () => {
       if (enrichTimerRef.current) clearTimeout(enrichTimerRef.current)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTags, dimensions, comment, quickSubmitted])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
@@ -154,7 +152,9 @@ export function FeedbackCard({
   const toggleTag = useCallback(
     (tag: string) => {
       if (isSubmitted && !quickSubmitted) return
-      setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+      setSelectedTags((prev) =>
+        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      )
     },
     [isSubmitted, quickSubmitted]
   )
@@ -197,7 +197,17 @@ export function FeedbackCard({
     } finally {
       setSaving(false)
     }
-  }, [isSubmitted, rating, sessionId, targetType, targetId, selectedTags, dimensions, comment, onFeedbackChange])
+  }, [
+    isSubmitted,
+    rating,
+    sessionId,
+    targetType,
+    targetId,
+    selectedTags,
+    dimensions,
+    comment,
+    onFeedbackChange,
+  ])
 
   // Explicit submit — only applicable when NOT quickSubmitted
   const handleSubmit = useCallback(async () => {
@@ -226,7 +236,17 @@ export function FeedbackCard({
       setSaving(false)
       setSubmitting(false)
     }
-  }, [isSubmitted, rating, sessionId, targetType, targetId, selectedTags, dimensions, comment, onFeedbackChange])
+  }, [
+    isSubmitted,
+    rating,
+    sessionId,
+    targetType,
+    targetId,
+    selectedTags,
+    dimensions,
+    comment,
+    onFeedbackChange,
+  ])
 
   // Whether detail fields are editable (editable when: not submitted at all, OR quick-submitted for enrichment)
   const detailsEditable = !isSubmitted || quickSubmitted
@@ -238,7 +258,7 @@ export function FeedbackCard({
         <Button
           variant="ghost"
           size="sm"
-          className={`h-7 w-7 p-0 ${rating === 1 ? 'text-green-600 bg-green-50 dark:bg-green-950/30' : 'text-muted-foreground'}`}
+          className={`h-7 w-7 p-0 ${rating === 1 ? 'bg-green-50 text-green-600 dark:bg-green-950/30' : 'text-muted-foreground'}`}
           onClick={() => handleRating(1)}
           disabled={isSubmitted && quickSubmitted}
           title={t('aiops.feedback.thumbsUp', '有帮助')}
@@ -248,7 +268,7 @@ export function FeedbackCard({
         <Button
           variant="ghost"
           size="sm"
-          className={`h-7 w-7 p-0 ${rating === -1 ? 'text-red-600 bg-red-50 dark:bg-red-950/30' : 'text-muted-foreground'}`}
+          className={`h-7 w-7 p-0 ${rating === -1 ? 'bg-red-50 text-red-600 dark:bg-red-950/30' : 'text-muted-foreground'}`}
           onClick={() => handleRating(-1)}
           disabled={isSubmitted && quickSubmitted}
           title={t('aiops.feedback.thumbsDown', '没帮助')}
@@ -273,7 +293,11 @@ export function FeedbackCard({
         <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
           {!detailsOpen && (
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground h-6 gap-1 px-1 text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground h-6 gap-1 px-1 text-xs"
+              >
                 <ChevronDown className="size-3" />
                 {t('aiops.feedback.addDetails', '添加详细反馈')}
               </Button>
@@ -284,9 +308,7 @@ export function FeedbackCard({
             <div className="bg-muted/40 mt-1 space-y-3 rounded-md border p-3">
               {/* Tags */}
               <div>
-                <p className="mb-1.5 text-xs font-medium">
-                  {t('aiops.feedback.tags', '标签')}
-                </p>
+                <p className="mb-1.5 text-xs font-medium">{t('aiops.feedback.tags', '标签')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {FEEDBACK_TAGS.map((tag) => (
                     <Badge

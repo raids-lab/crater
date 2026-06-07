@@ -28,8 +28,6 @@ export interface ResourceSuggestionCardProps {
 }
 
 export function ResourceSuggestionCard({
-  suggestionId: _suggestionId,
-  context: _context,
   recommendations,
   tip,
   onSelect,
@@ -54,7 +52,7 @@ export function ResourceSuggestionCard({
       )}
 
       {/* Table header */}
-      <div className="grid grid-cols-[1fr_auto_auto_auto_60px_auto] items-center gap-x-2 gap-y-1 text-[10px] font-medium text-muted-foreground">
+      <div className="text-muted-foreground grid grid-cols-[1fr_auto_auto_auto_60px_auto] items-center gap-x-2 gap-y-1 text-[10px] font-medium">
         <span>GPU 型号</span>
         <span className="w-10 text-center">可用</span>
         <span className="w-10 text-center">队列</span>
@@ -75,20 +73,18 @@ export function ResourceSuggestionCard({
               selected === rec.gpu_model && 'ring-2 ring-blue-400'
             )}
           >
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex min-w-0 items-center gap-1.5">
               <code className="truncate font-mono text-xs font-medium">{rec.gpu_model}</code>
               {isBest && (
-                <Badge className="h-4 shrink-0 bg-blue-500 px-1 text-[9px] text-white">
-                  最佳
-                </Badge>
+                <Badge className="h-4 shrink-0 bg-blue-500 px-1 text-[9px] text-white">最佳</Badge>
               )}
             </div>
             <span className="w-10 text-center tabular-nums">{rec.available}</span>
             <span className="w-10 text-center tabular-nums">{rec.queue_depth}</span>
-            <span className="w-16 text-center text-muted-foreground">{rec.estimated_wait}</span>
+            <span className="text-muted-foreground w-16 text-center">{rec.estimated_wait}</span>
             <div className="flex items-center gap-1">
               <Progress value={rec.match_score * 100} className="h-1.5 w-8" />
-              <span className="w-7 text-right tabular-nums text-[10px]">
+              <span className="w-7 text-right text-[10px] tabular-nums">
                 {Math.round(rec.match_score * 100)}%
               </span>
             </div>
@@ -114,11 +110,12 @@ export function ResourceSuggestionCard({
       })}
 
       {/* Reasons (collapsed under each best) */}
-      {recommendations.length > 0 && recommendations.find((r) => r.match_score === bestScore)?.reason && (
-        <p className="text-muted-foreground text-[11px] leading-relaxed">
-          推荐理由：{recommendations.find((r) => r.match_score === bestScore)?.reason}
-        </p>
-      )}
+      {recommendations.length > 0 &&
+        recommendations.find((r) => r.match_score === bestScore)?.reason && (
+          <p className="text-muted-foreground text-[11px] leading-relaxed">
+            推荐理由：{recommendations.find((r) => r.match_score === bestScore)?.reason}
+          </p>
+        )}
     </Card>
   )
 }
