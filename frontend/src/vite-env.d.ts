@@ -30,6 +30,7 @@ interface ImportMetaEnv {
   readonly VITE_DOCS_BASE_URL: string
 
   // Development
+  readonly VITE_USE_MSW: string
   readonly VITE_SET_DOCS_AS_HOME: string
   readonly VITE_TANSTACK_QUERY_DEVTOOLS: string
   readonly VITE_TANSTACK_ROUTER_DEVTOOLS: string
