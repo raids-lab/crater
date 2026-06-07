@@ -51,10 +51,23 @@ const HIDDEN_PARAMS = ['jobTypes']
 
 const PATROL_JOBS = new Set(['trigger-gpu-analysis-job', 'trigger-admin-ops-report-job'])
 
+interface CleanupResult {
+  data: {
+    deleted: unknown[]
+    reminded: unknown[]
+  }
+}
+
+interface PatrolResult {
+  data?: {
+    status?: string
+    report_id?: string
+  } | null
+}
+
 const executeJobMap: Record<
   string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (params: Record<string, number | string | string[]>) => Promise<any>
+  (params: Record<string, number | string | string[]>) => Promise<CleanupResult | PatrolResult>
 > = {
   'clean-long-time-job': async (params) => {
     const res = await apiAdminLongTimeRunningJobsCleanup({
@@ -133,8 +146,8 @@ export default function CronJobCard({
     },
     onSuccess: (data) => {
       if (PATROL_JOBS.has(jobId)) {
-        // Patrol jobs return varied structures — show generic success
-        const payload = data?.data || data || {}
+        // Patrol jobs return varied structures, so show a generic success.
+        const payload = (data as PatrolResult).data ?? {}
         const status = payload.status || 'completed'
         const reportId = payload.report_id
         if (reportId) {
@@ -149,8 +162,9 @@ export default function CronJobCard({
         }
       } else {
         // Cleaner jobs return { deleted: [...], reminded: [...] }
-        const deleted = data?.data?.deleted || []
-        const reminded = data?.data?.reminded || []
+        const payload = (data as CleanupResult).data
+        const deleted = payload.deleted || []
+        const reminded = payload.reminded || []
         const total = deleted.length + reminded.length
 
         toast.success(

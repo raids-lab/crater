@@ -24,7 +24,6 @@ from crater_agent.agent.prompts import build_system_prompt
 from crater_agent.agent.state import CraterAgentState
 from crater_agent.config import settings
 from crater_agent.llm.client import ModelClientFactory
-from crater_agent.skills.loader import load_relevant_skills
 from crater_agent.tools.definitions import ALL_TOOLS
 from crater_agent.tools.executor import GoBackendToolExecutor, ToolExecutorProtocol
 from crater_agent.tools.tool_selector import (
@@ -317,14 +316,12 @@ def create_llm() -> ChatOpenAI:
 
 def create_agent_graph(
     tool_executor: ToolExecutorProtocol | None = None,
-    skills_dir: str | None = None,
     llm: ChatOpenAI | None = None,
 ) -> StateGraph:
     """Build the LangGraph StateGraph for the Crater ReAct agent.
 
     Args:
         tool_executor: Tool executor instance. Defaults to GoBackendToolExecutor.
-        skills_dir: Path to skills YAML directory. Defaults to built-in skills.
     """
     if tool_executor is None:
         tool_executor = GoBackendToolExecutor()
@@ -356,7 +353,6 @@ def create_agent_graph(
             current_query = str(messages[-1].content) if messages else ""
             system_prompt = build_system_prompt(
                 context=context,
-                skills_context=load_relevant_skills(current_query, skills_dir),
                 is_first_time=is_first_time,
                 user_message=current_query,
             )

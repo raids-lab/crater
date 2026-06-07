@@ -30,7 +30,6 @@ dist-ssr
 
 # Environment
 .env.development
-.pgpass
 
 # Python
 .venv
@@ -81,64 +80,4 @@ kubeconfig*
 # Claude Code
 .claude/
 storage/etc/config.yaml
-/todo/
-/debug_config/
-
-# Local reports / design notes not intended for VCS
-docs/agent-tool-scenarios.md
-docs/agent-tooling.md
-docs/zh-CN/ExitCodeLifecycle.md
-docs/reports/
-docs/reference/
-docs/superpowers/
-
-# One-off local helper script
-backend/hack/apply_agent_multi_mode_sql.sh
-
-# Claude Code per-repo settings
-.claude/
-
-# Compiled Go binary (local build)
-backend/crater
-
-# Local debug scripts
-crater-agent/test_openai.py
-
-# Agent offline experiment artifacts
-/results/
-crater-agent/results/
-crater-agent/dataset/
-crater-agent/crater_bench/
-crater-agent/crater_agent/dataset/
-crater-agent/crater_agent/eval/
-crater-agent/config/exp*.txt
-crater-agent/config/*.json
-!crater-agent/config/llm-clients.json
-crater-agent/config/mops*.json
-crater-agent/config/*plan-execute*.json
-crater-agent/config/*offline*.yaml
-crater-agent/config/kubeconfig
-crater-agent/docs0511/
-crater-agent/tests/
-
-# Codex CLI artifacts
 .codex
-# Thesis drafts (personal work, not code)
-docs/thesis/
-
-# Local generated/working artifacts
-/output/
-crater-agent/crater-agent/
-*.drawio.bkp
-*.drawio.dtmp
-.$*.drawio.bkp
-.$*.drawio.dtmp
-.venv/
-__pycache__/
-
-# Thesis mindmaps and figure-source local edits kept in working tree only
-# (carried across branches; not part of the agent codebase commit history)
-*-mindmap.drawio
-*-mindmap.drawio.png
-/zhisuan-platform-ops-challenges-mindmap.drawio*
-docs-figure/
