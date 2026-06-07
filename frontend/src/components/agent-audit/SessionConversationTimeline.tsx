@@ -1,15 +1,18 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Badge } from '@/components/ui/badge'
+
 import { ToolCallCard } from '@/components/aiops/ToolCallCard'
 import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
 import { NothingCore } from '@/components/placeholder/nothing'
-import { Badge } from '@/components/ui/badge'
+
 import {
   AgentAuditMessage,
   AgentAuditToolCall,
   AgentAuditTurn,
 } from '@/services/api/admin/agentAudit'
+
 import { cn } from '@/lib/utils'
 
 type TimelineItem =
@@ -24,7 +27,9 @@ interface Props {
   isLoading: boolean
 }
 
-function toolStatus(status: string): 'executing' | 'awaiting_confirmation' | 'done' | 'error' | 'cancelled' {
+function toolStatus(
+  status: string
+): 'executing' | 'awaiting_confirmation' | 'done' | 'error' | 'cancelled' {
   switch (status) {
     case 'success':
     case 'completed':
@@ -78,20 +83,18 @@ export function SessionConversationTimeline({ messages, toolCalls, turns, isLoad
       })
     })
 
-    messages.forEach((m) =>
-      items.push({ kind: 'message', key: `m-${m.id}`, msg: m })
-    )
-    toolCalls.forEach((tc) =>
-      items.push({ kind: 'tool', key: `t-${tc.id}`, call: tc })
-    )
+    messages.forEach((m) => items.push({ kind: 'message', key: `m-${m.id}`, msg: m }))
+    toolCalls.forEach((tc) => items.push({ kind: 'tool', key: `t-${tc.id}`, call: tc }))
 
     items.sort((a, b) => {
-      const ta = a.kind === 'turn-divider'
-        ? new Date(a.at).getTime() - 1
-        : new Date(a.kind === 'message' ? a.msg.createdAt : a.call.createdAt).getTime()
-      const tb = b.kind === 'turn-divider'
-        ? new Date(b.at).getTime() - 1
-        : new Date(b.kind === 'message' ? b.msg.createdAt : b.call.createdAt).getTime()
+      const ta =
+        a.kind === 'turn-divider'
+          ? new Date(a.at).getTime() - 1
+          : new Date(a.kind === 'message' ? a.msg.createdAt : a.call.createdAt).getTime()
+      const tb =
+        b.kind === 'turn-divider'
+          ? new Date(b.at).getTime() - 1
+          : new Date(b.kind === 'message' ? b.msg.createdAt : b.call.createdAt).getTime()
       return ta - tb
     })
 
@@ -147,10 +150,14 @@ export function SessionConversationTimeline({ messages, toolCalls, turns, isLoad
               >
                 <div className="text-muted-foreground mb-1 flex items-center gap-2 text-[11px]">
                   <span>{t(`agentAudit.message.role.${m.role}`, { defaultValue: m.role })}</span>
-                  {m.toolName && <Badge variant="secondary" className="text-[10px]">{m.toolName}</Badge>}
+                  {m.toolName && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {m.toolName}
+                    </Badge>
+                  )}
                   <span className="ml-auto">{new Date(m.createdAt).toLocaleTimeString()}</span>
                 </div>
-                <pre className="max-h-60 overflow-auto whitespace-pre-wrap text-sm">
+                <pre className="max-h-60 overflow-auto text-sm whitespace-pre-wrap">
                   {m.content || '-'}
                 </pre>
               </div>

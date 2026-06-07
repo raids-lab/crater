@@ -1,27 +1,39 @@
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+
 import { ToolCallCard } from '@/components/aiops/ToolCallCard'
 import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
 import { NothingCore } from '@/components/placeholder/nothing'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
-import { AgentAuditToolCall, apiAdminGetAgentAuditSessionToolCalls } from '@/services/api/admin/agentAudit'
+
+import {
+  AgentAuditToolCall,
+  apiAdminGetAgentAuditSessionToolCalls,
+} from '@/services/api/admin/agentAudit'
 
 interface Props {
   sessionId: string
 }
 
-function toolStatus(status: string): 'executing' | 'awaiting_confirmation' | 'done' | 'error' | 'cancelled' {
+function toolStatus(
+  status: string
+): 'executing' | 'awaiting_confirmation' | 'done' | 'error' | 'cancelled' {
   switch (status) {
     case 'success':
-    case 'completed': return 'done'
+    case 'completed':
+      return 'done'
     case 'confirmation_required':
-    case 'await_confirm': return 'awaiting_confirmation'
+    case 'await_confirm':
+      return 'awaiting_confirmation'
     case 'cancelled':
-    case 'canceled': return 'cancelled'
-    case 'running': return 'executing'
-    default: return 'error'
+    case 'canceled':
+      return 'cancelled'
+    case 'running':
+      return 'executing'
+    default:
+      return 'error'
   }
 }
 
@@ -33,14 +45,19 @@ function argsRecord(v: unknown): Record<string, unknown> {
 function stringifyResult(v: unknown): string {
   if (v === null || v === undefined || v === '') return ''
   if (typeof v === 'string') return v
-  try { return JSON.stringify(v, null, 2) } catch { return String(v) }
+  try {
+    return JSON.stringify(v, null, 2)
+  } catch {
+    return String(v)
+  }
 }
 
 export function SessionToolCallsPanel({ sessionId }: Props) {
   const { t } = useTranslation()
   const q = useQuery({
     queryKey: ['admin', 'agent-audit', 'tool-calls', sessionId],
-    queryFn: async () => (await apiAdminGetAgentAuditSessionToolCalls(sessionId)).data as AgentAuditToolCall[],
+    queryFn: async () =>
+      (await apiAdminGetAgentAuditSessionToolCalls(sessionId)).data as AgentAuditToolCall[],
     enabled: !!sessionId,
   })
 
@@ -61,10 +78,14 @@ export function SessionToolCallsPanel({ sessionId }: Props) {
         <Card key={tc.id}>
           <CardContent className="space-y-2 pt-4">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="outline">{t(`agentAudit.toolCall.source.${tc.source ?? 'backend'}`)}</Badge>
+              <Badge variant="outline">
+                {t(`agentAudit.toolCall.source.${tc.source ?? 'backend'}`)}
+              </Badge>
               {tc.agentRole && <Badge variant="secondary">{tc.agentRole}</Badge>}
               {tc.executionBackend && <Badge variant="secondary">{tc.executionBackend}</Badge>}
-              <span className="text-muted-foreground ml-auto">{new Date(tc.createdAt).toLocaleString()}</span>
+              <span className="text-muted-foreground ml-auto">
+                {new Date(tc.createdAt).toLocaleString()}
+              </span>
             </div>
             <ToolCallCard
               toolName={tc.toolName}

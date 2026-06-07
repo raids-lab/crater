@@ -915,7 +915,11 @@ definitions:
         type: string
       latestEvalId:
         type: integer
+      latestEvalScope:
+        type: string
       latestEvalStatus:
+        type: string
+      latestEvalType:
         type: string
       messageCount:
         type: integer
@@ -2300,6 +2304,13 @@ definitions:
       pinned:
         type: boolean
     type: object
+  internal_handler_agent.AgentSessionTitleRequest:
+    properties:
+      title:
+        type: string
+    required:
+    - title
+    type: object
   internal_handler_agent.AgentToolConfirmation:
     properties:
       confirm_id:
@@ -2390,6 +2401,8 @@ definitions:
       agent_id:
         type: string
       agent_role:
+        type: string
+      execution_backend:
         type: string
       internal_context:
         $ref: '#/definitions/internal_handler_agent.AgentInternalContext'
@@ -3902,8 +3915,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Starts a hidden follow-up turn so the agent can explain the execution
-        result.
+      description: Resumes a paused agent turn after the confirmation result has been
+        recorded.
       parameters:
       - description: Resume request
         in: body
@@ -4087,6 +4100,32 @@ paths:
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       summary: Pin or unpin an agent session
+      tags:
+      - agent
+  /api/v1/agent/sessions/{sessionId}/title:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Session ID (UUID)
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      - description: Rename request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.AgentSessionTitleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      summary: Rename an agent session
       tags:
       - agent
   /api/v1/agent/sessions/{sessionId}/tool-calls:

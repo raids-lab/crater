@@ -71,7 +71,6 @@ const SEVERITY_CONFIG = {
 }
 
 export function PipelineReportCard({
-  reportId: _reportId,
   reportType,
   completedAt,
   summary,
@@ -117,7 +116,7 @@ export function PipelineReportCard({
           </p>
         </div>
         <div className="rounded-md border border-amber-200 bg-amber-50/50 px-3 py-2 text-center dark:border-amber-800 dark:bg-amber-950/30">
-          <p className="text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">
+          <p className="text-lg font-bold text-amber-600 tabular-nums dark:text-amber-400">
             {summary.idle_detected}
           </p>
           <p className="text-muted-foreground text-[10px]">
@@ -125,7 +124,7 @@ export function PipelineReportCard({
           </p>
         </div>
         <div className="rounded-md border border-red-200 bg-red-50/50 px-3 py-2 text-center dark:border-red-800 dark:bg-red-950/30">
-          <p className="text-lg font-bold tabular-nums text-red-600 dark:text-red-400">
+          <p className="text-lg font-bold text-red-600 tabular-nums dark:text-red-400">
             {summary.gpu_waste_hours}h
           </p>
           <p className="text-muted-foreground text-[10px]">
@@ -166,7 +165,7 @@ export function PipelineReportCard({
                   {cat.items.map((item, iIdx) => (
                     <div
                       key={iIdx}
-                      className="flex items-center gap-2 rounded px-2 py-1 text-[11px] hover:bg-muted/50"
+                      className="hover:bg-muted/50 flex items-center gap-2 rounded px-2 py-1 text-[11px]"
                     >
                       <code className="min-w-0 flex-1 truncate font-mono">{item.job_name}</code>
                       <span className="text-muted-foreground shrink-0">{item.user}</span>

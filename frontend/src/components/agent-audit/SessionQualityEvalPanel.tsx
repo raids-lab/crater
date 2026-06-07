@@ -50,7 +50,10 @@ function renderScores(scores: unknown) {
   return (
     <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
       {entries.map(([k, v]) => (
-        <div key={k} className="bg-muted/30 flex items-center justify-between rounded-md px-3 py-2 border border-border/40">
+        <div
+          key={k}
+          className="bg-muted/30 border-border/40 flex items-center justify-between rounded-md border px-3 py-2"
+        >
           <span className="text-muted-foreground">{k}</span>
           <span className="font-mono">{String(v)}</span>
         </div>
@@ -285,11 +288,18 @@ export function SessionQualityEvalPanel({ sessionId, turns = [] }: Props) {
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2.5 text-base">
-              <Badge variant={latest.evalStatus === 'completed' ? 'default' : 'secondary'} className="px-2.5 py-0.5 text-xs font-normal">
+              <Badge
+                variant={latest.evalStatus === 'completed' ? 'default' : 'secondary'}
+                className="px-2.5 py-0.5 text-xs font-normal"
+              >
                 {t(`agentAudit.eval.status.${latest.evalStatus}`)}
               </Badge>
-              <Badge variant="outline" className="px-2.5 py-0.5 text-xs font-normal">{evalScopeLabel(latest.evalScope, t)}</Badge>
-              <Badge variant="outline" className="px-2.5 py-0.5 text-xs font-normal">{evalTypeLabel(latest.evalType, t)}</Badge>
+              <Badge variant="outline" className="px-2.5 py-0.5 text-xs font-normal">
+                {evalScopeLabel(latest.evalScope, t)}
+              </Badge>
+              <Badge variant="outline" className="px-2.5 py-0.5 text-xs font-normal">
+                {evalTypeLabel(latest.evalType, t)}
+              </Badge>
               <span className="text-muted-foreground ml-2 text-sm">
                 {t(`agentAudit.eval.triggerSource.${latest.triggerSource}`, {
                   defaultValue: latest.triggerSource,
@@ -346,7 +356,7 @@ export function SessionQualityEvalPanel({ sessionId, turns = [] }: Props) {
       )}
 
       {evals.length > 1 && (
-        <Card className="border-border shadow-sm mt-6">
+        <Card className="border-border mt-6 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="text-base">{t('agentAudit.eval.history')}</CardTitle>
           </CardHeader>
@@ -357,7 +367,10 @@ export function SessionQualityEvalPanel({ sessionId, turns = [] }: Props) {
                   <AccordionItem key={e.id} value={String(e.id)} className="border-border/50 px-4">
                     <AccordionTrigger className="py-4 hover:no-underline">
                       <div className="flex flex-1 items-center gap-3 text-sm">
-                        <Badge variant={e.evalStatus === 'completed' ? 'default' : 'secondary'} className="font-normal">
+                        <Badge
+                          variant={e.evalStatus === 'completed' ? 'default' : 'secondary'}
+                          className="font-normal"
+                        >
                           {t(`agentAudit.eval.status.${e.evalStatus}`)}
                         </Badge>
                         <Badge variant="outline" className="font-normal">
@@ -371,12 +384,12 @@ export function SessionQualityEvalPanel({ sessionId, turns = [] }: Props) {
                             defaultValue: e.triggerSource,
                           })}
                         </span>
-                        <span className="text-muted-foreground ml-auto mr-4 text-sm">
+                        <span className="text-muted-foreground mr-4 ml-auto text-sm">
                           {new Date(e.createdAt).toLocaleString()}
                         </span>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="space-y-6 pb-6 pt-2">
+                    <AccordionContent className="space-y-6 pt-2 pb-6">
                       {hasScores(e.chatScores) && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-2 text-sm">

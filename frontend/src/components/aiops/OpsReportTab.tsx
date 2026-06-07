@@ -3,6 +3,7 @@
  * Shown as a tab in the admin 智能运维 page.
  */
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import {
   Activity,
   AlertCircle,
@@ -18,7 +19,6 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,11 +37,7 @@ import {
   apiGetOpsReportDetail,
   apiListOpsReports,
 } from '@/services/api/ops-report'
-import type {
-  OpsReportDetail,
-  OpsReportJSON,
-  OpsReportListItem,
-} from '@/services/api/ops-report'
+import type { OpsReportDetail, OpsReportJSON, OpsReportListItem } from '@/services/api/ops-report'
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -49,10 +45,7 @@ export function OpsReportTab() {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null)
   const [historyPage, setHistoryPage] = useState(1)
 
-  const {
-    data: latestData,
-    isLoading: latestLoading,
-  } = useQuery({
+  const { data: latestData, isLoading: latestLoading } = useQuery({
     queryKey: ['ops-report', 'latest'],
     queryFn: async () => {
       const res = await apiGetLatestOpsReport()
@@ -157,10 +150,16 @@ function ReportSummaryCard({
   const delta = overview?.delta
   const periodTime = report.period_end
     ? new Date(report.period_end).toLocaleString('zh-CN', {
-        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
       })
     : new Date(report.created_at).toLocaleString('zh-CN', {
-        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
       })
 
   return (
@@ -178,29 +177,65 @@ function ReportSummaryCard({
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="总作业" value={overview?.total ?? report.job_total} icon={Activity} delta={delta?.total} />
-          <StatCard label="成功" value={overview?.success ?? report.job_success} icon={CheckCircle} variant="success"
-            suffix={overview ? `${overview.success_rate.toFixed(1)}%` : undefined} />
-          <StatCard label="失败" value={overview?.failed ?? report.job_failed} icon={AlertCircle} variant="destructive" delta={delta?.failed} />
-          <StatCard label="等待中" value={overview?.pending ?? report.job_pending} icon={Clock} variant="warning" delta={delta?.pending} />
+          <StatCard
+            label="总作业"
+            value={overview?.total ?? report.job_total}
+            icon={Activity}
+            delta={delta?.total}
+          />
+          <StatCard
+            label="成功"
+            value={overview?.success ?? report.job_success}
+            icon={CheckCircle}
+            variant="success"
+            suffix={overview ? `${overview.success_rate.toFixed(1)}%` : undefined}
+          />
+          <StatCard
+            label="失败"
+            value={overview?.failed ?? report.job_failed}
+            icon={AlertCircle}
+            variant="destructive"
+            delta={delta?.failed}
+          />
+          <StatCard
+            label="等待中"
+            value={overview?.pending ?? report.job_pending}
+            icon={Clock}
+            variant="warning"
+            delta={delta?.pending}
+          />
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function StatCard({ label, value, icon: Icon, variant = 'default', delta, suffix }: {
-  label: string; value: number; icon: React.ElementType;
-  variant?: 'default' | 'success' | 'destructive' | 'warning'; delta?: number; suffix?: string
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  variant = 'default',
+  delta,
+  suffix,
+}: {
+  label: string
+  value: number
+  icon: React.ElementType
+  variant?: 'default' | 'success' | 'destructive' | 'warning'
+  delta?: number
+  suffix?: string
 }) {
   const variantBg = {
-    default: 'bg-muted/50', success: 'bg-green-50 dark:bg-green-950/20',
-    destructive: 'bg-red-50 dark:bg-red-950/20', warning: 'bg-yellow-50 dark:bg-yellow-950/20',
+    default: 'bg-muted/50',
+    success: 'bg-green-50 dark:bg-green-950/20',
+    destructive: 'bg-red-50 dark:bg-red-950/20',
+    warning: 'bg-yellow-50 dark:bg-yellow-950/20',
   }
   return (
     <div className={`rounded-lg p-3 ${variantBg[variant]}`}>
       <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-        <Icon className="h-3.5 w-3.5" />{label}
+        <Icon className="h-3.5 w-3.5" />
+        {label}
       </div>
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-2xl font-bold">{value}</span>
@@ -212,8 +247,19 @@ function StatCard({ label, value, icon: Icon, variant = 'default', delta, suffix
 }
 
 function DeltaBadge({ delta }: { delta: number }) {
-  if (delta > 0) return <span className="inline-flex items-center gap-0.5 text-xs text-red-600"><ArrowUp className="h-3 w-3" />+{delta}</span>
-  if (delta < 0) return <span className="inline-flex items-center gap-0.5 text-xs text-green-600"><ArrowDown className="h-3 w-3" />{delta}</span>
+  if (delta > 0)
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs text-red-600">
+        <ArrowUp className="h-3 w-3" />+{delta}
+      </span>
+    )
+  if (delta < 0)
+    return (
+      <span className="inline-flex items-center gap-0.5 text-xs text-green-600">
+        <ArrowDown className="h-3 w-3" />
+        {delta}
+      </span>
+    )
   return null
 }
 
@@ -233,7 +279,8 @@ function FailureAnalysisCard({ analysis }: { analysis: OpsReportJSON['failure_an
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <AlertCircle className="h-4 w-4 text-red-500" />失败分析
+          <AlertCircle className="h-4 w-4 text-red-500" />
+          失败分析
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -249,12 +296,22 @@ function FailureAnalysisCard({ analysis }: { analysis: OpsReportJSON['failure_an
           <TableBody>
             {analysis.categories.map((cat) => (
               <TableRow key={cat.reason}>
-                <TableCell><Badge variant="outline">{cat.reason}</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="outline">{cat.reason}</Badge>
+                </TableCell>
                 <TableCell className="text-center font-medium">{cat.count}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">{cat.top_job?.name || '-'}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {cat.top_job?.name || '-'}
+                </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={navigateToFailedJobs}>
-                    查看<ExternalLink className="ml-1 h-3 w-3" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={navigateToFailedJobs}
+                  >
+                    查看
+                    <ExternalLink className="ml-1 h-3 w-3" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -266,7 +323,9 @@ function FailureAnalysisCard({ analysis }: { analysis: OpsReportJSON['failure_an
             受影响用户: {analysis.top_affected_users.join('、')}
           </p>
         )}
-        {analysis.patterns && <p className="text-muted-foreground mt-3 text-sm">{analysis.patterns}</p>}
+        {analysis.patterns && (
+          <p className="text-muted-foreground mt-3 text-sm">{analysis.patterns}</p>
+        )}
       </CardContent>
     </Card>
   )
@@ -284,7 +343,8 @@ function SuccessAnalysisCard({ analysis }: { analysis: OpsReportJSON['success_an
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <CheckCircle className="h-4 w-4 text-green-500" />成功作业画像
+          <CheckCircle className="h-4 w-4 text-green-500" />
+          成功作业画像
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -330,7 +390,11 @@ function SuccessAnalysisCard({ analysis }: { analysis: OpsReportJSON['success_an
   )
 }
 
-function ResourceUtilizationCard({ utilization }: { utilization: OpsReportJSON['resource_utilization'] }) {
+function ResourceUtilizationCard({
+  utilization,
+}: {
+  utilization: OpsReportJSON['resource_utilization']
+}) {
   const navigate = useNavigate()
 
   const navigateToJobs = () => {
@@ -342,7 +406,8 @@ function ResourceUtilizationCard({ utilization }: { utilization: OpsReportJSON['
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Cpu className="h-4 w-4 text-blue-500" />资源利用率
+          <Cpu className="h-4 w-4 text-blue-500" />
+          资源利用率
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -377,7 +442,10 @@ function ResourceUtilizationCard({ utilization }: { utilization: OpsReportJSON['
             </p>
           )}
           {utilization.node_hotspots.length > 0 && (
-            <p><AlertCircle className="mr-1 inline h-3.5 w-3.5 text-red-500" />热点节点: {utilization.node_hotspots.join(', ')}</p>
+            <p>
+              <AlertCircle className="mr-1 inline h-3.5 w-3.5 text-red-500" />
+              热点节点: {utilization.node_hotspots.join(', ')}
+            </p>
           )}
         </div>
       </CardContent>
@@ -390,13 +458,22 @@ function UtilBar({ label, value }: { label: string; value: number }) {
   const color = pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-green-500'
   return (
     <div>
-      <div className="mb-1 flex justify-between text-sm"><span>{label}</span><span className="font-medium">{pct.toFixed(1)}%</span></div>
-      <div className="bg-muted h-2 rounded-full"><div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} /></div>
+      <div className="mb-1 flex justify-between text-sm">
+        <span>{label}</span>
+        <span className="font-medium">{pct.toFixed(1)}%</span>
+      </div>
+      <div className="bg-muted h-2 rounded-full">
+        <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   )
 }
 
-function RecommendationsCard({ recommendations }: { recommendations: OpsReportJSON['recommendations'] }) {
+function RecommendationsCard({
+  recommendations,
+}: {
+  recommendations: OpsReportJSON['recommendations']
+}) {
   const cfg = {
     high: { color: 'text-red-600 bg-red-50 dark:bg-red-950/30', icon: AlertCircle },
     medium: { color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30', icon: AlertTriangle },
@@ -406,7 +483,8 @@ function RecommendationsCard({ recommendations }: { recommendations: OpsReportJS
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Lightbulb className="h-4 w-4 text-yellow-500" />运维建议
+          <Lightbulb className="h-4 w-4 text-yellow-500" />
+          运维建议
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -415,7 +493,8 @@ function RecommendationsCard({ recommendations }: { recommendations: OpsReportJS
           const Icon = c.icon
           return (
             <div key={idx} className={`flex items-start gap-2 rounded-lg p-3 ${c.color}`}>
-              <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" /><span className="text-sm">{rec.text}</span>
+              <Icon className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span className="text-sm">{rec.text}</span>
             </div>
           )
         })}
@@ -424,14 +503,27 @@ function RecommendationsCard({ recommendations }: { recommendations: OpsReportJS
   )
 }
 
-function ReportHistoryTable({ items, total, page, onPageChange, selectedId, onSelect }: {
-  items: OpsReportListItem[]; total: number; page: number;
-  onPageChange: (p: number) => void; selectedId: string | null; onSelect: (id: string) => void
+function ReportHistoryTable({
+  items,
+  total,
+  page,
+  onPageChange,
+  selectedId,
+  onSelect,
+}: {
+  items: OpsReportListItem[]
+  total: number
+  page: number
+  onPageChange: (p: number) => void
+  selectedId: string | null
+  onSelect: (id: string) => void
 }) {
   const totalPages = Math.ceil(total / 10)
   return (
     <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-base">历史报告</CardTitle></CardHeader>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">历史报告</CardTitle>
+      </CardHeader>
       <CardContent>
         {items.length === 0 ? (
           <p className="text-muted-foreground py-4 text-center text-sm">暂无历史报告</p>
@@ -449,20 +541,36 @@ function ReportHistoryTable({ items, total, page, onPageChange, selectedId, onSe
               </TableHeader>
               <TableBody>
                 {items.map((item) => {
-                  const rate = item.job_total > 0 ? ((item.job_failed / item.job_total) * 100).toFixed(1) : '0.0'
-                  const time = new Date(item.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                  const rate =
+                    item.job_total > 0
+                      ? ((item.job_failed / item.job_total) * 100).toFixed(1)
+                      : '0.0'
+                  const time = new Date(item.created_at).toLocaleString('zh-CN', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
                   const isSelected = item.id === selectedId
                   return (
                     <TableRow key={item.id} className={isSelected ? 'bg-primary/5' : undefined}>
                       <TableCell className="text-sm">{time}</TableCell>
                       <TableCell className="text-center">{item.job_total}</TableCell>
                       <TableCell className="text-center">
-                        {item.job_failed > 0 ? <span className="font-medium text-red-600">{item.job_failed}</span> : item.job_failed}
+                        {item.job_failed > 0 ? (
+                          <span className="font-medium text-red-600">{item.job_failed}</span>
+                        ) : (
+                          item.job_failed
+                        )}
                       </TableCell>
                       <TableCell className="text-center">{rate}%</TableCell>
                       <TableCell className="text-right">
-                        <Button variant={isSelected ? 'default' : 'ghost'} size="sm" className="h-7 text-xs"
-                          onClick={() => onSelect(item.id)}>
+                        <Button
+                          variant={isSelected ? 'default' : 'ghost'}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => onSelect(item.id)}
+                        >
                           {isSelected ? '当前' : '查看'}
                         </Button>
                       </TableCell>
@@ -473,9 +581,25 @@ function ReportHistoryTable({ items, total, page, onPageChange, selectedId, onSe
             </Table>
             {totalPages > 1 && (
               <div className="mt-3 flex justify-center gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>上一页</Button>
-                <span className="text-muted-foreground flex items-center text-sm">{page} / {totalPages}</span>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>下一页</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => onPageChange(page - 1)}
+                >
+                  上一页
+                </Button>
+                <span className="text-muted-foreground flex items-center text-sm">
+                  {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => onPageChange(page + 1)}
+                >
+                  下一页
+                </Button>
               </div>
             )}
           </>

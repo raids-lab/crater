@@ -85,7 +85,9 @@ export const apiChatMessage = (request: IChatRequest) =>
 
 export const apiChatMessageLLM = (request: IChatRequest) =>
   apiRequest(() =>
-    apiClient.post('v1/aiops/llmchat', { json: request, timeout: 150000 }).json<IResponse<IChatResponse>>()
+    apiClient
+      .post('v1/aiops/llmchat', { json: request, timeout: 150000 })
+      .json<IResponse<IChatResponse>>()
   )
 
 export const apiAdminChatMessage = (request: IChatRequest) =>

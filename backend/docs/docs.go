@@ -570,7 +570,7 @@ const docTemplate = `{
         },
         "/api/v1/agent/chat/resume": {
             "post": {
-                "description": "Starts a hidden follow-up turn so the agent can explain the execution result.",
+                "description": "Resumes a paused agent turn after the confirmation result has been recorded.",
                 "consumes": [
                     "application/json"
                 ],
@@ -843,6 +843,46 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/internal_handler_agent.AgentSessionPinRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/agent/sessions/{sessionId}/title": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Rename an agent session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "sessionId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Rename request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentSessionTitleRequest"
                         }
                     }
                 ],
@@ -11821,7 +11861,13 @@ const docTemplate = `{
                 "latestEvalId": {
                     "type": "integer"
                 },
+                "latestEvalScope": {
+                    "type": "string"
+                },
                 "latestEvalStatus": {
+                    "type": "string"
+                },
+                "latestEvalType": {
                     "type": "string"
                 },
                 "messageCount": {
@@ -13915,6 +13961,17 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_agent.AgentSessionTitleRequest": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_agent.AgentToolConfirmation": {
             "type": "object",
             "properties": {
@@ -14057,6 +14114,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "agent_role": {
+                    "type": "string"
+                },
+                "execution_backend": {
                     "type": "string"
                 },
                 "internal_context": {

@@ -18,10 +18,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import {
+  BotIcon,
   CheckCircle,
   ClipboardListIcon,
   Clock,
-  BotIcon,
   FileText,
   GaugeIcon,
   GpuIcon,
@@ -453,7 +453,9 @@ function RouteComponent() {
               let report: AgentReportData | null = null
               try {
                 if (order.agentReport) report = JSON.parse(order.agentReport)
-              } catch { /* ignore parse errors */ }
+              } catch {
+                /* ignore parse errors */
+              }
               if (!report) return <div className="text-muted-foreground p-4">无评估数据</div>
               return (
                 <div className="space-y-4">
@@ -498,7 +500,7 @@ function RouteComponent() {
                           {report.trace.map((t, i) => (
                             <div key={i} className="text-muted-foreground flex gap-2 text-sm">
                               <span className="font-mono text-xs">{i + 1}.</span>
-                              <span className="font-medium text-foreground">{t.tool}</span>
+                              <span className="text-foreground font-medium">{t.tool}</span>
                               <span className="truncate">{t.args_summary}</span>
                             </div>
                           ))}

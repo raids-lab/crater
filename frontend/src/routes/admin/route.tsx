@@ -20,8 +20,8 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import AppLayout from '@/components/layout/app-layout'
 import { AIChatAssistantProvider } from '@/components/aiops/AIChatAssistantProvider'
+import AppLayout from '@/components/layout/app-layout'
 import { NavGroupProps } from '@/components/sidebar/types'
 
 import { Role } from '@/services/api/auth'

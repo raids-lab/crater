@@ -35,7 +35,7 @@ import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { type ApprovalOrder } from '@/services/api/approvalorder'
+import { type ApprovalOrder, type ReviewSource } from '@/services/api/approvalorder'
 import { NodeStatus } from '@/services/api/cluster'
 import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
@@ -270,13 +270,11 @@ export function ApprovalOrderDataTable({
     },
     {
       accessorKey: 'reviewSource',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="审批来源" />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title="审批来源" />,
       cell: ({ row }) => {
-        const source = row.getValue('reviewSource') as string
+        const source = row.getValue('reviewSource') as ReviewSource
         if (!source) return <span className="text-muted-foreground text-sm">-</span>
-        return <ReviewSourceBadge source={source as any} />
+        return <ReviewSourceBadge source={source} />
       },
     },
     {
