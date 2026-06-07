@@ -4,7 +4,7 @@ The prompt is composed from three segments:
   _BASE_PROMPT        — shared role definition, capabilities, and core principles
   _ADMIN_ADDON        — admin-specific principles, cluster diagnostics, observability
   _USER_ADDON         — user-specific principles emphasising confirmation and disambiguation
-  _CONTEXT_SECTION    — dynamic injection area (user info, page, capabilities, skills)
+  _CONTEXT_SECTION    — dynamic injection area (user info, page, capabilities)
 
 build_system_prompt() selects admin/user addon based on context.capabilities.surface.page_scope.
 """
@@ -142,9 +142,7 @@ _CONTEXT_SECTION = """\
 - 账户: {account_name} (ID: {account_id})
 - 当前页面: {page_url}
 {page_context_detail}
-{capabilities_detail}
-
-{skills_context}"""
+{capabilities_detail}"""
 
 # ---------------------------------------------------------------------------
 # First-time user welcome
@@ -161,11 +159,10 @@ FIRST_TIME_ADDON = """
 
 def build_system_prompt(
     context: dict,
-    skills_context: str = "",
     is_first_time: bool = False,
     user_message: str = "",
 ) -> str:
-    """Build the full system prompt with context and skills injected.
+    """Build the full system prompt with request context injected.
 
     Selects admin or user addon based on context.capabilities.surface.page_scope.
     """
@@ -224,7 +221,6 @@ def build_system_prompt(
         page_url=page_url,
         page_context_detail=page_context_detail,
         capabilities_detail=capabilities_detail,
-        skills_context=skills_context,
     )
 
     if is_first_time:

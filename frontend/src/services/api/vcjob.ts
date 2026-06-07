@@ -632,5 +632,10 @@ export type GetCronjobConfigStatusResp = Record<string, GetCronjobConfigStatusRe
 export const apiAdminCronJobConfigStatus = (param: GetCronjobConfigStatusReq) =>
   apiV1Post<IResponse<GetCronjobConfigStatusResp>>('admin/operations/cronjob/config/status', param)
 
+export interface PatrolExecutionResult {
+  status?: string
+  report_id?: string
+}
+
 export const apiAdminTriggerPatrolJob = (jobName: string) =>
-  apiV1Post<IResponse<unknown>>(`admin/operations/patrol/${jobName}/execute`)
+  apiV1Post<IResponse<PatrolExecutionResult>>(`admin/operations/patrol/${jobName}/execute`)
