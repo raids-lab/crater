@@ -17,6 +17,8 @@ If a planned code change has no matching contract, update the appropriate docume
 
 You can run `make help` in `cli/` at any time to see the available local workflow commands.
 
+Before running CLI build or test targets, run `go version` and make sure it matches `cli/go.mod` (currently `1.25.4`).
+
 ## 2. Implement The Change
 
 Keep changes scoped to the command domain or shared module you are touching.
@@ -61,6 +63,12 @@ Before opening or updating a pull request, run the full CLI test target unless t
 
 ```bash
 make test
+```
+
+`make pre-commit-check` is available for consistency with other sub-projects and is currently equivalent to `make test`:
+
+```bash
+make pre-commit-check
 ```
 
 ## 4. Before Submitting
