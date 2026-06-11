@@ -494,7 +494,7 @@ func (s *agentJobSubmitter) SubmitTensorflowJob(
 				Spec: podSpec,
 			},
 		}
-		if task.Name == "worker" {
+		if task.Name == volcanoTaskWorker {
 			taskSpec.Policies = []batch.LifecyclePolicy{
 				{
 					Action: bus.CompleteJobAction,
@@ -639,7 +639,7 @@ func (s *agentJobSubmitter) SubmitPytorchJob(
 		}
 
 		switch task.Name {
-		case "master":
+		case volcanoTaskMaster:
 			taskSpec.Policies = []batch.LifecyclePolicy{
 				{
 					Action: bus.CompleteJobAction,
@@ -650,7 +650,7 @@ func (s *agentJobSubmitter) SubmitPytorchJob(
 					Event:  bus.PodFailedEvent,
 				},
 			}
-		case "worker":
+		case volcanoTaskWorker:
 			taskSpec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 		}
 
@@ -670,7 +670,7 @@ func (s *agentJobSubmitter) SubmitPytorchJob(
 			MinAvailable:            minAvailable,
 			SchedulerName:           VolcanoSchedulerName,
 			Plugins: map[string][]string{
-				"pytorch": {"--master=master", "--worker=worker", "--port=23456"},
+				string(CraterJobTypePytorch): {pytorchPluginMasterArg, pytorchPluginWorkerArg, pytorchPluginPortArg},
 			},
 			Policies: []batch.LifecyclePolicy{
 				{
