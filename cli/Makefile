@@ -77,5 +77,8 @@ unit-test: ## 运行 cli 的所有单元测试（排除 ./test/snapshots）
 test: unit-test snapshot-check ## 依次运行单元测试与快照校验
 	@echo "$(GREEN)✅ 全部测试通过$(RESET)"
 
+.PHONY: pre-commit-check
+pre-commit-check: test ## 提交前检查（等价于 test）
+
 # 默认目标
 .DEFAULT_GOAL := help

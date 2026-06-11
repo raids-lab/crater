@@ -17,6 +17,8 @@ Crater CLI 采用文档驱动开发。修改代码前，请先确认你触及的
 
 你可以随时在 `cli/` 目录下运行 `make help` 查看本地工作流命令。
 
+执行 CLI 构建或测试 target 前，先运行 `go version`，确认它与 `cli/go.mod` 一致（当前为 `1.25.4`）。
+
 ## 2. 实现改动
 
 改动应尽量限制在对应命令域或共享模块内。
@@ -61,6 +63,12 @@ make snapshot-update
 
 ```bash
 make test
+```
+
+为与其他子项目保持一致，`make pre-commit-check` 也可用，目前等价于 `make test`：
+
+```bash
+make pre-commit-check
 ```
 
 ## 4. 提交前检查

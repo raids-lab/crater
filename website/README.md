@@ -1,43 +1,13 @@
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-# Crater
+# Crater Documentation Site
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+The Crater product documentation site (deployment, user, and admin docs), built with Next.js and [Fumadocs](https://github.com/fuma-nama/fumadocs).
 
-## Getting Started
+The published site lives at https://raids-lab.github.io/crater/.
 
-Run development server:
+## Development
 
-```bash
-pnpm config set registry https://registry.npmmirror.com
-pnpm install
-pnpm dev
-```
+The development specification — running locally, building, document classification, terminology, chart-version placeholders, and writing standards — lives in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-Open http://localhost:3000/crater/zh with your browser to see the result.
-
-## Build and serve locally
-
-```bash
-pnpm build
-pnpm dlx serve@latest out --serve-path /crater
-```
-
-Open http://localhost:3000/crater/zh with your browser to see the result.
-
-## Before commit
-
-```bash
-./hack/squoosh_images.py
-```
-
-## Learn More
-
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.vercel.app) - learn about Fumadocs
+Repository-wide rules (global development rules, hooks, commit/PR conventions) live in the root [CONTRIBUTING.md](../CONTRIBUTING.md).
