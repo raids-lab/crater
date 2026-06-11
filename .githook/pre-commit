@@ -35,6 +35,7 @@ if [ -z "$STAGED_FILES" ]; then
         echo "   cd frontend && make pre-commit-check"
         echo "   cd backend && make pre-commit-check"
         echo "   cd website && make pre-commit-check"
+        echo "   cd charts && make pre-commit-check"
         echo ""
         exit 0
     fi
@@ -86,6 +87,21 @@ if echo "$STAGED_FILES" | grep -q "^backend/"; then
         CHECKS_RUN=1
     else
         echo "❌ Backend checks failed!"
+        exit 1
+    fi
+fi
+
+# Check if there are chart-related changes
+if echo "$STAGED_FILES" | grep -q "^charts/"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "⎈ Helm Chart Checks"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if (cd charts && make pre-commit-check); then
+        echo "✅ Helm chart checks passed!"
+        CHECKS_RUN=1
+    else
+        echo "❌ Helm chart checks failed!"
         exit 1
     fi
 fi

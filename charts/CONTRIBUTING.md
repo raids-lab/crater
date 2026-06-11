@@ -18,7 +18,7 @@ Use this file when you change chart metadata, `values.yaml`, Helm templates, dep
 1. **Identify the user-facing configuration impact**. If you add, remove, rename, or change behavior/defaults for a value, treat it as a configuration change.
 2. **Update the chart and docs together**. Changes to `values.yaml` parameters must be reflected in `charts/crater/README.md`.
 3. **Bump the chart release fields when required**. Template, dependency, configuration-logic, or configuration-behavior changes require a version bump.
-4. **验证渲染与文档**。PR 会触发 `.github/workflows/helm-chart-validate.yml`（`helm lint`、`helm template`、版本递增检查、打包 smoke test）；合入 `main` 后由 `.github/workflows/helm-chart-publish.yml` 自动发布 Chart 到 GHCR OCI。本地可按需运行 `helm lint` / `helm template` 预检。
+4. **Validate rendering and docs**. PRs trigger `.github/workflows/helm-chart-validate.yml` (`helm lint`, `helm template`, version bump check for release-impacting chart changes, and a packaging smoke test). After merging to `main`, `.github/workflows/helm-chart-publish.yml` publishes the chart to GHCR OCI. Run `helm lint` / `helm template` locally when useful.
 
 ## Versioning
 
@@ -49,8 +49,9 @@ Use this file when you change chart metadata, `values.yaml`, Helm templates, dep
 
 ## Before Submitting Chart Changes
 
-- PR 改动 `charts/**` 时会自动运行 **Validate Helm Chart** workflow；合入 `main` 后 **Publish Helm Chart** workflow 会自动打包并推送到 `oci://ghcr.io/raids-lab/crater`。
-- 本地可按需运行 `helm lint crater/`、`helm template crater crater/ --dry-run` 预检；`charts/` 无专属 `make` target，根 `pre-commit` 也不覆盖 Chart 变更。
+- PRs that change `charts/**` automatically run the **Validate Helm Chart** workflow. After merging to `main`, the **Publish Helm Chart** workflow packages and pushes the chart to `oci://ghcr.io/raids-lab/crater`.
+- The root pre-commit hook delegates staged `charts/**` changes to `cd charts && make pre-commit-check`. It requires a higher shared `version` / `appVersion` only when release-impacting chart files change (`Chart.yaml`, `values.yaml`, templates, dependencies, or `Chart.lock`).
+- Run `helm lint crater/` and `helm template crater crater/ --dry-run` locally when useful; `charts/` does not currently have a dedicated `make` target.
 - Include exact commands and results in the PR description when you ran local checks.
 - Confirm `version` and `appVersion` are identical when either field changes.
 - Confirm `charts/crater/README.md` reflects `values.yaml` changes.

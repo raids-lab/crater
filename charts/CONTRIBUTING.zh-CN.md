@@ -18,7 +18,7 @@
 1. **判断是否影响用户配置**。新增、删除、重命名配置项，或改变配置项行为 / 默认值，都视为配置变更。
 2. **同步修改 Chart 与文档**。修改 `values.yaml` 参数后，必须同步反映到 `charts/crater/README.md`。
 3. **按需提升发布版本字段**。模板、依赖、配置逻辑或配置行为变更都需要提升版本。
-4. **验证渲染与文档**。PR 会触发 `.github/workflows/helm-chart-validate.yml`（`helm lint`、`helm template`、版本递增检查、打包 smoke test）；合入 `main` 后由 `.github/workflows/helm-chart-publish.yml` 自动发布 Chart 到 GHCR OCI。本地可按需运行 `helm lint` / `helm template` 预检。
+4. **验证渲染与文档**。PR 会触发 `.github/workflows/helm-chart-validate.yml`（`helm lint`、`helm template`、对实际影响发布的 Chart 变更执行版本递增检查、打包 smoke test）；合入 `main` 后由 `.github/workflows/helm-chart-publish.yml` 自动发布 Chart 到 GHCR OCI。本地可按需运行 `helm lint` / `helm template` 预检。
 
 ## 版本管理
 
@@ -50,7 +50,8 @@
 ## 提交 Chart 改动前
 
 - PR 改动 `charts/**` 时会自动运行 **Validate Helm Chart** workflow；合入 `main` 后 **Publish Helm Chart** workflow 会自动打包并推送到 `oci://ghcr.io/raids-lab/crater`。
-- 本地可按需运行 `helm lint crater/`、`helm template crater crater/ --dry-run` 预检；`charts/` 无专属 `make` target，根 `pre-commit` 也不覆盖 Chart 变更。
+- 根 pre-commit hook 会在暂存 `charts/**` 变更时委托执行 `cd charts && make pre-commit-check`。只有实际影响 Chart 发布内容的文件变更时，才要求提升共享 `version` / `appVersion`（`Chart.yaml`、`values.yaml`、模板、依赖或 `Chart.lock`）。
+- 本地可按需运行 `helm lint crater/`、`helm template crater crater/ --dry-run` 预检；`charts/` 当前没有专属 `make` target。
 - 若运行了本地检查，在 PR 描述中写清具体命令与结果。
 - 任一版本字段变化时，确认 `version` 与 `appVersion` 完全相同。
 - 确认 `charts/crater/README.md` 已反映 `values.yaml` 变更。
