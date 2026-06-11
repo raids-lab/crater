@@ -135,7 +135,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		}
 
 		switch task.Name {
-		case "master":
+		case volcanoTaskMaster:
 			taskSpec.Policies = []batch.LifecyclePolicy{
 				{
 					Action: bus.CompleteJobAction,
@@ -146,7 +146,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 					Event:  bus.PodFailedEvent,
 				},
 			}
-		case "worker":
+		case volcanoTaskWorker:
 			taskSpec.Template.Spec.RestartPolicy = v1.RestartPolicyOnFailure
 		}
 
@@ -168,7 +168,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			MinAvailable:            minAvailable,
 			SchedulerName:           VolcanoSchedulerName,
 			Plugins: map[string][]string{
-				"pytorch": {"--master=master", "--worker=worker", "--port=23456"},
+				string(CraterJobTypePytorch): {pytorchPluginMasterArg, pytorchPluginWorkerArg, pytorchPluginPortArg},
 			},
 			Policies: []batch.LifecyclePolicy{
 				{
