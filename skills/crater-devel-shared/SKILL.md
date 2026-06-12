@@ -48,7 +48,7 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 6. **同步 main 与线性历史**：先用 `git remote -v` 识别哪个 remote 是主仓库 `raids-lab/crater`，哪个是用户 fork。主仓库 remote 可能叫 `origin` 或 `upstream`；也可能用户先在 GitHub 上 Sync fork，再从 fork remote 更新本地 `main`。不要假设 `origin` 一定是 fork。用正确来源更新本地 `main`，再将任务分支 rebase 到最新 `main`，保持线性历史。若远端 / 上游缺失、工作区有未保存改动或 rebase 冲突，先说明情况并按用户意图处理。
 7. **实现与记录**：实现过程中保持改动聚焦，按领域规范更新代码 / 文档 / 测试。可使用临时 task note 辅助记录，不要把临时记录纳入提交。
 8. **验证与收尾**：优先运行受影响模块的 `make pre-commit-check`（例如 `frontend`、`backend`、`website`、`cli` 均支持），必要时再运行根 `make pre-commit-check` 检查已暂存文件。涉及 Go 子项目时，先检查 `go version` 是否符合对应 `go.mod` / CONTRIBUTING。记录 Agent 实际执行的检查，并提示开发者完成方案阶段列出的人工检查。
-9. **提交 / 推送前人工确认**：最终 commit 或任何 push 前，必须要求开发者提供亲自执行的人工检查结果。Agent 可以告诉开发者应该打开哪些页面、检查哪些功能、运行哪些命令、阅读哪些文档；但若开发者没有提供人工检查结果，不得继续提交、推送或创建 PR 描述。文档改动必须要求开发者人工阅读检查，并请开发者基于经验判断直接修改或要求 Agent 调整，不能直接提交未经阅读检查的 AI 生成文档。
+9. **提交 / 推送前后人工确认**：最终 commit 或任何 push 前，必须要求开发者提供亲自执行的人工检查结果。Agent 可以告诉开发者应该打开哪些页面、检查哪些功能、运行哪些命令、阅读哪些文档；但若开发者没有提供人工检查结果，不得继续提交、推送或创建 PR 描述。文档改动必须要求开发者人工阅读检查，并请开发者基于经验判断直接修改或要求 Agent 调整，不能直接提交未经阅读检查的 AI 生成文档。创建 commit 时默认使用 `git commit -s` 添加 DCO sign-off，但必须先解释其含义并取得开发者对完整 commit message（包含所有 `Signed-off-by` 行）的确认，不得静默添加；commit subject 必须符合 `type: subject` 或 `type(scope): subject`。commit 创建成功后，立即读取并展示实际写入的完整 commit message 让开发者核对，然后说明下一步通常是整理 PR 描述并创建 PR；进入 PR 阶段前仍需开发者提供其亲自完成的测试 / 人工检查结果，Agent 可同时给出检查建议。
 
 ### 临时 Task Note
 
@@ -73,6 +73,9 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 - **保护开发者改动**：修改前检查工作区；不要 revert、覆盖或整理不属于当前任务的改动。遇到相关未提交改动影响任务时，先说明再处理。
 - **分支与 hooks**：准备实现前确保运行 `make install-hooks`；检查 main 是否最新、任务分支是否符合命名和任务范围，并在需要时 rebase 到最新 main，保持线性历史。远端名称不可假设：`origin` 可能是 `raids-lab/crater` 主仓库，任务分支必须推送到用户 fork remote，禁止直接更新主仓库 `main` 或在主仓库创建分支，除非维护者明确要求。
 - **提交 hook 边界**：安装 hook 后，`git commit` 会触发 pre-commit hook，并对暂存文件涉及的子项目执行对应 `make pre-commit-check`。该 hook 主要适配 macOS / Linux；Windows 上可能失效，应提示开发者手动运行受影响模块的 `make pre-commit-check` 或使用 WSL。
+- **DCO sign-off**：DCO 推荐所有贡献者使用；非 The Crater Project Team 成员的外部贡献者必须使用。Agent 创建 commit 时默认使用 `git commit -s`，但必须先解释 `Signed-off-by` 表示开发者确认自己有权按项目许可证提交贡献，并在执行前展示完整 commit message 给开发者确认；commit 创建成功后再次展示实际 commit message；不得静默添加 sign-off。维护者 squash merge 时保留已有 `Signed-off-by`，不得替贡献者伪造 sign-off。
+- **Commit message**：新 commit subject（第一行）必须符合 `type: subject` 或 `type(scope): subject`，type 仅限 `feat`、`fix`、`docs`、`style`、`refactor`、`test`、`chore`；scope 可用于说明改动域，例如 `docs(cli): add command examples`。完整 commit message 可包含正文和 trailer；DCO `Signed-off-by` 是 trailer，应放在正文之后，不受 subject 格式限制。
+- **版权文件头**：自 2026 年 6 月起，无论贡献者来自哪里，新增或更新文件级版权头与 NOTICE 文件时都使用 `The Crater Project Team, RAIDS-Lab`，并使用该文件对应的正确年份；新建于 2026 年的文件示例为 `Copyright 2026 The Crater Project Team, RAIDS-Lab`，项目级 NOTICE 可使用 `2023-2026` 这样的项目年份范围。
 - **代码注释一律用英文**，并与既有命名风格、架构模式保持高度一致。
 - **构建与验证**：优先通过各模块 `make` target；存在对应 target 时不要直接调用 `go` / `pnpm` / `helm`。受影响子项目优先运行 `make pre-commit-check`；需要验证时可自行执行相关命令。
 - **提交 / 推送前人工检查**：最终 commit、push 或创建 PR 描述前，必须要求开发者提供亲自执行的人工检查结果；没有开发者人工检查结果时停止。文档改动必须由开发者人工阅读检查，AI 只可辅助指出需阅读的文档、语言版本、链接、术语、示例命令、版本占位或缺失步骤。
@@ -99,6 +102,8 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 
 生成 PR 描述前，Agent 必须先阅读 diff，并整理自己在本轮开发中实际执行过的验证（如 `make` target、单测、构建、lint、`git diff --check`、文档链接 / 版本占位检查等）。如果开发过程中使用了临时 task note，应优先从其中提取已记录的 AI 检查、人工检查计划和开发者反馈。这些只能作为 **AI 执行的检查** 写入 PR 描述。还必须检查 `git status` / diff，确认没有把用于记录任务、测试、issue 编号、临时方案或开发过程的 task note / 临时文件纳入提交；除非维护者明确要求，这类文件不应提交。
 
+生成 PR 描述前还必须确认分支状态：识别 PR 原分支（head fork / head branch）和目标分支（base repository / base branch），并计算相对于目标分支的领先 / 落后提交数。向开发者展示这些信息供检查；正常 PR 分支应该只领先目标分支。如果存在落后提交，必须提示开发者先 rebase 到最新目标分支，除非维护者明确接受当前状态。
+
 若用户尚未说明关联 issue，Agent 必须询问是否有关联 issue。有则在 PR 描述中使用 GitHub 可识别格式（如 `Resolve #123`），没有则省略相关区块。
 
 同时，Agent 必须询问开发者亲自做了哪些人工检查，并要求足够具体：
@@ -118,7 +123,7 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 
 开发者提供人工检查后，读取 [`references/pr-description-template.md`](references/pr-description-template.md)，按该模板生成简洁的双语 Markdown。测试部分必须分开标注 **AI** 与 **Developer**；模板中的 `<...>` 是写作提示，生成时必须替换为真实内容，不能原样输出占位符。如果没有关联 issue，省略最后的 `Resolve` 区块。整体不宜过长，简单改动给简短描述即可；不要为了凑格式扩写。
 
-若后续要用 `gh` 或其他工具创建 / 更新 PR，必须先让开发者确认最终 PR 描述。若不是直接创建 / 更新 PR，而是把 PR 描述提供给开发者复制使用，必须将最终文本放在 `markdown` 代码框中输出，方便复制。
+输出 PR 描述时，必须一并展示 PR 原分支、目标分支、领先提交数和落后提交数，让开发者检查。若落后提交数不为 0，说明应先 rebase 再开 PR。若后续要用 `gh` 或其他工具创建 / 更新 PR，必须先让开发者确认最终 PR 描述和分支状态；开发者确认后，Agent 可以继续帮助创建 PR。若不是直接创建 / 更新 PR，而是把 PR 描述提供给开发者复制使用，必须将最终文本放在 `markdown` 代码框中输出，方便复制。
 
 ### 创建 PR 与后续迭代
 
@@ -126,6 +131,6 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 
 - 开发者已提供人工检查结果；文档改动已确认人工阅读检查。
 - Agent 已展示最终 PR 描述，并得到开发者确认。
-- PR 目标仓库 / 分支和 head fork / 分支已确认，不能把分支推到主仓库。
+- PR 目标仓库 / 分支和 head fork / 分支已确认，且已展示领先 / 落后提交数；正常情况下 head 分支应只领先、不落后，若落后必须先 rebase 或得到维护者明确确认。
 
 PR 创建后，提醒开发者检查 workflow 状态；如工具可用，Agent 可以帮助读取状态。若 workflow 失败，先读取失败 job / log，判断根因与是否和本 PR 相关，再给开发者修复方案；未经确认不要直接改代码。若需要处理 Copilot review 或人工 review，Agent 可以自行获取 PR 链接或要求开发者提供链接，阅读 review 意见，判断每条意见是否正确、是否值得修改，再向开发者给出修改方案。未经开发者讨论和确认，不要直接按 review 意见修改代码。

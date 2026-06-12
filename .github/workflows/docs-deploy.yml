@@ -21,6 +21,7 @@ on:
       - ".github/workflows/docs-deploy.yml"
       - "website/src/**"
       - "website/content/**"
+      - "website/public/**"
       - "website/package.json"
 
 jobs:
