@@ -94,8 +94,12 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	)
 
 	// 5. Create the pod spec
-	podSpec, err := GenerateCustomPodSpec(c, token, &req)
+	podSpec, err := GenerateCustomPodSpec(c, token, &req, jobName)
 	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	if err := ApplyCheckpointAnnotations(jobAnnotations, req.Checkpoint); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -155,8 +159,13 @@ func GenerateCustomPodSpec(
 	ctx context.Context,
 	token util.JWTMessage,
 	custom *CreateCustomReq,
+	jobName string,
 ) (podSpec v1.PodSpec, err error) {
 	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, custom.VolumeMounts, token)
+	if err != nil {
+		return podSpec, err
+	}
+	checkpoint, err := prepareCheckpointConfig(token, &custom.CreateJobCommon, volumeMounts)
 	if err != nil {
 		return podSpec, err
 	}
@@ -164,7 +173,7 @@ func GenerateCustomPodSpec(
 	baseAffinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 	affinity := GenerateArchitectureNodeAffinity(custom.Image, baseAffinity)
 	tolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(ctx, token, custom.Envs)
+	envs := AppendCheckpointEnvs(GenerateEnvs(ctx, token, custom.Envs), checkpoint, jobName)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {

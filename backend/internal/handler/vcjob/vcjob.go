@@ -94,6 +94,11 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":name/template", mgr.GetJobTemplate)
 	g.GET(":name/event", mgr.GetJobEvents)
 	g.PUT(":name/alert", mgr.ToggleAlertState)
+	g.GET(":name/checkpoints", mgr.ListJobCheckpoints)
+	g.POST(":name/checkpoints/scan", mgr.ScanJobCheckpoints)
+	g.POST(":name/checkpoints/cleanup", mgr.CleanupJobCheckpoints)
+	g.POST(":name/checkpoints/:checkpointID/restore", mgr.RestoreJobFromCheckpoint)
+	g.DELETE(":name/checkpoints/:checkpointID", mgr.DeleteJobCheckpoint)
 
 	// open ssh
 	g.POST(":name/ssh", mgr.OpenSSH)
@@ -233,6 +238,7 @@ type (
 		CpuPinningEnabled bool                         `json:"cpuPinningEnabled"`
 		Forwards          []Forward                    `json:"forwards,omitempty"`
 		ScheduleType      *model.ScheduleType          `json:"scheduleType,omitempty"`
+		Checkpoint        *CheckpointConfig            `json:"checkpoint,omitempty"`
 	}
 )
 
@@ -902,6 +908,7 @@ type (
 		Status                  batch.JobPhase                `json:"status"`
 		ProfileData             *monitor.ProfileData          `json:"profileData"`
 		ScheduleData            *model.ScheduleData           `json:"scheduleData"`
+		Checkpoint              *model.CheckpointInfo         `json:"checkpoint,omitempty"`
 		Events                  []v1.Event                    `json:"events"`
 		TerminatedStates        []v1.ContainerStateTerminated `json:"terminatedStates"`
 		CreationTimestamp       metav1.Time                   `json:"createdAt"`
@@ -977,6 +984,10 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	if job.ScheduleData != nil {
 		scheduleData = job.ScheduleData.Data()
 	}
+	var checkpoint *model.CheckpointInfo
+	if job.Checkpoint != nil {
+		checkpoint = job.Checkpoint.Data()
+	}
 
 	var events []v1.Event
 	if job.Events != nil {
@@ -1009,6 +1020,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		Resources:               job.Resources.Data(),
 		ProfileData:             profileData,
 		ScheduleData:            scheduleData,
+		Checkpoint:              checkpoint,
 		Events:                  events,
 		TerminatedStates:        terminatedStates,
 		CreationTimestamp:       metav1.NewTime(job.CreationTimestamp),

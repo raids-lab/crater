@@ -1,0 +1,18 @@
+{{- if .Values.checkpointScanner.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkpoint-scanner-service
+  namespace: {{ .Values.namespaces.job }}
+  labels:
+    app: checkpoint-scanner
+spec:
+  selector:
+    app: checkpoint-scanner
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.checkpointScanner.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}

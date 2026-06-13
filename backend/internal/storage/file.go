@@ -581,6 +581,67 @@ func handleDirsList(fs webdav.FileSystem, path string) ([]Files, error) {
 	return files, nil
 }
 
+func ListRelativePath(ctx context.Context, path string) ([]Files, error) {
+	checkfs()
+	return listRelativePath(ctx, path)
+}
+
+func StatRelativePath(ctx context.Context, path string) (Files, error) {
+	checkfs()
+	realPath := cleanURLPath(path)
+	fi, err := fs.FileSystem.Stat(ctx, realPath)
+	if err != nil {
+		return Files{}, err
+	}
+	return Files{
+		Name:       fi.Name(),
+		Size:       fi.Size(),
+		IsDir:      fi.IsDir(),
+		ModifyTime: fi.ModTime(),
+		Sys:        fi.Sys(),
+	}, nil
+}
+
+func RemoveRelativePath(ctx context.Context, path string) error {
+	checkfs()
+	return fs.FileSystem.RemoveAll(ctx, cleanURLPath(path))
+}
+
+func listRelativePath(ctx context.Context, path string) ([]Files, error) {
+	realPath := cleanURLPath(path)
+	f, err := fs.FileSystem.OpenFile(ctx, realPath, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	if fi, _ := f.Stat(); fi != nil && !fi.IsDir() {
+		return []Files{{
+			Name:       fi.Name(),
+			Size:       fi.Size(),
+			IsDir:      fi.IsDir(),
+			ModifyTime: fi.ModTime(),
+			Sys:        fi.Sys(),
+		}}, nil
+	}
+
+	dirs, err := f.Readdir(-1)
+	if err != nil {
+		return nil, err
+	}
+	files := make([]Files, 0, len(dirs))
+	for _, d := range dirs {
+		files = append(files, Files{
+			Name:       d.Name(),
+			ModifyTime: d.ModTime(),
+			Size:       d.Size(),
+			IsDir:      d.IsDir(),
+			Sys:        d.Sys(),
+		})
+	}
+	return files, nil
+}
+
 type SpacePaths struct {
 	Paths []string `json:"paths"`
 }

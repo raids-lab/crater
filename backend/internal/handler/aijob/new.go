@@ -184,7 +184,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	req.WorkingDir = vcReq.WorkingDir
 
 	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
-	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
+	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq, vcReq.Name)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
 		return

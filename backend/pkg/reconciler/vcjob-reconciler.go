@@ -44,6 +44,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
+	checkpointsvc "github.com/raids-lab/crater/internal/service/vcjob/checkpoint"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -371,6 +372,7 @@ func (r *VcJobReconciler) createOrUpdateJobRecord(ctx context.Context, record *m
 			"resources",
 			"attributes",
 			"template",
+			"checkpoint",
 			"alert_enabled",
 			"reminded",
 			"keep_when_low_resource_usage",
@@ -434,6 +436,14 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	); err == nil {
 		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
 	}
+	checkpointInfo, err := checkpointsvc.ParseAnnotations(job.Annotations)
+	if err != nil {
+		return nil, err
+	}
+	var checkpoint *datatypes.JSONType[*model.CheckpointInfo]
+	if checkpointInfo != nil {
+		checkpoint = ptr.To(datatypes.NewJSONType(checkpointInfo))
+	}
 
 	return &model.Job{
 		Name:                    job.Annotations[vcjob.AnnotationKeyTaskName],
@@ -449,6 +459,7 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		Resources:               datatypes.NewJSONType(resources),
 		Attributes:              datatypes.NewJSONType(job),
 		Template:                job.Annotations[vcjob.AnnotationKeyTaskTemplate],
+		Checkpoint:              checkpoint,
 		AlertEnabled:            alertEnabled,
 	}, nil
 }

@@ -15,6 +15,13 @@ modelDownload:
   # image: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim
   image: python:3.11-slim
 
+# Checkpoint scanner service configuration
+checkpointScanner:
+  # HTTP base URL for the always-on checkpoint-scanner service
+  endpoint: http://checkpoint-scanner-service.crater-workspace.svc.cluster.local:7330
+  # Backend-to-scanner request timeout in seconds
+  timeoutSeconds: 30
+
 # Endpoint URL for Prometheus API used for metrics and monitoring
 # Optional: If not specified, Prometheus integration will be disabled
 prometheusAPI: http://192.168.0.1:12345

@@ -103,5 +103,6 @@ jobs:
           mkdir -p bin/linux_amd64
           go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/linux_amd64/migrate cmd/gorm-gen/models/migrate.go
           go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/linux_amd64/controller cmd/crater/main.go
+          go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/linux_amd64/checkpoint-scanner cmd/checkpoint-scanner/main.go
         env:
           CGO_ENABLED: 0

@@ -135,6 +135,15 @@ type Config struct {
 		Image string `json:"image"`
 	} `json:"modelDownload"`
 
+	// CheckpointScanner contains configurations for the always-on checkpoint scanner service.
+	// Checkpoint scans require this service in production deployments.
+	CheckpointScanner struct {
+		// Endpoint is the HTTP base URL for the in-cluster checkpoint-scanner service.
+		Endpoint string `json:"endpoint"`
+		// TimeoutSeconds controls the backend-to-scanner request timeout.
+		TimeoutSeconds int `json:"timeoutSeconds"`
+	} `json:"checkpointScanner"`
+
 	// Registry contains container registry configuration for image storage and building.
 	// Optional: If Enable is false, registry functionality will be disabled.
 	Registry struct {

@@ -1138,6 +1138,30 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202605181200",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					Checkpoint *datatypes.JSONType[*model.CheckpointInfo] `gorm:"comment:checkpoint配置和运行信息"`
+				}
+				return tx.Migrator().AddColumn(&Job{}, "Checkpoint")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					Checkpoint *datatypes.JSONType[*model.CheckpointInfo] `gorm:"comment:checkpoint配置和运行信息"`
+				}
+				return tx.Migrator().DropColumn(&Job{}, "Checkpoint")
+			},
+		},
+		{
+			ID: "202605181430",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.JobCheckpoint{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&model.JobCheckpoint{})
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1150,6 +1174,7 @@ func main() {
 			&model.UserDataset{},
 			&model.Resource{},
 			&model.Job{},
+			&model.JobCheckpoint{},
 			&model.AITask{},
 			&model.Kaniko{},
 			&model.Image{},

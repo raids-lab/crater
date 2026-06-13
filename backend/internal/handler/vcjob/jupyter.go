@@ -127,8 +127,13 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		JupyterPort,
 		string(CraterJobTypeJupyter),
 		req.CpuPinningEnabled,
+		jobName,
 	)
 	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	if err := ApplyCheckpointAnnotations(jobAnnotations, req.Checkpoint); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}

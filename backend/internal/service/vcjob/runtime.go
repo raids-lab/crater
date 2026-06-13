@@ -17,6 +17,7 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
+	checkpointsvc "github.com/raids-lab/crater/internal/service/vcjob/checkpoint"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -88,6 +89,14 @@ func GenerateJobRecord(
 	); err == nil {
 		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
 	}
+	checkpointInfo, err := checkpointsvc.ParseAnnotations(job.Annotations)
+	if err != nil {
+		return nil, err
+	}
+	var checkpoint *datatypes.JSONType[*model.CheckpointInfo]
+	if checkpointInfo != nil {
+		checkpoint = ptr.To(datatypes.NewJSONType(checkpointInfo))
+	}
 	ret := &model.Job{
 		Name:                    job.Annotations[annotationKeyTaskName],
 		JobName:                 job.Name,
@@ -102,6 +111,7 @@ func GenerateJobRecord(
 		Resources:               datatypes.NewJSONType(CalculateJobResources(job)),
 		Attributes:              datatypes.NewJSONType(job),
 		Template:                job.Annotations[annotationKeyTaskTemplate],
+		Checkpoint:              checkpoint,
 		AlertEnabled:            alertEnabled,
 	}
 	return ret, nil
@@ -121,6 +131,15 @@ func RestoreJobFromRecord(record *model.Job) (*batch.Job, error) {
 	job.ManagedFields = nil
 	job.DeletionTimestamp = nil
 	job.DeletionGracePeriodSeconds = nil
+	for taskIndex := range job.Spec.Tasks {
+		job.Spec.Tasks[taskIndex].Template.UID = ""
+		job.Spec.Tasks[taskIndex].Template.ResourceVersion = ""
+		job.Spec.Tasks[taskIndex].Template.Generation = 0
+		job.Spec.Tasks[taskIndex].Template.CreationTimestamp = metav1.Time{}
+		job.Spec.Tasks[taskIndex].Template.ManagedFields = nil
+		job.Spec.Tasks[taskIndex].Template.DeletionTimestamp = nil
+		job.Spec.Tasks[taskIndex].Template.DeletionGracePeriodSeconds = nil
+	}
 	return job, nil
 }
 
