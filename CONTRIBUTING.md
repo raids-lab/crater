@@ -181,7 +181,7 @@ git pull origin main
 
 ### Branch prefixes and commit types
 
-Before creating a task branch, choose the **type** for your change from the table below and use the matching prefix in the branch name (such as `feature/` or `fix/`). Commit messages use the same types.
+Before creating a task branch, choose the **type** for your change from the table below and use the matching prefix in the branch name (such as `feature/` or `fix/`). Commit subjects use the same types.
 
 | type | Branch prefix | Meaning |
 |------|---------------|---------|
@@ -193,7 +193,7 @@ Before creating a task branch, choose the **type** for your change from the tabl
 | `test` | `test/` | Tests |
 | `chore` | `chore/` | Build / tooling |
 
-Commit messages use the format `type(scope): subject`, where `scope` is optional.
+Commit subjects use the format `type: subject` or `type(scope): subject`, where `scope` is optional and can name the changed area, such as `docs(cli): add command examples`. This format applies only to the first line of the commit message; the full commit message may include a body and trailers such as `Signed-off-by`.
 
 ### Create a task branch locally
 
@@ -219,6 +219,7 @@ These rules apply in every module:
 - **Use `make` for build, lint, and tests** when a Makefile target exists. Prefer module targets over direct `go`, `pnpm`, or `helm` commands.
 - **Check Go before Go builds/tests**. For Go sub-projects such as `backend/` and `cli/`, run `go version` and make sure it matches the sub-project `go.mod` / module guide before running build, test, or local-run targets.
 - **Write code comments in English**, consistent with existing naming style and architecture.
+- **Use the project copyright owner in new license headers**. Starting from June 2026, new or updated file-level copyright headers and NOTICE files should use `The Crater Project Team, RAIDS-Lab` regardless of where the contributor comes from. Use the correct year for the file header: for example, a file first published in 2026 should use `Copyright 2026 The Crater Project Team, RAIDS-Lab`, while project-level notices may use a project year range such as `2023-2026`.
 - **Never commit secrets**: no keys, tokens, passwords, internal IPs, kubeconfigs, certificates, or production credentials.
 - **Ask when unsure**. If a rule or context is missing, clarify instead of guessing.
 - **Suggest rule changes openly**. If an existing rule would hurt quality, architecture, or security in a specific case, point it out and propose updating the relevant document instead of silently violating it.
@@ -255,7 +256,50 @@ Documentation changes require manual reading by the developer before commit or p
 
 If the PR has only one commit, we recommend making the commit message consistent with the branch name: replace `/` with `:` and `-` with spaces. For example, branch `docs/contributing-command-hints` becomes `docs:contributing command hints`; branch `feature/portal-add-job-form` becomes `feature:portal add job form`.
 
-If the PR has multiple commits, write each message in `type(scope): subject` format according to the table above.
+If the PR has multiple commits, write each commit subject in `type(scope): subject` format according to the table above.
+
+New commit subjects must use one of these forms:
+
+```text
+type: subject
+type(scope): subject
+```
+
+Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `test`, and `chore`. Scope is optional, but useful for naming the changed area, such as `docs(cli): add command examples`.
+
+The subject format applies only to the first line. If the commit needs more context, add a blank line after the subject and write a body. DCO sign-offs are commit trailers and should appear after the body, for example:
+
+```text
+docs: add project notice
+
+Explain how Crater publishes license and notice files.
+
+Signed-off-by: Your Name <you@example.com>
+```
+
+### Developer Certificate of Origin
+
+By submitting a contribution to Crater, you agree that your contribution is licensed under the Apache License, Version 2.0, unless you explicitly state otherwise. You also represent that you have the right to submit the contribution.
+
+DCO sign-off is recommended for all contributors and required for contributors who are not members of The Crater Project Team. By signing off a commit, you certify that you have the right to submit the contribution and agree that it is licensed under the Apache License, Version 2.0.
+
+Use `git commit -s` to add a sign-off when committing:
+
+```bash
+git commit -s -m "feat(portal): add job submission form"
+```
+
+If you forgot the sign-off on your latest commit, add it with:
+
+```bash
+git commit --amend -s
+```
+
+Crater does not currently reject pull requests with an automated DCO workflow. Maintainers may still ask external contributors to add or confirm their sign-off before merging.
+
+When squash-merging a PR, maintainers must preserve existing `Signed-off-by` lines in the final squash commit message, without duplicating them. Maintainers must not add a contributor's `Signed-off-by` line unless the same sign-off already appears in the contributor's commits or the contributor has explicitly confirmed it in the pull request. If a maintainer makes substantive changes while merging, the maintainer should add their own sign-off.
+
+Automation and Agent workflows that create commits on behalf of a developer should use `git commit -s` by default, but must not add a sign-off silently. Before creating the commit, the Agent must explain that `Signed-off-by` is a DCO statement that the developer has the right to submit the contribution under the project license, then show the complete commit message, including every `Signed-off-by` line, for developer review. The proposed subject must also follow the commit subject format above.
 
 After `make install-hooks`, `git commit` triggers the installed pre-commit hook. The hook checks staged files, enters the affected sub-projects, and runs their `make pre-commit-check` targets before allowing the commit. This automatic commit-time check is mainly designed for macOS and Linux; it may not work correctly on Windows. On Windows, run the affected modules' `make pre-commit-check` targets manually, or use WSL.
 
@@ -263,7 +307,7 @@ Specify files or directories explicitly and avoid `git add .`. **Example command
 
 ```bash
 git add backend/internal/handler/user.go
-git commit -m "feat(portal): add job submission form"
+git commit -s -m "feat(portal): add job submission form"
 git push myfork feature/your-feature-name
 ```
 

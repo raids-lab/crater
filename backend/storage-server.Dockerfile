@@ -13,6 +13,7 @@ WORKDIR /
 RUN apk add tzdata && ln -s /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
 ENV GIN_MODE=release
+COPY LICENSE NOTICE /usr/share/doc/crater/
 COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/storage-server .
 RUN chmod +x storage-server
 

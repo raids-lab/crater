@@ -20,6 +20,8 @@ LABEL org.opencontainers.image.source="https://github.com/raids-lab/crater-front
 LABEL org.opencontainers.image.description="Crater Web Frontend"
 LABEL org.opencontainers.image.licenses="Apache-2.0"
 
+COPY LICENSE NOTICE /usr/share/doc/crater/
+
 # Copy custom nginx configuration
 COPY ./hack/deploy/nginx.conf /etc/nginx/nginx.conf
 
