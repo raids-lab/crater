@@ -1,0 +1,137 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-node-typo-json/argv --
+crater node list --json --no-interactive
+-- en/01-node-typo-json/exit --
+2
+-- en/01-node-typo-json/stdout --
+-- en/01-node-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"list\" for \"crater node\"\n\nDid you mean this?\n\tls\n\nRun \"crater node --help\" for usage."
+}
+-- en/02-node-get-missing-json/argv --
+crater node get --json --no-interactive
+-- en/02-node-get-missing-json/exit --
+2
+-- en/02-node-get-missing-json/stdout --
+-- en/02-node-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "node name is required (--name)"
+}
+-- en/03-node-ls-404-json/argv --
+crater node ls --json --no-interactive
+-- en/03-node-ls-404-json/exit --
+4
+-- en/03-node-ls-404-json/stdout --
+-- en/03-node-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/04-node-ls-gpu-available-missing-gpu-json/argv --
+crater node ls --gpu-available --json --no-interactive
+-- en/04-node-ls-gpu-available-missing-gpu-json/exit --
+2
+-- en/04-node-ls-gpu-available-missing-gpu-json/stdout --
+-- en/04-node-ls-gpu-available-missing-gpu-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--gpu is required when --gpu-available is set"
+}
+-- en/05-job-get-missing-json/argv --
+crater job get --json --no-interactive
+-- en/05-job-get-missing-json/exit --
+2
+-- en/05-job-get-missing-json/stdout --
+-- en/05-job-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (--name)"
+}
+-- en/06-job-ls-invalid-status-json/argv --
+crater job ls --status bad --json --no-interactive
+-- en/06-job-ls-invalid-status-json/exit --
+2
+-- en/06-job-ls-invalid-status-json/stdout --
+-- en/06-job-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid job status: bad"
+}
+-- en/07-job-ls-conflict-json/argv --
+crater job ls --interactive --batch --json --no-interactive
+-- en/07-job-ls-conflict-json/exit --
+2
+-- en/07-job-ls-conflict-json/stdout --
+-- en/07-job-ls-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--interactive and --batch cannot be used together"
+}
+-- en/08-job-ls-404-json/argv --
+crater job ls --json --no-interactive
+-- en/08-job-ls-404-json/exit --
+4
+-- en/08-job-ls-404-json/stdout --
+-- en/08-job-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/09-image-ls-invalid-type-json/argv --
+crater image ls --type bad --json --no-interactive
+-- en/09-image-ls-invalid-type-json/exit --
+2
+-- en/09-image-ls-invalid-type-json/stdout --
+-- en/09-image-ls-invalid-type-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid image type: bad"
+}
+-- en/10-image-ls-invalid-visibility-json/argv --
+crater image ls --visibility bad --json --no-interactive
+-- en/10-image-ls-invalid-visibility-json/exit --
+2
+-- en/10-image-ls-invalid-visibility-json/stdout --
+-- en/10-image-ls-invalid-visibility-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid image visibility: bad"
+}
+-- en/11-image-ls-404-json/argv --
+crater image ls --json --no-interactive
+-- en/11-image-ls-404-json/exit --
+4
+-- en/11-image-ls-404-json/stdout --
+-- en/11-image-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

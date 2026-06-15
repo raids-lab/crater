@@ -290,3 +290,94 @@
   - 交互模式下需要确认；`--no-interactive` 下必须提供 `--yes`。
 - **`--json` 的 `data`**：`id`（下载任务 ID）、`message`（后端返回消息）。
 - **状态**: [x] Completed
+
+---
+
+## 5. 节点模块 (node)
+
+本模块提供集群节点信息的只读查询能力。所有命令均要求已有 active credentials。
+
+### `crater node ls`
+- **描述**: 列出当前平台可见的集群节点。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--name` (string): 按节点名称子串本地过滤。
+  - `--status` (string): 按节点状态本地过滤，例如 `Ready`、`NotReady`、`Unschedulable`、`Occupied`。
+  - `--arch` (string): 按 CPU 架构本地过滤，例如 `amd64`、`arm64`。
+  - `--gpu` (string): 按 GPU 资源名或型号关键词本地过滤，例如 `a100`、`v100`、`nvidia.com/a100`。
+  - `--gpu-available` (bool): 仅显示存在匹配空闲 GPU 的节点；必须与 `--gpu` 一起使用。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes`。
+  - 所有过滤均在 CLI 本地完成，不改变平台状态。
+  - 默认模式以表格展示节点名称、状态、角色、架构、地址、CPU/内存使用和作业数。
+- **`--json` 的 `data`**：`nodes`（数组，元素与平台节点摘要响应一致）。
+- **状态**: [x] Completed
+
+### `crater node get <name>`
+- **描述**: 查看单个节点详情。
+- **位置参数**:
+  - `<name>` (positional, required): 节点名称。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes/{name}`。
+  - 缺少 `<name>` 时返回 `usage_error`。
+- **`--json` 的 `data`**：`node`（对象，平台节点详情响应）。
+- **状态**: [x] Completed
+
+---
+
+## 6. 作业模块 (job)
+
+本模块提供 Volcano 作业的只读查询能力。第一版仅使用 `/api/v1/vcjobs` 族接口；`aijobs` / `spjobs` 后续独立扩展。
+
+### `crater job ls`
+- **描述**: 列出当前账号可见的作业。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--all` (bool): 调用 `/api/v1/vcjobs/all`，列出当前身份可见且位于 `--days` 回看窗口内的作业。
+  - `--user` (string): 调用 `/api/v1/vcjobs/user/{username}`，列出指定用户且位于 `--days` 回看窗口内的作业。
+  - `--days` (int): 与 `--all` 或 `--user` 配合使用的回溯天数；`-1` 表示不按时间过滤。小于 `-1` 的值返回 `usage_error`。
+  - `--status` (string): 本地过滤作业状态。
+  - `--type` (string): 本地过滤作业类型。
+  - `--node` (string): 本地过滤运行在指定节点上的作业。
+  - `--interactive` (bool): 本地过滤交互式作业（`jupyter` / `webide`）。
+  - `--batch` (bool): 本地过滤非交互式作业。
+- **处理逻辑**:
+  - 默认调用 `/api/v1/vcjobs`，列出当前用户和当前账户下的作业。
+  - `--user` 优先于 `--all`；两者都不提供时不使用 `--days`。
+  - `--interactive` 与 `--batch` 互斥。
+  - 默认模式以表格展示名称、平台作业名、类型、状态、队列、节点和资源。
+- **`--json` 的 `data`**：`jobs`（数组，元素与平台作业摘要响应一致，过滤后返回）。
+- **状态**: [x] Completed
+
+### `crater job get <name>`
+- **描述**: 查看单个作业详情。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名，对应前端详情页路径中的作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/detail`。
+  - 缺少 `<name>` 时返回 `usage_error`。
+- **`--json` 的 `data`**：`job`（对象，平台作业详情响应）。
+- **状态**: [x] Completed
+
+---
+
+## 7. 镜像模块 (image)
+
+本模块提供容器镜像信息的只读查询能力。所有命令均要求已有 active credentials。
+
+### `crater image ls`
+- **描述**: 列出当前账号可见的镜像。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--available` (bool): 调用 `/api/v1/images/available`，列出创建作业时可选择的镜像。
+  - `--type` (string): 本地过滤镜像适用的作业类型。
+  - `--arch` (string): 本地过滤镜像架构，例如 `linux/amd64`。
+  - `--visibility` (string): 本地过滤镜像可见性，例如 `Public`、`Private`、`UserShare`、`AccountShare`。
+  - `--owner` (string): 按所有者用户名或昵称子串本地过滤。
+  - `--search` (string): 按镜像地址或描述子串本地过滤。
+- **处理逻辑**:
+  - 默认调用 `/api/v1/images/image`。
+  - 所有过滤均在 CLI 本地完成，不改变平台状态。
+  - 默认模式以表格展示 ID、镜像地址、类型、可见性、架构和所有者。
+- **`--json` 的 `data`**：`images`（数组，元素与平台镜像响应一致，过滤后返回）。
+- **状态**: [x] Completed

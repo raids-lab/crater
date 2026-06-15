@@ -1,0 +1,137 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-node-typo-json/argv --
+crater node list --json --no-interactive
+-- zh-CN/01-node-typo-json/exit --
+2
+-- zh-CN/01-node-typo-json/stdout --
+-- zh-CN/01-node-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"list\" for \"crater node\"\n\nDid you mean this?\n\tls\n\nRun \"crater node --help\" for usage."
+}
+-- zh-CN/02-node-get-missing-json/argv --
+crater node get --json --no-interactive
+-- zh-CN/02-node-get-missing-json/exit --
+2
+-- zh-CN/02-node-get-missing-json/stdout --
+-- zh-CN/02-node-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：节点名称 (--name)"
+}
+-- zh-CN/03-node-ls-404-json/argv --
+crater node ls --json --no-interactive
+-- zh-CN/03-node-ls-404-json/exit --
+4
+-- zh-CN/03-node-ls-404-json/stdout --
+-- zh-CN/03-node-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/argv --
+crater node ls --gpu-available --json --no-interactive
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/exit --
+2
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/stdout --
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "使用 --gpu-available 时必须同时提供 --gpu"
+}
+-- zh-CN/05-job-get-missing-json/argv --
+crater job get --json --no-interactive
+-- zh-CN/05-job-get-missing-json/exit --
+2
+-- zh-CN/05-job-get-missing-json/stdout --
+-- zh-CN/05-job-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (--name)"
+}
+-- zh-CN/06-job-ls-invalid-status-json/argv --
+crater job ls --status bad --json --no-interactive
+-- zh-CN/06-job-ls-invalid-status-json/exit --
+2
+-- zh-CN/06-job-ls-invalid-status-json/stdout --
+-- zh-CN/06-job-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的作业状态：bad"
+}
+-- zh-CN/07-job-ls-conflict-json/argv --
+crater job ls --interactive --batch --json --no-interactive
+-- zh-CN/07-job-ls-conflict-json/exit --
+2
+-- zh-CN/07-job-ls-conflict-json/stdout --
+-- zh-CN/07-job-ls-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "不能同时使用 --interactive 和 --batch"
+}
+-- zh-CN/08-job-ls-404-json/argv --
+crater job ls --json --no-interactive
+-- zh-CN/08-job-ls-404-json/exit --
+4
+-- zh-CN/08-job-ls-404-json/stdout --
+-- zh-CN/08-job-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/09-image-ls-invalid-type-json/argv --
+crater image ls --type bad --json --no-interactive
+-- zh-CN/09-image-ls-invalid-type-json/exit --
+2
+-- zh-CN/09-image-ls-invalid-type-json/stdout --
+-- zh-CN/09-image-ls-invalid-type-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的镜像类型：bad"
+}
+-- zh-CN/10-image-ls-invalid-visibility-json/argv --
+crater image ls --visibility bad --json --no-interactive
+-- zh-CN/10-image-ls-invalid-visibility-json/exit --
+2
+-- zh-CN/10-image-ls-invalid-visibility-json/stdout --
+-- zh-CN/10-image-ls-invalid-visibility-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的镜像可见性：bad"
+}
+-- zh-CN/11-image-ls-404-json/argv --
+crater image ls --json --no-interactive
+-- zh-CN/11-image-ls-404-json/exit --
+4
+-- zh-CN/11-image-ls-404-json/stdout --
+-- zh-CN/11-image-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
