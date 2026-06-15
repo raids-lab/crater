@@ -18,7 +18,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { ChartNoAxesColumn, CircleHelpIcon, Plus, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { ChangeEvent, KeyboardEvent, useMemo } from 'react'
 import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
@@ -55,6 +55,8 @@ import { getBillingMultiplierForScheduleType } from '@/utils/billing'
 import { configGrafanaOverviewAtom } from '@/utils/store/config'
 
 import { Card, CardContent, CardHeader } from '../ui/card'
+
+const blockedNonNegativeIntegerInputKeys = new Set(['-', '+', 'e', 'E', '.'])
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>
@@ -96,6 +98,27 @@ export function ResourceFormFields<T extends FieldValues>({
     | undefined
   const scheduleType = scheduleTypePath ? form.watch(scheduleTypePath) : undefined
   const grafanaOverview = useAtomValue(configGrafanaOverviewAtom)
+  const registerNonNegativeIntegerInput = (path: FieldPath<T>) => {
+    const registration = form.register(path, { valueAsNumber: true })
+
+    return {
+      ...registration,
+      min: 0,
+      step: 1,
+      onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+        if (blockedNonNegativeIntegerInputKeys.has(event.key)) {
+          event.preventDefault()
+        }
+      },
+      onChange: (event: ChangeEvent<HTMLInputElement>) => {
+        const value = event.target.value
+        if (value !== '' && Number(value) < 0) {
+          event.target.value = '0'
+        }
+        return registration.onChange(event)
+      },
+    }
+  }
 
   // 获取可用资源列表
   const { data: resources } = useQuery({
@@ -172,7 +195,7 @@ export function ResourceFormFields<T extends FieldValues>({
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
-                <Input type="number" {...form.register(cpuPath, { valueAsNumber: true })} />
+                <Input type="number" {...registerNonNegativeIntegerInput(cpuPath)} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -188,7 +211,7 @@ export function ResourceFormFields<T extends FieldValues>({
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
-                <Input type="number" {...form.register(memoryPath, { valueAsNumber: true })} />
+                <Input type="number" {...registerNonNegativeIntegerInput(memoryPath)} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -204,7 +227,7 @@ export function ResourceFormFields<T extends FieldValues>({
                 <FormLabelMust />
               </FormLabel>
               <FormControl>
-                <Input type="number" {...form.register(gpuCountPath, { valueAsNumber: true })} />
+                <Input type="number" {...registerNonNegativeIntegerInput(gpuCountPath)} />
               </FormControl>
               <FormMessage />
             </FormItem>
