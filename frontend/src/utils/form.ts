@@ -232,7 +232,9 @@ export const buildNodeSelectors = (
       values: [nodeSelector.nodeName],
     })
   }
-  const excluded = nodeSelector.excludedNodes?.filter(Boolean) ?? []
+  const excluded =
+    nodeSelector.excludedNodes?.filter((node) => Boolean(node) && node !== nodeSelector.nodeName) ??
+    []
   if (excluded.length > 0) {
     selectors.push({
       key: 'kubernetes.io/hostname',
