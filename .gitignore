@@ -26,6 +26,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.omc/
 
 # Environment
 .env.development
@@ -76,3 +77,6 @@ kubeconfig*
 *.csv
 storage/etc/config.yaml
 .codex
+
+# Claude Code
+.claude/
