@@ -48,45 +48,34 @@ crater node ls --gpu-available --json --no-interactive
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "--gpu is required when --gpu-available is set"
 }
--- en/05-job-get-missing-json/argv --
-crater job get --json --no-interactive
--- en/05-job-get-missing-json/exit --
+-- en/05-node-pods-missing-json/argv --
+crater node pods --json --no-interactive
+-- en/05-node-pods-missing-json/exit --
 2
--- en/05-job-get-missing-json/stdout --
--- en/05-job-get-missing-json/stderr --
+-- en/05-node-pods-missing-json/stdout --
+-- en/05-node-pods-missing-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "job name is required (--name)"
+  "message": "node name is required (--name)"
 }
--- en/06-job-ls-invalid-status-json/argv --
-crater job ls --status bad --json --no-interactive
--- en/06-job-ls-invalid-status-json/exit --
+-- en/06-node-gpu-missing-json/argv --
+crater node gpu --json --no-interactive
+-- en/06-node-gpu-missing-json/exit --
 2
--- en/06-job-ls-invalid-status-json/stdout --
--- en/06-job-ls-invalid-status-json/stderr --
+-- en/06-node-gpu-missing-json/stdout --
+-- en/06-node-gpu-missing-json/stderr --
 {
   "category": "usage_error",
-  "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "invalid job status: bad"
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "node name is required (--name)"
 }
--- en/07-job-ls-conflict-json/argv --
-crater job ls --interactive --batch --json --no-interactive
--- en/07-job-ls-conflict-json/exit --
-2
--- en/07-job-ls-conflict-json/stdout --
--- en/07-job-ls-conflict-json/stderr --
-{
-  "category": "usage_error",
-  "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "--interactive and --batch cannot be used together"
-}
--- en/08-job-ls-404-json/argv --
-crater job ls --json --no-interactive
--- en/08-job-ls-404-json/exit --
+-- en/07-node-pods-404-json/argv --
+crater node pods missing-node --json --no-interactive
+-- en/07-node-pods-404-json/exit --
 4
--- en/08-job-ls-404-json/stdout --
--- en/08-job-ls-404-json/stderr --
+-- en/07-node-pods-404-json/stdout --
+-- en/07-node-pods-404-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NOT_FOUND_404",
@@ -97,34 +86,132 @@ crater job ls --json --no-interactive
     "msg": "simulated"
   }
 }
--- en/09-image-ls-invalid-type-json/argv --
-crater image ls --type bad --json --no-interactive
--- en/09-image-ls-invalid-type-json/exit --
+-- en/08-job-get-missing-json/argv --
+crater job get --json --no-interactive
+-- en/08-job-get-missing-json/exit --
 2
--- en/09-image-ls-invalid-type-json/stdout --
--- en/09-image-ls-invalid-type-json/stderr --
+-- en/08-job-get-missing-json/stdout --
+-- en/08-job-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (--name)"
+}
+-- en/09-job-pods-missing-json/argv --
+crater job pods --json --no-interactive
+-- en/09-job-pods-missing-json/exit --
+2
+-- en/09-job-pods-missing-json/stdout --
+-- en/09-job-pods-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (--name)"
+}
+-- en/10-job-events-missing-json/argv --
+crater job events --json --no-interactive
+-- en/10-job-events-missing-json/exit --
+2
+-- en/10-job-events-missing-json/stdout --
+-- en/10-job-events-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (--name)"
+}
+-- en/11-job-yaml-missing-json/argv --
+crater job yaml --json --no-interactive
+-- en/11-job-yaml-missing-json/exit --
+2
+-- en/11-job-yaml-missing-json/stdout --
+-- en/11-job-yaml-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (--name)"
+}
+-- en/12-job-ls-invalid-status-json/argv --
+crater job ls --status bad --json --no-interactive
+-- en/12-job-ls-invalid-status-json/exit --
+2
+-- en/12-job-ls-invalid-status-json/stdout --
+-- en/12-job-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid job status: bad"
+}
+-- en/13-job-ls-conflict-json/argv --
+crater job ls --interactive --batch --json --no-interactive
+-- en/13-job-ls-conflict-json/exit --
+2
+-- en/13-job-ls-conflict-json/stdout --
+-- en/13-job-ls-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--interactive and --batch cannot be used together"
+}
+-- en/14-job-ls-404-json/argv --
+crater job ls --json --no-interactive
+-- en/14-job-ls-404-json/exit --
+4
+-- en/14-job-ls-404-json/stdout --
+-- en/14-job-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/15-job-yaml-404-json/argv --
+crater job yaml missing-job --json --no-interactive
+-- en/15-job-yaml-404-json/exit --
+4
+-- en/15-job-yaml-404-json/stdout --
+-- en/15-job-yaml-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/16-image-ls-invalid-type-json/argv --
+crater image ls --type bad --json --no-interactive
+-- en/16-image-ls-invalid-type-json/exit --
+2
+-- en/16-image-ls-invalid-type-json/stdout --
+-- en/16-image-ls-invalid-type-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "invalid image type: bad"
 }
--- en/10-image-ls-invalid-visibility-json/argv --
+-- en/17-image-ls-invalid-visibility-json/argv --
 crater image ls --visibility bad --json --no-interactive
--- en/10-image-ls-invalid-visibility-json/exit --
+-- en/17-image-ls-invalid-visibility-json/exit --
 2
--- en/10-image-ls-invalid-visibility-json/stdout --
--- en/10-image-ls-invalid-visibility-json/stderr --
+-- en/17-image-ls-invalid-visibility-json/stdout --
+-- en/17-image-ls-invalid-visibility-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "invalid image visibility: bad"
 }
--- en/11-image-ls-404-json/argv --
+-- en/18-image-ls-404-json/argv --
 crater image ls --json --no-interactive
--- en/11-image-ls-404-json/exit --
+-- en/18-image-ls-404-json/exit --
 4
--- en/11-image-ls-404-json/stdout --
--- en/11-image-ls-404-json/stderr --
+-- en/18-image-ls-404-json/stdout --
+-- en/18-image-ls-404-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NOT_FOUND_404",

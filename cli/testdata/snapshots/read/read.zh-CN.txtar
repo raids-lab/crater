@@ -48,45 +48,34 @@ crater node ls --gpu-available --json --no-interactive
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "使用 --gpu-available 时必须同时提供 --gpu"
 }
--- zh-CN/05-job-get-missing-json/argv --
-crater job get --json --no-interactive
--- zh-CN/05-job-get-missing-json/exit --
+-- zh-CN/05-node-pods-missing-json/argv --
+crater node pods --json --no-interactive
+-- zh-CN/05-node-pods-missing-json/exit --
 2
--- zh-CN/05-job-get-missing-json/stdout --
--- zh-CN/05-job-get-missing-json/stderr --
+-- zh-CN/05-node-pods-missing-json/stdout --
+-- zh-CN/05-node-pods-missing-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "缺少必要参数：作业名称 (--name)"
+  "message": "缺少必要参数：节点名称 (--name)"
 }
--- zh-CN/06-job-ls-invalid-status-json/argv --
-crater job ls --status bad --json --no-interactive
--- zh-CN/06-job-ls-invalid-status-json/exit --
+-- zh-CN/06-node-gpu-missing-json/argv --
+crater node gpu --json --no-interactive
+-- zh-CN/06-node-gpu-missing-json/exit --
 2
--- zh-CN/06-job-ls-invalid-status-json/stdout --
--- zh-CN/06-job-ls-invalid-status-json/stderr --
+-- zh-CN/06-node-gpu-missing-json/stdout --
+-- zh-CN/06-node-gpu-missing-json/stderr --
 {
   "category": "usage_error",
-  "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "无效的作业状态：bad"
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：节点名称 (--name)"
 }
--- zh-CN/07-job-ls-conflict-json/argv --
-crater job ls --interactive --batch --json --no-interactive
--- zh-CN/07-job-ls-conflict-json/exit --
-2
--- zh-CN/07-job-ls-conflict-json/stdout --
--- zh-CN/07-job-ls-conflict-json/stderr --
-{
-  "category": "usage_error",
-  "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "不能同时使用 --interactive 和 --batch"
-}
--- zh-CN/08-job-ls-404-json/argv --
-crater job ls --json --no-interactive
--- zh-CN/08-job-ls-404-json/exit --
+-- zh-CN/07-node-pods-404-json/argv --
+crater node pods missing-node --json --no-interactive
+-- zh-CN/07-node-pods-404-json/exit --
 4
--- zh-CN/08-job-ls-404-json/stdout --
--- zh-CN/08-job-ls-404-json/stderr --
+-- zh-CN/07-node-pods-404-json/stdout --
+-- zh-CN/07-node-pods-404-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NOT_FOUND_404",
@@ -97,34 +86,132 @@ crater job ls --json --no-interactive
     "msg": "simulated"
   }
 }
--- zh-CN/09-image-ls-invalid-type-json/argv --
-crater image ls --type bad --json --no-interactive
--- zh-CN/09-image-ls-invalid-type-json/exit --
+-- zh-CN/08-job-get-missing-json/argv --
+crater job get --json --no-interactive
+-- zh-CN/08-job-get-missing-json/exit --
 2
--- zh-CN/09-image-ls-invalid-type-json/stdout --
--- zh-CN/09-image-ls-invalid-type-json/stderr --
+-- zh-CN/08-job-get-missing-json/stdout --
+-- zh-CN/08-job-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (--name)"
+}
+-- zh-CN/09-job-pods-missing-json/argv --
+crater job pods --json --no-interactive
+-- zh-CN/09-job-pods-missing-json/exit --
+2
+-- zh-CN/09-job-pods-missing-json/stdout --
+-- zh-CN/09-job-pods-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (--name)"
+}
+-- zh-CN/10-job-events-missing-json/argv --
+crater job events --json --no-interactive
+-- zh-CN/10-job-events-missing-json/exit --
+2
+-- zh-CN/10-job-events-missing-json/stdout --
+-- zh-CN/10-job-events-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (--name)"
+}
+-- zh-CN/11-job-yaml-missing-json/argv --
+crater job yaml --json --no-interactive
+-- zh-CN/11-job-yaml-missing-json/exit --
+2
+-- zh-CN/11-job-yaml-missing-json/stdout --
+-- zh-CN/11-job-yaml-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (--name)"
+}
+-- zh-CN/12-job-ls-invalid-status-json/argv --
+crater job ls --status bad --json --no-interactive
+-- zh-CN/12-job-ls-invalid-status-json/exit --
+2
+-- zh-CN/12-job-ls-invalid-status-json/stdout --
+-- zh-CN/12-job-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的作业状态：bad"
+}
+-- zh-CN/13-job-ls-conflict-json/argv --
+crater job ls --interactive --batch --json --no-interactive
+-- zh-CN/13-job-ls-conflict-json/exit --
+2
+-- zh-CN/13-job-ls-conflict-json/stdout --
+-- zh-CN/13-job-ls-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "不能同时使用 --interactive 和 --batch"
+}
+-- zh-CN/14-job-ls-404-json/argv --
+crater job ls --json --no-interactive
+-- zh-CN/14-job-ls-404-json/exit --
+4
+-- zh-CN/14-job-ls-404-json/stdout --
+-- zh-CN/14-job-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/15-job-yaml-404-json/argv --
+crater job yaml missing-job --json --no-interactive
+-- zh-CN/15-job-yaml-404-json/exit --
+4
+-- zh-CN/15-job-yaml-404-json/stdout --
+-- zh-CN/15-job-yaml-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/16-image-ls-invalid-type-json/argv --
+crater image ls --type bad --json --no-interactive
+-- zh-CN/16-image-ls-invalid-type-json/exit --
+2
+-- zh-CN/16-image-ls-invalid-type-json/stdout --
+-- zh-CN/16-image-ls-invalid-type-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "无效的镜像类型：bad"
 }
--- zh-CN/10-image-ls-invalid-visibility-json/argv --
+-- zh-CN/17-image-ls-invalid-visibility-json/argv --
 crater image ls --visibility bad --json --no-interactive
--- zh-CN/10-image-ls-invalid-visibility-json/exit --
+-- zh-CN/17-image-ls-invalid-visibility-json/exit --
 2
--- zh-CN/10-image-ls-invalid-visibility-json/stdout --
--- zh-CN/10-image-ls-invalid-visibility-json/stderr --
+-- zh-CN/17-image-ls-invalid-visibility-json/stdout --
+-- zh-CN/17-image-ls-invalid-visibility-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "无效的镜像可见性：bad"
 }
--- zh-CN/11-image-ls-404-json/argv --
+-- zh-CN/18-image-ls-404-json/argv --
 crater image ls --json --no-interactive
--- zh-CN/11-image-ls-404-json/exit --
+-- zh-CN/18-image-ls-404-json/exit --
 4
--- zh-CN/11-image-ls-404-json/stdout --
--- zh-CN/11-image-ls-404-json/stderr --
+-- zh-CN/18-image-ls-404-json/stdout --
+-- zh-CN/18-image-ls-404-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NOT_FOUND_404",

@@ -8,6 +8,9 @@ import (
 type JobClient interface {
 	ListJobs(opts JobListOptions) ([]JobInfo, error)
 	GetJob(name string) (*JobDetail, error)
+	GetJobPods(name string) ([]PodDetail, error)
+	GetJobEvents(name string) ([]interface{}, error)
+	GetJobYAML(name string) (string, error)
 }
 
 type JobListOptions struct {
@@ -63,6 +66,16 @@ type JobDetail struct {
 	TerminatedInfo interface{}  `json:"terminatedStates,omitempty"`
 }
 
+type PodDetail struct {
+	Name      string       `json:"name"`
+	Namespace string       `json:"namespace"`
+	NodeName  string       `json:"nodename"`
+	IP        string       `json:"ip"`
+	Port      string       `json:"port"`
+	Resource  ResourceList `json:"resource,omitempty"`
+	Phase     string       `json:"phase"`
+}
+
 func (c *Client) ListJobs(opts JobListOptions) ([]JobInfo, error) {
 	path := VCJobListPath
 	var result Response[[]JobInfo]
@@ -104,4 +117,49 @@ func (c *Client) GetJob(name string) (*JobDetail, error) {
 		return nil, err
 	}
 	return &result.Data, nil
+}
+
+func (c *Client) GetJobPods(name string) ([]PodDetail, error) {
+	var result Response[[]PodDetail]
+	resp, err := c.httpClient.R().
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		Get(VCJobListPath + "/" + name + "/pods")
+	if err != nil {
+		return nil, &NetworkError{Cause: err}
+	}
+	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *Client) GetJobEvents(name string) ([]interface{}, error) {
+	var result Response[[]interface{}]
+	resp, err := c.httpClient.R().
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		Get(VCJobListPath + "/" + name + "/event")
+	if err != nil {
+		return nil, &NetworkError{Cause: err}
+	}
+	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
+		return nil, err
+	}
+	return result.Data, nil
+}
+
+func (c *Client) GetJobYAML(name string) (string, error) {
+	var result Response[string]
+	resp, err := c.httpClient.R().
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		Get(VCJobListPath + "/" + name + "/yaml")
+	if err != nil {
+		return "", &NetworkError{Cause: err}
+	}
+	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
+		return "", err
+	}
+	return result.Data, nil
 }

@@ -323,6 +323,26 @@
 - **`--json` 的 `data`**：`node`（对象，平台节点详情响应）。
 - **状态**: [x] Completed
 
+### `crater node pods <name>`
+- **描述**: 查看指定节点上的 Pod。
+- **位置参数**:
+  - `<name>` (positional, required): 节点名称。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes/{name}/pods`。
+  - 默认模式以表格展示 Pod 名称、命名空间、IP、状态、类型和资源。
+- **`--json` 的 `data`**：`pods`（数组，平台节点 Pod 响应）。
+- **状态**: [x] Completed
+
+### `crater node gpu <name>`
+- **描述**: 查看指定节点的 GPU 信息。
+- **位置参数**:
+  - `<name>` (positional, required): 节点名称。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes/{name}/gpu`。
+  - 默认模式展示节点 GPU 总量和设备摘要。
+- **`--json` 的 `data`**：`gpu`（对象，平台节点 GPU 响应）。
+- **状态**: [x] Completed
+
 ---
 
 ## 6. 作业模块 (job)
@@ -357,6 +377,36 @@
   - 调用 `/api/v1/vcjobs/{name}/detail`。
   - 缺少 `<name>` 时返回 `usage_error`。
 - **`--json` 的 `data`**：`job`（对象，平台作业详情响应）。
+- **状态**: [x] Completed
+
+### `crater job pods <name>`
+- **描述**: 查看指定作业的 Pod 列表。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/pods`。
+  - 默认模式以表格展示 Pod 名称、命名空间、节点、IP、阶段和资源。
+- **`--json` 的 `data`**：`pods`（数组，平台作业 Pod 响应）。
+- **状态**: [x] Completed
+
+### `crater job events <name>`
+- **描述**: 查看指定作业的 Kubernetes 事件。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/event`。
+  - 默认模式逐行打印事件对象摘要；脚本化使用建议加 `--json`。
+- **`--json` 的 `data`**：`events`（数组，平台事件响应）。
+- **状态**: [x] Completed
+
+### `crater job yaml <name>`
+- **描述**: 查看指定作业的 YAML。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/yaml`。
+  - 默认模式直接输出 YAML 字符串到 stdout，不添加表格或装饰文本。
+- **`--json` 的 `data`**：`yaml`（字符串）。
 - **状态**: [x] Completed
 
 ---

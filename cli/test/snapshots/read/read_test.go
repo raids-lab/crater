@@ -28,19 +28,26 @@ func runReadSnapshots(t *testing.T, lang string) {
 		{ID: "02-node-get-missing-json", Args: []string{"node", "get", "--json", "--no-interactive"}},
 		{ID: "03-node-ls-404-json", Args: []string{"node", "ls", "--json", "--no-interactive"}},
 		{ID: "04-node-ls-gpu-available-missing-gpu-json", Args: []string{"node", "ls", "--gpu-available", "--json", "--no-interactive"}},
-		{ID: "05-job-get-missing-json", Args: []string{"job", "get", "--json", "--no-interactive"}},
-		{ID: "06-job-ls-invalid-status-json", Args: []string{"job", "ls", "--status", "bad", "--json", "--no-interactive"}},
-		{ID: "07-job-ls-conflict-json", Args: []string{"job", "ls", "--interactive", "--batch", "--json", "--no-interactive"}},
-		{ID: "08-job-ls-404-json", Args: []string{"job", "ls", "--json", "--no-interactive"}},
-		{ID: "09-image-ls-invalid-type-json", Args: []string{"image", "ls", "--type", "bad", "--json", "--no-interactive"}},
-		{ID: "10-image-ls-invalid-visibility-json", Args: []string{"image", "ls", "--visibility", "bad", "--json", "--no-interactive"}},
-		{ID: "11-image-ls-404-json", Args: []string{"image", "ls", "--json", "--no-interactive"}},
+		{ID: "05-node-pods-missing-json", Args: []string{"node", "pods", "--json", "--no-interactive"}},
+		{ID: "06-node-gpu-missing-json", Args: []string{"node", "gpu", "--json", "--no-interactive"}},
+		{ID: "07-node-pods-404-json", Args: []string{"node", "pods", "missing-node", "--json", "--no-interactive"}},
+		{ID: "08-job-get-missing-json", Args: []string{"job", "get", "--json", "--no-interactive"}},
+		{ID: "09-job-pods-missing-json", Args: []string{"job", "pods", "--json", "--no-interactive"}},
+		{ID: "10-job-events-missing-json", Args: []string{"job", "events", "--json", "--no-interactive"}},
+		{ID: "11-job-yaml-missing-json", Args: []string{"job", "yaml", "--json", "--no-interactive"}},
+		{ID: "12-job-ls-invalid-status-json", Args: []string{"job", "ls", "--status", "bad", "--json", "--no-interactive"}},
+		{ID: "13-job-ls-conflict-json", Args: []string{"job", "ls", "--interactive", "--batch", "--json", "--no-interactive"}},
+		{ID: "14-job-ls-404-json", Args: []string{"job", "ls", "--json", "--no-interactive"}},
+		{ID: "15-job-yaml-404-json", Args: []string{"job", "yaml", "missing-job", "--json", "--no-interactive"}},
+		{ID: "16-image-ls-invalid-type-json", Args: []string{"image", "ls", "--type", "bad", "--json", "--no-interactive"}},
+		{ID: "17-image-ls-invalid-visibility-json", Args: []string{"image", "ls", "--visibility", "bad", "--json", "--no-interactive"}},
+		{ID: "18-image-ls-404-json", Args: []string{"image", "ls", "--json", "--no-interactive"}},
 	}
 	results := make([]*snaptest.Result, len(cases))
 	for i := range cases {
 		env := baseEnv
 		switch cases[i].ID {
-		case "03-node-ls-404-json", "08-job-ls-404-json", "11-image-ls-404-json":
+		case "03-node-ls-404-json", "07-node-pods-404-json", "14-job-ls-404-json", "15-job-yaml-404-json", "18-image-ls-404-json":
 			env = append(baseEnv, "CRATER_TEST_SANDBOX_HTTP=error404")
 		}
 		r, err := snaptest.Run(bin, env, cases[i].Args)

@@ -54,6 +54,42 @@ var jobGetCmd = &cobra.Command{
 	RunE: runJobGet,
 }
 
+var jobPodsCmd = &cobra.Command{
+	Use:   "pods <name>",
+	Short: "List pods for a job",
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 {
+			return errTooManyArgs(cmd, len(args), 1)
+		}
+		return nil
+	},
+	RunE: runJobPods,
+}
+
+var jobEventsCmd = &cobra.Command{
+	Use:   "events <name>",
+	Short: "List events for a job",
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 {
+			return errTooManyArgs(cmd, len(args), 1)
+		}
+		return nil
+	},
+	RunE: runJobEvents,
+}
+
+var jobYAMLCmd = &cobra.Command{
+	Use:   "yaml <name>",
+	Short: "Show job YAML",
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 {
+			return errTooManyArgs(cmd, len(args), 1)
+		}
+		return nil
+	},
+	RunE: runJobYAML,
+}
+
 func runJobLs(cmd *cobra.Command, _ []string) error {
 	opts, err := readJobListOptions(cmd)
 	if err != nil {
@@ -96,6 +132,77 @@ func runJobGet(_ *cobra.Command, args []string) error {
 		}))
 	}
 	printJobDetail(job)
+	return nil
+}
+
+func runJobPods(_ *cobra.Command, args []string) error {
+	name, err := requiredArg(args, "job_label_name", "name")
+	if err != nil {
+		return err
+	}
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	pods, err := client.GetJobPods(name)
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"pods": pods,
+		}))
+	}
+	printJobPodTable(pods)
+	return nil
+}
+
+func runJobEvents(_ *cobra.Command, args []string) error {
+	name, err := requiredArg(args, "job_label_name", "name")
+	if err != nil {
+		return err
+	}
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	events, err := client.GetJobEvents(name)
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"events": events,
+		}))
+	}
+	for _, event := range events {
+		fmt.Printf("%v\n", event)
+	}
+	return nil
+}
+
+func runJobYAML(_ *cobra.Command, args []string) error {
+	name, err := requiredArg(args, "job_label_name", "name")
+	if err != nil {
+		return err
+	}
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	yaml, err := client.GetJobYAML(name)
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"yaml": yaml,
+		}))
+	}
+	fmt.Print(yaml)
+	if yaml != "" && !strings.HasSuffix(yaml, "\n") {
+		fmt.Println()
+	}
 	return nil
 }
 
@@ -204,6 +311,25 @@ func printJobDetail(job *api.JobDetail) {
 	fmt.Printf("%s: %s\n", i18n.T("table_resources"), formatResources(job.Resources))
 }
 
+func printJobPodTable(pods []api.PodDetail) {
+	fmt.Printf("%s %s %s %s %s %s\n",
+		i18n.PadRight(i18n.T("table_name"), 36),
+		i18n.PadRight(i18n.T("table_namespace"), 22),
+		i18n.PadRight(i18n.T("table_node"), 24),
+		i18n.PadRight("IP", 16),
+		i18n.PadRight(i18n.T("table_phase"), 14),
+		i18n.PadRight(i18n.T("table_resources"), 24))
+	for _, pod := range pods {
+		fmt.Printf("%s %s %s %s %s %s\n",
+			i18n.PadRight(pod.Name, 36),
+			i18n.PadRight(pod.Namespace, 22),
+			i18n.PadRight(pod.NodeName, 24),
+			i18n.PadRight(emptyDash(pod.IP), 16),
+			i18n.PadRight(pod.Phase, 14),
+			i18n.PadRight(formatResources(pod.Resource), 24))
+	}
+}
+
 func formatResources(resources api.ResourceList) string {
 	if len(resources) == 0 {
 		return "-"
@@ -230,5 +356,8 @@ func init() {
 
 	jobCmd.AddCommand(jobLsCmd)
 	jobCmd.AddCommand(jobGetCmd)
+	jobCmd.AddCommand(jobPodsCmd)
+	jobCmd.AddCommand(jobEventsCmd)
+	jobCmd.AddCommand(jobYAMLCmd)
 	rootCmd.AddCommand(jobCmd)
 }

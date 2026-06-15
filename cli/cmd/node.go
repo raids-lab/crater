@@ -44,6 +44,30 @@ var nodeGetCmd = &cobra.Command{
 	RunE: runNodeGet,
 }
 
+var nodePodsCmd = &cobra.Command{
+	Use:   "pods <name>",
+	Short: "List pods on a cluster node",
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 {
+			return errTooManyArgs(cmd, len(args), 1)
+		}
+		return nil
+	},
+	RunE: runNodePods,
+}
+
+var nodeGPUCmd = &cobra.Command{
+	Use:   "gpu <name>",
+	Short: "Get GPU information for a cluster node",
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 {
+			return errTooManyArgs(cmd, len(args), 1)
+		}
+		return nil
+	},
+	RunE: runNodeGPU,
+}
+
 func runNodeLs(cmd *cobra.Command, _ []string) error {
 	if err := validateNodeLsFlags(cmd); err != nil {
 		return err
@@ -163,6 +187,50 @@ func runNodeGet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+func runNodePods(_ *cobra.Command, args []string) error {
+	name, err := requiredArg(args, "node_label_name", "name")
+	if err != nil {
+		return err
+	}
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	pods, err := client.GetNodePods(name)
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"pods": pods,
+		}))
+	}
+	printNodePodTable(pods)
+	return nil
+}
+
+func runNodeGPU(_ *cobra.Command, args []string) error {
+	name, err := requiredArg(args, "node_label_name", "name")
+	if err != nil {
+		return err
+	}
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	gpu, err := client.GetNodeGPU(name)
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"gpu": gpu,
+		}))
+	}
+	printNodeGPU(gpu)
+	return nil
+}
+
 func printNodeTable(nodes []api.NodeBrief) {
 	fmt.Printf("%s %s %s %s %s %s %s %s\n",
 		i18n.PadRight(i18n.T("table_name"), 32),
@@ -200,6 +268,43 @@ func printNodeDetail(n *api.NodeDetail) {
 	fmt.Printf("%s: %s\n", "Runtime", n.ContainerRuntimeVersion)
 	fmt.Printf("%s: %s\n", "CPU", resourcePair(n.Used, n.Allocatable, "cpu"))
 	fmt.Printf("%s: %s\n", "Memory", resourcePair(n.Used, n.Allocatable, "memory"))
+}
+
+func printNodePodTable(pods []api.PodInfo) {
+	fmt.Printf("%s %s %s %s %s %s\n",
+		i18n.PadRight(i18n.T("table_name"), 36),
+		i18n.PadRight(i18n.T("table_namespace"), 22),
+		i18n.PadRight("IP", 16),
+		i18n.PadRight(i18n.T("table_status"), 14),
+		i18n.PadRight(i18n.T("table_type"), 12),
+		i18n.PadRight(i18n.T("table_resources"), 24))
+	for _, pod := range pods {
+		fmt.Printf("%s %s %s %s %s %s\n",
+			i18n.PadRight(pod.Name, 36),
+			i18n.PadRight(pod.Namespace, 22),
+			i18n.PadRight(emptyDash(pod.IP), 16),
+			i18n.PadRight(pod.Status, 14),
+			i18n.PadRight(emptyDash(pod.Type), 12),
+			i18n.PadRight(formatResources(pod.Resources), 24))
+	}
+}
+
+func printNodeGPU(gpu *api.NodeGPUInfo) {
+	if gpu == nil {
+		return
+	}
+	fmt.Printf("%s: %s\n", i18n.T("table_name"), gpu.Name)
+	fmt.Printf("%s: %t\n", "HaveGPU", gpu.HaveGPU)
+	fmt.Printf("%s: %d\n", "GPUCount", gpu.GPUCount)
+	for _, device := range gpu.GPUDevices {
+		fmt.Printf("- %s %s count=%d memory=%s driver=%s runtime=%s\n",
+			device.ResourceName,
+			device.Product,
+			device.Count,
+			device.Memory,
+			device.Driver,
+			device.RuntimeVersion)
+	}
 }
 
 func requiredArg(args []string, labelKey string, field string) (string, error) {
@@ -242,5 +347,7 @@ func init() {
 	completion.RegisterFlagValue([]string{"node", "ls"}, "arch", staticValueCompleter([]string{"amd64", "arm64"}, nil))
 	nodeCmd.AddCommand(nodeLsCmd)
 	nodeCmd.AddCommand(nodeGetCmd)
+	nodeCmd.AddCommand(nodePodsCmd)
+	nodeCmd.AddCommand(nodeGPUCmd)
 	rootCmd.AddCommand(nodeCmd)
 }

@@ -17,7 +17,8 @@ metadata:
 ## 适用场景
 
 - 用户需要查看集群节点列表或节点详情。
-- 用户需要查看作业列表或作业详情。
+- 用户需要查看节点上的 Pod 或节点 GPU 详情。
+- 用户需要查看作业列表、作业详情、作业 Pod、事件或 YAML。
 - 用户需要查看可见镜像或创建作业时可用的镜像。
 - 用户需要把节点、作业、镜像数据交给脚本或 AI Agent 继续处理。
 
@@ -32,10 +33,15 @@ metadata:
 ```bash
 crater node ls --json
 crater node get gpu-node-01 --json
+crater node pods gpu-node-01 --json
+crater node gpu gpu-node-01 --json
 crater job ls --json
 crater job ls --all --days 7 --status Running --json
 crater job ls --interactive --json
 crater job get my-job-name --json
+crater job pods my-job-name --json
+crater job events my-job-name --json
+crater job yaml my-job-name
 crater image ls --json
 crater image ls --available --type jupyter --json
 ```
