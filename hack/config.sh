@@ -122,8 +122,6 @@ declare -A CONFIG_FILES=(
     ["backend/kubeconfig"]="backend/kubeconfig"
     ["backend/etc/debug-config.yaml"]="backend/etc/debug-config.yaml"
     ["frontend/.env.development"]="frontend/.env.development"
-    ["storage/.env"]="storage/.env"
-    ["storage/etc/config.yaml"]="storage/etc/config.yaml"
 )
 
 # Get project root directory
@@ -257,7 +255,6 @@ do_link() {
     # Define subdirectories
     BACKEND_CONFIG_DIR="$CONFIG_DIR/backend"
     FRONTEND_CONFIG_DIR="$CONFIG_DIR/frontend"
-    STORAGE_CONFIG_DIR="$CONFIG_DIR/storage"
 
     echo -e "${BLUE}Using config directory: ${CONFIG_DIR}${RESET}"
     echo ""
@@ -272,12 +269,6 @@ do_link() {
     echo ""
     echo -e "${CYAN}Linking frontend configurations...${RESET}"
     create_symlink "$FRONTEND_CONFIG_DIR/.env.development" "$PROJECT_ROOT/frontend/.env.development" "frontend/.env.development"
-
-    # Storage configurations
-    echo ""
-    echo -e "${CYAN}Linking storage configurations...${RESET}"
-    create_symlink "$STORAGE_CONFIG_DIR/.env" "$PROJECT_ROOT/storage/.env" "storage/.env"
-    create_symlink "$STORAGE_CONFIG_DIR/config.yaml" "$PROJECT_ROOT/storage/etc/config.yaml" "storage/etc/config.yaml"
 
     echo ""
     echo -e "${GREEN}✅ All symlinks created successfully!${RESET}"
@@ -339,13 +330,6 @@ do_status() {
     check_file_status "$PROJECT_ROOT/frontend/.env.development" "frontend/.env.development"
 
     echo ""
-
-    # Storage configurations
-    echo -e "${BLUE}Storage:${RESET}"
-    check_file_status "$PROJECT_ROOT/storage/.env" "storage/.env"
-    check_file_status "$PROJECT_ROOT/storage/etc/config.yaml" "storage/etc/config.yaml"
-
-    echo ""
 }
 
 # Function to remove symlink
@@ -404,22 +388,6 @@ do_unlink() {
     # Frontend configurations
     echo -e "${CYAN}Frontend:${RESET}"
     if remove_symlink "$PROJECT_ROOT/frontend/.env.development" "frontend/.env.development"; then
-        removed_count=$((removed_count + 1))
-    else
-        skipped_count=$((skipped_count + 1))
-    fi
-
-    echo ""
-
-    # Storage configurations
-    echo -e "${CYAN}Storage:${RESET}"
-    if remove_symlink "$PROJECT_ROOT/storage/.env" "storage/.env"; then
-        removed_count=$((removed_count + 1))
-    else
-        skipped_count=$((skipped_count + 1))
-    fi
-
-    if remove_symlink "$PROJECT_ROOT/storage/etc/config.yaml" "storage/etc/config.yaml"; then
         removed_count=$((removed_count + 1))
     else
         skipped_count=$((skipped_count + 1))
@@ -502,22 +470,6 @@ do_restore() {
     # Frontend configurations
     echo -e "${CYAN}Frontend:${RESET}"
     if restore_backup "$PROJECT_ROOT/frontend/.env.development" "frontend/.env.development"; then
-        restored_count=$((restored_count + 1))
-    else
-        skipped_count=$((skipped_count + 1))
-    fi
-
-    echo ""
-
-    # Storage configurations
-    echo -e "${CYAN}Storage:${RESET}"
-    if restore_backup "$PROJECT_ROOT/storage/.env" "storage/.env"; then
-        restored_count=$((restored_count + 1))
-    else
-        skipped_count=$((skipped_count + 1))
-    fi
-
-    if restore_backup "$PROJECT_ROOT/storage/etc/config.yaml" "storage/etc/config.yaml"; then
         restored_count=$((restored_count + 1))
     else
         skipped_count=$((skipped_count + 1))

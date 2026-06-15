@@ -17,6 +17,8 @@ import { z } from 'zod'
 
 import { MetadataFormType } from '@/components/form/types'
 
+import { NodeSelectorRequirement } from '@/services/api/vcjob'
+
 import { V1ResourceList } from './resource'
 
 export const jobNameSchema = z
@@ -195,6 +197,8 @@ export const nodeSelectorSchema = z
   .object({
     enable: z.boolean(),
     nodeName: z.string().optional(),
+    // Nodes the job must NOT be scheduled on. Independent of `enable`.
+    excludedNodes: z.array(z.string()).optional(),
   })
   .refine(
     (observability) => {
@@ -202,16 +206,44 @@ export const nodeSelectorSchema = z
         !observability.enable ||
         (observability.enable &&
           observability.nodeName !== null &&
-          observability.nodeName !== undefined)
+          observability.nodeName !== undefined &&
+          observability.nodeName !== '')
       )
     },
     {
-      message: '节点名称不能为空',
+      message: '请选择工作节点',
       path: ['nodeName'],
     }
   )
 
 export type NodeSelectorSchema = z.infer<typeof nodeSelectorSchema>
+
+// buildNodeSelectors converts the node-selector form value into k8s node
+// affinity match expressions: an `In` term to pin the job to a chosen node and
+// a `NotIn` term to keep it off excluded nodes. Both are ANDed when present.
+export const buildNodeSelectors = (
+  nodeSelector: NodeSelectorSchema
+): NodeSelectorRequirement[] | undefined => {
+  const selectors: NodeSelectorRequirement[] = []
+  if (nodeSelector.enable && nodeSelector.nodeName) {
+    selectors.push({
+      key: 'kubernetes.io/hostname',
+      operator: 'In',
+      values: [nodeSelector.nodeName],
+    })
+  }
+  const excluded =
+    nodeSelector.excludedNodes?.filter((node) => Boolean(node) && node !== nodeSelector.nodeName) ??
+    []
+  if (excluded.length > 0) {
+    selectors.push({
+      key: 'kubernetes.io/hostname',
+      operator: 'NotIn',
+      values: excluded,
+    })
+  }
+  return selectors.length > 0 ? selectors : undefined
+}
 
 export interface JobSubmitJson<T> {
   version: string

@@ -94,7 +94,7 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
         return (
           <div className="flex min-w-0 items-center gap-3">
             <div
-              className={`bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-lg p-2`}
+              className={`from-primary/15 to-primary/5 text-primary ring-primary/10 flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br p-2 ring-1`}
             >
               {sourceTitle === '模型' ? (
                 <BotIcon className="size-6" />

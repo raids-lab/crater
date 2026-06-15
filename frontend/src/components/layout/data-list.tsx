@@ -276,8 +276,8 @@ export default function DataList({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
-              whileHover={{ y: -5 }}
-              className="bg-card flex min-w-0 flex-col justify-between gap-3 rounded-lg border hover:shadow-md"
+              whileHover={{ y: -4 }}
+              className="group bg-card hover:border-primary/40 flex min-w-0 flex-col justify-between gap-3 rounded-xl border shadow-sm transition-all duration-200 hover:shadow-lg"
             >
               <div className="flex min-w-0 flex-row items-center justify-between gap-2 p-4 pb-0">
                 {mainArea ? <>{mainArea(item)}</> : <></>}
@@ -285,7 +285,11 @@ export default function DataList({
                   <AlertDialog>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0 p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                        >
                           <span className="sr-only">更多操作</span>
                           <EllipsisVerticalIcon className="size-4" />
                         </Button>
@@ -331,21 +335,22 @@ export default function DataList({
               {item.tag.length > 0 && (
                 <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
                   {item.tag.map((tag) => (
-                    <Badge variant="secondary" key={tag} className="rounded-full">
+                    <Badge variant="secondary" key={tag} className="rounded-full font-normal">
                       {tag}
                     </Badge>
                   ))}
                 </div>
               )}
               <p
-                className="text-muted-foreground line-clamp-3 px-4 text-sm text-balance"
+                className="text-muted-foreground line-clamp-2 min-h-[2.5rem] px-4 text-sm text-balance"
                 title={item.desc}
               >
                 {item.desc}
               </p>
               <div>
-                <div className="flex items-end justify-between gap-2 p-4 pt-0">
-                  <div className="flex flex-row flex-wrap gap-1">
+                <Separator className="opacity-60" />
+                <div className="flex items-center justify-between gap-2 px-4 py-3">
+                  <div className="flex flex-row flex-wrap items-center gap-1">
                     <TipBadge
                       title={
                         <UserLabel

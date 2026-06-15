@@ -532,24 +532,40 @@ func GetDatasetFiles(c *gin.Context) {
 	ss := "/api/ss/dataset/" + strconv.FormatUint(uint64(datasetReq.ID), 10)
 	path := strings.TrimPrefix(c.Request.URL.Path, ss)
 	token := getFirstToken(path)
+	var realPath string
 	if token == "" {
-		var datasetpaths []string
-		datasetpaths = append(datasetpaths, URL)
-		files := GetFilesByPaths(datasetpaths, c)
-		if len(files) == 0 {
-			resputil.Error(c, "The dataset's URL does not exist. ", resputil.NotSpecified)
-			return
-		}
-		resputil.Success(c, files)
+		realPath = URL
 	} else {
-		realPath := URL + "/" + strings.TrimPrefix(path, "/"+token)
-		data, err = handleDirsList(fs.FileSystem, realPath)
-		if err != nil {
-			resputil.Error(c, err.Error(), resputil.NotSpecified)
-			return
-		}
-		resputil.Success(c, data)
+		realPath = URL + "/" + strings.TrimPrefix(path, "/"+token)
 	}
+
+	// Stat the target first so we can distinguish "not found in storage" from
+	// "is a directory" / "is a single file", and return an accurate error.
+	fi, err := fs.FileSystem.Stat(c.Request.Context(), realPath)
+	if err != nil {
+		resputil.Error(c, fmt.Sprintf("the resource files are not available in storage (path: %s)", realPath), resputil.NotSpecified)
+		return
+	}
+
+	// A single-file resource (e.g. a .tar or .docx dataset): return the entry itself.
+	if !fi.IsDir() {
+		resputil.Success(c, []Files{{
+			Name:       fi.Name(),
+			Size:       fi.Size(),
+			IsDir:      false,
+			ModifyTime: fi.ModTime(),
+			Sys:        fi.Sys(),
+		}})
+		return
+	}
+
+	// A directory: list its contents.
+	data, err = handleDirsList(fs.FileSystem, realPath)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+	resputil.Success(c, data)
 }
 
 func handleDirsList(fs webdav.FileSystem, path string) ([]Files, error) {

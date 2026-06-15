@@ -167,6 +167,14 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 		}
 	}
 
+	// When a download fails, capture the reason from pod logs so the user can
+	// see why (gated repo, auth, network, OOM, ...) instead of an empty message.
+	if newStatus == model.ModelDownloadStatusFailed && download.Status != model.ModelDownloadStatusFailed {
+		if err := r.extractFailureReason(ctx, job, download); err != nil {
+			logger.Error(err, "failed to extract failure reason")
+		}
+	}
+
 	if newStatus != oldStatus {
 		if err := r.updateDownloadStatus(ctx, download, newStatus); err != nil {
 			logger.Error(err, "failed to update download status")
@@ -214,10 +222,23 @@ func (r *ModelDownloadReconciler) handleJobNotFound(ctx context.Context, jobName
 }
 
 func (r *ModelDownloadReconciler) getJobStatus(job *batchv1.Job) model.ModelDownloadStatus {
-	if job.Status.Succeeded == 1 {
+	// Prefer terminal Job conditions so that retries (BackoffLimit > 0) do not
+	// flip the record to Failed while attempts are still being made.
+	for i := range job.Status.Conditions {
+		cond := job.Status.Conditions[i]
+		if cond.Status != v1.ConditionTrue {
+			continue
+		}
+		switch cond.Type {
+		case batchv1.JobComplete:
+			return model.ModelDownloadStatusReady
+		case batchv1.JobFailed:
+			return model.ModelDownloadStatusFailed
+		}
+	}
+
+	if job.Status.Succeeded >= 1 {
 		return model.ModelDownloadStatusReady
-	} else if job.Status.Failed >= 1 {
-		return model.ModelDownloadStatusFailed
 	}
 
 	// Job is active - check if running or pending
@@ -350,6 +371,101 @@ func (r *ModelDownloadReconciler) getPodLogs(ctx context.Context, pod *v1.Pod) (
 	}
 
 	return string(buf), nil
+}
+
+// extractFailureReason reads the failed pod's logs (and termination state) and
+// stores a concise, human-readable reason on the download record so users can
+// understand why a download failed instead of seeing an empty message.
+func (r *ModelDownloadReconciler) extractFailureReason(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
+	q := query.ModelDownload
+
+	podList := &v1.PodList{}
+	err := r.List(ctx, podList, client.InNamespace(job.Namespace), client.MatchingLabels{"job-name": job.Name})
+	if err != nil || len(podList.Items) == 0 {
+		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, "Download job failed (pod not found)")
+		return err
+	}
+
+	pod := &podList.Items[0]
+
+	// Prefer the container termination reason when available (e.g. OOMKilled).
+	for i := range pod.Status.ContainerStatuses {
+		if term := pod.Status.ContainerStatuses[i].State.Terminated; term != nil && term.Reason == "OOMKilled" {
+			_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message,
+				"Download failed: out of memory (OOMKilled). Try again later or contact an admin to raise the job memory limit.")
+			return nil
+		}
+	}
+
+	logs, logErr := r.getPodLogs(ctx, pod)
+	if logErr != nil {
+		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, "Download job failed (logs unavailable)")
+		return logErr
+	}
+
+	_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, classifyDownloadFailure(logs))
+	return nil
+}
+
+// downloadFailureRule maps log keywords to a concise, actionable reason.
+type downloadFailureRule struct {
+	keywords []string
+	reason   string
+}
+
+// downloadFailureRules are evaluated in order; the first matching rule wins.
+var downloadFailureRules = []downloadFailureRule{
+	{
+		keywords: []string{"gated", "awaiting a review", "access to model", "you must be authenticated"},
+		reason:   "Download failed: this repository is gated and requires authorization/login on the source site.",
+	},
+	{
+		keywords: []string{"401", "403", "unauthorized", "forbidden"},
+		reason:   "Download failed: access denied (401/403). The repository may be private or require a token.",
+	},
+	{
+		keywords: []string{"404", "not found", "repository not found", "does not exist"},
+		reason:   "Download failed: repository or revision not found (404). Check the name and revision.",
+	},
+	{
+		keywords: []string{"no space left"},
+		reason:   "Download failed: no space left on the storage volume.",
+	},
+	{
+		keywords: []string{"timed out", "timeout", "connection reset", "temporary failure in name resolution", "max retries exceeded"},
+		reason:   "Download failed: network error while reaching the source. Try again later.",
+	},
+}
+
+// classifyDownloadFailure maps raw download logs to a concise, actionable reason.
+func classifyDownloadFailure(logs string) string {
+	lower := strings.ToLower(logs)
+	for _, rule := range downloadFailureRules {
+		for _, kw := range rule.keywords {
+			if strings.Contains(lower, kw) {
+				return rule.reason
+			}
+		}
+	}
+	return fallbackFailureReason(logs)
+}
+
+// fallbackFailureReason returns the last non-empty log line, which usually
+// carries the underlying error, truncated to a reasonable length.
+func fallbackFailureReason(logs string) string {
+	const maxReasonLen = 300
+	lines := strings.Split(strings.TrimRight(logs, "\n"), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if len(line) > maxReasonLen {
+			line = line[:maxReasonLen] + "..."
+		}
+		return "Download failed: " + line
+	}
+	return "Download failed (no log output captured)."
 }
 
 func formatSpeed(bytesPerSec int64) string {

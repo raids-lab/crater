@@ -63,6 +63,7 @@ import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-b
 
 import {
   VolumeMountType,
+  buildNodeSelectors,
   convertToResourceList,
   defaultResource,
   ensureImageCompatibility,
@@ -250,15 +251,7 @@ function RouteComponent() {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         alertEnabled: values.alertEnabled,
-        selectors: values.nodeSelector.enable
-          ? [
-              {
-                key: 'kubernetes.io/hostname',
-                operator: 'In',
-                values: [`${values.nodeSelector.nodeName}`],
-              },
-            ]
-          : undefined,
+        selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormPytorch, values),
         forwards: values.forwards,
       }),
@@ -314,6 +307,7 @@ function RouteComponent() {
       alertEnabled: true,
       nodeSelector: {
         enable: false,
+        excludedNodes: [],
       },
       forwards: [],
     },
@@ -728,6 +722,7 @@ function RouteComponent() {
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
+              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />
