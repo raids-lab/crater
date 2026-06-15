@@ -58,6 +58,7 @@ import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-b
 
 import {
   VolumeMountType,
+  buildNodeSelectors,
   convertToResourceList,
   ensureImageCompatibility,
   envsSchema,
@@ -146,15 +147,7 @@ function RouteComponent() {
         vocabularySize: values.dim.map((item) => item.vocabularySize),
         embeddingDim: values.dim.map((item) => item.embeddingDim),
         replicas: 1,
-        selectors: values.nodeSelector.enable
-          ? [
-              {
-                key: 'kubernetes.io/hostname',
-                operator: 'In',
-                values: [`${values.nodeSelector.nodeName}`],
-              },
-            ]
-          : undefined,
+        selectors: buildNodeSelectors(values.nodeSelector),
         template: JSON.stringify(
           {
             version: VERSION,
@@ -223,6 +216,7 @@ function RouteComponent() {
       envs: [],
       nodeSelector: {
         enable: false,
+        excludedNodes: [],
       },
       forwards: [],
     },
@@ -747,6 +741,7 @@ function RouteComponent() {
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
+              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

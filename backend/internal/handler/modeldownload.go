@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -77,23 +78,29 @@ type CreateDownloadReq struct {
 	Revision string `json:"revision"`
 	Source   string `json:"source"`
 	Category string `json:"category" binding:"required,oneof=model dataset"`
+	// Token is an optional access token for gated/private repositories on the
+	// source site. It is only forwarded to the download Job as an env var and is
+	// never persisted on the (shared, deduplicated) download record.
+	Token string `json:"token"`
 }
 
 type ModelDownloadResp struct {
-	ID             uint      `json:"id"`
-	Name           string    `json:"name"`
-	Source         string    `json:"source"`
-	Category       string    `json:"category"`
-	Revision       string    `json:"revision"`
-	Path           string    `json:"path"`
-	SizeBytes      int64     `json:"sizeBytes"`
-	Status         string    `json:"status"`
-	Message        string    `json:"message"`
-	JobName        string    `json:"jobName"`
-	CreatorID      uint      `json:"creatorId"`
-	ReferenceCount int       `json:"referenceCount"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID              uint      `json:"id"`
+	Name            string    `json:"name"`
+	Source          string    `json:"source"`
+	Category        string    `json:"category"`
+	Revision        string    `json:"revision"`
+	Path            string    `json:"path"`
+	SizeBytes       int64     `json:"sizeBytes"`
+	DownloadedBytes int64     `json:"downloadedBytes"`
+	DownloadSpeed   string    `json:"downloadSpeed"`
+	Status          string    `json:"status"`
+	Message         string    `json:"message"`
+	JobName         string    `json:"jobName"`
+	CreatorID       uint      `json:"creatorId"`
+	ReferenceCount  int       `json:"referenceCount"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 // CreateDownload godoc
@@ -221,7 +228,7 @@ func (mgr *ModelDownloadMgr) resetFailedDownload(
 
 // getOrCreateDownload 在事务中获取或创建下载任务
 func (mgr *ModelDownloadMgr) getOrCreateDownload(
-	c *gin.Context, req CreateDownloadReq, token util.JWTMessage,
+	c *gin.Context, req *CreateDownloadReq, token util.JWTMessage,
 	source model.ModelSource, category model.DownloadCategory, downloadPath, revision string,
 ) (*model.ModelDownload, bool, error) {
 	db := query.Use(query.GetDB())
@@ -332,7 +339,7 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	downloadPath := filepath.Join(basePath, safeName)
 
 	// 在事务中获取或创建下载任务
-	download, isNewDownload, err := mgr.getOrCreateDownload(c, req, token, source, category, downloadPath, req.Revision)
+	download, isNewDownload, err := mgr.getOrCreateDownload(c, &req, token, source, category, downloadPath, req.Revision)
 	if err != nil {
 		klog.Errorf("get or create download failed: %v", err)
 		resputil.Error(c, "处理下载请求失败", resputil.NotSpecified)
@@ -359,7 +366,7 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	}
 
 	// 提交 K8s Job
-	if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, req.Token); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		q := query.ModelDownload
 		updates := map[string]any{
@@ -596,7 +603,7 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 	}
 
 	// 事务成功后提交 Job
-	if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, ""); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		// 回滚状态
 		updates := map[string]any{
@@ -803,7 +810,7 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 	}
 
 	// 提交新 Job (会从已下载的部分继续)
-	if err := mgr.submitDownloadJob(c, download, token.Username); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, ""); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		// 回滚状态
 		rollbackUpdates := map[string]any{
@@ -884,12 +891,18 @@ func (mgr *ModelDownloadMgr) AdminDeleteDownload(c *gin.Context) {
 	resputil.Success(c, "deleted successfully")
 }
 
-func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.ModelDownload, username string) error {
+// downloadJobBackoffLimit lets the Job retry transient failures (network blips)
+// a couple of times before being marked Failed.
+const downloadJobBackoffLimit int32 = 2
+
+func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.ModelDownload, username, accessToken string) error {
 	physicalPath := mgr.convertToPhysicalPath(download.Path)
 	subPath := filepath.Dir(physicalPath)
 	modelDirName := filepath.Base(physicalPath)
 
 	downloadCmd := mgr.buildDownloadCommand(download, modelDirName)
+	memRequest, memLimit := mgr.memoryForModel(download.Name)
+	backoffLimit := downloadJobBackoffLimit
 
 	// 创建 Job
 	job := &batchv1.Job{
@@ -903,7 +916,7 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: func() *int32 { i := int32(0); return &i }(),
+			BackoffLimit: &backoffLimit,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -919,14 +932,15 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 							Image:   mgr.getDownloadImage(download.Source),
 							Command: []string{"/bin/bash", "-c"},
 							Args:    []string{downloadCmd},
+							Env:     downloadTokenEnv(download.Source, accessToken),
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("1"),
-									corev1.ResourceMemory: resource.MustParse("2Gi"),
+									corev1.ResourceMemory: memRequest,
 								},
 								Limits: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("3"),
-									corev1.ResourceMemory: resource.MustParse("6Gi"),
+									corev1.ResourceMemory: memLimit,
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -957,6 +971,65 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 	_, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Create(c, job, metav1.CreateOptions{})
 	return err
 }
+
+// downloadTokenEnv injects the access token for the given source as the env var
+// the corresponding SDK expects, when a token is provided.
+func downloadTokenEnv(source model.ModelSource, accessToken string) []corev1.EnvVar {
+	if accessToken == "" {
+		return nil
+	}
+	switch source {
+	case model.ModelSourceHuggingFace:
+		return []corev1.EnvVar{
+			{Name: "HF_TOKEN", Value: accessToken},
+			{Name: "HUGGING_FACE_HUB_TOKEN", Value: accessToken},
+		}
+	case model.ModelSourceModelScope:
+		return []corev1.EnvVar{{Name: "MODELSCOPE_API_TOKEN", Value: accessToken}}
+	default:
+		return nil
+	}
+}
+
+// Parameter-count thresholds (in billions) used to size download job memory.
+const (
+	paramThresholdHuge   = 70
+	paramThresholdLarge  = 30
+	paramThresholdMedium = 13
+)
+
+// memoryForModel returns request/limit memory sized by hints in the model name.
+// Larger parameter counts need more RAM to stage shards before flushing to disk.
+func (mgr *ModelDownloadMgr) memoryForModel(name string) (request, limit resource.Quantity) {
+	lower := strings.ToLower(name)
+	billions := parseParamBillions(lower)
+	switch {
+	case billions >= paramThresholdHuge:
+		return resource.MustParse("4Gi"), resource.MustParse("24Gi")
+	case billions >= paramThresholdLarge:
+		return resource.MustParse("4Gi"), resource.MustParse("16Gi")
+	case billions >= paramThresholdMedium:
+		return resource.MustParse("2Gi"), resource.MustParse("12Gi")
+	default:
+		return resource.MustParse("2Gi"), resource.MustParse("6Gi")
+	}
+}
+
+// parseParamBillions extracts a parameter count in billions from a model name
+// such as "Qwen/Qwen2.5-7B" or "meta-llama/Llama-3.2-70b". Returns 0 if unknown.
+func parseParamBillions(lowerName string) float64 {
+	matches := paramSizePattern.FindAllStringSubmatch(lowerName, -1)
+	var maxB float64
+	for _, m := range matches {
+		v, err := strconv.ParseFloat(m[1], 64)
+		if err == nil && v > maxB {
+			maxB = v
+		}
+	}
+	return maxB
+}
+
+var paramSizePattern = regexp.MustCompile(`(\d+(?:\.\d+)?)\s*b\b`)
 
 func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 	// 优先使用配置文件中的镜像
@@ -1065,6 +1138,14 @@ export OUT_DIR
 mkdir -p "$OUT_DIR"
 echo "Downloading model: %s from %s to $OUT_DIR"
 
+# Surface the failing step clearly so the controller can classify the reason.
+on_error() {
+    code=$?
+    echo "[ERROR] download failed at line $1 (exit code $code)" >&2
+    exit $code
+}
+trap 'on_error $LINENO' ERR
+
 # 安装依赖
 echo "Installing dependencies from Tsinghua mirror..."
 %s
@@ -1136,20 +1217,22 @@ func sanitizeModelName(name string) string {
 
 func convertDownloadToResp(d *model.ModelDownload) ModelDownloadResp {
 	return ModelDownloadResp{
-		ID:             d.ID,
-		Name:           d.Name,
-		Source:         string(d.Source),
-		Category:       string(d.Category),
-		Revision:       d.Revision,
-		Path:           d.Path,
-		SizeBytes:      d.SizeBytes,
-		Status:         string(d.Status),
-		Message:        d.Message,
-		JobName:        d.JobName,
-		CreatorID:      d.CreatorID,
-		ReferenceCount: d.ReferenceCount,
-		CreatedAt:      d.CreatedAt,
-		UpdatedAt:      d.UpdatedAt,
+		ID:              d.ID,
+		Name:            d.Name,
+		Source:          string(d.Source),
+		Category:        string(d.Category),
+		Revision:        d.Revision,
+		Path:            d.Path,
+		SizeBytes:       d.SizeBytes,
+		DownloadedBytes: d.DownloadedBytes,
+		DownloadSpeed:   d.DownloadSpeed,
+		Status:          string(d.Status),
+		Message:         d.Message,
+		JobName:         d.JobName,
+		CreatorID:       d.CreatorID,
+		ReferenceCount:  d.ReferenceCount,
+		CreatedAt:       d.CreatedAt,
+		UpdatedAt:       d.UpdatedAt,
 	}
 }
 

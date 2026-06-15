@@ -202,7 +202,24 @@ export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
-        cell: ({ row }) => <ModelDownloadPhaseBadge status={row.original.status} />,
+        cell: ({ row }) => {
+          const d = row.original
+          return (
+            <div className="flex flex-col items-start gap-1">
+              <ModelDownloadPhaseBadge status={d.status} />
+              {d.status === 'Downloading' && d.downloadSpeed && (
+                <span className="text-muted-foreground text-xs">{d.downloadSpeed}</span>
+              )}
+              {d.status === 'Failed' && d.message && (
+                <SimpleTooltip tooltip={d.message}>
+                  <span className="text-destructive/80 line-clamp-1 max-w-[220px] cursor-help text-xs">
+                    {d.message}
+                  </span>
+                </SimpleTooltip>
+              )}
+            </div>
+          )
+        },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id))
         },

@@ -21,6 +21,7 @@ export interface CreateModelDownloadReq {
   revision?: string
   source?: string
   category: 'model' | 'dataset'
+  token?: string
 }
 
 export interface ModelDownload {
@@ -31,6 +32,8 @@ export interface ModelDownload {
   revision: string
   path: string
   sizeBytes: number
+  downloadedBytes: number
+  downloadSpeed: string
   status: 'Pending' | 'Downloading' | 'Paused' | 'Ready' | 'Failed'
   message: string
   jobName: string

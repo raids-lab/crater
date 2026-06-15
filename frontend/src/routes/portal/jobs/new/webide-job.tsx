@@ -61,6 +61,7 @@ import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-b
 
 import {
   VolumeMountType,
+  buildNodeSelectors,
   convertToResourceList,
   defaultResource,
   envsSchema,
@@ -140,15 +141,7 @@ function RouteComponent() {
         volumeMounts: values.volumeMounts,
         envs: values.envs,
         alertEnabled: values.alertEnabled,
-        selectors: values.nodeSelector.enable
-          ? [
-              {
-                key: 'kubernetes.io/hostname',
-                operator: 'In',
-                values: [`${values.nodeSelector.nodeName}`],
-              },
-            ]
-          : undefined,
+        selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormWebIDE, values),
         forwards: values.forwards,
         scheduleType: isBackfillEnabled ? values.scheduleType : ScheduleType.Normal,
@@ -206,6 +199,7 @@ function RouteComponent() {
       scheduleType: ScheduleType.Normal,
       nodeSelector: {
         enable: false,
+        excludedNodes: [],
       },
     },
   })
@@ -356,6 +350,7 @@ function RouteComponent() {
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
+              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

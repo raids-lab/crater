@@ -15,6 +15,7 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { BoxIcon, DatabaseIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -22,24 +23,20 @@ import { z } from 'zod'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 import LoadableButton from '@/components/button/loadable-button'
 import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import { CreateModelDownloadReq, apiCreateModelDownload } from '@/services/api/modeldownload'
+
+import { cn } from '@/lib/utils'
 
 const formSchema = z.object({
   name: z
@@ -51,6 +48,7 @@ const formSchema = z.object({
   revision: z.string().optional(),
   source: z.enum(['modelscope', 'huggingface']),
   category: z.enum(['model', 'dataset']),
+  token: z.string().optional(),
 })
 
 interface ModelDownloadDialogProps {
@@ -71,15 +69,22 @@ export function ModelDownloadDialog({
       revision: '',
       source: 'modelscope',
       category: defaultCategory,
+      token: '',
     },
   })
 
   const source = form.watch('source')
+  const categoryLabel = defaultCategory === 'dataset' ? '数据集' : '模型'
 
   const sourcePlaceholder =
     source === 'modelscope'
       ? '例如: qwen/Qwen2.5-Coder-7B-Instruct'
       : '例如: meta-llama/Llama-2-7b-hf'
+
+  const tokenHint =
+    source === 'modelscope'
+      ? '从 ModelScope 个人中心获取 SDK Token'
+      : '从 HuggingFace Settings → Access Tokens 获取'
 
   const { mutate, status } = useMutation({
     mutationFn: (data: CreateModelDownloadReq) => apiCreateModelDownload(data),
@@ -109,6 +114,7 @@ export function ModelDownloadDialog({
       revision: values.revision || undefined,
       source: values.source,
       category: values.category,
+      token: values.token?.trim() || undefined,
     })
   }
 
@@ -132,17 +138,30 @@ export function ModelDownloadDialog({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>下载来源</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择下载来源" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="modelscope">ModelScope</SelectItem>
-                    <SelectItem value="huggingface">HuggingFace</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <div className="bg-muted/60 grid grid-cols-2 gap-1 rounded-lg p-1">
+                    {(
+                      [
+                        { value: 'modelscope', label: 'ModelScope' },
+                        { value: 'huggingface', label: 'HuggingFace' },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => field.onChange(opt.value)}
+                        className={cn(
+                          'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                          field.value === opt.value
+                            ? 'bg-background text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -150,8 +169,15 @@ export function ModelDownloadDialog({
 
           <div className="space-y-2">
             <FormLabel>类别</FormLabel>
-            <div className="bg-muted/50 text-muted-foreground rounded-md border px-3 py-2 text-sm">
-              {defaultCategory === 'dataset' ? '数据集' : '模型'}
+            <div className="flex items-center gap-2">
+              <span className="bg-primary/10 text-primary inline-flex items-center rounded-md px-2.5 py-1 text-sm font-medium">
+                {defaultCategory === 'dataset' ? (
+                  <DatabaseIcon className="mr-1.5 size-3.5" />
+                ) : (
+                  <BoxIcon className="mr-1.5 size-3.5" />
+                )}
+                {categoryLabel}
+              </span>
             </div>
           </div>
 
@@ -160,9 +186,9 @@ export function ModelDownloadDialog({
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>名称</FormLabel>
+                <FormLabel>{categoryLabel}名称</FormLabel>
                 <FormControl>
-                  <Input placeholder={sourcePlaceholder} {...field} />
+                  <Input placeholder={sourcePlaceholder} className="font-mono" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -183,12 +209,28 @@ export function ModelDownloadDialog({
             )}
           />
 
+          <FormField
+            name="token"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>访问令牌（可选）</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="用于下载受限/私有仓库" {...field} />
+                </FormControl>
+                <FormDescription>{tokenHint}，仅用于本次下载，不会被保存。</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
           <div className="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
             <p className="mb-1 font-semibold">提示:</p>
             <ul className="ml-4 list-disc space-y-1">
               <li>模型统一下载到公共空间的 Models/ 目录,数据集下载到 Datasets/ 目录</li>
               <li>文件会保存在对应目录下的名称子目录中</li>
               <li>多个用户下载同一资源时会共享同一份文件</li>
+              <li>受限或私有仓库（如部分 Llama / Gemma）需填写访问令牌</li>
               <li>下载过程可能需要较长时间,请耐心等待</li>
             </ul>
           </div>

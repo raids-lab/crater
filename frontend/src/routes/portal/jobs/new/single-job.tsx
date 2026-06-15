@@ -70,6 +70,7 @@ import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-b
 
 import {
   VolumeMountType,
+  buildNodeSelectors,
   convertToResourceList,
   defaultResource,
   ensureImageCompatibility,
@@ -174,15 +175,7 @@ function RouteComponent() {
         alertEnabled: values.alertEnabled,
         cpuPinningEnabled: values.cpuPinningEnabled,
         scheduleType: isBackfillEnabled ? values.scheduleType : ScheduleType.Normal,
-        selectors: values.nodeSelector.enable
-          ? [
-              {
-                key: 'kubernetes.io/hostname',
-                operator: 'In',
-                values: [`${values.nodeSelector.nodeName}`],
-              },
-            ]
-          : undefined,
+        selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormCustom, values),
       }),
     onSuccess: async (_, { jobName }) => {
@@ -233,6 +226,7 @@ function RouteComponent() {
       scheduleType: ScheduleType.Normal,
       nodeSelector: {
         enable: false,
+        excludedNodes: [],
       },
       forwards: [],
     },
@@ -455,6 +449,7 @@ conda activate base;
               cpuPinningEnabledPath="cpuPinningEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
               nodeSelectorNodeNamePath="nodeSelector.nodeName"
+              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

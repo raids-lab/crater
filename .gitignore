@@ -75,7 +75,6 @@ kubeconfig*
 
 # statistic files
 *.csv
-storage/etc/config.yaml
 .codex
 
 # Claude Code
