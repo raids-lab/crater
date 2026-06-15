@@ -1,18 +1,22 @@
 package operations
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"gorm.io/datatypes"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/patrol"
+	"github.com/raids-lab/crater/pkg/util"
 )
 
 // UpdateCronjobConfig godoc
@@ -288,4 +292,95 @@ func (cm *OperationsMgr) GetLastCronjobRecord(c *gin.Context) {
 	}
 
 	resputil.Success(c, records)
+}
+
+// ExecutePatrolJob godoc
+//
+// @Summary Execute patrol job
+// @Description Execute a patrol job immediately
+// @Tags Operations
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param jobName body string true "Job name"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Request parameter error"
+// @Failure 500 {object} resputil.Response[any] "Other errors"
+// @Router /v1/operations/cronjob/execute [post]
+func (mgr *OperationsMgr) ExecutePatrolJob(c *gin.Context) {
+	var req struct {
+		JobName string `json:"jobName" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		return
+	}
+
+	// 获取巡检函数
+	var f util.AnyFunc
+	var err error
+	switch req.JobName {
+	case patrol.UPDATE_USER_SPACE_SIZE:
+		f, err = patrol.GetPatrolFunc(req.JobName, mgr.cronJobManager.GetPatrolClients(), nil)
+	case patrol.ANALYZE_STORAGE_ALERTS:
+		f, err = patrol.GetPatrolFunc(req.JobName, mgr.cronJobManager.GetPatrolClients(), nil)
+	case patrol.TRIGGER_GPU_ANALYSIS_JOB:
+		f, err = patrol.GetPatrolFunc(req.JobName, mgr.cronJobManager.GetPatrolClients(), nil)
+	case patrol.REFRESH_PUBLIC_STORAGE_INDEX:
+		f, err = patrol.GetPatrolFunc(req.JobName, mgr.cronJobManager.GetPatrolClients(), nil)
+	case patrol.REFRESH_USER_STORAGE_INDEX:
+		f, err = patrol.GetPatrolFunc(req.JobName, mgr.cronJobManager.GetPatrolClients(), nil)
+	default:
+		resputil.Error(c, "Unsupported patrol job: "+req.JobName, resputil.InvalidRequest)
+		return
+	}
+
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	// 异步执行巡检任务
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				klog.Errorf("ExecutePatrolJob: panic in patrol job %s: %v", req.JobName, r)
+			}
+		}()
+
+		ctx := context.Background()
+		executeTime := time.Now()
+		jobResult, err := f(ctx)
+
+		status := model.CronJobRecordStatusSuccess
+		if err != nil {
+			status = model.CronJobRecordStatusFailed
+			klog.Errorf("ExecutePatrolJob: patrol job %s failed: %v", req.JobName, err)
+		} else {
+			klog.Infof("ExecutePatrolJob: patrol job %s completed: %v", req.JobName, jobResult)
+		}
+
+		// 保存执行记录
+		rec := &model.CronJobRecord{
+			Name:        req.JobName,
+			ExecuteTime: executeTime,
+			Message:     fmt.Sprintf("manual execute patrol job: %s", req.JobName),
+			Status:      status,
+		}
+
+		if jobResult != nil {
+			if data, err := json.Marshal(jobResult); err != nil {
+				klog.Errorf("ExecutePatrolJob: failed to marshal job result: %v", err)
+			} else {
+				rec.JobData = datatypes.JSON(data)
+			}
+		}
+
+		if err := query.GetDB().WithContext(ctx).Model(rec).Create(rec).Error; err != nil {
+			klog.Errorf("ExecutePatrolJob: failed to create record: %v", err)
+		}
+	}()
+
+	// 立即返回成功响应
+	resputil.Success(c, "任务已开始执行，请稍后在执行记录中查看结果")
 }

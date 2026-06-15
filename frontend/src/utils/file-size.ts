@@ -37,7 +37,7 @@ export const isFileSizeExceeded = (fileSize: number): boolean => {
  * @returns 格式化后的文件大小字符串
  */
 export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 B'
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
 
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']

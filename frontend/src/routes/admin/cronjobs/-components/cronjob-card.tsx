@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Copyright 2025 RAIDS Lab
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,16 +29,19 @@ import LoadableButton from '@/components/button/loadable-button'
 
 import {
   CronJobConfigStatus,
+  apiAdminExecutePatrolJob,
   apiAdminLongTimeRunningJobsCleanup,
   apiAdminLowGPUUsageJobsCleanup,
   apiAdminWaitingCustomJobCancel,
   apiAdminWaitingJupyterJobCancel,
   apiJobScheduleChangeAdmin,
 } from '@/services/api/vcjob'
+import { IResponse } from '@/services/types'
 
 export interface CronJobCardProps {
   jobId: string
   jobName: string
+  jobDescription?: string
   jobType: string
   status: CronJobConfigStatus
   spec: string
@@ -48,52 +51,61 @@ export interface CronJobCardProps {
 
 const HIDDEN_PARAMS = ['jobTypes']
 
-interface CleanupResult {
-  data: {
-    deleted: unknown[]
-    reminded: unknown[]
-  }
+interface CleanupData {
+  deleted?: unknown[]
+  reminded?: unknown[]
 }
+
+type ExecuteResult = IResponse<CleanupData | string | unknown>
 
 const executeJobMap: Record<
   string,
-  (params: Record<string, number | string | string[]>) => Promise<CleanupResult>
+  (params: Record<string, number | string | string[]>) => Promise<ExecuteResult>
 > = {
   'clean-long-time-job': async (params) => {
-    const res = await apiAdminLongTimeRunningJobsCleanup({
+    return apiAdminLongTimeRunningJobsCleanup({
       batchDays: params.batchDays as number,
       interactiveDays: params.interactiveDays as number,
     })
-    return res
   },
   'clean-low-gpu-util-job': async (params) => {
-    const res = await apiAdminLowGPUUsageJobsCleanup({
+    return apiAdminLowGPUUsageJobsCleanup({
       timeRange: params.timeRange as number,
       util: params.util as number,
       waitTime: params.waitTime as number,
     })
-    return res
   },
   'clean-waiting-jupyter': async (params) => {
-    const res = await apiAdminWaitingJupyterJobCancel({
+    return apiAdminWaitingJupyterJobCancel({
       waitMinutes: params.waitMinitues as number,
     })
-    return res
   },
   'clean-waiting-custom': async (params) => {
-    const res = await apiAdminWaitingCustomJobCancel({
+    return apiAdminWaitingCustomJobCancel({
       waitMinutes: params.waitMinitues as number,
     })
-    return res
   },
   'trigger-gpu-analysis-job': async () => {
-    throw new Error('GPU analysis job execution not implemented yet')
+    return apiAdminExecutePatrolJob('trigger-gpu-analysis-job')
+  },
+  'update-user-space-size': async () => {
+    return apiAdminExecutePatrolJob('update-user-space-size')
+  },
+  'analyze-storage-alerts': async () => {
+    return apiAdminExecutePatrolJob('analyze-storage-alerts')
+  },
+  'refresh-public-storage-index-baseline': async () => {
+    return apiAdminExecutePatrolJob('refresh-public-storage-index-baseline')
+  },
+  'refresh-user-storage-index-daily': async () => {
+    return apiAdminExecutePatrolJob('refresh-user-storage-index-daily')
   },
 }
 
 export default function CronJobCard({
   jobId,
   jobName,
+  jobDescription,
   jobType,
   status,
   spec,
@@ -107,13 +119,12 @@ export default function CronJobCard({
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiJobScheduleChangeAdmin({
+      return apiJobScheduleChangeAdmin({
         name: jobId,
         status: enabled ? CronJobConfigStatus.Idle : CronJobConfigStatus.Suspended,
         spec: cronSpec,
         config: jobParams,
       })
-      return res
     },
     onSuccess: () => {
       toast.success(t('cronPolicy.updateSuccess'))
@@ -130,20 +141,30 @@ export default function CronJobCard({
       if (!executeFunc) {
         throw new Error('Job execution not implemented')
       }
-      return await executeFunc(jobParams)
+      return executeFunc(jobParams)
     },
     onSuccess: (data) => {
-      const deleted = data.data.deleted || []
-      const reminded = data.data.reminded || []
-      const total = deleted.length + reminded.length
+      if (jobType === 'patrol_function') {
+        const result = data.data
+        if (typeof result === 'string') {
+          toast.success(result)
+        } else {
+          toast.success('任务执行成功')
+        }
+      } else {
+        const cleanupData = (data.data ?? {}) as CleanupData
+        const deleted = cleanupData.deleted || []
+        const reminded = cleanupData.reminded || []
+        const total = deleted.length + reminded.length
 
-      toast.success(
-        t('cronPolicy.cleanupSummary', {
-          total,
-          deleted: deleted.length,
-          reminded: reminded.length,
-        })
-      )
+        toast.success(
+          t('cronPolicy.cleanupSummary', {
+            total,
+            deleted: deleted.length,
+            reminded: reminded.length,
+          })
+        )
+      }
       onUpdate()
     },
     onError: (error: Error) => {
@@ -159,11 +180,7 @@ export default function CronJobCard({
   }
 
   const renderParamInput = (key: string, value: number | string | string[]) => {
-    if (HIDDEN_PARAMS.includes(key)) {
-      return null
-    }
-
-    if (Array.isArray(value)) {
+    if (HIDDEN_PARAMS.includes(key) || Array.isArray(value)) {
       return null
     }
 
@@ -173,7 +190,7 @@ export default function CronJobCard({
         <Label className="text-sm">{t(`cronPolicy.${key}`)}</Label>
         <Input
           type={isNumber ? 'number' : 'text'}
-          value={value as string | number}
+          value={value}
           onChange={(e) =>
             handleParamChange(key, isNumber ? Number(e.target.value) : e.target.value)
           }
@@ -191,6 +208,7 @@ export default function CronJobCard({
           <span className="text-lg">{t(jobName)}</span>
           <CronJobStatusBadge status={status} />
         </CardTitle>
+        {jobDescription && <p className="text-muted-foreground text-sm">{t(jobDescription)}</p>}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
@@ -230,7 +248,6 @@ export default function CronJobCard({
           isLoading={executeMutation.isPending}
           isLoadingText={t('cronPolicy.executing')}
           onClick={() => executeMutation.mutate()}
-          disabled={jobType === 'patrol_function'}
         >
           <PlayIcon className="mr-2 h-4 w-4" />
           {t('cronPolicy.executeNow')}

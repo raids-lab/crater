@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { DialogOverlay } from '@radix-ui/react-dialog'
 import { CheckIcon, ChevronsUpDown, XIcon } from 'lucide-react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -141,70 +140,65 @@ const SelectBox = ({
             </div>
           </Button>
         </PopoverTrigger>
-        <DialogOverlay>
-          <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-            <Command>
-              <div className="relative">
-                <CommandInput
-                  value={searchTerm}
-                  onValueChange={handleInputChange}
-                  ref={ref}
-                  placeholder={inputPlaceholder ?? t('selectBox.inputPlaceholder')}
-                  className="h-9"
-                />
-                {searchTerm && (
-                  <div
-                    className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
-                    onClick={() => {
-                      setSearchTerm('')
-                      onInputChange?.('')
-                    }}
-                  >
-                    <XIcon className="size-4" />
-                  </div>
-                )}
-              </div>
-              <CommandList>
-                <CommandEmpty>{emptyPlaceholder ?? t('selectBox.emptyPlaceholder')}</CommandEmpty>
-                <CommandGroup>
-                  <ScrollArea>
-                    <div className="max-h-64">
-                      {options?.map((option) => {
-                        const isSelected = Array.isArray(value) && value.includes(option.value)
-                        return (
-                          <CommandItem
-                            key={option.value}
-                            onSelect={() => handleSelect(option.value)}
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+          <Command>
+            <div className="relative">
+              <CommandInput
+                value={searchTerm}
+                onValueChange={handleInputChange}
+                ref={ref}
+                placeholder={inputPlaceholder ?? t('selectBox.inputPlaceholder')}
+                className="h-9"
+              />
+              {searchTerm && (
+                <div
+                  className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
+                  onClick={() => {
+                    setSearchTerm('')
+                    onInputChange?.('')
+                  }}
+                >
+                  <XIcon className="size-4" />
+                </div>
+              )}
+            </div>
+            <CommandList>
+              <CommandEmpty>{emptyPlaceholder ?? t('selectBox.emptyPlaceholder')}</CommandEmpty>
+              <CommandGroup>
+                <ScrollArea>
+                  <div className="max-h-64">
+                    {options?.map((option) => {
+                      const isSelected = Array.isArray(value) && value.includes(option.value)
+                      return (
+                        <CommandItem key={option.value} onSelect={() => handleSelect(option.value)}>
+                          <div
+                            className={cn(
+                              'border-primary mr-2 flex size-4 items-center justify-center rounded-sm border',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'opacity-50 [&_svg]:invisible'
+                            )}
                           >
-                            <div
-                              className={cn(
-                                'border-primary mr-2 flex size-4 items-center justify-center rounded-sm border',
-                                isSelected
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'opacity-50 [&_svg]:invisible'
-                              )}
-                            >
-                              <CheckIcon className="text-primary-foreground" />
-                            </div>
-                            <span>
-                              {option.label}
-                              {option.labelNote && (
-                                <span className="text-muted-foreground ml-2">
-                                  {'@'}
-                                  {option.labelNote}
-                                </span>
-                              )}
-                            </span>
-                          </CommandItem>
-                        )
-                      })}
-                    </div>
-                  </ScrollArea>
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </DialogOverlay>
+                            <CheckIcon className="text-primary-foreground" />
+                          </div>
+                          <span>
+                            {option.label}
+                            {option.labelNote && (
+                              <span className="text-muted-foreground ml-2">
+                                {'@'}
+                                {option.labelNote}
+                              </span>
+                            )}
+                          </span>
+                        </CommandItem>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
       </Popover>
     </div>
   )

@@ -41,6 +41,7 @@ export const FileSelectDialog = ({
   disabled,
   allowSelectFile = true,
   isrw = false,
+  isadmin = false,
   title,
 }: {
   value?: string
@@ -48,6 +49,7 @@ export const FileSelectDialog = ({
   disabled?: boolean
   allowSelectFile?: boolean
   isrw?: boolean
+  isadmin?: boolean
   title?: string
 }) => {
   const { t } = useTranslation()
@@ -99,6 +101,7 @@ export const FileSelectDialog = ({
               <Tree
                 className="h-full w-full shrink-0"
                 isrw={isrw}
+                isadmin={isadmin}
                 onSelectChange={(item) => {
                   setContent(item)
                 }}

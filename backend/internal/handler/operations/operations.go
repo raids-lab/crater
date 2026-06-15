@@ -71,6 +71,7 @@ func (mgr *OperationsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/cronjob/record/time", mgr.GetCronjobRecordTimeRange)
 	g.POST("/cronjob/record/list", mgr.GetCronjobRecords)
 	g.POST("/cronjob/record/delete", mgr.DeleteCronjobRecords)
+	g.POST("/cronjob/execute", mgr.ExecutePatrolJob)
 }
 
 func (cm *OperationsMgr) StopCron() {

@@ -2,14 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/klog/v2"
-
-	"strings"
 
 	"github.com/raids-lab/crater/dao/query"
 
@@ -52,8 +51,13 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 路由组: /v1/admin/system-config
 	g.GET("/llm", mgr.GetLLMConfig)
 	g.PUT("/llm", mgr.UpdateLLMConfig)
-	// 新增：重置 LLM 配置
+	// 重置平台通用 LLM 配置
 	g.DELETE("/llm", mgr.ResetLLMConfig)
+
+	// 存储决策模型配置
+	g.GET("/storage-decision", mgr.GetStorageDecisionConfig)
+	g.PUT("/storage-decision", mgr.UpdateStorageDecisionConfig)
+	g.DELETE("/storage-decision", mgr.ResetStorageDecisionConfig)
 
 	g.GET("/gpu-analysis", mgr.GetGpuAnalysisStatus)
 	g.PUT("/gpu-analysis", mgr.SetGpuAnalysisStatus)
@@ -79,7 +83,24 @@ type UpdateLLMConfigReq struct {
 	BaseURL   string `json:"baseUrl" binding:"required"`
 	APIKey    string `json:"apiKey"`
 	ModelName string `json:"modelName" binding:"required"`
-	Validate  bool   `json:"validate"` // 是否立即校验连接
+	Validate  bool   `json:"validate"`
+}
+
+type StorageDecisionConfigResp struct {
+	DecisionMode string `json:"decisionMode"`
+	ConfigSource string `json:"configSource"`
+	BaseURL      string `json:"baseUrl"`
+	APIKey       string `json:"apiKey"`
+	ModelName    string `json:"modelName"`
+}
+
+type UpdateStorageDecisionConfigReq struct {
+	DecisionMode string `json:"decisionMode"`
+	ConfigSource string `json:"configSource"`
+	BaseURL      string `json:"baseUrl"`
+	APIKey       string `json:"apiKey"`
+	ModelName    string `json:"modelName"`
+	Validate     bool   `json:"validate"`
 }
 
 type GpuAnalysisStatusResp struct {
@@ -187,7 +208,7 @@ func (mgr *SystemConfigMgr) GetLLMConfig(c *gin.Context) {
 
 // UpdateLLMConfig godoc
 // @Summary		更新 LLM 配置
-// @Description	更新 LLM 的连接信息。如果 validate 为 true，会尝试连接 /check 接口，失败则不保存。
+// @Description	更新 LLM 的连接信息。如果 validate 为 true，会尝试连接 /models 接口，失败则不保存。
 // @Tags			SystemConfig
 // @Accept			json
 // @Produce		json
@@ -239,6 +260,94 @@ func (mgr *SystemConfigMgr) ResetLLMConfig(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, "LLM configuration reset successfully")
+}
+
+// GetStorageDecisionConfig godoc
+// @Summary		获取存储决策模型配置
+// @Description	获取当前系统配置的存储决策模式、配置来源与自定义模型连接信息。出于安全考虑，API Key 可能会被脱敏显示。
+// @Tags			SystemConfig
+// @Produce		json
+// @Security		Bearer
+// @Success		200		{object}	resputil.Response[StorageDecisionConfigResp] "配置信息"
+// @Failure		500		{object}	resputil.Response[any] "服务器错误"
+// @Router			/v1/admin/system-config/storage-decision [get]
+func (mgr *SystemConfigMgr) GetStorageDecisionConfig(c *gin.Context) {
+	cfg, err := mgr.service.GetStorageDecisionConfig(c.Request.Context())
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	// 响应给前端时，将 Key 替换为固定掩码
+	displayKey := ""
+	if cfg.APIKey != "" {
+		displayKey = service.MaskedAPIKeyPlaceholder
+	}
+
+	resputil.Success(c, StorageDecisionConfigResp{
+		DecisionMode: cfg.DecisionMode,
+		ConfigSource: cfg.ConfigSource,
+		BaseURL:      cfg.BaseURL,
+		APIKey:       displayKey,
+		ModelName:    cfg.ModelName,
+	})
+}
+
+// UpdateStorageDecisionConfig godoc
+// @Summary		更新存储决策模型配置
+// @Description	更新存储决策模式、配置来源以及自定义模型连接信息。如果 validate 为 true，会按当前来源校验连接。
+// @Tags			SystemConfig
+// @Accept			json
+// @Produce		json
+// @Security		Bearer
+// @Param			data	body		UpdateStorageDecisionConfigReq		true	"配置信息"
+// @Success		200		{object}	resputil.Response[string] "更新成功"
+// @Failure		400		{object}	resputil.Response[any] "参数错误或校验失败"
+// @Router			/v1/admin/system-config/storage-decision [put]
+func (mgr *SystemConfigMgr) UpdateStorageDecisionConfig(c *gin.Context) {
+	var req UpdateStorageDecisionConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.BadRequestError(c, err.Error())
+		return
+	}
+
+	serviceCfg := &service.StorageDecisionConfig{
+		DecisionMode: req.DecisionMode,
+		ConfigSource: req.ConfigSource,
+		BaseURL:      req.BaseURL,
+		APIKey:       req.APIKey,
+		ModelName:    req.ModelName,
+	}
+
+	err := mgr.service.UpdateStorageDecisionConfig(c.Request.Context(), serviceCfg, req.Validate)
+	if err != nil {
+		if strings.Contains(err.Error(), "validation failed") {
+			resputil.Error(c, "Storage decision connection check failed. Please verify your settings.", resputil.BusinessLogicError)
+			return
+		}
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+
+	resputil.Success(c, "Storage decision configuration updated successfully")
+}
+
+// ResetStorageDecisionConfig godoc
+// @Summary		重置存储决策模型配置
+// @Description	重置存储决策模式与自定义模型连接配置，不影响平台通用 LLM 配置
+// @Tags			SystemConfig
+// @Produce		json
+// @Security		Bearer
+// @Success		200		{object}	resputil.Response[string] "重置成功"
+// @Failure		500		{object}	resputil.Response[any] "服务器错误"
+// @Router			/v1/admin/system-config/storage-decision [delete]
+func (mgr *SystemConfigMgr) ResetStorageDecisionConfig(c *gin.Context) {
+	err := mgr.service.ResetStorageDecisionConfig(c.Request.Context())
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.ServiceError)
+		return
+	}
+	resputil.Success(c, "Storage decision configuration reset successfully")
 }
 
 // GetGpuAnalysisStatus godoc

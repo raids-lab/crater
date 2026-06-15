@@ -24,8 +24,7 @@ export const shortestImageName = (imageName: string): string => {
 }
 
 export function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return '0 B'
-  if (bytes < 0) return '-' + formatBytes(-bytes, decimals)
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
 
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']

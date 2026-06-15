@@ -27,12 +27,26 @@ import (
 
 // 定义掩码常量
 const MaskedAPIKeyPlaceholder = "********************************************"
+const DefaultStorageDirectModelBaseURL = "http://192.168.5.68:30186/v1"
+
+const (
+	StorageDecisionConfigSourcePlatform = "platform"
+	StorageDecisionConfigSourceCustom   = "custom"
+)
 
 // LLMConfig 结构体用于承载从数据库读取的配置
 type LLMConfig struct {
 	BaseURL   string
 	APIKey    string
 	ModelName string
+}
+
+type StorageDecisionConfig struct {
+	DecisionMode string
+	ConfigSource string
+	BaseURL      string
+	APIKey       string
+	ModelName    string
 }
 
 // cleanBaseURL 内部辅助：清理 URL 结尾的斜杠
@@ -107,6 +121,16 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 					case model.ConfigKeyBillingDefaultIssuePeriodMinute:
 						defaultValue = "43200"
 					}
+					if key == model.ConfigKeyStorageDecisionMode {
+						defaultValue = "agent"
+					}
+					if key == model.ConfigKeyStorageDecisionConfigSource {
+						defaultValue = StorageDecisionConfigSourcePlatform
+					}
+					if key == model.ConfigKeyStorageDirectModelBaseURL {
+						defaultValue = DefaultStorageDirectModelBaseURL
+					}
+
 					klog.Infof("[ConfigService] Seeding missing config key: %s", key)
 					if createErr := tx.SystemConfig.WithContext(ctx).Create(&model.SystemConfig{
 						Key:   key,
@@ -125,7 +149,12 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 
 // GetLLMConfig 从数据库按需读取最新配置
 func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
-	configMap, err := s.getConfigs(ctx, model.ConfigKeyLLMBaseURL, model.ConfigKeyLLMAPIKey, model.ConfigKeyLLMModelName)
+	configMap, err := s.getConfigs(
+		ctx,
+		model.ConfigKeyLLMBaseURL,
+		model.ConfigKeyLLMAPIKey,
+		model.ConfigKeyLLMModelName,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +177,43 @@ func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
 		BaseURL:   configMap[model.ConfigKeyLLMBaseURL],
 		APIKey:    plainKey,
 		ModelName: configMap[model.ConfigKeyLLMModelName],
+	}, nil
+}
+
+func (s *ConfigService) GetStorageDecisionConfig(ctx context.Context) (*StorageDecisionConfig, error) {
+	configMap, err := s.getConfigs(
+		ctx,
+		model.ConfigKeyStorageDecisionMode,
+		model.ConfigKeyStorageDecisionConfigSource,
+		model.ConfigKeyStorageDirectModelBaseURL,
+		model.ConfigKeyStorageDirectModelAPIKey,
+		model.ConfigKeyStorageDirectModelName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	directEncryptedKey := configMap[model.ConfigKeyStorageDirectModelAPIKey]
+	directPlainKey := ""
+	if directEncryptedKey != "" {
+		decrypted, decryptErr := crypto.Decrypt(directEncryptedKey)
+		if decryptErr != nil {
+			klog.Errorf("Failed to decrypt direct API Key: %v, assuming plain text or empty", decryptErr)
+			directPlainKey = directEncryptedKey
+		} else {
+			directPlainKey = decrypted
+		}
+	}
+
+	return &StorageDecisionConfig{
+		DecisionMode: normalizeDecisionMode(configMap[model.ConfigKeyStorageDecisionMode]),
+		ConfigSource: normalizeStorageDecisionConfigSource(
+			configMap[model.ConfigKeyStorageDecisionConfigSource],
+			configMap[model.ConfigKeyStorageDirectModelName],
+		),
+		BaseURL:   configMap[model.ConfigKeyStorageDirectModelBaseURL],
+		APIKey:    directPlainKey,
+		ModelName: configMap[model.ConfigKeyStorageDirectModelName],
 	}, nil
 }
 
@@ -214,6 +280,52 @@ func (s *ConfigService) CheckLLMConnection(ctx context.Context, cfg *LLMConfig) 
 	}
 
 	return nil
+}
+
+func normalizeDecisionMode(mode string) string {
+	switch strings.TrimSpace(strings.ToLower(mode)) {
+	case "direct":
+		return "direct"
+	default:
+		return "agent"
+	}
+}
+
+func normalizeStorageDecisionConfigSource(source, modelName string) string {
+	switch strings.TrimSpace(strings.ToLower(source)) {
+	case StorageDecisionConfigSourceCustom:
+		return StorageDecisionConfigSourceCustom
+	case StorageDecisionConfigSourcePlatform:
+		return StorageDecisionConfigSourcePlatform
+	default:
+		if strings.TrimSpace(modelName) != "" {
+			return StorageDecisionConfigSourceCustom
+		}
+		return StorageDecisionConfigSourcePlatform
+	}
+}
+
+func (s *ConfigService) CheckStorageDecisionConnection(
+	ctx context.Context,
+	llmCfg *LLMConfig,
+	cfg *StorageDecisionConfig,
+) error {
+	if normalizeStorageDecisionConfigSource(cfg.ConfigSource, cfg.ModelName) == StorageDecisionConfigSourceCustom {
+		customCfg := &LLMConfig{
+			BaseURL:   cfg.BaseURL,
+			APIKey:    cfg.APIKey,
+			ModelName: cfg.ModelName,
+		}
+		return s.CheckLLMConnection(ctx, customCfg)
+	}
+	if llmCfg == nil {
+		var err error
+		llmCfg, err = s.GetLLMConfig(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return s.CheckLLMConnection(ctx, llmCfg)
 }
 
 // SetGpuAnalysisEnabled 设置GPU分析功能的开关，并同步创建或更新定时任务的状态
@@ -331,28 +443,30 @@ func (s *ConfigService) ResetLLMConfig(ctx context.Context) error {
 	})
 }
 
-// UpdateLLMConfig 更新配置
-func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, validate bool) error {
-	finalKeyToSave := ""
+func (s *ConfigService) ResetStorageDecisionConfig(ctx context.Context) error {
+	updates := map[string]string{
+		model.ConfigKeyStorageDecisionMode:         "agent",
+		model.ConfigKeyStorageDecisionConfigSource: StorageDecisionConfigSourcePlatform,
+		model.ConfigKeyStorageDirectModelBaseURL:   DefaultStorageDirectModelBaseURL,
+		model.ConfigKeyStorageDirectModelAPIKey:    "",
+		model.ConfigKeyStorageDirectModelName:      "",
+	}
 
-	if reqCfg.APIKey == MaskedAPIKeyPlaceholder {
-		oldConfigRaw, err := s.getConfigs(ctx, model.ConfigKeyLLMAPIKey)
-		if err == nil {
-			finalKeyToSave = oldConfigRaw[model.ConfigKeyLLMAPIKey]
-
-			if validate {
-				plainKey, err := crypto.Decrypt(finalKeyToSave)
-				if err == nil {
-					reqCfg.APIKey = plainKey
-				}
+	return s.q.Transaction(func(tx *query.Query) error {
+		for k, v := range updates {
+			if _, err := tx.SystemConfig.WithContext(ctx).Where(tx.SystemConfig.Key.Eq(k)).Update(tx.SystemConfig.Value, v); err != nil {
+				return err
 			}
 		}
-	} else {
-		encrypted, err := crypto.Encrypt(reqCfg.APIKey)
-		if err != nil {
-			return fmt.Errorf("failed to encrypt api key: %w", err)
-		}
-		finalKeyToSave = encrypted
+		return nil
+	})
+}
+
+// UpdateLLMConfig 更新配置
+func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, validate bool) error {
+	finalLLMKeyToSave, err := s.prepareSecretForSave(ctx, model.ConfigKeyLLMAPIKey, reqCfg.APIKey)
+	if err != nil {
+		return err
 	}
 
 	if validate {
@@ -363,7 +477,7 @@ func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, 
 
 	updates := map[string]any{
 		model.ConfigKeyLLMBaseURL:   reqCfg.BaseURL,
-		model.ConfigKeyLLMAPIKey:    finalKeyToSave,
+		model.ConfigKeyLLMAPIKey:    finalLLMKeyToSave,
 		model.ConfigKeyLLMModelName: reqCfg.ModelName,
 	}
 
@@ -375,6 +489,73 @@ func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, 
 		}
 		return nil
 	})
+}
+
+func (s *ConfigService) UpdateStorageDecisionConfig(
+	ctx context.Context,
+	reqCfg *StorageDecisionConfig,
+	validate bool,
+) error {
+	reqCfg.DecisionMode = normalizeDecisionMode(reqCfg.DecisionMode)
+	reqCfg.ConfigSource = normalizeStorageDecisionConfigSource(reqCfg.ConfigSource, reqCfg.ModelName)
+
+	finalKeyToSave, err := s.prepareSecretForSave(ctx, model.ConfigKeyStorageDirectModelAPIKey, reqCfg.APIKey)
+	if err != nil {
+		return err
+	}
+
+	if validate {
+		llmCfg, getErr := s.GetLLMConfig(ctx)
+		if getErr != nil {
+			return getErr
+		}
+		if err := s.CheckStorageDecisionConnection(ctx, llmCfg, reqCfg); err != nil {
+			return fmt.Errorf("validation failed: %w", err)
+		}
+	}
+
+	updates := map[string]any{
+		model.ConfigKeyStorageDecisionMode:         reqCfg.DecisionMode,
+		model.ConfigKeyStorageDecisionConfigSource: reqCfg.ConfigSource,
+		model.ConfigKeyStorageDirectModelBaseURL:   reqCfg.BaseURL,
+		model.ConfigKeyStorageDirectModelAPIKey:    finalKeyToSave,
+		model.ConfigKeyStorageDirectModelName:      reqCfg.ModelName,
+	}
+
+	return s.q.Transaction(func(tx *query.Query) error {
+		for k, v := range updates {
+			if _, err := tx.SystemConfig.WithContext(ctx).Where(tx.SystemConfig.Key.Eq(k)).Update(tx.SystemConfig.Value, v); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *ConfigService) prepareSecretForSave(
+	ctx context.Context,
+	configKey string,
+	targetValue string,
+) (string, error) {
+	var currentValue string
+
+	if targetValue == MaskedAPIKeyPlaceholder {
+		oldConfigRaw, err := s.getConfigs(ctx, configKey)
+		if err == nil {
+			currentValue = oldConfigRaw[configKey]
+		}
+		return currentValue, nil
+	}
+
+	if targetValue == "" {
+		return "", nil
+	}
+
+	encrypted, err := crypto.Encrypt(targetValue)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt api key: %w", err)
+	}
+	return encrypted, nil
 }
 
 // getConfigs 辅助方法

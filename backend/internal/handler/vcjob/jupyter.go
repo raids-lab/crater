@@ -70,6 +70,12 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
+
+	if err := util.CheckStorageQuota(token.Username); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
 	if !mgr.preCheckCreateJob(c, token, scheduleType, true) {
 		return
 	}

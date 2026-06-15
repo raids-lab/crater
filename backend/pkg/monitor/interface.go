@@ -70,4 +70,14 @@ type PrometheusInterface interface {
 
 	// GetLeastUsedGPUJobList returns the least used GPU job list
 	GetLeastUsedGPUJobList(podName, _time, util string) int
+
+	///////////// Generic PromQL //////////////
+
+	// QueryInstant executes an instant PromQL query and returns the first scalar result.
+	// found=false if the result set is empty (not an error).
+	QueryInstant(query string) (float64, bool, error)
+
+	// QueryInstantLabels executes a PromQL query and returns all values of the specified
+	// metric label key across every result sample.
+	QueryInstantLabels(query, labelKey string) []string
 }

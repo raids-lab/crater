@@ -24,7 +24,7 @@ import { useResizeObserver } from 'usehooks-ts'
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
-import { FileItem, apiGetFiles, apiGetRWFiles } from '@/services/api/file'
+import { FileItem, apiGetAdminFiles, apiGetFiles, apiGetRWFiles } from '@/services/api/file'
 
 import { cn } from '@/lib/utils'
 
@@ -58,6 +58,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   onSelectChange?: (item: TreeDataItem | undefined) => void
   className?: string
   isrw?: boolean
+  isadmin?: boolean
 }
 
 const Tree = ({
@@ -65,6 +66,7 @@ const Tree = ({
   initialSlelectedItemId,
   onSelectChange,
   isrw,
+  isadmin,
   className,
   ...props
 }: TreeProps & {
@@ -85,8 +87,8 @@ const Tree = ({
   )
 
   const { data } = useQuery({
-    queryKey: ['directory', 'list', isrw],
-    queryFn: () => (isrw ? apiGetRWFiles('') : apiGetFiles('')),
+    queryKey: ['directory', 'list', isrw, isadmin],
+    queryFn: () => (isadmin ? apiGetAdminFiles('') : isrw ? apiGetRWFiles('') : apiGetFiles('')),
     select: (res) => {
       const items =
         res.data
@@ -120,10 +122,11 @@ const Tree = ({
               <TreeItem
                 level={0}
                 key={index}
-                currentPath={item.name}
+                currentPath={isadmin ? `admin-${item.name}` : item.name}
                 data={item}
                 ref={ref}
                 isrw={isrw}
+                isadmin={isadmin}
                 selectedItemId={selectedItemId}
                 handleSelectChange={handleSelectChange}
               />
@@ -151,6 +154,7 @@ const TreeItem = ({
   data,
   currentPath,
   isrw,
+  isadmin,
   selectedItemId,
   handleSelectChange,
   className,
@@ -163,7 +167,7 @@ const TreeItem = ({
   const item: TreeDataItem = useMemo(() => {
     return {
       id: currentPath,
-      name: level === 0 ? getFolderTitle(t, data.name) : data.name,
+      name: level === 0 ? getFolderTitle(t, currentPath) : data.name,
       icon: data.isdir ? FolderIcon : FileDigitIcon,
       isdir: data.isdir,
       hasChildren: data.isdir && data.size > 0,
@@ -187,7 +191,12 @@ const TreeItem = ({
   const [childrenInitialized, setChildrenInitialized] = React.useState(false)
 
   const { mutate: getChildren } = useMutation({
-    mutationFn: () => (isrw ? apiGetRWFiles(currentPath) : apiGetFiles(currentPath)),
+    mutationFn: () =>
+      isadmin
+        ? apiGetAdminFiles(currentPath)
+        : isrw
+          ? apiGetRWFiles(currentPath)
+          : apiGetFiles(currentPath),
     onSuccess: (fileList) => {
       const children =
         fileList.data?.sort((a, b) => {
@@ -240,6 +249,7 @@ const TreeItem = ({
                         key={index}
                         data={data}
                         isrw={isrw}
+                        isadmin={isadmin}
                         currentPath={`${currentPath}/${data.name}`}
                         selectedItemId={selectedItemId}
                         handleSelectChange={handleSelectChange}

@@ -194,6 +194,42 @@ func (p *PrometheusClient) checkGPUUsed(expression string) (int, error) {
 	return 0, fmt.Errorf("expected vector type result but got %s", result.Type())
 }
 
+// QueryInstant executes an instant PromQL query and returns the first scalar result.
+func (p *PrometheusClient) QueryInstant(query string) (value float64, found bool, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	result, _, err := p.v1api.Query(ctx, query, time.Now())
+	if err != nil {
+		return 0, false, err
+	}
+	switch result.Type() {
+	case model.ValVector:
+		vector := result.(model.Vector)
+		if len(vector) > 0 {
+			return float64(vector[0].Value), true, nil
+		}
+	case model.ValScalar:
+		scalar := result.(*model.Scalar)
+		return float64(scalar.Value), true, nil
+	}
+	return 0, false, nil
+}
+
+// QueryInstantLabels executes a PromQL query and returns all values of the given label key.
+func (p *PrometheusClient) QueryInstantLabels(query, labelKey string) []string {
+	vector, err := p.queryVector(query)
+	if err != nil {
+		return nil
+	}
+	var labels []string
+	for _, sample := range vector {
+		if v, ok := sample.Metric[model.LabelName(labelKey)]; ok {
+			labels = append(labels, string(v))
+		}
+	}
+	return labels
+}
+
 // checkIfGPURequested 检查 Pod 是否申请了 GPU
 func (p *PrometheusClient) checkIfGPURequested(namespacedName types.NamespacedName) bool {
 	// 这里实现检查逻辑，例如通过查询 Pod 的资源请求或 Prometheus 中的相关指标

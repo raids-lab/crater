@@ -256,8 +256,8 @@ export const apiV1Delete = <T>(url: string, json?: unknown) =>
 export const apiGet = <T>(url: string, options?: Options) =>
   apiRequest(() => apiClient.get(url, options).json<T>())
 
-export const apiPost = <T>(url: string, json?: unknown) =>
-  apiRequest(() => apiClient.post(url, { json }).json<T>())
+export const apiPost = <T>(url: string, json?: unknown, options?: Options) =>
+  apiRequest(() => apiClient.post(url, { json, ...options }).json<T>())
 
 export const apiPut = <T>(url: string, json?: unknown) =>
   apiRequest(() => apiClient.put(url, { json }).json<T>())
