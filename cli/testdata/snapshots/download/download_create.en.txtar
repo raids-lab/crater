@@ -1,0 +1,475 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-missing-name-nojson/argv --
+crater download create --no-interactive --category model
+-- en/01-missing-name-nojson/exit --
+2
+-- en/01-missing-name-nojson/stdout --
+-- en/01-missing-name-nojson/stderr --
+Error:
+  resource name is required in non-interactive mode (--name)
+-- en/02-missing-name-json/argv --
+crater download create --no-interactive --json --category model
+-- en/02-missing-name-json/exit --
+2
+-- en/02-missing-name-json/stdout --
+-- en/02-missing-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "resource name is required in non-interactive mode (--name)"
+}
+-- en/03-missing-category-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct
+-- en/03-missing-category-nojson/exit --
+2
+-- en/03-missing-category-nojson/stdout --
+-- en/03-missing-category-nojson/stderr --
+Error:
+  download category is required in non-interactive mode (--category)
+-- en/04-missing-category-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct
+-- en/04-missing-category-json/exit --
+2
+-- en/04-missing-category-json/stdout --
+-- en/04-missing-category-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "download category is required in non-interactive mode (--category)"
+}
+-- en/05-invalid-name-nojson/argv --
+crater download create --no-interactive --name bad --category model
+-- en/05-invalid-name-nojson/exit --
+2
+-- en/05-invalid-name-nojson/stdout --
+-- en/05-invalid-name-nojson/stderr --
+Error:
+  invalid resource name "bad": expected owner/name
+-- en/06-invalid-name-json/argv --
+crater download create --no-interactive --json --name bad --category model
+-- en/06-invalid-name-json/exit --
+2
+-- en/06-invalid-name-json/stdout --
+-- en/06-invalid-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid resource name \"bad\": expected owner/name"
+}
+-- en/07-invalid-source-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source bad
+-- en/07-invalid-source-nojson/exit --
+2
+-- en/07-invalid-source-nojson/stdout --
+-- en/07-invalid-source-nojson/stderr --
+Error:
+  invalid download source: bad
+-- en/08-invalid-source-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source bad
+-- en/08-invalid-source-json/exit --
+2
+-- en/08-invalid-source-json/stdout --
+-- en/08-invalid-source-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid download source: bad"
+}
+-- en/09-http-sim-timeout-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- en/09-http-sim-timeout-nojson/exit --
+4
+-- en/09-http-sim-timeout-nojson/stdout --
+-- en/09-http-sim-timeout-nojson/stderr --
+Error:
+  could not reach server: Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
+-- en/10-http-sim-timeout-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- en/10-http-sim-timeout-json/exit --
+4
+-- en/10-http-sim-timeout-json/stdout --
+-- en/10-http-sim-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded"
+  }
+}
+-- en/11-http-sim-404-nojson/argv --
+crater download create --no-interactive --name AI-ModelScope/alpaca-gpt4-data-zh --category dataset --source ms
+-- en/11-http-sim-404-nojson/exit --
+4
+-- en/11-http-sim-404-nojson/stdout --
+-- en/11-http-sim-404-nojson/stderr --
+Error:
+  HTTP 404: simulated
+-- en/12-http-sim-404-json/argv --
+crater download create --no-interactive --json --name AI-ModelScope/alpaca-gpt4-data-zh --category dataset --source ms
+-- en/12-http-sim-404-json/exit --
+4
+-- en/12-http-sim-404-json/stdout --
+-- en/12-http-sim-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/13-invalid-category-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category bad
+-- en/13-invalid-category-nojson/exit --
+2
+-- en/13-invalid-category-nojson/stdout --
+-- en/13-invalid-category-nojson/stderr --
+Error:
+  invalid download category: bad
+-- en/14-invalid-category-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category bad
+-- en/14-invalid-category-json/exit --
+2
+-- en/14-invalid-category-json/stdout --
+-- en/14-invalid-category-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid download category: bad"
+}
+-- en/15-multiple-issues-nojson/argv --
+crater download create --no-interactive --name bad --category bad --source bad
+-- en/15-multiple-issues-nojson/exit --
+2
+-- en/15-multiple-issues-nojson/stdout --
+-- en/15-multiple-issues-nojson/stderr --
+Error:
+  invalid resource name "bad": expected owner/name
+  invalid download category: bad
+  invalid download source: bad
+-- en/16-multiple-issues-json/argv --
+crater download create --no-interactive --json --name bad --category bad --source bad
+-- en/16-multiple-issues-json/exit --
+2
+-- en/16-multiple-issues-json/stdout --
+-- en/16-multiple-issues-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid resource name \"bad\": expected owner/name\ninvalid download category: bad\ninvalid download source: bad",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "name",
+        "message": "invalid resource name \"bad\": expected owner/name"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "category",
+        "message": "invalid download category: bad"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "source",
+        "message": "invalid download source: bad"
+      }
+    ]
+  }
+}
+-- en/17-no-active-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- en/17-no-active-nojson/exit --
+2
+-- en/17-no-active-nojson/stdout --
+-- en/17-no-active-nojson/stderr --
+Error:
+  no active credentials found
+-- en/18-no-active-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- en/18-no-active-json/exit --
+2
+-- en/18-no-active-json/stdout --
+-- en/18-no-active-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no active credentials found"
+}
+-- en/19-shortcut-model-timeout-nojson/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source hf
+-- en/19-shortcut-model-timeout-nojson/exit --
+4
+-- en/19-shortcut-model-timeout-nojson/stdout --
+-- en/19-shortcut-model-timeout-nojson/stderr --
+Error:
+  could not reach server: Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
+-- en/20-shortcut-model-timeout-json/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf
+-- en/20-shortcut-model-timeout-json/exit --
+4
+-- en/20-shortcut-model-timeout-json/stdout --
+-- en/20-shortcut-model-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded"
+  }
+}
+-- en/21-shortcut-dataset-invalid-name-nojson/argv --
+crater download dataset bad --no-interactive --source ms
+-- en/21-shortcut-dataset-invalid-name-nojson/exit --
+2
+-- en/21-shortcut-dataset-invalid-name-nojson/stdout --
+-- en/21-shortcut-dataset-invalid-name-nojson/stderr --
+Error:
+  invalid resource name "bad": expected owner/name
+-- en/22-shortcut-dataset-invalid-name-json/argv --
+crater download dataset bad --no-interactive --json --source ms
+-- en/22-shortcut-dataset-invalid-name-json/exit --
+2
+-- en/22-shortcut-dataset-invalid-name-json/stdout --
+-- en/22-shortcut-dataset-invalid-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid resource name \"bad\": expected owner/name"
+}
+-- en/23-token-source-conflict-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --token a --token-env HF_TOKEN
+-- en/23-token-source-conflict-nojson/exit --
+2
+-- en/23-token-source-conflict-nojson/stdout --
+-- en/23-token-source-conflict-nojson/stderr --
+Error:
+  use only one of --token, --token-env, or --token-stdin
+-- en/24-token-source-conflict-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --token a --token-env HF_TOKEN
+-- en/24-token-source-conflict-json/exit --
+2
+-- en/24-token-source-conflict-json/stdout --
+-- en/24-token-source-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "use only one of --token, --token-env, or --token-stdin"
+}
+-- en/25-ls-timeout-json/argv --
+crater download ls --no-interactive --json --category model
+-- en/25-ls-timeout-json/exit --
+4
+-- en/25-ls-timeout-json/stdout --
+-- en/25-ls-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\": context deadline exceeded"
+  }
+}
+-- en/26-ls-invalid-category-nojson/argv --
+crater download ls --no-interactive --category bad
+-- en/26-ls-invalid-category-nojson/exit --
+2
+-- en/26-ls-invalid-category-nojson/stdout --
+-- en/26-ls-invalid-category-nojson/stderr --
+Error:
+  invalid download category: bad
+-- en/27-get-missing-id-nojson/argv --
+crater download get --no-interactive
+-- en/27-get-missing-id-nojson/exit --
+2
+-- en/27-get-missing-id-nojson/stdout --
+-- en/27-get-missing-id-nojson/stderr --
+Error:
+  download task ID is required (--id)
+-- en/28-get-timeout-json/argv --
+crater download get 123 --no-interactive --json
+-- en/28-get-timeout-json/exit --
+4
+-- en/28-get-timeout-json/stdout --
+-- en/28-get-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded"
+  }
+}
+-- en/29-get-invalid-id-nojson/argv --
+crater download get bad --no-interactive
+-- en/29-get-invalid-id-nojson/exit --
+2
+-- en/29-get-invalid-id-nojson/stdout --
+-- en/29-get-invalid-id-nojson/stderr --
+Error:
+  invalid download task ID: bad
+-- en/30-logs-follow-json/argv --
+crater download logs 123 --follow --no-interactive --json
+-- en/30-logs-follow-json/exit --
+2
+-- en/30-logs-follow-json/stdout --
+-- en/30-logs-follow-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--follow cannot be combined with --json"
+}
+-- en/31-logs-timeout-json/argv --
+crater download logs 123 --no-interactive --json
+-- en/31-logs-timeout-json/exit --
+4
+-- en/31-logs-timeout-json/stdout --
+-- en/31-logs-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/model-download/models/downloads/123/logs\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123/logs\": context deadline exceeded"
+  }
+}
+-- en/32-rm-missing-yes-nojson/argv --
+crater download rm 123 --no-interactive
+-- en/32-rm-missing-yes-nojson/exit --
+2
+-- en/32-rm-missing-yes-nojson/stdout --
+-- en/32-rm-missing-yes-nojson/stderr --
+Error:
+  yes is required (--yes)
+-- en/33-rm-missing-yes-json/argv --
+crater download rm 123 --no-interactive --json
+-- en/33-rm-missing-yes-json/exit --
+2
+-- en/33-rm-missing-yes-json/stdout --
+-- en/33-rm-missing-yes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "yes is required (--yes)"
+}
+-- en/34-pause-timeout-json/argv --
+crater download pause 123 --no-interactive --json
+-- en/34-pause-timeout-json/exit --
+4
+-- en/34-pause-timeout-json/stdout --
+-- en/34-pause-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/pause\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/pause\": context deadline exceeded"
+  }
+}
+-- en/35-pause-invalid-id-nojson/argv --
+crater download pause bad --no-interactive
+-- en/35-pause-invalid-id-nojson/exit --
+2
+-- en/35-pause-invalid-id-nojson/stdout --
+-- en/35-pause-invalid-id-nojson/stderr --
+Error:
+  invalid download task ID: bad
+-- en/36-resume-invalid-id-nojson/argv --
+crater download resume bad --no-interactive
+-- en/36-resume-invalid-id-nojson/exit --
+2
+-- en/36-resume-invalid-id-nojson/stdout --
+-- en/36-resume-invalid-id-nojson/stderr --
+Error:
+  invalid download task ID: bad
+-- en/37-resume-timeout-json/argv --
+crater download resume 123 --no-interactive --json
+-- en/37-resume-timeout-json/exit --
+4
+-- en/37-resume-timeout-json/stdout --
+-- en/37-resume-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/resume\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/resume\": context deadline exceeded"
+  }
+}
+-- en/38-retry-invalid-id-nojson/argv --
+crater download retry bad --no-interactive
+-- en/38-retry-invalid-id-nojson/exit --
+2
+-- en/38-retry-invalid-id-nojson/stdout --
+-- en/38-retry-invalid-id-nojson/stderr --
+Error:
+  invalid download task ID: bad
+-- en/39-rm-invalid-id-nojson/argv --
+crater download rm bad --no-interactive --yes
+-- en/39-rm-invalid-id-nojson/exit --
+2
+-- en/39-rm-invalid-id-nojson/stdout --
+-- en/39-rm-invalid-id-nojson/stderr --
+Error:
+  invalid download task ID: bad
+-- en/40-retry-timeout-json/argv --
+crater download retry 123 --no-interactive --json
+-- en/40-retry-timeout-json/exit --
+4
+-- en/40-retry-timeout-json/stdout --
+-- en/40-retry-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/retry\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/retry\": context deadline exceeded"
+  }
+}
+-- en/41-token-env-missing-nojson/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source hf --token-env HF_TOKEN_NOT_SET
+-- en/41-token-env-missing-nojson/exit --
+2
+-- en/41-token-env-missing-nojson/stdout --
+-- en/41-token-env-missing-nojson/stderr --
+Error:
+  token environment variable HF_TOKEN_NOT_SET is not set or is empty
+-- en/42-token-env-missing-json/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-env HF_TOKEN_NOT_SET
+-- en/42-token-env-missing-json/exit --
+2
+-- en/42-token-env-missing-json/stdout --
+-- en/42-token-env-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "token environment variable HF_TOKEN_NOT_SET is not set or is empty"
+}
+-- en/43-token-stdin-empty-json/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-stdin
+-- en/43-token-stdin-empty-json/exit --
+2
+-- en/43-token-stdin-empty-json/stdout --
+-- en/43-token-stdin-empty-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "token read from stdin is empty"
+}
+-- en/44-rm-timeout-json/argv --
+crater download rm 123 --no-interactive --json --yes
+-- en/44-rm-timeout-json/exit --
+4
+-- en/44-rm-timeout-json/stdout --
+-- en/44-rm-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Delete \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Delete \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded"
+  }
+}

@@ -202,3 +202,90 @@
 - **状态**: [x] Completed
 
 ---
+
+## 4. 下载模块 (download)
+
+本模块负责通过 CLI 向 Crater 平台提交模型和数据集下载任务。下载行为在平台侧执行：CLI 只负责读取当前激活账号、提交请求、展示任务信息；不会把模型或数据集直接下载到本机。
+
+### `crater download create`
+- **描述**: 创建模型或数据集下载任务。
+- **选项**:
+  - `--name` (string, required): 资源名称，格式为 `owner/name`，例如 `qwen/Qwen2.5-Coder-7B-Instruct`。
+  - `--category` (string, required): 下载类别，可选 `model` 或 `dataset`。
+  - `--source` (string): 下载来源，可选 `modelscope` / `ms` 或 `huggingface` / `hf`，默认为 `modelscope`；`ms` 与 `hf` 仅为 CLI 简写，发送给平台前会规范化为全拼。
+  - `--revision` (string): 可选的分支、tag 或 revision。
+  - `--token` (string): 可选的访问令牌，用于 gated/private 仓库。该值仅随本次请求发送给平台，不写入 CLI 本地配置或 keyring，不在成功/错误输出中展示。
+  - `--token-env` (string): 从指定环境变量读取可选访问令牌。与 `--token`、`--token-stdin` 互斥。
+  - `--token-stdin` (bool): 从 stdin 读取可选访问令牌。与 `--token`、`--token-env` 互斥。
+  - `--wait` (bool): 提交后轮询任务，直到状态进入 `Ready`、`Failed` 或 `Paused`。
+  - `--poll-interval` (duration): `--wait` 的轮询间隔，默认 `5s`。
+  - `--timeout` (duration): `--wait` 的最长等待时间，默认 `0` 表示不超时。
+- **处理逻辑**:
+  - 本地校验 `--name`、`--category`、`--source`；可在请求前发现的问题必须聚合为单个 `usage_error`。
+  - 若提供 `--token-env` 或 `--token-stdin`，CLI 读取 token 后仅用于本次请求；不得在输出中展示 token。
+  - 读取当前激活的认证上下文与 token；若未登录或 token 不可用，返回错误。
+  - 调用平台接口创建下载任务。后端根据 `category` 自动选择平台侧目标目录（模型为 `public/Models`，数据集为 `public/Datasets`）。
+  - 若平台返回资源已存在或正在下载，CLI 仍按成功处理并展示后端返回的任务信息与消息。
+- **输出格式**:
+  - 默认模式：stdout 展示下载任务的 ID、名称、类别、来源、状态与目标路径。
+  - `--json`：stdout 输出成功信封 JSON。
+- **`--json` 的 `data`**：
+  - `download`（对象，后端返回的下载任务摘要，字段包括 `id`、`name`、`source`、`category`、`revision`、`path`、`sizeBytes`、`downloadedBytes`、`downloadSpeed`、`status`、`message`、`jobName`、`creatorId`、`referenceCount`、`createdAt`、`updatedAt`）
+- **状态**: [x] Completed
+
+### `crater download model <NAME>` / `crater download dataset <NAME>`
+- **描述**: 创建模型或数据集下载任务的快捷形式。
+- **位置参数**:
+  - `<NAME>` (positional, required): 资源名称，格式为 `owner/name`。
+- **选项**:
+  - 与 `download create` 相同，但不需要 `--name` 与 `--category`；类别由子命令固定为 `model` 或 `dataset`。
+- **`--json` 的 `data`**：同 `download create`。
+- **状态**: [x] Completed
+
+### `crater download ls`
+- **描述**: 列出当前用户的下载任务。
+- **选项**:
+  - `--category` (string): 可选过滤类别，`model` 或 `dataset`。
+- **输出格式**:
+  - 默认模式：表格展示 `ID`、`NAME`、`CATEGORY`、`SOURCE`、`STATUS`、`PATH`。
+  - `--json`：stdout 输出成功信封 JSON。
+- **`--json` 的 `data`**：`downloads`（下载任务数组）。
+- **状态**: [x] Completed
+
+### `crater download get <ID>`
+- **描述**: 查看单个下载任务详情。
+- **位置参数**:
+  - `<ID>` (positional, required): 下载任务 ID。
+- **`--json` 的 `data`**：`download`（下载任务对象）。
+- **状态**: [x] Completed
+
+### `crater download logs <ID>`
+- **描述**: 查看下载任务日志。
+- **位置参数**:
+  - `<ID>` (positional, required): 下载任务 ID。
+- **选项**:
+  - `--follow` (bool): 持续轮询日志，直到任务状态进入 `Ready`、`Failed` 或 `Paused`。`--follow` 不支持与 `--json` 同时使用。
+  - `--poll-interval` (duration): `--follow` 的轮询间隔，默认 `5s`。
+- **输出格式**:
+  - 默认模式：stdout 输出日志文本本身。
+  - `--json`：stdout 输出成功信封 JSON。
+- **`--json` 的 `data`**：`logs`（字符串）。
+- **状态**: [x] Completed
+
+### `crater download pause <ID>` / `resume <ID>` / `retry <ID>`
+- **描述**: 暂停、恢复或重试下载任务。
+- **位置参数**:
+  - `<ID>` (positional, required): 下载任务 ID。
+- **`--json` 的 `data`**：`download`（操作后的下载任务对象）。
+- **状态**: [x] Completed
+
+### `crater download rm <ID>`
+- **描述**: 移除下载任务。该操作会删除当前用户与下载记录的关联；后端会在无人引用时软删除下载记录并保留已下载文件。
+- **位置参数**:
+  - `<ID>` (positional, required): 下载任务 ID。
+- **选项**:
+  - `--yes, -y` (bool): 跳过确认。
+- **处理逻辑**:
+  - 交互模式下需要确认；`--no-interactive` 下必须提供 `--yes`。
+- **`--json` 的 `data`**：`id`（下载任务 ID）、`message`（后端返回消息）。
+- **状态**: [x] Completed

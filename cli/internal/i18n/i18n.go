@@ -22,6 +22,7 @@ var translations = mergeCatalogs(
 	catalogAuth,
 	catalogConfig,
 	catalogCompletion,
+	catalogDownload,
 	catalogErrors,
 )
 

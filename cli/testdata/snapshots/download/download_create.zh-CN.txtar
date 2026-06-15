@@ -1,0 +1,475 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-missing-name-nojson/argv --
+crater download create --no-interactive --category model
+-- zh-CN/01-missing-name-nojson/exit --
+2
+-- zh-CN/01-missing-name-nojson/stdout --
+-- zh-CN/01-missing-name-nojson/stderr --
+Error:
+  非交互模式下必须提供 资源名称 (--name)
+-- zh-CN/02-missing-name-json/argv --
+crater download create --no-interactive --json --category model
+-- zh-CN/02-missing-name-json/exit --
+2
+-- zh-CN/02-missing-name-json/stdout --
+-- zh-CN/02-missing-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供 资源名称 (--name)"
+}
+-- zh-CN/03-missing-category-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct
+-- zh-CN/03-missing-category-nojson/exit --
+2
+-- zh-CN/03-missing-category-nojson/stdout --
+-- zh-CN/03-missing-category-nojson/stderr --
+Error:
+  非交互模式下必须提供 下载类别 (--category)
+-- zh-CN/04-missing-category-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct
+-- zh-CN/04-missing-category-json/exit --
+2
+-- zh-CN/04-missing-category-json/stdout --
+-- zh-CN/04-missing-category-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供 下载类别 (--category)"
+}
+-- zh-CN/05-invalid-name-nojson/argv --
+crater download create --no-interactive --name bad --category model
+-- zh-CN/05-invalid-name-nojson/exit --
+2
+-- zh-CN/05-invalid-name-nojson/stdout --
+-- zh-CN/05-invalid-name-nojson/stderr --
+Error:
+  无效的资源名称 "bad"：应为 owner/name 格式
+-- zh-CN/06-invalid-name-json/argv --
+crater download create --no-interactive --json --name bad --category model
+-- zh-CN/06-invalid-name-json/exit --
+2
+-- zh-CN/06-invalid-name-json/stdout --
+-- zh-CN/06-invalid-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的资源名称 \"bad\"：应为 owner/name 格式"
+}
+-- zh-CN/07-invalid-source-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source bad
+-- zh-CN/07-invalid-source-nojson/exit --
+2
+-- zh-CN/07-invalid-source-nojson/stdout --
+-- zh-CN/07-invalid-source-nojson/stderr --
+Error:
+  无效的下载来源：bad
+-- zh-CN/08-invalid-source-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source bad
+-- zh-CN/08-invalid-source-json/exit --
+2
+-- zh-CN/08-invalid-source-json/stdout --
+-- zh-CN/08-invalid-source-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的下载来源：bad"
+}
+-- zh-CN/09-http-sim-timeout-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- zh-CN/09-http-sim-timeout-nojson/exit --
+4
+-- zh-CN/09-http-sim-timeout-nojson/stdout --
+-- zh-CN/09-http-sim-timeout-nojson/stderr --
+Error:
+  无法连接服务器：Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
+-- zh-CN/10-http-sim-timeout-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- zh-CN/10-http-sim-timeout-json/exit --
+4
+-- zh-CN/10-http-sim-timeout-json/stdout --
+-- zh-CN/10-http-sim-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded"
+  }
+}
+-- zh-CN/11-http-sim-404-nojson/argv --
+crater download create --no-interactive --name AI-ModelScope/alpaca-gpt4-data-zh --category dataset --source ms
+-- zh-CN/11-http-sim-404-nojson/exit --
+4
+-- zh-CN/11-http-sim-404-nojson/stdout --
+-- zh-CN/11-http-sim-404-nojson/stderr --
+Error:
+  请求失败（HTTP 404）：simulated
+-- zh-CN/12-http-sim-404-json/argv --
+crater download create --no-interactive --json --name AI-ModelScope/alpaca-gpt4-data-zh --category dataset --source ms
+-- zh-CN/12-http-sim-404-json/exit --
+4
+-- zh-CN/12-http-sim-404-json/stdout --
+-- zh-CN/12-http-sim-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/13-invalid-category-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category bad
+-- zh-CN/13-invalid-category-nojson/exit --
+2
+-- zh-CN/13-invalid-category-nojson/stdout --
+-- zh-CN/13-invalid-category-nojson/stderr --
+Error:
+  无效的下载类别：bad
+-- zh-CN/14-invalid-category-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category bad
+-- zh-CN/14-invalid-category-json/exit --
+2
+-- zh-CN/14-invalid-category-json/stdout --
+-- zh-CN/14-invalid-category-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的下载类别：bad"
+}
+-- zh-CN/15-multiple-issues-nojson/argv --
+crater download create --no-interactive --name bad --category bad --source bad
+-- zh-CN/15-multiple-issues-nojson/exit --
+2
+-- zh-CN/15-multiple-issues-nojson/stdout --
+-- zh-CN/15-multiple-issues-nojson/stderr --
+Error:
+  无效的资源名称 "bad"：应为 owner/name 格式
+  无效的下载类别：bad
+  无效的下载来源：bad
+-- zh-CN/16-multiple-issues-json/argv --
+crater download create --no-interactive --json --name bad --category bad --source bad
+-- zh-CN/16-multiple-issues-json/exit --
+2
+-- zh-CN/16-multiple-issues-json/stdout --
+-- zh-CN/16-multiple-issues-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的资源名称 \"bad\"：应为 owner/name 格式\n无效的下载类别：bad\n无效的下载来源：bad",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "name",
+        "message": "无效的资源名称 \"bad\"：应为 owner/name 格式"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "category",
+        "message": "无效的下载类别：bad"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "source",
+        "message": "无效的下载来源：bad"
+      }
+    ]
+  }
+}
+-- zh-CN/17-no-active-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- zh-CN/17-no-active-nojson/exit --
+2
+-- zh-CN/17-no-active-nojson/stdout --
+-- zh-CN/17-no-active-nojson/stderr --
+Error:
+  未找到当前激活的账号
+-- zh-CN/18-no-active-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --source hf
+-- zh-CN/18-no-active-json/exit --
+2
+-- zh-CN/18-no-active-json/stdout --
+-- zh-CN/18-no-active-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "未找到当前激活的账号"
+}
+-- zh-CN/19-shortcut-model-timeout-nojson/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source hf
+-- zh-CN/19-shortcut-model-timeout-nojson/exit --
+4
+-- zh-CN/19-shortcut-model-timeout-nojson/stdout --
+-- zh-CN/19-shortcut-model-timeout-nojson/stderr --
+Error:
+  无法连接服务器：Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
+-- zh-CN/20-shortcut-model-timeout-json/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf
+-- zh-CN/20-shortcut-model-timeout-json/exit --
+4
+-- zh-CN/20-shortcut-model-timeout-json/stdout --
+-- zh-CN/20-shortcut-model-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/download\": context deadline exceeded"
+  }
+}
+-- zh-CN/21-shortcut-dataset-invalid-name-nojson/argv --
+crater download dataset bad --no-interactive --source ms
+-- zh-CN/21-shortcut-dataset-invalid-name-nojson/exit --
+2
+-- zh-CN/21-shortcut-dataset-invalid-name-nojson/stdout --
+-- zh-CN/21-shortcut-dataset-invalid-name-nojson/stderr --
+Error:
+  无效的资源名称 "bad"：应为 owner/name 格式
+-- zh-CN/22-shortcut-dataset-invalid-name-json/argv --
+crater download dataset bad --no-interactive --json --source ms
+-- zh-CN/22-shortcut-dataset-invalid-name-json/exit --
+2
+-- zh-CN/22-shortcut-dataset-invalid-name-json/stdout --
+-- zh-CN/22-shortcut-dataset-invalid-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的资源名称 \"bad\"：应为 owner/name 格式"
+}
+-- zh-CN/23-token-source-conflict-nojson/argv --
+crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --category model --token a --token-env HF_TOKEN
+-- zh-CN/23-token-source-conflict-nojson/exit --
+2
+-- zh-CN/23-token-source-conflict-nojson/stdout --
+-- zh-CN/23-token-source-conflict-nojson/stderr --
+Error:
+  只能使用 --token、--token-env、--token-stdin 中的一种
+-- zh-CN/24-token-source-conflict-json/argv --
+crater download create --no-interactive --json --name qwen/Qwen2.5-Coder-7B-Instruct --category model --token a --token-env HF_TOKEN
+-- zh-CN/24-token-source-conflict-json/exit --
+2
+-- zh-CN/24-token-source-conflict-json/stdout --
+-- zh-CN/24-token-source-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "只能使用 --token、--token-env、--token-stdin 中的一种"
+}
+-- zh-CN/25-ls-timeout-json/argv --
+crater download ls --no-interactive --json --category model
+-- zh-CN/25-ls-timeout-json/exit --
+4
+-- zh-CN/25-ls-timeout-json/stdout --
+-- zh-CN/25-ls-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\": context deadline exceeded"
+  }
+}
+-- zh-CN/26-ls-invalid-category-nojson/argv --
+crater download ls --no-interactive --category bad
+-- zh-CN/26-ls-invalid-category-nojson/exit --
+2
+-- zh-CN/26-ls-invalid-category-nojson/stdout --
+-- zh-CN/26-ls-invalid-category-nojson/stderr --
+Error:
+  无效的下载类别：bad
+-- zh-CN/27-get-missing-id-nojson/argv --
+crater download get --no-interactive
+-- zh-CN/27-get-missing-id-nojson/exit --
+2
+-- zh-CN/27-get-missing-id-nojson/stdout --
+-- zh-CN/27-get-missing-id-nojson/stderr --
+Error:
+  缺少必要参数：下载任务 ID (--id)
+-- zh-CN/28-get-timeout-json/argv --
+crater download get 123 --no-interactive --json
+-- zh-CN/28-get-timeout-json/exit --
+4
+-- zh-CN/28-get-timeout-json/stdout --
+-- zh-CN/28-get-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded"
+  }
+}
+-- zh-CN/29-get-invalid-id-nojson/argv --
+crater download get bad --no-interactive
+-- zh-CN/29-get-invalid-id-nojson/exit --
+2
+-- zh-CN/29-get-invalid-id-nojson/stdout --
+-- zh-CN/29-get-invalid-id-nojson/stderr --
+Error:
+  无效的下载任务 ID：bad
+-- zh-CN/30-logs-follow-json/argv --
+crater download logs 123 --follow --no-interactive --json
+-- zh-CN/30-logs-follow-json/exit --
+2
+-- zh-CN/30-logs-follow-json/stdout --
+-- zh-CN/30-logs-follow-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--follow 不能与 --json 同时使用"
+}
+-- zh-CN/31-logs-timeout-json/argv --
+crater download logs 123 --no-interactive --json
+-- zh-CN/31-logs-timeout-json/exit --
+4
+-- zh-CN/31-logs-timeout-json/stdout --
+-- zh-CN/31-logs-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/model-download/models/downloads/123/logs\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123/logs\": context deadline exceeded"
+  }
+}
+-- zh-CN/32-rm-missing-yes-nojson/argv --
+crater download rm 123 --no-interactive
+-- zh-CN/32-rm-missing-yes-nojson/exit --
+2
+-- zh-CN/32-rm-missing-yes-nojson/stdout --
+-- zh-CN/32-rm-missing-yes-nojson/stderr --
+Error:
+  缺少必要参数：yes (--yes)
+-- zh-CN/33-rm-missing-yes-json/argv --
+crater download rm 123 --no-interactive --json
+-- zh-CN/33-rm-missing-yes-json/exit --
+2
+-- zh-CN/33-rm-missing-yes-json/stdout --
+-- zh-CN/33-rm-missing-yes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：yes (--yes)"
+}
+-- zh-CN/34-pause-timeout-json/argv --
+crater download pause 123 --no-interactive --json
+-- zh-CN/34-pause-timeout-json/exit --
+4
+-- zh-CN/34-pause-timeout-json/stdout --
+-- zh-CN/34-pause-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Post \"https://example.invalid/api/v1/model-download/models/downloads/123/pause\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/pause\": context deadline exceeded"
+  }
+}
+-- zh-CN/35-pause-invalid-id-nojson/argv --
+crater download pause bad --no-interactive
+-- zh-CN/35-pause-invalid-id-nojson/exit --
+2
+-- zh-CN/35-pause-invalid-id-nojson/stdout --
+-- zh-CN/35-pause-invalid-id-nojson/stderr --
+Error:
+  无效的下载任务 ID：bad
+-- zh-CN/36-resume-invalid-id-nojson/argv --
+crater download resume bad --no-interactive
+-- zh-CN/36-resume-invalid-id-nojson/exit --
+2
+-- zh-CN/36-resume-invalid-id-nojson/stdout --
+-- zh-CN/36-resume-invalid-id-nojson/stderr --
+Error:
+  无效的下载任务 ID：bad
+-- zh-CN/37-resume-timeout-json/argv --
+crater download resume 123 --no-interactive --json
+-- zh-CN/37-resume-timeout-json/exit --
+4
+-- zh-CN/37-resume-timeout-json/stdout --
+-- zh-CN/37-resume-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Post \"https://example.invalid/api/v1/model-download/models/downloads/123/resume\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/resume\": context deadline exceeded"
+  }
+}
+-- zh-CN/38-retry-invalid-id-nojson/argv --
+crater download retry bad --no-interactive
+-- zh-CN/38-retry-invalid-id-nojson/exit --
+2
+-- zh-CN/38-retry-invalid-id-nojson/stdout --
+-- zh-CN/38-retry-invalid-id-nojson/stderr --
+Error:
+  无效的下载任务 ID：bad
+-- zh-CN/39-rm-invalid-id-nojson/argv --
+crater download rm bad --no-interactive --yes
+-- zh-CN/39-rm-invalid-id-nojson/exit --
+2
+-- zh-CN/39-rm-invalid-id-nojson/stdout --
+-- zh-CN/39-rm-invalid-id-nojson/stderr --
+Error:
+  无效的下载任务 ID：bad
+-- zh-CN/40-retry-timeout-json/argv --
+crater download retry 123 --no-interactive --json
+-- zh-CN/40-retry-timeout-json/exit --
+4
+-- zh-CN/40-retry-timeout-json/stdout --
+-- zh-CN/40-retry-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Post \"https://example.invalid/api/v1/model-download/models/downloads/123/retry\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/retry\": context deadline exceeded"
+  }
+}
+-- zh-CN/41-token-env-missing-nojson/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source hf --token-env HF_TOKEN_NOT_SET
+-- zh-CN/41-token-env-missing-nojson/exit --
+2
+-- zh-CN/41-token-env-missing-nojson/stdout --
+-- zh-CN/41-token-env-missing-nojson/stderr --
+Error:
+  token 环境变量 HF_TOKEN_NOT_SET 未设置或为空
+-- zh-CN/42-token-env-missing-json/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-env HF_TOKEN_NOT_SET
+-- zh-CN/42-token-env-missing-json/exit --
+2
+-- zh-CN/42-token-env-missing-json/stdout --
+-- zh-CN/42-token-env-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "token 环境变量 HF_TOKEN_NOT_SET 未设置或为空"
+}
+-- zh-CN/43-token-stdin-empty-json/argv --
+crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-stdin
+-- zh-CN/43-token-stdin-empty-json/exit --
+2
+-- zh-CN/43-token-stdin-empty-json/stdout --
+-- zh-CN/43-token-stdin-empty-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "从 stdin 读取到的 token 为空"
+}
+-- zh-CN/44-rm-timeout-json/argv --
+crater download rm 123 --no-interactive --json --yes
+-- zh-CN/44-rm-timeout-json/exit --
+4
+-- zh-CN/44-rm-timeout-json/stdout --
+-- zh-CN/44-rm-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Delete \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Delete \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded"
+  }
+}
