@@ -222,3 +222,187 @@ crater image ls --json --no-interactive
     "msg": "simulated"
   }
 }
+-- en/19-account-get-missing-json/argv --
+crater account get --json --no-interactive
+-- en/19-account-get-missing-json/exit --
+2
+-- en/19-account-get-missing-json/stdout --
+-- en/19-account-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "account id or name is required (--account)"
+}
+-- en/20-resource-networks-missing-json/argv --
+crater resource networks --json --no-interactive
+-- en/20-resource-networks-missing-json/exit --
+2
+-- en/20-resource-networks-missing-json/stdout --
+-- en/20-resource-networks-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "resource id is required (--id)"
+}
+-- en/21-dataset-get-invalid-id-json/argv --
+crater dataset get abc --json --no-interactive
+-- en/21-dataset-get-invalid-id-json/exit --
+2
+-- en/21-dataset-get-invalid-id-json/stdout --
+-- en/21-dataset-get-invalid-id-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid dataset id: abc"
+}
+-- en/22-template-ls-404-json/argv --
+crater template ls --json --no-interactive
+-- en/22-template-ls-404-json/exit --
+4
+-- en/22-template-ls-404-json/stdout --
+-- en/22-template-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/23-model-download-logs-missing-json/argv --
+crater model-download logs --json --no-interactive
+-- en/23-model-download-logs-missing-json/exit --
+2
+-- en/23-model-download-logs-missing-json/stdout --
+-- en/23-model-download-logs-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "download id is required (--id)"
+}
+-- en/24-context-resources-404-json/argv --
+crater context resources --json --no-interactive
+-- en/24-context-resources-404-json/exit --
+4
+-- en/24-context-resources-404-json/stdout --
+-- en/24-context-resources-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/25-order-by-name-missing-json/argv --
+crater order by-name --json --no-interactive
+-- en/25-order-by-name-missing-json/exit --
+2
+-- en/25-order-by-name-missing-json/stdout --
+-- en/25-order-by-name-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "order name is required (--name)"
+}
+-- en/26-user-get-missing-json/argv --
+crater user get --json --no-interactive
+-- en/26-user-get-missing-json/exit --
+2
+-- en/26-user-get-missing-json/stdout --
+-- en/26-user-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "username is required (--username)"
+}
+-- en/27-pod-logs-missing-json/argv --
+crater pod logs ns pod --json --no-interactive
+-- en/27-pod-logs-missing-json/exit --
+2
+-- en/27-pod-logs-missing-json/stdout --
+-- en/27-pod-logs-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "container name is required (--container)"
+}
+-- en/28-billing-jobs-404-json/argv --
+crater billing jobs --all --json --no-interactive
+-- en/28-billing-jobs-404-json/exit --
+4
+-- en/28-billing-jobs-404-json/stdout --
+-- en/28-billing-jobs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/29-aijob-ls-404-json/argv --
+crater aijob ls --json --no-interactive
+-- en/29-aijob-ls-404-json/exit --
+4
+-- en/29-aijob-ls-404-json/stdout --
+-- en/29-aijob-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/30-spjob-yaml-missing-json/argv --
+crater spjob yaml --json --no-interactive
+-- en/30-spjob-yaml-missing-json/exit --
+2
+-- en/30-spjob-yaml-missing-json/stdout --
+-- en/30-spjob-yaml-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (--name)"
+}
+-- en/31-admin-operation-logs-404-json/argv --
+crater admin operation-logs --json --no-interactive
+-- en/31-admin-operation-logs-404-json/exit --
+4
+-- en/31-admin-operation-logs-404-json/stdout --
+-- en/31-admin-operation-logs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/32-admin-system-config-llm-404-json/argv --
+crater admin system-config llm --json --no-interactive
+-- en/32-admin-system-config-llm-404-json/exit --
+4
+-- en/32-admin-system-config-llm-404-json/stdout --
+-- en/32-admin-system-config-llm-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

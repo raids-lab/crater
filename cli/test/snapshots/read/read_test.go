@@ -42,12 +42,29 @@ func runReadSnapshots(t *testing.T, lang string) {
 		{ID: "16-image-ls-invalid-type-json", Args: []string{"image", "ls", "--type", "bad", "--json", "--no-interactive"}},
 		{ID: "17-image-ls-invalid-visibility-json", Args: []string{"image", "ls", "--visibility", "bad", "--json", "--no-interactive"}},
 		{ID: "18-image-ls-404-json", Args: []string{"image", "ls", "--json", "--no-interactive"}},
+		{ID: "19-account-get-missing-json", Args: []string{"account", "get", "--json", "--no-interactive"}},
+		{ID: "20-resource-networks-missing-json", Args: []string{"resource", "networks", "--json", "--no-interactive"}},
+		{ID: "21-dataset-get-invalid-id-json", Args: []string{"dataset", "get", "abc", "--json", "--no-interactive"}},
+		{ID: "22-template-ls-404-json", Args: []string{"template", "ls", "--json", "--no-interactive"}},
+		{ID: "23-model-download-logs-missing-json", Args: []string{"model-download", "logs", "--json", "--no-interactive"}},
+		{ID: "24-context-resources-404-json", Args: []string{"context", "resources", "--json", "--no-interactive"}},
+		{ID: "25-order-by-name-missing-json", Args: []string{"order", "by-name", "--json", "--no-interactive"}},
+		{ID: "26-user-get-missing-json", Args: []string{"user", "get", "--json", "--no-interactive"}},
+		{ID: "27-pod-logs-missing-json", Args: []string{"pod", "logs", "ns", "pod", "--json", "--no-interactive"}},
+		{ID: "28-billing-jobs-404-json", Args: []string{"billing", "jobs", "--all", "--json", "--no-interactive"}},
+		{ID: "29-aijob-ls-404-json", Args: []string{"aijob", "ls", "--json", "--no-interactive"}},
+		{ID: "30-spjob-yaml-missing-json", Args: []string{"spjob", "yaml", "--json", "--no-interactive"}},
+		{ID: "31-admin-operation-logs-404-json", Args: []string{"admin", "operation-logs", "--json", "--no-interactive"}},
+		{ID: "32-admin-system-config-llm-404-json", Args: []string{"admin", "system-config", "llm", "--json", "--no-interactive"}},
 	}
 	results := make([]*snaptest.Result, len(cases))
 	for i := range cases {
 		env := baseEnv
 		switch cases[i].ID {
-		case "03-node-ls-404-json", "07-node-pods-404-json", "14-job-ls-404-json", "15-job-yaml-404-json", "18-image-ls-404-json":
+		case "03-node-ls-404-json", "07-node-pods-404-json", "14-job-ls-404-json", "15-job-yaml-404-json", "18-image-ls-404-json",
+			"22-template-ls-404-json", "24-context-resources-404-json", "28-billing-jobs-404-json", "29-aijob-ls-404-json":
+			env = append(baseEnv, "CRATER_TEST_SANDBOX_HTTP=error404")
+		case "31-admin-operation-logs-404-json", "32-admin-system-config-llm-404-json":
 			env = append(baseEnv, "CRATER_TEST_SANDBOX_HTTP=error404")
 		}
 		r, err := snaptest.Run(bin, env, cases[i].Args)

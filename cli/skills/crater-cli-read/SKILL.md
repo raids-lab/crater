@@ -1,18 +1,18 @@
 ---
 name: crater-cli-read
-version: 1.0.0
-description: "Crater CLI 读取域：指导 AI Agent 通过 crater node、crater job、crater image 查看节点列表、作业列表、作业详情和镜像列表。用户提到 CLI 查看节点、任务/作业、镜像列表时使用。"
+version: 1.1.0
+description: "Crater CLI 读取域：指导 AI Agent 通过 crater node、job、image、account、resource、dataset、model-download、pod 等命令查看平台只读信息。用户提到 CLI 查看节点、任务/作业、镜像、资源、账户、数据集、模型下载、Pod 诊断时使用。"
 metadata:
   requires:
     bins: ["crater"]
-  cliHelp: "crater node --help && crater job --help && crater image --help"
+  cliHelp: "crater node --help && crater job --help && crater image --help && crater account --help && crater resource --help && crater dataset --help"
 ---
 
 # Crater CLI 读取
 
 **CRITICAL — 开始前 MUST 先读取 `crater-cli-shared`（可能路径：[`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)），其中包含全局选项、非交互调用、错误处理和敏感信息规则。**
 
-通过 `crater node`、`crater job`、`crater image` 帮助用户查看 Crater 平台信息时，遵守本规则。
+通过 `crater node`、`crater job`、`crater image`、`crater account`、`crater resource`、`crater dataset`、`crater model-download`、`crater pod` 等命令帮助用户查看 Crater 平台信息时，遵守本规则。
 
 ## 适用场景
 
@@ -20,13 +20,16 @@ metadata:
 - 用户需要查看节点上的 Pod 或节点 GPU 详情。
 - 用户需要查看作业列表、作业详情、作业 Pod、事件或 YAML。
 - 用户需要查看可见镜像或创建作业时可用的镜像。
-- 用户需要把节点、作业、镜像数据交给脚本或 AI Agent 继续处理。
+- 用户需要查看账户、资源、数据集/模型、模板、模型下载、审批单、用户、计费或上下文摘要。
+- 用户需要查看 Pod 容器、事件、日志、Ingress 或 NodePort。
+- 用户需要把平台只读数据交给脚本或 AI Agent 继续处理。
 
 ## 安全原则
 
-- 本领域当前命令均为只读命令，不修改平台资源。
+- 本领域命令均为只读命令，不修改平台资源。
 - 仍需先确认存在 active credentials；不要要求用户提供 token 或 Keyring 内容。
 - 脚本化或 Agent 场景优先使用 `--json --no-interactive`。
+- 不主动调用 token、secret、credential、websocket、terminal 或 log streaming 端点；这些不是普通只读清单能力。
 
 ## 常用范例
 
@@ -44,11 +47,23 @@ crater job events my-job-name --json
 crater job yaml my-job-name
 crater image ls --json
 crater image ls --available --type jupyter --json
+crater account ls --json
+crater resource ls --with-vendor-domain --json
+crater dataset ls --json
+crater template ls --json
+crater model-download ls --category model --json
+crater context resources --json
+crater billing jobs --all --days 7 --json
+crater order ls --json
+crater user get wangjh --json
+crater pod containers crater-workspace my-pod --json
+crater aijob ls --json
+crater spjob ls --json
 ```
 
 ## 排查顺序
 
 1. 先用 `crater auth ls --json` 确认存在 active credentials。
-2. 需要机器解析时加 `--json --no-interactive`，读取 stdout 中的 `data.nodes`、`data.jobs` 或 `data.images`。
-3. 作业列表第一版读取 Volcano 作业；如果用户询问 colocate/aijobs 或 sparse/spjobs，需要说明当前 CLI 读取域尚未覆盖。
+2. 需要机器解析时加 `--json --no-interactive`，读取 stdout 中的 `data.*` 对象，例如 `data.nodes`、`data.jobs`、`data.images`、`data.resources`。
+3. Volcano 作业使用 `crater job`；AI 作业使用 `crater aijob`；Sparse/RecommendDL 作业使用 `crater spjob`。
 4. API 失败时根据 stderr JSON 的 `category`、`code`、`context.http_status` 判断是未登录、无权限、资源不存在还是服务端错误。

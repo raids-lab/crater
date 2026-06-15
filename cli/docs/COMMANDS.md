@@ -431,3 +431,67 @@
   - 默认模式以表格展示 ID、镜像地址、类型、可见性、架构和所有者。
 - **`--json` 的 `data`**：`images`（数组，元素与平台镜像响应一致，过滤后返回）。
 - **状态**: [x] Completed
+
+---
+
+## 7. Additional Read Modules
+
+This section records the read-only API surface covered by the CLI after the broader read-interface audit. All commands require active credentials. Commands with `--admin` call the admin API variant and require platform permissions.
+
+### Account And Queue Reads
+- `crater account ls [--admin]`: `/api/v1/accounts` or `/api/v1/admin/accounts`.
+- `crater account get <id-or-name> [--admin]`: `/api/v1/accounts/by-name/{name}` or `/api/v1/admin/accounts/{id}`.
+- `crater account members <id> [--admin]`: `/api/v1/accounts/{id}/users` or `/api/v1/admin/accounts/userIn/{id}`.
+- `crater account users-out <id> [--admin]`: `/api/v1/accounts/{id}/users/out` or `/api/v1/admin/accounts/userOutOf/{id}`.
+- `crater account quota <id>`: `/api/v1/admin/accounts/{id}/quota`.
+- `crater account billing config <id> [--admin]`: `/api/v1/accounts/{id}/billing/config` or admin equivalent.
+- `crater account billing members <id> [--admin]`: `/api/v1/accounts/{id}/billing/members` or admin equivalent.
+- JSON payload keys: `accounts`, `account`, `members`, `users`, `quota`, `billing_config`.
+
+### Resource Reads
+- `crater resource ls [--with-vendor-domain]`: `/api/v1/resources`.
+- `crater resource networks <id> [--admin]`: `/api/v1/resources/{id}/networks` or admin equivalent.
+- `crater resource vgpu <id> [--admin]`: `/api/v1/resources/{id}/vgpu` or admin equivalent.
+- `crater resource prices`: `/api/v1/resources/billing/prices`.
+- JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
+
+### Dataset And Template Reads
+- `crater dataset ls [--admin]`: `/api/v1/dataset/mydataset` or `/api/v1/admin/dataset/alldataset`.
+- `crater dataset get <id>`: `/api/v1/dataset/detail/{id}`.
+- `crater dataset users <id>` / `queues <id>`: current share relationship reads.
+- `crater dataset users-out <id>` / `queues-out <id>`: unshared user/account candidate reads.
+- `crater template ls`: `/api/v1/jobtemplate/list`.
+- `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
+- JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.
+
+### Model Download Reads
+- `crater model-download ls [--category model|dataset] [--admin]`: `/api/v1/model-download/models/downloads` or admin equivalent.
+- `crater model-download get <id>`: `/api/v1/model-download/models/downloads/{id}`.
+- `crater model-download logs <id>`: `/api/v1/model-download/models/downloads/{id}/logs`.
+- JSON payload keys: `downloads`, `download`, `logs`.
+
+### Context, Billing, User, And Approval Reads
+- `crater context prequeue|quota|resources|billing`: `/api/v1/context/...` summary reads used by the portal.
+- `crater billing status [--admin]`, `summary`, `prices`, `jobs [--all|--user USER|--admin --days N]`, `job <name>`.
+- `crater user ls [--base]`, `get <username>`, `email-verified`, `billing summary`, `billing accounts <username>`.
+- `crater order ls [--admin]`, `get <id> [--admin]`, `by-name <name>`.
+
+### Pod And Non-Volcano Job Diagnostics
+- `crater pod containers|events|ingresses|nodeports <namespace> <pod>` and `crater pod logs <namespace> <pod> <container> [--tail N] [--timestamps] [--previous]` cover `/api/v1/namespaces/...` diagnostic GET APIs. Log streaming and terminal websocket APIs are intentionally not part of this read CLI.
+- `crater aijob ls|get|pods|events|yaml` covers `/api/v1/aijobs` reads except token retrieval.
+- `crater spjob ls|get|pods|events|yaml` covers `/api/v1/spjobs` reads.
+
+### Interfaces Not Exposed As General Read CLI
+- Sensitive credential reads (`/token`, `/secret`, Harbor credential APIs) are not exposed in the broad read surface.
+- WebSocket, terminal, and log streaming endpoints are not exposed because they are interactive/streaming rather than stable one-shot reads.
+- The untracked local `inference-services` API is not documented here until that backend/frontend feature lands in the branch base.
+- Public health, Swagger, Prometheus metrics, and low-level WebDAV file listing are left to their domain-specific tools rather than this first read CLI pass.
+
+### Admin-Only Read Coverage
+- `crater admin system-config llm|gpu-analysis|prequeue`: `/api/v1/admin/system-config/{llm,gpu-analysis,prequeue}`.
+- `crater admin queue-quotas`: `/api/v1/admin/queue-quotas`.
+- `crater admin gpu-analyses`: `/api/v1/admin/gpu-analysis`.
+- `crater admin operation-logs [--page N] [--limit N] [--operator USER] [--operation-type TYPE] [--target TARGET] [--start-time TIME] [--end-time TIME]`: `/api/v1/admin/operation-logs`.
+- `crater admin cronjobs`: `/api/v1/admin/operations/cronjob`.
+- `crater admin whitelist`: `/api/v1/admin/operations/whitelist`.
+- These commands surface existing admin GET APIs only. They do not perform update/delete/reconcile actions.
