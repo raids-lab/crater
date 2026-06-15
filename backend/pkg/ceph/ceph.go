@@ -22,7 +22,12 @@ import (
 	cfgpkg "github.com/raids-lab/crater/pkg/config"
 )
 
-const parentDir = ".."
+const (
+	parentDir         = ".."
+	cephFSMountRoot   = "/mnt/mycephfs"
+	defaultCephFSName = "cephfs"
+)
+
 const UnknownSizeBytes int64 = -1
 
 func AvailableBytes(totalBytes, usedBytes int64) int64 {
@@ -34,9 +39,9 @@ func AvailableBytes(totalBytes, usedBytes int64) int64 {
 
 var (
 	// cephMountPathCache 缓存 CephFS 挂载路径
-	cephMountPathCache string
-	// cephMountPathOnce 确保只初始化一次
-	cephMountPathOnce sync.Once
+	cephMountPathCache  string
+	cephMountPathPodUID string
+	cephMountPathMu     sync.Mutex
 )
 
 func sharedStoragePVCName() string {
@@ -239,22 +244,24 @@ func ResolveCephFSPath(
 // findCephMountPath 在 toolbox pod 中自动查找 CephFS 的 PVC 挂载路径
 // 通过 Kubernetes API 获取名为 crater-storage 的 PVC 信息，然后构建路径
 func findCephMountPath(clientset kubernetes.Interface, config *rest.Config, pod *corev1.Pod) (string, error) {
-	var err error
+	cephMountPathMu.Lock()
+	defer cephMountPathMu.Unlock()
 
-	// 使用 sync.Once 确保只执行一次路径发现
-	cephMountPathOnce.Do(func() {
-		fmt.Println("=== 开始发现 CephFS PVC 路径 ===")
-		cephMountPathCache, err = discoverCephMountPath(clientset, config, pod)
-		if err != nil {
-			fmt.Printf("=== 路径发现失败: %v ===\n", err)
-		} else {
-			fmt.Printf("=== 路径发现成功: %s ===\n", cephMountPathCache)
-		}
-	})
+	podUID := string(pod.UID)
+	if cephMountPathCache != "" && cephMountPathPodUID == podUID {
+		return cephMountPathCache, nil
+	}
 
+	fmt.Println("=== 开始发现 CephFS PVC 路径 ===")
+	mountPath, err := discoverCephMountPath(clientset, config, pod)
 	if err != nil {
+		fmt.Printf("=== 路径发现失败: %v ===\n", err)
 		return "", err
 	}
+
+	cephMountPathCache = mountPath
+	cephMountPathPodUID = podUID
+	fmt.Printf("=== 路径发现成功: %s ===\n", cephMountPathCache)
 
 	return cephMountPathCache, nil
 }
@@ -302,8 +309,12 @@ func discoverCephMountPath(clientset kubernetes.Interface, config *rest.Config, 
 
 	fmt.Printf("%s PV 是 cephfs 类型\n", storagePVCName)
 
+	if err := ensureCephFSMounted(clientset, config, pod, cephFSNameFromPV(pv)); err != nil {
+		return "", err
+	}
+
 	if subvolumePath := strings.TrimSpace(pv.Spec.CSI.VolumeAttributes["subvolumePath"]); subvolumePath != "" {
-		pvcPath := path.Clean("/mnt/mycephfs/" + strings.TrimLeft(subvolumePath, "/"))
+		pvcPath := path.Clean(cephFSMountRoot + "/" + strings.TrimLeft(subvolumePath, "/"))
 		fmt.Printf("2. 从 PV volumeAttributes.subvolumePath 直接获取 PVC 路径: %s\n", pvcPath)
 		return pvcPath, nil
 	}
@@ -348,7 +359,7 @@ func discoverCephMountPath(clientset kubernetes.Interface, config *rest.Config, 
 	fmt.Printf("构建 csi-vol- 名称: %s\n", csiVolName)
 
 	// 构建 PVC 路径
-	csiPath := fmt.Sprintf("/mnt/mycephfs/volumes/csi/%s", csiVolName)
+	csiPath := fmt.Sprintf("%s/volumes/csi/%s", cephFSMountRoot, csiVolName)
 	fmt.Printf("构建 PVC 路径: %s\n", csiPath)
 
 	// 查找该路径下的唯一子文件夹
@@ -387,6 +398,58 @@ func discoverCephMountPath(clientset kubernetes.Interface, config *rest.Config, 
 	fmt.Printf("3. 构建完整 PVC 挂载路径: %s\n", pvcPath)
 
 	return pvcPath, nil
+}
+
+func cephFSNameFromPV(pv *corev1.PersistentVolume) string {
+	if pv != nil && pv.Spec.CSI != nil {
+		if fsName := strings.TrimSpace(pv.Spec.CSI.VolumeAttributes["fsName"]); fsName != "" {
+			return fsName
+		}
+	}
+	return defaultCephFSName
+}
+
+func ensureCephFSMounted(
+	clientset kubernetes.Interface,
+	config *rest.Config,
+	pod *corev1.Pod,
+	fsName string,
+) error {
+	if strings.TrimSpace(fsName) == "" {
+		fsName = defaultCephFSName
+	}
+
+	script := fmt.Sprintf(`
+set -eu
+mount_root=%s
+fs_name=%s
+if grep -qs " ${mount_root} " /proc/mounts; then
+  exit 0
+fi
+mkdir -p "${mount_root}"
+if command -v ceph-fuse >/dev/null 2>&1; then
+  ceph-fuse --client_fs "${fs_name}" "${mount_root}" || ceph-fuse "${mount_root}"
+else
+  mount -t ceph :/ "${mount_root}" -o name=admin,fs="${fs_name}" || mount -t ceph :/ "${mount_root}" -o name=admin
+fi
+for i in 1 2 3 4 5; do
+  if grep -qs " ${mount_root} " /proc/mounts; then
+    exit 0
+  fi
+  sleep 1
+done
+echo "cephfs mount did not appear at ${mount_root}" >&2
+exit 1
+`, shellQuote(cephFSMountRoot), shellQuote(fsName))
+
+	if _, err := ExecInPod(clientset, config, pod, []string{"sh", "-c", script}); err != nil {
+		return fmt.Errorf("ensure CephFS mounted in toolbox failed: %v", err)
+	}
+	return nil
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
 // GetCephDirectorySize 获取 CephFS 目录大小
