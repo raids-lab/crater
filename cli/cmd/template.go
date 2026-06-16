@@ -20,8 +20,8 @@ var templateCmd = &cobra.Command{
 	},
 }
 
-var templateLsCmd = &cobra.Command{Use: "ls", Short: "List job templates", RunE: runTemplateLs}
-var templateGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a job template", Args: maxOneArg, RunE: runTemplateGet}
+var templateLsCmd = &cobra.Command{Use: "ls", Short: "List job templates", Args: noArgs, RunE: runTemplateLs}
+var templateGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a job template", Args: exactArgs(1, "id"), RunE: runTemplateGet}
 
 func runTemplateLs(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "templates", Path: api.JobTemplatePrefix + "/list", Params: noParams, Table: printTemplateTable})

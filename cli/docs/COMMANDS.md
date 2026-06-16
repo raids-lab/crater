@@ -436,50 +436,54 @@
 
 ## 7. Additional Read Modules
 
-This section records the read-only API surface covered by the CLI after the broader read-interface audit. All commands require active credentials. Commands with `--admin` call the admin API variant and require platform permissions.
+This section records the read-only API surface covered by the CLI after the broader read-interface audit. All commands require active credentials. User-visible reads stay under their resource domain. Administrator-only reads are explicitly under `crater admin ...` and require platform administrator permissions.
 
 ### Account And Queue Reads
-- `crater account ls [--admin]`: `/api/v1/accounts` or `/api/v1/admin/accounts`.
-- `crater account get <id-or-name> [--admin]`: `/api/v1/accounts/by-name/{name}` or `/api/v1/admin/accounts/{id}`.
-- `crater account members <id> [--admin]`: `/api/v1/accounts/{id}/users` or `/api/v1/admin/accounts/userIn/{id}`.
-- `crater account users-out <id> [--admin]`: `/api/v1/accounts/{id}/users/out` or `/api/v1/admin/accounts/userOutOf/{id}`.
-- `crater account quota <id>`: `/api/v1/admin/accounts/{id}/quota`.
-- `crater account billing config <id> [--admin]`: `/api/v1/accounts/{id}/billing/config` or admin equivalent.
-- `crater account billing members <id> [--admin]`: `/api/v1/accounts/{id}/billing/members` or admin equivalent.
+- `crater account ls`: `/api/v1/accounts`.
+- `crater account get <name>`: `/api/v1/accounts/by-name/{name}`.
+- `crater account members <id>`: `/api/v1/accounts/{id}/users`.
+- `crater account users-out <id>`: `/api/v1/accounts/{id}/users/out`.
+- `crater account billing config <id>`: `/api/v1/accounts/{id}/billing/config`.
+- `crater account billing members <id>`: `/api/v1/accounts/{id}/billing/members`.
+- `crater admin account ls|get|members|users-out|quota`: `/api/v1/admin/accounts...`.
+- `crater admin account billing config|members <id>`: `/api/v1/admin/accounts/{id}/billing/...`.
 - JSON payload keys: `accounts`, `account`, `members`, `users`, `quota`, `billing_config`.
 
 ### Resource Reads
 - `crater resource ls [--with-vendor-domain]`: `/api/v1/resources`.
-- `crater resource networks <id> [--admin]`: `/api/v1/resources/{id}/networks` or admin equivalent.
-- `crater resource vgpu <id> [--admin]`: `/api/v1/resources/{id}/vgpu` or admin equivalent.
+- `crater resource networks <id>`: `/api/v1/resources/{id}/networks`.
+- `crater resource vgpu <id>`: `/api/v1/resources/{id}/vgpu`.
 - `crater resource prices`: `/api/v1/resources/billing/prices`.
+- `crater admin resource networks|vgpu <id>`: `/api/v1/admin/resources/{id}/...`.
 - JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
 
 ### Dataset And Template Reads
-- `crater dataset ls [--admin]`: `/api/v1/dataset/mydataset` or `/api/v1/admin/dataset/alldataset`.
+- `crater dataset ls`: `/api/v1/dataset/mydataset`.
 - `crater dataset get <id>`: `/api/v1/dataset/detail/{id}`.
 - `crater dataset users <id>` / `queues <id>`: current share relationship reads.
 - `crater dataset users-out <id>` / `queues-out <id>`: unshared user/account candidate reads.
+- `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`.
 - `crater template ls`: `/api/v1/jobtemplate/list`.
 - `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
 - JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.
 
 ### Model Download Reads
-- `crater model-download ls [--category model|dataset] [--admin]`: `/api/v1/model-download/models/downloads` or admin equivalent.
+- `crater model-download ls [--category model|dataset]`: `/api/v1/model-download/models/downloads`.
 - `crater model-download get <id>`: `/api/v1/model-download/models/downloads/{id}`.
 - `crater model-download logs <id>`: `/api/v1/model-download/models/downloads/{id}/logs`.
+- `crater admin model-download ls`: `/api/v1/admin/model-download/models/downloads`.
 - JSON payload keys: `downloads`, `download`, `logs`.
 
 ### Context, Billing, User, And Approval Reads
 - `crater context prequeue|quota|resources|billing`: `/api/v1/context/...` summary reads used by the portal.
-- `crater billing status [--admin]`, `summary`, `prices`, `jobs [--all|--user USER|--admin --days N]`, `job <name>`.
-- `crater user ls [--base]`, `get <username>`, `email-verified`, `billing summary`, `billing accounts <username>`.
-- `crater order ls [--admin]`, `get <id> [--admin]`, `by-name <name>`.
+- `crater billing status`, `summary`, `prices`, `jobs [--all|--user USER --days N]`, `job <name>`.
+- `crater user get <username>`, `email-verified`.
+- `crater order ls`, `get <id>`, `by-name <name>`.
+- `crater admin billing status|jobs`, `crater admin order ls|get <id>`, `crater admin user ls`, `crater admin user billing summary|accounts <username>`.
 
 ### Pod And Non-Volcano Job Diagnostics
 - `crater pod containers|events|ingresses|nodeports <namespace> <pod>` and `crater pod logs <namespace> <pod> <container> [--tail N] [--timestamps] [--previous]` cover `/api/v1/namespaces/...` diagnostic GET APIs. Log streaming and terminal websocket APIs are intentionally not part of this read CLI.
-- `crater aijob ls|get|pods|events|yaml` covers `/api/v1/aijobs` reads except token retrieval.
-- `crater spjob ls|get|pods|events|yaml` covers `/api/v1/spjobs` reads.
+- AIJob/SPJob reads are intentionally not exposed in this PR because their backend identifier contracts differ from Volcano job names and need a dedicated CLI design.
 
 ### Interfaces Not Exposed As General Read CLI
 - Sensitive credential reads (`/token`, `/secret`, Harbor credential APIs) are not exposed in the broad read surface.

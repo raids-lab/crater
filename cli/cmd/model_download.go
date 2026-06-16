@@ -23,23 +23,24 @@ var modelDownloadCmd = &cobra.Command{
 	},
 }
 
-var modelDownloadLsCmd = &cobra.Command{Use: "ls", Short: "List model downloads", RunE: runModelDownloadLs}
-var modelDownloadGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a model download", Args: maxOneArg, RunE: runModelDownloadGet}
-var modelDownloadLogsCmd = &cobra.Command{Use: "logs <id>", Short: "Show model download logs", Args: maxOneArg, RunE: runModelDownloadLogs}
+var modelDownloadLsCmd = &cobra.Command{Use: "ls", Short: "List model downloads", Args: noArgs, RunE: runModelDownloadLs}
+var modelDownloadGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a model download", Args: exactArgs(1, "id"), RunE: runModelDownloadGet}
+var modelDownloadLogsCmd = &cobra.Command{Use: "logs <id>", Short: "Show model download logs", Args: exactArgs(1, "id"), RunE: runModelDownloadLogs}
+var adminModelDownloadCmd = &cobra.Command{Use: "model-download", Short: "View admin model and dataset downloads"}
+var adminModelDownloadLsCmd = &cobra.Command{Use: "ls", Short: "List model downloads", Args: noArgs, RunE: runAdminModelDownloadLs}
 
 func runModelDownloadLs(cmd *cobra.Command, _ []string) error {
-	admin, _ := cmd.Flags().GetBool("admin")
 	path := api.ModelDownloadListPath
 	params := map[string]string{}
 	category := getStringParam(cmd, "category")
 	if category != "" {
 		params["category"] = category
 	}
-	if admin {
-		path = api.AdminModelDLPfx + "/models/downloads"
-		params = nil
-	}
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "downloads", Path: path, Params: func(*cobra.Command) map[string]string { return params }, Table: printModelDownloadTable})
+}
+
+func runAdminModelDownloadLs(cmd *cobra.Command, _ []string) error {
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "downloads", Path: api.AdminModelDLPfx + "/models/downloads", Params: noParams, Table: printModelDownloadTable})
 }
 
 func runModelDownloadGet(cmd *cobra.Command, args []string) error {
@@ -67,8 +68,9 @@ func printModelDownloadTable(data interface{}) {
 
 func init() {
 	modelDownloadLsCmd.Flags().String("category", "", "Filter by model download category")
-	modelDownloadLsCmd.Flags().Bool("admin", false, "Use admin model download list API")
 	completion.RegisterFlagValue([]string{"model-download", "ls"}, "category", staticValueCompleter(modelDownloadCategories, nil))
 	modelDownloadCmd.AddCommand(modelDownloadLsCmd, modelDownloadGetCmd, modelDownloadLogsCmd)
 	rootCmd.AddCommand(modelDownloadCmd)
+	adminModelDownloadCmd.AddCommand(adminModelDownloadLsCmd)
+	adminCmd.AddCommand(adminModelDownloadCmd)
 }

@@ -5,6 +5,7 @@ var catalogErrors = map[Language]map[string]string{
 	En: {
 		"err_not_found":                    "no saved credentials match the criteria",
 		"err_missing_required":             "%s is required (--%s)",
+		"err_missing_required_arg":         "%s is required (<%s>)",
 		"err_missing_flag_non_interactive": "%s is required in non-interactive mode (--%s)",
 		"err_prompt_empty":                 "%s cannot be empty",
 		"err_missing_password":             "password is required in non-interactive mode (--password)",
@@ -26,6 +27,7 @@ var catalogErrors = map[Language]map[string]string{
 	ZhCN: {
 		"err_not_found":                    "未找到匹配的已保存账号",
 		"err_missing_required":             "缺少必要参数：%s (--%s)",
+		"err_missing_required_arg":         "缺少必要参数：%s (<%s>)",
 		"err_missing_flag_non_interactive": "非交互模式下必须提供 %s (--%s)",
 		"err_prompt_empty":                 "%s 不能为空",
 		"err_missing_password":             "非交互模式下必须提供密码 (--password)",

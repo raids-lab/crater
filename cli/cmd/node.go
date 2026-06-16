@@ -29,43 +29,29 @@ var nodeCmd = &cobra.Command{
 var nodeLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List cluster nodes",
+	Args:  noArgs,
 	RunE:  runNodeLs,
 }
 
 var nodeGetCmd = &cobra.Command{
 	Use:   "get <name>",
 	Short: "Get a cluster node",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runNodeGet,
+	Args:  exactArgs(1, "name"),
+	RunE:  runNodeGet,
 }
 
 var nodePodsCmd = &cobra.Command{
 	Use:   "pods <name>",
 	Short: "List pods on a cluster node",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runNodePods,
+	Args:  exactArgs(1, "name"),
+	RunE:  runNodePods,
 }
 
 var nodeGPUCmd = &cobra.Command{
 	Use:   "gpu <name>",
 	Short: "Get GPU information for a cluster node",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runNodeGPU,
+	Args:  exactArgs(1, "name"),
+	RunE:  runNodeGPU,
 }
 
 func runNodeLs(cmd *cobra.Command, _ []string) error {
@@ -311,7 +297,7 @@ func requiredArg(args []string, labelKey string, field string) (string, error) {
 	if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
 		return "", errUsageFromIssues([]usageIssue{{
 			Code:    errorcodes.ErrMissingRequiredFlag,
-			Message: i18n.T("err_missing_required", i18n.T(labelKey), field),
+			Message: i18n.T("err_missing_required_arg", i18n.T(labelKey), field),
 			Field:   field,
 		}})
 	}

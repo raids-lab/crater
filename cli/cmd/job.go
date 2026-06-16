@@ -39,55 +39,36 @@ var jobCmd = &cobra.Command{
 var jobLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List jobs",
+	Args:  noArgs,
 	RunE:  runJobLs,
 }
 
 var jobGetCmd = &cobra.Command{
 	Use:   "get <name>",
 	Short: "Get a job",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runJobGet,
+	Args:  exactArgs(1, "name"),
+	RunE:  runJobGet,
 }
 
 var jobPodsCmd = &cobra.Command{
 	Use:   "pods <name>",
 	Short: "List pods for a job",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runJobPods,
+	Args:  exactArgs(1, "name"),
+	RunE:  runJobPods,
 }
 
 var jobEventsCmd = &cobra.Command{
 	Use:   "events <name>",
 	Short: "List events for a job",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runJobEvents,
+	Args:  exactArgs(1, "name"),
+	RunE:  runJobEvents,
 }
 
 var jobYAMLCmd = &cobra.Command{
 	Use:   "yaml <name>",
 	Short: "Show job YAML",
-	Args: func(cmd *cobra.Command, args []string) error {
-		if len(args) > 1 {
-			return errTooManyArgs(cmd, len(args), 1)
-		}
-		return nil
-	},
-	RunE: runJobYAML,
+	Args:  exactArgs(1, "name"),
+	RunE:  runJobYAML,
 }
 
 func runJobLs(cmd *cobra.Command, _ []string) error {
@@ -213,10 +194,19 @@ func readJobListOptions(cmd *cobra.Command) (api.JobListOptions, error) {
 	days, _ := cmd.Flags().GetInt("days")
 	status, _ := cmd.Flags().GetString("status")
 	jobType, _ := cmd.Flags().GetString("type")
+	status = strings.TrimSpace(status)
+	jobType = strings.TrimSpace(jobType)
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	batch, _ := cmd.Flags().GetBool("batch")
 
 	var issues []usageIssue
+	if days < -1 {
+		issues = append(issues, usageIssue{
+			Code:    errorcodes.ErrInvalidFlagValue,
+			Message: i18n.T("err_invalid_days"),
+			Field:   "days",
+		})
+	}
 	if status != "" && !slices.Contains(jobStatuses, status) {
 		issues = append(issues, usageIssue{
 			Code:    errorcodes.ErrInvalidFlagValue,
@@ -254,6 +244,9 @@ func filterJobs(cmd *cobra.Command, jobs []api.JobInfo) []api.JobInfo {
 	nodeName, _ := cmd.Flags().GetString("node")
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	batch, _ := cmd.Flags().GetBool("batch")
+	status = strings.TrimSpace(status)
+	jobType = strings.TrimSpace(jobType)
+	nodeName = strings.TrimSpace(nodeName)
 	out := jobs[:0]
 	for _, job := range jobs {
 		if status != "" && job.Status != status {

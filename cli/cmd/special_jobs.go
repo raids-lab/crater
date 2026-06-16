@@ -19,7 +19,7 @@ func newReadJobFamilyCommand(use, short, prefix, idLabel string) *cobra.Command 
 			return cmd.Help()
 		},
 	}
-	ls := &cobra.Command{Use: "ls", Short: "List jobs", RunE: func(cmd *cobra.Command, _ []string) error {
+	ls := &cobra.Command{Use: "ls", Short: "List jobs", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 		path := prefix
 		all, _ := cmd.Flags().GetBool("all")
 		if all {
@@ -27,21 +27,21 @@ func newReadJobFamilyCommand(use, short, prefix, idLabel string) *cobra.Command 
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "jobs", Path: path, Params: noParams, Table: printJobTableFromRaw})
 	}}
-	get := &cobra.Command{Use: "get <name>", Short: "Get a job", Args: maxOneArg, RunE: func(cmd *cobra.Command, args []string) error {
+	get := &cobra.Command{Use: "get <name>", Short: "Get a job", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "job", Path: fmt.Sprintf("%s/%s/detail", prefix, name), Params: noParams, Table: printRawObject})
 	}}
-	pods := &cobra.Command{Use: "pods <name>", Short: "List pods for a job", Args: maxOneArg, RunE: func(cmd *cobra.Command, args []string) error {
+	pods := &cobra.Command{Use: "pods <name>", Short: "List pods for a job", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "pods", Path: fmt.Sprintf("%s/%s/pods", prefix, name), Params: noParams, Table: printJobPodRawTable})
 	}}
-	events := &cobra.Command{Use: "events <name>", Short: "List events for a job", Args: maxOneArg, RunE: func(cmd *cobra.Command, args []string) error {
+	events := &cobra.Command{Use: "events <name>", Short: "List events for a job", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
@@ -52,7 +52,7 @@ func newReadJobFamilyCommand(use, short, prefix, idLabel string) *cobra.Command 
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "events", Path: fmt.Sprintf("%s/%s/%s", prefix, name, suffix), Params: noParams, Table: printRawObject})
 	}}
-	yamlCmd := &cobra.Command{Use: "yaml <name>", Short: "Show job YAML", Args: maxOneArg, RunE: func(cmd *cobra.Command, args []string) error {
+	yamlCmd := &cobra.Command{Use: "yaml <name>", Short: "Show job YAML", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
@@ -93,6 +93,6 @@ func i18nPad(key string, width int) string {
 }
 
 func init() {
-	rootCmd.AddCommand(newReadJobFamilyCommand("aijob", "View AI jobs", api.AIJobsPrefix, "job_label_name"))
-	rootCmd.AddCommand(newReadJobFamilyCommand("spjob", "View sparse jobs", api.SPJobsPrefix, "job_label_name"))
+	// AIJob/SPJob routes use different identifiers and are intentionally not
+	// exposed in this broad read surface until their CLI contract is designed.
 }

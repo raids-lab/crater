@@ -20,20 +20,21 @@ var datasetCmd = &cobra.Command{
 	},
 }
 
-var datasetLsCmd = &cobra.Command{Use: "ls", Short: "List datasets and models", RunE: runDatasetLs}
-var datasetGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a dataset or model", Args: maxOneArg, RunE: runDatasetGet}
-var datasetUsersCmd = &cobra.Command{Use: "users <id>", Short: "List users shared with a dataset", Args: maxOneArg, RunE: runDatasetUsers}
-var datasetQueuesCmd = &cobra.Command{Use: "queues <id>", Short: "List queues shared with a dataset", Args: maxOneArg, RunE: runDatasetQueues}
-var datasetUsersOutCmd = &cobra.Command{Use: "users-out <id>", Short: "List users not shared with a dataset", Args: maxOneArg, RunE: runDatasetUsersOut}
-var datasetQueuesOutCmd = &cobra.Command{Use: "queues-out <id>", Short: "List queues not shared with a dataset", Args: maxOneArg, RunE: runDatasetQueuesOut}
+var datasetLsCmd = &cobra.Command{Use: "ls", Short: "List datasets and models", Args: noArgs, RunE: runDatasetLs}
+var datasetGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a dataset or model", Args: exactArgs(1, "id"), RunE: runDatasetGet}
+var datasetUsersCmd = &cobra.Command{Use: "users <id>", Short: "List users shared with a dataset", Args: exactArgs(1, "id"), RunE: runDatasetUsers}
+var datasetQueuesCmd = &cobra.Command{Use: "queues <id>", Short: "List queues shared with a dataset", Args: exactArgs(1, "id"), RunE: runDatasetQueues}
+var datasetUsersOutCmd = &cobra.Command{Use: "users-out <id>", Short: "List users not shared with a dataset", Args: exactArgs(1, "id"), RunE: runDatasetUsersOut}
+var datasetQueuesOutCmd = &cobra.Command{Use: "queues-out <id>", Short: "List queues not shared with a dataset", Args: exactArgs(1, "id"), RunE: runDatasetQueuesOut}
+var adminDatasetCmd = &cobra.Command{Use: "dataset", Short: "View admin datasets and models"}
+var adminDatasetLsCmd = &cobra.Command{Use: "ls", Short: "List datasets and models", Args: noArgs, RunE: runAdminDatasetLs}
 
 func runDatasetLs(cmd *cobra.Command, _ []string) error {
-	admin, _ := cmd.Flags().GetBool("admin")
-	path := api.DatasetPrefix + "/mydataset"
-	if admin {
-		path = api.AdminDatasetPrefix + "/alldataset"
-	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "datasets", Path: path, Params: noParams, Table: printDatasetTable})
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "datasets", Path: api.DatasetPrefix + "/mydataset", Params: noParams, Table: printDatasetTable})
+}
+
+func runAdminDatasetLs(cmd *cobra.Command, _ []string) error {
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "datasets", Path: api.AdminDatasetPrefix + "/alldataset", Params: noParams, Table: printDatasetTable})
 }
 
 func runDatasetGet(cmd *cobra.Command, args []string) error {
@@ -88,7 +89,8 @@ func printDatasetTable(data interface{}) {
 }
 
 func init() {
-	datasetLsCmd.Flags().Bool("admin", false, "Use admin dataset list API")
 	datasetCmd.AddCommand(datasetLsCmd, datasetGetCmd, datasetUsersCmd, datasetQueuesCmd, datasetUsersOutCmd, datasetQueuesOutCmd)
 	rootCmd.AddCommand(datasetCmd)
+	adminDatasetCmd.AddCommand(adminDatasetLsCmd)
+	adminCmd.AddCommand(adminDatasetCmd)
 }

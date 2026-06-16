@@ -19,11 +19,11 @@ var podCmd = &cobra.Command{
 	},
 }
 
-var podContainersCmd = &cobra.Command{Use: "containers <namespace> <pod>", Short: "List pod containers", Args: maxTwoArgs, RunE: runPodContainers}
-var podEventsCmd = &cobra.Command{Use: "events <namespace> <pod>", Short: "List pod events", Args: maxTwoArgs, RunE: runPodEvents}
-var podLogsCmd = &cobra.Command{Use: "logs <namespace> <pod> <container>", Short: "Show pod container logs", Args: maxThreeArgs, RunE: runPodLogs}
-var podIngressesCmd = &cobra.Command{Use: "ingresses <namespace> <pod>", Short: "List pod ingresses", Args: maxTwoArgs, RunE: runPodIngresses}
-var podNodeportsCmd = &cobra.Command{Use: "nodeports <namespace> <pod>", Short: "List pod nodeports", Args: maxTwoArgs, RunE: runPodNodeports}
+var podContainersCmd = &cobra.Command{Use: "containers <namespace> <pod>", Short: "List pod containers", Args: exactArgs(2, "namespace", "pod"), RunE: runPodContainers}
+var podEventsCmd = &cobra.Command{Use: "events <namespace> <pod>", Short: "List pod events", Args: exactArgs(2, "namespace", "pod"), RunE: runPodEvents}
+var podLogsCmd = &cobra.Command{Use: "logs <namespace> <pod> <container>", Short: "Show pod container logs", Args: exactArgs(3, "namespace", "pod", "container"), RunE: runPodLogs}
+var podIngressesCmd = &cobra.Command{Use: "ingresses <namespace> <pod>", Short: "List pod ingresses", Args: exactArgs(2, "namespace", "pod"), RunE: runPodIngresses}
+var podNodeportsCmd = &cobra.Command{Use: "nodeports <namespace> <pod>", Short: "List pod nodeports", Args: exactArgs(2, "namespace", "pod"), RunE: runPodNodeports}
 
 func maxTwoArgs(cmd *cobra.Command, args []string) error {
 	if len(args) > 2 {

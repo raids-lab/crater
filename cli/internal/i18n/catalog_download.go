@@ -57,7 +57,6 @@ var catalogDownload = map[Language]map[string]string{
 		"err_download_token_stdin_empty":     "token read from stdin is empty",
 		"err_download_wait_timeout":          "timed out waiting for download after %s",
 		"err_download_follow_json":           "--follow cannot be combined with --json",
-		"err_token_load_failed":              "failed to load active credentials token: %s",
 
 		// Human-readable messages
 		"download_task_summary":   "Download task:\n  ID: %d\n  Name: %s\n  Category: %s\n  Source: %s\n  Status: %s\n  Path: %s",
@@ -127,7 +126,6 @@ var catalogDownload = map[Language]map[string]string{
 		"err_download_token_stdin_empty":     "从 stdin 读取到的 token 为空",
 		"err_download_wait_timeout":          "等待下载超时：%s",
 		"err_download_follow_json":           "--follow 不能与 --json 同时使用",
-		"err_token_load_failed":              "读取当前账号 token 失败：%s",
 
 		// Human-readable messages
 		"download_task_summary":   "下载任务：\n  ID：%d\n  名称：%s\n  类别：%s\n  来源：%s\n  状态：%s\n  路径：%s",

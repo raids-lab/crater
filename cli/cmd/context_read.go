@@ -20,10 +20,10 @@ var contextCmd = &cobra.Command{
 	},
 }
 
-var contextPrequeueCmd = &cobra.Command{Use: "prequeue", Short: "Get prequeue feature status", RunE: runContextPrequeue}
-var contextQuotaCmd = &cobra.Command{Use: "quota", Short: "Get current account quota", RunE: runContextQuota}
-var contextResourcesCmd = &cobra.Command{Use: "resources", Short: "Get current job resource summary", RunE: runContextResources}
-var contextBillingCmd = &cobra.Command{Use: "billing", Short: "Get current billing summary", RunE: runContextBilling}
+var contextPrequeueCmd = &cobra.Command{Use: "prequeue", Short: "Get prequeue feature status", Args: noArgs, RunE: runContextPrequeue}
+var contextQuotaCmd = &cobra.Command{Use: "quota", Short: "Get current account quota", Args: noArgs, RunE: runContextQuota}
+var contextResourcesCmd = &cobra.Command{Use: "resources", Short: "Get current job resource summary", Args: noArgs, RunE: runContextResources}
+var contextBillingCmd = &cobra.Command{Use: "billing", Short: "Get current billing summary", Args: noArgs, RunE: runContextBilling}
 
 func runContextPrequeue(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "prequeue", Path: api.ContextPrefix + "/prequeue", Params: noParams, Table: printRawObject})

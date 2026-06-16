@@ -20,17 +20,19 @@ var orderCmd = &cobra.Command{
 	},
 }
 
-var orderLsCmd = &cobra.Command{Use: "ls", Short: "List approval orders", RunE: runOrderLs}
-var orderGetCmd = &cobra.Command{Use: "get <id>", Short: "Get an approval order", Args: maxOneArg, RunE: runOrderGet}
-var orderByNameCmd = &cobra.Command{Use: "by-name <name>", Short: "List approval orders by name", Args: maxOneArg, RunE: runOrderByName}
+var orderLsCmd = &cobra.Command{Use: "ls", Short: "List approval orders", Args: noArgs, RunE: runOrderLs}
+var orderGetCmd = &cobra.Command{Use: "get <id>", Short: "Get an approval order", Args: exactArgs(1, "id"), RunE: runOrderGet}
+var orderByNameCmd = &cobra.Command{Use: "by-name <name>", Short: "List approval orders by name", Args: exactArgs(1, "name"), RunE: runOrderByName}
+var adminOrderCmd = &cobra.Command{Use: "order", Short: "View admin approval orders"}
+var adminOrderLsCmd = &cobra.Command{Use: "ls", Short: "List approval orders", Args: noArgs, RunE: runAdminOrderLs}
+var adminOrderGetCmd = &cobra.Command{Use: "get <id>", Short: "Get an approval order", Args: exactArgs(1, "id"), RunE: runAdminOrderGet}
 
 func runOrderLs(cmd *cobra.Command, _ []string) error {
-	admin, _ := cmd.Flags().GetBool("admin")
-	path := api.ApprovalOrderPrefix
-	if admin {
-		path = api.AdminApprovalPrefix
-	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "orders", Path: path, Params: noParams, Table: printOrderTable})
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "orders", Path: api.ApprovalOrderPrefix, Params: noParams, Table: printOrderTable})
+}
+
+func runAdminOrderLs(cmd *cobra.Command, _ []string) error {
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "orders", Path: api.AdminApprovalPrefix, Params: noParams, Table: printOrderTable})
 }
 
 func runOrderGet(cmd *cobra.Command, args []string) error {
@@ -38,12 +40,15 @@ func runOrderGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	admin, _ := cmd.Flags().GetBool("admin")
-	prefix := api.ApprovalOrderPrefix
-	if admin {
-		prefix = api.AdminApprovalPrefix
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", api.ApprovalOrderPrefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
+}
+
+func runAdminOrderGet(cmd *cobra.Command, args []string) error {
+	id, err := requiredUintArg(args, "order_label_id", "id")
+	if err != nil {
+		return err
 	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", prefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", api.AdminApprovalPrefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
 }
 
 func runOrderByName(cmd *cobra.Command, args []string) error {
@@ -62,8 +67,8 @@ func printOrderTable(data interface{}) {
 }
 
 func init() {
-	orderLsCmd.Flags().Bool("admin", false, "Use admin approval order list API")
-	orderGetCmd.Flags().Bool("admin", false, "Use admin approval order detail API")
 	orderCmd.AddCommand(orderLsCmd, orderGetCmd, orderByNameCmd)
 	rootCmd.AddCommand(orderCmd)
+	adminOrderCmd.AddCommand(adminOrderLsCmd, adminOrderGetCmd)
+	adminCmd.AddCommand(adminOrderCmd)
 }

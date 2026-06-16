@@ -72,7 +72,7 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Log in to a Crater platform instance",
 	Long:  "Authenticate with a platform using Platform URL, Username, and Method.",
-	RunE: runAuthLogin,
+	RunE:  runAuthLogin,
 }
 
 var switchCmd = &cobra.Command{

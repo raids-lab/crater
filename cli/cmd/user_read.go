@@ -20,12 +20,17 @@ var userCmd = &cobra.Command{
 	},
 }
 
-var userLsCmd = &cobra.Command{Use: "ls", Short: "List users", RunE: runUserLs}
-var userGetCmd = &cobra.Command{Use: "get <username>", Short: "Get a user", Args: maxOneArg, RunE: runUserGet}
-var userEmailCmd = &cobra.Command{Use: "email-verified", Short: "Check current user's email verification status", RunE: runUserEmail}
+var userLsCmd = &cobra.Command{Use: "ls", Short: "List users", Args: noArgs, RunE: runUserLs}
+var userGetCmd = &cobra.Command{Use: "get <username>", Short: "Get a user", Args: exactArgs(1, "username"), RunE: runUserGet}
+var userEmailCmd = &cobra.Command{Use: "email-verified", Short: "Check current user's email verification status", Args: noArgs, RunE: runUserEmail}
 var userBillingCmd = &cobra.Command{Use: "billing", Short: "View user billing"}
-var userBillingSummaryCmd = &cobra.Command{Use: "summary", Short: "List user billing summaries", RunE: runUserBillingSummary}
-var userBillingAccountsCmd = &cobra.Command{Use: "accounts <username>", Short: "List user billing accounts", Args: maxOneArg, RunE: runUserBillingAccounts}
+var userBillingSummaryCmd = &cobra.Command{Use: "summary", Short: "List user billing summaries", Args: noArgs, RunE: runUserBillingSummary}
+var userBillingAccountsCmd = &cobra.Command{Use: "accounts <username>", Short: "List user billing accounts", Args: exactArgs(1, "username"), RunE: runUserBillingAccounts}
+var adminUserCmd = &cobra.Command{Use: "user", Short: "View admin users"}
+var adminUserLsCmd = &cobra.Command{Use: "ls", Short: "List users", Args: noArgs, RunE: runUserLs}
+var adminUserBillingCmd = &cobra.Command{Use: "billing", Short: "View user billing"}
+var adminUserBillingSummaryCmd = &cobra.Command{Use: "summary", Short: "List user billing summaries", Args: noArgs, RunE: runUserBillingSummary}
+var adminUserBillingAccountsCmd = &cobra.Command{Use: "accounts <username>", Short: "List user billing accounts", Args: exactArgs(1, "username"), RunE: runUserBillingAccounts}
 
 func runUserLs(cmd *cobra.Command, _ []string) error {
 	base, _ := cmd.Flags().GetBool("base")
@@ -79,7 +84,10 @@ func printUserTable(data interface{}) {
 
 func init() {
 	userLsCmd.Flags().Bool("base", false, "List base user information")
-	userBillingCmd.AddCommand(userBillingSummaryCmd, userBillingAccountsCmd)
-	userCmd.AddCommand(userLsCmd, userGetCmd, userEmailCmd, userBillingCmd)
+	userCmd.AddCommand(userGetCmd, userEmailCmd)
 	rootCmd.AddCommand(userCmd)
+	adminUserLsCmd.Flags().Bool("base", false, "List base user information")
+	adminUserBillingCmd.AddCommand(adminUserBillingSummaryCmd, adminUserBillingAccountsCmd)
+	adminUserCmd.AddCommand(adminUserLsCmd, adminUserBillingCmd)
+	adminCmd.AddCommand(adminUserCmd)
 }

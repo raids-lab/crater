@@ -18,26 +18,26 @@ var adminCmd = &cobra.Command{
 }
 
 var adminSystemConfigCmd = &cobra.Command{Use: "system-config", Short: "View system configuration"}
-var adminSystemConfigLLMCmd = &cobra.Command{Use: "llm", Short: "Get LLM configuration", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminSystemConfigLLMCmd = &cobra.Command{Use: "llm", Short: "Get LLM configuration", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "llm", Path: api.AdminSysConfigPfx + "/llm", Params: noParams, Table: printRawObject})
 }}
-var adminSystemConfigGPUCmd = &cobra.Command{Use: "gpu-analysis", Short: "Get GPU analysis status", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminSystemConfigGPUCmd = &cobra.Command{Use: "gpu-analysis", Short: "Get GPU analysis status", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "gpu_analysis", Path: api.AdminSysConfigPfx + "/gpu-analysis", Params: noParams, Table: printRawObject})
 }}
-var adminSystemConfigPrequeueCmd = &cobra.Command{Use: "prequeue", Short: "Get prequeue configuration", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminSystemConfigPrequeueCmd = &cobra.Command{Use: "prequeue", Short: "Get prequeue configuration", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "prequeue", Path: api.AdminSysConfigPfx + "/prequeue", Params: noParams, Table: printRawObject})
 }}
-var adminQueueQuotasCmd = &cobra.Command{Use: "queue-quotas", Short: "List queue quotas", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminQueueQuotasCmd = &cobra.Command{Use: "queue-quotas", Short: "List queue quotas", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "queue_quotas", Path: api.AdminQueueQuotasPfx, Params: noParams, Table: printRawObject})
 }}
-var adminGpuAnalysesCmd = &cobra.Command{Use: "gpu-analyses", Short: "List GPU analysis records", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminGpuAnalysesCmd = &cobra.Command{Use: "gpu-analyses", Short: "List GPU analysis records", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "gpu_analyses", Path: api.AdminGPUAnalysisPfx, Params: noParams, Table: printSimpleTableWrapper("ID", "JobName", "UserName", "PodName", "ReviewStatus")})
 }}
-var adminOperationLogsCmd = &cobra.Command{Use: "operation-logs", Short: "List operation logs", RunE: runAdminOperationLogs}
-var adminCronjobsCmd = &cobra.Command{Use: "cronjobs", Short: "List cronjob configs", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminOperationLogsCmd = &cobra.Command{Use: "operation-logs", Short: "List operation logs", Args: noArgs, RunE: runAdminOperationLogs}
+var adminCronjobsCmd = &cobra.Command{Use: "cronjobs", Short: "List cronjob configs", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "cronjobs", Path: api.AdminOperationsPfx + "/cronjob", Params: noParams, Table: printRawObject})
 }}
-var adminWhitelistCmd = &cobra.Command{Use: "whitelist", Short: "List operation whitelist", RunE: func(cmd *cobra.Command, _ []string) error {
+var adminWhitelistCmd = &cobra.Command{Use: "whitelist", Short: "List operation whitelist", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "whitelist", Path: api.AdminOperationsPfx + "/whitelist", Params: noParams, Table: printRawObject})
 }}
 

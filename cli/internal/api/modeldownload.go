@@ -185,25 +185,3 @@ func (c *Client) postDownloadAction(id uint, action string) (*ModelDownloadResp,
 func downloadItemPath(id uint) string {
 	return fmt.Sprintf("%s/%d", ModelDownloadListPath, id)
 }
-
-func errorFromResponse(resp interface {
-	GetStatusCode() int
-	IsSuccessState() bool
-}, craterCode int, msg string) error {
-	status := resp.GetStatusCode()
-	if !resp.IsSuccessState() {
-		return &RequestError{
-			HTTPStatus: status,
-			CraterCode: craterCode,
-			Msg:        msg,
-		}
-	}
-	if craterCode != 0 {
-		return &RequestError{
-			HTTPStatus: status,
-			CraterCode: craterCode,
-			Msg:        msg,
-		}
-	}
-	return nil
-}

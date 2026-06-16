@@ -81,6 +81,13 @@ func getIntParam(cmd *cobra.Command, name string) string {
 	return strconv.Itoa(v)
 }
 
+func noArgs(cmd *cobra.Command, args []string) error {
+	if len(args) > 0 {
+		return errTooManyArgs(cmd, len(args), 0)
+	}
+	return nil
+}
+
 func requiredUintArg(args []string, labelKey string, field string) (uint, error) {
 	value, err := requiredArg(args, labelKey, field)
 	if err != nil {

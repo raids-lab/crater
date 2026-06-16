@@ -32,6 +32,7 @@ var imageCmd = &cobra.Command{
 var imageLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List images",
+	Args:  noArgs,
 	RunE:  runImageLs,
 }
 
@@ -39,6 +40,8 @@ func runImageLs(cmd *cobra.Command, _ []string) error {
 	available, _ := cmd.Flags().GetBool("available")
 	taskType, _ := cmd.Flags().GetString("type")
 	visibility, _ := cmd.Flags().GetString("visibility")
+	taskType = strings.TrimSpace(taskType)
+	visibility = strings.TrimSpace(visibility)
 	if taskType != "" && !slices.Contains(imageTaskTypes, taskType) {
 		return errUsageFromIssues([]usageIssue{{
 			Code:    errorcodes.ErrInvalidFlagValue,

@@ -20,23 +20,24 @@ var billingCmd = &cobra.Command{
 	},
 }
 
-var billingStatusCmd = &cobra.Command{Use: "status", Short: "Get billing feature status", RunE: runBillingStatus}
-var billingSummaryCmd = &cobra.Command{Use: "summary", Short: "Get current billing summary", RunE: runContextBilling}
-var billingPricesCmd = &cobra.Command{Use: "prices", Short: "List billing prices", RunE: runResourcePrices}
-var billingJobsCmd = &cobra.Command{Use: "jobs", Short: "List job billing records", RunE: runBillingJobs}
-var billingJobCmd = &cobra.Command{Use: "job <name>", Short: "Get job billing detail", Args: maxOneArg, RunE: runBillingJob}
+var billingStatusCmd = &cobra.Command{Use: "status", Short: "Get billing feature status", Args: noArgs, RunE: runBillingStatus}
+var billingSummaryCmd = &cobra.Command{Use: "summary", Short: "Get current billing summary", Args: noArgs, RunE: runContextBilling}
+var billingPricesCmd = &cobra.Command{Use: "prices", Short: "List billing prices", Args: noArgs, RunE: runResourcePrices}
+var billingJobsCmd = &cobra.Command{Use: "jobs", Short: "List job billing records", Args: noArgs, RunE: runBillingJobs}
+var billingJobCmd = &cobra.Command{Use: "job <name>", Short: "Get job billing detail", Args: exactArgs(1, "name"), RunE: runBillingJob}
+var adminBillingCmd = &cobra.Command{Use: "billing", Short: "View admin billing information"}
+var adminBillingStatusCmd = &cobra.Command{Use: "status", Short: "Get billing feature status", Args: noArgs, RunE: runAdminBillingStatus}
+var adminBillingJobsCmd = &cobra.Command{Use: "jobs", Short: "List job billing records", Args: noArgs, RunE: runAdminBillingJobs}
 
 func runBillingStatus(cmd *cobra.Command, _ []string) error {
-	admin, _ := cmd.Flags().GetBool("admin")
-	path := api.SystemConfigPrefix + "/billing"
-	if admin {
-		path = api.AdminSysConfigPfx + "/billing"
-	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "billing", Path: path, Params: noParams, Table: printRawObject})
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "billing", Path: api.SystemConfigPrefix + "/billing", Params: noParams, Table: printRawObject})
+}
+
+func runAdminBillingStatus(cmd *cobra.Command, _ []string) error {
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "billing", Path: api.AdminSysConfigPfx + "/billing", Params: noParams, Table: printRawObject})
 }
 
 func runBillingJobs(cmd *cobra.Command, _ []string) error {
-	admin, _ := cmd.Flags().GetBool("admin")
 	all, _ := cmd.Flags().GetBool("all")
 	user := getStringParam(cmd, "user")
 	path := api.VCJobsPrefix + "/billing"
@@ -48,13 +49,15 @@ func runBillingJobs(cmd *cobra.Command, _ []string) error {
 		path = api.VCJobsPrefix + "/billing/all"
 		params["days"] = getIntParam(cmd, "days")
 	}
-	if admin {
-		path = api.VCJobsPrefix + "/billing"
-		if user != "" {
-			path = api.VCJobsPrefix + "/billing/user/" + user
-		}
-		path = "/api/v1/admin" + path[len("/api/v1"):]
-		params["days"] = getIntParam(cmd, "days")
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "billing", Path: path, Params: func(*cobra.Command) map[string]string { return params }, Table: printJobBillingTable})
+}
+
+func runAdminBillingJobs(cmd *cobra.Command, _ []string) error {
+	user := getStringParam(cmd, "user")
+	path := "/api/v1/admin" + api.VCJobsPrefix[len("/api/v1"):] + "/billing"
+	params := map[string]string{"days": getIntParam(cmd, "days")}
+	if user != "" {
+		path = "/api/v1/admin" + api.VCJobsPrefix[len("/api/v1"):] + "/billing/user/" + user
 	}
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "billing", Path: path, Params: func(*cobra.Command) map[string]string { return params }, Table: printJobBillingTable})
 }
@@ -75,11 +78,13 @@ func printJobBillingTable(data interface{}) {
 }
 
 func init() {
-	billingStatusCmd.Flags().Bool("admin", false, "Use admin billing status API")
 	billingJobsCmd.Flags().Bool("all", false, "List all visible job billing records")
-	billingJobsCmd.Flags().Bool("admin", false, "Use admin job billing API")
 	billingJobsCmd.Flags().String("user", "", "Filter job billing by username")
 	billingJobsCmd.Flags().Int("days", 30, "Look back days")
 	billingCmd.AddCommand(billingStatusCmd, billingSummaryCmd, billingPricesCmd, billingJobsCmd, billingJobCmd)
 	rootCmd.AddCommand(billingCmd)
+	adminBillingJobsCmd.Flags().String("user", "", "Filter job billing by username")
+	adminBillingJobsCmd.Flags().Int("days", 30, "Look back days")
+	adminBillingCmd.AddCommand(adminBillingStatusCmd, adminBillingJobsCmd)
+	adminCmd.AddCommand(adminBillingCmd)
 }
