@@ -89,20 +89,34 @@ func exactArgs(n int, fields ...string) cobra.PositionalArgs {
 			if len(fields) > len(args) {
 				field = fields[len(args)]
 			}
+			argName := positionalArgName(field)
 			return errUsageFromIssues([]usageIssue{{
 				Code:    errorcodes.ErrMissingRequiredFlag,
-				Message: i18n.T("err_missing_required_arg", positionalLabel(field), field),
-				Field:   field,
+				Message: i18n.T("err_missing_required_arg", positionalLabel(field), argName),
+				Field:   argName,
 			}})
 		}
 		return nil
 	}
 }
 
+func positionalArgName(field string) string {
+	switch field {
+	case "node-name", "job-name", "order-name":
+		return "name"
+	default:
+		return field
+	}
+}
+
 func positionalLabel(field string) string {
 	switch field {
-	case "name":
+	case "node-name":
 		return i18n.T("node_label_name")
+	case "job-name":
+		return i18n.T("job_label_name")
+	case "order-name":
+		return i18n.T("order_label_name")
 	case "id":
 		return "id"
 	case "account":

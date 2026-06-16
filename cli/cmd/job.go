@@ -46,28 +46,28 @@ var jobLsCmd = &cobra.Command{
 var jobGetCmd = &cobra.Command{
 	Use:   "get <name>",
 	Short: "Get a job",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "job-name"),
 	RunE:  runJobGet,
 }
 
 var jobPodsCmd = &cobra.Command{
 	Use:   "pods <name>",
 	Short: "List pods for a job",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "job-name"),
 	RunE:  runJobPods,
 }
 
 var jobEventsCmd = &cobra.Command{
 	Use:   "events <name>",
 	Short: "List events for a job",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "job-name"),
 	RunE:  runJobEvents,
 }
 
 var jobYAMLCmd = &cobra.Command{
 	Use:   "yaml <name>",
 	Short: "Show job YAML",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "job-name"),
 	RunE:  runJobYAML,
 }
 

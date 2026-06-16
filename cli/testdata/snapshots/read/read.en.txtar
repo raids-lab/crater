@@ -106,7 +106,7 @@ crater job get --json --no-interactive
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "node name is required (\u003cname\u003e)"
+  "message": "job name is required (\u003cname\u003e)"
 }
 -- en/10-job-pods-missing-json/argv --
 crater job pods --json --no-interactive
@@ -117,7 +117,7 @@ crater job pods --json --no-interactive
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "node name is required (\u003cname\u003e)"
+  "message": "job name is required (\u003cname\u003e)"
 }
 -- en/11-job-events-missing-json/argv --
 crater job events --json --no-interactive
@@ -128,7 +128,7 @@ crater job events --json --no-interactive
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "node name is required (\u003cname\u003e)"
+  "message": "job name is required (\u003cname\u003e)"
 }
 -- en/12-job-yaml-missing-json/argv --
 crater job yaml --json --no-interactive
@@ -139,7 +139,7 @@ crater job yaml --json --no-interactive
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "node name is required (\u003cname\u003e)"
+  "message": "job name is required (\u003cname\u003e)"
 }
 -- en/13-job-ls-invalid-status-json/argv --
 crater job ls --status bad --json --no-interactive
@@ -383,7 +383,7 @@ crater order by-name --json --no-interactive
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
-  "message": "node name is required (\u003cname\u003e)"
+  "message": "order name is required (\u003cname\u003e)"
 }
 -- en/32-admin-order-ls-404-json/argv --
 crater admin order ls --json --no-interactive
@@ -474,24 +474,24 @@ crater admin billing jobs --json --no-interactive
 -- en/38-aijob-removed-json/argv --
 crater aijob ls --json --no-interactive
 -- en/38-aijob-removed-json/exit --
-1
+2
 -- en/38-aijob-removed-json/stdout --
 -- en/38-aijob-removed-json/stderr --
 {
-  "category": "system_error",
-  "code": "ERR_COMMAND_EXECUTION",
-  "message": "unknown command \"aijob\" for \"crater\"\n\nDid you mean this?\n\tjob\n"
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"aijob\" for \"crater\"\n\nDid you mean this?\n\tjob\n\nRun \"crater --help\" for usage."
 }
 -- en/39-spjob-removed-json/argv --
 crater spjob yaml --json --no-interactive
 -- en/39-spjob-removed-json/exit --
-1
+2
 -- en/39-spjob-removed-json/stdout --
 -- en/39-spjob-removed-json/stderr --
 {
-  "category": "system_error",
-  "code": "ERR_COMMAND_EXECUTION",
-  "message": "unknown command \"spjob\" for \"crater\"\n\nDid you mean this?\n\tjob\n"
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"spjob\" for \"crater\"\n\nDid you mean this?\n\tjob\n\nRun \"crater --help\" for usage."
 }
 -- en/40-admin-operation-logs-404-json/argv --
 crater admin operation-logs --json --no-interactive

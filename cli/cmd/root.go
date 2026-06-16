@@ -69,9 +69,41 @@ func Execute() {
 	initLanguageAndHelp()
 
 	if err := rootCmd.Execute(); err != nil {
+		err = normalizeCobraExecutionError(err)
 		handleError(err)
 		os.Exit(exitCodeFor(err))
 	}
+}
+
+func normalizeCobraExecutionError(err error) error {
+	if err == nil {
+		return nil
+	}
+	var ce *clierror.Error
+	if errors.As(err, &ce) {
+		return err
+	}
+	if typed, ok := cobraUnknownCommand(err); ok {
+		return errUnknownSubcommand(rootCmd, typed)
+	}
+	return err
+}
+
+func cobraUnknownCommand(err error) (string, bool) {
+	const prefix = "unknown command "
+	msg := err.Error()
+	if !strings.HasPrefix(msg, prefix) {
+		return "", false
+	}
+	rest := strings.TrimPrefix(msg, prefix)
+	if !strings.HasPrefix(rest, "\"") {
+		return "", true
+	}
+	end := strings.Index(rest[1:], "\"")
+	if end < 0 {
+		return "", true
+	}
+	return rest[1 : end+1], true
 }
 
 func bootstrapJSONFlagFromArgs() {

@@ -36,21 +36,21 @@ var nodeLsCmd = &cobra.Command{
 var nodeGetCmd = &cobra.Command{
 	Use:   "get <name>",
 	Short: "Get a cluster node",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "node-name"),
 	RunE:  runNodeGet,
 }
 
 var nodePodsCmd = &cobra.Command{
 	Use:   "pods <name>",
 	Short: "List pods on a cluster node",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "node-name"),
 	RunE:  runNodePods,
 }
 
 var nodeGPUCmd = &cobra.Command{
 	Use:   "gpu <name>",
 	Short: "Get GPU information for a cluster node",
-	Args:  exactArgs(1, "name"),
+	Args:  exactArgs(1, "node-name"),
 	RunE:  runNodeGPU,
 }
 

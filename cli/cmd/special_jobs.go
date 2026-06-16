@@ -27,21 +27,21 @@ func newReadJobFamilyCommand(use, short, prefix, idLabel string) *cobra.Command 
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "jobs", Path: path, Params: noParams, Table: printJobTableFromRaw})
 	}}
-	get := &cobra.Command{Use: "get <name>", Short: "Get a job", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
+	get := &cobra.Command{Use: "get <name>", Short: "Get a job", Args: exactArgs(1, "job-name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "job", Path: fmt.Sprintf("%s/%s/detail", prefix, name), Params: noParams, Table: printRawObject})
 	}}
-	pods := &cobra.Command{Use: "pods <name>", Short: "List pods for a job", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
+	pods := &cobra.Command{Use: "pods <name>", Short: "List pods for a job", Args: exactArgs(1, "job-name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "pods", Path: fmt.Sprintf("%s/%s/pods", prefix, name), Params: noParams, Table: printJobPodRawTable})
 	}}
-	events := &cobra.Command{Use: "events <name>", Short: "List events for a job", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
+	events := &cobra.Command{Use: "events <name>", Short: "List events for a job", Args: exactArgs(1, "job-name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
@@ -52,7 +52,7 @@ func newReadJobFamilyCommand(use, short, prefix, idLabel string) *cobra.Command 
 		}
 		return runRawRead(cmd, rawReadSpec{PayloadKey: "events", Path: fmt.Sprintf("%s/%s/%s", prefix, name, suffix), Params: noParams, Table: printRawObject})
 	}}
-	yamlCmd := &cobra.Command{Use: "yaml <name>", Short: "Show job YAML", Args: exactArgs(1, "name"), RunE: func(cmd *cobra.Command, args []string) error {
+	yamlCmd := &cobra.Command{Use: "yaml <name>", Short: "Show job YAML", Args: exactArgs(1, "job-name"), RunE: func(cmd *cobra.Command, args []string) error {
 		name, err := requiredArg(args, idLabel, "name")
 		if err != nil {
 			return err
