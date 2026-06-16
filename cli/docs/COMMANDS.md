@@ -244,6 +244,7 @@
 
 ### `crater download ls`
 - **描述**: 列出当前用户的下载任务。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
 - **选项**:
   - `--category` (string): 可选过滤类别，`model` 或 `dataset`。
 - **输出格式**:

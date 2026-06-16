@@ -104,7 +104,13 @@ var downloadDatasetCmd = &cobra.Command{
 var downloadLsCmd = &cobra.Command{
 	Use:   "ls",
 	Short: "List model and dataset download tasks",
-	RunE:  runDownloadLs,
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 0 {
+			return errTooManyArgs(cmd, len(args), 0)
+		}
+		return nil
+	},
+	RunE: runDownloadLs,
 }
 
 var downloadGetCmd = &cobra.Command{
@@ -612,7 +618,7 @@ func parseDownloadID(args []string) (uint, error) {
 	if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
 		return 0, errUsageFromIssues([]usageIssue{{
 			Code:    errorcodes.ErrMissingRequiredFlag,
-			Message: i18n.T("err_missing_required", i18n.T("download_label_id"), "id"),
+			Message: i18n.T("err_missing_download_id_arg"),
 			Field:   "id",
 		}})
 	}
@@ -663,7 +669,7 @@ func printDownload(download *api.ModelDownloadResp) {
 		return
 	}
 	fmt.Printf("%s\n", i18n.T(
-		"download_create_success",
+		"download_task_summary",
 		download.ID,
 		download.Name,
 		download.Category,

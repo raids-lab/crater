@@ -15,6 +15,10 @@ func testSessionEnabled() bool {
 }
 
 func fakeAuthState() state.State {
+	if testenv.SandboxSessionEmpty() {
+		return state.State{Language: fakeLanguage()}
+	}
+
 	// Deterministic fake data for snapshot/testing.
 	infos := []state.AuthInfo{
 		{
@@ -49,20 +53,22 @@ func fakeAuthState() state.State {
 		Method:      infos[0].Method,
 	}
 
+	return state.State{
+		AuthInfos:     infos,
+		ActiveContext: ac,
+		Language:      fakeLanguage(),
+	}
+}
+
+func fakeLanguage() string {
 	// Keep Language stable but allow snapshots to control it.
 	lang := os.Getenv("CRATER_LANG")
 	if lang == "" {
 		lang = "en"
 	}
-
-	return state.State{
-		AuthInfos:     infos,
-		ActiveContext: ac,
-		Language:      lang,
-	}
+	return lang
 }
 
 func fakeTokenFor(ac state.ActiveContext) string {
 	return fmt.Sprintf("fake-token:%s", KeyringAccountKey(ac))
 }
-

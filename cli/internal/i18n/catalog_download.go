@@ -47,6 +47,7 @@ var catalogDownload = map[Language]map[string]string{
 		"download_label_token_env":           "token environment variable",
 		"err_invalid_download_name":          "invalid resource name %q: expected owner/name",
 		"err_missing_download_name_arg":      "resource name is required (<NAME>)",
+		"err_missing_download_id_arg":        "download task ID is required (<ID>)",
 		"err_invalid_download_category":      "invalid download category: %s",
 		"err_invalid_download_source":        "invalid download source: %s",
 		"err_invalid_download_id":            "invalid download task ID: %s",
@@ -59,7 +60,7 @@ var catalogDownload = map[Language]map[string]string{
 		"err_token_load_failed":              "failed to load active credentials token: %s",
 
 		// Human-readable messages
-		"download_create_success": "Download task submitted:\n  ID: %d\n  Name: %s\n  Category: %s\n  Source: %s\n  Status: %s\n  Path: %s",
+		"download_task_summary":   "Download task:\n  ID: %d\n  Name: %s\n  Category: %s\n  Source: %s\n  Status: %s\n  Path: %s",
 		"download_remove_confirm": "Remove download task %d?",
 		"download_remove_success": "Removed download task:\n  ID: %d",
 		"download_wait_status":    "Current download status: %s",
@@ -116,6 +117,7 @@ var catalogDownload = map[Language]map[string]string{
 		"download_label_token_env":           "token 环境变量",
 		"err_invalid_download_name":          "无效的资源名称 %q：应为 owner/name 格式",
 		"err_missing_download_name_arg":      "缺少资源名称位置参数 (<NAME>)",
+		"err_missing_download_id_arg":        "缺少下载任务 ID 位置参数 (<ID>)",
 		"err_invalid_download_category":      "无效的下载类别：%s",
 		"err_invalid_download_source":        "无效的下载来源：%s",
 		"err_invalid_download_id":            "无效的下载任务 ID：%s",
@@ -128,7 +130,7 @@ var catalogDownload = map[Language]map[string]string{
 		"err_token_load_failed":              "读取当前账号 token 失败：%s",
 
 		// Human-readable messages
-		"download_create_success": "下载任务已提交：\n  ID：%d\n  名称：%s\n  类别：%s\n  来源：%s\n  状态：%s\n  路径：%s",
+		"download_task_summary":   "下载任务：\n  ID：%d\n  名称：%s\n  类别：%s\n  来源：%s\n  状态：%s\n  路径：%s",
 		"download_remove_confirm": "是否移除下载任务 %d？",
 		"download_remove_success": "已移除下载任务：\n  ID：%d",
 		"download_wait_status":    "当前下载状态：%s",

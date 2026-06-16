@@ -281,20 +281,42 @@ crater download ls --no-interactive --category bad
 -- en/26-ls-invalid-category-nojson/stderr --
 Error:
   invalid download category: bad
--- en/27-get-missing-id-nojson/argv --
-crater download get --no-interactive
--- en/27-get-missing-id-nojson/exit --
+-- en/27-ls-extra-arg-json/argv --
+crater download ls unexpected --no-interactive --json
+-- en/27-ls-extra-arg-json/exit --
 2
--- en/27-get-missing-id-nojson/stdout --
--- en/27-get-missing-id-nojson/stderr --
+-- en/27-ls-extra-arg-json/stdout --
+-- en/27-ls-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater download ls: got 1, want at most 0"
+}
+-- en/28-get-missing-id-nojson/argv --
+crater download get --no-interactive
+-- en/28-get-missing-id-nojson/exit --
+2
+-- en/28-get-missing-id-nojson/stdout --
+-- en/28-get-missing-id-nojson/stderr --
 Error:
-  download task ID is required (--id)
--- en/28-get-timeout-json/argv --
+  download task ID is required (<ID>)
+-- en/29-get-missing-id-json/argv --
+crater download get --no-interactive --json
+-- en/29-get-missing-id-json/exit --
+2
+-- en/29-get-missing-id-json/stdout --
+-- en/29-get-missing-id-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "download task ID is required (\u003cID\u003e)"
+}
+-- en/30-get-timeout-json/argv --
 crater download get 123 --no-interactive --json
--- en/28-get-timeout-json/exit --
+-- en/30-get-timeout-json/exit --
 4
--- en/28-get-timeout-json/stdout --
--- en/28-get-timeout-json/stderr --
+-- en/30-get-timeout-json/stdout --
+-- en/30-get-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -303,31 +325,31 @@ crater download get 123 --no-interactive --json
     "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded"
   }
 }
--- en/29-get-invalid-id-nojson/argv --
+-- en/31-get-invalid-id-nojson/argv --
 crater download get bad --no-interactive
--- en/29-get-invalid-id-nojson/exit --
+-- en/31-get-invalid-id-nojson/exit --
 2
--- en/29-get-invalid-id-nojson/stdout --
--- en/29-get-invalid-id-nojson/stderr --
+-- en/31-get-invalid-id-nojson/stdout --
+-- en/31-get-invalid-id-nojson/stderr --
 Error:
   invalid download task ID: bad
--- en/30-logs-follow-json/argv --
+-- en/32-logs-follow-json/argv --
 crater download logs 123 --follow --no-interactive --json
--- en/30-logs-follow-json/exit --
+-- en/32-logs-follow-json/exit --
 2
--- en/30-logs-follow-json/stdout --
--- en/30-logs-follow-json/stderr --
+-- en/32-logs-follow-json/stdout --
+-- en/32-logs-follow-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "--follow cannot be combined with --json"
 }
--- en/31-logs-timeout-json/argv --
+-- en/33-logs-timeout-json/argv --
 crater download logs 123 --no-interactive --json
--- en/31-logs-timeout-json/exit --
+-- en/33-logs-timeout-json/exit --
 4
--- en/31-logs-timeout-json/stdout --
--- en/31-logs-timeout-json/stderr --
+-- en/33-logs-timeout-json/stdout --
+-- en/33-logs-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -336,31 +358,31 @@ crater download logs 123 --no-interactive --json
     "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123/logs\": context deadline exceeded"
   }
 }
--- en/32-rm-missing-yes-nojson/argv --
+-- en/34-rm-missing-yes-nojson/argv --
 crater download rm 123 --no-interactive
--- en/32-rm-missing-yes-nojson/exit --
+-- en/34-rm-missing-yes-nojson/exit --
 2
--- en/32-rm-missing-yes-nojson/stdout --
--- en/32-rm-missing-yes-nojson/stderr --
+-- en/34-rm-missing-yes-nojson/stdout --
+-- en/34-rm-missing-yes-nojson/stderr --
 Error:
   yes is required (--yes)
--- en/33-rm-missing-yes-json/argv --
+-- en/35-rm-missing-yes-json/argv --
 crater download rm 123 --no-interactive --json
--- en/33-rm-missing-yes-json/exit --
+-- en/35-rm-missing-yes-json/exit --
 2
--- en/33-rm-missing-yes-json/stdout --
--- en/33-rm-missing-yes-json/stderr --
+-- en/35-rm-missing-yes-json/stdout --
+-- en/35-rm-missing-yes-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "yes is required (--yes)"
 }
--- en/34-pause-timeout-json/argv --
+-- en/36-pause-timeout-json/argv --
 crater download pause 123 --no-interactive --json
--- en/34-pause-timeout-json/exit --
+-- en/36-pause-timeout-json/exit --
 4
--- en/34-pause-timeout-json/stdout --
--- en/34-pause-timeout-json/stderr --
+-- en/36-pause-timeout-json/stdout --
+-- en/36-pause-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -369,28 +391,28 @@ crater download pause 123 --no-interactive --json
     "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/pause\": context deadline exceeded"
   }
 }
--- en/35-pause-invalid-id-nojson/argv --
+-- en/37-pause-invalid-id-nojson/argv --
 crater download pause bad --no-interactive
--- en/35-pause-invalid-id-nojson/exit --
+-- en/37-pause-invalid-id-nojson/exit --
 2
--- en/35-pause-invalid-id-nojson/stdout --
--- en/35-pause-invalid-id-nojson/stderr --
+-- en/37-pause-invalid-id-nojson/stdout --
+-- en/37-pause-invalid-id-nojson/stderr --
 Error:
   invalid download task ID: bad
--- en/36-resume-invalid-id-nojson/argv --
+-- en/38-resume-invalid-id-nojson/argv --
 crater download resume bad --no-interactive
--- en/36-resume-invalid-id-nojson/exit --
+-- en/38-resume-invalid-id-nojson/exit --
 2
--- en/36-resume-invalid-id-nojson/stdout --
--- en/36-resume-invalid-id-nojson/stderr --
+-- en/38-resume-invalid-id-nojson/stdout --
+-- en/38-resume-invalid-id-nojson/stderr --
 Error:
   invalid download task ID: bad
--- en/37-resume-timeout-json/argv --
+-- en/39-resume-timeout-json/argv --
 crater download resume 123 --no-interactive --json
--- en/37-resume-timeout-json/exit --
+-- en/39-resume-timeout-json/exit --
 4
--- en/37-resume-timeout-json/stdout --
--- en/37-resume-timeout-json/stderr --
+-- en/39-resume-timeout-json/stdout --
+-- en/39-resume-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -399,28 +421,28 @@ crater download resume 123 --no-interactive --json
     "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/resume\": context deadline exceeded"
   }
 }
--- en/38-retry-invalid-id-nojson/argv --
+-- en/40-retry-invalid-id-nojson/argv --
 crater download retry bad --no-interactive
--- en/38-retry-invalid-id-nojson/exit --
+-- en/40-retry-invalid-id-nojson/exit --
 2
--- en/38-retry-invalid-id-nojson/stdout --
--- en/38-retry-invalid-id-nojson/stderr --
+-- en/40-retry-invalid-id-nojson/stdout --
+-- en/40-retry-invalid-id-nojson/stderr --
 Error:
   invalid download task ID: bad
--- en/39-rm-invalid-id-nojson/argv --
+-- en/41-rm-invalid-id-nojson/argv --
 crater download rm bad --no-interactive --yes
--- en/39-rm-invalid-id-nojson/exit --
+-- en/41-rm-invalid-id-nojson/exit --
 2
--- en/39-rm-invalid-id-nojson/stdout --
--- en/39-rm-invalid-id-nojson/stderr --
+-- en/41-rm-invalid-id-nojson/stdout --
+-- en/41-rm-invalid-id-nojson/stderr --
 Error:
   invalid download task ID: bad
--- en/40-retry-timeout-json/argv --
+-- en/42-retry-timeout-json/argv --
 crater download retry 123 --no-interactive --json
--- en/40-retry-timeout-json/exit --
+-- en/42-retry-timeout-json/exit --
 4
--- en/40-retry-timeout-json/stdout --
--- en/40-retry-timeout-json/stderr --
+-- en/42-retry-timeout-json/stdout --
+-- en/42-retry-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -429,42 +451,42 @@ crater download retry 123 --no-interactive --json
     "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/retry\": context deadline exceeded"
   }
 }
--- en/41-token-env-missing-nojson/argv --
+-- en/43-token-env-missing-nojson/argv --
 crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source hf --token-env HF_TOKEN_NOT_SET
--- en/41-token-env-missing-nojson/exit --
+-- en/43-token-env-missing-nojson/exit --
 2
--- en/41-token-env-missing-nojson/stdout --
--- en/41-token-env-missing-nojson/stderr --
+-- en/43-token-env-missing-nojson/stdout --
+-- en/43-token-env-missing-nojson/stderr --
 Error:
   token environment variable HF_TOKEN_NOT_SET is not set or is empty
--- en/42-token-env-missing-json/argv --
+-- en/44-token-env-missing-json/argv --
 crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-env HF_TOKEN_NOT_SET
--- en/42-token-env-missing-json/exit --
+-- en/44-token-env-missing-json/exit --
 2
--- en/42-token-env-missing-json/stdout --
--- en/42-token-env-missing-json/stderr --
+-- en/44-token-env-missing-json/stdout --
+-- en/44-token-env-missing-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "token environment variable HF_TOKEN_NOT_SET is not set or is empty"
 }
--- en/43-token-stdin-empty-json/argv --
+-- en/45-token-stdin-empty-json/argv --
 crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-stdin
--- en/43-token-stdin-empty-json/exit --
+-- en/45-token-stdin-empty-json/exit --
 2
--- en/43-token-stdin-empty-json/stdout --
--- en/43-token-stdin-empty-json/stderr --
+-- en/45-token-stdin-empty-json/stdout --
+-- en/45-token-stdin-empty-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "token read from stdin is empty"
 }
--- en/44-rm-timeout-json/argv --
+-- en/46-rm-timeout-json/argv --
 crater download rm 123 --no-interactive --json --yes
--- en/44-rm-timeout-json/exit --
+-- en/46-rm-timeout-json/exit --
 4
--- en/44-rm-timeout-json/stdout --
--- en/44-rm-timeout-json/stderr --
+-- en/46-rm-timeout-json/stdout --
+-- en/46-rm-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",

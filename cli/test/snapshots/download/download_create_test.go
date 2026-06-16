@@ -27,28 +27,17 @@ func appendHTTPEnv(env []string, caseID string) []string {
 	switch caseID {
 	case "09-http-sim-timeout-nojson", "10-http-sim-timeout-json",
 		"19-shortcut-model-timeout-nojson", "20-shortcut-model-timeout-json",
-		"25-ls-timeout-json", "28-get-timeout-json", "31-logs-timeout-json",
-		"34-pause-timeout-json", "37-resume-timeout-json", "40-retry-timeout-json",
-		"44-rm-timeout-json":
+		"25-ls-timeout-json", "30-get-timeout-json", "33-logs-timeout-json",
+		"36-pause-timeout-json", "39-resume-timeout-json", "42-retry-timeout-json",
+		"46-rm-timeout-json":
 		return append(env, "CRATER_TEST_SANDBOX_HTTP=timeout")
 	case "11-http-sim-404-nojson", "12-http-sim-404-json":
 		return append(env, "CRATER_TEST_SANDBOX_HTTP=error404")
 	case "17-no-active-nojson", "18-no-active-json":
-		return withoutSessionSandbox(env)
+		return append(env, "CRATER_TEST_SANDBOX_SESSION_EMPTY=1")
 	default:
 		return env
 	}
-}
-
-func withoutSessionSandbox(env []string) []string {
-	out := make([]string, 0, len(env))
-	for _, item := range env {
-		if item == "CRATER_TEST_SANDBOX=1" {
-			continue
-		}
-		out = append(out, item)
-	}
-	return out
 }
 
 func TestDownloadCreateSnapshotsEN(t *testing.T) {
@@ -84,24 +73,26 @@ func TestDownloadCreateSnapshotsEN(t *testing.T) {
 		{ID: "24-token-source-conflict-json", Args: []string{"download", "create", "--no-interactive", "--json", "--name", "qwen/Qwen2.5-Coder-7B-Instruct", "--category", "model", "--token", "a", "--token-env", "HF_TOKEN"}},
 		{ID: "25-ls-timeout-json", Args: []string{"download", "ls", "--no-interactive", "--json", "--category", "model"}},
 		{ID: "26-ls-invalid-category-nojson", Args: []string{"download", "ls", "--no-interactive", "--category", "bad"}},
-		{ID: "27-get-missing-id-nojson", Args: []string{"download", "get", "--no-interactive"}},
-		{ID: "28-get-timeout-json", Args: []string{"download", "get", "123", "--no-interactive", "--json"}},
-		{ID: "29-get-invalid-id-nojson", Args: []string{"download", "get", "bad", "--no-interactive"}},
-		{ID: "30-logs-follow-json", Args: []string{"download", "logs", "123", "--follow", "--no-interactive", "--json"}},
-		{ID: "31-logs-timeout-json", Args: []string{"download", "logs", "123", "--no-interactive", "--json"}},
-		{ID: "32-rm-missing-yes-nojson", Args: []string{"download", "rm", "123", "--no-interactive"}},
-		{ID: "33-rm-missing-yes-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json"}},
-		{ID: "34-pause-timeout-json", Args: []string{"download", "pause", "123", "--no-interactive", "--json"}},
-		{ID: "35-pause-invalid-id-nojson", Args: []string{"download", "pause", "bad", "--no-interactive"}},
-		{ID: "36-resume-invalid-id-nojson", Args: []string{"download", "resume", "bad", "--no-interactive"}},
-		{ID: "37-resume-timeout-json", Args: []string{"download", "resume", "123", "--no-interactive", "--json"}},
-		{ID: "38-retry-invalid-id-nojson", Args: []string{"download", "retry", "bad", "--no-interactive"}},
-		{ID: "39-rm-invalid-id-nojson", Args: []string{"download", "rm", "bad", "--no-interactive", "--yes"}},
-		{ID: "40-retry-timeout-json", Args: []string{"download", "retry", "123", "--no-interactive", "--json"}},
-		{ID: "41-token-env-missing-nojson", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
-		{ID: "42-token-env-missing-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
-		{ID: "43-token-stdin-empty-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-stdin"}},
-		{ID: "44-rm-timeout-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json", "--yes"}},
+		{ID: "27-ls-extra-arg-json", Args: []string{"download", "ls", "unexpected", "--no-interactive", "--json"}},
+		{ID: "28-get-missing-id-nojson", Args: []string{"download", "get", "--no-interactive"}},
+		{ID: "29-get-missing-id-json", Args: []string{"download", "get", "--no-interactive", "--json"}},
+		{ID: "30-get-timeout-json", Args: []string{"download", "get", "123", "--no-interactive", "--json"}},
+		{ID: "31-get-invalid-id-nojson", Args: []string{"download", "get", "bad", "--no-interactive"}},
+		{ID: "32-logs-follow-json", Args: []string{"download", "logs", "123", "--follow", "--no-interactive", "--json"}},
+		{ID: "33-logs-timeout-json", Args: []string{"download", "logs", "123", "--no-interactive", "--json"}},
+		{ID: "34-rm-missing-yes-nojson", Args: []string{"download", "rm", "123", "--no-interactive"}},
+		{ID: "35-rm-missing-yes-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json"}},
+		{ID: "36-pause-timeout-json", Args: []string{"download", "pause", "123", "--no-interactive", "--json"}},
+		{ID: "37-pause-invalid-id-nojson", Args: []string{"download", "pause", "bad", "--no-interactive"}},
+		{ID: "38-resume-invalid-id-nojson", Args: []string{"download", "resume", "bad", "--no-interactive"}},
+		{ID: "39-resume-timeout-json", Args: []string{"download", "resume", "123", "--no-interactive", "--json"}},
+		{ID: "40-retry-invalid-id-nojson", Args: []string{"download", "retry", "bad", "--no-interactive"}},
+		{ID: "41-rm-invalid-id-nojson", Args: []string{"download", "rm", "bad", "--no-interactive", "--yes"}},
+		{ID: "42-retry-timeout-json", Args: []string{"download", "retry", "123", "--no-interactive", "--json"}},
+		{ID: "43-token-env-missing-nojson", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
+		{ID: "44-token-env-missing-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
+		{ID: "45-token-stdin-empty-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-stdin"}},
+		{ID: "46-rm-timeout-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json", "--yes"}},
 	}
 
 	results := runDownloadCases(t, bin, baseEnv, cases)
@@ -144,24 +135,26 @@ func TestDownloadCreateSnapshotsZhCN(t *testing.T) {
 		{ID: "24-token-source-conflict-json", Args: []string{"download", "create", "--no-interactive", "--json", "--name", "qwen/Qwen2.5-Coder-7B-Instruct", "--category", "model", "--token", "a", "--token-env", "HF_TOKEN"}},
 		{ID: "25-ls-timeout-json", Args: []string{"download", "ls", "--no-interactive", "--json", "--category", "model"}},
 		{ID: "26-ls-invalid-category-nojson", Args: []string{"download", "ls", "--no-interactive", "--category", "bad"}},
-		{ID: "27-get-missing-id-nojson", Args: []string{"download", "get", "--no-interactive"}},
-		{ID: "28-get-timeout-json", Args: []string{"download", "get", "123", "--no-interactive", "--json"}},
-		{ID: "29-get-invalid-id-nojson", Args: []string{"download", "get", "bad", "--no-interactive"}},
-		{ID: "30-logs-follow-json", Args: []string{"download", "logs", "123", "--follow", "--no-interactive", "--json"}},
-		{ID: "31-logs-timeout-json", Args: []string{"download", "logs", "123", "--no-interactive", "--json"}},
-		{ID: "32-rm-missing-yes-nojson", Args: []string{"download", "rm", "123", "--no-interactive"}},
-		{ID: "33-rm-missing-yes-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json"}},
-		{ID: "34-pause-timeout-json", Args: []string{"download", "pause", "123", "--no-interactive", "--json"}},
-		{ID: "35-pause-invalid-id-nojson", Args: []string{"download", "pause", "bad", "--no-interactive"}},
-		{ID: "36-resume-invalid-id-nojson", Args: []string{"download", "resume", "bad", "--no-interactive"}},
-		{ID: "37-resume-timeout-json", Args: []string{"download", "resume", "123", "--no-interactive", "--json"}},
-		{ID: "38-retry-invalid-id-nojson", Args: []string{"download", "retry", "bad", "--no-interactive"}},
-		{ID: "39-rm-invalid-id-nojson", Args: []string{"download", "rm", "bad", "--no-interactive", "--yes"}},
-		{ID: "40-retry-timeout-json", Args: []string{"download", "retry", "123", "--no-interactive", "--json"}},
-		{ID: "41-token-env-missing-nojson", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
-		{ID: "42-token-env-missing-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
-		{ID: "43-token-stdin-empty-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-stdin"}},
-		{ID: "44-rm-timeout-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json", "--yes"}},
+		{ID: "27-ls-extra-arg-json", Args: []string{"download", "ls", "unexpected", "--no-interactive", "--json"}},
+		{ID: "28-get-missing-id-nojson", Args: []string{"download", "get", "--no-interactive"}},
+		{ID: "29-get-missing-id-json", Args: []string{"download", "get", "--no-interactive", "--json"}},
+		{ID: "30-get-timeout-json", Args: []string{"download", "get", "123", "--no-interactive", "--json"}},
+		{ID: "31-get-invalid-id-nojson", Args: []string{"download", "get", "bad", "--no-interactive"}},
+		{ID: "32-logs-follow-json", Args: []string{"download", "logs", "123", "--follow", "--no-interactive", "--json"}},
+		{ID: "33-logs-timeout-json", Args: []string{"download", "logs", "123", "--no-interactive", "--json"}},
+		{ID: "34-rm-missing-yes-nojson", Args: []string{"download", "rm", "123", "--no-interactive"}},
+		{ID: "35-rm-missing-yes-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json"}},
+		{ID: "36-pause-timeout-json", Args: []string{"download", "pause", "123", "--no-interactive", "--json"}},
+		{ID: "37-pause-invalid-id-nojson", Args: []string{"download", "pause", "bad", "--no-interactive"}},
+		{ID: "38-resume-invalid-id-nojson", Args: []string{"download", "resume", "bad", "--no-interactive"}},
+		{ID: "39-resume-timeout-json", Args: []string{"download", "resume", "123", "--no-interactive", "--json"}},
+		{ID: "40-retry-invalid-id-nojson", Args: []string{"download", "retry", "bad", "--no-interactive"}},
+		{ID: "41-rm-invalid-id-nojson", Args: []string{"download", "rm", "bad", "--no-interactive", "--yes"}},
+		{ID: "42-retry-timeout-json", Args: []string{"download", "retry", "123", "--no-interactive", "--json"}},
+		{ID: "43-token-env-missing-nojson", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
+		{ID: "44-token-env-missing-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-env", "HF_TOKEN_NOT_SET"}},
+		{ID: "45-token-stdin-empty-json", Args: []string{"download", "model", "qwen/Qwen2.5-Coder-7B-Instruct", "--no-interactive", "--json", "--source", "hf", "--token-stdin"}},
+		{ID: "46-rm-timeout-json", Args: []string{"download", "rm", "123", "--no-interactive", "--json", "--yes"}},
 	}
 
 	results := runDownloadCases(t, bin, baseEnv, cases)

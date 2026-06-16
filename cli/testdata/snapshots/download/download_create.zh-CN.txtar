@@ -281,20 +281,42 @@ crater download ls --no-interactive --category bad
 -- zh-CN/26-ls-invalid-category-nojson/stderr --
 Error:
   无效的下载类别：bad
--- zh-CN/27-get-missing-id-nojson/argv --
-crater download get --no-interactive
--- zh-CN/27-get-missing-id-nojson/exit --
+-- zh-CN/27-ls-extra-arg-json/argv --
+crater download ls unexpected --no-interactive --json
+-- zh-CN/27-ls-extra-arg-json/exit --
 2
--- zh-CN/27-get-missing-id-nojson/stdout --
--- zh-CN/27-get-missing-id-nojson/stderr --
+-- zh-CN/27-ls-extra-arg-json/stdout --
+-- zh-CN/27-ls-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater download ls 的参数过多：收到 1 个，最多允许 0 个"
+}
+-- zh-CN/28-get-missing-id-nojson/argv --
+crater download get --no-interactive
+-- zh-CN/28-get-missing-id-nojson/exit --
+2
+-- zh-CN/28-get-missing-id-nojson/stdout --
+-- zh-CN/28-get-missing-id-nojson/stderr --
 Error:
-  缺少必要参数：下载任务 ID (--id)
--- zh-CN/28-get-timeout-json/argv --
+  缺少下载任务 ID 位置参数 (<ID>)
+-- zh-CN/29-get-missing-id-json/argv --
+crater download get --no-interactive --json
+-- zh-CN/29-get-missing-id-json/exit --
+2
+-- zh-CN/29-get-missing-id-json/stdout --
+-- zh-CN/29-get-missing-id-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少下载任务 ID 位置参数 (\u003cID\u003e)"
+}
+-- zh-CN/30-get-timeout-json/argv --
 crater download get 123 --no-interactive --json
--- zh-CN/28-get-timeout-json/exit --
+-- zh-CN/30-get-timeout-json/exit --
 4
--- zh-CN/28-get-timeout-json/stdout --
--- zh-CN/28-get-timeout-json/stderr --
+-- zh-CN/30-get-timeout-json/stdout --
+-- zh-CN/30-get-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -303,31 +325,31 @@ crater download get 123 --no-interactive --json
     "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123\": context deadline exceeded"
   }
 }
--- zh-CN/29-get-invalid-id-nojson/argv --
+-- zh-CN/31-get-invalid-id-nojson/argv --
 crater download get bad --no-interactive
--- zh-CN/29-get-invalid-id-nojson/exit --
+-- zh-CN/31-get-invalid-id-nojson/exit --
 2
--- zh-CN/29-get-invalid-id-nojson/stdout --
--- zh-CN/29-get-invalid-id-nojson/stderr --
+-- zh-CN/31-get-invalid-id-nojson/stdout --
+-- zh-CN/31-get-invalid-id-nojson/stderr --
 Error:
   无效的下载任务 ID：bad
--- zh-CN/30-logs-follow-json/argv --
+-- zh-CN/32-logs-follow-json/argv --
 crater download logs 123 --follow --no-interactive --json
--- zh-CN/30-logs-follow-json/exit --
+-- zh-CN/32-logs-follow-json/exit --
 2
--- zh-CN/30-logs-follow-json/stdout --
--- zh-CN/30-logs-follow-json/stderr --
+-- zh-CN/32-logs-follow-json/stdout --
+-- zh-CN/32-logs-follow-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "--follow 不能与 --json 同时使用"
 }
--- zh-CN/31-logs-timeout-json/argv --
+-- zh-CN/33-logs-timeout-json/argv --
 crater download logs 123 --no-interactive --json
--- zh-CN/31-logs-timeout-json/exit --
+-- zh-CN/33-logs-timeout-json/exit --
 4
--- zh-CN/31-logs-timeout-json/stdout --
--- zh-CN/31-logs-timeout-json/stderr --
+-- zh-CN/33-logs-timeout-json/stdout --
+-- zh-CN/33-logs-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -336,31 +358,31 @@ crater download logs 123 --no-interactive --json
     "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads/123/logs\": context deadline exceeded"
   }
 }
--- zh-CN/32-rm-missing-yes-nojson/argv --
+-- zh-CN/34-rm-missing-yes-nojson/argv --
 crater download rm 123 --no-interactive
--- zh-CN/32-rm-missing-yes-nojson/exit --
+-- zh-CN/34-rm-missing-yes-nojson/exit --
 2
--- zh-CN/32-rm-missing-yes-nojson/stdout --
--- zh-CN/32-rm-missing-yes-nojson/stderr --
+-- zh-CN/34-rm-missing-yes-nojson/stdout --
+-- zh-CN/34-rm-missing-yes-nojson/stderr --
 Error:
   缺少必要参数：yes (--yes)
--- zh-CN/33-rm-missing-yes-json/argv --
+-- zh-CN/35-rm-missing-yes-json/argv --
 crater download rm 123 --no-interactive --json
--- zh-CN/33-rm-missing-yes-json/exit --
+-- zh-CN/35-rm-missing-yes-json/exit --
 2
--- zh-CN/33-rm-missing-yes-json/stdout --
--- zh-CN/33-rm-missing-yes-json/stderr --
+-- zh-CN/35-rm-missing-yes-json/stdout --
+-- zh-CN/35-rm-missing-yes-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "缺少必要参数：yes (--yes)"
 }
--- zh-CN/34-pause-timeout-json/argv --
+-- zh-CN/36-pause-timeout-json/argv --
 crater download pause 123 --no-interactive --json
--- zh-CN/34-pause-timeout-json/exit --
+-- zh-CN/36-pause-timeout-json/exit --
 4
--- zh-CN/34-pause-timeout-json/stdout --
--- zh-CN/34-pause-timeout-json/stderr --
+-- zh-CN/36-pause-timeout-json/stdout --
+-- zh-CN/36-pause-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -369,28 +391,28 @@ crater download pause 123 --no-interactive --json
     "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/pause\": context deadline exceeded"
   }
 }
--- zh-CN/35-pause-invalid-id-nojson/argv --
+-- zh-CN/37-pause-invalid-id-nojson/argv --
 crater download pause bad --no-interactive
--- zh-CN/35-pause-invalid-id-nojson/exit --
+-- zh-CN/37-pause-invalid-id-nojson/exit --
 2
--- zh-CN/35-pause-invalid-id-nojson/stdout --
--- zh-CN/35-pause-invalid-id-nojson/stderr --
+-- zh-CN/37-pause-invalid-id-nojson/stdout --
+-- zh-CN/37-pause-invalid-id-nojson/stderr --
 Error:
   无效的下载任务 ID：bad
--- zh-CN/36-resume-invalid-id-nojson/argv --
+-- zh-CN/38-resume-invalid-id-nojson/argv --
 crater download resume bad --no-interactive
--- zh-CN/36-resume-invalid-id-nojson/exit --
+-- zh-CN/38-resume-invalid-id-nojson/exit --
 2
--- zh-CN/36-resume-invalid-id-nojson/stdout --
--- zh-CN/36-resume-invalid-id-nojson/stderr --
+-- zh-CN/38-resume-invalid-id-nojson/stdout --
+-- zh-CN/38-resume-invalid-id-nojson/stderr --
 Error:
   无效的下载任务 ID：bad
--- zh-CN/37-resume-timeout-json/argv --
+-- zh-CN/39-resume-timeout-json/argv --
 crater download resume 123 --no-interactive --json
--- zh-CN/37-resume-timeout-json/exit --
+-- zh-CN/39-resume-timeout-json/exit --
 4
--- zh-CN/37-resume-timeout-json/stdout --
--- zh-CN/37-resume-timeout-json/stderr --
+-- zh-CN/39-resume-timeout-json/stdout --
+-- zh-CN/39-resume-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -399,28 +421,28 @@ crater download resume 123 --no-interactive --json
     "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/resume\": context deadline exceeded"
   }
 }
--- zh-CN/38-retry-invalid-id-nojson/argv --
+-- zh-CN/40-retry-invalid-id-nojson/argv --
 crater download retry bad --no-interactive
--- zh-CN/38-retry-invalid-id-nojson/exit --
+-- zh-CN/40-retry-invalid-id-nojson/exit --
 2
--- zh-CN/38-retry-invalid-id-nojson/stdout --
--- zh-CN/38-retry-invalid-id-nojson/stderr --
+-- zh-CN/40-retry-invalid-id-nojson/stdout --
+-- zh-CN/40-retry-invalid-id-nojson/stderr --
 Error:
   无效的下载任务 ID：bad
--- zh-CN/39-rm-invalid-id-nojson/argv --
+-- zh-CN/41-rm-invalid-id-nojson/argv --
 crater download rm bad --no-interactive --yes
--- zh-CN/39-rm-invalid-id-nojson/exit --
+-- zh-CN/41-rm-invalid-id-nojson/exit --
 2
--- zh-CN/39-rm-invalid-id-nojson/stdout --
--- zh-CN/39-rm-invalid-id-nojson/stderr --
+-- zh-CN/41-rm-invalid-id-nojson/stdout --
+-- zh-CN/41-rm-invalid-id-nojson/stderr --
 Error:
   无效的下载任务 ID：bad
--- zh-CN/40-retry-timeout-json/argv --
+-- zh-CN/42-retry-timeout-json/argv --
 crater download retry 123 --no-interactive --json
--- zh-CN/40-retry-timeout-json/exit --
+-- zh-CN/42-retry-timeout-json/exit --
 4
--- zh-CN/40-retry-timeout-json/stdout --
--- zh-CN/40-retry-timeout-json/stderr --
+-- zh-CN/42-retry-timeout-json/stdout --
+-- zh-CN/42-retry-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
@@ -429,42 +451,42 @@ crater download retry 123 --no-interactive --json
     "msg": "network error: Post \"https://example.invalid/api/v1/model-download/models/downloads/123/retry\": context deadline exceeded"
   }
 }
--- zh-CN/41-token-env-missing-nojson/argv --
+-- zh-CN/43-token-env-missing-nojson/argv --
 crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source hf --token-env HF_TOKEN_NOT_SET
--- zh-CN/41-token-env-missing-nojson/exit --
+-- zh-CN/43-token-env-missing-nojson/exit --
 2
--- zh-CN/41-token-env-missing-nojson/stdout --
--- zh-CN/41-token-env-missing-nojson/stderr --
+-- zh-CN/43-token-env-missing-nojson/stdout --
+-- zh-CN/43-token-env-missing-nojson/stderr --
 Error:
   token 环境变量 HF_TOKEN_NOT_SET 未设置或为空
--- zh-CN/42-token-env-missing-json/argv --
+-- zh-CN/44-token-env-missing-json/argv --
 crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-env HF_TOKEN_NOT_SET
--- zh-CN/42-token-env-missing-json/exit --
+-- zh-CN/44-token-env-missing-json/exit --
 2
--- zh-CN/42-token-env-missing-json/stdout --
--- zh-CN/42-token-env-missing-json/stderr --
+-- zh-CN/44-token-env-missing-json/stdout --
+-- zh-CN/44-token-env-missing-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "token 环境变量 HF_TOKEN_NOT_SET 未设置或为空"
 }
--- zh-CN/43-token-stdin-empty-json/argv --
+-- zh-CN/45-token-stdin-empty-json/argv --
 crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --json --source hf --token-stdin
--- zh-CN/43-token-stdin-empty-json/exit --
+-- zh-CN/45-token-stdin-empty-json/exit --
 2
--- zh-CN/43-token-stdin-empty-json/stdout --
--- zh-CN/43-token-stdin-empty-json/stderr --
+-- zh-CN/45-token-stdin-empty-json/stdout --
+-- zh-CN/45-token-stdin-empty-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_MISSING_REQUIRED_FLAG",
   "message": "从 stdin 读取到的 token 为空"
 }
--- zh-CN/44-rm-timeout-json/argv --
+-- zh-CN/46-rm-timeout-json/argv --
 crater download rm 123 --no-interactive --json --yes
--- zh-CN/44-rm-timeout-json/exit --
+-- zh-CN/46-rm-timeout-json/exit --
 4
--- zh-CN/44-rm-timeout-json/stdout --
--- zh-CN/44-rm-timeout-json/stderr --
+-- zh-CN/46-rm-timeout-json/stdout --
+-- zh-CN/46-rm-timeout-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
