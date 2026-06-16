@@ -23,6 +23,8 @@
 
 多数前端开发应一并启动前端和后端进行调试。后端可以通过自身配置连接测试集群已有依赖，因此普通 UI 开发不要尝试启动完整 Crater 集群或本地数据库。只有任务适合接口模拟时才使用 MSW。
 
+前端开发服务默认通过 `VITE_SERVER_PROXY_BACKEND` 将主后端 API 代理到 `http://localhost:8088/`，并通过 `VITE_SERVER_PROXY_STORAGE` 将存储 API 代理到 `http://localhost:7320/`。调试文件管理、数据集、模型、上传或下载等存储相关页面和流程时，需要先在后端目录运行 `make run-storage` 启动 storage server。
+
 ```bash
 cd frontend
 pnpm install

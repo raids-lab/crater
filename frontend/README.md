@@ -31,7 +31,7 @@ Built on a modern React stack: TypeScript, React 19, TanStack Router, TanStack Q
 
 ## Development
 
-The development specification — environment, `make run`, project structure, MSW mocking, and the component / hooks / i18n / UX conventions — lives in [CONTRIBUTING.md](./CONTRIBUTING.md).
+The development specification — environment, `make run`, project structure, MSW mocking, local backend/storage proxy expectations, and the component / hooks / i18n / UX conventions — lives in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Repository-wide rules (global development rules, hooks, unified config, commit/PR conventions) live in the root [CONTRIBUTING.md](../CONTRIBUTING.md).
 

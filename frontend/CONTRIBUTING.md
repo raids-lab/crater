@@ -23,6 +23,8 @@ Use this file when you change React routes, components, hooks, frontend API call
 
 For most frontend work, debug with the frontend and backend running together. The backend can connect to existing test-cluster dependencies through its config, so do not try to start the whole Crater cluster or local databases for ordinary UI work. Use MSW only when API mocking is appropriate for the task.
 
+The frontend dev server proxies main backend APIs through `VITE_SERVER_PROXY_BACKEND` to `http://localhost:8088/` by default, and storage APIs through `VITE_SERVER_PROXY_STORAGE` to `http://localhost:7320/` by default. Start the backend storage server with `cd ../backend && make run-storage` when testing storage-related pages or flows such as file management, datasets, models, uploads, or downloads.
+
 ```bash
 cd frontend
 pnpm install

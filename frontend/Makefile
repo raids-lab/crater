@@ -20,7 +20,7 @@ help: ## 💡 Display this help message
 	@echo ""
 	@echo "$(YELLOW)📋 Prerequisites:$(RESET)"
 	@echo "  • Backend API server should be running on http://localhost:8088/"
-	@echo "  • Storage server should be running on http://localhost:7320/"
+	@echo "  • Storage server should be running on http://localhost:7320/ for storage-related pages/APIs"
 	@echo "  • Run 'make backend-help' for backend startup instructions"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; category = ""} \
