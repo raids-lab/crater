@@ -290,3 +290,212 @@
   - 交互模式下需要确认；`--no-interactive` 下必须提供 `--yes`。
 - **`--json` 的 `data`**：`id`（下载任务 ID）、`message`（后端返回消息）。
 - **状态**: [x] Completed
+
+---
+
+## 5. 节点模块 (node)
+
+本模块提供集群节点信息的只读查询能力。所有命令均要求已有 active credentials。
+
+### `crater node ls`
+- **描述**: 列出当前平台可见的集群节点。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--name` (string): 按节点名称子串本地过滤。
+  - `--status` (string): 按节点状态本地过滤，例如 `Ready`、`NotReady`、`Unschedulable`、`Occupied`。
+  - `--arch` (string): 按 CPU 架构本地过滤，例如 `amd64`、`arm64`。
+  - `--gpu` (string): 按 GPU 资源名或型号关键词本地过滤，例如 `a100`、`v100`、`nvidia.com/a100`。
+  - `--gpu-available` (bool): 仅显示存在匹配空闲 GPU 的节点；必须与 `--gpu` 一起使用。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes`。
+  - 所有过滤均在 CLI 本地完成，不改变平台状态。
+  - 默认模式以表格展示节点名称、状态、角色、架构、地址、CPU/内存使用和作业数。
+- **`--json` 的 `data`**：`nodes`（数组，元素与平台节点摘要响应一致）。
+- **状态**: [x] Completed
+
+### `crater node get <name>`
+- **描述**: 查看单个节点详情。
+- **位置参数**:
+  - `<name>` (positional, required): 节点名称。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes/{name}`。
+  - 缺少 `<name>` 时返回 `usage_error`。
+- **`--json` 的 `data`**：`node`（对象，平台节点详情响应）。
+- **状态**: [x] Completed
+
+### `crater node pods <name>`
+- **描述**: 查看指定节点上的 Pod。
+- **位置参数**:
+  - `<name>` (positional, required): 节点名称。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes/{name}/pods`。
+  - 默认模式以表格展示 Pod 名称、命名空间、IP、状态、类型和资源。
+- **`--json` 的 `data`**：`pods`（数组，平台节点 Pod 响应）。
+- **状态**: [x] Completed
+
+### `crater node gpu <name>`
+- **描述**: 查看指定节点的 GPU 信息。
+- **位置参数**:
+  - `<name>` (positional, required): 节点名称。
+- **处理逻辑**:
+  - 调用 `/api/v1/nodes/{name}/gpu`。
+  - 默认模式展示节点 GPU 总量和设备摘要。
+- **`--json` 的 `data`**：`gpu`（对象，平台节点 GPU 响应）。
+- **状态**: [x] Completed
+
+---
+
+## 6. 作业模块 (job)
+
+本模块提供 Volcano 作业的只读查询能力。第一版仅使用 `/api/v1/vcjobs` 族接口；`aijobs` / `spjobs` 后续独立扩展。
+
+### `crater job ls`
+- **描述**: 列出当前账号可见的作业。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--all` (bool): 调用 `/api/v1/vcjobs/all`，列出当前身份可见且位于 `--days` 回看窗口内的作业。
+  - `--user` (string): 调用 `/api/v1/vcjobs/user/{username}`，列出指定用户且位于 `--days` 回看窗口内的作业。
+  - `--days` (int): 与 `--all` 或 `--user` 配合使用的回溯天数；`-1` 表示不按时间过滤。小于 `-1` 的值返回 `usage_error`。
+  - `--status` (string): 本地过滤作业状态。
+  - `--type` (string): 本地过滤作业类型。
+  - `--node` (string): 本地过滤运行在指定节点上的作业。
+  - `--interactive` (bool): 本地过滤交互式作业（`jupyter` / `webide`）。
+  - `--batch` (bool): 本地过滤非交互式作业。
+- **处理逻辑**:
+  - 默认调用 `/api/v1/vcjobs`，列出当前用户和当前账户下的作业。
+  - `--user` 优先于 `--all`；两者都不提供时不使用 `--days`。
+  - `--interactive` 与 `--batch` 互斥。
+  - 默认模式以表格展示名称、平台作业名、类型、状态、队列、节点和资源。
+- **`--json` 的 `data`**：`jobs`（数组，元素与平台作业摘要响应一致，过滤后返回）。
+- **状态**: [x] Completed
+
+### `crater job get <name>`
+- **描述**: 查看单个作业详情。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名，对应前端详情页路径中的作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/detail`。
+  - 缺少 `<name>` 时返回 `usage_error`。
+- **`--json` 的 `data`**：`job`（对象，平台作业详情响应）。
+- **状态**: [x] Completed
+
+### `crater job pods <name>`
+- **描述**: 查看指定作业的 Pod 列表。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/pods`。
+  - 默认模式以表格展示 Pod 名称、命名空间、节点、IP、阶段和资源。
+- **`--json` 的 `data`**：`pods`（数组，平台作业 Pod 响应）。
+- **状态**: [x] Completed
+
+### `crater job events <name>`
+- **描述**: 查看指定作业的 Kubernetes 事件。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/event`。
+  - 默认模式逐行打印事件对象摘要；脚本化使用建议加 `--json`。
+- **`--json` 的 `data`**：`events`（数组，平台事件响应）。
+- **状态**: [x] Completed
+
+### `crater job yaml <name>`
+- **描述**: 查看指定作业的 YAML。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **处理逻辑**:
+  - 调用 `/api/v1/vcjobs/{name}/yaml`。
+  - 默认模式直接输出 YAML 字符串到 stdout，不添加表格或装饰文本。
+- **`--json` 的 `data`**：`yaml`（字符串）。
+- **状态**: [x] Completed
+
+---
+
+## 7. 镜像模块 (image)
+
+本模块提供容器镜像信息的只读查询能力。所有命令均要求已有 active credentials。
+
+### `crater image ls`
+- **描述**: 列出当前账号可见的镜像。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--available` (bool): 调用 `/api/v1/images/available`，列出创建作业时可选择的镜像。
+  - `--type` (string): 本地过滤镜像适用的作业类型。
+  - `--arch` (string): 本地过滤镜像架构，例如 `linux/amd64`。
+  - `--visibility` (string): 本地过滤镜像可见性，例如 `Public`、`Private`、`UserShare`、`AccountShare`。
+  - `--owner` (string): 按所有者用户名或昵称子串本地过滤。
+  - `--search` (string): 按镜像地址或描述子串本地过滤。
+- **处理逻辑**:
+  - 默认调用 `/api/v1/images/image`。
+  - 所有过滤均在 CLI 本地完成，不改变平台状态。
+  - 默认模式以表格展示 ID、镜像地址、类型、可见性、架构和所有者。
+- **`--json` 的 `data`**：`images`（数组，元素与平台镜像响应一致，过滤后返回）。
+- **状态**: [x] Completed
+
+---
+
+## 7. Additional Read Modules
+
+This section records the read-only API surface covered by the CLI after the broader read-interface audit. All commands require active credentials. User-visible reads stay under their resource domain. Administrator-only reads are explicitly under `crater admin ...` and require platform administrator permissions.
+
+### Account And Queue Reads
+- `crater account ls`: `/api/v1/accounts`.
+- `crater account get <name>`: `/api/v1/accounts/by-name/{name}`.
+- `crater account members <id>`: `/api/v1/accounts/{id}/users`.
+- `crater account users-out <id>`: `/api/v1/accounts/{id}/users/out`.
+- `crater account billing config <id>`: `/api/v1/accounts/{id}/billing/config`.
+- `crater account billing members <id>`: `/api/v1/accounts/{id}/billing/members`.
+- `crater admin account ls|get|members|users-out|quota`: `/api/v1/admin/accounts...`.
+- `crater admin account billing config|members <id>`: `/api/v1/admin/accounts/{id}/billing/...`.
+- JSON payload keys: `accounts`, `account`, `members`, `users`, `quota`, `billing_config`.
+
+### Resource Reads
+- `crater resource ls [--with-vendor-domain]`: `/api/v1/resources`.
+- `crater resource networks <id>`: `/api/v1/resources/{id}/networks`.
+- `crater resource vgpu <id>`: `/api/v1/resources/{id}/vgpu`.
+- `crater resource prices`: `/api/v1/resources/billing/prices`.
+- `crater admin resource networks|vgpu <id>`: `/api/v1/admin/resources/{id}/...`.
+- JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
+
+### Dataset And Template Reads
+- `crater dataset ls`: `/api/v1/dataset/mydataset`.
+- `crater dataset get <id>`: `/api/v1/dataset/detail/{id}`.
+- `crater dataset users <id>` / `queues <id>`: current share relationship reads.
+- `crater dataset users-out <id>` / `queues-out <id>`: unshared user/account candidate reads.
+- `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`.
+- `crater template ls`: `/api/v1/jobtemplate/list`.
+- `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
+- JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.
+
+### Model Download Reads
+- `crater model-download ls [--category model|dataset]`: `/api/v1/model-download/models/downloads`.
+- `crater model-download get <id>`: `/api/v1/model-download/models/downloads/{id}`.
+- `crater model-download logs <id>`: `/api/v1/model-download/models/downloads/{id}/logs`.
+- `crater admin model-download ls`: `/api/v1/admin/model-download/models/downloads`.
+- JSON payload keys: `downloads`, `download`, `logs`.
+
+### Context, Billing, User, And Approval Reads
+- `crater context prequeue|quota|resources|billing`: `/api/v1/context/...` summary reads used by the portal.
+- `crater billing status`, `summary`, `prices`, `jobs [--all|--user USER --days N]`, `job <name>`.
+- `crater user get <username>`, `email-verified`.
+- `crater order ls`, `get <id>`, `by-name <name>`.
+- `crater admin billing status|jobs`, `crater admin order ls|get <id>`, `crater admin user ls`, `crater admin user billing summary|accounts <username>`.
+
+### Pod And Non-Volcano Job Diagnostics
+- `crater pod containers|events|ingresses|nodeports <namespace> <pod>` and `crater pod logs <namespace> <pod> <container> [--tail N] [--timestamps] [--previous]` cover `/api/v1/namespaces/...` diagnostic GET APIs. Log streaming and terminal websocket APIs are intentionally not part of this read CLI.
+- AIJob/SPJob reads are intentionally not exposed in this PR because their backend identifier contracts differ from Volcano job names and need a dedicated CLI design.
+
+### Interfaces Not Exposed As General Read CLI
+- Sensitive credential reads (`/token`, `/secret`, Harbor credential APIs) are not exposed in the broad read surface.
+- WebSocket, terminal, and log streaming endpoints are not exposed because they are interactive/streaming rather than stable one-shot reads.
+- The untracked local `inference-services` API is not documented here until that backend/frontend feature lands in the branch base.
+- Public health, Swagger, Prometheus metrics, and low-level WebDAV file listing are left to their domain-specific tools rather than this first read CLI pass.
+
+### Admin-Only Read Coverage
+- `crater admin system-config llm|gpu-analysis|prequeue`: `/api/v1/admin/system-config/{llm,gpu-analysis,prequeue}`.
+- `crater admin queue-quotas`: `/api/v1/admin/queue-quotas`.
+- `crater admin gpu-analyses`: `/api/v1/admin/gpu-analysis`.
+- `crater admin operation-logs [--page N] [--limit N] [--operator USER] [--operation-type TYPE] [--target TARGET] [--start-time TIME] [--end-time TIME]`: `/api/v1/admin/operation-logs`.
+- `crater admin cronjobs`: `/api/v1/admin/operations/cronjob`.
+- `crater admin whitelist`: `/api/v1/admin/operations/whitelist`.
+- These commands surface existing admin GET APIs only. They do not perform update/delete/reconcile actions.

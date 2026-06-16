@@ -1,0 +1,527 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-node-typo-json/argv --
+crater node list --json --no-interactive
+-- en/01-node-typo-json/exit --
+2
+-- en/01-node-typo-json/stdout --
+-- en/01-node-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"list\" for \"crater node\"\n\nDid you mean this?\n\tls\n\nRun \"crater node --help\" for usage."
+}
+-- en/02-node-get-missing-json/argv --
+crater node get --json --no-interactive
+-- en/02-node-get-missing-json/exit --
+2
+-- en/02-node-get-missing-json/stdout --
+-- en/02-node-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "node name is required (\u003cname\u003e)"
+}
+-- en/03-node-ls-404-json/argv --
+crater node ls --json --no-interactive
+-- en/03-node-ls-404-json/exit --
+4
+-- en/03-node-ls-404-json/stdout --
+-- en/03-node-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/04-node-ls-gpu-available-missing-gpu-json/argv --
+crater node ls --gpu-available --json --no-interactive
+-- en/04-node-ls-gpu-available-missing-gpu-json/exit --
+2
+-- en/04-node-ls-gpu-available-missing-gpu-json/stdout --
+-- en/04-node-ls-gpu-available-missing-gpu-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--gpu is required when --gpu-available is set"
+}
+-- en/05-node-ls-extra-arg-json/argv --
+crater node ls unexpected --json --no-interactive
+-- en/05-node-ls-extra-arg-json/exit --
+2
+-- en/05-node-ls-extra-arg-json/stdout --
+-- en/05-node-ls-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater node ls: got 1, want at most 0"
+}
+-- en/06-node-pods-missing-json/argv --
+crater node pods --json --no-interactive
+-- en/06-node-pods-missing-json/exit --
+2
+-- en/06-node-pods-missing-json/stdout --
+-- en/06-node-pods-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "node name is required (\u003cname\u003e)"
+}
+-- en/07-node-gpu-missing-json/argv --
+crater node gpu --json --no-interactive
+-- en/07-node-gpu-missing-json/exit --
+2
+-- en/07-node-gpu-missing-json/stdout --
+-- en/07-node-gpu-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "node name is required (\u003cname\u003e)"
+}
+-- en/08-node-pods-404-json/argv --
+crater node pods missing-node --json --no-interactive
+-- en/08-node-pods-404-json/exit --
+4
+-- en/08-node-pods-404-json/stdout --
+-- en/08-node-pods-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/09-job-get-missing-json/argv --
+crater job get --json --no-interactive
+-- en/09-job-get-missing-json/exit --
+2
+-- en/09-job-get-missing-json/stdout --
+-- en/09-job-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (\u003cname\u003e)"
+}
+-- en/10-job-pods-missing-json/argv --
+crater job pods --json --no-interactive
+-- en/10-job-pods-missing-json/exit --
+2
+-- en/10-job-pods-missing-json/stdout --
+-- en/10-job-pods-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (\u003cname\u003e)"
+}
+-- en/11-job-events-missing-json/argv --
+crater job events --json --no-interactive
+-- en/11-job-events-missing-json/exit --
+2
+-- en/11-job-events-missing-json/stdout --
+-- en/11-job-events-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (\u003cname\u003e)"
+}
+-- en/12-job-yaml-missing-json/argv --
+crater job yaml --json --no-interactive
+-- en/12-job-yaml-missing-json/exit --
+2
+-- en/12-job-yaml-missing-json/stdout --
+-- en/12-job-yaml-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "job name is required (\u003cname\u003e)"
+}
+-- en/13-job-ls-invalid-status-json/argv --
+crater job ls --status bad --json --no-interactive
+-- en/13-job-ls-invalid-status-json/exit --
+2
+-- en/13-job-ls-invalid-status-json/stdout --
+-- en/13-job-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid job status: bad"
+}
+-- en/14-job-ls-invalid-days-json/argv --
+crater job ls --days -2 --json --no-interactive
+-- en/14-job-ls-invalid-days-json/exit --
+2
+-- en/14-job-ls-invalid-days-json/stdout --
+-- en/14-job-ls-invalid-days-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "days must be -1 or greater"
+}
+-- en/15-job-ls-conflict-json/argv --
+crater job ls --interactive --batch --json --no-interactive
+-- en/15-job-ls-conflict-json/exit --
+2
+-- en/15-job-ls-conflict-json/stdout --
+-- en/15-job-ls-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--interactive and --batch cannot be used together"
+}
+-- en/16-job-ls-trimmed-status-404-json/argv --
+crater job ls --status Running  --json --no-interactive
+-- en/16-job-ls-trimmed-status-404-json/exit --
+4
+-- en/16-job-ls-trimmed-status-404-json/stdout --
+-- en/16-job-ls-trimmed-status-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/17-job-yaml-404-json/argv --
+crater job yaml missing-job --json --no-interactive
+-- en/17-job-yaml-404-json/exit --
+4
+-- en/17-job-yaml-404-json/stdout --
+-- en/17-job-yaml-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/18-image-ls-invalid-type-json/argv --
+crater image ls --type bad --json --no-interactive
+-- en/18-image-ls-invalid-type-json/exit --
+2
+-- en/18-image-ls-invalid-type-json/stdout --
+-- en/18-image-ls-invalid-type-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid image type: bad"
+}
+-- en/19-image-ls-invalid-visibility-json/argv --
+crater image ls --visibility bad --json --no-interactive
+-- en/19-image-ls-invalid-visibility-json/exit --
+2
+-- en/19-image-ls-invalid-visibility-json/stdout --
+-- en/19-image-ls-invalid-visibility-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid image visibility: bad"
+}
+-- en/20-image-ls-trimmed-type-404-json/argv --
+crater image ls --type jupyter  --json --no-interactive
+-- en/20-image-ls-trimmed-type-404-json/exit --
+4
+-- en/20-image-ls-trimmed-type-404-json/stdout --
+-- en/20-image-ls-trimmed-type-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/21-account-get-missing-json/argv --
+crater account get --json --no-interactive
+-- en/21-account-get-missing-json/exit --
+2
+-- en/21-account-get-missing-json/stdout --
+-- en/21-account-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "account id or name is required (\u003caccount\u003e)"
+}
+-- en/22-account-admin-flag-removed-json/argv --
+crater account ls --admin --json --no-interactive
+-- en/22-account-admin-flag-removed-json/exit --
+2
+-- en/22-account-admin-flag-removed-json/stdout --
+-- en/22-account-admin-flag-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "unknown flag: --admin"
+}
+-- en/23-admin-account-ls-404-json/argv --
+crater admin account ls --json --no-interactive
+-- en/23-admin-account-ls-404-json/exit --
+4
+-- en/23-admin-account-ls-404-json/stdout --
+-- en/23-admin-account-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/24-resource-networks-missing-json/argv --
+crater resource networks --json --no-interactive
+-- en/24-resource-networks-missing-json/exit --
+2
+-- en/24-resource-networks-missing-json/stdout --
+-- en/24-resource-networks-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "id is required (\u003cid\u003e)"
+}
+-- en/25-resource-admin-flag-removed-json/argv --
+crater resource networks 1 --admin --json --no-interactive
+-- en/25-resource-admin-flag-removed-json/exit --
+2
+-- en/25-resource-admin-flag-removed-json/stdout --
+-- en/25-resource-admin-flag-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "unknown flag: --admin"
+}
+-- en/26-dataset-get-invalid-id-json/argv --
+crater dataset get abc --json --no-interactive
+-- en/26-dataset-get-invalid-id-json/exit --
+2
+-- en/26-dataset-get-invalid-id-json/stdout --
+-- en/26-dataset-get-invalid-id-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid dataset id: abc"
+}
+-- en/27-admin-dataset-ls-404-json/argv --
+crater admin dataset ls --json --no-interactive
+-- en/27-admin-dataset-ls-404-json/exit --
+4
+-- en/27-admin-dataset-ls-404-json/stdout --
+-- en/27-admin-dataset-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/28-template-ls-404-json/argv --
+crater template ls --json --no-interactive
+-- en/28-template-ls-404-json/exit --
+4
+-- en/28-template-ls-404-json/stdout --
+-- en/28-template-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/29-model-download-logs-missing-json/argv --
+crater model-download logs --json --no-interactive
+-- en/29-model-download-logs-missing-json/exit --
+2
+-- en/29-model-download-logs-missing-json/stdout --
+-- en/29-model-download-logs-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "id is required (\u003cid\u003e)"
+}
+-- en/30-context-resources-404-json/argv --
+crater context resources --json --no-interactive
+-- en/30-context-resources-404-json/exit --
+4
+-- en/30-context-resources-404-json/stdout --
+-- en/30-context-resources-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/31-order-by-name-missing-json/argv --
+crater order by-name --json --no-interactive
+-- en/31-order-by-name-missing-json/exit --
+2
+-- en/31-order-by-name-missing-json/stdout --
+-- en/31-order-by-name-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "order name is required (\u003cname\u003e)"
+}
+-- en/32-admin-order-ls-404-json/argv --
+crater admin order ls --json --no-interactive
+-- en/32-admin-order-ls-404-json/exit --
+4
+-- en/32-admin-order-ls-404-json/stdout --
+-- en/32-admin-order-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/33-user-get-missing-json/argv --
+crater user get --json --no-interactive
+-- en/33-user-get-missing-json/exit --
+2
+-- en/33-user-get-missing-json/stdout --
+-- en/33-user-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "username is required (\u003cusername\u003e)"
+}
+-- en/34-admin-user-ls-404-json/argv --
+crater admin user ls --json --no-interactive
+-- en/34-admin-user-ls-404-json/exit --
+4
+-- en/34-admin-user-ls-404-json/stdout --
+-- en/34-admin-user-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/35-pod-logs-missing-json/argv --
+crater pod logs ns pod --json --no-interactive
+-- en/35-pod-logs-missing-json/exit --
+2
+-- en/35-pod-logs-missing-json/stdout --
+-- en/35-pod-logs-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "container name is required (\u003ccontainer\u003e)"
+}
+-- en/36-billing-jobs-404-json/argv --
+crater billing jobs --all --json --no-interactive
+-- en/36-billing-jobs-404-json/exit --
+4
+-- en/36-billing-jobs-404-json/stdout --
+-- en/36-billing-jobs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/37-admin-billing-jobs-404-json/argv --
+crater admin billing jobs --json --no-interactive
+-- en/37-admin-billing-jobs-404-json/exit --
+4
+-- en/37-admin-billing-jobs-404-json/stdout --
+-- en/37-admin-billing-jobs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/38-aijob-removed-json/argv --
+crater aijob ls --json --no-interactive
+-- en/38-aijob-removed-json/exit --
+2
+-- en/38-aijob-removed-json/stdout --
+-- en/38-aijob-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"aijob\" for \"crater\"\n\nDid you mean this?\n\tjob\n\nRun \"crater --help\" for usage."
+}
+-- en/39-spjob-removed-json/argv --
+crater spjob yaml --json --no-interactive
+-- en/39-spjob-removed-json/exit --
+2
+-- en/39-spjob-removed-json/stdout --
+-- en/39-spjob-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"spjob\" for \"crater\"\n\nDid you mean this?\n\tjob\n\nRun \"crater --help\" for usage."
+}
+-- en/40-admin-operation-logs-404-json/argv --
+crater admin operation-logs --json --no-interactive
+-- en/40-admin-operation-logs-404-json/exit --
+4
+-- en/40-admin-operation-logs-404-json/stdout --
+-- en/40-admin-operation-logs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/41-admin-system-config-llm-404-json/argv --
+crater admin system-config llm --json --no-interactive
+-- en/41-admin-system-config-llm-404-json/exit --
+4
+-- en/41-admin-system-config-llm-404-json/stdout --
+-- en/41-admin-system-config-llm-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

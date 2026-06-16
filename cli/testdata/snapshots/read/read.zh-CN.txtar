@@ -1,0 +1,527 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-node-typo-json/argv --
+crater node list --json --no-interactive
+-- zh-CN/01-node-typo-json/exit --
+2
+-- zh-CN/01-node-typo-json/stdout --
+-- zh-CN/01-node-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"list\" for \"crater node\"\n\nDid you mean this?\n\tls\n\nRun \"crater node --help\" for usage."
+}
+-- zh-CN/02-node-get-missing-json/argv --
+crater node get --json --no-interactive
+-- zh-CN/02-node-get-missing-json/exit --
+2
+-- zh-CN/02-node-get-missing-json/stdout --
+-- zh-CN/02-node-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：节点名称 (\u003cname\u003e)"
+}
+-- zh-CN/03-node-ls-404-json/argv --
+crater node ls --json --no-interactive
+-- zh-CN/03-node-ls-404-json/exit --
+4
+-- zh-CN/03-node-ls-404-json/stdout --
+-- zh-CN/03-node-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/argv --
+crater node ls --gpu-available --json --no-interactive
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/exit --
+2
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/stdout --
+-- zh-CN/04-node-ls-gpu-available-missing-gpu-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "使用 --gpu-available 时必须同时提供 --gpu"
+}
+-- zh-CN/05-node-ls-extra-arg-json/argv --
+crater node ls unexpected --json --no-interactive
+-- zh-CN/05-node-ls-extra-arg-json/exit --
+2
+-- zh-CN/05-node-ls-extra-arg-json/stdout --
+-- zh-CN/05-node-ls-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater node ls 的参数过多：收到 1 个，最多允许 0 个"
+}
+-- zh-CN/06-node-pods-missing-json/argv --
+crater node pods --json --no-interactive
+-- zh-CN/06-node-pods-missing-json/exit --
+2
+-- zh-CN/06-node-pods-missing-json/stdout --
+-- zh-CN/06-node-pods-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：节点名称 (\u003cname\u003e)"
+}
+-- zh-CN/07-node-gpu-missing-json/argv --
+crater node gpu --json --no-interactive
+-- zh-CN/07-node-gpu-missing-json/exit --
+2
+-- zh-CN/07-node-gpu-missing-json/stdout --
+-- zh-CN/07-node-gpu-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：节点名称 (\u003cname\u003e)"
+}
+-- zh-CN/08-node-pods-404-json/argv --
+crater node pods missing-node --json --no-interactive
+-- zh-CN/08-node-pods-404-json/exit --
+4
+-- zh-CN/08-node-pods-404-json/stdout --
+-- zh-CN/08-node-pods-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/09-job-get-missing-json/argv --
+crater job get --json --no-interactive
+-- zh-CN/09-job-get-missing-json/exit --
+2
+-- zh-CN/09-job-get-missing-json/stdout --
+-- zh-CN/09-job-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (\u003cname\u003e)"
+}
+-- zh-CN/10-job-pods-missing-json/argv --
+crater job pods --json --no-interactive
+-- zh-CN/10-job-pods-missing-json/exit --
+2
+-- zh-CN/10-job-pods-missing-json/stdout --
+-- zh-CN/10-job-pods-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (\u003cname\u003e)"
+}
+-- zh-CN/11-job-events-missing-json/argv --
+crater job events --json --no-interactive
+-- zh-CN/11-job-events-missing-json/exit --
+2
+-- zh-CN/11-job-events-missing-json/stdout --
+-- zh-CN/11-job-events-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (\u003cname\u003e)"
+}
+-- zh-CN/12-job-yaml-missing-json/argv --
+crater job yaml --json --no-interactive
+-- zh-CN/12-job-yaml-missing-json/exit --
+2
+-- zh-CN/12-job-yaml-missing-json/stdout --
+-- zh-CN/12-job-yaml-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (\u003cname\u003e)"
+}
+-- zh-CN/13-job-ls-invalid-status-json/argv --
+crater job ls --status bad --json --no-interactive
+-- zh-CN/13-job-ls-invalid-status-json/exit --
+2
+-- zh-CN/13-job-ls-invalid-status-json/stdout --
+-- zh-CN/13-job-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的作业状态：bad"
+}
+-- zh-CN/14-job-ls-invalid-days-json/argv --
+crater job ls --days -2 --json --no-interactive
+-- zh-CN/14-job-ls-invalid-days-json/exit --
+2
+-- zh-CN/14-job-ls-invalid-days-json/stdout --
+-- zh-CN/14-job-ls-invalid-days-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "days 必须大于等于 -1"
+}
+-- zh-CN/15-job-ls-conflict-json/argv --
+crater job ls --interactive --batch --json --no-interactive
+-- zh-CN/15-job-ls-conflict-json/exit --
+2
+-- zh-CN/15-job-ls-conflict-json/stdout --
+-- zh-CN/15-job-ls-conflict-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "不能同时使用 --interactive 和 --batch"
+}
+-- zh-CN/16-job-ls-trimmed-status-404-json/argv --
+crater job ls --status Running  --json --no-interactive
+-- zh-CN/16-job-ls-trimmed-status-404-json/exit --
+4
+-- zh-CN/16-job-ls-trimmed-status-404-json/stdout --
+-- zh-CN/16-job-ls-trimmed-status-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/17-job-yaml-404-json/argv --
+crater job yaml missing-job --json --no-interactive
+-- zh-CN/17-job-yaml-404-json/exit --
+4
+-- zh-CN/17-job-yaml-404-json/stdout --
+-- zh-CN/17-job-yaml-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/18-image-ls-invalid-type-json/argv --
+crater image ls --type bad --json --no-interactive
+-- zh-CN/18-image-ls-invalid-type-json/exit --
+2
+-- zh-CN/18-image-ls-invalid-type-json/stdout --
+-- zh-CN/18-image-ls-invalid-type-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的镜像类型：bad"
+}
+-- zh-CN/19-image-ls-invalid-visibility-json/argv --
+crater image ls --visibility bad --json --no-interactive
+-- zh-CN/19-image-ls-invalid-visibility-json/exit --
+2
+-- zh-CN/19-image-ls-invalid-visibility-json/stdout --
+-- zh-CN/19-image-ls-invalid-visibility-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的镜像可见性：bad"
+}
+-- zh-CN/20-image-ls-trimmed-type-404-json/argv --
+crater image ls --type jupyter  --json --no-interactive
+-- zh-CN/20-image-ls-trimmed-type-404-json/exit --
+4
+-- zh-CN/20-image-ls-trimmed-type-404-json/stdout --
+-- zh-CN/20-image-ls-trimmed-type-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/21-account-get-missing-json/argv --
+crater account get --json --no-interactive
+-- zh-CN/21-account-get-missing-json/exit --
+2
+-- zh-CN/21-account-get-missing-json/stdout --
+-- zh-CN/21-account-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：账户 ID 或名称 (\u003caccount\u003e)"
+}
+-- zh-CN/22-account-admin-flag-removed-json/argv --
+crater account ls --admin --json --no-interactive
+-- zh-CN/22-account-admin-flag-removed-json/exit --
+2
+-- zh-CN/22-account-admin-flag-removed-json/stdout --
+-- zh-CN/22-account-admin-flag-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "unknown flag: --admin"
+}
+-- zh-CN/23-admin-account-ls-404-json/argv --
+crater admin account ls --json --no-interactive
+-- zh-CN/23-admin-account-ls-404-json/exit --
+4
+-- zh-CN/23-admin-account-ls-404-json/stdout --
+-- zh-CN/23-admin-account-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/24-resource-networks-missing-json/argv --
+crater resource networks --json --no-interactive
+-- zh-CN/24-resource-networks-missing-json/exit --
+2
+-- zh-CN/24-resource-networks-missing-json/stdout --
+-- zh-CN/24-resource-networks-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：id (\u003cid\u003e)"
+}
+-- zh-CN/25-resource-admin-flag-removed-json/argv --
+crater resource networks 1 --admin --json --no-interactive
+-- zh-CN/25-resource-admin-flag-removed-json/exit --
+2
+-- zh-CN/25-resource-admin-flag-removed-json/stdout --
+-- zh-CN/25-resource-admin-flag-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "unknown flag: --admin"
+}
+-- zh-CN/26-dataset-get-invalid-id-json/argv --
+crater dataset get abc --json --no-interactive
+-- zh-CN/26-dataset-get-invalid-id-json/exit --
+2
+-- zh-CN/26-dataset-get-invalid-id-json/stdout --
+-- zh-CN/26-dataset-get-invalid-id-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的数据集 ID：abc"
+}
+-- zh-CN/27-admin-dataset-ls-404-json/argv --
+crater admin dataset ls --json --no-interactive
+-- zh-CN/27-admin-dataset-ls-404-json/exit --
+4
+-- zh-CN/27-admin-dataset-ls-404-json/stdout --
+-- zh-CN/27-admin-dataset-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/28-template-ls-404-json/argv --
+crater template ls --json --no-interactive
+-- zh-CN/28-template-ls-404-json/exit --
+4
+-- zh-CN/28-template-ls-404-json/stdout --
+-- zh-CN/28-template-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/29-model-download-logs-missing-json/argv --
+crater model-download logs --json --no-interactive
+-- zh-CN/29-model-download-logs-missing-json/exit --
+2
+-- zh-CN/29-model-download-logs-missing-json/stdout --
+-- zh-CN/29-model-download-logs-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：id (\u003cid\u003e)"
+}
+-- zh-CN/30-context-resources-404-json/argv --
+crater context resources --json --no-interactive
+-- zh-CN/30-context-resources-404-json/exit --
+4
+-- zh-CN/30-context-resources-404-json/stdout --
+-- zh-CN/30-context-resources-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/31-order-by-name-missing-json/argv --
+crater order by-name --json --no-interactive
+-- zh-CN/31-order-by-name-missing-json/exit --
+2
+-- zh-CN/31-order-by-name-missing-json/stdout --
+-- zh-CN/31-order-by-name-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：审批单名称 (\u003cname\u003e)"
+}
+-- zh-CN/32-admin-order-ls-404-json/argv --
+crater admin order ls --json --no-interactive
+-- zh-CN/32-admin-order-ls-404-json/exit --
+4
+-- zh-CN/32-admin-order-ls-404-json/stdout --
+-- zh-CN/32-admin-order-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/33-user-get-missing-json/argv --
+crater user get --json --no-interactive
+-- zh-CN/33-user-get-missing-json/exit --
+2
+-- zh-CN/33-user-get-missing-json/stdout --
+-- zh-CN/33-user-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：用户名 (\u003cusername\u003e)"
+}
+-- zh-CN/34-admin-user-ls-404-json/argv --
+crater admin user ls --json --no-interactive
+-- zh-CN/34-admin-user-ls-404-json/exit --
+4
+-- zh-CN/34-admin-user-ls-404-json/stdout --
+-- zh-CN/34-admin-user-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/35-pod-logs-missing-json/argv --
+crater pod logs ns pod --json --no-interactive
+-- zh-CN/35-pod-logs-missing-json/exit --
+2
+-- zh-CN/35-pod-logs-missing-json/stdout --
+-- zh-CN/35-pod-logs-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：容器名称 (\u003ccontainer\u003e)"
+}
+-- zh-CN/36-billing-jobs-404-json/argv --
+crater billing jobs --all --json --no-interactive
+-- zh-CN/36-billing-jobs-404-json/exit --
+4
+-- zh-CN/36-billing-jobs-404-json/stdout --
+-- zh-CN/36-billing-jobs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/37-admin-billing-jobs-404-json/argv --
+crater admin billing jobs --json --no-interactive
+-- zh-CN/37-admin-billing-jobs-404-json/exit --
+4
+-- zh-CN/37-admin-billing-jobs-404-json/stdout --
+-- zh-CN/37-admin-billing-jobs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/38-aijob-removed-json/argv --
+crater aijob ls --json --no-interactive
+-- zh-CN/38-aijob-removed-json/exit --
+2
+-- zh-CN/38-aijob-removed-json/stdout --
+-- zh-CN/38-aijob-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"aijob\" for \"crater\"\n\nDid you mean this?\n\tjob\n\nRun \"crater --help\" for usage."
+}
+-- zh-CN/39-spjob-removed-json/argv --
+crater spjob yaml --json --no-interactive
+-- zh-CN/39-spjob-removed-json/exit --
+2
+-- zh-CN/39-spjob-removed-json/stdout --
+-- zh-CN/39-spjob-removed-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"spjob\" for \"crater\"\n\nDid you mean this?\n\tjob\n\nRun \"crater --help\" for usage."
+}
+-- zh-CN/40-admin-operation-logs-404-json/argv --
+crater admin operation-logs --json --no-interactive
+-- zh-CN/40-admin-operation-logs-404-json/exit --
+4
+-- zh-CN/40-admin-operation-logs-404-json/stdout --
+-- zh-CN/40-admin-operation-logs-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/41-admin-system-config-llm-404-json/argv --
+crater admin system-config llm --json --no-interactive
+-- zh-CN/41-admin-system-config-llm-404-json/exit --
+4
+-- zh-CN/41-admin-system-config-llm-404-json/stdout --
+-- zh-CN/41-admin-system-config-llm-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
