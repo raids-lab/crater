@@ -33,6 +33,6 @@ Crater Backend 是 Crater 的子系统，包含作业提交、作业生命周期
 
 ## 开发
 
-开发规范——本地运行、`make` target、API / 路由 / 错误约定、GORM 数据库工作流、Storage Server 与 VSCode 调试——见 [CONTRIBUTING.zh-CN.md](./CONTRIBUTING.zh-CN.md)。
+开发规范——本地运行、`make` target、API / 路由 / 错误约定、GORM 数据库工作流、Storage Server 与 VSCode 调试——见 [CONTRIBUTING.zh-CN.md](./CONTRIBUTING.zh-CN.md)。本地启动拓扑见其中的“本地运行”和“Storage Server”小节。
 
 仓库级通用规范（全局开发守则、hooks、统一配置、Commit / PR 约定）见仓库根 [CONTRIBUTING](../docs/zh-CN/CONTRIBUTING.md)。

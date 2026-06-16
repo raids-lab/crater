@@ -27,7 +27,7 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 Prefer the root unified config targets (`make config-link`, `make config-status`, `make config-unlink`, `make config-restore`) for local config. Real local-run config may require administrator-provided Kubernetes, database, network, or integration settings. Do not commit private config.
 
-The backend is normally debugged together with the frontend while connected to existing test-cluster dependencies through config. You usually do not need to start a local PostgreSQL instance, recreate Kubernetes, or run every Crater component on your machine. Start `make run-storage` only when the task specifically needs the storage server; otherwise local backend + frontend is the baseline development topology.
+The backend is normally debugged together with the frontend while connected to existing test-cluster dependencies through config. You usually do not need to start a local PostgreSQL instance, recreate Kubernetes, or run every Crater component on your machine. For a full local frontend-backend experience, run both the main backend (`make run`) and the storage server (`make run-storage`). The storage server is required for file browsing, uploads/downloads, datasets, models, and any frontend request proxied through `/api/ss`. If your current task does not touch storage-related pages or APIs, you may skip `make run-storage` and run only the main backend plus frontend.
 
 Backend uses:
 
@@ -47,6 +47,22 @@ make run
 
 Once running, open Swagger UI: `http://localhost:<port>/swagger/index.html#/`.
 
+For full local frontend-backend debugging, use three terminals:
+
+```bash
+# Terminal 1: main backend API
+cd backend
+make run
+
+# Terminal 2: storage server, required for storage-related UI/API flows
+cd backend
+make run-storage
+
+# Terminal 3: frontend dev server
+cd frontend
+make run
+```
+
 `make run` is an environment-dependent local verification step, not a required default Agent check. `make build` or tests may pass even when `make run` fails because config, Kubernetes access, database connectivity, or network access is missing. If a failure points to missing config, credentials, cluster access, or administrator-only setup, stop and tell the developer what to inspect instead of repeatedly retrying.
 
 Common targets:
@@ -60,6 +76,8 @@ Common targets:
 | `make docs` | Generate swag docs |
 | `make pre-commit-check` | Run pre-commit checks manually |
 | `make build` / `make build-migrate` | Build main / migration binary |
+| `make run-storage` | Run the storage server locally, default port `7320` |
+| `make build-storage` | Build the storage server binary without starting it |
 
 ## API And Handler Rules
 
@@ -105,7 +123,7 @@ Detailed workflow: [`cmd/gorm-gen/README.md`](./cmd/gorm-gen/README.md).
 
 ## Storage Server
 
-The storage service is built from `cmd/storage-server/main.go` inside the backend Go module.
+The storage service is built from `cmd/storage-server/main.go` inside the backend Go module. Use `make run-storage` to start it locally. Use `make build-storage` only when you need to verify or package the storage server binary.
 
 ```bash
 make run-storage

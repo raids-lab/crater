@@ -27,7 +27,7 @@ go env -w GOPROXY=https://goproxy.cn,direct
 
 推荐通过仓库根的统一配置 target（`make config-link`、`make config-status`、`make config-unlink`、`make config-restore`）管理本地配置。真实本地运行配置可能需要管理员提供 Kubernetes、数据库、网络或外部集成设置。不要提交私有配置。
 
-后端通常需要和前端一起调试，并通过配置连接测试集群中已有的依赖服务。一般不需要在本机启动 PostgreSQL、复刻 Kubernetes，也不需要运行 Crater 的全部组件。只有任务明确需要 storage server 时才运行 `make run-storage`；否则本地后端 + 前端是基础开发拓扑。
+后端通常需要和前端一起调试，并通过配置连接测试集群中已有的依赖服务。一般不需要在本机启动 PostgreSQL、复刻 Kubernetes，也不需要运行 Crater 的全部组件。如果需要完整的本地前后端体验，应同时运行主后端（`make run`）和 storage server（`make run-storage`）。文件浏览、上传 / 下载、数据集、模型，以及所有经前端 `/api/ss` 代理的请求都需要 storage server。如果当前任务不涉及存储相关页面或 API，可以暂时跳过 `make run-storage`，只运行主后端和前端。
 
 Backend 使用：
 
@@ -47,6 +47,22 @@ make run
 
 服务正常后打开 Swagger UI：`http://localhost:<端口>/swagger/index.html#/`。
 
+完整本地前后端调试可使用三个终端：
+
+```bash
+# 终端 1：主后端 API
+cd backend
+make run
+
+# 终端 2：storage server，存储相关 UI/API 流程需要它
+cd backend
+make run-storage
+
+# 终端 3：前端开发服务
+cd frontend
+make run
+```
+
 `make run` 是依赖本地环境的验证步骤，不是 Agent 默认必须执行的检查。`make build` 或测试可以通过，但 `make run` 仍可能因配置、Kubernetes 访问、数据库连接或网络访问缺失而失败。如果失败指向缺少配置、凭据、集群访问或管理员才能处理的环境问题，应停下来告知开发者需要检查什么，不要反复尝试。
 
 常用 target：
@@ -60,6 +76,8 @@ make run
 | `make docs` | 生成 swag 文档 |
 | `make pre-commit-check` | 手动运行 pre-commit 检查 |
 | `make build` / `make build-migrate` | 构建主程序 / 迁移程序 |
+| `make run-storage` | 本地运行 storage server，默认端口为 `7320` |
+| `make build-storage` | 只构建 storage server 二进制，不启动服务 |
 
 ## API 与 Handler 规则
 
@@ -105,7 +123,7 @@ make run
 
 ## Storage Server
 
-存储服务由同一后端 Go 模块中的 `cmd/storage-server/main.go` 构建。
+存储服务由同一后端 Go 模块中的 `cmd/storage-server/main.go` 构建。本地启动使用 `make run-storage`；只有需要验证或打包 storage server 二进制时才使用 `make build-storage`。
 
 ```bash
 make run-storage

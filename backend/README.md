@@ -33,6 +33,6 @@ To install or use the complete Crater project, visit the [Crater Official Docume
 
 ## Development
 
-The development specification — local setup, `make` targets, API/routing/error conventions, the GORM database workflow, the storage server, and VSCode debugging — lives in [CONTRIBUTING.md](./CONTRIBUTING.md).
+The development specification — local setup, `make` targets, API/routing/error conventions, the GORM database workflow, the storage server, and VSCode debugging — lives in [CONTRIBUTING.md](./CONTRIBUTING.md). For local startup topology, see the Local Run and Storage Server sections there.
 
 Repository-wide rules (global development rules, hooks, unified config, commit/PR conventions) live in the root [CONTRIBUTING.md](../CONTRIBUTING.md).
