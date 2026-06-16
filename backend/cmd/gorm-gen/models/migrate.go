@@ -22,6 +22,13 @@ import (
 func main() {
 	db := query.GetDB()
 
+	createTableIfMissing := func(tx *gorm.DB, dst any) error {
+		if err := tx.Migrator().CreateTable(dst); err != nil && !tx.Migrator().HasTable(dst) {
+			return err
+		}
+		return nil
+	}
+
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		// your migrations here
 		// See https://pkg.go.dev/github.com/go-gormigrate/gormigrate/v2#Migration for details.
@@ -1561,10 +1568,10 @@ func main() {
 						return err
 					}
 				}
-				if err := tx.Migrator().CreateTable(&model.StorageIndexCandidate{}); err != nil && !tx.Migrator().HasTable(&model.StorageIndexCandidate{}) {
+				if err := createTableIfMissing(tx, &model.StorageIndexCandidate{}); err != nil {
 					return err
 				}
-				if err := tx.Migrator().CreateTable(&model.StorageIndexCandidateFile{}); err != nil && !tx.Migrator().HasTable(&model.StorageIndexCandidateFile{}) {
+				if err := createTableIfMissing(tx, &model.StorageIndexCandidateFile{}); err != nil {
 					return err
 				}
 				return nil
@@ -1605,10 +1612,10 @@ func main() {
 		{
 			ID: "202604181130",
 			Migrate: func(tx *gorm.DB) error {
-				if err := tx.Migrator().CreateTable(&model.StorageIndexPublicRootBaseline{}); err != nil && !tx.Migrator().HasTable(&model.StorageIndexPublicRootBaseline{}) {
+				if err := createTableIfMissing(tx, &model.StorageIndexPublicRootBaseline{}); err != nil {
 					return err
 				}
-				if err := tx.Migrator().CreateTable(&model.StorageIndexPublicFileBaseline{}); err != nil && !tx.Migrator().HasTable(&model.StorageIndexPublicFileBaseline{}) {
+				if err := createTableIfMissing(tx, &model.StorageIndexPublicFileBaseline{}); err != nil {
 					return err
 				}
 				return nil
@@ -1645,7 +1652,7 @@ func main() {
 		{
 			ID: "202604181150",
 			Migrate: func(tx *gorm.DB) error {
-				if err := tx.Migrator().CreateTable(&model.StorageIndexPublicRootBaseline{}); err != nil && !tx.Migrator().HasTable(&model.StorageIndexPublicRootBaseline{}) {
+				if err := createTableIfMissing(tx, &model.StorageIndexPublicRootBaseline{}); err != nil {
 					return err
 				}
 				return nil
