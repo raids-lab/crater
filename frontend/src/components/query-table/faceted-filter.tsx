@@ -26,7 +26,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  // CommandInput,
   CommandItem,
   CommandList,
   CommandSeparator,
@@ -58,16 +57,20 @@ export function DataTableFacetedFilter<TData, TValue>({
   const { t } = useTranslation()
   const facets = column?.getFacetedUniqueValues()
   const selectedValues = new Set(column?.getFilterValue() as string[])
+  const defaultValuesApplied = React.useRef(false)
 
-  // set default filter option
   useEffect(() => {
-    if (defaultValues) {
-      column?.setFilterValue(defaultValues)
+    if (!column || !defaultValues || defaultValuesApplied.current) {
+      return
+    }
+    defaultValuesApplied.current = true
+
+    if (column.getFilterValue() === undefined) {
+      column.setFilterValue(defaultValues)
     }
   }, [defaultValues, column])
 
   const options = useMemo(() => {
-    // 如果没有 Options，则从 facets 中生成
     if (!rawOptions || rawOptions.length === 0) {
       return facets
         ? Array.from(facets.keys())
@@ -128,7 +131,6 @@ export function DataTableFacetedFilter<TData, TValue>({
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command shouldFilter={false}>
-          {/* <CommandInput placeholder={title} /> */}
           <CommandList>
             <CommandEmpty>{t('dataTableFacetedFilter.noResults')}</CommandEmpty>
             <CommandGroup>
