@@ -45,6 +45,10 @@ func SandboxSessionEnabled() bool {
 	return SandboxEnabled() || truthyEnv(os.Getenv("CRATER_TEST_SANDBOX_SESSION"))
 }
 
+func SandboxSessionEmpty() bool {
+	return truthyEnv(os.Getenv("CRATER_TEST_SANDBOX_SESSION_EMPTY"))
+}
+
 func truthyEnv(v string) bool {
 	v = strings.TrimSpace(strings.ToLower(v))
 	switch v {
