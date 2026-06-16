@@ -13,7 +13,7 @@ RESET := \033[0m
 PYTHON ?= $(shell if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then echo python3; elif command -v python >/dev/null 2>&1; then echo python; fi)
 
 # 设置端口号变量
-PORT := $(shell if [ -f .env.development ]; then grep PORT .env.development | cut -d '=' -f2; else echo "5180"; fi)
+PORT := $(shell if [ -f .env.development ]; then awk -F '=' '/^PORT[[:space:]]*=/ {print $$2; found=1; exit} END {if (!found) print "5180"}' .env.development | awk '{print $$1}'; else echo "5180"; fi)
 .PHONY: help
 help: ## 💡 Display this help message
 	@echo "$(CYAN)🌋 Crater Frontend Development Commands$(RESET)"

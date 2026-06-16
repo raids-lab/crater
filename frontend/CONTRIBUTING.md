@@ -25,6 +25,8 @@ For most frontend work, debug with the frontend and backend running together. Th
 
 The frontend dev server proxies main backend APIs through `VITE_SERVER_PROXY_BACKEND` to `http://localhost:8088/` by default, and storage APIs through `VITE_SERVER_PROXY_STORAGE` to `http://localhost:7320/` by default. Start the backend storage server with `cd ../backend && make run-storage` when testing storage-related pages or flows such as file management, datasets, models, uploads, or downloads.
 
+`make run` reads the dev server port only from an explicit `PORT=...` entry in `.env.development`. If that entry is missing, it falls back to `5180`. Proxy variables such as `VITE_SERVER_PROXY_BACKEND` and `VITE_SERVER_PROXY_STORAGE` are not treated as port settings.
+
 ```bash
 cd frontend
 pnpm install

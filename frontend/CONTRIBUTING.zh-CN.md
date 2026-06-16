@@ -25,6 +25,8 @@
 
 前端开发服务默认通过 `VITE_SERVER_PROXY_BACKEND` 将主后端 API 代理到 `http://localhost:8088/`，并通过 `VITE_SERVER_PROXY_STORAGE` 将存储 API 代理到 `http://localhost:7320/`。调试文件管理、数据集、模型、上传或下载等存储相关页面和流程时，需要先在后端目录运行 `make run-storage` 启动 storage server。
 
+`make run` 只会从 `.env.development` 中显式的 `PORT=...` 配置读取开发服务端口。如果没有该配置，会回退到 `5180`。`VITE_SERVER_PROXY_BACKEND` 和 `VITE_SERVER_PROXY_STORAGE` 等代理变量不会被当作端口配置。
+
 ```bash
 cd frontend
 pnpm install
