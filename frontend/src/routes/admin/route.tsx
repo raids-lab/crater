@@ -14,6 +14,7 @@ import {
   ScrollText,
   ServerIcon,
   SettingsIcon,
+  StoreIcon,
   UserRoundIcon,
   UsersRoundIcon,
 } from 'lucide-react'
@@ -163,6 +164,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.fileManagement'),
           icon: FolderIcon,
           url: '/admin/files',
+        },
+        {
+          title: t('navigation.storageManagement'),
+          icon: StoreIcon,
+          url: '/admin/storage',
         },
       ],
     },

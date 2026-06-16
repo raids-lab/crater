@@ -9,7 +9,19 @@ export interface ILLMConfig {
   modelName: string
 }
 
+export interface IStorageDecisionConfig {
+  decisionMode: 'agent' | 'direct'
+  configSource: 'platform' | 'custom'
+  baseUrl: string
+  apiKey: string
+  modelName: string
+}
+
 export interface IUpdateLLMConfigReq extends ILLMConfig {
+  validate: boolean
+}
+
+export interface IUpdateStorageDecisionConfigReq extends IStorageDecisionConfig {
   validate: boolean
 }
 
@@ -80,6 +92,18 @@ export const apiAdminUpdateLLMConfig = (data: IUpdateLLMConfigReq) =>
 /** 重置 LLM 配置 */
 export const apiAdminResetLLMConfig = () =>
   apiV1Delete<IResponse<string>>('admin/system-config/llm')
+
+/** 获取存储决策配置 */
+export const apiAdminGetStorageDecisionConfig = () =>
+  apiV1Get<IResponse<IStorageDecisionConfig>>('admin/system-config/storage-decision')
+
+/** 更新存储决策配置 */
+export const apiAdminUpdateStorageDecisionConfig = (data: IUpdateStorageDecisionConfigReq) =>
+  apiV1Put<IResponse<string>>('admin/system-config/storage-decision', data)
+
+/** 重置存储决策配置 */
+export const apiAdminResetStorageDecisionConfig = () =>
+  apiV1Delete<IResponse<string>>('admin/system-config/storage-decision')
 
 /** 获取 GPU 分析开关状态 */
 export const apiAdminGetGpuAnalysisStatus = () =>

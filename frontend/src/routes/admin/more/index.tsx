@@ -16,13 +16,16 @@ import {
   apiAdminGetGpuAnalysisStatus,
   apiAdminGetLLMConfig,
   apiAdminGetPrequeueConfig,
+  apiAdminGetStorageDecisionConfig,
   apiAdminGrantAllUsersExtraBalance,
   apiAdminResetAllBillingBalances,
   apiAdminResetLLMConfig,
+  apiAdminResetStorageDecisionConfig,
   apiAdminSetBillingStatus,
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
   apiAdminUpdatePrequeueConfig,
+  apiAdminUpdateStorageDecisionConfig,
 } from '@/services/api/system-config'
 import { ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
@@ -34,6 +37,13 @@ import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { PrequeueSettings } from './-components/prequeue-settings'
+import {
+  StorageDecisionFormSchema,
+  StorageDecisionSettings,
+  createStorageDecisionSettingsSchema,
+} from './-components/storage-decision-settings'
+
+const DEFAULT_STORAGE_BASE_URL = 'http://192.168.5.68:30186/v1'
 
 export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
@@ -53,10 +63,29 @@ function RouteComponent() {
     },
   })
 
+  const storageDecisionForm = useForm<StorageDecisionFormSchema>({
+    resolver: zodResolver(createStorageDecisionSettingsSchema(t)),
+    defaultValues: {
+      decisionMode: 'agent',
+      configSource: 'platform',
+      baseUrl: DEFAULT_STORAGE_BASE_URL,
+      modelName: '',
+      apiKey: '',
+    },
+  })
+
   const { data: llmConfigData } = useQuery({
     queryKey: ['admin', 'system-config', 'llm'],
     queryFn: async () => {
       const res = await apiAdminGetLLMConfig()
+      return res.data
+    },
+  })
+
+  const { data: storageDecisionConfigData } = useQuery({
+    queryKey: ['admin', 'system-config', 'storage-decision'],
+    queryFn: async () => {
+      const res = await apiAdminGetStorageDecisionConfig()
       return res.data
     },
   })
@@ -71,6 +100,11 @@ function RouteComponent() {
     queryFn: () => apiAdminGetPrequeueConfig().then((res) => res.data),
   })
 
+  const { data: billingStatusData } = useQuery({
+    queryKey: ['admin', 'system-config', 'billing-status'],
+    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
+  })
+
   const [backfillEnabled, setBackfillEnabled] = useState(false)
   const [queueQuotaEnabled, setQueueQuotaEnabled] = useState(false)
   const [prequeueWaitingToleranceSeconds, setPrequeueWaitingToleranceSeconds] = useState('')
@@ -78,44 +112,55 @@ function RouteComponent() {
   const [maxTotalActivationsPerRound, setMaxTotalActivationsPerRound] = useState('')
   const [prequeueCandidateSize, setPrequeueCandidateSize] = useState('')
 
-  const { data: billingStatusData } = useQuery({
-    queryKey: ['admin', 'system-config', 'billing-status'],
-    queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
-  })
-
   useEffect(() => {
-    if (llmConfigData) {
-      llmForm.reset({
-        baseUrl: llmConfigData.baseUrl,
-        modelName: llmConfigData.modelName,
-        apiKey: llmConfigData.apiKey || '',
-      })
+    if (!llmConfigData) {
+      return
     }
+
+    llmForm.reset({
+      baseUrl: llmConfigData.baseUrl,
+      modelName: llmConfigData.modelName,
+      apiKey: llmConfigData.apiKey || '',
+    })
   }, [llmConfigData, llmForm])
 
   useEffect(() => {
-    if (prequeueConfigData) {
-      setBackfillEnabled(prequeueConfigData.backfillEnabled)
-      setQueueQuotaEnabled(prequeueConfigData.queueQuotaEnabled)
-      setPrequeueWaitingToleranceSeconds(
-        String(prequeueConfigData.normalJobWaitingToleranceSeconds ?? '')
-      )
-      setActivateTickerIntervalSeconds(
-        String(prequeueConfigData.activateTickerIntervalSeconds ?? '')
-      )
-      setMaxTotalActivationsPerRound(String(prequeueConfigData.maxTotalActivationsPerRound ?? ''))
-      setPrequeueCandidateSize(String(prequeueConfigData.prequeueCandidateSize ?? ''))
+    if (!storageDecisionConfigData) {
+      return
     }
+
+    storageDecisionForm.reset({
+      decisionMode: storageDecisionConfigData.decisionMode || 'agent',
+      configSource: storageDecisionConfigData.configSource || 'platform',
+      baseUrl: storageDecisionConfigData.baseUrl || DEFAULT_STORAGE_BASE_URL,
+      modelName: storageDecisionConfigData.modelName || '',
+      apiKey: storageDecisionConfigData.apiKey || '',
+    })
+  }, [storageDecisionConfigData, storageDecisionForm])
+
+  useEffect(() => {
+    if (!prequeueConfigData) {
+      return
+    }
+
+    setBackfillEnabled(prequeueConfigData.backfillEnabled)
+    setQueueQuotaEnabled(prequeueConfigData.queueQuotaEnabled)
+    setPrequeueWaitingToleranceSeconds(
+      String(prequeueConfigData.normalJobWaitingToleranceSeconds ?? '')
+    )
+    setActivateTickerIntervalSeconds(String(prequeueConfigData.activateTickerIntervalSeconds ?? ''))
+    setMaxTotalActivationsPerRound(String(prequeueConfigData.maxTotalActivationsPerRound ?? ''))
+    setPrequeueCandidateSize(String(prequeueConfigData.prequeueCandidateSize ?? ''))
   }, [prequeueConfigData])
 
-  const handleError = (error: unknown) => {
-    if (typeof error === 'object' && error !== null && 'data' in error) {
-      const errorData = (error as { data: IErrorResponse }).data
-      const errorCode = errorData?.code
+  const handleBusinessLogicError = (error: unknown, businessLogicMessage: string) => {
+    if (typeof error !== 'object' || error === null || !('data' in error)) {
+      return
+    }
 
-      if (errorCode === ERROR_BUSINESS_LOGIC_ERROR) {
-        toast.error(t('systemConfig.gpuAnalysis.error.llmCheckFailed'))
-      }
+    const errorData = (error as { data: IErrorResponse }).data
+    if (errorData?.code === ERROR_BUSINESS_LOGIC_ERROR) {
+      toast.error(businessLogicMessage)
     }
   }
 
@@ -128,37 +173,74 @@ function RouteComponent() {
       }),
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'llm'] })
-      if (vars.validate) {
-        toast.success(t('systemConfig.llm.testAndSaveSuccess'))
-      } else {
-        toast.success(t('systemConfig.llm.saveSuccess'))
-      }
+      toast.success(
+        vars.validate ? t('systemConfig.llm.testAndSaveSuccess') : t('systemConfig.llm.saveSuccess')
+      )
     },
-    onError: handleError,
+    onError: (error) =>
+      handleBusinessLogicError(error, t('systemConfig.gpuAnalysis.error.llmCheckFailed')),
   })
 
   const resetLLMMutation = useMutation({
     mutationFn: apiAdminResetLLMConfig,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'llm'] })
-
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'gpu-status'] })
       toast.success(t('common.resetSuccess'))
     },
-    onError: handleError,
+    onError: (error) =>
+      handleBusinessLogicError(error, t('systemConfig.gpuAnalysis.error.llmCheckFailed')),
+  })
+
+  const updateStorageDecisionMutation = useMutation({
+    mutationFn: (vars: { data: StorageDecisionFormSchema; validate: boolean }) =>
+      apiAdminUpdateStorageDecisionConfig({
+        ...vars.data,
+        baseUrl: vars.data.baseUrl ?? '',
+        modelName: vars.data.modelName ?? '',
+        apiKey: vars.data.apiKey ?? '',
+        validate: vars.validate,
+      }),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'storage-decision'] })
+      toast.success(
+        vars.validate
+          ? t('systemConfig.storageDecision.testAndSaveSuccess')
+          : t('systemConfig.storageDecision.saveSuccess')
+      )
+    },
+    onError: (error) =>
+      handleBusinessLogicError(
+        error,
+        t('systemConfig.storageDecision.error.connectionCheckFailed')
+      ),
+  })
+
+  const resetStorageDecisionMutation = useMutation({
+    mutationFn: apiAdminResetStorageDecisionConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'storage-decision'] })
+      toast.success(t('common.resetSuccess'))
+    },
+    onError: (error) =>
+      handleBusinessLogicError(
+        error,
+        t('systemConfig.storageDecision.error.connectionCheckFailed')
+      ),
   })
 
   const toggleGpuMutation = useMutation({
     mutationFn: apiAdminSetGpuAnalysisStatus,
     onSuccess: (_data, newStatus) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'gpu-status'] })
-
-      const message = newStatus
-        ? t('systemConfig.gpuAnalysis.enabledSuccess')
-        : t('systemConfig.gpuAnalysis.disabledSuccess')
-      toast.success(message)
+      toast.success(
+        newStatus
+          ? t('systemConfig.gpuAnalysis.enabledSuccess')
+          : t('systemConfig.gpuAnalysis.disabledSuccess')
+      )
     },
-    onError: handleError,
+    onError: (error) =>
+      handleBusinessLogicError(error, t('systemConfig.gpuAnalysis.error.llmCheckFailed')),
   })
 
   const updateBillingMutation = useMutation({
@@ -204,38 +286,6 @@ function RouteComponent() {
     onError: showErrorToast,
   })
 
-  const handleLlmSubmit = (values: LlmFormSchema, validate: boolean) => {
-    updateLLMMutation.mutate({ data: values, validate })
-  }
-
-  const handleLlmReset = () => {
-    resetLLMMutation.mutate()
-  }
-
-  const handleGpuToggle = async (checked: boolean) => {
-    if (checked) {
-      const isValid = await llmForm.trigger()
-      if (!isValid) {
-        toast.error(t('systemConfig.llm.validation.formInvalid'))
-        return
-      }
-
-      toast.info(t('systemConfig.gpuAnalysis.verifyingLLM'))
-      const currentLlmValues = llmForm.getValues()
-
-      updateLLMMutation.mutate(
-        { data: currentLlmValues, validate: true },
-        {
-          onSuccess: () => {
-            toggleGpuMutation.mutate(true)
-          },
-        }
-      )
-    } else {
-      toggleGpuMutation.mutate(false)
-    }
-  }
-
   const buildPrequeuePayload = () => ({
     backfillEnabled,
     queueQuotaEnabled,
@@ -274,8 +324,41 @@ function RouteComponent() {
       invalidatePrequeueConfig()
       toast.success(t('systemConfig.prequeue.saveSuccess'))
     },
-    onError: handleError,
+    onError: showErrorToast,
   })
+
+  const handleLlmSubmit = (values: LlmFormSchema, validate: boolean) => {
+    updateLLMMutation.mutate({ data: values, validate })
+  }
+
+  const handleStorageDecisionSubmit = (values: StorageDecisionFormSchema, validate: boolean) => {
+    updateStorageDecisionMutation.mutate({ data: values, validate })
+  }
+
+  const handleGpuToggle = async (checked: boolean) => {
+    if (!checked) {
+      toggleGpuMutation.mutate(false)
+      return
+    }
+
+    const isValid = await llmForm.trigger()
+    if (!isValid) {
+      toast.error(t('systemConfig.llm.validation.formInvalid'))
+      return
+    }
+
+    toast.info(t('systemConfig.gpuAnalysis.verifyingLLM'))
+    const currentLlmValues = llmForm.getValues()
+
+    updateLLMMutation.mutate(
+      { data: currentLlmValues, validate: true },
+      {
+        onSuccess: () => {
+          toggleGpuMutation.mutate(true)
+        },
+      }
+    )
+  }
 
   const handlePrequeueSubmit = () => {
     if (!validatePrequeuePositiveIntegers()) {
@@ -283,8 +366,6 @@ function RouteComponent() {
     }
     updatePrequeueMutation.mutate()
   }
-
-  const isPrequeueConfigPending = updatePrequeueMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -302,7 +383,7 @@ function RouteComponent() {
           form={llmForm}
           isPending={updateLLMMutation.isPending || resetLLMMutation.isPending}
           onSubmit={handleLlmSubmit}
-          onReset={handleLlmReset}
+          onReset={() => resetLLMMutation.mutate()}
         />
 
         <GpuAnalysis
@@ -316,7 +397,7 @@ function RouteComponent() {
         <PrequeueSettings
           backfillEnabled={backfillEnabled}
           queueQuotaEnabled={queueQuotaEnabled}
-          isPending={isPrequeueConfigPending}
+          isPending={updatePrequeueMutation.isPending}
           waitingToleranceSeconds={prequeueWaitingToleranceSeconds}
           activateTickerIntervalSeconds={activateTickerIntervalSeconds}
           maxTotalActivationsPerRound={maxTotalActivationsPerRound}
@@ -340,6 +421,17 @@ function RouteComponent() {
           onSave={(payload) => updateBillingMutation.mutate(payload)}
           onResetAll={() => resetAllBillingMutation.mutate()}
           onGrantAllExtra={(payload) => grantAllUsersExtraMutation.mutate(payload)}
+        />
+      </Card>
+
+      <Card>
+        <StorageDecisionSettings
+          form={storageDecisionForm}
+          isPending={
+            updateStorageDecisionMutation.isPending || resetStorageDecisionMutation.isPending
+          }
+          onSubmit={handleStorageDecisionSubmit}
+          onReset={() => resetStorageDecisionMutation.mutate()}
         />
       </Card>
     </div>

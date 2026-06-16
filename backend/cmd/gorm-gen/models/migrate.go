@@ -22,6 +22,13 @@ import (
 func main() {
 	db := query.GetDB()
 
+	createTableIfMissing := func(tx *gorm.DB, dst any) error {
+		if err := tx.Migrator().CreateTable(dst); err != nil && !tx.Migrator().HasTable(dst) {
+			return err
+		}
+		return nil
+	}
+
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		// your migrations here
 		// See https://pkg.go.dev/github.com/go-gormigrate/gormigrate/v2#Migration for details.
@@ -1138,6 +1145,545 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202603311945",
+			Migrate: func(tx *gorm.DB) error {
+				// 创建 user_space_sizes 表
+				return tx.Migrator().CreateTable(&model.UserSpaceSize{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				// 删除 user_space_sizes 表
+				return tx.Migrator().DropTable(&model.UserSpaceSize{})
+			},
+		},
+		{
+			ID: "202604011000",
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					SpaceQuota int64 `gorm:"type:bigint;default:-1;comment:用户空间配额（字节），-1 表示无限制"`
+				}
+				return tx.Migrator().AddColumn(&User{}, "SpaceQuota")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type User struct {
+					SpaceQuota int64 `gorm:"type:bigint;default:-1;comment:用户空间配额（字节），-1 表示无限制"`
+				}
+				return tx.Migrator().DropColumn(&User{}, "SpaceQuota")
+			},
+		},
+		{
+			ID: "202604082000",
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					OriginalSpaceQuota *int64 `gorm:"type:bigint;default:null;comment:临时扩容前的原始配额（字节），NULL 表示无临时扩容"`
+				}
+				return tx.Migrator().AddColumn(&User{}, "OriginalSpaceQuota")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type User struct {
+					OriginalSpaceQuota *int64 `gorm:"type:bigint;default:null"`
+				}
+				return tx.Migrator().DropColumn(&User{}, "OriginalSpaceQuota")
+			},
+		},
+		{
+			ID: "202604083000",
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					JobsFrozen bool `gorm:"type:boolean;default:false;comment:是否禁止创建新作业（由 AI 扩容决策触发）"`
+				}
+				return tx.Migrator().AddColumn(&User{}, "JobsFrozen")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type User struct {
+					JobsFrozen bool `gorm:"type:boolean;default:false"`
+				}
+				return tx.Migrator().DropColumn(&User{}, "JobsFrozen")
+			},
+		},
+		{
+			ID: "202604084000",
+			Migrate: func(tx *gorm.DB) error {
+				// 种入 analyze-storage-alerts 和 update-user-space-size 巡检任务（默认暂停）
+				type CronJobConfig struct {
+					gorm.Model
+					Name    string `gorm:"type:varchar(128);not null;index;unique"`
+					Type    string `gorm:"type:varchar(128);not null"`
+					Spec    string `gorm:"type:varchar(128);not null"`
+					Status  string `gorm:"type:varchar(128)"`
+					Config  string `gorm:"type:jsonb"`
+					EntryID int    `gorm:"type:int"`
+				}
+				jobs := []CronJobConfig{
+					{
+						Name:    "update-user-space-size",
+						Type:    "patrol",
+						Spec:    "*/30 * * * *",
+						Status:  "suspended",
+						Config:  "{}",
+						EntryID: -1,
+					},
+					{
+						Name:    "analyze-storage-alerts",
+						Type:    "patrol",
+						Spec:    "*/30 * * * *",
+						Status:  "suspended",
+						Config:  "{}",
+						EntryID: -1,
+					},
+					{
+						Name:    "auto-shrink-storage-expansions",
+						Type:    "patrol",
+						Spec:    "0 * * * *",
+						Status:  "suspended",
+						Config:  "{}",
+						EntryID: -1,
+					},
+				}
+				for i := range jobs {
+					job := &jobs[i]
+					if err := tx.Table("cron_job_configs").Where("name = ?", job.Name).FirstOrCreate(job).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Table("cron_job_configs").
+					Where("name IN ?", []string{"update-user-space-size", "analyze-storage-alerts", "auto-shrink-storage-expansions"}).
+					Delete(nil).Error
+			},
+		},
+		{
+			ID: "202604081000",
+			Migrate: func(tx *gorm.DB) error {
+				type TenantUsageHistory struct {
+					ID         uint           `gorm:"primaryKey" json:"id"`
+					TenantID   uint           `gorm:"index" json:"tenant_id"`
+					UsageBytes int64          `json:"usage_bytes"`
+					RecordedAt time.Time      `gorm:"index" json:"recorded_at"`
+					CreatedAt  time.Time      `json:"created_at"`
+					UpdatedAt  time.Time      `json:"updated_at"`
+					DeletedAt  gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+				}
+				return tx.Migrator().CreateTable(&TenantUsageHistory{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("tenant_usage_histories")
+			},
+		},
+		{
+			ID: "202604101030",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.Migrator().CreateTable(&model.StorageDecisionRecord{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&model.StorageDecisionRecord{})
+			},
+		},
+		{
+			ID: "202604101200",
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					ShrinkStage          *string    `gorm:"type:varchar(64);default:null"`
+					ShrinkStageUpdatedAt *time.Time `gorm:"default:null"`
+				}
+				if err := tx.Migrator().AddColumn(&User{}, "ShrinkStage"); err != nil {
+					return err
+				}
+				return tx.Migrator().AddColumn(&User{}, "ShrinkStageUpdatedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type User struct {
+					ShrinkStage          *string    `gorm:"type:varchar(64);default:null"`
+					ShrinkStageUpdatedAt *time.Time `gorm:"default:null"`
+				}
+				if err := tx.Migrator().DropColumn(&User{}, "ShrinkStageUpdatedAt"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&User{}, "ShrinkStage")
+			},
+		},
+		{
+			ID: "202604161930",
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.Migrator().CreateTable(&model.StorageIndexScanJob{}); err != nil {
+					return err
+				}
+				if err := tx.Migrator().CreateTable(&model.StorageIndexEntry{}); err != nil {
+					return err
+				}
+				if err := tx.Migrator().CreateTable(&model.StorageIndexDirectoryMetric{}); err != nil {
+					return err
+				}
+				return tx.Migrator().CreateTable(&model.StorageIndexRedundancyHit{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Migrator().DropTable(&model.StorageIndexRedundancyHit{}); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropTable(&model.StorageIndexDirectoryMetric{}); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropTable(&model.StorageIndexEntry{}); err != nil {
+					return err
+				}
+				return tx.Migrator().DropTable(&model.StorageIndexScanJob{})
+			},
+		},
+		{
+			ID: "202604162000",
+			Migrate: func(tx *gorm.DB) error {
+				type StorageIndexRedundancyHit struct {
+					VerificationStatus string `gorm:"type:varchar(32);not null;default:suspected;index;comment:校验状态"`
+					VerificationMode   string `gorm:"type:varchar(32);comment:校验方式"`
+					HashAlgorithm      string `gorm:"type:varchar(32);comment:哈希算法"`
+					TargetHash         string `gorm:"type:varchar(128);comment:工作空间对象哈希"`
+					PublicHash         string `gorm:"type:varchar(128);comment:公共空间对象哈希"`
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexRedundancyHit{}, "VerificationStatus") {
+					if err := tx.Migrator().AddColumn(&StorageIndexRedundancyHit{}, "VerificationStatus"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexRedundancyHit{}, "VerificationMode") {
+					if err := tx.Migrator().AddColumn(&StorageIndexRedundancyHit{}, "VerificationMode"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexRedundancyHit{}, "HashAlgorithm") {
+					if err := tx.Migrator().AddColumn(&StorageIndexRedundancyHit{}, "HashAlgorithm"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexRedundancyHit{}, "TargetHash") {
+					if err := tx.Migrator().AddColumn(&StorageIndexRedundancyHit{}, "TargetHash"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexRedundancyHit{}, "PublicHash") {
+					if err := tx.Migrator().AddColumn(&StorageIndexRedundancyHit{}, "PublicHash"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type StorageIndexRedundancyHit struct {
+					VerificationStatus string `gorm:"type:varchar(32);not null;default:suspected;index;comment:校验状态"`
+					VerificationMode   string `gorm:"type:varchar(32);comment:校验方式"`
+					HashAlgorithm      string `gorm:"type:varchar(32);comment:哈希算法"`
+					TargetHash         string `gorm:"type:varchar(128);comment:工作空间对象哈希"`
+					PublicHash         string `gorm:"type:varchar(128);comment:公共空间对象哈希"`
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexRedundancyHit{}, "PublicHash"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexRedundancyHit{}, "TargetHash"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexRedundancyHit{}, "HashAlgorithm"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexRedundancyHit{}, "VerificationMode"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&StorageIndexRedundancyHit{}, "VerificationStatus")
+			},
+		},
+		{
+			ID: "202604162030",
+			Migrate: func(tx *gorm.DB) error {
+				type StorageIndexScanJob struct {
+					MaterializedSnapshotName string `gorm:"type:varchar(160);comment:实际物化快照目录名称"`
+					ScanRoot                 string `gorm:"type:text;comment:实际扫描根路径"`
+					ScanMode                 string `gorm:"type:varchar(32);not null;default:full;comment:扫描模式"`
+					BaseScanID               string `gorm:"type:varchar(64);index;comment:差异比对基线扫描ID"`
+					DiffMethod               string `gorm:"type:varchar(32);comment:差异计算方式"`
+					ChangedPathCount         int64  `gorm:"not null;default:0;comment:与基线相比的变化目录数"`
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "MaterializedSnapshotName") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "MaterializedSnapshotName"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "ScanRoot") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "ScanRoot"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "ScanMode") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "ScanMode"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "BaseScanID") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "BaseScanID"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "DiffMethod") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "DiffMethod"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "ChangedPathCount") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "ChangedPathCount"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type StorageIndexScanJob struct {
+					ScanMode         string `gorm:"type:varchar(32);not null;default:full;comment:扫描模式"`
+					BaseScanID       string `gorm:"type:varchar(64);index;comment:差异比对基线扫描ID"`
+					DiffMethod       string `gorm:"type:varchar(32);comment:差异计算方式"`
+					ChangedPathCount int64  `gorm:"not null;default:0;comment:与基线相比的变化目录数"`
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexScanJob{}, "ChangedPathCount"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexScanJob{}, "DiffMethod"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexScanJob{}, "BaseScanID"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&StorageIndexScanJob{}, "ScanMode")
+			},
+		},
+		{
+			ID: "202604162040",
+			Migrate: func(tx *gorm.DB) error {
+				type CronJobConfig struct {
+					gorm.Model
+					Name    string `gorm:"type:varchar(128);not null;index;unique"`
+					Type    string `gorm:"type:varchar(128);not null"`
+					Spec    string `gorm:"type:varchar(128);not null"`
+					Status  string `gorm:"type:varchar(128)"`
+					Config  string `gorm:"type:jsonb"`
+					EntryID int    `gorm:"type:int"`
+				}
+				jobs := []CronJobConfig{
+					{
+						Name:    "refresh-public-storage-index-baseline",
+						Type:    "patrol",
+						Spec:    "0 2 * * *",
+						Status:  "suspended",
+						Config:  "{}",
+						EntryID: -1,
+					},
+					{
+						Name:    "refresh-user-storage-index-daily",
+						Type:    "patrol",
+						Spec:    "30 2 * * *",
+						Status:  "suspended",
+						Config:  "{}",
+						EntryID: -1,
+					},
+				}
+				for i := range jobs {
+					job := &jobs[i]
+					if err := tx.Table("cron_job_configs").Where("name = ?", job.Name).FirstOrCreate(job).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Table("cron_job_configs").
+					Where("name IN ?", []string{"refresh-public-storage-index-baseline", "refresh-user-storage-index-daily"}).
+					Delete(nil).Error
+			},
+		},
+		{
+			ID: "202604162045",
+			Migrate: func(tx *gorm.DB) error {
+				type StorageIndexScanJob struct {
+					MaterializedSnapshotName string `gorm:"type:varchar(160);comment:实际物化快照目录名称"`
+					ScanRoot                 string `gorm:"type:text;comment:实际扫描根路径"`
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "MaterializedSnapshotName") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "MaterializedSnapshotName"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexScanJob{}, "ScanRoot") {
+					if err := tx.Migrator().AddColumn(&StorageIndexScanJob{}, "ScanRoot"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type StorageIndexScanJob struct {
+					MaterializedSnapshotName string `gorm:"type:varchar(160);comment:实际物化快照目录名称"`
+					ScanRoot                 string `gorm:"type:text;comment:实际扫描根路径"`
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexScanJob{}, "ScanRoot"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&StorageIndexScanJob{}, "MaterializedSnapshotName")
+			},
+		},
+		{
+			ID: "202604181100",
+			Migrate: func(tx *gorm.DB) error {
+				type StorageIndexDirectoryMetric struct {
+					ImmediateChildDirCount  int64      `gorm:"not null;default:0;comment:直接子目录数"`
+					ImmediateChildFileCount int64      `gorm:"not null;default:0;comment:直接子文件数"`
+					LatestModifiedAt        *time.Time `gorm:"comment:目录最近修改时间"`
+					Signature               string     `gorm:"type:varchar(128);index;comment:目录签名"`
+					CategoryHint            string     `gorm:"type:varchar(64);index;comment:目录类别提示"`
+					CandidateScore          float64    `gorm:"not null;default:0;comment:候选目录评分"`
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexDirectoryMetric{}, "ImmediateChildDirCount") {
+					if err := tx.Migrator().AddColumn(&StorageIndexDirectoryMetric{}, "ImmediateChildDirCount"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexDirectoryMetric{}, "ImmediateChildFileCount") {
+					if err := tx.Migrator().AddColumn(&StorageIndexDirectoryMetric{}, "ImmediateChildFileCount"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexDirectoryMetric{}, "LatestModifiedAt") {
+					if err := tx.Migrator().AddColumn(&StorageIndexDirectoryMetric{}, "LatestModifiedAt"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexDirectoryMetric{}, "Signature") {
+					if err := tx.Migrator().AddColumn(&StorageIndexDirectoryMetric{}, "Signature"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexDirectoryMetric{}, "CategoryHint") {
+					if err := tx.Migrator().AddColumn(&StorageIndexDirectoryMetric{}, "CategoryHint"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexDirectoryMetric{}, "CandidateScore") {
+					if err := tx.Migrator().AddColumn(&StorageIndexDirectoryMetric{}, "CandidateScore"); err != nil {
+						return err
+					}
+				}
+				if err := createTableIfMissing(tx, &model.StorageIndexCandidate{}); err != nil {
+					return err
+				}
+				if err := createTableIfMissing(tx, &model.StorageIndexCandidateFile{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Migrator().DropTable(&model.StorageIndexCandidateFile{}); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropTable(&model.StorageIndexCandidate{}); err != nil {
+					return err
+				}
+				type StorageIndexDirectoryMetric struct {
+					ImmediateChildDirCount  int64      `gorm:"not null;default:0;comment:直接子目录数"`
+					ImmediateChildFileCount int64      `gorm:"not null;default:0;comment:直接子文件数"`
+					LatestModifiedAt        *time.Time `gorm:"comment:目录最近修改时间"`
+					Signature               string     `gorm:"type:varchar(128);index;comment:目录签名"`
+					CategoryHint            string     `gorm:"type:varchar(64);index;comment:目录类别提示"`
+					CandidateScore          float64    `gorm:"not null;default:0;comment:候选目录评分"`
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexDirectoryMetric{}, "CandidateScore"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexDirectoryMetric{}, "CategoryHint"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexDirectoryMetric{}, "Signature"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexDirectoryMetric{}, "LatestModifiedAt"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&StorageIndexDirectoryMetric{}, "ImmediateChildFileCount"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&StorageIndexDirectoryMetric{}, "ImmediateChildDirCount")
+			},
+		},
+		{
+			ID: "202604181130",
+			Migrate: func(tx *gorm.DB) error {
+				if err := createTableIfMissing(tx, &model.StorageIndexPublicRootBaseline{}); err != nil {
+					return err
+				}
+				if err := createTableIfMissing(tx, &model.StorageIndexPublicFileBaseline{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Migrator().DropTable(&model.StorageIndexPublicRootBaseline{}); err != nil {
+					return err
+				}
+				return tx.Migrator().DropTable(&model.StorageIndexPublicFileBaseline{})
+			},
+		},
+		{
+			ID: "202604181145",
+			Migrate: func(tx *gorm.DB) error {
+				if !tx.Migrator().HasColumn(&model.StorageIndexPublicFileBaseline{}, "PublicRootHash") {
+					if err := tx.Migrator().AddColumn(&model.StorageIndexPublicFileBaseline{}, "PublicRootHash"); err != nil {
+						return err
+					}
+				}
+				if !tx.Migrator().HasColumn(&model.StorageIndexPublicFileBaseline{}, "MatchKeyHash") {
+					if err := tx.Migrator().AddColumn(&model.StorageIndexPublicFileBaseline{}, "MatchKeyHash"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Migrator().DropColumn(&model.StorageIndexPublicFileBaseline{}, "MatchKeyHash"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&model.StorageIndexPublicFileBaseline{}, "PublicRootHash")
+			},
+		},
+		{
+			ID: "202604181150",
+			Migrate: func(tx *gorm.DB) error {
+				if err := createTableIfMissing(tx, &model.StorageIndexPublicRootBaseline{}); err != nil {
+					return err
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(&model.StorageIndexPublicRootBaseline{})
+			},
+		},
+		{
+			ID: "202604300108",
+			Migrate: func(tx *gorm.DB) error {
+				type StorageIndexEntry struct {
+					ChangedAt *time.Time `gorm:"comment:ctime"`
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexEntry{}, "ChangedAt") {
+					if err := tx.Migrator().AddColumn(&StorageIndexEntry{}, "ChangedAt"); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type StorageIndexEntry struct {
+					ChangedAt *time.Time `gorm:"comment:ctime"`
+				}
+				if !tx.Migrator().HasColumn(&StorageIndexEntry{}, "ChangedAt") {
+					return nil
+				}
+				return tx.Migrator().DropColumn(&StorageIndexEntry{}, "ChangedAt")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1170,6 +1716,17 @@ func main() {
 			&model.OperationLog{},
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
+			&model.UserSpaceSize{},
+			&model.TenantUsageHistory{},
+			&model.StorageDecisionRecord{},
+			&model.StorageIndexScanJob{},
+			&model.StorageIndexEntry{},
+			&model.StorageIndexDirectoryMetric{},
+			&model.StorageIndexRedundancyHit{},
+			&model.StorageIndexCandidate{},
+			&model.StorageIndexCandidateFile{},
+			&model.StorageIndexPublicRootBaseline{},
+			&model.StorageIndexPublicFileBaseline{},
 		)
 		if err != nil {
 			return err
@@ -1278,6 +1835,46 @@ func main() {
 				Spec:    "*/5 * * * *",
 				Status:  model.CronJobConfigStatusSuspended,
 				Config:  datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["custom"]}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "update-user-space-size",
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "*/30 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "analyze-storage-alerts",
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "*/30 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "auto-shrink-storage-expansions",
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "0 * * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "refresh-public-storage-index-baseline",
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "0 2 * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{}`),
+				EntryID: -1,
+			},
+			{
+				Name:    "refresh-user-storage-index-daily",
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "30 2 * * *",
+				Status:  model.CronJobConfigStatusSuspended,
+				Config:  datatypes.JSON(`{}`),
 				EntryID: -1,
 			},
 		}

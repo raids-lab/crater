@@ -122,6 +122,11 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 
 	token := util.GetToken(c)
 
+	if err := util.CheckStorageQuota(token.Username); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
 	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, req.VolumeMounts, token)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)

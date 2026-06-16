@@ -52,26 +52,55 @@ const JOB_CONFIGS = [
   {
     jobId: 'clean-long-time-job',
     jobName: 'cronPolicy.longTimeTitle',
+    jobDescription: 'cronPolicy.longTimeDesc',
     jobType: 'cleaner_function',
   },
   {
     jobId: 'clean-low-gpu-util-job',
     jobName: 'cronPolicy.lowGpuTitle',
+    jobDescription: 'cronPolicy.lowGpuDesc',
     jobType: 'cleaner_function',
   },
   {
     jobId: 'clean-waiting-jupyter',
     jobName: 'cronPolicy.jupyterTitle',
+    jobDescription: 'cronPolicy.jupyterDesc',
     jobType: 'cleaner_function',
   },
   {
     jobId: 'clean-waiting-custom',
     jobName: 'cronPolicy.customTitle',
+    jobDescription: 'cronPolicy.customDesc',
     jobType: 'cleaner_function',
   },
   {
     jobId: 'trigger-gpu-analysis-job',
     jobName: 'cronPolicy.gpuAnalysisTitle',
+    jobDescription: 'cronPolicy.gpuAnalysisDesc',
+    jobType: 'patrol_function',
+  },
+  {
+    jobId: 'update-user-space-size',
+    jobName: 'cronPolicy.updateUserSpaceSizeTitle',
+    jobDescription: 'cronPolicy.updateUserSpaceSizeDesc',
+    jobType: 'patrol_function',
+  },
+  {
+    jobId: 'analyze-storage-alerts',
+    jobName: 'cronPolicy.analyzeStorageAlertsTitle',
+    jobDescription: 'cronPolicy.analyzeStorageAlertsDesc',
+    jobType: 'patrol_function',
+  },
+  {
+    jobId: 'refresh-public-storage-index-baseline',
+    jobName: 'cronPolicy.refreshPublicStorageIndexTitle',
+    jobDescription: 'cronPolicy.refreshPublicStorageIndexDesc',
+    jobType: 'patrol_function',
+  },
+  {
+    jobId: 'refresh-user-storage-index-daily',
+    jobName: 'cronPolicy.refreshUserStorageIndexTitle',
+    jobDescription: 'cronPolicy.refreshUserStorageIndexDesc',
     jobType: 'patrol_function',
   },
   {
@@ -98,8 +127,6 @@ function CronPolicy({ className }: { className?: string }) {
 
   const showGpuAnalysis = gpuStatus?.enabled ?? false
   const showBilling = billingStatus?.featureEnabled ?? false
-  const showPatrolTab = showGpuAnalysis || showBilling
-
   const jobsQuery = useQuery({
     queryKey: ['admin', 'cronjobs', 'configs'],
     queryFn: async () => {
@@ -145,6 +172,7 @@ function CronPolicy({ className }: { className?: string }) {
       }),
     [showBilling, showGpuAnalysis]
   )
+  const showPatrolTab = patrolJobs.length > 0
   const tabToJobNames: Record<string, string[]> = {
     cleaner_function: cleanerJobs.map((j) => j.jobId),
     patrol_function: patrolJobs.map((j) => j.jobId),
@@ -182,6 +210,7 @@ function CronPolicy({ className }: { className?: string }) {
               key={job.jobId}
               jobId={job.jobId}
               jobName={job.jobName}
+              jobDescription={job.jobDescription}
               jobType={job.jobType}
               status={currentStatus}
               spec={config.spec}

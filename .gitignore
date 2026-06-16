@@ -79,3 +79,47 @@ kubeconfig*
 
 # Claude Code
 .claude/
+storage/etc/config.yaml
+.gocache/
+.gomodcache/
+
+# Local build/test scratch
+.gocache*/
+.gotmp*/
+backend/crater
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Temporary experiment artifacts
+tmp_*
+rewrite_section3*.py
+storage-governance-datasets.zip
+storage-governance-qwen25-7b.zip
+
+# Editor/tool backup files with random numeric suffixes
+*.go.[0-9]*
+
+# Local workspace-only directories and assets
+/.claude/
+/.gocache-test/
+/.gopath/
+/_external/
+/datasets/
+/models/
+/models_compare/
+/offline-tools/
+/offline-tools.zip
+/graduation-thesis-latex/
+
+# Local document/build logs
+/texput.log
+
+# Local documentation drafts
+/docs/zh-CN/framework-architecture-and-workflow.md
+/docs/zh-CN/storage-governance-requirements/
+/docs/zh-CN/storage-management.md
+/docs/zh-CN/storage-metadata-index-policy-engine.md
+/docs/zh-CN/storage-tiering-policy-satisfier.md

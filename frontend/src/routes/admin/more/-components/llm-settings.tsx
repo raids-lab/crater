@@ -43,6 +43,7 @@ export const createLlmSettingsSchema = (t: (key: string) => string) =>
   })
 
 export type LlmFormSchema = z.infer<ReturnType<typeof createLlmSettingsSchema>>
+
 interface LlmSettingsProps {
   form: UseFormReturn<LlmFormSchema>
   isPending: boolean
@@ -124,7 +125,7 @@ export function LlmSettings({ form, isPending, onSubmit, onReset }: LlmSettingsP
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                       {t('systemConfig.llm.resetConfirmDesc') ||
-                        '此操作将清除当前表单的所有修改并恢复为默认值，无法撤销。'}
+                        '此操作将清空当前表单的所有修改并恢复默认值，无法撤销。'}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

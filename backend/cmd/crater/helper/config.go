@@ -105,6 +105,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	registerConfig.CronJobManager = cronjob.NewCronJobManager(
 		registerConfig.Client,
 		registerConfig.KubeClient,
+		registerConfig.KubeConfig,
 		registerConfig.PrometheusClient,
 		registerConfig.GpuAnalysisService,
 		registerConfig.BillingService,

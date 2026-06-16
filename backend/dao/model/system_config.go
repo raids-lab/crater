@@ -1,16 +1,14 @@
-// 请将此文件保存为 dao/model/system_config.go
-
 package model
 
-// SystemConfig 用于存储系统级别的键值对配置
+// SystemConfig stores system-wide key-value configuration.
 type SystemConfig struct {
-	Key   string `gorm:"primarykey;size:100;comment:配置项的键"`
-	Value string `gorm:"type:text;comment:配置项的值"`
+	Key   string `gorm:"primarykey;size:100;comment:配置项键"`
+	Value string `gorm:"type:text;comment:配置项值"`
 }
 
 const (
-	// LLM 相关配置键
-	ConfigKeyLLMBaseURL   = "LLM_API_BASE_URL" // 例如: https://api.openai.com/v1
+	// Generic LLM configuration keys.
+	ConfigKeyLLMBaseURL   = "LLM_API_BASE_URL" // e.g. https://api.openai.com/v1
 	ConfigKeyLLMAPIKey    = "LLM_API_KEY"      // #nosec G101
 	ConfigKeyLLMModelName = "LLM_MODEL_NAME"
 
@@ -27,13 +25,25 @@ const (
 	ConfigKeyBillingDefaultIssuePeriodMinute          = "BILLING_DEFAULT_ISSUE_PERIOD_MINUTES"
 	ConfigKeyBillingAccountIssueAmountOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_AMOUNT_OVERRIDE"
 	ConfigKeyBillingAccountIssuePeriodOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_PERIOD_OVERRIDE"
+
+	// Storage decision keys.
+	ConfigKeyStorageDecisionMode         = "STORAGE_DECISION_MODE"
+	ConfigKeyStorageDecisionConfigSource = "STORAGE_DECISION_CONFIG_SOURCE"
+	ConfigKeyStorageDirectModelBaseURL   = "STORAGE_DIRECT_MODEL_BASE_URL"
+	ConfigKeyStorageDirectModelAPIKey    = "STORAGE_DIRECT_MODEL_API_KEY" // #nosec G101
+	ConfigKeyStorageDirectModelName      = "STORAGE_DIRECT_MODEL_NAME"
 )
 
-// DefaultConfigKeys 定义了系统启动时必须存在的键
+// DefaultConfigKeys defines keys that must exist after startup.
 var DefaultConfigKeys = []string{
 	ConfigKeyLLMBaseURL,
 	ConfigKeyLLMAPIKey,
 	ConfigKeyLLMModelName,
+	ConfigKeyStorageDecisionMode,
+	ConfigKeyStorageDecisionConfigSource,
+	ConfigKeyStorageDirectModelBaseURL,
+	ConfigKeyStorageDirectModelAPIKey,
+	ConfigKeyStorageDirectModelName,
 	ConfigKeyEnableGpuAnalysis,
 	ConfigKeyEnableBillingFeature,
 	ConfigKeyEnableBillingActive,

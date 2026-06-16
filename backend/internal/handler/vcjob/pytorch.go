@@ -17,6 +17,7 @@ import (
 	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
+//nolint:gocyclo // Job assembly coordinates validation, queues, and task generation in one request flow.
 func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -30,6 +31,12 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
+
+	if err := util.CheckStorageQuota(token.Username); err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
 	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
 		return
 	}
