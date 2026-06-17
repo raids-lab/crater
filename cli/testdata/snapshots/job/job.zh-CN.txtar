@@ -1,0 +1,167 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-unknown-nojson/argv --
+crater job wat --no-interactive
+-- zh-CN/01-unknown-nojson/exit --
+2
+-- zh-CN/01-unknown-nojson/stdout --
+-- zh-CN/01-unknown-nojson/stderr --
+Error:
+  unknown command "wat" for "crater job"
+  
+  Did you mean this?
+  	get
+  
+  Run "crater job --help" for usage.
+-- zh-CN/02-unknown-json/argv --
+crater job wat --no-interactive --json
+-- zh-CN/02-unknown-json/exit --
+2
+-- zh-CN/02-unknown-json/stdout --
+-- zh-CN/02-unknown-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"wat\" for \"crater job\"\n\nDid you mean this?\n\tget\n\nRun \"crater job --help\" for usage."
+}
+-- zh-CN/03-get-missing-name-nojson/argv --
+crater job get --no-interactive
+-- zh-CN/03-get-missing-name-nojson/exit --
+2
+-- zh-CN/03-get-missing-name-nojson/stdout --
+-- zh-CN/03-get-missing-name-nojson/stderr --
+Error:
+  缺少必要参数：作业名称 (<name>)
+-- zh-CN/04-get-missing-name-json/argv --
+crater job get --no-interactive --json
+-- zh-CN/04-get-missing-name-json/exit --
+2
+-- zh-CN/04-get-missing-name-json/stdout --
+-- zh-CN/04-get-missing-name-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：作业名称 (\u003cname\u003e)"
+}
+-- zh-CN/05-ls-invalid-days-nojson/argv --
+crater job ls --no-interactive --days -2
+-- zh-CN/05-ls-invalid-days-nojson/exit --
+2
+-- zh-CN/05-ls-invalid-days-nojson/stdout --
+-- zh-CN/05-ls-invalid-days-nojson/stderr --
+Error:
+  days 必须大于等于 -1
+-- zh-CN/06-ls-invalid-status-json/argv --
+crater job ls --no-interactive --json --status bad
+-- zh-CN/06-ls-invalid-status-json/exit --
+2
+-- zh-CN/06-ls-invalid-status-json/stdout --
+-- zh-CN/06-ls-invalid-status-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的作业状态：bad"
+}
+-- zh-CN/07-create-jupyter-multi-usage-nojson/argv --
+crater job create jupyter --no-interactive --name demo --cpu -1 --memory -2Gi --gpu -1
+-- zh-CN/07-create-jupyter-multi-usage-nojson/exit --
+2
+-- zh-CN/07-create-jupyter-multi-usage-nojson/stdout --
+-- zh-CN/07-create-jupyter-multi-usage-nojson/stderr --
+Error:
+  缺少必要参数：镜像 (--image)
+  err_invalid_non_negative_float
+  err_invalid_non_negative_int
+  err_invalid_non_negative_int
+-- zh-CN/08-create-jupyter-multi-usage-json/argv --
+crater job create jupyter --no-interactive --json --name demo --cpu -1 --memory -2Gi --gpu -1
+-- zh-CN/08-create-jupyter-multi-usage-json/exit --
+2
+-- zh-CN/08-create-jupyter-multi-usage-json/stdout --
+-- zh-CN/08-create-jupyter-multi-usage-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "缺少必要参数：镜像 (--image)\nerr_invalid_non_negative_float\nerr_invalid_non_negative_int\nerr_invalid_non_negative_int",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "image",
+        "message": "缺少必要参数：镜像 (--image)"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "cpu",
+        "message": "err_invalid_non_negative_float"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "memory",
+        "message": "err_invalid_non_negative_int"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "gpu",
+        "message": "err_invalid_non_negative_int"
+      }
+    ]
+  }
+}
+-- zh-CN/09-create-custom-missing-working-dir-json/argv --
+crater job create custom --no-interactive --json --name demo --image example/image:tag --memory 2Gi --working-dir 
+-- zh-CN/09-create-custom-missing-working-dir-json/exit --
+2
+-- zh-CN/09-create-custom-missing-working-dir-json/stdout --
+-- zh-CN/09-create-custom-missing-working-dir-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：工作目录 (--working-dir)"
+}
+-- zh-CN/10-admin-lock-missing-duration-nojson/argv --
+crater admin job lock job-123 --no-interactive
+-- zh-CN/10-admin-lock-missing-duration-nojson/exit --
+2
+-- zh-CN/10-admin-lock-missing-duration-nojson/stdout --
+-- zh-CN/10-admin-lock-missing-duration-nojson/stderr --
+Error:
+  err_value_required_when_flag_enabled
+-- zh-CN/11-admin-clean-low-gpu-invalid-json/argv --
+crater admin job clean low-gpu --no-interactive --json --time-range 0 --wait-time -1
+-- zh-CN/11-admin-clean-low-gpu-invalid-json/exit --
+2
+-- zh-CN/11-admin-clean-low-gpu-invalid-json/stdout --
+-- zh-CN/11-admin-clean-low-gpu-invalid-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "err_invalid_positive_int\nerr_invalid_non_negative_int",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "time-range",
+        "message": "err_invalid_positive_int"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "threshold",
+        "message": "err_invalid_non_negative_int"
+      }
+    ]
+  }
+}
+-- zh-CN/12-ls-network-timeout-json/argv --
+crater job ls --no-interactive --json
+-- zh-CN/12-ls-network-timeout-json/exit --
+4
+-- zh-CN/12-ls-network-timeout-json/stdout --
+-- zh-CN/12-ls-network-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/vcjobs\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs\": context deadline exceeded"
+  }
+}

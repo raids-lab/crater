@@ -347,7 +347,7 @@
 
 ## 6. 作业模块 (job)
 
-本模块提供 Volcano 作业的只读查询能力。第一版仅使用 `/api/v1/vcjobs` 族接口；`aijobs` / `spjobs` 后续独立扩展。
+本模块覆盖前端作业页面的通用 Volcano 作业能力：列表、详情、Pods、事件、YAML、模板、Jupyter/WebIDE 访问凭据、SSH、快照、告警、删除/停止、基础创建，以及管理员锁定/保留/清理操作。所有访问平台的命令都使用当前 `auth` active context 的 token。管理员能力统一放在 `crater admin job ...` 下，不使用普通命令加 `--admin`。
 
 ### `crater job ls`
 - **描述**: 列出当前账号可见的作业。
@@ -357,8 +357,10 @@
   - `--user` (string): 调用 `/api/v1/vcjobs/user/{username}`，列出指定用户且位于 `--days` 回看窗口内的作业。
   - `--days` (int): 与 `--all` 或 `--user` 配合使用的回溯天数；`-1` 表示不按时间过滤。小于 `-1` 的值返回 `usage_error`。
   - `--status` (string): 本地过滤作业状态。
-  - `--type` (string): 本地过滤作业类型。
+  - `--type` (string): 本地过滤作业类型：`jupyter | webide | custom | pytorch | tensorflow | kuberay | deepspeed | openmpi`。
   - `--node` (string): 本地过滤运行在指定节点上的作业。
+  - `--owner` (string): 本地按用户名或显示名筛选。
+  - `--from` / `--to` (string): 本地按 `createdAt` 时间范围筛选，支持 RFC3339 或 `YYYY-MM-DD`。
   - `--interactive` (bool): 本地过滤交互式作业（`jupyter` / `webide`）。
   - `--batch` (bool): 本地过滤非交互式作业。
 - **处理逻辑**:
@@ -369,44 +371,132 @@
 - **`--json` 的 `data`**：`jobs`（数组，元素与平台作业摘要响应一致，过滤后返回）。
 - **状态**: [x] Completed
 
-### `crater job get <name>`
-- **描述**: 查看单个作业详情。
+### `crater job get|pods|events|yaml|template <name>`
+- **描述**:
+  - `get`: 查看单个作业详情。
+  - `pods`: 查看指定作业的 Pod 列表。
+  - `events`: 查看指定作业的 Kubernetes 事件。
+  - `yaml`: 查看指定作业的 YAML。
+  - `template`: 输出作业模板内容。
 - **位置参数**:
   - `<name>` (positional, required): 平台作业名，对应前端详情页路径中的作业名。
 - **处理逻辑**:
-  - 调用 `/api/v1/vcjobs/{name}/detail`。
+  - `get` 调用 `/api/v1/vcjobs/{name}/detail`。
+  - `pods` 调用 `/api/v1/vcjobs/{name}/pods`。
+  - `events` 调用 `/api/v1/vcjobs/{name}/event`。
+  - `yaml` 调用 `/api/v1/vcjobs/{name}/yaml`，默认模式直接输出 YAML 字符串到 stdout。
+  - `template` 调用 `/api/v1/vcjobs/{name}/template`。
   - 缺少 `<name>` 时返回 `usage_error`。
-- **`--json` 的 `data`**：`job`（对象，平台作业详情响应）。
-- **状态**: [x] Completed
-
-### `crater job pods <name>`
-- **描述**: 查看指定作业的 Pod 列表。
-- **位置参数**:
-  - `<name>` (positional, required): 平台作业名。
-- **处理逻辑**:
-  - 调用 `/api/v1/vcjobs/{name}/pods`。
   - 默认模式以表格展示 Pod 名称、命名空间、节点、IP、阶段和资源。
-- **`--json` 的 `data`**：`pods`（数组，平台作业 Pod 响应）。
+- **`--json` 的 `data`**：
+  - `get`: `job`
+  - `pods`: `pods`
+  - `events`: `events`
+  - `yaml`: `yaml`
+  - `template`: `template`
 - **状态**: [x] Completed
 
-### `crater job events <name>`
-- **描述**: 查看指定作业的 Kubernetes 事件。
+### `crater job token|secret|ssh|snapshot|alert|delete <name>`
+- **描述**:
+  - `token`: 获取运行中 Jupyter 作业的 URL 与 token。
+  - `secret`: 获取运行中 WebIDE 作业的 URL 与密码。
+  - `ssh`: 为运行中作业开启 SSH，并输出 `host:port`。
+  - `snapshot`: 为 Jupyter 或 Custom 作业创建镜像快照。
+  - `alert`: 切换作业告警状态。
+  - `delete`: 停止或删除自己的作业。
 - **位置参数**:
   - `<name>` (positional, required): 平台作业名。
-- **处理逻辑**:
-  - 调用 `/api/v1/vcjobs/{name}/event`。
-  - 默认模式逐行打印事件对象摘要；脚本化使用建议加 `--json`。
-- **`--json` 的 `data`**：`events`（数组，平台事件响应）。
+- **`--json` 的 `data`**：
+  - `token` / `secret`: `token`
+  - `ssh`: `ssh`
+  - `snapshot` / `alert` / `delete`: `message`
 - **状态**: [x] Completed
 
-### `crater job yaml <name>`
-- **描述**: 查看指定作业的 YAML。
+### `crater job create jupyter|webide`
+- **描述**: 创建交互式作业。支持 flags 构造常用请求，也支持 `--file` 传入完整 JSON 请求体。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--file` (string): 从文件读取完整 JSON 请求体；提供后忽略其它创建 flags。
+  - `--name` (string, required without `--file`): 显示名称。
+  - `--image` (string, required without `--file`): 镜像地址。
+  - `--arch` (stringSlice): 镜像架构。
+  - `--cpu` (float, default `1`): CPU 请求量，必须大于等于 0。
+  - `--memory` (string, required without `--file`): 内存请求量，不能为负数。
+  - `--gpu` (int, default `0`): GPU 数量，必须大于等于 0。
+  - `--gpu-resource` (string, default `nvidia.com/gpu`): GPU 资源名；`--gpu > 0` 时必填。
+  - `--schedule` (string): `normal | backfill`。
+  - `--env` (stringArray): `KEY=VALUE`，可重复。
+  - `--volume` (stringArray): `subPath:mountPath`，可重复。
+  - `--dataset` (stringArray): `datasetID:mountPath`，可重复。
+  - `--selector` (stringArray): `key=Operator:value1,value2`，可重复。
+  - `--forward` (stringArray): `name:port[:type]`，可重复。
+  - `--template`、`--alert`、`--cpu-pinning`。
+- **本地校验**: CPU、Memory、GPU 不允许负数；缺少 `name`、`image`、`memory` 会在发起请求前聚合报错。
+- **`--json` 的 `data`**：`job`（后端返回的 Volcano Job 对象）。
+- **状态**: [x] Completed
+
+### `crater job create custom`
+- **描述**: 创建单机自定义训练作业。支持 flags 构造常用请求，也支持 `--file` 传入完整 JSON 请求体。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **额外选项**:
+  - `--working-dir` (string, default `/workspace`): 工作目录。
+  - `--command` (string): 容器中执行的命令。
+  - `--shell` (string, default `sh`): `--command` 使用的 shell。
+- **其余选项与校验**: 同 `jupyter|webide`。
+- **`--json` 的 `data`**：`job`。
+- **状态**: [x] Completed
+
+### `crater job create tensorflow|pytorch --file <json>`
+- **描述**: 创建 TensorFlow 或 PyTorch 分布式作业。由于后端 `tasks[]` 结构较复杂，CLI 要求通过 `--file` 传入与前端/后端 DTO 对齐的完整 JSON 请求体。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **本地校验**:
+  - `name` 必填。
+  - `tasks` 至少一个。
+  - 每个 task 的 `name`、`image.imageLink` 必填。
+  - 每个 task 的 `replicas` 必须大于 0。
+  - 每个 task 的资源值不能为负数。
+- **`--json` 的 `data`**：`job`。
+- **状态**: [x] Completed
+
+### `crater admin job ls`
+- **描述**: 使用 `/api/v1/admin/vcjobs` 或 `/api/v1/admin/vcjobs/user/{username}` 列出管理员可见作业。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **选项**:
+  - `--user` (string): 列出指定用户作业。
+  - `--days` (int): 回看天数；`-1` 表示全部，默认 `0`。
+  - `--status`、`--type`、`--node`、`--owner`、`--from`、`--to`、`--interactive`、`--batch`: 与 `crater job ls` 相同，均为本地筛选。
+- **`--json` 的 `data`**：`jobs`（数组）。
+- **状态**: [x] Completed
+
+### `crater admin job delete <name>`
+- **描述**: 使用 `/api/v1/admin/vcjobs/{name}` 管理员删除作业。
 - **位置参数**:
   - `<name>` (positional, required): 平台作业名。
-- **处理逻辑**:
-  - 调用 `/api/v1/vcjobs/{name}/yaml`。
-  - 默认模式直接输出 YAML 字符串到 stdout，不添加表格或装饰文本。
-- **`--json` 的 `data`**：`yaml`（字符串）。
+- **`--json` 的 `data`**：`message`。
+- **状态**: [x] Completed
+
+### `crater admin job lock|unlock|keep <name>`
+- **描述**:
+  - `lock`: 设置清理锁定时长或永久锁定。
+  - `unlock`: 清除清理锁定。
+  - `keep`: 切换低 GPU 利用率清理时的保留状态。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **`lock` 选项**:
+  - `--permanent` (bool): 永久锁定。
+  - `--days` / `--hours` / `--minutes` (int): 锁定时长；非永久锁定时至少一个大于 0。
+- **`--json` 的 `data`**：`message`。
+- **状态**: [x] Completed
+
+### `crater admin job clean ...`
+- **描述**: 管理员作业清理操作，对应前端 admin jobs 的清理接口。
+- **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
+- **子命令**:
+  - `waiting-jupyter --wait-minutes N`: 取消等待超过阈值的 Jupyter 作业。
+  - `waiting-custom --wait-minutes N`: 取消等待超过阈值的 Custom 作业。
+  - `long-running [--batch-days N] [--interactive-days N]`: 清理长时间运行作业。
+  - `low-gpu --time-range N [--wait-time N] [--util N]`: 清理低 GPU 利用率作业。
+- **`--json` 的 `data`**：`cleanup`（含 `reminded` 与 `deleted`）。
 - **状态**: [x] Completed
 
 ---
