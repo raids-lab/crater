@@ -55,6 +55,7 @@ func (mgr *ApprovalOrderMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 管理员接口
 	g.GET("", mgr.ListAllApprovalOrders)                // 获取所有审批工单
 	g.GET("/:id", mgr.GetApprovalOrderAdmin)            // 管理员通过ID获取审批工单详情
+	g.PUT("/:id/review", mgr.ReviewApprovalOrderAdmin)  // 管理员审核审批工单
 	g.PUT("/check", mgr.UpdateApprovalOrderByJobStatus) // 管理员检查待审批的作业锁定工单有效性
 }
 
@@ -436,6 +437,12 @@ type UpdateApprovalOrder struct {
 	ReviewerID     uint                      `json:"reviewerID"`                  // 审批人ID
 	ReviewNotes    string                    `json:"reviewNotes"`                 // 审批备注
 }
+
+type ReviewApprovalOrderReq struct {
+	Status      model.ApprovalOrderStatus `json:"status" binding:"required"`
+	ReviewNotes string                    `json:"reviewNotes"`
+}
+
 type ApprovalOrderIDReq struct {
 	ID uint `uri:"id" binding:"required"` // 工单ID
 }
@@ -473,11 +480,32 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 		return
 	}
 
-	// 权限检查：只有管理员才能将工单状态更新为“已批准”
-	if req.Status == model.ApprovalOrderStatusApproved && token.RolePlatform != model.RoleAdmin {
-		klog.Warningf("permission denied: user %d (role: %s) attempted to approve order %d",
-			token.UserID, token.RolePlatform, orderID.ID)
-		resputil.Error(c, "permission denied: only admins can approve orders", resputil.NotSpecified)
+	ao := query.ApprovalOrder
+	existingOrder, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID.ID)).
+		First()
+	if err != nil {
+		klog.Errorf("approval order not found, userID: %d, orderID: %d, err: %v", token.UserID, orderID.ID, err)
+		resputil.Error(c, "approval order not found", resputil.NotSpecified)
+		return
+	}
+
+	if existingOrder.CreatorID != token.UserID {
+		klog.Warningf("permission denied: user %d attempted to update order %d owned by %d",
+			token.UserID, orderID.ID, existingOrder.CreatorID)
+		resputil.Error(c, "permission denied to update this approval order", resputil.NotSpecified)
+		return
+	}
+
+	if existingOrder.Status != model.ApprovalOrderStatusPending {
+		resputil.Error(c, "only pending approval orders can be updated", resputil.NotSpecified)
+		return
+	}
+
+	if req.Status != "" && req.Status != model.ApprovalOrderStatusPending {
+		klog.Warningf("permission denied: user %d attempted to change order %d status to %s",
+			token.UserID, orderID.ID, req.Status)
+		resputil.Error(c, "permission denied to review approval orders", resputil.NotSpecified)
 		return
 	}
 
@@ -485,17 +513,15 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 	order := model.ApprovalOrder{
 		Name:   req.Name,
 		Type:   req.Type,
-		Status: req.Status,
+		Status: model.ApprovalOrderStatusPending,
 		Content: datatypes.NewJSONType(model.ApprovalOrderContent{
 			ApprovalOrderTypeID:         req.TypeID,
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		ReviewerID:  req.ReviewerID,
-		ReviewNotes: req.ReviewNotes,
 	}
 
-	info, err := query.ApprovalOrder.WithContext(c).Where(query.ApprovalOrder.ID.Eq(orderID.ID)).Updates(&order)
+	info, err := ao.WithContext(c).Where(ao.ID.Eq(orderID.ID)).Updates(&order)
 	if err != nil {
 		klog.Errorf("failed to update approval order, userID: %d, err: %v", token.UserID, err)
 		resputil.Error(c, "failed to update approval order", resputil.NotSpecified)
@@ -503,6 +529,89 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 	}
 	klog.Infof("updated approval order successfully, affected rows: %d", info.RowsAffected)
 	resputil.Success(c, "update approvalorder successfully")
+}
+
+// swagger
+//
+//	@Summary		管理员审核审批工单
+//	@Description	管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容
+//	@Tags			approvalorder
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id		path	int						true	"工单ID"
+//	@Param			body	body	ReviewApprovalOrderReq	true	"审核信息"
+//	@Success		200		{object}	resputil.Response[string]	"成功返回值描述"
+//	@Failure		400		{object}	resputil.Response[any]		"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]		"服务器错误"
+//	@Router			/v1/admin/approvalorder/{id}/review [put]
+func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
+	var req ReviewApprovalOrderReq
+	var orderID ApprovalOrderIDReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		klog.Errorf("failed to bind review request: %v", err)
+		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		return
+	}
+	if err := c.ShouldBindUri(&orderID); err != nil {
+		klog.Errorf("failed to bind request parameters: %v", err)
+		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		return
+	}
+
+	token := util.GetToken(c)
+	if token.UserID == 0 {
+		resputil.Error(c, "cannot get user id", resputil.NotSpecified)
+		return
+	}
+	if token.RolePlatform != model.RoleAdmin {
+		klog.Warningf("permission denied: user %d (role: %s) attempted to review order %d",
+			token.UserID, token.RolePlatform, orderID.ID)
+		resputil.Error(c, "permission denied: only admins can review orders", resputil.NotSpecified)
+		return
+	}
+	if req.Status != model.ApprovalOrderStatusApproved &&
+		req.Status != model.ApprovalOrderStatusRejected &&
+		req.Status != model.ApprovalOrderStatusCancelled {
+		resputil.Error(c, "invalid review status", resputil.NotSpecified)
+		return
+	}
+	if req.Status == model.ApprovalOrderStatusRejected && req.ReviewNotes == "" {
+		resputil.Error(c, "review notes are required when rejecting an order", resputil.NotSpecified)
+		return
+	}
+
+	ao := query.ApprovalOrder
+	existingOrder, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID.ID)).
+		First()
+	if err != nil {
+		klog.Errorf("approval order not found, reviewerID: %d, orderID: %d, err: %v", token.UserID, orderID.ID, err)
+		resputil.Error(c, "approval order not found", resputil.NotSpecified)
+		return
+	}
+	if existingOrder.Status != model.ApprovalOrderStatusPending {
+		resputil.Error(c, "only pending approval orders can be reviewed", resputil.NotSpecified)
+		return
+	}
+
+	info, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID.ID)).
+		Updates(map[string]any{
+			"status":       req.Status,
+			"reviewer_id":  token.UserID,
+			"review_notes": req.ReviewNotes,
+		})
+	if err != nil {
+		klog.Errorf("failed to review approval order, reviewerID: %d, orderID: %d, err: %v",
+			token.UserID, orderID.ID, err)
+		resputil.Error(c, "failed to review approval order", resputil.NotSpecified)
+		return
+	}
+
+	klog.Infof("reviewed approval order successfully, reviewerID: %d, orderID: %d, affected rows: %d",
+		token.UserID, orderID.ID, info.RowsAffected)
+	resputil.Success(c, "review approvalorder successfully")
 }
 
 // swagger

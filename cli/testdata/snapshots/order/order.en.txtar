@@ -1,0 +1,202 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-submit-missing-json/argv --
+crater order submit --json --no-interactive
+-- en/01-submit-missing-json/exit --
+2
+-- en/01-submit-missing-json/stdout --
+-- en/01-submit-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "order name is required (--name)\napproval reason is required (--reason)",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "name",
+        "message": "order name is required (--name)"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "reason",
+        "message": "approval reason is required (--reason)"
+      }
+    ]
+  }
+}
+-- en/02-submit-invalid-type-json/argv --
+crater order submit --name job-a --type bad --reason need more time --json --no-interactive
+-- en/02-submit-invalid-type-json/exit --
+2
+-- en/02-submit-invalid-type-json/stdout --
+-- en/02-submit-invalid-type-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid approval order type: bad"
+}
+-- en/03-edit-invalid-status-json/argv --
+crater order edit 1 --status Approved --json --no-interactive
+-- en/03-edit-invalid-status-json/exit --
+4
+-- en/03-edit-invalid-status-json/stdout --
+-- en/03-edit-invalid-status-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/approvalorder/1\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/approvalorder/1\": context deadline exceeded"
+  }
+}
+-- en/04-cancel-confirm-required-json/argv --
+crater order cancel 1 --json --no-interactive
+-- en/04-cancel-confirm-required-json/exit --
+2
+-- en/04-cancel-confirm-required-json/stdout --
+-- en/04-cancel-confirm-required-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--yes is required in non-interactive mode"
+}
+-- en/05-admin-reject-missing-notes-json/argv --
+crater admin order reject 1 --json --no-interactive
+-- en/05-admin-reject-missing-notes-json/exit --
+2
+-- en/05-admin-reject-missing-notes-json/stdout --
+-- en/05-admin-reject-missing-notes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "flag_review-notes is required (--review-notes)"
+}
+-- en/06-admin-approve-lock-no-duration-json/argv --
+crater admin order approve 1 --lock --json --no-interactive
+-- en/06-admin-approve-lock-no-duration-json/exit --
+2
+-- en/06-admin-approve-lock-no-duration-json/stdout --
+-- en/06-admin-approve-lock-no-duration-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "lock duration is required unless --permanent is set"
+}
+-- en/07-admin-approve-lock-negative-json/argv --
+crater admin order approve 1 --lock --days -1 --json --no-interactive
+-- en/07-admin-approve-lock-negative-json/exit --
+2
+-- en/07-admin-approve-lock-negative-json/stdout --
+-- en/07-admin-approve-lock-negative-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "lock duration values must be non-negative"
+}
+-- en/08-admin-check-confirm-required-json/argv --
+crater admin order check --json --no-interactive
+-- en/08-admin-check-confirm-required-json/exit --
+2
+-- en/08-admin-check-confirm-required-json/stdout --
+-- en/08-admin-check-confirm-required-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--yes is required in non-interactive mode"
+}
+-- en/09-submit-404-json/argv --
+crater order submit --name job-a --type job --reason need more time --json --no-interactive
+-- en/09-submit-404-json/exit --
+4
+-- en/09-submit-404-json/stdout --
+-- en/09-submit-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/10-edit-404-json/argv --
+crater order edit 1 --reason updated reason --json --no-interactive
+-- en/10-edit-404-json/exit --
+4
+-- en/10-edit-404-json/stdout --
+-- en/10-edit-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/11-cancel-404-json/argv --
+crater order cancel 1 --yes --json --no-interactive
+-- en/11-cancel-404-json/exit --
+4
+-- en/11-cancel-404-json/stdout --
+-- en/11-cancel-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/12-admin-approve-404-json/argv --
+crater admin order approve 1 --json --no-interactive
+-- en/12-admin-approve-404-json/exit --
+4
+-- en/12-admin-approve-404-json/stdout --
+-- en/12-admin-approve-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/13-admin-reject-404-json/argv --
+crater admin order reject 1 --review-notes no --json --no-interactive
+-- en/13-admin-reject-404-json/exit --
+4
+-- en/13-admin-reject-404-json/stdout --
+-- en/13-admin-reject-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/14-admin-check-404-json/argv --
+crater admin order check --yes --json --no-interactive
+-- en/14-admin-check-404-json/exit --
+4
+-- en/14-admin-check-404-json/stdout --
+-- en/14-admin-check-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

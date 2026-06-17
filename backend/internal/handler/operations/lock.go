@@ -79,6 +79,14 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
+	if req.Days < 0 || req.Hours < 0 || req.Minutes < 0 {
+		resputil.BadRequestError(c, "lock duration values must be non-negative")
+		return
+	}
+	if !req.IsPermanent && req.Days == 0 && req.Hours == 0 && req.Minutes == 0 {
+		resputil.BadRequestError(c, "lock duration must be positive unless permanent lock is requested")
+		return
+	}
 
 	jobDB := query.Job
 
