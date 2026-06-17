@@ -46,6 +46,8 @@ import { IAccount } from '@/services/api/account'
 import { apiAdminAccountList } from '@/services/api/account'
 import { apiProjectDelete } from '@/services/api/account'
 import { apiAdminGetQueueQuotas } from '@/services/api/queue-quota'
+import { handleApiErrorByCode } from '@/services/client'
+import { ERROR_DEPENDENCY_CONFLICT, ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
 
 // Link Options for admin account navigation
 const adminAccountDetailLinkOptions = linkOptions({
@@ -109,6 +111,16 @@ export const AccountTable = ({
         queryKey: ['admin', 'accounts'],
       })
       toast.success(t('toast.accountDeleted', { name: account.nickname }))
+    },
+    onError: (error) => {
+      handleApiErrorByCode(error, {
+        [ERROR_DEPENDENCY_CONFLICT]: (errorResponse) => {
+          toast.error(errorResponse.msg || '账户仍有关联资源，不能删除')
+        },
+        [ERROR_RESOURCE_STATUS_ERROR]: (errorResponse) => {
+          toast.error(errorResponse.msg || '账户状态不允许删除')
+        },
+      })
     },
   })
 

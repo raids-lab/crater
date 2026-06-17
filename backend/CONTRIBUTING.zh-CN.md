@@ -100,7 +100,8 @@ make run
 ## 错误处理与安全
 
 - 使用符合 RESTful 语义的 HTTP 状态码；不要到处使用 `Error()`，应选择语义匹配的响应 helper。
-- 按需在 `backend/internal/resputil/code.go` 定义并使用精准业务状态码。
+- 新代码应返回 `bizerr` 错误并通过 `resputil.HandleError` 输出；`backend/internal/resputil/code.go` 仅保留为旧代码兼容入口。
+- 需要新增业务错误码时，在 `backend/internal/bizerr/groups.go` 中定义。
 - 返回给前端的错误信息必须是清晰、准确的英文。
 - 严禁在 `backend/internal/storage/` 或 DAO 层拼接 SQL 字符串，必须使用参数化查询。
 - 严禁硬编码密钥、Token、密码、内网 IP、kubeconfig 或生产凭据。
