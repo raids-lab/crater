@@ -1,0 +1,290 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-image-typo-json/argv --
+crater image list --json --no-interactive
+-- en/01-image-typo-json/exit --
+2
+-- en/01-image-typo-json/stdout --
+-- en/01-image-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"list\" for \"crater image\"\n\nDid you mean this?\n\tls\n\nRun \"crater image --help\" for usage."
+}
+-- en/02-build-pip-apt-missing-json/argv --
+crater image build pip-apt --json --no-interactive
+-- en/02-build-pip-apt-missing-json/exit --
+2
+-- en/02-build-pip-apt-missing-json/stdout --
+-- en/02-build-pip-apt-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Image name is required (--name)\nImage tag is required (--tag)",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "name",
+        "message": "Image name is required (--name)"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "tag",
+        "message": "Image tag is required (--tag)"
+      }
+    ]
+  }
+}
+-- en/03-build-dockerfile-missing-content-json/argv --
+crater image build dockerfile --name img --tag v1 --json --no-interactive
+-- en/03-build-dockerfile-missing-content-json/exit --
+2
+-- en/03-build-dockerfile-missing-content-json/stdout --
+-- en/03-build-dockerfile-missing-content-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Dockerfile content is required (--dockerfile)"
+}
+-- en/04-build-envd-invalid-source-json/argv --
+crater image build envd --name img --tag v1 --envd x --build-source bad --json --no-interactive
+-- en/04-build-envd-invalid-source-json/exit --
+2
+-- en/04-build-envd-invalid-source-json/stdout --
+-- en/04-build-envd-invalid-source-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid build-source: bad"
+}
+-- en/05-upload-missing-image-json/argv --
+crater image upload --json --no-interactive
+-- en/05-upload-missing-image-json/exit --
+2
+-- en/05-upload-missing-image-json/stdout --
+-- en/05-upload-missing-image-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Base image or image link is required (--image)"
+}
+-- en/06-delete-invalid-id-json/argv --
+crater image delete abc --json --no-interactive
+-- en/06-delete-invalid-id-json/exit --
+2
+-- en/06-delete-invalid-id-json/stdout --
+-- en/06-delete-invalid-id-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid image ID: abc"
+}
+-- en/07-delete-many-invalid-ids-json/argv --
+crater image delete-many --ids 1,x --json --no-interactive
+-- en/07-delete-many-invalid-ids-json/exit --
+2
+-- en/07-delete-many-invalid-ids-json/stdout --
+-- en/07-delete-many-invalid-ids-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid ID list: 1,x"
+}
+-- en/08-share-add-missing-ids-json/argv --
+crater image share add 1 --json --no-interactive
+-- en/08-share-add-missing-ids-json/exit --
+2
+-- en/08-share-add-missing-ids-json/stdout --
+-- en/08-share-add-missing-ids-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Comma-separated IDs is required (--ids)"
+}
+-- en/09-share-remove-missing-target-json/argv --
+crater image share remove 1 --json --no-interactive
+-- en/09-share-remove-missing-target-json/exit --
+2
+-- en/09-share-remove-missing-target-json/stdout --
+-- en/09-share-remove-missing-target-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Share target ID is required (--target-id)"
+}
+-- en/10-harbor-credential-confirm-json/argv --
+crater image harbor credential --json --no-interactive
+-- en/10-harbor-credential-confirm-json/exit --
+2
+-- en/10-harbor-credential-confirm-json/stdout --
+-- en/10-harbor-credential-confirm-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "confirmation is required (--yes)"
+}
+-- en/11-cuda-add-missing-json/argv --
+crater image cuda add --json --no-interactive
+-- en/11-cuda-add-missing-json/exit --
+2
+-- en/11-cuda-add-missing-json/stdout --
+-- en/11-cuda-add-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Image label is required (--image-label)\nDisplay label is required (--label)\nImage value is required (--value)",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "image-label",
+        "message": "Image label is required (--image-label)"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "label",
+        "message": "Display label is required (--label)"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "value",
+        "message": "Image value is required (--value)"
+      }
+    ]
+  }
+}
+-- en/12-valid-missing-links-json/argv --
+crater image valid --json --no-interactive
+-- en/12-valid-missing-links-json/exit --
+2
+-- en/12-valid-missing-links-json/stdout --
+-- en/12-valid-missing-links-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Comma-separated image links is required (--links)"
+}
+-- en/13-build-get-missing-json/argv --
+crater image build get --json --no-interactive
+-- en/13-build-get-missing-json/exit --
+2
+-- en/13-build-get-missing-json/stdout --
+-- en/13-build-get-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "name is required (\u003cname\u003e)"
+}
+-- en/14-build-pod-invalid-json/argv --
+crater image build pod bad --json --no-interactive
+-- en/14-build-pod-invalid-json/exit --
+2
+-- en/14-build-pod-invalid-json/stdout --
+-- en/14-build-pod-invalid-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid image ID: bad"
+}
+-- en/15-admin-build-remove-missing-json/argv --
+crater admin image build-remove --json --no-interactive
+-- en/15-admin-build-remove-missing-json/exit --
+2
+-- en/15-admin-build-remove-missing-json/stdout --
+-- en/15-admin-build-remove-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Comma-separated IDs is required (--ids)"
+}
+-- en/16-admin-type-invalid-json/argv --
+crater admin image type 1 --type all --json --no-interactive
+-- en/16-admin-type-invalid-json/exit --
+2
+-- en/16-admin-type-invalid-json/stdout --
+-- en/16-admin-type-invalid-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid type: all"
+}
+-- en/17-image-ls-404-json/argv --
+crater image ls --json --no-interactive
+-- en/17-image-ls-404-json/exit --
+4
+-- en/17-image-ls-404-json/stdout --
+-- en/17-image-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/18-image-available-404-json/argv --
+crater image ls --available --json --no-interactive
+-- en/18-image-available-404-json/exit --
+4
+-- en/18-image-available-404-json/stdout --
+-- en/18-image-available-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/19-build-pip-apt-404-json/argv --
+crater image build pip-apt --name img --tag v1 --image base:latest --json --no-interactive
+-- en/19-build-pip-apt-404-json/exit --
+4
+-- en/19-build-pip-apt-404-json/stdout --
+-- en/19-build-pip-apt-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/20-share-ls-404-json/argv --
+crater image share ls 1 --json --no-interactive
+-- en/20-share-ls-404-json/exit --
+4
+-- en/20-share-ls-404-json/stdout --
+-- en/20-share-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/21-admin-image-ls-404-json/argv --
+crater admin image ls --json --no-interactive
+-- en/21-admin-image-ls-404-json/exit --
+4
+-- en/21-admin-image-ls-404-json/stdout --
+-- en/21-admin-image-ls-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

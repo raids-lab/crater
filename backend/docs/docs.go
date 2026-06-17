@@ -11086,6 +11086,10 @@ const docTemplate = `{
                 },
                 "source": {
                     "type": "string"
+                },
+                "token": {
+                    "description": "Token is an optional access token for gated/private repositories on the\nsource site. It is only forwarded to the download Job as an env var and is\nnever persisted on the (shared, deduplicated) download record.",
+                    "type": "string"
                 }
             }
         },
@@ -11427,6 +11431,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "creatorId": {
+                    "type": "integer"
+                },
+                "downloadSpeed": {
+                    "type": "string"
+                },
+                "downloadedBytes": {
                     "type": "integer"
                 },
                 "id": {
