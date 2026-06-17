@@ -31,13 +31,6 @@ import (
 const (
 	// maxUint8Value is the maximum value for uint8 type
 	maxUint8Value = 255
-	// httpStatusForbidden is HTTP 403 Forbidden status code.
-	httpStatusForbidden = 403
-)
-
-var (
-	errBillingFeatureDisabled        = errors.New("billing feature is disabled")
-	errNoBillingConfigFieldsToUpdate = errors.New("no billing config fields to update")
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -250,11 +243,11 @@ func buildListAllResp(account *model.Account) ListAllResp {
 func (mgr *AccountMgr) respondAccountLookup(
 	c *gin.Context,
 	lookup func() (*model.Account, error),
-	notFoundMessage string,
+	wrapLookupError func(error) error,
 ) {
 	account, err := lookup()
 	if err != nil {
-		resputil.HandleError(c, commonerr.RaiseGormError(err, notFoundMessage, "failed to get account"))
+		resputil.HandleError(c, wrapLookupError(err))
 		return
 	}
 
@@ -279,35 +272,20 @@ func (mgr *AccountMgr) getAccountIssueOverrideFlags(ctx context.Context) (amount
 
 func (mgr *AccountMgr) requireBillingEnabled(ctx context.Context) error {
 	if mgr.billingService == nil || !mgr.isBillingFeatureEnabled(ctx) {
-		return errBillingFeatureDisabled
+		return bizerr.Conflict.ResourceStatusError.New("billing feature is disabled")
 	}
 	return nil
 }
 
 func (mgr *AccountMgr) requireUserFacingBillingEnabled(ctx context.Context) error {
 	if mgr.billingService == nil || !mgr.isBillingUserFacingEnabled(ctx) {
-		return errBillingFeatureDisabled
+		return bizerr.Conflict.ResourceStatusError.New("billing feature is disabled")
 	}
 	return nil
 }
 
-func respondIfBillingFeatureDisabled(c *gin.Context, err error) bool {
-	if !errors.Is(err, errBillingFeatureDisabled) {
-		return false
-	}
-	resputil.Error(c, err.Error(), resputil.BusinessLogicError)
-	return true
-}
-
 func handleAccountBillingConfigUpdateErr(c *gin.Context, err error) {
-	if respondIfBillingFeatureDisabled(c, err) {
-		return
-	}
-	if errors.Is(err, errNoBillingConfigFieldsToUpdate) {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	resputil.Error(c, err.Error(), resputil.NotSpecified)
+	resputil.HandleError(c, err)
 }
 
 func (mgr *AccountMgr) writeAccountBillingConfigUpdateResp(
@@ -330,10 +308,7 @@ func (mgr *AccountMgr) writeAccountBillingMemberIssueAmountResp(
 ) {
 	resp, err := mgr.updateAccountBillingMemberIssueAmount(c, accountID, userID, req)
 	if err != nil {
-		if respondIfBillingFeatureDisabled(c, err) {
-			return
-		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 	resputil.Success(c, resp)
@@ -384,7 +359,7 @@ type AccountIDReq struct {
 func (mgr *AccountMgr) bindAccountID(c *gin.Context) (uint, bool) {
 	var uriReq AccountIDReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid account ID parameter: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid account ID parameter"))
 		return 0, false
 	}
 	return uriReq.ID, true
@@ -398,7 +373,7 @@ func (mgr *AccountMgr) requireUserManagedAccountID(c *gin.Context) (uint, bool) 
 
 	token := util.GetToken(c)
 	if err := mgr.checkAccountAdmin(c, token.UserID, accountID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return 0, false
 	}
 
@@ -408,7 +383,7 @@ func (mgr *AccountMgr) requireUserManagedAccountID(c *gin.Context) (uint, bool) 
 func bindAccountName(c *gin.Context) (string, bool) {
 	var uriReq AccountNameReq
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.Error(c, fmt.Sprintf("invalid request, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return "", false
 	}
 	return uriReq.Name, true
@@ -476,16 +451,16 @@ func (mgr *AccountMgr) updateAccountBillingConfigCore(
 		updates["billing_issue_period_minutes"] = *req.IssuePeriodMinutes
 	}
 	if len(updates) == 0 {
-		return AccountBillingConfigResp{}, errNoBillingConfigFieldsToUpdate
+		return AccountBillingConfigResp{}, bizerr.BadRequest.ParameterError.New("no billing config fields to update")
 	}
 
 	if _, err := query.Account.WithContext(c).Where(query.Account.ID.Eq(accountID)).Updates(updates); err != nil {
-		return AccountBillingConfigResp{}, fmt.Errorf("failed to update account billing config: %w", err)
+		return AccountBillingConfigResp{}, bizerr.Internal.DatabaseError.Wrap(err, "failed to update account billing config")
 	}
 
 	account, err := mgr.loadAccountByID(c, accountID)
 	if err != nil {
-		return AccountBillingConfigResp{}, fmt.Errorf("failed to reload account billing config: %w", err)
+		return AccountBillingConfigResp{}, raiseAccountNotFoundByID(err, accountID)
 	}
 
 	return mgr.buildAccountBillingConfigResp(c.Request.Context(), account), nil
@@ -502,7 +477,10 @@ func (mgr *AccountMgr) resetAccountBillingBalanceCore(c *gin.Context, accountID 
 	}
 
 	if err := mgr.billingService.IssueAccountNow(c.Request.Context(), accountID); err != nil {
-		return "", fmt.Errorf("failed to reset billing balance for %s: %w", account.Name, err)
+		return "", bizerr.Internal.ServiceError.Wrap(
+			err,
+			fmt.Sprintf("failed to reset billing balance for %s", account.Name),
+		)
 	}
 
 	return fmt.Sprintf("billing balance reset for %s", account.Name), nil
@@ -516,7 +494,7 @@ func (mgr *AccountMgr) GetAccountBillingConfig(c *gin.Context) {
 
 	resp, err := mgr.getAccountBillingConfigResp(c, accountID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -531,7 +509,7 @@ func (mgr *AccountMgr) UpdateAccountBillingConfig(c *gin.Context) {
 
 	var req AccountBillingConfigUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}
 	mgr.writeAccountBillingConfigUpdateResp(c, accountID, &req)
@@ -549,7 +527,7 @@ func (mgr *AccountMgr) UserGetAccountBillingConfig(c *gin.Context) {
 
 	resp, err := mgr.getAccountBillingConfigResp(c, accountID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -559,7 +537,7 @@ func (mgr *AccountMgr) UserGetAccountBillingConfig(c *gin.Context) {
 func (mgr *AccountMgr) UserUpdateAccountBillingConfig(c *gin.Context) {
 	var req AccountBillingConfigUpdateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}
 	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
@@ -627,7 +605,9 @@ func (mgr *AccountMgr) respondAccountByID(c *gin.Context, accountID uint) {
 		func() (*model.Account, error) {
 			return q.WithContext(c).Where(q.ID.Eq(accountID)).First()
 		},
-		fmt.Sprintf("account not found: account ID %d does not exist", accountID),
+		func(err error) error {
+			return raiseAccountNotFoundByID(err, accountID)
+		},
 	)
 }
 
@@ -638,7 +618,9 @@ func (mgr *AccountMgr) respondAccountByName(c *gin.Context, accountName string) 
 		func() (*model.Account, error) {
 			return q.WithContext(c).Where(q.Name.Eq(accountName)).First()
 		},
-		fmt.Sprintf("account not found: account name '%s' does not exist", accountName),
+		func(err error) error {
+			return raiseAccountNotFoundByName(err, accountName)
+		},
 	)
 }
 
@@ -834,7 +816,7 @@ func (mgr *AccountMgr) UserResetAccountBillingBalance(c *gin.Context) {
 
 	resp, err := mgr.resetAccountBillingBalanceCore(c, accountID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1353,18 +1335,18 @@ func (mgr *AccountMgr) AdminListAccountMembers(c *gin.Context) {
 func (mgr *AccountMgr) AdminListAccountBillingMembers(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	if _, err := mgr.validateAccount(c, req.ID); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	resp, err := mgr.getBillingMembersInAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1379,11 +1361,11 @@ func (mgr *AccountMgr) AdminUpdateAccountBillingMemberIssueAmount(c *gin.Context
 	var req UpdateAccountBillingMemberIssueAmountReq
 
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid uri params: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid uri params"))
 		return
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}
 
@@ -1690,44 +1672,16 @@ func (mgr *AccountMgr) createUserAccount(
 	}
 
 	err = query.Q.Transaction(func(tx *query.Query) error {
-		uq := query.UserAccount
-
-		// Check if user already exists in account
-		_, err = tx.UserAccount.WithContext(c).Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).First()
-		if err == nil {
-			return bizerr.Conflict.ResourceAlreadyExists.New(fmt.Sprintf("user %d is already in account %d", userID, accountID))
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return bizerr.Internal.DatabaseError.Wrap(err, "failed to check existing user-account relationship")
-		}
-
-		q := model.QueueQuota{Capability: quota}
-		if len(quota) == 0 && account.UserDefaultQuota != nil {
-			q.Capability = account.UserDefaultQuota.Data().Capability
-		}
-
-		token := util.GetToken(c)
-		queueName := vcqueue.GetUserQueueName(accountID, userID)
-		parentQueueName := vcqueue.GetAccountLogicQueueName(accountID)
-		if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
-			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to ensure account queue exists")
-		}
-		if err := vcqueue.CreateQueue(c, mgr.client, token, queueName, &parentQueueName, &q); err != nil {
-			return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to create volcano queue for user in account")
-		}
-
-		userQueue := model.UserAccount{
-			UserID:     userID,
-			AccountID:  accountID,
-			Role:       role,
-			AccessMode: accessMode,
-		}
-		userQueue.Quota = datatypes.NewJSONType(q)
-
-		if err := tx.UserAccount.WithContext(c).Create(&userQueue); err != nil {
-			return raiseUserAccountCreateError(err, userID, accountID)
-		}
-
-		return nil
+		return mgr.createUserAccountInTransaction(
+			c,
+			tx,
+			account,
+			accountID,
+			userID,
+			role,
+			accessMode,
+			quota,
+		)
 	})
 
 	if err != nil {
@@ -1744,6 +1698,58 @@ func (mgr *AccountMgr) createUserAccount(
 		}
 	}
 	return nil
+}
+
+func (mgr *AccountMgr) createUserAccountInTransaction(
+	c *gin.Context,
+	tx *query.Query,
+	account *model.Account,
+	accountID, userID uint,
+	role model.Role,
+	accessMode model.AccessMode,
+	quota v1.ResourceList,
+) error {
+	uq := query.UserAccount
+
+	_, err := tx.UserAccount.WithContext(c).Where(uq.AccountID.Eq(accountID), uq.UserID.Eq(userID)).First()
+	if err == nil {
+		return bizerr.Conflict.ResourceAlreadyExists.New(fmt.Sprintf("user %d is already in account %d", userID, accountID))
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to check existing user-account relationship")
+	}
+
+	queueQuota := buildUserAccountQueueQuota(account, quota)
+	token := util.GetToken(c)
+	queueName := vcqueue.GetUserQueueName(accountID, userID)
+	parentQueueName := vcqueue.GetAccountLogicQueueName(accountID)
+	if err := vcqueue.EnsureAccountQueueExists(c, mgr.client, token, accountID); err != nil {
+		return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to ensure account queue exists")
+	}
+	if err := vcqueue.CreateQueue(c, mgr.client, token, queueName, &parentQueueName, &queueQuota); err != nil {
+		return bizerr.Internal.VolcanoServiceError.Wrap(err, "failed to create volcano queue for user in account")
+	}
+
+	userQueue := model.UserAccount{
+		UserID:     userID,
+		AccountID:  accountID,
+		Role:       role,
+		AccessMode: accessMode,
+		Quota:      datatypes.NewJSONType(queueQuota),
+	}
+	if err := tx.UserAccount.WithContext(c).Create(&userQueue); err != nil {
+		return raiseUserAccountCreateError(err, userID, accountID)
+	}
+
+	return nil
+}
+
+func buildUserAccountQueueQuota(account *model.Account, quota v1.ResourceList) model.QueueQuota {
+	queueQuota := model.QueueQuota{Capability: quota}
+	if len(quota) == 0 && account.UserDefaultQuota != nil {
+		queueQuota.Capability = account.UserDefaultQuota.Data().Capability
+	}
+	return queueQuota
 }
 
 // updateUserAccount updates user-account relationship
@@ -1901,7 +1907,7 @@ func (mgr *AccountMgr) getBillingMembersInAccount(c *gin.Context, accountID uint
 		Order(ua.UserID).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query account billing members: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to query account billing members")
 	}
 
 	userIDs := make([]uint, 0, len(userAccounts))
@@ -1915,7 +1921,7 @@ func (mgr *AccountMgr) getBillingMembersInAccount(c *gin.Context, accountID uint
 			Where(u.ID.In(userIDs...), u.DeletedAt.IsNull()).
 			Find()
 		if err != nil {
-			return nil, fmt.Errorf("failed to load billing member users: %w", err)
+			return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to load billing member users")
 		}
 		for i := range users {
 			usersByID[users[i].ID] = users[i]
@@ -1987,7 +1993,11 @@ func (mgr *AccountMgr) updateAccountBillingMemberIssueAmount(
 		Where(u.ID.Eq(userID), u.DeletedAt.IsNull()).
 		First()
 	if err != nil {
-		return nil, fmt.Errorf("user not found: %w", err)
+		return nil, commonerr.RaiseGormError(
+			err,
+			fmt.Sprintf("user not found: user ID %d does not exist", userID),
+			"failed to get user by ID",
+		)
 	}
 
 	ua := query.UserAccount
@@ -1995,11 +2005,11 @@ func (mgr *AccountMgr) updateAccountBillingMemberIssueAmount(
 		Where(ua.AccountID.Eq(accountID), ua.UserID.Eq(userID), ua.DeletedAt.IsNull()).
 		First()
 	if err != nil {
-		return nil, fmt.Errorf("user %d is not in account %d", userID, accountID)
+		return nil, raiseUserNotInAccountError(err, userID, accountID)
 	}
 
 	if req != nil && req.IssueAmountOverride != nil && req.IssueAmountOverride.MicroPoints() < 0 {
-		return nil, fmt.Errorf("issue amount override must be non-negative")
+		return nil, bizerr.BadRequest.ParameterError.New("issue amount override must be non-negative")
 	}
 
 	updateValue := any(nil)
@@ -2012,7 +2022,7 @@ func (mgr *AccountMgr) updateAccountBillingMemberIssueAmount(
 		Updates(map[string]any{
 			"billing_issue_amount_override": updateValue,
 		}); err != nil {
-		return nil, fmt.Errorf("failed to update billing issue amount override: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to update billing issue amount override")
 	}
 
 	userAccount.BillingIssueAmountOverride = nil
@@ -2102,13 +2112,13 @@ func (mgr *AccountMgr) buildUserAccountUpdates(
 		}
 
 		if err := checkResource(c, finalQuota.Guaranteed); err != nil {
-			return nil, fmt.Errorf("invalid quota guaranteed resources: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quota guaranteed resources")
 		}
 		if err := checkResource(c, finalQuota.Deserved); err != nil {
-			return nil, fmt.Errorf("invalid quota deserved resources: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quota deserved resources")
 		}
 		if err := checkResource(c, finalQuota.Capability); err != nil {
-			return nil, fmt.Errorf("invalid quota capability resources: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quota capability resources")
 		}
 		updates["quota"] = datatypes.NewJSONType(finalQuota)
 	}
@@ -2476,19 +2486,19 @@ func (mgr *AccountMgr) UserListAccountBillingMembers(c *gin.Context) {
 	}
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.Error(c, fmt.Sprintf("validate UserProject parameters failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid request"))
 		return
 	}
 
 	token := util.GetToken(c)
 	if err := mgr.checkAccountAdmin(c, token.UserID, req.ID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	resp, err := mgr.getBillingMembersInAccount(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -2611,17 +2621,17 @@ func (mgr *AccountMgr) UserUpdateAccountBillingMemberIssueAmount(c *gin.Context)
 		return
 	}
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid uri params: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid uri params"))
 		return
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid request body: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}
 
 	token := util.GetToken(c)
 	if err := mgr.checkAccountAdmin(c, token.UserID, uriReq.AccountID); err != nil {
-		resputil.HTTPError(c, httpStatusForbidden, "Forbidden: User is not account admin", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 

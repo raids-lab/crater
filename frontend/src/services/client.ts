@@ -168,6 +168,31 @@ export const markApiErrorHandled = (error: unknown) => {
   }
 }
 
+export const getApiErrorData = (error: unknown): IErrorResponse | undefined => {
+  if (error instanceof HTTPError) {
+    return (error as EnhancedHTTPError).data
+  }
+  if (error && typeof error === 'object' && 'data' in error) {
+    return (error as { data?: IErrorResponse }).data
+  }
+  return undefined
+}
+
+export const handleApiErrorByCode = (
+  error: unknown,
+  handlers: Partial<Record<ErrorCode, (errorResponse: IErrorResponse) => void>>
+): boolean => {
+  const errorResponse = getApiErrorData(error)
+  const handler = errorResponse ? handlers[errorResponse.code] : undefined
+  if (!errorResponse || !handler) {
+    return false
+  }
+
+  markApiErrorHandled(error)
+  handler(errorResponse)
+  return true
+}
+
 // Token 刷新函数
 const refreshTokenFn = async (): Promise<string> => {
   const data: IRefresh = {

@@ -160,7 +160,7 @@ linters:
         text: "SA1019: (.+).(GoVersion|LangVersion) is deprecated: use the global `run.go` instead."
       - linters:
           - staticcheck
-        path: internal/(handler|middleware)/.*\.go
+        path: internal/(handler|middleware|storage)/.*\.go
         text: 'SA1019: resputil\.[A-Za-z0-9_]+ is deprecated: .*'
       - linters:
           - gocritic
