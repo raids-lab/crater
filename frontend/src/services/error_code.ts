@@ -19,8 +19,8 @@ export const GATEWAY_TIMEOUT_ERROR_GROUP: ErrorCode = 504
 export const OK: ErrorCode = 0
 // 400xx - Bad Request
 export const ERROR_INVALID_REQUEST: ErrorCode = 40001
-export const ERROR_PARAMETER_ERROR: ErrorCode = 40002
 export const ERROR_MISSING_PARAMETER: ErrorCode = 40003
+export const ERROR_PARAMETER_ERROR: ErrorCode = 40004
 
 // 401xx - Auth
 export const ERROR_TOKEN_EXPIRED: ErrorCode = 40101

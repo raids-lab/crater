@@ -19,10 +19,22 @@ func (c BizCode) Group() int {
 type BizError struct {
 	Code    BizCode
 	Message string // 自定义消息
+	cause   error
 }
 
 func (e *BizError) Error() string {
+	if e.cause != nil {
+		return fmt.Sprintf("[%d] %s: %v", e.Code, e.Message, e.cause)
+	}
 	return fmt.Sprintf("[%d] %s", e.Code, e.Message)
+}
+
+func (e *BizError) Unwrap() error {
+	return e.cause
+}
+
+func (e *BizError) Cause() error {
+	return e.cause
 }
 
 // Is 关键实现：支持 错误码、错误对象、以及“分组判断”
@@ -59,11 +71,6 @@ func (c BizCode) Wrap(cause error, msg string) error {
 	if cause == nil {
 		return nil
 	}
-	be := &BizError{Code: c, Message: msg}
-	// 1. errors.Mark 将 be 标记为 cause 的一部分，使得 errors.Is(err, be) 成立
-	// 2. errors.WithStack 加上堆栈
-	// 3. errors.WithMessage 加上新的描述
-	err := errors.Mark(cause, be)
-	err = errors.WithMessage(err, be.Error())
-	return errors.WithStack(err)
+	be := &BizError{Code: c, Message: msg, cause: cause}
+	return errors.WithStack(be)
 }

@@ -33,7 +33,7 @@ const OK bizerr.BizCode = 0
 
 // Success 200 OK - 常规查询、修改成功
 func Success(c *gin.Context, data any) {
-	emit(c, http.StatusOK, OK, "success", data)
+	emit(c, http.StatusOK, OK, "", data)
 }
 
 func respond(c *gin.Context, httpCode int, bErr *bizerr.BizError) {

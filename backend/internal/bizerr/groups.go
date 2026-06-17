@@ -7,10 +7,10 @@ type badRequestGroup struct {
 	Base *BizError
 	// InvalidRequest: 无法解析请求体（如 JSON 格式错误、Base64 编码非法等）
 	InvalidRequest BizCode `code:"40001"`
-	// ParameterError: 结构化校验失败（如 Validator 标签触发的 email 格式错误、字符串长度不足、数值范围不对）
-	ParameterError BizCode `code:"40002"`
 	// MissingParameter: 缺少 API 文档中定义的必传字段
 	MissingParameter BizCode `code:"40003"`
+	// ParameterError: 结构化校验失败（如 Validator 标签触发的 email 格式错误、字符串长度不足、数值范围不对）
+	ParameterError BizCode `code:"40004"`
 }
 
 // authGroup 401xx - 身份验证相关
