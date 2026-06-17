@@ -14,6 +14,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -22,6 +23,8 @@ import (
 var errBackfillJobExtensionApprovalOrderUnsupported = errors.New(
 	"backfill jobs cannot create extension approval orders",
 )
+
+const autoApprovalReason = "without review, approved by system"
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -163,11 +166,10 @@ func (mgr *ApprovalOrderMgr) cancelApprovalOrder(c *gin.Context, orderID uint, r
 
 // isJobRunning 判断作业是否在运行状态
 func (mgr *ApprovalOrderMgr) isJobRunning(jobStatus batch.JobPhase) bool {
-	// 根据volcano的JobPhase枚举值判断，运行状态包括：
-	// Running, Pending, Inqueue 等状态
 	runningStatuses := []batch.JobPhase{
-		"Running",
-		// 可以根据实际需要添加其他被认为是"运行"状态的状态
+		batch.Running,
+		batch.Pending,
+		model.Prequeue,
 	}
 
 	for _, status := range runningStatuses {
@@ -317,8 +319,8 @@ type ApprovalOrderreq struct {
 	Name           string                    `json:"name" binding:"required"`
 	Type           model.ApprovalOrderType   `json:"type" binding:"required"`
 	Status         model.ApprovalOrderStatus `json:"status"`
-	TypeID         uint                      `json:"approvalorderTypeID" `        // 关联的ID，可能是数据集或任务ID
-	Reason         string                    `json:"approvalOrderReason" `        // 审批原因
+	TypeID         uint                      `json:"approvalorderTypeID"`         // 关联的ID，可能是数据集或任务ID
+	Reason         string                    `json:"approvalOrderReason"`         // 审批原因
 	ExtensionHours uint                      `json:"approvalOrderExtensionHours"` // 延长小时数
 }
 
@@ -371,7 +373,6 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 
 	// 2. 检查是否满足自动审批条件
 	autoApproved := false
-	autoApprovalReason := "whitout review，approved due to system"
 
 	canAutoApprove, err := mgr.checkAutoApprovalEligibility(c, token.UserID, &req)
 	if err != nil {
@@ -431,8 +432,8 @@ type UpdateApprovalOrder struct {
 	Name           string                    `json:"name" binding:"required"`
 	Type           model.ApprovalOrderType   `json:"type" binding:"required"`
 	Status         model.ApprovalOrderStatus `json:"status"`
-	TypeID         uint                      `json:"approvalorderTypeID" `        // 关联的ID，可能是数据集或任务ID
-	Reason         string                    `json:"approvalOrderReason" `        // 审批原因
+	TypeID         uint                      `json:"approvalorderTypeID"`         // 关联的ID，可能是数据集或任务ID
+	Reason         string                    `json:"approvalOrderReason"`         // 审批原因
 	ExtensionHours uint                      `json:"approvalOrderExtensionHours"` // 延长小时数
 	ReviewerID     uint                      `json:"reviewerID"`                  // 审批人ID
 	ReviewNotes    string                    `json:"reviewNotes"`                 // 审批备注
@@ -486,26 +487,26 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 		First()
 	if err != nil {
 		klog.Errorf("approval order not found, userID: %d, orderID: %d, err: %v", token.UserID, orderID.ID, err)
-		resputil.Error(c, "approval order not found", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "approval order not found"))
 		return
 	}
 
 	if existingOrder.CreatorID != token.UserID {
 		klog.Warningf("permission denied: user %d attempted to update order %d owned by %d",
 			token.UserID, orderID.ID, existingOrder.CreatorID)
-		resputil.Error(c, "permission denied to update this approval order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to update this approval order"))
 		return
 	}
 
 	if existingOrder.Status != model.ApprovalOrderStatusPending {
-		resputil.Error(c, "only pending approval orders can be updated", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only pending approval orders can be updated"))
 		return
 	}
 
 	if req.Status != "" && req.Status != model.ApprovalOrderStatusPending {
 		klog.Warningf("permission denied: user %d attempted to change order %d status to %s",
 			token.UserID, orderID.ID, req.Status)
-		resputil.Error(c, "permission denied to review approval orders", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to review approval orders"))
 		return
 	}
 
@@ -550,34 +551,34 @@ func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
 	var orderID ApprovalOrderIDReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		klog.Errorf("failed to bind review request: %v", err)
-		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameters"))
 		return
 	}
 	if err := c.ShouldBindUri(&orderID); err != nil {
 		klog.Errorf("failed to bind request parameters: %v", err)
-		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameters"))
 		return
 	}
 
 	token := util.GetToken(c)
 	if token.UserID == 0 {
-		resputil.Error(c, "cannot get user id", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("cannot get user id"))
 		return
 	}
 	if token.RolePlatform != model.RoleAdmin {
 		klog.Warningf("permission denied: user %d (role: %s) attempted to review order %d",
 			token.UserID, token.RolePlatform, orderID.ID)
-		resputil.Error(c, "permission denied: only admins can review orders", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied: only admins can review orders"))
 		return
 	}
 	if req.Status != model.ApprovalOrderStatusApproved &&
 		req.Status != model.ApprovalOrderStatusRejected &&
 		req.Status != model.ApprovalOrderStatusCancelled {
-		resputil.Error(c, "invalid review status", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("invalid review status"))
 		return
 	}
 	if req.Status == model.ApprovalOrderStatusRejected && req.ReviewNotes == "" {
-		resputil.Error(c, "review notes are required when rejecting an order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("review notes are required when rejecting an order"))
 		return
 	}
 
@@ -587,11 +588,11 @@ func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
 		First()
 	if err != nil {
 		klog.Errorf("approval order not found, reviewerID: %d, orderID: %d, err: %v", token.UserID, orderID.ID, err)
-		resputil.Error(c, "approval order not found", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "approval order not found"))
 		return
 	}
 	if existingOrder.Status != model.ApprovalOrderStatusPending {
-		resputil.Error(c, "only pending approval orders can be reviewed", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only pending approval orders can be reviewed"))
 		return
 	}
 
@@ -605,7 +606,7 @@ func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
 	if err != nil {
 		klog.Errorf("failed to review approval order, reviewerID: %d, orderID: %d, err: %v",
 			token.UserID, orderID.ID, err)
-		resputil.Error(c, "failed to review approval order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to review approval order"))
 		return
 	}
 
@@ -662,6 +663,10 @@ func (mgr *ApprovalOrderMgr) DeleteApprovalOrder(c *gin.Context) {
 		klog.Warningf("user attempted to delete an order not created by themselves, userID: %d, orderID: %d, creatorID: %d",
 			token.UserID, orderID, existingOrder.CreatorID)
 		resputil.Error(c, "permission denied to delete this approval order", resputil.NotSpecified)
+		return
+	}
+	if existingOrder.Status != model.ApprovalOrderStatusPending {
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only pending approval orders can be deleted"))
 		return
 	}
 
@@ -906,10 +911,10 @@ func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID
 		return false, err
 	}
 
-	// 检查是否所有工单的ReviewNotes都不为自动审批原因
-	autoApprovalReason := "whitout review，approved due to system"
 	for _, order := range recentOrders {
-		if order.ReviewNotes == autoApprovalReason {
+		if order.Type == model.ApprovalOrderTypeJob &&
+			order.Status == model.ApprovalOrderStatusApproved &&
+			order.ReviewerID == 0 {
 			return false, nil
 		}
 	}

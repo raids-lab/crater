@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -80,11 +81,11 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 		return
 	}
 	if req.Days < 0 || req.Hours < 0 || req.Minutes < 0 {
-		resputil.BadRequestError(c, "lock duration values must be non-negative")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("lock duration values must be non-negative"))
 		return
 	}
 	if !req.IsPermanent && req.Days == 0 && req.Hours == 0 && req.Minutes == 0 {
-		resputil.BadRequestError(c, "lock duration must be positive unless permanent lock is requested")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("lock duration must be positive unless permanent lock is requested"))
 		return
 	}
 
