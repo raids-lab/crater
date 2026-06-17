@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { AIChatAssistantProvider } from '@/components/aiops/AIChatAssistantProvider'
 import AppLayout from '@/components/layout/app-layout'
 import NotFound from '@/components/placeholder/not-found'
 import { NavGroupProps } from '@/components/sidebar/types'
@@ -59,7 +60,9 @@ function RouteComponent() {
 
   return (
     <AppLayout groups={groups} rawPath={pathname}>
-      <Outlet />
+      <AIChatAssistantProvider>
+        <Outlet />
+      </AIChatAssistantProvider>
     </AppLayout>
   )
 }
@@ -176,6 +179,10 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           title: t('navigation.more'),
           icon: SettingsIcon,
           items: [
+            {
+              title: t('navigation.aiops'),
+              url: '/portal/aiops',
+            },
             {
               title: t('navigation.userSettings'),
               url: '/portal/more/user',

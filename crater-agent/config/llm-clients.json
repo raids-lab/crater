@@ -1,0 +1,157 @@
+{
+  "default": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "MiniMax-M2.5",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "intent_router": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.0,
+    "max_tokens": 2048,
+    "timeout": 60,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "coordinator": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "planner": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.05,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "explorer": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "executor": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "verifier": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.0,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "general": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "guide": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "approval": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.0,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "ops_report": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "qwen-plus-2025-12-01",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 90,
+    "streaming": true,
+    "stream_usage": true
+  },
+  "dialogue_eval_flash": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "tongyi-xiaomi-analysis-flash",
+    "temperature": 0.0,
+    "max_tokens": 4096,
+    "timeout": 30,
+    "streaming": false,
+    "stream_usage": false
+  },
+  "dialogue_eval_pro": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "tongyi-xiaomi-analysis-pro",
+    "temperature": 0.0,
+    "max_tokens": 4096,
+    "timeout": 60,
+    "streaming": false,
+    "stream_usage": false
+  },
+  "task_eval": {
+    "provider": "openai_compatible",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "api_key_env": "DASHSCOPE_API_KEY_NEW",
+    "model": "kimi-k2.6",
+    "temperature": 0.0,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": false,
+    "stream_usage": false,
+    "max_retries": 3
+  }
+}

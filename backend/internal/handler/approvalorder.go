@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
@@ -15,6 +17,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -29,12 +32,16 @@ func init() {
 }
 
 type ApprovalOrderMgr struct {
-	name string
+	name           string
+	agentEvaluator *service.AgentApprovalEvaluator
+	agentService   *service.AgentService
 }
 
 func NewApprovalOrderMgr(_ *RegisterConfig) Manager {
 	return &ApprovalOrderMgr{
-		name: "approvalorder",
+		name:           "approvalorder",
+		agentEvaluator: service.NewAgentApprovalEvaluator(), // nil if disabled
+		agentService:   service.NewAgentService(),
 	}
 }
 func (mgr *ApprovalOrderMgr) GetName() string { return mgr.name }
@@ -191,6 +198,9 @@ type ApprovalOrderResp struct {
 	Creator    model.UserInfo `json:"creator"`
 	ReviewerID uint           `json:"reviewerID"`
 	Reviewer   model.UserInfo `json:"reviewer"`
+
+	ReviewSource model.ReviewSource `json:"reviewSource"`
+	AgentReport  string             `json:"agentReport,omitempty"`
 }
 
 // swagger
@@ -253,14 +263,16 @@ func convertToApprovalOrderResps(orders []*model.ApprovalOrder) []ApprovalOrderR
 	var result []ApprovalOrderResp
 	for i := range orders {
 		resp := ApprovalOrderResp{
-			ID:          orders[i].ID,
-			Name:        orders[i].Name,
-			Type:        orders[i].Type,
-			Status:      orders[i].Status,
-			Content:     unmarshalApprovalOrderContent(orders[i].Content),
-			ReviewNotes: orders[i].ReviewNotes,
-			CreatedAt:   orders[i].CreatedAt,
-			CreatorID:   orders[i].CreatorID,
+			ID:           orders[i].ID,
+			Name:         orders[i].Name,
+			Type:         orders[i].Type,
+			Status:       orders[i].Status,
+			Content:      unmarshalApprovalOrderContent(orders[i].Content),
+			ReviewNotes:  orders[i].ReviewNotes,
+			CreatedAt:    orders[i].CreatedAt,
+			CreatorID:    orders[i].CreatorID,
+			ReviewSource: orders[i].ReviewSource,
+			AgentReport:  orders[i].AgentReport,
 			Creator: model.UserInfo{
 				Username: orders[i].Creator.Name,
 				Nickname: orders[i].Creator.Nickname,
@@ -368,7 +380,7 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		}
 	}
 
-	// 2. 检查是否满足自动审批条件
+	// 2. 检查是否满足自动审批条件（简单规则，同步执行）
 	autoApproved := false
 	autoApprovalReason := "whitout review，approved due to system"
 
@@ -389,14 +401,15 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		}
 	}
 
-	// 3. 创建审批工单
+	// 3. 先创建工单（不等待 Agent 评估）
 	orderStatus := model.ApprovalOrderStatusPending
 	orderReason := ""
+	orderReviewSource := model.ReviewSourceNone
 
-	// 如果满足自动审批条件，则将工单状态设置为已批准,并添加备注
 	if autoApproved {
 		orderStatus = model.ApprovalOrderStatusApproved
 		orderReason = autoApprovalReason
+		orderReviewSource = model.ReviewSourceSystemAuto
 	}
 
 	order := model.ApprovalOrder{
@@ -408,8 +421,9 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		CreatorID:   token.UserID,
-		ReviewNotes: orderReason,
+		CreatorID:    token.UserID,
+		ReviewNotes:  orderReason,
+		ReviewSource: orderReviewSource,
 	}
 
 	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
@@ -418,12 +432,172 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		return
 	}
 
+	// 4. 异步触发 Agent 评估（仅在简单规则不通过且 Agent 功能开启时）
 	message := "create approvalorder successfully"
 	if autoApproved {
 		message = "create approvalorder successfully and auto-approved with job locked"
+	} else if mgr.agentEvaluator != nil {
+		go mgr.runAgentEvaluation(order.ID, req.Name, req.ExtensionHours, int(token.UserID), int(token.AccountID), token.Username, req.Reason)
+		message = "create approvalorder successfully, agent evaluation in progress"
 	}
 
 	resputil.Success(c, message)
+}
+
+// runAgentEvaluation 在后台 goroutine 中执行 Agent 审批评估，完成后更新工单状态。
+// Go 端预取所有必要数据，Agent 只做一次 LLM 判断，不需要工具调用。
+func (mgr *ApprovalOrderMgr) runAgentEvaluation(
+	orderID uint,
+	jobName string,
+	extensionHours uint,
+	userID, accountID int,
+	username, reason string,
+) {
+	defer func() {
+		if r := recover(); r != nil {
+			klog.Errorf("agent approval evaluation panic recovered for order %d: %v", orderID, r)
+		}
+	}()
+
+	ctx := context.Background()
+
+	// 创建 ops_audit session，让 agent 的工具调用有落库依据且不会污染聊天列表。
+	sessionID := uuid.New().String()
+	if _, err := mgr.agentService.CreateSession(
+		ctx,
+		sessionID,
+		uint(userID),
+		uint(accountID),
+		fmt.Sprintf("[audit] 审批工单 #%d: %s", orderID, jobName),
+		nil,
+		"ops_audit",
+	); err != nil {
+		klog.Warningf("failed to create audit session for order %d: %v", orderID, err)
+		// 不阻塞评估，session 缺失只影响审计
+	}
+
+	klog.Infof("agent approval evaluation started for order %d (job %s, session %s)", orderID, jobName, sessionID)
+
+	evalReq := &service.ApprovalEvalRequest{
+		OrderID:        int(orderID),
+		JobName:        jobName,
+		ExtensionHours: int(extensionHours),
+		UserReason:     reason,
+		UserID:         userID,
+		Username:       username,
+		SessionID:      sessionID,
+	}
+
+	result, err := mgr.agentEvaluator.Evaluate(ctx, evalReq)
+	if err != nil {
+		klog.Warningf("agent approval evaluation failed for order %d (job %s): %v", orderID, jobName, err)
+		return // 工单保持 Pending，等管理员手动审批
+	}
+
+	agentReport := ""
+	if reportJSON, err := json.Marshal(result); err == nil {
+		agentReport = string(reportJSON)
+	}
+
+	ao := query.ApprovalOrder
+
+	if result.Verdict == "approve" || result.Verdict == "approve_emergency" {
+		jobDB := query.Job
+		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).First()
+		if err != nil || !mgr.isJobRunning(job.Status) {
+			klog.Warningf("job %s no longer running during agent eval for order %d", jobName, orderID)
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
+				"agent_report": agentReport,
+			})
+			return
+		}
+	}
+
+	switch result.Verdict {
+	case "approve":
+		lockHours := extensionHours
+		if result.ApprovedHours != nil && *result.ApprovedHours > 0 && uint(*result.ApprovedHours) < lockHours {
+			lockHours = uint(*result.ApprovedHours)
+			klog.Infof("agent adjusted lock hours for job %s: %d -> %d", jobName, extensionHours, lockHours)
+		}
+
+		if err := mgr.lockJobByCtx(ctx, jobName, lockHours); err != nil {
+			klog.Errorf("agent-approved lock failed for order %d (job %s): %v", orderID, jobName, err)
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
+				"agent_report": agentReport,
+			})
+			return
+		}
+
+		reviewNotes := fmt.Sprintf("agent evaluation approved (%d hours)", lockHours)
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
+			"status":        string(model.ApprovalOrderStatusApproved),
+			"review_notes":  reviewNotes,
+			"review_source": string(model.ReviewSourceAgentAuto),
+			"agent_report":  agentReport,
+		})
+		klog.Infof("agent approved order %d, locked job %s for %dh", orderID, jobName, lockHours)
+
+	case "approve_emergency":
+		emergencyHours := uint(6)
+		if result.ApprovedHours != nil && *result.ApprovedHours > 0 {
+			emergencyHours = uint(*result.ApprovedHours)
+		}
+
+		if err := mgr.lockJobByCtx(ctx, jobName, emergencyHours); err != nil {
+			klog.Errorf("agent-emergency lock failed for order %d (job %s): %v", orderID, jobName, err)
+			_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
+				"agent_report": agentReport,
+			})
+			return
+		}
+
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
+			"agent_report": agentReport,
+		})
+		klog.Infof("agent emergency-locked order %d, job %s for %dh, remaining %dh pending admin",
+			orderID, jobName, emergencyHours, extensionHours-emergencyHours)
+
+	default: // "escalate"
+		_, _ = ao.WithContext(ctx).Where(ao.ID.Eq(orderID)).Updates(map[string]any{
+			"agent_report": agentReport,
+		})
+		klog.Infof("agent escalated order %d (job %s) to admin", orderID, jobName)
+	}
+}
+
+// lockJobByCtx 使用 context.Context 锁定作业，供异步 goroutine 使用。
+func (mgr *ApprovalOrderMgr) lockJobByCtx(ctx context.Context, jobName string, extensionHours uint) error {
+	jobDB := query.Job
+
+	j, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).First()
+	if err != nil {
+		return err
+	}
+
+	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
+		return fmt.Errorf("job %s is already permanently locked", jobName)
+	}
+
+	const maxHours = 1440
+	if extensionHours > maxHours {
+		return fmt.Errorf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours)
+	}
+
+	lockTime := utils.GetLocalTime()
+	if j.LockedTimestamp.After(utils.GetLocalTime()) {
+		lockTime = j.LockedTimestamp
+	}
+
+	extensionDuration := time.Duration(extensionHours) * time.Hour
+	lockTime = lockTime.Add(extensionDuration)
+
+	if _, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
+		return err
+	}
+
+	klog.Infof("async-locked job %s until %s", jobName, lockTime.Format("2006-01-02 15:04:05"))
+	return nil
 }
 
 type UpdateApprovalOrder struct {
@@ -482,6 +656,11 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 	}
 
 	// 2. 更新审批工单
+	reviewSource := model.ReviewSourceNone
+	if req.Status == model.ApprovalOrderStatusApproved || req.Status == model.ApprovalOrderStatusRejected {
+		reviewSource = model.ReviewSourceAdminManual
+	}
+
 	order := model.ApprovalOrder{
 		Name:   req.Name,
 		Type:   req.Type,
@@ -491,8 +670,9 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		ReviewerID:  req.ReviewerID,
-		ReviewNotes: req.ReviewNotes,
+		ReviewerID:   req.ReviewerID,
+		ReviewNotes:  req.ReviewNotes,
+		ReviewSource: reviewSource,
 	}
 
 	info, err := query.ApprovalOrder.WithContext(c).Where(query.ApprovalOrder.ID.Eq(orderID.ID)).Updates(&order)
@@ -743,14 +923,16 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrderAdmin(c *gin.Context) {
 // 新增辅助函数：将单个 ApprovalOrder 转换为 ApprovalOrderResp
 func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 	resp := ApprovalOrderResp{
-		ID:          order.ID,
-		Name:        order.Name,
-		Type:        order.Type,
-		Status:      order.Status,
-		Content:     unmarshalApprovalOrderContent(order.Content),
-		ReviewNotes: order.ReviewNotes,
-		CreatedAt:   order.CreatedAt,
-		CreatorID:   order.CreatorID,
+		ID:           order.ID,
+		Name:         order.Name,
+		Type:         order.Type,
+		Status:       order.Status,
+		Content:      unmarshalApprovalOrderContent(order.Content),
+		ReviewNotes:  order.ReviewNotes,
+		CreatedAt:    order.CreatedAt,
+		CreatorID:    order.CreatorID,
+		ReviewSource: order.ReviewSource,
+		AgentReport:  order.AgentReport,
 		Creator: model.UserInfo{
 			Username: order.Creator.Name,
 			Nickname: order.Creator.Nickname,

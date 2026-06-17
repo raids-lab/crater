@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import type { ReviewSource } from '@/services/api/approvalorder'
+
 import { PhaseBadge } from './phase-badge'
 
 // 审批单类型枚举
@@ -120,6 +122,42 @@ export const ApprovalOrderTypeBadge = ({ type }: { type: ApprovalOrderType }) =>
 
 export const ApprovalOrderStatusBadge = ({ status }: { status: string }) => {
   return <PhaseBadge phase={status} getPhaseLabel={getApprovalOrderStatusLabel} />
+}
+
+const getReviewSourceLabel = (
+  source: ReviewSource
+): { label: string; color: string; description: string } => {
+  switch (source) {
+    case 'system_auto':
+      return {
+        label: '系统',
+        color: 'text-highlight-gray bg-highlight-gray/10',
+        description: '简单规则自动审批',
+      }
+    case 'agent_auto':
+      return {
+        label: 'Agent',
+        color: 'text-highlight-blue bg-highlight-blue/10',
+        description: 'Agent 智能评估通过',
+      }
+    case 'admin_manual':
+      return {
+        label: '管理员',
+        color: 'text-highlight-green bg-highlight-green/10',
+        description: '管理员手动审批',
+      }
+    default:
+      return {
+        label: '',
+        color: '',
+        description: '',
+      }
+  }
+}
+
+export const ReviewSourceBadge = ({ source }: { source: ReviewSource }) => {
+  if (!source) return null
+  return <PhaseBadge phase={source} getPhaseLabel={getReviewSourceLabel} />
 }
 
 export default ApprovalOrderStatusBadge

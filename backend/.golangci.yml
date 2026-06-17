@@ -125,6 +125,51 @@ linters:
         path: (.+)_test\.go
       - linters:
           - dupl
+          - errorlint
+          - funlen
+          - goconst
+          - gocritic
+          - gocyclo
+          - gosec
+          - lll
+          - misspell
+          - mnd
+          - nolintlint
+          - revive
+          - staticcheck
+          - unparam
+          - unused
+        path: ^(dao/model/agent\.go|internal/handler/agent/|internal/service/(agent|agent_|admin_ops_report)|pkg/patrol/)
+      - linters:
+          - dupl
+          - errorlint
+          - goconst
+          - gocritic
+          - gocyclo
+          - gosec
+          - mnd
+        path: ^internal/handler/vcjob/agent_submit\.go$
+      - linters:
+          - dupl
+        path: ^internal/handler/vcjob/(custom|pytorch)\.go$
+      - linters:
+          - dupl
+          - gocyclo
+          - gosec
+          - mnd
+        path: ^internal/handler/approvalorder\.go$
+      - linters:
+          - funlen
+          - gocyclo
+        path: ^pkg/config/config\.go$
+      - linters:
+          - gocyclo
+        path: ^pkg/alert/alert\.go$
+      - linters:
+          - unparam
+        path: ^internal/handler/vcjob/util\.go$
+      - linters:
+          - dupl
         path: pkg/golinters
       - linters:
           - staticcheck

@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +23,14 @@ type alertMgr struct {
 	handler alertHandlerInterface
 	err     error
 }
+
+var ErrReceiverEmailMissing = errors.New("receiver email missing")
+var ErrNotificationSuppressed = errors.New("notification suppressed by cooldown")
+
+const (
+	AgentJobOwnerNotificationAlertType  = "AgentJobOwnerNotification"
+	OpsReportAdminNotificationAlertType = "OpsReportAdminNotification"
+)
 
 var (
 	once    sync.Once
@@ -73,6 +83,136 @@ func (a *alertMgr) SendVerificationCode(ctx context.Context, code string, receiv
 
 	// TODO: 审计，留下所有发送邮件记录
 	return nil
+}
+
+func (a *alertMgr) NotifyJobOwner(ctx context.Context, jobName, subject, message string) error {
+	if a.err != nil {
+		return a.err
+	}
+
+	info, err := a.getJobAlertInfo(ctx, jobName)
+	if err != nil {
+		return err
+	}
+	if info.Receiver.Email == nil || strings.TrimSpace(*info.Receiver.Email) == "" {
+		return ErrReceiverEmailMissing
+	}
+
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		subject = "作业通知"
+	}
+	message = strings.TrimSpace(message)
+	if message == "" {
+		message = "您的作业 GPU 利用率较低，请检查是否仍在使用，建议释放资源以供他人使用。"
+	}
+	escapedMessage := strings.ReplaceAll(html.EscapeString(message), "\n", "<br>")
+
+	body := generateHTMLEmail(
+		info.Username,
+		subject,
+		fmt.Sprintf(
+			"您的作业 <strong>%s</strong> (ID: %s) 收到平台通知：<br><br>%s",
+			html.EscapeString(info.Name),
+			html.EscapeString(info.JobName),
+			escapedMessage,
+		),
+		info.jobURL,
+		"查看作业详情",
+	)
+	if err := a.handler.SendMessageTo(ctx, &info.Receiver, subject, body); err != nil {
+		return err
+	}
+
+	return a.recordAlertSend(ctx, jobName, AgentJobOwnerNotificationAlertType, true)
+}
+
+func (a *alertMgr) NotifyPlatformAdmins(ctx context.Context, subject, message, url, auditKey string, cooldownHours int) ([]EmailNotificationResult, error) {
+	if a.err != nil {
+		return nil, a.err
+	}
+	auditKey = strings.TrimSpace(auditKey)
+	if auditKey == "" {
+		auditKey = "ops-report"
+	}
+	if cooldownHours > 0 {
+		suppressed, err := a.isAlertSuppressed(ctx, auditKey, OpsReportAdminNotificationAlertType, time.Duration(cooldownHours)*time.Hour)
+		if err != nil {
+			return nil, err
+		}
+		if suppressed {
+			return []EmailNotificationResult{{
+				Target:  "platform_admins",
+				Status:  "skipped",
+				Message: ErrNotificationSuppressed.Error(),
+			}}, nil
+		}
+	}
+
+	receivers, err := a.listPlatformAdminReceivers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(receivers) == 0 {
+		return []EmailNotificationResult{{
+			Target:  "platform_admins",
+			Status:  "skipped",
+			Message: ErrReceiverEmailMissing.Error(),
+		}}, nil
+	}
+
+	subject = strings.TrimSpace(subject)
+	if subject == "" {
+		subject = "智能巡检通知"
+	}
+	escapedMessage := strings.ReplaceAll(html.EscapeString(strings.TrimSpace(message)), "\n", "<br>")
+	if escapedMessage == "" {
+		escapedMessage = "智能巡检发现需要关注的问题。"
+	}
+	if strings.TrimSpace(url) == "" {
+		host := strings.TrimSpace(config.GetConfig().Host)
+		if host != "" {
+			url = fmt.Sprintf("https://%s/admin/aiops", host)
+		}
+	}
+
+	results := make([]EmailNotificationResult, 0, len(receivers))
+	sent := false
+	for _, receiver := range receivers {
+		email := ""
+		if receiver.Email != nil {
+			email = strings.TrimSpace(*receiver.Email)
+		}
+		name := strings.TrimSpace(receiver.Nickname)
+		if name == "" {
+			name = strings.TrimSpace(receiver.Name)
+		}
+		if name == "" {
+			name = "平台管理员"
+		}
+		body := generateHTMLEmail(name, subject, escapedMessage, url, "查看巡检报告")
+		if err := a.handler.SendMessageTo(ctx, &receiver, subject, body); err != nil {
+			results = append(results, EmailNotificationResult{
+				Target:  name,
+				Email:   email,
+				Status:  "error",
+				Message: err.Error(),
+			})
+			continue
+		}
+		sent = true
+		results = append(results, EmailNotificationResult{
+			Target: name,
+			Email:  email,
+			Status: "sent",
+		})
+	}
+	if sent {
+		if err := a.recordAlertSend(ctx, auditKey, OpsReportAdminNotificationAlertType, true); err != nil {
+			return results, err
+		}
+	}
+	return results, nil
 }
 
 // Email中可能用到的Job信息
@@ -153,13 +293,22 @@ func (a *alertMgr) sendJobNotification(
 		return err
 	}
 
-	// 审计，留下所有发送邮件记录
+	return a.recordAlertSend(ctx, jobName, alertType.String(), false)
+}
+
+func (a *alertMgr) recordAlertSend(ctx context.Context, jobName, alertType string, allowRepeat bool) error {
+	alertDB := query.Alert
+	record, alertErr := alertDB.WithContext(ctx).Where(alertDB.JobName.Eq(jobName), alertDB.AlertType.Eq(alertType)).First()
+	if alertErr != nil && !errors.Is(alertErr, gorm.ErrRecordNotFound) {
+		return alertErr
+	}
+
 	if alertErr != nil && errors.Is(alertErr, gorm.ErrRecordNotFound) {
 		// 1. 邮件没发送过，创建新纪录
 		newRecord := &model.Alert{
 			JobName:        jobName,
-			AlertType:      alertType.String(),
-			AllowRepeat:    false,
+			AlertType:      alertType,
+			AllowRepeat:    allowRepeat,
 			AlertTimestamp: utils.GetLocalTime(),
 			SendCount:      1,
 		}
@@ -170,13 +319,77 @@ func (a *alertMgr) sendJobNotification(
 		// 2. 邮件已经发送过，更新记录
 		record.SendCount++
 		record.AlertTimestamp = utils.GetLocalTime()
-		record.AllowRepeat = false
+		record.AllowRepeat = allowRepeat
 		if err := alertDB.WithContext(ctx).Save(record); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (a *alertMgr) isAlertSuppressed(ctx context.Context, jobName, alertType string, cooldown time.Duration) (bool, error) {
+	if cooldown <= 0 {
+		return false, nil
+	}
+	alertDB := query.Alert
+	record, err := alertDB.WithContext(ctx).Where(alertDB.JobName.Eq(jobName), alertDB.AlertType.Eq(alertType)).First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return record.AlertTimestamp.After(time.Now().Add(-cooldown)), nil
+}
+
+func (a *alertMgr) listPlatformAdminReceivers(ctx context.Context) ([]model.UserAttribute, error) {
+	userDB := query.User
+	admins, err := userDB.WithContext(ctx).
+		Where(userDB.Role.Eq(uint8(model.RoleAdmin)), userDB.Status.Eq(uint8(model.StatusActive))).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]struct{}, len(admins)+1)
+	receivers := make([]model.UserAttribute, 0, len(admins)+1)
+	addReceiver := func(receiver model.UserAttribute) {
+		if receiver.Email == nil {
+			return
+		}
+		email := strings.TrimSpace(*receiver.Email)
+		if email == "" {
+			return
+		}
+		if _, ok := seen[strings.ToLower(email)]; ok {
+			return
+		}
+		receiver.Email = &email
+		seen[strings.ToLower(email)] = struct{}{}
+		receivers = append(receivers, receiver)
+	}
+
+	for _, admin := range admins {
+		receiver := admin.Attributes.Data()
+		if strings.TrimSpace(receiver.Name) == "" {
+			receiver.Name = admin.Name
+		}
+		if strings.TrimSpace(receiver.Nickname) == "" {
+			receiver.Nickname = admin.Nickname
+		}
+		addReceiver(receiver)
+	}
+
+	fallbackEmail := strings.TrimSpace(config.GetConfig().SMTP.Notify)
+	if len(receivers) == 0 && fallbackEmail != "" {
+		addReceiver(model.UserAttribute{
+			Name:     "platform-admin",
+			Nickname: "平台管理员",
+			Email:    &fallbackEmail,
+		})
+	}
+	return receivers, nil
 }
 
 // 作业开始通知，只有当作业创建和运行间隔超过 10 分钟时才发送

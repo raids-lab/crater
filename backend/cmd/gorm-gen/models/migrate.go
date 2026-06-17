@@ -16,6 +16,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/monitor"
+	"github.com/raids-lab/crater/pkg/patrol"
 )
 
 //nolint:gocyclo // ignore cyclomatic complexity
@@ -756,6 +757,222 @@ func main() {
 			},
 		},
 		{
+			ID: "202603290001",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&model.AgentSession{},
+					&model.AgentMessage{},
+					&model.AgentToolCall{},
+					&model.JobLogSnapshot{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"agent_sessions",
+					"agent_messages",
+					"agent_tool_calls",
+					"job_log_snapshots",
+				)
+			},
+		},
+		{
+			ID: "202604030001",
+			Migrate: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					PinnedAt *time.Time `gorm:"index"`
+				}
+				return tx.Migrator().AddColumn(&AgentSession{}, "PinnedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					PinnedAt *time.Time `gorm:"index"`
+				}
+				return tx.Migrator().DropColumn(&AgentSession{}, "PinnedAt")
+			},
+		},
+		{
+			ID: "202604030002",
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(
+					&model.AgentSession{},
+					&model.AgentToolCall{},
+					&model.AgentTurn{},
+					&model.AgentRunEvent{},
+				); err != nil {
+					return err
+				}
+				return tx.Exec(`
+					UPDATE agent_sessions
+					SET last_orchestration_mode = 'single_agent'
+					WHERE last_orchestration_mode IS NULL
+					   OR BTRIM(last_orchestration_mode) = ''
+				`).Error
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					LastOrchestrationMode string `gorm:"type:varchar(32);default:'single_agent'"`
+				}
+				type AgentToolCall struct {
+					TurnID        string `gorm:"type:uuid;index"`
+					ToolCallID    string `gorm:"type:varchar(128);index"`
+					AgentID       string `gorm:"type:varchar(128);index"`
+					ParentEventID *uint  `gorm:"index"`
+					AgentRole     string `gorm:"type:varchar(32);index"`
+				}
+				if err := tx.Migrator().DropTable("agent_run_events", "agent_turns"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "AgentRole"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "ParentEventID"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "AgentID"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "ToolCallID"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "TurnID"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&AgentSession{}, "LastOrchestrationMode")
+			},
+		},
+		{
+			ID: "202604040001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`CREATE TABLE IF NOT EXISTS ops_audit_reports (
+						id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+						report_type VARCHAR(32) NOT NULL,
+						status VARCHAR(16) NOT NULL DEFAULT 'running',
+						trigger_source VARCHAR(32),
+						summary JSONB,
+						created_at TIMESTAMPTZ DEFAULT NOW(),
+						completed_at TIMESTAMPTZ
+					)`,
+					`CREATE TABLE IF NOT EXISTS ops_audit_items (
+						id BIGSERIAL PRIMARY KEY,
+						report_id UUID NOT NULL REFERENCES ops_audit_reports(id),
+						job_name VARCHAR(255) NOT NULL,
+						user_id VARCHAR(128),
+						account_id VARCHAR(128),
+						username VARCHAR(128),
+						action_type VARCHAR(32) NOT NULL,
+						severity VARCHAR(16) NOT NULL,
+						gpu_utilization FLOAT,
+						gpu_requested INT,
+						gpu_actual_used INT,
+						analysis_detail JSONB,
+						handled BOOLEAN DEFAULT FALSE,
+						handled_at TIMESTAMPTZ,
+						handled_by VARCHAR(128),
+						created_at TIMESTAMPTZ DEFAULT NOW()
+					)`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_items_report ON ops_audit_items(report_id)`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_items_action ON ops_audit_items(action_type, severity)`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_items_handled ON ops_audit_items(handled) WHERE NOT handled`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_reports_type_status ON ops_audit_reports(report_type, status)`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_reports_created ON ops_audit_reports(created_at DESC)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP TABLE IF EXISTS ops_audit_items`,
+					`DROP TABLE IF EXISTS ops_audit_reports`,
+				})
+			},
+		},
+		{
+			ID: "202604050001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE ops_audit_reports
+						ADD COLUMN IF NOT EXISTS report_json JSONB,
+						ADD COLUMN IF NOT EXISTS period_start TIMESTAMPTZ,
+						ADD COLUMN IF NOT EXISTS period_end TIMESTAMPTZ,
+						ADD COLUMN IF NOT EXISTS comparison_report_id UUID,
+						ADD COLUMN IF NOT EXISTS job_total INT DEFAULT 0,
+						ADD COLUMN IF NOT EXISTS job_success INT DEFAULT 0,
+						ADD COLUMN IF NOT EXISTS job_failed INT DEFAULT 0,
+						ADD COLUMN IF NOT EXISTS job_pending INT DEFAULT 0`,
+					`ALTER TABLE ops_audit_items
+						ADD COLUMN IF NOT EXISTS category VARCHAR(32),
+						ADD COLUMN IF NOT EXISTS job_type VARCHAR(32),
+						ADD COLUMN IF NOT EXISTS owner VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS namespace VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS duration_seconds INT,
+						ADD COLUMN IF NOT EXISTS resource_requested JSONB,
+						ADD COLUMN IF NOT EXISTS resource_actual JSONB,
+						ADD COLUMN IF NOT EXISTS exit_code INT,
+						ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(64)`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_reports_type_created
+						ON ops_audit_reports (report_type, created_at DESC)`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_items_category
+						ON ops_audit_items (category) WHERE category IS NOT NULL`,
+					`CREATE INDEX IF NOT EXISTS idx_audit_items_failure
+						ON ops_audit_items (failure_reason) WHERE failure_reason IS NOT NULL`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_audit_items_failure`,
+					`DROP INDEX IF EXISTS idx_audit_items_category`,
+					`DROP INDEX IF EXISTS idx_audit_reports_type_created`,
+					`ALTER TABLE ops_audit_items
+						DROP COLUMN IF EXISTS failure_reason,
+						DROP COLUMN IF EXISTS exit_code,
+						DROP COLUMN IF EXISTS resource_actual,
+						DROP COLUMN IF EXISTS resource_requested,
+						DROP COLUMN IF EXISTS duration_seconds,
+						DROP COLUMN IF EXISTS namespace,
+						DROP COLUMN IF EXISTS owner,
+						DROP COLUMN IF EXISTS job_type,
+						DROP COLUMN IF EXISTS category`,
+					`ALTER TABLE ops_audit_reports
+						DROP COLUMN IF EXISTS job_pending,
+						DROP COLUMN IF EXISTS job_failed,
+						DROP COLUMN IF EXISTS job_success,
+						DROP COLUMN IF EXISTS job_total,
+						DROP COLUMN IF EXISTS comparison_report_id,
+						DROP COLUMN IF EXISTS period_end,
+						DROP COLUMN IF EXISTS period_start,
+						DROP COLUMN IF EXISTS report_json`,
+				})
+			},
+		},
+		{
+			ID: "202604110001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS execution_backend VARCHAR(64),
+						ADD COLUMN IF NOT EXISTS sandbox_job_name VARCHAR(255),
+						ADD COLUMN IF NOT EXISTS script_name VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS result_artifact_ref TEXT,
+						ADD COLUMN IF NOT EXISTS egress_domains JSONB`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_sandbox_job_name
+						ON agent_tool_calls (sandbox_job_name)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_script_name
+						ON agent_tool_calls (script_name)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_script_name`,
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_sandbox_job_name`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS egress_domains,
+						DROP COLUMN IF EXISTS result_artifact_ref,
+						DROP COLUMN IF EXISTS script_name,
+						DROP COLUMN IF EXISTS sandbox_job_name,
+						DROP COLUMN IF EXISTS execution_backend`,
+				})
+			},
+		},
+		{
 			ID: "202512261300",
 			Migrate: func(tx *gorm.DB) error {
 				config := &model.CronJobConfig{
@@ -797,6 +1014,120 @@ func main() {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable(&model.OperationLog{})
+			},
+		},
+		{
+			ID: "202604220001",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.AgentFeedback{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("agent_feedbacks")
+			},
+		},
+		{
+			ID: "202604220002",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_sessions
+						ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'chat'`,
+					`UPDATE agent_sessions
+						SET source = 'chat'
+						WHERE source IS NULL OR BTRIM(source) = ''`,
+					`UPDATE agent_sessions
+						SET source = 'ops_audit'
+						WHERE title LIKE '[audit] 审批%'
+						  AND source = 'chat'`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_sessions_source
+						ON agent_sessions (source)`,
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'backend'`,
+					`UPDATE agent_tool_calls
+						SET source = 'backend'
+						WHERE source IS NULL OR BTRIM(source) = ''`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_source
+						ON agent_tool_calls (source)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_source`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS source`,
+					`DROP INDEX IF EXISTS idx_agent_sessions_source`,
+					`ALTER TABLE agent_sessions
+						DROP COLUMN IF EXISTS source`,
+				})
+			},
+		},
+		{
+			ID: "202604230001",
+			Migrate: func(tx *gorm.DB) error {
+				type AgentFeedback struct {
+					EnrichedAt *time.Time `json:"enrichedAt,omitempty"`
+				}
+				return tx.Migrator().AddColumn(&AgentFeedback{}, "EnrichedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentFeedback struct {
+					EnrichedAt *time.Time `json:"enrichedAt,omitempty"`
+				}
+				return tx.Migrator().DropColumn(&AgentFeedback{}, "EnrichedAt")
+			},
+		},
+		{
+			ID: "202604230002",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.AgentQualityEval{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("agent_quality_evals")
+			},
+		},
+		{
+			ID: "202604230003",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_quality_evals
+						ADD COLUMN IF NOT EXISTS eval_scope VARCHAR(16) NOT NULL DEFAULT 'session',
+						ADD COLUMN IF NOT EXISTS eval_type VARCHAR(32) NOT NULL DEFAULT 'full',
+						ADD COLUMN IF NOT EXISTS target_id VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS metadata JSONB`,
+					`UPDATE agent_quality_evals
+						SET eval_scope = CASE WHEN turn_id IS NULL THEN 'session' ELSE 'turn' END
+						WHERE eval_scope IS NULL OR BTRIM(eval_scope) = ''`,
+					`UPDATE agent_quality_evals
+						SET eval_type = 'full'
+						WHERE eval_type IS NULL OR BTRIM(eval_type) = ''`,
+					`UPDATE agent_quality_evals
+						SET target_id = CASE
+							WHEN eval_scope = 'turn' AND turn_id IS NOT NULL THEN turn_id::text
+							ELSE session_id::text
+						END
+						WHERE target_id IS NULL OR BTRIM(target_id) = ''`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_quality_evals_session_created
+						ON agent_quality_evals (session_id, created_at DESC)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_quality_evals_scope_type_status
+						ON agent_quality_evals (eval_scope, eval_type, eval_status)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_quality_evals_target_created
+						ON agent_quality_evals (eval_scope, target_id, created_at DESC)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_quality_evals_active
+						ON agent_quality_evals (eval_status, created_at DESC)
+						WHERE eval_status IN ('pending', 'running')`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_quality_evals_active`,
+					`DROP INDEX IF EXISTS idx_agent_quality_evals_target_created`,
+					`DROP INDEX IF EXISTS idx_agent_quality_evals_scope_type_status`,
+					`DROP INDEX IF EXISTS idx_agent_quality_evals_session_created`,
+					`ALTER TABLE agent_quality_evals
+						DROP COLUMN IF EXISTS metadata,
+						DROP COLUMN IF EXISTS target_id,
+						DROP COLUMN IF EXISTS eval_type,
+						DROP COLUMN IF EXISTS eval_scope`,
+				})
 			},
 		},
 		{
@@ -1138,6 +1469,33 @@ func main() {
 				return nil
 			},
 		},
+		{
+			ID: "202604270001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_script_name`,
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_sandbox_job_name`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS egress_domains,
+						DROP COLUMN IF EXISTS result_artifact_ref,
+						DROP COLUMN IF EXISTS script_name,
+						DROP COLUMN IF EXISTS sandbox_job_name`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS sandbox_job_name VARCHAR(255),
+						ADD COLUMN IF NOT EXISTS script_name VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS result_artifact_ref TEXT,
+						ADD COLUMN IF NOT EXISTS egress_domains JSONB`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_sandbox_job_name
+						ON agent_tool_calls (sandbox_job_name)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_script_name
+						ON agent_tool_calls (script_name)`,
+				})
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1167,11 +1525,22 @@ func main() {
 			&model.CronJobRecord{},
 			&model.GpuAnalysis{},
 			&model.SystemConfig{},
+			&model.AgentSession{},
+			&model.AgentMessage{},
+			&model.AgentToolCall{},
+			&model.AgentTurn{},
+			&model.AgentRunEvent{},
+			&model.JobLogSnapshot{},
+			&model.AgentFeedback{},
+			&model.AgentQualityEval{},
 			&model.OperationLog{},
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
 		)
 		if err != nil {
+			return err
+		}
+		if err := ensureOpsAuditSchema(tx); err != nil {
 			return err
 		}
 
@@ -1280,6 +1649,32 @@ func main() {
 				Config:  datatypes.JSON(`{"waitMinitues": 5, "jobTypes": ["custom"]}`),
 				EntryID: -1,
 			},
+			{
+				Name:   patrol.TRIGGER_ADMIN_OPS_REPORT_JOB,
+				Type:   model.CronJobTypePatrolFunc,
+				Spec:   "0 * * * *",
+				Status: model.CronJobConfigStatusSuspended,
+				Config: datatypes.JSON(`{
+					"days": 1,
+					"lookback_hours": 1,
+					"gpu_threshold": 5,
+					"idle_hours": 1,
+					"running_limit": 20,
+					"node_limit": 10
+				}`),
+				EntryID: -1,
+			},
+			{
+				Name:   patrol.TRIGGER_STORAGE_DAILY_AUDIT_JOB,
+				Type:   model.CronJobTypePatrolFunc,
+				Spec:   "0 3 * * *",
+				Status: model.CronJobConfigStatusSuspended,
+				Config: datatypes.JSON(`{
+					"days": 1,
+					"pvc_limit": 200
+				}`),
+				EntryID: -1,
+			},
 		}
 
 		for _, config := range initialCronJobConfigs {
@@ -1294,4 +1689,73 @@ func main() {
 	if err := m.Migrate(); err != nil {
 		panic(fmt.Errorf("could not migrate: %w", err))
 	}
+}
+
+func runStatements(tx *gorm.DB, statements []string) error {
+	for _, stmt := range statements {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureOpsAuditSchema(tx *gorm.DB) error {
+	return runStatements(tx, []string{
+		`CREATE TABLE IF NOT EXISTS ops_audit_reports (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			report_type VARCHAR(32) NOT NULL,
+			status VARCHAR(16) NOT NULL DEFAULT 'running',
+			trigger_source VARCHAR(32),
+			summary JSONB,
+			report_json JSONB,
+			period_start TIMESTAMPTZ,
+			period_end TIMESTAMPTZ,
+			comparison_report_id UUID,
+			job_total INT DEFAULT 0,
+			job_success INT DEFAULT 0,
+			job_failed INT DEFAULT 0,
+			job_pending INT DEFAULT 0,
+			created_at TIMESTAMPTZ DEFAULT NOW(),
+			completed_at TIMESTAMPTZ
+		)`,
+		`CREATE TABLE IF NOT EXISTS ops_audit_items (
+			id BIGSERIAL PRIMARY KEY,
+			report_id UUID NOT NULL REFERENCES ops_audit_reports(id),
+			job_name VARCHAR(255) NOT NULL,
+			user_id VARCHAR(128),
+			account_id VARCHAR(128),
+			username VARCHAR(128),
+			action_type VARCHAR(32) NOT NULL,
+			severity VARCHAR(16) NOT NULL,
+			gpu_utilization FLOAT,
+			gpu_requested INT,
+			gpu_actual_used INT,
+			analysis_detail JSONB,
+			handled BOOLEAN DEFAULT FALSE,
+			handled_at TIMESTAMPTZ,
+			handled_by VARCHAR(128),
+			category VARCHAR(32),
+			job_type VARCHAR(32),
+			owner VARCHAR(128),
+			namespace VARCHAR(128),
+			duration_seconds INT,
+			resource_requested JSONB,
+			resource_actual JSONB,
+			exit_code INT,
+			failure_reason VARCHAR(64),
+			created_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_items_report ON ops_audit_items(report_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_items_action ON ops_audit_items(action_type, severity)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_items_handled ON ops_audit_items(handled) WHERE NOT handled`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_reports_type_status ON ops_audit_reports(report_type, status)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_reports_created ON ops_audit_reports(created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_reports_type_created
+			ON ops_audit_reports (report_type, created_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_items_category
+			ON ops_audit_items (category) WHERE category IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_items_failure
+			ON ops_audit_items (failure_reason) WHERE failure_reason IS NOT NULL`,
+	})
 }

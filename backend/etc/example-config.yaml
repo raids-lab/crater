@@ -130,10 +130,10 @@ registry:
       buildx: ghcr.io/raids-lab/buildx-client:latest
       # Nerdctl image for containerd-based builds
       # Required if Registry.Enable is true
-      nerdctl: ghcr.io/raids-lab/envd-client:latest
+      nerdctl: ghcr.io/raids-lab/nerdctl-client:latest
       # Envd image for environment-based development builds
       # Required if Registry.Enable is true
-      envd: ghcr.io/raids-lab/nerdctl-client:latest
+      envd: ghcr.io/raids-lab/envd-client:latest
 
 # Configuration for email notifications via SMTP
 # Optional: If Enable is false, email notifications will be disabled
@@ -156,6 +156,49 @@ smtp:
   # Default email address for system notifications
   # Required if Enable is true: Must be a valid email address
   notify: example@example.com
+
+# Crater Agent (Python service) and backend-side ops tool policy
+agent:
+  # Optional: defaults to http://localhost:8000
+  serviceURL: http://localhost:8000
+  # Optional: can be provided via CRATER_AGENT_INTERNAL_TOKEN
+  internalToken: <MASKED>
+  ops:
+    webSearch:
+      # Toggle backend-proxied web search tool
+      enabled: true
+      # Strict egress allowlist for web_search
+      allowedDomains:
+        - kubernetes.io
+        - k8s.io
+        - docs.nvidia.com
+        - developer.nvidia.com
+        - docs.ceph.com
+        - openebs.io
+        - volcano.sh
+        - prometheus.io
+        - grafana.com
+        - nvd.nist.gov
+      timeoutSeconds: 10
+    kubernetes:
+      # Optional shared defaults for agent-side direct kubectl diagnosis tools.
+      # Use agent-side platform-runtime.yaml to override these values when the
+      # agent is deployed separately from the backend or mounts kubeconfig elsewhere.
+      kubeconfigPath: ""
+      context: ""
+      namespace: crater-workspace
+      kubectlBin: kubectl
+      timeoutSeconds: 30
+    # Agent-assisted approval evaluation for job lock orders.
+    # When enabled, orders that don't pass simple auto-approval rules
+    # are evaluated by the agent before falling back to manual review.
+    approvalHook:
+      enabled: true
+      totalTimeoutSeconds: 60
+      maxPerMinute: 10
+      maxConcurrent: 3
+      circuitBreakerThreshold: 5
+      circuitBreakerCooldownSeconds: 60
 
 # Authentication configuration
 auth:

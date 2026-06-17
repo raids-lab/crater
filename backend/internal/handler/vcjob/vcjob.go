@@ -132,6 +132,13 @@ func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 const (
 	VolcanoSchedulerName = "volcano"
 
+	volcanoTaskMaster = "master"
+	volcanoTaskWorker = "worker"
+
+	pytorchPluginMasterArg = "--master=master"
+	pytorchPluginWorkerArg = "--worker=worker"
+	pytorchPluginPortArg   = "--port=23456"
+
 	AnnotationKeyUser                    = "crater.raids.io/user"          // 用户名，以小写字母开头
 	AnnotationKeyTaskName                = "crater.raids.io/task-name"     // 任务名称（可能是中文）
 	AnnotationKeyTaskTemplate            = "crater.raids.io/task-template" // 任务模板

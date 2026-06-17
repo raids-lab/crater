@@ -31,6 +31,7 @@ import {
   CronJobConfigStatus,
   apiAdminLongTimeRunningJobsCleanup,
   apiAdminLowGPUUsageJobsCleanup,
+  apiAdminTriggerPatrolJob,
   apiAdminWaitingCustomJobCancel,
   apiAdminWaitingJupyterJobCancel,
   apiJobScheduleChangeAdmin,
@@ -48,6 +49,8 @@ export interface CronJobCardProps {
 
 const HIDDEN_PARAMS = ['jobTypes']
 
+const PATROL_JOBS = new Set(['trigger-gpu-analysis-job', 'trigger-admin-ops-report-job'])
+
 interface CleanupResult {
   data: {
     deleted: unknown[]
@@ -55,9 +58,16 @@ interface CleanupResult {
   }
 }
 
+interface PatrolResult {
+  data?: {
+    status?: string
+    report_id?: string
+  } | null
+}
+
 const executeJobMap: Record<
   string,
-  (params: Record<string, number | string | string[]>) => Promise<CleanupResult>
+  (params: Record<string, number | string | string[]>) => Promise<CleanupResult | PatrolResult>
 > = {
   'clean-long-time-job': async (params) => {
     const res = await apiAdminLongTimeRunningJobsCleanup({
@@ -87,14 +97,16 @@ const executeJobMap: Record<
     return res
   },
   'trigger-gpu-analysis-job': async () => {
-    throw new Error('GPU analysis job execution not implemented yet')
+    return apiAdminTriggerPatrolJob('trigger-gpu-analysis-job')
+  },
+  'trigger-admin-ops-report-job': async () => {
+    return apiAdminTriggerPatrolJob('trigger-admin-ops-report-job')
   },
 }
 
 export default function CronJobCard({
   jobId,
   jobName,
-  jobType,
   status,
   spec,
   params,
@@ -133,17 +145,36 @@ export default function CronJobCard({
       return await executeFunc(jobParams)
     },
     onSuccess: (data) => {
-      const deleted = data.data.deleted || []
-      const reminded = data.data.reminded || []
-      const total = deleted.length + reminded.length
+      if (PATROL_JOBS.has(jobId)) {
+        // Patrol jobs return varied structures, so show a generic success.
+        const payload = (data as PatrolResult).data ?? {}
+        const status = payload.status || 'completed'
+        const reportId = payload.report_id
+        if (reportId) {
+          toast.success(t('cronPolicy.patrolSuccess', { defaultValue: '巡检任务执行成功' }))
+        } else {
+          toast.success(
+            t('cronPolicy.patrolTriggered', {
+              defaultValue: `巡检任务已触发 (${status})`,
+              status,
+            })
+          )
+        }
+      } else {
+        // Cleaner jobs return { deleted: [...], reminded: [...] }
+        const payload = (data as CleanupResult).data
+        const deleted = payload.deleted || []
+        const reminded = payload.reminded || []
+        const total = deleted.length + reminded.length
 
-      toast.success(
-        t('cronPolicy.cleanupSummary', {
-          total,
-          deleted: deleted.length,
-          reminded: reminded.length,
-        })
-      )
+        toast.success(
+          t('cronPolicy.cleanupSummary', {
+            total,
+            deleted: deleted.length,
+            reminded: reminded.length,
+          })
+        )
+      }
       onUpdate()
     },
     onError: (error: Error) => {
@@ -230,7 +261,6 @@ export default function CronJobCard({
           isLoading={executeMutation.isPending}
           isLoadingText={t('cronPolicy.executing')}
           onClick={() => executeMutation.mutate()}
-          disabled={jobType === 'patrol_function'}
         >
           <PlayIcon className="mr-2 h-4 w-4" />
           {t('cronPolicy.executeNow')}

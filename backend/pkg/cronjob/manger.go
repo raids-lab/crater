@@ -28,6 +28,7 @@ func NewCronJobManager(
 	kubeClient kubernetes.Interface,
 	promClient monitor.PrometheusInterface,
 	gpuAnalysisService patrol.GpuAnalysisServiceInterface,
+	adminOpsReportService patrol.AdminOpsReportServiceInterface,
 	billingService patrol.BillingServiceInterface,
 ) *CronJobManager {
 	return &CronJobManager{
@@ -44,6 +45,7 @@ func NewCronJobManager(
 			KubeClient:         kubeClient,
 			PromClient:         promClient,
 			GpuAnalysisService: gpuAnalysisService,
+			AdminOpsService:    adminOpsReportService,
 			BillingService:     billingService,
 		},
 		cron: cron.New(cron.WithLocation(time.Local)),
