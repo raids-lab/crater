@@ -14,7 +14,8 @@ func TestReadCommandMatrix(t *testing.T) {
 
 	commands := [][]string{
 		{"node", "ls"}, {"node", "get"}, {"node", "pods"}, {"node", "gpu"},
-		{"job", "ls"}, {"job", "get"}, {"job", "pods"}, {"job", "events"}, {"job", "yaml"},
+		{"job", "ls"}, {"job", "get"}, {"job", "pods"}, {"job", "events"}, {"job", "yaml"}, {"job", "template"}, {"job", "token"}, {"job", "secret"}, {"job", "ssh"}, {"job", "snapshot"}, {"job", "alert"}, {"job", "delete"},
+		{"job", "create", "jupyter"}, {"job", "create", "webide"}, {"job", "create", "custom"}, {"job", "create", "tensorflow"}, {"job", "create", "pytorch"},
 		{"image", "ls"},
 		{"account", "ls"}, {"account", "get"}, {"account", "members"}, {"account", "users-out"}, {"account", "billing", "config"}, {"account", "billing", "members"},
 		{"resource", "ls"}, {"resource", "networks"}, {"resource", "vgpu"}, {"resource", "prices"},
@@ -33,6 +34,8 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"admin", "dataset", "ls"},
 		{"admin", "model-download", "ls"},
 		{"admin", "billing", "status"}, {"admin", "billing", "jobs"},
+		{"admin", "job", "ls"}, {"admin", "job", "delete"}, {"admin", "job", "lock"}, {"admin", "job", "unlock"}, {"admin", "job", "keep"},
+		{"admin", "job", "clean", "waiting-jupyter"}, {"admin", "job", "clean", "waiting-custom"}, {"admin", "job", "clean", "long-running"}, {"admin", "job", "clean", "low-gpu"},
 		{"admin", "order", "ls"}, {"admin", "order", "get"},
 		{"admin", "user", "ls"}, {"admin", "user", "billing", "summary"}, {"admin", "user", "billing", "accounts"},
 	}
@@ -57,7 +60,7 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"admin", "system-config", "llm"}, {"admin", "system-config", "gpu-analysis"}, {"admin", "system-config", "prequeue"},
 		{"admin", "queue-quotas"}, {"admin", "gpu-analyses"}, {"admin", "operation-logs"}, {"admin", "cronjobs"}, {"admin", "whitelist"},
 		{"admin", "account", "ls"}, {"admin", "dataset", "ls"}, {"admin", "model-download", "ls"},
-		{"admin", "billing", "status"}, {"admin", "billing", "jobs"}, {"admin", "order", "ls"}, {"admin", "user", "ls"}, {"admin", "user", "billing", "summary"},
+		{"admin", "billing", "status"}, {"admin", "billing", "jobs"}, {"admin", "job", "ls"}, {"admin", "order", "ls"}, {"admin", "user", "ls"}, {"admin", "user", "billing", "summary"},
 	}
 	env404 := append(baseEnv, "CRATER_TEST_SANDBOX_HTTP=error404")
 	for _, command := range apiCases {
