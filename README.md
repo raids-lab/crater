@@ -4,9 +4,9 @@
 
 # Crater
 
-### A Kubernetes-native AI development platform
+### A Kubernetes-native control plane for shared AI computing clusters
 
-Unified **GPU resource management**, **containerized development environments**, and **workflow orchestration** — all in one place.
+Operate shared **GPU clusters**, **LLM training and serving workloads**, **developer environments**, and **data/model assets** across research, education, and enterprise teams.
 
 <br/>
 
@@ -34,38 +34,82 @@ Unified **GPU resource management**, **containerized development environments**,
 
 ## ✨ Overview
 
-**Crater** helps teams manage heterogeneous compute resources (e.g., GPUs) and run AI workloads on Kubernetes through **unified scheduling**, **ready-to-use development environments**, and **end-to-end observability** — all from a single, clean web interface.
+**Crater** is a Kubernetes-native platform for operating shared AI computing clusters. It helps organizations manage heterogeneous compute resources, submit and govern AI workloads, quickly deploy large-model training and inference environments, and observe cluster health from a unified web console, CLI, and AI-assisted operations interface.
+
+Crater is designed for environments where different teams and workloads share the same GPU cluster: long-running training jobs, bursty lab workloads, interactive notebooks, online AI services, LLM inference services, and offline data processing pipelines. It builds an operational control plane on top of Kubernetes and Volcano, connecting users, accounts, queues, quotas, images, datasets, models, jobs, services, and observability into one workflow.
 
 <div align="center">
 
 |  |  |
 | :---: | :---: |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 Jupyter Lab** — interactive dev environments | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Ray Job" width="420" /><br/>**🚀 Ray Jobs** — distributed training & inference |
+| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 Interactive Development** — Jupyter, WebIDE, terminals, and external access | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI Workloads** — training, serving, templates, and batch jobs |
 | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 Monitoring** — real-time metrics & logs | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 Models & Datasets** — manage assets in one place |
 
 </div>
+
+## 🌐 Designed For
+
+Crater fits shared AI computing environments in universities, research institutes, enterprise AI teams, and internal platform teams.
+
+| Scenario | Typical workloads | What Crater provides |
+| :--- | :--- | :--- |
+| **Research & engineering** | Model fine-tuning, simulation, scientific computing, large experiments | Long-running GPU jobs, reusable environments, data/model mounting, logs, monitoring, and lifecycle controls |
+| **Teaching & training** | Course labs, student projects, virtual experiments, workshops | Account and quota management, job templates, burst handling, fair access, and simple web-based submission |
+| **LLM training & serving** | Fine-tuning, evaluation, inference endpoints, model demos, mixed training/serving clusters | Fast deployment templates, GPU-aware placement, data/model assets, service access, and train/serve resource governance |
+| **Enterprise AI services** | Internal assistants, document intelligence, multimodal services, inference backends | Managed runtime environments, service access, operational visibility, and resource governance |
+| **Data processing** | Dataset preparation, image analysis, batch pipelines, offline preprocessing | Storage integration, dataset/model management, schedulable batch jobs, and observability |
 
 ## 🎯 Features
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <h3>🎛️ Intuitive UI</h3>
-      Manage clusters, jobs, and resources through a clean web interface, with real-time dashboards for CPU, memory, and storage usage.
+      <h3>🏢 Multi-Tenant Governance</h3>
+      Manage users, accounts, queues, quotas, approvals, and billing-oriented resource visibility. Crater turns a raw GPU cluster into an accountable shared service for teams and projects.
     </td>
     <td width="50%" valign="top">
-      <h3>⚙️ Intelligent Scheduling</h3>
-      Allocate resources by priority and requirements, prioritizing time-sensitive jobs to improve overall cluster utilization.
+      <h3>⚙️ Policy-Aware Scheduling</h3>
+      Build on Kubernetes and Volcano to support queue-based admission, priority-aware execution, prequeue policies, and workload placement across heterogeneous resources, including mixed training and serving workloads.
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <h3>🧪 Dev Environments</h3>
-      Spin up containerized, ready-to-use environments like Jupyter Lab and Ray jobs in seconds — no manual setup required.
+      <h3>🚀 Workload Lifecycle</h3>
+      Submit, clone, monitor, stop, and inspect AI workloads through Kubernetes-native jobs and reusable templates, from interactive sessions and LLM fine-tuning to long-running batch jobs.
     </td>
     <td width="50%" valign="top">
-      <h3>📈 Monitoring &amp; Logs</h3>
-      Observe cluster status and troubleshoot quickly with built-in metrics, logs, and Grafana dashboards.
+      <h3>🧪 Interactive Development</h3>
+      Launch containerized Jupyter, WebIDE, web terminals, SSH access, and custom environments without manual cluster setup, giving users a reproducible workspace close to the data and GPUs.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>📦 Data, Model &amp; Image Assets</h3>
+      Organize datasets, models, shared files, custom images, registry entries, and platform-side model or dataset downloads so workloads can reuse managed artifacts.
+    </td>
+    <td width="50%" valign="top">
+      <h3>🧩 Heterogeneous Accelerators</h3>
+      Represent GPUs and accelerator models as schedulable resources, supporting NVIDIA GPUs, domestic accelerator cards, vGPU-style resources, and DRA/CDI-based device integration.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>📈 Observability &amp; Operations</h3>
+      Troubleshoot with metrics, logs, Grafana dashboards, node status, operation logs, GPU analysis, and runtime inspection, reducing the gap between platform operators and workload owners.
+    </td>
+    <td width="50%" valign="top">
+      <h3>⌨️ Web, CLI &amp; Agent Interfaces</h3>
+      Operate Crater through a web console, command-line interface, HTTP APIs, and agent-oriented command skills for automation, scripted workflows, and AI-assisted operations.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>🤖 LLM &amp; AI Service Platform</h3>
+      Support large-model quick deployment, LLM training and inference, inference gateways, model-serving integrations, trusted service integrations, and platform-managed runtime templates.
+    </td>
+    <td width="50%" valign="top">
+      <h3>☸️ Kubernetes-Native Deployment</h3>
+      Deploy with Helm and integrate with Kubernetes, Volcano, Prometheus/Grafana, persistent storage, and cluster add-ons while keeping workloads portable.
     </td>
   </tr>
 </table>
@@ -77,6 +121,13 @@ Unified **GPU resource management**, **containerized development environments**,
   <br/>
   <sub>High-level architecture of Crater and its major components.</sub>
 </div>
+
+Crater is organized around four layers:
+
+- **User interfaces**: web console, CLI, HTTP APIs, and agent-friendly command skills.
+- **Control plane**: authentication, accounts, quotas, scheduling policies, jobs, services, templates, images, datasets, models, approvals, and operations.
+- **Execution layer**: Kubernetes workloads, Volcano scheduling, accelerator resources, Pods, Services, PVCs, and external access rules for training, serving, and interactive environments.
+- **Observability and AI operations layer**: metrics, logs, Grafana dashboards, operation records, runtime diagnostics, AI assistant workflows, and admin-side intelligent operations.
 
 ## 🚀 Getting Started
 
