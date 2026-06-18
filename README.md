@@ -11,6 +11,8 @@ Operate shared **GPU clusters**, **LLM training and serving workloads**, **devel
 <br/>
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/raids-lab/crater?style=flat-square&logo=github&color=f5b301)](https://github.com/raids-lab/crater/stargazers)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](./CONTRIBUTING.md)
 [![Docs](https://img.shields.io/badge/Docs-raids--lab.github.io-brightgreen?style=flat-square)](https://raids-lab.github.io/crater/zh)
 [![Backend Build](https://img.shields.io/github/actions/workflow/status/raids-lab/crater/backend-build.yml?style=flat-square&label=backend)](https://github.com/raids-lab/crater/actions/workflows/backend-build.yml)
 [![Helm Chart Validate](https://img.shields.io/github/actions/workflow/status/raids-lab/crater/helm-chart-validate.yml?style=flat-square&label=helm)](https://github.com/raids-lab/crater/actions/workflows/helm-chart-validate.yml)
@@ -28,9 +30,30 @@ Operate shared **GPU clusters**, **LLM training and serving workloads**, **devel
 [Frontend](./frontend/README.md) ·
 [CLI](./cli/README.md)
 
+<br/>
+
+🏢 **Multi-Tenant Governance** &nbsp;·&nbsp; ⚙️ **Policy-Aware Scheduling** &nbsp;·&nbsp; 🚀 **LLM Training & Serving** &nbsp;·&nbsp; 🧩 **Heterogeneous Accelerators** &nbsp;·&nbsp; 🤖 **AI-Assisted Operations**
+
 </div>
 
 ---
+
+<details>
+<summary><b>📖 Table of Contents</b></summary>
+
+- [Overview](#-overview)
+- [Why Crater](#-why-crater)
+- [Designed For](#-designed-for)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Getting Started](#-getting-started)
+- [Documentation](#-documentation)
+- [Repository Structure](#-repository-structure)
+- [Community & Support](#-community--support)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+</details>
 
 ## ✨ Overview
 
@@ -46,6 +69,18 @@ Crater is designed for environments where different teams and workloads share th
 | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 Monitoring** — real-time metrics & logs | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 Models & Datasets** — manage assets in one place |
 
 </div>
+
+## 💡 Why Crater
+
+Kubernetes and Volcano provide powerful low-level scheduling, but operating a **shared** GPU cluster for many teams still requires a lot of glue. Crater fills that gap:
+
+| Without a control plane | With Crater |
+| :--- | :--- |
+| Raw `kubectl` / YAML access, easy to misuse | Web console, CLI, and APIs with role-based, multi-tenant access |
+| GPU usage is hard to attribute and bound | Accounts, queues, quotas, approvals, and cost visibility |
+| Everyone rebuilds training/serving manifests by hand | Reusable job templates and one-click LLM deployment |
+| Datasets, models, and images scattered across nodes | Managed datasets, models, images, and shared storage |
+| Operators and users debug from different tools | Unified metrics, logs, GPU analysis, and AI-assisted operations |
 
 ## 🌐 Designed For
 
@@ -178,6 +213,13 @@ helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 | `grafana-dashboards/` | Grafana dashboards used by Crater |
 | `docs/` | Documentation entrypoints and localization resources |
 | `hack/` | Developer tooling and scripts |
+
+## 💬 Community & Support
+
+- 🐛 **Issues** — report bugs or request features: [GitHub Issues](https://github.com/raids-lab/crater/issues)
+- 💡 **Discussions** — ask questions and share ideas: [GitHub Discussions](https://github.com/raids-lab/crater/discussions)
+- 📚 **Docs** — admin and user guides: [raids-lab.github.io/crater](https://raids-lab.github.io/crater/en/docs/admin/)
+- ⭐ **Star the project** if you find Crater useful — it helps others discover it.
 
 ## 🤝 Contributing
 
