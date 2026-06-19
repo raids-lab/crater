@@ -24,8 +24,10 @@
 
 - `category`：错误大类。
 - `code`：稳定错误码。
-- `context`：结构化上下文，例如 `http_status`；多条本地用法错误时可能有 `issues`（`field` / `code` / `message` 数组，见 `auth login` 等非交互聚合校验）。
+- `context`：结构化上下文，例如 `http_status`、`crater_code`、`msg`；多条本地用法错误时可能有 `issues`（`field` / `code` / `message` 数组，见 `auth login` 等非交互聚合校验）。
 - `message`：只用于向用户解释，不作为稳定程序接口。
+
+当领域 Skill 或 reference 有“常见错误与场景”时，优先按其中记录的结构化字段和触发场景判断问题。不要只凭自然语言相似度下结论；若错误字段与记录不一致，应按当前 stderr / `--json` 事实重新分析。
 
 `context` 应始终是 JSON 可序列化对象。如果开发者错误地放入无法 JSON 化的值，CLI 会保留原始 `category` / `code` / `message`，并把 `context` 替换为诊断信息，提示错误 context JSON 编码失败、需要联系开发者修复。
 
@@ -51,6 +53,8 @@
 | 其它 `4xx` | `ERR_CLIENT_4XX` | 请求参数或客户端侧问题 |
 | `5xx` | `ERR_SERVER_INTERNAL_5XX` | 平台服务端错误 |
 | 其它 | `ERR_API_OTHER` | 无法归类的平台错误 |
+
+如果 `context.crater_code` 和 `context.msg` 存在，应把它们作为向用户解释失败原因和向管理员提供排查事实的主要依据。`crater_code` 是后端业务码整数，适合和后端日志、接口实现或管理员排查材料对应；`msg` 是后端返回的可展示消息，适合解释当前请求为什么失败。
 
 ## 排查顺序
 

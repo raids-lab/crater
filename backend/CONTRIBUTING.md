@@ -99,10 +99,15 @@ When changing job creation configuration fields, request/response schema, or tem
 
 ## Errors And Security
 
-- Use RESTful-compliant HTTP status codes; do not use `Error()` everywhere. Pick the response helper that matches the semantics.
-- For new code, return `bizerr` errors and send them with `resputil.HandleError`; keep `backend/internal/resputil/code.go` only for legacy compatibility.
-- Define new business error codes in `backend/internal/bizerr/groups.go` as needed.
-- Error messages returned to the frontend must be clear, accurate English.
+Backend errors are part of the user-facing API contract. They must give the frontend and CLI enough structured facts to tell users what failed and enough stable facts for administrators to troubleshoot.
+
+- Treat the implementation definitions as the live reference for the error contract: `backend/internal/bizerr/groups.go` defines business error groups and codes; `backend/internal/resputil/handle.go` maps those groups to HTTP status codes; `backend/internal/resputil/response.go` defines the `code` / `data` / `msg` response envelope. The generated frontend constants come from `frontend/src/services/generator.py` and `frontend/src/services/error_code.ts`. Do not copy long error-code tables into documentation; mention concrete codes only as examples.
+- Use RESTful HTTP status codes that match the failure semantics in `resputil.HandleError`. Do not collapse all failures into `500` or the legacy `Error()` helper. Examples: invalid caller input belongs in the `400xx` group, state or dependency conflicts belong in `409xx`, and platform or dependency failures belong in `5xx`. These are examples; check the definition files above before choosing or adding a code.
+- For new code, return `bizerr` errors and send them with `resputil.HandleError`; keep `backend/internal/resputil/code.go` only for legacy compatibility. Pick an existing `bizerr` group before adding a new one.
+- Define new business error codes in `backend/internal/bizerr/groups.go` only when the frontend, CLI, or an external caller needs a stable machine-readable reason. The group must stay aligned with the HTTP status selected by `resputil.HandleError`.
+- Error messages returned to clients must be clear, accurate English. Prefer actionable messages that name the invalid field, missing resource, conflicting state, required permission, or unavailable dependency. Do not return generic messages such as `failed`, `invalid`, or raw Go errors when the caller can act on a more specific explanation.
+- Keep user-facing messages safe: do not include secrets, tokens, internal IPs, kubeconfigs, SQL fragments, stack traces, or private infrastructure details. Wrap lower-level errors with `bizerr.*.Wrap` so server logs keep the cause while the API response stays safe.
+- When adding or changing an API error path, verify how the frontend and CLI will present it. The response envelope remains `code`, `data`, and `msg`; clients may show `msg` directly and expose `http_status` / business `code` for support. If a page needs special behavior, document which business code it handles and why.
 - Never concatenate SQL strings in `backend/internal/storage/` or the DAO layer; use parameterized queries.
 - Never hardcode secrets, tokens, passwords, internal IPs, kubeconfigs, or production credentials.
 
@@ -145,7 +150,7 @@ The repo root `.vscode/launch.json` provides a "Backend Debug Server" configurat
 ## Before Submitting Backend Changes
 
 - Run the relevant `make` target, usually `make pre-commit-check` for final checks.
-- If API behavior changed, confirm `swag` annotations and frontend usage are aligned.
+- If API behavior changed, confirm `swag` annotations, frontend usage, CLI behavior, and error presentation are aligned.
 - If job template payloads changed, confirm the versioning / compatibility decision.
 - If database schema changed, include migration and generated code.
 - Record exact checks and any developer manual verification for the PR description.

@@ -23,17 +23,17 @@ Crater CLI 采用文档驱动开发。修改代码前，请先确认你触及的
 
 改动应尽量限制在对应命令域或共享模块内。
 
-- 命令编排放在 `cmd/`，但共享输出、错误、API、状态、凭据、i18n 和补全行为应使用已有 internal 包。
-- 不要在命令代码里临时实现 JSON 渲染、HTTP client、Keyring 访问或状态文件读取。
-- 如果修改 Agent Skills，保持 `SKILL.md` 精炼，将详细流程放入 `references/`。
+跨命令规则和共享实现约束见 [docs/SPEC.md](docs/SPEC.md)，用户可见命令契约见 [docs/COMMANDS.md](docs/COMMANDS.md)，包边界和请求流程见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。如果修改 Agent Skills，遵守 `docs/SPEC.md` 中的 Skills 规则。
 
-需要手动试用 CLI 时，运行：
+需要手动试用 CLI 时，先构建本地二进制：
 
 ```bash
 make build
 ```
 
 该命令会执行 `go mod tidy` 并构建本地 `./crater` 二进制。
+
+涉及用户可见 CLI 行为时，要求开发者按 `docs/COMMANDS.md` 和 `docs/SPEC.md` 手动执行关键命令路径。Agent 运行的测试可以降低风险，但不能替代开发者对平台契约的人工验证。
 
 ## 3. 测试改动
 
@@ -57,7 +57,7 @@ make snapshot-check
 make snapshot-update
 ```
 
-然后人工审查 `cli/testdata/snapshots/` 的 diff。Golden 文件必须通过这种方式生成，不要手工编辑。
+然后按 `docs/SPEC.md` 和 `docs/REVIEW.md` 人工审查 `cli/testdata/snapshots/` 的 diff。Golden 文件必须通过这种方式生成，不要手工编辑。
 
 除纯文档改动且不影响生成文件或代码外，创建或更新 PR 前应运行完整 CLI 测试目标。该目标会同时运行单元测试与快照校验：
 
@@ -79,4 +79,4 @@ make pre-commit-check
 - 测试覆盖了本次变更引入的风险。
 - 如果更新了 golden 文件，它们由 `make snapshot-update` 生成，并且已经人工审查。
 - README 面向普通用户，不包含内部开发指引。
-- 如果修改了 Agent Skills，它们只说明如何使用已有 CLI 契约，不单独定义新的命令行为。
+- 如果修改了 Agent Skills，它们遵守 `docs/SPEC.md`，只说明如何使用已有 CLI 契约，不单独定义新的命令行为。
