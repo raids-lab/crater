@@ -20,6 +20,7 @@ import {
   ColumnDef,
   ColumnFiltersState,
   OnChangeFn,
+  PaginationState,
   SortingState,
   Updater,
   VisibilityState,
@@ -62,6 +63,29 @@ const resolveUpdater = <TState,>(updater: Updater<TState>, state: TState) => {
   return typeof updater === 'function' ? (updater as (state: TState) => TState)(state) : updater
 }
 
+/**
+ * ServerDrivenConfig switches the table to manual pagination/sorting/filtering
+ * mode and lets a parent component own the request shape. Pass the current
+ * total row count (so the pager can compute pageCount) and optional facets to
+ * preserve the "Status (12)" badges that the toolbar shows in client mode.
+ *
+ * Facets are keyed by column id, then by row value, e.g.
+ * `{ status: { Running: 12 }, jobType: { jupyter: 30 } }`. Missing keys
+ * gracefully degrade to "no count" instead of breaking layout.
+ */
+export interface ServerDrivenConfig {
+  total: number
+  facets?: Record<string, Record<string, number>>
+  pagination: PaginationState
+  setPagination: OnChangeFn<PaginationState>
+  sorting: SortingState
+  setSorting: OnChangeFn<SortingState>
+  columnFilters: ColumnFiltersState
+  setColumnFilters: OnChangeFn<ColumnFiltersState>
+  globalFilter: string
+  setGlobalFilter: OnChangeFn<string>
+}
+
 interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElement> {
   info?: {
     title?: string
@@ -76,6 +100,12 @@ interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElem
   withI18n?: boolean
   className?: string
   initialColumnVisibility?: VisibilityState
+  /**
+   * When provided, the table runs in server-driven mode: pagination, sorting,
+   * filtering and global search become controlled inputs the parent owns, and
+   * the parent is expected to refetch data when those inputs change.
+   */
+  serverDriven?: ServerDrivenConfig
 }
 
 export function DataTable<TData, TValue>({
@@ -90,23 +120,35 @@ export function DataTable<TData, TValue>({
   withI18n = false,
   className,
   initialColumnVisibility = {},
+  serverDriven,
 }: DataTableProps<TData, TValue>) {
   const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility)
-  const [columnFilters, setColumnFilters] = useLocalStorage<ColumnFiltersState>(
+  const [localColumnFilters, setLocalColumnFilters] = useLocalStorage<ColumnFiltersState>(
     `${storageKey}-column-filters`,
     []
   )
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [localSorting, setLocalSorting] = useState<SortingState>([])
+  const [localGlobalFilter, setLocalGlobalFilter] = useState('')
   const { data: queryData, isLoading, dataUpdatedAt, refetch } = query
   const updatedAt = new Date(dataUpdatedAt).toLocaleString([], {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
   })
-  const [pagination, setPagination] = usePaginationWithStorage(storageKey)
+  const [localPagination, setLocalPagination] = usePaginationWithStorage(storageKey)
+
+  // When serverDriven is provided, the parent owns state and the table runs in
+  // manual mode. Otherwise we fall back to the existing client-side pipeline.
+  const columnFilters = serverDriven ? serverDriven.columnFilters : localColumnFilters
+  const setColumnFilters = serverDriven ? serverDriven.setColumnFilters : setLocalColumnFilters
+  const sorting = serverDriven ? serverDriven.sorting : localSorting
+  const setSorting = serverDriven ? serverDriven.setSorting : setLocalSorting
+  const globalFilter = serverDriven ? serverDriven.globalFilter : localGlobalFilter
+  const setGlobalFilter = serverDriven ? serverDriven.setGlobalFilter : setLocalGlobalFilter
+  const pagination = serverDriven ? serverDriven.pagination : localPagination
+  const setPagination = serverDriven ? serverDriven.setPagination : setLocalPagination
 
   const data = useMemo(() => {
     if (!queryData || isLoading) return []
@@ -149,7 +191,7 @@ export function DataTable<TData, TValue>({
       setSorting((state) => resolveUpdater(updater, state))
       resetPageIndex()
     },
-    [resetPageIndex]
+    [resetPageIndex, setSorting]
   )
 
   const handleColumnFiltersChange = React.useCallback<OnChangeFn<ColumnFiltersState>>(
@@ -165,8 +207,27 @@ export function DataTable<TData, TValue>({
       setGlobalFilter((state) => resolveUpdater(updater, state))
       resetPageIndex()
     },
-    [resetPageIndex]
+    [resetPageIndex, setGlobalFilter]
   )
+
+  // Build a custom faceted-unique-values resolver from server-supplied counts
+  // so the toolbar continues to render "Running (12)" style badges. When the
+  // server doesn't report a column's facets, fall back to an empty map (the
+  // dropdown still works, only the trailing count disappears).
+  const serverFacetsResolver = useMemo(() => {
+    if (!serverDriven?.facets) return undefined
+    const facets = serverDriven.facets
+    return <T,>(_table: import('@tanstack/react-table').Table<T>, columnId: string) =>
+      () => {
+        const map = new Map<string, number>()
+        const bucket = facets[columnId]
+        if (!bucket) return map
+        for (const [value, count] of Object.entries(bucket)) {
+          map.set(value, count)
+        }
+        return map
+      }
+  }, [serverDriven])
 
   const table = useReactTable({
     data: data,
@@ -181,6 +242,13 @@ export function DataTable<TData, TValue>({
     },
     enableRowSelection: true,
     autoResetPageIndex: false,
+    manualPagination: !!serverDriven,
+    manualSorting: !!serverDriven,
+    manualFiltering: !!serverDriven,
+    pageCount: serverDriven
+      ? Math.max(1, Math.ceil(serverDriven.total / Math.max(pagination.pageSize, 1)))
+      : undefined,
+    rowCount: serverDriven ? serverDriven.total : undefined,
     onRowSelectionChange: setRowSelection,
     onSortingChange: handleSortingChange,
     onColumnFiltersChange: handleColumnFiltersChange,
@@ -188,20 +256,23 @@ export function DataTable<TData, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
+    // Filtering / pagination / sorting row models are unused in manual mode but
+    // keeping them around lets the same component stay drop-in for client pages.
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
+    getFacetedUniqueValues: serverFacetsResolver ?? getFacetedUniqueValues(),
   })
 
   const pageCount = table.getPageCount()
   React.useEffect(() => {
+    if (serverDriven) return
     const lastPageIndex = Math.max(pageCount - 1, 0)
     if (pagination.pageIndex > lastPageIndex) {
       setPagination((state) => ({ ...state, pageIndex: lastPageIndex }))
     }
-  }, [pageCount, pagination.pageIndex, setPagination])
+  }, [pageCount, pagination.pageIndex, setPagination, serverDriven])
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>

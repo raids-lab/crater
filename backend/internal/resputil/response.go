@@ -16,8 +16,9 @@ type Response[T any] struct {
 }
 
 type List[T any] struct {
-	Total int64 `json:"total"`
-	Items []T   `json:"items"`
+	Total  int64                       `json:"total"`
+	Items  []T                         `json:"items"`
+	Facets map[string]map[string]int64 `json:"facets,omitempty"`
 }
 
 // emit 内部统一发送方法，接收基础 ErrorCode

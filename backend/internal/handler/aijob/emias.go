@@ -22,6 +22,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	interpayload "github.com/raids-lab/crater/internal/payload"
@@ -312,33 +313,80 @@ type AIJobResp struct {
 //	@Router			/v1/aijobs [get]
 func (mgr *AIJobMgr) ListUserJob(c *gin.Context) {
 	token := interutil.GetToken(c)
-	taskModels, err := mgr.taskService.ListByQueue(token.AccountName)
+
+	var pq interpayload.ListPageQuery
+	if err := c.ShouldBindQuery(&pq); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
+		return
+	}
+
+	if !pq.IsPagingRequested() {
+		taskModels, err := mgr.taskService.ListByQueue(token.AccountName)
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
+			return
+		}
+		jobs := make([]AIJobResp, len(taskModels))
+		for i := range taskModels {
+			jobs[i], _ = convertToAIJobResp(c, taskModels[i])
+		}
+		resputil.Success(c, jobs)
+		return
+	}
+
+	_, limit, _ := pq.Normalize()
+	page := pq.Page
+	if page < 1 {
+		page = 1
+	}
+	taskModels, total, err := mgr.taskService.ListByQueuePaged(token.AccountName, page, limit)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
 		jobs[i], _ = convertToAIJobResp(c, taskModels[i])
 	}
-
-	resputil.Success(c, jobs)
+	resputil.Success(c, resputil.List[AIJobResp]{Total: total, Items: jobs})
 }
 
 func (mgr *AIJobMgr) ListAllJob(c *gin.Context) {
-	taskModels, err := mgr.taskService.ListAll()
+	var pq interpayload.ListPageQuery
+	if err := c.ShouldBindQuery(&pq); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
+		return
+	}
+
+	if !pq.IsPagingRequested() {
+		taskModels, err := mgr.taskService.ListAll()
+		if err != nil {
+			resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
+			return
+		}
+		jobs := make([]AIJobResp, len(taskModels))
+		for i := range taskModels {
+			jobs[i], _ = convertToAIJobResp(c, taskModels[i])
+		}
+		resputil.Success(c, jobs)
+		return
+	}
+
+	_, limit, _ := pq.Normalize()
+	page := pq.Page
+	if page < 1 {
+		page = 1
+	}
+	taskModels, total, err := mgr.taskService.ListAllPaged(page, limit)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-
 	jobs := make([]AIJobResp, len(taskModels))
 	for i := range taskModels {
 		jobs[i], _ = convertToAIJobResp(c, taskModels[i])
 	}
-
-	resputil.Success(c, jobs)
+	resputil.Success(c, resputil.List[AIJobResp]{Total: total, Items: jobs})
 }
 
 func convertToAIJobResp(c context.Context, aiTask *model.AITask) (AIJobResp, error) {

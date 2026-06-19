@@ -4,7 +4,22 @@ import { apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { globalJobUrl } from '@/utils/store'
 
-import { IResponse } from '../types'
+import { IListQuery, IListResponse, IResponse } from '../types'
+
+// stripUndefined removes optional fields whose value is undefined so the value
+// can be passed straight to ky's `searchParams` (which rejects undefined).
+const stripUndefined = (
+  params: Record<string, unknown>
+): Record<string, string | number | boolean> => {
+  const out: Record<string, string | number | boolean> = {}
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue
+    if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+      out[k] = v
+    }
+  }
+  return out
+}
 
 const store = getDefaultStore()
 const JOB_URL = store.get(globalJobUrl)
@@ -174,6 +189,16 @@ export const apiJobAllBillingList = (days?: number) =>
 export const apiAdminGetJobBillingList = (days: number) =>
   apiV1Get<IResponse<JobBillingInfo[]>>(`admin/${JOB_URL}/billing`, {
     searchParams: { days },
+  })
+
+export const apiAdminGetJobBillingListPaged = (params: IListQuery) =>
+  apiV1Get<IResponse<IListResponse<JobBillingInfo>>>(`admin/${JOB_URL}/billing`, {
+    searchParams: stripUndefined(params as Record<string, unknown>),
+  })
+
+export const apiGetJobBillingListPaged = (params: IListQuery) =>
+  apiV1Get<IResponse<IListResponse<JobBillingInfo>>>(`${JOB_URL}/billing`, {
+    searchParams: stripUndefined(params as Record<string, unknown>),
   })
 
 export const apiAdminGetUserJobBillingList = (username: string, days: number = 30) =>
