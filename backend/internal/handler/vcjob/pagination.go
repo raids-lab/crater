@@ -181,9 +181,8 @@ func applyJobOrder(qu query.IJobDo, sortBy string, order payload.Order) query.IJ
 			return qu.Order(j.Queue.Desc())
 		}
 		return qu.Order(j.Queue)
-	case "created_at", "":
-		fallthrough
 	default:
+		// "created_at" and unknown values fall back to creation-time ordering.
 		if desc || sortBy == "" {
 			return qu.Order(j.CreatedAt.Desc())
 		}
@@ -204,23 +203,16 @@ func fetchJobsPaged(
 	plan *jobFilterPlan,
 	pq payload.ListPageQuery,
 	withPreload bool,
-	defaultDaysCovered bool,
-) ([]*model.Job, int64, map[string]map[string]int64, error) {
-	_ = defaultDaysCovered // reserved for future tuning hooks
-
+) (rows []*model.Job, total int64, facets map[string]map[string]int64, err error) {
 	offset, limit, order := pq.Normalize()
 	paging := pq.IsPagingRequested()
 	j := query.Job
 
-	var (
-		rows   []*model.Job
-		total  int64
-		facets = map[string]map[string]int64{
-			"status":  {},
-			"jobType": {},
-			"queue":   {},
-		}
-	)
+	facets = map[string]map[string]int64{
+		"status":  {},
+		"jobType": {},
+		"queue":   {},
+	}
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -265,7 +257,6 @@ func fetchJobsPaged(
 			{"queue", "queue"},
 		}
 		for _, d := range dims {
-			d := d
 			g.Go(func() error {
 				conds := plan.conditionsExcept(d.key)
 				result, err := groupCount(gctx, conds, d.col)
@@ -278,8 +269,8 @@ func fetchJobsPaged(
 		}
 	}
 
-	if err := g.Wait(); err != nil {
-		return nil, 0, nil, err
+	if waitErr := g.Wait(); waitErr != nil {
+		return nil, 0, nil, waitErr
 	}
 	if !paging {
 		total = int64(len(rows))

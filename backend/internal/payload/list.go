@@ -63,7 +63,7 @@ func (q ListPageQuery) Normalize() (offset, limit int, order Order) {
 
 // IsPagingRequested reports whether the caller explicitly opted into pagination
 // by setting page or page_size. When both are zero, the handler should return
-// the full result set (preserving backwards-compatible "list all" behaviour).
+// the full result set (preserving backwards-compatible "list all" behavior).
 func (q ListPageQuery) IsPagingRequested() bool {
 	return q.Page != 0 || q.PageSize != 0
 }

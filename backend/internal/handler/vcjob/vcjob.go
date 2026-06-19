@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -563,6 +562,14 @@ type GetJobLogResp struct {
 	Logs map[string]string `json:"logs"`
 }
 
+// Default lookback windows used when callers do not supply explicit
+// start_time / end_time / days. Mirrors historical behavior from the
+// pre-pagination handlers; named so go-mnd does not flag the literals.
+const (
+	defaultJobLookbackDays     = 7
+	defaultUserJobLookbackDays = 30
+)
+
 type (
 	JobResp struct {
 		Name                    string             `json:"name"`
@@ -623,7 +630,7 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 		return
 	}
 
-	plan, err := parseJobFilters(&req, 7)
+	plan, err := parseJobFilters(&req, defaultJobLookbackDays)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -635,7 +642,7 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 		j.AccountID.Eq(token.AccountID),
 	)
 
-	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true, true)
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -676,6 +683,8 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/all [get]
+//
+//nolint:dupl // intentionally parallel to GetAllJobBillingInDays; the two endpoints surface different response types.
 func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
 	var req jobListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -683,13 +692,13 @@ func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
 		return
 	}
 
-	plan, err := parseJobFilters(&req, 7)
+	plan, err := parseJobFilters(&req, defaultJobLookbackDays)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true, true)
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -732,7 +741,7 @@ func (mgr *VolcanojobMgr) GetSelfJobBilling(c *gin.Context) {
 		return
 	}
 
-	plan, err := parseJobFilters(&req, 30)
+	plan, err := parseJobFilters(&req, defaultUserJobLookbackDays)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -744,7 +753,7 @@ func (mgr *VolcanojobMgr) GetSelfJobBilling(c *gin.Context) {
 		j.AccountID.Eq(token.AccountID),
 	)
 
-	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false, true)
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -762,6 +771,7 @@ func (mgr *VolcanojobMgr) GetSelfJobBilling(c *gin.Context) {
 	})
 }
 
+//nolint:dupl // mirrors GetAllJobsInDays for the billing variant; refactoring would couple unrelated response types.
 func (mgr *VolcanojobMgr) GetAllJobBillingInDays(c *gin.Context) {
 	var req jobListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -769,13 +779,13 @@ func (mgr *VolcanojobMgr) GetAllJobBillingInDays(c *gin.Context) {
 		return
 	}
 
-	plan, err := parseJobFilters(&req, 7)
+	plan, err := parseJobFilters(&req, defaultJobLookbackDays)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false, true)
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -793,6 +803,7 @@ func (mgr *VolcanojobMgr) GetAllJobBillingInDays(c *gin.Context) {
 	})
 }
 
+//nolint:dupl // mirrors GetUserJobsInDays for the billing variant; refactoring would couple unrelated response types.
 func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {
@@ -806,7 +817,7 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 		return
 	}
 
-	plan, err := parseJobFilters(&req, 30)
+	plan, err := parseJobFilters(&req, defaultUserJobLookbackDays)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -822,7 +833,7 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 	j := query.Job
 	plan.scope = append(plan.scope, j.UserID.Eq(targetUser.ID))
 
-	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false, true)
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -866,6 +877,8 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Failure		404	{object}	resputil.Response[any]	"User not found"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/user/{username} [get]
+//
+//nolint:dupl // intentionally parallel to GetUserJobBillingInDays; the two endpoints surface different response types.
 func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {
@@ -879,7 +892,7 @@ func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 		return
 	}
 
-	plan, err := parseJobFilters(&req, 30)
+	plan, err := parseJobFilters(&req, defaultUserJobLookbackDays)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -895,7 +908,7 @@ func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 	j := query.Job
 	plan.scope = append(plan.scope, j.UserID.Eq(targetUser.ID))
 
-	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true, true)
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -911,14 +924,6 @@ func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 		Items:  items,
 		Facets: facets,
 	})
-}
-
-func convertJobResp(jobs []*model.Job) []JobResp {
-	jobList := convertJobRespNoSort(jobs)
-	sort.Slice(jobList, func(i, j int) bool {
-		return jobList[i].CreationTimestamp.After(jobList[j].CreationTimestamp.Time)
-	})
-	return jobList
 }
 
 // convertJobRespNoSort builds JobResp slices in the order returned by the
