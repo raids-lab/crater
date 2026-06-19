@@ -323,7 +323,7 @@ func (mgr *AIJobMgr) ListUserJob(c *gin.Context) {
 	if !pq.IsPagingRequested() {
 		taskModels, err := mgr.taskService.ListByQueue(token.AccountName)
 		if err != nil {
-			resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list task"))
 			return
 		}
 		jobs := make([]AIJobResp, len(taskModels))
@@ -361,7 +361,7 @@ func (mgr *AIJobMgr) ListAllJob(c *gin.Context) {
 	if !pq.IsPagingRequested() {
 		taskModels, err := mgr.taskService.ListAll()
 		if err != nil {
-			resputil.Error(c, fmt.Sprintf("list task failed, err %v", err), resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list task"))
 			return
 		}
 		jobs := make([]AIJobResp, len(taskModels))
