@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 
 	"k8s.io/client-go/kubernetes"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const (
@@ -916,7 +918,8 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &backoffLimit,
+			TTLSecondsAfterFinished: ptr.To(utils.SevenDaySeconds),
+			BackoffLimit:            &backoffLimit,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{

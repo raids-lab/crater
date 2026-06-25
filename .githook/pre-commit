@@ -46,6 +46,8 @@ fi
 # Track if any checks were run
 CHECKS_RUN=0
 
+unset $(git rev-parse --local-env-vars)
+
 # Check if there are website-related changes
 if echo "$STAGED_FILES" | grep -q "^website/"; then
     echo ""

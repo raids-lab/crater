@@ -23,10 +23,8 @@ import (
 )
 
 const (
-	ThreeDaySeconds    int32 = 259200
-	SevenDaySeconds    int32 = 604800
-	IngressLabelPrefix       = "ingress.crater.raids.io/" // Annotation Ingress Key
-	NodePortLabelKey         = "nodeport.crater.raids.io/"
+	IngressLabelPrefix = "ingress.crater.raids.io/" // Annotation Ingress Key
+	NodePortLabelKey   = "nodeport.crater.raids.io/"
 )
 
 type (
@@ -144,7 +142,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 		Spec: batch.JobSpec{
 			// 3 days
-			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(utils.ThreeDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
 			Plugins:                 volcanoPlugins,
