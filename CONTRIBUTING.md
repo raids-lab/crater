@@ -164,6 +164,8 @@ For complex or cross-module work, outline the plan in an issue, design note, or 
 
 ### Sync local `main` from the correct source
 
+Do this before creating a task branch. Repeat the same freshness check before the final commit and before any push: if local `main` has fallen behind the main repository, update `main` first, then rebase the task branch onto the latest local `main`. Keep task branches linear; do not merge `main` into a task branch unless a maintainer explicitly asks for it.
+
 With the dual-remote setup (`origin` + `myfork`), **example commands** (update local `main` from the main repository):
 
 ```bash
@@ -252,6 +254,8 @@ Agents may help by listing pages to open, roles to use, operations to perform, c
 
 Documentation changes require manual reading by the developer before commit or push. Do not submit AI-generated docs that have not been read and judged by a developer; generated docs often miss important context, steps, or operational details. The developer should revise the docs directly or ask the Agent to adjust them before submission.
 
+Before the final commit and before any push, confirm again that the task branch is based on the latest intended base. If `main` changed while the task was in progress, update local `main`, rebase the task branch, rerun the relevant checks, and re-review any conflict resolution.
+
 ## Commit And Push
 
 If the PR has only one commit, we recommend making the commit message consistent with the branch name: replace `/` with `:` and `-` with spaces. For example, branch `docs/contributing-command-hints` becomes `docs:contributing command hints`; branch `feature/portal-add-job-form` becomes `feature:portal add job form`.
@@ -315,7 +319,7 @@ Push task branches only to your fork remote (`myfork` with the dual-remote setup
 
 ## Open And Iterate On A Pull Request
 
-AI assistance is welcome, but the developer remains responsible for understanding and controlling the change. Before a PR is created or updated, the developer must review the final diff, verification results, and PR description.
+AI assistance is welcome, but the developer remains responsible for understanding and controlling the change. Before a PR is created or updated, the developer must review the branch name, changed-file list, final diff, verification results, and PR description. If an Agent created the commit, it should show the actual branch name and committed file list before preparing or creating the PR.
 
 The PR description must be **bilingual Markdown** and cover:
 
@@ -329,6 +333,8 @@ The PR description must be **bilingual Markdown** and cover:
 Keep the description short when the change is simple. Agent-specific PR description workflow lives in `skills/crater-devel-shared/SKILL.md`; the template and examples live in `skills/crater-devel-shared/references/pr-description-template.md`.
 
 After pushing a branch, an Agent may create the PR directly when tooling such as `gh` is available, or output the PR description in a code block for the developer to use. In either case, the Agent must show the PR description to the developer and get confirmation before using it to create or update a PR.
+
+Before opening or updating a PR, run the relevant local review path for the changed area when one exists, such as `skills/crater-devel-review/SKILL.md` for repository-wide Agent review or `cli/docs/REVIEW.md` for CLI changes. Treat review as an iteration step: answer valid findings with fixes and document any accepted residual risk instead of treating the first diff as final.
 
 After creating the PR, check workflow status. The PR may need multiple rounds of iteration with Copilot review or human review. An Agent may fetch the PR link itself or ask the developer for it, inspect review comments, judge whether each suggestion is correct and worth changing, then propose a modification plan. Do not apply review-driven code changes until the developer has discussed and approved the plan.
 

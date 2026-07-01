@@ -39,3 +39,7 @@ metadata:
 ## 排查顺序
 
 {{troubleshooting_steps}}
+
+## 常见错误与场景
+
+{{error_cases}}

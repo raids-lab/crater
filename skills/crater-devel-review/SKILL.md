@@ -38,6 +38,7 @@ description: "Crater 全仓库代码审查与 PR 描述：纵览 backend/fronten
 - **文档**：`website/` 应面向平台用户（集群用户与集群管理员）承载部署、使用、管理、排障等产品文档；`docs/` 和仓库各级 `.md` 默认面向开发者 / 贡献者。归档须正确；术语准确（Account=调度队列）；`website/` 部署命令无硬编码 Chart 版本，命令附近用 `<CraterChartVersionNotice />`，代码块内用 `<chart-version>`，Chart 配置页用 `<ChartBadge />`。
 - **验证记录**：后端 / CLI 构建或测试应先确认本地 `go version` 符合对应 `go.mod` / CONTRIBUTING；后端 `make run` 依赖真实配置和网络环境，缺少配置、凭据或集群访问时应要求开发者检查，不要求 Agent 反复尝试。
 - **人工检查**：最终提交 / 推送 / PR 描述前必须有开发者亲自执行的人工检查结果；文档改动必须由开发者人工阅读检查，不能只依赖 AI 生成或 AI 自检。
+- **分支与 PR 准备**：提交 / 推送 / PR 前检查当前分支、目标 base、领先 / 落后提交数和修改文件清单；任务分支落后目标 base 时，先提示需要 rebase 或取得维护者明确接受。
 - **联动**：功能上线同步 `website/` 文档；配置结构变更同步 `charts/`。
 
 ## 审查输出
@@ -58,6 +59,7 @@ description: "Crater 全仓库代码审查与 PR 描述：纵览 backend/fronten
 - 文档改动：列出需要人工阅读的文档、语言版本、链接、术语、示例命令、Chart 版本占位或关键步骤；提醒开发者 AI 生成文档不能直接提交，必须人工阅读判断。
 - Chart / 配置改动：列出需要核对的 values、README、版本号、tag、模板渲染或敏感配置项。
 - 提交前检查 `git status` / diff，确认没有把用于记录任务、测试、issue 编号、临时方案或开发过程的 task note / 临时文件纳入提交；除非维护者明确要求，这类文件不应提交。
+- PR 前要求开发者查看最终文件清单、关键 diff 和 PR 描述；若审查发现需要修改的问题，先迭代处理，再生成或更新 PR 描述。
 
 ## PR 描述生成
 
