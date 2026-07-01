@@ -481,6 +481,21 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater order ls`, `get <id>`, `by-name <name>`.
 - `crater admin billing status|jobs`, `crater admin order ls|get <id>`, `crater admin user ls`, `crater admin user billing summary|accounts <username>`.
 
+### Approval Order Writes
+- User-visible commands stay under `crater order ...`:
+  - `crater order submit --name NAME --type job|dataset --reason TEXT [--type-id ID] [--hours N]`.
+  - `crater order edit <id> [--name NAME] [--type job|dataset] [--type-id ID] [--reason TEXT] [--hours N]`.
+  - `crater order cancel <id> --yes`.
+- Administrator review commands stay under `crater admin order ...`:
+  - `crater admin order approve <id> [--review-notes TEXT]`.
+  - `crater admin order approve <id> --lock [--permanent | --days N --hours N --minutes N] [--review-notes TEXT]`.
+  - `crater admin order reject <id> --review-notes TEXT`.
+  - `crater admin order check --yes`.
+- `order edit` first reads the current order and preserves fields that were not explicitly provided, so absent flags do not clear existing content.
+- `admin order approve|reject` use the admin review API and only send review status/notes. The backend derives `reviewerID` from the active token and preserves the original order content.
+- Lock duration flags must be non-negative. Unless `--permanent` is set, `--lock` requires a positive duration.
+- `--json` success payloads use `data.message`; `approve --lock --json` also includes `data.lock_message`.
+
 ### Pod And Non-Volcano Job Diagnostics
 - `crater pod containers|events|ingresses|nodeports <namespace> <pod>` and `crater pod logs <namespace> <pod> <container> [--tail N] [--timestamps] [--previous]` cover `/api/v1/namespaces/...` diagnostic GET APIs. Log streaming and terminal websocket APIs are intentionally not part of this read CLI.
 - AIJob/SPJob reads are intentionally not exposed in this PR because their backend identifier contracts differ from Volcano job names and need a dedicated CLI design.

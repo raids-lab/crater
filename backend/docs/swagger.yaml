@@ -1542,6 +1542,15 @@ definitions:
           type: string
         type: object
     type: object
+  internal_handler.ReviewApprovalOrderReq:
+    properties:
+      reviewNotes:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus'
+    required:
+    - status
+    type: object
   internal_handler.SetGpuAnalysisStatusReq:
     properties:
       enable:
@@ -2956,6 +2965,43 @@ paths:
       security:
       - Bearer: []
       summary: 管理员获取审批工单详情
+      tags:
+      - approvalorder
+  /v1/admin/approvalorder/{id}/review:
+    put:
+      consumes:
+      - application/json
+      description: 管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容
+      parameters:
+      - description: 工单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 审核信息
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ReviewApprovalOrderReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回值描述
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 管理员审核审批工单
       tags:
       - approvalorder
   /v1/admin/approvalorder/check:
