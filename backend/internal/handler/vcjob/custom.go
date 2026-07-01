@@ -110,7 +110,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 			Annotations: jobAnnotations,
 		},
 		Spec: batch.JobSpec{
-			TTLSecondsAfterFinished: ptr.To(SevenDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(utils.SevenDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
 			SchedulerName:           VolcanoSchedulerName,

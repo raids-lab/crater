@@ -164,7 +164,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 			Annotations: jobAnnotations,
 		},
 		Spec: batch.JobSpec{
-			TTLSecondsAfterFinished: ptr.To(SevenDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(utils.SevenDaySeconds),
 			MinAvailable:            minAvailable,
 			SchedulerName:           VolcanoSchedulerName,
 			Plugins: map[string][]string{
