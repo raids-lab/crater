@@ -223,14 +223,14 @@ export function DataTablePagination<TData>({
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>
               {t('dataTablePagination.totalItems', {
-                count: table.getFilteredRowModel().rows.length,
+                count: table.getRowCount(),
               })}
             </>
           ) : (
             <>
               {t('dataTablePagination.selectedItems', {
                 selected: table.getFilteredSelectedRowModel().rows.length,
-                total: table.getFilteredRowModel().rows.length,
+                total: table.getRowCount(),
               })}
             </>
           )}

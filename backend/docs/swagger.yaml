@@ -378,9 +378,32 @@ definitions:
     type: object
   github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp:
     properties:
+      facets:
+        additionalProperties:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        type: object
       items:
         items:
           $ref: '#/definitions/internal_handler_operations.OperationLogResp'
+        type: array
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.List-internal_handler_vcjob_JobResp:
+    properties:
+      facets:
+        additionalProperties:
+          additionalProperties:
+            format: int64
+            type: integer
+          type: object
+        type: object
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.JobResp'
         type: array
       total:
         type: integer
@@ -481,6 +504,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_vcjob_JobResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_vcjob_JobResp'
       msg:
         type: string
     type: object
@@ -2123,6 +2156,45 @@ definitions:
         type: array
       imageLink:
         type: string
+    type: object
+  internal_handler_vcjob.JobResp:
+    properties:
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      jobName:
+        type: string
+      jobType:
+        type: string
+      locked:
+        type: boolean
+      lockedTimestamp:
+        type: string
+      name:
+        type: string
+      nodes:
+        items:
+          type: string
+        type: array
+      owner:
+        type: string
+      permanentLocked:
+        type: boolean
+      queue:
+        type: string
+      resources:
+        $ref: '#/definitions/v1.ResourceList'
+      scheduleType:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
+      startedAt:
+        type: string
+      status:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+      waitingToleranceSeconds:
+        type: integer
     type: object
   internal_handler_vcjob.JupyterTokenResp:
     properties:
@@ -7850,13 +7922,58 @@ paths:
       consumes:
       - application/json
       description: Get the jobs of the user by client-go
+      parameters:
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Page size, default 20, max 200
+        in: query
+        name: page_size
+        type: integer
+      - description: Number of days to look back, default 7, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: RFC3339 lower bound for created_at
+        in: query
+        name: start_time
+        type: string
+      - description: RFC3339 upper bound for created_at
+        in: query
+        name: end_time
+        type: string
+      - description: Comma-separated job statuses to include
+        in: query
+        name: status
+        type: string
+      - description: Comma-separated job types to include
+        in: query
+        name: job_type
+        type: string
+      - description: Comma-separated queue names to include
+        in: query
+        name: queue
+        type: string
+      - description: Substring match against job display name
+        in: query
+        name: search
+        type: string
+      - description: 'Sort column: created_at|name|status|job_type|queue'
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc|desc (default desc)'
+        in: query
+        name: order
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Volcano Job List
+          description: Paginated job list
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_vcjob_JobResp'
         "400":
           description: Request parameter error
           schema:
@@ -8211,20 +8328,60 @@ paths:
       - application/json
       description: 返回指定天数内的所有作业，默认为14天
       parameters:
-      - default: 14
-        description: Number of days to look back, default is 14
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Page size, default 20, max 200
+        in: query
+        name: page_size
+        type: integer
+      - default: 7
+        description: Number of days to look back, default 7, -1 for all
         in: query
         name: days
         type: integer
+      - description: RFC3339 lower bound for created_at
+        in: query
+        name: start_time
+        type: string
+      - description: RFC3339 upper bound for created_at
+        in: query
+        name: end_time
+        type: string
+      - description: Comma-separated job statuses to include
+        in: query
+        name: status
+        type: string
+      - description: Comma-separated job types to include
+        in: query
+        name: job_type
+        type: string
+      - description: Comma-separated queue names to include
+        in: query
+        name: queue
+        type: string
+      - description: Substring match against job display name
+        in: query
+        name: search
+        type: string
+      - description: 'Sort column: created_at|name|status|job_type|queue'
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc|desc (default desc)'
+        in: query
+        name: order
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: admin get Volcano Job List
+          description: Paginated job list
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_vcjob_JobResp'
         "400":
-          description: admin Request parameter error
+          description: Request parameter error
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
@@ -8342,18 +8499,58 @@ paths:
         name: username
         required: true
         type: string
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Page size, default 20, max 200
+        in: query
+        name: page_size
+        type: integer
       - default: 30
-        description: Number of days to look back, default is 30, -1 for all
+        description: Number of days to look back, default 30, -1 for all
         in: query
         name: days
         type: integer
+      - description: RFC3339 lower bound for created_at
+        in: query
+        name: start_time
+        type: string
+      - description: RFC3339 upper bound for created_at
+        in: query
+        name: end_time
+        type: string
+      - description: Comma-separated job statuses to include
+        in: query
+        name: status
+        type: string
+      - description: Comma-separated job types to include
+        in: query
+        name: job_type
+        type: string
+      - description: Comma-separated queue names to include
+        in: query
+        name: queue
+        type: string
+      - description: Substring match against job display name
+        in: query
+        name: search
+        type: string
+      - description: 'Sort column: created_at|name|status|job_type|queue'
+        in: query
+        name: sort_by
+        type: string
+      - description: 'Sort order: asc|desc (default desc)'
+        in: query
+        name: order
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: User's Job List
+          description: Paginated job list
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_vcjob_JobResp'
         "400":
           description: Request parameter error
           schema:

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -23,6 +22,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
@@ -562,6 +562,14 @@ type GetJobLogResp struct {
 	Logs map[string]string `json:"logs"`
 }
 
+// Default lookback windows used when callers do not supply explicit
+// start_time / end_time / days. Mirrors historical behavior from the
+// pre-pagination handlers; named so go-mnd does not flag the literals.
+const (
+	defaultJobLookbackDays     = 7
+	defaultUserJobLookbackDays = 30
+)
+
 type (
 	JobResp struct {
 		Name                    string             `json:"name"`
@@ -598,25 +606,58 @@ type (
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[any]	"Volcano Job List"
+//	@Param			page		query	int		false	"Page number, default 1"
+//	@Param			page_size	query	int		false	"Page size, default 20, max 200"
+//	@Param			days		query	int		false	"Number of days to look back, default 7, -1 for all"
+//	@Param			start_time	query	string	false	"RFC3339 lower bound for created_at"
+//	@Param			end_time	query	string	false	"RFC3339 upper bound for created_at"
+//	@Param			status		query	string	false	"Comma-separated job statuses to include"
+//	@Param			job_type	query	string	false	"Comma-separated job types to include"
+//	@Param			queue		query	string	false	"Comma-separated queue names to include"
+//	@Param			search		query	string	false	"Substring match against job display name"
+//	@Param			sort_by		query	string	false	"Sort column: created_at|name|status|job_type|queue"
+//	@Param			order		query	string	false	"Sort order: asc|desc (default desc)"
+//	@Success		200	{object}	resputil.Response[resputil.List[JobResp]]	"Paginated job list"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs [get]
 func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 	token := util.GetToken(c)
 
-	// TODO: add indexer to list jobs by user
+	var req jobListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
+		return
+	}
+
+	plan, err := parseJobFilters(&req, defaultJobLookbackDays)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
 	j := query.Job
-	jobs, err := j.WithContext(c).Preload(j.Account).Preload(j.User).
-		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).Find()
+	plan.scope = append(plan.scope,
+		j.UserID.Eq(token.UserID),
+		j.AccountID.Eq(token.AccountID),
+	)
+
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	jobList := convertJobResp(jobs)
-
-	resputil.Success(c, jobList)
+	items := convertJobRespNoSort(jobs)
+	if !req.IsPagingRequested() {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.List[JobResp]{
+		Total:  total,
+		Items:  items,
+		Facets: facets,
+	})
 }
 
 // GetAllJobsInDays godoc
@@ -627,48 +668,52 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			days	query		int						false	"Number of days to look back, default is 14"	default(14)
-//	@Success		200		{object}	resputil.Response[any]	"admin get Volcano Job List"
-//	@Failure		400		{object}	resputil.Response[any]	"admin Request parameter error"
-//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
+//	@Param			page		query	int		false	"Page number, default 1"
+//	@Param			page_size	query	int		false	"Page size, default 20, max 200"
+//	@Param			days		query	int		false	"Number of days to look back, default 7, -1 for all"	default(7)
+//	@Param			start_time	query	string	false	"RFC3339 lower bound for created_at"
+//	@Param			end_time	query	string	false	"RFC3339 upper bound for created_at"
+//	@Param			status		query	string	false	"Comma-separated job statuses to include"
+//	@Param			job_type	query	string	false	"Comma-separated job types to include"
+//	@Param			queue		query	string	false	"Comma-separated queue names to include"
+//	@Param			search		query	string	false	"Substring match against job display name"
+//	@Param			sort_by		query	string	false	"Sort column: created_at|name|status|job_type|queue"
+//	@Param			order		query	string	false	"Sort order: asc|desc (default desc)"
+//	@Success		200	{object}	resputil.Response[resputil.List[JobResp]]	"Paginated job list"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/all [get]
+//
+//nolint:dupl // intentionally parallel to GetAllJobBillingInDays; the two endpoints surface different response types.
 func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
-	type QueryParams struct {
-		Days int `form:"days"`
-	}
-
-	var req QueryParams
+	var req jobListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
 		return
 	}
 
-	// Use default value of 7 if days parameter is not provided or is zero
-	days := 7
-	if req.Days > 0 {
-		days = req.Days
+	plan, err := parseJobFilters(&req, defaultJobLookbackDays)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
-	j := query.Job
-	q := j.WithContext(c).Preload(j.Account).Preload(query.Job.User)
-
-	// If days is -1, don't apply time filter (return all jobs)
-	// Otherwise apply the time filter for the specified days
-	if req.Days != -1 {
-		now := time.Now()
-		lookbackPeriod := now.AddDate(0, 0, -days)
-		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
-	}
-
-	jobs, err := q.Find()
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	jobList := convertJobResp(jobs)
-
-	resputil.Success(c, jobList)
+	items := convertJobRespNoSort(jobs)
+	if !req.IsPagingRequested() {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.List[JobResp]{
+		Total:  total,
+		Items:  items,
+		Facets: facets,
+	})
 }
 
 func convertJobBillingResp(jobs []*model.Job) []JobBillingResp {
@@ -685,52 +730,80 @@ func convertJobBillingResp(jobs []*model.Job) []JobBillingResp {
 
 func (mgr *VolcanojobMgr) GetSelfJobBilling(c *gin.Context) {
 	if mgr.billingService == nil || !mgr.billingService.IsUserFacingEnabled(c.Request.Context()) {
-		resputil.Success(c, []JobBillingResp{})
+		resputil.Success(c, resputil.List[JobBillingResp]{Items: []JobBillingResp{}})
 		return
 	}
 	token := util.GetToken(c)
-	j := query.Job
-	jobs, err := j.WithContext(c).
-		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).
-		Find()
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, convertJobBillingResp(jobs))
-}
 
-func (mgr *VolcanojobMgr) GetAllJobBillingInDays(c *gin.Context) {
-	type QueryParams struct {
-		Days int `form:"days"`
-	}
-
-	var req QueryParams
+	var req jobListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
 		return
 	}
 
-	days := 7
-	if req.Days > 0 {
-		days = req.Days
+	plan, err := parseJobFilters(&req, defaultUserJobLookbackDays)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
 	j := query.Job
-	q := j.WithContext(c)
-	if req.Days != -1 {
-		now := time.Now()
-		lookbackPeriod := now.AddDate(0, 0, -days)
-		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
-	}
-	jobs, err := q.Find()
+	plan.scope = append(plan.scope,
+		j.UserID.Eq(token.UserID),
+		j.AccountID.Eq(token.AccountID),
+	)
+
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, convertJobBillingResp(jobs))
+
+	items := convertJobBillingResp(jobs)
+	if !req.IsPagingRequested() {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.List[JobBillingResp]{
+		Total:  total,
+		Items:  items,
+		Facets: facets,
+	})
 }
 
+//nolint:dupl // mirrors GetAllJobsInDays for the billing variant; refactoring would couple unrelated response types.
+func (mgr *VolcanojobMgr) GetAllJobBillingInDays(c *gin.Context) {
+	var req jobListReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
+		return
+	}
+
+	plan, err := parseJobFilters(&req, defaultJobLookbackDays)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false)
+	if err != nil {
+		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		return
+	}
+
+	items := convertJobBillingResp(jobs)
+	if !req.IsPagingRequested() {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.List[JobBillingResp]{
+		Total:  total,
+		Items:  items,
+		Facets: facets,
+	})
+}
+
+//nolint:dupl // mirrors GetUserJobsInDays for the billing variant; refactoring would couple unrelated response types.
 func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 	username := c.Param("username")
 	if username == "" {
@@ -738,19 +811,16 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 		return
 	}
 
-	type QueryParams struct {
-		Days int `form:"days"`
-	}
-
-	var req QueryParams
+	var req jobListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
 		return
 	}
 
-	days := 30
-	if req.Days > 0 {
-		days = req.Days
+	plan, err := parseJobFilters(&req, defaultUserJobLookbackDays)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
 	u := query.User
@@ -761,18 +831,24 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 	}
 
 	j := query.Job
-	q := j.WithContext(c).Where(j.UserID.Eq(targetUser.ID))
-	if req.Days != -1 {
-		now := time.Now()
-		lookbackPeriod := now.AddDate(0, 0, -days)
-		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
-	}
-	jobs, err := q.Find()
+	plan.scope = append(plan.scope, j.UserID.Eq(targetUser.ID))
+
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, false)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
-	resputil.Success(c, convertJobBillingResp(jobs))
+
+	items := convertJobBillingResp(jobs)
+	if !req.IsPagingRequested() {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.List[JobBillingResp]{
+		Total:  total,
+		Items:  items,
+		Facets: facets,
+	})
 }
 
 // GetUserJobsInDays godoc
@@ -784,39 +860,44 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			username	path		string					true	"Username"
-//	@Param			days		query		int						false	"Number of days to look back, default is 30, -1 for all"	default(30)
-//	@Success		200			{object}	resputil.Response[any]	"User's Job List"
-//	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
-//	@Failure		403			{object}	resputil.Response[any]	"Forbidden - insufficient permissions"
-//	@Failure		404			{object}	resputil.Response[any]	"User not found"
-//	@Failure		500			{object}	resputil.Response[any]	"Other errors"
+//	@Param			page		query	int		false	"Page number, default 1"
+//	@Param			page_size	query	int		false	"Page size, default 20, max 200"
+//	@Param			days		query	int		false	"Number of days to look back, default 30, -1 for all"	default(30)
+//	@Param			start_time	query	string	false	"RFC3339 lower bound for created_at"
+//	@Param			end_time	query	string	false	"RFC3339 upper bound for created_at"
+//	@Param			status		query	string	false	"Comma-separated job statuses to include"
+//	@Param			job_type	query	string	false	"Comma-separated job types to include"
+//	@Param			queue		query	string	false	"Comma-separated queue names to include"
+//	@Param			search		query	string	false	"Substring match against job display name"
+//	@Param			sort_by		query	string	false	"Sort column: created_at|name|status|job_type|queue"
+//	@Param			order		query	string	false	"Sort order: asc|desc (default desc)"
+//	@Success		200	{object}	resputil.Response[resputil.List[JobResp]]	"Paginated job list"
+//	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403	{object}	resputil.Response[any]	"Forbidden - insufficient permissions"
+//	@Failure		404	{object}	resputil.Response[any]	"User not found"
+//	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/user/{username} [get]
+//
+//nolint:dupl // intentionally parallel to GetUserJobBillingInDays; the two endpoints surface different response types.
 func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
-	// Get username from path parameter
 	username := c.Param("username")
 	if username == "" {
 		resputil.BadRequestError(c, "username is required")
 		return
 	}
 
-	// Get days from query parameter
-	type QueryParams struct {
-		Days int `form:"days"`
-	}
-
-	var req QueryParams
+	var req jobListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
 		return
 	}
 
-	// Use default value of 30 days
-	days := 30
-	if req.Days > 0 {
-		days = req.Days
+	plan, err := parseJobFilters(&req, defaultUserJobLookbackDays)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
-	// Get target user information
 	u := query.User
 	targetUser, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
 	if err != nil {
@@ -824,32 +905,30 @@ func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 		return
 	}
 
-	// Permission check:
-	// Both users and administrators can view jobs of any user
-	// No additional permission check needed beyond authentication
-
-	// Query jobs
 	j := query.Job
-	q := j.WithContext(c).Preload(j.Account).Preload(j.User).Where(j.UserID.Eq(targetUser.ID))
+	plan.scope = append(plan.scope, j.UserID.Eq(targetUser.ID))
 
-	// Apply time filter if days is not -1
-	if req.Days != -1 {
-		now := time.Now()
-		lookbackPeriod := now.AddDate(0, 0, -days)
-		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
-	}
-
-	jobs, err := q.Find()
+	jobs, total, facets, err := fetchJobsPaged(c.Request.Context(), plan, req.ListPageQuery, true)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	jobList := convertJobResp(jobs)
-	resputil.Success(c, jobList)
+	items := convertJobRespNoSort(jobs)
+	if !req.IsPagingRequested() {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.List[JobResp]{
+		Total:  total,
+		Items:  items,
+		Facets: facets,
+	})
 }
 
-func convertJobResp(jobs []*model.Job) []JobResp {
+// convertJobRespNoSort builds JobResp slices in the order returned by the
+// database. Paginated handlers use this so DB-side sort_by/order is preserved.
+func convertJobRespNoSort(jobs []*model.Job) []JobResp {
 	jobList := make([]JobResp, len(jobs))
 	for i := range jobs {
 		job := jobs[i]
@@ -880,9 +959,6 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			LockedTimestamp:         metav1.NewTime(job.LockedTimestamp),
 		}
 	}
-	sort.Slice(jobList, func(i, j int) bool {
-		return jobList[i].CreationTimestamp.After(jobList[j].CreationTimestamp.Time)
-	})
 	return jobList
 }
 

@@ -21,6 +21,8 @@ type DBService interface {
 	ListByUserAndStatuses(userName string, status []string) ([]*model.AITask, error)
 	ListByQueue(queue string) ([]*model.AITask, error)
 	ListAll() ([]*model.AITask, error)
+	ListByQueuePaged(queue string, page, pageSize int) ([]*model.AITask, int64, error)
+	ListAllPaged(page, pageSize int) ([]*model.AITask, int64, error)
 	GetByID(taskID uint) (*model.AITask, error)
 	GetByQueueAndID(userName string, taskID uint) (*model.AITask, error)
 	GetByJobName(jobName string) (*model.AITask, error)
@@ -151,6 +153,36 @@ func (s *service) ListByQueue(queue string) ([]*model.AITask, error) {
 func (s *service) ListAll() ([]*model.AITask, error) {
 	q := query.AITask
 	return q.WithContext(context.Background()).Order(q.CreatedAt.Desc()).Find()
+}
+
+func (s *service) ListByQueuePaged(queue string, page, pageSize int) ([]*model.AITask, int64, error) {
+	q := query.AITask
+	ctx := context.Background()
+	count, err := q.WithContext(ctx).Where(q.UserName.Eq(queue)).Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	qu := q.WithContext(ctx).Where(q.UserName.Eq(queue)).Order(q.CreatedAt.Desc())
+	if pageSize > 0 {
+		qu = qu.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	rows, err := qu.Find()
+	return rows, count, err
+}
+
+func (s *service) ListAllPaged(page, pageSize int) ([]*model.AITask, int64, error) {
+	q := query.AITask
+	ctx := context.Background()
+	count, err := q.WithContext(ctx).Count()
+	if err != nil {
+		return nil, 0, err
+	}
+	qu := q.WithContext(ctx).Order(q.CreatedAt.Desc())
+	if pageSize > 0 {
+		qu = qu.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	rows, err := qu.Find()
+	return rows, count, err
 }
 
 func (s *service) GetByID(taskID uint) (*model.AITask, error) {
