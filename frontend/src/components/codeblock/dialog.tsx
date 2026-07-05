@@ -25,6 +25,7 @@ interface FetchContentProps<T> {
   name: string
   type: string
   fetchData: (name: string) => Promise<IResponse<T>>
+  fallbackData?: T
   renderData: (data: T) => React.ReactNode
 }
 
@@ -33,19 +34,26 @@ type FetchDialogProps<T> = React.HTMLAttributes<HTMLDivElement> &
     trigger: React.ReactNode
   }
 
-export function LazyContent<T>({ name, type, fetchData, renderData }: FetchContentProps<T>) {
+export function LazyContent<T>({
+  name,
+  type,
+  fetchData,
+  fallbackData,
+  renderData,
+}: FetchContentProps<T>) {
   const { data } = useQuery({
     queryKey: ['code', type, name],
     queryFn: () => fetchData(name),
     select: (res) => res.data,
     enabled: !!name,
   })
+  const displayData = data ?? fallbackData
 
-  if (!data) {
+  if (!displayData) {
     return <Nothing />
   }
 
-  return <>{renderData(data)}</>
+  return <>{renderData(displayData)}</>
 }
 
 export function FetchSheet<T>({ trigger, name, type, fetchData, renderData }: FetchDialogProps<T>) {

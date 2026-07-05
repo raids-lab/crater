@@ -23,6 +23,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
@@ -978,10 +979,7 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		scheduleData = job.ScheduleData.Data()
 	}
 
-	var events []v1.Event
-	if job.Events != nil {
-		events = job.Events.Data()
-	}
+	events := getStoredJobEvents(job)
 
 	var terminatedStates []v1.ContainerStateTerminated
 	if job.TerminatedStates != nil {
@@ -1348,6 +1346,14 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 		return
 	}
 	vcjob := job.Attributes.Data()
+	storedEvents := getStoredJobEvents(job)
+	fallbackToStoredEvents := func(err error) {
+		if len(storedEvents) > 0 {
+			resputil.Success(c, storedEvents)
+			return
+		}
+		resputil.HandleError(c, err)
+	}
 
 	// get job events
 	jobEvents, err := mgr.kubeClient.CoreV1().Events(vcjob.Namespace).List(c, metav1.ListOptions{
@@ -1355,7 +1361,7 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 		TypeMeta:      metav1.TypeMeta{Kind: "Job", APIVersion: "batch.volcano.sh/v1alpha1"},
 	})
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		fallbackToStoredEvents(bizerr.Internal.K8sServiceError.Wrap(err, "failed to list job events"))
 		return
 	}
 	events := jobEvents.Items
@@ -1364,13 +1370,13 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 	// get pod events
 	var podList = &v1.PodList{}
 	if value, ok := vcjob.Labels[crclient.LabelKeyBaseURL]; !ok {
-		resputil.Error(c, "label not found", resputil.NotSpecified)
+		fallbackToStoredEvents(bizerr.Internal.K8sServiceError.New("job label not found"))
 		return
 	} else {
 		labels := client.MatchingLabels{crclient.LabelKeyBaseURL: value}
 		err = mgr.client.List(c, podList, client.InNamespace(vcjob.Namespace), labels)
 		if err != nil {
-			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			fallbackToStoredEvents(bizerr.Internal.K8sServiceError.Wrap(err, "failed to list job pods"))
 			return
 		}
 	}
@@ -1382,7 +1388,7 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 			TypeMeta:      metav1.TypeMeta{Kind: "Pod"},
 		})
 		if err != nil {
-			resputil.Error(c, err.Error(), resputil.NotSpecified)
+			fallbackToStoredEvents(bizerr.Internal.K8sServiceError.Wrap(err, "failed to list pod events"))
 			return
 		}
 		// 如果存在 Pod 事件，则不返回 Job 事件
@@ -1393,7 +1399,18 @@ func (mgr *VolcanojobMgr) GetJobEvents(c *gin.Context) {
 		events = append(events, podEvents.Items...)
 	}
 
+	if len(events) == 0 && len(storedEvents) > 0 {
+		resputil.Success(c, storedEvents)
+		return
+	}
 	resputil.Success(c, events)
+}
+
+func getStoredJobEvents(job *model.Job) []v1.Event {
+	if job.Events == nil {
+		return nil
+	}
+	return job.Events.Data()
 }
 
 // ToggleAlertState godoc
