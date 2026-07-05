@@ -1,4 +1,6 @@
 KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
+KUBECONFIG_FILES := $(subst :, ,$(KUBECONFIG_PATH))
+MISSING_KUBECONFIG_FILES := $(filter-out $(wildcard $(KUBECONFIG_FILES)),$(KUBECONFIG_FILES))
 CONFIG_FILE := ./etc/debug-config.yaml
 CACHE_DIR := $(PWD)/.cache
 GOCACHE ?= $(CACHE_DIR)/go-build
@@ -34,8 +36,8 @@ CYAN := \033[36m
 WHITE := \033[37m
 RESET := \033[0m
 
-ifeq ($(wildcard $(KUBECONFIG_PATH)),)
-$(warning KUBECONFIG file not found at: $(KUBECONFIG_PATH))
+ifneq ($(strip $(MISSING_KUBECONFIG_FILES)),)
+$(warning KUBECONFIG file(s) not found: $(MISSING_KUBECONFIG_FILES))
 $(warning Please ensure the kubeconfig file exists or set KUBECONFIG environment variable)
 endif
 
@@ -76,10 +78,17 @@ help: ## Display this help.
 show-kubeconfig: ## Display current KUBECONFIG path
 	@echo "$(CYAN)KUBECONFIG environment variable:$(RESET) $(if $(KUBECONFIG),$(KUBECONFIG),$(YELLOW)Not set$(RESET))"
 	@echo "$(CYAN)Using KUBECONFIG path:$(RESET) $(KUBECONFIG_PATH)"
-	@if [ -f "$(KUBECONFIG_PATH)" ]; then \
-		echo "$(GREEN)✅ KUBECONFIG file exists$(RESET)"; \
+	@printf '%s\n' "$(KUBECONFIG_PATH)" | tr ':' '\n' | while IFS= read -r path; do \
+		if [ -f "$$path" ]; then \
+			echo "$(GREEN)✅ KUBECONFIG file exists:$(RESET) $$path"; \
+		else \
+			echo "$(RED)❌ KUBECONFIG file does NOT exist:$(RESET) $$path"; \
+		fi; \
+	done
+	@if command -v kubectl >/dev/null 2>&1; then \
+		echo "$(CYAN)Current Kubernetes context:$(RESET) $$(KUBECONFIG="$(KUBECONFIG_PATH)" kubectl config current-context 2>/dev/null || echo "$(YELLOW)Unavailable$(RESET)")"; \
 	else \
-		echo "$(RED)❌ KUBECONFIG file does NOT exist$(RESET)"; \
+		echo "$(YELLOW)kubectl not found; cannot display current Kubernetes context$(RESET)"; \
 	fi
 
 .PHONY: prepare
