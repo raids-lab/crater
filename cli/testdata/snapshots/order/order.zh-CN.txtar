@@ -1,0 +1,202 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-submit-missing-json/argv --
+crater order submit --json --no-interactive
+-- zh-CN/01-submit-missing-json/exit --
+2
+-- zh-CN/01-submit-missing-json/stdout --
+-- zh-CN/01-submit-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：审批单名称 (--name)\n缺少必要参数：审批原因 (--reason)",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "name",
+        "message": "缺少必要参数：审批单名称 (--name)"
+      },
+      {
+        "code": "ERR_MISSING_REQUIRED_FLAG",
+        "field": "reason",
+        "message": "缺少必要参数：审批原因 (--reason)"
+      }
+    ]
+  }
+}
+-- zh-CN/02-submit-invalid-type-json/argv --
+crater order submit --name job-a --type bad --reason need more time --json --no-interactive
+-- zh-CN/02-submit-invalid-type-json/exit --
+2
+-- zh-CN/02-submit-invalid-type-json/stdout --
+-- zh-CN/02-submit-invalid-type-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的审批工单类型：bad"
+}
+-- zh-CN/03-edit-invalid-status-json/argv --
+crater order edit 1 --status Approved --json --no-interactive
+-- zh-CN/03-edit-invalid-status-json/exit --
+4
+-- zh-CN/03-edit-invalid-status-json/stdout --
+-- zh-CN/03-edit-invalid-status-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/approvalorder/1\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/approvalorder/1\": context deadline exceeded"
+  }
+}
+-- zh-CN/04-cancel-confirm-required-json/argv --
+crater order cancel 1 --json --no-interactive
+-- zh-CN/04-cancel-confirm-required-json/exit --
+2
+-- zh-CN/04-cancel-confirm-required-json/stdout --
+-- zh-CN/04-cancel-confirm-required-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供 --yes"
+}
+-- zh-CN/05-admin-reject-missing-notes-json/argv --
+crater admin order reject 1 --json --no-interactive
+-- zh-CN/05-admin-reject-missing-notes-json/exit --
+2
+-- zh-CN/05-admin-reject-missing-notes-json/stdout --
+-- zh-CN/05-admin-reject-missing-notes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：flag_review-notes (--review-notes)"
+}
+-- zh-CN/06-admin-approve-lock-no-duration-json/argv --
+crater admin order approve 1 --lock --json --no-interactive
+-- zh-CN/06-admin-approve-lock-no-duration-json/exit --
+2
+-- zh-CN/06-admin-approve-lock-no-duration-json/stdout --
+-- zh-CN/06-admin-approve-lock-no-duration-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "除非设置 --permanent，否则必须提供锁定时长"
+}
+-- zh-CN/07-admin-approve-lock-negative-json/argv --
+crater admin order approve 1 --lock --days -1 --json --no-interactive
+-- zh-CN/07-admin-approve-lock-negative-json/exit --
+2
+-- zh-CN/07-admin-approve-lock-negative-json/stdout --
+-- zh-CN/07-admin-approve-lock-negative-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "锁定时长不能为负数"
+}
+-- zh-CN/08-admin-check-confirm-required-json/argv --
+crater admin order check --json --no-interactive
+-- zh-CN/08-admin-check-confirm-required-json/exit --
+2
+-- zh-CN/08-admin-check-confirm-required-json/stdout --
+-- zh-CN/08-admin-check-confirm-required-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供 --yes"
+}
+-- zh-CN/09-submit-404-json/argv --
+crater order submit --name job-a --type job --reason need more time --json --no-interactive
+-- zh-CN/09-submit-404-json/exit --
+4
+-- zh-CN/09-submit-404-json/stdout --
+-- zh-CN/09-submit-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/10-edit-404-json/argv --
+crater order edit 1 --reason updated reason --json --no-interactive
+-- zh-CN/10-edit-404-json/exit --
+4
+-- zh-CN/10-edit-404-json/stdout --
+-- zh-CN/10-edit-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/11-cancel-404-json/argv --
+crater order cancel 1 --yes --json --no-interactive
+-- zh-CN/11-cancel-404-json/exit --
+4
+-- zh-CN/11-cancel-404-json/stdout --
+-- zh-CN/11-cancel-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/12-admin-approve-404-json/argv --
+crater admin order approve 1 --json --no-interactive
+-- zh-CN/12-admin-approve-404-json/exit --
+4
+-- zh-CN/12-admin-approve-404-json/stdout --
+-- zh-CN/12-admin-approve-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/13-admin-reject-404-json/argv --
+crater admin order reject 1 --review-notes no --json --no-interactive
+-- zh-CN/13-admin-reject-404-json/exit --
+4
+-- zh-CN/13-admin-reject-404-json/stdout --
+-- zh-CN/13-admin-reject-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/14-admin-check-404-json/argv --
+crater admin order check --yes --json --no-interactive
+-- zh-CN/14-admin-check-404-json/exit --
+4
+-- zh-CN/14-admin-check-404-json/stdout --
+-- zh-CN/14-admin-check-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

@@ -23,7 +23,7 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"model-download", "ls"}, {"model-download", "get"}, {"model-download", "logs"},
 		{"context", "prequeue"}, {"context", "quota"}, {"context", "resources"}, {"context", "billing"},
 		{"billing", "status"}, {"billing", "summary"}, {"billing", "prices"}, {"billing", "jobs"}, {"billing", "job"},
-		{"order", "ls"}, {"order", "get"}, {"order", "by-name"},
+		{"order", "ls"}, {"order", "get"}, {"order", "by-name"}, {"order", "submit"}, {"order", "edit"}, {"order", "cancel"},
 		{"user", "get"}, {"user", "email-verified"},
 		{"pod", "containers"}, {"pod", "events"}, {"pod", "logs"}, {"pod", "ingresses"}, {"pod", "nodeports"},
 		{"admin", "system-config", "llm"}, {"admin", "system-config", "gpu-analysis"}, {"admin", "system-config", "prequeue"},
@@ -33,7 +33,7 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"admin", "dataset", "ls"},
 		{"admin", "model-download", "ls"},
 		{"admin", "billing", "status"}, {"admin", "billing", "jobs"},
-		{"admin", "order", "ls"}, {"admin", "order", "get"},
+		{"admin", "order", "ls"}, {"admin", "order", "get"}, {"admin", "order", "approve"}, {"admin", "order", "reject"}, {"admin", "order", "check"},
 		{"admin", "user", "ls"}, {"admin", "user", "billing", "summary"}, {"admin", "user", "billing", "accounts"},
 	}
 
