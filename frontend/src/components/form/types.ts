@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// i18n-processed-v1.1.0 (no translatable strings)
+// i18n-processed-v1.1.0
 import { ImagePackSource } from '@/services/api/imagepack'
 
 export interface MetadataFormMigration {

@@ -272,6 +272,10 @@ export const exportToJsonString = (metadata: MetadataFormType, data: unknown): s
   return JSON.stringify(jobInfo, null, 2)
 }
 
+const getImportErrorMessage = (error: unknown) => {
+  return error instanceof Error ? error.message : String(error)
+}
+
 const importFromJobSubmitJson = <T>(
   metadata: MetadataFormType,
   jobInfo: JobSubmitJson<unknown>
@@ -290,11 +294,11 @@ const importFromJobSubmitJson = <T>(
     const migration = metadata.migrations?.[version]
     if (!migration) {
       throw new Error(
-        `当前配置版本为 ${metadata.version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`
+        `当前配置版本为 ${metadata.version}，导入配置版本为 ${jobInfo.version}，迁移到版本 ${version} 时缺少迁移函数，无法导入，请手动创建新配置`
       )
     }
     if (visitedVersions.has(version) || migration.to === version) {
-      throw new Error(`配置版本 ${jobInfo.version} 的迁移链存在循环，无法导入`)
+      throw new Error(`配置版本 ${version} 的迁移链存在循环，无法导入`)
     }
 
     visitedVersions.add(version)
@@ -302,7 +306,7 @@ const importFromJobSubmitJson = <T>(
       data = migration.migrate(data)
     } catch (error) {
       throw new Error(
-        `配置版本 ${version} 迁移到 ${migration.to} 失败：${(error as Error).message}`
+        `配置版本 ${version} 迁移到 ${migration.to} 失败：${getImportErrorMessage(error)}`
       )
     }
     version = migration.to
@@ -311,18 +315,11 @@ const importFromJobSubmitJson = <T>(
   return data as T
 }
 
-// usage: importFromJson<FormData>(metadata, file)
+// usage: importFromJsonFile<FormData>(metadata, file)
 export const importFromJsonFile = async <T>(
-  metadataOrVersion: MetadataFormType | string,
-  typeOrFile?: string | File,
-  fileArg?: File
+  metadata: MetadataFormType,
+  file?: File
 ): Promise<T> => {
-  const metadata =
-    typeof metadataOrVersion === 'string'
-      ? { version: metadataOrVersion, type: typeOrFile as string }
-      : metadataOrVersion
-  const file = typeof metadataOrVersion === 'string' ? fileArg : (typeOrFile as File | undefined)
-
   if (!file) {
     throw new Error('无效的配置文件')
   }
