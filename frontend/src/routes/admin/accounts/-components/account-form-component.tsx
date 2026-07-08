@@ -69,6 +69,8 @@ import {
 } from '@/services/api/queue-quota'
 import { apiResourceList } from '@/services/api/resource'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
+import { handleApiErrorByCode } from '@/services/client'
+import { ERROR_RESOURCE_ALREADY_EXISTS, ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
 
 import { convertFormToQueueQuota, convertFormToQuota, convertQuotaToForm } from '@/utils/quota'
 import { globalSettings } from '@/utils/store'
@@ -365,6 +367,20 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
     }
   }
 
+  const handleAccountMutationError = (error: unknown) => {
+    handleApiErrorByCode(error, {
+      [ERROR_RESOURCE_ALREADY_EXISTS]: (errorResponse) => {
+        form.setError('name', {
+          type: 'server',
+          message: errorResponse.msg || '账户名称已存在',
+        })
+      },
+      [ERROR_RESOURCE_STATUS_ERROR]: (errorResponse) => {
+        toast.error(errorResponse.msg || '账户状态不允许当前操作')
+      },
+    })
+  }
+
   const { mutate: createAccount, isPending: isCreatePending } = useMutation({
     mutationFn: async (values: AccountFormSchema) => {
       const resp = await apiAccountCreate({
@@ -394,6 +410,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       }
       onOpenChange(false)
     },
+    onError: handleAccountMutationError,
   })
 
   const { mutate: updateAccount, isPending: isUpdatePending } = useMutation({
@@ -443,6 +460,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
       }
       onOpenChange(false)
     },
+    onError: handleAccountMutationError,
   })
 
   const onSubmit = (values: AccountFormSchema) => {

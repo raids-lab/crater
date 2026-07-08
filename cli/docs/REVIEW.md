@@ -46,6 +46,8 @@
 - `--json` 必须强制非交互；解析阶段失败也应遵守 JSON 错误输出。
 - `--no-interactive` 下缺少必要信息时应直接失败，不得进入 prompt。
 - 本地可判定的多个用法错误应尽量聚合后一次返回；具体适用边界见 `SPEC.md`「用法错误聚合」。
+- 调用管理员后端接口的命令必须位于 `crater admin ...` 命名空间；普通用户命令不得通过 flag 或隐藏分支访问管理员 API。
+- 无位置参数的命令必须显式拒绝多余位置参数，不能让 Cobra 默认静默忽略；有位置参数的命令必须校验数量和含义，并与 `COMMANDS.md` 一致。
 - `api_error` 的错误码、HTTP 档位与 context 字段应与 `SPEC.md`「api_error 与 HTTP」一致。
 - 成功 JSON 的 `data` 字段只能包含 `COMMANDS.md` 对应命令章节允许的键，且不得泄漏 token、密码等敏感信息。
 
@@ -64,6 +66,7 @@
 - `internal/api` 只处理 HTTP 与 API 语义，不应输出 stdout/stderr、调用 i18n 或构造 `*clierror.Error`。
 - `internal/output` 负责渲染，不负责业务判断或进程退出。
 - 访问 Crater 后端应通过 `internal/api` 的客户端、path 常量与领域方法；review 时应留意是否出现临时 HTTP client、手写 URL path、重复 DTO 或绕过统一错误类型的实现。
+- 对依赖后端的命令，应确认对应后端版本真实支持该 API 和语义，请求中的 flag、query、body 字段确实被后端消费，展示给用户的信息来自有效后端响应或明确的本地状态来源。
 - 读写本地状态应通过统一的 session/state 入口；不应在命令代码里直接拼配置目录、读写 `state.json`，或绕开测试沙箱。
 - 读写 token、密码等敏感凭据应通过 `internal/credential` 或现有 session 抽象；不应在命令代码、测试或 golden 中暴露 token 明文，也不应直接调用 Keyring 库绕过封装。
 - 测试或补全路径中的网络、存储与凭据访问应遵守 sandbox 和快路径约束；新增访问点需要确认不会触达真实 HOME、真实 Keyring 或真实网络。
@@ -77,6 +80,7 @@
 - golden 文件必须由规定命令生成，不得手工编辑；若 golden diff 很大，应确认是契约变化而不是环境漂移。
 - 快照测试不得依赖真实 HOME、真实 Keyring、真实网络、真实登录态或开发者本机状态；隔离要求见 `SPEC.md`「快照测试」与 `ARCHITECTURE.md`「测试沙箱」。
 - Review golden 文件时应直接读取 `cli/testdata/snapshots/**/*.txtar`，不要只相信测试通过；重点检查 argv、stdout、stderr 与 exit 是否共同表达了预期契约。
+- Golden 输出应避免本机或运行时状态漂移，例如真实配置路径、登录身份、时间戳、live 集群记录或会随后端状态变化的文本。若命令展示状态字段，应使用确定性 fixture，并确认这些状态值属于命令契约而不是测试环境残留。
 - 对带 `--json` 的 golden 用例，stdout 或 stderr 中对应输出必须是合法 JSON，且不得混入提示语、表格、help 页面或其它装饰性文本。
 - 对失败用例，exit 应与错误 category 匹配；例如用法错误不应返回成功退出码，网络或 API 错误不应被误归为用法错误。
 - 对非交互用例，argv 应显式体现 `--no-interactive` 或由 `--json` 推导；缺少必要信息时不应出现 prompt 文案或挂起式交互输出。
@@ -94,6 +98,9 @@
 
 - Skill 只能指导 AI 如何调用既有 CLI 契约，不应单独定义命令行为。
 - 领域 Skill 应保持精炼；复杂流程放入同目录 `references/`。
+- 管理员 Skill 与普通用户 Skill 必须分离：管理员 Skill 可以引用普通用户命令做辅助检查，普通用户 Skill 不得包含 `crater admin ...` 命令，只能提示切换到管理员 Skill。
+- 如果开发中发现稳定的 CLI 使用流程、常见报错或排障经验，应检查是否需要沉淀到对应 `crater-cli-*` Skill 或 reference，方便后续 Agent 正确调用。
+- 常见报错沉淀应包含结构化字段、触发场景、含义、用户修正动作和管理员排查事实；review 时确认这些理解已在写入前展示给开发者检查，避免把误判固化进 Skill。
 - 变更全局调用规则时，应检查 `crater-cli-shared` 及相关领域 Skill 是否需要同步更新。
 - 修改已分发 Skill 内容时，应按 `SPEC.md` 的约定评估是否提升 frontmatter `version`。
 

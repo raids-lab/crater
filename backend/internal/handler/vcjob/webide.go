@@ -125,7 +125,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		},
 		Spec: batch.JobSpec{
 			// 3 days
-			TTLSecondsAfterFinished: ptr.To(ThreeDaySeconds),
+			TTLSecondsAfterFinished: ptr.To(utils.ThreeDaySeconds),
 			MinAvailable:            1,
 			MaxRetry:                1,
 			Plugins:                 volcanoPlugins,

@@ -40,6 +40,7 @@ Common targets:
 
 - Keep docs accurate to current code and chart behavior.
 - Write for the target reader. Platform users need operational steps and observable behavior; contributors need source paths, architecture, and maintenance context.
+- Integrate changes into the surrounding document structure. Do not append isolated patch notes just because a new rule or detail is needed; reorganize nearby paragraphs, lists, or headings so the final document reads as one coherent guide with a clear flow.
 - Prefer clear procedures over broad descriptions. Include prerequisites, expected results, and rollback/troubleshooting notes when useful.
 - Avoid leaking secrets, internal-only endpoints, private cluster names, or credentials.
 - Documentation changes must be read and checked manually by the developer before commit or push, as required by the root CONTRIBUTING.

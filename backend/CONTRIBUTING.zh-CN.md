@@ -99,9 +99,15 @@ make run
 
 ## 错误处理与安全
 
-- 使用符合 RESTful 语义的 HTTP 状态码；不要到处使用 `Error()`，应选择语义匹配的响应 helper。
-- 按需在 `backend/internal/resputil/code.go` 定义并使用精准业务状态码。
-- 返回给前端的错误信息必须是清晰、准确的英文。
+后端错误是面向用户的 API 契约的一部分。错误响应必须给前端和 CLI 足够的结构化事实，让用户知道哪里出了问题，也要给管理员留下稳定的排查依据。
+
+- 将实现定义文件作为错误契约的实时参考：`backend/internal/bizerr/groups.go` 定义业务错误 group 和业务码；`backend/internal/resputil/handle.go` 定义这些 group 到 HTTP 状态码的映射；`backend/internal/resputil/response.go` 定义 `code` / `data` / `msg` 响应信封。前端生成常量来自 `frontend/src/services/generator.py` 和 `frontend/src/services/error_code.ts`。不要在文档中复制长错误码表；具体 code 只作为示例出现。
+- 使用符合 `resputil.HandleError` 语义的 RESTful HTTP 状态码，不要把所有失败都压成 `500` 或旧的 `Error()` helper。示例：调用方输入非法属于 `400xx` group，状态或依赖冲突属于 `409xx`，平台或依赖故障属于 `5xx`。这些只是示例；选择或新增 code 前先查上面的定义文件。
+- 新代码应返回 `bizerr` 错误并通过 `resputil.HandleError` 输出；`backend/internal/resputil/code.go` 仅保留为旧代码兼容入口。新增错误前先优先选择已有 `bizerr` group。
+- 只有当前端、CLI 或外部调用方确实需要稳定的机器可读原因时，才在 `backend/internal/bizerr/groups.go` 中新增业务错误码。业务码所属 group 必须和 `resputil.HandleError` 选择的 HTTP 状态保持一致。
+- 返回给客户端的错误信息必须是清晰、准确的英文。优先给出可行动的信息，说明具体非法字段、缺失资源、冲突状态、所需权限或不可用依赖。调用方可以据此修正时，不要返回 `failed`、`invalid` 这类泛化描述，也不要直接返回 Go 原始错误。
+- 用户可见信息必须安全：不得包含密钥、Token、内网 IP、kubeconfig、SQL 片段、堆栈或私有基础设施细节。底层错误用 `bizerr.*.Wrap` 包装，让服务端日志保留 cause，同时保证 API 响应安全。
+- 新增或修改 API 错误路径时，必须确认前端和 CLI 将如何展示。响应信封保持 `code`、`data`、`msg`；客户端可以直接展示 `msg`，并暴露 `http_status` / 业务 `code` 作为支持排查事实。如果页面需要特殊交互，说明处理哪个业务码以及原因。
 - 严禁在 `backend/internal/storage/` 或 DAO 层拼接 SQL 字符串，必须使用参数化查询。
 - 严禁硬编码密钥、Token、密码、内网 IP、kubeconfig 或生产凭据。
 
@@ -144,7 +150,7 @@ make build-storage
 ## 提交 Backend 改动前
 
 - 运行相关 `make` target，最终检查通常使用 `make pre-commit-check`。
-- 如果 API 行为变化，确认 `swag` 注释和前端调用已对齐。
+- 如果 API 行为变化，确认 `swag` 注释、前端调用、CLI 行为和错误展示已对齐。
 - 如果作业模板 payload 变化，确认版本和兼容性决策。
 - 如果数据库结构变化，包含迁移和生成代码。
 - 记录实际检查和开发者人工验证，供 PR 描述使用。

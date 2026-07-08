@@ -45,10 +45,10 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 3. **等待明确开始信号**：用户可能会修改需求、讨论方案或要求调整。只有当用户明确表示“开始实现”“按这个做”“可以实现”“go ahead / implement”等开始信号后，才进行实际文件修改。
 4. **保护现有工作区**：开始修改前检查 `git status` 与任务相关 diff。把未明确属于当前任务的改动视为开发者已有改动，不要 revert、覆盖或顺手整理；若这些改动影响当前任务，先说明冲突点并与开发者确认处理方式。
 5. **提交环境准备**：开始实现前，确保本地已执行 `make install-hooks`。检查当前分支是否适合本任务；若在 `main` 或分支名不符合任务，创建 / 切换到清晰命名的本地任务分支（如 `feature/`、`fix/`、`docs/`、`refactor/`、`test/`、`chore/` 前缀）。执行 push 前必须确认 fork remote；任务分支只推送到 fork，不推送到 `raids-lab/crater` 主仓库。
-6. **同步 main 与线性历史**：先用 `git remote -v` 识别哪个 remote 是主仓库 `raids-lab/crater`，哪个是用户 fork。主仓库 remote 可能叫 `origin` 或 `upstream`；也可能用户先在 GitHub 上 Sync fork，再从 fork remote 更新本地 `main`。不要假设 `origin` 一定是 fork。用正确来源更新本地 `main`，再将任务分支 rebase 到最新 `main`，保持线性历史。若远端 / 上游缺失、工作区有未保存改动或 rebase 冲突，先说明情况并按用户意图处理。
-7. **实现与记录**：实现过程中保持改动聚焦，按领域规范更新代码 / 文档 / 测试。可使用临时 task note 辅助记录，不要把临时记录纳入提交。
-8. **验证与收尾**：优先运行受影响模块的 `make pre-commit-check`（例如 `frontend`、`backend`、`website`、`cli` 均支持），必要时再运行根 `make pre-commit-check` 检查已暂存文件。涉及 Go 子项目时，先检查 `go version` 是否符合对应 `go.mod` / CONTRIBUTING。记录 Agent 实际执行的检查，并提示开发者完成方案阶段列出的人工检查。
-9. **提交 / 推送前后人工确认**：最终 commit 或任何 push 前，必须要求开发者提供亲自执行的人工检查结果。Agent 可以告诉开发者应该打开哪些页面、检查哪些功能、运行哪些命令、阅读哪些文档；但若开发者没有提供人工检查结果，不得继续提交、推送或创建 PR 描述。文档改动必须要求开发者人工阅读检查，并请开发者基于经验判断直接修改或要求 Agent 调整，不能直接提交未经阅读检查的 AI 生成文档。创建 commit 时默认使用 `git commit -s` 添加 DCO sign-off，但必须先解释其含义并取得开发者对完整 commit message（包含所有 `Signed-off-by` 行）的确认，不得静默添加；commit subject 必须符合 `type: subject` 或 `type(scope): subject`。commit 创建成功后，立即读取并展示实际写入的完整 commit message 让开发者核对，然后说明下一步通常是整理 PR 描述并创建 PR；进入 PR 阶段前仍需开发者提供其亲自完成的测试 / 人工检查结果，Agent 可同时给出检查建议。
+6. **同步 main 与线性历史**：先用 `git remote -v` 识别哪个 remote 是主仓库 `raids-lab/crater`，哪个是用户 fork。主仓库 remote 可能叫 `origin` 或 `upstream`；也可能用户先在 GitHub 上 Sync fork，再从 fork remote 更新本地 `main`。不要假设 `origin` 一定是 fork。用正确来源更新本地 `main`，再将任务分支 rebase 到最新 `main`，保持线性历史。最终 commit 前和任何 push 前再次确认本地 `main` 是否落后；若落后，先更新 `main`，再 rebase 任务分支并重新验证。若远端 / 上游缺失、工作区有未保存改动或 rebase 冲突，先说明情况并按用户意图处理。
+7. **实现与记录**：实现过程中保持改动聚焦，按领域规范更新代码 / 文档 / 测试。文档改动要把新内容融入现有章节脉络，必要时整理相邻段落或列表，不要只在末尾补丁式追加。可使用临时 task note 辅助记录，不要把临时记录纳入提交。
+8. **验证与收尾**：优先运行受影响模块的 `make pre-commit-check`（例如 `frontend`、`backend`、`website`、`cli` 均支持），必要时再运行根 `make pre-commit-check` 检查已暂存文件。涉及 Go 子项目时，先检查 `go version` 是否符合对应 `go.mod` / CONTRIBUTING。提交或 PR 前使用 `crater-devel-review` 或对应领域 review 文档做一次阶段性自检；对有效问题完成修改，或向开发者说明保留风险。记录 Agent 实际执行的检查，并提示开发者完成方案阶段列出的人工检查。
+9. **提交 / 推送前后人工确认**：最终 commit 或任何 push 前，必须要求开发者提供亲自执行的人工检查结果。Agent 可以告诉开发者应该打开哪些页面、检查哪些功能、运行哪些命令、阅读哪些文档；但若开发者没有提供人工检查结果，不得继续提交、推送或创建 PR 描述。文档改动必须要求开发者人工阅读检查，并请开发者基于经验判断直接修改或要求 Agent 调整，不能直接提交未经阅读检查的 AI 生成文档。创建 commit 时默认使用 `git commit -s` 添加 DCO sign-off，但必须先解释其含义并取得开发者对完整 commit message（包含所有 `Signed-off-by` 行）的确认，不得静默添加；commit subject 必须符合 `type: subject` 或 `type(scope): subject`。commit 创建成功后，立即读取并展示实际写入的完整 commit message、当前分支名和提交包含的文件清单让开发者核对，然后说明下一步通常是整理 PR 描述并创建 PR；进入 PR 阶段前仍需开发者提供其亲自完成的测试 / 人工检查结果，Agent 可同时给出检查建议。
 
 ### 临时 Task Note
 
@@ -79,6 +79,7 @@ Crater 是基于 Kubernetes 的异构（GPU）算力管理平台。本 Skill 是
 - **代码注释一律用英文**，并与既有命名风格、架构模式保持高度一致。
 - **构建与验证**：优先通过各模块 `make` target；存在对应 target 时不要直接调用 `go` / `pnpm` / `helm`。受影响子项目优先运行 `make pre-commit-check`；需要验证时可自行执行相关命令。
 - **提交 / 推送前人工检查**：最终 commit、push 或创建 PR 描述前，必须要求开发者提供亲自执行的人工检查结果；没有开发者人工检查结果时停止。文档改动必须由开发者人工阅读检查，AI 只可辅助指出需阅读的文档、语言版本、链接、术语、示例命令、版本占位或缺失步骤。
+- **PR 前 review 迭代**：创建或更新 PR 前先向开发者展示当前分支、目标分支、文件清单与关键 diff 摘要，并按 `crater-devel-review` 或领域 review 文档自检；发现问题后先修改或说明风险，再进入 PR 描述阶段。
 - **本地调试拓扑**：Crater 组件很多且运行在集群上，但本地开发通常不需要复刻完整集群或启动全部依赖。前端和后端几乎不单独调试，本地调试至少一并启动前后端，必要时再启动 storage server；后端通过配置连接测试集群已有的 Kubernetes、数据库、存储等服务，不要默认启动本地数据库。缺配置时指引开发者联系管理员。
 - **Go 与本地运行边界**：后端 / CLI 构建、测试或运行前先检查 `go version`。后端 `make run` / `make run-storage` 依赖真实配置、Kubernetes、数据库和网络环境，Agent 一般不需要运行；若失败指向缺少配置、网络、凭据、集群访问或管理员才能处理的问题，停下来告知开发者需要检查什么，不要反复尝试。
 - **敏感信息**：严禁硬编码或外泄密钥、Token、密码、内网 IP；含密钥的配置不得上传公网。

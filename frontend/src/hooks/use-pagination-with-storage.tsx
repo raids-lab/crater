@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 import { PaginationState } from '@tanstack/react-table'
-import { useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 
 const usePaginationWithStorage = (tableKey: string = 'default-table') => {
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageIndex, setPageIndex] = useLocalStorage(`${tableKey}-page-index`, 0)
   const [pageSize, setPageSize] = useLocalStorage(`${tableKey}-page-size`, 10)
 
   const pagination: PaginationState = {

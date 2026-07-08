@@ -1,6 +1,6 @@
 ---
 name: crater-cli-read
-version: 1.2.0
+version: 1.2.1
 description: "Crater CLI 用户视图读取域：指导 AI Agent 通过 crater node、job、image、account、resource、dataset、model-download、pod 等用户可见命令查看平台只读信息。管理员视图请使用 crater-cli-admin-read。"
 metadata:
   requires:
@@ -12,7 +12,7 @@ metadata:
 
 **CRITICAL — 开始前 MUST 先读取 `crater-cli-shared`（可能路径：[`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)），其中包含全局选项、非交互调用、错误处理和敏感信息规则。**
 
-通过 `crater node`、`crater job`、`crater image`、`crater account`、`crater resource`、`crater dataset`、`crater model-download`、`crater pod` 等用户视图命令帮助用户查看 Crater 平台信息时，遵守本规则。管理员接口统一走 `crater admin ...`，请使用单独的 `crater-cli-admin-read` Skill。
+通过 `crater node`、`crater job`、`crater image`、`crater account`、`crater resource`、`crater dataset`、`crater model-download`、`crater pod` 等用户视图命令帮助用户查看 Crater 平台信息时，遵守本规则。管理员视图请使用单独的 `crater-cli-admin-read` Skill。
 
 ## 适用场景
 
@@ -30,7 +30,7 @@ metadata:
 - 仍需先确认存在 active credentials；不要要求用户提供 token 或 Keyring 内容。
 - 脚本化或 Agent 场景优先使用 `--json --no-interactive`。
 - 不主动调用 token、secret、credential、websocket、terminal 或 log streaming 端点；这些不是普通只读清单能力。
-- 不要在普通用户场景调用 `crater admin ...`；如果用户明确要求管理员或平台级数据，切换到 `crater-cli-admin-read`。
+- 不要在普通用户场景调用管理员命令；如果用户明确要求管理员或平台级数据，切换到 `crater-cli-admin-read`。
 
 ## 常用范例
 

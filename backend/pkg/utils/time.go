@@ -9,7 +9,11 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 )
 
-const twoDigitYearDivisor = 100
+const (
+	twoDigitYearDivisor       = 100
+	ThreeDaySeconds     int32 = 259200
+	SevenDaySeconds     int32 = 604800
+)
 
 func GetLocalTime() time.Time {
 	timeZone := config.GetConfig().Postgres.TimeZone

@@ -1,5 +1,13 @@
 KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
+KUBECONFIG_FILES := $(subst :, ,$(KUBECONFIG_PATH))
+MISSING_KUBECONFIG_FILES := $(filter-out $(wildcard $(KUBECONFIG_FILES)),$(KUBECONFIG_FILES))
 CONFIG_FILE := ./etc/debug-config.yaml
+CACHE_DIR := $(PWD)/.cache
+GOCACHE ?= $(CACHE_DIR)/go-build
+GOLANGCI_LINT_CACHE ?= $(CACHE_DIR)/golangci-lint
+
+export GOCACHE
+export GOLANGCI_LINT_CACHE
 
 # Version information for development builds
 # DEV_APP_VERSION ?= 1234567
@@ -28,8 +36,8 @@ CYAN := \033[36m
 WHITE := \033[37m
 RESET := \033[0m
 
-ifeq ($(wildcard $(KUBECONFIG_PATH)),)
-$(warning KUBECONFIG file not found at: $(KUBECONFIG_PATH))
+ifneq ($(strip $(MISSING_KUBECONFIG_FILES)),)
+$(warning KUBECONFIG file(s) not found: $(MISSING_KUBECONFIG_FILES))
 $(warning Please ensure the kubeconfig file exists or set KUBECONFIG environment variable)
 endif
 
@@ -70,10 +78,17 @@ help: ## Display this help.
 show-kubeconfig: ## Display current KUBECONFIG path
 	@echo "$(CYAN)KUBECONFIG environment variable:$(RESET) $(if $(KUBECONFIG),$(KUBECONFIG),$(YELLOW)Not set$(RESET))"
 	@echo "$(CYAN)Using KUBECONFIG path:$(RESET) $(KUBECONFIG_PATH)"
-	@if [ -f "$(KUBECONFIG_PATH)" ]; then \
-		echo "$(GREEN)✅ KUBECONFIG file exists$(RESET)"; \
+	@printf '%s\n' "$(KUBECONFIG_PATH)" | tr ':' '\n' | while IFS= read -r path; do \
+		if [ -f "$$path" ]; then \
+			echo "$(GREEN)✅ KUBECONFIG file exists:$(RESET) $$path"; \
+		else \
+			echo "$(RED)❌ KUBECONFIG file does NOT exist:$(RESET) $$path"; \
+		fi; \
+	done
+	@if command -v kubectl >/dev/null 2>&1; then \
+		echo "$(CYAN)Current Kubernetes context:$(RESET) $$(KUBECONFIG="$(KUBECONFIG_PATH)" kubectl config current-context 2>/dev/null || echo "$(YELLOW)Unavailable$(RESET)")"; \
 	else \
-		echo "$(RED)❌ KUBECONFIG file does NOT exist$(RESET)"; \
+		echo "$(YELLOW)kubectl not found; cannot display current Kubernetes context$(RESET)"; \
 	fi
 
 .PHONY: prepare
@@ -119,9 +134,23 @@ import-check: goimports ## Check if goimports is needed.
 	fi
 
 .PHONY: lint
-lint: fmt imports import-check golangci-lint ## Lint go files.
-	@echo "$(BLUE)Linting go files...$(RESET)"
-	$(GOLANGCI_LINT) run --timeout 5m
+lint: lint-full lint-diff
+	@echo "$(BLUE)Lint finished.$(RESET)"
+
+.PHONY: lint-full
+lint-full: golangci-lint
+	@echo "$(BLUE)Linting full codebase (ignore deprecated)...$(RESET)"
+	$(GOLANGCI_LINT) run \
+		-c .golangci-full.yml\
+		--timeout 5m
+
+.PHONY: lint-diff
+lint-diff: golangci-lint
+	@echo "$(BLUE)Linting changed code (ignore deprecated)...$(RESET)"
+	$(GOLANGCI_LINT) run \
+		-c .golangci-diff.yml\
+		--new-from-rev=upstream/main \
+		--timeout 5m
 
 .PHONY: curd
 curd: ## Generate Gorm CURD code.
@@ -168,7 +197,7 @@ build-migrate: fmt lint ## Build migration binary.
 ## Location to install tools to
 LOCALBIN ?= $(PWD)/bin
 $(LOCALBIN):
-	mkdir -p $(LOCALBIN)
+	mkdir -p $(LOCALBIN) $(GOCACHE) $(GOLANGCI_LINT_CACHE)
 
 ## Tool Binaries
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint

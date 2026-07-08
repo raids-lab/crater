@@ -14,7 +14,17 @@
 
 域名词使用单数形式（如 `image`、`job`），与 API 资源名保持一致。
 
+### 管理员命名空间
+
+调用管理员后端接口的命令必须放在 `crater admin ...` 命名空间下，例如 `crater admin job ls`。不要用普通用户命令加 `--admin`、`--all-users` 等 flag 来隐式切换到管理员接口；普通用户命令只能调用普通用户视图 API。
+
+如果同一资源同时存在用户视图和管理员视图，分别设计为普通资源命令和 `admin` 子命令，并在 [COMMANDS.md](./COMMANDS.md) 中分别说明权限、路径、输出与错误行为。
+
 **例外**：常用命令的简写或模仿 Unix 传统命令名可不遵守此约束。
+
+### 参数校验
+
+所有用户可见命令都必须显式定义 Cobra 参数校验。无位置参数的命令必须拒绝多余位置参数，不能静默忽略；有位置参数的命令必须按 [COMMANDS.md](./COMMANDS.md) 校验数量和含义。解析阶段失败仍需遵守全局 `--json` 与错误输出规则。
 
 ### 文档驱动
 
@@ -29,12 +39,15 @@
 `cli/skills/` 存放面向平台用户及其 AI Agent 的可分发 Skills，用于指导 AI 安全、稳定地调用 `crater` 命令；它们不是开发者内部规则，也不替代 [COMMANDS.md](./COMMANDS.md) 的命令契约。
 
 - 顶层 Skill 按用户任务域组织，命名使用 `crater-cli-<domain>`；共享基础规则使用 `crater-cli-shared`。
+- 管理员 Skill 与普通用户 Skill 必须分离。管理员 Skill 可以在需要时引用普通用户命令作为辅助检查；普通用户 Skill 不得列出、推荐或示例 `crater admin ...` 命令，只能提示切换到对应管理员 Skill。
 - `crater-cli-shared` 承载全局调用规则（如 `--json`、`--no-interactive`、`--help`、错误输出、敏感信息与确认规则）；领域 Skill 应在开头要求先读取或应用它。
 - 领域 Skill 的 `SKILL.md` 保持精炼，负责适用场景、核心概念、安全边界、工作流索引和常用范例；具体流程放在同目录的 `references/` 下。
 - `references/` 按用户任务场景拆分，而不是机械按子命令拆分；例如查看身份与切换身份可以放在同一参考文档中。
 - Skill 中可以给出相对路径作为定位提示，同时保留 Skill 或 reference 名称，兼容不同 AI 工具的路径解析能力。
 - 新增或调整 Skill 时，应避免写入面向 Skill 作者的元说明；措辞应直接面向执行任务的 AI Agent。
 - 变更跨命令公共契约时（如错误码、退出码、`--json` 形状、全局选项、安全确认规则），必须同步更新 `crater-cli-shared` 及其 references。
+- 开发中发现稳定的 CLI 使用流程、常见操作经验或反复出现的错误处理经验时，应评估是否沉淀到对应 `crater-cli-*` Skill 或 reference；Skill 只能说明如何调用既有契约，不能单独定义命令行为。
+- 沉淀 CLI 报错经验时，必须记录“报错信息 / 结构化字段”和“对应情况”的映射，至少包含触发场景、典型 stderr 或 `--json` 字段（如 `category`、`code`、`context.http_status`、`context.crater_code`、`context.msg`）、含义、用户可执行的修正动作，以及需要管理员排查时应保留的事实。写入 Skill 前，先把该映射展示给开发者检查，确认没有误解后再落文档。
 - 修改任何已分发 Skill 内容时，必须提升该 Skill frontmatter 中的 `version`；若变更 shared 规则影响多个领域，也应同步评估相关领域 Skill 是否需要提升版本。
 
 `cli/skill-template/` 存放编写领域 Skill 与 reference 的模板；模板仅用于维护分发内容，不参与 CLI 运行时行为。
@@ -58,6 +71,7 @@
 - 通用客户端、`Response[T]`、与连接/传输层直接相关的入口（如 `NewClient`、`SetToken`）放在 `internal/api/client.go`；新增域接口时，该域的 DTO、小接口（如 `AuthClient`）、`NewXxxClient` 与同域的 `(*Client)` 方法放在**同一域文件**（如 `auth.go`），避免在 `cmd` 或无关包中散落 HTTP 细节。
 - `internal/api` 的导出方法只返回业务数据与 `error`；使用本包错误类型表达「已收到 HTTP 响应但未成功」「网络层失败」等语义。**禁止**在 `internal/api` 内构造 `*clierror.Error`、向 stdout/stderr 输出、或调用 `i18n`。
 - 通过 `cmd/errors.go` 的 `cliErrFromAPI` 等 helper 将 `internal/api` 返回的错误映射为 `*clierror.Error`，并在 `RunE` 中 `return`；命令实现不得自行分散处理 API 错误码映射。HTTP 档位与 `Code` 的对应关系遵循本文档「命令结果」中的 `api_error` 约定。
+- 新增或修改后端支持的命令时，必须确认目标后端版本真实支持对应 API 和语义。不要新增后端不会消费的 flag、query 或 body 字段；展示给用户的信息必须来自有效后端响应或已写入文档的本地状态来源，不能基于未使用字段或本地猜测。
 - 仅在本地开发或自测需要**伪造传输层结果**时，使用环境变量 `CRATER_TEST_SANDBOX_HTTP`（如 `timeout` / `error404` 等）；**允许取值与行为以架构文档「网络通信」节为准**。契约验证与前后端联调须使用真实服务或后端提供的 mock，不得把模拟响应当作平台契约。
 
 ---
@@ -219,6 +233,8 @@
 
 凡 `Category == api_error` 且语义来自**已收到的** HTTP 响应时，`Code` 必须按下表与状态码档位一致，以便跨命令对脚本暴露同一套档位。`usage_error`、`system_error` 等不必带 `_401` 这类后缀。无 HTTP 结果时不得使用带 HTTP 后缀的 `Code`，不得伪造 `http_status`；超时、DNS、连接失败等用 `pkg/errorcodes/codes.go` 中的非 HTTP 后缀码。
 
+Crater 后端 API 错误信封为 `code`、`data`、`msg`。CLI 不应依赖后端业务错误常量名来决定顶层 `Code`，顶层 `Code` 仍按 HTTP 档位稳定映射；但 CLI 必须保留后端错误事实，让人类输出能说明失败原因，`--json` 输出能支持脚本和管理员排查。除非命令有更清晰的领域化表达，否则不要用“操作失败”这类泛化文案覆盖后端 `msg`。
+
 | HTTP | `Code`（名与值一致） |
 |------|----------------------|
 | 401 | `ERR_UNAUTHORIZED_401` |
@@ -228,7 +244,7 @@
 | 500–599 | `ERR_SERVER_INTERNAL_5XX` |
 | 其它或无法归类 | `ERR_API_OTHER` |
 
-有 HTTP 时，`Context` 建议包含整数 `http_status`；能读到响应体时再带 `crater_code`、`msg` 等事实。无 HTTP 响应时不得写入 `http_status`；超时、DNS、连接失败等传输层失败使用 `ERR_NETWORK_FAILURE`，并只在 `Context` 中放可序列化的错误事实（如 `msg`）。映射以 `cmd/errors.go` 的 `cliErrFromAPI` / `apiCodeForHTTP` 为准；新增档位须同步修改 `pkg/errorcodes/codes.go`、上表，以及 COMMANDS 中引用本节的表述。
+有 HTTP 时，`Context` 必须包含整数 `http_status`；能读到后端响应体时必须带 `crater_code`、`msg` 等事实。`crater_code` 保留后端业务码原始整数，`msg` 保留后端可展示消息；命令如需补充本地上下文，应追加字段，而不是覆盖这些事实。无 HTTP 响应时不得写入 `http_status`；超时、DNS、连接失败等传输层失败使用 `ERR_NETWORK_FAILURE`，并只在 `Context` 中放可序列化的错误事实（如 `msg`）。映射以 `cmd/errors.go` 的 `cliErrFromAPI` / `apiCodeForHTTP` 为准；新增档位须同步修改 `pkg/errorcodes/codes.go`、上表，以及 COMMANDS 中引用本节的表述。
 
 ### 成功：`--json` 的公共形状
 

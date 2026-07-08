@@ -470,6 +470,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
               name={jobName}
               type="event"
               fetchData={apiJobGetEvent}
+              fallbackData={data.events ?? []}
               renderData={(events) => (
                 <>
                   {events.length > 0 ? (

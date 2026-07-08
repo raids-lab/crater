@@ -114,6 +114,13 @@ import {
   apiUpdateAccountBillingMemberIssueAmount,
 } from '@/services/api/billing'
 import { apiGetBillingStatus } from '@/services/api/system-config'
+import { handleApiErrorByCode } from '@/services/client'
+import {
+  ERROR_DEPENDENCY_CONFLICT,
+  ERROR_PARAMETER_ERROR,
+  ERROR_RESOURCE_ALREADY_EXISTS,
+  ERROR_RESOURCE_STATUS_ERROR,
+} from '@/services/error_code'
 import { queryAccountByID } from '@/services/query/account'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -217,6 +224,19 @@ export function AccountMemberTable({
   const listBillingMembers = isAdminView
     ? apiAdminGetAccountBillingMembers
     : apiGetAccountBillingMembers
+  const handleAccountMemberMutationError = useCallback((error: unknown) => {
+    handleApiErrorByCode(error, {
+      [ERROR_RESOURCE_ALREADY_EXISTS]: (errorResponse) => {
+        toast.error(errorResponse.msg || '成员已在账户中')
+      },
+      [ERROR_RESOURCE_STATUS_ERROR]: (errorResponse) => {
+        toast.error(errorResponse.msg || '账户状态不允许当前成员操作')
+      },
+      [ERROR_DEPENDENCY_CONFLICT]: (errorResponse) => {
+        toast.error(errorResponse.msg || '成员仍有关联资源，不能移除')
+      },
+    })
+  }, [])
 
   const accountUsersQuery = useQuery({
     queryKey: ['account', accountId, 'users', isAdminView ? 'admin' : 'user'],
@@ -234,6 +254,7 @@ export function AccountMemberTable({
         queryKey: ['account', accountId, 'users'],
       })
     },
+    onError: handleAccountMemberMutationError,
   })
 
   const { mutate: updateUser } = useMutation({
@@ -279,6 +300,7 @@ export function AccountMemberTable({
         queryKey: ['account', accountId, 'users'],
       })
     },
+    onError: handleAccountMemberMutationError,
   })
 
   const [usersOutOfProject, setUsersOutOfProject] = useState<IUserInAccount[]>([])
@@ -329,6 +351,7 @@ export function AccountMemberTable({
         queryKey: ['account', accountId, 'users'],
       })
     },
+    onError: handleAccountMemberMutationError,
   })
 
   const billingMembersQuery = useQuery({
@@ -630,7 +653,19 @@ const BillingIssueAmountCell: FC<BillingIssueAmountCellProps> = ({
         queryKey: ['account', accountId, 'billing-members'],
       })
     },
-    onError: () => {
+    onError: (error) => {
+      if (
+        handleApiErrorByCode(error, {
+          [ERROR_PARAMETER_ERROR]: (errorResponse) => {
+            toast.error(errorResponse.msg || '点数额度参数无效')
+          },
+          [ERROR_RESOURCE_STATUS_ERROR]: (errorResponse) => {
+            toast.error(errorResponse.msg || '账户状态不允许更新点数额度')
+          },
+        })
+      ) {
+        return
+      }
       toast.error('点数额度更新失败')
     },
   })
@@ -781,7 +816,19 @@ const ActionsCell: FC<ActionsCellProps> = ({
       setQuotaDialogOpen(false)
       await queryClient.invalidateQueries({ queryKey: ['account', accountId, 'users'] })
     },
-    onError: () => {
+    onError: (error) => {
+      if (
+        handleApiErrorByCode(error, {
+          [ERROR_PARAMETER_ERROR]: (errorResponse) => {
+            toast.error(errorResponse.msg || t('accountDetail.toast.updateFailed'))
+          },
+          [ERROR_RESOURCE_STATUS_ERROR]: (errorResponse) => {
+            toast.error(errorResponse.msg || t('accountDetail.toast.updateFailed'))
+          },
+        })
+      ) {
+        return
+      }
       toast.error(t('accountDetail.toast.updateFailed') || '配额更新失败')
     },
   })

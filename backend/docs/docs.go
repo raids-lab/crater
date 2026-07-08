@@ -2000,6 +2000,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/approvalorder/{id}/review": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "管理员审核审批工单",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "审核信息",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ReviewApprovalOrderReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/dataset/alldataset": {
             "get": {
                 "security": [
@@ -11088,47 +11146,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.ErrorCode": {
-            "type": "integer",
-            "enum": [
-                0,
-                40001,
-                40002,
-                40101,
-                40102,
-                40111,
-                40112,
-                40113,
-                40114,
-                40121,
-                40122,
-                40123,
-                40301,
-                40302,
-                40401,
-                50001,
-                99999
-            ],
-            "x-enum-varnames": [
-                "OK",
-                "InvalidRequest",
-                "BusinessLogicError",
-                "TokenExpired",
-                "TokenInvalid",
-                "InvalidCredentials",
-                "LdapError",
-                "LdapUserNotFound",
-                "LegacyTokenNotSupported",
-                "MustRegister",
-                "UidServiceError",
-                "UidNotFound",
-                "UserNotAllowed",
-                "UserEmailNotVerified",
-                "ServiceSshdNotFound",
-                "ServiceError",
-                "NotSpecified"
-            ]
-        },
         "github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp": {
             "type": "object",
             "properties": {
@@ -11147,7 +11164,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {},
                 "msg": {
@@ -11162,7 +11180,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "array",
@@ -11182,7 +11201,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "array",
@@ -11202,7 +11222,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "array",
@@ -11242,7 +11263,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "array",
@@ -11262,7 +11284,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "array",
@@ -11282,7 +11305,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
@@ -11299,7 +11323,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp"
@@ -11316,7 +11341,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp"
@@ -11367,7 +11393,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult"
@@ -11384,7 +11411,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail"
@@ -11401,7 +11429,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo"
@@ -11418,7 +11447,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.AdjustUserExtraBalanceResp"
@@ -11435,7 +11465,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ApprovalOrderResp"
@@ -11452,7 +11483,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.AuthModeResp"
@@ -11486,7 +11518,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.CheckResp"
@@ -11503,7 +11536,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.DeleteProjectResp"
@@ -11537,7 +11571,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.GpuAnalysisStatusResp"
@@ -11588,7 +11623,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.JobResourceSummaryResp"
@@ -11605,7 +11641,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.LLMConfigResp"
@@ -11622,7 +11659,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.LoginResp"
@@ -11639,7 +11677,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ModelDownloadResp"
@@ -11656,7 +11695,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.NodeMark"
@@ -11673,7 +11713,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.PrequeueConfigResp"
@@ -11690,7 +11731,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.PrequeueFeatureStatusResp"
@@ -11707,7 +11749,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ProjectCreateResp"
@@ -11724,7 +11767,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.PutUserInProjectResp"
@@ -11741,7 +11785,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.QueueQuotaConfigItemResp"
@@ -11758,7 +11803,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.QueueQuotaResp"
@@ -11775,7 +11821,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.TokenReq"
@@ -11792,7 +11839,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.TriggerAllJobsAnalysisResponse"
@@ -11809,7 +11857,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.UserDetailResp"
@@ -11860,7 +11909,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_tool.PodIngress"
@@ -11877,7 +11927,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_tool.PodIngressResp"
@@ -11894,7 +11945,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_tool.PodNodeport"
@@ -11911,7 +11963,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_tool.PodNodeportResp"
@@ -11928,7 +11981,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_vcjob.JupyterTokenResp"
@@ -11945,7 +11999,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/map_string_string"
@@ -11962,7 +12017,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "string"
@@ -13606,6 +13662,20 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "internal_handler.ReviewApprovalOrderReq": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "reviewNotes": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus"
                 }
             }
         },

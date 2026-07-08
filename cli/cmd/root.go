@@ -210,6 +210,11 @@ func updateAllCommands(cmd *cobra.Command) {
 
 	// 3. Update Flags for this command
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		commandFlagKey := keyPath + "_flag_" + f.Name
+		if usage := i18n.T(commandFlagKey); usage != commandFlagKey {
+			f.Usage = usage
+			return
+		}
 		flagKey := "flag_" + f.Name
 		usage := i18n.T(flagKey)
 		if usage != flagKey {

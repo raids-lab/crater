@@ -29,3 +29,7 @@
 ## 排查重点
 
 {{troubleshooting}}
+
+## 常见错误与场景
+
+{{error_cases}}

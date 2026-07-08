@@ -1,7 +1,7 @@
 import { HTTPError } from 'ky'
 import { useState } from 'react'
 
-import { ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code'
+import { LEGACY_ERROR_BUSINESS_LOGIC_ERROR } from '@/services/error_code_legacy'
 import { IErrorResponse } from '@/services/types'
 
 const BILLING_BLOCK_PREFIX = 'billing precheck blocked:'
@@ -12,7 +12,7 @@ export function isJobCreateBillingBlocked(error: unknown) {
   }
   const errorWithData = error as HTTPError & { data?: IErrorResponse }
   return (
-    errorWithData.data?.code === ERROR_BUSINESS_LOGIC_ERROR &&
+    errorWithData.data?.code === LEGACY_ERROR_BUSINESS_LOGIC_ERROR &&
     Boolean(errorWithData.data?.msg?.startsWith(BILLING_BLOCK_PREFIX))
   )
 }
