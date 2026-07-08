@@ -54,7 +54,7 @@ import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
-import { MetadataFormCustom } from '@/components/form/types'
+import { MetadataFormSingle } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { publishValidateSearch } from '@/components/job/publish'
@@ -66,6 +66,7 @@ import { ITrainingCreate, apiTrainingCreate } from '@/services/api/vcjob'
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
+  NodeSelectorMode,
   VolumeMountType,
   buildNodeSelectors,
   convertToResourceList,
@@ -91,9 +92,6 @@ export const Route = createFileRoute('/portal/jobs/new/emias-job')({
     }
   },
 })
-
-const VERSION = '20240528'
-const JOB_TYPE = 'single'
 
 const formSchema = z.object({
   jobName: jobNameSchema,
@@ -174,7 +172,7 @@ function RouteComponent() {
         forwards: values.forwards,
         alertEnabled: values.alertEnabled,
         selectors: buildNodeSelectors(values.nodeSelector),
-        template: exportToJsonString(MetadataFormCustom, values),
+        template: exportToJsonString(MetadataFormSingle, values),
       } as ITrainingCreate),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
@@ -219,7 +217,8 @@ function RouteComponent() {
       envs: [],
       nodeSelector: {
         enable: false,
-        excludedNodes: [],
+        mode: NodeSelectorMode.Include,
+        nodes: [],
       },
       alertEnabled: true,
       forwards: [],
@@ -250,11 +249,11 @@ function RouteComponent() {
             title="单机训练作业"
             description="适用于各类深度学习训练任务"
             className="lg:col-span-3"
-            tipContent={`版本 ${VERSION}`}
+            tipContent={`版本 ${MetadataFormSingle.version}`}
           >
             <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
               <FormImportButton
-                metadata={{ version: VERSION, type: JOB_TYPE }}
+                metadata={MetadataFormSingle}
                 form={form}
                 dataProcessor={dataProcessor}
                 afterImport={(data) => {
@@ -266,7 +265,7 @@ function RouteComponent() {
                   }
                 }}
               />
-              <FormExportButton metadata={{ version: VERSION, type: JOB_TYPE }} form={form} />
+              <FormExportButton metadata={MetadataFormSingle} form={form} />
               <JobSubmitButton isLoading={isPending} />
             </div>
           </PageTitle>
@@ -375,7 +374,7 @@ function RouteComponent() {
 
             <TemplateInfo
               form={form}
-              metadata={{ version: VERSION, type: JOB_TYPE }}
+              metadata={MetadataFormSingle}
               uiStateUpdaters={[
                 {
                   condition: (data) => data.envs.length > 0,
@@ -401,8 +400,8 @@ function RouteComponent() {
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
-              nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
+              nodeSelectorModePath="nodeSelector.mode"
+              nodeSelectorNodesPath="nodeSelector.nodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

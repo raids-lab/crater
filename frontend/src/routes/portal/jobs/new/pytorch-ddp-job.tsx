@@ -62,6 +62,7 @@ import { apiPytorchCreate } from '@/services/api/vcjob'
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
+  NodeSelectorMode,
   VolumeMountType,
   buildNodeSelectors,
   convertToResourceList,
@@ -307,7 +308,8 @@ function RouteComponent() {
       alertEnabled: true,
       nodeSelector: {
         enable: false,
-        excludedNodes: [],
+        mode: NodeSelectorMode.Include,
+        nodes: [],
       },
       forwards: [],
     },
@@ -721,8 +723,8 @@ function RouteComponent() {
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
-              nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
+              nodeSelectorModePath="nodeSelector.mode"
+              nodeSelectorNodesPath="nodeSelector.nodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

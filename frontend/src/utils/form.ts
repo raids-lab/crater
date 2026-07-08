@@ -193,56 +193,56 @@ export const forwardsSchema = z.array(
 
 export type ForwardsSchema = z.infer<typeof forwardsSchema>
 
+export const NodeSelectorMode = {
+  Include: 'include',
+  Exclude: 'exclude',
+} as const
+
+export type NodeSelectorMode = (typeof NodeSelectorMode)[keyof typeof NodeSelectorMode]
+
 export const nodeSelectorSchema = z
   .object({
     enable: z.boolean(),
-    nodeName: z.string().optional(),
-    // Nodes the job must NOT be scheduled on. Independent of `enable`.
-    excludedNodes: z.array(z.string()).optional(),
+    mode: z
+      .enum([NodeSelectorMode.Include, NodeSelectorMode.Exclude])
+      .default(NodeSelectorMode.Include),
+    nodes: z.array(z.string()).optional(),
   })
   .refine(
-    (observability) => {
-      return (
-        !observability.enable ||
-        (observability.enable &&
-          observability.nodeName !== null &&
-          observability.nodeName !== undefined &&
-          observability.nodeName !== '')
-      )
+    (nodeSelector) => {
+      return !nodeSelector.enable || (nodeSelector.nodes ?? []).some((node) => node.trim() !== '')
     },
     {
       message: '请选择工作节点',
-      path: ['nodeName'],
+      path: ['nodes'],
     }
   )
 
 export type NodeSelectorSchema = z.infer<typeof nodeSelectorSchema>
 
-// buildNodeSelectors converts the node-selector form value into k8s node
-// affinity match expressions: an `In` term to pin the job to a chosen node and
-// a `NotIn` term to keep it off excluded nodes. Both are ANDed when present.
+// buildNodeSelectors converts the node-control form value into a k8s hostname
+// affinity selector. Include mode is a whitelist; exclude mode is a blacklist.
 export const buildNodeSelectors = (
   nodeSelector: NodeSelectorSchema
 ): NodeSelectorRequirement[] | undefined => {
-  const selectors: NodeSelectorRequirement[] = []
-  if (nodeSelector.enable && nodeSelector.nodeName) {
-    selectors.push({
-      key: 'kubernetes.io/hostname',
-      operator: 'In',
-      values: [nodeSelector.nodeName],
-    })
+  if (!nodeSelector.enable) {
+    return undefined
   }
-  const excluded =
-    nodeSelector.excludedNodes?.filter((node) => Boolean(node) && node !== nodeSelector.nodeName) ??
-    []
-  if (excluded.length > 0) {
-    selectors.push({
-      key: 'kubernetes.io/hostname',
-      operator: 'NotIn',
-      values: excluded,
-    })
+
+  const nodes = Array.from(
+    new Set((nodeSelector.nodes ?? []).map((node) => node.trim()).filter(Boolean))
+  )
+  if (nodes.length === 0) {
+    return undefined
   }
-  return selectors.length > 0 ? selectors : undefined
+
+  return [
+    {
+      key: 'kubernetes.io/hostname',
+      operator: nodeSelector.mode === NodeSelectorMode.Exclude ? 'NotIn' : 'In',
+      values: nodes,
+    },
+  ]
 }
 
 export interface JobSubmitJson<T> {
@@ -272,41 +272,68 @@ export const exportToJsonString = (metadata: MetadataFormType, data: unknown): s
   return JSON.stringify(jobInfo, null, 2)
 }
 
-// usage: importFromJson<FormData>(version, type, file)
-export const importFromJsonFile = async <T>(
-  version: string,
-  type: string,
-  file?: File
-): Promise<T> => {
-  if (!file) {
-    throw new Error('无效的配置文件')
-  }
-  const text = await file.text()
-  const jobInfo = JSON.parse(text) as JobSubmitJson<T>
-  if (jobInfo.version !== version) {
-    throw new Error(
-      `当前配置版本为 ${version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`
-    )
-  } else if (jobInfo.type !== type) {
-    throw new Error(
-      `当前配置类型为 ${type}，导入配置类型为 ${jobInfo.type}，无法导入，请手动创建新配置`
-    )
-  }
-  return jobInfo.data
-}
-
-export const importFromJsonString = <T>(metadata: MetadataFormType, text: string): T => {
-  const jobInfo = JSON.parse(text) as JobSubmitJson<T>
-  if (jobInfo.version !== metadata.version) {
-    throw new Error(
-      `当前配置版本为 ${metadata.version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`
-    )
-  } else if (jobInfo.type !== metadata.type) {
+const importFromJobSubmitJson = <T>(
+  metadata: MetadataFormType,
+  jobInfo: JobSubmitJson<unknown>
+): T => {
+  if (jobInfo.type !== metadata.type) {
     throw new Error(
       `当前配置类型为 ${metadata.type}，导入配置类型为 ${jobInfo.type}，无法导入，请手动创建新配置`
     )
   }
-  return jobInfo.data
+
+  let version = jobInfo.version
+  let data = jobInfo.data
+  const visitedVersions = new Set<string>()
+
+  while (version !== metadata.version) {
+    const migration = metadata.migrations?.[version]
+    if (!migration) {
+      throw new Error(
+        `当前配置版本为 ${metadata.version}，导入配置版本为 ${jobInfo.version}，无法导入，请手动创建新配置`
+      )
+    }
+    if (visitedVersions.has(version) || migration.to === version) {
+      throw new Error(`配置版本 ${jobInfo.version} 的迁移链存在循环，无法导入`)
+    }
+
+    visitedVersions.add(version)
+    try {
+      data = migration.migrate(data)
+    } catch (error) {
+      throw new Error(
+        `配置版本 ${version} 迁移到 ${migration.to} 失败：${(error as Error).message}`
+      )
+    }
+    version = migration.to
+  }
+
+  return data as T
+}
+
+// usage: importFromJson<FormData>(metadata, file)
+export const importFromJsonFile = async <T>(
+  metadataOrVersion: MetadataFormType | string,
+  typeOrFile?: string | File,
+  fileArg?: File
+): Promise<T> => {
+  const metadata =
+    typeof metadataOrVersion === 'string'
+      ? { version: metadataOrVersion, type: typeOrFile as string }
+      : metadataOrVersion
+  const file = typeof metadataOrVersion === 'string' ? fileArg : (typeOrFile as File | undefined)
+
+  if (!file) {
+    throw new Error('无效的配置文件')
+  }
+  const text = await file.text()
+  const jobInfo = JSON.parse(text) as JobSubmitJson<unknown>
+  return importFromJobSubmitJson<T>(metadata, jobInfo)
+}
+
+export const importFromJsonString = <T>(metadata: MetadataFormType, text: string): T => {
+  const jobInfo = JSON.parse(text) as JobSubmitJson<unknown>
+  return importFromJobSubmitJson<T>(metadata, jobInfo)
 }
 
 // 简化的镜像字段兼容性处理函数
