@@ -41,3 +41,31 @@ export interface IWithPagination<T> {
   items: T[]
   total: number
 }
+
+/**
+ * Server-driven list response that includes faceted counts so toolbars can
+ * render badges (e.g. "Running (12)") without re-aggregating data on the client.
+ */
+export interface IListResponse<T> {
+  items: T[]
+  total: number
+  facets?: Record<string, Record<string, number>>
+}
+
+/**
+ * Query parameters shared by paginated list endpoints. All fields are optional;
+ * the backend applies sensible defaults (page=1, page_size=20, order=desc).
+ */
+export interface IListQuery {
+  page?: number
+  page_size?: number
+  sort_by?: string
+  order?: 'asc' | 'desc'
+  status?: string
+  job_type?: string
+  queue?: string
+  search?: string
+  days?: number
+  start_time?: string
+  end_time?: string
+}

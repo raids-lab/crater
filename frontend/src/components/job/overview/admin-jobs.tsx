@@ -15,8 +15,8 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ColumnDef } from '@tanstack/react-table'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ColumnDef, ColumnFiltersState, PaginationState, SortingState } from '@tanstack/react-table'
 import { t } from 'i18next'
 import { CalendarIcon, LockIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
@@ -46,14 +46,14 @@ import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { apiAdminGetJobBillingList } from '@/services/api/billing'
+import { apiAdminGetJobBillingListPaged } from '@/services/api/billing'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
   JobPhase,
   JobType,
   ScheduleType,
-  apiAdminGetJobList,
+  apiAdminGetJobListPaged,
   apiJobDeleteForAdmin,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
@@ -112,11 +112,40 @@ const AdminJobOverview = () => {
   const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([])
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false)
   const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false)
+
+  // Server-driven table state. Pagination, sorting, filters and search are all
+  // mirrored into the request, so the table only ever holds the current page.
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 })
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
+
   const { data: billingStatus } = useQuery({
     queryKey: ['admin', 'system-config', 'billing-status'],
     queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForAdmin(billingStatus)
+
+  // Translate UI state into a paginated API query. Multi-value filters are
+  // joined with commas to match the backend `Status.In(...)` semantics.
+  const listParams = useMemo(() => {
+    const filterValues = (key: string) => {
+      const f = columnFilters.find((f) => f.id === key)
+      return Array.isArray(f?.value) ? (f?.value as string[]).join(',') : undefined
+    }
+    const sortBy = sorting[0]?.id
+    return {
+      page: pagination.pageIndex + 1,
+      page_size: pagination.pageSize,
+      sort_by: sortBy === 'createdAt' ? 'created_at' : sortBy,
+      order: sorting[0] ? (sorting[0].desc ? 'desc' : 'asc') : undefined,
+      status: filterValues('status'),
+      job_type: filterValues('jobType'),
+      queue: filterValues('queue'),
+      search: globalFilter || undefined,
+      days,
+    } as const
+  }, [pagination, sorting, columnFilters, globalFilter, days])
 
   const toolbarConfig: DataTableToolbarConfig = {
     globalSearch: {
@@ -143,70 +172,81 @@ const AdminJobOverview = () => {
   }
 
   const vcjobQuery = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', days],
-    queryFn: () => apiAdminGetJobList(days),
+    queryKey: ['admin', 'tasklist', 'job', listParams],
+    queryFn: () => apiAdminGetJobListPaged(listParams),
     select: (res) => res.data,
+    placeholderData: keepPreviousData,
   })
+
+  // Billing data is keyed by jobName; matching the page lets the table show
+  // billed points without an extra round-trip per row.
   const billingQuery = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', 'billing', days],
-    queryFn: () => apiAdminGetJobBillingList(days),
+    queryKey: ['admin', 'tasklist', 'job', 'billing', listParams],
+    queryFn: () => apiAdminGetJobBillingListPaged(listParams),
     select: (res) =>
-      res.data.reduce<Record<string, number>>((acc, item) => {
+      res.data.items.reduce<Record<string, number>>((acc, item) => {
         acc[item.jobName] = item.billedPointsTotal
         return acc
       }, {}),
     enabled: billingVisible,
+    placeholderData: keepPreviousData,
   })
+
   const refetchVcjobQuery = vcjobQuery.refetch
   const refetchBillingQuery = billingQuery.refetch
   const refetchMergedQuery = useCallback(async () => {
-    const [vcjobResult] = await Promise.all([refetchVcjobQuery(), refetchBillingQuery()])
-    return vcjobResult
+    await Promise.all([refetchVcjobQuery(), refetchBillingQuery()])
   }, [refetchBillingQuery, refetchVcjobQuery])
-  const mergedVcjobQuery = useMemo(
+
+  const tableRows = useMemo<JobTableRow[]>(
     () =>
-      ({
-        data: (vcjobQuery.data ?? []).map((job) => ({
-          ...job,
-          billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
-        })),
-        isLoading: vcjobQuery.isLoading || (billingVisible && billingQuery.isLoading),
-        dataUpdatedAt: Math.max(
-          vcjobQuery.dataUpdatedAt,
-          billingVisible ? billingQuery.dataUpdatedAt : 0
-        ),
-        refetch: refetchMergedQuery,
-      }) as unknown as UseQueryResult<JobTableRow[], Error>,
-    [
-      billingVisible,
-      billingQuery.data,
-      billingQuery.dataUpdatedAt,
-      billingQuery.isLoading,
-      refetchMergedQuery,
-      vcjobQuery.data,
-      vcjobQuery.dataUpdatedAt,
-      vcjobQuery.isLoading,
-    ]
+      (vcjobQuery.data?.items ?? []).map((job) => ({
+        ...job,
+        billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
+      })),
+    [vcjobQuery.data, billingQuery.data]
   )
+
+  // Synthesise a UseQueryResult-shaped object for DataTable, which only reads
+  // a few fields from it. The real loading / refetch / timestamp signals come
+  // from the underlying paged queries.
+  const tableQuery = useMemo(
+    () => ({
+      data: tableRows,
+      isLoading: vcjobQuery.isLoading || (billingVisible && billingQuery.isLoading),
+      dataUpdatedAt: Math.max(
+        vcjobQuery.dataUpdatedAt,
+        billingVisible ? billingQuery.dataUpdatedAt : 0
+      ),
+      refetch: refetchMergedQuery,
+    }),
+    [
+      tableRows,
+      vcjobQuery.isLoading,
+      vcjobQuery.dataUpdatedAt,
+      billingVisible,
+      billingQuery.isLoading,
+      billingQuery.dataUpdatedAt,
+      refetchMergedQuery,
+    ]
+  ) as unknown as import('@tanstack/react-query').UseQueryResult<JobTableRow[], Error>
 
   const refetchTaskList = useCallback(async () => {
     try {
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({
-            queryKey: ['admin', 'tasklist', 'job', days],
-          })
-        ),
-        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
-          queryClient.invalidateQueries({
-            queryKey: ['admin', 'tasklist', 'job', 'billing', days],
+            queryKey: ['admin', 'tasklist', 'job'],
           })
         ),
       ])
     } catch (error) {
       logger.error('更新查询失败', error)
     }
-  }, [queryClient, days])
+  }, [queryClient])
+
+  const total = vcjobQuery.data?.total ?? 0
+  const facets = vcjobQuery.data?.facets
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: apiJobDeleteForAdmin,
@@ -383,9 +423,21 @@ const AdminJobOverview = () => {
           description: t('adminJobOverview.description'),
         }}
         storageKey="admin_job_overview"
-        query={mergedVcjobQuery}
+        query={tableQuery}
         columns={vcjobColumns}
         toolbarConfig={toolbarConfig}
+        serverDriven={{
+          total,
+          facets,
+          pagination,
+          setPagination,
+          sorting,
+          setSorting,
+          columnFilters,
+          setColumnFilters,
+          globalFilter,
+          setGlobalFilter,
+        }}
         multipleHandlers={[
           {
             title: (rows) =>

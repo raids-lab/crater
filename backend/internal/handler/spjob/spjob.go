@@ -16,8 +16,10 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
+	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
@@ -198,6 +200,12 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 func (mgr *SparseJobMgr) List(c *gin.Context) {
 	token := util.GetToken(c)
 
+	var pq payload.ListPageQuery
+	if err := c.ShouldBindQuery(&pq); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
+		return
+	}
+
 	jobList, err := mgr.jobclient.ListRecommendDLJob(c, dlNamespace)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("list recommenddljob failed, err:%v", err), resputil.NotSpecified)
@@ -257,7 +265,22 @@ func (mgr *SparseJobMgr) List(c *gin.Context) {
 		return jobs[i].CreationTimestamp.After(jobs[j].CreationTimestamp.Time)
 	})
 
-	resputil.Success(c, jobs)
+	if !pq.IsPagingRequested() {
+		resputil.Success(c, jobs)
+		return
+	}
+	total := int64(len(jobs))
+	offset, limit, _ := pq.Normalize()
+	if offset > len(jobs) {
+		offset = len(jobs)
+	}
+	end := offset + limit
+	if end > len(jobs) {
+		end = len(jobs)
+	}
+	pageItems := jobs[offset:end]
+
+	resputil.Success(c, resputil.List[vcjob.JobResp]{Total: total, Items: pageItems})
 }
 
 type (
