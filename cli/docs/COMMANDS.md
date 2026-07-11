@@ -406,6 +406,9 @@
   - `delete`: 停止或删除自己的作业。
 - **位置参数**:
   - `<name>` (positional, required): 平台作业名。
+- **`delete` 选项与确认**:
+  - `--yes` / `-y` (bool): 跳过删除确认。
+  - 交互模式默认二次确认；`--json` 或 `--no-interactive` 下必须显式提供 `--yes`，否则返回 `usage_error`。
 - **`--json` 的 `data`**：
   - `token` / `secret`: `token`
   - `ssh`: `ssh`
@@ -416,7 +419,7 @@
 - **描述**: 创建交互式作业。支持 flags 构造常用请求，也支持 `--file` 传入完整 JSON 请求体。
 - **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
 - **选项**:
-  - `--file` (string): 从文件读取完整 JSON 请求体；提供后忽略其它创建 flags。
+  - `--file` (string): 从文件读取完整 JSON 请求体；提供后忽略其它创建 flags。文件必须只包含一个 JSON 对象，未知字段会在发起请求前被拒绝。
   - `--name` (string, required without `--file`): 显示名称。
   - `--image` (string, required without `--file`): 镜像地址。
   - `--arch` (stringSlice): 镜像架构。
@@ -426,10 +429,10 @@
   - `--gpu-resource` (string, default `nvidia.com/gpu`): GPU 资源名；`--gpu > 0` 时必填。
   - `--schedule` (string): `normal | backfill`。
   - `--env` (stringArray): `KEY=VALUE`，可重复。
-  - `--volume` (stringArray): `subPath:mountPath`，可重复。
-  - `--dataset` (stringArray): `datasetID:mountPath`，可重复。
+  - `--volume` (stringArray): `subPath:mountPath`，可重复；转换为后端 `volumeMounts` 的工作区类型（`type=1`）。
+  - `--dataset` (stringArray): `datasetID:mountPath`，可重复；转换为后端实际消费的 `volumeMounts` 数据集类型（`type=2`），`datasetID` 必须大于 0。
   - `--selector` (stringArray): `key=Operator:value1,value2`，可重复。
-  - `--forward` (stringArray): `name:port[:type]`，可重复。
+  - `--forward` (stringArray): `name:port`，可重复；名称使用 1–20 个小写字母，端口范围为 1–65535。
   - `--template`、`--alert`、`--cpu-pinning`。
 - **本地校验**: CPU、Memory、GPU 不允许负数；缺少 `name`、`image`、`memory` 会在发起请求前聚合报错。
 - **`--json` 的 `data`**：`job`（后端返回的 Volcano Job 对象）。
@@ -455,6 +458,7 @@
   - 每个 task 的 `name`、`image.imageLink` 必填。
   - 每个 task 的 `replicas` 必须大于 0。
   - 每个 task 的资源值不能为负数。
+  - 请求文件只允许后端 DTO 中存在的字段；TensorFlow / PyTorch 不允许 `scheduleType=0`（backfill）。
 - **`--json` 的 `data`**：`job`。
 - **状态**: [x] Completed
 
@@ -472,6 +476,9 @@
 - **描述**: 使用 `/api/v1/admin/vcjobs/{name}` 管理员删除作业。
 - **位置参数**:
   - `<name>` (positional, required): 平台作业名。
+- **选项与确认**:
+  - `--yes` / `-y` (bool): 跳过删除确认。
+  - 交互模式默认二次确认；`--json` 或 `--no-interactive` 下必须显式提供 `--yes`。
 - **`--json` 的 `data`**：`message`。
 - **状态**: [x] Completed
 
@@ -492,10 +499,13 @@
 - **描述**: 管理员作业清理操作，对应前端 admin jobs 的清理接口。
 - **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
 - **子命令**:
-  - `waiting-jupyter --wait-minutes N`: 取消等待超过阈值的 Jupyter 作业。
-  - `waiting-custom --wait-minutes N`: 取消等待超过阈值的 Custom 作业。
-  - `long-running [--batch-days N] [--interactive-days N]`: 清理长时间运行作业。
-  - `low-gpu --time-range N [--wait-time N] [--util N]`: 清理低 GPU 利用率作业。
+  - `waiting-jupyter --wait-minutes N`: 取消等待超过阈值的 Jupyter 作业；`N` 必须大于 0。
+  - `waiting-custom --wait-minutes N`: 取消等待超过阈值的 Custom 作业；`N` 必须大于 0。
+  - `long-running --batch-days N --interactive-days N`: 清理长时间运行作业；两个天数阈值都必须大于 0，避免后端把缺失阈值按 0 天处理。
+  - `low-gpu --time-range N --wait-time N [--util N]`: 清理低 GPU 利用率作业；时间单位均为分钟，`time-range` 与 `wait-time` 必须大于 0，`util` 必须在 0–100 之间。
+- **确认**:
+  - 每个清理子命令都支持 `--yes` / `-y` 跳过确认。
+  - 交互模式默认二次确认；`--json` 或 `--no-interactive` 下必须显式提供 `--yes`。
 - **`--json` 的 `data`**：`cleanup`（含 `reminded` 与 `deleted`）。
 - **状态**: [x] Completed
 

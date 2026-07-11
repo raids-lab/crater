@@ -25,13 +25,13 @@ type JobClient interface {
 	CreateTrainingJob(req CreateTrainingJobRequest) (map[string]interface{}, error)
 	CreateTensorflowJob(req CreateDistributedJobRequest) (map[string]interface{}, error)
 	CreatePytorchJob(req CreateDistributedJobRequest) (map[string]interface{}, error)
-	ToggleJobKeep(name string) (string, error)
-	LockJob(req LockJobRequest) (string, error)
-	UnlockJob(name string) (string, error)
-	CleanWaitingJupyter(waitMinutes int) (*CleanupResult, error)
-	CleanWaitingCustom(waitMinutes int) (*CleanupResult, error)
-	CleanLongRunning(req CleanLongTimeRequest) (*CleanupResult, error)
-	CleanLowGPUUsage(req CleanLowGPUUsageRequest) (*CleanupResult, error)
+	AdminToggleJobKeep(name string) (string, error)
+	AdminLockJob(req LockJobRequest) (string, error)
+	AdminUnlockJob(name string) (string, error)
+	AdminCleanWaitingJupyter(waitMinutes int) (*CleanupResult, error)
+	AdminCleanWaitingCustom(waitMinutes int) (*CleanupResult, error)
+	AdminCleanLongRunning(req CleanLongTimeRequest) (*CleanupResult, error)
+	AdminCleanLowGPUUsage(req CleanLowGPUUsageRequest) (*CleanupResult, error)
 }
 
 type JobListOptions struct {
@@ -52,12 +52,9 @@ type ImageBaseInfo struct {
 }
 
 type VolumeMount struct {
-	SubPath   string `json:"subPath"`
-	MountPath string `json:"mountPath"`
-}
-
-type DatasetMount struct {
-	DatasetID uint   `json:"datasetID"`
+	Type      uint   `json:"type"`
+	DatasetID uint   `json:"datasetID,omitempty"`
+	SubPath   string `json:"subPath,omitempty"`
 	MountPath string `json:"mountPath"`
 }
 
@@ -74,8 +71,7 @@ type NodeSelectorRequirement struct {
 
 type Forward struct {
 	Name string `json:"name"`
-	Port int    `json:"port"`
-	Type string `json:"type,omitempty"`
+	Port int32  `json:"port"`
 }
 
 type JobInfo struct {
@@ -111,12 +107,10 @@ type JobDetail struct {
 	Queue                   string                   `json:"queue"`
 	Resources               ResourceList             `json:"resources"`
 	Status                  string                   `json:"status"`
-	Retry                   string                   `json:"retry"`
 	ProfileData             map[string]interface{}   `json:"profileData,omitempty"`
 	ScheduleData            map[string]interface{}   `json:"scheduleData,omitempty"`
 	Events                  []map[string]interface{} `json:"events,omitempty"`
 	TerminatedStates        []map[string]interface{} `json:"terminatedStates,omitempty"`
-	TerminatedInfo          interface{}              `json:"terminatedStates,omitempty"`
 	CreatedAt               time.Time                `json:"createdAt"`
 	StartedAt               time.Time                `json:"startedAt"`
 	CompletedAt             time.Time                `json:"completedAt"`
@@ -125,7 +119,7 @@ type JobDetail struct {
 type PodDetail struct {
 	Name      string       `json:"name"`
 	Namespace string       `json:"namespace"`
-	NodeName  string       `json:"nodename"`
+	NodeName  *string      `json:"nodename"`
 	IP        string       `json:"ip"`
 	Port      string       `json:"port"`
 	Resource  ResourceList `json:"resource,omitempty"`
@@ -148,7 +142,6 @@ type SSHInfo struct {
 type JobCommonRequest struct {
 	Name              string                    `json:"name"`
 	VolumeMounts      []VolumeMount             `json:"volumeMounts,omitempty"`
-	DatasetMounts     []DatasetMount            `json:"datasetMounts,omitempty"`
 	Envs              []EnvVar                  `json:"envs,omitempty"`
 	Selectors         []NodeSelectorRequirement `json:"selectors,omitempty"`
 	Template          string                    `json:"template,omitempty"`
@@ -206,14 +199,14 @@ type CleanupResult struct {
 }
 
 type CleanLongTimeRequest struct {
-	BatchDays       *int `json:"batchDays,omitempty"`
-	InteractiveDays *int `json:"interactiveDays,omitempty"`
+	BatchDays       int `json:"batchDays"`
+	InteractiveDays int `json:"interactiveDays"`
 }
 
 type CleanLowGPUUsageRequest struct {
-	TimeRange int  `json:"timeRange"`
-	WaitTime  *int `json:"waitTime,omitempty"`
-	Util      *int `json:"util,omitempty"`
+	TimeRange int `json:"timeRange"`
+	WaitTime  int `json:"waitTime"`
+	Util      int `json:"util"`
 }
 
 func (c *Client) ListJobs(opts JobListOptions) ([]JobInfo, error) {
@@ -397,37 +390,37 @@ func (c *Client) createJob(kind string, body interface{}) (map[string]interface{
 	return result.Data, nil
 }
 
-func (c *Client) ToggleJobKeep(name string) (string, error) {
+func (c *Client) AdminToggleJobKeep(name string) (string, error) {
 	return c.messagePut(AdminOperationsPfx+"/keep/"+url.PathEscape(name), nil)
 }
 
-func (c *Client) LockJob(req LockJobRequest) (string, error) {
+func (c *Client) AdminLockJob(req LockJobRequest) (string, error) {
 	return c.messagePut(AdminOperationsPfx+"/add/locktime", req)
 }
 
-func (c *Client) UnlockJob(name string) (string, error) {
+func (c *Client) AdminUnlockJob(name string) (string, error) {
 	return c.messagePut(AdminOperationsPfx+"/clear/locktime", map[string]string{"name": name})
 }
 
-func (c *Client) CleanWaitingJupyter(waitMinutes int) (*CleanupResult, error) {
+func (c *Client) AdminCleanWaitingJupyter(waitMinutes int) (*CleanupResult, error) {
 	return c.cleanup(AdminOperationsPfx+"/clean/clean-waiting-jupyter-job", map[string]interface{}{
 		"waitMinitues": waitMinutes,
 		"jobTypes":     []string{"jupyter"},
 	})
 }
 
-func (c *Client) CleanWaitingCustom(waitMinutes int) (*CleanupResult, error) {
+func (c *Client) AdminCleanWaitingCustom(waitMinutes int) (*CleanupResult, error) {
 	return c.cleanup(AdminOperationsPfx+"/clean/clean-waiting-custom-job", map[string]interface{}{
 		"waitMinitues": waitMinutes,
 		"jobTypes":     []string{"custom"},
 	})
 }
 
-func (c *Client) CleanLongRunning(req CleanLongTimeRequest) (*CleanupResult, error) {
+func (c *Client) AdminCleanLongRunning(req CleanLongTimeRequest) (*CleanupResult, error) {
 	return c.cleanup(AdminOperationsPfx+"/clean/clean-long-running-job", req)
 }
 
-func (c *Client) CleanLowGPUUsage(req CleanLowGPUUsageRequest) (*CleanupResult, error) {
+func (c *Client) AdminCleanLowGPUUsage(req CleanLowGPUUsageRequest) (*CleanupResult, error) {
 	return c.cleanup(AdminOperationsPfx+"/clean/clean-low-gpu-usage-job", req)
 }
 
@@ -443,6 +436,12 @@ func (c *Client) cleanup(path string, body interface{}) (*CleanupResult, error) 
 	}
 	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
 		return nil, err
+	}
+	if result.Data.Reminded == nil {
+		result.Data.Reminded = []string{}
+	}
+	if result.Data.Deleted == nil {
+		result.Data.Deleted = []string{}
 	}
 	return &result.Data, nil
 }

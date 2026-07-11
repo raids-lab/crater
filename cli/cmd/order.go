@@ -397,18 +397,6 @@ func writeOrderMessage(key string, message string) error {
 	return nil
 }
 
-func missingIssue(field string, labelKey string) usageIssue {
-	return usageIssue{
-		Code:    errorcodes.ErrMissingRequiredFlag,
-		Message: i18n.T("err_missing_required", i18n.T(labelKey), field),
-		Field:   field,
-	}
-}
-
-func invalidIssue(field string, message string) usageIssue {
-	return usageIssue{Code: errorcodes.ErrInvalidFlagValue, Message: message, Field: field}
-}
-
 func printOrderTable(data interface{}) {
 	fmt.Printf("%s %s %s %s %s %s\n", i18n.PadRight(i18n.T("table_id"), 8), i18n.PadRight(i18n.T("table_name"), 28), i18n.PadRight(i18n.T("table_type"), 16), i18n.PadRight(i18n.T("table_status"), 14), i18n.PadRight("CREATOR", 18), i18n.PadRight("CREATED", 22))
 	for _, row := range rawList(data) {

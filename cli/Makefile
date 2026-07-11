@@ -62,6 +62,7 @@ snapshot-update: ## 重写 golden：UPDATE_SNAPSHOTS=1 go test ./test/snapshots/
 # 新增单测时，将对应包路径加入此列表即可。
 UNIT_TEST_PKGS := \
 	./cmd \
+	./internal/api \
 	./internal/completion \
 	./internal/output \
 	./internal/state \

@@ -69,9 +69,9 @@ crater job create jupyter --no-interactive --name demo --cpu -1 --memory -2Gi --
 -- en/07-create-jupyter-multi-usage-nojson/stderr --
 Error:
   image is required (--image)
-  err_invalid_non_negative_float
-  err_invalid_non_negative_int
-  err_invalid_non_negative_int
+  cpu must not be negative
+  memory must not be negative
+  gpu must not be negative
 -- en/08-create-jupyter-multi-usage-json/argv --
 crater job create jupyter --no-interactive --json --name demo --cpu -1 --memory -2Gi --gpu -1
 -- en/08-create-jupyter-multi-usage-json/exit --
@@ -81,7 +81,7 @@ crater job create jupyter --no-interactive --json --name demo --cpu -1 --memory 
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "image is required (--image)\nerr_invalid_non_negative_float\nerr_invalid_non_negative_int\nerr_invalid_non_negative_int",
+  "message": "image is required (--image)\ncpu must not be negative\nmemory must not be negative\ngpu must not be negative",
   "context": {
     "issues": [
       {
@@ -92,17 +92,17 @@ crater job create jupyter --no-interactive --json --name demo --cpu -1 --memory 
       {
         "code": "ERR_INVALID_FLAG_VALUE",
         "field": "cpu",
-        "message": "err_invalid_non_negative_float"
+        "message": "cpu must not be negative"
       },
       {
         "code": "ERR_INVALID_FLAG_VALUE",
         "field": "memory",
-        "message": "err_invalid_non_negative_int"
+        "message": "memory must not be negative"
       },
       {
         "code": "ERR_INVALID_FLAG_VALUE",
         "field": "gpu",
-        "message": "err_invalid_non_negative_int"
+        "message": "gpu must not be negative"
       }
     ]
   }
@@ -125,7 +125,7 @@ crater admin job lock job-123 --no-interactive
 -- en/10-admin-lock-missing-duration-nojson/stdout --
 -- en/10-admin-lock-missing-duration-nojson/stderr --
 Error:
-  err_value_required_when_flag_enabled
+  duration must be greater than 0 when permanent=false
 -- en/11-admin-clean-low-gpu-invalid-json/argv --
 crater admin job clean low-gpu --no-interactive --json --time-range 0 --wait-time -1
 -- en/11-admin-clean-low-gpu-invalid-json/exit --
@@ -135,18 +135,18 @@ crater admin job clean low-gpu --no-interactive --json --time-range 0 --wait-tim
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "err_invalid_positive_int\nerr_invalid_non_negative_int",
+  "message": "time-range must be greater than 0\nwait-time must be greater than 0",
   "context": {
     "issues": [
       {
         "code": "ERR_INVALID_FLAG_VALUE",
         "field": "time-range",
-        "message": "err_invalid_positive_int"
+        "message": "time-range must be greater than 0"
       },
       {
         "code": "ERR_INVALID_FLAG_VALUE",
-        "field": "threshold",
-        "message": "err_invalid_non_negative_int"
+        "field": "wait-time",
+        "message": "wait-time must be greater than 0"
       }
     ]
   }
@@ -164,4 +164,51 @@ crater job ls --no-interactive --json
   "context": {
     "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs\": context deadline exceeded"
   }
+}
+-- en/13-delete-confirm-required-json/argv --
+crater job delete job-123 --no-interactive --json
+-- en/13-delete-confirm-required-json/exit --
+2
+-- en/13-delete-confirm-required-json/stdout --
+-- en/13-delete-confirm-required-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--yes is required in non-interactive mode"
+}
+-- en/14-admin-clean-long-running-thresholds-json/argv --
+crater admin job clean long-running --no-interactive --json
+-- en/14-admin-clean-long-running-thresholds-json/exit --
+2
+-- en/14-admin-clean-long-running-thresholds-json/stdout --
+-- en/14-admin-clean-long-running-thresholds-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "batch-days must be greater than 0\ninteractive-days must be greater than 0",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "batch-days",
+        "message": "batch-days must be greater than 0"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "interactive-days",
+        "message": "interactive-days must be greater than 0"
+      }
+    ]
+  }
+}
+-- en/15-admin-clean-confirm-required-json/argv --
+crater admin job clean low-gpu --time-range 90 --wait-time 30 --no-interactive --json
+-- en/15-admin-clean-confirm-required-json/exit --
+2
+-- en/15-admin-clean-confirm-required-json/stdout --
+-- en/15-admin-clean-confirm-required-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--yes is required in non-interactive mode"
 }

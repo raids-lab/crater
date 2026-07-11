@@ -1,14 +1,17 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/completion"
@@ -19,8 +22,10 @@ import (
 )
 
 const (
-	scheduleBackfill = 0
-	scheduleNormal   = 1
+	scheduleBackfill  = 0
+	scheduleNormal    = 1
+	volumeTypeFile    = 1
+	volumeTypeDataset = 2
 )
 
 var (
@@ -78,18 +83,6 @@ var jobAdminCleanWaitingCustomCmd = &cobra.Command{Use: "waiting-custom", Short:
 var jobAdminCleanLongRunningCmd = &cobra.Command{Use: "long-running", Short: "Clean long-running jobs", Args: noArgs, RunE: runJobAdminCleanLongRunning}
 var jobAdminCleanLowGPUCmd = &cobra.Command{Use: "low-gpu", Short: "Clean low GPU usage jobs", Args: noArgs, RunE: runJobAdminCleanLowGPU}
 
-func missingIssue(field string, labelKey string) usageIssue {
-	return usageIssue{
-		Code:    errorcodes.ErrMissingRequiredFlag,
-		Message: i18n.T("err_missing_required", i18n.T(labelKey), field),
-		Field:   field,
-	}
-}
-
-func invalidIssue(field string, message string) usageIssue {
-	return usageIssue{Code: errorcodes.ErrInvalidFlagValue, Message: message, Field: field}
-}
-
 func runJobLs(cmd *cobra.Command, _ []string) error {
 	opts, err := readJobListOptions(cmd, false)
 	if err != nil {
@@ -111,9 +104,6 @@ func readJobListOptions(cmd *cobra.Command, admin bool) (api.JobListOptions, err
 	username, _ := cmd.Flags().GetString("user")
 	username = strings.TrimSpace(username)
 	days, _ := cmd.Flags().GetInt("days")
-	if days < -1 {
-		return api.JobListOptions{}, errUsageFromIssues([]usageIssue{invalidIssue("days", i18n.T("err_invalid_job_days"))})
-	}
 	if err := validateJobListFilters(cmd); err != nil {
 		return api.JobListOptions{}, err
 	}
@@ -313,13 +303,13 @@ func runJobAlert(_ *cobra.Command, args []string) error {
 }
 
 func runJobDelete(cmd *cobra.Command, args []string) error {
-	return runJobMessage(args, func(client *api.Client, name string) (string, error) {
+	return runConfirmedJobMessage(cmd, args, "job_delete_confirm", "job_delete_succeeded", func(client *api.Client, name string) (string, error) {
 		return client.DeleteJob(name)
 	})
 }
 
 func runAdminJobDelete(cmd *cobra.Command, args []string) error {
-	return runJobMessage(args, func(client *api.Client, name string) (string, error) {
+	return runConfirmedJobMessage(cmd, args, "admin_job_delete_confirm", "admin_job_delete_succeeded", func(client *api.Client, name string) (string, error) {
 		return client.AdminDeleteJob(name)
 	})
 }
@@ -334,6 +324,31 @@ func runJobMessage(args []string, call func(*api.Client, string) (string, error)
 		return err
 	}
 	msg, err := call(client, name)
+	return writeMessage(msg, err)
+}
+
+func runConfirmedJobMessage(
+	cmd *cobra.Command,
+	args []string,
+	confirmKey string,
+	successKey string,
+	call func(*api.Client, string) (string, error),
+) error {
+	name, err := requiredArg(args, "job_label_name", "name")
+	if err != nil {
+		return err
+	}
+	if err := confirmJobAction(cmd, confirmKey, name); err != nil {
+		return err
+	}
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	msg, err := call(client, name)
+	if err == nil && strings.TrimSpace(msg) == "" {
+		msg = i18n.T(successKey, name)
+	}
 	return writeMessage(msg, err)
 }
 
@@ -437,19 +452,19 @@ func runJobAdminLock(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	msg, err := client.LockJob(api.LockJobRequest{Name: name, IsPermanent: permanent, Days: days, Hours: hours, Minutes: minutes})
+	msg, err := client.AdminLockJob(api.LockJobRequest{Name: name, IsPermanent: permanent, Days: days, Hours: hours, Minutes: minutes})
 	return writeMessage(msg, err)
 }
 
 func runJobAdminUnlock(_ *cobra.Command, args []string) error {
 	return runJobMessage(args, func(client *api.Client, name string) (string, error) {
-		return client.UnlockJob(name)
+		return client.AdminUnlockJob(name)
 	})
 }
 
 func runJobAdminKeep(_ *cobra.Command, args []string) error {
 	return runJobMessage(args, func(client *api.Client, name string) (string, error) {
-		return client.ToggleJobKeep(name)
+		return client.AdminToggleJobKeep(name)
 	})
 }
 
@@ -458,11 +473,14 @@ func runJobAdminCleanWaitingJupyter(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	if err := confirmJobAction(cmd, "admin_job_clean_confirm"); err != nil {
+		return err
+	}
 	client, err := activeAPIClient()
 	if err != nil {
 		return err
 	}
-	res, err := client.CleanWaitingJupyter(wait)
+	res, err := client.AdminCleanWaitingJupyter(wait)
 	return writeCleanupResult(res, err)
 }
 
@@ -471,32 +489,41 @@ func runJobAdminCleanWaitingCustom(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	if err := confirmJobAction(cmd, "admin_job_clean_confirm"); err != nil {
+		return err
+	}
 	client, err := activeAPIClient()
 	if err != nil {
 		return err
 	}
-	res, err := client.CleanWaitingCustom(wait)
+	res, err := client.AdminCleanWaitingCustom(wait)
 	return writeCleanupResult(res, err)
 }
 
 func runJobAdminCleanLongRunning(cmd *cobra.Command, _ []string) error {
 	batchDays, _ := cmd.Flags().GetInt("batch-days")
 	interactiveDays, _ := cmd.Flags().GetInt("interactive-days")
-	if batchDays < 0 || interactiveDays < 0 {
-		return errUsageFromIssues([]usageIssue{invalidIssue("days", i18n.T("err_invalid_non_negative_int", "days"))})
+	issues := []usageIssue{}
+	if batchDays <= 0 {
+		issues = append(issues, invalidIssue("batch-days", i18n.T("err_invalid_positive_int", "batch-days")))
 	}
-	req := api.CleanLongTimeRequest{}
-	if batchDays > 0 {
-		req.BatchDays = &batchDays
+	if interactiveDays <= 0 {
+		issues = append(issues, invalidIssue("interactive-days", i18n.T("err_invalid_positive_int", "interactive-days")))
 	}
-	if interactiveDays > 0 {
-		req.InteractiveDays = &interactiveDays
+	if len(issues) > 0 {
+		return errUsageFromIssues(issues)
+	}
+	if err := confirmJobAction(cmd, "admin_job_clean_confirm"); err != nil {
+		return err
 	}
 	client, err := activeAPIClient()
 	if err != nil {
 		return err
 	}
-	res, err := client.CleanLongRunning(req)
+	res, err := client.AdminCleanLongRunning(api.CleanLongTimeRequest{
+		BatchDays:       batchDays,
+		InteractiveDays: interactiveDays,
+	})
 	return writeCleanupResult(res, err)
 }
 
@@ -508,24 +535,27 @@ func runJobAdminCleanLowGPU(cmd *cobra.Command, _ []string) error {
 	if timeRange <= 0 {
 		issues = append(issues, invalidIssue("time-range", i18n.T("err_invalid_positive_int", "time-range")))
 	}
-	if waitTime < 0 || util < 0 {
-		issues = append(issues, invalidIssue("threshold", i18n.T("err_invalid_non_negative_int", "threshold")))
+	if waitTime <= 0 {
+		issues = append(issues, invalidIssue("wait-time", i18n.T("err_invalid_positive_int", "wait-time")))
+	}
+	if util < 0 || util > 100 {
+		issues = append(issues, invalidIssue("util", i18n.T("err_invalid_percentage", "util")))
 	}
 	if len(issues) > 0 {
 		return errUsageFromIssues(issues)
 	}
-	req := api.CleanLowGPUUsageRequest{TimeRange: timeRange}
-	if waitTime > 0 {
-		req.WaitTime = &waitTime
-	}
-	if util > 0 {
-		req.Util = &util
+	if err := confirmJobAction(cmd, "admin_job_clean_confirm"); err != nil {
+		return err
 	}
 	client, err := activeAPIClient()
 	if err != nil {
 		return err
 	}
-	res, err := client.CleanLowGPUUsage(req)
+	res, err := client.AdminCleanLowGPUUsage(api.CleanLowGPUUsageRequest{
+		TimeRange: timeRange,
+		WaitTime:  waitTime,
+		Util:      util,
+	})
 	return writeCleanupResult(res, err)
 }
 
@@ -533,7 +563,10 @@ func collectInteractiveCreate(cmd *cobra.Command) (api.CreateInteractiveJobReque
 	file, _ := cmd.Flags().GetString("file")
 	if strings.TrimSpace(file) != "" {
 		var req api.CreateInteractiveJobRequest
-		return req, readJSONFile(file, &req)
+		if err := readJSONFile(file, &req); err != nil {
+			return req, err
+		}
+		return req, validateInteractiveRequest(req)
 	}
 	common, resource, image, err := collectBasicCreate(cmd)
 	if err != nil {
@@ -618,6 +651,7 @@ func collectBasicCreate(cmd *cobra.Command) (api.JobCommonRequest, api.ResourceL
 	if err != nil {
 		return api.JobCommonRequest{}, nil, api.ImageBaseInfo{}, err
 	}
+	volumes = append(volumes, datasets...)
 	selectors, err := parseSelectorFlags(cmd)
 	if err != nil {
 		return api.JobCommonRequest{}, nil, api.ImageBaseInfo{}, err
@@ -637,7 +671,6 @@ func collectBasicCreate(cmd *cobra.Command) (api.JobCommonRequest, api.ResourceL
 	common := api.JobCommonRequest{
 		Name:              name,
 		VolumeMounts:      volumes,
-		DatasetMounts:     datasets,
 		Envs:              envs,
 		Selectors:         selectors,
 		Template:          template,
@@ -687,21 +720,32 @@ func parseVolumeFlags(cmd *cobra.Command) ([]api.VolumeMount, error) {
 		if !ok || strings.TrimSpace(mountPath) == "" {
 			return nil, errUsageFromIssues([]usageIssue{invalidIssue("volume", i18n.T("err_invalid_enum", "volume", value))})
 		}
-		out = append(out, api.VolumeMount{SubPath: strings.TrimSpace(subPath), MountPath: strings.TrimSpace(mountPath)})
+		if strings.TrimSpace(subPath) == "" {
+			return nil, errUsageFromIssues([]usageIssue{invalidIssue("volume", i18n.T("err_invalid_enum", "volume", value))})
+		}
+		out = append(out, api.VolumeMount{
+			Type:      volumeTypeFile,
+			SubPath:   strings.TrimSpace(subPath),
+			MountPath: strings.TrimSpace(mountPath),
+		})
 	}
 	return out, nil
 }
 
-func parseDatasetFlags(cmd *cobra.Command) ([]api.DatasetMount, error) {
+func parseDatasetFlags(cmd *cobra.Command) ([]api.VolumeMount, error) {
 	values, _ := cmd.Flags().GetStringArray("dataset")
-	out := make([]api.DatasetMount, 0, len(values))
+	out := make([]api.VolumeMount, 0, len(values))
 	for _, value := range values {
 		rawID, mountPath, ok := strings.Cut(value, ":")
 		id, parseErr := strconv.ParseUint(strings.TrimSpace(rawID), 10, 0)
-		if !ok || parseErr != nil || strings.TrimSpace(mountPath) == "" {
+		if !ok || parseErr != nil || id == 0 || strings.TrimSpace(mountPath) == "" {
 			return nil, errUsageFromIssues([]usageIssue{invalidIssue("dataset", i18n.T("err_invalid_enum", "dataset", value))})
 		}
-		out = append(out, api.DatasetMount{DatasetID: uint(id), MountPath: strings.TrimSpace(mountPath)})
+		out = append(out, api.VolumeMount{
+			Type:      volumeTypeDataset,
+			DatasetID: uint(id),
+			MountPath: strings.TrimSpace(mountPath),
+		})
 	}
 	return out, nil
 }
@@ -729,20 +773,32 @@ func parseForwardFlags(cmd *cobra.Command) ([]api.Forward, error) {
 	out := make([]api.Forward, 0, len(values))
 	for _, value := range values {
 		parts := strings.Split(value, ":")
-		if len(parts) < 2 || len(parts) > 3 {
+		if len(parts) != 2 {
 			return nil, errUsageFromIssues([]usageIssue{invalidIssue("forward", i18n.T("err_invalid_enum", "forward", value))})
 		}
 		port, err := strconv.Atoi(strings.TrimSpace(parts[1]))
-		if err != nil || port <= 0 {
+		name := strings.TrimSpace(parts[0])
+		if err != nil || port <= 0 || port > 65535 {
 			return nil, errUsageFromIssues([]usageIssue{invalidIssue("forward", i18n.T("err_invalid_positive_int", "forward port"))})
 		}
-		forward := api.Forward{Name: strings.TrimSpace(parts[0]), Port: port}
-		if len(parts) == 3 {
-			forward.Type = strings.TrimSpace(parts[2])
+		if !validForwardName(name) {
+			return nil, errUsageFromIssues([]usageIssue{invalidIssue("forward", i18n.T("err_invalid_forward_name", name))})
 		}
-		out = append(out, forward)
+		out = append(out, api.Forward{Name: name, Port: int32(port)})
 	}
 	return out, nil
+}
+
+func validForwardName(name string) bool {
+	if len(name) == 0 || len(name) > 20 {
+		return false
+	}
+	for _, r := range name {
+		if r < 'a' || r > 'z' {
+			return false
+		}
+	}
+	return true
 }
 
 func readJSONFlag(cmd *cobra.Command, dst interface{}) error {
@@ -758,7 +814,15 @@ func readJSONFile(path string, dst interface{}) error {
 	if err != nil {
 		return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrCommandExecution, Message: i18n.T("err_read_file", path, err.Error())}
 	}
-	if err := json.Unmarshal(data, dst); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_unmarshal_file", path, err.Error())}
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			err = fmt.Errorf("multiple JSON values")
+		}
 		return &clierror.Error{Category: errorcodes.CategoryUsage, Code: errorcodes.ErrInvalidFlagValue, Message: i18n.T("err_unmarshal_file", path, err.Error())}
 	}
 	return nil
@@ -780,7 +844,7 @@ func validateTrainingRequest(req api.CreateTrainingJobRequest) error {
 }
 
 func validateDistributedRequest(req api.CreateDistributedJobRequest) error {
-	issues := validateCommonIssues(req.JobCommonRequest)
+	issues := validateCommonIssues(req.JobCommonRequest, false)
 	if len(req.Tasks) == 0 {
 		issues = append(issues, missingIssue("tasks", "job_label_tasks"))
 	}
@@ -795,6 +859,15 @@ func validateDistributedRequest(req api.CreateDistributedJobRequest) error {
 		issues = append(issues, validateResourceIssues(prefix+".resource", task.Resource)...)
 		if strings.TrimSpace(task.Image.ImageLink) == "" {
 			issues = append(issues, missingIssue(prefix+".image", "job_label_image"))
+		}
+		for j, port := range task.Ports {
+			portField := fmt.Sprintf("%s.ports[%d]", prefix, j)
+			if strings.TrimSpace(port.Name) == "" {
+				issues = append(issues, invalidIssue(portField+".name", i18n.T("err_value_empty", portField+".name")))
+			}
+			if port.Port <= 0 || port.Port > 65535 {
+				issues = append(issues, invalidIssue(portField+".port", i18n.T("err_invalid_port", portField+".port")))
+			}
 		}
 	}
 	if len(issues) > 0 {
@@ -812,7 +885,7 @@ func validateBasicRequest(common api.JobCommonRequest, resource api.ResourceList
 }
 
 func validateBasicIssues(common api.JobCommonRequest, resource api.ResourceList, image api.ImageBaseInfo) []usageIssue {
-	issues := validateCommonIssues(common)
+	issues := validateCommonIssues(common, true)
 	issues = append(issues, validateResourceIssues("resource", resource)...)
 	if strings.TrimSpace(image.ImageLink) == "" {
 		issues = append(issues, missingIssue("image", "job_label_image"))
@@ -820,11 +893,78 @@ func validateBasicIssues(common api.JobCommonRequest, resource api.ResourceList,
 	return issues
 }
 
-func validateCommonIssues(common api.JobCommonRequest) []usageIssue {
+func validateCommonIssues(common api.JobCommonRequest, allowBackfill bool) []usageIssue {
+	issues := []usageIssue{}
 	if strings.TrimSpace(common.Name) == "" {
-		return []usageIssue{missingIssue("name", "job_label_display_name")}
+		issues = append(issues, missingIssue("name", "job_label_display_name"))
 	}
-	return nil
+	if common.ScheduleType != nil {
+		switch *common.ScheduleType {
+		case scheduleNormal:
+		case scheduleBackfill:
+			if !allowBackfill {
+				issues = append(issues, invalidIssue("scheduleType", i18n.T("err_job_backfill_distributed")))
+			}
+		default:
+			issues = append(issues, invalidIssue("scheduleType", i18n.T("err_invalid_job_schedule_value", *common.ScheduleType)))
+		}
+	}
+	for i, mount := range common.VolumeMounts {
+		field := fmt.Sprintf("volumeMounts[%d]", i)
+		if mount.Type != volumeTypeFile && mount.Type != volumeTypeDataset {
+			issues = append(issues, invalidIssue(field+".type", i18n.T("err_invalid_volume_type", mount.Type)))
+		}
+		if !validMountPath(mount.MountPath) {
+			issues = append(issues, invalidIssue(field+".mountPath", i18n.T("err_invalid_mount_path", mount.MountPath)))
+		}
+		switch mount.Type {
+		case volumeTypeFile:
+			if strings.TrimSpace(mount.SubPath) == "" {
+				issues = append(issues, invalidIssue(field+".subPath", i18n.T("err_value_empty", field+".subPath")))
+			}
+		case volumeTypeDataset:
+			if mount.DatasetID == 0 {
+				issues = append(issues, invalidIssue(field+".datasetID", i18n.T("err_invalid_positive_int", field+".datasetID")))
+			}
+		}
+	}
+	for i, env := range common.Envs {
+		if strings.TrimSpace(env.Name) == "" {
+			field := fmt.Sprintf("envs[%d].name", i)
+			issues = append(issues, invalidIssue(field, i18n.T("err_value_empty", field)))
+		}
+	}
+	operators := []string{"In", "NotIn", "Exists", "DoesNotExist", "Gt", "Lt"}
+	for i, selector := range common.Selectors {
+		field := fmt.Sprintf("selectors[%d]", i)
+		if strings.TrimSpace(selector.Key) == "" {
+			issues = append(issues, invalidIssue(field+".key", i18n.T("err_value_empty", field+".key")))
+		}
+		if !slices.Contains(operators, selector.Operator) {
+			issues = append(issues, invalidIssue(field+".operator", i18n.T("err_invalid_enum", field+".operator", selector.Operator)))
+		}
+		if (selector.Operator == "In" || selector.Operator == "NotIn") && len(selector.Values) == 0 {
+			issues = append(issues, invalidIssue(field+".values", i18n.T("err_value_empty", field+".values")))
+		}
+	}
+	for i, forward := range common.Forwards {
+		field := fmt.Sprintf("forwards[%d]", i)
+		if !validForwardName(strings.TrimSpace(forward.Name)) {
+			issues = append(issues, invalidIssue(field+".name", i18n.T("err_invalid_forward_name", forward.Name)))
+		}
+		if forward.Port <= 0 || forward.Port > 65535 {
+			issues = append(issues, invalidIssue(field+".port", i18n.T("err_invalid_port", field+".port")))
+		}
+	}
+	return issues
+}
+
+func validMountPath(path string) bool {
+	path = strings.TrimSpace(path)
+	return strings.HasPrefix(path, "/") &&
+		path != "/" &&
+		!strings.Contains(path, "..") &&
+		!strings.Contains(path, "//")
 }
 
 func validateResourceIssues(field string, resources api.ResourceList) []usageIssue {
@@ -833,7 +973,10 @@ func validateResourceIssues(field string, resources api.ResourceList) []usageIss
 		return append(issues, missingIssue(field, "job_label_resources"))
 	}
 	for key, value := range resources {
-		if strings.HasPrefix(strings.TrimSpace(value), "-") {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			issues = append(issues, invalidIssue(field+"."+key, i18n.T("err_value_empty", field+"."+key)))
+		} else if strings.HasPrefix(value, "-") {
 			issues = append(issues, invalidIssue(field+"."+key, i18n.T("err_invalid_non_negative_int", field+"."+key)))
 		}
 	}
@@ -895,6 +1038,15 @@ func filterJobs(cmd *cobra.Command, jobs []api.JobInfo) ([]api.JobInfo, error) {
 }
 
 func validateJobListFilters(cmd *cobra.Command) error {
+	issues := jobListFilterIssues(cmd)
+	if len(issues) > 0 {
+		return errUsageFromIssues(issues)
+	}
+	return nil
+}
+
+func jobListFilterIssues(cmd *cobra.Command) []usageIssue {
+	days, _ := cmd.Flags().GetInt("days")
 	status, _ := cmd.Flags().GetString("status")
 	jobType, _ := cmd.Flags().GetString("type")
 	interactive, _ := cmd.Flags().GetBool("interactive")
@@ -903,22 +1055,41 @@ func validateJobListFilters(cmd *cobra.Command) error {
 	to, _ := cmd.Flags().GetString("to")
 	status = strings.TrimSpace(status)
 	jobType = strings.TrimSpace(jobType)
+	issues := []usageIssue{}
+	if days < -1 {
+		issues = append(issues, invalidIssue("days", i18n.T("err_invalid_job_days")))
+	}
 	if status != "" && !slices.Contains(jobStatuses, status) {
-		return errUsageFromIssues([]usageIssue{invalidIssue("status", i18n.T("err_invalid_job_status", status))})
+		issues = append(issues, invalidIssue("status", i18n.T("err_invalid_job_status", status)))
 	}
 	if jobType != "" && !slices.Contains(jobTypes, jobType) {
-		return errUsageFromIssues([]usageIssue{invalidIssue("type", i18n.T("err_invalid_job_type", jobType))})
+		issues = append(issues, invalidIssue("type", i18n.T("err_invalid_job_type", jobType)))
 	}
 	if interactive && batch {
-		return errUsageFromIssues([]usageIssue{invalidIssue("interactive", i18n.T("err_job_interactive_batch_conflict"))})
+		issues = append(issues, invalidIssue("interactive", i18n.T("err_job_interactive_batch_conflict")))
 	}
-	if _, err := parseOptionalTime(from); err != nil {
-		return err
+	var fromTime *time.Time
+	if strings.TrimSpace(from) != "" {
+		parsed, err := parseAPITime(from)
+		if err != nil {
+			issues = append(issues, invalidIssue("from", i18n.T("err_invalid_time", "from", from)))
+		} else {
+			fromTime = &parsed
+		}
 	}
-	if _, err := parseOptionalTime(to); err != nil {
-		return err
+	var toTime *time.Time
+	if strings.TrimSpace(to) != "" {
+		parsed, err := parseAPITime(to)
+		if err != nil {
+			issues = append(issues, invalidIssue("to", i18n.T("err_invalid_time", "to", to)))
+		} else {
+			toTime = &parsed
+		}
 	}
-	return nil
+	if fromTime != nil && toTime != nil && fromTime.After(*toTime) {
+		issues = append(issues, invalidIssue("from", i18n.T("err_invalid_time_range")))
+	}
+	return issues
 }
 
 func parseOptionalTime(value string) (*time.Time, error) {
@@ -928,7 +1099,7 @@ func parseOptionalTime(value string) (*time.Time, error) {
 	}
 	parsed, err := parseAPITime(value)
 	if err != nil {
-		return nil, errUsageFromIssues([]usageIssue{invalidIssue("time", i18n.T("err_invalid_enum", "time", value))})
+		return nil, errUsageFromIssues([]usageIssue{invalidIssue("time", i18n.T("err_invalid_time", "time", value))})
 	}
 	return &parsed, nil
 }
@@ -965,6 +1136,29 @@ func waitMinutesFlag(cmd *cobra.Command) (int, error) {
 	return wait, nil
 }
 
+func confirmJobAction(cmd *cobra.Command, messageKey string, args ...interface{}) error {
+	yes, _ := cmd.Flags().GetBool("yes")
+	if yes {
+		return nil
+	}
+	if noInteractive {
+		return &clierror.Error{
+			Category: errorcodes.CategoryUsage,
+			Code:     errorcodes.ErrMissingRequiredFlag,
+			Message:  i18n.T("err_confirm_required"),
+		}
+	}
+	var confirmed bool
+	prompt := &survey.Confirm{Message: i18n.T(messageKey, args...), Default: false}
+	if err := survey.AskOne(prompt, &confirmed); err != nil {
+		return errSurveyOrSame(err)
+	}
+	if !confirmed {
+		return errOperationCancelled()
+	}
+	return nil
+}
+
 func splitCSV(value string) []string {
 	parts := strings.Split(value, ",")
 	out := make([]string, 0, len(parts))
@@ -998,7 +1192,7 @@ func writeCreateResult(data map[string]interface{}, err error) error {
 	fmt.Println(i18n.T("job_create_submitted"))
 	if metadata, ok := data["metadata"].(map[string]interface{}); ok {
 		if name, ok := metadata["name"].(string); ok {
-			fmt.Printf("%s: %s\n", "JobName", name)
+			fmt.Printf("%s: %s\n", i18n.T("table_job_name"), name)
 		}
 	}
 	return nil
@@ -1011,8 +1205,8 @@ func writeCleanupResult(res *api.CleanupResult, err error) error {
 	if outputJSON {
 		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{"cleanup": res}))
 	}
-	fmt.Printf("%s: %s\n", "Reminded", strings.Join(res.Reminded, ","))
-	fmt.Printf("%s: %s\n", "Deleted", strings.Join(res.Deleted, ","))
+	fmt.Printf("%s: %s\n", i18n.T("table_reminded"), strings.Join(res.Reminded, ","))
+	fmt.Printf("%s: %s\n", i18n.T("table_deleted"), strings.Join(res.Deleted, ","))
 	return nil
 }
 
@@ -1020,19 +1214,19 @@ func writeToken(token *api.JobToken) error {
 	if outputJSON {
 		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{"token": token}))
 	}
-	fmt.Printf("%s: %s\n", "URL", token.FullURL)
-	fmt.Printf("%s: %s\n", "Token", token.Token)
-	fmt.Printf("%s: %s\n", "Pod", token.PodName)
+	fmt.Printf("%s: %s\n", i18n.T("table_url"), token.FullURL)
+	fmt.Printf("%s: %s\n", i18n.T("table_token"), token.Token)
+	fmt.Printf("%s: %s\n", i18n.T("table_pod"), token.PodName)
 	return nil
 }
 
 func printJobTable(jobs []api.JobInfo) {
 	fmt.Printf("%s %s %s %s %s %s %s\n",
 		i18n.PadRight(i18n.T("table_name"), 24),
-		i18n.PadRight("JobName", 34),
+		i18n.PadRight(i18n.T("table_job_name"), 34),
 		i18n.PadRight(i18n.T("table_type"), 12),
 		i18n.PadRight(i18n.T("table_status"), 14),
-		i18n.PadRight(i18n.T("table_owner"), 16),
+		i18n.PadRight(i18n.T("table_queue"), 18),
 		i18n.PadRight(i18n.T("table_nodes"), 22),
 		i18n.PadRight(i18n.T("table_resources"), 24))
 	for _, job := range jobs {
@@ -1041,7 +1235,7 @@ func printJobTable(jobs []api.JobInfo) {
 			i18n.PadRight(job.JobName, 34),
 			i18n.PadRight(job.JobType, 12),
 			i18n.PadRight(job.Status, 14),
-			i18n.PadRight(job.UserInfo.Username, 16),
+			i18n.PadRight(job.Queue, 18),
 			i18n.PadRight(strings.Join(job.Nodes, ","), 22),
 			i18n.PadRight(formatResources(job.Resources), 24))
 	}
@@ -1052,7 +1246,7 @@ func printJobDetail(job *api.JobDetail) {
 		return
 	}
 	fmt.Printf("%s: %s\n", i18n.T("table_name"), job.Name)
-	fmt.Printf("%s: %s\n", "JobName", job.JobName)
+	fmt.Printf("%s: %s\n", i18n.T("table_job_name"), job.JobName)
 	fmt.Printf("%s: %s\n", i18n.T("table_type"), job.JobType)
 	fmt.Printf("%s: %s\n", i18n.T("table_status"), job.Status)
 	fmt.Printf("%s: %s\n", i18n.T("table_owner"), job.Username)
@@ -1068,22 +1262,32 @@ func printPodTable(pods []api.PodDetail) {
 		i18n.PadRight(i18n.T("table_name"), 32),
 		i18n.PadRight(i18n.T("table_namespace"), 18),
 		i18n.PadRight(i18n.T("table_node"), 24),
-		i18n.PadRight("IP", 16),
-		i18n.PadRight(i18n.T("table_status"), 12),
+		i18n.PadRight(i18n.T("table_ip"), 16),
+		i18n.PadRight(i18n.T("table_phase"), 12),
 		i18n.PadRight(i18n.T("table_resources"), 24))
 	for _, pod := range pods {
 		fmt.Printf("%s %s %s %s %s %s\n",
 			i18n.PadRight(pod.Name, 32),
 			i18n.PadRight(pod.Namespace, 18),
-			i18n.PadRight(emptyDash(pod.NodeName), 24),
-			i18n.PadRight(pod.IP, 16),
+			i18n.PadRight(emptyDash(stringValue(pod.NodeName)), 24),
+			i18n.PadRight(emptyDash(pod.IP), 16),
 			i18n.PadRight(pod.Phase, 12),
 			i18n.PadRight(formatResources(pod.Resource), 24))
 	}
 }
 
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 func printEvents(events []map[string]interface{}) {
-	fmt.Printf("%s %s %s\n", i18n.PadRight("Type", 10), i18n.PadRight("Reason", 24), "Message")
+	fmt.Printf("%s %s %s\n",
+		i18n.PadRight(i18n.T("table_type"), 10),
+		i18n.PadRight(i18n.T("table_reason"), 24),
+		i18n.T("table_message"))
 	for _, event := range events {
 		fmt.Printf("%s %s %s\n",
 			i18n.PadRight(fmt.Sprint(event["type"]), 10),
@@ -1125,7 +1329,7 @@ func addCreateCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().StringArray("volume", nil, "Workspace mount subPath:mountPath, repeatable")
 	cmd.Flags().StringArray("dataset", nil, "Dataset mount id:mountPath, repeatable")
 	cmd.Flags().StringArray("selector", nil, "Node selector key=Operator:value1,value2, repeatable")
-	cmd.Flags().StringArray("forward", nil, "Forward name:port[:type], repeatable")
+	cmd.Flags().StringArray("forward", nil, "Forward name:port, repeatable")
 }
 
 func init() {
@@ -1161,6 +1365,8 @@ func init() {
 	jobCreateTensorflowCmd.Flags().String("file", "", "Read exact JSON request body from file")
 	jobCreatePytorchCmd.Flags().String("file", "", "Read exact JSON request body from file")
 
+	jobDeleteCmd.Flags().BoolP("yes", "y", false, "Delete without confirmation")
+	adminJobDeleteCmd.Flags().BoolP("yes", "y", false, "Delete without confirmation")
 	jobAdminLockCmd.Flags().Bool("permanent", false, "Lock permanently")
 	jobAdminLockCmd.Flags().Int("days", 0, "Lock days")
 	jobAdminLockCmd.Flags().Int("hours", 0, "Lock hours")
@@ -1172,6 +1378,14 @@ func init() {
 	jobAdminCleanLowGPUCmd.Flags().Int("time-range", 0, "GPU usage lookback range")
 	jobAdminCleanLowGPUCmd.Flags().Int("wait-time", 0, "Wait time before cleanup")
 	jobAdminCleanLowGPUCmd.Flags().Int("util", 0, "GPU utilization threshold")
+	for _, cleanCmd := range []*cobra.Command{
+		jobAdminCleanWaitingJupyterCmd,
+		jobAdminCleanWaitingCustomCmd,
+		jobAdminCleanLongRunningCmd,
+		jobAdminCleanLowGPUCmd,
+	} {
+		cleanCmd.Flags().BoolP("yes", "y", false, "Run cleanup without confirmation")
+	}
 
 	completion.RegisterFlagValue([]string{"job", "ls"}, "status", staticValueCompleter(jobStatuses, nil))
 	completion.RegisterFlagValue([]string{"job", "ls"}, "type", staticValueCompleter(jobTypes, nil))

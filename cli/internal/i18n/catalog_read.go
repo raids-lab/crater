@@ -9,8 +9,8 @@ var catalogRead = map[Language]map[string]string{
 		"node_pods_short": "List pods on a cluster node",
 		"node_gpu_short":  "Get GPU information for a cluster node",
 
-		"job_short":        "View jobs",
-		"job_long":         "View Volcano job lists and job details from the active Crater platform.",
+		"job_short":        "Manage jobs",
+		"job_long":         "List, inspect, create, stop, and snapshot Volcano jobs on the active Crater platform.",
 		"job_ls_short":     "List jobs",
 		"job_get_short":    "Get a job",
 		"job_pods_short":   "List pods for a job",
@@ -174,8 +174,8 @@ var catalogRead = map[Language]map[string]string{
 		"node_pods_short": "列出节点上的 Pod",
 		"node_gpu_short":  "查看节点 GPU 信息",
 
-		"job_short":        "查看作业",
-		"job_long":         "从当前激活的 Crater 平台查看 Volcano 作业列表和作业详情。",
+		"job_short":        "管理作业",
+		"job_long":         "在当前激活的 Crater 平台列出、查看、创建、停止和快照 Volcano 作业。",
 		"job_ls_short":     "列出作业",
 		"job_get_short":    "查看作业",
 		"job_pods_short":   "列出作业 Pod",

@@ -36,6 +36,9 @@ func jobCases() []snaptest.Case {
 		{ID: "10-admin-lock-missing-duration-nojson", Args: []string{"admin", "job", "lock", "job-123", "--no-interactive"}},
 		{ID: "11-admin-clean-low-gpu-invalid-json", Args: []string{"admin", "job", "clean", "low-gpu", "--no-interactive", "--json", "--time-range", "0", "--wait-time", "-1"}},
 		{ID: "12-ls-network-timeout-json", Args: []string{"job", "ls", "--no-interactive", "--json"}},
+		{ID: "13-delete-confirm-required-json", Args: []string{"job", "delete", "job-123", "--no-interactive", "--json"}},
+		{ID: "14-admin-clean-long-running-thresholds-json", Args: []string{"admin", "job", "clean", "long-running", "--no-interactive", "--json"}},
+		{ID: "15-admin-clean-confirm-required-json", Args: []string{"admin", "job", "clean", "low-gpu", "--time-range", "90", "--wait-time", "30", "--no-interactive", "--json"}},
 	}
 }
 
