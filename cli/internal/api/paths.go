@@ -32,6 +32,7 @@ const (
 	AIJobsPrefix        = "/api/v1/aijobs"
 	SPJobsPrefix        = "/api/v1/spjobs"
 	VCJobsPrefix        = "/api/v1/vcjobs"
+	AdminVCJobsPrefix   = "/api/v1/admin/vcjobs"
 )
 
 // AuthLoginPath 为登录接口路径（含模块前缀）。
