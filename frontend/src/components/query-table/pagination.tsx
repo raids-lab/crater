@@ -123,6 +123,7 @@ interface DataTablePaginationProps<TData> {
   refetch: () => void
   table: Table<TData>
   multipleHandlers?: MultipleHandler<TData>[]
+  pageSizeOptions?: number[]
 }
 
 export function DataTablePagination<TData>({
@@ -130,6 +131,7 @@ export function DataTablePagination<TData>({
   refetch,
   table,
   multipleHandlers,
+  pageSizeOptions = [10, 20, 50, 100, 200],
 }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation()
 
@@ -210,7 +212,7 @@ export function DataTablePagination<TData>({
             <SelectValue placeholder={table.getState().pagination.pageSize} />
           </SelectTrigger>
           <SelectContent side="top">
-            {[10, 20, 50, 100, 200].map((pageSize) => (
+            {pageSizeOptions.map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
                 {t('dataTablePagination.itemsPerPage', { count: pageSize })}
               </SelectItem>

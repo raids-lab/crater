@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -11,9 +14,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -23,6 +28,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -31,6 +37,8 @@ import (
 
 const (
 	defaultDownloadLogTailLines int64 = 1000
+	maxStoredDownloadLogBytes         = 64 * 1024
+	maxDownloadRevisionLength         = 128
 	CategoryModel                     = "model"
 	CategoryDataset                   = "dataset"
 )
@@ -86,23 +94,128 @@ type CreateDownloadReq struct {
 	Token string `json:"token"`
 }
 
+type DownloadActionReq struct {
+	Token string `json:"token"`
+}
+
 type ModelDownloadResp struct {
-	ID              uint      `json:"id"`
-	Name            string    `json:"name"`
-	Source          string    `json:"source"`
-	Category        string    `json:"category"`
-	Revision        string    `json:"revision"`
-	Path            string    `json:"path"`
-	SizeBytes       int64     `json:"sizeBytes"`
-	DownloadedBytes int64     `json:"downloadedBytes"`
-	DownloadSpeed   string    `json:"downloadSpeed"`
-	Status          string    `json:"status"`
-	Message         string    `json:"message"`
-	JobName         string    `json:"jobName"`
-	CreatorID       uint      `json:"creatorId"`
-	ReferenceCount  int       `json:"referenceCount"`
-	CreatedAt       time.Time `json:"createdAt"`
-	UpdatedAt       time.Time `json:"updatedAt"`
+	ID              uint           `json:"id"`
+	Name            string         `json:"name"`
+	Source          string         `json:"source"`
+	Category        string         `json:"category"`
+	Revision        string         `json:"revision"`
+	Path            string         `json:"path"`
+	SizeBytes       int64          `json:"sizeBytes"`
+	DownloadedBytes int64          `json:"downloadedBytes"`
+	DownloadSpeed   string         `json:"downloadSpeed"`
+	Status          string         `json:"status"`
+	Message         string         `json:"message"`
+	JobName         string         `json:"jobName"`
+	CreatorID       uint           `json:"creatorId"`
+	ReferenceCount  int            `json:"referenceCount"`
+	CreatedAt       time.Time      `json:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt"`
+	SourceUpdatedAt *time.Time     `json:"sourceUpdatedAt"`
+	UserInfo        model.UserInfo `json:"userInfo"`
+	CanManage       bool           `json:"canManage"`
+	CanViewLogs     bool           `json:"canViewLogs"`
+	SourceURL       string         `json:"sourceUrl"`
+	DisplayName     string         `json:"displayName"`
+	License         string         `json:"license"`
+	Task            string         `json:"task"`
+	Library         string         `json:"library"`
+	ModelType       string         `json:"modelType"`
+	ParameterCount  int64          `json:"parameterCount"`
+	SourceCreatedAt *time.Time     `json:"sourceCreatedAt"`
+}
+
+type ListDownloadsReq struct {
+	Page     int    `form:"page"`
+	PageSize int    `form:"pageSize,default=20"`
+	Category string `form:"category"`
+	Status   string `form:"status"`
+	Search   string `form:"search"`
+}
+
+type ModelDownloadListResp struct {
+	Total   int64               `json:"total"`
+	Items   []ModelDownloadResp `json:"items"`
+	Summary map[string]int64    `json:"summary"`
+}
+
+func bindDownloadAction(c *gin.Context) (DownloadActionReq, error) {
+	var req DownloadActionReq
+	if err := c.ShouldBindJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		return req, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid download action request")
+	}
+	return req, nil
+}
+
+func (mgr *ModelDownloadMgr) canViewDownloadLogs(
+	c *gin.Context, downloadID uint, token util.JWTMessage,
+) (bool, error) {
+	q := query.ModelDownload
+	download, err := q.WithContext(c).Where(q.ID.Eq(downloadID)).First()
+	if err != nil {
+		return false, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+	}
+	if download.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin {
+		return true, nil
+	}
+
+	qUserDownload := query.UserModelDownload
+	_, err = qUserDownload.WithContext(c).
+		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(downloadID)).
+		First()
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	return false, bizerr.Internal.DatabaseError.Wrap(err, "check download log permission failed")
+}
+
+func (mgr *ModelDownloadMgr) applyLogViewPermissions(
+	c *gin.Context, downloads []*model.ModelDownload, responses []ModelDownloadResp, token util.JWTMessage,
+) error {
+	if token.RolePlatform == model.RoleAdmin {
+		for i := range responses {
+			responses[i].CanViewLogs = true
+		}
+		return nil
+	}
+
+	ids := make([]uint, 0, len(downloads))
+	for i, download := range downloads {
+		if download.CreatorID == token.UserID {
+			responses[i].CanViewLogs = true
+			continue
+		}
+		ids = append(ids, download.ID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	q := query.UserModelDownload
+	associations, err := q.WithContext(c).
+		Where(q.UserID.Eq(token.UserID), q.ModelDownloadID.In(ids...)).
+		Find()
+	if err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "list download log permissions failed")
+	}
+	allowed := make(map[uint]struct{}, len(associations))
+	for _, association := range associations {
+		allowed[association.ModelDownloadID] = struct{}{}
+	}
+	for i, download := range downloads {
+		if responses[i].CanViewLogs {
+			continue
+		}
+		_, responses[i].CanViewLogs = allowed[download.ID]
+	}
+	return nil
 }
 
 // CreateDownload godoc
@@ -310,12 +423,12 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	token := util.GetToken(c)
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("invalid request: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}
 
 	if !isValidModelName(req.Name) {
-		resputil.BadRequestError(c, "invalid model name format, expected: owner/model-name")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("invalid model name format, expected: owner/model-name"))
 		return
 	}
 
@@ -323,6 +436,14 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	source := model.ModelSourceModelScope
 	if req.Source != "" {
 		source = model.ModelSource(req.Source)
+	}
+	if source != model.ModelSourceModelScope && source != model.ModelSourceHuggingFace {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("source must be modelscope or huggingface"))
+		return
+	}
+	if len(req.Revision) > maxDownloadRevisionLength {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("revision must not exceed 128 characters"))
+		return
 	}
 
 	// 设置分类
@@ -338,7 +459,7 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	} else {
 		basePath = "public/Datasets"
 	}
-	downloadPath := filepath.Join(basePath, safeName)
+	downloadPath := modelDownloadStoragePath(basePath, safeName, source, req.Revision)
 
 	// 在事务中获取或创建下载任务
 	download, isNewDownload, err := mgr.getOrCreateDownload(c, &req, token, source, category, downloadPath, req.Revision)
@@ -350,7 +471,8 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 
 	// 如果是已存在的下载（Ready 或 Ongoing）
 	if !isNewDownload {
-		resp := convertDownloadToResp(download)
+		resp := convertDownloadToResp(download, token)
+		resp.CanViewLogs = true
 		if download.Status == model.ModelDownloadStatusReady {
 			c.JSON(http.StatusOK, gin.H{
 				"code": resputil.OK,
@@ -385,70 +507,123 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	q := query.ModelDownload
 	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Update(q.Status, model.ModelDownloadStatusDownloading)
 
-	resputil.Success(c, convertDownloadToResp(download))
+	resputil.Success(c, convertDownloadToResp(download, token))
 }
 
 // ListDownloads godoc
 //
-//	@Summary		获取用户的模型下载任务列表
-//	@Description	获取当前用户的所有模型下载任务,可通过category参数过滤
+//	@Summary		获取模型下载任务列表
+//	@Description	下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			category	query		string	false	"过滤类别: model 或 dataset"
-//	@Success		200	{object}	resputil.Response[[]ModelDownloadResp]
+//	@Param			page		query		int		false	"页码(从1开始);不传则返回全量数组"
+//	@Param			pageSize	query		int		false	"每页数量,默认20,最大100"
+//	@Param			status		query		string	false	"过滤状态: Pending/Downloading/Paused/Ready/Failed"
+//	@Param			search		query		string	false	"按名称模糊搜索"
+//	@Success		200	{object}	resputil.Response[ModelDownloadListResp]
 //	@Router			/v1/models/downloads [GET]
+//
+//nolint:gocyclo // Pagination, compatibility mode, filters, and permission enrichment share one endpoint contract.
 func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 	token := util.GetToken(c)
-	category := c.Query("category") // 获取可选的 category 参数
+
+	var req ListDownloadsReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
+		return
+	}
 
 	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
+	builder := q.WithContext(c).Preload(q.Creator)
+	if req.Category == CategoryModel || req.Category == CategoryDataset {
+		builder = builder.Where(q.Category.Eq(req.Category))
+	}
 
-	// 通过关联表查询用户的下载
-	userDownloads, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(token.UserID)).
-		Find()
+	// 兼容模式(无 page 参数, 旧版 CLI/前端): 返回全量数组
+	if req.Page <= 0 {
+		downloads, err := builder.Order(q.CreatedAt.Desc()).Find()
+		if err != nil {
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list downloads failed"))
+			return
+		}
+		resp := make([]ModelDownloadResp, len(downloads))
+		for i, d := range downloads {
+			resp[i] = convertDownloadToResp(d, token)
+		}
+		if err := mgr.applyLogViewPermissions(c, downloads, resp, token); err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
+		resputil.Success(c, resp)
+		return
+	}
+
+	if req.Status != "" {
+		builder = builder.Where(q.Status.Eq(req.Status))
+	}
+	if req.Search != "" {
+		builder = builder.Where(q.Name.Like("%" + req.Search + "%"))
+	}
+
+	const maxPageSize = 100
+	if req.PageSize <= 0 {
+		req.PageSize = 20
+	}
+	if req.PageSize > maxPageSize {
+		req.PageSize = maxPageSize
+	}
+
+	// 按更新时间倒序:刚重试/正在下载的任务排在最前
+	downloads, total, err := builder.Order(q.UpdatedAt.Desc()).FindByPage((req.Page-1)*req.PageSize, req.PageSize)
 	if err != nil {
-		klog.Errorf("list user downloads failed: %v", err)
-		resputil.Error(c, "list downloads failed", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list downloads failed"))
 		return
 	}
 
-	// 获取所有下载的ID
-	downloadIDs := make([]uint, len(userDownloads))
-	for i, ud := range userDownloads {
-		downloadIDs[i] = ud.ModelDownloadID
-	}
-
-	if len(downloadIDs) == 0 {
-		resputil.Success(c, []ModelDownloadResp{})
-		return
-	}
-
-	// 构建查询条件
-	queryBuilder := q.WithContext(c).Where(q.ID.In(downloadIDs...))
-
-	// 如果指定了 category,添加过滤条件
-	if category != "" && (category == CategoryModel || category == CategoryDataset) {
-		queryBuilder = queryBuilder.Where(q.Category.Eq(string(model.DownloadCategory(category))))
-	}
-
-	// 查询所有下载详情
-	downloads, err := queryBuilder.Order(q.CreatedAt.Desc()).Find()
+	// 状态汇总只按 category 过滤,反映整体情况而不受搜索/状态筛选影响
+	summary, err := mgr.downloadStatusSummary(c, req.Category)
 	if err != nil {
-		klog.Errorf("list downloads failed: %v", err)
-		resputil.Error(c, "list downloads failed", resputil.NotSpecified)
-		return
+		klog.Warningf("count download status summary failed: %v", err)
+		summary = map[string]int64{}
 	}
 
-	resp := make([]ModelDownloadResp, len(downloads))
+	items := make([]ModelDownloadResp, len(downloads))
 	for i, d := range downloads {
-		resp[i] = convertDownloadToResp(d)
+		items[i] = convertDownloadToResp(d, token)
+	}
+	if err := mgr.applyLogViewPermissions(c, downloads, items, token); err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
-	resputil.Success(c, resp)
+	resputil.Success(c, ModelDownloadListResp{Total: total, Items: items, Summary: summary})
+}
+
+// downloadStatusSummary returns record counts grouped by status, optionally
+// scoped to a category.
+func (mgr *ModelDownloadMgr) downloadStatusSummary(c *gin.Context, category string) (map[string]int64, error) {
+	q := query.ModelDownload
+	builder := q.WithContext(c)
+	if category == CategoryModel || category == CategoryDataset {
+		builder = builder.Where(q.Category.Eq(category))
+	}
+
+	var rows []struct {
+		Status string `json:"status"`
+		Count  int64  `json:"count"`
+	}
+	if err := builder.Select(q.Status, q.ID.Count().As("count")).Group(q.Status).Scan(&rows); err != nil {
+		return nil, err
+	}
+
+	summary := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		summary[row.Status] = row.Count
+	}
+	return summary, nil
 }
 
 // GetDownload godoc
@@ -469,53 +644,44 @@ func (mgr *ModelDownloadMgr) GetDownload(c *gin.Context) {
 	token := util.GetToken(c)
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
 		return
 	}
-
+	// 下载记录对所有登录用户可见
 	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
-
-	// 检查用户是否有此下载的权限
-	userDownload, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(req.ID)).
-		First()
-	if err != nil || userDownload == nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
-		return
-	}
-
-	// 获取下载详情
 	download, err := q.WithContext(c).
+		Preload(q.Creator).
 		Where(q.ID.Eq(req.ID)).
 		First()
 	if err != nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found"))
 		return
 	}
 
-	resputil.Success(c, convertDownloadToResp(download))
+	resp := convertDownloadToResp(download, token)
+	canViewLogs, err := mgr.canViewDownloadLogs(c, download.ID, token)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resp.CanViewLogs = canViewLogs
+
+	resputil.Success(c, resp)
 }
 
-// checkUserDownloadPermission 检查用户是否有权限操作指定的下载任务
-func (mgr *ModelDownloadMgr) checkUserDownloadPermission(c *gin.Context, downloadID, userID uint) (*model.ModelDownload, error) {
+// requireManagePermission allows only the creator or a platform administrator
+// to mutate a download task.
+func (mgr *ModelDownloadMgr) requireManagePermission(c *gin.Context, downloadID uint) (*model.ModelDownload, error) {
 	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
-
-	// 检查用户是否有此下载的权限
-	userDownload, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(userID), qUserDownload.ModelDownloadID.Eq(downloadID)).
-		First()
-	if err != nil || userDownload == nil {
-		return nil, fmt.Errorf("download not found or permission denied")
-	}
-
-	// 获取下载详情
 	download, err := q.WithContext(c).Where(q.ID.Eq(downloadID)).First()
 	if err != nil {
-		return nil, fmt.Errorf("download not found")
+		return nil, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
 	}
 
+	token := util.GetToken(c)
+	if download.CreatorID != token.UserID && token.RolePlatform != model.RoleAdmin {
+		return nil, bizerr.Forbidden.PermissionDenied.New("only the creator or a platform administrator can manage this download")
+	}
 	return download, nil
 }
 
@@ -528,6 +694,7 @@ func (mgr *ModelDownloadMgr) checkUserDownloadPermission(c *gin.Context, downloa
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	path		int	true	"下载任务ID"
+//	@Param			data	body		DownloadActionReq	false	"可选的临时访问令牌"
 //	@Success		200	{object}	resputil.Response[ModelDownloadResp]
 //	@Router			/v1/models/downloads/{id}/retry [POST]
 func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
@@ -537,21 +704,21 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 	token := util.GetToken(c)
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
+		return
+	}
+	action, err := bindDownloadAction(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
+	if _, err := mgr.requireManagePermission(c, req.ID); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
 	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
-
-	// 检查用户是否有此下载的权限
-	userDownload, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(req.ID)).
-		First()
-	if err != nil || userDownload == nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
-		return
-	}
 
 	// 使用事务和行锁来防止并发重试导致的竞态条件
 	db := query.Use(query.GetDB())
@@ -597,15 +764,15 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 	if err != nil {
 		klog.Errorf("retry download transaction failed: %v", err)
 		if strings.Contains(err.Error(), "only failed downloads") {
-			resputil.BadRequestError(c, err.Error())
+			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New(err.Error()))
 		} else {
-			resputil.Error(c, "retry download failed", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "retry download failed"))
 		}
 		return
 	}
 
 	// 事务成功后提交 Job
-	if err := mgr.submitDownloadJob(c, download, token.Username, ""); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		// 回滚状态
 		updates := map[string]any{
@@ -613,20 +780,20 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 			"message": fmt.Sprintf("submit job failed: %v", err),
 		}
 		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
-		resputil.Error(c, "submit download job failed", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "submit download job failed"))
 		return
 	}
 
 	download.Status = model.ModelDownloadStatusDownloading
 	download.Message = ""
 
-	resputil.Success(c, convertDownloadToResp(download))
+	resputil.Success(c, convertDownloadToResp(download, token))
 }
 
 // DeleteDownload godoc
 //
 //	@Summary		删除模型下载任务
-//	@Description	删除指定的模型下载任务记录
+//	@Description	删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
@@ -638,57 +805,33 @@ func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
 	var req struct {
 		ID uint `uri:"id" binding:"required"`
 	}
-	token := util.GetToken(c)
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
+		return
+	}
+	download, err := mgr.requireManagePermission(c, req.ID)
+	if err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
-	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
-
-	// 查找用户和下载的关联
-	userDownload, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(req.ID)).
-		First()
-	if err != nil || userDownload == nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
-		return
-	}
-
-	// 删除用户关联
-	result, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.ID.Eq(userDownload.ID)).
-		Delete()
-	if err != nil || result.RowsAffected == 0 {
-		resputil.Error(c, "delete association failed", resputil.NotSpecified)
-		return
-	}
-
-	remainingCount, _ := qUserDownload.WithContext(c).
-		Where(qUserDownload.ModelDownloadID.Eq(req.ID)).
-		Count()
-
-	// 更新引用计数
-	download, _ := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
-	if download != nil {
-		_, _ = q.WithContext(c).Where(q.ID.Eq(req.ID)).UpdateSimple(q.ReferenceCount.Value(int(remainingCount)))
-
-		// 如果没有任何用户关联了,软删除下载记录(保留文件)
-		if remainingCount == 0 {
-			// 停止Job(如果还在运行)
-			if download.JobName != "" && download.Status == model.ModelDownloadStatusDownloading {
-				_ = mgr.crClient.BatchV1().Jobs(mgr.namespace).Delete(c, download.JobName, metav1.DeleteOptions{})
-			}
-
-			// 软删除下载记录(GORM自动设置DeletedAt，文件保留在存储中)
-			_, _ = q.WithContext(c).Where(q.ID.Eq(req.ID)).Delete()
-
-			klog.Infof("Soft deleted download record %d (refCount=0), files preserved at: %s", req.ID, download.Path)
+	// Capture the latest logs and stop an active Job before deleting its record.
+	if download.JobName != "" &&
+		(download.Status == model.ModelDownloadStatusDownloading || download.Status == model.ModelDownloadStatusPending) {
+		mgr.captureJobLogsToRecord(c, download)
+		if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
+			resputil.HandleError(c, err)
+			return
 		}
 	}
 
+	if err := mgr.deleteDownloadRecord(c, req.ID); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
+	klog.Infof("Download record %d deleted, files preserved at: %s", req.ID, download.Path)
 	resputil.Success(c, "deleted successfully")
 }
 
@@ -710,53 +853,42 @@ func (mgr *ModelDownloadMgr) PauseDownload(c *gin.Context) {
 	token := util.GetToken(c)
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
+		return
+	}
+	download, err := mgr.requireManagePermission(c, req.ID)
+	if err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
 	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
-
-	// 检查用户是否有此下载的权限
-	userDownload, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(req.ID)).
-		First()
-	if err != nil || userDownload == nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
-		return
-	}
-
-	// 获取下载详情
-	download, err := q.WithContext(c).
-		Where(q.ID.Eq(req.ID)).
-		First()
-	if err != nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
-		return
-	}
 
 	if download.Status != model.ModelDownloadStatusDownloading {
-		resputil.BadRequestError(c, "only downloading tasks can be paused")
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only downloading tasks can be paused"))
 		return
 	}
 
-	// 删除 Job 来暂停下载
-	err = mgr.crClient.BatchV1().Jobs(mgr.namespace).Delete(c, download.JobName, metav1.DeleteOptions{})
-	if err != nil {
-		klog.Warningf("delete job for pause failed: %v", err)
+	// Pausing is implemented by deleting the Job. Persist logs before removal.
+	mgr.captureJobLogsToRecord(c, download)
+	if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
-	// 更新状态为 Paused
 	updates := map[string]any{
 		"status":  model.ModelDownloadStatusPaused,
 		"message": "Download paused by user",
 	}
-	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
+	if _, err := q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates); err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "update paused download failed"))
+		return
+	}
 
 	download.Status = model.ModelDownloadStatusPaused
 	download.Message = "Download paused by user"
 
-	resputil.Success(c, convertDownloadToResp(download))
+	resputil.Success(c, convertDownloadToResp(download, token))
 }
 
 // ResumeDownload godoc
@@ -768,6 +900,7 @@ func (mgr *ModelDownloadMgr) PauseDownload(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	path		int	true	"下载任务ID"
+//	@Param			data	body		DownloadActionReq	false	"可选的临时访问令牌"
 //	@Success		200	{object}	resputil.Response[ModelDownloadResp]
 //	@Router			/v1/models/downloads/{id}/resume [POST]
 func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
@@ -777,42 +910,57 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 	token := util.GetToken(c)
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
+		return
+	}
+	action, err := bindDownloadAction(c)
+	if err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
-	download, err := mgr.checkUserDownloadPermission(c, req.ID, token.UserID)
+	download, err := mgr.requireManagePermission(c, req.ID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.InvalidRequest)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	q := query.ModelDownload
+	db := query.Use(query.GetDB())
+	err = db.Transaction(func(tx *query.Query) error {
+		txQ := tx.ModelDownload
+		locked, lockErr := txQ.WithContext(c).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(txQ.ID.Eq(download.ID)).
+			First()
+		if lockErr != nil {
+			return lockErr
+		}
+		if locked.Status != model.ModelDownloadStatusPaused {
+			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
+		}
 
-	if download.Status != model.ModelDownloadStatusPaused {
-		resputil.BadRequestError(c, "only paused tasks can be resumed")
-		return
-	}
-
-	// 生成新的 Job 名称
-	newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
-	download.JobName = newJobName
-
-	// 先更新数据库中的 Job Name 和状态，避免 reconciler 在提交 Job 后找不到记录而删除 Job
-	updates := map[string]any{
-		"status":   model.ModelDownloadStatusDownloading,
-		"message":  "",
-		"job_name": newJobName,
-	}
-	_, err = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
+		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
+		if _, updateErr := txQ.WithContext(c).Where(txQ.ID.Eq(locked.ID)).Updates(map[string]any{
+			"status":   model.ModelDownloadStatusDownloading,
+			"message":  "",
+			"job_name": newJobName,
+		}); updateErr != nil {
+			return updateErr
+		}
+		locked.Status = model.ModelDownloadStatusDownloading
+		locked.JobName = newJobName
+		locked.Message = ""
+		download = locked
+		return nil
+	})
 	if err != nil {
-		klog.Errorf("update download record failed: %v", err)
-		resputil.Error(c, "update download record failed", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	// 提交新 Job (会从已下载的部分继续)
-	if err := mgr.submitDownloadJob(c, download, token.Username, ""); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		// 回滚状态
 		rollbackUpdates := map[string]any{
@@ -820,14 +968,14 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 			"message": fmt.Sprintf("resume failed: %v", err),
 		}
 		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(rollbackUpdates)
-		resputil.Error(c, "submit download job failed", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "submit download job failed"))
 		return
 	}
 
 	download.Status = model.ModelDownloadStatusDownloading
 	download.Message = ""
 
-	resputil.Success(c, convertDownloadToResp(download))
+	resputil.Success(c, convertDownloadToResp(download, token))
 }
 
 // ListAllDownloads godoc
@@ -841,20 +989,21 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 //	@Success		200	{object}	resputil.Response[[]ModelDownloadResp]
 //	@Router			/v1/admin/models/downloads [GET]
 func (mgr *ModelDownloadMgr) ListAllDownloads(c *gin.Context) {
+	token := util.GetToken(c)
 	q := query.ModelDownload
 
 	downloads, err := q.WithContext(c).
+		Preload(q.Creator).
 		Order(q.CreatedAt.Desc()).
 		Find()
 	if err != nil {
-		klog.Errorf("list all downloads failed: %v", err)
-		resputil.Error(c, "list downloads failed", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list downloads failed"))
 		return
 	}
 
 	resp := make([]ModelDownloadResp, len(downloads))
 	for i, d := range downloads {
-		resp[i] = convertDownloadToResp(d)
+		resp[i] = convertDownloadToResp(d, token)
 	}
 
 	resputil.Success(c, resp)
@@ -877,16 +1026,26 @@ func (mgr *ModelDownloadMgr) AdminDeleteDownload(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
 		return
 	}
 
 	q := query.ModelDownload
-	result, err := q.WithContext(c).
-		Where(q.ID.Eq(req.ID)).
-		Delete()
-	if err != nil || result.RowsAffected == 0 {
-		resputil.Error(c, "download not found or delete failed", resputil.InvalidRequest)
+	download, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
+	if err != nil {
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found"))
+		return
+	}
+	if download.JobName != "" &&
+		(download.Status == model.ModelDownloadStatusDownloading || download.Status == model.ModelDownloadStatusPending) {
+		mgr.captureJobLogsToRecord(c, download)
+		if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
+	}
+	if err := mgr.deleteDownloadRecord(c, req.ID); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1049,7 +1208,7 @@ func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload,
 	pypiMirror := "https://pypi.tuna.tsinghua.edu.cn/simple"
 	trustedHost := "--trusted-host pypi.tuna.tsinghua.edu.cn"
 
-	var installCmd, downloadCommand string
+	var installCmd, downloadCommand, totalProbeCmd, metadataCmd string
 	if download.Source == model.ModelSourceHuggingFace {
 		// 1. 安装 huggingface_hub
 		installCmd = fmt.Sprintf(
@@ -1088,14 +1247,82 @@ if revision:
 snapshot_download(**kwargs)
 PY
 `, download.Name, download.Revision, repoType)
+
+		// Best-effort total-size probe so the UI can render a real progress bar.
+		// Runs inside `|| true` so a probe failure never fails the download job.
+		totalProbeCmd = fmt.Sprintf(`
+echo "Probing repository total size..."
+python - << 'PY' || true
+try:
+    from huggingface_hub import HfApi
+    info = HfApi().repo_info(%q, repo_type=%q, revision=%q or None, files_metadata=True)
+    total = sum((s.size or 0) for s in (info.siblings or []))
+    if total > 0:
+        print(f"[TOTAL] size_bytes={total}", flush=True)
+except Exception:
+    pass
+PY
+`, download.Name, repoType, download.Revision)
+
+		metadataCmd = fmt.Sprintf(`
+echo "Reading repository metadata..."
+python - << 'PY' || true
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+from huggingface_hub import HfApi
+
+info = HfApi().repo_info(%q, repo_type=%q, revision=%q or None)
+updated_at = getattr(info, "last_modified", None) or getattr(info, "lastModified", None)
+created_at = getattr(info, "created_at", None) or getattr(info, "createdAt", None)
+card_data = getattr(info, "card_data", None) or getattr(info, "cardData", None) or {}
+config = getattr(info, "config", None) or {}
+safetensors = getattr(info, "safetensors", None) or {}
+license_name = card_data.get("license", "") if isinstance(card_data, dict) else getattr(card_data, "license", "")
+model_type = config.get("model_type", "") if isinstance(config, dict) else getattr(config, "model_type", "")
+parameter_count = safetensors.get("total", 0) if isinstance(safetensors, dict) else getattr(safetensors, "total", 0)
+owner = %q.split("/", 1)[0]
+avatar_url = ""
+for owner_type in ("organizations", "users"):
+    endpoint = "https://huggingface.co/api/{}/{}/overview".format(
+        owner_type, urllib.parse.quote(owner, safe="")
+    )
+    try:
+        with urllib.request.urlopen(endpoint, timeout=10) as response:
+            avatar_url = json.load(response).get("avatarUrl", "")
+        break
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            break
+    except Exception:
+        break
+print("[META] " + json.dumps({
+	"display_name": %q.split("/", 1)[-1],
+	"license": str(license_name or ""),
+	"task": str(getattr(info, "pipeline_tag", "") or ""),
+	"library": str(getattr(info, "library_name", "") or ""),
+	"model_type": str(model_type or ""),
+	"parameter_count": int(parameter_count or 0),
+	"private": bool(getattr(info, "private", False)),
+	"gated": bool(getattr(info, "gated", False)),
+    "downloads": int(getattr(info, "downloads", 0) or 0),
+    "likes": int(getattr(info, "likes", 0) or 0),
+    "logo_url": avatar_url,
+	"created_at": created_at.isoformat() if created_at else "",
+    "updated_at": updated_at.isoformat() if updated_at else "",
+    "tags": list(getattr(info, "tags", None) or [])[:4],
+}, separators=(",", ":")), flush=True)
+PY
+`, download.Name, repoType, download.Revision, download.Name, download.Name)
 	} else {
-		// ModelScope 这块可以沿用原来的 CLI 方式
+		// Install the ModelScope CLI, then invoke it through an argument array so
+		// user-provided revisions never pass through shell parsing.
 		installCmd = fmt.Sprintf(
 			"pip install -q modelscope -i %s %s",
 			pypiMirror, trustedHost,
 		)
 
-		// 根据类别选择下载参数
 		var resourceFlag string
 		if download.Category == model.DownloadCategoryDataset {
 			resourceFlag = "--dataset"
@@ -1103,19 +1330,115 @@ PY
 			resourceFlag = "--model"
 		}
 
-		modelName := download.Name
-		if download.Revision != "" {
-			downloadCommand = fmt.Sprintf(
-				`modelscope download %s %s --revision %s --local_dir "$OUT_DIR"`,
-				resourceFlag, modelName, download.Revision,
-			)
-		} else {
-			downloadCommand = fmt.Sprintf(
-				`modelscope download %s %s --local_dir "$OUT_DIR"`,
-				resourceFlag, modelName,
-			)
+		downloadCommand = fmt.Sprintf(`
+python - << 'PY'
+import os
+import subprocess
+
+resource_flag = %q
+repo_id = %q
+revision = %q
+args = ["modelscope", "download", resource_flag, repo_id]
+if revision:
+    args.extend(["--revision", revision])
+args.extend(["--local_dir", os.environ["OUT_DIR"]])
+subprocess.run(args, check=True)
+PY
+`, resourceFlag, download.Name, download.Revision)
+
+		// Best-effort total-size probe so the UI can render a real progress bar.
+		// Runs inside `|| true` so a probe failure never fails the download job.
+		totalProbeCmd = fmt.Sprintf(`
+echo "Probing repository total size..."
+python - << 'PY' || true
+try:
+    from modelscope.hub.api import HubApi
+    api = HubApi()
+    name, revision, category = %q, %q, %q
+    if category == "dataset":
+        files = api.get_dataset_files(repo_id=name, revision=revision or "master", root_path="/", recursive=True)
+    else:
+        files = api.get_model_files(name, revision=revision or None, recursive=True)
+    total = sum(int(f.get("Size") or 0) for f in (files or []) if f.get("Type") == "blob")
+    if total > 0:
+        print(f"[TOTAL] size_bytes={total}", flush=True)
+except Exception:
+    pass
+PY
+`, download.Name, download.Revision, string(download.Category))
+
+		resourcePath := "models"
+		if download.Category == model.DownloadCategoryDataset {
+			resourcePath = "datasets"
 		}
+		metadataCmd = fmt.Sprintf(`
+echo "Reading repository metadata..."
+python - << 'PY' || true
+import json
+import os
+import urllib.request
+
+url = "https://modelscope.cn/openapi/v1/%s/%s"
+request = urllib.request.Request(url)
+token = os.environ.get("MODELSCOPE_API_TOKEN", "")
+if token:
+    request.add_header("Authorization", "Bearer " + token)
+with urllib.request.urlopen(request, timeout=20) as response:
+    payload = json.load(response).get("data", {})
+print("[META] " + json.dumps({
+	"display_name": payload.get("display_name") or "",
+	"description": (payload.get("description") or "")[:500],
+	"license": payload.get("license") or "",
+	"task": (payload.get("tasks") or [""])[0],
+	"library": next((tag.split(":", 1)[1] for tag in payload.get("tags", []) if tag.startswith("library:")), ""),
+	"model_type": next((tag.split(":", 1)[1] for tag in payload.get("tags", []) if tag.startswith("model_type:")), ""),
+	"parameter_count": int(payload.get("params") or 0),
+	"private": bool(payload.get("private", False)),
+	"gated": bool(payload.get("gated", False)),
+	"login_required": bool(payload.get("login_required", False)),
+    "downloads": int(payload.get("downloads") or 0),
+    "likes": int(payload.get("likes") or 0),
+	"created_at": payload.get("created_at") or "",
+    "updated_at": payload.get("last_modified") or "",
+	"tags": list(dict.fromkeys((payload.get("tasks") or []) + (payload.get("tags") or [])))[:8],
+}, separators=(",", ":")), flush=True)
+PY
+`, resourcePath, download.Name)
 	}
+
+	// 下载完成后，从 README 提取一段简介，供平台展示与模型本身相关的描述。
+	descScript := `
+echo "Extracting summary from README..."
+python - << 'PY' || true
+import os
+text = ""
+for name in ("README.md", "readme.md", "README.MD", "README"):
+    p = os.path.join(os.environ["OUT_DIR"], name)
+    if os.path.isfile(p):
+        try:
+            with open(p, encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+        except Exception:
+            pass
+        break
+if text.startswith("---"):
+    end = text.find("\n---", 3)
+    if end != -1:
+        text = text[end + 4:]
+para = ""
+code_fence = chr(96) * 3
+for block in text.split("\n\n"):
+    line = " ".join(block.split())
+    if not line or line.startswith(("#", "<", "|", "[!", "![", "---", code_fence)):
+        continue
+    if len(line) < 20:
+        continue
+    para = line
+    break
+if para:
+    print("[DESC] " + para[:300], flush=True)
+PY
+`
 
 	// 进度监控脚本（保持你原来的逻辑）
 	progressScript := `
@@ -1160,6 +1483,8 @@ export PATH="/usr/local/bin:/root/.local/bin:$PATH"
 
 %s
 
+%s
+
 # 执行下载
 START_TIME=$(date +%%s)
 %s
@@ -1168,6 +1493,10 @@ END_TIME=$(date +%%s)
 kill $MONITOR_PID 2>/dev/null || true
 
 echo "Download completed successfully"
+
+%s
+
+%s
 
 # 修改权限，使得所有人都可以读取 (目录755, 文件644)
 echo "Changing permissions for $OUT_DIR..."
@@ -1186,8 +1515,11 @@ fi
 		download.Name,
 		download.Source,
 		installCmd,
+		totalProbeCmd,
 		progressScript,
 		downloadCommand,
+		metadataCmd,
+		descScript,
 	)
 }
 
@@ -1218,7 +1550,29 @@ func sanitizeModelName(name string) string {
 	return pattern.ReplaceAllString(name, "")
 }
 
-func convertDownloadToResp(d *model.ModelDownload) ModelDownloadResp {
+func modelDownloadStoragePath(
+	basePath, safeName string, source model.ModelSource, revision string,
+) string {
+	revisionKey := "default"
+	if revision != "" {
+		digest := fmt.Sprintf("%x", sha256.Sum256([]byte(revision)))
+		revisionKey = digest[:12]
+	}
+	return filepath.Join(basePath, safeName, string(source), revisionKey)
+}
+
+func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelDownloadResp {
+	username := d.Creator.Name
+	nickname := d.Creator.Nickname
+	// Creator may not be preloaded on create/mutation paths; the actor is the
+	// creator there, so fall back to the token identity.
+	if username == "" && d.CreatorID == token.UserID {
+		username = token.Username
+	}
+	if nickname == "" {
+		nickname = username
+	}
+
 	return ModelDownloadResp{
 		ID:              d.ID,
 		Name:            d.Name,
@@ -1236,13 +1590,140 @@ func convertDownloadToResp(d *model.ModelDownload) ModelDownloadResp {
 		ReferenceCount:  d.ReferenceCount,
 		CreatedAt:       d.CreatedAt,
 		UpdatedAt:       d.UpdatedAt,
+		SourceUpdatedAt: d.SourceUpdatedAt,
+		UserInfo:        model.UserInfo{Username: username, Nickname: nickname},
+		CanManage:       d.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin,
+		CanViewLogs:     d.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin,
+		SourceURL:       sourceURLForDownload(d),
+		DisplayName:     d.DisplayName,
+		License:         d.License,
+		Task:            d.Task,
+		Library:         d.Library,
+		ModelType:       d.ModelType,
+		ParameterCount:  d.ParameterCount,
+		SourceCreatedAt: d.SourceCreatedAt,
 	}
+}
+
+func sourceURLForDownload(download *model.ModelDownload) string {
+	if download.SourceURL != "" {
+		return download.SourceURL
+	}
+	if download.Source == model.ModelSourceHuggingFace {
+		if download.Category == model.DownloadCategoryDataset {
+			return "https://huggingface.co/datasets/" + download.Name
+		}
+		return "https://huggingface.co/" + download.Name
+	}
+	if download.Category == model.DownloadCategoryDataset {
+		return "https://modelscope.cn/datasets/" + download.Name
+	}
+	return "https://modelscope.cn/models/" + download.Name
+}
+
+func (mgr *ModelDownloadMgr) deleteDownloadJob(c *gin.Context, jobName string) error {
+	if jobName == "" {
+		return nil
+	}
+	propagation := metav1.DeletePropagationForeground
+	err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Delete(c, jobName, metav1.DeleteOptions{
+		PropagationPolicy: &propagation,
+	})
+	if err == nil || k8serrors.IsNotFound(err) {
+		return nil
+	}
+	return bizerr.Internal.K8sServiceError.Wrap(err, "stop download job failed")
+}
+
+func (mgr *ModelDownloadMgr) deleteDownloadRecord(c *gin.Context, downloadID uint) error {
+	db := query.Use(query.GetDB())
+	err := db.Transaction(func(tx *query.Query) error {
+		qUserDownload := tx.UserModelDownload
+		if _, deleteErr := qUserDownload.WithContext(c).
+			Where(qUserDownload.ModelDownloadID.Eq(downloadID)).
+			Delete(); deleteErr != nil {
+			return deleteErr
+		}
+
+		qDownload := tx.ModelDownload
+		result, deleteErr := qDownload.WithContext(c).Where(qDownload.ID.Eq(downloadID)).Delete()
+		if deleteErr != nil {
+			return deleteErr
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "delete download record failed")
+	}
+	return nil
+}
+
+// captureJobLogsToRecord best-effort persists the current pod log tail on the
+// download record before its Job is deleted (pause/delete), so the history
+// stays inspectable after the pod is gone.
+func (mgr *ModelDownloadMgr) captureJobLogsToRecord(c *gin.Context, download *model.ModelDownload) {
+	pod := mgr.findLatestDownloadPod(c, download.JobName)
+	if pod == nil {
+		return
+	}
+
+	logOptions := &corev1.PodLogOptions{
+		Container: "downloader",
+		TailLines: ptr.To(defaultDownloadLogTailLines),
+	}
+	raw, err := mgr.crClient.CoreV1().Pods(mgr.namespace).GetLogs(pod.Name, logOptions).DoRaw(c)
+	if err != nil || len(raw) == 0 {
+		return
+	}
+
+	now := time.Now()
+	q := query.ModelDownload
+	if _, err := q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(map[string]any{
+		"logs":          truncateDownloadLogTail(string(raw), maxStoredDownloadLogBytes),
+		"logs_saved_at": now,
+	}); err != nil {
+		klog.Warningf("failed to capture logs for download %d: %v", download.ID, err)
+	}
+}
+
+func truncateDownloadLogTail(logs string, maxBytes int) string {
+	if len(logs) <= maxBytes {
+		return logs
+	}
+	tail := logs[len(logs)-maxBytes:]
+	if idx := strings.IndexByte(tail, '\n'); idx >= 0 && idx+1 < len(tail) {
+		return tail[idx+1:]
+	}
+	return tail
+}
+
+// findLatestDownloadPod returns the newest pod of the download job, or nil.
+func (mgr *ModelDownloadMgr) findLatestDownloadPod(c *gin.Context, jobName string) *corev1.Pod {
+	if jobName == "" {
+		return nil
+	}
+	pods, err := mgr.crClient.CoreV1().Pods(mgr.namespace).List(c, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+	})
+	if err != nil || len(pods.Items) == 0 {
+		return nil
+	}
+	latestPod := &pods.Items[0]
+	for i := range pods.Items {
+		if pods.Items[i].CreationTimestamp.After(latestPod.CreationTimestamp.Time) {
+			latestPod = &pods.Items[i]
+		}
+	}
+	return latestPod
 }
 
 // GetDownloadLogs godoc
 //
-//	@Summary		获取模型下载任务的 Pod 日志
-//	@Description	获取模型下载任务的实时日志
+//	@Summary		获取模型下载任务日志
+//	@Description	返回定时持久化到下载记录中的日志
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
@@ -1254,76 +1735,35 @@ func (mgr *ModelDownloadMgr) GetDownloadLogs(c *gin.Context) {
 	var req struct {
 		ID uint `uri:"id" binding:"required"`
 	}
-	token := util.GetToken(c)
 
 	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, "invalid id")
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
+		return
+	}
+
+	token := util.GetToken(c)
+	canViewLogs, err := mgr.canViewDownloadLogs(c, req.ID, token)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	if !canViewLogs {
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("you do not have permission to view this download log"))
 		return
 	}
 
 	q := query.ModelDownload
-	qUserDownload := query.UserModelDownload
-
-	// 检查用户是否有此下载的权限
-	userDownload, err := qUserDownload.WithContext(c).
-		Where(qUserDownload.UserID.Eq(token.UserID), qUserDownload.ModelDownloadID.Eq(req.ID)).
-		First()
-	if err != nil || userDownload == nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
-		return
-	}
-
-	// 获取下载详情
 	download, err := q.WithContext(c).
 		Where(q.ID.Eq(req.ID)).
 		First()
 	if err != nil {
-		resputil.Error(c, "download not found", resputil.InvalidRequest)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found"))
 		return
 	}
 
-	// 获取 Job 对应的 Pod
-	pods, err := mgr.crClient.CoreV1().Pods(mgr.namespace).List(c, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", download.JobName),
-	})
-	if err != nil || len(pods.Items) == 0 {
-		resputil.Success(c, "等待 Pod 启动...")
+	if download.Logs == "" {
+		resputil.Success(c, "Waiting for download logs to be synchronized...")
 		return
 	}
-
-	// 获取最新的 Pod
-	latestPod := &pods.Items[0]
-	for i := range pods.Items {
-		if pods.Items[i].CreationTimestamp.After(latestPod.CreationTimestamp.Time) {
-			latestPod = &pods.Items[i]
-		}
-	}
-
-	// 检查 Pod 状态,如果还没有准备好,返回友好提示
-	if latestPod.Status.Phase == corev1.PodPending {
-		resputil.Success(c, fmt.Sprintf("Pod 正在启动中... (状态: %s)", latestPod.Status.Phase))
-		return
-	}
-
-	// 获取日志
-	logOptions := &corev1.PodLogOptions{
-		Container: "downloader",
-		TailLines: func() *int64 { i := defaultDownloadLogTailLines; return &i }(),
-	}
-
-	req2 := mgr.crClient.CoreV1().Pods(mgr.namespace).GetLogs(latestPod.Name, logOptions)
-	logs, err := req2.DoRaw(c)
-	if err != nil {
-		// 如果是容器还未准备好的错误,返回友好提示
-		errMsg := err.Error()
-		if latestPod.Status.Phase == corev1.PodPending || latestPod.Status.Phase == corev1.PodUnknown {
-			resputil.Success(c, fmt.Sprintf("Pod 正在启动中,请稍后... (状态: %s)", latestPod.Status.Phase))
-			return
-		}
-		klog.Warningf("get pod logs failed (pod=%s, phase=%s): %v", latestPod.Name, latestPod.Status.Phase, err)
-		resputil.Success(c, fmt.Sprintf("暂时无法获取日志: %s", errMsg))
-		return
-	}
-
-	resputil.Success(c, string(logs))
+	resputil.Success(c, download.Logs)
 }

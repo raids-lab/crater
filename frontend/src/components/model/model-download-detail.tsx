@@ -18,11 +18,11 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   ActivityIcon,
   ArrowLeft,
-  BotIcon,
   CalendarIcon,
   ClockIcon,
   Copy,
   DatabaseIcon,
+  ExternalLinkIcon,
   FileTextIcon,
   FolderIcon,
   PackageIcon,
@@ -30,18 +30,25 @@ import {
   Play,
   RotateCw,
   Trash2,
+  UserIcon,
 } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 import ModelDownloadPhaseBadge from '@/components/badge/model-download-phase-badge'
-import DetailPageLog from '@/components/codeblock/detail-page-log'
 import { TimeDistance } from '@/components/custom/time-distance'
+import UserLabel from '@/components/label/user-label'
 import DetailPage from '@/components/layout/detail-page'
 import { DetailPageCoreProps } from '@/components/layout/detail-page'
 import PageTitle from '@/components/layout/page-title'
+import ModelDownloadProgress from '@/components/model/model-download-progress'
+import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
+import RepositorySourceMark from '@/components/model/repository-source-mark'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +64,7 @@ import {
 import {
   apiDeleteModelDownload,
   apiGetModelDownload,
+  apiGetModelDownloadLogs,
   apiPauseModelDownload,
   apiResumeModelDownload,
   apiRetryModelDownload,
@@ -68,9 +76,11 @@ import { logger } from '@/utils/loglevel'
 
 export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
   useFixedLayout()
+  const { t } = useTranslation()
   const { id } = useParams({ strict: false })
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [tokenAction, setTokenAction] = useState<'resume' | 'retry' | null>(null)
 
   const { data: download, isLoading } = useQuery({
     queryKey: ['model-downloads', id],
@@ -80,8 +90,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
     },
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      // 如果是下载中，每 3 秒刷新一次
-      return status === 'Downloading' ? 3000 : false
+      return status === 'Downloading' || status === 'Pending' ? 3000 : false
     },
   })
 
@@ -90,52 +99,53 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       await queryClient.invalidateQueries({ queryKey: ['model-downloads', id] })
       await queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
     } catch (error) {
-      logger.error('更新查询失败', error)
+      logger.error('failed to refresh model download queries', error)
     }
   }
 
-  const { mutate: pauseDownload } = useMutation({
+  const pauseMutation = useMutation({
     mutationFn: apiPauseModelDownload,
     onSuccess: async () => {
       await refetchDownload()
-      toast.success('已暂停下载')
+      toast.success(t('modelDownload.action.pauseSuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '暂停失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.pauseFailed'))
     },
   })
 
-  const { mutate: resumeDownload } = useMutation({
+  const resumeMutation = useMutation({
     mutationFn: apiResumeModelDownload,
     onSuccess: async () => {
       await refetchDownload()
-      toast.success('已恢复下载')
+      setTokenAction(null)
+      toast.success(t('modelDownload.action.resumeSuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '恢复失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.resumeFailed'))
     },
   })
 
-  const { mutate: retryDownload } = useMutation({
+  const retryMutation = useMutation({
     mutationFn: apiRetryModelDownload,
     onSuccess: async () => {
       await refetchDownload()
-      toast.success('已重新下载')
+      setTokenAction(null)
+      toast.success(t('modelDownload.action.retrySuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '重试失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.retryFailed'))
     },
   })
 
-  const { mutate: deleteDownload } = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: apiDeleteModelDownload,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['modelDownloads'] })
-      toast.success('删除成功')
-      // 根据 category 返回对应页面
+      toast.success(t('modelDownload.action.deleteSuccess'))
       const returnPath =
         download?.category === 'dataset'
           ? '/portal/data/datasets/downloads'
@@ -144,14 +154,14 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '删除失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.deleteFailed'))
     },
   })
 
   const copyPath = () => {
     if (download?.path) {
       navigator.clipboard.writeText(download.path)
-      toast.success('路径已复制到剪贴板')
+      toast.success(t('modelDownload.pathCopied'))
     }
   }
 
@@ -160,195 +170,276 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
   }
 
   return (
-    <DetailPage
-      {...props}
-      header={
-        <PageTitle
-          title={download.name}
-          description={`模型下载 #${download.id}`}
-          tipComponent={
-            <div className="flex items-center gap-4">
-              <div className="bg-primary/10 rounded-xl p-3">
-                <BotIcon className="text-primary size-8" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-muted-foreground text-sm">
-                  {download.source === 'modelscope' ? 'ModelScope' : 'HuggingFace'}
-                </span>
-              </div>
-            </div>
-          }
-        >
-          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
-            <Button
-              variant="outline"
-              onClick={() =>
-                navigate({
-                  to:
-                    download.category === 'dataset'
-                      ? '/portal/data/datasets/downloads'
-                      : '/portal/data/models/downloads',
-                })
-              }
-            >
-              <ArrowLeft className="size-4" />
-              返回列表
-            </Button>
-            {download.status === 'Downloading' && (
-              <Button variant="secondary" onClick={() => pauseDownload(download.id)}>
-                <Pause className="size-4" />
-                暂停
-              </Button>
-            )}
-            {download.status === 'Paused' && (
-              <Button variant="secondary" onClick={() => resumeDownload(download.id)}>
-                <Play className="size-4" />
-                恢复
-              </Button>
-            )}
-            {download.status === 'Failed' && (
-              <Button variant="secondary" onClick={() => retryDownload(download.id)}>
-                <RotateCw className="size-4" />
-                重试
-              </Button>
-            )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" title="删除下载任务" className="cursor-pointer">
-                  <Trash2 className="size-4" />
-                  删除
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>删除下载任务</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    下载任务 {download.name} 将被删除，但已下载的文件会保留。
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={() => {
-                      deleteDownload(download.id)
-                    }}
+    <>
+      <DetailPage
+        {...props}
+        header={
+          <PageTitle
+            title={download.name}
+            description={t('modelDownload.detail.description', { id: download.id })}
+            tipComponent={
+              <div className="flex items-center gap-4">
+                <RepositorySourceMark source={download.source} category={download.category} />
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={download.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-sm transition-colors"
                   >
-                    删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </PageTitle>
-      }
-      info={[
-        {
-          title: '状态',
-          icon: ActivityIcon,
-          value: <ModelDownloadPhaseBadge status={download.status} />,
-        },
-        {
-          title: '创建于',
-          icon: CalendarIcon,
-          value: <TimeDistance date={download.createdAt} />,
-        },
-        {
-          title: '更新于',
-          icon: ClockIcon,
-          value: <TimeDistance date={download.updatedAt} />,
-        },
-        {
-          title: '存储空间',
-          icon: DatabaseIcon,
-          value: '公共空间',
-        },
-        {
-          title: '版本',
-          icon: PackageIcon,
-          value: download.revision || 'main',
-        },
-      ]}
-      tabs={[
-        {
-          key: 'info',
-          icon: FileTextIcon,
-          label: '基本信息',
-          children: (
-            <div className="space-y-6 py-4">
-              {/* 保存路径 */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold">模型位置</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <code className="bg-muted flex-1 overflow-hidden rounded px-3 py-2 font-mono text-sm text-ellipsis">
-                      {download.path.replace(/^public\//, '公共空间/')}
-                    </code>
-                    <Button variant="outline" size="icon" onClick={copyPath} title="复制路径">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="bg-muted/50 space-y-1 rounded-lg border p-3 text-xs">
-                    {download.status === 'Ready' ? (
-                      <>
-                        <p className="font-medium">✅ 模型下载完成</p>
-                        <p className="text-muted-foreground">
-                          文件已保存到共享存储 (PVC: crater-storage)
-                        </p>
-                        <p className="text-muted-foreground">
-                          可在创建作业时通过以下路径挂载：
-                          <code className="bg-background ml-1 rounded px-1.5 py-0.5">
-                            {download.path}
-                          </code>
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-medium">📦 下载目标</p>
-                        <p className="text-muted-foreground">
-                          文件将保存到共享存储 (PVC: crater-storage)
-                        </p>
-                        <p className="text-muted-foreground">
-                          目标路径：
-                          <code className="bg-background ml-1 rounded px-1.5 py-0.5">
-                            {download.path}
-                          </code>
-                        </p>
-                      </>
-                    )}
-                  </div>
+                    {download.source === 'modelscope' ? 'ModelScope' : 'HuggingFace'}
+                    <ExternalLinkIcon className="size-3.5" />
+                  </a>
                 </div>
               </div>
-
-              {/* 错误信息 */}
-              {download.status === 'Failed' && download.message && (
-                <div className="space-y-3">
-                  <h3 className="text-destructive text-lg font-semibold">错误信息</h3>
-                  <ScrollArea className="h-[200px]">
-                    <pre className="text-destructive rounded bg-red-50 p-4 text-sm dark:bg-red-950/20">
-                      {download.message}
-                    </pre>
-                  </ScrollArea>
-                </div>
+            }
+          >
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  navigate({
+                    to:
+                      download.category === 'dataset'
+                        ? '/portal/data/datasets/downloads'
+                        : '/portal/data/models/downloads',
+                  })
+                }
+              >
+                <ArrowLeft className="size-4" />
+                {t('modelDownload.detail.back')}
+              </Button>
+              {download.canManage && download.status === 'Downloading' && (
+                <Button
+                  variant="secondary"
+                  disabled={pauseMutation.isPending}
+                  onClick={() => pauseMutation.mutate(download.id)}
+                >
+                  <Pause className="size-4" />
+                  {t('modelDownload.action.pause')}
+                </Button>
+              )}
+              {download.canManage && download.status === 'Paused' && (
+                <Button
+                  variant="secondary"
+                  disabled={resumeMutation.isPending}
+                  onClick={() => setTokenAction('resume')}
+                >
+                  <Play className="size-4" />
+                  {t('modelDownload.action.resume.confirm')}
+                </Button>
+              )}
+              {download.canManage && download.status === 'Failed' && (
+                <Button
+                  variant="secondary"
+                  disabled={retryMutation.isPending}
+                  onClick={() => setTokenAction('retry')}
+                >
+                  <RotateCw className="size-4" />
+                  {t('modelDownload.action.retry.confirm')}
+                </Button>
+              )}
+              {download.canManage && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      disabled={deleteMutation.isPending}
+                      title={t('modelDownload.action.deleteTitle')}
+                      className="cursor-pointer"
+                    >
+                      <Trash2 className="size-4" />
+                      {t('modelDownload.action.delete')}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t('modelDownload.action.deleteDescription', { name: download.name })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => deleteMutation.mutate(download.id)}
+                      >
+                        {deleteMutation.isPending
+                          ? t('modelDownload.action.processing')
+                          : t('modelDownload.action.delete')}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
-          ),
-          scrollable: true,
-        },
-        {
-          key: 'logs',
-          icon: FolderIcon,
-          label: '下载日志',
-          children: (
-            <DetailPageLog
-              namespacedName={{
-                namespace: 'crater-workspace',
-                name: download?.jobName || '',
-              }}
-            />
-          ),
-        },
-      ]}
-    />
+          </PageTitle>
+        }
+        info={[
+          {
+            title: t('modelDownload.detail.status'),
+            icon: ActivityIcon,
+            value: <ModelDownloadPhaseBadge status={download.status} />,
+          },
+          {
+            title: t('modelDownload.detail.creator'),
+            icon: UserIcon,
+            value: <UserLabel info={download.userInfo} />,
+          },
+          {
+            title: t('modelDownload.detail.createdAt'),
+            icon: CalendarIcon,
+            value: <TimeDistance date={download.createdAt} />,
+          },
+          {
+            title: t('modelDownload.detail.localUpdatedAt'),
+            icon: ClockIcon,
+            value: <TimeDistance date={download.updatedAt} />,
+          },
+          ...(download.sourceUpdatedAt
+            ? [
+                {
+                  title: t('modelDownload.detail.sourceUpdatedAt'),
+                  icon: ClockIcon,
+                  value: <TimeDistance date={download.sourceUpdatedAt} />,
+                },
+              ]
+            : []),
+          {
+            title: t('modelDownload.detail.storageSpace'),
+            icon: DatabaseIcon,
+            value: t('modelDownload.detail.publicSpace'),
+          },
+          {
+            title: t('modelDownload.detail.revision'),
+            icon: PackageIcon,
+            value: download.revision || 'main',
+          },
+        ]}
+        tabs={[
+          {
+            key: 'info',
+            icon: FileTextIcon,
+            label: t('modelDownload.detail.basicInfo'),
+            children: (
+              <div className="space-y-1 md:space-y-2 lg:space-y-3">
+                {(download.status === 'Downloading' ||
+                  download.status === 'Paused' ||
+                  download.status === 'Ready') && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-xl">
+                        <ActivityIcon className="mr-2 h-5 w-5 text-blue-500" />
+                        {t('modelDownload.detail.progress')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ModelDownloadProgress download={download} className="max-w-md" />
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-xl">
+                      <FolderIcon className="mr-2 h-5 w-5 text-blue-500" />
+                      {download.category === 'dataset'
+                        ? t('modelDownload.detail.datasetLocation')
+                        : t('modelDownload.detail.modelLocation')}
+                    </CardTitle>
+                    <CardDescription>
+                      {download.status === 'Ready'
+                        ? t('modelDownload.detail.pathReady')
+                        : t('modelDownload.detail.pathPending')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted flex-1 overflow-hidden rounded px-3 py-2 font-mono text-sm text-ellipsis">
+                        {download.path}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={copyPath}
+                        title={t('modelDownload.copyPath')}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {download.status === 'Failed' && download.message && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-destructive flex items-center text-xl">
+                        <ActivityIcon className="mr-2 h-5 w-5" />
+                        {t('modelDownload.detail.error')}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="max-h-[200px]">
+                        <pre className="text-destructive rounded bg-red-50 p-4 text-sm break-words whitespace-pre-wrap dark:bg-red-950/20">
+                          {download.message}
+                        </pre>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ),
+            scrollable: true,
+          },
+          ...(download.canViewLogs
+            ? [
+                {
+                  key: 'logs',
+                  icon: FolderIcon,
+                  label: t('modelDownload.detail.logs'),
+                  children: <ModelDownloadStoredLogs id={download.id} status={download.status} />,
+                },
+              ]
+            : []),
+        ]}
+      />
+      <ModelDownloadTokenDialog
+        action={tokenAction ?? 'resume'}
+        downloadName={download.name}
+        isPending={resumeMutation.isPending || retryMutation.isPending}
+        open={tokenAction !== null}
+        onOpenChange={(open) => !open && setTokenAction(null)}
+        onSubmit={(token) => {
+          if (tokenAction === 'resume') {
+            resumeMutation.mutate({ id: download.id, token })
+          } else if (tokenAction === 'retry') {
+            retryMutation.mutate({ id: download.id, token })
+          }
+        }}
+      />
+    </>
+  )
+}
+
+function ModelDownloadStoredLogs({ id, status }: { id: number; status: string }) {
+  const { t } = useTranslation()
+  const { data, isLoading } = useQuery({
+    queryKey: ['model-downloads', id, 'logs'],
+    queryFn: () => apiGetModelDownloadLogs(id),
+    refetchInterval: status === 'Downloading' || status === 'Pending' ? 5000 : false,
+  })
+
+  return (
+    <Card className="dark:bg-muted/30 bg-sidebar h-[calc(100vh_-_300px)] overflow-hidden rounded-md p-1 dark:border">
+      <ScrollArea className="h-full">
+        <pre className="px-3 py-3 text-sm break-words whitespace-pre-wrap dark:text-blue-300">
+          {isLoading
+            ? t('modelDownload.detail.logsLoading')
+            : data?.data || t('modelDownload.detail.noLogs')}
+        </pre>
+      </ScrollArea>
+    </Card>
   )
 }

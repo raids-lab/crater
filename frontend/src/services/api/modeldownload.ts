@@ -16,6 +16,8 @@
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'
 
+import { IUserInfo } from './vcjob'
+
 export interface CreateModelDownloadReq {
   name: string
   revision?: string
@@ -23,6 +25,13 @@ export interface CreateModelDownloadReq {
   category: 'model' | 'dataset'
   token?: string
 }
+
+export interface ModelDownloadActionReq {
+  id: number
+  token?: string
+}
+
+export type ModelDownloadStatus = 'Pending' | 'Downloading' | 'Paused' | 'Ready' | 'Failed'
 
 export interface ModelDownload {
   id: number
@@ -34,13 +43,39 @@ export interface ModelDownload {
   sizeBytes: number
   downloadedBytes: number
   downloadSpeed: string
-  status: 'Pending' | 'Downloading' | 'Paused' | 'Ready' | 'Failed'
+  status: ModelDownloadStatus
   message: string
   jobName: string
   creatorId: number
   referenceCount: number
   createdAt: string
   updatedAt: string
+  sourceUpdatedAt?: string
+  userInfo: IUserInfo
+  canManage: boolean
+  canViewLogs: boolean
+  sourceUrl: string
+  displayName: string
+  license: string
+  task: string
+  library: string
+  modelType: string
+  parameterCount: number
+  sourceCreatedAt?: string
+}
+
+export interface ModelDownloadListParams {
+  page: number
+  pageSize: number
+  category?: 'model' | 'dataset'
+  status?: ModelDownloadStatus
+  search?: string
+}
+
+export interface ModelDownloadListResp {
+  total: number
+  items: ModelDownload[]
+  summary: Partial<Record<ModelDownloadStatus, number>>
 }
 
 export const apiCreateModelDownload = (data: CreateModelDownloadReq) =>
@@ -52,17 +87,30 @@ export const apiListModelDownloads = (category?: 'model' | 'dataset') =>
     category ? { searchParams: { category } } : undefined
   )
 
+export const apiListModelDownloadsPaged = (params: ModelDownloadListParams) => {
+  const searchParams: Record<string, string | number> = {
+    page: params.page,
+    pageSize: params.pageSize,
+  }
+  if (params.category) searchParams.category = params.category
+  if (params.status) searchParams.status = params.status
+  if (params.search) searchParams.search = params.search
+  return apiV1Get<IResponse<ModelDownloadListResp>>('model-download/models/downloads', {
+    searchParams,
+  })
+}
+
 export const apiGetModelDownload = (id: number) =>
   apiV1Get<IResponse<ModelDownload>>(`model-download/models/downloads/${id}`)
 
-export const apiRetryModelDownload = (id: number) =>
-  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/retry`, {})
+export const apiRetryModelDownload = ({ id, token }: ModelDownloadActionReq) =>
+  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/retry`, { token })
 
 export const apiPauseModelDownload = (id: number) =>
   apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/pause`, {})
 
-export const apiResumeModelDownload = (id: number) =>
-  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/resume`, {})
+export const apiResumeModelDownload = ({ id, token }: ModelDownloadActionReq) =>
+  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/resume`, { token })
 
 export const apiDeleteModelDownload = (id: number) =>
   apiV1Delete<IResponse<string>>(`model-download/models/downloads/${id}`)

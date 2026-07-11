@@ -31,8 +31,27 @@ export interface IDataset {
   url: string
   describe: string
   createdAt: string
+  updatedAt: string
+  sourceUpdatedAt?: string
   type: 'model' | 'dataset' | 'sharefile'
   mountCount: number
+  sizeBytes: number
+  downloadCount: number
+  likes: number
+  source: string
+  organization: string
+  organizationUrl: string
+  displayName: string
+  readme: string
+  license: string
+  task: string
+  library: string
+  modelType: string
+  parameterCount: number
+  sourcePrivate: boolean
+  sourceGated: boolean
+  loginRequired: boolean
+  sourceCreatedAt?: string
   extra: Extra
   userInfo: IUserInfo
 }
