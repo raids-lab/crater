@@ -50,3 +50,23 @@ func TestCleanReadmeRemovesRawHTMLAndFrontMatter(t *testing.T) {
 		t.Fatalf("meaningful README content was removed: %q", cleaned)
 	}
 }
+
+func TestCleanReadmeConvertsHTMLTableToMarkdown(t *testing.T) {
+	readme := `<table><thead><tr><th>Benchmark</th><th>Score</th></tr></thead>` +
+		`<tbody><tr><td>CountBench</td><td>89.4</td></tr>` +
+		`<tr><td colspan="2">Thinking Mode</td></tr></tbody></table>`
+	cleaned := cleanReadme(readme)
+	for _, expected := range []string{
+		"| Benchmark | Score |",
+		"| --- | --- |",
+		"| CountBench | 89.4 |",
+		"| Thinking Mode |  |",
+	} {
+		if !strings.Contains(cleaned, expected) {
+			t.Fatalf("converted table does not contain %q: %s", expected, cleaned)
+		}
+	}
+	if strings.Contains(cleaned, "<table") {
+		t.Fatalf("raw table markup remains: %s", cleaned)
+	}
+}
