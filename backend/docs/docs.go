@@ -6462,7 +6462,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取当前用户的所有模型下载任务,可通过category参数过滤",
+                "description": "下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)",
                 "consumes": [
                     "application/json"
                 ],
@@ -6472,12 +6472,36 @@ const docTemplate = `{
                 "tags": [
                     "ModelDownload"
                 ],
-                "summary": "获取用户的模型下载任务列表",
+                "summary": "获取模型下载任务列表",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "过滤类别: model 或 dataset",
                         "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码(从1开始);不传则返回全量数组",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量,默认20,最大100",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "过滤状态: Pending/Downloading/Paused/Ready/Failed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按名称模糊搜索",
+                        "name": "search",
                         "in": "query"
                     }
                 ],
@@ -6485,7 +6509,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp"
                         }
                     }
                 }
@@ -6533,7 +6557,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "删除指定的模型下载任务记录",
+                "description": "删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中",
                 "consumes": [
                     "application/json"
                 ],
@@ -6570,7 +6594,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取模型下载任务的实时日志",
+                "description": "返回定时持久化到下载记录中的日志",
                 "consumes": [
                     "application/json"
                 ],
@@ -6580,7 +6604,7 @@ const docTemplate = `{
                 "tags": [
                     "ModelDownload"
                 ],
-                "summary": "获取模型下载任务的 Pod 日志",
+                "summary": "获取模型下载任务日志",
                 "parameters": [
                     {
                         "type": "integer",
@@ -6662,6 +6686,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "可选的临时访问令牌",
+                        "name": "data",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.DownloadActionReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -6699,6 +6731,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "可选的临时访问令牌",
+                        "name": "data",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.DownloadActionReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -10319,6 +10359,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ModelDownloadListResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp": {
             "type": "object",
             "properties": {
@@ -11199,6 +11254,14 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.DownloadActionReq": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.FilePermission": {
             "type": "integer",
             "enum": [
@@ -11479,9 +11542,36 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.ModelDownloadListResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.ModelDownloadResp"
+                    }
+                },
+                "summary": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.ModelDownloadResp": {
             "type": "object",
             "properties": {
+                "canManage": {
+                    "type": "boolean"
+                },
+                "canViewLogs": {
+                    "type": "boolean"
+                },
                 "category": {
                     "type": "string"
                 },
@@ -11490,6 +11580,9 @@ const docTemplate = `{
                 },
                 "creatorId": {
                     "type": "integer"
+                },
+                "displayName": {
+                    "type": "string"
                 },
                 "downloadSpeed": {
                     "type": "string"
@@ -11503,11 +11596,23 @@ const docTemplate = `{
                 "jobName": {
                     "type": "string"
                 },
+                "library": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
                 "message": {
+                    "type": "string"
+                },
+                "modelType": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
+                },
+                "parameterCount": {
+                    "type": "integer"
                 },
                 "path": {
                     "type": "string"
@@ -11524,11 +11629,26 @@ const docTemplate = `{
                 "source": {
                     "type": "string"
                 },
+                "sourceCreatedAt": {
+                    "type": "string"
+                },
+                "sourceUpdatedAt": {
+                    "type": "string"
+                },
+                "sourceUrl": {
+                    "type": "string"
+                },
                 "status": {
+                    "type": "string"
+                },
+                "task": {
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
+                },
+                "userInfo": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
                 }
             }
         },

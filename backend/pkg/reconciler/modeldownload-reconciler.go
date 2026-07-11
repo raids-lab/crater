@@ -2,12 +2,14 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"gorm.io/datatypes"
@@ -68,6 +70,19 @@ const (
 	bytesInMB                           = bytesInKB * 1024
 	bytesInGB                           = bytesInMB * 1024
 	progressReportIntervalSeconds int64 = 5
+	progressRequeueInterval             = 5 * time.Second
+	// maxStoredLogBytes caps the log tail persisted on the download record when
+	// the job reaches a terminal state (the K8s Job itself is GC'd after 7 days).
+	maxStoredLogBytes = 64 * 1024
+)
+
+// Markers printed by the download job script (see buildDownloadCommand).
+var (
+	progressPattern = regexp.MustCompile(`\[PROGRESS\] downloaded_bytes=(\d+)`)
+	totalPattern    = regexp.MustCompile(`\[TOTAL\] size_bytes=(\d+)`)
+	resultPattern   = regexp.MustCompile(`\[RESULT\] size_bytes=(\d+)(?:\s+duration_seconds=(\d+)\s+speed_bytes_per_sec=(\d+))?`)
+	descPattern     = regexp.MustCompile(`\[DESC\] (.+)`)
+	metadataPattern = regexp.MustCompile(`\[META\] (.+)`)
 )
 
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -127,15 +142,13 @@ func (r *ModelDownloadReconciler) fetchDownloadRecord(
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.Info("download record not found, cleaning up orphaned job", "jobName", job.Name)
 
-		if job.Status.Succeeded > 0 || job.Status.Failed > 0 {
-			deletePolicy := metav1.DeletePropagationBackground
-			if err := r.KubeClient.BatchV1().Jobs(job.Namespace).Delete(
-				ctx, job.Name, metav1.DeleteOptions{PropagationPolicy: &deletePolicy},
-			); err != nil {
-				logger.Error(err, "failed to delete orphaned job", "jobName", job.Name)
-			} else {
-				logger.Info("successfully deleted orphaned job", "jobName", job.Name)
-			}
+		deletePolicy := metav1.DeletePropagationBackground
+		if err := r.KubeClient.BatchV1().Jobs(job.Namespace).Delete(
+			ctx, job.Name, metav1.DeleteOptions{PropagationPolicy: &deletePolicy},
+		); err != nil && !k8serrors.IsNotFound(err) {
+			logger.Error(err, "failed to delete orphaned job", "jobName", job.Name)
+		} else {
+			logger.Info("successfully deleted orphaned job", "jobName", job.Name)
 		}
 
 		return nil, ctrl.Result{}, nil
@@ -162,14 +175,24 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 			logger.Error(err, "failed to extract final result")
 		}
 
-		if err := r.createDatasetForModel(ctx, download); err != nil {
+		// Persist the log tail before the Job/Pod is GC'd, and reuse it to pick
+		// up the [DESC] summary the job extracted from the repo's README.
+		logs := r.persistFinalLogs(ctx, job, download)
+		if err := r.persistRepositoryMetadata(ctx, download, logs); err != nil {
+			logger.Error(err, "failed to persist repository metadata")
+		}
+
+		metadata := parseRepositoryMetadata(logs)
+		if err := r.createDatasetForModel(ctx, download, parseDescriptionFromLogs(logs), metadata.Tags); err != nil {
 			logger.Error(err, "failed to create dataset for model")
+			return ctrl.Result{RequeueAfter: progressRequeueInterval}, err
 		}
 	}
 
 	// When a download fails, capture the reason from pod logs so the user can
 	// see why (gated repo, auth, network, OOM, ...) instead of an empty message.
 	if newStatus == model.ModelDownloadStatusFailed && download.Status != model.ModelDownloadStatusFailed {
+		r.persistFinalLogs(ctx, job, download)
 		if err := r.extractFailureReason(ctx, job, download); err != nil {
 			logger.Error(err, "failed to extract failure reason")
 		}
@@ -182,8 +205,79 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 		}
 		logger.Info(fmt.Sprintf("model download: %s, status: %s -> %s", job.Name, oldStatus, newStatus))
 	}
+	if newStatus == model.ModelDownloadStatusDownloading {
+		return ctrl.Result{RequeueAfter: progressRequeueInterval}, nil
+	}
 
 	return ctrl.Result{}, nil
+}
+
+type repositoryMetadata struct {
+	DisplayName    string   `json:"display_name"`
+	Description    string   `json:"description"`
+	License        string   `json:"license"`
+	Task           string   `json:"task"`
+	Library        string   `json:"library"`
+	ModelType      string   `json:"model_type"`
+	ParameterCount int64    `json:"parameter_count"`
+	Private        bool     `json:"private"`
+	Gated          bool     `json:"gated"`
+	LoginRequired  bool     `json:"login_required"`
+	Downloads      int64    `json:"downloads"`
+	Likes          int64    `json:"likes"`
+	LogoURL        string   `json:"logo_url"`
+	CreatedAt      string   `json:"created_at"`
+	UpdatedAt      string   `json:"updated_at"`
+	Tags           []string `json:"tags"`
+}
+
+func parseRepositoryMetadata(logs string) repositoryMetadata {
+	matches := metadataPattern.FindAllStringSubmatch(logs, -1)
+	if len(matches) == 0 {
+		return repositoryMetadata{}
+	}
+	var metadata repositoryMetadata
+	_ = json.Unmarshal([]byte(matches[len(matches)-1][1]), &metadata)
+	return metadata
+}
+
+func (r *ModelDownloadReconciler) persistRepositoryMetadata(
+	ctx context.Context, download *model.ModelDownload, logs string,
+) error {
+	organization := strings.SplitN(download.Name, "/", 2)[0]
+	metadata := parseRepositoryMetadata(logs)
+	updates := map[string]any{
+		"organization":          organization,
+		"logo_url":              metadata.LogoURL,
+		"source_url":            downloadSourceURL(download),
+		"display_name":          metadata.DisplayName,
+		"source_description":    metadata.Description,
+		"license":               metadata.License,
+		"task":                  metadata.Task,
+		"library":               metadata.Library,
+		"model_type":            metadata.ModelType,
+		"parameter_count":       metadata.ParameterCount,
+		"source_private":        metadata.Private,
+		"source_gated":          metadata.Gated,
+		"source_login_required": metadata.LoginRequired,
+		"source_downloads":      metadata.Downloads,
+		"source_likes":          metadata.Likes,
+		"metadata_refreshed_at": time.Now(),
+	}
+	if metadata.UpdatedAt != "" {
+		if updatedAt, err := time.Parse(time.RFC3339, metadata.UpdatedAt); err == nil {
+			updates["source_updated_at"] = updatedAt
+		}
+	}
+	if metadata.CreatedAt != "" {
+		if createdAt, err := time.Parse(time.RFC3339, metadata.CreatedAt); err == nil {
+			updates["source_created_at"] = createdAt
+		}
+	}
+
+	q := query.ModelDownload
+	_, err := q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
+	return err
 }
 
 func (r *ModelDownloadReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
@@ -259,18 +353,34 @@ func (r *ModelDownloadReconciler) updateDownloadStatus(
 	return err
 }
 
-func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
-	// Get pod logs to extract progress
+func (r *ModelDownloadReconciler) latestPodForJob(ctx context.Context, job *batchv1.Job) (*v1.Pod, error) {
 	podList := &v1.PodList{}
-	labelSelector := client.MatchingLabels{
-		"job-name": job.Name,
+	if err := r.List(
+		ctx,
+		podList,
+		client.InNamespace(job.Namespace),
+		client.MatchingLabels{"job-name": job.Name},
+	); err != nil {
+		return nil, err
 	}
-	err := r.List(ctx, podList, client.InNamespace(job.Namespace), labelSelector)
-	if err != nil || len(podList.Items) == 0 {
-		return err
+	if len(podList.Items) == 0 {
+		return nil, nil
 	}
 
-	pod := &podList.Items[0]
+	latest := &podList.Items[0]
+	for i := 1; i < len(podList.Items); i++ {
+		if podList.Items[i].CreationTimestamp.After(latest.CreationTimestamp.Time) {
+			latest = &podList.Items[i]
+		}
+	}
+	return latest, nil
+}
+
+func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
+	pod, err := r.latestPodForJob(ctx, job)
+	if err != nil || pod == nil {
+		return err
+	}
 	if pod.Status.Phase != v1.PodRunning && pod.Status.Phase != v1.PodSucceeded {
 		return nil
 	}
@@ -281,19 +391,32 @@ func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batch
 		return err
 	}
 
+	// Persist the latest log tail on every progress reconciliation. This keeps
+	// logs available through the record-level API even while the Pod is still
+	// running, and decouples readers from direct Pod-log permissions.
+	updates := map[string]any{
+		"logs":          truncateLogTail(logs, maxStoredLogBytes),
+		"logs_saved_at": time.Now(),
+	}
+
+	// The job prints the repo's total size once, up front: [TOTAL] size_bytes=N.
+	// Only fill it while unknown; the final [RESULT] (actual on-disk size) stays
+	// authoritative via extractFinalResult.
+	if download.SizeBytes == 0 {
+		if m := totalPattern.FindStringSubmatch(logs); len(m) > 1 {
+			if total, parseErr := strconv.ParseInt(m[1], 10, 64); parseErr == nil && total > 0 {
+				updates["size_bytes"] = total
+			}
+		}
+	}
+
 	// Parse progress from logs: [PROGRESS] downloaded_bytes=12345
-	progressPattern := regexp.MustCompile(`\[PROGRESS\] downloaded_bytes=(\d+)`)
 	matches := progressPattern.FindAllStringSubmatch(logs, -1)
 	if len(matches) > 0 {
 		lastMatch := matches[len(matches)-1]
 		if len(lastMatch) > 1 {
 			downloadedBytes, _ := strconv.ParseInt(lastMatch[1], 10, 64)
-
-			// Calculate speed if we have previous data
-			q := query.ModelDownload
-			updates := map[string]any{
-				"downloaded_bytes": downloadedBytes,
-			}
+			updates["downloaded_bytes"] = downloadedBytes
 
 			// Simple speed calculation based on downloaded bytes change
 			if download.DownloadedBytes > 0 && downloadedBytes > download.DownloadedBytes {
@@ -301,37 +424,30 @@ func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batch
 				speedBytesPerSec := bytesPerInterval / progressReportIntervalSeconds
 				updates["download_speed"] = formatSpeed(speedBytesPerSec)
 			}
-
-			_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
-			return err
 		}
 	}
 
-	return nil
+	q := query.ModelDownload
+	_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
+	return err
 }
 
 func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
-	// Get pod logs to extract final size
-	podList := &v1.PodList{}
-	labelSelector := client.MatchingLabels{
-		"job-name": job.Name,
-	}
-	err := r.List(ctx, podList, client.InNamespace(job.Namespace), labelSelector)
-	if err != nil || len(podList.Items) == 0 {
+	pod, err := r.latestPodForJob(ctx, job)
+	if err != nil || pod == nil {
 		return err
 	}
-
-	pod := &podList.Items[0]
 	logs, err := r.getPodLogs(ctx, pod)
 	if err != nil {
 		return err
 	}
 
 	// Parse result: [RESULT] size_bytes=12345 duration_seconds=60 speed_bytes_per_sec=205
-	resultPattern := regexp.MustCompile(`\[RESULT\] size_bytes=(\d+)(?:\s+duration_seconds=(\d+)\s+speed_bytes_per_sec=(\d+))?`)
 	matches := resultPattern.FindStringSubmatch(logs)
 	if len(matches) > 1 {
 		sizeBytes, _ := strconv.ParseInt(matches[1], 10, 64)
+		download.SizeBytes = sizeBytes
+		download.DownloadedBytes = sizeBytes
 
 		q := query.ModelDownload
 		updates := map[string]any{
@@ -341,7 +457,8 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 
 		if len(matches) > 3 && matches[3] != "" {
 			speedBytesPerSec, _ := strconv.ParseInt(matches[3], 10, 64)
-			updates["download_speed"] = formatSpeed(speedBytesPerSec)
+			download.DownloadSpeed = formatSpeed(speedBytesPerSec)
+			updates["download_speed"] = download.DownloadSpeed
 		}
 
 		_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
@@ -373,20 +490,68 @@ func (r *ModelDownloadReconciler) getPodLogs(ctx context.Context, pod *v1.Pod) (
 	return string(buf), nil
 }
 
+// persistFinalLogs stores the pod's log tail on the download record so it can
+// still be inspected after the K8s Job (TTL 7 days) and its pods are GC'd.
+// Returns the raw logs so callers can parse markers without a second fetch.
+func (r *ModelDownloadReconciler) persistFinalLogs(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) string {
+	pod, err := r.latestPodForJob(ctx, job)
+	if err != nil || pod == nil {
+		return ""
+	}
+
+	logs, err := r.getPodLogs(ctx, pod)
+	if err != nil || logs == "" {
+		return ""
+	}
+
+	now := time.Now()
+	q := query.ModelDownload
+	if _, err := q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(map[string]any{
+		"logs":          truncateLogTail(logs, maxStoredLogBytes),
+		"logs_saved_at": now,
+	}); err != nil {
+		klog.Warningf("failed to persist final logs for download %d: %v", download.ID, err)
+	}
+	return logs
+}
+
+// truncateLogTail keeps at most maxBytes from the end of the logs, starting at
+// a line boundary so the stored tail stays readable.
+func truncateLogTail(logs string, maxBytes int) string {
+	if len(logs) <= maxBytes {
+		return logs
+	}
+	tail := logs[len(logs)-maxBytes:]
+	if idx := strings.IndexByte(tail, '\n'); idx >= 0 && idx+1 < len(tail) {
+		tail = tail[idx+1:]
+	}
+	return tail
+}
+
+// parseDescriptionFromLogs extracts the repo summary the download job printed
+// as a "[DESC] ..." line (taken from the downloaded README). Empty if absent.
+func parseDescriptionFromLogs(logs string) string {
+	if logs == "" {
+		return ""
+	}
+	matches := descPattern.FindAllStringSubmatch(logs, -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(matches[len(matches)-1][1])
+}
+
 // extractFailureReason reads the failed pod's logs (and termination state) and
 // stores a concise, human-readable reason on the download record so users can
 // understand why a download failed instead of seeing an empty message.
 func (r *ModelDownloadReconciler) extractFailureReason(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
 	q := query.ModelDownload
 
-	podList := &v1.PodList{}
-	err := r.List(ctx, podList, client.InNamespace(job.Namespace), client.MatchingLabels{"job-name": job.Name})
-	if err != nil || len(podList.Items) == 0 {
+	pod, err := r.latestPodForJob(ctx, job)
+	if err != nil || pod == nil {
 		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, "Download job failed (pod not found)")
 		return err
 	}
-
-	pod := &podList.Items[0]
 
 	// Prefer the container termination reason when available (e.g. OOMKilled).
 	for i := range pod.Status.ContainerStatuses {
@@ -479,11 +644,84 @@ func formatSpeed(bytesPerSec int64) string {
 	return fmt.Sprintf("%.2f GB/s", float64(bytesPerSec)/float64(bytesInGB))
 }
 
-func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, download *model.ModelDownload) error {
+// downloadSourceURL returns the public page of the downloaded repo on its
+// source site, used as the dataset's WebURL and description fallback.
+func downloadSourceURL(download *model.ModelDownload) string {
+	if download.Source == model.ModelSourceHuggingFace {
+		if download.Category == model.DownloadCategoryDataset {
+			return "https://huggingface.co/datasets/" + download.Name
+		}
+		return "https://huggingface.co/" + download.Name
+	}
+	if download.Category == model.DownloadCategoryDataset {
+		return "https://modelscope.cn/datasets/" + download.Name
+	}
+	return "https://modelscope.cn/models/" + download.Name
+}
+
+// datasetDescriptionForDownload builds the dataset description. It prefers the
+// summary extracted from the repo's README by the download job; otherwise it
+// falls back to a description tied to the specific repo (name/source/revision).
+func datasetDescriptionForDownload(download *model.ModelDownload, readmeDesc string) string {
+	if readmeDesc != "" {
+		return readmeDesc
+	}
+
+	var sourceLabel string
+	if download.Source == model.ModelSourceModelScope {
+		sourceLabel = "ModelScope"
+	} else {
+		sourceLabel = "HuggingFace"
+	}
+	var resourceLabel string
+	if download.Category == model.DownloadCategoryDataset {
+		resourceLabel = "数据集"
+	} else {
+		resourceLabel = "模型"
+	}
+
+	desc := fmt.Sprintf("%s 上的%s %s", sourceLabel, resourceLabel, download.Name)
+	if download.Revision != "" {
+		desc += fmt.Sprintf("（版本 %s）", download.Revision)
+	}
+	return desc
+}
+
+func datasetExtraForDownload(
+	existing model.ExtraContent, download *model.ModelDownload, sourceURL string, repositoryTags []string,
+) model.ExtraContent {
+	filteredTags := existing.Tags[:0]
+	for _, tag := range existing.Tags {
+		if tag != "auto-download" {
+			filteredTags = append(filteredTags, tag)
+		}
+	}
+	existing.Tags = filteredTags
+	for _, candidate := range append([]string{string(download.Source)}, repositoryTags...) {
+		if candidate == "" {
+			continue
+		}
+		hasTag := false
+		for _, tag := range existing.Tags {
+			if tag == candidate {
+				hasTag = true
+				break
+			}
+		}
+		if !hasTag {
+			existing.Tags = append(existing.Tags, candidate)
+		}
+	}
+	existing.WebURL = &sourceURL
+	existing.Editable = false
+	return existing
+}
+
+func (r *ModelDownloadReconciler) createDatasetForModel(
+	ctx context.Context, download *model.ModelDownload, readmeDesc string, repositoryTags []string,
+) error {
 	// Create a dataset record for the downloaded model or dataset
 	qDataset := query.Dataset
-	qUserDataset := query.UserDataset
-	qAccountDataset := query.AccountDataset
 
 	// 根据 category 确定数据类型
 	var dataType model.DataType
@@ -496,6 +734,9 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 		resourceLabel = "模型"
 	}
 
+	describe := datasetDescriptionForDownload(download, readmeDesc)
+	sourceURL := downloadSourceURL(download)
+
 	// Check if dataset already exists for this resource (check by name only, regardless of type)
 	// This prevents creating duplicate records with different types
 	// First check for non-deleted records
@@ -504,32 +745,20 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 		First()
 
 	if existingDataset != nil {
-		// If exists but type is different, update it to the correct type
 		if existingDataset.Type != dataType {
 			klog.Warningf("Dataset %s exists with wrong type %s, updating to %s", download.Name, existingDataset.Type, dataType)
-			_, err := qDataset.WithContext(ctx).
-				Where(qDataset.ID.Eq(existingDataset.ID)).
-				Update(qDataset.Type, dataType)
-			if err != nil {
-				klog.Errorf("Failed to update dataset type: %v", err)
-			}
-			// Also update the description
-			_, _ = qDataset.WithContext(ctx).
-				Where(qDataset.ID.Eq(existingDataset.ID)).
-				Update(qDataset.Describe, fmt.Sprintf("从 %s 下载的%s",
-					map[model.ModelSource]string{model.ModelSourceModelScope: "ModelScope", model.ModelSourceHuggingFace: "HuggingFace"}[download.Source],
-					resourceLabel))
+		}
+		extra := datasetExtraForDownload(existingDataset.Extra.Data(), download, sourceURL, repositoryTags)
+		if _, err := qDataset.WithContext(ctx).Where(qDataset.ID.Eq(existingDataset.ID)).Updates(map[string]any{
+			"type":       dataType,
+			"describe":   describe,
+			"extra":      datatypes.NewJSONType(extra),
+			"size_bytes": download.SizeBytes,
+		}); err != nil {
+			return fmt.Errorf("failed to update existing dataset metadata: %w", err)
 		}
 		klog.V(logVerboseLevelDebug).Infof("Dataset already exists for %s %s (dataset ID: %d)", resourceLabel, download.Name, existingDataset.ID)
-		return nil
-	}
-
-	// 根据来源格式化描述信息
-	var sourceLabel string
-	if download.Source == model.ModelSourceModelScope {
-		sourceLabel = "ModelScope"
-	} else {
-		sourceLabel = "HuggingFace"
+		return r.ensureDatasetAssociations(ctx, existingDataset.ID, download.CreatorID)
 	}
 
 	// Check for soft-deleted records
@@ -547,16 +776,20 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 			return fmt.Errorf("failed to restore soft-deleted dataset: %w", err)
 		}
 
-		// Update type and description if needed
+		extra := datasetExtraForDownload(softDeletedDataset.Extra.Data(), download, sourceURL, repositoryTags)
 		updates := map[string]any{
-			"type":     dataType,
-			"describe": fmt.Sprintf("从 %s 下载的%s", sourceLabel, resourceLabel),
+			"type":       dataType,
+			"describe":   describe,
+			"extra":      datatypes.NewJSONType(extra),
+			"size_bytes": download.SizeBytes,
 		}
-		_, _ = qDataset.WithContext(ctx).
+		if _, err := qDataset.WithContext(ctx).
 			Where(qDataset.ID.Eq(softDeletedDataset.ID)).
-			Updates(updates)
+			Updates(updates); err != nil {
+			return fmt.Errorf("failed to update restored dataset metadata: %w", err)
+		}
 
-		return nil
+		return r.ensureDatasetAssociations(ctx, softDeletedDataset.ID, download.CreatorID)
 	}
 
 	// 将前端路径(如public/222/...)转换为物理路径(如sugon-gpu-incoming/222/...)用于存储访问
@@ -564,13 +797,15 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 
 	// Create dataset record
 	dataset := &model.Dataset{
-		Name:     download.Name,
-		URL:      datasetURL,
-		Describe: fmt.Sprintf("从 %s 下载的%s", sourceLabel, resourceLabel),
-		Type:     dataType,
-		UserID:   download.CreatorID,
+		Name:      download.Name,
+		URL:       datasetURL,
+		Describe:  describe,
+		Type:      dataType,
+		UserID:    download.CreatorID,
+		SizeBytes: download.SizeBytes,
 		Extra: datatypes.NewJSONType(model.ExtraContent{
-			Tags:     []string{string(download.Source), "auto-download"},
+			Tags:     datasetExtraForDownload(model.ExtraContent{}, download, sourceURL, repositoryTags).Tags,
+			WebURL:   &sourceURL,
 			Editable: false,
 		}),
 	}
@@ -579,26 +814,44 @@ func (r *ModelDownloadReconciler) createDatasetForModel(ctx context.Context, dow
 		return fmt.Errorf("failed to create dataset: %w", err)
 	}
 
-	// Create user-dataset association
-	userDataset := &model.UserDataset{
-		UserID:    download.CreatorID,
-		DatasetID: dataset.ID,
-	}
-	if err := qUserDataset.WithContext(ctx).Create(userDataset); err != nil {
-		return fmt.Errorf("failed to create user-dataset association: %w", err)
-	}
-
-	// 所有模型都下载到公共空间,创建account-dataset关联(AccountID: 1 is public)
-	accountDataset := &model.AccountDataset{
-		AccountID: 1,
-		DatasetID: dataset.ID,
-	}
-	if err := qAccountDataset.WithContext(ctx).Create(accountDataset); err != nil {
-		klog.Warningf("Failed to create account-dataset association: %v", err)
-		// Don't fail if public association fails
+	if err := r.ensureDatasetAssociations(ctx, dataset.ID, download.CreatorID); err != nil {
+		return err
 	}
 
 	klog.Infof("Created dataset for %s %s (dataset ID: %d)", resourceLabel, download.Name, dataset.ID)
+	return nil
+}
+
+func (r *ModelDownloadReconciler) ensureDatasetAssociations(
+	ctx context.Context, datasetID, userID uint,
+) error {
+	qUserDataset := query.UserDataset
+	if _, err := qUserDataset.WithContext(ctx).
+		Where(qUserDataset.UserID.Eq(userID), qUserDataset.DatasetID.Eq(datasetID)).
+		First(); err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to query user-dataset association: %w", err)
+		}
+		if err := qUserDataset.WithContext(ctx).Create(&model.UserDataset{
+			UserID: userID, DatasetID: datasetID,
+		}); err != nil {
+			return fmt.Errorf("failed to create user-dataset association: %w", err)
+		}
+	}
+
+	qAccountDataset := query.AccountDataset
+	if _, err := qAccountDataset.WithContext(ctx).
+		Where(qAccountDataset.AccountID.Eq(model.DefaultAccountID), qAccountDataset.DatasetID.Eq(datasetID)).
+		First(); err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to query account-dataset association: %w", err)
+		}
+		if err := qAccountDataset.WithContext(ctx).Create(&model.AccountDataset{
+			AccountID: model.DefaultAccountID, DatasetID: datasetID,
+		}); err != nil {
+			return fmt.Errorf("failed to create account-dataset association: %w", err)
+		}
+	}
 	return nil
 }
 

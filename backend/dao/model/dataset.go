@@ -28,7 +28,8 @@ type Dataset struct {
 	Extra      datatypes.JSONType[ExtraContent] `gorm:"comment:额外信息(tags、weburl等)"`
 	UserID     uint
 	User       User
-	MountCount int `gorm:"column:mount_count;not null;default:0;comment:mount count"`
+	MountCount int   `gorm:"column:mount_count;not null;default:0;comment:mount count"`
+	SizeBytes  int64 `gorm:"not null;default:0;comment:资源文件总大小(字节)"`
 
 	UserDatasets    []UserDataset
 	AccountDatasets []AccountDataset

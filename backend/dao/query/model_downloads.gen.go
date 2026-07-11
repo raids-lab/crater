@@ -42,6 +42,27 @@ func newModelDownload(db *gorm.DB, opts ...gen.DOOption) modelDownload {
 	_modelDownload.DownloadSpeed = field.NewString(tableName, "download_speed")
 	_modelDownload.Status = field.NewString(tableName, "status")
 	_modelDownload.Message = field.NewString(tableName, "message")
+	_modelDownload.Logs = field.NewString(tableName, "logs")
+	_modelDownload.LogsSavedAt = field.NewTime(tableName, "logs_saved_at")
+	_modelDownload.Organization = field.NewString(tableName, "organization")
+	_modelDownload.LogoURL = field.NewString(tableName, "logo_url")
+	_modelDownload.SourceURL = field.NewString(tableName, "source_url")
+	_modelDownload.DisplayName = field.NewString(tableName, "display_name")
+	_modelDownload.SourceDescription = field.NewString(tableName, "source_description")
+	_modelDownload.SourceReadme = field.NewString(tableName, "source_readme")
+	_modelDownload.License = field.NewString(tableName, "license")
+	_modelDownload.Task = field.NewString(tableName, "task")
+	_modelDownload.Library = field.NewString(tableName, "library")
+	_modelDownload.ModelType = field.NewString(tableName, "model_type")
+	_modelDownload.ParameterCount = field.NewInt64(tableName, "parameter_count")
+	_modelDownload.SourcePrivate = field.NewBool(tableName, "source_private")
+	_modelDownload.SourceGated = field.NewBool(tableName, "source_gated")
+	_modelDownload.SourceLoginRequired = field.NewBool(tableName, "source_login_required")
+	_modelDownload.SourceDownloads = field.NewInt64(tableName, "source_downloads")
+	_modelDownload.SourceLikes = field.NewInt64(tableName, "source_likes")
+	_modelDownload.SourceCreatedAt = field.NewTime(tableName, "source_created_at")
+	_modelDownload.SourceUpdatedAt = field.NewTime(tableName, "source_updated_at")
+	_modelDownload.MetadataRefreshedAt = field.NewTime(tableName, "metadata_refreshed_at")
 	_modelDownload.JobName = field.NewString(tableName, "job_name")
 	_modelDownload.CreatorID = field.NewUint(tableName, "creator_id")
 	_modelDownload.ReferenceCount = field.NewInt(tableName, "reference_count")
@@ -69,25 +90,46 @@ func newModelDownload(db *gorm.DB, opts ...gen.DOOption) modelDownload {
 type modelDownload struct {
 	modelDownloadDo modelDownloadDo
 
-	ALL             field.Asterisk
-	ID              field.Uint
-	CreatedAt       field.Time
-	UpdatedAt       field.Time
-	DeletedAt       field.Field
-	Name            field.String
-	Source          field.String
-	Category        field.String
-	Revision        field.String // 版本/分支/commit
-	Path            field.String // 实际下载路径
-	SizeBytes       field.Int64  // 文件总大小(字节)
-	DownloadedBytes field.Int64  // 已下载大小(字节)
-	DownloadSpeed   field.String // 下载速度(如: 10MB/s)
-	Status          field.String // 下载状态
-	Message         field.String // 状态消息(错误信息等)
-	JobName         field.String // K8s Job名称
-	CreatorID       field.Uint   // 首个发起下载的用户ID
-	ReferenceCount  field.Int    // 引用计数
-	Creator         modelDownloadBelongsToCreator
+	ALL                 field.Asterisk
+	ID                  field.Uint
+	CreatedAt           field.Time
+	UpdatedAt           field.Time
+	DeletedAt           field.Field
+	Name                field.String
+	Source              field.String
+	Category            field.String
+	Revision            field.String // 版本/分支/commit
+	Path                field.String // 实际下载路径
+	SizeBytes           field.Int64  // 文件总大小(字节)
+	DownloadedBytes     field.Int64  // 已下载大小(字节)
+	DownloadSpeed       field.String // 下载速度(如: 10MB/s)
+	Status              field.String // 下载状态
+	Message             field.String // 状态消息(错误信息等)
+	Logs                field.String // 终态时保存的Pod日志(K8s Job被GC后仍可查看)
+	LogsSavedAt         field.Time   // 日志保存时间
+	Organization        field.String // 源站组织或作者
+	LogoURL             field.String // 源站组织头像地址
+	SourceURL           field.String // 源站仓库详情地址
+	DisplayName         field.String // 源站展示名称
+	SourceDescription   field.String // 源站简介摘要
+	SourceReadme        field.String // 源站README内容(截断保存)
+	License             field.String // 源站许可证
+	Task                field.String // 源站任务分类
+	Library             field.String // 源站框架或库
+	ModelType           field.String // 源站模型类型
+	ParameterCount      field.Int64  // 模型参数量
+	SourcePrivate       field.Bool   // 源站是否私有
+	SourceGated         field.Bool   // 源站是否需要申请访问
+	SourceLoginRequired field.Bool   // 源站是否要求登录下载
+	SourceDownloads     field.Int64  // 源站下载次数
+	SourceLikes         field.Int64  // 源站点赞次数
+	SourceCreatedAt     field.Time   // 源站创建时间
+	SourceUpdatedAt     field.Time   // 源站更新时间
+	MetadataRefreshedAt field.Time   // 源站元数据刷新时间
+	JobName             field.String // K8s Job名称
+	CreatorID           field.Uint   // 首个发起下载的用户ID
+	ReferenceCount      field.Int    // 引用计数
+	Creator             modelDownloadBelongsToCreator
 
 	fieldMap map[string]field.Expr
 }
@@ -118,6 +160,27 @@ func (m *modelDownload) updateTableName(table string) *modelDownload {
 	m.DownloadSpeed = field.NewString(table, "download_speed")
 	m.Status = field.NewString(table, "status")
 	m.Message = field.NewString(table, "message")
+	m.Logs = field.NewString(table, "logs")
+	m.LogsSavedAt = field.NewTime(table, "logs_saved_at")
+	m.Organization = field.NewString(table, "organization")
+	m.LogoURL = field.NewString(table, "logo_url")
+	m.SourceURL = field.NewString(table, "source_url")
+	m.DisplayName = field.NewString(table, "display_name")
+	m.SourceDescription = field.NewString(table, "source_description")
+	m.SourceReadme = field.NewString(table, "source_readme")
+	m.License = field.NewString(table, "license")
+	m.Task = field.NewString(table, "task")
+	m.Library = field.NewString(table, "library")
+	m.ModelType = field.NewString(table, "model_type")
+	m.ParameterCount = field.NewInt64(table, "parameter_count")
+	m.SourcePrivate = field.NewBool(table, "source_private")
+	m.SourceGated = field.NewBool(table, "source_gated")
+	m.SourceLoginRequired = field.NewBool(table, "source_login_required")
+	m.SourceDownloads = field.NewInt64(table, "source_downloads")
+	m.SourceLikes = field.NewInt64(table, "source_likes")
+	m.SourceCreatedAt = field.NewTime(table, "source_created_at")
+	m.SourceUpdatedAt = field.NewTime(table, "source_updated_at")
+	m.MetadataRefreshedAt = field.NewTime(table, "metadata_refreshed_at")
 	m.JobName = field.NewString(table, "job_name")
 	m.CreatorID = field.NewUint(table, "creator_id")
 	m.ReferenceCount = field.NewInt(table, "reference_count")
@@ -149,7 +212,7 @@ func (m *modelDownload) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (m *modelDownload) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 18)
+	m.fieldMap = make(map[string]field.Expr, 39)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
@@ -164,6 +227,27 @@ func (m *modelDownload) fillFieldMap() {
 	m.fieldMap["download_speed"] = m.DownloadSpeed
 	m.fieldMap["status"] = m.Status
 	m.fieldMap["message"] = m.Message
+	m.fieldMap["logs"] = m.Logs
+	m.fieldMap["logs_saved_at"] = m.LogsSavedAt
+	m.fieldMap["organization"] = m.Organization
+	m.fieldMap["logo_url"] = m.LogoURL
+	m.fieldMap["source_url"] = m.SourceURL
+	m.fieldMap["display_name"] = m.DisplayName
+	m.fieldMap["source_description"] = m.SourceDescription
+	m.fieldMap["source_readme"] = m.SourceReadme
+	m.fieldMap["license"] = m.License
+	m.fieldMap["task"] = m.Task
+	m.fieldMap["library"] = m.Library
+	m.fieldMap["model_type"] = m.ModelType
+	m.fieldMap["parameter_count"] = m.ParameterCount
+	m.fieldMap["source_private"] = m.SourcePrivate
+	m.fieldMap["source_gated"] = m.SourceGated
+	m.fieldMap["source_login_required"] = m.SourceLoginRequired
+	m.fieldMap["source_downloads"] = m.SourceDownloads
+	m.fieldMap["source_likes"] = m.SourceLikes
+	m.fieldMap["source_created_at"] = m.SourceCreatedAt
+	m.fieldMap["source_updated_at"] = m.SourceUpdatedAt
+	m.fieldMap["metadata_refreshed_at"] = m.MetadataRefreshedAt
 	m.fieldMap["job_name"] = m.JobName
 	m.fieldMap["creator_id"] = m.CreatorID
 	m.fieldMap["reference_count"] = m.ReferenceCount

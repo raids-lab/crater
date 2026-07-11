@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 import { useQuery } from '@tanstack/react-query'
 import { Link, linkOptions } from '@tanstack/react-router'
-import { BotIcon, DatabaseZapIcon, DownloadIcon, PackageIcon, PlusIcon } from 'lucide-react'
+import { DownloadIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -27,6 +27,7 @@ import ListedButton from '@/components/button/listed-button'
 import { DataCreateForm } from '@/components/file/data-create-form'
 import DataList from '@/components/layout/data-list'
 import { ModelDownloadDialog } from '@/components/model/model-download-dialog'
+import RepositorySourceMark from '@/components/model/repository-source-mark'
 import SandwichSheet from '@/components/sheet/sandwich-sheet'
 
 import { IDataset } from '@/services/api/dataset'
@@ -83,32 +84,38 @@ export function DataView({ apiGetDataset, sourceType }: DatesetTableProps) {
           id: dataset.id,
           name: dataset.name,
           desc: dataset.describe,
-          tag: dataset.extra.tag || [],
+          tag: (dataset.extra.tag || []).filter((tag) => tag !== 'auto-download').slice(0, 4),
           createdAt: dataset.createdAt,
+          updatedAt: dataset.updatedAt,
+          sourceUpdatedAt: dataset.sourceUpdatedAt,
           mountCount: dataset.mountCount,
+          sizeBytes: dataset.sizeBytes,
+          downloadCount: dataset.downloadCount,
+          likes: dataset.likes,
+          source: dataset.source,
+          organization: dataset.organization,
+          organizationUrl: dataset.organizationUrl,
           owner: dataset.userInfo,
         })) || []
       }
       title={sourceTitle}
       mainArea={(item) => {
+        const repositorySource = item.tag.find(
+          (tag) => tag === 'huggingface' || tag === 'modelscope'
+        )
         return (
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className={`from-primary/15 to-primary/5 text-primary ring-primary/10 flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br p-2 ring-1`}
-            >
-              {sourceTitle === '模型' ? (
-                <BotIcon className="size-6" />
-              ) : sourceTitle === '数据集' ? (
-                <DatabaseZapIcon className="size-6" />
-              ) : (
-                <PackageIcon className="size-6" />
-              )}
-            </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <RepositorySourceMark
+              source={repositorySource}
+              organization={item.organization || item.name.split('/')[0]}
+              logoURL={item.organizationUrl}
+              category={sourceType || 'dataset'}
+            />
             <TooltipLink
               {...getLinkOptions(sourceType || 'dataset')}
               params={{ id: `${item.id}` }}
               name={
-                <p className="max-w-full truncate text-left font-semibold sm:max-w-[400px]">
+                <p className="max-w-full truncate text-left font-mono text-[15px] font-semibold sm:max-w-[400px]">
                   {item.name}
                 </p>
               }

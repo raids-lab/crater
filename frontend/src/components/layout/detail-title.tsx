@@ -24,15 +24,17 @@ interface DetailTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: ReactNode
   className?: string
   icon?: LucideIcon
+  iconComponent?: ReactNode
 }
 
 const DetailTitle = ({ title, description, children, className, ...props }: DetailTitleProps) => {
   return (
     <div className={cn('flex flex-row items-center justify-between gap-3', className)}>
       <div className="flex items-center space-x-4">
-        {props.icon && (
+        {(props.icon || props.iconComponent) && (
           <div className="bg-muted flex h-20 w-20 items-center justify-center rounded-md border">
-            <props.icon className="text-muted-foreground size-10" />
+            {props.iconComponent}
+            {props.icon && <props.icon className="text-muted-foreground size-10" />}
           </div>
         )}
         <div>

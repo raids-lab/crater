@@ -60,7 +60,10 @@ export const TimeDistance = ({ date, className }: { date?: string; className?: s
         locale,
         addSuffix: true,
       })
-      setTimeDiff(timeDifference.replace(/^[^\d]*\s*/, ''))
+      // Strip approximate prefixes, but preserve phrases without digits (for
+      // example, "less than a minute ago") so recent times never render blank.
+      const stripped = timeDifference.replace(/^[^\d]*\s*/, '')
+      setTimeDiff(stripped === '' ? timeDifference : stripped)
     }
 
     updateTimeDiff()

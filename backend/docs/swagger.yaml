@@ -604,6 +604,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.ModelDownloadListResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
     properties:
       code:
@@ -1193,6 +1203,11 @@ definitions:
     required:
     - name
     type: object
+  internal_handler.DownloadActionReq:
+    properties:
+      token:
+        type: string
+    type: object
   internal_handler.FilePermission:
     enum:
     - 0
@@ -1378,14 +1393,34 @@ definitions:
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
     type: object
+  internal_handler.ModelDownloadListResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.ModelDownloadResp'
+        type: array
+      summary:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total:
+        type: integer
+    type: object
   internal_handler.ModelDownloadResp:
     properties:
+      canManage:
+        type: boolean
+      canViewLogs:
+        type: boolean
       category:
         type: string
       createdAt:
         type: string
       creatorId:
         type: integer
+      displayName:
+        type: string
       downloadSpeed:
         type: string
       downloadedBytes:
@@ -1394,10 +1429,18 @@ definitions:
         type: integer
       jobName:
         type: string
+      library:
+        type: string
+      license:
+        type: string
       message:
+        type: string
+      modelType:
         type: string
       name:
         type: string
+      parameterCount:
+        type: integer
       path:
         type: string
       referenceCount:
@@ -1408,10 +1451,20 @@ definitions:
         type: integer
       source:
         type: string
+      sourceCreatedAt:
+        type: string
+      sourceUpdatedAt:
+        type: string
+      sourceUrl:
+        type: string
       status:
+        type: string
+      task:
         type: string
       updatedAt:
         type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
     type: object
   internal_handler.NodeAnnotation:
     properties:
@@ -6528,11 +6581,27 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取当前用户的所有模型下载任务,可通过category参数过滤
+      description: 下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)
       parameters:
       - description: '过滤类别: model 或 dataset'
         in: query
         name: category
+        type: string
+      - description: 页码(从1开始);不传则返回全量数组
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认20,最大100
+        in: query
+        name: pageSize
+        type: integer
+      - description: '过滤状态: Pending/Downloading/Paused/Ready/Failed'
+        in: query
+        name: status
+        type: string
+      - description: 按名称模糊搜索
+        in: query
+        name: search
         type: string
       produces:
       - application/json
@@ -6540,17 +6609,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp'
       security:
       - Bearer: []
-      summary: 获取用户的模型下载任务列表
+      summary: 获取模型下载任务列表
       tags:
       - ModelDownload
   /v1/models/downloads/{id}:
     delete:
       consumes:
       - application/json
-      description: 删除指定的模型下载任务记录
+      description: 删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
       parameters:
       - description: 下载任务ID
         in: path
@@ -6595,7 +6664,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取模型下载任务的实时日志
+      description: 返回定时持久化到下载记录中的日志
       parameters:
       - description: 下载任务ID
         in: path
@@ -6611,7 +6680,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
       security:
       - Bearer: []
-      summary: 获取模型下载任务的 Pod 日志
+      summary: 获取模型下载任务日志
       tags:
       - ModelDownload
   /v1/models/downloads/{id}/pause:
@@ -6648,6 +6717,11 @@ paths:
         name: id
         required: true
         type: integer
+      - description: 可选的临时访问令牌
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/internal_handler.DownloadActionReq'
       produces:
       - application/json
       responses:
@@ -6671,6 +6745,11 @@ paths:
         name: id
         required: true
         type: integer
+      - description: 可选的临时访问令牌
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/internal_handler.DownloadActionReq'
       produces:
       - application/json
       responses:
