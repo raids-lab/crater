@@ -408,14 +408,16 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       <ModelDownloadTokenDialog
         action={tokenAction ?? 'resume'}
         downloadName={download.name}
+        initialRevision={download.revision}
+        source={download.source}
         isPending={resumeMutation.isPending || retryMutation.isPending}
         open={tokenAction !== null}
         onOpenChange={(open) => !open && setTokenAction(null)}
-        onSubmit={(token) => {
+        onSubmit={(token, revision) => {
           if (tokenAction === 'resume') {
             resumeMutation.mutate({ id: download.id, token })
           } else if (tokenAction === 'retry') {
-            retryMutation.mutate({ id: download.id, token })
+            retryMutation.mutate({ id: download.id, token, revision })
           }
         }}
       />

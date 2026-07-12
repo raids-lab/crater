@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,6 +23,40 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/util"
 )
+
+func TestDownloadActionRevisionDistinguishesOmittedAndDefault(t *testing.T) {
+	var omitted DownloadActionReq
+	if err := json.Unmarshal([]byte(`{"token":"temporary"}`), &omitted); err != nil {
+		t.Fatal(err)
+	}
+	if omitted.Revision != nil {
+		t.Fatalf("omitted revision should preserve the failed record revision: %#v", omitted.Revision)
+	}
+
+	var defaultBranch DownloadActionReq
+	if err := json.Unmarshal([]byte(`{"revision":""}`), &defaultBranch); err != nil {
+		t.Fatal(err)
+	}
+	if defaultBranch.Revision == nil || *defaultBranch.Revision != "" {
+		t.Fatalf("explicit empty revision should select the source default: %#v", defaultBranch.Revision)
+	}
+}
+
+func TestNormalizeRetryRevision(t *testing.T) {
+	revision := "  master  "
+	action := DownloadActionReq{Revision: &revision}
+	if err := normalizeRetryRevision(&action); err != nil {
+		t.Fatal(err)
+	}
+	if action.Revision == nil || *action.Revision != "master" {
+		t.Fatalf("retry revision should be trimmed: %#v", action.Revision)
+	}
+
+	tooLong := strings.Repeat("x", maxDownloadRevisionLength+1)
+	if err := normalizeRetryRevision(&DownloadActionReq{Revision: &tooLong}); err == nil {
+		t.Fatal("overlong retry revision should be rejected")
+	}
+}
 
 func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 	download := &model.ModelDownload{

@@ -646,11 +646,13 @@ export function ModelDownloadsPage() {
         <ModelDownloadTokenDialog
           action={tokenTarget.action}
           downloadName={tokenTarget.download.name}
+          initialRevision={tokenTarget.download.revision}
+          source={tokenTarget.download.source}
           isPending={isResuming || isRetrying}
           open
           onOpenChange={(open) => !open && setTokenTarget(null)}
-          onSubmit={(token) => {
-            const request = { id: tokenTarget.download.id, token }
+          onSubmit={(token, revision) => {
+            const request = { id: tokenTarget.download.id, token, revision }
             if (tokenTarget.action === 'resume') {
               resumeDownload(request)
             } else {

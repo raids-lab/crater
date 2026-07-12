@@ -707,6 +707,8 @@
   "modelDownload.action.retry.title": "Retry {{name}}",
   "modelDownload.action.retryFailed": "再試行に失敗しました",
   "modelDownload.action.retrySuccess": "再ダウンロードを開始しました",
+  "modelDownload.action.revisionLabel": "再試行するリビジョン",
+  "modelDownload.action.revisionPlaceholder": "例: {{defaultRevision}}、タグ、commit ID。空欄の場合はデフォルトブランチ",
   "modelDownload.action.tokenDescription": "Enter a temporary token if the repository requires access. It is used only for this task and is not stored.",
   "modelDownload.action.tokenLabel": "Repository access token",
   "modelDownload.action.tokenPlaceholder": "Optional: HuggingFace or ModelScope token",

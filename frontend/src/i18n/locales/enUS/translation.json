@@ -707,6 +707,8 @@
   "modelDownload.action.retry.title": "Retry {{name}}",
   "modelDownload.action.retryFailed": "Failed to retry download",
   "modelDownload.action.retrySuccess": "Download restarted",
+  "modelDownload.action.revisionLabel": "Retry revision",
+  "modelDownload.action.revisionPlaceholder": "For example: {{defaultRevision}}, a tag, or commit ID; leave empty for the default branch",
   "modelDownload.action.tokenDescription": "Enter a temporary token if the repository requires access. It is used only for this task and is not stored.",
   "modelDownload.action.tokenLabel": "Repository access token",
   "modelDownload.action.tokenPlaceholder": "Optional: HuggingFace or ModelScope token",

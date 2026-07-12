@@ -707,6 +707,8 @@
   "modelDownload.action.retry.title": "重试 {{name}}",
   "modelDownload.action.retryFailed": "重试失败",
   "modelDownload.action.retrySuccess": "已重新下载",
+  "modelDownload.action.revisionLabel": "重试版本",
+  "modelDownload.action.revisionPlaceholder": "例如：{{defaultRevision}}、标签或 commit ID；留空使用默认分支",
   "modelDownload.action.tokenDescription": "如果仓库需要访问权限，请输入临时 Token。Token 只用于本次任务，不会保存。",
   "modelDownload.action.tokenLabel": "仓库访问 Token",
   "modelDownload.action.tokenPlaceholder": "可选：输入 HuggingFace 或 ModelScope Token",

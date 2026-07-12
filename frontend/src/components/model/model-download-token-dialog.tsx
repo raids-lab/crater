@@ -32,15 +32,19 @@ import {
 interface ModelDownloadTokenDialogProps {
   action: 'resume' | 'retry'
   downloadName: string
+  initialRevision?: string
+  source?: string
   isPending: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (token?: string) => void
+  onSubmit: (token?: string, revision?: string) => void
 }
 
 export default function ModelDownloadTokenDialog({
   action,
   downloadName,
+  initialRevision,
+  source,
   isPending,
   open,
   onOpenChange,
@@ -48,12 +52,14 @@ export default function ModelDownloadTokenDialog({
 }: ModelDownloadTokenDialogProps) {
   const { t } = useTranslation()
   const [token, setToken] = useState('')
+  const [revision, setRevision] = useState('')
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
       setToken('')
+      setRevision(initialRevision ?? '')
     }
-  }, [open])
+  }, [initialRevision, open])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -66,6 +72,17 @@ export default function ModelDownloadTokenDialog({
             {t('modelDownload.action.tokenDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {action === 'retry' && (
+          <Input
+            value={revision}
+            onChange={(event) => setRevision(event.target.value)}
+            placeholder={t('modelDownload.action.revisionPlaceholder', {
+              defaultRevision: source === 'modelscope' ? 'master' : 'main',
+            })}
+            aria-label={t('modelDownload.action.revisionLabel')}
+            disabled={isPending}
+          />
+        )}
         <Input
           type="password"
           autoComplete="off"
@@ -81,7 +98,7 @@ export default function ModelDownloadTokenDialog({
             disabled={isPending}
             onClick={(event) => {
               event.preventDefault()
-              onSubmit(token.trim() || undefined)
+              onSubmit(token.trim() || undefined, action === 'retry' ? revision.trim() : undefined)
             }}
           >
             {isPending

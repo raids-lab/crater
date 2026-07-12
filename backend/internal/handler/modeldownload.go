@@ -96,6 +96,9 @@ type CreateDownloadReq struct {
 
 type DownloadActionReq struct {
 	Token string `json:"token"`
+	// Revision is optional and only used by retry. A non-nil empty value means
+	// "use the source default branch" while preserving the failed record's path.
+	Revision *string `json:"revision"`
 }
 
 type ModelDownloadResp struct {
@@ -695,7 +698,7 @@ func (mgr *ModelDownloadMgr) requireManagePermission(c *gin.Context, downloadID 
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	path		int	true	"下载任务ID"
-//	@Param			data	body		DownloadActionReq	false	"可选的临时访问令牌"
+//	@Param			data	body		DownloadActionReq	false	"可选的临时访问令牌和重试版本"
 //	@Success		200	{object}	resputil.Response[ModelDownloadResp]
 //	@Router			/v1/models/downloads/{id}/retry [POST]
 func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
@@ -713,64 +716,24 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	if err := normalizeRetryRevision(&action); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 
 	if _, err := mgr.requireManagePermission(c, req.ID); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	q := query.ModelDownload
-
-	// 使用事务和行锁来防止并发重试导致的竞态条件
-	db := query.Use(query.GetDB())
-	var download *model.ModelDownload
-	var newJobName string
-
-	err = db.Transaction(func(tx *query.Query) error {
-		txQ := tx.ModelDownload
-
-		// 使用 FOR UPDATE 锁定记录
-		d, err := txQ.WithContext(c).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where(txQ.ID.Eq(req.ID)).
-			First()
-		if err != nil {
-			return fmt.Errorf("download not found: %w", err)
-		}
-
-		// 再次检查状态（可能被其他请求修改了）
-		if d.Status != model.ModelDownloadStatusFailed {
-			return fmt.Errorf("only failed downloads can be retried, current status: %s", d.Status)
-		}
-
-		// 生成新的 Job 名称并更新
-		newJobName = fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
-		updates := map[string]any{
-			"status":   model.ModelDownloadStatusDownloading,
-			"message":  "",
-			"job_name": newJobName,
-		}
-		_, err = txQ.WithContext(c).Where(txQ.ID.Eq(d.ID)).Updates(updates)
-		if err != nil {
-			return fmt.Errorf("update download record failed: %w", err)
-		}
-
-		d.Status = model.ModelDownloadStatusDownloading
-		d.JobName = newJobName
-		d.Message = ""
-		download = d
-		return nil
-	})
+	download, err := prepareRetryDownload(c, req.ID, token.Username, action.Revision)
 
 	if err != nil {
 		klog.Errorf("retry download transaction failed: %v", err)
-		if strings.Contains(err.Error(), "only failed downloads") {
-			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New(err.Error()))
-		} else {
-			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "retry download failed"))
-		}
+		resputil.HandleError(c, err)
 		return
 	}
+	q := query.ModelDownload
 
 	// 事务成功后提交 Job
 	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
@@ -789,6 +752,86 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 	download.Message = ""
 
 	resputil.Success(c, convertDownloadToResp(download, token))
+}
+
+func normalizeRetryRevision(action *DownloadActionReq) error {
+	if action.Revision == nil {
+		return nil
+	}
+	revision := strings.TrimSpace(*action.Revision)
+	if len(revision) > maxDownloadRevisionLength {
+		return bizerr.BadRequest.ParameterError.New("revision must not exceed 128 characters")
+	}
+	action.Revision = &revision
+	return nil
+}
+
+// prepareRetryDownload updates the failed record under a row lock. Correcting
+// the revision deliberately does not rewrite Path: the source SDK receives the
+// same local directory and can validate/reuse files from the failed attempt.
+func prepareRetryDownload(
+	c *gin.Context, downloadID uint, username string, revision *string,
+) (*model.ModelDownload, error) {
+	db := query.Use(query.GetDB())
+	var download *model.ModelDownload
+	err := db.Transaction(func(tx *query.Query) error {
+		txQ := tx.ModelDownload
+		d, err := txQ.WithContext(c).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(txQ.ID.Eq(downloadID)).
+			First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if d.Status != model.ModelDownloadStatusFailed {
+			return bizerr.Conflict.ResourceStatusError.New(
+				fmt.Sprintf("only failed downloads can be retried, current status: %s", d.Status),
+			)
+		}
+		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
+			return err
+		}
+
+		newJobName := fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
+		updates := map[string]any{
+			"status": model.ModelDownloadStatusDownloading, "message": "", "job_name": newJobName,
+		}
+		if revision != nil {
+			updates["revision"] = *revision
+		}
+		if _, err = txQ.WithContext(c).Where(txQ.ID.Eq(d.ID)).Updates(updates); err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "update download record failed")
+		}
+
+		d.Status, d.JobName, d.Message = model.ModelDownloadStatusDownloading, newJobName, ""
+		if revision != nil {
+			d.Revision = *revision
+		}
+		download = d
+		return nil
+	})
+	return download, err
+}
+
+func checkRetryRevisionConflict(
+	c *gin.Context, txQ *query.Query, download *model.ModelDownload, revision *string,
+) error {
+	if revision == nil || *revision == download.Revision {
+		return nil
+	}
+	conflict, err := txQ.ModelDownload.WithContext(c).
+		Where(txQ.ModelDownload.ID.Neq(download.ID), txQ.ModelDownload.Name.Eq(download.Name),
+			txQ.ModelDownload.Source.Eq(string(download.Source)),
+			txQ.ModelDownload.Category.Eq(string(download.Category)),
+			txQ.ModelDownload.Revision.Eq(*revision)).
+		First()
+	if err == nil && conflict != nil {
+		return bizerr.Conflict.ResourceStatusError.New("download with requested revision already exists")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "check retry revision conflict")
+	}
+	return nil
 }
 
 // DeleteDownload godoc

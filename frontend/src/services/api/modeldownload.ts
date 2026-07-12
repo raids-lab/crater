@@ -29,6 +29,7 @@ export interface CreateModelDownloadReq {
 export interface ModelDownloadActionReq {
   id: number
   token?: string
+  revision?: string
 }
 
 export type ModelDownloadStatus = 'Pending' | 'Downloading' | 'Paused' | 'Ready' | 'Failed'
@@ -104,8 +105,11 @@ export const apiListModelDownloadsPaged = (params: ModelDownloadListParams) => {
 export const apiGetModelDownload = (id: number) =>
   apiV1Get<IResponse<ModelDownload>>(`model-download/models/downloads/${id}`)
 
-export const apiRetryModelDownload = ({ id, token }: ModelDownloadActionReq) =>
-  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/retry`, { token })
+export const apiRetryModelDownload = ({ id, token, revision }: ModelDownloadActionReq) =>
+  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/retry`, {
+    token,
+    revision,
+  })
 
 export const apiPauseModelDownload = (id: number) =>
   apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/pause`, {})
