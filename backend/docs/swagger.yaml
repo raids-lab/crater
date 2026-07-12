@@ -2602,6 +2602,32 @@ paths:
       summary: 获取后端用户认证模式
       tags:
       - Auth
+  /dataset/source-logo/{sourceId}:
+    get:
+      description: 返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点
+      parameters:
+      - description: 来源 ID
+        in: path
+        name: sourceId
+        required: true
+        type: integer
+      produces:
+      - image/png
+      - image/jpeg
+      - image/webp
+      - image/svg+xml
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+      summary: 获取平台缓存的模型或数据集来源 Logo
+      tags:
+      - Dataset
   /metrics:
     get:
       consumes:

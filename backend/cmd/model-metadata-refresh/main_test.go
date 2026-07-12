@@ -15,10 +15,41 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/raids-lab/crater/dao/model"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return fn(request)
+}
+
+func testHTTPClient(fn roundTripFunc) *http.Client {
+	return &http.Client{Transport: fn}
+}
+
+func testResponse(status int, contentType string, body []byte) *http.Response {
+	header := make(http.Header)
+	if contentType != "" {
+		header.Set("Content-Type", contentType)
+	}
+	return &http.Response{
+		StatusCode: status,
+		Header:     header,
+		Body:       io.NopCloser(bytes.NewReader(body)),
+	}
+}
 
 func TestTruncateTextPreservesUTF8(t *testing.T) {
 	text := strings.Repeat("模型介绍", 100)
@@ -28,6 +59,71 @@ func TestTruncateTextPreservesUTF8(t *testing.T) {
 	}
 	if len(truncated) > 101 {
 		t.Fatalf("truncated text exceeds byte limit: %d", len(truncated))
+	}
+}
+
+func TestGetJSONFromEndpointsFallsBack(t *testing.T) {
+	payloadBytes, err := json.Marshal(map[string]string{"name": "model"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := testHTTPClient(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Host == "unavailable.example" {
+			return testResponse(http.StatusNotFound, "text/plain", []byte("unavailable")), nil
+		}
+		return testResponse(http.StatusOK, "application/json", payloadBytes), nil
+	})
+	var payload struct {
+		Name string `json:"name"`
+	}
+	selected, err := getJSONFromEndpoints(
+		client,
+		[]string{"https://unavailable.example", "https://working.example"},
+		"/api/model", &payload,
+	)
+	if err != nil {
+		t.Fatalf("getJSONFromEndpoints() error = %v", err)
+	}
+	if selected != "https://working.example" || payload.Name != "model" {
+		t.Fatalf("selected = %q, payload = %#v", selected, payload)
+	}
+}
+
+func TestFetchLogoCachesOnlyBoundedImages(t *testing.T) {
+	client := testHTTPClient(func(_ *http.Request) (*http.Response, error) {
+		return testResponse(http.StatusOK, "image/png", []byte("small-logo")), nil
+	})
+	data, contentType, err := fetchLogo(client, "https://source.example/logo.png", 32)
+	if err != nil {
+		t.Fatalf("fetchLogo() error = %v", err)
+	}
+	if string(data) != "small-logo" || contentType != "image/png" {
+		t.Fatalf("data = %q, contentType = %q", data, contentType)
+	}
+	if _, _, err := fetchLogo(client, "https://source.example/logo.png", 4); err == nil {
+		t.Fatal("fetchLogo() accepted an oversized image")
+	}
+}
+
+func TestFindDatasetForDownloadSupportsOnePathlessHistoricalRecord(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:metadata_pathless?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDatasetSource{}, &model.Dataset{}); err != nil {
+		t.Fatal(err)
+	}
+	dataset := model.Dataset{Name: "owner/model", URL: "", Type: model.DataTypeModel}
+	if err := db.Create(&dataset).Error; err != nil {
+		t.Fatal(err)
+	}
+	download := &model.ModelDownload{Name: dataset.Name, Category: model.DownloadCategoryModel}
+	found, err := findDatasetForDownload(db, download, "shared/Models/owner/model", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found == nil || found.ID != dataset.ID {
+		t.Fatalf("findDatasetForDownload() = %#v", found)
 	}
 }
 

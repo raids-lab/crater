@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -18,6 +19,8 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 )
+
+const autoDownloadTag = "auto-download"
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -36,7 +39,9 @@ func NewDatasetMgr(_ *RegisterConfig) Manager {
 
 func (mgr *DatasetMgr) GetName() string { return mgr.name }
 
-func (mgr *DatasetMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *DatasetMgr) RegisterPublic(g *gin.RouterGroup) {
+	g.GET("/source-logo/:sourceId", mgr.GetSourceLogo)
+}
 
 func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetDatasets)
@@ -60,6 +65,41 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/share/queue", mgr.AdminShareDatasetWithQueue)
 	g.POST("/cancelshare/user", mgr.AdminCancelShareDatasetWithUser)
 	g.POST("/cancelshare/queue", mgr.AdmincancelShareDatasetWithQueue)
+}
+
+// GetSourceLogo returns a platform-cached public source logo.
+//
+//	@Summary		获取平台缓存的模型或数据集来源 Logo
+//	@Description	返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点
+//	@Tags			Dataset
+//	@Produce		image/png,image/jpeg,image/webp,image/svg+xml
+//	@Param			sourceId	path	int	true	"来源 ID"
+//	@Success		200		{file}	binary
+//	@Failure		400
+//	@Failure		404
+//	@Router			/dataset/source-logo/{sourceId} [get]
+func (mgr *DatasetMgr) GetSourceLogo(c *gin.Context) {
+	var req struct {
+		SourceID uint `uri:"sourceId" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&req); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	var source model.ModelDatasetSource
+	if err := query.GetDB().WithContext(c).
+		Select("logo_data", "logo_content_type", "updated_at").
+		First(&source, req.SourceID).Error; err != nil || len(source.LogoData) == 0 {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	contentType := source.LogoContentType
+	if contentType == "" {
+		contentType = http.DetectContentType(source.LogoData)
+	}
+	c.Header("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800")
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Data(http.StatusOK, contentType, source.LogoData)
 }
 
 type DatasetResp struct {
@@ -817,7 +857,7 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	tempExtra := dataset.Extra.Data()
 	tempExtra.Tags = make([]string, 0, len(req.Tags))
 	for _, tag := range req.Tags {
-		if tag != "auto-download" {
+		if tag != autoDownloadTag {
 			tempExtra.Tags = append(tempExtra.Tags, tag)
 		}
 	}
@@ -1071,6 +1111,7 @@ func convertDataset(c *gin.Context, dataset *model.Dataset) DatasetResp {
 	return responses[0]
 }
 
+//nolint:gocyclo // Batch enrichment deliberately keeps legacy and source-table fallback in one pass.
 func convertDatasetBatch(c *gin.Context, datasets []*model.Dataset) ([]DatasetResp, error) {
 	names := make([]string, 0, len(datasets))
 	seenNames := make(map[string]struct{}, len(datasets))
@@ -1102,16 +1143,71 @@ func convertDatasetBatch(c *gin.Context, datasets []*model.Dataset) ([]DatasetRe
 			}
 		}
 	}
+	sourceIDs := make([]uint, 0, len(datasets))
+	for _, dataset := range datasets {
+		if dataset.ModelDatasetSourceID != nil {
+			sourceIDs = append(sourceIDs, *dataset.ModelDatasetSourceID)
+		}
+	}
+	sourcesByID := make(map[uint]*model.ModelDatasetSource, len(sourceIDs))
+	if len(sourceIDs) > 0 {
+		var sources []*model.ModelDatasetSource
+		if err := query.GetDB().WithContext(c).Where("id IN ?", sourceIDs).Find(&sources).Error; err != nil {
+			return nil, err
+		}
+		for _, source := range sources {
+			sourcesByID[source.ID] = source
+		}
+	}
 
 	responses := make([]DatasetResp, 0, len(datasets))
 	for _, dataset := range datasets {
 		resp := baseDatasetResp(dataset)
-		if download := downloadsByResource[resourceMetadataKey(dataset.Name, string(dataset.Type))]; download != nil {
+		if dataset.ModelDatasetSourceID != nil && sourcesByID[*dataset.ModelDatasetSourceID] != nil {
+			enrichDatasetRespFromSource(&resp, sourcesByID[*dataset.ModelDatasetSourceID])
+		} else if download := downloadsByResource[resourceMetadataKey(dataset.Name, string(dataset.Type))]; download != nil {
 			enrichDatasetResp(&resp, download)
 		}
 		responses = append(responses, resp)
 	}
 	return responses, nil
+}
+
+func enrichDatasetRespFromSource(resp *DatasetResp, source *model.ModelDatasetSource) {
+	resp.DownloadCount = int(source.Downloads)
+	resp.Likes = source.Likes
+	resp.Source = string(source.Provider)
+	resp.Organization = source.Organization
+	if resp.Organization == "" {
+		resp.Organization = strings.SplitN(source.RepositoryID, "/", 2)[0]
+	}
+	if len(source.LogoData) > 0 {
+		resp.OrganizationURL = fmt.Sprintf("/api/dataset/source-logo/%d", source.ID)
+	}
+	resp.DisplayName = source.DisplayName
+	resp.Readme = source.Readme
+	resp.License = source.License
+	resp.Task = source.Task
+	resp.Library = source.Library
+	resp.ModelType = source.ModelType
+	resp.ParameterCount = source.ParameterCount
+	resp.SourcePrivate = source.Private
+	resp.SourceGated = source.Gated
+	resp.LoginRequired = source.LoginRequired
+	resp.SourceCreatedAt = source.SourceCreatedAt
+	resp.SourceUpdatedAt = source.SourceUpdatedAt
+	extra := resp.Extra.Data()
+	filteredTags := extra.Tags[:0]
+	for _, tag := range extra.Tags {
+		if tag != autoDownloadTag {
+			filteredTags = append(filteredTags, tag)
+		}
+	}
+	extra.Tags = filteredTags
+	if extra.WebURL == nil && source.RepositoryURL != "" {
+		extra.WebURL = &source.RepositoryURL
+	}
+	resp.Extra = datatypes.NewJSONType(extra)
 }
 
 func resourceMetadataKey(name, category string) string {
@@ -1150,7 +1246,7 @@ func enrichDatasetResp(resp *DatasetResp, download *model.ModelDownload) {
 	extra := resp.Extra.Data()
 	filteredTags := extra.Tags[:0]
 	for _, tag := range extra.Tags {
-		if tag != "auto-download" {
+		if tag != autoDownloadTag {
 			filteredTags = append(filteredTags, tag)
 		}
 	}

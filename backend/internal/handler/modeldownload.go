@@ -1268,6 +1268,7 @@ PY
 echo "Reading repository metadata..."
 python - << 'PY' || true
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -1285,8 +1286,10 @@ parameter_count = safetensors.get("total", 0) if isinstance(safetensors, dict) e
 owner = %q.split("/", 1)[0]
 avatar_url = ""
 for owner_type in ("organizations", "users"):
-    endpoint = "https://huggingface.co/api/{}/{}/overview".format(
-        owner_type, urllib.parse.quote(owner, safe="")
+    endpoint = "{}/api/{}/{}/overview".format(
+        os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/"),
+        owner_type,
+        urllib.parse.quote(owner, safe=""),
     )
     try:
         with urllib.request.urlopen(endpoint, timeout=10) as response:
@@ -1378,7 +1381,7 @@ import json
 import os
 import urllib.request
 
-url = "https://modelscope.cn/openapi/v1/%s/%s"
+url = os.environ.get("MODELSCOPE_ENDPOINT", "https://modelscope.cn").rstrip("/") + "/openapi/v1/%s/%s"
 request = urllib.request.Request(url)
 token = os.environ.get("MODELSCOPE_API_TOKEN", "")
 if token:
@@ -1458,7 +1461,8 @@ trap "kill $MONITOR_PID 2>/dev/null || true" EXIT
 
 	return fmt.Sprintf(`
 set -euo pipefail
-export HF_ENDPOINT=https://hf-mirror.com
+export HF_ENDPOINT=%q
+export MODELSCOPE_ENDPOINT=%q
 OUT_DIR="/data/%s"
 export OUT_DIR
 mkdir -p "$OUT_DIR"
@@ -1511,6 +1515,8 @@ else
     echo "[RESULT] size_bytes=$SIZE"
 fi
 `,
+		config.GetConfig().HuggingFaceDownloadEndpoint(),
+		config.GetConfig().ModelScopeDownloadEndpoint(),
 		modelDirName,
 		download.Name,
 		download.Source,
@@ -1610,15 +1616,17 @@ func sourceURLForDownload(download *model.ModelDownload) string {
 		return download.SourceURL
 	}
 	if download.Source == model.ModelSourceHuggingFace {
+		endpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
 		if download.Category == model.DownloadCategoryDataset {
-			return "https://huggingface.co/datasets/" + download.Name
+			return endpoint + "/datasets/" + download.Name
 		}
-		return "https://huggingface.co/" + download.Name
+		return endpoint + "/" + download.Name
 	}
+	endpoint := config.GetConfig().ModelScopeDownloadEndpoint()
 	if download.Category == model.DownloadCategoryDataset {
-		return "https://modelscope.cn/datasets/" + download.Name
+		return endpoint + "/datasets/" + download.Name
 	}
-	return "https://modelscope.cn/models/" + download.Name
+	return endpoint + "/models/" + download.Name
 }
 
 func (mgr *ModelDownloadMgr) deleteDownloadJob(c *gin.Context, jobName string) error {

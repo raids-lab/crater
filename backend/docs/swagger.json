@@ -176,6 +176,44 @@
                 }
             }
         },
+        "/dataset/source-logo/{sourceId}": {
+            "get": {
+                "description": "返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/svg+xml"
+                ],
+                "tags": [
+                    "Dataset"
+                ],
+                "summary": "获取平台缓存的模型或数据集来源 Logo",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "来源 ID",
+                        "name": "sourceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/metrics": {
             "get": {
                 "security": [

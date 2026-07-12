@@ -192,6 +192,12 @@ build-migrate: fmt lint ## Build migration binary.
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/migrate cmd/gorm-gen/models/migrate.go
 	@echo "$(GREEN)✅ Migration binary built successfully: bin/migrate$(RESET)"
 
+.PHONY: build-model-metadata-refresh
+build-model-metadata-refresh: fmt lint ## Build model metadata refresh binary.
+	@echo "$(YELLOW)Building model metadata refresh binary...$(RESET)"
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/model-metadata-refresh cmd/model-metadata-refresh/main.go
+	@echo "$(GREEN)Model metadata refresh binary built successfully: bin/model-metadata-refresh$(RESET)"
+
 ##@ Development Tools
 
 ## Location to install tools to
@@ -234,4 +240,5 @@ run-storage: prepare fmt imports ## Run storage server from backend module.
 build-storage: fmt lint ## Build storage server binary.
 	@echo "$(YELLOW)Building storage server binary...$(RESET)"
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/storage-server cmd/storage-server/main.go
+	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/model-dataset-governance cmd/model-dataset-governance/main.go
 	@echo "$(GREEN)Storage server binary built successfully: bin/storage-server$(RESET)"

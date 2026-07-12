@@ -1,0 +1,65 @@
+{{- if .Values.modelDatasetGovernance.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-dataset-governance
+  namespace: {{ .Values.namespaces.job }}
+  labels:
+    app: webdav-crater
+spec:
+  schedule: {{ .Values.modelDatasetGovernance.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: model-dataset-governance
+        spec:
+          restartPolicy: Never
+        {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+        {{- end }}
+          containers:
+            - name: governance
+              image: {{ .Values.images.storage.repository }}:{{ .Values.images.storage.tag }}
+              imagePullPolicy: {{ .Values.imagePullPolicy }}
+              command:
+                - /model-dataset-governance
+              args:
+                {{- if .Values.modelDatasetGovernance.apply }}
+                - --apply
+                {{- end }}
+                - --storage-root={{ .Values.modelDatasetGovernance.storageRoot }}
+                - --logical-public-prefix={{ .Values.modelDatasetGovernance.logicalPublicPrefix }}
+                - --models-subdirectory={{ .Values.modelDatasetGovernance.modelsSubdirectory }}
+                - --datasets-subdirectory={{ .Values.modelDatasetGovernance.datasetsSubdirectory }}
+                - --max-depth={{ .Values.modelDatasetGovernance.maxDepth }}
+                - --exclude-directories={{ .Values.modelDatasetGovernance.excludeDirectories }}
+                - --model-weight-patterns={{ .Values.modelDatasetGovernance.modelWeightPatterns }}
+                - --dataset-marker-patterns={{ .Values.modelDatasetGovernance.datasetMarkerPatterns }}
+                - --max-readme-bytes={{ .Values.modelDatasetGovernance.maxReadmeBytes }}
+                - --scan-timeout={{ .Values.modelDatasetGovernance.scanTimeout }}
+              volumeMounts:
+                - name: ss-conf
+                  mountPath: /etc/config/config.yaml
+                  subPath: config.yaml
+                - name: storage
+                  mountPath: {{ .Values.modelDatasetGovernance.storageRoot }}
+              resources:
+                {{- toYaml .Values.modelDatasetGovernance.resources | nindent 16 }}
+          volumes:
+            - name: storage
+              persistentVolumeClaim:
+                claimName: {{ .Values.storage.pvcName }}
+            - name: ss-conf
+              configMap:
+                name: ss-config
+                items:
+                  - key: config.yaml
+                    path: config.yaml
+{{- end }}

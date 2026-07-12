@@ -74,7 +74,7 @@ type resource struct {
 	Format          field.String // 资源格式
 	Priority        field.Int    // 优先级
 	Label           field.String // 用于显示的别名
-	UnitPrice       field.Int64  // 资源单位价格(点数/单位/分钟)
+	UnitPrice       field.Int64  // 资源单位价格(内部微点, 展示为点数/单位/小时)
 	Type            field.String // 资源类型
 	Networks        resourceManyToManyNetworks
 

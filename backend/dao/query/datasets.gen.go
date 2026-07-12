@@ -40,6 +40,7 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 	_dataset.UserID = field.NewUint(tableName, "user_id")
 	_dataset.MountCount = field.NewInt(tableName, "mount_count")
 	_dataset.SizeBytes = field.NewInt64(tableName, "size_bytes")
+	_dataset.ModelDatasetSourceID = field.NewUint(tableName, "model_dataset_source_id")
 	_dataset.UserDatasets = datasetHasManyUserDatasets{
 		db: db.Session(&gorm.Session{}),
 
@@ -68,6 +69,12 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 		},
 	}
 
+	_dataset.ModelDatasetSource = datasetBelongsToModelDatasetSource{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("ModelDatasetSource", "model.ModelDatasetSource"),
+	}
+
 	_dataset.fillFieldMap()
 
 	return _dataset
@@ -76,24 +83,27 @@ func newDataset(db *gorm.DB, opts ...gen.DOOption) dataset {
 type dataset struct {
 	datasetDo datasetDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	Name         field.String // 数据集名
-	URL          field.String // 数据集空间路径
-	Describe     field.String // 数据集描述
-	Type         field.String // 数据类型
-	Extra        field.Field  // 额外信息(tags、weburl等)
-	UserID       field.Uint
-	MountCount   field.Int   // mount count
-	SizeBytes    field.Int64 // 资源文件总大小(字节)
-	UserDatasets datasetHasManyUserDatasets
+	ALL                  field.Asterisk
+	ID                   field.Uint
+	CreatedAt            field.Time
+	UpdatedAt            field.Time
+	DeletedAt            field.Field
+	Name                 field.String // 数据集名
+	URL                  field.String // 数据集空间路径
+	Describe             field.String // 数据集描述
+	Type                 field.String // 数据类型
+	Extra                field.Field  // 额外信息(tags、weburl等)
+	UserID               field.Uint
+	MountCount           field.Int   // mount count
+	SizeBytes            field.Int64 // 资源文件总大小(字节)
+	ModelDatasetSourceID field.Uint  // 模型或数据集外部来源ID
+	UserDatasets         datasetHasManyUserDatasets
 
 	AccountDatasets datasetHasManyAccountDatasets
 
 	User datasetBelongsToUser
+
+	ModelDatasetSource datasetBelongsToModelDatasetSource
 
 	fieldMap map[string]field.Expr
 }
@@ -122,6 +132,7 @@ func (d *dataset) updateTableName(table string) *dataset {
 	d.UserID = field.NewUint(table, "user_id")
 	d.MountCount = field.NewInt(table, "mount_count")
 	d.SizeBytes = field.NewInt64(table, "size_bytes")
+	d.ModelDatasetSourceID = field.NewUint(table, "model_dataset_source_id")
 
 	d.fillFieldMap()
 
@@ -146,7 +157,7 @@ func (d *dataset) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (d *dataset) fillFieldMap() {
-	d.fieldMap = make(map[string]field.Expr, 15)
+	d.fieldMap = make(map[string]field.Expr, 17)
 	d.fieldMap["id"] = d.ID
 	d.fieldMap["created_at"] = d.CreatedAt
 	d.fieldMap["updated_at"] = d.UpdatedAt
@@ -159,6 +170,7 @@ func (d *dataset) fillFieldMap() {
 	d.fieldMap["user_id"] = d.UserID
 	d.fieldMap["mount_count"] = d.MountCount
 	d.fieldMap["size_bytes"] = d.SizeBytes
+	d.fieldMap["model_dataset_source_id"] = d.ModelDatasetSourceID
 
 }
 
@@ -170,6 +182,8 @@ func (d dataset) clone(db *gorm.DB) dataset {
 	d.AccountDatasets.db.Statement.ConnPool = db.Statement.ConnPool
 	d.User.db = db.Session(&gorm.Session{Initialized: true})
 	d.User.db.Statement.ConnPool = db.Statement.ConnPool
+	d.ModelDatasetSource.db = db.Session(&gorm.Session{Initialized: true})
+	d.ModelDatasetSource.db.Statement.ConnPool = db.Statement.ConnPool
 	return d
 }
 
@@ -178,6 +192,7 @@ func (d dataset) replaceDB(db *gorm.DB) dataset {
 	d.UserDatasets.db = db.Session(&gorm.Session{})
 	d.AccountDatasets.db = db.Session(&gorm.Session{})
 	d.User.db = db.Session(&gorm.Session{})
+	d.ModelDatasetSource.db = db.Session(&gorm.Session{})
 	return d
 }
 
@@ -427,6 +442,87 @@ func (a datasetBelongsToUserTx) Count() int64 {
 }
 
 func (a datasetBelongsToUserTx) Unscoped() *datasetBelongsToUserTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type datasetBelongsToModelDatasetSource struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a datasetBelongsToModelDatasetSource) Where(conds ...field.Expr) *datasetBelongsToModelDatasetSource {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a datasetBelongsToModelDatasetSource) WithContext(ctx context.Context) *datasetBelongsToModelDatasetSource {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a datasetBelongsToModelDatasetSource) Session(session *gorm.Session) *datasetBelongsToModelDatasetSource {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a datasetBelongsToModelDatasetSource) Model(m *model.Dataset) *datasetBelongsToModelDatasetSourceTx {
+	return &datasetBelongsToModelDatasetSourceTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a datasetBelongsToModelDatasetSource) Unscoped() *datasetBelongsToModelDatasetSource {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type datasetBelongsToModelDatasetSourceTx struct{ tx *gorm.Association }
+
+func (a datasetBelongsToModelDatasetSourceTx) Find() (result *model.ModelDatasetSource, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a datasetBelongsToModelDatasetSourceTx) Append(values ...*model.ModelDatasetSource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a datasetBelongsToModelDatasetSourceTx) Replace(values ...*model.ModelDatasetSource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a datasetBelongsToModelDatasetSourceTx) Delete(values ...*model.ModelDatasetSource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a datasetBelongsToModelDatasetSourceTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a datasetBelongsToModelDatasetSourceTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a datasetBelongsToModelDatasetSourceTx) Unscoped() *datasetBelongsToModelDatasetSourceTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

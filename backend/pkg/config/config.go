@@ -133,7 +133,23 @@ type Config struct {
 		// Image is the container image used for model download jobs.
 		// Optional: Defaults to "crater-harbor.act.buaa.edu.cn/docker.io/python:3.11-slim" if not specified.
 		Image string `json:"image"`
+		// HuggingFaceEndpoint is the Hub base URL used by download jobs.
+		// Optional: Defaults to the official Hugging Face Hub.
+		HuggingFaceEndpoint string `json:"huggingFaceEndpoint"`
+		// ModelScopeEndpoint is the ModelScope base URL used by download jobs.
+		// Optional: Defaults to the official ModelScope service.
+		ModelScopeEndpoint string `json:"modelScopeEndpoint"`
 	} `json:"modelDownload"`
+
+	// ModelMetadata configures background metadata refresh endpoints and cache limits.
+	// Endpoints are tried in order and must be selected by each deployment administrator.
+	ModelMetadata struct {
+		HuggingFaceEndpoints []string `json:"huggingFaceEndpoints"`
+		ModelScopeEndpoints  []string `json:"modelScopeEndpoints"`
+		LogicalPublicPrefix  string   `json:"logicalPublicPrefix"`
+		TimeoutSeconds       int      `json:"timeoutSeconds"`
+		MaxLogoBytes         int64    `json:"maxLogoBytes"`
+	} `json:"modelMetadata"`
 
 	// Registry contains container registry configuration for image storage and building.
 	// Optional: If Enable is false, registry functionality will be disabled.
@@ -597,6 +613,8 @@ func (c *Config) PrintConfig() {
 	} else {
 		klog.Info("Model Download Image: <default: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim>")
 	}
+	klog.Infof("Model Metadata Endpoints: HuggingFace=%d, ModelScope=%d",
+		len(c.HuggingFaceMetadataEndpoints()), len(c.ModelScopeMetadataEndpoints()))
 
 	// Secrets
 	klog.Infof("TLS Secrets: %s, %s", c.Secrets.TLSSecretName, c.Secrets.TLSForwardSecretName)

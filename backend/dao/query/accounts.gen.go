@@ -72,7 +72,7 @@ type account struct {
 	ExpiredAt                 field.Time   // 账户过期时间
 	Quota                     field.Field  // 账户对应队列的资源配额
 	UserDefaultQuota          field.Field  // 账户中用户默认的资源配额模版
-	BillingIssueAmount        field.Int64  // 账户周期发放点数额度(为空表示未配置)
+	BillingIssueAmount        field.Int64  // 账户周期发放点数额度(内部微点, 为空表示未配置)
 	BillingIssuePeriodMinutes field.Int    // 账户周期发放间隔分钟(<=0表示关闭, 为空表示未配置)
 	BillingLastIssuedAt       field.Time   // 账户上次发放时间
 	UserAccounts              accountHasManyUserAccounts

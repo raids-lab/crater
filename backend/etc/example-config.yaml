@@ -14,6 +14,24 @@ modelDownload:
   # For deployments with network restrictions (e.g., in China), use internal registry:
   # image: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim
   image: python:3.11-slim
+  # Hugging Face Hub base URL used by download jobs
+  # Deployments may point this to an administrator-approved mirror or gateway
+  huggingFaceEndpoint: https://huggingface.co
+  # ModelScope base URL used by download jobs
+  modelScopeEndpoint: https://modelscope.cn
+
+# Source metadata refresh configuration
+modelMetadata:
+  # Endpoints are tried in order; use only mirrors or gateways trusted by the administrator
+  huggingFaceEndpoints:
+    # - https://hf-mirror.com
+    - https://huggingface.co
+  modelScopeEndpoints:
+    - https://modelscope.cn
+  # Logical prefix in download records before mapping to storage.prefix.public
+  logicalPublicPrefix: public
+  timeoutSeconds: 20
+  maxLogoBytes: 524288
 
 # Endpoint URL for Prometheus API used for metrics and monitoring
 # Optional: If not specified, Prometheus integration will be disabled

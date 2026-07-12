@@ -33,6 +33,140 @@ type modelDownloadSourceMetadataMigration struct {
 	SourceCreatedAt     *time.Time `gorm:"comment:源站创建时间"`
 }
 
+func modelDatasetSourceMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202607121200",
+		Migrate: func(tx *gorm.DB) error {
+			if err := createTableIfMissing(tx, &model.ModelDatasetSource{}); err != nil {
+				return err
+			}
+			if err := createTableIfMissing(tx, &model.ModelDatasetDiscovery{}); err != nil {
+				return err
+			}
+			if err := addColumnIfMissing(tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID"); err != nil {
+				return err
+			}
+			if err := addColumnIfMissing(
+				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
+			); err != nil {
+				return err
+			}
+			if err := createConstraintIfMissing(
+				tx, "datasets", &model.Dataset{}, "ModelDatasetSource",
+			); err != nil {
+				return err
+			}
+			if err := createConstraintIfMissing(
+				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSource",
+			); err != nil {
+				return err
+			}
+			if err := createIndexIfMissing(
+				tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID",
+			); err != nil {
+				return err
+			}
+			return createIndexIfMissing(
+				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
+			)
+		},
+		Rollback: func(tx *gorm.DB) error {
+			if err := dropIndexIfPresent(
+				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
+			); err != nil {
+				return err
+			}
+			if err := dropIndexIfPresent(tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID"); err != nil {
+				return err
+			}
+			if err := dropConstraintIfPresent(
+				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSource",
+			); err != nil {
+				return err
+			}
+			if err := dropConstraintIfPresent(
+				tx, "datasets", &model.Dataset{}, "ModelDatasetSource",
+			); err != nil {
+				return err
+			}
+			if err := dropColumnIfPresent(
+				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
+			); err != nil {
+				return err
+			}
+			if err := dropColumnIfPresent(tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID"); err != nil {
+				return err
+			}
+			if err := dropTableIfPresent(tx, &model.ModelDatasetDiscovery{}); err != nil {
+				return err
+			}
+			return dropTableIfPresent(tx, &model.ModelDatasetSource{})
+		},
+	}
+}
+
+func createTableIfMissing(db *gorm.DB, value any) error {
+	if db.Migrator().HasTable(value) {
+		return nil
+	}
+	return db.Migrator().CreateTable(value)
+}
+
+func dropTableIfPresent(db *gorm.DB, value any) error {
+	if !db.Migrator().HasTable(value) {
+		return nil
+	}
+	return db.Migrator().DropTable(value)
+}
+
+func addColumnIfMissing(db *gorm.DB, table string, value any, field string) error {
+	migrator := db.Table(table).Migrator()
+	if migrator.HasColumn(value, field) {
+		return nil
+	}
+	return migrator.AddColumn(value, field)
+}
+
+func dropColumnIfPresent(db *gorm.DB, table string, value any, field string) error {
+	migrator := db.Table(table).Migrator()
+	if !migrator.HasColumn(value, field) {
+		return nil
+	}
+	return migrator.DropColumn(value, field)
+}
+
+func createConstraintIfMissing(db *gorm.DB, table string, value any, name string) error {
+	migrator := db.Table(table).Migrator()
+	if migrator.HasConstraint(value, name) {
+		return nil
+	}
+	return migrator.CreateConstraint(value, name)
+}
+
+func dropConstraintIfPresent(db *gorm.DB, table string, value any, name string) error {
+	migrator := db.Table(table).Migrator()
+	if !migrator.HasConstraint(value, name) {
+		return nil
+	}
+	return migrator.DropConstraint(value, name)
+}
+
+func createIndexIfMissing(db *gorm.DB, table string, value any, name string) error {
+	migrator := db.Table(table).Migrator()
+	if migrator.HasIndex(value, name) {
+		return nil
+	}
+	return migrator.CreateIndex(value, name)
+}
+
+func dropIndexIfPresent(db *gorm.DB, table string, value any, name string) error {
+	migrator := db.Table(table).Migrator()
+	if !migrator.HasIndex(value, name) {
+		return nil
+	}
+	return migrator.DropIndex(value, name)
+}
+
 //nolint:gocyclo // ignore cyclomatic complexity
 func main() {
 	db := query.GetDB()
@@ -1307,6 +1441,7 @@ func main() {
 				)
 			},
 		},
+		modelDatasetSourceMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1314,6 +1449,7 @@ func main() {
 			&model.User{},
 			&model.Account{},
 			&model.UserAccount{},
+			&model.ModelDatasetSource{},
 			&model.Dataset{},
 			&model.AccountDataset{},
 			&model.UserDataset{},
@@ -1331,6 +1467,7 @@ func main() {
 			&model.ResourceNetwork{},
 			&model.ResourceVGPU{},
 			&model.ModelDownload{},
+			&model.ModelDatasetDiscovery{},
 			&model.UserModelDownload{},
 			&model.CronJobConfig{},
 			&model.CronJobRecord{},

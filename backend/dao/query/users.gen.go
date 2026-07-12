@@ -74,7 +74,7 @@ type user struct {
 	Status              field.Uint8  // 用户状态 (pending, active, inactive)
 	Space               field.String // 用户空间绝对路径
 	ImageQuota          field.Int64  // 用户在镜像仓库的配额
-	ExtraBalance        field.Int64  // 用户额外点数余额(充值/奖励)
+	ExtraBalance        field.Int64  // 用户额外点数余额(内部微点, 充值/奖励)
 	LastEmailVerifiedAt field.Time   // 最后一次邮箱验证时间
 	Attributes          field.Field  // 用户的额外属性 (昵称、邮箱、电话、头像等)
 	UserAccounts        userHasManyUserAccounts

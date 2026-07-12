@@ -262,7 +262,6 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 		"source_login_required": metadata.LoginRequired,
 		"source_downloads":      metadata.Downloads,
 		"source_likes":          metadata.Likes,
-		"metadata_refreshed_at": time.Now(),
 	}
 	if metadata.UpdatedAt != "" {
 		if updatedAt, err := time.Parse(time.RFC3339, metadata.UpdatedAt); err == nil {
@@ -275,9 +274,55 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 		}
 	}
 
-	q := query.ModelDownload
-	_, err := q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
-	return err
+	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		source := model.ModelDatasetSource{
+			Provider:       model.ModelDatasetProvider(download.Source),
+			ResourceType:   model.DataType(download.Category),
+			RepositoryID:   download.Name,
+			RepositoryURL:  downloadSourceURL(download),
+			Organization:   organization,
+			LogoURL:        metadata.LogoURL,
+			DisplayName:    metadata.DisplayName,
+			Description:    metadata.Description,
+			License:        metadata.License,
+			Task:           metadata.Task,
+			Library:        metadata.Library,
+			ModelType:      metadata.ModelType,
+			ParameterCount: metadata.ParameterCount,
+			Private:        metadata.Private,
+			Gated:          metadata.Gated,
+			LoginRequired:  metadata.LoginRequired,
+			Downloads:      metadata.Downloads,
+			Likes:          metadata.Likes,
+		}
+		if value, ok := updates["source_updated_at"].(time.Time); ok {
+			source.SourceUpdatedAt = &value
+		}
+		if value, ok := updates["source_created_at"].(time.Time); ok {
+			source.SourceCreatedAt = &value
+		}
+		var persisted model.ModelDatasetSource
+		lookup := tx.Where(
+			"provider = ? AND resource_type = ? AND repository_id = ?",
+			source.Provider, source.ResourceType, source.RepositoryID,
+		).First(&persisted)
+		if errors.Is(lookup.Error, gorm.ErrRecordNotFound) {
+			if err := tx.Create(&source).Error; err != nil {
+				return err
+			}
+			persisted = source
+		} else if lookup.Error != nil {
+			return lookup.Error
+		} else if err := tx.Model(&persisted).Updates(source).Error; err != nil {
+			return err
+		}
+		updates["model_dataset_source_id"] = persisted.ID
+		if err := tx.Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(updates).Error; err != nil {
+			return err
+		}
+		download.ModelDatasetSourceID = &persisted.ID
+		return nil
+	})
 }
 
 func (r *ModelDownloadReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
@@ -648,15 +693,17 @@ func formatSpeed(bytesPerSec int64) string {
 // source site, used as the dataset's WebURL and description fallback.
 func downloadSourceURL(download *model.ModelDownload) string {
 	if download.Source == model.ModelSourceHuggingFace {
+		endpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
 		if download.Category == model.DownloadCategoryDataset {
-			return "https://huggingface.co/datasets/" + download.Name
+			return endpoint + "/datasets/" + download.Name
 		}
-		return "https://huggingface.co/" + download.Name
+		return endpoint + "/" + download.Name
 	}
+	endpoint := config.GetConfig().ModelScopeDownloadEndpoint()
 	if download.Category == model.DownloadCategoryDataset {
-		return "https://modelscope.cn/datasets/" + download.Name
+		return endpoint + "/datasets/" + download.Name
 	}
-	return "https://modelscope.cn/models/" + download.Name
+	return endpoint + "/models/" + download.Name
 }
 
 // datasetDescriptionForDownload builds the dataset description. It prefers the
@@ -750,10 +797,11 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 		}
 		extra := datasetExtraForDownload(existingDataset.Extra.Data(), download, sourceURL, repositoryTags)
 		if _, err := qDataset.WithContext(ctx).Where(qDataset.ID.Eq(existingDataset.ID)).Updates(map[string]any{
-			"type":       dataType,
-			"describe":   describe,
-			"extra":      datatypes.NewJSONType(extra),
-			"size_bytes": download.SizeBytes,
+			"type":                    dataType,
+			"describe":                describe,
+			"extra":                   datatypes.NewJSONType(extra),
+			"size_bytes":              download.SizeBytes,
+			"model_dataset_source_id": download.ModelDatasetSourceID,
 		}); err != nil {
 			return fmt.Errorf("failed to update existing dataset metadata: %w", err)
 		}
@@ -778,10 +826,11 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 
 		extra := datasetExtraForDownload(softDeletedDataset.Extra.Data(), download, sourceURL, repositoryTags)
 		updates := map[string]any{
-			"type":       dataType,
-			"describe":   describe,
-			"extra":      datatypes.NewJSONType(extra),
-			"size_bytes": download.SizeBytes,
+			"type":                    dataType,
+			"describe":                describe,
+			"extra":                   datatypes.NewJSONType(extra),
+			"size_bytes":              download.SizeBytes,
+			"model_dataset_source_id": download.ModelDatasetSourceID,
 		}
 		if _, err := qDataset.WithContext(ctx).
 			Where(qDataset.ID.Eq(softDeletedDataset.ID)).
@@ -797,12 +846,13 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 
 	// Create dataset record
 	dataset := &model.Dataset{
-		Name:      download.Name,
-		URL:       datasetURL,
-		Describe:  describe,
-		Type:      dataType,
-		UserID:    download.CreatorID,
-		SizeBytes: download.SizeBytes,
+		Name:                 download.Name,
+		URL:                  datasetURL,
+		Describe:             describe,
+		Type:                 dataType,
+		UserID:               download.CreatorID,
+		SizeBytes:            download.SizeBytes,
+		ModelDatasetSourceID: download.ModelDatasetSourceID,
 		Extra: datatypes.NewJSONType(model.ExtraContent{
 			Tags:     datasetExtraForDownload(model.ExtraContent{}, download, sourceURL, repositoryTags).Tags,
 			WebURL:   &sourceURL,
