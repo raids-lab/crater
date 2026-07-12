@@ -626,6 +626,10 @@ type downloadFailureRule struct {
 // downloadFailureRules are evaluated in order; the first matching rule wins.
 var downloadFailureRules = []downloadFailureRule{
 	{
+		keywords: []string{"revision_not_found"},
+		reason:   "Download failed: the requested revision does not exist. Check the source branches or leave revision empty to use its default.",
+	},
+	{
 		keywords: []string{"gated", "awaiting a review", "access to model", "you must be authenticated"},
 		reason:   "Download failed: this repository is gated and requires authorization/login on the source site.",
 	},

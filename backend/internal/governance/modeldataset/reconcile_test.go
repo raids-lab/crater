@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -178,5 +179,95 @@ func TestReconcilePublicLinksOnePathlessHistoricalDatasetByIdentity(t *testing.T
 	}
 	if discovery.Path != "" || discovery.Status != model.ModelDatasetDiscoveryStatusPathMissing {
 		t.Fatalf("pathless discovery = %#v", discovery)
+	}
+}
+
+//nolint:gocyclo // The integration assertion covers inferred source, README, ownership, and discovery linkage.
+func TestReconcilePublicCreatesOnlyHighConfidenceSourceAndRecordsUniqueOwner(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:provenance_reconcile?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.ModelDatasetSource{}, &model.Dataset{}, &model.ModelDownload{},
+		&model.ModelDatasetDiscovery{}, &model.User{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	uid := "10042"
+	user := model.User{
+		Name: "historical-owner", Role: model.RoleUser, Status: model.StatusActive,
+		Space: "user/historical-owner", Attributes: datatypes.NewJSONType(model.UserAttribute{UID: &uid}),
+	}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	directory := t.TempDir()
+	mustWriteFile(t, filepath.Join(directory, "README.md"), "# local legacy model")
+	candidate := Candidate{
+		Path: "shared/LLM/falcon-40b-instruct", AbsolutePath: directory,
+		Type: model.DataTypeModel, Name: "falcon-40b-instruct",
+		Evidence: model.ModelDatasetDiscoveryEvidence{
+			HasConfig: true, WeightFiles: 1, FilesystemUID: uid,
+			Provider:     model.ModelDatasetProviderHuggingFace,
+			RepositoryID: "tiiuae/falcon-40b-instruct", RepositoryURL: "https://huggingface.co/tiiuae/falcon-40b-instruct",
+			ProvenanceSource: "git_remote", ProvenanceConfidence: provenanceConfidenceHigh,
+		},
+	}
+	report, err := ReconcilePublic(context.Background(), db, []Candidate{candidate}, &ReconcileOptions{
+		Apply: true, LogicalPublicPrefix: "public", PhysicalPublicPrefix: "shared",
+		MaxReadmeBytes: 1024, Now: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("ReconcilePublic() error = %v", err)
+	}
+	if report.InferredSources != 1 || report.OwnerMatches != 1 || report.ProvenanceHighConfidence != 1 {
+		t.Fatalf("report = %#v", report)
+	}
+	var source model.ModelDatasetSource
+	if err := db.Where("repository_id = ?", "tiiuae/falcon-40b-instruct").First(&source).Error; err != nil {
+		t.Fatalf("inferred source not created: %v", err)
+	}
+	if source.Readme != "# local legacy model" {
+		t.Fatalf("source.Readme = %q", source.Readme)
+	}
+	var discovery model.ModelDatasetDiscovery
+	if err := db.Where("path = ?", candidate.Path).First(&discovery).Error; err != nil {
+		t.Fatal(err)
+	}
+	evidence := discovery.Evidence.Data()
+	if discovery.SourceID == nil || *discovery.SourceID != source.ID ||
+		evidence.OwnerUserID == nil || *evidence.OwnerUserID != user.ID ||
+		evidence.OwnerUsername != user.Name {
+		t.Fatalf("discovery = %#v, evidence = %#v", discovery, evidence)
+	}
+}
+
+func TestEnrichCandidateOwnersLeavesDuplicateUIDUnassigned(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:duplicate_uid?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.User{}); err != nil {
+		t.Fatal(err)
+	}
+	uid := "10042"
+	for index, name := range []string{"first-owner", "second-owner"} {
+		user := model.User{
+			Name: name, Role: model.RoleUser, Status: model.StatusActive,
+			Space:      fmt.Sprintf("user/%d", index),
+			Attributes: datatypes.NewJSONType(model.UserAttribute{UID: &uid}),
+		}
+		if err := db.Create(&user).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	candidates := []Candidate{{Evidence: model.ModelDatasetDiscoveryEvidence{FilesystemUID: uid}}}
+	matches, err := enrichCandidateOwners(context.Background(), db, candidates)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if matches != 0 || candidates[0].Evidence.OwnerUserID != nil || candidates[0].Evidence.OwnerUsername != "" {
+		t.Fatalf("ambiguous UID was assigned: %#v", candidates[0].Evidence)
 	}
 }

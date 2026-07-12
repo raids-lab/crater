@@ -53,6 +53,7 @@ export interface ModelDownload {
   sourceUpdatedAt?: string
   userInfo: IUserInfo
   canManage: boolean
+  canDelete: boolean
   canViewLogs: boolean
   sourceUrl: string
   displayName: string

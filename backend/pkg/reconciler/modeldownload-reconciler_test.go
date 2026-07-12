@@ -30,6 +30,7 @@ func TestClassifyDownloadFailure(t *testing.T) {
 		{name: "gated", logs: "Access to model is restricted", want: "gated"},
 		{name: "authentication", logs: "HTTP 401 Unauthorized", want: "access denied"},
 		{name: "missing revision", logs: "revision not found (404)", want: "repository or revision not found"},
+		{name: "validated missing revision", logs: "[ERROR] revision_not_found: 'main'", want: "requested revision does not exist"},
 		{name: "storage", logs: "write failed: no space left on device", want: "no space left"},
 		{name: "network", logs: "connection reset by peer", want: "network error"},
 		{name: "fallback", logs: "trace\ncustom downloader error\n", want: "custom downloader error"},

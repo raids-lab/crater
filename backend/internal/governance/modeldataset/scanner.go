@@ -17,6 +17,7 @@ package modeldataset
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ type ScanOptions struct {
 	StorageRoot           string
 	PublicPrefix          string
 	ModelsSubdirectory    string
+	ModelsSubdirectories  []string
 	DatasetsSubdirectory  string
 	MaxDepth              int
 	ExcludedDirectories   []string
@@ -58,17 +60,33 @@ func ScanPublic(ctx context.Context, options *ScanOptions) ([]Candidate, error) 
 
 	publicRoot := filepath.Join(options.StorageRoot, filepath.FromSlash(options.PublicPrefix))
 	excluded := makeSet(options.ExcludedDirectories)
-	candidates, err := scanModels(
-		ctx,
-		filepath.Join(publicRoot, filepath.FromSlash(options.ModelsSubdirectory)),
-		options.PublicPrefix,
-		options.ModelsSubdirectory,
-		options.MaxDepth,
-		excluded,
-		options.WeightPatterns,
-	)
+	candidates := make([]Candidate, 0)
+	seenPaths := make(map[string]struct{})
+	modelRoots, err := modelSubdirectories(options)
 	if err != nil {
 		return nil, err
+	}
+	for _, subdirectory := range modelRoots {
+		models, err := scanModels(
+			ctx,
+			filepath.Join(publicRoot, filepath.FromSlash(subdirectory)),
+			options.PublicPrefix,
+			subdirectory,
+			options.MaxDepth,
+			excluded,
+			options.WeightPatterns,
+		)
+		if err != nil {
+			return nil, err
+		}
+		for index := range models {
+			candidate := &models[index]
+			if _, exists := seenPaths[candidate.Path]; exists {
+				continue
+			}
+			seenPaths[candidate.Path] = struct{}{}
+			candidates = append(candidates, *candidate)
+		}
 	}
 
 	if len(options.DatasetMarkerPatterns) > 0 {
@@ -185,6 +203,9 @@ func modelCandidate(
 	if evidence.WeightFiles == 0 {
 		return Candidate{}, false, nil
 	}
+	if err := collectFilesystemEvidence(directory, &evidence); err != nil {
+		return Candidate{}, false, err
+	}
 	relative, err := filepath.Rel(root, directory)
 	if err != nil {
 		return Candidate{}, false, err
@@ -197,6 +218,34 @@ func modelCandidate(
 		Evidence:     evidence,
 		SizeBytes:    sizeBytes,
 	}, true, nil
+}
+
+func modelSubdirectories(options *ScanOptions) ([]string, error) {
+	configured := options.ModelsSubdirectories
+	if len(configured) == 0 {
+		configured = []string{options.ModelsSubdirectory}
+	}
+	result := make([]string, 0, len(configured))
+	seen := make(map[string]struct{})
+	for _, value := range configured {
+		value = strings.TrimSpace(value)
+		if filepath.IsAbs(value) || strings.HasPrefix(value, "/") || strings.Contains(value, "\\") {
+			return nil, fmt.Errorf("model subdirectory must stay below the public prefix: %q", value)
+		}
+		value = strings.Trim(filepath.ToSlash(value), "/")
+		if value == "" || value == "." {
+			continue
+		}
+		if strings.HasPrefix(value, "../") || value == ".." {
+			return nil, fmt.Errorf("model subdirectory must stay below the public prefix: %q", value)
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result, nil
 }
 
 func scanDatasets(

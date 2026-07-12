@@ -31,7 +31,9 @@ spec:
               command:
                 - /model-metadata-refresh
               args:
+                {{- if .Values.modelMetadataRefresh.apply }}
                 - --apply
+                {{- end }}
                 - --batch-size={{ .Values.modelMetadataRefresh.batchSize }}
                 - --stale-after={{ .Values.modelMetadataRefresh.staleAfter }}
                 - --delay={{ .Values.modelMetadataRefresh.delay }}

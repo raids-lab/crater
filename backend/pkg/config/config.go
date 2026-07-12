@@ -131,7 +131,7 @@ type Config struct {
 	// Optional: If not specified, default values will be used.
 	ModelDownload struct {
 		// Image is the container image used for model download jobs.
-		// Optional: Defaults to "crater-harbor.act.buaa.edu.cn/docker.io/python:3.11-slim" if not specified.
+		// Optional: Defaults to the public Crater downloader image if not specified.
 		Image string `json:"image"`
 		// HuggingFaceEndpoint is the Hub base URL used by download jobs.
 		// Optional: Defaults to the official Hugging Face Hub.
@@ -611,7 +611,7 @@ func (c *Config) PrintConfig() {
 	if c.ModelDownload.Image != "" {
 		klog.Infof("Model Download Image: %s", c.ModelDownload.Image)
 	} else {
-		klog.Info("Model Download Image: <default: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim>")
+		klog.Info("Model Download Image: <default: ghcr.io/raids-lab/crater-model-downloader:v1.0.0>")
 	}
 	klog.Infof("Model Metadata Endpoints: HuggingFace=%d, ModelScope=%d",
 		len(c.HuggingFaceMetadataEndpoints()), len(c.ModelScopeMetadataEndpoints()))

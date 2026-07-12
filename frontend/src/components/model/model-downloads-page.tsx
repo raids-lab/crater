@@ -373,39 +373,41 @@ export function ModelDownloadsPage() {
                   </Button>
                 </SimpleTooltip>
               )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                    disabled={isDeleting}
-                    title={t('modelDownload.action.delete')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t('modelDownload.action.deleteDescription', { name: download.name })}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
+              {download.canDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10 h-8 w-8"
                       disabled={isDeleting}
-                      onClick={() => deleteDownload(download.id)}
+                      title={t('modelDownload.action.delete')}
                     >
-                      {isDeleting
-                        ? t('modelDownload.action.processing')
-                        : t('modelDownload.action.delete')}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t('modelDownload.action.deleteDescription', { name: download.name })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={isDeleting}
+                        onClick={() => deleteDownload(download.id)}
+                      >
+                        {isDeleting
+                          ? t('modelDownload.action.processing')
+                          : t('modelDownload.action.delete')}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
           )
         },

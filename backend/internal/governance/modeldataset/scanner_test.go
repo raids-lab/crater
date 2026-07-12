@@ -96,6 +96,107 @@ func TestScanPublicDatasetDiscoveryIsOptIn(t *testing.T) {
 	}
 }
 
+func TestScanPublicSupportsMultipleModelRootsAndGitProvenance(t *testing.T) {
+	root := t.TempDir()
+	legacyDir := filepath.Join(root, "shared", "LLM", "falcon-40b-instruct")
+	mustWriteFile(t, filepath.Join(legacyDir, "config.json"), `{}`)
+	mustWriteFile(t, filepath.Join(legacyDir, "model.safetensors"), "weights")
+	mustWriteFile(t, filepath.Join(legacyDir, ".git", "config"), "url = git@hf.co:tiiuae/falcon-40b-instruct\n")
+	managedDir := filepath.Join(root, "shared", "Models", "owner", "managed")
+	mustWriteFile(t, filepath.Join(managedDir, "config.json"), `{}`)
+	mustWriteFile(t, filepath.Join(managedDir, "model.safetensors"), "weights")
+
+	candidates, err := ScanPublic(context.Background(), &ScanOptions{
+		StorageRoot: root, PublicPrefix: "shared",
+		ModelsSubdirectory:   "ignored-when-list-is-set",
+		ModelsSubdirectories: []string{"Models", "LLM", "LLM"},
+		MaxDepth:             8, WeightPatterns: []string{"*.safetensors"},
+	})
+	if err != nil {
+		t.Fatalf("ScanPublic() error = %v", err)
+	}
+	if len(candidates) != 2 {
+		t.Fatalf("candidates = %#v", candidates)
+	}
+	legacy := candidates[0]
+	if legacy.Path != "shared/LLM/falcon-40b-instruct" {
+		t.Fatalf("legacy.Path = %q", legacy.Path)
+	}
+	if legacy.Evidence.Provider != model.ModelDatasetProviderHuggingFace ||
+		legacy.Evidence.RepositoryID != "tiiuae/falcon-40b-instruct" ||
+		legacy.Evidence.ProvenanceSource != "git_remote" ||
+		legacy.Evidence.ProvenanceConfidence != provenanceConfidenceHigh {
+		t.Fatalf("legacy evidence = %#v", legacy.Evidence)
+	}
+	if legacy.Evidence.FilesystemUID == "" || legacy.Evidence.FilesystemGID == "" ||
+		legacy.Evidence.ModifiedAt == nil {
+		t.Fatalf("filesystem evidence = %#v", legacy.Evidence)
+	}
+}
+
+func TestScanPublicTreatsConfigAndAmbiguousReadmeAsHints(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "shared", "Models", "llama2-7b")
+	mustWriteFile(t, filepath.Join(directory, "config.json"), `{"_name_or_path":"meta-llama/Llama-2-7b-hf"}`)
+	mustWriteFile(t, filepath.Join(directory, "model.safetensors"), "weights")
+	mustWriteFile(t, filepath.Join(directory, "README.md"),
+		"Derived from https://huggingface.co/other/base and https://modelscope.cn/models/other/tokenizer")
+
+	candidates, err := ScanPublic(context.Background(), &ScanOptions{
+		StorageRoot: root, PublicPrefix: "shared", ModelsSubdirectory: "Models",
+		MaxDepth: 8, WeightPatterns: []string{"*.safetensors"},
+	})
+	if err != nil {
+		t.Fatalf("ScanPublic() error = %v", err)
+	}
+	evidence := candidates[0].Evidence
+	if evidence.Provider != "" || evidence.RepositoryID != "meta-llama/Llama-2-7b-hf" ||
+		evidence.ProvenanceSource != "config_name_or_path" ||
+		evidence.ProvenanceConfidence != provenanceConfidenceMedium {
+		t.Fatalf("evidence = %#v", evidence)
+	}
+	if len(evidence.CandidateURLs) != 2 {
+		t.Fatalf("candidate URLs = %#v", evidence.CandidateURLs)
+	}
+}
+
+func TestScanPublicRecognizesMatchingModelScopeReadme(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "shared", "Models", "Qwen2.5-7B-Instruct")
+	mustWriteFile(t, filepath.Join(directory, "config.json"), `{}`)
+	mustWriteFile(t, filepath.Join(directory, "model.safetensors"), "weights")
+	mustWriteFile(t, filepath.Join(directory, "README.md"),
+		"Model card: https://modelscope.cn/models/Qwen/Qwen2.5-7B-Instruct")
+
+	candidates, err := ScanPublic(context.Background(), &ScanOptions{
+		StorageRoot: root, PublicPrefix: "shared", ModelsSubdirectory: "Models",
+		MaxDepth: 8, WeightPatterns: []string{"*.safetensors"},
+	})
+	if err != nil {
+		t.Fatalf("ScanPublic() error = %v", err)
+	}
+	evidence := candidates[0].Evidence
+	if evidence.Provider != model.ModelDatasetProviderModelScope ||
+		evidence.RepositoryID != "Qwen/Qwen2.5-7B-Instruct" ||
+		evidence.ProvenanceSource != "readme_url" ||
+		evidence.ProvenanceConfidence != provenanceConfidenceHigh {
+		t.Fatalf("evidence = %#v", evidence)
+	}
+}
+
+func TestScanPublicRejectsModelRootsOutsidePublicPrefix(t *testing.T) {
+	for _, modelRoot := range []string{"../private", "/private", `..\private`} {
+		_, err := ScanPublic(context.Background(), &ScanOptions{
+			StorageRoot: t.TempDir(), PublicPrefix: "shared",
+			ModelsSubdirectories: []string{modelRoot}, MaxDepth: 8,
+			WeightPatterns: []string{"*.safetensors"},
+		})
+		if err == nil {
+			t.Fatalf("ScanPublic() accepted model root %q outside the public prefix", modelRoot)
+		}
+	}
+}
+
 func mustWriteFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

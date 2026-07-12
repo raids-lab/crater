@@ -42,19 +42,23 @@ type ReconcileOptions struct {
 }
 
 type ReconcileReport struct {
-	ReadyDownloads         int
-	PublicDownloads        int
-	SourceIdentities       int
-	DownloadLinks          int
-	DatasetLinks           int
-	Candidates             int
-	RegisteredCandidates   int
-	UnregisteredCandidates int
-	ReadmesFromStorage     int
-	DiscoveriesWritten     int
-	RegisteredNonPublic    int
-	PathlessDatasets       int
-	MissingMarked          int64
+	ReadyDownloads           int
+	PublicDownloads          int
+	SourceIdentities         int
+	DownloadLinks            int
+	DatasetLinks             int
+	Candidates               int
+	RegisteredCandidates     int
+	UnregisteredCandidates   int
+	ReadmesFromStorage       int
+	DiscoveriesWritten       int
+	RegisteredNonPublic      int
+	PathlessDatasets         int
+	MissingMarked            int64
+	ProvenanceHighConfidence int
+	ProvenanceHints          int
+	InferredSources          int
+	OwnerMatches             int
 }
 
 type sourceIdentity struct {
@@ -102,13 +106,46 @@ func ReconcilePublic(
 		key := resourceKey(dataset.Name, dataset.Type)
 		datasetsByResource[key] = append(datasetsByResource[key], dataset)
 	}
-	candidatesByPath := make(map[string]Candidate, len(candidates))
-	for _, candidate := range candidates {
+	ownerMatches, err := enrichCandidateOwners(ctx, db, candidates)
+	if err != nil {
+		return report, err
+	}
+	report.OwnerMatches = ownerMatches
+	candidatesByPath := make(map[string]*Candidate, len(candidates))
+	for index := range candidates {
+		candidate := &candidates[index]
 		candidatesByPath[cleanStoragePath(candidate.Path)] = candidate
 	}
 
 	seenIdentities := make(map[sourceIdentity]struct{})
 	sourceByPath := make(map[string]*model.ModelDatasetSource)
+	sourceIDs := make([]uint, 0)
+	for _, dataset := range datasets {
+		if dataset.ModelDatasetSourceID != nil {
+			sourceIDs = append(sourceIDs, *dataset.ModelDatasetSourceID)
+		}
+	}
+	if len(sourceIDs) > 0 {
+		var persistedSources []*model.ModelDatasetSource
+		if err := db.WithContext(ctx).Where("id IN ?", sourceIDs).Find(&persistedSources).Error; err != nil {
+			return report, fmt.Errorf("load linked sources: %w", err)
+		}
+		sourcesByID := make(map[uint]*model.ModelDatasetSource, len(persistedSources))
+		for _, source := range persistedSources {
+			sourcesByID[source.ID] = source
+		}
+		for _, dataset := range datasets {
+			if dataset.ModelDatasetSourceID == nil {
+				continue
+			}
+			if source := sourcesByID[*dataset.ModelDatasetSourceID]; source != nil {
+				sourceByPath[cleanStoragePath(dataset.URL)] = source
+				seenIdentities[sourceIdentity{
+					Provider: source.Provider, ResourceType: source.ResourceType, RepositoryID: source.RepositoryID,
+				}] = struct{}{}
+			}
+		}
+	}
 	for _, download := range downloads {
 		physicalPath, public := PhysicalStoragePath(
 			download.Path,
@@ -182,12 +219,17 @@ func ReconcilePublic(
 		}
 		sourceByPath[physicalPath] = source
 	}
-	report.SourceIdentities = len(seenIdentities)
-
 	seenPaths := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
+	for index := range candidates {
+		candidate := &candidates[index]
 		path := cleanStoragePath(candidate.Path)
 		seenPaths = append(seenPaths, path)
+		if candidate.Evidence.ProvenanceConfidence == provenanceConfidenceHigh {
+			report.ProvenanceHighConfidence++
+		} else if candidate.Evidence.RepositoryID != "" || candidate.Evidence.ConfigNameOrPath != "" ||
+			len(candidate.Evidence.CandidateURLs) > 0 {
+			report.ProvenanceHints++
+		}
 		status := model.ModelDatasetDiscoveryStatusDiscovered
 		var datasetID, sourceID *uint
 		if matches := datasetsByPath[path]; len(matches) > 0 {
@@ -197,7 +239,45 @@ func ReconcilePublic(
 		} else {
 			report.UnregisteredCandidates++
 		}
-		if source := sourceByPath[path]; source != nil && source.ID != 0 {
+		source := sourceByPath[path]
+		if source == nil && canInferSource(&candidate.Evidence) {
+			report.InferredSources++
+			identity := sourceIdentity{
+				Provider: candidate.Evidence.Provider, ResourceType: candidate.Type,
+				RepositoryID: candidate.Evidence.RepositoryID,
+			}
+			seenIdentities[identity] = struct{}{}
+			inferred := sourceFromCandidate(candidate)
+			if options.Apply {
+				readme, err := readLocalReadme(candidate.AbsolutePath, options.MaxReadmeBytes)
+				if err != nil {
+					return report, fmt.Errorf("read README for %s: %w", path, err)
+				}
+				if readme != "" {
+					inferred.Readme = readme
+					report.ReadmesFromStorage++
+				}
+				persisted, err := upsertSource(ctx, db, inferred)
+				if err != nil {
+					return report, err
+				}
+				inferred = persisted
+				for _, dataset := range datasetsByPath[path] {
+					if dataset.Type != candidate.Type || dataset.ModelDatasetSourceID != nil {
+						continue
+					}
+					if err := db.WithContext(ctx).Model(&model.Dataset{}).Where("id = ?", dataset.ID).
+						Update("model_dataset_source_id", inferred.ID).Error; err != nil {
+						return report, fmt.Errorf("link dataset %d to inferred source: %w", dataset.ID, err)
+					}
+					dataset.ModelDatasetSourceID = &inferred.ID
+					report.DatasetLinks++
+				}
+			}
+			source = inferred
+			sourceByPath[path] = inferred
+		}
+		if source != nil && source.ID != 0 {
 			sourceID = &source.ID
 		}
 		if !options.Apply {
@@ -291,7 +371,60 @@ func ReconcilePublic(
 		}
 		report.MissingMarked = result.RowsAffected
 	}
+	report.SourceIdentities = len(seenIdentities)
 	return report, nil
+}
+
+func canInferSource(evidence *model.ModelDatasetDiscoveryEvidence) bool {
+	return evidence.ProvenanceConfidence == provenanceConfidenceHigh && evidence.RepositoryID != "" &&
+		(evidence.Provider == model.ModelDatasetProviderHuggingFace ||
+			evidence.Provider == model.ModelDatasetProviderModelScope)
+}
+
+func sourceFromCandidate(candidate *Candidate) *model.ModelDatasetSource {
+	organization := ""
+	if parts := strings.Split(candidate.Evidence.RepositoryID, "/"); len(parts) == 2 {
+		organization = parts[0]
+	}
+	return &model.ModelDatasetSource{
+		Provider: candidate.Evidence.Provider, ResourceType: candidate.Type,
+		RepositoryID: candidate.Evidence.RepositoryID, RepositoryURL: candidate.Evidence.RepositoryURL,
+		Organization: organization, DisplayName: candidate.Name,
+	}
+}
+
+func enrichCandidateOwners(ctx context.Context, db *gorm.DB, candidates []Candidate) (int, error) {
+	if !db.Migrator().HasTable(&model.User{}) {
+		return 0, nil
+	}
+	var users []*model.User
+	if err := db.WithContext(ctx).Select("id", "name", "attributes").Find(&users).Error; err != nil {
+		return 0, fmt.Errorf("load filesystem user identities: %w", err)
+	}
+	usersByUID := make(map[string][]*model.User)
+	for _, user := range users {
+		attributes := user.Attributes.Data()
+		if attributes.UID == nil {
+			continue
+		}
+		uid := strings.TrimSpace(*attributes.UID)
+		if uid != "" {
+			usersByUID[uid] = append(usersByUID[uid], user)
+		}
+	}
+	matches := 0
+	for index := range candidates {
+		candidate := &candidates[index]
+		users := usersByUID[candidate.Evidence.FilesystemUID]
+		if len(users) != 1 {
+			continue
+		}
+		ownerID := users[0].ID
+		candidate.Evidence.OwnerUserID = &ownerID
+		candidate.Evidence.OwnerUsername = users[0].Name
+		matches++
+	}
+	return matches, nil
 }
 
 func resourceKey(name string, resourceType model.DataType) string {

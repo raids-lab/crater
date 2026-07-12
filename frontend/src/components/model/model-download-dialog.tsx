@@ -80,6 +80,10 @@ export function ModelDownloadDialog({
     source === 'modelscope'
       ? '例如: qwen/Qwen2.5-Coder-7B-Instruct'
       : '例如: meta-llama/Llama-2-7b-hf'
+  const revisionPlaceholder =
+    source === 'modelscope'
+      ? '例如: master、标签或 commit ID；留空使用默认分支'
+      : '例如: main、标签或 commit ID；留空使用默认分支'
 
   const tokenHint =
     source === 'modelscope'
@@ -202,7 +206,7 @@ export function ModelDownloadDialog({
               <FormItem>
                 <FormLabel>版本（可选）</FormLabel>
                 <FormControl>
-                  <Input placeholder="例如: main, v1.0.0 或 commit ID" {...field} />
+                  <Input placeholder={revisionPlaceholder} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

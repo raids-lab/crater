@@ -82,8 +82,10 @@ images:
 
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:
-  # -- Enable the metadata refresh CronJob
-  enabled: true
+  # -- Disabled by default; enable only after endpoint and dry-run validation
+  enabled: false
+  # -- Write refreshed metadata; keep false for the first validation run
+  apply: false
   # -- Cron schedule for metadata refresh
   schedule: "15 */6 * * *"
   # -- Number of ready download records processed per database batch
@@ -114,6 +116,8 @@ modelDatasetGovernance:
   logicalPublicPrefix: "public"
   # -- Models subdirectory below backendConfig.storage.prefix.public
   modelsSubdirectory: "Models"
+  # -- Optional model subdirectories below backendConfig.storage.prefix.public; when set, takes precedence over modelsSubdirectory
+  modelsSubdirectories: []
   # -- Datasets subdirectory below backendConfig.storage.prefix.public
   datasetsSubdirectory: "Datasets"
   # -- Maximum directory depth scanned below each resource root
@@ -233,10 +237,8 @@ backendConfig:
   # -- Model download functionality configurations
   modelDownload:
     # -- Container image used for model download jobs
-    # Can be customized for local deployments with network restrictions
-    # Default: python:3.11-slim (public Docker Hub)
-    # Internal deployment uses: crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim
-    image: "crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim"
+    # Crater's public image pins source-client versions; deployments may mirror it internally
+    image: "ghcr.io/raids-lab/crater-model-downloader:v1.0.0"
     # -- Hugging Face Hub base URL used by model download jobs
     # Set this to an administrator-approved mirror or gateway when the official Hub is unavailable
     huggingFaceEndpoint: "https://huggingface.co"

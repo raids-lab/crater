@@ -118,6 +118,7 @@ type ModelDownloadResp struct {
 	SourceUpdatedAt *time.Time     `json:"sourceUpdatedAt"`
 	UserInfo        model.UserInfo `json:"userInfo"`
 	CanManage       bool           `json:"canManage"`
+	CanDelete       bool           `json:"canDelete"`
 	CanViewLogs     bool           `json:"canViewLogs"`
 	SourceURL       string         `json:"sourceUrl"`
 	DisplayName     string         `json:"displayName"`
@@ -793,7 +794,7 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 // DeleteDownload godoc
 //
 //	@Summary		删除模型下载任务
-//	@Description	删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
+//	@Description	删除下载任务记录(仅平台管理员),已下载的文件保留在存储中
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
@@ -802,6 +803,11 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 //	@Success		200	{object}	resputil.Response[string]
 //	@Router			/v1/models/downloads/{id} [DELETE]
 func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
+	token := util.GetToken(c)
+	if !canDeleteDownload(token) {
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("only a platform administrator can delete download records"))
+		return
+	}
 	var req struct {
 		ID uint `uri:"id" binding:"required"`
 	}
@@ -810,9 +816,10 @@ func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
 		return
 	}
-	download, err := mgr.requireManagePermission(c, req.ID)
+	q := query.ModelDownload
+	download, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
 	if err != nil {
-		resputil.HandleError(c, err)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found"))
 		return
 	}
 
@@ -833,6 +840,10 @@ func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
 
 	klog.Infof("Download record %d deleted, files preserved at: %s", req.ID, download.Path)
 	resputil.Success(c, "deleted successfully")
+}
+
+func canDeleteDownload(token util.JWTMessage) bool {
+	return token.RolePlatform == model.RoleAdmin
 }
 
 // PauseDownload godoc
@@ -1056,6 +1067,13 @@ func (mgr *ModelDownloadMgr) AdminDeleteDownload(c *gin.Context) {
 // a couple of times before being marked Failed.
 const downloadJobBackoffLimit int32 = 2
 
+const (
+	defaultModelDownloaderImage = "ghcr.io/raids-lab/crater-model-downloader:v1.0.0"
+	huggingFaceHubVersion       = "1.23.0"
+	modelScopeVersion           = "1.38.1"
+	modelScopeHubVersion        = "0.1.7"
+)
+
 func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.ModelDownload, username, accessToken string) error {
 	physicalPath := mgr.convertToPhysicalPath(download.Path)
 	subPath := filepath.Dir(physicalPath)
@@ -1198,22 +1216,22 @@ func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 	if img := config.GetConfig().ModelDownload.Image; img != "" {
 		return img
 	}
-	// 使用官方 Python 镜像作为默认值
-	// 本地部署可通过配置文件指定内网镜像
-	return "python:3.11-slim"
+	// The public default is reproducible and can be mirrored or overridden by each deployment.
+	return defaultModelDownloaderImage
 }
 
 func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload, modelDirName string) string {
-	// 清华源配置
-	pypiMirror := "https://pypi.tuna.tsinghua.edu.cn/simple"
-	trustedHost := "--trusted-host pypi.tuna.tsinghua.edu.cn"
-
-	var installCmd, downloadCommand, totalProbeCmd, metadataCmd string
+	var installCmd, preflightCmd, downloadCommand, totalProbeCmd, metadataCmd string
 	if download.Source == model.ModelSourceHuggingFace {
-		// 1. 安装 huggingface_hub
+		// The project image already contains this dependency. The fallback preserves
+		// compatibility with existing custom Python images used by open-source deployments.
 		installCmd = fmt.Sprintf(
-			"pip install -U 'huggingface_hub>=0.23.0' -i %s %s",
-			pypiMirror, trustedHost,
+			`if ! python -c 'import huggingface_hub' >/dev/null 2>&1; then
+    echo "huggingface_hub is missing; installing the tested fallback version"
+    pip install --no-cache-dir 'huggingface_hub==%s'
+fi
+python -c 'import huggingface_hub; print("[TOOLS] huggingface_hub=" + huggingface_hub.__version__)'`,
+			huggingFaceHubVersion,
 		)
 
 		// 2. 用 Python API snapshot_download，而不是 huggingface-cli
@@ -1319,13 +1337,71 @@ print("[META] " + json.dumps({
 PY
 `, download.Name, repoType, download.Revision, download.Name, download.Name)
 	} else {
-		// Install the ModelScope CLI, then invoke it through an argument array so
-		// user-provided revisions never pass through shell parsing.
+		// The project image already contains these dependencies. The fallback keeps
+		// user-supplied Python images working while avoiding an unpinned installation.
 		installCmd = fmt.Sprintf(
-			"pip install -q modelscope -i %s %s",
-			pypiMirror, trustedHost,
+			`if ! python -c 'import modelscope, modelscope_hub' >/dev/null 2>&1; then
+    echo "ModelScope clients are missing; installing the tested fallback versions"
+    pip install --no-cache-dir 'modelscope==%s' 'modelscope-hub==%s'
+fi
+python - << 'PY'
+import modelscope
+import modelscope_hub
+print("[TOOLS] modelscope={} modelscope_hub={}".format(modelscope.__version__, modelscope_hub.__version__))
+PY`,
+			modelScopeVersion, modelScopeHubVersion,
 		)
 
+		// Validate an explicit revision before downloading. ModelScope's legacy file
+		// API currently returns Files=null for an unknown branch, which otherwise
+		// surfaces as an opaque "NoneType is not iterable" client error.
+		resourcePath := "models"
+		if download.Category == model.DownloadCategoryDataset {
+			resourcePath = "datasets"
+		}
+		preflightCmd = fmt.Sprintf(`
+echo "Validating ModelScope revision..."
+python - << 'PY'
+import json
+import os
+import sys
+import urllib.parse
+import urllib.request
+
+repo_id = %q
+revision = %q
+resource_path = %q
+if revision:
+    endpoint = os.environ.get("MODELSCOPE_ENDPOINT", "https://modelscope.cn").rstrip("/")
+    url = endpoint + "/api/v1/{}/{}/revisions".format(
+        resource_path, urllib.parse.quote(repo_id, safe="/"))
+    request = urllib.request.Request(url)
+    token = os.environ.get("MODELSCOPE_API_TOKEN", "")
+    if token:
+        request.add_header("Authorization", "Bearer " + token)
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            payload = json.load(response)
+        revision_map = (payload.get("Data") or payload.get("data") or {}).get("RevisionMap") or {}
+        entries = (revision_map.get("Branches") or []) + (revision_map.get("Tags") or [])
+        available = sorted({entry.get("Revision") for entry in entries if entry.get("Revision")})
+    except Exception as error:
+        print("[WARN] revision validation unavailable: {}".format(error), flush=True)
+    else:
+        if available and revision not in available:
+            print(
+                "[ERROR] revision_not_found: {!r} is not available for {}; available revisions: {}".format(
+                    revision, repo_id, ", ".join(available)
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            raise SystemExit(22)
+PY
+`, download.Name, download.Revision, resourcePath)
+
+		// Invoke the CLI through an argument array so
+		// user-provided revisions never pass through shell parsing.
 		var resourceFlag string
 		if download.Category == model.DownloadCategoryDataset {
 			resourceFlag = "--dataset"
@@ -1370,10 +1446,6 @@ except Exception:
 PY
 `, download.Name, download.Revision, string(download.Category))
 
-		resourcePath := "models"
-		if download.Category == model.DownloadCategoryDataset {
-			resourcePath = "datasets"
-		}
 		metadataCmd = fmt.Sprintf(`
 echo "Reading repository metadata..."
 python - << 'PY' || true
@@ -1476,14 +1548,15 @@ on_error() {
 }
 trap 'on_error $LINENO' ERR
 
-# 安装依赖
-echo "Installing dependencies from Tsinghua mirror..."
+# Verify preinstalled tools, with a pinned fallback for custom legacy images.
 %s
 
 # 确保 Python 包路径可用
 export PYTHONPATH="${PYTHONPATH:-}:/usr/local/lib/python3.11/site-packages"
 # 确保 PATH 包含 pip 安装的二进制目录（尽管我们现在不用 CLI 了，保留无妨）
 export PATH="/usr/local/bin:/root/.local/bin:$PATH"
+
+%s
 
 %s
 
@@ -1522,6 +1595,7 @@ fi
 		download.Source,
 		installCmd,
 		totalProbeCmd,
+		preflightCmd,
 		progressScript,
 		downloadCommand,
 		metadataCmd,
@@ -1599,6 +1673,7 @@ func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelD
 		SourceUpdatedAt: d.SourceUpdatedAt,
 		UserInfo:        model.UserInfo{Username: username, Nickname: nickname},
 		CanManage:       d.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin,
+		CanDelete:       canDeleteDownload(token),
 		CanViewLogs:     d.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin,
 		SourceURL:       sourceURLForDownload(d),
 		DisplayName:     d.DisplayName,

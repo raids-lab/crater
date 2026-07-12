@@ -36,7 +36,11 @@ spec:
                 {{- end }}
                 - --storage-root={{ .Values.modelDatasetGovernance.storageRoot }}
                 - --logical-public-prefix={{ .Values.modelDatasetGovernance.logicalPublicPrefix }}
+                {{- if .Values.modelDatasetGovernance.modelsSubdirectories }}
+                - --models-subdirectories={{ join "," .Values.modelDatasetGovernance.modelsSubdirectories }}
+                {{- else }}
                 - --models-subdirectory={{ .Values.modelDatasetGovernance.modelsSubdirectory }}
+                {{- end }}
                 - --datasets-subdirectory={{ .Values.modelDatasetGovernance.datasetsSubdirectory }}
                 - --max-depth={{ .Values.modelDatasetGovernance.maxDepth }}
                 - --exclude-directories={{ .Values.modelDatasetGovernance.excludeDirectories }}

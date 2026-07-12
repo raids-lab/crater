@@ -79,10 +79,22 @@ const (
 )
 
 type ModelDatasetDiscoveryEvidence struct {
-	HasConfig    bool     `json:"hasConfig"`
-	HasReadme    bool     `json:"hasReadme"`
-	WeightFiles  int      `json:"weightFiles"`
-	MatchedFiles []string `json:"matchedFiles,omitempty"`
+	HasConfig            bool                 `json:"hasConfig"`
+	HasReadme            bool                 `json:"hasReadme"`
+	WeightFiles          int                  `json:"weightFiles"`
+	MatchedFiles         []string             `json:"matchedFiles,omitempty"`
+	Provider             ModelDatasetProvider `json:"provider,omitempty"`
+	RepositoryID         string               `json:"repositoryId,omitempty"`
+	RepositoryURL        string               `json:"repositoryUrl,omitempty"`
+	ProvenanceSource     string               `json:"provenanceSource,omitempty"`
+	ProvenanceConfidence string               `json:"provenanceConfidence,omitempty"`
+	ConfigNameOrPath     string               `json:"configNameOrPath,omitempty"`
+	CandidateURLs        []string             `json:"candidateUrls,omitempty"`
+	FilesystemUID        string               `json:"filesystemUid,omitempty"`
+	FilesystemGID        string               `json:"filesystemGid,omitempty"`
+	ModifiedAt           *time.Time           `json:"modifiedAt,omitempty"`
+	OwnerUserID          *uint                `json:"ownerUserId,omitempty"`
+	OwnerUsername        string               `json:"ownerUsername,omitempty"`
 }
 
 // ModelDatasetDiscovery is a non-authoritative filesystem inventory record.

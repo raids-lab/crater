@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/util"
 )
 
 func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
@@ -36,6 +37,10 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		`args = ["modelscope", "download", resource_flag, repo_id]`,
 		`args.extend(["--revision", revision])`,
 		"subprocess.run(args, check=True)",
+		"revision_not_found",
+		"available revisions",
+		"modelscope==" + modelScopeVersion,
+		"modelscope-hub==" + modelScopeHubVersion,
 	} {
 		if !strings.Contains(command, expected) {
 			t.Fatalf("download command does not contain %q", expected)
@@ -43,6 +48,12 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 	}
 	if strings.Contains(command, "modelscope download --model Qwen/Qwen3-32B --revision") {
 		t.Fatal("download command interpolates arguments into a shell command")
+	}
+	if strings.Contains(command, "pip install -q modelscope") {
+		t.Fatal("download command performs an unpinned runtime installation")
+	}
+	if strings.Contains(command, "%!") {
+		t.Fatalf("download command contains an unresolved format directive: %s", command)
 	}
 }
 
@@ -86,5 +97,20 @@ func TestTruncateDownloadLogTail(t *testing.T) {
 
 	if len(truncated) > 32 || strings.Contains(truncated, "old line\nold line\nold line\nold line") || !strings.HasSuffix(truncated, "last line\n") {
 		t.Fatalf("unexpected truncated log tail: %q", truncated)
+	}
+}
+
+func TestDownloadRecordDeletionIsAdminOnly(t *testing.T) {
+	download := &model.ModelDownload{CreatorID: 42}
+	creator := util.JWTMessage{UserID: 42, RolePlatform: model.RoleUser}
+	creatorResponse := convertDownloadToResp(download, creator)
+	if !creatorResponse.CanManage || creatorResponse.CanDelete || canDeleteDownload(creator) {
+		t.Fatalf("creator permissions = %#v", creatorResponse)
+	}
+
+	admin := util.JWTMessage{UserID: 7, RolePlatform: model.RoleAdmin}
+	adminResponse := convertDownloadToResp(download, admin)
+	if !adminResponse.CanManage || !adminResponse.CanDelete || !canDeleteDownload(admin) {
+		t.Fatalf("admin permissions = %#v", adminResponse)
 	}
 }

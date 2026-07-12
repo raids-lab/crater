@@ -239,7 +239,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
                   {t('modelDownload.action.retry.confirm')}
                 </Button>
               )}
-              {download.canManage && (
+              {download.canDelete && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button
@@ -315,7 +315,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
           {
             title: t('modelDownload.detail.revision'),
             icon: PackageIcon,
-            value: download.revision || 'main',
+            value: download.revision || (download.source === 'modelscope' ? 'master' : 'main'),
           },
         ]}
         tabs={[

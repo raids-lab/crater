@@ -10,10 +10,9 @@ port: :8088
 # Optional: If not specified, default values will be used
 modelDownload:
   # Container image used for model download jobs
-  # Optional: Defaults to "python:3.11-slim" if not specified
-  # For deployments with network restrictions (e.g., in China), use internal registry:
-  # image: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim
-  image: python:3.11-slim
+  # Optional: Defaults to Crater's public, version-pinned downloader image
+  # Deployments may mirror this image into an administrator-approved internal registry
+  image: ghcr.io/raids-lab/crater-model-downloader:v1.0.0
   # Hugging Face Hub base URL used by download jobs
   # Deployments may point this to an administrator-approved mirror or gateway
   huggingFaceEndpoint: https://huggingface.co

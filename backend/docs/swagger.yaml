@@ -1409,6 +1409,8 @@ definitions:
     type: object
   internal_handler.ModelDownloadResp:
     properties:
+      canDelete:
+        type: boolean
       canManage:
         type: boolean
       canViewLogs:
@@ -6645,7 +6647,7 @@ paths:
     delete:
       consumes:
       - application/json
-      description: 删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
+      description: 删除下载任务记录(仅平台管理员),已下载的文件保留在存储中
       parameters:
       - description: 下载任务ID
         in: path

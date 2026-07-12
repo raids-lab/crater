@@ -54,9 +54,13 @@ func main() {
 		logicalPublicPrefix  = flag.String("logical-public-prefix", defaultLogicalPrefix, "logical public prefix used by download records")
 		physicalPublicPrefix = flag.String("physical-public-prefix", "", "physical public prefix; defaults to storage.prefix.public")
 		modelsDirectory      = flag.String("models-subdirectory", defaultModelsDirectory, "models subdirectory under the public prefix")
-		datasetsDirectory    = flag.String("datasets-subdirectory", defaultDatasetsDirectory, "datasets subdirectory under the public prefix")
-		maxDepth             = flag.Int("max-depth", defaultMaxDepth, "maximum scan depth below each resource root")
-		excludedDirectories  = flag.String(
+		modelsDirectories    = flag.String(
+			"models-subdirectories", "",
+			"optional comma-separated model subdirectories; takes precedence over --models-subdirectory",
+		)
+		datasetsDirectory   = flag.String("datasets-subdirectory", defaultDatasetsDirectory, "datasets subdirectory under the public prefix")
+		maxDepth            = flag.Int("max-depth", defaultMaxDepth, "maximum scan depth below each resource root")
+		excludedDirectories = flag.String(
 			"exclude-directories",
 			".cache,.git,.conda,node_modules,site-packages,test,tests,tmp,temp",
 			"comma-separated directory basenames to skip",
@@ -93,6 +97,7 @@ func main() {
 		StorageRoot:           *storageRoot,
 		PublicPrefix:          physicalPrefix,
 		ModelsSubdirectory:    *modelsDirectory,
+		ModelsSubdirectories:  splitCSV(*modelsDirectories),
 		DatasetsSubdirectory:  *datasetsDirectory,
 		MaxDepth:              *maxDepth,
 		ExcludedDirectories:   splitCSV(*excludedDirectories),

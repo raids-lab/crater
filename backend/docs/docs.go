@@ -6595,7 +6595,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中",
+                "description": "删除下载任务记录(仅平台管理员),已下载的文件保留在存储中",
                 "consumes": [
                     "application/json"
                 ],
@@ -11604,6 +11604,9 @@ const docTemplate = `{
         "internal_handler.ModelDownloadResp": {
             "type": "object",
             "properties": {
+                "canDelete": {
+                    "type": "boolean"
+                },
                 "canManage": {
                     "type": "boolean"
                 },
