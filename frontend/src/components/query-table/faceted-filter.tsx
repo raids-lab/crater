@@ -39,6 +39,7 @@ export interface DataTableFacetedFilterOption {
   label: string
   value: string
   icon?: React.ComponentType<{ className?: string }>
+  count?: number
 }
 
 interface DataTableFacetedFilterProps<TData, TValue> {
@@ -46,6 +47,7 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   title?: string
   options?: DataTableFacetedFilterOption[]
   defaultValues?: string[]
+  remoteFacets?: boolean
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -53,6 +55,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   title,
   options: rawOptions,
   defaultValues,
+  remoteFacets = false,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation()
   const facets = column?.getFacetedUniqueValues()
@@ -94,7 +97,7 @@ export function DataTableFacetedFilter<TData, TValue>({
           variant="outline"
           size="sm"
           className="h-9 border-dashed"
-          disabled={facets?.size === 0}
+          disabled={!remoteFacets && facets?.size === 0}
         >
           <ListFilter className="size-4" />
           <span className="text-xs">{title}</span>
@@ -135,9 +138,16 @@ export function DataTableFacetedFilter<TData, TValue>({
             <CommandEmpty>{t('dataTableFacetedFilter.noResults')}</CommandEmpty>
             <CommandGroup>
               {options
-                .filter((option) => 0 < (facets?.get(option.value) || 0))
+                .filter((option) =>
+                  remoteFacets
+                    ? option.count === undefined ||
+                      option.count > 0 ||
+                      selectedValues.has(option.value)
+                    : 0 < (facets?.get(option.value) || 0)
+                )
                 .map((option) => {
                   const isSelected = selectedValues.has(option.value)
+                  const count = remoteFacets ? option.count : facets?.get(option.value)
                   return (
                     <CommandItem
                       key={option.value}
@@ -163,9 +173,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                       </div>
                       {option.icon && <option.icon className="text-muted-foreground mr-2 size-4" />}
                       <span>{option.label}</span>
-                      {facets?.get(option.value) && (
+                      {count !== undefined && (
                         <span className="ml-auto flex size-4 items-center justify-center font-mono text-xs">
-                          {facets.get(option.value)}
+                          {count}
                         </span>
                       )}
                     </CommandItem>

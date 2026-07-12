@@ -1154,6 +1154,26 @@ func main() {
 			},
 		},
 		{
+			ID: "202607100100",
+			Migrate: func(tx *gorm.DB) error {
+				for _, index := range jobListIndexes() {
+					if err := tx.Exec(index.create).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				indexes := jobListIndexes()
+				for index := len(indexes) - 1; index >= 0; index-- {
+					if err := tx.Exec(indexes[index].drop).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
 			ID: "202607111400",
 			Migrate: func(tx *gorm.DB) error {
 				type ModelDownload struct {
@@ -1462,5 +1482,35 @@ func main() {
 
 	if err := m.Migrate(); err != nil {
 		panic(fmt.Errorf("could not migrate: %w", err))
+	}
+}
+
+type jobListIndex struct {
+	create string
+	drop   string
+}
+
+func jobListIndexes() []jobListIndex {
+	return []jobListIndex{
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_creation_timestamp ON jobs (creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_account_creation_timestamp ON jobs (account_id, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_account_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_user_creation_timestamp ON jobs (user_id, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_user_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_status_creation_timestamp ON jobs (status, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_status_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_type_creation_timestamp ON jobs (job_type, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_type_creation_timestamp`,
+		},
 	}
 }
