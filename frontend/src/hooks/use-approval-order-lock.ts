@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
