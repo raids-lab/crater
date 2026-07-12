@@ -238,8 +238,8 @@ jobs:
       - name: Build and push model-downloader image
         uses: docker/build-push-action@v6
         with:
-          context: hack/depend-image-dockerfile/${{ env.MODEL_DOWNLOADER }}
-          file: hack/depend-image-dockerfile/${{ env.MODEL_DOWNLOADER }}/Dockerfile
+          context: hack/depend-image-dockerfile/model-downloader
+          file: hack/depend-image-dockerfile/model-downloader/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
