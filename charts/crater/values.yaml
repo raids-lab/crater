@@ -324,6 +324,7 @@ backendConfig:
     # Secret must contain appropriate forwarding certificates
     tlsForwardSecretName: crater-tls-forward-secret
     # -- Name of the Kubernetes secret for pulling container images from private registries
+    # Also applied to model download Jobs when modelDownload.image is private
     # If not specified, no image pull secret will be used
     imagePullSecretName: ""
 

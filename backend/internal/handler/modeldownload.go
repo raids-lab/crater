@@ -1105,7 +1105,8 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 					},
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:    corev1.RestartPolicyNever,
+					ImagePullSecrets: downloadImagePullSecrets(config.GetConfig().Secrets.ImagePullSecretName),
 					Containers: []corev1.Container{
 						{
 							Name:    "downloader",
@@ -1150,6 +1151,17 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 	// 提交 Job 到集群
 	_, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Create(c, job, metav1.CreateOptions{})
 	return err
+}
+
+// downloadImagePullSecrets keeps the public-image path credential-free while
+// allowing deployments to use a private, internally mirrored downloader image.
+// The secret itself remains an administrator-owned deployment setting; download
+// requests never accept or persist registry credentials.
+func downloadImagePullSecrets(secretName string) []corev1.LocalObjectReference {
+	if secretName == "" {
+		return nil
+	}
+	return []corev1.LocalObjectReference{{Name: secretName}}
 }
 
 // downloadTokenEnv injects the access token for the given source as the env var

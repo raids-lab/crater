@@ -12,6 +12,7 @@ modelDownload:
   # Container image used for model download jobs
   # Optional: Defaults to Crater's public, version-pinned downloader image
   # Deployments may mirror this image into an administrator-approved internal registry
+  # For a private registry, also set secrets.imagePullSecretName below
   image: ghcr.io/raids-lab/crater-model-downloader:v1.0.0
   # Hugging Face Hub base URL used by download jobs
   # Deployments may point this to an administrator-approved mirror or gateway
@@ -109,6 +110,7 @@ secrets:
   # Required: Secret must contain appropriate forwarding certificates
   tlsForwardSecretName: crater-tls-forward-secret
   # Name of the Kubernetes secret for pulling container images from private registries
+  # This is also applied to model download jobs when modelDownload.image is private
   # Optional: If not specified, no image pull secret will be used
   imagePullSecretName: ""
 

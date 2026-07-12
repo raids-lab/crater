@@ -75,6 +75,17 @@ func TestModelDownloadStoragePathSeparatesSourceAndRevision(t *testing.T) {
 	}
 }
 
+func TestDownloadImagePullSecrets(t *testing.T) {
+	if got := downloadImagePullSecrets(""); got != nil {
+		t.Fatalf("public downloader image should not require pull secrets: %#v", got)
+	}
+
+	got := downloadImagePullSecrets("internal-registry")
+	if len(got) != 1 || got[0].Name != "internal-registry" {
+		t.Fatalf("private downloader image should use the configured pull secret: %#v", got)
+	}
+}
+
 func TestDownloadTokenEnvIsSourceSpecificAndEphemeral(t *testing.T) {
 	hfEnv := downloadTokenEnv(model.ModelSourceHuggingFace, "secret")
 	if len(hfEnv) != 2 || hfEnv[0].Value != "secret" {
