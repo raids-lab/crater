@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
@@ -37,13 +37,13 @@ import JupyterIcon from '@/components/icon/jupyter-icon'
 import JobResourceSummary from '@/components/job/job-resource-summary'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
-import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
+import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import SimpleTooltip from '@/components/label/simple-tooltip'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
-import { apiJobBillingList } from '@/services/api/billing'
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
@@ -51,10 +51,13 @@ import {
   JobType,
   ScheduleType,
   apiJobDelete,
+  apiJobInteractiveFacets,
   apiJobInteractiveList,
   getDisplayJobPhase,
-  isInteracitveJob,
+  interactiveJobTypes,
 } from '@/services/api/vcjob'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -70,7 +73,7 @@ export const Route = createFileRoute('/portal/jobs/inter/')({
   component: RouteComponent,
 })
 
-type JobTableRow = IJobInfo & { billedPointsTotal?: number }
+type JobTableRow = IJobInfo
 
 function RouteComponent() {
   const { t: translate } = useTranslation()
@@ -80,54 +83,31 @@ function RouteComponent() {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
+  const tableState = useRemoteTableState('portal_job_interactive', {
+    sorting: [{ id: 'createdAt', desc: true }],
+  })
 
   const interactiveQuery = useQuery({
-    queryKey: ['job', 'interactive'],
-    queryFn: apiJobInteractiveList,
-    select: (res) => res.data.filter((task) => isInteracitveJob(task.jobType)),
+    queryKey: buildRemoteQueryKey('jobs-interactive', tableState.params),
+    queryFn: async ({ signal }) => (await apiJobInteractiveList(tableState.params, signal)).data,
+    placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
-  const billingQuery = useQuery({
-    queryKey: ['job', 'billing'],
-    queryFn: apiJobBillingList,
-    select: (res) =>
-      res.data.reduce<Record<string, number>>((acc, item) => {
-        acc[item.jobName] = item.billedPointsTotal
-        return acc
-      }, {}),
-    refetchInterval: REFETCH_INTERVAL,
-    enabled: billingVisible,
+  const facetsQuery = useQuery({
+    queryKey: buildFacetQueryKey('jobs-interactive', tableState.params),
+    queryFn: async ({ signal }) => (await apiJobInteractiveFacets(tableState.params, signal)).data,
   })
-  const mergedInteractiveQuery = useMemo(
-    () =>
-      ({
-        data: (interactiveQuery.data ?? []).map((job) => ({
-          ...job,
-          billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
-        })),
-        isLoading: interactiveQuery.isLoading || (billingVisible && billingQuery.isLoading),
-        dataUpdatedAt: Math.max(
-          interactiveQuery.dataUpdatedAt,
-          billingVisible ? billingQuery.dataUpdatedAt : 0
-        ),
-        refetch: interactiveQuery.refetch,
-      }) as unknown as UseQueryResult<JobTableRow[], Error>,
-    [
-      billingVisible,
-      billingQuery.data,
-      billingQuery.dataUpdatedAt,
-      billingQuery.isLoading,
-      interactiveQuery.data,
-      interactiveQuery.dataUpdatedAt,
-      interactiveQuery.isLoading,
-      interactiveQuery.refetch,
-    ]
+  const toolbarConfig = useMemo(
+    () => getRemoteJobToolbarConfig(facetsQuery.data, interactiveJobTypes),
+    [facetsQuery.data]
   )
 
   const refetchTaskList = async () => {
     try {
       // 隔 200ms 并行发送所有异步请求
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['remote-list', 'jobs-interactive'] }),
+        queryClient.invalidateQueries({ queryKey: ['remote-list-facets', 'jobs-interactive'] }),
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({ queryKey: ['job'] })
         ),
@@ -191,6 +171,7 @@ function RouteComponent() {
       },
       {
         accessorKey: 'nodes',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('nodes')} />
         ),
@@ -201,6 +182,7 @@ function RouteComponent() {
       },
       {
         accessorKey: 'resources',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('resources')} />
         ),
@@ -305,15 +287,16 @@ function RouteComponent() {
   )
 
   return (
-    <DataTable
+    <RemoteDataTable
       info={{
         title: t('navigation.interacitveJobs'),
         description: '提供开箱即用的 Jupyter Lab， 可用于测试、调试等',
       }}
-      storageKey="portal_job_interactive"
-      query={mergedInteractiveQuery}
+      query={interactiveQuery}
+      state={tableState}
       columns={interColumns}
-      toolbarConfig={jobToolbarConfig}
+      getRowId={(row) => row.jobName}
+      toolbarConfig={toolbarConfig}
       briefChildren={<JobResourceSummary />}
       multipleHandlers={[
         {
@@ -339,6 +322,6 @@ function RouteComponent() {
         <DocsButton title="查看文档" url="quick-start/interactive" />
         <ListedNewJobButton mode="inter" />
       </div>
-    </DataTable>
+    </RemoteDataTable>
   )
 }

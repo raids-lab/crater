@@ -134,19 +134,20 @@ type Job struct {
 	gorm.Model
 	Name                    string         `gorm:"not null;type:varchar(256);comment:作业名称"`
 	JobName                 string         `gorm:"uniqueIndex;type:varchar(256);not null;comment:作业名称"`
-	UserID                  uint           `gorm:"primaryKey"`
+	UserID                  uint           `gorm:"primaryKey;index:idx_jobs_user_creation_timestamp,priority:1"`
 	User                    User           `gorm:"foreignKey:UserID"`
-	AccountID               uint           `gorm:"primaryKey"`
+	AccountID               uint           `gorm:"primaryKey;index:idx_jobs_account_creation_timestamp,priority:1"`
 	Account                 Account        `gorm:"foreignKey:AccountID"`
-	JobType                 JobType        `gorm:"not null;comment:作业类型"`
+	JobType                 JobType        `gorm:"not null;index:idx_jobs_type_creation_timestamp,priority:1;comment:作业类型"`
 	ScheduleType            *ScheduleType  `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
 	WaitingToleranceSeconds *int64         `gorm:"comment:作业等待忍耐时间(秒)"`
-	Status                  batch.JobPhase `gorm:"index:status;not null;comment:作业状态"`
+	Status                  batch.JobPhase `gorm:"index:status;index:idx_jobs_status_creation_timestamp,priority:1;not null;comment:作业状态"`
 	Queue                   string         `gorm:"type:varchar(256);index:idx_jobs_queue;comment:作业提交的volcano队列"`
 	// TODO(perf): Evaluate adding composite indexes for statistics queries:
 	// (user_id, running_timestamp), (account_id, running_timestamp),
 	// and potentially (running_timestamp, completed_timestamp).
-	CreationTimestamp  time.Time                           `gorm:"not null;comment:作业创建时间"`
+	//nolint:lll // GORM requires all composite index declarations on the indexed field.
+	CreationTimestamp  time.Time                           `gorm:"not null;index:idx_jobs_creation_timestamp,sort:desc;index:idx_jobs_account_creation_timestamp,priority:2,sort:desc;index:idx_jobs_user_creation_timestamp,priority:2,sort:desc;index:idx_jobs_status_creation_timestamp,priority:2,sort:desc;index:idx_jobs_type_creation_timestamp,priority:2,sort:desc;comment:作业创建时间"`
 	RunningTimestamp   time.Time                           `gorm:"comment:作业开始运行时间"`
 	CompletedTimestamp time.Time                           `gorm:"comment:作业完成时间"`
 	Nodes              datatypes.JSONType[[]string]        `gorm:"comment:作业运行的节点"`

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/imroc/req/v3"
@@ -54,15 +55,15 @@ func TestJobClientAdminListRoute(t *testing.T) {
 		if got := r.URL.Query().Get("days"); got != "-1" {
 			t.Errorf("days = %q, want -1", got)
 		}
-		writeJobTestResponse(t, w, []interface{}{})
+		writeJobTestResponse(t, w, Page[JobInfo]{})
 	})
 
-	jobs, err := client.ListJobs(JobListOptions{Admin: true, Days: -1})
+	page, err := client.ListJobs(JobListOptions{Admin: true, Days: -1})
 	if err != nil {
 		t.Fatalf("ListJobs: %v", err)
 	}
-	if len(jobs) != 0 {
-		t.Fatalf("jobs = %#v, want empty", jobs)
+	if len(page.Items) != 0 {
+		t.Fatalf("jobs = %#v, want empty", page.Items)
 	}
 }
 
@@ -192,5 +193,74 @@ func TestJobClientDeleteAcceptsNullSuccessData(t *testing.T) {
 	}
 	if message != "" {
 		t.Fatalf("message = %q, want empty backend message", message)
+	}
+}
+
+func TestListJobsSendsPagingAndServerFilters(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != VCJobListPath+"/all" {
+			t.Fatalf("unexpected path: %s", request.URL.Path)
+		}
+		query := request.URL.Query()
+		if query.Get("page") != "2" || query.Get("page_size") != "25" || query.Get("sort") != "-createdAt" {
+			t.Fatalf("unexpected paging query: %v", query)
+		}
+		if query.Get("days") != "14" || query.Get("status") != "Running" || query.Get("node") != "gpu-01" {
+			t.Fatalf("unexpected filters: %v", query)
+		}
+		if !reflect.DeepEqual(query["job_type"], []string{"jupyter", "webide"}) {
+			t.Fatalf("unexpected job types: %v", query["job_type"])
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(Response[Page[JobInfo]]{
+			Data: Page[JobInfo]{Items: []JobInfo{{Name: "job"}}, Total: 1, Page: 2, PageSize: 25},
+		})
+	}))
+	defer server.Close()
+
+	page, err := NewClient(server.URL).ListJobs(JobListOptions{
+		ListOptions: ListOptions{Page: 2, PageSize: 25, Sort: "-createdAt"},
+		All:         true,
+		Days:        14,
+		Status:      "Running",
+		Node:        "gpu-01",
+		Interactive: true,
+	})
+	if err != nil {
+		t.Fatalf("ListJobs returned error: %v", err)
+	}
+	if page.Total != 1 || len(page.Items) != 1 {
+		t.Fatalf("unexpected page: %#v", page)
+	}
+}
+
+func TestFetchAllJobPagesSequentially(t *testing.T) {
+	requested := make([]string, 0, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		page := request.URL.Query().Get("page")
+		requested = append(requested, page)
+		items := map[string][]JobInfo{
+			"1": {{Name: "job-1"}, {Name: "job-2"}},
+			"2": {{Name: "job-3"}},
+		}[page]
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(Response[Page[JobInfo]]{
+			Data: Page[JobInfo]{Items: items, Total: 3, PageSize: 2},
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	items, err := FetchAllPages(ListOptions{PageSize: 2}, func(options ListOptions) (Page[JobInfo], error) {
+		return client.ListJobs(JobListOptions{ListOptions: options})
+	})
+	if err != nil {
+		t.Fatalf("FetchAllPages returned error: %v", err)
+	}
+	if !reflect.DeepEqual(requested, []string{"1", "2"}) {
+		t.Fatalf("unexpected request order: %v", requested)
+	}
+	if len(items) != 3 {
+		t.Fatalf("unexpected items: %#v", items)
 	}
 }

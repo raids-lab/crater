@@ -20,6 +20,7 @@ import { jobTypes } from '@/components/badge/job-type-badge'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import { ScheduleType } from '@/services/api/vcjob'
+import type { IFacetResponse } from '@/services/types'
 
 export const scheduleTypes = [
   {
@@ -90,4 +91,39 @@ export const jobToolbarConfig: DataTableToolbarConfig = {
     },
   ],
   getHeader: getHeader,
+}
+
+export function getRemoteJobToolbarConfig(
+  facets?: IFacetResponse,
+  allowedJobTypes?: ReadonlyArray<string>
+): DataTableToolbarConfig {
+  const facetKeys: Record<string, string> = {
+    jobType: 'job_type',
+    scheduleType: 'schedule_type',
+    status: 'status',
+  }
+  return {
+    globalSearch: { enabled: true, placeholder: t('jobs.toolbar.searchPlaceholder') },
+    filterOptions: jobToolbarConfig.filterOptions.map((filter) => ({
+      ...filter,
+      remoteFacets: true,
+      option: filter.option
+        ?.filter(
+          (option) =>
+            filter.key !== 'jobType' ||
+            !allowedJobTypes ||
+            allowedJobTypes.includes(String(option.value))
+        )
+        .map((option) => {
+          const count = facets?.facets[facetKeys[filter.key]]?.find(
+            (item) => item.value === String(option.value)
+          )?.count
+          return {
+            ...option,
+            count: facets ? (count ?? 0) : undefined,
+          }
+        }),
+    })),
+    getHeader,
+  }
 }

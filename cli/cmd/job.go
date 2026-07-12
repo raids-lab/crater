@@ -100,18 +100,33 @@ func runAdminJobLs(cmd *cobra.Command, _ []string) error {
 }
 
 func readJobListOptions(cmd *cobra.Command, admin bool) (api.JobListOptions, error) {
+	listOptions, err := readJobPaginationOptions(cmd)
+	if err != nil {
+		return api.JobListOptions{}, err
+	}
 	all, _ := cmd.Flags().GetBool("all")
 	username, _ := cmd.Flags().GetString("user")
 	username = strings.TrimSpace(username)
 	days, _ := cmd.Flags().GetInt("days")
+	status, _ := cmd.Flags().GetString("status")
+	jobType, _ := cmd.Flags().GetString("type")
+	node, _ := cmd.Flags().GetString("node")
+	interactive, _ := cmd.Flags().GetBool("interactive")
+	batch, _ := cmd.Flags().GetBool("batch")
 	if err := validateJobListFilters(cmd); err != nil {
 		return api.JobListOptions{}, err
 	}
 	return api.JobListOptions{
-		All:      all,
-		Admin:    admin,
-		Username: username,
-		Days:     days,
+		ListOptions: listOptions,
+		All:         all,
+		Admin:       admin,
+		Username:    username,
+		Days:        days,
+		Status:      strings.TrimSpace(status),
+		JobType:     strings.TrimSpace(jobType),
+		Node:        strings.TrimSpace(node),
+		Interactive: interactive,
+		Batch:       batch,
 	}, nil
 }
 
@@ -120,19 +135,56 @@ func listJobs(cmd *cobra.Command, opts api.JobListOptions) error {
 	if err != nil {
 		return err
 	}
-	jobs, err := client.ListJobs(opts)
-	if err != nil {
-		return cliErrFromAPI(err)
+	fetchAll := opts.AllPages || hasLocalJobFilters(cmd)
+	var jobs api.Page[api.JobInfo]
+	var items []api.JobInfo
+	if fetchAll {
+		items, err = api.FetchAllPages(opts.ListOptions, func(listOptions api.ListOptions) (api.Page[api.JobInfo], error) {
+			next := opts
+			next.ListOptions = listOptions
+			return client.ListJobs(next)
+		})
+		if err != nil {
+			return cliErrFromAPI(err)
+		}
+	} else {
+		jobs, err = client.ListJobs(opts)
+		if err != nil {
+			return cliErrFromAPI(err)
+		}
+		items = jobs.Items
 	}
-	filtered, err := filterJobs(cmd, jobs)
+	items, err = filterJobs(cmd, items)
 	if err != nil {
 		return err
 	}
 	if outputJSON {
-		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{"jobs": filtered}))
+		if fetchAll {
+			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+				"jobs": items,
+			}))
+		}
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"jobs": items,
+			"pagination": map[string]interface{}{
+				"page":      jobs.Page,
+				"page_size": jobs.PageSize,
+				"total":     jobs.Total,
+			},
+		}))
 	}
-	printJobTable(filtered)
+	printJobTable(items)
+	if !fetchAll {
+		fmt.Printf("Page %d, %d items total\n", jobs.Page, jobs.Total)
+	}
 	return nil
+}
+
+func hasLocalJobFilters(cmd *cobra.Command) bool {
+	owner, _ := cmd.Flags().GetString("owner")
+	from, _ := cmd.Flags().GetString("from")
+	to, _ := cmd.Flags().GetString("to")
+	return strings.TrimSpace(owner) != "" || strings.TrimSpace(from) != "" || strings.TrimSpace(to) != ""
 }
 
 func runJobGet(_ *cobra.Command, args []string) error {
@@ -1344,6 +1396,7 @@ func init() {
 	jobLsCmd.Flags().String("to", "", "Filter createdAt until time, RFC3339 or YYYY-MM-DD")
 	jobLsCmd.Flags().Bool("interactive", false, "Only show interactive jobs")
 	jobLsCmd.Flags().Bool("batch", false, "Only show batch jobs")
+	addJobListFlags(jobLsCmd)
 
 	adminJobLsCmd.Flags().String("user", "", "List jobs for a username")
 	adminJobLsCmd.Flags().Int("days", 0, "Look back days; -1 means all")
@@ -1355,6 +1408,7 @@ func init() {
 	adminJobLsCmd.Flags().String("to", "", "Filter createdAt until time, RFC3339 or YYYY-MM-DD")
 	adminJobLsCmd.Flags().Bool("interactive", false, "Only show interactive jobs")
 	adminJobLsCmd.Flags().Bool("batch", false, "Only show batch jobs")
+	addJobListFlags(adminJobLsCmd)
 
 	addCreateCommonFlags(jobCreateJupyterCmd)
 	addCreateCommonFlags(jobCreateWebIDECmd)
@@ -1386,7 +1440,6 @@ func init() {
 	} {
 		cleanCmd.Flags().BoolP("yes", "y", false, "Run cleanup without confirmation")
 	}
-
 	completion.RegisterFlagValue([]string{"job", "ls"}, "status", staticValueCompleter(jobStatuses, nil))
 	completion.RegisterFlagValue([]string{"job", "ls"}, "type", staticValueCompleter(jobTypes, nil))
 	completion.RegisterFlagValue([]string{"admin", "job", "ls"}, "status", staticValueCompleter(jobStatuses, nil))

@@ -6,7 +6,7 @@
  * to show the user column (since we're already viewing a specific user's jobs)
  * and in the user view, we don't show the name column.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { Trash2Icon } from 'lucide-react'
 import { useCallback, useMemo } from 'react'
@@ -20,22 +20,25 @@ import ResourceBadges from '@/components/badge/resource-badges'
 import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
-import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
+import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
 import {
   IJobInfo,
   ScheduleType,
+  apiAdminGetUserJobFacets,
   apiAdminGetUserJobList,
+  apiGetUserJobFacets,
   apiGetUserJobs,
   apiJobDeleteForAdmin,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 // Define the props for the component
 interface UserJobsOverviewProps {
@@ -49,19 +52,39 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const isAdmin = useIsAdmin()
+  const resourceKey = `user-jobs-${username}-${isAdmin}`
+  const tableState = useRemoteTableState(`user_jobs_overview_${username}_${isAdmin}`, {
+    sorting: [{ id: 'createdAt', desc: true }],
+    columnFilters: [{ id: 'days', value: ['30'] }],
+  })
 
   // Fetch user jobs data
   const userJobsQuery = useQuery({
-    queryKey: ['user-jobs', username, isAdmin],
-    queryFn: () => (isAdmin ? apiAdminGetUserJobList(username, 30) : apiGetUserJobs(username, 30)), // Query 30 days of data
-    select: (res) => res.data,
+    queryKey: [...buildRemoteQueryKey(resourceKey, tableState.params), username, isAdmin],
+    queryFn: async ({ signal }) =>
+      (
+        await (isAdmin
+          ? apiAdminGetUserJobList(username, tableState.params, signal)
+          : apiGetUserJobs(username, tableState.params, signal))
+      ).data,
+    placeholderData: keepPreviousData,
+  })
+  const facetsQuery = useQuery({
+    queryKey: [...buildFacetQueryKey(resourceKey, tableState.params), username, isAdmin],
+    queryFn: async ({ signal }) =>
+      (
+        await (isAdmin
+          ? apiAdminGetUserJobFacets(username, tableState.params, signal)
+          : apiGetUserJobFacets(username, tableState.params, signal))
+      ).data,
   })
 
   const refetchJobs = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: ['user-jobs', username, isAdmin],
-    })
-  }, [queryClient, username, isAdmin])
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['remote-list', resourceKey] }),
+      queryClient.invalidateQueries({ queryKey: ['remote-list-facets', resourceKey] }),
+    ])
+  }, [queryClient, resourceKey])
 
   // Only admin view can delete jobs, so always use admin delete API
   const { mutate: deleteJob } = useMutation({
@@ -72,22 +95,10 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
     },
   })
 
-  // Define toolbar config based on admin status
-  const toolbarConfig = useMemo<DataTableToolbarConfig>(() => {
-    if (isAdmin) {
-      // Admin view: use default config with search
-      return jobToolbarConfig
-    } else {
-      // User view: no search box, but keep filters and view options
-      return {
-        globalSearch: {
-          enabled: false,
-        },
-        filterOptions: jobToolbarConfig.filterOptions,
-        getHeader: getHeader,
-      }
-    }
-  }, [isAdmin])
+  const toolbarConfig = useMemo(
+    () => getRemoteJobToolbarConfig(facetsQuery.data),
+    [facetsQuery.data]
+  )
 
   // Define table columns
   const userJobsColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
@@ -130,6 +141,7 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
       },
       {
         accessorKey: 'nodes',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('jobs.headers.nodes')} />
         ),
@@ -140,6 +152,7 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
       },
       {
         accessorKey: 'resources',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('jobs.headers.resources')} />
         ),
@@ -208,15 +221,16 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
   }, [t, deleteJob, isAdmin, refetchJobs])
 
   return (
-    <DataTable
+    <RemoteDataTable
       info={{
         description: t(
           isAdmin ? 'jobs.userJobsDescription.admin' : 'jobs.userJobsDescription.user'
         ),
       }}
-      storageKey="user_jobs_overview"
       query={userJobsQuery}
+      state={tableState}
       columns={userJobsColumns}
+      getRowId={(row) => row.jobName}
       toolbarConfig={toolbarConfig}
       initialColumnVisibility={{ nodes: false }}
       multipleHandlers={

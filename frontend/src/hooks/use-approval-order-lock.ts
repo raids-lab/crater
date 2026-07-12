@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -34,14 +34,6 @@ export function useApprovalOrderLock() {
 
   // 近 7 天窗口，避免 -1 带来的重负载
   const JOB_DAYS_WINDOW = 7
-
-  // 获取作业列表用于查找对应作业
-  const { data: jobList } = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', JOB_DAYS_WINDOW],
-    queryFn: () => apiAdminGetJobList(JOB_DAYS_WINDOW),
-    select: (res) => res.data,
-    retry: 1,
-  })
 
   // 选中工单的锁定小时（只用 content.approvalorderExtensionHours，空按 0 处理）
   const selectedExtHours = useMemo(() => {
@@ -69,7 +61,6 @@ export function useApprovalOrderLock() {
     },
     onSuccess: () => {
       toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-      // 刷新所有工单相关的查询缓存
       queryClient.invalidateQueries({
         queryKey: ['admin', 'approvalorders'],
       })
@@ -79,7 +70,6 @@ export function useApprovalOrderLock() {
       queryClient.invalidateQueries({
         queryKey: ['portal', 'approvalorders'],
       })
-      // 清空状态
       setIsDelayDialogOpen(false)
       setSelectedOrder(null)
       setSelectedJob(null)
@@ -94,17 +84,6 @@ export function useApprovalOrderLock() {
     const findTarget = (list?: IJobInfo[]) =>
       list?.find((j) => j.jobName === order.name || j.name === order.name)
 
-    // 先查缓存
-    const cached = findTarget(jobList)
-    if (cached) {
-      if (!isRunningPhase(cached.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(cached.status)}，无法锁定（仅运行中可锁定）`)
-        return null
-      }
-      return cached
-    }
-
-    // 未命中缓存：优先扩大时间窗口（7 -> 14 -> 30 天）
     setIsFetchingJob(true)
     try {
       const tryDays = [JOB_DAYS_WINDOW, 14, 30]
@@ -113,11 +92,13 @@ export function useApprovalOrderLock() {
 
       for (const d of tryDays) {
         try {
-          const res = await apiAdminGetJobList(d)
-          const list = res.data ?? []
-
-          // 更新缓存，保持与 useQuery 相同的 queryKey
-          queryClient.setQueryData(['admin', 'tasklist', 'job', d], res)
+          const res = await apiAdminGetJobList({
+            page: 1,
+            page_size: 10,
+            search: order.name,
+            filters: { days: [String(d)] },
+          })
+          const list = res.data.items
 
           const job = findTarget(list)
           if (job) {

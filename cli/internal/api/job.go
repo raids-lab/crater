@@ -1,13 +1,13 @@
 package api
 
 import (
-	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 )
 
 type JobClient interface {
-	ListJobs(opts JobListOptions) ([]JobInfo, error)
+	ListJobs(opts JobListOptions) (Page[JobInfo], error)
 	GetJob(name string) (*JobDetail, error)
 	GetJobPods(name string) ([]PodDetail, error)
 	GetJobEvents(name string) ([]map[string]interface{}, error)
@@ -35,10 +35,16 @@ type JobClient interface {
 }
 
 type JobListOptions struct {
-	All      bool
-	Admin    bool
-	Username string
-	Days     int
+	ListOptions
+	All         bool
+	Admin       bool
+	Username    string
+	Days        int
+	Status      string
+	JobType     string
+	Node        string
+	Interactive bool
+	Batch       bool
 }
 
 type UserInfo struct {
@@ -92,6 +98,7 @@ type JobInfo struct {
 	Locked                  bool         `json:"locked"`
 	PermanentLocked         bool         `json:"permanentLocked"`
 	LockedTimestamp         time.Time    `json:"lockedTimestamp"`
+	BilledPointsTotal       float64      `json:"billedPointsTotal"`
 }
 
 type JobDetail struct {
@@ -209,41 +216,63 @@ type CleanLowGPUUsageRequest struct {
 	Util      int `json:"util"`
 }
 
-func (c *Client) ListJobs(opts JobListOptions) ([]JobInfo, error) {
+func (c *Client) ListJobs(opts JobListOptions) (Page[JobInfo], error) {
 	prefix := VCJobsPrefix
 	if opts.Admin {
 		prefix = AdminVCJobsPrefix
 	}
 	path := prefix
-	query := url.Values{}
+	values := jobListValues(opts)
 	switch {
 	case opts.Username != "":
 		path += "/user/" + url.PathEscape(opts.Username)
-		if opts.Days != 0 {
-			query.Set("days", fmt.Sprintf("%d", opts.Days))
-		}
 	case opts.All && !opts.Admin:
 		path += "/all"
-		if opts.Days != 0 {
-			query.Set("days", fmt.Sprintf("%d", opts.Days))
-		}
-	case opts.Admin:
-		if opts.Days != 0 {
-			query.Set("days", fmt.Sprintf("%d", opts.Days))
-		}
 	}
-	if encoded := query.Encode(); encoded != "" {
-		path += "?" + encoded
-	}
-	var result Response[[]JobInfo]
-	resp, err := c.httpClient.R().SetSuccessResult(&result).SetErrorResult(&result).Get(path)
+	var result Response[Page[JobInfo]]
+	resp, err := c.httpClient.R().
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		SetQueryParamsFromValues(values).
+		Get(path)
 	if err != nil {
-		return nil, &NetworkError{Cause: err}
+		return Page[JobInfo]{}, &NetworkError{Cause: err}
 	}
 	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
+		return Page[JobInfo]{}, err
 	}
 	return result.Data, nil
+}
+
+func jobListValues(options JobListOptions) url.Values {
+	values := options.ListOptions.Values()
+	if options.Days != 0 {
+		values.Set("days", strconv.Itoa(options.Days))
+	}
+	if options.Status != "" {
+		values.Set("status", options.Status)
+	}
+	if options.Node != "" {
+		values.Set("node", options.Node)
+	}
+	types := selectedJobTypes(options)
+	for _, jobType := range types {
+		values.Add("job_type", jobType)
+	}
+	return values
+}
+
+func selectedJobTypes(options JobListOptions) []string {
+	if options.JobType != "" {
+		return []string{options.JobType}
+	}
+	if options.Interactive {
+		return []string{"jupyter", "webide"}
+	}
+	if options.Batch {
+		return []string{"custom", "pytorch", "tensorflow", "kuberay", "deepspeed", "openmpi"}
+	}
+	return nil
 }
 
 func (c *Client) GetJob(name string) (*JobDetail, error) {

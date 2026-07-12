@@ -154,7 +154,6 @@ interface ColocateJobInfo extends IJobInfo {
   id: number
   profileStatus: string
   priority: string
-  billedPointsTotal?: number
 }
 
 const ColocateOverview = () => {
@@ -168,9 +167,9 @@ const ColocateOverview = () => {
 
   const batchQuery = useQuery({
     queryKey: ['job', 'batch'],
-    queryFn: apiJobBatchList,
+    queryFn: () => apiJobBatchList({ page: 1, page_size: 200, filters: {} }),
     select: (res) =>
-      res.data
+      res.data.items
         .filter((task) => task.jobType !== JobType.Jupyter)
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)) as unknown as ColocateJobInfo[],
     refetchInterval: REFETCH_INTERVAL,
