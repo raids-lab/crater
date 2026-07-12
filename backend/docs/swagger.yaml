@@ -1205,6 +1205,11 @@ definitions:
     type: object
   internal_handler.DownloadActionReq:
     properties:
+      revision:
+        description: |-
+          Revision is optional and only used by retry. A non-nil empty value means
+          "use the source default branch" while preserving the failed record's path.
+        type: string
       token:
         type: string
     type: object
@@ -6773,7 +6778,7 @@ paths:
         name: id
         required: true
         type: integer
-      - description: 可选的临时访问令牌
+      - description: 可选的临时访问令牌和重试版本
         in: body
         name: data
         schema:

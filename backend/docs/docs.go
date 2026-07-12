@@ -6771,7 +6771,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "可选的临时访问令牌",
+                        "description": "可选的临时访问令牌和重试版本",
                         "name": "data",
                         "in": "body",
                         "schema": {
@@ -11295,6 +11295,10 @@ const docTemplate = `{
         "internal_handler.DownloadActionReq": {
             "type": "object",
             "properties": {
+                "revision": {
+                    "description": "Revision is optional and only used by retry. A non-nil empty value means\n\"use the source default branch\" while preserving the failed record's path.",
+                    "type": "string"
+                },
                 "token": {
                     "type": "string"
                 }
