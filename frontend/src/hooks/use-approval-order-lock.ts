@@ -14,23 +14,19 @@
  * limitations under the License.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { getJobPhaseLabel } from '@/components/badge/job-phase-badge'
 
-import { type ApprovalOrder, updateApprovalOrder } from '@/services/api/approvalorder'
+import { type ApprovalOrder, reviewApprovalOrder } from '@/services/api/approvalorder'
 import { type IJobInfo, JobPhase, apiAdminGetJobList } from '@/services/api/vcjob'
-
-import { atomUserInfo } from '@/utils/store'
 
 // Hook 用于管理工单锁定逻辑
 export function useApprovalOrderLock() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const user = useAtomValue(atomUserInfo)
   const [selectedOrder, setSelectedOrder] = useState<ApprovalOrder | null>(null)
   const [selectedJob, setSelectedJob] = useState<IJobInfo | null>(null)
   const [isDelayDialogOpen, setIsDelayDialogOpen] = useState(false)
@@ -68,15 +64,7 @@ export function useApprovalOrderLock() {
   // 批准操作 mutation
   const { mutate: approveOrder } = useMutation({
     mutationFn: async (order: ApprovalOrder) => {
-      await updateApprovalOrder(order.id, {
-        name: order.name,
-        type: order.type,
-        status: 'Approved',
-        approvalorderTypeID: Number(order.content.approvalorderTypeID) || 0,
-        approvalorderReason: String(order.content.approvalorderReason || ''),
-        approvalorderExtensionHours: Number(order.content.approvalorderExtensionHours) || 0,
-        reviewerID: user?.id || 0,
-      })
+      await reviewApprovalOrder(order.id, { status: 'Approved' })
       return order
     },
     onSuccess: () => {

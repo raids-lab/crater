@@ -17,7 +17,6 @@
 // Modified code
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
 import { Database, Hourglass, ListChecks } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,12 +44,10 @@ import { SectionCards } from '@/components/metrics/section-cards'
 import {
   type ApprovalOrder,
   listApprovalOrders,
-  updateApprovalOrder,
+  reviewApprovalOrder,
 } from '@/services/api/approvalorder'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
-
-import { atomUserInfo } from '@/utils/store'
 
 import { DurationDialog } from '../../jobs/-components/duration-dialog'
 
@@ -76,7 +73,6 @@ function RouteComponent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const user = useAtomValue(atomUserInfo)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
 
   const [rejectReason, setRejectReason] = useState('')
@@ -122,15 +118,7 @@ function RouteComponent() {
   // 批准操作（仅用于无需锁定的场景）
   const { mutate: approveOrder, isPending: isApproving } = useMutation({
     mutationFn: async (order: ApprovalOrder) => {
-      await updateApprovalOrder(order.id, {
-        name: order.name,
-        type: order.type,
-        status: 'Approved',
-        approvalorderTypeID: Number(order.content.approvalorderTypeID) || 0,
-        approvalorderReason: String(order.content.approvalorderReason || ''),
-        approvalorderExtensionHours: Number(order.content.approvalorderExtensionHours) || 0,
-        reviewerID: user?.id || 0,
-      })
+      await reviewApprovalOrder(order.id, { status: 'Approved' })
       return order
     },
     onSuccess: () => {
@@ -145,16 +133,7 @@ function RouteComponent() {
   // 拒绝操作 mutation
   const { mutate: rejectOrder, isPending: isRejecting } = useMutation({
     mutationFn: async ({ order, reason }: { order: ApprovalOrder; reason: string }) => {
-      return updateApprovalOrder(order.id, {
-        name: order.name,
-        type: order.type,
-        status: 'Rejected',
-        approvalorderTypeID: Number(order.content.approvalorderTypeID) || 0,
-        approvalorderReason: String(order.content.approvalorderReason || ''),
-        approvalorderExtensionHours: Number(order.content.approvalorderExtensionHours) || 0,
-        reviewerID: user?.id || 0,
-        reviewNotes: reason,
-      })
+      return reviewApprovalOrder(order.id, { status: 'Rejected', reviewNotes: reason })
     },
     onSuccess: () => {
       toast.success(t('ApprovalOrderTable.toast.rejectSuccess'))

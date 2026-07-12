@@ -45,6 +45,12 @@ export interface ApprovalOrderReq {
   reviewerID?: number
   reviewNotes?: string
 }
+
+export interface ApprovalOrderReviewReq {
+  status: 'Approved' | 'Rejected' | 'Canceled'
+  reviewNotes?: string
+}
+
 export const listApprovalOrders = () => {
   return apiV1Get<IResponse<ApprovalOrder[]>>('admin/approvalorder')
 }
@@ -59,6 +65,9 @@ export const createApprovalOrder = (data: ApprovalOrderReq) => {
 }
 export const updateApprovalOrder = (id: number, data: ApprovalOrderReq) => {
   return apiV1Put<IResponse<ApprovalOrder>>(`approvalorder/${id}`, data)
+}
+export const reviewApprovalOrder = (id: number, data: ApprovalOrderReviewReq) => {
+  return apiV1Put<IResponse<string>>(`admin/approvalorder/${id}/review`, data)
 }
 export const listApprovalOrdersbyName = (name: string) => {
   return apiV1Get<IResponse<ApprovalOrder[]>>(`approvalorder/name/${name}`)
