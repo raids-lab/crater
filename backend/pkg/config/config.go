@@ -146,6 +146,7 @@ type Config struct {
 	ModelMetadata struct {
 		HuggingFaceEndpoints []string `json:"huggingFaceEndpoints"`
 		ModelScopeEndpoints  []string `json:"modelScopeEndpoints"`
+		LogoAllowedHosts     []string `json:"logoAllowedHosts"`
 		LogicalPublicPrefix  string   `json:"logicalPublicPrefix"`
 		TimeoutSeconds       int      `json:"timeoutSeconds"`
 		MaxLogoBytes         int64    `json:"maxLogoBytes"`

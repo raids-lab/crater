@@ -24,6 +24,11 @@ const (
 	DefaultLogicalPublicPrefix       = "public"
 )
 
+var defaultLogoAllowedHosts = []string{
+	"huggingface.co",
+	"cdn-avatars.huggingface.co",
+}
+
 func (c *Config) HuggingFaceDownloadEndpoint() string {
 	return endpointOrDefault(c.ModelDownload.HuggingFaceEndpoint, DefaultHuggingFaceEndpoint)
 }
@@ -52,6 +57,14 @@ func (c *Config) MetadataMaxLogoBytes() int64 {
 		return c.ModelMetadata.MaxLogoBytes
 	}
 	return DefaultMaxLogoBytes
+}
+
+func (c *Config) MetadataLogoAllowedHosts() []string {
+	hosts := normalizedStrings(c.ModelMetadata.LogoAllowedHosts)
+	if len(hosts) == 0 {
+		return append([]string(nil), defaultLogoAllowedHosts...)
+	}
+	return hosts
 }
 
 func (c *Config) MetadataLogicalPublicPrefix() string {
@@ -86,6 +99,23 @@ func endpointsOrDefault(endpoints []string, fallback string) []string {
 	}
 	if len(result) == 0 {
 		return []string{fallback}
+	}
+	return result
+}
+
+func normalizedStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(value), "."))
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
 	}
 	return result
 }

@@ -374,7 +374,7 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 			if err := mgr.associateUserWithDownload(c, tx, token.UserID, restored.ID); err != nil {
 				return err
 			}
-			download, isNewDownload = restored, true
+			download, isNewDownload = restored, shouldSubmitRestoredDownload(restored)
 			return nil
 		}
 
@@ -411,6 +411,10 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 	})
 
 	return download, isNewDownload, err
+}
+
+func shouldSubmitRestoredDownload(download *model.ModelDownload) bool {
+	return download.Status != model.ModelDownloadStatusReady
 }
 
 // @Summary		创建模型下载任务
@@ -800,7 +804,7 @@ func prepareRetryDownload(
 			updates["revision"] = *revision
 		}
 		if _, err = txQ.WithContext(c).Where(txQ.ID.Eq(d.ID)).Updates(updates); err != nil {
-			return bizerr.Internal.DatabaseError.Wrap(err, "update download record failed")
+			return retryUpdateError(err)
 		}
 
 		d.Status, d.JobName, d.Message = model.ModelDownloadStatusDownloading, newJobName, ""
@@ -819,7 +823,8 @@ func checkRetryRevisionConflict(
 	if revision == nil || *revision == download.Revision {
 		return nil
 	}
-	conflict, err := txQ.ModelDownload.WithContext(c).
+	conflict, err := txQ.ModelDownload.WithContext(c).Unscoped().
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(txQ.ModelDownload.ID.Neq(download.ID), txQ.ModelDownload.Name.Eq(download.Name),
 			txQ.ModelDownload.Source.Eq(string(download.Source)),
 			txQ.ModelDownload.Category.Eq(string(download.Category)),
@@ -832,6 +837,17 @@ func checkRetryRevisionConflict(
 		return bizerr.Internal.DatabaseError.Wrap(err, "check retry revision conflict")
 	}
 	return nil
+}
+
+func retryUpdateError(err error) error {
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return bizerr.Conflict.ResourceStatusError.New("download with requested revision already exists")
+	}
+	var sqlStateError interface{ SQLState() string }
+	if errors.As(err, &sqlStateError) && sqlStateError.SQLState() == "23505" {
+		return bizerr.Conflict.ResourceStatusError.New("download with requested revision already exists")
+	}
+	return bizerr.Internal.DatabaseError.Wrap(err, "update download record failed")
 }
 
 // DeleteDownload godoc

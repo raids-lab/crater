@@ -254,6 +254,10 @@ backendConfig:
     # -- ModelScope-compatible endpoints tried in order for public metadata refresh
     modelScopeEndpoints:
       - "https://modelscope.cn"
+    # -- Exact HTTPS hosts allowed when caching source logos; add trusted mirror/CDN hosts as needed
+    logoAllowedHosts:
+      - "huggingface.co"
+      - "cdn-avatars.huggingface.co"
     # -- Logical prefix in download records before mapping to backendConfig.storage.prefix.public
     logicalPublicPrefix: "public"
     # -- Timeout in seconds for each source metadata request

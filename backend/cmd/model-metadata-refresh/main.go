@@ -47,6 +47,7 @@ const (
 	maxSourceDescriptionBytes = 500
 	maxMetadataTags           = 4
 	maxStoredReadmeBytes      = 64 * 1024
+	maxLogoRedirects          = 5
 )
 
 type sourceMetadata struct {
@@ -130,7 +131,8 @@ func main() {
 			cursor = download.ID
 			processed++
 			if err := refreshDownload(
-				db, client, endpoints, avatarCache, appConfig.MetadataMaxLogoBytes(), download, *apply,
+				db, client, endpoints, avatarCache, appConfig.MetadataLogoAllowedHosts(),
+				appConfig.MetadataMaxLogoBytes(), download, *apply,
 			); err != nil {
 				failed++
 				fmt.Printf("FAIL id=%d source=%s name=%s: %v\n", download.ID, download.Source, download.Name, err)
@@ -157,6 +159,7 @@ func refreshDownload(
 	client *http.Client,
 	endpoints sourceEndpoints,
 	avatarCache map[string]cachedLogo,
+	logoAllowedHosts []string,
 	maxLogoBytes int64,
 	download *model.ModelDownload,
 	apply bool,
@@ -177,11 +180,14 @@ func refreshDownload(
 				fmt.Printf("WARN id=%d owner avatar lookup failed: %v\n", download.ID, err)
 			}
 			if logo.URL != "" {
-				logo.Data, logo.ContentType, err = fetchLogo(client, logo.URL, maxLogoBytes)
+				logo.Data, logo.ContentType, err = fetchLogo(
+					client, logo.URL, logoAllowedHosts, maxLogoBytes,
+				)
 				if err != nil {
 					fmt.Printf("WARN id=%d owner avatar cache failed: %v\n", download.ID, err)
-					logo.Data = nil
-					logo.ContentType = ""
+					// Do not persist an untrusted URL or overwrite a previously cached logo
+					// when a transient lookup, redirect, or allowlist check fails.
+					logo = cachedLogo{}
 				}
 			}
 			avatarCache[organization] = logo
@@ -196,7 +202,6 @@ func refreshDownload(
 
 	updates := map[string]any{
 		"organization":          organization,
-		"logo_url":              logo.URL,
 		"source_url":            sourceURL,
 		"display_name":          metadata.DisplayName,
 		"source_description":    metadata.Description,
@@ -212,6 +217,9 @@ func refreshDownload(
 		"source_downloads":      metadata.Downloads,
 		"source_likes":          metadata.Likes,
 		"metadata_refreshed_at": time.Now(),
+	}
+	if logo.URL != "" {
+		updates["logo_url"] = logo.URL
 	}
 	if metadata.SizeBytes > 0 && download.SizeBytes == 0 {
 		updates["size_bytes"] = metadata.SizeBytes
@@ -764,10 +772,20 @@ func getJSONFromEndpoints(
 	return "", lastErr
 }
 
-func fetchLogo(client *http.Client, endpoint string, maxBytes int64) (
+func fetchLogo(client *http.Client, endpoint string, allowedHosts []string, maxBytes int64) (
 	data []byte, contentType string, err error,
 ) {
-	response, err := getResponse(client, endpoint)
+	if err := validateLogoURL(endpoint, allowedHosts); err != nil {
+		return nil, "", err
+	}
+	logoClient := *client
+	logoClient.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+		if len(via) >= maxLogoRedirects {
+			return errors.New("logo source exceeded redirect limit")
+		}
+		return validateLogoURL(request.URL.String(), allowedHosts)
+	}
+	response, err := getResponse(&logoClient, endpoint)
 	if err != nil {
 		return nil, "", err
 	}
@@ -787,6 +805,25 @@ func fetchLogo(client *http.Client, endpoint string, maxBytes int64) (
 		return nil, "", fmt.Errorf("logo exceeds %d bytes", maxBytes)
 	}
 	return data, contentType, nil
+}
+
+func validateLogoURL(endpoint string, allowedHosts []string) error {
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("invalid logo URL: %w", err)
+	}
+	if parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil {
+		return errors.New("logo URL must be an absolute HTTPS URL without credentials")
+	}
+
+	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
+	for _, allowedHost := range allowedHosts {
+		allowedHost = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(allowedHost), "."))
+		if host == allowedHost {
+			return nil
+		}
+	}
+	return fmt.Errorf("logo host %q is not allowed", host)
 }
 
 func repositoryURL(download *model.ModelDownload, baseEndpoint string) string {

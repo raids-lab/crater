@@ -28,6 +28,10 @@ modelMetadata:
     - https://huggingface.co
   modelScopeEndpoints:
     - https://modelscope.cn
+  # Exact HTTPS hosts allowed when caching source logos; add trusted mirror/CDN hosts as needed
+  logoAllowedHosts:
+    - huggingface.co
+    - cdn-avatars.huggingface.co
   # Logical prefix in download records before mapping to storage.prefix.public
   logicalPublicPrefix: public
   timeoutSeconds: 20

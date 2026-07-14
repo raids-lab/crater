@@ -16,13 +16,33 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 )
+
+type testSQLStateError struct {
+	state string
+}
+
+func (err testSQLStateError) Error() string {
+	return "database error with SQLSTATE " + err.state
+}
+
+func (err testSQLStateError) SQLState() string {
+	return err.state
+}
 
 func TestDownloadActionRevisionDistinguishesOmittedAndDefault(t *testing.T) {
 	var omitted DownloadActionReq
@@ -55,6 +75,73 @@ func TestNormalizeRetryRevision(t *testing.T) {
 	tooLong := strings.Repeat("x", maxDownloadRevisionLength+1)
 	if err := normalizeRetryRevision(&DownloadActionReq{Revision: &tooLong}); err == nil {
 		t.Fatal("overlong retry revision should be rejected")
+	}
+}
+
+func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:retry_revision_conflict?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	active := model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryModel, Revision: "old", Path: "public/Models/owner/model",
+		Status: model.ModelDownloadStatusFailed, CreatorID: 1,
+	}
+	softDeleted := active
+	softDeleted.Revision = "new"
+	if err := db.Create(&active).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&softDeleted).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&softDeleted).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	revision := "new"
+	err = checkRetryRevisionConflict(ginContext, query.Use(db), &active, &revision)
+	if !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("expected a conflict for soft-deleted revision, got %v", err)
+	}
+}
+
+func TestRetryUpdateDuplicateIsConflict(t *testing.T) {
+	if err := retryUpdateError(gorm.ErrDuplicatedKey); !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("duplicate retry update should be a conflict: %v", err)
+	}
+	if err := retryUpdateError(testSQLStateError{state: "23505"}); !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("PostgreSQL unique violation should be a conflict: %v", err)
+	}
+	if err := retryUpdateError(gorm.ErrInvalidData); !errors.Is(err, bizerr.Internal.Base) {
+		t.Fatalf("non-duplicate retry update should remain internal: %v", err)
+	}
+}
+
+func TestRestoredReadyDownloadDoesNotSubmitJob(t *testing.T) {
+	for _, testCase := range []struct {
+		status model.ModelDownloadStatus
+		want   bool
+	}{
+		{status: model.ModelDownloadStatusReady, want: false},
+		{status: model.ModelDownloadStatusPending, want: true},
+		{status: model.ModelDownloadStatusDownloading, want: true},
+		{status: model.ModelDownloadStatusPaused, want: true},
+		{status: model.ModelDownloadStatusFailed, want: true},
+	} {
+		download := &model.ModelDownload{Status: testCase.status}
+		if got := shouldSubmitRestoredDownload(download); got != testCase.want {
+			t.Fatalf("status %s: shouldSubmitRestoredDownload() = %v, want %v", testCase.status, got, testCase.want)
+		}
 	}
 }
 

@@ -93,15 +93,68 @@ func TestFetchLogoCachesOnlyBoundedImages(t *testing.T) {
 	client := testHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		return testResponse(http.StatusOK, "image/png", []byte("small-logo")), nil
 	})
-	data, contentType, err := fetchLogo(client, "https://source.example/logo.png", 32)
+	allowedHosts := []string{"source.example"}
+	data, contentType, err := fetchLogo(client, "https://source.example/logo.png", allowedHosts, 32)
 	if err != nil {
 		t.Fatalf("fetchLogo() error = %v", err)
 	}
 	if string(data) != "small-logo" || contentType != "image/png" {
 		t.Fatalf("data = %q, contentType = %q", data, contentType)
 	}
-	if _, _, err := fetchLogo(client, "https://source.example/logo.png", 4); err == nil {
+	if _, _, err := fetchLogo(client, "https://source.example/logo.png", allowedHosts, 4); err == nil {
 		t.Fatal("fetchLogo() accepted an oversized image")
+	}
+}
+
+func TestFetchLogoFollowsOnlyAllowedRedirects(t *testing.T) {
+	var requestedHosts []string
+	client := testHTTPClient(func(request *http.Request) (*http.Response, error) {
+		requestedHosts = append(requestedHosts, request.URL.Hostname())
+		if request.URL.Hostname() == "source.example" {
+			response := testResponse(http.StatusFound, "", nil)
+			response.Header.Set("Location", "https://cdn.example/logo.png")
+			return response, nil
+		}
+		return testResponse(http.StatusOK, "image/png", []byte("redirected-logo")), nil
+	})
+
+	data, _, err := fetchLogo(
+		client, "https://source.example/logo.png", []string{"source.example", "cdn.example"}, 32,
+	)
+	if err != nil || string(data) != "redirected-logo" {
+		t.Fatalf("allowed redirect result: data=%q err=%v", data, err)
+	}
+	if strings.Join(requestedHosts, ",") != "source.example,cdn.example" {
+		t.Fatalf("unexpected logo requests: %v", requestedHosts)
+	}
+
+	requestedHosts = nil
+	_, _, err = fetchLogo(client, "https://source.example/logo.png", []string{"source.example"}, 32)
+	if err == nil || strings.Join(requestedHosts, ",") != "source.example" {
+		t.Fatalf("disallowed redirect was followed: hosts=%v err=%v", requestedHosts, err)
+	}
+}
+
+func TestFetchLogoRejectsUnsafeInitialURLBeforeRequest(t *testing.T) {
+	requested := false
+	client := testHTTPClient(func(_ *http.Request) (*http.Response, error) {
+		requested = true
+		return testResponse(http.StatusOK, "image/png", []byte("logo")), nil
+	})
+
+	for _, endpoint := range []string{
+		"http://cdn-avatars.huggingface.co/logo.png",
+		"https://169.254.169.254/latest/meta-data",
+		"https://user:password@cdn-avatars.huggingface.co/logo.png",
+	} {
+		if _, _, err := fetchLogo(
+			client, endpoint, []string{"cdn-avatars.huggingface.co"}, 32,
+		); err == nil {
+			t.Fatalf("fetchLogo() accepted unsafe URL %q", endpoint)
+		}
+	}
+	if requested {
+		t.Fatal("unsafe logo URL reached the HTTP transport")
 	}
 }
 
