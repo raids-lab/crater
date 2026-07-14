@@ -23,6 +23,7 @@ import {
   BarChart3Icon,
   BookOpenTextIcon,
   CalendarIcon,
+  CopyIcon,
   CpuIcon,
   DatabaseIcon,
   DownloadIcon,
@@ -170,6 +171,11 @@ export function SharedResourceTable({
   })
   const queryClient = useQueryClient()
   const [pathname, setPathname] = useState<string>('')
+  const currentStoragePath = useMemo(() => {
+    const basePath = data?.url?.replace(/\/+$/, '') ?? ''
+    const relativePath = pathname.replace(/^\/+/, '')
+    return relativePath ? `${basePath}/${relativePath}` : basePath
+  }, [data?.url, pathname])
 
   const handleBackClick = () => {
     if (pathname) {
@@ -183,6 +189,14 @@ export function SharedResourceTable({
         setPathname('') // 如果路径是根目录，清空路径
       }
     }
+  }
+
+  const handleCopyStoragePath = () => {
+    if (!currentStoragePath) return
+    void navigator.clipboard
+      .writeText(currentStoragePath)
+      .then(() => toast.success(t('modelDownload.pathCopied')))
+      .catch(() => toast.error(t('sharedResource.pathCopyFailed')))
   }
 
   const queryDataset = useQuery({
@@ -813,15 +827,34 @@ export function SharedResourceTable({
           label: t('sharedResource.datasetFiles', { type: dataTypeLabel }),
           children: (
             <>
-              <TooltipButton
-                variant="outline"
-                size="icon"
-                onClick={handleBackClick}
-                className="mb-2 h-8 w-8"
-                tooltipContent={t('sharedResource.goBack')}
-              >
-                <ArrowLeftIcon className="size-4" />
-              </TooltipButton>
+              <div className="bg-muted/30 mb-2 flex min-w-0 items-center gap-2 rounded-md border p-1">
+                <TooltipButton
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleBackClick}
+                  disabled={!pathname}
+                  className="h-8 w-8 shrink-0"
+                  tooltipContent={t('sharedResource.goBack')}
+                >
+                  <ArrowLeftIcon className="size-4" />
+                </TooltipButton>
+                <div
+                  className="text-foreground min-w-0 flex-1 truncate font-mono text-sm"
+                  title={currentStoragePath}
+                >
+                  {currentStoragePath}
+                </div>
+                <TooltipButton
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopyStoragePath}
+                  disabled={!currentStoragePath}
+                  className="h-8 w-8 shrink-0"
+                  tooltipContent={t('modelDownload.copyPath')}
+                >
+                  <CopyIcon className="size-4" />
+                </TooltipButton>
+              </div>
               <DataTable
                 storageKey="dataset_files"
                 query={queryDataset}

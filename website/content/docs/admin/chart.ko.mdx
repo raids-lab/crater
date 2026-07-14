@@ -54,7 +54,15 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | 백엔드 API 서비스 리스닝 포트 |
 | backendConfig.enableLeaderElection | bool | `false` | Leader 선출 활성화 여부 (고가용성 배포용) |
-| backendConfig.modelDownload.image | string | `"python:3.11-slim"` | 모델 다운로드 작업에 사용되는 컨테이너 이미지 |
+| backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | 모델 및 데이터셋 다운로드 작업에 사용하는 컨테이너 이미지 |
+| backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | 다운로드 작업이 사용하는 Hugging Face Hub URL. 관리자가 승인한 미러로 변경 가능 |
+| backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | 다운로드 작업이 사용하는 ModelScope URL |
+| backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | 메타데이터 갱신 시 순서대로 시도하는 Hugging Face 호환 엔드포인트 |
+| backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | 메타데이터 갱신 시 순서대로 시도하는 ModelScope 호환 엔드포인트 |
+| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co"]` | Logo 가져오기와 캐시를 허용하는 정확한 HTTPS 호스트 목록. 리디렉션의 각 단계도 검증함 |
+| backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | 다운로드 레코드를 공용 스토리지에 매핑하기 전에 사용하는 논리 경로 접두사 |
+| backendConfig.modelMetadata.timeoutSeconds | int | `20` | 각 소스 메타데이터 요청의 제한 시간(초) |
+| backendConfig.modelMetadata.maxLogoBytes | int | `524288` | 소스 Logo 하나에 대해 캐시할 수 있는 최대 바이트 수 |
 | backendConfig.prometheusAPI | string | `"http://..."` | 모니터링 지표 획득을 위한 Prometheus API 주소 |
 | backendConfig.auth.token.accessTokenSecret | string | `"..."` | JWT Access Token 서명 키 |
 | backendConfig.auth.token.refreshTokenSecret | string | `"..."` | JWT Refresh Token 서명 키 |
@@ -151,6 +159,48 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 | cronjobConfig.jobs.longTime.BATCH_DAYS | string | `"4"` | 배치 작업 최대 실행 일수 |
 | cronjobConfig.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES | string | `"5"` | Waiting 상태 Jupyter 작업 정리 임계값 |
 
+## 모델 및 데이터셋 메타데이터 작업
+
+| 파라미터 | 타입 | 기본값 | 설명 |
+|-----|------|---------|-------------|
+| modelMetadataRefresh.enabled | bool | `true` | 주기적 메타데이터 갱신 작업을 생성하며, 첫 실행에서 기존 Ready 다운로드를 자동 처리함 |
+| modelMetadataRefresh.apply | bool | `true` | 소스 메타데이터와 캐시한 Logo 를 데이터베이스에 기록함 |
+| modelMetadataRefresh.schedule | string | `"15 */6 * * *"` | 메타데이터 갱신 Cron 일정 |
+| modelMetadataRefresh.batchSize | int | `100` | 데이터베이스 배치 하나에서 처리하는 Ready 다운로드 레코드 수 |
+| modelMetadataRefresh.staleAfter | string | `"168h"` | 이후 실행에서는 이 기간보다 오래된 레코드만 갱신함 |
+| modelMetadataRefresh.delay | string | `"100ms"` | 소스 요청 사이의 대기 시간 |
+| modelDatasetGovernance.enabled | bool | `false` | 공용 모델 및 데이터셋 스토리지 거버넌스 작업 생성 여부. 전체 스캔은 기본적으로 비활성화됨 |
+| modelDatasetGovernance.apply | bool | `false` | 거버넌스 결과 기록 여부. 첫 스캔 로그를 확인하는 동안에는 비활성화 권장 |
+| modelDatasetGovernance.schedule | string | `"30 2 * * 0"` | 스토리지 거버넌스 Cron 일정 |
+| modelDatasetGovernance.modelsSubdirectories | list | `[]` | `["Models", "LLM"]` 같은 선택적 모델 하위 디렉터리. 비어 있지 않으면 단일 디렉터리 설정을 덮어씀 |
+
+### 기존 모델 Logo 최초 백필
+
+Chart 1.1.0은 메타데이터 갱신과 데이터베이스 기록을 기본적으로 활성화합니다. 첫 실행에서는 상태가 `Ready`이고 아직 갱신 시간이 없는 기존 모델 및 데이터셋 다운로드 레코드를 선택하여 Logo, README, 소스 통계 등의 메타데이터를 백필합니다. 성공한 레코드에는 갱신 시간이 기록되므로 이후에는 6시간마다 전체를 다시 처리하지 않고 `staleAfter`보다 오래된 레코드만 갱신합니다.
+
+다음 Cron 일정을 기다리지 않고 설정 적용 직후 백필하려면 CronJob에서 일회성 Job을 생성합니다.
+
+```bash
+kubectl create job --from=cronjob/model-metadata-refresh \
+  model-metadata-refresh-initial -n crater
+kubectl logs -n crater -f job/model-metadata-refresh-initial
+```
+
+같은 이름의 Job이 이미 있으면 다른 이름을 사용하십시오. 먼저 네트워크 연결과 메타데이터 결과를 검증하려면 Job 실행 전에 `modelMetadataRefresh.apply`를 일시적으로 `false`로 설정하십시오. dry-run 모드는 결과를 로그로만 출력하고 데이터베이스를 갱신하지 않습니다.
+
+Logo는 `backendConfig.modelMetadata.logoAllowedHosts`에 정확히 등록된 HTTPS 호스트에서만 가져오며, 리디렉션의 각 단계에서도 다시 검증합니다. 미러 또는 다른 신뢰할 수 있는 CDN을 사용하는 경우 해당 호스트를 명시적으로 추가하십시오.
+
+```yaml
+backendConfig:
+  modelMetadata:
+    logoAllowedHosts:
+      - huggingface.co
+      - cdn-avatars.huggingface.co
+      - your-trusted-logo-cdn.example.com
+```
+
+갱신 작업은 기존 `Ready` 다운로드 레코드만 처리합니다. 완료되지 않았거나 실패한 다운로드는 이 백필의 기존 리소스로 처리하지 않습니다.
+
 ## 데이터베이스 백업 (dbBackup)
 
 | 파라미터 | 타입 | 기본값 | 설명 |
@@ -185,4 +235,3 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 | images.frontend.repository | string | `"..."` | 프론트엔드 서비스 이미지 저장소 |
 | images.storage.repository | string | `"..."` | 스토리지 관리 서비스 이미지 저장소 |
 | images.buildkit.tag | string | `"v0.23.1"` | Buildkit 핵심 이미지 태그 |
-

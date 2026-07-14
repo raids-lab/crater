@@ -82,10 +82,10 @@ images:
 
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:
-  # -- Disabled by default; enable only after endpoint and dry-run validation
-  enabled: false
-  # -- Write refreshed metadata; keep false for the first validation run
-  apply: false
+  # -- Enable periodic refresh; the first run backfills metadata for existing ready downloads
+  enabled: true
+  # -- Write refreshed metadata and cached logos to the database
+  apply: true
   # -- Cron schedule for metadata refresh
   schedule: "15 */6 * * *"
   # -- Number of ready download records processed per database batch

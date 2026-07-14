@@ -1171,6 +1171,7 @@
   "sharedResource.noIntroduction": "No source introduction is available.",
   "sharedResource.openSourceRepo": "View full repository at source",
   "sharedResource.parameterCount": "Parameters",
+  "sharedResource.pathCopyFailed": "Failed to copy path",
   "sharedResource.readOnly": "Read Only",
   "sharedResource.serialNumber": "Serial Number",
   "sharedResource.shareCanceled": "Sharing has been canceled",

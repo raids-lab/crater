@@ -54,7 +54,15 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | 后端 API 服务监听端口 |
 | backendConfig.enableLeaderElection | bool | `false` | 是否启用 Leader 选举（用于高可用部署） |
-| backendConfig.modelDownload.image | string | `"python:3.11-slim"` | 模型下载作业使用的容器镜像 |
+| backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | 模型和数据集下载作业使用的容器镜像 |
+| backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | 下载作业使用的 Hugging Face Hub 地址，可替换为管理员认可的镜像站 |
+| backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | 下载作业使用的 ModelScope 地址 |
+| backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | 元数据刷新按顺序尝试的 Hugging Face 兼容端点 |
+| backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | 元数据刷新按顺序尝试的 ModelScope 兼容端点 |
+| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co"]` | 允许抓取并缓存 Logo 的精确 HTTPS 主机白名单；重定向后的每一跳也会校验 |
+| backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | 下载记录映射到公共存储前使用的逻辑路径前缀 |
+| backendConfig.modelMetadata.timeoutSeconds | int | `20` | 单次来源元数据请求的超时时间（秒） |
+| backendConfig.modelMetadata.maxLogoBytes | int | `524288` | Crater 缓存单个来源 Logo 的最大字节数 |
 | backendConfig.prometheusAPI | string | `"http://..."` | Prometheus API 地址，用于获取监控指标 |
 | backendConfig.auth.token.accessTokenSecret | string | `"..."` | JWT Access Token 签名密钥 |
 | backendConfig.auth.token.refreshTokenSecret | string | `"..."` | JWT Refresh Token 签名密钥 |
@@ -151,6 +159,48 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | cronjobConfig.jobs.longTime.BATCH_DAYS | string | `"4"` | 批量作业的最长运行天数 |
 | cronjobConfig.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES | string | `"5"` | Jupyter 作业处于 Waiting 状态的清理阈值 |
 
+## 模型与数据集元数据任务
+
+| 参数 | 类型 | 默认值 | 描述 |
+|-----|------|---------|-------------|
+| modelMetadataRefresh.enabled | bool | `true` | 创建周期性元数据刷新任务；首次运行会自动处理现有 Ready 下载记录 |
+| modelMetadataRefresh.apply | bool | `true` | 将来源元数据和缓存的 Logo 写入数据库 |
+| modelMetadataRefresh.schedule | string | `"15 */6 * * *"` | 元数据刷新 Cron 表达式 |
+| modelMetadataRefresh.batchSize | int | `100` | 每个数据库批次处理的 Ready 下载记录数 |
+| modelMetadataRefresh.staleAfter | string | `"168h"` | 后续运行只刷新超过该时间未同步的记录 |
+| modelMetadataRefresh.delay | string | `"100ms"` | 两次来源请求之间的延迟 |
+| modelDatasetGovernance.enabled | bool | `false` | 是否创建公共模型和数据集存储治理任务；全盘扫描默认关闭 |
+| modelDatasetGovernance.apply | bool | `false` | 是否写入治理结果；首次扫描建议保持关闭并检查日志 |
+| modelDatasetGovernance.schedule | string | `"30 2 * * 0"` | 存储治理 Cron 表达式 |
+| modelDatasetGovernance.modelsSubdirectories | list | `[]` | 可选的模型子目录列表，例如 `["Models", "LLM"]`；非空时覆盖单个目录配置 |
+
+### 现有模型 Logo 首次回填
+
+Chart 1.1.0 默认启用元数据刷新并写入结果。第一次任务会选中状态为 `Ready` 且尚无刷新时间的现有模型和数据集下载记录，回填 Logo、README、来源统计等元数据；成功后写入刷新时间，后续只按 `staleAfter` 刷新过期记录，不会每 6 小时全量重刷。
+
+若希望配置生效后立即回填、不等待下一次 Cron 调度，可以手动从 CronJob 创建一次 Job：
+
+```bash
+kubectl create job --from=cronjob/model-metadata-refresh \
+  model-metadata-refresh-initial -n crater
+kubectl logs -n crater -f job/model-metadata-refresh-initial
+```
+
+如果同名 Job 已存在，请更换 Job 名称。需要先验证网络和元数据结果时，可临时将 `modelMetadataRefresh.apply` 设为 `false` 后触发任务；此时只输出日志，不写数据库。
+
+Logo 只会从 `backendConfig.modelMetadata.logoAllowedHosts` 中列出的精确 HTTPS 主机抓取，且每次重定向都会重新校验。使用镜像站或其他可信 CDN 时，应显式追加对应主机：
+
+```yaml
+backendConfig:
+  modelMetadata:
+    logoAllowedHosts:
+      - huggingface.co
+      - cdn-avatars.huggingface.co
+      - your-trusted-logo-cdn.example.com
+```
+
+该任务只处理已有的 `Ready` 下载记录；未完成或失败的下载不会被当作现有资源回填。
+
 ## 数据库备份 (dbBackup)
 
 | 参数 | 类型 | 默认值 | 描述 |
@@ -185,4 +235,3 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | images.frontend.repository | string | `"..."` | 前端服务镜像仓库 |
 | images.storage.repository | string | `"..."` | 存储管理服务镜像仓库 |
 | images.buildkit.tag | string | `"v0.23.1"` | Buildkit 核心镜像标签 |
-

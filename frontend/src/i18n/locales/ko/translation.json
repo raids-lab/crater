@@ -1168,6 +1168,7 @@
   "sharedResource.noIntroduction": "원본 소개가 없습니다.",
   "sharedResource.openSourceRepo": "원본에서 전체 저장소 보기",
   "sharedResource.parameterCount": "파라미터 수",
+  "sharedResource.pathCopyFailed": "경로를 복사하지 못했습니다",
   "sharedResource.readOnly": "읽기 전용",
   "sharedResource.serialNumber": "번호",
   "sharedResource.shareCanceled": "공유가 취소되었습니다.",

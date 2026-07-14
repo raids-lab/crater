@@ -1171,6 +1171,7 @@
   "sharedResource.noIntroduction": "配布元の紹介はありません。",
   "sharedResource.openSourceRepo": "配布元で完全なリポジトリを表示",
   "sharedResource.parameterCount": "パラメータ数",
+  "sharedResource.pathCopyFailed": "パスのコピーに失敗しました",
   "sharedResource.readOnly": "読み取り専用",
   "sharedResource.serialNumber": "シリアル番号",
   "sharedResource.shareCanceled": "共有が解除されました",

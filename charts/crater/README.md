@@ -211,11 +211,11 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | modelDatasetGovernance.scanTimeout | string | `"30m"` | Maximum duration of one filesystem scan |
 | modelDatasetGovernance.schedule | string | `"30 2 * * 0"` | Cron schedule used after an administrator explicitly enables recurring scans |
 | modelDatasetGovernance.storageRoot | string | `"/crater"` | Filesystem mount root inside the storage container |
-| modelMetadataRefresh | object | `{"apply":false,"batchSize":100,"delay":"100ms","enabled":false,"extraEnv":[],"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"schedule":"15 */6 * * *","staleAfter":"168h"}` | Periodically refresh public model and dataset metadata from configured source endpoints |
-| modelMetadataRefresh.apply | bool | `false` | Write refreshed metadata; keep false for the first validation run |
+| modelMetadataRefresh | object | `{"apply":true,"batchSize":100,"delay":"100ms","enabled":true,"extraEnv":[],"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"schedule":"15 */6 * * *","staleAfter":"168h"}` | Periodically refresh public model and dataset metadata from configured source endpoints |
+| modelMetadataRefresh.apply | bool | `true` | Write refreshed metadata and cached logos to the database |
 | modelMetadataRefresh.batchSize | int | `100` | Number of ready download records processed per database batch |
 | modelMetadataRefresh.delay | string | `"100ms"` | Delay between source requests |
-| modelMetadataRefresh.enabled | bool | `false` | Disabled by default; enable only after endpoint and dry-run validation |
+| modelMetadataRefresh.enabled | bool | `true` | Enable periodic refresh; the first run backfills metadata for existing ready downloads |
 | modelMetadataRefresh.extraEnv | list | `[]` | Optional environment variables such as HTTPS_PROXY and NO_PROXY for restricted networks |
 | modelMetadataRefresh.schedule | string | `"15 */6 * * *"` | Cron schedule for metadata refresh |
 | modelMetadataRefresh.staleAfter | string | `"168h"` | Refresh metadata older than this duration |

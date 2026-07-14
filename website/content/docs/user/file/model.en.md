@@ -5,7 +5,7 @@ description: Documentation for Model
 
 ## What is a Model
 
-A model is similar to a dataset, essentially a link pointing to a specific file location, which makes it more convenient to mount and share. Like datasets, the repository address function currently cannot directly download from open-source communities, mainly providing a specific description for easier sharing. If you need to download from open-source communities, you can refer to downloading models and datasets from the ModelScope community in the job template, or download them to your local machine and upload them to the platform. For uploading large files, refer to the file system section.
+A model is a read-only resource that points to a location in shared storage, making it easy to mount and share. Crater can download models directly from ModelScope or HuggingFace, or register a directory that has already been uploaded to the file system.
 
 ## Where to View Models
 
@@ -13,11 +13,23 @@ You can view models under `Data Management - Models`. The models displayed here 
 
 ![model](./img/model.webp)
 
-Each model will have some basic description, and on the right, there are four buttons: Rename, Personal Share, Account Share, and Delete. These operations can only be used by the model creator.
+Each model shows its metadata and available actions. Open the model's **Files** tab to see and copy its actual storage path and browse its files. Historical downloads may still use a longer path containing the source and revision. Crater does not move those directories automatically because existing jobs may depend on them.
+
+## Download a Model from a Repository
+
+Select **Download model**, then enter the source, repository ID (for example, `Qwen/Qwen3-32B`), revision, and an optional access token. New downloads use the canonical path:
+
+```text
+public/Models/<owner>/<repository>
+```
+
+Crater keeps one public resource for each repository ID. If a Ready, pending, downloading, or paused record already exists, Crater reuses that record and its actual path instead of downloading another copy for a different source, revision, or historical path format. Each requesting user is associated once, and the record's reference count is the number of associated users. If the existing record has failed, retry or resolve it before requesting another source or revision.
+
+After a failed download, partial files remain in the original directory so retrying the same record can continue there. Only a record in Ready state represents a complete, usable model. Deleting a download task removes the task record but does not remove its stored files. Ask an administrator to clean up a failed directory only after confirming that no retry, mount, or user depends on it.
 
 ## How to Create a Model
 
-At the top left of the model page, there is a "Create Dataset" button. Click it, then fill in the model name, description, select the folder location, model tags, and the open-source address of the model, and choose whether to make it public before creating.
+If the model files are already in storage, select **Create model**, enter the model name and description, choose the folder, and optionally add tags and the upstream repository address.
 
 ![model-create](./img/model-create.webp)
 

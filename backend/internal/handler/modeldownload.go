@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -243,28 +242,108 @@ func (mgr *ModelDownloadMgr) associateUserWithDownload(
 	return nil
 }
 
-// findReadyOrOngoingDownload 查找已完成或正在进行的下载
+// findReadyOrOngoingDownload reuses one logical public resource regardless of
+// which supported source or revision originally populated it. Prefer the
+// canonical short path when historical short- and long-path records coexist.
 func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 	c *gin.Context, txQ *query.Query,
-	name string, source model.ModelSource, category model.DownloadCategory, revision string,
-) *model.ModelDownload {
+	name string, source model.ModelSource, category model.DownloadCategory, revision, canonicalPath string,
+) (*model.ModelDownload, error) {
 	q := txQ.ModelDownload
 
-	// 查询下载成功的记录
-	existingDownload, _ := q.WithContext(c).
-		Where(q.Name.Eq(name), q.Source.Eq(string(source)),
-			q.Category.Eq(string(category)), q.Revision.Eq(revision),
-			q.Status.Eq(string(model.ModelDownloadStatusReady))).First()
-	if existingDownload != nil {
-		return existingDownload
+	readyDownloads, err := q.WithContext(c).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.Name.Eq(name), q.Category.Eq(string(category)),
+			q.Status.Eq(string(model.ModelDownloadStatusReady))).
+		Order(q.ID).
+		Find()
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ready logical download")
+	}
+	if preferred := preferredLogicalDownload(readyDownloads, canonicalPath, source, revision); preferred != nil {
+		return preferred, nil
 	}
 
-	// 查询正在进行的下载
-	ongoingDownload, _ := q.WithContext(c).
-		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
-			q.Revision.Eq(revision), q.Status.In(string(model.ModelDownloadStatusPending),
-				string(model.ModelDownloadStatusDownloading))).First()
-	return ongoingDownload
+	ongoingDownloads, err := q.WithContext(c).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.Name.Eq(name), q.Category.Eq(string(category)),
+			q.Status.In(string(model.ModelDownloadStatusPending), string(model.ModelDownloadStatusDownloading),
+				string(model.ModelDownloadStatusPaused))).
+		Order(q.ID).
+		Find()
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ongoing logical download")
+	}
+	return preferredLogicalDownload(ongoingDownloads, canonicalPath, source, revision), nil
+}
+
+func preferredLogicalDownload(
+	downloads []*model.ModelDownload, canonicalPath string, source model.ModelSource, revision string,
+) *model.ModelDownload {
+	for _, download := range downloads {
+		if download.Path == canonicalPath && download.Source == source && download.Revision == revision {
+			return download
+		}
+	}
+	for _, download := range downloads {
+		if download.Path == canonicalPath {
+			return download
+		}
+	}
+	for _, download := range downloads {
+		if download.Source == source && download.Revision == revision {
+			return download
+		}
+	}
+	if len(downloads) > 0 {
+		return downloads[0]
+	}
+	return nil
+}
+
+// lockModelDownloadIdentity serializes first-time downloads whose current
+// database uniqueness still differs by source and revision. Existing
+// installations may contain more than one historical record, so changing the
+// unique index in place would make upgrades fail; a PostgreSQL transaction
+// advisory lock prevents two new variants from racing into the same short path.
+func lockModelDownloadIdentity(
+	c *gin.Context, txQ *query.Query, name string, category model.DownloadCategory,
+) error {
+	db := txQ.ModelDownload.WithContext(c).UnderlyingDB()
+	if db.Name() != "postgres" {
+		return nil
+	}
+	identity := string(category) + ":" + name
+	if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", identity).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "lock logical download identity")
+	}
+	return nil
+}
+
+// checkLogicalDownloadConflict blocks a new source/revision when a historical
+// failed or soft-deleted record already owns storage for the same public model.
+// Ready and ongoing records are handled earlier and reused instead.
+func checkLogicalDownloadConflict(
+	c *gin.Context, txQ *query.Query,
+	name string, source model.ModelSource, category model.DownloadCategory, revision string,
+) error {
+	var conflict model.ModelDownload
+	db := txQ.ModelDownload.WithContext(c).Unscoped().UnderlyingDB()
+	err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("name = ? AND category = ? AND NOT (source = ? AND revision = ?)",
+			name, category, source, revision).
+		Order("id ASC").
+		First(&conflict).Error
+	if err == nil {
+		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf(
+			"model already has storage at %s from %s revision %q; reuse or resolve that record before downloading another source or revision",
+			conflict.Path, conflict.Source, conflict.Revision,
+		))
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "check logical download conflict")
+	}
+	return nil
 }
 
 // restoreAndResetSoftDeletedDownload 恢复并重置软删除的下载记录
@@ -355,14 +434,27 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 	var isNewDownload bool
 
 	err := db.Transaction(func(tx *query.Query) error {
+		if err := lockModelDownloadIdentity(c, tx, req.Name, category); err != nil {
+			return err
+		}
+
 		// 1. 查找已完成或正在进行的下载
-		existing := mgr.findReadyOrOngoingDownload(c, tx, req.Name, source, category, revision)
+		existing, err := mgr.findReadyOrOngoingDownload(
+			c, tx, req.Name, source, category, revision, downloadPath,
+		)
+		if err != nil {
+			return err
+		}
 		if existing != nil {
 			if err := mgr.associateUserWithDownload(c, tx, token.UserID, existing.ID); err != nil {
 				return err
 			}
 			download, isNewDownload = existing, false
 			return nil
+		}
+
+		if err := checkLogicalDownloadConflict(c, tx, req.Name, source, category, revision); err != nil {
+			return err
 		}
 
 		// 2. 查找并恢复软删除的记录
@@ -467,13 +559,13 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	} else {
 		basePath = "public/Datasets"
 	}
-	downloadPath := modelDownloadStoragePath(basePath, safeName, source, req.Revision)
+	downloadPath := modelDownloadStoragePath(basePath, safeName)
 
 	// 在事务中获取或创建下载任务
 	download, isNewDownload, err := mgr.getOrCreateDownload(c, &req, token, source, category, downloadPath, req.Revision)
 	if err != nil {
 		klog.Errorf("get or create download failed: %v", err)
-		resputil.Error(c, "处理下载请求失败", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -1701,15 +1793,8 @@ func sanitizeModelName(name string) string {
 	return pattern.ReplaceAllString(name, "")
 }
 
-func modelDownloadStoragePath(
-	basePath, safeName string, source model.ModelSource, revision string,
-) string {
-	revisionKey := "default"
-	if revision != "" {
-		digest := fmt.Sprintf("%x", sha256.Sum256([]byte(revision)))
-		revisionKey = digest[:12]
-	}
-	return filepath.Join(basePath, safeName, string(source), revisionKey)
+func modelDownloadStoragePath(basePath, safeName string) string {
+	return filepath.Join(basePath, safeName)
 }
 
 func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelDownloadResp {

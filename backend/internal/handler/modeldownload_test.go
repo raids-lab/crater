@@ -179,21 +179,170 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 	}
 }
 
-func TestModelDownloadStoragePathSeparatesSourceAndRevision(t *testing.T) {
+func TestModelDownloadStoragePathUsesCanonicalShortPath(t *testing.T) {
 	base := "public/Models"
 	name := "Qwen/Qwen3-32B"
-	defaultPath := modelDownloadStoragePath(base, name, model.ModelSourceModelScope, "")
-	huggingFacePath := modelDownloadStoragePath(base, name, model.ModelSourceHuggingFace, "")
-	revisionPath := modelDownloadStoragePath(base, name, model.ModelSourceModelScope, "v2")
+	path := modelDownloadStoragePath(base, name)
 
-	if defaultPath != filepath.Join(base, name, "modelscope", "default") {
-		t.Fatalf("unexpected default storage path: %s", defaultPath)
+	if path != filepath.Join(base, name) {
+		t.Fatalf("unexpected canonical storage path: %s", path)
 	}
-	if defaultPath == huggingFacePath || defaultPath == revisionPath || huggingFacePath == revisionPath {
-		t.Fatalf("source/revision paths must be distinct: %q %q %q", defaultPath, huggingFacePath, revisionPath)
+}
+
+func TestPreferredLogicalDownloadPrefersCanonicalPath(t *testing.T) {
+	longExact := &model.ModelDownload{
+		Model: gorm.Model{ID: 1},
+		Path:  "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Source: model.ModelSourceModelScope,
+		Revision: "master",
 	}
-	if revisionPath != modelDownloadStoragePath(base, name, model.ModelSourceModelScope, "v2") {
-		t.Fatal("revision storage path must be deterministic")
+	shortOtherSource := &model.ModelDownload{
+		Model: gorm.Model{ID: 2},
+		Path:  "public/Models/Qwen/Qwen3-32B", Source: model.ModelSourceHuggingFace, Revision: "main",
+	}
+
+	got := preferredLogicalDownload(
+		[]*model.ModelDownload{longExact, shortOtherSource},
+		"public/Models/Qwen/Qwen3-32B", model.ModelSourceModelScope, "master",
+	)
+	if got != shortOtherSource {
+		t.Fatalf("preferredLogicalDownload() = %#v, want canonical short-path record", got)
+	}
+}
+
+func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:logical_download_reuse?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	longPath := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "master",
+		Path: "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Status: model.ModelDownloadStatusReady,
+		CreatorID: 1,
+	}
+	shortPath := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryModel, Revision: "main",
+		Path: "public/Models/Qwen/Qwen3-32B", Status: model.ModelDownloadStatusReady,
+		CreatorID: 2,
+	}
+	if err := db.Create(&longPath).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&shortPath).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
+		model.DownloadCategoryModel, "master", "public/Models/Qwen/Qwen3-32B",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.ID != shortPath.ID {
+		t.Fatalf("findReadyOrOngoingDownload() = %#v, want short-path record %d", got, shortPath.ID)
+	}
+}
+
+func TestAssociateUserWithLogicalDownloadIncrementsReferenceOnce(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:logical_download_reference?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}, &model.UserModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	download := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "master",
+		Path: "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Status: model.ModelDownloadStatusReady,
+		CreatorID: 1, ReferenceCount: 1,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.UserModelDownload{UserID: 1, ModelDownloadID: download.ID}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	mgr := &ModelDownloadMgr{}
+	for range 2 {
+		if err := mgr.associateUserWithDownload(ginContext, query.Use(db), 2, download.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var updated model.ModelDownload
+	if err := db.First(&updated, download.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updated.ReferenceCount != 2 {
+		t.Fatalf("reference count = %d, want 2 unique users", updated.ReferenceCount)
+	}
+	var associations int64
+	if err := db.Model(&model.UserModelDownload{}).
+		Where("model_download_id = ? AND user_id = ?", download.ID, 2).
+		Count(&associations).Error; err != nil {
+		t.Fatal(err)
+	}
+	if associations != 1 {
+		t.Fatalf("user association count = %d, want 1", associations)
+	}
+}
+
+func TestLogicalDownloadConflictIncludesOtherSourceAndSoftDeletedRows(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:logical_download_conflict?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	download := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "master",
+		Path: "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Status: model.ModelDownloadStatusFailed,
+		CreatorID: 1,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	err = checkLogicalDownloadConflict(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceHuggingFace,
+		model.DownloadCategoryModel, "main",
+	)
+	if !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("expected cross-source soft-deleted conflict, got %v", err)
+	}
+
+	if err := checkLogicalDownloadConflict(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
+		model.DownloadCategoryModel, "master",
+	); err != nil {
+		t.Fatalf("exact historical identity should be retried in place, got %v", err)
 	}
 }
 

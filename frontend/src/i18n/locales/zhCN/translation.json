@@ -1171,6 +1171,7 @@
   "sharedResource.noIntroduction": "暂无源站介绍。",
   "sharedResource.openSourceRepo": "在源站查看完整仓库",
   "sharedResource.parameterCount": "参数量",
+  "sharedResource.pathCopyFailed": "复制路径失败",
   "sharedResource.readOnly": "只读",
   "sharedResource.serialNumber": "序号",
   "sharedResource.shareCanceled": "已取消共享",
