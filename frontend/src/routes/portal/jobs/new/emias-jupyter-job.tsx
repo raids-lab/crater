@@ -58,6 +58,7 @@ import { JobType, apiJobTemplate, apiJupyterCreate } from '@/services/api/vcjob'
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
+  NodeSelectorMode,
   VolumeMountType,
   buildNodeSelectors,
   convertToResourceList,
@@ -66,6 +67,7 @@ import {
   envsSchema,
   exportToJsonString,
   forwardsSchema,
+  importFromJsonString,
   jobNameSchema,
   nodeSelectorSchema,
   taskSchema,
@@ -177,39 +179,25 @@ function RouteComponent() {
   const { mutate: fetchJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
-      const jobInfo = JSON.parse(response.data)
+      try {
+        const newData = dataProcessor(
+          importFromJsonString<FormSchema>(MetadataFormJupyterEmias, response.data)
+        )
 
-      const newData = {
-        jobName: jobInfo.data.taskname,
-        task: {
-          resource: {
-            cpu: jobInfo.data.cpu,
-            memory: jobInfo.data.memory,
-            gpu: jobInfo.data.gpu,
-          },
-          image:
-            typeof jobInfo.data.image === 'string'
-              ? { imageLink: jobInfo.data.image, archs: [] }
-              : jobInfo.data.image || { imageLink: '', archs: [] },
-        },
-        envs: jobInfo.data.envs || [],
-        volumeMounts: jobInfo.data.volumeMounts || [],
-        nodeSelector: jobInfo.data.nodeSelector || { enable: false },
-        alertEnabled: jobInfo.data.alertEnabled !== undefined ? jobInfo.data.alertEnabled : true,
-        forwards: jobInfo.data.forwards || [],
-      }
+        form.reset(newData)
 
-      form.reset(newData)
-
-      if (newData.envs.length > 0) {
-        setEnvOpen(true)
-      }
-      if (newData.nodeSelector.enable) {
-        setOtherOpen(true)
+        if (newData.envs.length > 0) {
+          setEnvOpen(true)
+        }
+        if (newData.nodeSelector.enable) {
+          setOtherOpen(true)
+        }
+      } catch (error) {
+        showErrorToast(error)
       }
     },
-    onError: () => {
-      toast.error(`解析错误，导入配置失败`)
+    onError: (error) => {
+      showErrorToast(error)
     },
   })
 
@@ -249,7 +237,8 @@ function RouteComponent() {
       forwards: [],
       nodeSelector: {
         enable: false,
-        excludedNodes: [],
+        mode: NodeSelectorMode.Include,
+        nodes: [],
       },
       alertEnabled: true,
     },
@@ -364,8 +353,8 @@ function RouteComponent() {
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
-              nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
+              nodeSelectorModePath="nodeSelector.mode"
+              nodeSelectorNodesPath="nodeSelector.nodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

@@ -24,6 +24,8 @@ description: "Crater 代码开发：在 backend/、frontend/、cli/ 下开发 Go
 
 - 先找可复用组件、表单控件 / metadata form 和 hooks（尤其 `ui-custom/`、`components/form/`、`components/`、`hooks/`）；确实不适配再新建。
 - 修改高复用组件、表单控件、metadata form、hooks 或 `ui-custom/` 前，先评估引用范围与兼容性，不要为单个页面随意改公共行为；提醒开发者人工抽查代表性受影响页面。
+- 修改作业模板持久化 / 表单配置结构（`MetadataForm*`、`src/components/form/types.ts`、作业表单默认值、clone / template source）时，必须检查是否需要提升对应模板 `version`，并在模板迁移注册表中提供“上一版本 -> 当前版本”的迁移函数；后续旧版本通过链式迁移逐步升级，不支持的更早版本要明确报错，不要静默当作当前结构解析。
+- 新增或修改任何使用作业模板配置的加载入口（作业模板、克隆作业、从模板 source 恢复等）时，必须复用统一的模板迁移 / 解析逻辑；不要为单个入口手写局部兼容，也不要把任意 JSON 导入误接入作业模板迁移。
 - 身份判断用 `useIsAdmin()`；管理员视图调管理员接口，普通用户调用户接口，前后端身份边界要一致。
 - API 错误默认走共享错误处理，保留后端 `msg`、HTTP 状态和业务码等排查事实；只有页面确实需要改变交互时才按 `src/services/error_code.ts` 的具体业务码特殊处理，并在消费错误后调用 `markApiErrorHandled`。
 - 非幂等操作必须有确认弹窗；耗时请求加 loading / disabled 防重复提交。

@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react'
 import { FieldValues, UseFormReturn } from 'react-hook-form'
 import { toast } from 'sonner'
 
+import { MetadataFormType } from '@/components/form/types'
 import { PublishSearch } from '@/components/job/publish'
 
 import { apiUserGetImageTemplate } from '@/services/api/imagepack'
@@ -43,7 +44,7 @@ interface TemplateLoaderOptions<T extends FieldValues> {
   /** The form object to populate */
   form: UseFormReturn<T>
   /** Metadata configuration for import/export */
-  metadata: { version: string; type: string }
+  metadata: MetadataFormType
   /** Optional UI state updaters for accordions, tabs, etc. */
   uiStateUpdaters?: UIStateUpdater<T>[]
   /** Optional callback when template loaded successfully */
@@ -58,7 +59,7 @@ interface ImageTemplateLoaderOptions<T extends FieldValues> {
   /** The form object to populate */
   form: UseFormReturn<T>
   /** Metadata configuration for import/export */
-  metadata: { version: string; type: string }
+  metadata: MetadataFormType
   /** Optional UI state updaters for accordions, tabs, etc. */
   uiStateUpdaters?: UIStateUpdater<T>[]
   /** Optional callback when template loaded successfully */

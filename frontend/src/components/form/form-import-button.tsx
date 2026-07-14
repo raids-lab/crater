@@ -60,7 +60,7 @@ function FormImportButton<T extends FieldValues>({
     >
       <Input
         onChange={(e) => {
-          importFromJsonFile<T>(metadata.version, metadata.type, e.target.files?.[0])
+          importFromJsonFile<T>(metadata, e.target.files?.[0])
             .then((data) => {
               beforeImport?.(data)
               // Apply optional data processing

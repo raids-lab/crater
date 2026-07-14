@@ -13,12 +13,112 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// i18n-processed-v1.1.0 (no translatable strings)
+// i18n-processed-v1.1.0
 import { ImagePackSource } from '@/services/api/imagepack'
+
+export interface MetadataFormMigration {
+  to: string
+  migrate: (data: unknown) => unknown
+}
 
 export interface MetadataFormType {
   version: string
   type: string
+  migrations?: Record<string, MetadataFormMigration>
+}
+
+const CurrentJobTemplateVersion = '20260707'
+
+const NodeSelectorMode = {
+  Include: 'include',
+  Exclude: 'exclude',
+} as const
+
+const migrateToCurrentNodeSelector = {
+  to: CurrentJobTemplateVersion,
+  migrate: (data: unknown) => migrateRootNodeSelector(data),
+}
+
+const withNodeSelectorMigration = (fromVersion: string): Record<string, MetadataFormMigration> => ({
+  [fromVersion]: migrateToCurrentNodeSelector,
+})
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+const uniqueStrings = (values: unknown): string[] => {
+  if (!Array.isArray(values)) {
+    return []
+  }
+
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+    )
+  ).filter(Boolean)
+}
+
+const migrateRootNodeSelector = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('模板数据格式无效，无法迁移节点控制配置')
+  }
+
+  const nodeSelector = isRecord(data.nodeSelector) ? data.nodeSelector : undefined
+
+  return {
+    ...data,
+    nodeSelector: migrateNodeSelector(nodeSelector),
+  }
+}
+
+const migrateNodeSelector = (nodeSelector?: Record<string, unknown>) => {
+  if (!nodeSelector) {
+    return {
+      enable: false,
+      mode: NodeSelectorMode.Include,
+      nodes: [],
+    }
+  }
+
+  const nodes = uniqueStrings(nodeSelector.nodes)
+  if (nodes.length > 0) {
+    return {
+      enable: nodeSelector.enable === true,
+      mode:
+        nodeSelector.mode === NodeSelectorMode.Exclude
+          ? NodeSelectorMode.Exclude
+          : NodeSelectorMode.Include,
+      nodes,
+    }
+  }
+
+  const nodeName = typeof nodeSelector.nodeName === 'string' ? nodeSelector.nodeName.trim() : ''
+  const excludedNodes = uniqueStrings(nodeSelector.excludedNodes)
+
+  if (nodeSelector.enable === true && nodeName) {
+    return {
+      enable: true,
+      mode: NodeSelectorMode.Include,
+      nodes: [nodeName],
+    }
+  }
+
+  if (excludedNodes.length > 0) {
+    return {
+      enable: true,
+      mode: NodeSelectorMode.Exclude,
+      nodes: excludedNodes,
+    }
+  }
+
+  return {
+    enable: false,
+    mode: NodeSelectorMode.Include,
+    nodes: [],
+  }
 }
 
 export const MetadataFormAccount: MetadataFormType = {
@@ -27,33 +127,45 @@ export const MetadataFormAccount: MetadataFormType = {
 }
 
 export const MetadataFormJupyter: MetadataFormType = {
-  version: '20250420',
+  version: CurrentJobTemplateVersion,
   type: 'jupyter',
+  migrations: withNodeSelectorMigration('20250420'),
 }
 
 export const MetadataFormWebIDE: MetadataFormType = {
-  version: '20251126',
+  version: CurrentJobTemplateVersion,
   type: 'webide',
+  migrations: withNodeSelectorMigration('20251126'),
 }
 
 export const MetadataFormCustom: MetadataFormType = {
-  version: '20250317',
+  version: CurrentJobTemplateVersion,
   type: 'custom',
+  migrations: withNodeSelectorMigration('20250317'),
 }
 
 export const MetadataFormCustomEmias: MetadataFormType = {
-  version: '20250420',
+  version: CurrentJobTemplateVersion,
   type: 'custom-emias',
+  migrations: withNodeSelectorMigration('20250420'),
 }
 
 export const MetadataFormTensorflow: MetadataFormType = {
-  version: '20240528',
+  version: CurrentJobTemplateVersion,
   type: 'tensorflow',
+  migrations: withNodeSelectorMigration('20240528'),
 }
 
 export const MetadataFormPytorch: MetadataFormType = {
-  version: '20240528',
+  version: CurrentJobTemplateVersion,
   type: 'pytorch',
+  migrations: withNodeSelectorMigration('20240528'),
+}
+
+export const MetadataFormSingle: MetadataFormType = {
+  version: CurrentJobTemplateVersion,
+  type: 'single',
+  migrations: withNodeSelectorMigration('20240528'),
 }
 
 // 基于Dockerfile构建
@@ -81,6 +193,7 @@ export const MetadataFormEnvdRaw: MetadataFormType = {
 }
 
 export const MetadataFormJupyterEmias: MetadataFormType = {
-  version: '20240528',
+  version: CurrentJobTemplateVersion,
   type: 'jupyter-emias',
+  migrations: withNodeSelectorMigration('20240528'),
 }

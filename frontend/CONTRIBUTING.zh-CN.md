@@ -92,7 +92,7 @@ src/
 - 不要在 `catch` / `onError` 中吞掉错误、只写 console，或用“操作失败”这类泛化文案替代可行动的后端消息。如果后端消息不安全或不可行动，应修正后端错误契约，而不是在前端隐藏。
 - 非幂等操作（创建、更新、删除、停止、锁定 / 解锁、配额变更等）执行前必须展示确认弹出框。弹窗应清楚说明操作对象和后果，并复用项目现有 Dialog / AlertDialog 模式。
 - 对耗时可能较长的非幂等请求，还必须增加 Loading 状态并禁用相关按钮，避免重复提交。
-- 作业创建、克隆作业与导入 / 导出流程依赖 `src/components/form/types.ts` 中 `MetadataForm*` 生成的带版本模板 JSON（`version`、`type`、`data`），并由 `src/utils/form.ts` 解析。修改作业配置字段时，必须与 `backend/CONTRIBUTING.md` 的作业模板兼容性规则联动：如果本次改动应阻断旧模板或旧导出配置，必须提升对应 `MetadataForm*` version；如果旧配置仍需可用，则补充兼容处理并验证克隆与导入路径。
+- 作业创建、克隆作业与作业模板流程依赖 `src/components/form/types.ts` 中 `MetadataForm*` 生成的带版本模板 JSON（`version`、`type`、`data`），并由 `src/utils/form.ts` 中的模板导入 helper 解析。修改持久化作业配置字段或表单数据结构时，必须判断是否提升对应 `MetadataForm*` version。如果旧模板仍需可用，必须注册“上一版本 -> 新版本”的迁移函数；之后更旧版本通过相邻版本迁移链逐步升级。不支持的更早版本必须清晰失败，不能静默当作当前结构解析。任何新增的作业模板数据、克隆 source 或 template source 加载入口都必须复用共享模板导入 / 迁移 helper；不要为单个入口手写兼容，也不要把作业模板迁移套到非作业模板 payload 的任意 JSON 上。
 
 ## 多语言（核心规范）
 
