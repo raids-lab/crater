@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/raids-lab/crater/internal/bizerr"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/patrol"
 )
@@ -24,12 +25,22 @@ const (
 )
 
 type AdminOpsReportService struct {
-	httpClient *http.Client
+	httpClient    *http.Client
+	configService *ConfigService
 }
 
-func NewAdminOpsReportService() *AdminOpsReportService {
+func adminOpsReportErrorf(format string, args ...any) error {
+	return bizerr.Internal.ServiceError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
+
+func NewAdminOpsReportService(configService ...*ConfigService) *AdminOpsReportService {
+	var cfgService *ConfigService
+	if len(configService) > 0 {
+		cfgService = configService[0]
+	}
 	return &AdminOpsReportService{
-		httpClient: &http.Client{Timeout: adminOpsReportRequestTimeout},
+		httpClient:    &http.Client{Timeout: adminOpsReportRequestTimeout},
+		configService: cfgService,
 	}
 }
 
@@ -70,12 +81,12 @@ func (s *AdminOpsReportService) triggerPipeline(
 		internalToken = strings.TrimSpace(os.Getenv(adminOpsReportInternalTokenEnvKey))
 	}
 	if internalToken == "" {
-		return nil, fmt.Errorf("python agent internal token is not configured")
+		return nil, adminOpsReportErrorf("python agent internal token is not configured")
 	}
 
-	bodyBytes, err := json.Marshal(req)
+	bodyBytes, err := s.marshalPipelineRequest(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal %s request: %w", label, err)
+		return nil, adminOpsReportErrorf("failed to marshal %s request: %w", label, err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(
@@ -85,23 +96,23 @@ func (s *AdminOpsReportService) triggerPipeline(
 		bytes.NewReader(bodyBytes),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create %s request: %w", label, err)
+		return nil, adminOpsReportErrorf("failed to create %s request: %w", label, err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("X-Agent-Internal-Token", internalToken)
 
 	resp, err := s.httpClient.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call %s pipeline: %w", label, err)
+		return nil, adminOpsReportErrorf("failed to call %s pipeline: %w", label, err)
 	}
 	defer resp.Body.Close()
 
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read %s response: %w", label, err)
+		return nil, adminOpsReportErrorf("failed to read %s response: %w", label, err)
 	}
 	if resp.StatusCode >= http.StatusBadRequest {
-		return nil, fmt.Errorf(
+		return nil, adminOpsReportErrorf(
 			"%s pipeline returned status %d: %s",
 			label,
 			resp.StatusCode,
@@ -114,7 +125,29 @@ func (s *AdminOpsReportService) triggerPipeline(
 		return payload, nil
 	}
 	if err := json.Unmarshal(responseBody, &payload); err != nil {
-		return nil, fmt.Errorf("failed to decode %s response: %w", label, err)
+		return nil, adminOpsReportErrorf("failed to decode %s response: %w", label, err)
 	}
 	return payload, nil
+}
+
+func (s *AdminOpsReportService) marshalPipelineRequest(ctx context.Context, req any) ([]byte, error) {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	if s.configService == nil {
+		return bodyBytes, nil
+	}
+	clientConfig, err := s.configService.GetAgentLLMClientConfig(ctx)
+	if err != nil || len(clientConfig) == 0 {
+		return bodyBytes, nil
+	}
+	payload := map[string]any{}
+	if len(bodyBytes) > 0 {
+		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+			return bodyBytes, nil
+		}
+	}
+	payload["llm_client_config"] = clientConfig
+	return json.Marshal(payload)
 }

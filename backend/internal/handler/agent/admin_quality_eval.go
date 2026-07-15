@@ -13,6 +13,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 )
@@ -35,7 +36,7 @@ type triggerSessionQualityEvalRequest struct {
 func (mgr *AgentMgr) TriggerSessionQualityEval(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("sessionId is required"))
 		return
 	}
 
@@ -56,10 +57,10 @@ func (mgr *AgentMgr) TriggerSessionQualityEval(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrSessionNotFound) {
-			resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.New("session not found"))
 			return
 		}
-		resputil.Error(c, fmt.Sprintf("failed to create quality eval: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to create quality eval"))
 		return
 	}
 
@@ -87,6 +88,7 @@ func (mgr *AgentMgr) dispatchManualQualityEval(eval *model.AgentQualityEval, dia
 		"eval_type":           eval.EvalType,
 		"dialogue_model_role": dialogueModelRole,
 		"task_model_role":     taskModelRole,
+		"llm_client_config":   mgr.buildPythonAgentLLMClientConfig(context.Background()),
 	}
 	body, _ := json.Marshal(payload)
 

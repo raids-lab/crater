@@ -8,15 +8,11 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
-	pkgconfig "github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/crclient"
-	pkgutils "github.com/raids-lab/crater/pkg/utils"
 )
 
 const (
@@ -24,16 +20,8 @@ const (
 	agentForwardTypeNodePort = 2
 )
 
-func normalizeOptionalStringArg(value **string) {
-	if value == nil || *value == nil {
-		return
-	}
-	trimmed := strings.TrimSpace(**value)
-	if trimmed == "" {
-		*value = nil
-		return
-	}
-	*value = &trimmed
+func agentWriteErrorf(format string, args ...any) error {
+	return bizerr.BadRequest.ParameterError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
 }
 
 func normalizeForwardTypeValue(value any) (int, error) {
@@ -62,7 +50,7 @@ func normalizeForwardTypeValue(value any) (int, error) {
 			return agentForwardTypeNodePort, nil
 		}
 	}
-	return 0, fmt.Errorf("forward type must be ingress or nodeport")
+	return 0, agentWriteErrorf("forward type must be ingress or nodeport")
 }
 
 func parseForwardTextSpecs(raw string) ([]map[string]any, error) {
@@ -81,11 +69,11 @@ func parseForwardTextSpecs(raw string) ([]map[string]any, error) {
 		}
 		parts := strings.Split(field, ":")
 		if len(parts) < 2 || len(parts) > 3 {
-			return nil, fmt.Errorf("invalid forward spec %q, expected name:port[:ingress|nodeport]", field)
+			return nil, agentWriteErrorf("invalid forward spec %q, expected name:port[:ingress|nodeport]", field)
 		}
 		port, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 		if err != nil || port <= 0 {
-			return nil, fmt.Errorf("invalid forward port in %q", field)
+			return nil, agentWriteErrorf("invalid forward port in %q", field)
 		}
 		forwardType := agentForwardTypeIngress
 		if len(parts) == 3 {
@@ -108,21 +96,21 @@ func parseForwardArgs(args map[string]any) ([]map[string]any, error) {
 	if ok && raw != nil {
 		items, ok := raw.([]any)
 		if !ok {
-			return nil, fmt.Errorf("forwards must be a list")
+			return nil, agentWriteErrorf("forwards must be a list")
 		}
 		result := make([]map[string]any, 0, len(items))
 		for _, item := range items {
 			entry, ok := item.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("forwards entries must be objects")
+				return nil, agentWriteErrorf("forwards entries must be objects")
 			}
 			name := getToolArgString(entry, "name", "")
 			if name == "" {
-				return nil, fmt.Errorf("forward name is required")
+				return nil, agentWriteErrorf("forward name is required")
 			}
 			port := getToolArgInt(entry, "port", 0)
 			if port <= 0 {
-				return nil, fmt.Errorf("forward %q requires a positive port", name)
+				return nil, agentWriteErrorf("forward %q requires a positive port", name)
 			}
 			forwardType, err := normalizeForwardTypeValue(entry["type"])
 			if err != nil {
@@ -195,7 +183,7 @@ func parseDistributedPorts(raw any) ([]map[string]any, error) {
 		if strings.HasPrefix(text, "[") {
 			var decoded []any
 			if err := json.Unmarshal([]byte(text), &decoded); err != nil {
-				return nil, fmt.Errorf("ports_json must be a JSON array: %w", err)
+				return nil, agentWriteErrorf("ports_json must be a JSON array: %w", err)
 			}
 			raw = decoded
 		} else {
@@ -216,22 +204,22 @@ func parseDistributedPorts(raw any) ([]map[string]any, error) {
 
 	items, ok := raw.([]any)
 	if !ok {
-		return nil, fmt.Errorf("ports must be a list or text specs")
+		return nil, agentWriteErrorf("ports must be a list or text specs")
 	}
 
 	ports := make([]map[string]any, 0, len(items))
 	for idx, item := range items {
 		entry, ok := item.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("port #%d must be an object", idx+1)
+			return nil, agentWriteErrorf("port #%d must be an object", idx+1)
 		}
 		name := getToolArgStringAny(entry, "", "name")
 		if name == "" {
-			return nil, fmt.Errorf("port #%d requires name", idx+1)
+			return nil, agentWriteErrorf("port #%d requires name", idx+1)
 		}
 		port := getToolArgIntAny(entry, 0, "port")
 		if port <= 0 {
-			return nil, fmt.Errorf("port %q requires a positive port number", name)
+			return nil, agentWriteErrorf("port %q requires a positive port number", name)
 		}
 		ports = append(ports, map[string]any{
 			"name": name,
@@ -244,16 +232,16 @@ func parseDistributedPorts(raw any) ([]map[string]any, error) {
 func normalizeDistributedTask(entry map[string]any) (map[string]any, error) {
 	name := getToolArgStringAny(entry, "", "name")
 	if name == "" {
-		return nil, fmt.Errorf("task name is required")
+		return nil, agentWriteErrorf("task name is required")
 	}
 	imageLink := getToolArgStringAny(entry, "", "image_link", "imageLink")
 	if imageLink == "" {
-		return nil, fmt.Errorf("task %q requires image_link", name)
+		return nil, agentWriteErrorf("task %q requires image_link", name)
 	}
 
 	replicas := getToolArgIntAny(entry, 1, "replicas")
 	if replicas <= 0 {
-		return nil, fmt.Errorf("task %q requires replicas > 0", name)
+		return nil, agentWriteErrorf("task %q requires replicas > 0", name)
 	}
 
 	resourceMap := map[string]string{
@@ -304,13 +292,13 @@ func parseDistributedTasks(args map[string]any) ([]map[string]any, error) {
 	if raw, ok := lookupToolArgValue(args, "tasks"); ok {
 		items, ok := raw.([]any)
 		if !ok {
-			return nil, fmt.Errorf("tasks must be a list")
+			return nil, agentWriteErrorf("tasks must be a list")
 		}
 		result := make([]map[string]any, 0, len(items))
 		for idx, item := range items {
 			entry, ok := item.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("task #%d must be an object", idx+1)
+				return nil, agentWriteErrorf("task #%d must be an object", idx+1)
 			}
 			task, err := normalizeDistributedTask(entry)
 			if err != nil {
@@ -327,13 +315,13 @@ func parseDistributedTasks(args map[string]any) ([]map[string]any, error) {
 	}
 	var items []any
 	if err := json.Unmarshal([]byte(rawJSON), &items); err != nil {
-		return nil, fmt.Errorf("tasks_json must be a JSON array: %w", err)
+		return nil, agentWriteErrorf("tasks_json must be a JSON array: %w", err)
 	}
 	result := make([]map[string]any, 0, len(items))
 	for idx, item := range items {
 		entry, ok := item.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("task #%d must be an object", idx+1)
+			return nil, agentWriteErrorf("task #%d must be an object", idx+1)
 		}
 		task, err := normalizeDistributedTask(entry)
 		if err != nil {
@@ -345,129 +333,32 @@ func parseDistributedTasks(args map[string]any) ([]map[string]any, error) {
 }
 
 func (mgr *AgentMgr) toolDeleteJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	jobRecord, clusterJob, err := mgr.getOwnedJobForMutation(c, token, rawArgs)
-	if err != nil {
-		return nil, err
+	if mgr.jobSubmitter == nil {
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
-	return mgr.deleteOwnedJob(c, jobRecord, clusterJob, true)
+	var args agentJobNameArgs
+	if err := json.Unmarshal(rawArgs, &args); err != nil {
+		return nil, agentWriteErrorf("invalid args: %w", err)
+	}
+	return mgr.jobSubmitter.DeleteJob(c.Request.Context(), token, args.JobName)
 }
 
 func (mgr *AgentMgr) toolStopJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	jobRecord, clusterJob, err := mgr.getOwnedJobForMutation(c, token, rawArgs)
-	if err != nil {
-		return nil, err
+	if mgr.jobSubmitter == nil {
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
-	return mgr.stopOwnedJob(c, jobRecord, clusterJob)
+	var args agentJobNameArgs
+	if err := json.Unmarshal(rawArgs, &args); err != nil {
+		return nil, agentWriteErrorf("invalid args: %w", err)
+	}
+	return mgr.jobSubmitter.StopJob(c.Request.Context(), token, args.JobName)
 }
 
 func (mgr *AgentMgr) toolResubmitJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
-	var args struct {
-		JobName  string  `json:"job_name"`
-		Name     *string `json:"name"`
-		CPU      *string `json:"cpu"`
-		Memory   *string `json:"memory"`
-		GPUCount *int    `json:"gpu_count"`
-		GPUModel *string `json:"gpu_model"`
+	if mgr.jobSubmitter == nil {
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
-	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
-	}
-	args.JobName = strings.TrimSpace(args.JobName)
-	normalizeOptionalStringArg(&args.Name)
-	normalizeOptionalStringArg(&args.CPU)
-	normalizeOptionalStringArg(&args.Memory)
-	normalizeOptionalStringArg(&args.GPUModel)
-	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
-	}
-
-	jobRecord, _, err := mgr.getOwnedJobForMutation(c, token, rawArgs)
-	if err != nil {
-		return nil, err
-	}
-	sourceJob := jobRecord.Attributes.Data()
-	if sourceJob == nil {
-		return nil, fmt.Errorf("job spec is unavailable for resubmit")
-	}
-	if token.Username == "" {
-		return nil, fmt.Errorf("user identity is unavailable for resubmit")
-	}
-
-	clonedJob := sourceJob.DeepCopy()
-	appliedOverrides, err := applyResubmitOverrides(clonedJob, args.CPU, args.Memory, args.GPUCount, args.GPUModel)
-	if err != nil {
-		return nil, err
-	}
-	prefix := getJobNamePrefix(jobRecord.JobName)
-	newJobName := pkgutils.GenerateJobName(prefix, token.Username)
-	baseURL := getBaseURLFromJobName(newJobName)
-
-	clonedJob.ObjectMeta = metav1.ObjectMeta{
-		Name:        newJobName,
-		Namespace:   pkgconfig.GetConfig().Namespaces.Job,
-		Labels:      copyStringMap(clonedJob.Labels),
-		Annotations: copyStringMap(clonedJob.Annotations),
-	}
-	clonedJob.Status = batch.JobStatus{}
-	clonedJob.ResourceVersion = ""
-	clonedJob.UID = ""
-	clonedJob.CreationTimestamp = metav1.Time{}
-	clonedJob.ManagedFields = nil
-	clonedJob.OwnerReferences = nil
-	clonedJob.Finalizers = nil
-	clonedJob.DeletionTimestamp = nil
-
-	if clonedJob.Labels == nil {
-		clonedJob.Labels = map[string]string{}
-	}
-	clonedJob.Labels[crclient.LabelKeyBaseURL] = baseURL
-	if clonedJob.Annotations == nil {
-		clonedJob.Annotations = map[string]string{}
-	}
-	if args.Name != nil && strings.TrimSpace(*args.Name) != "" {
-		clonedJob.Annotations["crater.raids.io/task-name"] = strings.TrimSpace(*args.Name)
-		appliedOverrides["name"] = strings.TrimSpace(*args.Name)
-	} else if clonedJob.Annotations["crater.raids.io/task-name"] == "" {
-		clonedJob.Annotations["crater.raids.io/task-name"] = jobRecord.Name
-	}
-
-	for idx := range clonedJob.Spec.Tasks {
-		task := &clonedJob.Spec.Tasks[idx]
-		task.Template.ResourceVersion = ""
-		task.Template.UID = ""
-		task.Template.CreationTimestamp = metav1.Time{}
-		task.Template.ManagedFields = nil
-		if task.Template.Labels == nil {
-			task.Template.Labels = map[string]string{}
-		}
-		task.Template.Labels[crclient.LabelKeyBaseURL] = baseURL
-		task.Template.Labels[crclient.LabelKeyTaskType] = clonedJob.Labels[crclient.LabelKeyTaskType]
-		task.Template.Labels[crclient.LabelKeyTaskUser] = clonedJob.Labels[crclient.LabelKeyTaskUser]
-		if accountName := clonedJob.Labels[crclient.LalbeKeyTaskAccount]; accountName != "" {
-			task.Template.Labels[crclient.LalbeKeyTaskAccount] = accountName
-		}
-	}
-
-	if err := mgr.client.Create(c, clonedJob); err != nil {
-		return nil, fmt.Errorf("failed to create resubmitted job: %w", err)
-	}
-
-	if err := mgr.ensureAgentResubmitAccess(c, clonedJob); err != nil {
-		return map[string]any{
-			"sourceJobName": jobRecord.JobName,
-			"jobName":       newJobName,
-			"status":        "created",
-			"warning":       err.Error(),
-		}, nil
-	}
-
-	return map[string]any{
-		"sourceJobName": jobRecord.JobName,
-		"jobName":       newJobName,
-		"displayName":   clonedJob.Annotations["crater.raids.io/task-name"],
-		"status":        "created",
-		"overrides":     appliedOverrides,
-	}, nil
+	return mgr.jobSubmitter.ResubmitJob(c.Request.Context(), token, rawArgs)
 }
 
 func (mgr *AgentMgr) toolCreateJupyterJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
@@ -481,13 +372,13 @@ func (mgr *AgentMgr) toolCreateJupyterJob(c *gin.Context, token util.JWTMessage,
 		GPUModel  *string `json:"gpu_model"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentWriteErrorf("invalid args: %w", err)
 	}
 	if args.Name == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, agentWriteErrorf("name is required")
 	}
 	if args.ImageLink == "" {
-		return nil, fmt.Errorf("image_link is required")
+		return nil, agentWriteErrorf("image_link is required")
 	}
 	if args.CPU == "" {
 		args.CPU = "2"
@@ -497,7 +388,7 @@ func (mgr *AgentMgr) toolCreateJupyterJob(c *gin.Context, token util.JWTMessage,
 	}
 
 	if mgr.jobSubmitter == nil {
-		return nil, fmt.Errorf("job submitter is not configured")
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
 	forwards, err := parseForwardArgs(argsMap)
 	if err != nil {
@@ -526,7 +417,7 @@ func (mgr *AgentMgr) toolCreateJupyterJob(c *gin.Context, token util.JWTMessage,
 		"forwards": forwards,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal jupyter request: %w", err)
+		return nil, agentWriteErrorf("failed to marshal jupyter request: %w", err)
 	}
 
 	result, err := mgr.jobSubmitter.SubmitJupyterJob(c, token, requestBody)
@@ -550,13 +441,13 @@ func (mgr *AgentMgr) toolCreateWebIDEJob(c *gin.Context, token util.JWTMessage, 
 		GPUModel  *string `json:"gpu_model"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentWriteErrorf("invalid args: %w", err)
 	}
 	if strings.TrimSpace(args.Name) == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, agentWriteErrorf("name is required")
 	}
 	if strings.TrimSpace(args.ImageLink) == "" {
-		return nil, fmt.Errorf("image_link is required")
+		return nil, agentWriteErrorf("image_link is required")
 	}
 	if strings.TrimSpace(args.CPU) == "" {
 		args.CPU = "2"
@@ -565,7 +456,7 @@ func (mgr *AgentMgr) toolCreateWebIDEJob(c *gin.Context, token util.JWTMessage, 
 		args.Memory = "8Gi"
 	}
 	if mgr.jobSubmitter == nil {
-		return nil, fmt.Errorf("job submitter is not configured")
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
 	forwards, err := parseForwardArgs(argsMap)
 	if err != nil {
@@ -594,7 +485,7 @@ func (mgr *AgentMgr) toolCreateWebIDEJob(c *gin.Context, token util.JWTMessage, 
 		"forwards": forwards,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal webide request: %w", err)
+		return nil, agentWriteErrorf("failed to marshal webide request: %w", err)
 	}
 
 	result, err := mgr.jobSubmitter.SubmitWebIDEJob(c, token, requestBody)
@@ -613,7 +504,7 @@ func (mgr *AgentMgr) toolMarkAuditHandled(c *gin.Context, token util.JWTMessage,
 		HandledBy string `json:"handled_by"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentWriteErrorf("invalid args: %w", err)
 	}
 	handledBy := args.HandledBy
 	if handledBy == "" {
@@ -644,7 +535,7 @@ func (mgr *AgentMgr) toolBatchStopJobs(c *gin.Context, token util.JWTMessage, ra
 		JobNames string `json:"job_names"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentWriteErrorf("invalid args: %w", err)
 	}
 	jobNames := strings.Split(args.JobNames, ",")
 	results := make([]map[string]any, 0, len(jobNames))
@@ -675,10 +566,10 @@ func (mgr *AgentMgr) toolNotifyJobOwner(c *gin.Context, _ util.JWTMessage, rawAr
 		Message  string `json:"message"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentWriteErrorf("invalid args: %w", err)
 	}
 	if strings.TrimSpace(args.JobNames) == "" {
-		return nil, fmt.Errorf("job_names is required")
+		return nil, agentWriteErrorf("job_names is required")
 	}
 	subject := strings.TrimSpace(args.Subject)
 	if subject == "" {
@@ -723,7 +614,7 @@ func (mgr *AgentMgr) toolNotifyJobOwner(c *gin.Context, _ util.JWTMessage, rawAr
 		results = append(results, entry)
 	}
 	if len(results) == 0 {
-		return nil, fmt.Errorf("job_names contains no valid job names")
+		return nil, agentWriteErrorf("job_names contains no valid job names")
 	}
 	return map[string]any{
 		"sent":     sent,
@@ -751,19 +642,19 @@ func (mgr *AgentMgr) toolCreateCustomJob(c *gin.Context, token util.JWTMessage, 
 		Shell      string  `json:"shell"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentWriteErrorf("invalid args: %w", err)
 	}
 	if strings.TrimSpace(args.Name) == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, agentWriteErrorf("name is required")
 	}
 	if strings.TrimSpace(args.ImageLink) == "" {
-		return nil, fmt.Errorf("image_link is required")
+		return nil, agentWriteErrorf("image_link is required")
 	}
 	if strings.TrimSpace(args.Command) == "" {
-		return nil, fmt.Errorf("command is required")
+		return nil, agentWriteErrorf("command is required")
 	}
 	if strings.TrimSpace(args.WorkingDir) == "" {
-		return nil, fmt.Errorf("working_dir is required")
+		return nil, agentWriteErrorf("working_dir is required")
 	}
 	if strings.TrimSpace(args.CPU) == "" {
 		args.CPU = "4"
@@ -788,7 +679,7 @@ func (mgr *AgentMgr) toolCreateCustomJob(c *gin.Context, token util.JWTMessage, 
 	}
 
 	if mgr.jobSubmitter == nil {
-		return nil, fmt.Errorf("job submitter is not configured")
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
 	forwards, err := parseForwardArgs(argsMap)
 	if err != nil {
@@ -808,7 +699,7 @@ func (mgr *AgentMgr) toolCreateCustomJob(c *gin.Context, token util.JWTMessage, 
 		"forwards": forwards,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal custom job request: %w", err)
+		return nil, agentWriteErrorf("failed to marshal custom job request: %w", err)
 	}
 
 	result, err := mgr.jobSubmitter.SubmitTrainingJob(c, token, requestBody)
@@ -826,21 +717,21 @@ func (mgr *AgentMgr) toolCreatePytorchJob(c *gin.Context, token util.JWTMessage,
 	argsMap := parseToolArgsMap(rawArgs)
 	name := getToolArgString(argsMap, "name", "")
 	if strings.TrimSpace(name) == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, agentWriteErrorf("name is required")
 	}
 	tasks, err := parseDistributedTasks(argsMap)
 	if err != nil {
 		return nil, err
 	}
 	if len(tasks) == 0 {
-		return nil, fmt.Errorf("tasks or tasks_json is required")
+		return nil, agentWriteErrorf("tasks or tasks_json is required")
 	}
 	forwards, err := parseForwardArgs(argsMap)
 	if err != nil {
 		return nil, err
 	}
 	if mgr.jobSubmitter == nil {
-		return nil, fmt.Errorf("job submitter is not configured")
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
 
 	requestBody, err := json.Marshal(map[string]any{
@@ -849,7 +740,7 @@ func (mgr *AgentMgr) toolCreatePytorchJob(c *gin.Context, token util.JWTMessage,
 		"forwards": forwards,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal pytorch request: %w", err)
+		return nil, agentWriteErrorf("failed to marshal pytorch request: %w", err)
 	}
 
 	result, err := mgr.jobSubmitter.SubmitPytorchJob(c, token, requestBody)
@@ -866,21 +757,21 @@ func (mgr *AgentMgr) toolCreateTensorflowJob(c *gin.Context, token util.JWTMessa
 	argsMap := parseToolArgsMap(rawArgs)
 	name := getToolArgString(argsMap, "name", "")
 	if strings.TrimSpace(name) == "" {
-		return nil, fmt.Errorf("name is required")
+		return nil, agentWriteErrorf("name is required")
 	}
 	tasks, err := parseDistributedTasks(argsMap)
 	if err != nil {
 		return nil, err
 	}
 	if len(tasks) == 0 {
-		return nil, fmt.Errorf("tasks or tasks_json is required")
+		return nil, agentWriteErrorf("tasks or tasks_json is required")
 	}
 	forwards, err := parseForwardArgs(argsMap)
 	if err != nil {
 		return nil, err
 	}
 	if mgr.jobSubmitter == nil {
-		return nil, fmt.Errorf("job submitter is not configured")
+		return nil, agentWriteErrorf("job submitter is not configured")
 	}
 
 	requestBody, err := json.Marshal(map[string]any{
@@ -889,7 +780,7 @@ func (mgr *AgentMgr) toolCreateTensorflowJob(c *gin.Context, token util.JWTMessa
 		"forwards": forwards,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal tensorflow request: %w", err)
+		return nil, agentWriteErrorf("failed to marshal tensorflow request: %w", err)
 	}
 
 	result, err := mgr.jobSubmitter.SubmitTensorflowJob(c, token, requestBody)

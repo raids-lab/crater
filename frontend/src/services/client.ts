@@ -1,4 +1,3 @@
-import i18n from '@/i18n'
 import { getDefaultStore } from 'jotai'
 import ky, { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'

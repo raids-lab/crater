@@ -1873,8 +1873,8 @@ def _build_actor_permission_denied_answer(state: MASState, enabled_tools: list[s
             "",
         ])
     lines.extend([
-        "重启、删除、扩缩容或节点变更等操作需要由管理员在确认风险后执行。",
-        "建议联系管理员，并说明目标对象、期望操作、触发原因和当前异常现象。",
+        "节点、Pod、集群级工作负载变更等操作需要管理员权限，并且只能在管理员页面发起确认。",
+        "建议联系管理员，并说明目标对象、期望操作、触发原因和当前异常现象；如果你本身有管理员账号，请切换到管理员页面后再操作。",
     ])
     return "\n".join(lines)
 
@@ -3381,11 +3381,19 @@ class MultiAgentOrchestrator:
                             "agentId": role_agent_id,
                             "agentRole": role_name,
                             "toolCallId": tool_call_id,
-                            "confirmId": confirmation.get("confirm_id", ""),
-                            "action": confirmation.get("tool_name", tool_name),
-                            "description": confirmation.get("description", ""),
-                            "interaction": confirmation.get("interaction", "approval"),
-                            "form": confirmation.get("form"),
+	                            "confirmId": confirmation.get("confirm_id", ""),
+	                            "action": confirmation.get("tool_name", tool_name),
+	                            "description": confirmation.get("description", ""),
+	                            "riskLevel": confirmation.get("risk_level", ""),
+	                            "permissionExplanation": confirmation.get(
+	                                "permission_explanation", ""
+	                            ),
+	                            "riskExplanation": confirmation.get("risk_explanation", ""),
+	                            "affectedResources": confirmation.get(
+	                                "affected_resources", []
+	                            ),
+	                            "interaction": confirmation.get("interaction", "approval"),
+	                            "form": confirmation.get("form"),
                             "status": "awaiting_confirmation",
                             "latencyMs": result.get("_latency_ms", 0),
                         },

@@ -12,6 +12,7 @@ export const Route = createFileRoute('/portal/aiops')({
         },
       })
     }
+    throw redirect({ to: '/portal' })
   },
   component: RouteComponent,
 })

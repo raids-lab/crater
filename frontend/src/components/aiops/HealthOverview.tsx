@@ -2,7 +2,7 @@
  * AIOps Health Overview Page - User Version (个人数据)
  */
 import { useQuery } from '@tanstack/react-query'
-import { Activity, AlertCircle, Calendar, Clock, Info, TrendingUp } from 'lucide-react'
+import { Activity, AlertCircle, Calendar, Clock, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -94,15 +94,6 @@ export function HealthOverview() {
           </Select>
         </div>
       </PageTitle>
-
-      {/* Info Alert */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>{t('aiops.common.aboutPage')}</AlertTitle>
-        <AlertDescription>
-          {t('aiops.page.userAbout', { timeRange: timeRangeLabel })}
-        </AlertDescription>
-      </Alert>
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

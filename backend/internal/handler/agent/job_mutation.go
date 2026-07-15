@@ -18,6 +18,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -27,6 +28,60 @@ type agentJobNameArgs struct {
 	JobName string `json:"job_name"`
 }
 
+func isAgentOwnedJobMutationTool(toolName string) bool {
+	switch toolName {
+	case agentToolDeleteJob, agentToolStopJob, agentToolResubmitJob:
+		return true
+	default:
+		return false
+	}
+}
+
+func agentOwnedJobMutationActionName(toolName string) string {
+	switch toolName {
+	case agentToolDeleteJob:
+		return "删除"
+	case agentToolStopJob:
+		return "停止"
+	case agentToolResubmitJob:
+		return "重提"
+	default:
+		return "操作"
+	}
+}
+
+func (mgr *AgentMgr) validateOwnedJobMutationBeforeConfirmation(
+	c *gin.Context,
+	token util.JWTMessage,
+	toolName string,
+	rawArgs json.RawMessage,
+) error {
+	if !isAgentOwnedJobMutationTool(toolName) {
+		return nil
+	}
+
+	var args agentJobNameArgs
+	if err := json.Unmarshal(rawArgs, &args); err != nil {
+		return bizerr.BadRequest.ParameterError.Wrap(err, "invalid args")
+	}
+	args.JobName = strings.TrimSpace(args.JobName)
+	if args.JobName == "" {
+		return bizerr.BadRequest.MissingParameter.New("job_name is required")
+	}
+
+	j := query.Job
+	jobQuery := j.WithContext(c).Where(j.JobName.Eq(args.JobName))
+	if token.RolePlatform != model.RoleAdmin {
+		jobQuery = jobQuery.Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID))
+	}
+	if _, err := jobQuery.First(); err != nil {
+		return bizerr.Forbidden.PermissionDenied.New(
+			fmt.Sprintf("该作业不存在或你没有访问权限，不能发起%s确认", agentOwnedJobMutationActionName(toolName)),
+		)
+	}
+	return nil
+}
+
 func (mgr *AgentMgr) getOwnedJobForMutation(
 	c *gin.Context,
 	token util.JWTMessage,
@@ -34,10 +89,10 @@ func (mgr *AgentMgr) getOwnedJobForMutation(
 ) (*model.Job, *batch.Job, error) {
 	var args agentJobNameArgs
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, nil, fmt.Errorf("invalid args: %w", err)
+		return nil, nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid args")
 	}
 	if args.JobName == "" {
-		return nil, nil, fmt.Errorf("job_name is required")
+		return nil, nil, bizerr.BadRequest.MissingParameter.New("job_name is required")
 	}
 
 	j := query.Job
@@ -46,7 +101,7 @@ func (mgr *AgentMgr) getOwnedJobForMutation(
 		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).
 		First()
 	if err != nil {
-		return nil, nil, fmt.Errorf("job not found")
+		return nil, nil, bizerr.NotFound.DataBaseNotFound.New("job not found")
 	}
 
 	clusterJob := &batch.Job{}
@@ -61,7 +116,7 @@ func (mgr *AgentMgr) getOwnedJobForMutation(
 		if k8serrors.IsNotFound(err) {
 			return jobRecord, nil, nil
 		}
-		return nil, nil, fmt.Errorf("failed to load cluster job: %w", err)
+		return nil, nil, bizerr.Internal.K8sServiceError.Wrap(err, "failed to load cluster job")
 	}
 
 	return jobRecord, clusterJob, nil
@@ -88,21 +143,27 @@ func (mgr *AgentMgr) deleteOwnedJob(
 	}
 
 	if shouldDeleteRecord {
-		if _, err := j.WithContext(c).Where(j.JobName.Eq(jobRecord.JobName)).Delete(); err != nil {
-			return nil, fmt.Errorf("failed to delete job record: %w", err)
+		if _, err := j.WithContext(c).
+			Where(j.JobName.Eq(jobRecord.JobName)).
+			Where(j.UserID.Eq(jobRecord.UserID), j.AccountID.Eq(jobRecord.AccountID)).
+			Delete(); err != nil {
+			return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to delete job record")
 		}
 	} else {
-		if _, err := j.WithContext(c).Where(j.JobName.Eq(jobRecord.JobName)).Updates(model.Job{
-			Status:             model.Deleted,
-			CompletedTimestamp: time.Now(),
-		}); err != nil {
-			return nil, fmt.Errorf("failed to update job status: %w", err)
+		if _, err := j.WithContext(c).
+			Where(j.JobName.Eq(jobRecord.JobName)).
+			Where(j.UserID.Eq(jobRecord.UserID), j.AccountID.Eq(jobRecord.AccountID)).
+			Updates(model.Job{
+				Status:             model.Deleted,
+				CompletedTimestamp: time.Now(),
+			}); err != nil {
+			return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to update job status")
 		}
 	}
 
 	if shouldDeleteJob {
 		if err := mgr.client.Delete(c, clusterJob); err != nil && !k8serrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to delete cluster job: %w", err)
+			return nil, bizerr.Internal.K8sServiceError.Wrap(err, "failed to delete cluster job")
 		}
 	}
 
@@ -130,14 +191,17 @@ func (mgr *AgentMgr) stopOwnedJob(c *gin.Context, jobRecord *model.Job, clusterJ
 	}
 
 	if err := mgr.client.Delete(c, clusterJob); err != nil && !k8serrors.IsNotFound(err) {
-		return nil, fmt.Errorf("failed to delete cluster job: %w", err)
+		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "failed to delete cluster job")
 	}
 	j := query.Job
-	if _, err := j.WithContext(c).Where(j.JobName.Eq(jobRecord.JobName)).Updates(model.Job{
-		Status:             batch.Aborted,
-		CompletedTimestamp: time.Now(),
-	}); err != nil {
-		return nil, fmt.Errorf("failed to update job status: %w", err)
+	if _, err := j.WithContext(c).
+		Where(j.JobName.Eq(jobRecord.JobName)).
+		Where(j.UserID.Eq(jobRecord.UserID), j.AccountID.Eq(jobRecord.AccountID)).
+		Updates(model.Job{
+			Status:             batch.Aborted,
+			CompletedTimestamp: time.Now(),
+		}); err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to update job status")
 	}
 	return map[string]any{
 		"jobName": jobRecord.JobName,
@@ -235,13 +299,13 @@ func mergeToolArgsWithPayload(baseArgs json.RawMessage, payload json.RawMessage)
 	base := make(map[string]any)
 	if len(baseArgs) > 0 {
 		if err := json.Unmarshal(baseArgs, &base); err != nil {
-			return nil, fmt.Errorf("invalid stored tool args: %w", err)
+			return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid stored tool args")
 		}
 	}
 
 	incoming := make(map[string]any)
 	if err := json.Unmarshal(payload, &incoming); err != nil {
-		return nil, fmt.Errorf("invalid confirmation payload: %w", err)
+		return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid confirmation payload")
 	}
 
 	for key, value := range incoming {
@@ -250,14 +314,14 @@ func mergeToolArgsWithPayload(baseArgs json.RawMessage, payload json.RawMessage)
 
 	merged, err := json.Marshal(base)
 	if err != nil {
-		return nil, fmt.Errorf("failed to merge confirmation payload: %w", err)
+		return nil, bizerr.Internal.ServiceError.Wrap(err, "failed to merge confirmation payload")
 	}
 	return merged, nil
 }
 
 func applyResubmitOverrides(job *batch.Job, cpu *string, memory *string, gpuCount *int, gpuModel *string) (map[string]any, error) {
 	if job == nil {
-		return nil, fmt.Errorf("job spec is unavailable for override")
+		return nil, bizerr.BadRequest.MissingParameter.New("job spec is unavailable for override")
 	}
 
 	applied := make(map[string]any)
@@ -268,7 +332,7 @@ func applyResubmitOverrides(job *batch.Job, cpu *string, memory *string, gpuCoun
 			if cpu != nil {
 				quantity, err := resource.ParseQuantity(strings.TrimSpace(*cpu))
 				if err != nil {
-					return nil, fmt.Errorf("invalid cpu override: %w", err)
+					return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid cpu override")
 				}
 				if container.Resources.Requests == nil {
 					container.Resources.Requests = v1.ResourceList{}
@@ -283,7 +347,7 @@ func applyResubmitOverrides(job *batch.Job, cpu *string, memory *string, gpuCoun
 			if memory != nil {
 				quantity, err := resource.ParseQuantity(strings.TrimSpace(*memory))
 				if err != nil {
-					return nil, fmt.Errorf("invalid memory override: %w", err)
+					return nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid memory override")
 				}
 				if container.Resources.Requests == nil {
 					container.Resources.Requests = v1.ResourceList{}
@@ -364,18 +428,22 @@ func overrideGPUResourceRequirements(
 		moveResourceQuantity(requirements.Limits, currentGPUKey, targetGPUKey)
 		changed = true
 	}
+	if removeGPUResourcesExcept(requirements.Requests, targetGPUKey) {
+		changed = true
+	}
+	if removeGPUResourcesExcept(requirements.Limits, targetGPUKey) {
+		changed = true
+	}
 
 	if gpuCount != nil {
 		if *gpuCount < 0 {
-			return "", false, fmt.Errorf("gpu_count must be non-negative")
+			return "", false, bizerr.BadRequest.ParameterError.New("gpu_count must be non-negative")
 		}
 		if *gpuCount == 0 {
-			if _, ok := requirements.Requests[targetGPUKey]; ok {
-				delete(requirements.Requests, targetGPUKey)
+			if removeGPUResourcesExcept(requirements.Requests, "") {
 				changed = true
 			}
-			if _, ok := requirements.Limits[targetGPUKey]; ok {
-				delete(requirements.Limits, targetGPUKey)
+			if removeGPUResourcesExcept(requirements.Limits, "") {
 				changed = true
 			}
 			return "", changed, nil

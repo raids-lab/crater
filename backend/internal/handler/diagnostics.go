@@ -13,6 +13,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/monitor"
@@ -27,6 +28,7 @@ type DiagnosticsMgr struct {
 	name       string
 	client     client.Client
 	kubeClient kubernetes.Interface
+	jobReader  JobInsightReader
 }
 
 func NewDiagnosticsMgr(conf *RegisterConfig) Manager {
@@ -34,6 +36,7 @@ func NewDiagnosticsMgr(conf *RegisterConfig) Manager {
 		name:       "diagnostics",
 		client:     conf.Client,
 		kubeClient: conf.KubeClient,
+		jobReader:  NewJobInsightReader(conf),
 	}
 }
 
@@ -72,7 +75,7 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 	}
 	var req QueryParams
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid top failure types query"))
 		return
 	}
 	days := -1
@@ -100,7 +103,7 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypes(c *gin.Context) {
 
 	jobs, err := q.Find()
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query failed jobs"))
 		return
 	}
 
@@ -149,7 +152,7 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypesAdmin(c *gin.Context) {
 	}
 	var req QueryParams
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid admin top failure types query"))
 		return
 	}
 	days := -1
@@ -175,7 +178,7 @@ func (mgr *DiagnosticsMgr) GetTopFailureTypesAdmin(c *gin.Context) {
 
 	jobs, err := q.Find()
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query admin failed jobs"))
 		return
 	}
 
@@ -354,12 +357,12 @@ func (mgr *DiagnosticsMgr) GetDiagnosticContext(c *gin.Context) {
 	}
 	var uri URI
 	if err := c.ShouldBindUri(&uri); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid job diagnostic uri"))
 		return
 	}
 	var qp QueryParams
 	if err := c.ShouldBindQuery(&qp); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid job diagnostic query"))
 		return
 	}
 	if qp.TailLines <= 0 {
@@ -367,6 +370,22 @@ func (mgr *DiagnosticsMgr) GetDiagnosticContext(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
+	if mgr.jobReader != nil {
+		resp, err := mgr.jobReader.GetDiagnosticContext(
+			c.Request.Context(),
+			token,
+			uri.Name,
+			qp.IncludeLog,
+			int64(qp.TailLines),
+		)
+		if err != nil {
+			resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "failed to get diagnostic context"))
+			return
+		}
+		resputil.Success(c, resp)
+		return
+	}
+
 	j := query.Job
 	q := j.WithContext(c).Preload(j.Account).Preload(j.User).Where(j.JobName.Eq(uri.Name))
 	var job *model.Job
@@ -377,7 +396,7 @@ func (mgr *DiagnosticsMgr) GetDiagnosticContext(c *gin.Context) {
 		job, err = q.Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).First()
 	}
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query job diagnostic context"))
 		return
 	}
 

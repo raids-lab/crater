@@ -31,10 +31,16 @@ import type {
   AgentConfirmationForm,
 } from '@/services/api/agent'
 
+const INHERIT_FIELD_VALUE = '__inherit__'
+
 export interface ConfirmActionCardProps {
   confirmId: string
   action: string
   description: string
+  riskLevel?: string
+  permissionExplanation?: string
+  riskExplanation?: string
+  affectedResources?: string[]
   interaction?: string
   form?: AgentConfirmationForm
   onConfirmed: (result: AgentConfirmResponseData) => void
@@ -45,6 +51,10 @@ export function ConfirmActionCard({
   confirmId,
   action,
   description,
+  riskLevel,
+  permissionExplanation,
+  riskExplanation,
+  affectedResources,
   interaction,
   form,
   onConfirmed,
@@ -58,6 +68,17 @@ export function ConfirmActionCard({
   const [formValues, setFormValues] = useState<Record<string, string>>({})
 
   const fields = useMemo(() => form?.fields ?? [], [form?.fields])
+  const resources = affectedResources ?? []
+  const hasPermissionDetails = !!permissionExplanation || !!riskExplanation || resources.length > 0
+
+  const riskBadgeClass =
+    riskLevel === 'critical'
+      ? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300'
+      : riskLevel === 'high'
+        ? 'border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-300'
+        : riskLevel === 'medium'
+          ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+          : 'border-muted-foreground/30 bg-muted text-muted-foreground'
 
   useEffect(() => {
     const nextValues: Record<string, string> = {}
@@ -89,7 +110,7 @@ export function ConfirmActionCard({
     for (const field of fields) {
       const rawValue = formValues[field.key] ?? ''
       const trimmed = rawValue.trim()
-      if (trimmed === '') {
+      if (trimmed === '' || trimmed === INHERIT_FIELD_VALUE) {
         continue
       }
       if (field.type === 'number') {
@@ -180,9 +201,10 @@ export function ConfirmActionCard({
       )
     }
     if (field.type === 'select') {
+      const selectValue = value || INHERIT_FIELD_VALUE
       return (
         <Select
-          value={value || undefined}
+          value={selectValue}
           onValueChange={(nextValue) =>
             setFormValues((prev) => ({ ...prev, [field.key]: nextValue }))
           }
@@ -191,6 +213,11 @@ export function ConfirmActionCard({
             <SelectValue placeholder={field.placeholder || field.label} />
           </SelectTrigger>
           <SelectContent>
+            {!field.required && (
+              <SelectItem value={INHERIT_FIELD_VALUE}>
+                {t('aiops.agent.confirm.inheritOriginal', { defaultValue: '沿用原配置' })}
+              </SelectItem>
+            )}
             {(field.options ?? []).map((option) => (
               <SelectItem key={`${field.key}-${option.value}`} value={option.value}>
                 {option.label}
@@ -203,6 +230,7 @@ export function ConfirmActionCard({
     return (
       <Input
         type={field.type === 'number' ? 'number' : 'text'}
+        min={field.type === 'number' ? 0 : undefined}
         value={value}
         placeholder={field.placeholder}
         onChange={(event) =>
@@ -224,6 +252,16 @@ export function ConfirmActionCard({
           <p className="text-muted-foreground text-xs [overflow-wrap:anywhere] break-words">
             {action}
           </p>
+          {riskLevel && (
+            <span
+              className={`inline-flex h-5 items-center rounded-full border px-2 text-[10px] font-medium ${riskBadgeClass}`}
+            >
+              {t('aiops.agent.confirm.riskLevel', {
+                defaultValue: '风险：{{riskLevel}}',
+                riskLevel,
+              })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -231,6 +269,36 @@ export function ConfirmActionCard({
       {description && (
         <div className="bg-background max-h-40 overflow-y-auto rounded-md border px-3 py-2 text-xs leading-relaxed [overflow-wrap:anywhere] break-words">
           {description}
+        </div>
+      )}
+
+      {hasPermissionDetails && (
+        <div className="bg-background/80 space-y-1.5 rounded-md border px-3 py-2 text-xs leading-relaxed">
+          <p className="font-medium">
+            {t('aiops.agent.confirm.permissionTitle', { defaultValue: '权限与影响说明' })}
+          </p>
+          {permissionExplanation && (
+            <p className="text-muted-foreground [overflow-wrap:anywhere] break-words">
+              {permissionExplanation}
+            </p>
+          )}
+          {riskExplanation && (
+            <p className="text-muted-foreground [overflow-wrap:anywhere] break-words">
+              {riskExplanation}
+            </p>
+          )}
+          {resources.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {resources.map((resource) => (
+                <span
+                  key={resource}
+                  className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]"
+                >
+                  {resource}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

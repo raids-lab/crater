@@ -7,25 +7,28 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"k8s.io/klog/v2"
 
+	"github.com/raids-lab/crater/internal/bizerr"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 )
 
 // ApprovalEvalRequest is sent to the Python agent service.
 type ApprovalEvalRequest struct {
-	OrderID        int    `json:"order_id"`
-	JobName        string `json:"job_name"`
-	ExtensionHours int    `json:"extension_hours"`
-	UserReason     string `json:"user_reason"`
-	UserID         int    `json:"user_id"`
-	Username       string `json:"username"`
-	JobType        string `json:"job_type"`
-	SessionID      string `json:"session_id,omitempty"` // audit session for tool call logging
+	OrderID         int            `json:"order_id"`
+	JobName         string         `json:"job_name"`
+	ExtensionHours  int            `json:"extension_hours"`
+	UserReason      string         `json:"user_reason"`
+	UserID          int            `json:"user_id"`
+	Username        string         `json:"username"`
+	JobType         string         `json:"job_type"`
+	SessionID       string         `json:"session_id,omitempty"` // audit session for tool call logging
+	LLMClientConfig map[string]any `json:"llm_client_config,omitempty"`
 }
 
 // ApprovalEvalResponse is returned by the Python agent service.
@@ -64,11 +67,12 @@ type AgentApprovalEvaluator struct {
 	circuitOpenUntil    atomic.Int64 // unix timestamp
 	breakerThreshold    int
 	breakerCooldown     time.Duration
+	configService       *ConfigService
 }
 
 // NewAgentApprovalEvaluator creates a new evaluator from config.
 // Returns nil if the feature is disabled.
-func NewAgentApprovalEvaluator() *AgentApprovalEvaluator {
+func NewAgentApprovalEvaluator(configService ...*ConfigService) *AgentApprovalEvaluator {
 	cfg := pkgconfig.GetConfig()
 	if !cfg.Agent.ApprovalHook.Enabled {
 		klog.Infof("agent approval hook disabled")
@@ -106,6 +110,10 @@ func NewAgentApprovalEvaluator() *AgentApprovalEvaluator {
 		cooldown = 60 * time.Second
 	}
 
+	var cfgService *ConfigService
+	if len(configService) > 0 {
+		cfgService = configService[0]
+	}
 	return &AgentApprovalEvaluator{
 		client:           &http.Client{Timeout: timeout},
 		agentURL:         agentURL,
@@ -115,14 +123,19 @@ func NewAgentApprovalEvaluator() *AgentApprovalEvaluator {
 		rateResetAt:      time.Now().Add(time.Minute),
 		breakerThreshold: threshold,
 		breakerCooldown:  cooldown,
+		configService:    cfgService,
 	}
 }
 
 var (
-	errRateLimited    = fmt.Errorf("agent approval: rate limited")
-	errCircuitOpen    = fmt.Errorf("agent approval: circuit breaker open")
-	errConcurrencyMax = fmt.Errorf("agent approval: concurrency limit reached")
+	errRateLimited    = bizerr.RateLimit.TooManyRequests.New("agent approval: rate limited")
+	errCircuitOpen    = bizerr.ServiceError.ServiceUnavailable.New("agent approval: circuit breaker open")
+	errConcurrencyMax = bizerr.RateLimit.TooManyRequests.New("agent approval: concurrency limit reached")
 )
+
+func agentApprovalErrorf(format string, args ...any) error {
+	return bizerr.Internal.ServiceError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
 
 // Evaluate calls the agent service to evaluate an approval order.
 // Returns nil on any infrastructure error (rate limit, circuit breaker, timeout, HTTP error).
@@ -161,40 +174,45 @@ func (e *AgentApprovalEvaluator) Evaluate(ctx context.Context, req *ApprovalEval
 }
 
 func (e *AgentApprovalEvaluator) doCall(ctx context.Context, req *ApprovalEvalRequest) (*ApprovalEvalResponse, error) {
+	if e.configService != nil {
+		if clientConfig, cfgErr := e.configService.GetAgentLLMClientConfig(ctx); cfgErr == nil && len(clientConfig) > 0 {
+			req.LLMClientConfig = clientConfig
+		}
+	}
 	body, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("marshal request: %w", err)
+		return nil, agentApprovalErrorf("marshal request: %w", err)
 	}
 
 	url := e.agentURL + "/evaluate/approval"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+		return nil, agentApprovalErrorf("create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := e.client.Do(httpReq)
 	if err != nil {
-		return nil, fmt.Errorf("agent service call: %w", err)
+		return nil, agentApprovalErrorf("agent service call: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, fmt.Errorf("agent service busy (429)")
+		return nil, agentApprovalErrorf("agent service busy (429)")
 	}
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("agent service returned %d: %s", resp.StatusCode, string(respBody))
+		return nil, agentApprovalErrorf("agent service returned %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var result ApprovalEvalResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+		return nil, agentApprovalErrorf("decode response: %w", err)
 	}
 
 	// Validate verdict
 	if result.Verdict != "approve" && result.Verdict != "approve_emergency" && result.Verdict != "escalate" {
-		return nil, fmt.Errorf("invalid verdict: %q", result.Verdict)
+		return nil, agentApprovalErrorf("invalid verdict: %q", result.Verdict)
 	}
 
 	return &result, nil

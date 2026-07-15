@@ -18,6 +18,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/util"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
@@ -27,7 +28,15 @@ import (
 
 // ─── Individual tool implementations ─────────────────────────────────────────
 
+func agentReadonlyErrorf(format string, args ...any) error {
+	return bizerr.BadRequest.ParameterError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
+
 func (mgr *AgentMgr) findScopedJob(ctx context.Context, token util.JWTMessage, jobName string) (*model.Job, error) {
+	if mgr.jobReader != nil {
+		return mgr.jobReader.FindScopedJob(ctx, token, jobName)
+	}
+
 	j := query.Job
 	q := j.WithContext(ctx).
 		Preload(j.User).
@@ -45,13 +54,13 @@ func (mgr *AgentMgr) findScopedJob(ctx context.Context, token util.JWTMessage, j
 				buildQuery = buildQuery.Where(k.UserID.Eq(token.UserID))
 			}
 			if _, buildErr := buildQuery.First(); buildErr == nil {
-				return nil, fmt.Errorf(
+				return nil, agentReadonlyErrorf(
 					"%q is an image build, not a platform job; use get_image_build_detail first, then inspect its pod with k8s_get_pod_logs / k8s_get_events",
 					jobName,
 				)
 			}
 		}
-		return nil, fmt.Errorf("job not found: %w", err)
+		return nil, agentReadonlyErrorf("job not found: %w", err)
 	}
 	return job, nil
 }
@@ -117,7 +126,7 @@ func filterLogByKeyword(logContent, keyword string) (string, error) {
 	}
 	re, err := regexp.Compile(keyword)
 	if err != nil {
-		return "", fmt.Errorf("invalid keyword regex: %w", err)
+		return "", agentReadonlyErrorf("invalid keyword regex: %w", err)
 	}
 	lines := strings.Split(logContent, "\n")
 	matched := make([]string, 0, len(lines))
@@ -357,15 +366,18 @@ func buildSimilarFailureEntry(job *model.Job, score int) map[string]any {
 func (mgr *AgentMgr) toolGetJobDetail(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	var args agentJobNameArgs
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
 	if err != nil {
 		return nil, err
+	}
+	if mgr.jobReader != nil {
+		return mgr.jobReader.BuildJobDetail(job), nil
 	}
 	return buildJobDetailResponse(job), nil
 }
@@ -374,10 +386,14 @@ func (mgr *AgentMgr) toolGetJobDetail(c *gin.Context, token util.JWTMessage, raw
 func (mgr *AgentMgr) toolGetJobEvents(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	var args agentJobNameArgs
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
+	}
+
+	if mgr.jobReader != nil {
+		return mgr.jobReader.GetJobEvents(c.Request.Context(), token, args.JobName)
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
@@ -399,16 +415,20 @@ func (mgr *AgentMgr) toolGetJobLogs(c *gin.Context, token util.JWTMessage, rawAr
 		Keyword   string `json:"keyword"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 	if args.TailLines <= 0 {
 		args.TailLines = args.Tail
 	}
 	if args.TailLines <= 0 {
 		args.TailLines = 100
+	}
+
+	if mgr.jobReader != nil {
+		return mgr.jobReader.GetJobLog(c.Request.Context(), token, args.JobName, args.TailLines, args.Keyword)
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
@@ -422,10 +442,10 @@ func (mgr *AgentMgr) toolGetJobLogs(c *gin.Context, token util.JWTMessage, rawAr
 func (mgr *AgentMgr) toolDiagnoseJob(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	var args agentJobNameArgs
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
@@ -442,10 +462,10 @@ func (mgr *AgentMgr) toolGetDiagnosticContext(c *gin.Context, token util.JWTMess
 		TailLines  int64  `json:"tail_lines"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 	if args.TailLines <= 0 {
 		args.TailLines = 200
@@ -453,6 +473,10 @@ func (mgr *AgentMgr) toolGetDiagnosticContext(c *gin.Context, token util.JWTMess
 	includeLog := true
 	if args.IncludeLog != nil {
 		includeLog = *args.IncludeLog
+	}
+
+	if mgr.jobReader != nil {
+		return mgr.jobReader.GetDiagnosticContext(c.Request.Context(), token, args.JobName, includeLog, args.TailLines)
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
@@ -512,10 +536,10 @@ func (mgr *AgentMgr) toolQueryJobMetrics(c *gin.Context, token util.JWTMessage, 
 		TimeRange string   `json:"time_range"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
@@ -564,10 +588,10 @@ func (mgr *AgentMgr) toolSearchSimilarFailures(c *gin.Context, token util.JWTMes
 		Limit   int    `json:"limit"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 	if args.Days <= 0 {
 		args.Days = 30
@@ -593,7 +617,7 @@ func (mgr *AgentMgr) toolSearchSimilarFailures(c *gin.Context, token util.JWTMes
 	}
 	candidates, err := q.Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query similar failures: %w", err)
+		return nil, agentReadonlyErrorf("failed to query similar failures: %w", err)
 	}
 
 	type scoredFailure struct {
@@ -636,7 +660,7 @@ func (mgr *AgentMgr) toolSearchSimilarFailures(c *gin.Context, token util.JWTMes
 func (mgr *AgentMgr) toolGetRealtimeCapacity(c *gin.Context, _ util.JWTMessage, _ json.RawMessage) (any, error) {
 	nodes, err := mgr.nodeClient.ListNodes(c.Request.Context())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list nodes: %w", err)
+		return nil, agentReadonlyErrorf("failed to list nodes: %w", err)
 	}
 	statusCount := make(map[string]int)
 	items := make([]map[string]any, 0, len(nodes))
@@ -669,7 +693,7 @@ func (mgr *AgentMgr) toolListAvailableImages(c *gin.Context, token util.JWTMessa
 	}
 	if len(rawArgs) > 0 {
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
-			return nil, fmt.Errorf("invalid args: %w", err)
+			return nil, agentReadonlyErrorf("invalid args: %w", err)
 		}
 	}
 	if args.Limit <= 0 || args.Limit > 100 {
@@ -718,7 +742,7 @@ func (mgr *AgentMgr) toolListCudaBaseImages(c *gin.Context, _ util.JWTMessage, r
 	}
 	if len(rawArgs) > 0 {
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
-			return nil, fmt.Errorf("invalid args: %w", err)
+			return nil, agentReadonlyErrorf("invalid args: %w", err)
 		}
 	}
 	if args.Limit <= 0 || args.Limit > 100 {
@@ -731,7 +755,7 @@ func (mgr *AgentMgr) toolListCudaBaseImages(c *gin.Context, _ util.JWTMessage, r
 		Limit(args.Limit).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list cuda base images: %w", err)
+		return nil, agentReadonlyErrorf("failed to list cuda base images: %w", err)
 	}
 
 	items := make([]map[string]any, 0, len(images))
@@ -757,7 +781,7 @@ func (mgr *AgentMgr) toolListAvailableGPUModels(c *gin.Context, _ util.JWTMessag
 	}
 	if len(rawArgs) > 0 {
 		if err := json.Unmarshal(rawArgs, &args); err != nil {
-			return nil, fmt.Errorf("invalid args: %w", err)
+			return nil, agentReadonlyErrorf("invalid args: %w", err)
 		}
 	}
 	if args.Limit <= 0 || args.Limit > 100 {
@@ -766,7 +790,7 @@ func (mgr *AgentMgr) toolListAvailableGPUModels(c *gin.Context, _ util.JWTMessag
 
 	nodes, err := mgr.nodeClient.ListNodes(c.Request.Context())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list nodes: %w", err)
+		return nil, agentReadonlyErrorf("failed to list nodes: %w", err)
 	}
 
 	type gpuSummary struct {
@@ -851,10 +875,10 @@ func (mgr *AgentMgr) toolRecommendTrainingImages(c *gin.Context, token util.JWTM
 		Limit           int    `json:"limit"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if strings.TrimSpace(args.TaskDescription) == "" {
-		return nil, fmt.Errorf("task_description is required")
+		return nil, agentReadonlyErrorf("task_description is required")
 	}
 	if args.Limit <= 0 || args.Limit > 20 {
 		args.Limit = 5
@@ -914,10 +938,10 @@ func (mgr *AgentMgr) toolRecommendTrainingImages(c *gin.Context, token util.JWTM
 func (mgr *AgentMgr) toolAnalyzeQueueStatus(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	var args agentJobNameArgs
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.JobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentReadonlyErrorf("job_name is required")
 	}
 
 	job, err := mgr.findScopedJob(c, token, args.JobName)
@@ -974,7 +998,7 @@ func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawAr
 	}
 	if args.AccountID != nil {
 		if token.RolePlatform != model.RoleAdmin && *args.AccountID != token.AccountID {
-			return nil, fmt.Errorf("account_id is not accessible")
+			return nil, agentReadonlyErrorf("account_id is not accessible")
 		}
 		accountID = *args.AccountID
 	}
@@ -990,7 +1014,7 @@ func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawAr
 		Where(ua.AccountID.Eq(accountID), ua.UserID.Eq(token.UserID)).
 		First()
 	if err != nil && token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("user account not found: %w", err)
+		return nil, agentReadonlyErrorf("user account not found: %w", err)
 	}
 	if err == nil {
 		capability = userAccount.Quota.Data().Capability
@@ -1001,7 +1025,7 @@ func (mgr *AgentMgr) toolCheckQuota(c *gin.Context, token util.JWTMessage, rawAr
 	if len(capability) == 0 {
 		account, accountErr := a.WithContext(c).Where(a.ID.Eq(accountID)).First()
 		if accountErr != nil {
-			return nil, fmt.Errorf("account not found: %w", accountErr)
+			return nil, agentReadonlyErrorf("account not found: %w", accountErr)
 		}
 		if account.UserDefaultQuota != nil && len(account.UserDefaultQuota.Data().Capability) > 0 {
 			capability = account.UserDefaultQuota.Data().Capability
@@ -1058,31 +1082,26 @@ func (mgr *AgentMgr) toolGetHealthOverview(c *gin.Context, token util.JWTMessage
 		args.Days = 7
 	}
 
-	j := query.Job
-	lookback := time.Now().AddDate(0, 0, -args.Days)
-	jobs, err := j.WithContext(c).
-		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).
-		Where(j.CreationTimestamp.Gte(lookback)).
-		Find()
+	overview, err := handler.BuildHealthOverview(c.Request.Context(), token, args.Days, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to build health overview: %w", err)
 	}
-
-	statusCount := make(map[string]int)
-	for _, job := range jobs {
-		statusCount[string(job.Status)]++
-	}
-
 	return map[string]any{
-		"totalJobs":    len(jobs),
-		"statusCount":  statusCount,
-		"lookbackDays": args.Days,
+		"scope":             "user",
+		"lookbackDays":      args.Days,
+		"totalJobs":         overview.TotalJobs,
+		"failedJobs":        overview.FailedJobs,
+		"pendingJobs":       overview.PendingJobs,
+		"runningJobs":       overview.RunningJobs,
+		"failureRate":       overview.FailureRate,
+		"failureTrend":      overview.FailureTrend,
+		"topFailureReasons": overview.TopFailureReasons,
 	}, nil
 }
 
 func (mgr *AgentMgr) toolGetClusterHealthOverview(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("cluster overview requires admin privileges")
+		return nil, agentReadonlyErrorf("cluster overview requires admin privileges")
 	}
 	var args struct {
 		Days int `json:"days"`
@@ -1094,32 +1113,20 @@ func (mgr *AgentMgr) toolGetClusterHealthOverview(c *gin.Context, token util.JWT
 		args.Days = 7
 	}
 
-	j := query.Job
-	q := j.WithContext(c)
-	if args.Days > 0 {
-		q = q.Where(j.CreationTimestamp.Gte(time.Now().AddDate(0, 0, -args.Days)))
-	}
-	jobs, err := q.Find()
+	overview, err := handler.BuildHealthOverview(c.Request.Context(), token, args.Days, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query cluster jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to build cluster health overview: %w", err)
 	}
-
-	statusCount := make(map[string]int)
-	accountCount := make(map[uint]int)
-	userCount := make(map[uint]int)
-	for _, job := range jobs {
-		statusCount[string(job.Status)]++
-		accountCount[job.AccountID]++
-		userCount[job.UserID]++
-	}
-
 	return map[string]any{
-		"scope":        "cluster",
-		"totalJobs":    len(jobs),
-		"statusCount":  statusCount,
-		"lookbackDays": args.Days,
-		"accountCount": len(accountCount),
-		"userCount":    len(userCount),
+		"scope":             "cluster",
+		"lookbackDays":      args.Days,
+		"totalJobs":         overview.TotalJobs,
+		"failedJobs":        overview.FailedJobs,
+		"pendingJobs":       overview.PendingJobs,
+		"runningJobs":       overview.RunningJobs,
+		"failureRate":       overview.FailureRate,
+		"failureTrend":      overview.FailureTrend,
+		"topFailureReasons": overview.TopFailureReasons,
 	}, nil
 }
 
@@ -1161,7 +1168,7 @@ func (mgr *AgentMgr) toolListUserJobs(c *gin.Context, token util.JWTMessage, raw
 
 	jobs, err := q.Limit(args.Limit).Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to list jobs: %w", err)
 	}
 
 	items := make([]map[string]any, 0, len(jobs))
@@ -1188,7 +1195,7 @@ func (mgr *AgentMgr) toolListUserJobs(c *gin.Context, token util.JWTMessage, raw
 
 func (mgr *AgentMgr) toolListClusterJobs(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("cluster job listing requires admin privileges")
+		return nil, agentReadonlyErrorf("cluster job listing requires admin privileges")
 	}
 	var args struct {
 		Statuses []string `json:"statuses"`
@@ -1226,7 +1233,7 @@ func (mgr *AgentMgr) toolListClusterJobs(c *gin.Context, token util.JWTMessage, 
 
 	jobs, err := q.Limit(args.Limit).Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list cluster jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to list cluster jobs: %w", err)
 	}
 
 	items := make([]map[string]any, 0, len(jobs))
@@ -1256,11 +1263,11 @@ func (mgr *AgentMgr) toolListClusterJobs(c *gin.Context, token util.JWTMessage, 
 
 func (mgr *AgentMgr) toolListClusterNodes(c *gin.Context, token util.JWTMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("cluster node listing requires admin privileges")
+		return nil, agentReadonlyErrorf("cluster node listing requires admin privileges")
 	}
 	nodes, err := mgr.nodeClient.ListNodes(c.Request.Context())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list cluster nodes: %w", err)
+		return nil, agentReadonlyErrorf("failed to list cluster nodes: %w", err)
 	}
 
 	statusCount := make(map[string]int)
@@ -1504,7 +1511,7 @@ func (mgr *AgentMgr) toolDetectIdleJobs(c *gin.Context, token util.JWTMessage, r
 	}
 	runningJobs, err := q.Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query running jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to query running jobs: %w", err)
 	}
 
 	idleJobs := make([]idleEntry, 0)
@@ -1610,7 +1617,7 @@ func (mgr *AgentMgr) toolGetJobTemplates(c *gin.Context, _ util.JWTMessage, rawA
 		Limit(args.Limit).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list job templates: %w", err)
+		return nil, agentReadonlyErrorf("failed to list job templates: %w", err)
 	}
 
 	items := make([]map[string]any, 0, len(templates))
@@ -1661,7 +1668,7 @@ func (mgr *AgentMgr) toolGetFailureStatistics(c *gin.Context, token util.JWTMess
 	}
 	failedJobs, err := q.Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query failed jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to query failed jobs: %w", err)
 	}
 
 	type categoryAgg struct {
@@ -1704,7 +1711,7 @@ func (mgr *AgentMgr) toolGetFailureStatistics(c *gin.Context, token util.JWTMess
 // toolGetClusterHealthReport aggregates cluster health into a single report (admin only).
 func (mgr *AgentMgr) toolGetClusterHealthReport(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("cluster health report requires admin privileges")
+		return nil, agentReadonlyErrorf("cluster health report requires admin privileges")
 	}
 	var args struct {
 		Days int `json:"days"`
@@ -1746,10 +1753,10 @@ func (mgr *AgentMgr) toolGetResourceRecommendation(c *gin.Context, token util.JW
 		GPURequired     *bool  `json:"gpu_required"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if strings.TrimSpace(args.TaskDescription) == "" {
-		return nil, fmt.Errorf("task_description is required")
+		return nil, agentReadonlyErrorf("task_description is required")
 	}
 
 	gpuRequired := true
@@ -1760,7 +1767,7 @@ func (mgr *AgentMgr) toolGetResourceRecommendation(c *gin.Context, token util.JW
 	// Get available GPU models
 	nodes, err := mgr.nodeClient.ListNodes(c.Request.Context())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list nodes: %w", err)
+		return nil, agentReadonlyErrorf("failed to list nodes: %w", err)
 	}
 
 	type gpuAvail struct {
@@ -1885,26 +1892,26 @@ func getIntValueFromAny(value any) int {
 // toolGetNodeDetail returns detailed info for a single cluster node (admin only).
 func (mgr *AgentMgr) toolGetNodeDetail(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("node detail requires admin privileges")
+		return nil, agentReadonlyErrorf("node detail requires admin privileges")
 	}
 	var args struct {
 		NodeName string `json:"node_name"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if args.NodeName == "" {
-		return nil, fmt.Errorf("node_name is required")
+		return nil, agentReadonlyErrorf("node_name is required")
 	}
 
 	nodeDetail, err := mgr.nodeClient.GetNode(c.Request.Context(), args.NodeName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get node: %w", err)
+		return nil, agentReadonlyErrorf("failed to get node: %w", err)
 	}
 
 	pods, podErr := mgr.nodeClient.AdminGetPodsForNode(c.Request.Context(), args.NodeName)
 	if podErr != nil {
-		return nil, fmt.Errorf("failed to get node workloads: %w", podErr)
+		return nil, agentReadonlyErrorf("failed to get node workloads: %w", podErr)
 	}
 
 	buildResourcePressureAlert := func(resourceName string, used, allocatable int64) map[string]any {
@@ -2004,7 +2011,7 @@ func (mgr *AgentMgr) toolGetNodeDetail(c *gin.Context, token util.JWTMessage, ra
 // toolGetAdminOpsReport aggregates a cluster-level AIOps report for admins.
 func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("admin ops report requires admin privileges")
+		return nil, agentReadonlyErrorf("admin ops report requires admin privileges")
 	}
 
 	var args struct {
@@ -2057,7 +2064,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 		Limit(args.SuccessLimit).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query completed jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to query completed jobs: %w", err)
 	}
 
 	failedJobs, err := j.WithContext(c).
@@ -2068,7 +2075,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 		Limit(args.FailureLimit).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query failed jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to query failed jobs: %w", err)
 	}
 
 	overviewRaw, overviewErr := mgr.toolGetClusterHealthOverview(c, token, json.RawMessage(fmt.Sprintf(`{"days":%d}`, args.Days)))
@@ -2223,7 +2230,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 		Limit(args.RunningLimit).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query active running jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to query active running jobs: %w", err)
 	}
 	recentFinishedJobs, err := j.WithContext(c).
 		Preload(j.User).
@@ -2233,7 +2240,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 		Limit(args.RunningLimit).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to query recent running window jobs: %w", err)
+		return nil, agentReadonlyErrorf("failed to query recent running window jobs: %w", err)
 	}
 
 	recentRunningJobs := make([]map[string]any, 0, args.RunningLimit)
@@ -2416,7 +2423,7 @@ func (mgr *AgentMgr) toolGetAdminOpsReport(c *gin.Context, token util.JWTMessage
 // toolGetLatestAuditReport returns the most recent audit report of a given type.
 func (mgr *AgentMgr) toolGetLatestAuditReport(_ *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("audit reports require admin privileges")
+		return nil, agentReadonlyErrorf("audit reports require admin privileges")
 	}
 	var args struct {
 		ReportType string `json:"report_type"`
@@ -2458,7 +2465,7 @@ func (mgr *AgentMgr) toolGetLatestAuditReport(_ *gin.Context, token util.JWTMess
 // toolListAuditItems lists audit items with optional filters.
 func (mgr *AgentMgr) toolListAuditItems(_ *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("audit items require admin privileges")
+		return nil, agentReadonlyErrorf("audit items require admin privileges")
 	}
 	var args struct {
 		ActionType string `json:"action_type"`
@@ -2492,7 +2499,7 @@ func (mgr *AgentMgr) toolListAuditItems(_ *gin.Context, token util.JWTMessage, r
 
 	var items []map[string]any
 	if err := q.Find(&items).Error; err != nil {
-		return nil, fmt.Errorf("failed to query audit items: %w", err)
+		return nil, agentReadonlyErrorf("failed to query audit items: %w", err)
 	}
 
 	return map[string]any{
@@ -2504,7 +2511,7 @@ func (mgr *AgentMgr) toolListAuditItems(_ *gin.Context, token util.JWTMessage, r
 // toolSaveAuditReport creates a new audit report with its items.
 func (mgr *AgentMgr) toolSaveAuditReport(_ *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if token.RolePlatform != model.RoleAdmin {
-		return nil, fmt.Errorf("saving audit reports requires admin privileges")
+		return nil, agentReadonlyErrorf("saving audit reports requires admin privileges")
 	}
 	var args struct {
 		ReportType    string           `json:"report_type"`
@@ -2521,7 +2528,7 @@ func (mgr *AgentMgr) toolSaveAuditReport(_ *gin.Context, token util.JWTMessage, 
 		JobPending  int             `json:"job_pending"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentReadonlyErrorf("invalid args: %w", err)
 	}
 	if strings.TrimSpace(args.ReportType) == "" {
 		args.ReportType = "gpu_audit"
@@ -2568,7 +2575,7 @@ func (mgr *AgentMgr) toolSaveAuditReport(_ *gin.Context, token util.JWTMessage, 
 				RETURNING id
 			`, args.ReportType, args.TriggerSource, string(args.Summary)).Scan(&reportID)
 			if insertResult.Error != nil {
-				return fmt.Errorf("failed to create audit report: %w", insertResult.Error)
+				return agentReadonlyErrorf("failed to create audit report: %w", insertResult.Error)
 			}
 		}
 
@@ -2647,7 +2654,7 @@ func (mgr *AgentMgr) toolSaveAuditReport(_ *gin.Context, token util.JWTMessage, 
 				).Error
 			}
 			if err != nil {
-				return fmt.Errorf("failed to insert audit item for %s: %w", jobName, err)
+				return agentReadonlyErrorf("failed to insert audit item for %s: %w", jobName, err)
 			}
 			itemCount++
 		}

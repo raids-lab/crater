@@ -18,7 +18,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 )
@@ -52,7 +52,7 @@ func (mgr *AgentMgr) isInternalToolRequestAuthorized(c *gin.Context) bool {
 
 func (mgr *AgentMgr) getSessionToken(ctx context.Context, session *model.AgentSession) (util.JWTMessage, error) {
 	if session == nil || session.UserID == 0 || session.AccountID == 0 {
-		return util.JWTMessage{}, fmt.Errorf("invalid session actor")
+		return util.JWTMessage{}, bizerr.BadRequest.ParameterError.New("invalid session actor")
 	}
 	u := query.User
 	a := query.Account
@@ -60,20 +60,20 @@ func (mgr *AgentMgr) getSessionToken(ctx context.Context, session *model.AgentSe
 
 	user, err := u.WithContext(ctx).Where(u.ID.Eq(session.UserID)).First()
 	if err != nil {
-		return util.JWTMessage{}, fmt.Errorf("failed to load user")
+		return util.JWTMessage{}, bizerr.Internal.DatabaseError.Wrap(err, "failed to load user")
 	}
 	account, err := a.WithContext(ctx).Where(a.ID.Eq(session.AccountID)).First()
 	if err != nil {
-		return util.JWTMessage{}, fmt.Errorf("failed to load account")
+		return util.JWTMessage{}, bizerr.Internal.DatabaseError.Wrap(err, "failed to load account")
 	}
 	userAccount, err := ua.WithContext(ctx).
 		Where(ua.UserID.Eq(session.UserID), ua.AccountID.Eq(session.AccountID)).
 		First()
 	if err != nil {
-		return util.JWTMessage{}, fmt.Errorf("failed to load account membership")
+		return util.JWTMessage{}, bizerr.Internal.DatabaseError.Wrap(err, "failed to load account membership")
 	}
 
-	return util.JWTMessage{
+	token := util.JWTMessage{
 		UserID:            session.UserID,
 		AccountID:         session.AccountID,
 		Username:          user.Name,
@@ -81,10 +81,12 @@ func (mgr *AgentMgr) getSessionToken(ctx context.Context, session *model.AgentSe
 		RoleAccount:       userAccount.Role,
 		RolePlatform:      user.Role,
 		AccountAccessMode: userAccount.AccessMode,
-	}, nil
+	}
+	return effectiveAgentSessionToken(session, token), nil
 }
 
 func (mgr *AgentMgr) buildPythonAgentPayload(
+	ctx context.Context,
 	sessionID string,
 	turnID string,
 	message string,
@@ -96,26 +98,53 @@ func (mgr *AgentMgr) buildPythonAgentPayload(
 	historyToolCalls []*model.AgentToolCall,
 	continuation map[string]any,
 ) AgentTurnRequest {
+	requestContext := map[string]any{
+		"actor": map[string]any{
+			"user_id":      token.UserID,
+			"account_id":   token.AccountID,
+			"username":     token.Username,
+			"account_name": token.AccountName,
+			"role":         strings.ToLower(token.RolePlatform.String()),
+		},
+		"page":          pageContext,
+		"client":        clientContext,
+		"history":       buildAgentHistory(historyMessages, historyToolCalls),
+		"continuation":  continuation,
+		"capabilities":  mgr.buildAgentCapabilities(token, pageContext),
+		"orchestration": map[string]any{"mode": normalizeOrchestrationMode(orchestrationMode)},
+	}
+	if llmContext := mgr.buildPythonAgentLLMContext(ctx); len(llmContext) > 0 {
+		requestContext["llm"] = llmContext
+	}
+
 	return AgentTurnRequest{
 		SessionID: sessionID,
 		TurnID:    turnID,
 		Message:   message,
-		Context: map[string]any{
-			"actor": map[string]any{
-				"user_id":      token.UserID,
-				"account_id":   token.AccountID,
-				"username":     token.Username,
-				"account_name": token.AccountName,
-				"role":         strings.ToLower(token.RolePlatform.String()),
-			},
-			"page":          pageContext,
-			"client":        clientContext,
-			"history":       buildAgentHistory(historyMessages, historyToolCalls),
-			"continuation":  continuation,
-			"capabilities":  mgr.buildAgentCapabilities(token, pageContext),
-			"orchestration": map[string]any{"mode": normalizeOrchestrationMode(orchestrationMode)},
-		},
+		Context:   requestContext,
 	}
+}
+
+func (mgr *AgentMgr) buildPythonAgentLLMContext(ctx context.Context) map[string]any {
+	clientConfig := mgr.buildPythonAgentLLMClientConfig(ctx)
+	if len(clientConfig) == 0 {
+		return nil
+	}
+	return map[string]any{
+		"source":        "system_config",
+		"client_config": clientConfig,
+	}
+}
+
+func (mgr *AgentMgr) buildPythonAgentLLMClientConfig(ctx context.Context) map[string]any {
+	if mgr.configService == nil {
+		return nil
+	}
+	clientConfig, err := mgr.configService.GetAgentLLMClientConfig(ctx)
+	if err != nil || len(clientConfig) == 0 {
+		return nil
+	}
+	return clientConfig
 }
 
 func (mgr *AgentMgr) streamPythonAgentResponse(
@@ -128,7 +157,7 @@ func (mgr *AgentMgr) streamPythonAgentResponse(
 ) {
 	payloadBytes, err := json.Marshal(agentPayload)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to marshal agent payload: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to marshal agent payload: %v", err))
 		return
 	}
 
@@ -140,7 +169,7 @@ func (mgr *AgentMgr) streamPythonAgentResponse(
 	defer cancelAgentReq()
 	agentReq, err := http.NewRequestWithContext(agentCtx, http.MethodPost, agentURL, bytes.NewReader(payloadBytes))
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create agent request: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to create agent request: %v", err))
 		return
 	}
 	agentReq.Header.Set("Content-Type", "application/json")
@@ -152,7 +181,7 @@ func (mgr *AgentMgr) streamPythonAgentResponse(
 			"errorMessage": fmt.Sprintf("agent service unavailable: %v", err),
 		})
 		_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "failed", nil, errorMetadata)
-		resputil.Error(c, fmt.Sprintf("agent service unavailable: %v", err), resputil.ServiceError)
+		agentInternalError(c, fmt.Sprintf("agent service unavailable: %v", err))
 		return
 	}
 	defer resp.Body.Close()
@@ -161,7 +190,7 @@ func (mgr *AgentMgr) streamPythonAgentResponse(
 			"errorMessage": fmt.Sprintf("agent service returned status %d", resp.StatusCode),
 		})
 		_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "failed", nil, errorMetadata)
-		resputil.Error(c, fmt.Sprintf("agent service returned status %d", resp.StatusCode), resputil.ServiceError)
+		agentInternalError(c, fmt.Sprintf("agent service returned status %d", resp.StatusCode))
 		return
 	}
 
@@ -413,6 +442,9 @@ func (mgr *AgentMgr) buildConfirmationFinalAnswer(toolCall *model.AgentToolCall)
 	if toolCall == nil {
 		return "刚才的确认操作已经结束。"
 	}
+	if toolCall.ResultStatus == "rejected" {
+		return fmt.Sprintf("已取消该操作（%s）。我不会继续执行或再次确认；如果需要其他处理，请重新告诉我。", toolCall.ToolName)
+	}
 
 	result, fallback := parseToolCallResult(toolCall)
 	answer := strings.TrimSpace(mgr.buildToolOutcomeMessage(toolCall.ToolName, toolCall.ResultStatus, result, fallback))
@@ -546,14 +578,14 @@ func (mgr *AgentMgr) streamConfirmationOutcome(
 func proxySSEStream(c *gin.Context, httpClient *http.Client, upstreamURL string, body io.Reader) error {
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, upstreamURL, body)
 	if err != nil {
-		return fmt.Errorf("failed to create upstream request: %w", err)
+		return bizerr.Internal.ServiceError.Wrap(err, "failed to create upstream request")
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "text/event-stream")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("upstream request failed: %w", err)
+		return bizerr.BadGateway.BadGateway.Wrap(err, "upstream request failed")
 	}
 	defer resp.Body.Close()
 

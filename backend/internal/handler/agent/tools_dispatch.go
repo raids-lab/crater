@@ -3,7 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -12,9 +12,14 @@ import (
 	"gorm.io/datatypes"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 )
+
+func agentDispatchErrorf(format string, args ...any) error {
+	return bizerr.BadRequest.ParameterError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
 
 func isAgentReadOnlyTool(toolName string) bool {
 	switch toolName {
@@ -204,6 +209,97 @@ func normalizeExecutionBackend(toolName, executionBackend string) string {
 	}
 }
 
+func agentSessionAllowsAdminTools(session *model.AgentSession) bool {
+	if session == nil {
+		return false
+	}
+	switch normalizeRequestedSessionSource(session.Source) {
+	case "ops_audit", "system":
+		return true
+	}
+
+	return agentSessionSurface(session) == "admin"
+}
+
+func normalizeAgentSurface(raw string) string {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "admin", "administrator", "management":
+		return "admin"
+	default:
+		return "user"
+	}
+}
+
+func agentPageContextSurface(page map[string]any) string {
+	if page == nil {
+		return "user"
+	}
+	if raw, _ := page["surface"].(string); normalizeAgentSurface(raw) == "admin" {
+		return "admin"
+	}
+	for _, key := range []string{"route", "url"} {
+		raw, _ := page[key].(string)
+		if isAdminAgentRoute(raw) {
+			return "admin"
+		}
+	}
+	return "user"
+}
+
+func agentPageScopeForToken(token util.JWTMessage, page map[string]any) string {
+	if token.RolePlatform != model.RoleAdmin {
+		return "user"
+	}
+	return agentPageContextSurface(page)
+}
+
+func agentSessionSurface(session *model.AgentSession) string {
+	if session == nil {
+		return "user"
+	}
+	switch normalizeRequestedSessionSource(session.Source) {
+	case "ops_audit", "system":
+		return "admin"
+	}
+	return agentPageContextSurface(normalizePageContext(json.RawMessage(session.PageContext)))
+}
+
+func agentSessionMatchesSurface(session *model.AgentSession, surface string) bool {
+	return agentSessionSurface(session) == normalizeAgentSurface(surface)
+}
+
+func isAdminAgentRoute(raw string) bool {
+	route := strings.TrimSpace(raw)
+	if route == "" {
+		return false
+	}
+	if parsed, err := url.Parse(route); err == nil && parsed.Path != "" {
+		route = parsed.Path
+	}
+	route = strings.TrimSpace(strings.ToLower(route))
+	return route == "/admin" || strings.HasPrefix(route, "/admin/")
+}
+
+func effectiveAgentSessionToken(session *model.AgentSession, token util.JWTMessage) util.JWTMessage {
+	if token.RolePlatform == model.RoleAdmin && !agentSessionAllowsAdminTools(session) {
+		token.RolePlatform = model.RoleUser
+	}
+	return token
+}
+
+func authorizeAgentToolForSession(session *model.AgentSession, token util.JWTMessage, toolName string) error {
+	if !isAgentAdminOnlyTool(toolName) {
+		return nil
+	}
+	if token.RolePlatform != model.RoleAdmin {
+		return agentDispatchErrorf("你当前没有管理员权限，不能执行该运维操作；如确需处理，请联系平台管理员或切换到管理员页面后再操作")
+	}
+	if !agentSessionAllowsAdminTools(session) {
+		return agentDispatchErrorf("该运维操作只能在管理员页面执行；用户端会话不能发起节点、Pod 或集群级写操作")
+	}
+	return nil
+}
+
 func (mgr *AgentMgr) ensureInternalAuditSession(c *gin.Context, req ExecuteToolRequest) error {
 	if req.InternalContext == nil {
 		return nil
@@ -229,7 +325,7 @@ func (mgr *AgentMgr) ensureInternalAuditSession(c *gin.Context, req ExecuteToolR
 func (mgr *AgentMgr) resolveToolExecutionToken(c *gin.Context, req ExecuteToolRequest) (util.JWTMessage, error) {
 	if req.InternalContext != nil {
 		if normalizeInternalToolRole(req.InternalContext.Role) != "admin" {
-			return util.JWTMessage{}, fmt.Errorf("unsupported internal tool role")
+			return util.JWTMessage{}, agentDispatchErrorf("unsupported internal tool role")
 		}
 		username := strings.TrimSpace(req.InternalContext.Username)
 		if username == "" {
@@ -249,7 +345,7 @@ func (mgr *AgentMgr) resolveToolExecutionToken(c *gin.Context, req ExecuteToolRe
 
 	session, err := mgr.agentService.GetSession(c.Request.Context(), req.SessionID)
 	if err != nil {
-		return util.JWTMessage{}, fmt.Errorf("session not found")
+		return util.JWTMessage{}, agentDispatchErrorf("session not found")
 	}
 	return mgr.getSessionToken(c.Request.Context(), session)
 }
@@ -263,19 +359,19 @@ func validateAgentToolAccess(agentRole string, toolName string) error {
 			return nil
 		}
 		if isAgentAutoActionTool(toolName) {
-			return fmt.Errorf("agent role '%s' cannot execute auto-action tools", role)
+			return agentDispatchErrorf("agent role '%s' cannot execute auto-action tools", role)
 		}
 		if isAgentConfirmTool(toolName) {
-			return fmt.Errorf("agent role '%s' cannot execute confirmation tools", role)
+			return agentDispatchErrorf("agent role '%s' cannot execute confirmation tools", role)
 		}
-		return fmt.Errorf("agent role '%s' can only execute read-only tools", role)
+		return agentDispatchErrorf("agent role '%s' can only execute read-only tools", role)
 	case "executor", "single_agent":
 		if isAgentReadOnlyTool(toolName) || isAgentConfirmTool(toolName) || isAgentAutoActionTool(toolName) {
 			return nil
 		}
-		return fmt.Errorf("tool '%s' is not supported", toolName)
+		return agentDispatchErrorf("tool '%s' is not supported", toolName)
 	default:
-		return fmt.Errorf("agent role '%s' is not allowed to execute tools", role)
+		return agentDispatchErrorf("agent role '%s' is not allowed to execute tools", role)
 	}
 }
 
@@ -292,45 +388,64 @@ func validateAgentToolAccess(agentRole string, toolName string) error {
 //nolint:gocyclo // Tool routing dispatches many named tools in one function.
 func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 	if !mgr.isInternalToolRequestAuthorized(c) {
-		resputil.HTTPError(c, http.StatusUnauthorized, "invalid internal agent token", resputil.TokenInvalid)
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("invalid internal agent token"))
 		return
 	}
 
 	var req ExecuteToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 	req.AgentRole = normalizeAgentRole(req.AgentRole)
 	if accessErr := validateAgentToolAccess(req.AgentRole, req.ToolName); accessErr != nil {
-		resputil.HTTPError(c, http.StatusForbidden, accessErr.Error(), resputil.TokenInvalid)
+		agentForbidden(c, accessErr.Error())
 		return
 	}
 	if err := mgr.ensureInternalAuditSession(c, req); err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create internal audit session: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to create internal audit session: %v", err))
 		return
 	}
 
 	sessionToken, tokenErr := mgr.resolveToolExecutionToken(c, req)
 	if tokenErr != nil {
-		resputil.Error(c, fmt.Sprintf("failed to resolve tool actor: %v", tokenErr), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to resolve tool actor: %v", tokenErr))
 		return
 	}
-	if isAgentAdminOnlyTool(req.ToolName) && sessionToken.RolePlatform != model.RoleAdmin {
-		resputil.HTTPError(c, http.StatusForbidden, "admin privileges required for this tool", resputil.TokenInvalid)
+	if req.InternalContext == nil {
+		session, sessionErr := mgr.agentService.GetSession(c.Request.Context(), req.SessionID)
+		if sessionErr != nil {
+			agentForbidden(c, "session not found")
+			return
+		}
+		if authErr := authorizeAgentToolForSession(session, sessionToken, req.ToolName); authErr != nil {
+			agentForbidden(c, authErr.Error())
+			return
+		}
+	} else if isAgentAdminOnlyTool(req.ToolName) && sessionToken.RolePlatform != model.RoleAdmin {
+		agentForbidden(c, "你当前没有管理员权限，不能执行该运维操作；如确需处理，请联系平台管理员或切换到管理员页面后再操作")
 		return
 	}
 
 	if isAgentConfirmTool(req.ToolName) {
+		if req.InternalContext == nil {
+			if preflightErr := mgr.validateOwnedJobMutationBeforeConfirmation(c, sessionToken, req.ToolName, req.ToolArgs); preflightErr != nil {
+				agentForbidden(c, preflightErr.Error())
+				return
+			}
+		}
 		start := time.Now()
 		executionBackend := normalizeExecutionBackend(req.ToolName, req.ExecutionBackend)
 		confirmation := mgr.buildToolConfirmation(sessionToken, req.ToolName, req.ToolArgs)
 		pendingResult, _ := json.Marshal(map[string]any{
-			"description":       confirmation.Description,
-			"riskLevel":         confirmation.RiskLevel,
-			"interaction":       confirmation.Interaction,
-			"form":              confirmation.Form,
-			"execution_backend": executionBackend,
+			"description":           confirmation.Description,
+			"riskLevel":             confirmation.RiskLevel,
+			"permissionExplanation": confirmation.PermissionExplanation,
+			"riskExplanation":       confirmation.RiskExplanation,
+			"affectedResources":     confirmation.AffectedResources,
+			"interaction":           confirmation.Interaction,
+			"form":                  confirmation.Form,
+			"execution_backend":     executionBackend,
 		})
 		toolCallRecord := &model.AgentToolCall{
 			SessionID:        req.SessionID,
@@ -348,19 +463,22 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 		}
 		toolCall, createErr := mgr.agentService.CreateToolCall(c.Request.Context(), toolCallRecord)
 		if createErr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to create pending tool call: %v", createErr), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to create pending tool call: %v", createErr))
 			return
 		}
 		resputil.Success(c, AgentToolResponse{
 			ToolCallID: req.ToolCallID,
 			Status:     agentToolStatusConfirmationRequired,
 			Confirmation: &AgentToolConfirmation{
-				ConfirmID:   strconv.FormatUint(uint64(toolCall.ID), 10),
-				ToolName:    req.ToolName,
-				Description: confirmation.Description,
-				RiskLevel:   confirmation.RiskLevel,
-				Interaction: confirmation.Interaction,
-				Form:        confirmation.Form,
+				ConfirmID:             strconv.FormatUint(uint64(toolCall.ID), 10),
+				ToolName:              req.ToolName,
+				Description:           confirmation.Description,
+				RiskLevel:             confirmation.RiskLevel,
+				PermissionExplanation: confirmation.PermissionExplanation,
+				RiskExplanation:       confirmation.RiskExplanation,
+				AffectedResources:     confirmation.AffectedResources,
+				Interaction:           confirmation.Interaction,
+				Form:                  confirmation.Form,
 			},
 			LatencyMs: int(time.Since(start).Milliseconds()),
 		})
@@ -410,7 +528,7 @@ func (mgr *AgentMgr) ExecuteTool(c *gin.Context) {
 func (mgr *AgentMgr) executeAutoActionTool(c *gin.Context, token util.JWTMessage, req ExecuteToolRequest) (any, error) {
 	switch req.ToolName {
 	default:
-		return nil, fmt.Errorf("auto-action tool '%s' is not supported", req.ToolName)
+		return nil, agentDispatchErrorf("auto-action tool '%s' is not supported", req.ToolName)
 	}
 }
 
@@ -507,7 +625,7 @@ func (mgr *AgentMgr) executeReadTool(c *gin.Context, token util.JWTMessage, req 
 	case agentToolK8sGetIngress:
 		return mgr.toolK8sGetIngress(c, token, req.ToolArgs)
 	default:
-		return nil, fmt.Errorf("tool '%s' is not yet implemented", req.ToolName)
+		return nil, agentDispatchErrorf("tool '%s' is not yet implemented", req.ToolName)
 	}
 }
 
@@ -547,6 +665,16 @@ func (mgr *AgentMgr) executeWriteTool(c *gin.Context, token util.JWTMessage, too
 		return mgr.toolDeletePod(c, token, rawArgs)
 	case agentToolRestartWL:
 		return mgr.toolRestartWorkload(c, token, rawArgs)
+	case agentToolK8sScaleWL:
+		return mgr.toolScaleWorkload(c, token, rawArgs)
+	case agentToolK8sLabelNode:
+		return mgr.toolLabelNode(c, token, rawArgs)
+	case agentToolK8sTaintNode:
+		return mgr.toolTaintNode(c, token, rawArgs)
+	case agentToolRunKubectl:
+		return mgr.toolRunKubectl(c, token, rawArgs)
+	case agentToolAdminCommand:
+		return mgr.toolExecuteAdminCommand(c, token, rawArgs)
 	case toolMarkAuditHandled:
 		return mgr.toolMarkAuditHandled(c, token, rawArgs)
 	case toolBatchStopJobs:
@@ -554,6 +682,6 @@ func (mgr *AgentMgr) executeWriteTool(c *gin.Context, token util.JWTMessage, too
 	case toolNotifyJobOwner:
 		return mgr.toolNotifyJobOwner(c, token, rawArgs)
 	default:
-		return nil, fmt.Errorf("write tool '%s' is not supported", toolName)
+		return nil, agentDispatchErrorf("write tool '%s' is not supported", toolName)
 	}
 }

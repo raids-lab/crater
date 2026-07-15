@@ -40,10 +40,10 @@ type ApprovalOrderMgr struct {
 	agentService   *service.AgentService
 }
 
-func NewApprovalOrderMgr(_ *RegisterConfig) Manager {
+func NewApprovalOrderMgr(conf *RegisterConfig) Manager {
 	return &ApprovalOrderMgr{
 		name:           "approvalorder",
-		agentEvaluator: service.NewAgentApprovalEvaluator(), // nil if disabled
+		agentEvaluator: service.NewAgentApprovalEvaluator(conf.ConfigService), // nil if disabled
 		agentService:   service.NewAgentService(),
 	}
 }
@@ -364,9 +364,9 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		return
 	}
 
-		if req.Type == model.ApprovalOrderTypeJob {
-			jobDB := query.Job
-			job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+	if req.Type == model.ApprovalOrderTypeJob {
+		jobDB := query.Job
+		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				resputil.BadRequestError(c, "job not found")
@@ -381,7 +381,7 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 			resputil.BadRequestError(c, err.Error())
 			return
 		}
-		}
+	}
 
 	// 2. 检查是否满足自动审批条件
 	autoApproved := false
@@ -578,12 +578,14 @@ func (mgr *ApprovalOrderMgr) lockJobByCtx(ctx context.Context, jobName string, e
 	}
 
 	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
-		return fmt.Errorf("job %s is already permanently locked", jobName)
+		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf("job %s is already permanently locked", jobName))
 	}
 
 	const maxHours = 1440
 	if extensionHours > maxHours {
-		return fmt.Errorf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours)
+		return bizerr.BadRequest.ParameterError.New(
+			fmt.Sprintf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours),
+		)
 	}
 
 	lockTime := utils.GetLocalTime()
@@ -682,12 +684,6 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 			token.UserID, orderID.ID, req.Status)
 		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to review approval orders"))
 		return
-	}
-
-	// 2. 更新审批工单
-	reviewSource := model.ReviewSourceNone
-	if req.Status == model.ApprovalOrderStatusApproved || req.Status == model.ApprovalOrderStatusRejected {
-		reviewSource = model.ReviewSourceAdminManual
 	}
 
 	order := model.ApprovalOrder{
@@ -1115,13 +1111,15 @@ func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, 
 
 	// 检查是否已经永久锁定
 	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
-		return fmt.Errorf("job %s is already permanently locked", jobName)
+		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf("job %s is already permanently locked", jobName))
 	}
 
 	// 检查延长小时数是否在合理范围内，防止整数溢出
 	const maxHours = 1440 // 两个月的小时数，作为合理的上限
 	if extensionHours > maxHours {
-		return fmt.Errorf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours)
+		return bizerr.BadRequest.ParameterError.New(
+			fmt.Sprintf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours),
+		)
 	}
 
 	// 计算锁定时间：基于当前锁定时间或当前时间 + 延长小时数

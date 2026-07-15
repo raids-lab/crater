@@ -102,7 +102,7 @@ class GoBackendToolExecutor:
                 "status": "error",
                 "error_type": "tool_policy",
                 "retryable": False,
-                "message": f"Tool {tool_name} requires admin privileges",
+                "message": f"你当前没有管理员权限，不能执行 {tool_name}；如确需处理，请联系平台管理员或切换到管理员页面后再操作。",
                 "_latency_ms": int((time.monotonic() - start_time) * 1000),
             }
         try:

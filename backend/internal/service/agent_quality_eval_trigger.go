@@ -10,10 +10,11 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/bizerr"
 )
 
 // ErrSessionNotFound is returned when the admin tries to trigger eval on an unknown session.
-var ErrSessionNotFound = errors.New("session not found")
+var ErrSessionNotFound = bizerr.NotFound.DataBaseNotFound.New("session not found")
 
 const (
 	AgentQualityEvalScopeSession = "session"
@@ -101,14 +102,14 @@ func (s *AgentService) TriggerSessionQualityEval(
 	evalScope := normalizeAgentQualityEvalScope(opts.EvalScope, turnID)
 	if evalScope == AgentQualityEvalScopeTurn {
 		if turnID == "" {
-			return nil, errors.New("turnId is required for turn-scope eval")
+			return nil, bizerr.BadRequest.MissingParameter.New("turnId is required for turn-scope eval")
 		}
 		var turn model.AgentTurn
 		if err := s.db.WithContext(ctx).
 			Where("turn_id = ? AND session_id = ?", turnID, sessionID).
 			First(&turn).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return nil, errors.New("turn not found in session")
+				return nil, bizerr.NotFound.DataBaseNotFound.New("turn not found in session")
 			}
 			return nil, err
 		}

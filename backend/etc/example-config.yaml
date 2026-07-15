@@ -189,16 +189,16 @@ agent:
       namespace: crater-workspace
       kubectlBin: kubectl
       timeoutSeconds: 30
-    # Agent-assisted approval evaluation for job lock orders.
-    # When enabled, orders that don't pass simple auto-approval rules
-    # are evaluated by the agent before falling back to manual review.
-    approvalHook:
-      enabled: true
-      totalTimeoutSeconds: 60
-      maxPerMinute: 10
-      maxConcurrent: 3
-      circuitBreakerThreshold: 5
-      circuitBreakerCooldownSeconds: 60
+  # Agent-assisted approval evaluation for job lock orders.
+  # When enabled, orders that don't pass simple auto-approval rules
+  # are evaluated by the agent before falling back to manual review.
+  approvalHook:
+    enabled: true
+    totalTimeoutSeconds: 60
+    maxPerMinute: 10
+    maxConcurrent: 3
+    circuitBreakerThreshold: 5
+    circuitBreakerCooldownSeconds: 60
 
 # Authentication configuration
 auth:

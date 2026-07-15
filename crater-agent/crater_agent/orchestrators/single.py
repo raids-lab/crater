@@ -308,11 +308,19 @@ class SingleAgentOrchestrator:
                             "agentId": "single-agent",
                             "agentRole": "single_agent",
                             "toolCallId": tool_call_id,
-                            "confirmId": confirmation.get("confirm_id", ""),
-                            "action": confirmation.get("tool_name", tool_name),
-                            "description": confirmation.get("description", ""),
-                            "interaction": confirmation.get("interaction", "approval"),
-                            "form": confirmation.get("form"),
+	                            "confirmId": confirmation.get("confirm_id", ""),
+	                            "action": confirmation.get("tool_name", tool_name),
+	                            "description": confirmation.get("description", ""),
+	                            "riskLevel": confirmation.get("risk_level", ""),
+	                            "permissionExplanation": confirmation.get(
+	                                "permission_explanation", ""
+	                            ),
+	                            "riskExplanation": confirmation.get("risk_explanation", ""),
+	                            "affectedResources": confirmation.get(
+	                                "affected_resources", []
+	                            ),
+	                            "interaction": confirmation.get("interaction", "approval"),
+	                            "form": confirmation.get("form"),
                             "status": "awaiting_confirmation",
                             "latencyMs": tool_latency_ms,
                         },
@@ -405,11 +413,19 @@ class SingleAgentOrchestrator:
                                 "agentId": "single-agent",
                                 "agentRole": "single_agent",
                                 "toolCallId": tool_call_id,
-                                "confirmId": confirmation.get("confirm_id", ""),
-                                "action": confirmation.get("tool_name", tool_name),
-                                "description": confirmation.get("description", ""),
-                                "interaction": confirmation.get("interaction", "approval"),
-                                "form": confirmation.get("form"),
+	                                "confirmId": confirmation.get("confirm_id", ""),
+	                                "action": confirmation.get("tool_name", tool_name),
+	                                "description": confirmation.get("description", ""),
+	                                "riskLevel": confirmation.get("risk_level", ""),
+	                                "permissionExplanation": confirmation.get(
+	                                    "permission_explanation", ""
+	                                ),
+	                                "riskExplanation": confirmation.get("risk_explanation", ""),
+	                                "affectedResources": confirmation.get(
+	                                    "affected_resources", []
+	                                ),
+	                                "interaction": confirmation.get("interaction", "approval"),
+	                                "form": confirmation.get("form"),
                                 "status": "awaiting_confirmation",
                                 "latencyMs": tool_latency_ms,
                             },

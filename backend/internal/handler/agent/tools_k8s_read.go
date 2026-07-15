@@ -14,10 +14,15 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
+
+func agentK8sReadErrorf(format string, args ...any) error {
+	return bizerr.BadRequest.ParameterError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
 
 func isAdminToken(token util.JWTMessage) bool {
 	return token.RolePlatform == model.RoleAdmin
@@ -55,39 +60,39 @@ func requireUserTaskSelector(token util.JWTMessage) (string, error) {
 	}
 	selector := userTaskLabelSelector(token)
 	if selector == "" {
-		return "", fmt.Errorf("user identity is unavailable")
+		return "", agentK8sReadErrorf("user identity is unavailable")
 	}
 	return selector, nil
 }
 
 func ensureServiceVisibleToToken(service *v1.Service, token util.JWTMessage) error {
 	if service == nil {
-		return fmt.Errorf("service not found")
+		return agentK8sReadErrorf("service not found")
 	}
 	if isAdminToken(token) {
 		return nil
 	}
 	if strings.TrimSpace(token.Username) == "" {
-		return fmt.Errorf("user identity is unavailable")
+		return agentK8sReadErrorf("user identity is unavailable")
 	}
 	if strings.TrimSpace(service.Labels[crclient.LabelKeyTaskUser]) != strings.TrimSpace(token.Username) {
-		return fmt.Errorf("service %q does not belong to current user", service.Name)
+		return agentK8sReadErrorf("service %q does not belong to current user", service.Name)
 	}
 	return nil
 }
 
 func ensureIngressVisibleToToken(ingress *networkingv1.Ingress, token util.JWTMessage) error {
 	if ingress == nil {
-		return fmt.Errorf("ingress not found")
+		return agentK8sReadErrorf("ingress not found")
 	}
 	if isAdminToken(token) {
 		return nil
 	}
 	if strings.TrimSpace(token.Username) == "" {
-		return fmt.Errorf("user identity is unavailable")
+		return agentK8sReadErrorf("user identity is unavailable")
 	}
 	if strings.TrimSpace(ingress.Labels[crclient.LabelKeyTaskUser]) != strings.TrimSpace(token.Username) {
-		return fmt.Errorf("ingress %q does not belong to current user", ingress.Name)
+		return agentK8sReadErrorf("ingress %q does not belong to current user", ingress.Name)
 	}
 	return nil
 }
@@ -113,6 +118,7 @@ func buildServiceSummary(item *v1.Service) map[string]any {
 	}
 }
 
+//nolint:staticcheck // CoreV1 Endpoints is still the API exposed by the current service diagnostics tool.
 func buildEndpointsSummary(item *v1.Endpoints) map[string]any {
 	subsets := make([]map[string]any, 0, len(item.Subsets))
 	for _, subset := range item.Subsets {
@@ -244,7 +250,7 @@ func (mgr *AgentMgr) toolK8sListPods(c *gin.Context, token util.JWTMessage, rawA
 		FieldSelector: fieldSelector,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pods: %w", err)
+		return nil, agentK8sReadErrorf("failed to list pods: %w", err)
 	}
 
 	items := make([]map[string]any, 0, min(limit, len(pods.Items)))
@@ -259,7 +265,7 @@ func (mgr *AgentMgr) toolK8sListPods(c *gin.Context, token util.JWTMessage, rawA
 			}
 		}
 		if item.Status.StartTime != nil {
-			startTime = item.Status.StartTime.Time.Format(time.RFC3339)
+			startTime = item.Status.StartTime.Format(time.RFC3339)
 		}
 		items = append(items, map[string]any{
 			"namespace":        item.Namespace,
@@ -304,7 +310,7 @@ func (mgr *AgentMgr) toolK8sGetService(c *gin.Context, token util.JWTMessage, ra
 	if name != "" {
 		service, err := mgr.kubeClient.CoreV1().Services(namespace).Get(c, name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get service %q: %w", name, err)
+			return nil, agentK8sReadErrorf("failed to get service %q: %w", name, err)
 		}
 		if err := ensureServiceVisibleToToken(service, token); err != nil {
 			return nil, err
@@ -320,7 +326,7 @@ func (mgr *AgentMgr) toolK8sGetService(c *gin.Context, token util.JWTMessage, ra
 		FieldSelector: fieldSelector,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list services: %w", err)
+		return nil, agentK8sReadErrorf("failed to list services: %w", err)
 	}
 	items := make([]map[string]any, 0, min(limit, len(services.Items)))
 	for _, service := range services.Items {
@@ -335,6 +341,7 @@ func (mgr *AgentMgr) toolK8sGetService(c *gin.Context, token util.JWTMessage, ra
 	}, nil
 }
 
+//nolint:staticcheck // CoreV1 Endpoints is still the API exposed by the current service diagnostics tool.
 func (mgr *AgentMgr) toolK8sGetEndpoints(c *gin.Context, token util.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	args := parseToolArgsMap(rawArgs)
 	namespace := scopedJobNamespace(getToolArgString(args, "namespace", ""))
@@ -348,7 +355,7 @@ func (mgr *AgentMgr) toolK8sGetEndpoints(c *gin.Context, token util.JWTMessage, 
 		if !isAdminToken(token) {
 			service, err := mgr.kubeClient.CoreV1().Services(namespace).Get(c, name, metav1.GetOptions{})
 			if err != nil {
-				return nil, fmt.Errorf("failed to verify service ownership for %q: %w", name, err)
+				return nil, agentK8sReadErrorf("failed to verify service ownership for %q: %w", name, err)
 			}
 			if err := ensureServiceVisibleToToken(service, token); err != nil {
 				return nil, err
@@ -356,7 +363,7 @@ func (mgr *AgentMgr) toolK8sGetEndpoints(c *gin.Context, token util.JWTMessage, 
 		}
 		endpoints, err := mgr.kubeClient.CoreV1().Endpoints(namespace).Get(c, name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get endpoints %q: %w", name, err)
+			return nil, agentK8sReadErrorf("failed to get endpoints %q: %w", name, err)
 		}
 		return map[string]any{
 			"count":     1,
@@ -368,7 +375,7 @@ func (mgr *AgentMgr) toolK8sGetEndpoints(c *gin.Context, token util.JWTMessage, 
 	if isAdminToken(token) {
 		endpoints, err := mgr.kubeClient.CoreV1().Endpoints(namespace).List(c, metav1.ListOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to list endpoints: %w", err)
+			return nil, agentK8sReadErrorf("failed to list endpoints: %w", err)
 		}
 		for idx := range endpoints.Items {
 			endpointObjects = append(endpointObjects, &endpoints.Items[idx])
@@ -385,7 +392,7 @@ func (mgr *AgentMgr) toolK8sGetEndpoints(c *gin.Context, token util.JWTMessage, 
 			LabelSelector: userSelector,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to list owned services: %w", err)
+			return nil, agentK8sReadErrorf("failed to list owned services: %w", err)
 		}
 		for idx := range services.Items {
 			serviceName := services.Items[idx].Name
@@ -394,7 +401,7 @@ func (mgr *AgentMgr) toolK8sGetEndpoints(c *gin.Context, token util.JWTMessage, 
 				if k8serrors.IsNotFound(getErr) {
 					continue
 				}
-				return nil, fmt.Errorf("failed to get endpoints for service %q: %w", serviceName, getErr)
+				return nil, agentK8sReadErrorf("failed to get endpoints for service %q: %w", serviceName, getErr)
 			}
 			endpointObjects = append(endpointObjects, endpoints)
 			if len(endpointObjects) >= limit {
@@ -433,7 +440,7 @@ func (mgr *AgentMgr) toolK8sGetIngress(c *gin.Context, token util.JWTMessage, ra
 	if name != "" {
 		ingress, err := mgr.kubeClient.NetworkingV1().Ingresses(namespace).Get(c, name, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get ingress %q: %w", name, err)
+			return nil, agentK8sReadErrorf("failed to get ingress %q: %w", name, err)
 		}
 		if err := ensureIngressVisibleToToken(ingress, token); err != nil {
 			return nil, err
@@ -448,7 +455,7 @@ func (mgr *AgentMgr) toolK8sGetIngress(c *gin.Context, token util.JWTMessage, ra
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list ingresses: %w", err)
+		return nil, agentK8sReadErrorf("failed to list ingresses: %w", err)
 	}
 	items := make([]map[string]any, 0, min(limit, len(ingresses.Items)))
 	for idx := range ingresses.Items {

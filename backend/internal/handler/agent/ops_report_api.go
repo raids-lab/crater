@@ -138,7 +138,7 @@ func (mgr *AgentMgr) GetLatestOpsReport(c *gin.Context) {
 func (mgr *AgentMgr) GetOpsReportDetail(c *gin.Context) {
 	reportID := c.Param("id")
 	if reportID == "" {
-		resputil.BadRequestError(c, "missing report id")
+		agentBadRequest(c, "missing report id")
 		return
 	}
 
@@ -153,7 +153,7 @@ func (mgr *AgentMgr) GetOpsReportDetail(c *gin.Context) {
 	`, reportID).Scan(&report)
 
 	if result.Error != nil || result.RowsAffected == 0 {
-		resputil.Error(c, "report not found", resputil.NotSpecified)
+		agentNotFound(c, "report not found")
 		return
 	}
 	resputil.Success(c, report)
@@ -163,7 +163,7 @@ func (mgr *AgentMgr) GetOpsReportDetail(c *gin.Context) {
 func (mgr *AgentMgr) GetOpsReportItems(c *gin.Context) {
 	reportID := c.Param("id")
 	if reportID == "" {
-		resputil.BadRequestError(c, "missing report id")
+		agentBadRequest(c, "missing report id")
 		return
 	}
 

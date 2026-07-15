@@ -7,6 +7,8 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -16,6 +18,14 @@ type agentAccessibleImage struct {
 }
 
 func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMessage) ([]agentAccessibleImage, error) {
+	if mgr.imageReader != nil {
+		records, err := mgr.imageReader.ListAccessibleImages(ctx, token)
+		if err != nil {
+			return nil, err
+		}
+		return convertImageAccessRecords(records), nil
+	}
+
 	imageQuery := query.Image
 	results := make([]agentAccessibleImage, 0)
 	seen := make(map[uint]struct{})
@@ -41,7 +51,7 @@ func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMes
 		Order(imageQuery.CreatedAt.Desc()).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list public images: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list public images")
 	}
 	appendUnique(oldPublicImages, model.Public)
 
@@ -52,7 +62,7 @@ func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMes
 		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list shared public images: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list shared public images")
 	}
 	newPublicImages := make([]*model.Image, 0, len(newPublicShares))
 	for _, share := range newPublicShares {
@@ -66,7 +76,7 @@ func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMes
 		Where(imageAccountQuery.AccountID.Eq(token.AccountID)).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list account images: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list account images")
 	}
 	accountImages := make([]*model.Image, 0, len(accountShares))
 	for _, share := range accountShares {
@@ -80,7 +90,7 @@ func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMes
 		Order(imageQuery.CreatedAt.Desc()).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list private images: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list private images")
 	}
 	appendUnique(privateImages, model.Private)
 
@@ -91,7 +101,7 @@ func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMes
 		Where(imageUserQuery.UserID.Eq(token.UserID)).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list user-shared images: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list user-shared images")
 	}
 	userImages := make([]*model.Image, 0, len(userShares))
 	for _, share := range userShares {
@@ -100,6 +110,20 @@ func (mgr *AgentMgr) listAccessibleImages(ctx context.Context, token util.JWTMes
 	appendUnique(userImages, model.UserShare)
 
 	return results, nil
+}
+
+func convertImageAccessRecords(records []handler.ImageAccessRecord) []agentAccessibleImage {
+	results := make([]agentAccessibleImage, 0, len(records))
+	for _, record := range records {
+		if record.Image == nil {
+			continue
+		}
+		results = append(results, agentAccessibleImage{
+			Image:       record.Image,
+			ShareStatus: record.ShareStatus,
+		})
+	}
+	return results
 }
 
 func buildAgentImageSummary(item agentAccessibleImage) map[string]any {

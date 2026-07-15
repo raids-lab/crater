@@ -1,12 +1,19 @@
 package prompts
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+)
+
+const (
+	bytesPerKiB                    = 1 << 10
+	streamScannerInitialBufferSize = 64 * bytesPerKiB
+	streamScannerMaxBufferSize     = bytesPerKiB * bytesPerKiB
 )
 
 // --- LLM 通用结构体 ---
@@ -24,6 +31,7 @@ type LLMRequestPayload struct {
 	Model          string          `json:"model"`
 	Messages       []Message       `json:"messages"`
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
+	Stream         bool            `json:"stream,omitempty"`
 }
 
 func executeLLMRequest(
@@ -123,6 +131,116 @@ func CallLLMText(
 		},
 	}
 	return executeLLMRequest(httpClient, ctx, apiURL, apiKey, payload)
+}
+
+func CallLLMTextStream(
+	httpClient *http.Client,
+	ctx context.Context,
+	apiURL string,
+	apiKey string,
+	modelName string,
+	systemPrompt, userPrompt string,
+	onDelta func(string) error,
+) (string, error) {
+	req, err := newLLMStreamRequest(ctx, apiURL, apiKey, modelName, systemPrompt, userPrompt)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute LLM stream request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("LLM API returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	var full strings.Builder
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 0, streamScannerInitialBufferSize), streamScannerMaxBufferSize)
+	for scanner.Scan() {
+		data, ok := parseStreamDataLine(scanner.Text())
+		if !ok {
+			continue
+		}
+		if data == "[DONE]" {
+			break
+		}
+		if err := appendLLMStreamDelta(&full, data, onDelta); err != nil {
+			return full.String(), err
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return full.String(), fmt.Errorf("failed to read LLM stream: %w", err)
+	}
+	return strings.TrimSpace(full.String()), nil
+}
+
+func newLLMStreamRequest(
+	ctx context.Context,
+	apiURL string,
+	apiKey string,
+	modelName string,
+	systemPrompt string,
+	userPrompt string,
+) (*http.Request, error) {
+	payload := LLMRequestPayload{
+		Model: modelName,
+		Messages: []Message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+		Stream: true,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal LLM stream request payload: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create LLM stream request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	if strings.TrimSpace(apiKey) != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+	return req, nil
+}
+
+func parseStreamDataLine(rawLine string) (string, bool) {
+	line := strings.TrimSpace(rawLine)
+	if line == "" || strings.HasPrefix(line, ":") || !strings.HasPrefix(line, "data:") {
+		return "", false
+	}
+	return strings.TrimSpace(strings.TrimPrefix(line, "data:")), true
+}
+
+func appendLLMStreamDelta(full *strings.Builder, data string, onDelta func(string) error) error {
+	var chunk struct {
+		Choices []struct {
+			Delta struct {
+				Content string `json:"content"`
+			} `json:"delta"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+		return fmt.Errorf("failed to decode LLM stream chunk: %w", err)
+	}
+	if len(chunk.Choices) == 0 {
+		return nil
+	}
+	delta := chunk.Choices[0].Delta.Content
+	if delta == "" {
+		return nil
+	}
+	full.WriteString(delta)
+	if onDelta != nil {
+		return onDelta(delta)
+	}
+	return nil
 }
 
 // CleanLLMJSONOutput 移除可能存在的 Markdown 代码块标记

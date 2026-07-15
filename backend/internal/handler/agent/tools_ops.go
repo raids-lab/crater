@@ -22,6 +22,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -40,9 +41,13 @@ var (
 	}
 )
 
+func agentOpsErrorf(format string, args ...any) error {
+	return bizerr.BadRequest.ParameterError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
+
 func ensureOpsAdmin(token util.JWTMessage, toolName string) error {
 	if token.RolePlatform != model.RoleAdmin {
-		return fmt.Errorf("%s requires admin privileges", toolName)
+		return agentOpsErrorf("你当前没有管理员权限，不能执行 %s；如确需处理，请联系平台管理员或切换到管理员页面后再操作", toolName)
 	}
 	return nil
 }
@@ -129,7 +134,7 @@ func (mgr *AgentMgr) toolListStoragePVCs(c *gin.Context, token util.JWTMessage, 
 		Limit         int64  `json:"limit"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 	ns := strings.TrimSpace(args.Namespace)
 	switch strings.ToLower(ns) {
@@ -145,7 +150,7 @@ func (mgr *AgentMgr) toolListStoragePVCs(c *gin.Context, token util.JWTMessage, 
 	statusFilter := strings.ToLower(strings.TrimSpace(args.Status))
 	pvcList, err := mgr.kubeClient.CoreV1().PersistentVolumeClaims(ns).List(c, opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pvc: %w", err)
+		return nil, agentOpsErrorf("failed to list pvc: %w", err)
 	}
 	items := make([]map[string]any, 0, len(pvcList.Items))
 	for i := range pvcList.Items {
@@ -197,11 +202,11 @@ func (mgr *AgentMgr) toolGetPVCDetail(c *gin.Context, token util.JWTMessage, raw
 		PVCName   string `json:"pvc_name"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 	pvcName := strings.TrimSpace(args.PVCName)
 	if pvcName == "" {
-		return nil, fmt.Errorf("pvc_name is required")
+		return nil, agentOpsErrorf("pvc_name is required")
 	}
 	namespace := strings.TrimSpace(args.Namespace)
 	if namespace == "" {
@@ -209,7 +214,7 @@ func (mgr *AgentMgr) toolGetPVCDetail(c *gin.Context, token util.JWTMessage, raw
 	}
 	pvc, err := mgr.kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(c, pvcName, metav1.GetOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pvc %s/%s: %w", namespace, pvcName, err)
+		return nil, agentOpsErrorf("failed to get pvc %s/%s: %w", namespace, pvcName, err)
 	}
 	storageClass := ""
 	if pvc.Spec.StorageClassName != nil {
@@ -247,11 +252,11 @@ func (mgr *AgentMgr) toolGetPVCEvents(c *gin.Context, token util.JWTMessage, raw
 		Limit     int    `json:"limit"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 	pvcName := strings.TrimSpace(args.PVCName)
 	if pvcName == "" {
-		return nil, fmt.Errorf("pvc_name is required")
+		return nil, agentOpsErrorf("pvc_name is required")
 	}
 	limit := args.Limit
 	if limit <= 0 {
@@ -267,7 +272,7 @@ func (mgr *AgentMgr) toolGetPVCEvents(c *gin.Context, token util.JWTMessage, raw
 	fieldSelector := fmt.Sprintf("involvedObject.kind=PersistentVolumeClaim,involvedObject.name=%s", pvcName)
 	events, err := mgr.kubeClient.CoreV1().Events(namespace).List(c, metav1.ListOptions{FieldSelector: fieldSelector})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pvc events: %w", err)
+		return nil, agentOpsErrorf("failed to list pvc events: %w", err)
 	}
 	sort.Slice(events.Items, func(i, j int) bool {
 		return safeEventTimestamp(events.Items[i]).After(safeEventTimestamp(events.Items[j]))
@@ -301,18 +306,18 @@ func (mgr *AgentMgr) toolInspectJobStorage(c *gin.Context, token util.JWTMessage
 		JobName string `json:"job_name"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 	jobName := strings.TrimSpace(args.JobName)
 	if jobName == "" {
-		return nil, fmt.Errorf("job_name is required")
+		return nil, agentOpsErrorf("job_name is required")
 	}
 	job, err := mgr.findScopedJob(c, token, jobName)
 	if err != nil {
 		return nil, err
 	}
 	if job.Attributes.Data() == nil {
-		return nil, fmt.Errorf("job spec is not available")
+		return nil, agentOpsErrorf("job spec is not available")
 	}
 
 	namespace := job.Attributes.Data().Namespace
@@ -413,7 +418,7 @@ func (mgr *AgentMgr) toolInspectJobStorage(c *gin.Context, token util.JWTMessage
 		LabelSelector: fmt.Sprintf("%s=%s", crclient.LabelKeyBaseURL, baseURL),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pods for job %s: %w", jobName, err)
+		return nil, agentOpsErrorf("failed to list pods for job %s: %w", jobName, err)
 	}
 	podBindings := make([]map[string]any, 0, len(pods.Items))
 	for _, pod := range pods.Items {
@@ -447,7 +452,7 @@ func (mgr *AgentMgr) toolGetStorageCapacityOverview(c *gin.Context, token util.J
 		Namespace string `json:"namespace"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 	namespace := strings.TrimSpace(args.Namespace)
 	switch strings.ToLower(namespace) {
@@ -458,7 +463,7 @@ func (mgr *AgentMgr) toolGetStorageCapacityOverview(c *gin.Context, token util.J
 	}
 	pvcs, err := mgr.kubeClient.CoreV1().PersistentVolumeClaims(namespace).List(c, metav1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list pvc: %w", err)
+		return nil, agentOpsErrorf("failed to list pvc: %w", err)
 	}
 
 	byStatus := map[string]int{}
@@ -568,7 +573,7 @@ func (mgr *AgentMgr) toolGetNodeNetworkSummary(c *gin.Context, token util.JWTMes
 		Limit            int    `json:"limit"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 
 	nodes := make([]corev1.Node, 0)
@@ -576,13 +581,13 @@ func (mgr *AgentMgr) toolGetNodeNetworkSummary(c *gin.Context, token util.JWTMes
 	if nodeName != "" {
 		node, err := mgr.kubeClient.CoreV1().Nodes().Get(c, nodeName, metav1.GetOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to get node %s: %w", nodeName, err)
+			return nil, agentOpsErrorf("failed to get node %s: %w", nodeName, err)
 		}
 		nodes = append(nodes, *node)
 	} else {
 		nodeList, err := mgr.kubeClient.CoreV1().Nodes().List(c, metav1.ListOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to list nodes: %w", err)
+			return nil, agentOpsErrorf("failed to list nodes: %w", err)
 		}
 		nodes = nodeList.Items
 		sort.Slice(nodes, func(i, j int) bool {
@@ -741,7 +746,7 @@ func (mgr *AgentMgr) diagnoseDistributedJobNetworkForJob(
 		return nil, err
 	}
 	if job.Attributes.Data() == nil {
-		return nil, fmt.Errorf("job spec is unavailable")
+		return nil, agentOpsErrorf("job spec is unavailable")
 	}
 	namespace := job.Attributes.Data().Namespace
 	if namespace == "" {
@@ -758,17 +763,17 @@ func (mgr *AgentMgr) diagnoseDistributedJobNetworkForJob(
 		LabelSelector: fmt.Sprintf("%s=%s", crclient.LabelKeyBaseURL, baseURL),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list job pods: %w", err)
+		return nil, agentOpsErrorf("failed to list job pods: %w", err)
 	}
 	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("no pods found for job %s", jobName)
+		return nil, agentOpsErrorf("no pods found for job %s", jobName)
 	}
 
 	var keywordFilter *regexp.Regexp
 	if strings.TrimSpace(keyword) != "" {
 		compiled, compileErr := regexp.Compile(keyword)
 		if compileErr != nil {
-			return nil, fmt.Errorf("invalid keyword regex: %w", compileErr)
+			return nil, agentOpsErrorf("invalid keyword regex: %w", compileErr)
 		}
 		keywordFilter = compiled
 	}
@@ -907,7 +912,7 @@ func (mgr *AgentMgr) toolDiagnoseDistributedJobNetwork(c *gin.Context, token uti
 		LookbackHours int    `json:"lookback_hours"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 	tailLines := args.TailLines
 	if tailLines <= 0 {
@@ -955,7 +960,7 @@ func (mgr *AgentMgr) toolDiagnoseDistributedJobNetwork(c *gin.Context, token uti
 		Limit(jobLimit * 4).
 		Find(&jobs).Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to list recent jobs for distributed network diagnosis: %w", err)
+		return nil, agentOpsErrorf("failed to list recent jobs for distributed network diagnosis: %w", err)
 	}
 
 	jobSummaries := make([]map[string]any, 0, jobLimit)
@@ -1097,10 +1102,10 @@ func newWebSearchClient(timeoutSeconds int, allowedDomains []string) *http.Clien
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
 			if req.URL == nil {
-				return fmt.Errorf("redirect without url")
+				return agentOpsErrorf("redirect without url")
 			}
 			if !isAllowedDomain(req.URL.Hostname(), allowedDomains) {
-				return fmt.Errorf("redirect target %s is not allowed", req.URL.Hostname())
+				return agentOpsErrorf("redirect target %s is not allowed", req.URL.Hostname())
 			}
 			return nil
 		},
@@ -1116,16 +1121,16 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, _ util.JWTMessage, rawArgs js
 		TimeoutSeconds int      `json:"timeout_seconds"`
 	}
 	if err := json.Unmarshal(rawArgs, &args); err != nil {
-		return nil, fmt.Errorf("invalid args: %w", err)
+		return nil, agentOpsErrorf("invalid args: %w", err)
 	}
 
 	cfg := pkgconfig.GetConfig().Agent.Ops.WebSearch
 	if !cfg.Enabled {
-		return nil, fmt.Errorf("web_search is disabled by backend configuration")
+		return nil, agentOpsErrorf("web_search is disabled by backend configuration")
 	}
 	allowedDomains := normalizeAllowedDomains(cfg.AllowedDomains)
 	if len(allowedDomains) == 0 {
-		return nil, fmt.Errorf("web_search allowed domain list is empty")
+		return nil, agentOpsErrorf("web_search allowed domain list is empty")
 	}
 
 	query := strings.TrimSpace(args.Query)
@@ -1148,13 +1153,13 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, _ util.JWTMessage, rawArgs js
 			}
 			u, err := url.Parse(target)
 			if err != nil {
-				return nil, fmt.Errorf("invalid url %q: %w", target, err)
+				return nil, agentOpsErrorf("invalid url %q: %w", target, err)
 			}
 			if u.Scheme != "https" && u.Scheme != "http" {
-				return nil, fmt.Errorf("unsupported url scheme in %q", target)
+				return nil, agentOpsErrorf("unsupported url scheme in %q", target)
 			}
 			if !isAllowedDomain(u.Hostname(), allowedDomains) {
-				return nil, fmt.Errorf("url host %q is not in allowed domain list", u.Hostname())
+				return nil, agentOpsErrorf("url host %q is not in allowed domain list", u.Hostname())
 			}
 			urls = append(urls, target)
 			if len(urls) >= maxResults {
@@ -1163,12 +1168,12 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, _ util.JWTMessage, rawArgs js
 		}
 	} else {
 		if query == "" {
-			return nil, fmt.Errorf("query is required when urls are not provided")
+			return nil, agentOpsErrorf("query is required when urls are not provided")
 		}
 		urls = buildDefaultWebSearchURLs(query, allowedDomains, maxResults)
 	}
 	if len(urls) == 0 {
-		return nil, fmt.Errorf("no search targets generated")
+		return nil, agentOpsErrorf("no search targets generated")
 	}
 
 	timeoutSeconds := cfg.TimeoutSeconds
@@ -1184,7 +1189,7 @@ func (mgr *AgentMgr) toolWebSearch(c *gin.Context, _ util.JWTMessage, rawArgs js
 	for _, target := range urls {
 		u, _ := url.Parse(target)
 		if u == nil || !isAllowedDomain(u.Hostname(), allowedDomains) {
-			return nil, fmt.Errorf("target url %q is not allowed", target)
+			return nil, agentOpsErrorf("target url %q is not allowed", target)
 		}
 
 		req, reqErr := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, target, nil)

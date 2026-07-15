@@ -119,7 +119,10 @@ type AgentMgr struct {
 	nodeClient    *crclient.NodeClient
 	promClient    monitor.PrometheusInterface
 	agentService  *service.AgentService
+	configService *service.ConfigService
 	jobSubmitter  handler.JobMutationSubmitter
+	jobReader     handler.JobInsightReader
+	imageReader   handler.ImageInsightReader
 	imagePacker   packer.ImagePackerInterface
 	imageRegistry imageregistry.ImageRegistryInterface
 	httpClient    *http.Client
@@ -137,7 +140,10 @@ func NewAgentMgr(conf *handler.RegisterConfig) handler.Manager {
 		nodeClient:    &crclient.NodeClient{Client: conf.Client, KubeClient: conf.KubeClient, PrometheusClient: conf.PrometheusClient},
 		promClient:    conf.PrometheusClient,
 		agentService:  service.NewAgentService(),
+		configService: conf.ConfigService,
 		jobSubmitter:  handler.NewJobMutationSubmitter(conf),
+		jobReader:     handler.NewJobInsightReader(conf),
+		imageReader:   handler.NewImageInsightReader(conf),
 		imagePacker:   conf.ImagePacker,
 		imageRegistry: conf.ImageRegistry,
 		// Do not use Client.Timeout for agent SSE streaming. The Python side may
@@ -156,6 +162,7 @@ func (mgr *AgentMgr) RegisterPublic(g *gin.RouterGroup) {
 
 func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/chat", mgr.Chat)
+	g.POST("/ask/stream", mgr.Ask)
 	g.POST("/chat/confirm", mgr.ConfirmToolExecution)
 	g.POST("/chat/resume", mgr.ResumeAfterConfirmation)
 	g.GET("/config-summary", mgr.GetAgentConfigSummary)

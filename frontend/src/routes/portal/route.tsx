@@ -180,10 +180,6 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           icon: SettingsIcon,
           items: [
             {
-              title: t('navigation.aiops'),
-              url: '/portal/aiops',
-            },
-            {
               title: t('navigation.userSettings'),
               url: '/portal/more/user',
             },

@@ -16,6 +16,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	internalutil "github.com/raids-lab/crater/internal/util"
 	pkgconfig "github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/packer"
@@ -31,6 +32,10 @@ const (
 	agentImageBuildModeEnvdRaw agentImageBuildMode = "envd_raw"
 	defaultImageBuildNamespace                     = "default"
 )
+
+func agentImageAuthoringErrorf(format string, args ...any) error {
+	return bizerr.BadRequest.ParameterError.New(fmt.Sprintf(strings.ReplaceAll(format, "%w", "%v"), args...))
+}
 
 type resolvedShareTarget struct {
 	ID       uint
@@ -51,7 +56,7 @@ func normalizeImageBuildMode(value string) (agentImageBuildMode, error) {
 	case "envd_raw", "envd-raw", "raw":
 		return agentImageBuildModeEnvdRaw, nil
 	default:
-		return "", fmt.Errorf("mode must be one of pip_apt, dockerfile, envd, envd_raw")
+		return "", agentImageAuthoringErrorf("mode must be one of pip_apt, dockerfile, envd, envd_raw")
 	}
 }
 
@@ -79,7 +84,7 @@ func normalizeImageBuildStatuses(values []string) []model.BuildStatus {
 func normalizeImageTaskType(value string) (model.JobType, error) {
 	taskTypes := normalizeJobTypes([]string{value})
 	if len(taskTypes) == 0 {
-		return "", fmt.Errorf("unsupported task_type %q", strings.TrimSpace(value))
+		return "", agentImageAuthoringErrorf("unsupported task_type %q", strings.TrimSpace(value))
 	}
 	return model.JobType(taskTypes[0]), nil
 }
@@ -194,13 +199,13 @@ func (mgr *AgentMgr) resolveOwnedImageBuild(c *gin.Context, token internalutil.J
 		imagePackName = getToolArgString(args, "image_pack_name", "")
 	}
 	if imagePackName == "" {
-		return nil, fmt.Errorf("build_id or imagepack_name is required")
+		return nil, agentImageAuthoringErrorf("build_id or imagepack_name is required")
 	}
 
 	record, err := specifiedQuery.Where(kanikoQuery.ImagePackName.Eq(imagePackName)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("image build %q not found", imagePackName)
+			return nil, agentImageAuthoringErrorf("image build %q not found", imagePackName)
 		}
 		return nil, err
 	}
@@ -223,12 +228,12 @@ func (mgr *AgentMgr) resolveOwnedImageRecord(c *gin.Context, token internalutil.
 
 	imageLink := getToolArgString(args, "image_link", "")
 	if imageLink == "" {
-		return nil, fmt.Errorf("image_id or image_link is required")
+		return nil, agentImageAuthoringErrorf("image_id or image_link is required")
 	}
 	record, err := specifiedQuery.Where(imageQuery.ImageLink.Eq(imageLink)).First()
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("image %q not found", imageLink)
+			return nil, agentImageAuthoringErrorf("image %q not found", imageLink)
 		}
 		return nil, err
 	}
@@ -250,7 +255,7 @@ func (mgr *AgentMgr) loadBuildPodInfo(c *gin.Context, imagePackName string) map[
 		}
 	}
 	sort.Slice(podList.Items, func(i, j int) bool {
-		return podList.Items[i].CreationTimestamp.Time.After(podList.Items[j].CreationTimestamp.Time)
+		return podList.Items[i].CreationTimestamp.After(podList.Items[j].CreationTimestamp.Time)
 	})
 	pod := podList.Items[0]
 	return map[string]any{
@@ -328,18 +333,18 @@ func extractBaseImageFromDockerfileContent(dockerfile string) (string, error) {
 		for strings.HasSuffix(line, "\\") {
 			line = strings.TrimSuffix(line, "\\")
 			if idx+1 >= len(lines) {
-				return "", fmt.Errorf("unexpected end of Dockerfile after FROM")
+				return "", agentImageAuthoringErrorf("unexpected end of Dockerfile after FROM")
 			}
 			idx++
 			line = strings.TrimSpace(line + " " + strings.TrimSpace(lines[idx]))
 		}
 		parts := strings.Fields(line)
 		if len(parts) < 2 {
-			return "", fmt.Errorf("invalid FROM instruction")
+			return "", agentImageAuthoringErrorf("invalid FROM instruction")
 		}
 		return parts[1], nil
 	}
-	return "", fmt.Errorf("Dockerfile must contain a FROM instruction")
+	return "", agentImageAuthoringErrorf("Dockerfile must contain a FROM instruction")
 }
 
 func buildEnvdAdvancedScript(baseImage, pythonVersion string, aptPackages, pythonPackages []string, enableJupyter, enableZsh bool) string {
@@ -349,8 +354,8 @@ func buildEnvdAdvancedScript(baseImage, pythonVersion string, aptPackages, pytho
 	builder := &strings.Builder{}
 	builder.WriteString("# syntax=v1\n\n")
 	builder.WriteString("def build():\n")
-	builder.WriteString(fmt.Sprintf("    base(image=%q, dev=True)\n", baseImage))
-	builder.WriteString(fmt.Sprintf("    install.python(version=%q)\n", pythonVersion))
+	fmt.Fprintf(builder, "    base(image=%q, dev=True)\n", baseImage)
+	fmt.Fprintf(builder, "    install.python(version=%q)\n", pythonVersion)
 	builder.WriteString("    install.apt_packages([")
 	for idx, item := range aptPackages {
 		if idx > 0 {
@@ -407,7 +412,7 @@ func buildEnvdAdvancedScript(baseImage, pythonVersion string, aptPackages, pytho
 func (mgr *AgentMgr) resolveCudaBaseImage(c *gin.Context, value string) (scriptBase string, imageLabel string, err error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return "", "", fmt.Errorf("cuda_base is required")
+		return "", "", agentImageAuthoringErrorf("cuda_base is required")
 	}
 	cudaQuery := query.CudaBaseImage
 	if imageRecord, lookupErr := cudaQuery.WithContext(c).Where(cudaQuery.Value.Eq(trimmed)).First(); lookupErr == nil {
@@ -422,7 +427,7 @@ func (mgr *AgentMgr) resolveCudaBaseImage(c *gin.Context, value string) (scriptB
 	if _, _, _, _, splitErr := pkgutils.SplitImageLink(trimmed); splitErr == nil {
 		return trimmed, "", nil
 	}
-	return "", "", fmt.Errorf("cuda_base %q not found, use list_cuda_base_images first", trimmed)
+	return "", "", agentImageAuthoringErrorf("cuda_base %q not found, use list_cuda_base_images first", trimmed)
 }
 
 func (mgr *AgentMgr) toolListImageBuilds(c *gin.Context, token internalutil.JWTMessage, rawArgs json.RawMessage) (any, error) {
@@ -440,7 +445,7 @@ func (mgr *AgentMgr) toolListImageBuilds(c *gin.Context, token internalutil.JWTM
 		Order(kanikoQuery.CreatedAt.Desc()).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list image builds: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to list image builds: %w", err)
 	}
 
 	allowedStatus := make(map[model.BuildStatus]struct{}, len(statuses))
@@ -476,7 +481,7 @@ func (mgr *AgentMgr) toolListImageBuilds(c *gin.Context, token internalutil.JWTM
 	for _, item := range filtered {
 		finalImage, err := mgr.findFinalImageByPackName(c, item.ImagePackName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load final image for build %s: %w", item.ImagePackName, err)
+			return nil, agentImageAuthoringErrorf("failed to load final image for build %s: %w", item.ImagePackName, err)
 		}
 		items = append(items, buildImageBuildSummary(item, finalImage))
 	}
@@ -495,7 +500,7 @@ func (mgr *AgentMgr) toolGetImageBuildDetail(c *gin.Context, token internalutil.
 	}
 	finalImage, err := mgr.findFinalImageByPackName(c, build.ImagePackName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load final image record: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to load final image record: %w", err)
 	}
 	detail := buildImageBuildSummary(build, finalImage)
 	detail["script"] = strings.TrimSpace(derefString(build.Dockerfile))
@@ -517,7 +522,7 @@ func (mgr *AgentMgr) toolGetImageAccessDetail(c *gin.Context, token internalutil
 		Where(imageAccountQuery.ImageID.Eq(imageRecord.ID)).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load account shares: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to load account shares: %w", err)
 	}
 	accounts := make([]map[string]any, 0, len(accountShares))
 	for _, share := range accountShares {
@@ -534,7 +539,7 @@ func (mgr *AgentMgr) toolGetImageAccessDetail(c *gin.Context, token internalutil
 		Where(imageUserQuery.ImageID.Eq(imageRecord.ID)).
 		Find()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load user shares: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to load user shares: %w", err)
 	}
 	users := make([]map[string]any, 0, len(userShares))
 	for _, share := range userShares {
@@ -557,10 +562,10 @@ func (mgr *AgentMgr) toolGetImageAccessDetail(c *gin.Context, token internalutil
 
 func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if mgr.imagePacker == nil || mgr.imageRegistry == nil {
-		return nil, fmt.Errorf("image build dependencies are not configured")
+		return nil, agentImageAuthoringErrorf("image build dependencies are not configured")
 	}
 	if strings.TrimSpace(token.Username) == "" {
-		return nil, fmt.Errorf("user identity is unavailable for image build")
+		return nil, agentImageAuthoringErrorf("user identity is unavailable for image build")
 	}
 	args := parseToolArgsMap(rawArgs)
 	mode, err := normalizeImageBuildMode(getToolArgString(args, "mode", ""))
@@ -569,13 +574,13 @@ func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWT
 	}
 	description := getToolArgString(args, "description", "")
 	if description == "" {
-		return nil, fmt.Errorf("description is required")
+		return nil, agentImageAuthoringErrorf("description is required")
 	}
 	archs := parseCSVBackedSlice(args, "archs", "archs_csv", []string{"linux/amd64"})
 	tags := parseCSVBackedSlice(args, "tags", "tags_csv", nil)
 
 	if err := mgr.imageRegistry.CheckOrCreateProjectForUser(c, token.Username); err != nil {
-		return nil, fmt.Errorf("failed to prepare Harbor project: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to prepare Harbor project: %w", err)
 	}
 
 	imagePackName := fmt.Sprintf("%s-%s", token.Username, uuid.New().String()[:5])
@@ -584,7 +589,7 @@ func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWT
 	case agentImageBuildModePipApt:
 		baseImage := getToolArgString(args, "base_image", getToolArgString(args, "image", ""))
 		if baseImage == "" {
-			return nil, fmt.Errorf("base_image is required for pip_apt mode")
+			return nil, agentImageAuthoringErrorf("base_image is required for pip_apt mode")
 		}
 		imageLink, err := pkgutils.GenerateNewImageLinkForDockerfileBuild(
 			baseImage,
@@ -613,13 +618,13 @@ func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWT
 			Token:        token,
 		}
 		if err := mgr.imagePacker.CreateFromDockerfile(c, req); err != nil {
-			return nil, fmt.Errorf("failed to submit pip_apt image build: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to submit pip_apt image build: %w", err)
 		}
 		return mgr.buildSubmittedImageBuildResult(c, imagePackName, imageLink, string(mode), model.PipApt, archs)
 	case agentImageBuildModeDocker:
 		dockerfile := getToolArgString(args, "dockerfile", "")
 		if dockerfile == "" {
-			return nil, fmt.Errorf("dockerfile is required for dockerfile mode")
+			return nil, agentImageAuthoringErrorf("dockerfile is required for dockerfile mode")
 		}
 		baseImage, err := extractBaseImageFromDockerfileContent(dockerfile)
 		if err != nil {
@@ -649,7 +654,7 @@ func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWT
 			Token:        token,
 		}
 		if err := mgr.imagePacker.CreateFromDockerfile(c, req); err != nil {
-			return nil, fmt.Errorf("failed to submit dockerfile image build: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to submit dockerfile image build: %w", err)
 		}
 		return mgr.buildSubmittedImageBuildResult(c, imagePackName, imageLink, string(mode), model.Dockerfile, archs)
 	case agentImageBuildModeEnvd:
@@ -686,13 +691,13 @@ func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWT
 			Archs:       archs,
 		}
 		if err := mgr.imagePacker.CreateFromEnvd(c, req); err != nil {
-			return nil, fmt.Errorf("failed to submit envd image build: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to submit envd image build: %w", err)
 		}
 		return mgr.buildSubmittedImageBuildResult(c, imagePackName, imageLink, string(mode), model.EnvdAdvanced, archs)
 	case agentImageBuildModeEnvdRaw:
 		envdScript := getToolArgString(args, "envd_script", getToolArgString(args, "envd", ""))
 		if envdScript == "" {
-			return nil, fmt.Errorf("envd_script is required for envd_raw mode")
+			return nil, agentImageAuthoringErrorf("envd_script is required for envd_raw mode")
 		}
 		imageLink, err := pkgutils.GenerateNewImageLinkForEnvdBuild(
 			token.Username,
@@ -717,11 +722,11 @@ func (mgr *AgentMgr) toolCreateImageBuild(c *gin.Context, token internalutil.JWT
 			Archs:       archs,
 		}
 		if err := mgr.imagePacker.CreateFromEnvd(c, req); err != nil {
-			return nil, fmt.Errorf("failed to submit envd_raw image build: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to submit envd_raw image build: %w", err)
 		}
 		return mgr.buildSubmittedImageBuildResult(c, imagePackName, imageLink, string(mode), model.EnvdRaw, archs)
 	default:
-		return nil, fmt.Errorf("unsupported image build mode %q", mode)
+		return nil, agentImageAuthoringErrorf("unsupported image build mode %q", mode)
 	}
 }
 
@@ -776,12 +781,12 @@ USER root
 
 func (mgr *AgentMgr) toolManageImageBuild(c *gin.Context, token internalutil.JWTMessage, rawArgs json.RawMessage) (any, error) {
 	if mgr.imagePacker == nil {
-		return nil, fmt.Errorf("image build dependencies are not configured")
+		return nil, agentImageAuthoringErrorf("image build dependencies are not configured")
 	}
 	args := parseToolArgsMap(rawArgs)
 	action := strings.ToLower(strings.TrimSpace(getToolArgString(args, "action", "")))
 	if action != "cancel" && action != "delete" {
-		return nil, fmt.Errorf("action must be cancel or delete")
+		return nil, agentImageAuthoringErrorf("action must be cancel or delete")
 	}
 	build, err := mgr.resolveOwnedImageBuild(c, token, args)
 	if err != nil {
@@ -797,10 +802,10 @@ func (mgr *AgentMgr) toolManageImageBuild(c *gin.Context, token internalutil.JWT
 	case "cancel":
 		switch build.Status {
 		case model.BuildJobFinished, model.BuildJobFailed, model.BuildJobCanceled:
-			return nil, fmt.Errorf("image build %s is already finished; use delete instead", build.ImagePackName)
+			return nil, agentImageAuthoringErrorf("image build %s is already finished; use delete instead", build.ImagePackName)
 		}
 		if err := mgr.imagePacker.DeleteJob(c, build.ImagePackName, readNamespace()); err != nil {
-			return nil, fmt.Errorf("failed to cancel image build %s: %w", build.ImagePackName, err)
+			return nil, agentImageAuthoringErrorf("failed to cancel image build %s: %w", build.ImagePackName, err)
 		}
 		_, _ = kanikoQuery.WithContext(c).
 			Where(kanikoQuery.ID.Eq(build.ID)).
@@ -809,16 +814,16 @@ func (mgr *AgentMgr) toolManageImageBuild(c *gin.Context, token internalutil.JWT
 		return result, nil
 	case "delete":
 		if build.Status != model.BuildJobFinished && build.Status != model.BuildJobFailed && build.Status != model.BuildJobCanceled {
-			return nil, fmt.Errorf("image build %s is still active; cancel it before deleting", build.ImagePackName)
+			return nil, agentImageAuthoringErrorf("image build %s is still active; cancel it before deleting", build.ImagePackName)
 		}
 		finalImage, err := mgr.findFinalImageByPackName(c, build.ImagePackName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load final image before deletion: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to load final image before deletion: %w", err)
 		}
 		if finalImage != nil {
 			imageQuery := query.Image
 			if _, err := imageQuery.WithContext(c).Where(imageQuery.ID.Eq(finalImage.ID)).Delete(); err != nil {
-				return nil, fmt.Errorf("failed to delete final image record: %w", err)
+				return nil, agentImageAuthoringErrorf("failed to delete final image record: %w", err)
 			}
 			result["deletedFinalImageID"] = finalImage.ID
 			if build.Status == model.BuildJobFinished && mgr.imageRegistry != nil {
@@ -828,12 +833,12 @@ func (mgr *AgentMgr) toolManageImageBuild(c *gin.Context, token internalutil.JWT
 			}
 		}
 		if _, err := kanikoQuery.WithContext(c).Where(kanikoQuery.ID.Eq(build.ID)).Delete(); err != nil {
-			return nil, fmt.Errorf("failed to delete image build record: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to delete image build record: %w", err)
 		}
 		result["status"] = "deleted"
 		return result, nil
 	default:
-		return nil, fmt.Errorf("unsupported action %q", action)
+		return nil, agentImageAuthoringErrorf("unsupported action %q", action)
 	}
 }
 
@@ -841,14 +846,14 @@ func (mgr *AgentMgr) toolRegisterExternalImage(c *gin.Context, token internaluti
 	args := parseToolArgsMap(rawArgs)
 	imageLink := getToolArgString(args, "image_link", "")
 	if imageLink == "" {
-		return nil, fmt.Errorf("image_link is required")
+		return nil, agentImageAuthoringErrorf("image_link is required")
 	}
 	if _, _, _, _, err := pkgutils.SplitImageLink(imageLink); err != nil {
 		return nil, err
 	}
 	description := getToolArgString(args, "description", "")
 	if description == "" {
-		return nil, fmt.Errorf("description is required")
+		return nil, agentImageAuthoringErrorf("description is required")
 	}
 	taskType, err := normalizeImageTaskType(getToolArgString(args, "task_type", "custom"))
 	if err != nil {
@@ -870,7 +875,7 @@ func (mgr *AgentMgr) toolRegisterExternalImage(c *gin.Context, token internaluti
 		}, nil
 	}
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("failed to check existing external image: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to check existing external image: %w", err)
 	}
 
 	imageRecord := &model.Image{
@@ -884,11 +889,11 @@ func (mgr *AgentMgr) toolRegisterExternalImage(c *gin.Context, token internaluti
 		ImageSource: model.ImageUploadType,
 	}
 	if err := imageQuery.WithContext(c).Create(imageRecord); err != nil {
-		return nil, fmt.Errorf("failed to register external image: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to register external image: %w", err)
 	}
 	created, err := imageQuery.WithContext(c).Preload(imageQuery.User).Where(imageQuery.ID.Eq(imageRecord.ID)).First()
 	if err != nil {
-		return nil, fmt.Errorf("failed to reload external image: %w", err)
+		return nil, agentImageAuthoringErrorf("failed to reload external image: %w", err)
 	}
 	return map[string]any{
 		"status": "registered",
@@ -937,7 +942,7 @@ func (mgr *AgentMgr) resolveImageShareTargets(
 ) ([]resolvedShareTarget, error) {
 	targets = uniqueStrings(trimStringSlice(targets))
 	if len(targets) == 0 {
-		return nil, fmt.Errorf("targets are required")
+		return nil, agentImageAuthoringErrorf("targets are required")
 	}
 
 	switch strings.ToLower(strings.TrimSpace(targetType)) {
@@ -948,7 +953,7 @@ func (mgr *AgentMgr) resolveImageShareTargets(
 			if targetID, ok := resolveTargetByID(input); ok {
 				userRecord, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(targetID)).First()
 				if err != nil {
-					return nil, fmt.Errorf("user %q not found", input)
+					return nil, agentImageAuthoringErrorf("user %q not found", input)
 				}
 				resolved = append(resolved, resolvedShareTarget{
 					ID:       userRecord.ID,
@@ -972,10 +977,10 @@ func (mgr *AgentMgr) resolveImageShareTargets(
 			}
 			matches, findErr := userQuery.WithContext(c).Where(userQuery.Nickname.Eq(input)).Find()
 			if findErr != nil || len(matches) == 0 {
-				return nil, fmt.Errorf("user %q not found", input)
+				return nil, agentImageAuthoringErrorf("user %q not found", input)
 			}
 			if len(matches) > 1 {
-				return nil, fmt.Errorf("user nickname %q is ambiguous; use username or numeric id", input)
+				return nil, agentImageAuthoringErrorf("user nickname %q is ambiguous; use username or numeric id", input)
 			}
 			resolved = append(resolved, resolvedShareTarget{
 				ID:       matches[0].ID,
@@ -989,14 +994,14 @@ func (mgr *AgentMgr) resolveImageShareTargets(
 	case "account", "accounts":
 		memberAccounts, err := mgr.listMemberAccounts(c, token.UserID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load member accounts: %w", err)
+			return nil, agentImageAuthoringErrorf("failed to load member accounts: %w", err)
 		}
 		resolved := make([]resolvedShareTarget, 0, len(targets))
 		for _, input := range targets {
 			if targetID, ok := resolveTargetByID(input); ok {
 				accountRecord, exists := memberAccounts[targetID]
 				if !exists || accountRecord.ID == model.DefaultAccountID {
-					return nil, fmt.Errorf("account %q is not in the caller's accessible account set", input)
+					return nil, agentImageAuthoringErrorf("account %q is not in the caller's accessible account set", input)
 				}
 				resolved = append(resolved, resolvedShareTarget{
 					ID:       accountRecord.ID,
@@ -1014,14 +1019,14 @@ func (mgr *AgentMgr) resolveImageShareTargets(
 				}
 				if accountRecord.Name == input || accountRecord.Nickname == input {
 					if matched != nil {
-						return nil, fmt.Errorf("account name %q is ambiguous; use numeric id", input)
+						return nil, agentImageAuthoringErrorf("account name %q is ambiguous; use numeric id", input)
 					}
 					accountCopy := accountRecord
 					matched = &accountCopy
 				}
 			}
 			if matched == nil {
-				return nil, fmt.Errorf("account %q is not in the caller's accessible account set", input)
+				return nil, agentImageAuthoringErrorf("account %q is not in the caller's accessible account set", input)
 			}
 			resolved = append(resolved, resolvedShareTarget{
 				ID:       matched.ID,
@@ -1033,7 +1038,7 @@ func (mgr *AgentMgr) resolveImageShareTargets(
 		}
 		return resolved, nil
 	default:
-		return nil, fmt.Errorf("target_type must be user or account")
+		return nil, agentImageAuthoringErrorf("target_type must be user or account")
 	}
 }
 
@@ -1041,7 +1046,7 @@ func (mgr *AgentMgr) toolManageImageAccess(c *gin.Context, token internalutil.JW
 	args := parseToolArgsMap(rawArgs)
 	action := strings.ToLower(strings.TrimSpace(getToolArgString(args, "action", "")))
 	if action != "grant" && action != "revoke" {
-		return nil, fmt.Errorf("action must be grant or revoke")
+		return nil, agentImageAuthoringErrorf("action must be grant or revoke")
 	}
 	targetType := strings.ToLower(strings.TrimSpace(getToolArgString(args, "target_type", "")))
 	imageRecord, err := mgr.resolveOwnedImageRecord(c, token, args)

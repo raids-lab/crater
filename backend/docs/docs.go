@@ -438,6 +438,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/admin/aiops/llmchat/stream": {
+            "post": {
+                "description": "Chat with AIOps assistant in LLM mode and stream model deltas via SSE.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Streaming LLM chat for AIOps",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/v1/admin/diagnostics/failure-types/top": {
             "get": {
                 "description": "Get aggregated statistics of the most common failure types for all users' failed jobs.",
@@ -470,6 +497,33 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/agent/ask/stream": {
+            "post": {
+                "description": "Create or continue an agent chat session and answer with the configured LLM without tool execution.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "agent"
+                ],
+                "summary": "Ask-only chat (SSE)",
+                "parameters": [
+                    {
+                        "description": "Ask request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_agent.AgentAskRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/agent/chat": {
@@ -1103,6 +1157,33 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/aiops/llmchat/stream": {
+            "post": {
+                "description": "Chat with AIOps assistant in LLM mode and stream model deltas via SSE.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "aiops"
+                ],
+                "summary": "Streaming LLM chat for AIOps",
+                "parameters": [
+                    {
+                        "description": "Chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ChatRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/diagnostics/context/{name}": {
@@ -11170,9 +11251,6 @@ const docTemplate = `{
                 "data": {},
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11190,9 +11268,6 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11212,9 +11287,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11233,9 +11305,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11243,7 +11312,8 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "type": "array",
@@ -11252,9 +11322,6 @@ const docTemplate = `{
                     }
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11274,9 +11341,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11295,9 +11359,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11312,9 +11373,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11331,9 +11389,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11349,9 +11404,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11359,15 +11411,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListItem"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11376,15 +11426,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListResult"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11401,9 +11449,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11418,9 +11463,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11437,9 +11479,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11454,9 +11493,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.AdjustUserExtraBalanceResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11473,9 +11509,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11491,9 +11524,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11501,15 +11531,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ChatResponse"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11526,9 +11554,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11544,9 +11569,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11554,15 +11576,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.DiagnosisResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11579,9 +11599,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11589,15 +11606,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.HealthOverviewResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11606,15 +11621,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.JobContextResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11631,9 +11644,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11648,9 +11658,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.LLMConfigResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11667,9 +11674,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11684,9 +11688,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.ModelDownloadResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11703,9 +11704,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11720,9 +11718,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.PrequeueConfigResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11739,9 +11734,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11756,9 +11748,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.ProjectCreateResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11775,9 +11764,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11792,9 +11778,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.QueueQuotaConfigItemResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11811,9 +11794,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11828,9 +11808,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler.TokenReq"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11847,9 +11824,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11865,9 +11839,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11875,15 +11846,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_agent.AgentConfigSummary"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11892,15 +11861,13 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode"
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_agent.AgentToolResponse"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11917,9 +11884,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11934,9 +11898,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_tool.PodIngressResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11953,9 +11914,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -11970,9 +11928,6 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_tool.PodNodeportResp"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -11989,9 +11944,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -12007,9 +11959,6 @@ const docTemplate = `{
                 },
                 "msg": {
                     "type": "string"
-                },
-                "msgKey": {
-                    "type": "string"
                 }
             }
         },
@@ -12024,9 +11973,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "msg": {
-                    "type": "string"
-                },
-                "msgKey": {
                     "type": "string"
                 }
             }
@@ -14106,6 +14052,38 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_agent.AgentAskRequest": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "clientContext": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "pageContext": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "requestId": {
+                    "type": "string"
+                },
+                "sessionId": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_agent.AgentChatRequest": {
             "type": "object",
             "required": [
@@ -14149,6 +14127,9 @@ const docTemplate = `{
                 },
                 "defaultOrchestrationMode": {
                     "type": "string"
+                },
+                "llm": {
+                    "$ref": "#/definitions/internal_handler_agent.AgentLLMConfigSummary"
                 }
             }
         },
@@ -14163,6 +14144,32 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler_agent.AgentLLMConfigSummary": {
+            "type": "object",
+            "properties": {
+                "baseUrl": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "fallbackNote": {
+                    "type": "string"
+                },
+                "hasApiKey": {
+                    "type": "boolean"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "usingConfig": {
+                    "type": "boolean"
                 }
             }
         },
@@ -14199,6 +14206,12 @@ const docTemplate = `{
         "internal_handler_agent.AgentToolConfirmation": {
             "type": "object",
             "properties": {
+                "affected_resources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "confirm_id": {
                     "type": "string"
                 },
@@ -14209,6 +14222,12 @@ const docTemplate = `{
                     "$ref": "#/definitions/internal_handler_agent.AgentToolForm"
                 },
                 "interaction": {
+                    "type": "string"
+                },
+                "permission_explanation": {
+                    "type": "string"
+                },
+                "risk_explanation": {
                     "type": "string"
                 },
                 "risk_level": {

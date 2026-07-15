@@ -29,7 +29,13 @@ from crater_agent.agents.approval import ApprovalAgent, ApprovalEvalRequest, App
 from crater_agent.app_quality import router as quality_router
 from crater_agent.config import settings
 from crater_agent.internal_tools_router import internal_tools_router
-from crater_agent.llm.client import ModelClientFactory
+from crater_agent.llm.client import (
+    ModelClientFactory,
+    local_llm_config_fallback_enabled,
+    normalize_runtime_llm_client_configs,
+    reset_runtime_llm_client_configs,
+    set_runtime_llm_client_configs,
+)
 from crater_agent.orchestrators.multi import MultiAgentOrchestrator
 from crater_agent.orchestrators.single import SingleAgentOrchestrator
 from crater_agent.pipeline.router import pipeline_router
@@ -87,22 +93,44 @@ def get_orchestration_mode(context: dict[str, Any]) -> str:
     return "single_agent"
 
 
+def get_request_model_factory(context: dict[str, Any]) -> ModelClientFactory:
+    runtime_clients = get_request_llm_client_configs(context)
+    if runtime_clients:
+        return ModelClientFactory(raw_clients=runtime_clients)
+    return ModelClientFactory()
+
+
+def get_request_llm_client_configs(context: dict[str, Any]) -> dict[str, Any] | None:
+    llm_context = context.get("llm") if isinstance(context, dict) else {}
+    if isinstance(llm_context, dict):
+        raw_clients = llm_context.get("client_config")
+        return normalize_runtime_llm_client_configs(raw_clients)
+    return None
+
+
 @app.get("/health")
 async def health():
     default_model = ""
-    try:
-        default_model = str(settings.get_llm_client_config("default").get("model") or "")
-    except Exception:
-        pass
-    try:
-        default_model = ModelClientFactory().create("default").model_name
-    except Exception:
-        pass
+    if local_llm_config_fallback_enabled():
+        try:
+            default_model = str(settings.get_llm_client_config("default").get("model") or "")
+        except Exception:
+            pass
+        try:
+            default_model = ModelClientFactory().create("default").model_name
+        except Exception:
+            pass
     return {"status": "ok", "model": default_model}
 
 
 @app.get("/config-summary")
 async def config_summary():
+    if not local_llm_config_fallback_enabled():
+        return {
+            "defaultOrchestrationMode": settings.normalized_default_orchestration_mode(),
+            "availableModes": ["single_agent", "multi_agent"],
+            "localLLMConfigFallbackEnabled": False,
+        }
     return settings.public_agent_config_summary()
 
 
@@ -117,12 +145,14 @@ async def chat(request: ChatRequest):
         request_context = build_request_context(request)
         request.context = request_context
         orchestration_mode = get_orchestration_mode(request_context)
-        model_factory = ModelClientFactory()
-        orchestrator = (
-            multi_orchestrator if orchestration_mode == "multi_agent" else single_orchestrator
-        )
+        runtime_llm_clients = get_request_llm_client_configs(request_context)
 
+        runtime_token = set_runtime_llm_client_configs(runtime_llm_clients)
         try:
+            model_factory = get_request_model_factory(request_context)
+            orchestrator = (
+                multi_orchestrator if orchestration_mode == "multi_agent" else single_orchestrator
+            )
             async for event in orchestrator.stream(request=request, model_factory=model_factory):
                 yield {
                     "event": event["event"],
@@ -140,6 +170,8 @@ async def chat(request: ChatRequest):
                 "event": "done",
                 "data": json.dumps({}, ensure_ascii=False),
             }
+        finally:
+            reset_runtime_llm_client_configs(runtime_token)
 
     return EventSourceResponse(event_generator(), ping=0)
 
@@ -178,8 +210,9 @@ async def evaluate_approval(request: ApprovalEvalRequest):
         raise HTTPException(status_code=429, detail="approval evaluation busy")
 
     async with _approval_semaphore:
-        agent = _get_approval_agent()
+        runtime_token = set_runtime_llm_client_configs(request.llm_client_config)
         try:
+            agent = ApprovalAgent() if request.llm_client_config else _get_approval_agent()
             result = await asyncio.wait_for(
                 agent.evaluate(request),
                 timeout=120.0,
@@ -196,6 +229,8 @@ async def evaluate_approval(request: ApprovalEvalRequest):
                 confidence=0.1,
                 reason="Agent 评估超时",
             )
+        finally:
+            reset_runtime_llm_client_configs(runtime_token)
 
 
 if __name__ == "__main__":

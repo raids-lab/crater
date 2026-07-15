@@ -39,6 +39,11 @@ images:
     repository: "ghcr.io/raids-lab/crater-frontend"
     # -- Frontend service image tag
     tag: "latest"
+  agent:
+    # -- Agent service image repository
+    repository: "ghcr.io/raids-lab/crater-agent"
+    # -- Agent service image tag
+    tag: "latest"
   storage:
     # -- Storage server image repository
     repository: "ghcr.io/raids-lab/storage-server"
@@ -114,6 +119,67 @@ affinity:
               values:
                 - "true"
 
+# -- Crater Agent Python service configuration
+agent:
+  # -- Whether to deploy the Crater Agent service with the platform
+  enabled: true
+  # -- Number of Agent replicas
+  replicaCount: 1
+  # -- Agent container port
+  port: 8000
+  # -- Shared internal token for backend <-> agent service calls; replace in production
+  internalToken: "<MUSTEDIT>"
+  # -- Default orchestration mode ("single_agent" or "multi_agent")
+  defaultOrchestrationMode: single_agent
+  # -- Whether Python Agent may fall back to its local llm-clients.json
+  allowLocalLLMConfigFallback: false
+  service:
+    # -- Agent service type
+    type: ClusterIP
+    # -- Agent service port
+    port: 80
+  # -- Additional environment variables for the Agent container
+  env: []
+  # -- Agent resource requests and limits
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  # -- Agent-side runtime config for local diagnostic tools only
+  platformRuntime:
+    toolRouting:
+      localCoreTools: []
+      localWriteTools: []
+    kubernetes:
+      namespace: crater-workspace
+      kubectlBin: kubectl
+      timeoutSeconds: 30
+      safety:
+        protectedNamespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+        blockedCommandPatterns:
+          - delete namespace
+          - delete node
+          - delete pv
+          - delete crd
+          - cluster-info dump
+          - auth can-i
+          - --as=
+          - exec -it
+          - port-forward
+          - proxy
+          - apply -f http
+    webSearch:
+      enabled: false
+      allowedDomains: []
+      timeoutSeconds: 10
+      maxContentChars: 4000
+
 # -- Grafana proxy configuration
 # Only Grafana Pro has password-free login feature. We use Nginx proxy to support password-free login for Iframe
 grafanaProxy:
@@ -183,6 +249,43 @@ backendConfig:
   # -- Endpoint URL for Prometheus API used for metrics and monitoring
   # If not specified, Prometheus integration will be disabled
   prometheusAPI: http://192.168.0.1:12345
+
+  # -- Crater Agent service and backend-side ops tool policy
+  agent:
+    # -- Base URL of the Python Agent service; keep cluster-internal
+    serviceURL: http://crater-agent-svc
+    ops:
+      webSearch:
+        # -- Toggle backend-proxied web search tool
+        enabled: false
+        # -- Strict egress allowlist for web_search when enabled
+        allowedDomains: []
+        # -- Web search timeout in seconds
+        timeoutSeconds: 10
+      kubernetes:
+        # -- Kubeconfig path visible to the agent runtime; empty means in-cluster/default
+        kubeconfigPath: ""
+        # -- Default kubeconfig context
+        context: ""
+        # -- Default namespace for Kubernetes diagnostics
+        namespace: crater-workspace
+        # -- kubectl executable name or path
+        kubectlBin: kubectl
+        # -- kubectl command timeout in seconds
+        timeoutSeconds: 30
+    approvalHook:
+      # -- Whether to use the Agent to evaluate approval orders
+      enabled: true
+      # -- Total approval evaluation timeout in seconds
+      totalTimeoutSeconds: 60
+      # -- Approval evaluation rate limit per minute
+      maxPerMinute: 10
+      # -- Maximum concurrent approval evaluations
+      maxConcurrent: 3
+      # -- Consecutive failures before opening the circuit breaker
+      circuitBreakerThreshold: 5
+      # -- Circuit breaker cooldown in seconds
+      circuitBreakerCooldownSeconds: 60
 
   # -- PostgreSQL database connection configuration (Required)
   # All fields must be specified for database connectivity

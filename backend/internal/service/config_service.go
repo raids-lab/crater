@@ -19,6 +19,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/crypto"
@@ -33,6 +34,37 @@ type LLMConfig struct {
 	BaseURL   string
 	APIKey    string
 	ModelName string
+}
+
+type LLMConfigStatus struct {
+	Config      *LLMConfig
+	Source      string
+	Complete    bool
+	HasAPIKey   bool
+	UsingConfig bool
+}
+
+func BuildAgentLLMClientConfig(cfg *LLMConfig) map[string]any {
+	if cfg == nil {
+		return nil
+	}
+	if strings.TrimSpace(cfg.BaseURL) == "" ||
+		strings.TrimSpace(cfg.ModelName) == "" ||
+		strings.TrimSpace(cfg.APIKey) == "" {
+		return nil
+	}
+	defaultClient := map[string]any{
+		"provider":     "openai_compatible",
+		"base_url":     strings.TrimSpace(cfg.BaseURL),
+		"model":        strings.TrimSpace(cfg.ModelName),
+		"api_key":      strings.TrimSpace(cfg.APIKey),
+		"temperature":  0.1,
+		"max_tokens":   8192,
+		"timeout":      120,
+		"streaming":    true,
+		"stream_usage": true,
+	}
+	return map[string]any{"default": defaultClient}
 }
 
 // cleanBaseURL 内部辅助：清理 URL 结尾的斜杠
@@ -125,6 +157,29 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 
 // GetLLMConfig 从数据库按需读取最新配置
 func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
+	status, err := s.GetLLMConfigStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return status.Config, nil
+}
+
+func (s *ConfigService) GetLLMConfigStatus(ctx context.Context) (*LLMConfigStatus, error) {
+	cfg, err := s.loadStoredLLMConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status := &LLMConfigStatus{
+		Config:      cfg,
+		Source:      "system_config",
+		Complete:    isLLMConfigComplete(cfg),
+		HasAPIKey:   strings.TrimSpace(cfg.APIKey) != "",
+		UsingConfig: isLLMConfigComplete(cfg),
+	}
+	return status, nil
+}
+
+func (s *ConfigService) loadStoredLLMConfig(ctx context.Context) (*LLMConfig, error) {
 	configMap, err := s.getConfigs(ctx, model.ConfigKeyLLMBaseURL, model.ConfigKeyLLMAPIKey, model.ConfigKeyLLMModelName)
 	if err != nil {
 		return nil, err
@@ -144,11 +199,34 @@ func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
 		}
 	}
 
-	return &LLMConfig{
+	cfg := &LLMConfig{
 		BaseURL:   configMap[model.ConfigKeyLLMBaseURL],
 		APIKey:    plainKey,
 		ModelName: configMap[model.ConfigKeyLLMModelName],
-	}, nil
+	}
+	return cfg, nil
+}
+
+func isLLMConfigComplete(cfg *LLMConfig) bool {
+	if cfg == nil {
+		return false
+	}
+	return strings.TrimSpace(cfg.BaseURL) != "" &&
+		strings.TrimSpace(cfg.ModelName) != "" &&
+		strings.TrimSpace(cfg.APIKey) != ""
+}
+
+func (s *ConfigService) GetAgentLLMClientConfig(ctx context.Context) (map[string]any, error) {
+	status, err := s.GetLLMConfigStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if status == nil || !status.Complete {
+		return nil, bizerr.BadRequest.ParameterError.New(
+			"platform LLM config is incomplete: BaseURL, Model and API Key are required",
+		)
+	}
+	return BuildAgentLLMClientConfig(status.Config), nil
 }
 
 // CheckLLMConnection 使用 /models 接口进行校验，并验证 ModelName 是否存在

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   CheckCircle2Icon,
@@ -32,6 +32,9 @@ import {
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/admin/more/agent-audit/')({
+  beforeLoad: () => {
+    throw redirect({ to: '/admin' })
+  },
   component: AgentAuditListPage,
 })
 
@@ -484,7 +487,7 @@ function AgentAuditListPage() {
       <DataTable
         info={{
           title: t('agentAudit.page.title'),
-          description: t('agentAudit.page.description'),
+          description: '',
         }}
         storageKey="admin-agent-audit"
         query={sessionsQuery}

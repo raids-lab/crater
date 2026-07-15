@@ -9,8 +9,7 @@ import (
 
 func detectGPUResourceName(resources v1.ResourceList) v1.ResourceName {
 	for name := range resources {
-		nameStr := strings.ToLower(string(name))
-		if strings.Contains(nameStr, "/gpu") || strings.Contains(nameStr, "gpu") {
+		if isGPUResourceName(string(name)) {
 			return name
 		}
 	}
@@ -52,10 +51,35 @@ func moveResourceQuantity(resources v1.ResourceList, oldName, newName v1.Resourc
 	}
 }
 
+func removeGPUResourcesExcept(resources v1.ResourceList, keep v1.ResourceName) bool {
+	if resources == nil {
+		return false
+	}
+	changed := false
+	for name := range resources {
+		if name == keep || !isGPUResourceName(string(name)) {
+			continue
+		}
+		delete(resources, name)
+		changed = true
+	}
+	return changed
+}
+
 func isGPUResourceName(name string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(name))
-	return normalized != "" && (strings.Contains(normalized, "/gpu") || strings.Contains(normalized, "gpu") ||
-		strings.Contains(normalized, "/a100") || strings.Contains(normalized, "/v100"))
+	if normalized == "" {
+		return false
+	}
+	if strings.HasPrefix(normalized, "nvidia.com/") || strings.Contains(normalized, "/gpu") || strings.Contains(normalized, "gpu") {
+		return true
+	}
+	for _, model := range []string{"v100", "a100", "h100", "l40s", "rtx4090"} {
+		if normalized == model || strings.HasSuffix(normalized, "/"+model) {
+			return true
+		}
+	}
+	return false
 }
 
 func extractGPUModelFromResourceName(name string) string {

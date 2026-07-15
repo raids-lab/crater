@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from crater_agent.config import settings
+from crater_agent.llm.client import reset_runtime_llm_client_configs, set_runtime_llm_client_configs
 from crater_agent.pipeline.gpu_analyzer import run_gpu_audit
 from crater_agent.pipeline.ops_report import run_admin_ops_report
 from crater_agent.pipeline.storage_audit import run_storage_audit
@@ -42,6 +43,7 @@ class GpuAuditRequest(BaseModel):
         default=False,
         description="Detect only; do not persist an audit report.",
     )
+    llm_client_config: Optional[dict[str, Any]] = Field(default=None, exclude=True)
 
 
 class GpuAuditResponse(BaseModel):
@@ -63,6 +65,7 @@ class AdminOpsReportRequest(BaseModel):
     node_limit: int = Field(default=10, description="Number of node snapshots to keep.")
     dry_run: bool = Field(default=False, description="Analyze only; do not persist a report.")
     use_llm: bool = Field(default=True, description="Use LLM for executive analysis.")
+    llm_client_config: Optional[dict[str, Any]] = Field(default=None, exclude=True)
 
 
 class AdminOpsReportResponse(BaseModel):
@@ -80,6 +83,7 @@ class StorageAuditRequest(BaseModel):
     days: int = Field(default=1, description="Lookback window in days.")
     pvc_limit: int = Field(default=200, description="Max PVC items to scan.")
     dry_run: bool = Field(default=False, description="Analyze only; do not persist a report.")
+    llm_client_config: Optional[dict[str, Any]] = Field(default=None, exclude=True)
 
 
 class StorageAuditResponse(BaseModel):
@@ -109,11 +113,15 @@ async def gpu_audit(
     if x_agent_internal_token != settings.crater_backend_internal_token:
         raise HTTPException(status_code=403, detail="Invalid internal token")
 
-    result = await run_gpu_audit(
-        gpu_threshold=request.gpu_threshold,
-        hours=request.hours,
-        dry_run=request.dry_run,
-    )
+    runtime_token = set_runtime_llm_client_configs(request.llm_client_config)
+    try:
+        result = await run_gpu_audit(
+            gpu_threshold=request.gpu_threshold,
+            hours=request.hours,
+            dry_run=request.dry_run,
+        )
+    finally:
+        reset_runtime_llm_client_configs(runtime_token)
 
     return GpuAuditResponse(
         report_id=result.get("report_id"),
@@ -131,6 +139,7 @@ async def admin_ops_report(
     if x_agent_internal_token != settings.crater_backend_internal_token:
         raise HTTPException(status_code=403, detail="Invalid internal token")
 
+    runtime_token = set_runtime_llm_client_configs(request.llm_client_config)
     try:
         result = await run_admin_ops_report(
             days=request.days,
@@ -156,6 +165,8 @@ async def admin_ops_report(
             summary={"error": str(e)},
             report={},
         )
+    finally:
+        reset_runtime_llm_client_configs(runtime_token)
 
 
 @pipeline_router.post("/storage-audit", response_model=StorageAuditResponse)
@@ -167,6 +178,7 @@ async def storage_audit(
     if x_agent_internal_token != settings.crater_backend_internal_token:
         raise HTTPException(status_code=403, detail="Invalid internal token")
 
+    runtime_token = set_runtime_llm_client_configs(request.llm_client_config)
     try:
         result = await run_storage_audit(
             days=request.days,
@@ -187,3 +199,5 @@ async def storage_audit(
             summary={"error": str(e)},
             report={},
         )
+    finally:
+        reset_runtime_llm_client_configs(runtime_token)

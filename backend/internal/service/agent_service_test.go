@@ -1,19 +1,24 @@
 package service
 
 import (
-	"errors"
 	"testing"
+
+	"github.com/raids-lab/crater/internal/bizerr"
 )
 
 func TestIsMissingAgentToolAuditColumnError(t *testing.T) {
 	t.Parallel()
 
-	err := errors.New(`ERROR: column "execution_backend" of relation "agent_tool_calls" does not exist (SQLSTATE 42703)`)
+	err := bizerr.Internal.DatabaseError.New(
+		`ERROR: column "execution_backend" of relation "agent_tool_calls" does not exist (SQLSTATE 42703)`,
+	)
 	if !isMissingAgentToolAuditColumnError(err) {
 		t.Fatalf("expected missing audit column error to be detected")
 	}
 
-	otherErr := errors.New(`ERROR: column "unknown_field" of relation "agent_tool_calls" does not exist (SQLSTATE 42703)`)
+	otherErr := bizerr.Internal.DatabaseError.New(
+		`ERROR: column "unknown_field" of relation "agent_tool_calls" does not exist (SQLSTATE 42703)`,
+	)
 	if isMissingAgentToolAuditColumnError(otherErr) {
 		t.Fatalf("expected unrelated column error to be ignored")
 	}

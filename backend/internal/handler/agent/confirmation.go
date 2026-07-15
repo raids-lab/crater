@@ -59,7 +59,131 @@ func (mgr *AgentMgr) buildToolConfirmation(token util.JWTMessage, toolName strin
 		confirmation.RiskLevel = "critical"
 	}
 	confirmation.Description = mgr.buildConfirmationDescription(toolName, rawArgs)
+	confirmation.PermissionExplanation = buildToolPermissionExplanation(toolName)
+	confirmation.RiskExplanation = buildToolRiskExplanation(toolName, confirmation.RiskLevel)
+	confirmation.AffectedResources = inferToolAffectedResources(toolName, rawArgs)
 	return confirmation
+}
+
+func buildToolPermissionExplanation(toolName string) string {
+	switch toolName {
+	case agentToolResubmitJob:
+		return "需要使用你的作业创建权限读取原作业配置，并基于确认后的表单重新提交一个新作业。"
+	case agentToolCreateJupyter, agentToolCreateWebIDE, agentToolCreateCustom, agentToolCreatePytorch, agentToolCreateTensorflow:
+		return "需要使用你的作业创建权限提交新的工作负载，并为作业申请确认表单中的 CPU、内存、GPU、镜像和端口资源。"
+	case agentToolCreateImage:
+		return "需要使用你的镜像构建权限创建构建任务，读取确认表单中的仓库、Dockerfile 或构建上下文配置。"
+	case agentToolRegisterImage:
+		return "需要使用你的镜像管理权限登记外部镜像，使该镜像后续可在平台作业中选择。"
+	case agentToolManageAccess:
+		return "需要使用资源访问管理权限调整确认对象的可访问范围或共享关系。"
+	case toolNotifyJobOwner:
+		return "需要使用平台通知能力向目标作业相关用户发送消息，不会修改作业本身。"
+	case agentToolCordonNode, agentToolUncordonNode, agentToolDrainNode, agentToolK8sLabelNode, agentToolK8sTaintNode:
+		return "需要管理员集群权限修改 Kubernetes 节点调度状态或节点元数据，会影响节点上工作负载的调度策略。"
+	case agentToolRestartWL, agentToolK8sScaleWL, agentToolDeletePod, agentToolRunKubectl, agentToolAdminCommand:
+		return "需要管理员集群权限对 Kubernetes 工作负载或集群对象执行写操作，确认后才会真正提交。"
+	default:
+		return "这是一个需要显式确认的写操作；系统会在你确认后才以当前登录身份执行。"
+	}
+}
+
+func buildToolRiskExplanation(toolName string, riskLevel string) string {
+	switch toolName {
+	case agentToolDrainNode:
+		return "Drain 会驱逐节点上的可驱逐 Pod，可能触发作业迁移、中断或重新排队。"
+	case agentToolDeletePod:
+		return "删除 Pod 会中断该实例；如果上层控制器存在，可能被自动重建。"
+	case agentToolRunKubectl, agentToolAdminCommand:
+		return "自由命令能力强且影响面不固定，请确认命令、命名空间和目标对象完全符合预期。"
+	case agentToolCordonNode:
+		return "Cordon 会阻止新 Pod 调度到该节点，可能影响集群容量。"
+	case agentToolUncordonNode:
+		return "Uncordon 会恢复节点接收新 Pod，适合维护完成后使用。"
+	case agentToolRestartWL:
+		return "重启工作负载会让相关 Pod 短暂不可用，并可能触发重新拉镜像或重新调度。"
+	case agentToolK8sScaleWL:
+		return "扩缩容会改变副本数，可能影响服务容量、资源占用和排队情况。"
+	case agentToolK8sLabelNode, agentToolK8sTaintNode:
+		return "修改节点标签或污点会改变调度匹配结果，可能影响后续作业落点。"
+	case agentToolResubmitJob:
+		return "重提会创建新作业并重新申请资源；原作业不会被自动删除。"
+	case agentToolCreateJupyter, agentToolCreateWebIDE, agentToolCreateCustom, agentToolCreatePytorch, agentToolCreateTensorflow:
+		return "创建作业会占用账户配额和集群资源，配置错误可能导致排队或启动失败。"
+	case agentToolCreateImage:
+		return "镜像构建会占用构建资源；构建参数错误可能导致构建失败或产出不可用镜像。"
+	case agentToolRegisterImage:
+		return "登记外部镜像不会拉取校验全部内容，请确认镜像来源可信且标签正确。"
+	}
+	switch riskLevel {
+	case "critical":
+		return "高危集群写操作，可能影响正在运行的工作负载或平台稳定性。"
+	case "high":
+		return "该操作会创建或修改平台资源，确认前请检查目标对象和参数。"
+	case "medium":
+		return "该操作影响范围相对有限，但仍会改变平台状态。"
+	default:
+		return "确认后系统会执行该写操作。"
+	}
+}
+
+func inferToolAffectedResources(toolName string, rawArgs json.RawMessage) []string {
+	args := parseToolArgsMap(rawArgs)
+	resources := make([]string, 0, 4)
+	addArg := func(label string, keys ...string) {
+		for _, key := range keys {
+			value := getToolArgString(args, key, "")
+			if strings.TrimSpace(value) != "" {
+				resources = append(resources, fmt.Sprintf("%s: %s", label, value))
+				return
+			}
+		}
+	}
+	addArg("作业", "job_name", "jobName")
+	addArg("节点", "node", "node_name", "nodeName")
+	addArg("命名空间", "namespace", "ns")
+	addArg("工作负载", "workload", "workload_name", "name")
+	addArg("Pod", "pod", "pod_name", "podName")
+	addArg("镜像", "image", "image_link", "imageLink", "image_pack_name")
+	addArg("PVC", "pvc", "pvc_name", "pvcName")
+	if len(resources) > 0 {
+		return resources
+	}
+	switch toolName {
+	case agentToolCreateJupyter, agentToolCreateWebIDE, agentToolCreateCustom, agentToolCreatePytorch, agentToolCreateTensorflow:
+		return []string{"新建作业"}
+	case agentToolCreateImage:
+		return []string{"镜像构建任务"}
+	case agentToolRegisterImage:
+		return []string{"外部镜像登记"}
+	}
+	return nil
+}
+
+func gpuModelFieldOptions(defaultModel string) []AgentToolFieldOption {
+	knownModels := []string{"v100", "a100", "h100", "l40s", "rtx4090"}
+	seen := map[string]struct{}{}
+	options := make([]AgentToolFieldOption, 0, len(knownModels)+1)
+	addOption := func(model string) {
+		normalized := normalizeGPUModelName(model)
+		if normalized == "" {
+			return
+		}
+		if _, ok := seen[normalized]; ok {
+			return
+		}
+		seen[normalized] = struct{}{}
+		options = append(options, AgentToolFieldOption{
+			Value: normalized,
+			Label: strings.ToUpper(normalized),
+		})
+	}
+
+	addOption(defaultModel)
+	for _, model := range knownModels {
+		addOption(model)
+	}
+	return options
 }
 
 func buildResubmitJobForm(rawArgs json.RawMessage) *AgentToolForm {
@@ -105,9 +229,10 @@ func buildResubmitJobForm(rawArgs json.RawMessage) *AgentToolForm {
 			{
 				Key:          "gpu_model",
 				Label:        "GPU 型号",
-				Type:         "text",
-				Description:  "留空则沿用原配置，例如 v100 / a100。",
+				Type:         "select",
+				Description:  "不选择则沿用原配置；选择后会替换为对应 GPU Operator 资源名。",
 				DefaultValue: getToolArgString(args, "gpu_model", ""),
+				Options:      gpuModelFieldOptions(getToolArgString(args, "gpu_model", "")),
 			},
 		},
 	}
@@ -160,9 +285,10 @@ func buildCreateJupyterJobForm(rawArgs json.RawMessage) *AgentToolForm {
 			{
 				Key:          "gpu_model",
 				Label:        "GPU 型号",
-				Type:         "text",
-				Description:  "可选，例如 v100 / a100。",
+				Type:         "select",
+				Description:  "可选，选择后会使用对应 GPU Operator 资源名。",
 				DefaultValue: getToolArgString(args, "gpu_model", ""),
+				Options:      gpuModelFieldOptions(getToolArgString(args, "gpu_model", "")),
 			},
 			{
 				Key:          "forwards_text",
@@ -214,7 +340,14 @@ func buildCreateCustomJobForm(token util.JWTMessage, rawArgs json.RawMessage) *A
 			{Key: "cpu", Label: "CPU", Type: "text", Required: true, DefaultValue: getToolArgString(args, "cpu", "4")},
 			{Key: "memory", Label: "内存", Type: "text", Required: true, DefaultValue: getToolArgString(args, "memory", "16Gi")},
 			{Key: "gpu_count", Label: "GPU 数量", Type: "number", DefaultValue: getToolArgInt(args, "gpu_count", 0)},
-			{Key: "gpu_model", Label: "GPU 型号", Type: "text", Placeholder: "如 v100 / a100", DefaultValue: getToolArgString(args, "gpu_model", "")},
+			{
+				Key:          "gpu_model",
+				Label:        "GPU 型号",
+				Type:         "select",
+				Placeholder:  "选择 GPU 型号",
+				DefaultValue: getToolArgString(args, "gpu_model", ""),
+				Options:      gpuModelFieldOptions(getToolArgString(args, "gpu_model", "")),
+			},
 			{
 				Key:          "forwards_text",
 				Label:        "附加端口暴露",

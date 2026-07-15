@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,10 +17,28 @@ import (
 	"gorm.io/datatypes"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/prompts"
 )
+
+func agentBadRequest(c *gin.Context, msg string) {
+	resputil.HandleError(c, bizerr.BadRequest.ParameterError.New(msg))
+}
+
+func agentInternalError(c *gin.Context, msg string) {
+	resputil.HandleError(c, bizerr.Internal.ServiceError.New(msg))
+}
+
+func agentForbidden(c *gin.Context, msg string) {
+	resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New(msg))
+}
+
+func agentNotFound(c *gin.Context, msg string) {
+	resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.New(msg))
+}
 
 // Chat godoc
 // @Summary Agent chat (SSE)
@@ -32,52 +51,80 @@ import (
 func (mgr *AgentMgr) Chat(c *gin.Context) {
 	var req AgentChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(req.Message)) > agentChatMessageMaxRunes {
-		resputil.BadRequestError(c, fmt.Sprintf("message exceeds %d characters", agentChatMessageMaxRunes))
+		agentBadRequest(c, fmt.Sprintf("message exceeds %d characters", agentChatMessageMaxRunes))
 		return
 	}
 
 	token := util.GetToken(c)
 	orchestrationMode := normalizeOrchestrationMode(req.OrchestrationMode)
+	requestPageContext := normalizePageContext(req.PageContext)
+	requestSurface := agentPageScopeForToken(token, requestPageContext)
 
 	sessionID := req.SessionID
 	if sessionID == "" {
 		sessionID = uuid.New().String()
 	}
 
-	session, _, err := mgr.agentService.GetOrCreateSession(
+	session, created, err := mgr.agentService.GetOrCreateSession(
 		c.Request.Context(),
 		sessionID,
 		token.UserID,
 		token.AccountID,
-		req.Message,
+		buildAgentSessionTitle(req.Message, req.PageContext),
 		req.PageContext,
 	)
+	if errors.Is(err, service.ErrAgentSessionDeleted) {
+		sessionID = uuid.New().String()
+		session, created, err = mgr.agentService.GetOrCreateSession(
+			c.Request.Context(),
+			sessionID,
+			token.UserID,
+			token.AccountID,
+			buildAgentSessionTitle(req.Message, req.PageContext),
+			req.PageContext,
+		)
+	}
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create/load session: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to create/load session: %v", err))
 		return
 	}
 	if session.UserID != token.UserID || session.AccountID != token.AccountID {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 	if !isChatSessionSource(session.Source) {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
+	}
+	if !created && agentSessionSurface(session) != requestSurface {
+		sessionID = uuid.New().String()
+		_, _, err = mgr.agentService.GetOrCreateSession(
+			c.Request.Context(),
+			sessionID,
+			token.UserID,
+			token.AccountID,
+			buildAgentSessionTitle(req.Message, req.PageContext),
+			req.PageContext,
+		)
+		if err != nil {
+			agentInternalError(c, fmt.Sprintf("failed to create scoped session: %v", err))
+			return
+		}
 	}
 	_ = mgr.agentService.UpdateSessionOrchestrationMode(c.Request.Context(), sessionID, orchestrationMode)
 
 	historyMessages, historyErr := mgr.agentService.ListMessages(c.Request.Context(), sessionID)
 	if historyErr != nil {
-		resputil.Error(c, fmt.Sprintf("failed to load session history: %v", historyErr), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to load session history: %v", historyErr))
 		return
 	}
 	historyToolCalls, toolCallErr := mgr.agentService.ListToolCalls(c.Request.Context(), sessionID)
 	if toolCallErr != nil {
-		resputil.Error(c, fmt.Sprintf("failed to load session tool calls: %v", toolCallErr), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to load session tool calls: %v", toolCallErr))
 		return
 	}
 
@@ -101,7 +148,7 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 		}
 	}
 
-	pageContext := normalizePageContext(req.PageContext)
+	effectiveToken := effectiveAgentSessionToken(session, token)
 	continuationContext := mgr.buildAgentContinuation(c.Request.Context(), sessionID)
 	turnID := uuid.New().String()
 	_, err = mgr.agentService.CreateTurn(c.Request.Context(), &model.AgentTurn{
@@ -114,15 +161,16 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 		Metadata:          datatypes.JSON(req.ClientContext),
 	})
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create agent turn: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to create agent turn: %v", err))
 		return
 	}
 	agentPayload := mgr.buildPythonAgentPayload(
+		c.Request.Context(),
 		sessionID,
 		turnID,
 		req.Message,
-		token,
-		pageContext,
+		effectiveToken,
+		requestPageContext,
 		normalizeClientContext(req.ClientContext),
 		orchestrationMode,
 		historyForPrompt,
@@ -132,9 +180,280 @@ func (mgr *AgentMgr) Chat(c *gin.Context) {
 	mgr.streamPythonAgentResponse(c, sessionID, turnID, orchestrationMode, agentPayload, true)
 }
 
+// Ask godoc
+// @Summary Ask-only chat (SSE)
+// @Description Create or continue an agent chat session and answer with the configured LLM without tool execution.
+// @Tags agent
+// @Accept json
+// @Produce text/event-stream
+// @Param request body AgentAskRequest true "Ask request"
+// @Router /api/v1/agent/ask/stream [post]
+func (mgr *AgentMgr) Ask(c *gin.Context) {
+	var req AgentAskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		agentBadRequest(c, err.Error())
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(req.Message)) > agentChatMessageMaxRunes {
+		agentBadRequest(c, fmt.Sprintf("message exceeds %d characters", agentChatMessageMaxRunes))
+		return
+	}
+	if mgr.configService == nil {
+		agentInternalError(c, "LLM 配置服务未初始化")
+		return
+	}
+
+	token := util.GetToken(c)
+	pageContext := normalizePageContext(req.PageContext)
+	requestSurface := agentPageScopeForToken(token, pageContext)
+	sessionID := req.SessionID
+	if sessionID == "" {
+		sessionID = uuid.New().String()
+	}
+
+	session, created, err := mgr.agentService.GetOrCreateSession(
+		c.Request.Context(),
+		sessionID,
+		token.UserID,
+		token.AccountID,
+		buildAgentSessionTitle(req.Message, req.PageContext),
+		req.PageContext,
+	)
+	if errors.Is(err, service.ErrAgentSessionDeleted) {
+		sessionID = uuid.New().String()
+		session, created, err = mgr.agentService.GetOrCreateSession(
+			c.Request.Context(),
+			sessionID,
+			token.UserID,
+			token.AccountID,
+			buildAgentSessionTitle(req.Message, req.PageContext),
+			req.PageContext,
+		)
+	}
+	if err != nil {
+		agentInternalError(c, fmt.Sprintf("failed to create/load session: %v", err))
+		return
+	}
+	if session.UserID != token.UserID || session.AccountID != token.AccountID || !isChatSessionSource(session.Source) {
+		agentForbidden(c, "session not found")
+		return
+	}
+	if !created && agentSessionSurface(session) != requestSurface {
+		sessionID = uuid.New().String()
+		_, _, err = mgr.agentService.GetOrCreateSession(
+			c.Request.Context(),
+			sessionID,
+			token.UserID,
+			token.AccountID,
+			buildAgentSessionTitle(req.Message, req.PageContext),
+			req.PageContext,
+		)
+		if err != nil {
+			agentInternalError(c, fmt.Sprintf("failed to create scoped ask session: %v", err))
+			return
+		}
+	}
+
+	historyMessages, historyErr := mgr.agentService.ListMessages(c.Request.Context(), sessionID)
+	if historyErr != nil {
+		agentInternalError(c, fmt.Sprintf("failed to load session history: %v", historyErr))
+		return
+	}
+	if !historyContainsRequestID(historyMessages, req.RequestID) {
+		userMsg := &model.AgentMessage{
+			SessionID: sessionID,
+			Role:      "user",
+			Content:   req.Message,
+			CreatedAt: time.Now(),
+		}
+		if req.RequestID != "" {
+			metadata, _ := json.Marshal(map[string]any{
+				"requestId": req.RequestID,
+				"mode":      "ask",
+			})
+			userMsg.Metadata = metadata
+		}
+		_ = mgr.agentService.SaveMessage(c.Request.Context(), userMsg)
+	}
+
+	turnID := uuid.New().String()
+	_, err = mgr.agentService.CreateTurn(c.Request.Context(), &model.AgentTurn{
+		TurnID:            turnID,
+		SessionID:         sessionID,
+		RequestID:         req.RequestID,
+		OrchestrationMode: "ask",
+		Status:            "running",
+		StartedAt:         time.Now(),
+		Metadata:          datatypes.JSON(req.ClientContext),
+	})
+	if err != nil {
+		agentInternalError(c, fmt.Sprintf("failed to create ask turn: %v", err))
+		return
+	}
+
+	mgr.streamAskResponse(c, sessionID, turnID, req.Message, req.RequestID, historyMessages)
+}
+
+func (mgr *AgentMgr) streamAskResponse(
+	c *gin.Context,
+	sessionID string,
+	turnID string,
+	message string,
+	requestID string,
+	historyMessages []*model.AgentMessage,
+) {
+	cfg, err := mgr.configService.GetLLMConfig(c)
+	if err != nil {
+		_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "failed", nil, nil)
+		agentInternalError(c, err.Error())
+		return
+	}
+	if strings.TrimSpace(cfg.BaseURL) == "" || strings.TrimSpace(cfg.ModelName) == "" {
+		_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "failed", nil, nil)
+		agentInternalError(c, "LLM 配置不完整，请先在系统配置中设置 BaseURL 和 Model")
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+	c.Header("X-Agent-Session-ID", sessionID)
+	c.Header("X-Agent-Turn-ID", turnID)
+	c.Header("X-Agent-Orchestration-Mode", "ask")
+	c.Status(http.StatusOK)
+
+	agentID := "ask-1"
+	agentRole := "ask"
+	startPayload := map[string]any{
+		"turnId":    turnID,
+		"sessionId": sessionID,
+		"agentId":   agentID,
+		"agentRole": agentRole,
+		"status":    "running",
+		"summary":   "ask 正在回答",
+	}
+	_ = writeSyntheticSSEEvent(c, "agent_run_started", startPayload)
+
+	systemPrompt := strings.Join([]string{
+		"你是 Crater 平台的 ask 助手。",
+		"你负责回答用户关于平台、作业、排障和使用方式的问题，但不执行写操作、不创建资源、不调用工具。",
+		"如果用户请求删除、停止、创建、排空节点等操作，请说明 ask 只能解释和建议；需要执行请切换到 agent。",
+		"回答要简洁、准确；不知道时说明缺少哪些信息，不要编造。",
+	}, "\n")
+	userPrompt := buildAskUserPrompt(message, historyMessages)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 120*time.Second)
+	defer cancel()
+
+	var full strings.Builder
+	reply, err := prompts.CallLLMTextStream(
+		mgr.httpClient,
+		ctx,
+		cfg.GetChatCompletionURL(),
+		cfg.APIKey,
+		cfg.ModelName,
+		systemPrompt,
+		userPrompt,
+		func(delta string) error {
+			full.WriteString(delta)
+			return writeSyntheticSSEEvent(c, "message", map[string]any{
+				"turnId":    turnID,
+				"sessionId": sessionID,
+				"agentId":   agentID,
+				"agentRole": agentRole,
+				"content":   delta,
+				"partial":   true,
+			})
+		},
+	)
+	if err != nil {
+		if ctx.Err() != nil || c.Request.Context().Err() != nil {
+			_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "cancelled", nil, nil)
+			return
+		}
+		_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "failed", nil, nil)
+		_ = writeSyntheticSSEEvent(c, "error", map[string]any{"message": fmt.Sprintf("ask 调用失败：%v", err)})
+		_ = writeSyntheticSSEEvent(c, "done", map[string]any{})
+		return
+	}
+	if strings.TrimSpace(reply) == "" {
+		reply = full.String()
+	}
+
+	assistantMsg := &model.AgentMessage{
+		SessionID: sessionID,
+		Role:      "assistant",
+		Content:   reply,
+		CreatedAt: time.Now(),
+	}
+	if requestID != "" {
+		metadata, _ := json.Marshal(map[string]any{
+			"requestId": requestID,
+			"mode":      "ask",
+		})
+		assistantMsg.Metadata = metadata
+	}
+	var finalMessageID *uint
+	if saveErr := mgr.agentService.SaveMessage(context.Background(), assistantMsg); saveErr == nil {
+		finalMessageID = &assistantMsg.ID
+	}
+	_ = mgr.agentService.UpdateTurnStatus(context.Background(), turnID, "completed", finalMessageID, nil)
+	_ = writeSyntheticSSEEvent(c, "final_answer", map[string]any{
+		"turnId":           turnID,
+		"sessionId":        sessionID,
+		"agentId":          agentID,
+		"agentRole":        agentRole,
+		"content":          reply,
+		"feedbackTargetId": fmt.Sprintf("%d", assistantMsg.ID),
+	})
+	_ = writeSyntheticSSEEvent(c, "done", map[string]any{})
+}
+
+func buildAskUserPrompt(message string, historyMessages []*model.AgentMessage) string {
+	recent := make([]string, 0, 8)
+	start := len(historyMessages) - 8
+	if start < 0 {
+		start = 0
+	}
+	for _, msg := range historyMessages[start:] {
+		role := strings.TrimSpace(msg.Role)
+		if role == "" || strings.TrimSpace(msg.Content) == "" {
+			continue
+		}
+		recent = append(recent, fmt.Sprintf("%s: %s", role, strings.TrimSpace(msg.Content)))
+	}
+	if len(recent) == 0 {
+		return fmt.Sprintf("用户问题：%s", message)
+	}
+	return fmt.Sprintf("最近对话：\n%s\n\n用户当前问题：%s", strings.Join(recent, "\n"), message)
+}
+
 func isChatSessionSource(source string) bool {
 	normalized := strings.TrimSpace(strings.ToLower(source))
 	return normalized == "" || normalized == "chat"
+}
+
+func buildAgentSessionTitle(message string, pageContext json.RawMessage) string {
+	title := strings.TrimSpace(message)
+	title = strings.Join(strings.Fields(title), " ")
+	if title == "" {
+		title = "新的 Agent 会话"
+	}
+
+	var ctx map[string]any
+	if len(pageContext) > 0 && json.Unmarshal(pageContext, &ctx) == nil {
+		if jobName, ok := ctx["jobName"].(string); ok && strings.TrimSpace(jobName) != "" && !strings.Contains(title, jobName) {
+			title = fmt.Sprintf("%s · %s", strings.TrimSpace(jobName), title)
+		} else if nodeName, ok := ctx["nodeName"].(string); ok && strings.TrimSpace(nodeName) != "" && !strings.Contains(title, nodeName) {
+			title = fmt.Sprintf("%s · %s", strings.TrimSpace(nodeName), title)
+		}
+	}
+
+	runes := []rune(title)
+	if len(runes) > 32 {
+		return string(runes[:32]) + "…"
+	}
+	return title
 }
 
 // ResumeAfterConfirmation godoc
@@ -148,23 +467,23 @@ func isChatSessionSource(source string) bool {
 func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 	var req AgentResumeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 
 	token := util.GetToken(c)
 	confirmID, err := strconv.ParseUint(req.ConfirmID, 10, 64)
 	if err != nil {
-		resputil.BadRequestError(c, "invalid confirmId")
+		agentBadRequest(c, "invalid confirmId")
 		return
 	}
 	toolCall, err := mgr.agentService.GetToolCallByID(c.Request.Context(), uint(confirmID))
 	if err != nil {
-		resputil.HTTPError(c, http.StatusNotFound, "confirmation result not found", resputil.NotSpecified)
+		agentNotFound(c, "confirmation result not found")
 		return
 	}
 	if toolCall.ResultStatus == agentToolStatusAwaitConfirm {
-		resputil.BadRequestError(c, "confirmation has not completed yet")
+		agentBadRequest(c, "confirmation has not completed yet")
 		return
 	}
 	if mgr.hasOtherPendingConfirmations(c.Request.Context(), toolCall.TurnID, toolCall.ID) {
@@ -174,10 +493,18 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 		})
 		return
 	}
+	if toolCall.ResultStatus == "rejected" {
+		turnID := toolCall.TurnID
+		if turnID == "" {
+			turnID = uuid.New().String()
+		}
+		mgr.streamConfirmationOutcome(c, toolCall.SessionID, turnID, toolCall)
+		return
+	}
 
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), toolCall.SessionID, token.UserID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "confirmation result not found", resputil.TokenInvalid)
+		agentForbidden(c, "confirmation result not found")
 		return
 	}
 
@@ -186,26 +513,27 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 		orchestrationMode := normalizeOrchestrationMode(sourceTurn.OrchestrationMode)
 		sessionToken, tokenErr := mgr.getSessionToken(c.Request.Context(), session)
 		if tokenErr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to resolve session actor: %v", tokenErr), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to resolve session actor: %v", tokenErr))
 			return
 		}
 		historyMessages, historyErr := mgr.agentService.ListMessages(c.Request.Context(), toolCall.SessionID)
 		if historyErr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to load session history: %v", historyErr), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to load session history: %v", historyErr))
 			return
 		}
 		historyToolCalls, toolCallErr := mgr.agentService.ListToolCalls(c.Request.Context(), toolCall.SessionID)
 		if toolCallErr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to load session tool calls: %v", toolCallErr), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to load session tool calls: %v", toolCallErr))
 			return
 		}
 
 		if err := mgr.agentService.UpdateTurnStatus(c.Request.Context(), sourceTurn.TurnID, "running", nil, nil); err != nil {
-			resputil.Error(c, fmt.Sprintf("failed to resume source turn: %v", err), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to resume source turn: %v", err))
 			return
 		}
 
 		agentPayload := mgr.buildPythonAgentPayload(
+			c.Request.Context(),
 			toolCall.SessionID,
 			sourceTurn.TurnID,
 			"继续完成上一轮计划",
@@ -240,28 +568,28 @@ func (mgr *AgentMgr) ResumeAfterConfirmation(c *gin.Context) {
 func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 	var req ConfirmToolRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 
 	token := util.GetToken(c)
 	confirmID, err := strconv.ParseUint(req.ConfirmID, 10, 64)
 	if err != nil {
-		resputil.BadRequestError(c, "invalid confirmId")
+		agentBadRequest(c, "invalid confirmId")
 		return
 	}
 	toolCall, err := mgr.agentService.GetToolCallByID(c.Request.Context(), uint(confirmID))
 	if err != nil {
-		resputil.HTTPError(c, http.StatusNotFound, "pending action not found", resputil.NotSpecified)
+		agentNotFound(c, "pending action not found")
 		return
 	}
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), toolCall.SessionID, token.UserID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "pending action not found", resputil.TokenInvalid)
+		agentForbidden(c, "pending action not found")
 		return
 	}
 	if toolCall.ResultStatus != agentToolStatusAwaitConfirm {
-		resputil.BadRequestError(c, "pending action is no longer awaiting confirmation")
+		agentBadRequest(c, "pending action is no longer awaiting confirmation")
 		return
 	}
 
@@ -275,7 +603,7 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 			json.RawMessage(toolCall.ToolResult),
 			&confirmed,
 		); updateErr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to update pending action: %v", updateErr), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to update pending action: %v", updateErr))
 			return
 		}
 		resultBytes, _ := json.Marshal(map[string]any{
@@ -292,18 +620,22 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 
 	sessionToken, tokenErr := mgr.getSessionToken(c.Request.Context(), session)
 	if tokenErr != nil {
-		resputil.Error(c, fmt.Sprintf("failed to resolve session actor: %v", tokenErr), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to resolve session actor: %v", tokenErr))
+		return
+	}
+	if authErr := authorizeAgentToolForSession(session, sessionToken, toolCall.ToolName); authErr != nil {
+		agentForbidden(c, authErr.Error())
 		return
 	}
 
 	mergedArgs, mergeErr := mergeToolArgsWithPayload(json.RawMessage(toolCall.ToolArgs), req.Payload)
 	if mergeErr != nil {
-		resputil.BadRequestError(c, mergeErr.Error())
+		agentBadRequest(c, mergeErr.Error())
 		return
 	}
 	if len(req.Payload) > 0 && string(req.Payload) != "null" {
 		if updateErr := mgr.agentService.UpdateToolCallArgs(c.Request.Context(), toolCall.ID, mergedArgs); updateErr != nil {
-			resputil.Error(c, fmt.Sprintf("failed to persist confirmation payload: %v", updateErr), resputil.NotSpecified)
+			agentInternalError(c, fmt.Sprintf("failed to persist confirmation payload: %v", updateErr))
 			return
 		}
 	}
@@ -372,7 +704,7 @@ func (mgr *AgentMgr) ConfirmToolExecution(c *gin.Context) {
 		resultBytes,
 		&confirmed,
 	); updateErr != nil {
-		resputil.Error(c, fmt.Sprintf("failed to update pending action: %v", updateErr), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to update pending action: %v", updateErr))
 		return
 	}
 	recordAgentMutationOperationLog(
@@ -418,7 +750,7 @@ func normalizePythonLocalWriteOutcome(payload map[string]any) (any, error) {
 					message = "python local write failed"
 				}
 				result["error"] = message
-				return result, fmt.Errorf("%s", message)
+				return result, bizerr.Internal.ServiceError.New(message)
 			}
 			return result, nil
 		default:
@@ -430,7 +762,7 @@ func normalizePythonLocalWriteOutcome(payload map[string]any) (any, error) {
 					"error":   message,
 					"details": rawResult,
 					"_audit":  map[string]any{"execution_backend": "python_local"},
-				}, fmt.Errorf("%s", message)
+				}, bizerr.Internal.ServiceError.New(message)
 			}
 			return map[string]any{
 				"result": rawResult,
@@ -446,7 +778,7 @@ func normalizePythonLocalWriteOutcome(payload map[string]any) (any, error) {
 		return map[string]any{
 			"error":  message,
 			"_audit": map[string]any{"execution_backend": "python_local"},
-		}, fmt.Errorf("%s", message)
+		}, bizerr.Internal.ServiceError.New(message)
 	}
 
 	return map[string]any{
@@ -464,8 +796,18 @@ func (mgr *AgentMgr) ListSessions(c *gin.Context) {
 	token := util.GetToken(c)
 	sessions, err := mgr.agentService.ListSessions(c.Request.Context(), token.UserID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list sessions: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to list sessions: %v", err))
 		return
+	}
+	if rawSurface := strings.TrimSpace(c.Query("surface")); rawSurface != "" {
+		surface := normalizeAgentSurface(rawSurface)
+		filtered := make([]*model.AgentSession, 0, len(sessions))
+		for _, session := range sessions {
+			if agentSessionMatchesSurface(session, surface) {
+				filtered = append(filtered, session)
+			}
+		}
+		sessions = filtered
 	}
 	resputil.Success(c, sessions)
 }
@@ -482,32 +824,32 @@ func (mgr *AgentMgr) ListSessions(c *gin.Context) {
 func (mgr *AgentMgr) UpdateSessionPin(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	var req AgentSessionPinRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 
 	token := util.GetToken(c)
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 	if err := mgr.agentService.UpdateSessionPinned(c.Request.Context(), sessionID, req.Pinned); err != nil {
 		if errors.Is(err, service.ErrAgentSessionPinningUnavailable) {
-			resputil.Error(c, "session pinning requires a completed database migration", resputil.NotSpecified)
+			agentInternalError(c, "session pinning requires a completed database migration")
 			return
 		}
-		resputil.Error(c, fmt.Sprintf("failed to update session pin: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to update session pin: %v", err))
 		return
 	}
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+		agentNotFound(c, "session not found")
 		return
 	}
 	resputil.Success(c, session)
@@ -525,28 +867,28 @@ func (mgr *AgentMgr) UpdateSessionPin(c *gin.Context) {
 func (mgr *AgentMgr) UpdateSessionTitle(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	var req AgentSessionTitleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 
 	token := util.GetToken(c)
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 	if err := mgr.agentService.UpdateSessionTitle(c.Request.Context(), sessionID, req.Title); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("failed to update session title: %v", err))
+		agentBadRequest(c, fmt.Sprintf("failed to update session title: %v", err))
 		return
 	}
 	session, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusNotFound, "session not found", resputil.NotSpecified)
+		agentNotFound(c, "session not found")
 		return
 	}
 	resputil.Success(c, session)
@@ -562,17 +904,17 @@ func (mgr *AgentMgr) UpdateSessionTitle(c *gin.Context) {
 func (mgr *AgentMgr) DeleteSession(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	token := util.GetToken(c)
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 	if err := mgr.agentService.DeleteSession(c.Request.Context(), sessionID); err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to delete session: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to delete session: %v", err))
 		return
 	}
 	resputil.Success(c, "ok")
@@ -588,6 +930,24 @@ func (mgr *AgentMgr) GetAgentConfigSummary(c *gin.Context) {
 	summary := AgentConfigSummary{
 		DefaultOrchestrationMode: "single_agent",
 		AvailableModes:           []string{"single_agent", "multi_agent"},
+	}
+	if mgr.configService != nil {
+		if llmStatus, err := mgr.configService.GetLLMConfigStatus(c.Request.Context()); err == nil && llmStatus != nil {
+			llmSummary := &AgentLLMConfigSummary{
+				Source:      llmStatus.Source,
+				UsingConfig: llmStatus.UsingConfig,
+				Complete:    llmStatus.Complete,
+				HasAPIKey:   llmStatus.HasAPIKey,
+			}
+			if llmStatus.Config != nil {
+				llmSummary.BaseURL = strings.TrimSpace(llmStatus.Config.BaseURL)
+				llmSummary.Model = strings.TrimSpace(llmStatus.Config.ModelName)
+			}
+			if !llmStatus.UsingConfig {
+				llmSummary.FallbackNote = "平台 LLM 配置不完整，Agent 不会使用 crater-agent 本地 llm-clients.json 兜底；请在平台设置中配置 BaseURL、Model 和 API Key。"
+			}
+			summary.LLM = llmSummary
+		}
 	}
 	agentReq, err := http.NewRequestWithContext(
 		c.Request.Context(),
@@ -627,25 +987,25 @@ func (mgr *AgentMgr) GetAgentConfigSummary(c *gin.Context) {
 func (mgr *AgentMgr) HandleParameterUpdate(c *gin.Context) {
 	var payload map[string]any
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		agentBadRequest(c, err.Error())
 		return
 	}
 
 	token := util.GetToken(c)
 	sessionID, _ := payload["sessionId"].(string)
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to marshal payload: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to marshal payload: %v", err))
 		return
 	}
 
@@ -657,7 +1017,7 @@ func (mgr *AgentMgr) HandleParameterUpdate(c *gin.Context) {
 		bytes.NewReader(bodyBytes),
 	)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create agent request: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to create agent request: %v", err))
 		return
 	}
 	agentReq.Header.Set("Content-Type", "application/json")
@@ -667,19 +1027,19 @@ func (mgr *AgentMgr) HandleParameterUpdate(c *gin.Context) {
 
 	resp, err := mgr.httpClient.Do(agentReq)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("agent service unavailable: %v", err), resputil.ServiceError)
+		agentInternalError(c, fmt.Sprintf("agent service unavailable: %v", err))
 		return
 	}
 	defer resp.Body.Close()
 
 	var result any
 	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
-		resputil.Error(c, fmt.Sprintf("failed to decode agent response: %v", decodeErr), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to decode agent response: %v", decodeErr))
 		return
 	}
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		resputil.Error(c, fmt.Sprintf("agent service returned status %d", resp.StatusCode), resputil.ServiceError)
+		agentInternalError(c, fmt.Sprintf("agent service returned status %d", resp.StatusCode))
 		return
 	}
 
@@ -696,19 +1056,19 @@ func (mgr *AgentMgr) HandleParameterUpdate(c *gin.Context) {
 func (mgr *AgentMgr) GetSessionMessages(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	token := util.GetToken(c)
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 
 	messages, err := mgr.agentService.ListMessages(c.Request.Context(), sessionID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list messages: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to list messages: %v", err))
 		return
 	}
 	resputil.Success(c, messages)
@@ -724,19 +1084,19 @@ func (mgr *AgentMgr) GetSessionMessages(c *gin.Context) {
 func (mgr *AgentMgr) GetSessionToolCalls(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	token := util.GetToken(c)
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 
 	toolCalls, err := mgr.agentService.ListToolCalls(c.Request.Context(), sessionID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list tool calls: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to list tool calls: %v", err))
 		return
 	}
 	resputil.Success(c, toolCalls)
@@ -752,19 +1112,19 @@ func (mgr *AgentMgr) GetSessionToolCalls(c *gin.Context) {
 func (mgr *AgentMgr) GetSessionTurns(c *gin.Context) {
 	sessionID := c.Param("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		agentBadRequest(c, "sessionId is required")
 		return
 	}
 
 	token := util.GetToken(c)
 	if _, err := mgr.agentService.GetOwnedSession(c.Request.Context(), sessionID, token.UserID); err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "session not found", resputil.TokenInvalid)
+		agentForbidden(c, "session not found")
 		return
 	}
 
 	turns, err := mgr.agentService.ListTurns(c.Request.Context(), sessionID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list turns: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to list turns: %v", err))
 		return
 	}
 	resputil.Success(c, turns)
@@ -780,24 +1140,24 @@ func (mgr *AgentMgr) GetSessionTurns(c *gin.Context) {
 func (mgr *AgentMgr) GetTurnEvents(c *gin.Context) {
 	turnID := c.Param("turnId")
 	if turnID == "" {
-		resputil.BadRequestError(c, "turnId is required")
+		agentBadRequest(c, "turnId is required")
 		return
 	}
 
 	token := util.GetToken(c)
 	turn, err := mgr.agentService.GetTurn(c.Request.Context(), turnID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusNotFound, "turn not found", resputil.NotSpecified)
+		agentNotFound(c, "turn not found")
 		return
 	}
 	_, err = mgr.agentService.GetOwnedSession(c.Request.Context(), turn.SessionID, token.UserID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "turn not found", resputil.TokenInvalid)
+		agentForbidden(c, "turn not found")
 		return
 	}
 	events, err := mgr.agentService.ListRunEvents(c.Request.Context(), turnID)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list turn events: %v", err), resputil.NotSpecified)
+		agentInternalError(c, fmt.Sprintf("failed to list turn events: %v", err))
 		return
 	}
 	resputil.Success(c, events)

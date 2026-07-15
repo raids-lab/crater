@@ -422,8 +422,6 @@ definitions:
       data: {}
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod:
     properties:
@@ -435,8 +433,6 @@ definitions:
           $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod'
         type: array
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_AccountResp:
@@ -450,8 +446,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp:
     properties:
@@ -464,20 +458,17 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_FailureStat:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         items:
           $ref: '#/definitions/internal_handler.FailureStat'
         type: array
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo:
@@ -491,8 +482,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
     properties:
@@ -505,8 +494,6 @@ definitions:
         type: array
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
@@ -516,8 +503,6 @@ definitions:
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp:
@@ -529,8 +514,6 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp
   : properties:
@@ -541,29 +524,25 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentAuditSessionListItem:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListItem'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentAuditSessionListResult:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentAuditSessionListResult'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult:
@@ -575,8 +554,6 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_ClusterNodeDetail:
     properties:
@@ -586,8 +563,6 @@ definitions:
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_crclient_GPUInfo:
@@ -599,8 +574,6 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.GPUInfo'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp:
     properties:
@@ -610,8 +583,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.AdjustUserExtraBalanceResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
@@ -623,8 +594,6 @@ definitions:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp:
     properties:
@@ -635,18 +604,15 @@ definitions:
         $ref: '#/definitions/internal_handler.AuthModeResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/internal_handler.ChatResponse'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CheckResp:
@@ -658,8 +624,6 @@ definitions:
         $ref: '#/definitions/internal_handler.CheckResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DeleteProjectResp:
     properties:
@@ -670,18 +634,15 @@ definitions:
         $ref: '#/definitions/internal_handler.DeleteProjectResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DiagnosisResp:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/internal_handler.DiagnosisResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_GpuAnalysisStatusResp:
@@ -693,29 +654,25 @@ definitions:
         $ref: '#/definitions/internal_handler.GpuAnalysisStatusResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_HealthOverviewResp:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/internal_handler.HealthOverviewResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobContextResp:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/internal_handler.JobContextResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_JobResourceSummaryResp:
@@ -727,8 +684,6 @@ definitions:
         $ref: '#/definitions/internal_handler.JobResourceSummaryResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LLMConfigResp:
     properties:
@@ -738,8 +693,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.LLMConfigResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_LoginResp:
@@ -751,8 +704,6 @@ definitions:
         $ref: '#/definitions/internal_handler.LoginResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp:
     properties:
@@ -762,8 +713,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.ModelDownloadResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeMark:
@@ -775,8 +724,6 @@ definitions:
         $ref: '#/definitions/internal_handler.NodeMark'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp:
     properties:
@@ -786,8 +733,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.PrequeueConfigResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp:
@@ -799,8 +744,6 @@ definitions:
         $ref: '#/definitions/internal_handler.PrequeueFeatureStatusResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
     properties:
@@ -810,8 +753,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.ProjectCreateResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PutUserInProjectResp:
@@ -823,8 +764,6 @@ definitions:
         $ref: '#/definitions/internal_handler.PutUserInProjectResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaConfigItemResp:
     properties:
@@ -834,8 +773,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.QueueQuotaConfigItemResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_QueueQuotaResp:
@@ -847,8 +784,6 @@ definitions:
         $ref: '#/definitions/internal_handler.QueueQuotaResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TokenReq:
     properties:
@@ -858,8 +793,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler.TokenReq'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_TriggerAllJobsAnalysisResponse:
@@ -871,8 +804,6 @@ definitions:
         $ref: '#/definitions/internal_handler.TriggerAllJobsAnalysisResponse'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserDetailResp:
     properties:
@@ -883,29 +814,25 @@ definitions:
         $ref: '#/definitions/internal_handler.UserDetailResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentConfigSummary:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/internal_handler_agent.AgentConfigSummary'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_agent_AgentToolResponse:
     properties:
       code:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.ErrorCode'
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
       data:
         $ref: '#/definitions/internal_handler_agent.AgentToolResponse'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress:
@@ -917,8 +844,6 @@ definitions:
         $ref: '#/definitions/internal_handler_tool.PodIngress'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngressResp:
     properties:
@@ -928,8 +853,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler_tool.PodIngressResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeport:
@@ -941,8 +864,6 @@ definitions:
         $ref: '#/definitions/internal_handler_tool.PodNodeport'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodNodeportResp:
     properties:
@@ -952,8 +873,6 @@ definitions:
       data:
         $ref: '#/definitions/internal_handler_tool.PodNodeportResp'
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp:
@@ -965,8 +884,6 @@ definitions:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-map_string_string:
     properties:
@@ -977,8 +894,6 @@ definitions:
         $ref: '#/definitions/map_string_string'
       msg:
         type: string
-      msgKey:
-        type: string
     type: object
   github_com_raids-lab_crater_internal_resputil.Response-string:
     properties:
@@ -988,8 +903,6 @@ definitions:
       data:
         type: string
       msg:
-        type: string
-      msgKey:
         type: string
     type: object
   github_com_raids-lab_crater_internal_service.AgentAuditSessionListItem:
@@ -2369,6 +2282,27 @@ definitions:
     - datasetID
     - userID
     type: object
+  internal_handler_agent.AgentAskRequest:
+    properties:
+      clientContext:
+        items:
+          type: integer
+        type: array
+      jobName:
+        type: string
+      message:
+        type: string
+      pageContext:
+        items:
+          type: integer
+        type: array
+      requestId:
+        type: string
+      sessionId:
+        type: string
+    required:
+    - message
+    type: object
   internal_handler_agent.AgentChatRequest:
     properties:
       clientContext:
@@ -2398,6 +2332,8 @@ definitions:
         type: array
       defaultOrchestrationMode:
         type: string
+      llm:
+        $ref: '#/definitions/internal_handler_agent.AgentLLMConfigSummary'
     type: object
   internal_handler_agent.AgentInternalContext:
     properties:
@@ -2407,6 +2343,23 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  internal_handler_agent.AgentLLMConfigSummary:
+    properties:
+      baseUrl:
+        type: string
+      complete:
+        type: boolean
+      fallbackNote:
+        type: string
+      hasApiKey:
+        type: boolean
+      model:
+        type: string
+      source:
+        type: string
+      usingConfig:
+        type: boolean
     type: object
   internal_handler_agent.AgentResumeRequest:
     properties:
@@ -2429,6 +2382,10 @@ definitions:
     type: object
   internal_handler_agent.AgentToolConfirmation:
     properties:
+      affected_resources:
+        items:
+          type: string
+        type: array
       confirm_id:
         type: string
       description:
@@ -2436,6 +2393,10 @@ definitions:
       form:
         $ref: '#/definitions/internal_handler_agent.AgentToolForm'
       interaction:
+        type: string
+      permission_explanation:
+        type: string
+      risk_explanation:
         type: string
       risk_level:
         type: string
@@ -3938,6 +3899,25 @@ paths:
       summary: LLM chat for AIOps
       tags:
       - aiops
+  /api/v1/admin/aiops/llmchat/stream:
+    post:
+      consumes:
+      - application/json
+      description: Chat with AIOps assistant in LLM mode and stream model deltas via
+        SSE.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Streaming LLM chat for AIOps
+      tags:
+      - aiops
   /api/v1/admin/diagnostics/failure-types/top:
     get:
       description: Get aggregated statistics of the most common failure types for
@@ -3961,6 +3941,25 @@ paths:
       summary: Get top failure types (admin)
       tags:
       - diagnostics
+  /api/v1/agent/ask/stream:
+    post:
+      consumes:
+      - application/json
+      description: Create or continue an agent chat session and answer with the configured
+        LLM without tool execution.
+      parameters:
+      - description: Ask request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_agent.AgentAskRequest'
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Ask-only chat (SSE)
+      tags:
+      - agent
   /api/v1/agent/chat:
     post:
       consumes:
@@ -4379,6 +4378,25 @@ paths:
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ChatResponse'
       summary: LLM chat for AIOps
+      tags:
+      - aiops
+  /api/v1/aiops/llmchat/stream:
+    post:
+      consumes:
+      - application/json
+      description: Chat with AIOps assistant in LLM mode and stream model deltas via
+        SSE.
+      parameters:
+      - description: Chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ChatRequest'
+      produces:
+      - text/event-stream
+      responses: {}
+      summary: Streaming LLM chat for AIOps
       tags:
       - aiops
   /api/v1/diagnostics/context/{name}:

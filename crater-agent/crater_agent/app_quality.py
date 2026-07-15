@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException
 from pydantic import BaseModel
 
 from crater_agent.config import settings
+from crater_agent.llm.client import reset_runtime_llm_client_configs, set_runtime_llm_client_configs
 from crater_agent.quality.analyzer import QualityAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ class FeedbackTriggerRequest(BaseModel):
     rating: Optional[int] = None
     dialogue_model_role: Optional[str] = None
     task_model_role: Optional[str] = None
+    llm_client_config: Optional[dict[str, Any]] = None
 
 
 class ManualTriggerRequest(BaseModel):
@@ -41,6 +43,20 @@ class ManualTriggerRequest(BaseModel):
     eval_type: str = "full"
     dialogue_model_role: Optional[str] = None
     task_model_role: Optional[str] = None
+    llm_client_config: Optional[dict[str, Any]] = None
+
+
+async def _run_quality_analysis_with_llm_config(
+    analyzer: QualityAnalyzer,
+    *,
+    llm_client_config: dict[str, Any] | None = None,
+    **kwargs: Any,
+) -> None:
+    runtime_token = set_runtime_llm_client_configs(llm_client_config)
+    try:
+        await analyzer.analyze(**kwargs)
+    finally:
+        reset_runtime_llm_client_configs(runtime_token)
 
 
 @router.post("/eval/quality/feedback")
@@ -55,7 +71,8 @@ async def trigger_quality_eval_from_feedback(
 
     analyzer = _get_analyzer()
     background_tasks.add_task(
-        analyzer.analyze,
+        _run_quality_analysis_with_llm_config,
+        analyzer,
         eval_id=req.eval_id,
         session_id=req.session_id,
         turn_id=req.turn_id,
@@ -66,6 +83,7 @@ async def trigger_quality_eval_from_feedback(
         feedback_id=req.feedback_id,
         dialogue_model_role=req.dialogue_model_role,
         task_model_role=req.task_model_role,
+        llm_client_config=req.llm_client_config,
     )
     return {"status": "accepted"}
 
@@ -84,7 +102,8 @@ async def trigger_quality_eval_manual(
     eval_id = req.eval_id or 0
     analyzer = _get_analyzer()
     background_tasks.add_task(
-        analyzer.analyze,
+        _run_quality_analysis_with_llm_config,
+        analyzer,
         eval_id=eval_id,
         session_id=req.session_id,
         turn_id=req.turn_id,
@@ -93,5 +112,6 @@ async def trigger_quality_eval_manual(
         trigger_source="manual",
         dialogue_model_role=req.dialogue_model_role,
         task_model_role=req.task_model_role,
+        llm_client_config=req.llm_client_config,
     )
     return {"status": "accepted", "session_id": req.session_id}

@@ -3,7 +3,8 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { Activity, AlertCircle, Calendar, Clock, Info, TrendingUp } from 'lucide-react'
+import { Activity, AlertCircle, Calendar, Clock, TrendingUp } from 'lucide-react'
+import { ReactNode } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -29,7 +30,7 @@ const TIME_RANGES = [
   { value: '0', labelKey: 'aiops.time.all' },
 ]
 
-export function HealthOverviewAdmin() {
+export function HealthOverviewAdmin({ actions }: { actions?: ReactNode }) {
   const { t } = useTranslation()
   const [timeRange, setTimeRange] = useState('7')
   const navigate = useNavigate()
@@ -91,8 +92,9 @@ export function HealthOverviewAdmin() {
 
   return (
     <div className="space-y-4">
-      <PageTitle title={t('aiops.page.adminTitle')} description={t('aiops.page.adminDesc')}>
+      <PageTitle title={t('aiops.page.adminTitle')}>
         <div className="flex items-center gap-2">
+          {actions}
           <span className="bg-primary/10 text-primary rounded px-2 py-1 text-xs font-medium">
             {t('aiops.page.adminBadge')}
           </span>
@@ -112,17 +114,8 @@ export function HealthOverviewAdmin() {
         </div>
       </PageTitle>
 
-      {/* Info Alert */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>{t('aiops.common.aboutPage')}</AlertTitle>
-        <AlertDescription>
-          {t('aiops.page.adminAbout', { timeRange: timeRangeLabel })}
-        </AlertDescription>
-      </Alert>
-
       {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title={t('aiops.metric.totalJobs')}
           value={healthData?.totalJobs || 0}
@@ -156,71 +149,80 @@ export function HealthOverviewAdmin() {
         />
       </div>
 
-      {/* Failure Trend Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('aiops.chart.failureTrend')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {healthData && healthData.failureTrend && healthData.failureTrend.length > 0 ? (
-            <div className="overflow-x-auto">
-              <div className="flex h-[200px] min-w-max items-end gap-2 px-2">
-                {healthData.failureTrend.map((item) => {
-                  const maxCount = Math.max(...healthData.failureTrend.map((t) => t.count), 1)
-                  return (
-                    <div key={item.date} className="flex min-w-[40px] flex-col items-center gap-1">
+      <div className="grid gap-3 xl:grid-cols-2">
+        {/* Failure Trend Chart */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>{t('aiops.chart.failureTrend')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {healthData && healthData.failureTrend && healthData.failureTrend.length > 0 ? (
+              <div className="overflow-x-auto">
+                <div className="flex h-[180px] min-w-max items-end gap-2 px-2">
+                  {healthData.failureTrend.map((item) => {
+                    const maxCount = Math.max(...healthData.failureTrend.map((t) => t.count), 1)
+                    return (
                       <div
-                        className="bg-destructive w-full rounded-t"
-                        style={{
-                          height: `${(item.count / maxCount) * 160}px`,
-                          minHeight: '4px',
-                        }}
-                      />
-                      <div className="text-muted-foreground text-xs whitespace-nowrap">
-                        {item.date.slice(5)}
+                        key={item.date}
+                        className="flex min-w-[40px] flex-col items-center gap-1"
+                      >
+                        <div
+                          className="bg-destructive w-full rounded-t"
+                          style={{
+                            height: `${(item.count / maxCount) * 140}px`,
+                            minHeight: '4px',
+                          }}
+                        />
+                        <div className="text-muted-foreground text-xs whitespace-nowrap">
+                          {item.date.slice(5)}
+                        </div>
+                        <div className="text-xs font-medium">{item.count}</div>
                       </div>
-                      <div className="text-xs font-medium">{item.count}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="text-muted-foreground flex h-[200px] items-center justify-center">
-              {t('aiops.common.noData')}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Top Failure Reasons */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('aiops.chart.topReasons')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {healthData && healthData.topFailureReasons && healthData.topFailureReasons.length > 0 ? (
-            <div className="space-y-3">
-              {healthData.topFailureReasons.map((reason, index) => (
-                <div key={reason.reason} className="flex items-center gap-3">
-                  <div className="bg-primary/10 text-primary flex h-8 w-8 flex-none items-center justify-center rounded-full text-sm font-semibold">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">{translateReason(reason.reason, t)}</div>
-                    <div className="text-muted-foreground text-sm">{reason.reason}</div>
-                  </div>
-                  <div className="flex-none text-2xl font-bold">{reason.count}</div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-muted-foreground py-8 text-center">
-              {t('aiops.common.noFailedJobs')}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            ) : (
+              <div className="text-muted-foreground flex h-[180px] items-center justify-center">
+                {t('aiops.common.noData')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Failure Reasons */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>{t('aiops.chart.topReasons')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {healthData &&
+            healthData.topFailureReasons &&
+            healthData.topFailureReasons.length > 0 ? (
+              <div className="space-y-2">
+                {healthData.topFailureReasons.map((reason, index) => (
+                  <div key={reason.reason} className="flex items-center gap-3">
+                    <div className="bg-primary/10 text-primary flex h-8 w-8 flex-none items-center justify-center rounded-full text-sm font-semibold">
+                      {index + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">
+                        {translateReason(reason.reason, t)}
+                      </div>
+                      <div className="text-muted-foreground truncate text-sm">{reason.reason}</div>
+                    </div>
+                    <div className="flex-none text-2xl font-bold">{reason.count}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground py-8 text-center">
+                {t('aiops.common.noFailedJobs')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

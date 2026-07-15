@@ -318,6 +318,9 @@ func buildAgentCapabilitiesWithCatalog(
 ) map[string]any {
 	enabledSet := make(map[string]struct{}, len(agentUserTools)+len(agentAdminTools))
 	localCatalog := indexLocalToolCatalog(localCatalogEntries)
+	pageRoute, _ := page["route"].(string)
+	pageURL, _ := page["url"].(string)
+	pageScope := agentPageScopeForToken(token, page)
 	addTools := func(names ...string) {
 		for _, name := range names {
 			if name == "" {
@@ -327,16 +330,26 @@ func buildAgentCapabilitiesWithCatalog(
 		}
 	}
 
-	addTools(agentUserTools...)
-	if token.RolePlatform == model.RoleAdmin {
+	if pageScope == "admin" {
+		for _, toolName := range agentUserTools {
+			if isAgentConfirmTool(toolName) || isAgentAutoActionTool(toolName) {
+				continue
+			}
+			addTools(toolName)
+		}
 		addTools(agentAdminTools...)
+	} else {
+		addTools(agentUserTools...)
 	}
 	for _, entry := range localCatalogEntries {
 		name := strings.TrimSpace(entry.Name)
 		if name == "" {
 			continue
 		}
-		if entry.AdminOnly && token.RolePlatform != model.RoleAdmin {
+		if entry.AdminOnly && (token.RolePlatform != model.RoleAdmin || pageScope != "admin") {
+			continue
+		}
+		if pageScope == "admin" && !entry.AdminOnly && (isAgentConfirmTool(name) || isAgentAutoActionTool(name)) {
 			continue
 		}
 		addTools(name)
@@ -359,13 +372,6 @@ func buildAgentCapabilitiesWithCatalog(
 		if _, ok := agentConfirmToolSet[name]; ok {
 			confirmTools = append(confirmTools, name)
 		}
-	}
-
-	pageRoute, _ := page["route"].(string)
-	pageURL, _ := page["url"].(string)
-	pageScope := "user"
-	if token.RolePlatform == model.RoleAdmin && (strings.HasPrefix(pageRoute, "/admin") || strings.HasPrefix(pageURL, "/admin")) {
-		pageScope = "admin"
 	}
 
 	return map[string]any{

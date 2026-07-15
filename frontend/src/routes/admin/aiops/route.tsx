@@ -14,6 +14,7 @@ export const Route = createFileRoute('/admin/aiops')({
         },
       })
     }
+    throw redirect({ to: '/admin' })
   },
   component: RouteComponent,
 })

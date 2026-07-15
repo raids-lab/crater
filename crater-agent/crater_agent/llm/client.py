@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,43 @@ NO_AUTH_API_KEY_PLACEHOLDER = "sk-no-auth-required"
 
 # Load .env once at module level so api_key_env references can resolve
 _dotenv_cache: dict[str, str | None] | None = None
+_runtime_llm_clients: ContextVar[dict[str, Any] | None] = ContextVar(
+    "runtime_llm_clients",
+    default=None,
+)
+
+
+def get_runtime_llm_client_configs() -> dict[str, Any] | None:
+    return _runtime_llm_clients.get()
+
+
+def set_runtime_llm_client_configs(raw_clients: dict[str, Any] | None):
+    normalized = normalize_runtime_llm_client_configs(raw_clients)
+    return _runtime_llm_clients.set(normalized)
+
+
+def reset_runtime_llm_client_configs(token) -> None:
+    _runtime_llm_clients.reset(token)
+
+
+def normalize_runtime_llm_client_configs(raw_clients: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(raw_clients, dict):
+        return None
+    default = raw_clients.get("default")
+    if not isinstance(default, dict):
+        return None
+    return {
+        str(name): dict(config)
+        for name, config in raw_clients.items()
+        if isinstance(name, str) and isinstance(config, dict)
+    }
+
+
+def local_llm_config_fallback_enabled() -> bool:
+    """Return whether the agent may use its local llm-clients.json as a fallback."""
+
+    value = os.getenv("CRATER_AGENT_ALLOW_LOCAL_LLM_CONFIG_FALLBACK", "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
 
 
 def _load_dotenv() -> dict[str, str | None]:
@@ -120,7 +158,13 @@ class ModelClientFactory:
 
     def __init__(self, raw_clients: dict[str, Any] | None = None):
         if raw_clients is None:
-            raw_clients = settings.load_llm_client_configs()
+            raw_clients = get_runtime_llm_client_configs()
+            if raw_clients is None and local_llm_config_fallback_enabled():
+                raw_clients = settings.load_llm_client_configs()
+        if raw_clients is None:
+            raise ValueError(
+                "Platform LLM config is required; local llm-clients.json fallback is disabled"
+            )
         self._clients = normalize_client_map(raw_clients)
 
     @property

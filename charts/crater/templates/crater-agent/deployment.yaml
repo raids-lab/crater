@@ -1,0 +1,87 @@
+{{- if .Values.agent.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crater-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crater-agent
+spec:
+  replicas: {{ .Values.agent.replicaCount }}
+  selector:
+    matchLabels:
+      app: crater-agent
+  template:
+    metadata:
+      labels:
+        app: crater-agent
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/crater-agent/configmap.yaml") . | sha256sum }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      automountServiceAccountToken: false
+      containers:
+        - name: crater-agent-container
+          image: {{ .Values.images.agent.repository }}:{{ .Values.images.agent.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: CRATER_AGENT_CRATER_BACKEND_URL
+              value: http://crater-backend-svc
+            - name: CRATER_AGENT_CRATER_BACKEND_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: crater-agent-secret
+                  key: internal-token
+            - name: CRATER_AGENT_AGENT_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: crater-agent-secret
+                  key: internal-token
+            - name: CRATER_AGENT_DEFAULT_ORCHESTRATION_MODE
+              value: {{ .Values.agent.defaultOrchestrationMode | quote }}
+            - name: CRATER_AGENT_ALLOW_LOCAL_LLM_CONFIG_FALLBACK
+              value: {{ .Values.agent.allowLocalLLMConfigFallback | quote }}
+            - name: CRATER_AGENT_PLATFORM_RUNTIME_CONFIG_PATH
+              value: /etc/crater-agent/platform-runtime.yaml
+            - name: CRATER_AGENT_HOST
+              value: "0.0.0.0"
+            - name: CRATER_AGENT_PORT
+              value: {{ .Values.agent.port | quote }}
+            {{- with .Values.agent.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: {{ .Values.agent.port }}
+              name: http
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.agent.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.agent.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.agent.resources | nindent 12 }}
+          volumeMounts:
+            - name: agent-config
+              mountPath: /etc/crater-agent/platform-runtime.yaml
+              subPath: platform-runtime.yaml
+      volumes:
+        - name: agent-config
+          configMap:
+            name: crater-agent-config
+            items:
+              - key: platform-runtime.yaml
+                path: platform-runtime.yaml
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
+{{- end }}

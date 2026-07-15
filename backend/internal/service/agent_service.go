@@ -14,6 +14,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 )
 
 type toolCallAuditMetadata struct {
@@ -93,9 +94,10 @@ type AgentService struct {
 	db *gorm.DB
 }
 
-var ErrAgentSessionPinningUnavailable = errors.New(
+var ErrAgentSessionPinningUnavailable = bizerr.ServiceError.ServiceUnavailable.New(
 	"agent session pinning is unavailable until database migration completes",
 )
+var ErrAgentSessionDeleted = bizerr.NotFound.DataBaseNotFound.New("agent session was deleted")
 
 // NewAgentService creates a new AgentService.
 func NewAgentService() *AgentService {
@@ -142,7 +144,7 @@ func (s *AgentService) GetOwnedSession(ctx context.Context, sessionID string, us
 		return nil, err
 	}
 	if session.UserID != userID {
-		return nil, fmt.Errorf("session not found")
+		return nil, bizerr.NotFound.DataBaseNotFound.New("session not found")
 	}
 	return session, nil
 }
@@ -156,6 +158,14 @@ func (s *AgentService) GetOrCreateSession(ctx context.Context, sessionID string,
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, false, err
+	}
+	var deletedSession model.AgentSession
+	deletedErr := s.db.WithContext(ctx).Unscoped().Where("session_id = ?", sessionID).First(&deletedSession).Error
+	if deletedErr == nil && deletedSession.DeletedAt.Valid {
+		return nil, false, ErrAgentSessionDeleted
+	}
+	if deletedErr != nil && !errors.Is(deletedErr, gorm.ErrRecordNotFound) {
+		return nil, false, deletedErr
 	}
 	created, createErr := s.CreateSession(ctx, sessionID, userID, accountID, title, pageContext, "chat")
 	if createErr != nil {
@@ -193,7 +203,7 @@ func (s *AgentService) ListSessions(ctx context.Context, userID uint) ([]*model.
 func (s *AgentService) UpdateSessionTitle(ctx context.Context, sessionID string, title string) error {
 	title = strings.TrimSpace(title)
 	if title == "" {
-		return errors.New("title cannot be empty")
+		return bizerr.BadRequest.MissingParameter.New("title cannot be empty")
 	}
 	if runeTitle := []rune(title); len(runeTitle) > 100 {
 		title = string(runeTitle[:100]) + "…"
@@ -505,7 +515,9 @@ func (s *AgentService) LogToolCallAsync(
 
 // ── Feedback ────────────────────────────────────────────────────────────────
 
-var ErrFeedbackAlreadySubmitted = errors.New("feedback already submitted and cannot be modified")
+var ErrFeedbackAlreadySubmitted = bizerr.Conflict.ResourceStatusError.New(
+	"feedback already submitted and cannot be modified",
+)
 
 // UpsertFeedback creates or updates a draft feedback.
 // Returns the feedback record and a boolean indicating if it was newly created.

@@ -438,8 +438,16 @@ def load_platform_runtime_config() -> PlatformRuntimeConfig:
     backend_namespace_cfg = backend_payload.get("namespaces") or {}
     model_download_cfg = backend_payload.get("modelDownload") or {}
 
-    local_core_tools = set(_as_string_list(routing_cfg.get("localCoreTools"))) or set(DEFAULT_LOCAL_CORE_TOOLS)
-    local_write_tools = set(_as_string_list(routing_cfg.get("localWriteTools"))) or set(DEFAULT_LOCAL_WRITE_TOOLS)
+    local_core_tools = (
+        set(_as_string_list(routing_cfg.get("localCoreTools")))
+        if "localCoreTools" in routing_cfg
+        else set(DEFAULT_LOCAL_CORE_TOOLS)
+    )
+    local_write_tools = (
+        set(_as_string_list(routing_cfg.get("localWriteTools")))
+        if "localWriteTools" in routing_cfg
+        else set(DEFAULT_LOCAL_WRITE_TOOLS)
+    )
 
     allowed_domains = _as_string_list(web_cfg.get("allowedDomains"))
     if not allowed_domains:

@@ -52,6 +52,7 @@ class ApprovalEvalRequest(BaseModel):
     username: str = ""
     job_type: str = ""  # hint from Go, agent will verify via tool
     session_id: str = ""  # audit session for tool call logging
+    llm_client_config: dict[str, Any] | None = None
 
 
 class ApprovalEvalResponse(BaseModel):

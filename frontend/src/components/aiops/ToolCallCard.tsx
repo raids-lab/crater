@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
@@ -24,12 +23,12 @@ export function ToolCallCard({ toolName, args, status, resultSummary }: ToolCall
   const [resultOpen, setResultOpen] = useState(false)
 
   const hasArgs = Object.keys(args).length > 0
-  const hasResult = !!resultSummary
+  const hasResult = !!resultSummary?.trim()
 
   return (
     <Card
       className={cn(
-        'min-w-0 overflow-hidden border px-3 py-2 text-xs',
+        'min-w-0 gap-0 overflow-hidden border px-3 py-1.5 text-xs',
         status === 'error' && 'border-destructive/40 bg-destructive/5',
         status === 'cancelled' &&
           'border-slate-300 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/40',
@@ -39,7 +38,7 @@ export function ToolCallCard({ toolName, args, status, resultSummary }: ToolCall
       )}
     >
       {/* Header row */}
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1.5">
         {/* Status icon */}
         {status === 'executing' && (
           <Loader2 className="text-primary h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -75,51 +74,45 @@ export function ToolCallCard({ toolName, args, status, resultSummary }: ToolCall
         </Badge>
       </div>
 
-      {/* Args collapsible */}
-      {hasArgs && (
-        <Collapsible open={argsOpen} onOpenChange={setArgsOpen} className="mt-1.5">
+      <div className="mt-0.5 space-y-0.5">
+        {/* Args collapsible */}
+        <Collapsible open={argsOpen} onOpenChange={setArgsOpen}>
           <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground h-5 w-full justify-start gap-1 px-0 text-[10px]"
-            >
+            <button className="text-muted-foreground hover:text-foreground flex h-4 w-full items-center justify-start gap-1 rounded-sm px-0 text-[10px] leading-none transition-colors">
               <ChevronDown
                 className={cn('h-3 w-3 transition-transform', argsOpen && 'rotate-180')}
               />
               {t('aiops.agent.toolCall.args', { defaultValue: '参数' })}
-            </Button>
+            </button>
           </CollapsibleTrigger>
-          <CollapsibleContent>
-            <pre className="bg-background mt-1 max-h-32 max-w-full min-w-0 overflow-x-auto overflow-y-auto rounded p-2 font-mono text-[10px] [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-              {JSON.stringify(args, null, 2)}
-            </pre>
-          </CollapsibleContent>
+          {hasArgs && (
+            <CollapsibleContent>
+              <pre className="bg-background mt-0.5 max-h-28 max-w-full min-w-0 overflow-x-auto overflow-y-auto rounded p-2 font-mono text-[10px] [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                {JSON.stringify(args, null, 2)}
+              </pre>
+            </CollapsibleContent>
+          )}
         </Collapsible>
-      )}
 
-      {/* Result collapsible */}
-      {hasResult && (
-        <Collapsible open={resultOpen} onOpenChange={setResultOpen} className="mt-1">
+        {/* Result collapsible */}
+        <Collapsible open={resultOpen} onOpenChange={setResultOpen}>
           <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground h-5 w-full justify-start gap-1 px-0 text-[10px]"
-            >
+            <button className="text-muted-foreground hover:text-foreground flex h-4 w-full items-center justify-start gap-1 rounded-sm px-0 text-[10px] leading-none transition-colors">
               <ChevronDown
                 className={cn('h-3 w-3 transition-transform', resultOpen && 'rotate-180')}
               />
               {t('aiops.agent.toolCall.result', { defaultValue: '结果' })}
-            </Button>
+            </button>
           </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="bg-background mt-1 max-h-40 max-w-full min-w-0 overflow-x-auto overflow-y-auto rounded p-2 font-mono text-[10px] [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-              {resultSummary}
-            </div>
-          </CollapsibleContent>
+          {hasResult && (
+            <CollapsibleContent>
+              <div className="bg-background mt-0.5 max-h-36 max-w-full min-w-0 overflow-x-auto overflow-y-auto rounded p-2 font-mono text-[10px] [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                {resultSummary}
+              </div>
+            </CollapsibleContent>
+          )}
         </Collapsible>
-      )}
+      </div>
     </Card>
   )
 }

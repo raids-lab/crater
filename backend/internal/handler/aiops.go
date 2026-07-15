@@ -18,6 +18,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
@@ -46,14 +47,13 @@ const (
 	llmRequestTimeout    = 120 * time.Second
 	userIssueWarnPercent = 30.0
 	percentBase          = 100.0
+	dateFormatYYYYMMDD   = "2006-01-02"
 )
 
-var errJobNotOwned = errors.New("job does not belong to requester")
-
 type apiErrorDetails struct {
-	Code   resputil.ErrorCode `json:"code"`
-	MsgKey string             `json:"msgKey"`
-	Msg    string             `json:"msg"`
+	Code   bizerr.BizCode `json:"code"`
+	MsgKey string         `json:"msgKey"`
+	Msg    string         `json:"msg"`
 }
 
 //nolint:gochecknoinits // Handler managers are registered during package initialization.
@@ -87,6 +87,7 @@ func (mgr *AIOPsMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/health-overview", mgr.GetHealthOverview)
 	g.POST("/chat", mgr.ChatMessage)
 	g.POST("/llmchat", mgr.ChatMessageLLM)
+	g.POST("/llmchat/stream", mgr.ChatMessageLLMStream)
 	g.GET("/diagnose/:jobName", mgr.DiagnoseJob)
 }
 
@@ -94,6 +95,7 @@ func (mgr *AIOPsMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/health-overview", mgr.GetHealthOverviewAdmin)
 	g.POST("/chat", mgr.ChatMessage)
 	g.POST("/llmchat", mgr.ChatMessageLLM)
+	g.POST("/llmchat/stream", mgr.ChatMessageLLMStream)
 	g.GET("/diagnose/:jobName", mgr.DiagnoseJob)
 }
 
@@ -114,142 +116,49 @@ type HealthOverviewResp struct {
 	} `json:"topFailureReasons"`
 }
 
-// GetHealthOverview godoc
-// @Summary Get AIOps health overview
-// @Description Get job health overview for current user. days=0 means all time.
-// @Tags aiops
-// @Produce json
-// @Param days query int false "Lookback days (default 7, 0 means all time)"
-// @Success 200 {object} resputil.Response[HealthOverviewResp]
-// @Router /api/v1/aiops/health-overview [get]
-// GetHealthOverview returns health overview for current user
-//
-//nolint:gocyclo // This endpoint aggregates multiple query branches for a single response.
-func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
-	type QueryParams struct {
-		Days *int `form:"days"` // nil for default (7 days), 0 for all time, >0 for specific days
-	}
-	var req QueryParams
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	// Set default value if not provided
-	days := 7 // default to 7 days
-	if req.Days != nil {
-		days = *req.Days
-	}
-
-	token := util.GetToken(c)
+func BuildHealthOverview(
+	ctx context.Context,
+	token util.JWTMessage,
+	days int,
+	clusterScope bool,
+) (HealthOverviewResp, error) {
 	j := query.Job
-
 	now := time.Now()
 	var lookback time.Time
 
-	// Build query
-	baseQuery := j.WithContext(c).Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID))
-
-	// Add time filter if days > 0 (0 means all time, no filter)
+	baseQuery := j.WithContext(ctx)
+	if !clusterScope {
+		baseQuery = baseQuery.Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID))
+	}
 	if days > 0 {
 		lookback = now.AddDate(0, 0, -days)
 		baseQuery = baseQuery.Where(j.CreationTimestamp.Gte(lookback))
 	}
 
-	// Get all jobs in time range
 	allJobs, err := baseQuery.Find()
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
+		return HealthOverviewResp{}, err
 	}
 
-	resp := HealthOverviewResp{
-		TotalJobs: len(allJobs),
+	resp := buildHealthOverviewSummary(allJobs)
+	resp.FailureTrend = buildFailureTrend(allJobs, now, lookback, days)
+
+	failedQuery := j.WithContext(ctx).Where(j.Status.Eq(string(batch.Failed)))
+	if !clusterScope {
+		failedQuery = failedQuery.Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID))
 	}
-
-	// Count by status
-	statusCount := make(map[string]int)
-	for _, job := range allJobs {
-		statusCount[string(job.Status)]++
-	}
-
-	resp.FailedJobs = statusCount[string(batch.Failed)]
-	resp.PendingJobs = statusCount[string(batch.Pending)]
-	resp.RunningJobs = statusCount[string(batch.Running)]
-
-	if resp.TotalJobs > 0 {
-		resp.FailureRate = float64(resp.FailedJobs) / float64(resp.TotalJobs) * 100
-	}
-
-	// Get failure trend (group by date) - fill all dates in range
-	failureTrend := make(map[string]int)
-
-	// Determine date range for trend
-	var startDate, endDate time.Time
-	endDate = now
-	if days > 0 {
-		startDate = lookback
-	} else {
-		if len(allJobs) == 0 {
-			startDate = endDate
-		} else {
-			startDate = allJobs[0].CreationTimestamp
-			for i := 1; i < len(allJobs); i++ {
-				if allJobs[i].CreationTimestamp.Before(startDate) {
-					startDate = allJobs[i].CreationTimestamp
-				}
-			}
-		}
-	}
-
-	// Initialize all dates with 0
-	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-		failureTrend[dateStr] = 0
-	}
-
-	// Count failures by creation date (consistent with total jobs filter)
-	for _, job := range allJobs {
-		if job.Status == batch.Failed {
-			dateStr := job.CreationTimestamp.Format("2006-01-02")
-			if _, exists := failureTrend[dateStr]; exists {
-				failureTrend[dateStr]++
-			}
-		}
-	}
-
-	// Convert map to sorted slice
-	for date, count := range failureTrend {
-		resp.FailureTrend = append(resp.FailureTrend, struct {
-			Date  string `json:"date"`
-			Count int    `json:"count"`
-		}{Date: date, Count: count})
-	}
-	sort.Slice(resp.FailureTrend, func(i, j int) bool {
-		return resp.FailureTrend[i].Date < resp.FailureTrend[j].Date
-	})
-
-	// Get top failure reasons - use same time filter as total jobs (CreationTimestamp)
-	failedQuery := j.WithContext(c).
-		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).
-		Where(j.Status.Eq(string(batch.Failed)))
-
 	if days > 0 {
 		failedQuery = failedQuery.Where(j.CreationTimestamp.Gte(lookback))
 	}
-
 	failedJobs, failedErr := failedQuery.Find()
 	if failedErr != nil {
-		resputil.Error(c, failedErr.Error(), resputil.NotSpecified)
-		return
+		return HealthOverviewResp{}, failedErr
 	}
 
 	reasonCount := make(map[string]int)
 	for _, job := range failedJobs {
-		reason := CategorizeFailure(job).TypeName
-		reasonCount[reason]++
+		reasonCount[CategorizeFailure(job).TypeName]++
 	}
-
 	for reason, count := range reasonCount {
 		resp.TopFailureReasons = append(resp.TopFailureReasons, struct {
 			Reason string `json:"reason"`
@@ -262,8 +171,93 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 	if len(resp.TopFailureReasons) > topFailureReasonsLimit {
 		resp.TopFailureReasons = resp.TopFailureReasons[:topFailureReasonsLimit]
 	}
+	return resp, nil
+}
 
-	resputil.Success(c, resp)
+func buildHealthOverviewSummary(allJobs []*model.Job) HealthOverviewResp {
+	resp := HealthOverviewResp{TotalJobs: len(allJobs)}
+	statusCount := make(map[string]int)
+	for _, job := range allJobs {
+		statusCount[string(job.Status)]++
+	}
+
+	resp.FailedJobs = statusCount[string(batch.Failed)]
+	resp.PendingJobs = statusCount[string(batch.Pending)]
+	resp.RunningJobs = statusCount[string(batch.Running)]
+	if resp.TotalJobs > 0 {
+		resp.FailureRate = float64(resp.FailedJobs) / float64(resp.TotalJobs) * percentBase
+	}
+	return resp
+}
+
+func buildFailureTrend(
+	allJobs []*model.Job,
+	now time.Time,
+	lookback time.Time,
+	days int,
+) []struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+} {
+	failureTrend := make(map[string]int)
+	startDate := findFailureTrendStartDate(allJobs, now, lookback, days)
+	for d := startDate; !d.After(now); d = d.AddDate(0, 0, 1) {
+		failureTrend[d.Format(dateFormatYYYYMMDD)] = 0
+	}
+	for _, job := range allJobs {
+		if job.Status != batch.Failed {
+			continue
+		}
+		dateStr := job.CreationTimestamp.Format(dateFormatYYYYMMDD)
+		if _, exists := failureTrend[dateStr]; exists {
+			failureTrend[dateStr]++
+		}
+	}
+
+	trend := make([]struct {
+		Date  string `json:"date"`
+		Count int    `json:"count"`
+	}, 0, len(failureTrend))
+	for date, count := range failureTrend {
+		trend = append(trend, struct {
+			Date  string `json:"date"`
+			Count int    `json:"count"`
+		}{Date: date, Count: count})
+	}
+	sort.Slice(trend, func(i, j int) bool {
+		return trend[i].Date < trend[j].Date
+	})
+	return trend
+}
+
+func findFailureTrendStartDate(allJobs []*model.Job, now, lookback time.Time, days int) time.Time {
+	if days > 0 {
+		return lookback
+	}
+	if len(allJobs) == 0 {
+		return now
+	}
+
+	startDate := allJobs[0].CreationTimestamp
+	for i := 1; i < len(allJobs); i++ {
+		if allJobs[i].CreationTimestamp.Before(startDate) {
+			startDate = allJobs[i].CreationTimestamp
+		}
+	}
+	return startDate
+}
+
+// GetHealthOverview godoc
+// @Summary Get AIOps health overview
+// @Description Get job health overview for current user. days=0 means all time.
+// @Tags aiops
+// @Produce json
+// @Param days query int false "Lookback days (default 7, 0 means all time)"
+// @Success 200 {object} resputil.Response[HealthOverviewResp]
+// @Router /api/v1/aiops/health-overview [get]
+// GetHealthOverview returns health overview for current user
+func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
+	mgr.getHealthOverview(c, false)
 }
 
 // GetHealthOverviewAdmin godoc
@@ -275,142 +269,32 @@ func (mgr *AIOPsMgr) GetHealthOverview(c *gin.Context) {
 // @Success 200 {object} resputil.Response[HealthOverviewResp]
 // @Router /api/v1/admin/aiops/health-overview [get]
 // GetHealthOverviewAdmin returns health overview for all users (admin only)
-//
-//nolint:gocyclo // This endpoint mirrors user overview logic with admin-wide query scope.
 func (mgr *AIOPsMgr) GetHealthOverviewAdmin(c *gin.Context) {
-	type QueryParams struct {
+	mgr.getHealthOverview(c, true)
+}
+
+func (mgr *AIOPsMgr) getHealthOverview(c *gin.Context, clusterScope bool) {
+	type queryParams struct {
 		Days *int `form:"days"` // nil for default (7 days), 0 for all time, >0 for specific days
 	}
-	var req QueryParams
+	var req queryParams
 	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid health overview query"))
 		return
 	}
 
-	// Set default value if not provided
-	days := 7 // default to 7 days
+	days := 7
 	if req.Days != nil {
 		days = *req.Days
 	}
 
-	j := query.Job
-
-	now := time.Now()
-	var lookback time.Time
-
-	// Build query
-	baseQuery := j.WithContext(c)
-
-	// Add time filter if days > 0 (0 means all time, no filter)
-	if days > 0 {
-		lookback = now.AddDate(0, 0, -days)
-		baseQuery = baseQuery.Where(j.CreationTimestamp.Gte(lookback))
-	}
-
-	allJobs, err := baseQuery.Find()
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+	token := util.GetToken(c)
+	overviewResp, overviewErr := BuildHealthOverview(c.Request.Context(), token, days, clusterScope)
+	if overviewErr != nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(overviewErr, "failed to build health overview"))
 		return
 	}
-
-	resp := HealthOverviewResp{
-		TotalJobs: len(allJobs),
-	}
-
-	statusCount := make(map[string]int)
-	for _, job := range allJobs {
-		statusCount[string(job.Status)]++
-	}
-
-	resp.FailedJobs = statusCount[string(batch.Failed)]
-	resp.PendingJobs = statusCount[string(batch.Pending)]
-	resp.RunningJobs = statusCount[string(batch.Running)]
-
-	if resp.TotalJobs > 0 {
-		resp.FailureRate = float64(resp.FailedJobs) / float64(resp.TotalJobs) * 100
-	}
-
-	// Get failure trend (group by date) - fill all dates in range
-	failureTrend := make(map[string]int)
-
-	// Determine date range for trend
-	var startDate, endDate time.Time
-	endDate = now
-	if days > 0 {
-		startDate = lookback
-	} else {
-		if len(allJobs) == 0 {
-			startDate = endDate
-		} else {
-			startDate = allJobs[0].CreationTimestamp
-			for i := 1; i < len(allJobs); i++ {
-				if allJobs[i].CreationTimestamp.Before(startDate) {
-					startDate = allJobs[i].CreationTimestamp
-				}
-			}
-		}
-	}
-
-	// Initialize all dates with 0
-	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-		failureTrend[dateStr] = 0
-	}
-
-	// Count failures by creation date (consistent with total jobs filter)
-	for _, job := range allJobs {
-		if job.Status == batch.Failed {
-			dateStr := job.CreationTimestamp.Format("2006-01-02")
-			if _, exists := failureTrend[dateStr]; exists {
-				failureTrend[dateStr]++
-			}
-		}
-	}
-
-	// Convert map to sorted slice
-	for date, count := range failureTrend {
-		resp.FailureTrend = append(resp.FailureTrend, struct {
-			Date  string `json:"date"`
-			Count int    `json:"count"`
-		}{Date: date, Count: count})
-	}
-	sort.Slice(resp.FailureTrend, func(i, j int) bool {
-		return resp.FailureTrend[i].Date < resp.FailureTrend[j].Date
-	})
-
-	// Get top failure reasons - use same time filter as total jobs (CreationTimestamp)
-	failedQuery := j.WithContext(c).Where(j.Status.Eq(string(batch.Failed)))
-
-	if days > 0 {
-		failedQuery = failedQuery.Where(j.CreationTimestamp.Gte(lookback))
-	}
-
-	failedJobs, failedErr := failedQuery.Find()
-	if failedErr != nil {
-		resputil.Error(c, failedErr.Error(), resputil.NotSpecified)
-		return
-	}
-
-	reasonCount := make(map[string]int)
-	for _, job := range failedJobs {
-		reason := CategorizeFailure(job).TypeName
-		reasonCount[reason]++
-	}
-
-	for reason, count := range reasonCount {
-		resp.TopFailureReasons = append(resp.TopFailureReasons, struct {
-			Reason string `json:"reason"`
-			Count  int    `json:"count"`
-		}{Reason: reason, Count: count})
-	}
-	sort.Slice(resp.TopFailureReasons, func(i, j int) bool {
-		return resp.TopFailureReasons[i].Count > resp.TopFailureReasons[j].Count
-	})
-	if len(resp.TopFailureReasons) > topFailureReasonsLimit {
-		resp.TopFailureReasons = resp.TopFailureReasons[:topFailureReasonsLimit]
-	}
-
-	resputil.Success(c, resp)
+	resputil.Success(c, overviewResp)
 }
 
 // Diagnosis Response
@@ -444,7 +328,7 @@ func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 	}
 	var uri URI
 	if err := c.ShouldBindUri(&uri); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid diagnose job uri"))
 		return
 	}
 
@@ -452,7 +336,7 @@ func (mgr *AIOPsMgr) DiagnoseJob(c *gin.Context) {
 	job, err := mgr.findJobByInput(c, token, uri.JobName)
 	if err != nil {
 		lookupErr := classifyAIOPsLookupError(err)
-		resputil.ErrorWithKey(c, lookupErr.MsgKey, lookupErr.Msg, lookupErr.Code)
+		writeAIOPsErrorWithKey(c, lookupErr)
 		return
 	}
 
@@ -683,9 +567,9 @@ type ChatResponse struct {
 }
 
 func classifyAIOPsLookupError(err error) apiErrorDetails {
-	if errors.Is(err, errJobNotOwned) {
+	if errors.Is(err, bizerr.Forbidden.Base) {
 		return apiErrorDetails{
-			Code:   resputil.UserNotAllowed,
+			Code:   bizerr.Forbidden.PermissionDenied,
 			MsgKey: errorKeyAIOPsJobNotOwned,
 			Msg:    "The requested job does not belong to your account.",
 		}
@@ -693,23 +577,40 @@ func classifyAIOPsLookupError(err error) apiErrorDetails {
 	errMsg := err.Error()
 	if strings.Contains(errMsg, "未找到作业") {
 		return apiErrorDetails{
-			Code:   resputil.BusinessLogicError,
+			Code:   bizerr.BadRequest.ParameterError,
 			MsgKey: errorKeyAIOPsJobNotFound,
 			Msg:    "Job not found.",
 		}
 	}
 	if strings.Contains(errMsg, "无法唯一定位") {
 		return apiErrorDetails{
-			Code:   resputil.BusinessLogicError,
+			Code:   bizerr.BadRequest.ParameterError,
 			MsgKey: errorKeyAIOPsJobAmbiguous,
 			Msg:    "Multiple jobs matched the input. Please use a unique jobName.",
 		}
 	}
 	return apiErrorDetails{
-		Code:   resputil.ServiceError,
+		Code:   bizerr.Internal.ServiceError,
 		MsgKey: errorKeyAIOPsQueryFailed,
 		Msg:    "Failed to query job information.",
 	}
+}
+
+func writeAIOPsErrorWithKey(c *gin.Context, details apiErrorDetails) {
+	httpStatus := http.StatusInternalServerError
+	switch details.Code {
+	case bizerr.Forbidden.PermissionDenied:
+		httpStatus = http.StatusForbidden
+	case bizerr.BadRequest.ParameterError:
+		httpStatus = http.StatusBadRequest
+	}
+
+	c.JSON(httpStatus, gin.H{
+		"code":   details.Code,
+		"data":   nil,
+		"msg":    details.Msg,
+		"msgKey": details.MsgKey,
+	})
 }
 
 func containsExitCode(message, code string) bool {
@@ -762,7 +663,7 @@ func (mgr *AIOPsMgr) findJobByInput(c *gin.Context, token util.JWTMessage, jobNa
 	}
 	if !canAccessAllJobs(c, token) {
 		if total, totalErr := j.WithContext(c).Where(j.JobName.Eq(jobName)).Count(); totalErr == nil && total > 0 {
-			return nil, fmt.Errorf("%w: %s", errJobNotOwned, notOwnerMsg)
+			return nil, bizerr.Forbidden.PermissionDenied.New(notOwnerMsg)
 		}
 	}
 	qName := j.WithContext(c).Where(j.Name.Eq(jobName))
@@ -771,15 +672,17 @@ func (mgr *AIOPsMgr) findJobByInput(c *gin.Context, token util.JWTMessage, jobNa
 	}
 	count, countErr := qName.Count()
 	if countErr != nil {
-		return nil, fmt.Errorf("查询作业 \"%s\" 失败：%w", jobName, countErr)
+		return nil, bizerr.Internal.DatabaseError.Wrap(countErr, fmt.Sprintf("查询作业 %q 失败", jobName))
 	}
 	if count == 0 {
 		if !canAccessAllJobs(c, token) {
 			if totalByName, totalByNameErr := j.WithContext(c).Where(j.Name.Eq(jobName)).Count(); totalByNameErr == nil && totalByName > 0 {
-				return nil, fmt.Errorf("%w: %s", errJobNotOwned, notOwnerMsg)
+				return nil, bizerr.Forbidden.PermissionDenied.New(notOwnerMsg)
 			}
 		}
-		return nil, fmt.Errorf("未找到作业 \"%s\"。\n\n请检查：\n• 作业名是否正确\n• 建议使用作业详情路由中的 name 参数（即 jobName）", jobName)
+		return nil, bizerr.NotFound.DataBaseNotFound.New(
+			fmt.Sprintf("未找到作业 %q。\n\n请检查：\n• 作业名是否正确\n• 建议使用作业详情路由中的 name 参数（即 jobName）", jobName),
+		)
 	}
 	if count > 1 {
 		candidates, listErr := qName.Order(j.CreationTimestamp.Desc()).Limit(jobCandidatesLimit).Find()
@@ -788,32 +691,32 @@ func (mgr *AIOPsMgr) findJobByInput(c *gin.Context, token util.JWTMessage, jobNa
 			for i := range candidates {
 				names = append(names, candidates[i].JobName)
 			}
-			return nil, fmt.Errorf(
+			return nil, bizerr.BadRequest.ParameterError.New(fmt.Sprintf(
 				"找到 %d 个同名作业 %q，无法唯一定位。请改用作业详情路由里的 name 参数（即 jobName）进行查询，例如：\n• 作业:%s",
 				count,
 				jobName,
 				strings.Join(names, "\n• 作业:"),
-			)
+			))
 		}
 		return nil, err
 	}
 	job, err = qName.First()
 	if err != nil {
-		return nil, fmt.Errorf("查询作业 \"%s\" 失败：%w", jobName, err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, fmt.Sprintf("查询作业 %q 失败", jobName))
 	}
 	return job, nil
 }
 
 func (mgr *AIOPsMgr) llmChatCompletion(c *gin.Context, systemPrompt, userPrompt string) (string, error) {
 	if mgr.configService == nil {
-		return "", fmt.Errorf("LLM 配置服务未初始化")
+		return "", bizerr.Internal.ServiceError.New("LLM 配置服务未初始化")
 	}
 	cfg, err := mgr.configService.GetLLMConfig(c)
 	if err != nil {
 		return "", err
 	}
 	if strings.TrimSpace(cfg.BaseURL) == "" || strings.TrimSpace(cfg.ModelName) == "" {
-		return "", fmt.Errorf("LLM 配置不完整，请先在系统配置中设置 BaseURL 和 Model")
+		return "", bizerr.BadRequest.MissingParameter.New("LLM 配置不完整，请先在系统配置中设置 BaseURL 和 Model")
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), llmRequestTimeout)
 	defer cancel()
@@ -826,6 +729,51 @@ func (mgr *AIOPsMgr) llmChatCompletion(c *gin.Context, systemPrompt, userPrompt 
 		systemPrompt,
 		userPrompt,
 	)
+}
+
+func (mgr *AIOPsMgr) buildLLMChatPrompts(
+	c *gin.Context,
+	req ChatRequest,
+) (systemPrompt, userPrompt string, data map[string]any, err error) {
+	token := util.GetToken(c)
+	jobName := extractJobNameFromMessage(req.Message, req.JobName)
+	systemPrompt = strings.Join([]string{
+		"你是 Crater 智能运维助手。",
+		"请围绕 Crater 平台作业排障回答，重点结合：退出码、K8s 事件、作业状态、调度与资源配置。",
+		"回答要求：",
+		"1) 不要编造未提供的数据或日志；",
+		"2) 先给结论，再给依据，再给下一步操作；",
+		"3) 优先给用户可执行步骤，必要时标注需要管理员介入；",
+		"4) 对 Exit 1/127/137 等常见问题给出针对性排查路径；",
+		"5) 保持简洁，避免泛化空话。",
+	}, "\n")
+	userPrompt = req.Message
+	if jobName == "" {
+		return systemPrompt, userPrompt, nil, nil
+	}
+
+	job, err := mgr.findJobByInput(c, token, jobName)
+	if err != nil {
+		lookupErr := classifyAIOPsLookupError(err)
+		data := map[string]any{
+			"engine": "llm",
+			"error":  lookupErr,
+		}
+		if errors.Is(err, bizerr.Forbidden.Base) {
+			data["adminHint"] = true
+		}
+		return "", "", data, bizerr.BadRequest.ParameterError.Wrap(err, fmt.Sprintf("无法定位作业 %q", jobName))
+	}
+	diagnosis := PerformDiagnosis(job)
+	diagJSON, _ := json.Marshal(diagnosis)
+	userPrompt = fmt.Sprintf(
+		"用户问题：%s\n\n作业名：%s\n作业状态：%s\n机器诊断结果(JSON)：%s\n\n请基于以上信息给出结论、可能原因和下一步排查建议。",
+		req.Message,
+		job.JobName,
+		job.Status,
+		string(diagJSON),
+	)
+	return systemPrompt, userPrompt, nil, nil
 }
 
 // ChatMessageLLM godoc
@@ -841,49 +789,17 @@ func (mgr *AIOPsMgr) llmChatCompletion(c *gin.Context, systemPrompt, userPrompt 
 func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid LLM chat request"))
 		return
 	}
-	token := util.GetToken(c)
-	jobName := extractJobNameFromMessage(req.Message, req.JobName)
-	systemPrompt := strings.Join([]string{
-		"你是 Crater 智能运维助手。",
-		"请围绕 Crater 平台作业排障回答，重点结合：退出码、K8s 事件、作业状态、调度与资源配置。",
-		"回答要求：",
-		"1) 不要编造未提供的数据或日志；",
-		"2) 先给结论，再给依据，再给下一步操作；",
-		"3) 优先给用户可执行步骤，必要时标注需要管理员介入；",
-		"4) 对 Exit 1/127/137 等常见问题给出针对性排查路径；",
-		"5) 保持简洁，避免泛化空话。",
-	}, "\n")
-	userPrompt := req.Message
-	if jobName != "" {
-		job, err := mgr.findJobByInput(c, token, jobName)
-		if err != nil {
-			lookupErr := classifyAIOPsLookupError(err)
-			data := map[string]any{
-				"engine": "llm",
-				"error":  lookupErr,
-			}
-			if errors.Is(err, errJobNotOwned) {
-				data["adminHint"] = true
-			}
-			resputil.Success(c, ChatResponse{
-				Message: fmt.Sprintf("无法定位作业 %q：%v", jobName, err),
-				Type:    chatResponseTypeText,
-				Data:    data,
-			})
-			return
-		}
-		diagnosis := PerformDiagnosis(job)
-		diagJSON, _ := json.Marshal(diagnosis)
-		userPrompt = fmt.Sprintf(
-			"用户问题：%s\n\n作业名：%s\n作业状态：%s\n机器诊断结果(JSON)：%s\n\n请基于以上信息给出结论、可能原因和下一步排查建议。",
-			req.Message,
-			job.JobName,
-			job.Status,
-			string(diagJSON),
-		)
+	systemPrompt, userPrompt, data, promptErr := mgr.buildLLMChatPrompts(c, req)
+	if promptErr != nil {
+		resputil.Success(c, ChatResponse{
+			Message: promptErr.Error(),
+			Type:    chatResponseTypeText,
+			Data:    data,
+		})
+		return
 	}
 	reply, err := mgr.llmChatCompletion(c, systemPrompt, userPrompt)
 	if err != nil {
@@ -906,6 +822,94 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 	})
 }
 
+func writeAIOPsSSEEvent(c *gin.Context, eventType string, payload any) error {
+	c.SSEvent(eventType, payload)
+	c.Writer.Flush()
+	return c.Request.Context().Err()
+}
+
+// ChatMessageLLMStream godoc
+// @Summary Streaming LLM chat for AIOps
+// @Description Chat with AIOps assistant in LLM mode and stream model deltas via SSE.
+// @Tags aiops
+// @Accept json
+// @Produce text/event-stream
+// @Param request body ChatRequest true "Chat request"
+// @Router /api/v1/aiops/llmchat/stream [post]
+// @Router /api/v1/admin/aiops/llmchat/stream [post]
+func (mgr *AIOPsMgr) ChatMessageLLMStream(c *gin.Context) {
+	var req ChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid streaming LLM chat request"))
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	systemPrompt, userPrompt, data, promptErr := mgr.buildLLMChatPrompts(c, req)
+	if promptErr != nil {
+		_ = writeAIOPsSSEEvent(c, "error", map[string]any{
+			"message": promptErr.Error(),
+			"data":    data,
+		})
+		_ = writeAIOPsSSEEvent(c, "done", map[string]any{})
+		return
+	}
+	if mgr.configService == nil {
+		_ = writeAIOPsSSEEvent(c, "error", map[string]any{"message": "LLM 配置服务未初始化"})
+		_ = writeAIOPsSSEEvent(c, "done", map[string]any{})
+		return
+	}
+	cfg, err := mgr.configService.GetLLMConfig(c)
+	if err != nil {
+		_ = writeAIOPsSSEEvent(c, "error", map[string]any{"message": err.Error()})
+		_ = writeAIOPsSSEEvent(c, "done", map[string]any{})
+		return
+	}
+	if strings.TrimSpace(cfg.BaseURL) == "" || strings.TrimSpace(cfg.ModelName) == "" {
+		_ = writeAIOPsSSEEvent(c, "error", map[string]any{
+			"message": "LLM 配置不完整，请先在系统配置中设置 BaseURL 和 Model",
+		})
+		_ = writeAIOPsSSEEvent(c, "done", map[string]any{})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), llmRequestTimeout)
+	defer cancel()
+	full, err := prompts.CallLLMTextStream(
+		mgr.httpClient,
+		ctx,
+		cfg.GetChatCompletionURL(),
+		cfg.APIKey,
+		cfg.ModelName,
+		systemPrompt,
+		userPrompt,
+		func(delta string) error {
+			return writeAIOPsSSEEvent(c, "delta", map[string]any{"delta": delta})
+		},
+	)
+	if err != nil {
+		if ctx.Err() != nil || c.Request.Context().Err() != nil {
+			return
+		}
+		_ = writeAIOPsSSEEvent(c, "error", map[string]any{
+			"message": fmt.Sprintf("LLM 模式调用失败：%v", err),
+		})
+		_ = writeAIOPsSSEEvent(c, "done", map[string]any{})
+		return
+	}
+	_ = writeAIOPsSSEEvent(c, "done", map[string]any{
+		"message": full,
+		"data": map[string]any{
+			"engine": "llm",
+			"mode":   "llmchat_stream",
+		},
+	})
+}
+
 // ChatMessage handles chatbot interactions with rule matching
 //
 // @Summary Rule-based chat for AIOps
@@ -922,7 +926,7 @@ func (mgr *AIOPsMgr) ChatMessageLLM(c *gin.Context) {
 func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 	var req ChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid aiops chat request"))
 		return
 	}
 
@@ -952,7 +956,7 @@ func (mgr *AIOPsMgr) ChatMessage(c *gin.Context) {
 			resp.Message = err.Error()
 			resp.Type = chatResponseTypeText
 			resp.Data = map[string]any{"error": lookupErr}
-			if errors.Is(err, errJobNotOwned) {
+			if errors.Is(err, bizerr.Forbidden.Base) {
 				resp.Data = map[string]any{"adminHint": true, "error": lookupErr}
 			}
 			resputil.Success(c, resp)

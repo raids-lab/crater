@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
 
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
@@ -51,7 +52,7 @@ type FeedbackSubmitRequest struct {
 func (mgr *AgentMgr) UpsertFeedback(c *gin.Context) {
 	var req FeedbackUpsertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid feedback upsert request"))
 		return
 	}
 
@@ -76,10 +77,10 @@ func (mgr *AgentMgr) UpsertFeedback(c *gin.Context) {
 	result, created, err := mgr.agentService.UpsertFeedback(c.Request.Context(), fb)
 	if err != nil {
 		if errors.Is(err, service.ErrFeedbackAlreadySubmitted) {
-			resputil.HTTPError(c, http.StatusConflict, "feedback already submitted", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("feedback already submitted"))
 			return
 		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to upsert feedback"))
 		return
 	}
 
@@ -100,7 +101,7 @@ func (mgr *AgentMgr) UpsertFeedback(c *gin.Context) {
 func (mgr *AgentMgr) SubmitFeedback(c *gin.Context) {
 	var req FeedbackSubmitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid feedback submit request"))
 		return
 	}
 
@@ -109,10 +110,10 @@ func (mgr *AgentMgr) SubmitFeedback(c *gin.Context) {
 	result, err := mgr.agentService.SubmitFeedback(c.Request.Context(), token.UserID, req.TargetType, req.TargetID)
 	if err != nil {
 		if errors.Is(err, service.ErrFeedbackAlreadySubmitted) {
-			resputil.HTTPError(c, http.StatusConflict, "feedback already submitted", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("feedback already submitted"))
 			return
 		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to submit feedback"))
 		return
 	}
 
@@ -131,7 +132,7 @@ func (mgr *AgentMgr) SubmitFeedback(c *gin.Context) {
 func (mgr *AgentMgr) ListFeedbacks(c *gin.Context) {
 	sessionID := c.Query("sessionId")
 	if sessionID == "" {
-		resputil.BadRequestError(c, "sessionId is required")
+		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("sessionId is required"))
 		return
 	}
 
@@ -139,7 +140,7 @@ func (mgr *AgentMgr) ListFeedbacks(c *gin.Context) {
 
 	feedbacks, err := mgr.agentService.ListFeedbacks(c.Request.Context(), sessionID, token.UserID)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to list feedbacks"))
 		return
 	}
 
@@ -158,7 +159,7 @@ func (mgr *AgentMgr) GetFeedbackStats(c *gin.Context) {
 	if fromStr := c.Query("from"); fromStr != "" {
 		t, err := time.Parse(time.RFC3339, fromStr)
 		if err != nil {
-			resputil.BadRequestError(c, "invalid 'from' timestamp")
+			resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid 'from' timestamp"))
 			return
 		}
 		from = &t
@@ -166,7 +167,7 @@ func (mgr *AgentMgr) GetFeedbackStats(c *gin.Context) {
 	if toStr := c.Query("to"); toStr != "" {
 		t, err := time.Parse(time.RFC3339, toStr)
 		if err != nil {
-			resputil.BadRequestError(c, "invalid 'to' timestamp")
+			resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid 'to' timestamp"))
 			return
 		}
 		to = &t
@@ -174,7 +175,7 @@ func (mgr *AgentMgr) GetFeedbackStats(c *gin.Context) {
 
 	stats, err := mgr.agentService.GetFeedbackStats(c.Request.Context(), from, to)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to get feedback stats"))
 		return
 	}
 
@@ -200,7 +201,7 @@ type FeedbackQuickSubmitRequest struct {
 func (mgr *AgentMgr) QuickSubmitFeedback(c *gin.Context) {
 	var req FeedbackQuickSubmitRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quick feedback submit request"))
 		return
 	}
 
@@ -224,7 +225,7 @@ func (mgr *AgentMgr) QuickSubmitFeedback(c *gin.Context) {
 
 	result, err := mgr.agentService.QuickSubmitFeedback(c.Request.Context(), fb)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to quick submit feedback"))
 		return
 	}
 
@@ -252,7 +253,7 @@ type FeedbackEnrichRequest struct {
 func (mgr *AgentMgr) EnrichFeedback(c *gin.Context) {
 	var req FeedbackEnrichRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid feedback enrich request"))
 		return
 	}
 
@@ -269,10 +270,10 @@ func (mgr *AgentMgr) EnrichFeedback(c *gin.Context) {
 	)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			resputil.HTTPError(c, http.StatusNotFound, "feedback not found", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.New("feedback not found"))
 			return
 		}
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to enrich feedback"))
 		return
 	}
 
@@ -301,13 +302,13 @@ type QualityEvalResultRequest struct {
 // @Router /internal/agent/quality-evals [post]
 func (mgr *AgentMgr) ReceiveQualityEvalResult(c *gin.Context) {
 	if !mgr.isInternalToolRequestAuthorized(c) {
-		resputil.HTTPError(c, http.StatusUnauthorized, "invalid internal agent token", resputil.TokenInvalid)
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("invalid internal agent token"))
 		return
 	}
 
 	var req QualityEvalResultRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid quality eval result request"))
 		return
 	}
 
@@ -330,7 +331,7 @@ func (mgr *AgentMgr) ReceiveQualityEvalResult(c *gin.Context) {
 		)
 	}
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to update quality eval result"))
 		return
 	}
 
@@ -357,7 +358,7 @@ func (mgr *AgentMgr) ListQualityEvals(c *gin.Context) {
 
 	evals, err := mgr.agentService.ListQualityEvals(c.Request.Context(), sessionID, triggerSource, limit)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to list quality evals"))
 		return
 	}
 
@@ -397,13 +398,14 @@ func (mgr *AgentMgr) triggerQualityEval(fb *model.AgentFeedback) {
 	}
 
 	payload := map[string]any{
-		"eval_id":     eval.ID,
-		"session_id":  eval.SessionID,
-		"turn_id":     eval.TurnID,
-		"eval_scope":  eval.EvalScope,
-		"eval_type":   eval.EvalType,
-		"feedback_id": fb.ID,
-		"rating":      fb.Rating,
+		"eval_id":           eval.ID,
+		"session_id":        eval.SessionID,
+		"turn_id":           eval.TurnID,
+		"eval_scope":        eval.EvalScope,
+		"eval_type":         eval.EvalType,
+		"feedback_id":       fb.ID,
+		"rating":            fb.Rating,
+		"llm_client_config": mgr.buildPythonAgentLLMClientConfig(context.Background()),
 	}
 	body, _ := json.Marshal(payload)
 

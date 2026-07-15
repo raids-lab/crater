@@ -11,6 +11,8 @@ import type { IResponse } from '../types'
 // Types
 // ──────────────────────────────────────────────
 
+export type AgentSurface = 'user' | 'admin'
+
 export interface AgentSSEEvent {
   event:
     | 'agent_run_started'
@@ -34,12 +36,14 @@ export interface AgentSSEEvent {
   data: unknown
 }
 
+export type AgentOrchestrationMode = 'single_agent' | 'multi_agent' | 'ask'
+
 export interface AgentSession {
   sessionId: string
   title: string
   source?: 'chat' | 'ops_audit' | 'system'
   messageCount: number
-  lastOrchestrationMode?: 'single_agent' | 'multi_agent'
+  lastOrchestrationMode?: AgentOrchestrationMode
   pinnedAt?: string | null
   createdAt: string
   updatedAt: string
@@ -50,7 +54,7 @@ export interface AgentTurn {
   turnId: string
   sessionId: string
   requestId?: string
-  orchestrationMode: 'single_agent' | 'multi_agent'
+  orchestrationMode: AgentOrchestrationMode
   rootAgentId?: string
   status: string
   finalMessageId?: number | null
@@ -148,11 +152,21 @@ export interface AgentChatRequest {
     jobStatus?: string
     nodeName?: string
     entryPoint?: 'default' | 'node_analysis'
+    surface?: AgentSurface
   }
   clientContext?: {
     locale?: string
     timezone?: string
   }
+}
+
+export interface AgentAskRequest {
+  sessionId: string | null
+  requestId?: string | null
+  message: string
+  jobName?: string
+  pageContext: AgentChatRequest['pageContext']
+  clientContext?: AgentChatRequest['clientContext']
 }
 
 export interface AgentResumeRequest {
@@ -254,6 +268,7 @@ export function connectAgentChat(
     jobStatus?: string
     nodeName?: string
     entryPoint?: 'default' | 'node_analysis'
+    surface?: AgentSurface
   },
   orchestrationMode: 'single_agent' | 'multi_agent',
   clientContext: { locale?: string; timezone?: string } | undefined,
@@ -398,6 +413,159 @@ export function connectAgentChat(
             // Silently ignore user-initiated aborts
             return
           }
+          onError(err instanceof Error ? err : new Error(String(err)))
+        }
+      }
+
+      await pump()
+    })
+    .catch((err) => {
+      if (err?.name === 'AbortError') return
+      onError(err instanceof Error ? err : new Error(String(err)))
+    })
+
+  return controller
+}
+
+export function connectAgentAskStream(
+  sessionId: string | null,
+  requestId: string,
+  message: string,
+  pageContext: AgentChatRequest['pageContext'],
+  clientContext: AgentChatRequest['clientContext'] | undefined,
+  jobName: string | undefined,
+  onEvent: (event: AgentSSEEvent) => void,
+  onError: (error: Error) => void,
+  onDone: () => void,
+  onSessionId?: (sessionId: string) => void
+): AbortController {
+  const controller = new AbortController()
+
+  const store = getDefaultStore()
+  const apiBase = store.get(configAPIBaseAtom)
+  const baseURL = `${apiBase ?? ''}/api`
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+  let doneDispatched = false
+
+  const dispatchDone = () => {
+    if (doneDispatched) return
+    doneDispatched = true
+    onDone()
+  }
+
+  const body: AgentAskRequest = {
+    sessionId,
+    requestId,
+    message,
+    jobName,
+    pageContext,
+    clientContext,
+  }
+
+  fetch(`${baseURL}/v1/agent/ask/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        let msg = `HTTP ${response.status}`
+        try {
+          const errBody = await response.json()
+          msg = errBody?.msg || errBody?.message || msg
+        } catch {
+          // ignore parse errors
+        }
+        onError(new Error(msg))
+        return
+      }
+
+      if (!response.body) {
+        onError(new Error('No response body for ask stream'))
+        return
+      }
+
+      const responseSessionId = response.headers.get('X-Agent-Session-ID')
+      if (responseSessionId) {
+        onSessionId?.(responseSessionId)
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      const processBuffer = () => {
+        const blocks = buffer.split('\n\n')
+        buffer = blocks.pop() ?? ''
+
+        for (const block of blocks) {
+          if (!block.trim()) continue
+          let eventType = 'message'
+          let dataStr = ''
+
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event:')) {
+              eventType = line.slice(6).trim()
+            } else if (line.startsWith('data:')) {
+              dataStr = line.slice(5).trim()
+            }
+          }
+
+          if (!dataStr) continue
+
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(dataStr)
+          } catch {
+            parsed = dataStr
+          }
+
+          const sseEvent: AgentSSEEvent = {
+            event: eventType as AgentSSEEvent['event'],
+            data: parsed,
+          }
+
+          if (sseEvent.event === 'done') {
+            dispatchDone()
+            return
+          }
+
+          if (sseEvent.event === 'error') {
+            const parsedObject =
+              typeof parsed === 'object' && parsed !== null
+                ? (parsed as { message?: string; msg?: string })
+                : null
+            const errorMsg =
+              typeof parsed === 'string'
+                ? parsed
+                : parsedObject?.message || parsedObject?.msg || 'ask error'
+            onError(new Error(errorMsg))
+            return
+          }
+
+          onEvent(sseEvent)
+        }
+      }
+
+      const pump = async (): Promise<void> => {
+        try {
+          const { done, value } = await reader.read()
+          if (done) {
+            if (buffer.trim()) {
+              processBuffer()
+            }
+            dispatchDone()
+            return
+          }
+          buffer += decoder.decode(value, { stream: true })
+          processBuffer()
+          return pump()
+        } catch (err) {
+          if ((err as Error)?.name === 'AbortError') return
           onError(err instanceof Error ? err : new Error(String(err)))
         }
       }
@@ -576,9 +744,12 @@ export const apiConfirmAction = (
   })
 
 /**
- * List all agent sessions for the current user.
+ * List agent sessions for the current user and current surface.
  */
-export const apiListSessions = () => apiV1Get<IResponse<AgentSession[]>>('agent/sessions')
+export const apiListSessions = (surface?: AgentSurface) =>
+  apiV1Get<IResponse<AgentSession[]>>('agent/sessions', {
+    searchParams: surface ? { surface } : undefined,
+  })
 
 export const apiPinSession = (sessionId: string, pinned: boolean) =>
   apiV1Put<IResponse<AgentSession>>(`agent/sessions/${encodeURIComponent(sessionId)}/pin`, {

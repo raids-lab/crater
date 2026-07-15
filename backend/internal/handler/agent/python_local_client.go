@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/raids-lab/crater/internal/bizerr"
 )
 
 const (
@@ -26,7 +27,7 @@ func cloneLocalToolCatalog(entries []agentLocalToolCatalogEntry) []agentLocalToo
 
 func (mgr *AgentMgr) getPythonLocalToolCatalog(ctx context.Context) ([]agentLocalToolCatalogEntry, error) {
 	if mgr == nil {
-		return nil, fmt.Errorf("agent manager is not configured")
+		return nil, bizerr.Internal.ServiceError.New("agent manager is not configured")
 	}
 
 	now := time.Now()
@@ -54,7 +55,7 @@ func (mgr *AgentMgr) getPythonLocalToolCatalog(ctx context.Context) ([]agentLoca
 func (mgr *AgentMgr) fetchPythonLocalToolCatalog(ctx context.Context) ([]agentLocalToolCatalogEntry, error) {
 	internalToken := mgr.getPythonAgentInternalToken()
 	if internalToken == "" {
-		return nil, fmt.Errorf("python agent internal token is not configured")
+		return nil, bizerr.Internal.ServiceError.New("python agent internal token is not configured")
 	}
 	reqCtx, cancel := context.WithTimeout(ctx, agentLocalToolCatalogTimeout)
 	defer cancel()
@@ -77,7 +78,7 @@ func (mgr *AgentMgr) fetchPythonLocalToolCatalog(ctx context.Context) ([]agentLo
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= http.StatusBadRequest {
-		return nil, fmt.Errorf("python agent returned status %d for local tool catalog", resp.StatusCode)
+		return nil, bizerr.BadGateway.BadGateway.New("python agent returned non-success status for local tool catalog")
 	}
 
 	var payload agentLocalToolCatalogResponse
@@ -93,7 +94,7 @@ func (mgr *AgentMgr) executePythonLocalWrite(
 ) (map[string]any, error) {
 	internalToken := mgr.getPythonAgentInternalToken()
 	if internalToken == "" {
-		return nil, fmt.Errorf("python agent internal token is not configured")
+		return nil, bizerr.Internal.ServiceError.New("python agent internal token is not configured")
 	}
 
 	payloadBytes, err := json.Marshal(reqBody)
@@ -122,7 +123,7 @@ func (mgr *AgentMgr) executePythonLocalWrite(
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= http.StatusBadRequest {
-		return nil, fmt.Errorf("python local write returned status %d", resp.StatusCode)
+		return nil, bizerr.BadGateway.BadGateway.New("python local write returned non-success status")
 	}
 
 	result := map[string]any{}

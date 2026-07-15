@@ -5,6 +5,7 @@ import {
   AlertCircle,
   CheckCircle,
   ChevronDown,
+  Copy,
   HelpCircle,
   History,
   Loader2,
@@ -12,8 +13,10 @@ import {
   Pencil,
   Pin,
   Plus,
+  RotateCcw,
   Send,
   Sparkles,
+  Square,
   Trash2,
   Users,
   X,
@@ -41,7 +44,14 @@ import { Card } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 
 import {
   apiDeleteSession,
@@ -55,6 +65,7 @@ import {
   apiParameterUpdate,
   apiPinSession,
   apiRenameSession,
+  connectAgentAskStream,
   connectAgentChat,
   connectAgentResume,
 } from '@/services/api/agent'
@@ -65,6 +76,7 @@ import type {
   AgentFeedback,
   AgentMessage,
   AgentSession,
+  AgentSurface,
   AgentToolCall,
   AgentTurn,
   BatchConfirmationPayload,
@@ -73,12 +85,7 @@ import type {
   ResourceSuggestionPayload,
 } from '@/services/api/agent'
 import type { AgentSSEEvent } from '@/services/api/agent'
-import {
-  apiAdminChatMessage,
-  apiAdminChatMessageLLM,
-  apiChatMessage,
-  apiChatMessageLLM,
-} from '@/services/api/aiops'
+import { apiAdminChatMessage, apiChatMessage } from '@/services/api/aiops'
 import type { IChatRequest, IChatResponse, IDiagnosis } from '@/services/api/aiops'
 
 import { cn } from '@/lib/utils'
@@ -96,6 +103,11 @@ import { ToolCallCard } from './ToolCallCard'
 
 const AGENT_INPUT_MAX_LENGTH = 4000
 const AGENT_LAST_SESSION_STORAGE_KEY = 'crater-agent-last-session-id'
+const CHAT_DRAWER_DEFAULT_WIDTH = 680
+const CHAT_DRAWER_MIN_WIDTH = 440
+const CHAT_DRAWER_MAX_WIDTH = 920
+const CHAT_INPUT_MAX_HEIGHT = 144
+const AGENT_COLLABORATION_MODE_ENABLED = false
 
 interface ChatMessage {
   id: string
@@ -103,10 +115,12 @@ interface ChatMessage {
   content: string
   type?: 'text' | 'diagnosis' | 'suggestion'
   data?: IChatResponse['data']
+  status?: 'cancelled'
   timestamp: Date
 }
 
 type AgentEntryPoint = 'default' | 'node_analysis'
+type ChatMode = 'llm' | 'agent'
 
 // ── Agent-mode: Two-layer conversation model ──────────────────────────────────
 
@@ -133,10 +147,10 @@ interface ConversationItem {
   /** For 'user' and 'message' kinds */
   text?: string
   requestId?: string
-  requestState?: 'running' | 'done' | 'awaiting_confirmation' | 'failed'
+  requestState?: 'running' | 'done' | 'awaiting_confirmation' | 'failed' | 'cancelled'
   requestError?: string
   requestSessionId?: string | null
-  requestOrchestrationMode?: 'single_agent' | 'multi_agent'
+  requestOrchestrationMode?: 'single_agent' | 'multi_agent' | 'ask'
   /** For 'thinking' — may be partial/streaming */
   thinkingContent?: string
   /** For 'timeline' — contains the MAS execution trace */
@@ -154,6 +168,10 @@ interface ConversationItem {
   confirmToolCallId?: string
   confirmAction?: string
   confirmDescription?: string
+  confirmRiskLevel?: string
+  confirmPermissionExplanation?: string
+  confirmRiskExplanation?: string
+  confirmAffectedResources?: string[]
   confirmInteraction?: string
   confirmForm?: AgentConfirmationForm
   retryRequestId?: string
@@ -184,6 +202,7 @@ interface AgentPendingRequest {
     jobStatus?: string
     nodeName?: string
     entryPoint?: AgentEntryPoint
+    surface?: AgentSurface
   }
   clientContext?: {
     locale?: string
@@ -232,12 +251,22 @@ interface AgentEventPayload {
   resultSummary?: string
   result?: unknown
   isError?: boolean
+  partial?: boolean
   sessionId?: string
+  feedbackTargetId?: string
   confirmId?: string
   confirm_id?: string
   action?: string
   tool_name?: string
   description?: string
+  riskLevel?: string
+  risk_level?: string
+  permissionExplanation?: string
+  permission_explanation?: string
+  riskExplanation?: string
+  risk_explanation?: string
+  affectedResources?: string[]
+  affected_resources?: string[]
   interaction?: string
   form?: AgentConfirmationForm
 }
@@ -282,6 +311,21 @@ function generateAgentRequestId() {
     return crypto.randomUUID()
   }
   return `agent-req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function resizeChatTextarea(textarea: HTMLTextAreaElement | null) {
+  if (!textarea) return
+  textarea.style.height = 'auto'
+  const nextHeight = Math.min(textarea.scrollHeight, CHAT_INPUT_MAX_HEIGHT)
+  textarea.style.height = `${nextHeight}px`
+  textarea.style.overflowY = textarea.scrollHeight > CHAT_INPUT_MAX_HEIGHT ? 'auto' : 'hidden'
+}
+
+function normalizeAgentOrchestrationMode(
+  mode: 'single_agent' | 'multi_agent' | 'ask' | undefined
+): 'single_agent' | 'multi_agent' {
+  if (!AGENT_COLLABORATION_MODE_ENABLED) return 'single_agent'
+  return mode === 'multi_agent' ? 'multi_agent' : 'single_agent'
 }
 
 function inferAgentEntryPoint(pathname: string): AgentEntryPoint {
@@ -670,6 +714,15 @@ function mapSessionHistoryToConversationItems(
           : `history-tool-${toolCall.id}`,
         confirmAction: toolCall.toolName,
         confirmDescription: (toolResult?.description as string) ?? `等待确认 ${toolCall.toolName}`,
+        confirmRiskLevel: (toolResult?.riskLevel as string) ?? (toolResult?.risk_level as string),
+        confirmPermissionExplanation:
+          (toolResult?.permissionExplanation as string) ??
+          (toolResult?.permission_explanation as string),
+        confirmRiskExplanation:
+          (toolResult?.riskExplanation as string) ?? (toolResult?.risk_explanation as string),
+        confirmAffectedResources:
+          (toolResult?.affectedResources as string[]) ??
+          (toolResult?.affected_resources as string[]),
         confirmInteraction: (toolResult?.interaction as string) ?? 'approval',
         confirmForm: (toolResult?.form as AgentConfirmationForm) ?? undefined,
         timestamp: new Date(new Date(toolCall.createdAt).getTime() + 1),
@@ -782,23 +835,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       id: 'top-issues',
       category: t('aiops.chat.prompt.category.topIssues'),
       prompts: [
-        { text: t('aiops.chat.prompt.exit1'), icon: '🐛', hint: t('aiops.chat.prompt.hint.exit1') },
-        {
-          text: t('aiops.chat.prompt.evicted'),
-          icon: '🔧',
-          hint: t('aiops.chat.prompt.hint.evicted'),
-        },
-        {
-          text: t('aiops.chat.prompt.mountFailed'),
-          icon: '💾',
-          hint: t('aiops.chat.prompt.hint.mountFailed'),
-        },
-        {
-          text: t('aiops.chat.prompt.exit127'),
-          icon: '⚙️',
-          hint: t('aiops.chat.prompt.hint.exit127'),
-        },
-        { text: t('aiops.chat.prompt.oom'), icon: '💥', hint: t('aiops.chat.prompt.hint.oom') },
+        { text: t('aiops.chat.prompt.exit1'), icon: '🐛' },
+        { text: t('aiops.chat.prompt.evicted'), icon: '🔧' },
+        { text: t('aiops.chat.prompt.mountFailed'), icon: '💾' },
+        { text: t('aiops.chat.prompt.exit127'), icon: '⚙️' },
+        { text: t('aiops.chat.prompt.oom'), icon: '💥' },
       ],
     },
     {
@@ -826,11 +867,22 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   ])
   const [input, setInput] = useState('')
   const [showHelp, setShowHelp] = useState(false)
-  const [chatMode, setChatMode] = useState<'rule' | 'llm' | 'agent'>('rule')
+  const [chatMode, setChatMode] = useState<ChatMode>('llm')
+  const [drawerWidth, setDrawerWidth] = useState(CHAT_DRAWER_DEFAULT_WIDTH)
+  const [llmStreaming, setLlmStreaming] = useState(false)
+  const [editingChatMessageId, setEditingChatMessageId] = useState<string | null>(null)
+  const [editingChatDraft, setEditingChatDraft] = useState('')
+  const [editingAgentMessageId, setEditingAgentMessageId] = useState<string | null>(null)
+  const [editingAgentDraft, setEditingAgentDraft] = useState('')
   const isAdminRoute =
     typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  const agentSurface: AgentSurface = isAdminRoute ? 'admin' : 'user'
+  const agentSessionStorageKey = `${AGENT_LAST_SESSION_STORAGE_KEY}:${agentSurface}`
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['top-issues'])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const chatAbortRef = useRef<AbortController | null>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
+  const agentInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   // ── Agent mode state ──────────────────────────────────────────────────────
   const [conversationItems, setConversationItems] = useState<ConversationItem[]>([])
@@ -879,19 +931,68 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   const currentTimelineIdRef = useRef<string | null>(null)
   const hasActiveAgentTask = agentStreaming || pendingConfirmIds.length > 0
 
+  const getDrawerMaxWidth = useCallback(() => {
+    if (typeof window === 'undefined') return CHAT_DRAWER_MAX_WIDTH
+    return Math.min(CHAT_DRAWER_MAX_WIDTH, Math.max(CHAT_DRAWER_MIN_WIDTH, window.innerWidth - 48))
+  }, [])
+
+  const clampDrawerWidth = useCallback(
+    (width: number) => Math.min(getDrawerMaxWidth(), Math.max(CHAT_DRAWER_MIN_WIDTH, width)),
+    [getDrawerMaxWidth]
+  )
+
+  const handleDrawerResizeStart = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) return
+      event.preventDefault()
+      event.stopPropagation()
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        setDrawerWidth(clampDrawerWidth(window.innerWidth - moveEvent.clientX))
+      }
+      const handlePointerUp = () => {
+        window.removeEventListener('pointermove', handlePointerMove)
+        window.removeEventListener('pointerup', handlePointerUp)
+      }
+
+      window.addEventListener('pointermove', handlePointerMove)
+      window.addEventListener('pointerup', handlePointerUp)
+    },
+    [clampDrawerWidth]
+  )
+
+  const copyMessageText = useCallback(
+    async (text: string | undefined) => {
+      const content = (text ?? '').trim()
+      if (!content) return
+      try {
+        await navigator.clipboard.writeText(content)
+        toast.success(t('aiops.chat.copied', { defaultValue: '已复制' }))
+      } catch (error) {
+        toast.error(
+          t('aiops.chat.copyFailed', {
+            defaultValue: '复制失败：{{message}}',
+            message: error instanceof Error ? error.message : String(error),
+          })
+        )
+      }
+    },
+    [t]
+  )
+
   const handleFeedbackChange = useCallback((fb: AgentFeedback) => {
     setFeedbackMap((prev) => ({ ...prev, [`${fb.targetType}:${fb.targetId}`]: fb }))
   }, [])
 
   const { data: agentSessions = [], refetch: refetchAgentSessions } = useQuery<AgentSession[]>({
-    queryKey: ['agent-sessions'],
-    queryFn: async () => (await apiListSessions()).data,
-    enabled: isOpen && chatMode === 'agent',
+    queryKey: ['agent-sessions', agentSurface],
+    queryFn: async () => (await apiListSessions(agentSurface)).data,
+    enabled: isOpen,
   })
   const { data: agentConfigSummary } = useQuery<AgentConfigSummary>({
     queryKey: ['agent-config-summary'],
     queryFn: async () => (await apiGetAgentConfigSummary()).data,
-    enabled: isOpen && chatMode === 'agent',
+    enabled: isOpen,
   })
 
   const getPageContext = useCallback(() => {
@@ -904,8 +1005,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       jobName: jobMatch?.[1] ?? currentJobName,
       nodeName: nodeMatch?.[1],
       entryPoint: inferAgentEntryPoint(pathname),
+      surface: agentSurface,
     }
-  }, [currentJobName])
+  }, [agentSurface, currentJobName])
 
   const getClientContext = useCallback(
     () => ({
@@ -979,6 +1081,26 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     },
     []
   )
+
+  const cancelActiveAgentRequest = useCallback(() => {
+    const activeRequestId = activeAgentRequestStateRef.current?.requestId
+    cancelAgentStream()
+    clearThinkingItems()
+    markCurrentTimelineComplete()
+    updateUserRequestState(
+      activeRequestId,
+      'cancelled',
+      t('aiops.agent.cancelledByUser', { defaultValue: '已取消' })
+    )
+    activeAgentRequestStateRef.current = null
+    setRetryableAgentRequest(null)
+  }, [
+    cancelAgentStream,
+    clearThinkingItems,
+    markCurrentTimelineComplete,
+    t,
+    updateUserRequestState,
+  ])
 
   const resolveConfirmation = useCallback((confirmId: string) => {
     setPendingConfirmIds((prev) => prev.filter((id) => id !== confirmId))
@@ -1097,16 +1219,19 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     })
   }, [])
 
-  const persistAgentSessionId = useCallback((sessionId: string | null) => {
-    agentSessionIdRef.current = sessionId
-    setSelectedAgentSessionId(sessionId)
-    if (typeof window === 'undefined') return
-    if (sessionId) {
-      window.localStorage.setItem(AGENT_LAST_SESSION_STORAGE_KEY, sessionId)
-    } else {
-      window.localStorage.removeItem(AGENT_LAST_SESSION_STORAGE_KEY)
-    }
-  }, [])
+  const persistAgentSessionId = useCallback(
+    (sessionId: string | null) => {
+      agentSessionIdRef.current = sessionId
+      setSelectedAgentSessionId(sessionId)
+      if (typeof window === 'undefined') return
+      if (sessionId) {
+        window.localStorage.setItem(agentSessionStorageKey, sessionId)
+      } else {
+        window.localStorage.removeItem(agentSessionStorageKey)
+      }
+    },
+    [agentSessionStorageKey]
+  )
 
   const resetAgentConversation = useCallback(() => {
     bumpAgentInteractionVersion()
@@ -1544,6 +1669,47 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             clearThinkingItems()
             break
           }
+          const isAskResponse = eventData.agentRole === 'ask' || eventData.agentId === 'ask-1'
+          const askStreamItemId = `ask-stream-${
+            eventData.turnId || activeAgentRequestStateRef.current?.requestId || thinkingId
+          }`
+          if (isAskResponse && eventData.partial === true) {
+            if (activeAgentRequestStateRef.current) {
+              activeAgentRequestStateRef.current = {
+                ...activeAgentRequestStateRef.current,
+                hasFinalResponse: true,
+              }
+            }
+            if (eventData.sessionId) {
+              lastLoadedAgentSessionIdRef.current = eventData.sessionId
+              persistAgentSessionId(eventData.sessionId)
+            }
+            clearThinkingItems()
+            setConversationItems((prev) => {
+              const existing = prev.find((item) => item.id === askStreamItemId)
+              if (existing?.kind === 'message') {
+                return prev.map((item) =>
+                  item.id === askStreamItemId
+                    ? {
+                        ...item,
+                        text: `${item.text ?? ''}${text}`,
+                        timestamp: new Date(),
+                      }
+                    : item
+                )
+              }
+              return [
+                ...prev,
+                {
+                  id: askStreamItemId,
+                  kind: 'message',
+                  text,
+                  timestamp: new Date(),
+                },
+              ]
+            })
+            break
+          }
           if (activeAgentRequestStateRef.current) {
             activeAgentRequestStateRef.current = {
               ...activeAgentRequestStateRef.current,
@@ -1577,16 +1743,30 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               )
             )
           }
-          // Mark current timeline as complete
-          setConversationItems((prev) => [
-            ...prev,
-            {
-              id: `msg-${Date.now()}`,
-              kind: 'message',
-              text,
-              timestamp: new Date(),
-            },
-          ])
+          setConversationItems((prev) => {
+            if (isAskResponse && prev.some((item) => item.id === askStreamItemId)) {
+              return prev.map((item) =>
+                item.id === askStreamItemId
+                  ? {
+                      ...item,
+                      text,
+                      feedbackTargetId: eventData.feedbackTargetId ?? item.feedbackTargetId,
+                      timestamp: new Date(),
+                    }
+                  : item
+              )
+            }
+            return [
+              ...prev,
+              {
+                id: `msg-${Date.now()}`,
+                kind: 'message',
+                text,
+                feedbackTargetId: eventData.feedbackTargetId,
+                timestamp: new Date(),
+              },
+            ]
+          })
           break
         }
 
@@ -1620,6 +1800,11 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             confirmToolCallId,
             confirmAction: eventData.action ?? eventData.toolName ?? eventData.tool_name ?? '',
             confirmDescription: eventData.description ?? '',
+            confirmRiskLevel: eventData.riskLevel ?? eventData.risk_level,
+            confirmPermissionExplanation:
+              eventData.permissionExplanation ?? eventData.permission_explanation,
+            confirmRiskExplanation: eventData.riskExplanation ?? eventData.risk_explanation,
+            confirmAffectedResources: eventData.affectedResources ?? eventData.affected_resources,
             confirmInteraction: eventData.interaction ?? 'approval',
             confirmForm: eventData.form,
             timestamp: new Date(),
@@ -1640,6 +1825,10 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
                     confirmToolCallId,
                     confirmAction: nextItem.confirmAction,
                     confirmDescription: nextItem.confirmDescription,
+                    confirmRiskLevel: nextItem.confirmRiskLevel,
+                    confirmPermissionExplanation: nextItem.confirmPermissionExplanation,
+                    confirmRiskExplanation: nextItem.confirmRiskExplanation,
+                    confirmAffectedResources: nextItem.confirmAffectedResources,
                     confirmInteraction: nextItem.confirmInteraction,
                     confirmForm: nextItem.confirmForm,
                   }
@@ -1781,7 +1970,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         )
         const session = agentSessions.find((entry) => entry.sessionId === sessionId)
         if (session?.lastOrchestrationMode) {
-          setOrchestrationMode(session.lastOrchestrationMode)
+          setOrchestrationMode(normalizeAgentOrchestrationMode(session.lastOrchestrationMode))
         }
         lastLoadedAgentSessionIdRef.current = sessionId
         persistAgentSessionId(sessionId)
@@ -1814,10 +2003,6 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   }, [cancelAgentStream, isOpen])
 
   useEffect(() => {
-    if (chatMode !== 'agent') cancelAgentStream()
-  }, [cancelAgentStream, chatMode])
-
-  useEffect(() => {
     if (!hasActiveAgentTask || typeof window === 'undefined') return
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -1830,37 +2015,163 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   }, [hasActiveAgentTask])
 
   useEffect(() => {
-    if (!isOpen || chatMode !== 'agent' || typeof window === 'undefined') return
+    if (typeof window === 'undefined') return
+    bumpAgentInteractionVersion()
+    agentHistoryRequestIdRef.current += 1
+    cancelAgentStream()
+    setAgentHistoryLoading(false)
+    setConversationItems([])
+    setPendingConfirmIds([])
+    setAgentHistoryError(null)
+    setRetryableAgentRequest(null)
+    setFailedAgentRequests({})
+    setFeedbackMap({})
+    lastAgentHistorySessionIdRef.current = null
+    lastLoadedAgentSessionIdRef.current = null
+    lastAgentRequestRef.current = null
+    activeAgentRequestStateRef.current = null
+    pendingInterruptActionRef.current = null
+    setInterruptConfirmState(null)
+    currentTimelineIdRef.current = null
+    const storedSessionId = window.localStorage.getItem(agentSessionStorageKey)
+    agentSessionIdRef.current = storedSessionId
+    setSelectedAgentSessionId(storedSessionId)
+  }, [agentSessionStorageKey, bumpAgentInteractionVersion, cancelAgentStream])
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return
     if (agentSessionIdRef.current) return
-    const storedSessionId = window.localStorage.getItem(AGENT_LAST_SESSION_STORAGE_KEY)
+    const storedSessionId = window.localStorage.getItem(agentSessionStorageKey)
     if (storedSessionId) {
       persistAgentSessionId(storedSessionId)
     }
-  }, [chatMode, isOpen, persistAgentSessionId])
+  }, [agentSessionStorageKey, isOpen, persistAgentSessionId])
 
   useEffect(() => {
-    if (chatMode !== 'agent') return
     if (selectedAgentSessionId) return
     if (agentConfigSummary?.defaultOrchestrationMode) {
-      setOrchestrationMode(agentConfigSummary.defaultOrchestrationMode)
+      setOrchestrationMode(
+        normalizeAgentOrchestrationMode(agentConfigSummary.defaultOrchestrationMode)
+      )
     }
-  }, [agentConfigSummary?.defaultOrchestrationMode, chatMode, selectedAgentSessionId])
+  }, [agentConfigSummary?.defaultOrchestrationMode, selectedAgentSessionId])
 
   useEffect(() => {
-    if (!isOpen || chatMode !== 'agent' || conversationItems.length > 0 || agentHistoryLoading)
-      return
+    if (!isOpen || conversationItems.length > 0 || agentHistoryLoading) return
     const sessionId = agentSessionIdRef.current
     if (!sessionId || lastLoadedAgentSessionIdRef.current === sessionId) return
     if (!agentSessions.some((session) => session.sessionId === sessionId)) return
     void loadAgentSession(sessionId)
-  }, [
-    agentHistoryLoading,
-    conversationItems.length,
-    agentSessions,
-    chatMode,
-    isOpen,
-    loadAgentSession,
-  ])
+  }, [agentHistoryLoading, conversationItems.length, agentSessions, isOpen, loadAgentSession])
+
+  const startAskRequest = useCallback(
+    (request: AgentPendingRequest, options?: { appendUserBubble?: boolean }) => {
+      if (agentStreaming || pendingConfirmIds.length > 0) return
+
+      const appendUserBubble = options?.appendUserBubble ?? true
+      bumpAgentInteractionVersion()
+      agentHistoryRequestIdRef.current += 1
+      setAgentHistoryLoading(false)
+      setAgentHistoryError(null)
+      setRetryableAgentRequest(null)
+      setFailedAgentRequests({})
+      currentTimelineIdRef.current = null
+      activeAgentRequestStateRef.current = {
+        requestId: request.requestId,
+        hasFinalResponse: false,
+        awaitingConfirmation: false,
+      }
+
+      if (appendUserBubble) {
+        setConversationItems((prev) => [
+          ...prev,
+          {
+            id: `user-${Date.now()}`,
+            kind: 'user',
+            text: request.message,
+            requestId: request.requestId,
+            requestState: 'running',
+            requestError: undefined,
+            requestSessionId: request.sessionId,
+            requestOrchestrationMode: 'ask',
+            timestamp: new Date(),
+          },
+        ])
+      }
+
+      lastAgentRequestRef.current = request
+      setAgentStreaming(true)
+      const thinkingId = `thinking-ask-${Date.now()}`
+
+      const ctrl = connectAgentAskStream(
+        agentSessionIdRef.current ?? request.sessionId,
+        request.requestId,
+        request.message,
+        request.pageContext,
+        request.clientContext,
+        request.pageContext.jobName,
+        (event: AgentSSEEvent) => handleAgentSSEEvent(event, thinkingId),
+        (err: Error) => {
+          agentAbortRef.current = null
+          clearThinkingItems()
+          updateUserRequestState(request.requestId, 'failed', err.message)
+          rememberFailedAgentRequest(request)
+          setRetryableAgentRequest(request)
+          activeAgentRequestStateRef.current = null
+          setAgentStreaming(false)
+        },
+        () => {
+          agentAbortRef.current = null
+          clearThinkingItems()
+          const activeState = activeAgentRequestStateRef.current
+          const isCurrentRequest = activeState?.requestId === request.requestId
+          if (isCurrentRequest && activeState?.hasFinalResponse) {
+            updateUserRequestState(request.requestId, 'done', undefined)
+            clearFailedAgentRequest(request.requestId)
+            setRetryableAgentRequest(null)
+          } else {
+            updateUserRequestState(
+              request.requestId,
+              'failed',
+              t('aiops.agent.missingFinalAnswer', {
+                defaultValue: getFailedRequestMessage(),
+              })
+            )
+            rememberFailedAgentRequest(request)
+            setRetryableAgentRequest(request)
+          }
+          activeAgentRequestStateRef.current = null
+          setAgentStreaming(false)
+          void refetchAgentSessions()
+        },
+        (sessionId: string) => {
+          lastLoadedAgentSessionIdRef.current = sessionId
+          persistAgentSessionId(sessionId)
+          if (lastAgentRequestRef.current?.requestId === request.requestId) {
+            lastAgentRequestRef.current = {
+              ...lastAgentRequestRef.current,
+              sessionId,
+            }
+          }
+        }
+      )
+
+      agentAbortRef.current = ctrl
+    },
+    [
+      agentStreaming,
+      pendingConfirmIds.length,
+      bumpAgentInteractionVersion,
+      clearFailedAgentRequest,
+      clearThinkingItems,
+      handleAgentSSEEvent,
+      persistAgentSessionId,
+      refetchAgentSessions,
+      rememberFailedAgentRequest,
+      t,
+      updateUserRequestState,
+    ]
+  )
 
   const startAgentRequest = useCallback(
     (request: AgentPendingRequest, options?: { appendUserBubble?: boolean }) => {
@@ -2054,18 +2365,153 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     }
 
     setInput('')
-    startAgentRequest(
-      {
-        requestId: generateAgentRequestId(),
-        sessionId: agentSessionIdRef.current,
-        message: textToSend,
-        orchestrationMode,
+    const request: AgentPendingRequest = {
+      requestId: generateAgentRequestId(),
+      sessionId: agentSessionIdRef.current,
+      message: textToSend,
+      orchestrationMode: normalizeAgentOrchestrationMode(orchestrationMode),
+      pageContext: getPageContext(),
+      clientContext: getClientContext(),
+    }
+    if (chatMode === 'llm') {
+      startAskRequest(request, { appendUserBubble: true })
+      return
+    }
+    startAgentRequest(request, { appendUserBubble: true })
+  }
+
+  const beginEditAgentMessage = useCallback((item: ConversationItem) => {
+    setEditingAgentMessageId(item.id)
+    setEditingAgentDraft(item.text ?? '')
+  }, [])
+
+  const cancelEditAgentMessage = useCallback(() => {
+    setEditingAgentMessageId(null)
+    setEditingAgentDraft('')
+  }, [])
+
+  const submitEditAgentMessage = useCallback(
+    (item: ConversationItem) => {
+      const nextContent = editingAgentDraft.trim()
+      if (!nextContent || agentStreaming || pendingConfirmIds.length > 0) return
+
+      const requestId = generateAgentRequestId()
+      const nextOrchestrationMode = normalizeAgentOrchestrationMode(
+        item.requestOrchestrationMode ?? orchestrationMode
+      )
+      setPendingConfirmIds([])
+      setRetryableAgentRequest(null)
+      setFailedAgentRequests({})
+      activeAgentRequestStateRef.current = null
+      currentTimelineIdRef.current = null
+      lastAgentRequestRef.current = null
+
+      setConversationItems((prev) => {
+        const index = prev.findIndex((entry) => entry.id === item.id)
+        if (index < 0) return prev
+        return prev.slice(0, index + 1).map((entry, currentIndex) =>
+          currentIndex === index
+            ? {
+                ...entry,
+                text: nextContent,
+                requestId,
+                requestState: 'running',
+                requestError: undefined,
+                requestSessionId: null,
+                requestOrchestrationMode: chatMode === 'llm' ? 'ask' : nextOrchestrationMode,
+                timestamp: new Date(),
+              }
+            : entry
+        )
+      })
+      setEditingAgentMessageId(null)
+      setEditingAgentDraft('')
+      const request: AgentPendingRequest = {
+        requestId,
+        sessionId: null,
+        message: nextContent,
+        orchestrationMode: nextOrchestrationMode,
         pageContext: getPageContext(),
         clientContext: getClientContext(),
-      },
-      { appendUserBubble: true }
-    )
-  }
+      }
+      if (chatMode === 'llm') {
+        startAskRequest(request, { appendUserBubble: false })
+      } else {
+        startAgentRequest(request, { appendUserBubble: false })
+      }
+    },
+    [
+      agentStreaming,
+      chatMode,
+      editingAgentDraft,
+      getClientContext,
+      getPageContext,
+      orchestrationMode,
+      pendingConfirmIds.length,
+      startAskRequest,
+      startAgentRequest,
+    ]
+  )
+
+  const regenerateAgentFromUser = useCallback(
+    (item: ConversationItem) => {
+      const content = item.text?.trim()
+      if (!content || agentStreaming || pendingConfirmIds.length > 0) return
+
+      const requestId = generateAgentRequestId()
+      const nextOrchestrationMode = normalizeAgentOrchestrationMode(
+        item.requestOrchestrationMode ?? orchestrationMode
+      )
+      setPendingConfirmIds([])
+      setRetryableAgentRequest(null)
+      setFailedAgentRequests({})
+      activeAgentRequestStateRef.current = null
+      currentTimelineIdRef.current = null
+      lastAgentRequestRef.current = null
+
+      setConversationItems((prev) => {
+        const index = prev.findIndex((entry) => entry.id === item.id)
+        if (index < 0) return prev
+        return prev.slice(0, index + 1).map((entry, currentIndex) =>
+          currentIndex === index
+            ? {
+                ...entry,
+                requestId,
+                requestState: 'running',
+                requestError: undefined,
+                requestSessionId: null,
+                requestOrchestrationMode: chatMode === 'llm' ? 'ask' : nextOrchestrationMode,
+                timestamp: new Date(),
+              }
+            : entry
+        )
+      })
+
+      const request: AgentPendingRequest = {
+        requestId,
+        sessionId: null,
+        message: content,
+        orchestrationMode: nextOrchestrationMode,
+        pageContext: getPageContext(),
+        clientContext: getClientContext(),
+      }
+      if (chatMode === 'llm') {
+        startAskRequest(request, { appendUserBubble: false })
+      } else {
+        startAgentRequest(request, { appendUserBubble: false })
+      }
+    },
+    [
+      agentStreaming,
+      chatMode,
+      getClientContext,
+      getPageContext,
+      orchestrationMode,
+      pendingConfirmIds.length,
+      startAskRequest,
+      startAgentRequest,
+    ]
+  )
 
   const retryAgentRequest = useCallback(
     (source?: string | ConversationItem) => {
@@ -2076,7 +2522,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               requestId: source.requestId ?? generateAgentRequestId(),
               sessionId: agentSessionIdRef.current ?? source.requestSessionId ?? null,
               message: source.text,
-              orchestrationMode: source.requestOrchestrationMode ?? orchestrationMode,
+              orchestrationMode: normalizeAgentOrchestrationMode(
+                source.requestOrchestrationMode ?? orchestrationMode
+              ),
               pageContext: getPageContext(),
               clientContext: getClientContext(),
             }
@@ -2092,13 +2540,19 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         ...request,
         requestId: generateAgentRequestId(),
         sessionId: agentSessionIdRef.current ?? request.sessionId,
+        orchestrationMode: normalizeAgentOrchestrationMode(request.orchestrationMode),
         pageContext: getPageContext(),
         clientContext: getClientContext(),
       }
-      startAgentRequest(retryRequest, { appendUserBubble: true })
+      if (chatMode === 'llm') {
+        startAskRequest(retryRequest, { appendUserBubble: true })
+      } else {
+        startAgentRequest(retryRequest, { appendUserBubble: true })
+      }
     },
     [
       agentStreaming,
+      chatMode,
       clearFailedAgentRequest,
       failedAgentRequests,
       getClientContext,
@@ -2106,6 +2560,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       orchestrationMode,
       pendingConfirmIds.length,
       retryableAgentRequest,
+      startAskRequest,
       startAgentRequest,
     ]
   )
@@ -2119,7 +2574,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
               requestId: source.requestId ?? generateAgentRequestId(),
               sessionId: null,
               message: source.text,
-              orchestrationMode: source.requestOrchestrationMode ?? orchestrationMode,
+              orchestrationMode: normalizeAgentOrchestrationMode(
+                source.requestOrchestrationMode ?? orchestrationMode
+              ),
               pageContext: getPageContext(),
               clientContext: getClientContext(),
             }
@@ -2132,19 +2589,23 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       if (!request || agentStreaming || pendingConfirmIds.length > 0) return
       clearFailedAgentRequest(requestId ?? request.requestId)
       resetAgentConversation()
-      startAgentRequest(
-        {
-          ...request,
-          requestId: generateAgentRequestId(),
-          sessionId: null,
-          pageContext: getPageContext(),
-          clientContext: getClientContext(),
-        },
-        { appendUserBubble: true }
-      )
+      const retryRequest: AgentPendingRequest = {
+        ...request,
+        requestId: generateAgentRequestId(),
+        sessionId: null,
+        orchestrationMode: normalizeAgentOrchestrationMode(request.orchestrationMode),
+        pageContext: getPageContext(),
+        clientContext: getClientContext(),
+      }
+      if (chatMode === 'llm') {
+        startAskRequest(retryRequest, { appendUserBubble: true })
+      } else {
+        startAgentRequest(retryRequest, { appendUserBubble: true })
+      }
     },
     [
       agentStreaming,
+      chatMode,
       clearFailedAgentRequest,
       failedAgentRequests,
       getClientContext,
@@ -2153,6 +2614,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       pendingConfirmIds.length,
       resetAgentConversation,
       retryableAgentRequest,
+      startAskRequest,
       startAgentRequest,
     ]
   )
@@ -2212,17 +2674,50 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         toolResult: nextToolResult,
       })
       invalidateAgentAffectedQueries(item.confirmAction ?? '', result.status)
+      const normalizedStatus = String(result.status || '')
+        .trim()
+        .toLowerCase()
       const remainingConfirmIds = pendingConfirmIdsRef.current.filter(
         (id) => id !== (item.confirmId ?? '')
       )
       if (remainingConfirmIds.length === 0) {
+        const rejected = normalizedStatus === 'rejected'
+        const nextRequestState: ConversationItem['requestState'] = rejected ? 'cancelled' : 'done'
+        const rejectedMessage: ConversationItem[] = rejected
+          ? [
+              {
+                id: `confirm-rejected-${Date.now()}`,
+                kind: 'message',
+                text: t('aiops.agent.operationRejectedMessage', {
+                  defaultValue:
+                    '已取消该操作，我不会继续执行或再次确认。需要其他操作时请重新告诉我。',
+                }),
+                timestamp: new Date(),
+              },
+            ]
+          : []
         setConversationItems((prev) =>
-          prev.map((ci) =>
-            ci.kind === 'user' && ci.requestState === 'awaiting_confirmation'
-              ? { ...ci, requestState: 'done' }
-              : ci
-          )
+          prev
+            .map((ci) =>
+              ci.kind === 'user' && ci.requestState === 'awaiting_confirmation'
+                ? {
+                    ...ci,
+                    requestState: nextRequestState,
+                    requestError: rejected
+                      ? t('aiops.agent.operationRejected', {
+                          defaultValue: '操作已取消',
+                        })
+                      : undefined,
+                  }
+                : ci
+            )
+            .concat(rejectedMessage)
         )
+        if (rejected) {
+          activeAgentRequestStateRef.current = null
+          setRetryableAgentRequest(null)
+          return
+        }
         startAgentResume(item.confirmId ?? '')
       }
     },
@@ -2230,6 +2725,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       invalidateAgentAffectedQueries,
       resolveConfirmation,
       startAgentResume,
+      t,
       updateTimelineToolEvent,
       updateToolCallItem,
     ]
@@ -2243,13 +2739,19 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, conversationItems])
 
-  // Chat mutation (rule/llm modes)
+  useEffect(() => {
+    resizeChatTextarea(chatInputRef.current)
+    resizeChatTextarea(agentInputRef.current)
+  }, [chatMode, input, isOpen])
+
+  // Legacy ask fallback. The unified drawer now uses /agent/ask/stream.
   const chatMutation = useMutation({
     mutationFn: async (request: IChatRequest) => {
-      const response =
-        chatMode === 'llm'
-          ? await (isAdminRoute ? apiAdminChatMessageLLM(request) : apiChatMessageLLM(request))
-          : await (isAdminRoute ? apiAdminChatMessage(request) : apiChatMessage(request))
+      const controller = new AbortController()
+      chatAbortRef.current = controller
+      const response = await (isAdminRoute
+        ? apiAdminChatMessage(request, { signal: controller.signal })
+        : apiChatMessage(request, { signal: controller.signal }))
       return response.data
     },
     onSuccess: (data: IChatResponse) => {
@@ -2264,6 +2766,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       setMessages((prev) => [...prev, assistantMessage])
     },
     onError: (error: unknown) => {
+      if ((error as Error)?.name === 'AbortError') {
+        return
+      }
       let message = error instanceof Error ? error.message : t('aiops.common.unknownError')
       if (error && typeof error === 'object' && 'data' in error) {
         const backend = (error as { data?: { msg?: string; msgKey?: string } }).data
@@ -2282,33 +2787,266 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
       }
       setMessages((prev) => [...prev, errorMessage])
     },
+    onSettled: () => {
+      chatAbortRef.current = null
+    },
   })
+  const {
+    reset: resetChatMutation,
+    mutate: mutateChatRequest,
+    isPending: chatMutationPending,
+  } = chatMutation
+
+  const cancelChatRequest = useCallback(
+    (options?: { markCancelled?: boolean }) => {
+      chatAbortRef.current?.abort()
+      chatAbortRef.current = null
+      if (options?.markCancelled) {
+        setMessages((prev) => {
+          const lastMessage = prev[prev.length - 1]
+          if (lastMessage?.role === 'assistant') {
+            return prev.map((message, index) =>
+              index === prev.length - 1
+                ? {
+                    ...message,
+                    content:
+                      message.content ||
+                      t('aiops.chat.cancelledMessage', { defaultValue: '已取消。' }),
+                    status: 'cancelled',
+                  }
+                : message
+            )
+          }
+          return [
+            ...prev,
+            {
+              id: `cancelled-${Date.now()}`,
+              role: 'assistant',
+              content: t('aiops.chat.cancelledMessage', { defaultValue: '已取消。' }),
+              type: 'text',
+              status: 'cancelled',
+              timestamp: new Date(),
+            },
+          ]
+        })
+      }
+      setLlmStreaming(false)
+      resetChatMutation()
+    },
+    [resetChatMutation, t]
+  )
+
+  const chatBusy = chatMutationPending || llmStreaming
+
+  useEffect(() => {
+    if (!isOpen) cancelChatRequest()
+  }, [cancelChatRequest, isOpen])
+
+  useEffect(() => {
+    if (chatMode === 'agent') cancelChatRequest()
+  }, [cancelChatRequest, chatMode])
+
+  const startChatRequest = useCallback(
+    (messageText: string, options?: { appendUserBubble?: boolean }) => {
+      const textToSend = messageText.trim()
+      if (!textToSend || chatBusy) return
+
+      let jobName = currentJobName
+      const jobNameMatch = textToSend.match(/(?:作业|job)[：:]\s*([a-zA-Z0-9-]+)/i)
+      if (jobNameMatch) {
+        jobName = jobNameMatch[1]
+      }
+
+      if (options?.appendUserBubble ?? true) {
+        const userMessage: ChatMessage = {
+          id: Date.now().toString(),
+          role: 'user',
+          content: textToSend,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, userMessage])
+      }
+
+      if (chatMode === 'llm') {
+        const assistantId = `llm-${Date.now()}`
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantId,
+            role: 'assistant',
+            content: '',
+            type: 'text',
+            data: {
+              engine: 'llm',
+              mode: 'llmchat_stream',
+            },
+            timestamp: new Date(),
+          },
+        ])
+        setLlmStreaming(true)
+        const requestId = generateAgentRequestId()
+        const controller = connectAgentAskStream(
+          agentSessionIdRef.current,
+          requestId,
+          textToSend,
+          getPageContext(),
+          getClientContext(),
+          jobName,
+          (event) => {
+            if (event.event !== 'message' && event.event !== 'final_answer') return
+            const eventData =
+              typeof event.data === 'object' && event.data !== null
+                ? (event.data as { content?: string; partial?: boolean; sessionId?: string })
+                : {}
+            const content =
+              typeof event.data === 'string' ? event.data : String(eventData.content ?? '')
+            if (!content) return
+            if (eventData.sessionId) {
+              persistAgentSessionId(eventData.sessionId)
+            }
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantId
+                  ? {
+                      ...message,
+                      content: event.event === 'final_answer' ? content : message.content + content,
+                    }
+                  : message
+              )
+            )
+          },
+          (error) => {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantId
+                  ? {
+                      ...message,
+                      content:
+                        message.content ||
+                        t('aiops.chat.errorMessage', {
+                          message: error.message || t('aiops.common.unknownError'),
+                        }),
+                    }
+                  : message
+              )
+            )
+            setLlmStreaming(false)
+            chatAbortRef.current = null
+          },
+          () => {
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantId
+                  ? {
+                      ...message,
+                      content:
+                        message.content ||
+                        t('aiops.chat.cancelledMessage', { defaultValue: '已取消。' }),
+                    }
+                  : message
+              )
+            )
+            setLlmStreaming(false)
+            chatAbortRef.current = null
+            void refetchAgentSessions()
+          },
+          (sessionId) => {
+            persistAgentSessionId(sessionId)
+          }
+        )
+        chatAbortRef.current = controller
+        setInput('')
+        return
+      }
+
+      mutateChatRequest({
+        message: textToSend,
+        jobName: jobName,
+      })
+
+      setInput('')
+    },
+    [
+      chatBusy,
+      chatMode,
+      currentJobName,
+      getClientContext,
+      getPageContext,
+      mutateChatRequest,
+      persistAgentSessionId,
+      refetchAgentSessions,
+      t,
+    ]
+  )
 
   const handleSend = (messageText?: string) => {
-    const textToSend = messageText || input.trim()
-    if (!textToSend || chatMutation.isPending) return
-
-    let jobName = currentJobName
-    const jobNameMatch = textToSend.match(/(?:作业|job)[：:]\s*([a-zA-Z0-9-]+)/i)
-    if (jobNameMatch) {
-      jobName = jobNameMatch[1]
-    }
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: textToSend,
-      timestamp: new Date(),
-    }
-    setMessages((prev) => [...prev, userMessage])
-
-    chatMutation.mutate({
-      message: textToSend,
-      jobName: jobName,
-    })
-
-    setInput('')
+    startChatRequest(messageText || input.trim(), { appendUserBubble: true })
   }
+
+  const beginEditChatMessage = useCallback((message: ChatMessage) => {
+    setEditingChatMessageId(message.id)
+    setEditingChatDraft(message.content)
+  }, [])
+
+  const cancelEditChatMessage = useCallback(() => {
+    setEditingChatMessageId(null)
+    setEditingChatDraft('')
+  }, [])
+
+  const submitEditChatMessage = useCallback(
+    (messageId: string) => {
+      const nextContent = editingChatDraft.trim()
+      if (!nextContent || chatBusy) return
+      setMessages((prev) => {
+        const index = prev.findIndex((message) => message.id === messageId)
+        if (index < 0) return prev
+        return prev.slice(0, index + 1).map((message, currentIndex) =>
+          currentIndex === index
+            ? {
+                ...message,
+                content: nextContent,
+                timestamp: new Date(),
+              }
+            : message
+        )
+      })
+      setEditingChatMessageId(null)
+      setEditingChatDraft('')
+      startChatRequest(nextContent, { appendUserBubble: false })
+    },
+    [chatBusy, editingChatDraft, startChatRequest]
+  )
+
+  const regenerateChatFromMessage = useCallback(
+    (message: ChatMessage) => {
+      if (chatBusy) return
+      const messageIndex = messages.findIndex((entry) => entry.id === message.id)
+      if (messageIndex < 0) return
+      let userIndex = message.role === 'user' ? messageIndex : -1
+      if (userIndex < 0) {
+        for (let index = messageIndex - 1; index >= 0; index--) {
+          if (messages[index]?.role === 'user') {
+            userIndex = index
+            break
+          }
+        }
+      }
+      const userMessage = userIndex >= 0 ? messages[userIndex] : undefined
+      if (!userMessage?.content.trim()) return
+      setMessages((prev) =>
+        prev.slice(0, userIndex + 1).map((entry, currentIndex) =>
+          currentIndex === userIndex
+            ? {
+                ...entry,
+                timestamp: new Date(),
+              }
+            : entry
+        )
+      )
+      startChatRequest(userMessage.content, { appendUserBubble: false })
+    },
+    [chatBusy, messages, startChatRequest]
+  )
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -2338,9 +3076,9 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
   }, [cancelAgentStream, onClose, requestInterruptConfirmation, t])
 
   const handleAgentModeSwitch = useCallback(
-    (nextMode: 'rule' | 'llm' | 'agent') => {
+    (nextMode: ChatMode) => {
       if (nextMode === chatMode) return
-      if (chatMode !== 'agent') {
+      if (!hasActiveAgentTask) {
         setChatMode(nextMode)
         return
       }
@@ -2355,8 +3093,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
             defaultValue: '切换模式会中断当前执行',
           }),
           description: t('aiops.agent.interruptModeDescription', {
-            defaultValue:
-              '当前 Agent 还在执行或等待确认。切换到其他聊天模式会立刻中断这轮 Agent 流程。',
+            defaultValue: '当前助手还在回答、执行或等待确认。切换模式会立刻中断这一轮流程。',
           }),
           confirmLabel: t('aiops.agent.interruptModeConfirm', {
             defaultValue: '中断并切换',
@@ -2364,7 +3101,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
         }
       )
     },
-    [cancelAgentStream, chatMode, requestInterruptConfirmation, t]
+    [cancelAgentStream, chatMode, hasActiveAgentTask, requestInterruptConfirmation, t]
   )
 
   const handleSelectAgentSession = useCallback(
@@ -2412,813 +3149,991 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
 
   if (!isOpen) return null
 
-  // ── Agent mode layout ─────────────────────────────────────────────────────
+  // ── Unified ask/agent chat layout ─────────────────────────────────────────
 
-  if (chatMode === 'agent') {
+  if (chatMode === 'agent' || chatMode === 'llm') {
     return (
-      <div className="bg-background fixed inset-y-0 right-0 z-50 flex w-full min-w-0 flex-col border-l shadow-2xl sm:w-[540px]">
-        <AlertDialog
-          open={!!interruptConfirmState}
-          onOpenChange={(open) => {
-            if (!open) {
-              cancelInterruptConfirmation()
-            }
-          }}
+      <div
+        className="fixed inset-0 z-50 flex justify-end bg-black/10"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            handleAgentDrawerClose()
+          }
+        }}
+      >
+        <div
+          className="bg-background relative flex h-full w-full min-w-0 flex-col border-l shadow-2xl sm:max-w-[calc(100vw-48px)]"
+          style={{ width: `min(100vw, ${drawerWidth}px)` }}
+          onMouseDown={(event) => event.stopPropagation()}
         >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {interruptConfirmState?.title ?? '中断当前 Agent 执行？'}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {interruptConfirmState?.description ??
-                  '当前 Agent 仍在执行或等待确认，继续操作会中断这轮流程。'}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t('common.cancel', { defaultValue: '取消' })}</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmInterruptAndContinue}>
-                {interruptConfirmState?.confirmLabel ?? '中断并继续'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog
-          open={!!sessionDeleteConfirmState}
-          onOpenChange={(open) => {
-            if (!open) {
-              cancelSessionDeleteConfirmation()
-            }
-          }}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {t('aiops.agent.deleteSessionTitle', {
-                  defaultValue: '确认删除会话',
-                })}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {t('aiops.agent.deleteSessionDescription', {
-                  defaultValue: '确认要删除「{{title}}」会话吗？删除后无法找回。',
-                  title: sessionDeleteConfirmState?.title ?? '未命名',
-                })}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>{t('common.cancel', { defaultValue: '取消' })}</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteAgentSession}>
-                {t('aiops.agent.deleteSessionConfirm', {
-                  defaultValue: '删除会话',
-                })}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        {/* Header — pill tabs + help/close */}
-        <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="text-primary h-4 w-4" />
-            <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
+          <div
+            className="group absolute top-0 -left-1 z-40 hidden h-full w-3 cursor-ew-resize touch-none sm:block"
+            onPointerDown={handleDrawerResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t('aiops.agent.resizeDrawer', { defaultValue: '调整助手宽度' })}
+          >
+            <span className="bg-primary/0 group-hover:bg-primary/35 pointer-events-none absolute top-0 left-1/2 h-full w-1.5 -translate-x-1/2 rounded-full transition-colors" />
           </div>
-          <div className="flex items-center gap-1">
-            <Tabs
-              value={chatMode}
-              onValueChange={(v) => handleAgentModeSwitch(v as 'rule' | 'llm' | 'agent')}
-            >
-              <TabsList className="h-7">
-                <TabsTrigger value="rule" className="h-6 px-2.5 text-[11px]">
-                  {t('aiops.chat.mode.rule')}
-                </TabsTrigger>
-                <TabsTrigger value="llm" className="h-6 px-2.5 text-[11px]">
-                  {t('aiops.chat.mode.llm')}
-                </TabsTrigger>
-                <TabsTrigger value="agent" className="h-6 px-2.5 text-[11px]">
-                  {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-6 w-6', showHelp && 'bg-accent')}
-              onClick={() => setShowHelp((v) => !v)}
-              aria-label={t('aiops.chat.helpTitle')}
-            >
-              <HelpCircle className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={handleAgentDrawerClose}
-              aria-label={t('common.close')}
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-        {showHelp && <ModeGuideCard mode={chatMode} onClose={() => setShowHelp(false)} />}
-        {hasActiveAgentTask && !showHelp && (
-          <div className="border-b bg-amber-50/70 px-4 py-2">
-            <p className="text-[11px] leading-relaxed text-amber-800">
-              {t('aiops.agent.interruptHint', {
-                defaultValue:
-                  '当前 Agent 正在执行或等待确认。关闭助手、切换模式或切换会话都会中断这轮流程。',
-              })}
-            </p>
-          </div>
-        )}
-
-        {/* Agent body: left session panel + right conversation */}
-        <div className="flex min-h-0 flex-1">
-          {/* Left: Session list panel — narrow, scrollable */}
-          {sessionPanelOpen && (
-            <div className="flex w-[200px] shrink-0 flex-col border-r">
-              <div className="flex items-center justify-between px-2 py-1.5">
-                <span className="text-muted-foreground text-[10px] font-medium">
-                  {t('aiops.agent.sessionHistory', { defaultValue: '历史' })}
-                </span>
-                <div className="flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={handleCreateAgentSession}
-                    disabled={agentHistoryLoading}
-                    title={t('aiops.agent.newSession', { defaultValue: '新会话' })}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={() => setSessionPanelOpen(false)}
-                    title={t('aiops.agent.collapsePanel', { defaultValue: '收起面板' })}
-                  >
-                    <PanelLeftClose className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-              {hasActiveAgentTask && (
-                <div className="px-2 pb-1">
-                  <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] leading-relaxed text-amber-800">
-                    {t('aiops.agent.sessionInterruptNotice', {
-                      defaultValue: '切换会话或新建会话会中断当前执行。',
-                    })}
-                  </p>
-                </div>
-              )}
-              <ScrollArea className="min-h-0 flex-1">
-                <div className="flex flex-col gap-1 px-1 pb-2">
-                  {agentSessions.map((session) => {
-                    const isSelected = selectedAgentSessionId === session.sessionId
-                    const isPinning =
-                      sessionActionLoading?.sessionId === session.sessionId &&
-                      sessionActionLoading.action === 'pin'
-                    const isDeleting =
-                      sessionActionLoading?.sessionId === session.sessionId &&
-                      sessionActionLoading.action === 'delete'
-                    const isRenaming =
-                      sessionActionLoading?.sessionId === session.sessionId &&
-                      sessionActionLoading.action === 'rename'
-                    const isEditing = renameState?.sessionId === session.sessionId
-                    const sessionTitle =
-                      session.title || t('aiops.agent.untitledSession', { defaultValue: '未命名' })
-
-                    // Truncate title: show first 10 chars + ellipsis if longer
-                    const displayTitle =
-                      [...sessionTitle].length > 10
-                        ? [...sessionTitle].slice(0, 10).join('') + '…'
-                        : sessionTitle
-
-                    return (
-                      <div
-                        key={session.sessionId}
-                        className={cn(
-                          'group rounded-lg border px-2 py-1.5 transition-colors',
-                          isSelected
-                            ? 'border-primary/30 bg-primary/10'
-                            : 'border-border/60 hover:bg-muted/60',
-                          agentHistoryLoading && 'cursor-wait opacity-60',
-                          hasActiveAgentTask && !isSelected && 'border-amber-200/70 opacity-60'
-                        )}
-                      >
-                        {isEditing ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              ref={renameInputRef}
-                              className="h-6 flex-1 text-[11px]"
-                              value={renameState?.draftTitle ?? ''}
-                              maxLength={100}
-                              onChange={(e) =>
-                                setRenameState({
-                                  sessionId: session.sessionId,
-                                  draftTitle: e.target.value,
-                                })
-                              }
-                              onBlur={() => void commitRenameSession(session)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault()
-                                  void commitRenameSession(session)
-                                } else if (e.key === 'Escape') {
-                                  e.preventDefault()
-                                  cancelRenameSession()
-                                }
-                              }}
-                              disabled={isRenaming}
-                            />
-                            {isRenaming && (
-                              <Loader2 className="text-muted-foreground h-3 w-3 shrink-0 animate-spin" />
-                            )}
-                          </div>
-                        ) : (
-                          <button
-                            className="w-full min-w-0 text-left"
-                            onClick={() => handleSelectAgentSession(session.sessionId)}
-                            disabled={agentHistoryLoading || isDeleting}
-                          >
-                            <div className="flex items-center gap-1">
-                              <span
-                                className="min-w-0 flex-1 truncate text-[11px] font-medium"
-                                title={sessionTitle}
-                              >
-                                {displayTitle}
-                              </span>
-                              {isDeleting && (
-                                <Loader2 className="text-muted-foreground h-3 w-3 shrink-0 animate-spin" />
-                              )}
-                            </div>
-                            {hasActiveAgentTask && !isSelected && (
-                              <p className="mt-0.5 text-[9px] text-amber-700">
-                                {t('aiops.agent.sessionSwitchInterruptHint', {
-                                  defaultValue: '点击后将提示中断当前执行',
-                                })}
-                              </p>
-                            )}
-                          </button>
-                        )}
-                        <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[9px]">
-                          <span className="min-w-0 shrink truncate">
-                            {formatAgentSessionDate(session.updatedAt)}
-                          </span>
-                          <span className="ml-auto flex shrink-0 items-center gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sky-600"
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                beginRenameSession(session)
-                              }}
-                              disabled={
-                                agentHistoryLoading || isDeleting || isRenaming || isEditing
-                              }
-                              title={t('aiops.agent.renameSession', { defaultValue: '重命名会话' })}
-                            >
-                              <Pencil className="h-2.5 w-2.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                'h-4 w-4 hover:text-amber-700',
-                                session.pinnedAt ? 'text-amber-600' : 'text-muted-foreground'
-                              )}
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                void handleToggleSessionPin(session)
-                              }}
-                              disabled={agentHistoryLoading || isDeleting}
-                              title={
-                                session.pinnedAt
-                                  ? t('aiops.agent.unpinSession', { defaultValue: '取消置顶' })
-                                  : t('aiops.agent.pinSession', { defaultValue: '置顶' })
-                              }
-                            >
-                              {isPinning ? (
-                                <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                              ) : (
-                                <Pin className="h-2.5 w-2.5" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-muted-foreground h-4 w-4 hover:text-red-600"
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                requestDeleteAgentSession(session)
-                              }}
-                              disabled={agentHistoryLoading || isPinning || isDeleting}
-                              title={t('aiops.agent.deleteSession', { defaultValue: '删除会话' })}
-                            >
-                              <Trash2 className="h-2.5 w-2.5" />
-                            </Button>
-                          </span>
-                        </div>
-                      </div>
-                    )
+          <AlertDialog
+            open={!!interruptConfirmState}
+            onOpenChange={(open) => {
+              if (!open) {
+                cancelInterruptConfirmation()
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {interruptConfirmState?.title ?? '中断当前 Agent 执行？'}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {interruptConfirmState?.description ??
+                    '当前 Agent 仍在执行或等待确认，继续操作会中断这轮流程。'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {t('common.cancel', { defaultValue: '取消' })}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={confirmInterruptAndContinue}>
+                  {interruptConfirmState?.confirmLabel ?? '中断并继续'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog
+            open={!!sessionDeleteConfirmState}
+            onOpenChange={(open) => {
+              if (!open) {
+                cancelSessionDeleteConfirmation()
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t('aiops.agent.deleteSessionTitle', {
+                    defaultValue: '确认删除会话',
                   })}
-                  {agentSessions.length === 0 && (
-                    <div className="text-muted-foreground px-2 py-3 text-center text-[10px]">
-                      {t('aiops.agent.noSessions', { defaultValue: '暂无历史' })}
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-              {agentHistoryLoading && (
-                <p className="text-muted-foreground border-t px-2 py-1 text-[9px]">
-                  {t('aiops.agent.loadingSession', { defaultValue: '加载中…' })}
-                </p>
-              )}
-              {agentHistoryError && (
-                <div className="border-t px-2 py-1">
-                  <p className="text-[9px] text-red-500">{agentHistoryError}</p>
-                  {lastAgentHistorySessionIdRef.current && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-0.5 h-4 text-[9px]"
-                      onClick={retryLoadAgentSession}
-                      disabled={agentHistoryLoading || agentStreaming}
-                    >
-                      {t('aiops.agent.retryLoadSession', { defaultValue: '重试' })}
-                    </Button>
-                  )}
-                </div>
-              )}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('aiops.agent.deleteSessionDescription', {
+                    defaultValue: '确认要删除「{{title}}」会话吗？删除后无法找回。',
+                    title: sessionDeleteConfirmState?.title ?? '未命名',
+                  })}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {t('common.cancel', { defaultValue: '取消' })}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteAgentSession}>
+                  {t('aiops.agent.deleteSessionConfirm', {
+                    defaultValue: '删除会话',
+                  })}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {/* Header */}
+          <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="text-primary h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
+            </div>
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className="h-6 px-2 text-[11px]">
+                {chatMode === 'agent'
+                  ? t('aiops.chat.mode.agent', { defaultValue: 'agent' })
+                  : t('aiops.chat.mode.ask', { defaultValue: 'ask' })}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-6 w-6', showHelp && 'bg-accent')}
+                onClick={() => setShowHelp((v) => !v)}
+                aria-label={t('aiops.chat.helpTitle')}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={handleAgentDrawerClose}
+                aria-label={t('common.close')}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+          {showHelp && <ModeGuideCard mode={chatMode} onClose={() => setShowHelp(false)} />}
+          {hasActiveAgentTask && !showHelp && (
+            <div className="border-b bg-amber-50/70 px-4 py-2">
+              <p className="text-[11px] leading-relaxed text-amber-800">
+                {t('aiops.agent.interruptHint', {
+                  defaultValue:
+                    '当前 Agent 正在执行或等待确认。关闭助手、切换模式或切换会话都会中断这轮流程。',
+                })}
+              </p>
             </div>
           )}
 
-          {/* Right: Conversation area */}
-          <div className="flex min-w-0 flex-1 flex-col">
-            {/* Messages */}
-            <ScrollArea className="chat-drawer-scroll-area min-h-0 min-w-0 flex-1 p-4">
-              <div className="min-w-0 space-y-4">
-                {conversationItems.length === 0 && (
-                  <div className="flex min-w-0 justify-start">
-                    <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
-                      <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-                        {t('aiops.agent.initialMessage', {
-                          defaultValue:
-                            '你好！我是 Crater Agent，可以自主执行操作来帮助你管理作业。请告诉我你需要什么帮助。',
-                        })}
-                      </p>
-                    </div>
+          {/* Agent body: left session panel + right conversation */}
+          <div className="flex min-h-0 flex-1">
+            {/* Left: Session list panel — narrow, scrollable */}
+            {sessionPanelOpen && (
+              <div className="flex w-[200px] shrink-0 flex-col border-r">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-muted-foreground text-[10px] font-medium">
+                    {t('aiops.agent.sessionHistory', { defaultValue: '历史' })}
+                  </span>
+                  <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={handleCreateAgentSession}
+                      disabled={agentHistoryLoading}
+                      title={t('aiops.agent.newSession', { defaultValue: '新会话' })}
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => setSessionPanelOpen(false)}
+                      title={t('aiops.agent.collapsePanel', { defaultValue: '收起面板' })}
+                    >
+                      <PanelLeftClose className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+                {hasActiveAgentTask && (
+                  <div className="px-2 pb-1">
+                    <p className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[9px] leading-relaxed text-amber-800">
+                      {t('aiops.agent.sessionInterruptNotice', {
+                        defaultValue: '切换会话或新建会话会中断当前执行。',
+                      })}
+                    </p>
                   </div>
                 )}
-                {conversationItems.map((item) => {
-                  if (item.kind === 'user') {
-                    const canRetry = item.requestState === 'failed' && !!item.text
+                <ScrollArea className="min-h-0 flex-1">
+                  <div className="flex flex-col gap-1 px-1 pb-2">
+                    {agentSessions.map((session) => {
+                      const isSelected = selectedAgentSessionId === session.sessionId
+                      const isPinning =
+                        sessionActionLoading?.sessionId === session.sessionId &&
+                        sessionActionLoading.action === 'pin'
+                      const isDeleting =
+                        sessionActionLoading?.sessionId === session.sessionId &&
+                        sessionActionLoading.action === 'delete'
+                      const isRenaming =
+                        sessionActionLoading?.sessionId === session.sessionId &&
+                        sessionActionLoading.action === 'rename'
+                      const isEditing = renameState?.sessionId === session.sessionId
+                      const sessionTitle =
+                        session.title ||
+                        t('aiops.agent.untitledSession', { defaultValue: '未命名' })
 
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-end">
-                        <div className="max-w-[85%] min-w-0 overflow-hidden">
-                          <div className="bg-primary text-primary-foreground rounded-lg px-4 py-2">
-                            <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-                              {item.text}
-                            </p>
-                          </div>
-                          {item.requestState === 'failed' && (
-                            <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
-                              <Badge variant="destructive" className="h-5 gap-1 px-1.5 text-[10px]">
-                                <AlertCircle className="h-3 w-3" />
-                                {t('aiops.agent.requestFailedShort', {
-                                  defaultValue: 'error',
-                                })}
-                              </Badge>
-                              {canRetry && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-6 px-2 text-[11px]"
-                                  onClick={() => retryAgentRequest(item)}
-                                  disabled={agentStreaming || pendingConfirmIds.length > 0}
-                                >
-                                  {t('aiops.agent.retryLast', {
-                                    defaultValue: '重试',
-                                  })}
-                                </Button>
-                              )}
-                              {canRetry && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 text-[11px]"
-                                  onClick={() => retryAgentRequestInNewSession(item)}
-                                  disabled={agentStreaming || pendingConfirmIds.length > 0}
-                                >
-                                  {t('aiops.agent.retryInNewSession', {
-                                    defaultValue: '新会话重试',
-                                  })}
-                                </Button>
+                      // Truncate title: show first 10 chars + ellipsis if longer
+                      const displayTitle =
+                        [...sessionTitle].length > 10
+                          ? [...sessionTitle].slice(0, 10).join('') + '…'
+                          : sessionTitle
+
+                      return (
+                        <div
+                          key={session.sessionId}
+                          className={cn(
+                            'group rounded-lg border px-2 py-1.5 transition-colors',
+                            isSelected
+                              ? 'border-primary/30 bg-primary/10'
+                              : 'border-border/60 hover:bg-muted/60',
+                            agentHistoryLoading && 'cursor-wait opacity-60',
+                            hasActiveAgentTask && !isSelected && 'border-amber-200/70 opacity-60'
+                          )}
+                        >
+                          {isEditing ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                ref={renameInputRef}
+                                className="h-6 flex-1 text-[11px]"
+                                value={renameState?.draftTitle ?? ''}
+                                maxLength={100}
+                                onChange={(e) =>
+                                  setRenameState({
+                                    sessionId: session.sessionId,
+                                    draftTitle: e.target.value,
+                                  })
+                                }
+                                onBlur={() => void commitRenameSession(session)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    void commitRenameSession(session)
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    cancelRenameSession()
+                                  }
+                                }}
+                                disabled={isRenaming}
+                              />
+                              {isRenaming && (
+                                <Loader2 className="text-muted-foreground h-3 w-3 shrink-0 animate-spin" />
                               )}
                             </div>
-                          )}
-                          {item.requestState === 'failed' && item.requestError && (
-                            <p className="text-destructive mt-1 text-right text-[11px] leading-relaxed">
-                              {item.requestError}
-                            </p>
-                          )}
-                          {item.requestState === 'awaiting_confirmation' && (
-                            <div className="mt-1 flex justify-end">
-                              <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                {t('aiops.agent.awaitingConfirmation', {
-                                  defaultValue: '等待确认',
-                                })}
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'thinking') {
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
-                          <ThinkingIndicator content={item.thinkingContent} />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'timeline') {
-                    return (
-                      <div key={item.id} className="flex min-w-0 flex-col justify-start">
-                        <AgentTimeline
-                          turnId={item.turnId ?? ''}
-                          orchestrationMode="multi_agent"
-                          events={item.timelineEvents ?? []}
-                          verifierVerdict={item.timelineVerdict ?? null}
-                          isStreaming={!item.timelineComplete && agentStreaming}
-                        />
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'tool_call') {
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="w-full max-w-[95%] min-w-0">
-                          <ToolCallCard
-                            toolName={item.toolName ?? 'unknown'}
-                            args={item.toolArgs ?? {}}
-                            status={item.toolStatus ?? 'executing'}
-                            resultSummary={item.toolResult}
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'message') {
-                    const fbKey = item.feedbackTargetId ? `message:${item.feedbackTargetId}` : null
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
-                          <div className="markdown-content w-full min-w-0 text-sm">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={markdownComponents}
+                          ) : (
+                            <button
+                              className="w-full min-w-0 text-left"
+                              onClick={() => handleSelectAgentSession(session.sessionId)}
+                              disabled={agentHistoryLoading || isDeleting}
                             >
-                              {item.text ?? ''}
-                            </ReactMarkdown>
-                          </div>
-                          {item.feedbackTargetId && lastLoadedAgentSessionIdRef.current && (
-                            <FeedbackCard
-                              sessionId={lastLoadedAgentSessionIdRef.current}
-                              targetType="message"
-                              targetId={item.feedbackTargetId}
-                              existingFeedback={fbKey ? feedbackMap[fbKey] : null}
-                              onFeedbackChange={handleFeedbackChange}
-                            />
+                              <div className="flex items-center gap-1">
+                                <span
+                                  className="min-w-0 flex-1 truncate text-[11px] font-medium"
+                                  title={sessionTitle}
+                                >
+                                  {displayTitle}
+                                </span>
+                                {isDeleting && (
+                                  <Loader2 className="text-muted-foreground h-3 w-3 shrink-0 animate-spin" />
+                                )}
+                              </div>
+                              {hasActiveAgentTask && !isSelected && (
+                                <p className="mt-0.5 text-[9px] text-amber-700">
+                                  {t('aiops.agent.sessionSwitchInterruptHint', {
+                                    defaultValue: '点击后将提示中断当前执行',
+                                  })}
+                                </p>
+                              )}
+                            </button>
                           )}
+                          <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[9px]">
+                            <span className="min-w-0 shrink truncate">
+                              {formatAgentSessionDate(session.updatedAt)}
+                            </span>
+                            <span className="ml-auto flex shrink-0 items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground h-4 w-4 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sky-600"
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  beginRenameSession(session)
+                                }}
+                                disabled={
+                                  agentHistoryLoading || isDeleting || isRenaming || isEditing
+                                }
+                                title={t('aiops.agent.renameSession', {
+                                  defaultValue: '重命名会话',
+                                })}
+                              >
+                                <Pencil className="h-2.5 w-2.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  'h-4 w-4 hover:text-amber-700',
+                                  session.pinnedAt ? 'text-amber-600' : 'text-muted-foreground'
+                                )}
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  void handleToggleSessionPin(session)
+                                }}
+                                disabled={agentHistoryLoading || isDeleting}
+                                title={
+                                  session.pinnedAt
+                                    ? t('aiops.agent.unpinSession', { defaultValue: '取消置顶' })
+                                    : t('aiops.agent.pinSession', { defaultValue: '置顶' })
+                                }
+                              >
+                                {isPinning ? (
+                                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                ) : (
+                                  <Pin className="h-2.5 w-2.5" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground h-4 w-4 hover:text-red-600"
+                                onClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  requestDeleteAgentSession(session)
+                                }}
+                                disabled={agentHistoryLoading || isPinning || isDeleting}
+                                title={t('aiops.agent.deleteSession', { defaultValue: '删除会话' })}
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                              </Button>
+                            </span>
+                          </div>
                         </div>
+                      )
+                    })}
+                    {agentSessions.length === 0 && (
+                      <div className="text-muted-foreground px-2 py-3 text-center text-[10px]">
+                        {t('aiops.agent.noSessions', { defaultValue: '暂无历史' })}
                       </div>
-                    )
-                  }
+                    )}
+                  </div>
+                </ScrollArea>
+                {agentHistoryLoading && (
+                  <p className="text-muted-foreground border-t px-2 py-1 text-[9px]">
+                    {t('aiops.agent.loadingSession', { defaultValue: '加载中…' })}
+                  </p>
+                )}
+                {agentHistoryError && (
+                  <div className="border-t px-2 py-1">
+                    <p className="text-[9px] text-red-500">{agentHistoryError}</p>
+                    {lastAgentHistorySessionIdRef.current && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-0.5 h-4 text-[9px]"
+                        onClick={retryLoadAgentSession}
+                        disabled={agentHistoryLoading || agentStreaming}
+                      >
+                        {t('aiops.agent.retryLoadSession', { defaultValue: '重试' })}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-                  if (item.kind === 'confirmation_required') {
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="w-full max-w-[95%] min-w-0">
-                          <ConfirmActionCard
-                            confirmId={item.confirmId ?? ''}
-                            action={item.confirmAction ?? ''}
-                            description={item.confirmDescription ?? ''}
-                            interaction={item.confirmInteraction}
-                            form={item.confirmForm}
-                            onConfirmed={(result) => {
-                              handleConfirmationSettled(
-                                item,
-                                result,
-                                result.status === 'error' ? 'error' : 'done',
-                                `${item.confirmAction ?? '操作'} 已执行`
-                              )
-                            }}
-                            onRejected={(result) => {
-                              handleConfirmationSettled(
-                                item,
-                                result,
-                                'cancelled',
-                                `${item.confirmAction ?? '操作'} 已取消`
-                              )
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'parameter_review' && item.parameterReview) {
-                    const pr = item.parameterReview
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="w-full max-w-[95%] min-w-0">
-                          <ParameterReviewCard
-                            reviewId={pr.reviewId}
-                            scenario={pr.scenario}
-                            complexity={pr.complexity}
-                            step={pr.step}
-                            totalSteps={pr.totalSteps}
-                            title={pr.title}
-                            description={pr.description}
-                            parameters={pr.parameters as ParameterReviewPayload['parameters']}
-                            onConfirm={(reviewId, parameters) => {
-                              apiParameterUpdate(
-                                lastLoadedAgentSessionIdRef.current ?? '',
-                                reviewId,
-                                'confirm',
-                                parameters
-                              )
-                              setConversationItems((prev) =>
-                                prev.map((ci) =>
-                                  ci.id === item.id
-                                    ? {
-                                        ...ci,
-                                        parameterReview: ci.parameterReview
-                                          ? {
-                                              ...ci.parameterReview,
-                                              _settled: 'confirmed' as const,
-                                            }
-                                          : ci.parameterReview,
-                                      }
-                                    : ci
-                                )
-                              )
-                            }}
-                            onModify={(reviewId, parameters) => {
-                              apiParameterUpdate(
-                                lastLoadedAgentSessionIdRef.current ?? '',
-                                reviewId,
-                                'modify',
-                                parameters
-                              )
-                              setConversationItems((prev) =>
-                                prev.map((ci) =>
-                                  ci.id === item.id
-                                    ? {
-                                        ...ci,
-                                        parameterReview: ci.parameterReview
-                                          ? {
-                                              ...ci.parameterReview,
-                                              _settled: 'confirmed' as const,
-                                            }
-                                          : ci.parameterReview,
-                                      }
-                                    : ci
-                                )
-                              )
-                            }}
-                            settled={
-                              (pr as ParameterReviewPayload & { _settled?: string })._settled ===
-                              'confirmed'
-                                ? 'confirmed'
-                                : null
-                            }
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'resource_suggestion' && item.resourceSuggestion) {
-                    const rs = item.resourceSuggestion
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="w-full max-w-[95%] min-w-0">
-                          <ResourceSuggestionCard
-                            suggestionId={rs.suggestionId}
-                            context={rs.context}
-                            recommendations={rs.recommendations}
-                            tip={rs.tip}
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'pipeline_report' && item.pipelineReport) {
-                    const rpt = item.pipelineReport
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="w-full max-w-[95%] min-w-0">
-                          <PipelineReportCard
-                            reportId={rpt.reportId}
-                            reportType={rpt.reportType}
-                            completedAt={rpt.completedAt}
-                            summary={rpt.summary}
-                            summaryLabels={rpt.summary_labels}
-                            categories={rpt.categories}
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'batch_confirmation' && item.batchConfirmation) {
-                    const bc = item.batchConfirmation
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="w-full max-w-[95%] min-w-0">
-                          <BatchConfirmCard
-                            batchId={bc.batchId}
-                            action={bc.action}
-                            description={bc.description}
-                            items={bc.items}
-                            onConfirmSelected={() => {
-                              setConversationItems((prev) =>
-                                prev.map((ci) =>
-                                  ci.id === item.id
-                                    ? {
-                                        ...ci,
-                                        batchConfirmation: ci.batchConfirmation
-                                          ? {
-                                              ...ci.batchConfirmation,
-                                              _settled: 'confirmed' as const,
-                                            }
-                                          : ci.batchConfirmation,
-                                      }
-                                    : ci
-                                )
-                              )
-                            }}
-                            onRejectAll={() => {
-                              setConversationItems((prev) =>
-                                prev.map((ci) =>
-                                  ci.id === item.id
-                                    ? {
-                                        ...ci,
-                                        batchConfirmation: ci.batchConfirmation
-                                          ? {
-                                              ...ci.batchConfirmation,
-                                              _settled: 'rejected' as const,
-                                            }
-                                          : ci.batchConfirmation,
-                                      }
-                                    : ci
-                                )
-                              )
-                            }}
-                            settled={
-                              (bc as BatchConfirmationPayload & { _settled?: string })._settled ===
-                              'confirmed'
-                                ? 'confirmed'
-                                : (bc as BatchConfirmationPayload & { _settled?: string })
-                                      ._settled === 'rejected'
-                                  ? 'rejected'
-                                  : null
-                            }
-                          />
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (item.kind === 'error') {
-                    return (
-                      <div key={item.id} className="flex min-w-0 justify-start">
-                        <div className="bg-destructive/5 border-destructive/20 max-w-[82%] min-w-0 overflow-hidden rounded-md border px-3 py-2">
-                          <p className="text-destructive text-[11px] [overflow-wrap:anywhere] break-words">
-                            {t('aiops.agent.errorMessage', {
-                              defaultValue: 'Agent 出错：{{message}}',
-                              message: item.text,
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  return null
-                })}
-                {agentStreaming &&
-                  pendingConfirmIds.length === 0 &&
-                  conversationItems[conversationItems.length - 1]?.kind !== 'thinking' && (
+            {/* Right: Conversation area */}
+            <div className="flex min-w-0 flex-1 flex-col">
+              {/* Messages */}
+              <ScrollArea className="chat-drawer-scroll-area min-h-0 min-w-0 flex-1 p-4">
+                <div className="min-w-0 space-y-4">
+                  {conversationItems.length === 0 && (
                     <div className="flex min-w-0 justify-start">
-                      <div className="bg-muted min-w-0 overflow-hidden rounded-lg px-4 py-3">
-                        <ThinkingIndicator />
+                      <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
+                        <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                          {chatMode === 'llm'
+                            ? t('aiops.chat.initialMessageAsk', {
+                                defaultValue:
+                                  '你好！我是 Crater ask 助手，可以回答平台、作业和排障问题。需要执行创建、停止、删除等操作时，请在底部切换到 agent。',
+                              })
+                            : t('aiops.agent.initialMessage', {
+                                defaultValue:
+                                  '你好！我是 Crater agent，可以自主执行操作来帮助你管理作业。请告诉我你需要什么帮助。',
+                              })}
+                        </p>
                       </div>
                     </div>
                   )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                  {conversationItems.map((item, itemIndex) => {
+                    if (item.kind === 'user') {
+                      const canRetry = item.requestState === 'failed' && !!item.text
 
-            {/* Input bar with mode toggle */}
-            <div className="bg-background flex-none border-t p-3">
-              <div className="flex items-center gap-2">
-                {/* Session panel toggle */}
-                {!sessionPanelOpen && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => setSessionPanelOpen(true)}
-                    title={t('aiops.agent.showSessions', { defaultValue: '显示历史' })}
-                  >
-                    <History className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {/* Orchestration mode toggle — inline in input bar */}
-                <Button
-                  variant={orchestrationMode === 'single_agent' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() => setOrchestrationMode('single_agent')}
-                  disabled={agentStreaming || pendingConfirmIds.length > 0}
-                  title={t('aiops.agent.singleModeDesc', {
-                    defaultValue: '标准模式：单 Agent 执行',
-                  })}
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant={orchestrationMode === 'multi_agent' ? 'secondary' : 'ghost'}
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() => setOrchestrationMode('multi_agent')}
-                  disabled={agentStreaming || pendingConfirmIds.length > 0}
-                  title={t('aiops.agent.multiModeDesc', {
-                    defaultValue: '协作模式：多 Agent 分工',
-                  })}
-                >
-                  <Users className="h-3.5 w-3.5" />
-                </Button>
-                {/* Input */}
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  maxLength={AGENT_INPUT_MAX_LENGTH}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleAgentSend()
+                      return (
+                        <div
+                          key={item.id}
+                          className="group flex min-w-0 items-start justify-end gap-1"
+                        >
+                          {editingAgentMessageId !== item.id && (
+                            <div className="mt-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => void copyMessageText(item.text)}
+                                title={t('common.copy', { defaultValue: '复制' })}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => beginEditAgentMessage(item)}
+                                disabled={agentStreaming || pendingConfirmIds.length > 0}
+                                title={t('common.edit', { defaultValue: '编辑' })}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => regenerateAgentFromUser(item)}
+                                disabled={agentStreaming || pendingConfirmIds.length > 0}
+                                title={t('aiops.chat.regenerate', { defaultValue: '重新生成' })}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                          <div className="max-w-[85%] min-w-0 overflow-hidden">
+                            {editingAgentMessageId === item.id ? (
+                              <div className="bg-primary/10 border-primary/20 rounded-lg border p-2">
+                                <Textarea
+                                  value={editingAgentDraft}
+                                  onChange={(event) => setEditingAgentDraft(event.target.value)}
+                                  className="bg-background min-h-20 text-sm"
+                                  autoFocus
+                                />
+                                <div className="mt-2 flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={cancelEditAgentMessage}
+                                  >
+                                    {t('common.cancel', { defaultValue: '取消' })}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => submitEditAgentMessage(item)}
+                                    disabled={
+                                      !editingAgentDraft.trim() ||
+                                      agentStreaming ||
+                                      pendingConfirmIds.length > 0
+                                    }
+                                  >
+                                    {t('aiops.chat.resendFromHere', { defaultValue: '重新发送' })}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="bg-primary text-primary-foreground rounded-lg px-4 py-2">
+                                <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                                  {item.text}
+                                </p>
+                              </div>
+                            )}
+                            {item.requestState === 'failed' && (
+                              <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
+                                <Badge
+                                  variant="destructive"
+                                  className="h-5 gap-1 px-1.5 text-[10px]"
+                                >
+                                  <AlertCircle className="h-3 w-3" />
+                                  {t('aiops.agent.requestFailedShort', {
+                                    defaultValue: 'error',
+                                  })}
+                                </Badge>
+                                {canRetry && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-6 px-2 text-[11px]"
+                                    onClick={() => retryAgentRequest(item)}
+                                    disabled={agentStreaming || pendingConfirmIds.length > 0}
+                                  >
+                                    {t('aiops.agent.retryLast', {
+                                      defaultValue: '重试',
+                                    })}
+                                  </Button>
+                                )}
+                                {canRetry && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[11px]"
+                                    onClick={() => retryAgentRequestInNewSession(item)}
+                                    disabled={agentStreaming || pendingConfirmIds.length > 0}
+                                  >
+                                    {t('aiops.agent.retryInNewSession', {
+                                      defaultValue: '新会话重试',
+                                    })}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            {item.requestState === 'failed' && item.requestError && (
+                              <p className="text-destructive mt-1 text-right text-[11px] leading-relaxed">
+                                {item.requestError}
+                              </p>
+                            )}
+                            {item.requestState === 'cancelled' && (
+                              <div className="mt-1 flex justify-end">
+                                <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
+                                  <Square className="h-2.5 w-2.5" />
+                                  {t('aiops.agent.cancelledByUser', { defaultValue: '已取消' })}
+                                </Badge>
+                              </div>
+                            )}
+                            {item.requestState === 'awaiting_confirmation' && (
+                              <div className="mt-1 flex justify-end">
+                                <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px]">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  {t('aiops.agent.awaitingConfirmation', {
+                                    defaultValue: '等待确认',
+                                  })}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
                     }
-                  }}
-                  placeholder={
-                    orchestrationMode === 'multi_agent'
-                      ? t('aiops.agent.inputPlaceholderMulti', {
-                          defaultValue: '协作模式 · 输入问题...',
-                        })
-                      : t('aiops.agent.inputPlaceholder', {
-                          defaultValue: '输入问题...',
-                        })
-                  }
-                  disabled={agentStreaming || pendingConfirmIds.length > 0}
-                  className="min-w-0 flex-1"
-                />
-                <Button
-                  onClick={() => handleAgentSend()}
-                  disabled={agentStreaming || pendingConfirmIds.length > 0 || !input.trim()}
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  aria-label={t('common.send')}
-                >
-                  {agentStreaming ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {currentJobName && (
-                <div className="text-muted-foreground mt-1.5 flex items-center gap-1 text-[10px]">
-                  <span>{t('aiops.chat.currentJob')}</span>
-                  <Badge variant="secondary" className="h-4 font-mono text-[10px]">
-                    {currentJobName}
-                  </Badge>
+
+                    if (item.kind === 'thinking') {
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
+                            <ThinkingIndicator content={item.thinkingContent} />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'timeline') {
+                      return (
+                        <div key={item.id} className="flex min-w-0 flex-col justify-start">
+                          <AgentTimeline
+                            turnId={item.turnId ?? ''}
+                            orchestrationMode="multi_agent"
+                            events={item.timelineEvents ?? []}
+                            verifierVerdict={item.timelineVerdict ?? null}
+                            isStreaming={!item.timelineComplete && agentStreaming}
+                          />
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'tool_call') {
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="w-full max-w-[95%] min-w-0">
+                            <ToolCallCard
+                              toolName={item.toolName ?? 'unknown'}
+                              args={item.toolArgs ?? {}}
+                              status={item.toolStatus ?? 'executing'}
+                              resultSummary={item.toolResult}
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'message') {
+                      const fbKey = item.feedbackTargetId
+                        ? `message:${item.feedbackTargetId}`
+                        : null
+                      const previousUserItem = [...conversationItems.slice(0, itemIndex)]
+                        .reverse()
+                        .find((entry) => entry.kind === 'user' && entry.text)
+                      return (
+                        <div
+                          key={item.id}
+                          className="group flex min-w-0 items-start justify-start gap-1"
+                        >
+                          <div className="bg-muted max-w-[95%] min-w-0 overflow-hidden rounded-lg px-4 py-3">
+                            <div className="markdown-content w-full min-w-0 text-sm">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={markdownComponents}
+                              >
+                                {item.text ?? ''}
+                              </ReactMarkdown>
+                            </div>
+                            {item.feedbackTargetId && lastLoadedAgentSessionIdRef.current && (
+                              <FeedbackCard
+                                sessionId={lastLoadedAgentSessionIdRef.current}
+                                targetType="message"
+                                targetId={item.feedbackTargetId}
+                                existingFeedback={fbKey ? feedbackMap[fbKey] : null}
+                                onFeedbackChange={handleFeedbackChange}
+                              />
+                            )}
+                          </div>
+                          {item.text && (
+                            <div className="mt-1 flex shrink-0 flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => void copyMessageText(item.text)}
+                                title={t('common.copy', { defaultValue: '复制' })}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              {previousUserItem && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => regenerateAgentFromUser(previousUserItem)}
+                                  disabled={agentStreaming || pendingConfirmIds.length > 0}
+                                  title={t('aiops.chat.regenerate', {
+                                    defaultValue: '重新生成',
+                                  })}
+                                >
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'confirmation_required') {
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="w-full max-w-[95%] min-w-0">
+                            <ConfirmActionCard
+                              confirmId={item.confirmId ?? ''}
+                              action={item.confirmAction ?? ''}
+                              description={item.confirmDescription ?? ''}
+                              riskLevel={item.confirmRiskLevel}
+                              permissionExplanation={item.confirmPermissionExplanation}
+                              riskExplanation={item.confirmRiskExplanation}
+                              affectedResources={item.confirmAffectedResources}
+                              interaction={item.confirmInteraction}
+                              form={item.confirmForm}
+                              onConfirmed={(result) => {
+                                handleConfirmationSettled(
+                                  item,
+                                  result,
+                                  result.status === 'error' ? 'error' : 'done',
+                                  `${item.confirmAction ?? '操作'} 已执行`
+                                )
+                              }}
+                              onRejected={(result) => {
+                                handleConfirmationSettled(
+                                  item,
+                                  result,
+                                  'cancelled',
+                                  `${item.confirmAction ?? '操作'} 已取消`
+                                )
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'parameter_review' && item.parameterReview) {
+                      const pr = item.parameterReview
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="w-full max-w-[95%] min-w-0">
+                            <ParameterReviewCard
+                              reviewId={pr.reviewId}
+                              scenario={pr.scenario}
+                              complexity={pr.complexity}
+                              step={pr.step}
+                              totalSteps={pr.totalSteps}
+                              title={pr.title}
+                              description={pr.description}
+                              parameters={pr.parameters as ParameterReviewPayload['parameters']}
+                              onConfirm={(reviewId, parameters) => {
+                                apiParameterUpdate(
+                                  lastLoadedAgentSessionIdRef.current ?? '',
+                                  reviewId,
+                                  'confirm',
+                                  parameters
+                                )
+                                setConversationItems((prev) =>
+                                  prev.map((ci) =>
+                                    ci.id === item.id
+                                      ? {
+                                          ...ci,
+                                          parameterReview: ci.parameterReview
+                                            ? {
+                                                ...ci.parameterReview,
+                                                _settled: 'confirmed' as const,
+                                              }
+                                            : ci.parameterReview,
+                                        }
+                                      : ci
+                                  )
+                                )
+                              }}
+                              onModify={(reviewId, parameters) => {
+                                apiParameterUpdate(
+                                  lastLoadedAgentSessionIdRef.current ?? '',
+                                  reviewId,
+                                  'modify',
+                                  parameters
+                                )
+                                setConversationItems((prev) =>
+                                  prev.map((ci) =>
+                                    ci.id === item.id
+                                      ? {
+                                          ...ci,
+                                          parameterReview: ci.parameterReview
+                                            ? {
+                                                ...ci.parameterReview,
+                                                _settled: 'confirmed' as const,
+                                              }
+                                            : ci.parameterReview,
+                                        }
+                                      : ci
+                                  )
+                                )
+                              }}
+                              settled={
+                                (pr as ParameterReviewPayload & { _settled?: string })._settled ===
+                                'confirmed'
+                                  ? 'confirmed'
+                                  : null
+                              }
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'resource_suggestion' && item.resourceSuggestion) {
+                      const rs = item.resourceSuggestion
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="w-full max-w-[95%] min-w-0">
+                            <ResourceSuggestionCard
+                              suggestionId={rs.suggestionId}
+                              context={rs.context}
+                              recommendations={rs.recommendations}
+                              tip={rs.tip}
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'pipeline_report' && item.pipelineReport) {
+                      const rpt = item.pipelineReport
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="w-full max-w-[95%] min-w-0">
+                            <PipelineReportCard
+                              reportId={rpt.reportId}
+                              reportType={rpt.reportType}
+                              completedAt={rpt.completedAt}
+                              summary={rpt.summary}
+                              summaryLabels={rpt.summary_labels}
+                              categories={rpt.categories}
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'batch_confirmation' && item.batchConfirmation) {
+                      const bc = item.batchConfirmation
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="w-full max-w-[95%] min-w-0">
+                            <BatchConfirmCard
+                              batchId={bc.batchId}
+                              action={bc.action}
+                              description={bc.description}
+                              items={bc.items}
+                              onConfirmSelected={() => {
+                                setConversationItems((prev) =>
+                                  prev.map((ci) =>
+                                    ci.id === item.id
+                                      ? {
+                                          ...ci,
+                                          batchConfirmation: ci.batchConfirmation
+                                            ? {
+                                                ...ci.batchConfirmation,
+                                                _settled: 'confirmed' as const,
+                                              }
+                                            : ci.batchConfirmation,
+                                        }
+                                      : ci
+                                  )
+                                )
+                              }}
+                              onRejectAll={() => {
+                                setConversationItems((prev) =>
+                                  prev.map((ci) =>
+                                    ci.id === item.id
+                                      ? {
+                                          ...ci,
+                                          batchConfirmation: ci.batchConfirmation
+                                            ? {
+                                                ...ci.batchConfirmation,
+                                                _settled: 'rejected' as const,
+                                              }
+                                            : ci.batchConfirmation,
+                                        }
+                                      : ci
+                                  )
+                                )
+                              }}
+                              settled={
+                                (bc as BatchConfirmationPayload & { _settled?: string })
+                                  ._settled === 'confirmed'
+                                  ? 'confirmed'
+                                  : (bc as BatchConfirmationPayload & { _settled?: string })
+                                        ._settled === 'rejected'
+                                    ? 'rejected'
+                                    : null
+                              }
+                            />
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (item.kind === 'error') {
+                      return (
+                        <div key={item.id} className="flex min-w-0 justify-start">
+                          <div className="bg-destructive/5 border-destructive/20 max-w-[82%] min-w-0 overflow-hidden rounded-md border px-3 py-2">
+                            <p className="text-destructive text-[11px] [overflow-wrap:anywhere] break-words">
+                              {t('aiops.agent.errorMessage', {
+                                defaultValue: 'Agent 出错：{{message}}',
+                                message: item.text,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    return null
+                  })}
+                  {agentStreaming &&
+                    pendingConfirmIds.length === 0 &&
+                    conversationItems[conversationItems.length - 1]?.kind !== 'thinking' && (
+                      <div className="flex min-w-0 justify-start">
+                        <div className="bg-muted min-w-0 overflow-hidden rounded-lg px-4 py-3">
+                          <ThinkingIndicator />
+                        </div>
+                      </div>
+                    )}
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
+              </ScrollArea>
+
+              {/* Input bar with mode toggle */}
+              <div className="bg-background flex-none border-t p-3">
+                <div className="flex items-end gap-2">
+                  {/* Session panel toggle */}
+                  {!sessionPanelOpen && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      onClick={() => setSessionPanelOpen(true)}
+                      title={t('aiops.agent.showSessions', { defaultValue: '显示历史' })}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {AGENT_COLLABORATION_MODE_ENABLED && (
+                    <>
+                      <Button
+                        variant={orchestrationMode === 'single_agent' ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        onClick={() => setOrchestrationMode('single_agent')}
+                        disabled={agentStreaming || pendingConfirmIds.length > 0}
+                        title={t('aiops.agent.singleModeDesc', {
+                          defaultValue: '标准模式：单 Agent 执行',
+                        })}
+                      >
+                        <Zap className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant={orchestrationMode === 'multi_agent' ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        onClick={() => setOrchestrationMode('multi_agent')}
+                        disabled={agentStreaming || pendingConfirmIds.length > 0}
+                        title={t('aiops.agent.multiModeDesc', {
+                          defaultValue: '协作模式：多 Agent 分工',
+                        })}
+                      >
+                        <Users className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
+                  )}
+                  {/* Input */}
+                  <Select
+                    value={chatMode}
+                    onValueChange={(value) => handleAgentModeSwitch(value as ChatMode)}
+                    disabled={agentStreaming || pendingConfirmIds.length > 0}
+                  >
+                    <SelectTrigger className="h-10 w-[92px] shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="llm">
+                        {t('aiops.chat.mode.ask', { defaultValue: 'ask' })}
+                      </SelectItem>
+                      <SelectItem value="agent">
+                        {t('aiops.chat.mode.agent', { defaultValue: 'agent' })}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Textarea
+                    ref={agentInputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    maxLength={AGENT_INPUT_MAX_LENGTH}
+                    rows={1}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleAgentSend()
+                      }
+                    }}
+                    placeholder={
+                      chatMode === 'llm'
+                        ? t('aiops.chat.inputPlaceholderAsk', {
+                            defaultValue: '输入问题，ask 不会执行工具...',
+                          })
+                        : orchestrationMode === 'multi_agent'
+                          ? t('aiops.agent.inputPlaceholderMulti', {
+                              defaultValue: '协作模式 · 输入问题...',
+                            })
+                          : t('aiops.agent.inputPlaceholder', {
+                              defaultValue: '输入问题...',
+                            })
+                    }
+                    disabled={agentStreaming || pendingConfirmIds.length > 0}
+                    className="max-h-36 min-h-10 min-w-0 flex-1 resize-none overflow-y-hidden py-2 leading-5"
+                  />
+                  <Button
+                    onClick={() => {
+                      if (agentStreaming) {
+                        cancelActiveAgentRequest()
+                        return
+                      }
+                      handleAgentSend()
+                    }}
+                    disabled={!agentStreaming && (pendingConfirmIds.length > 0 || !input.trim())}
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    aria-label={
+                      agentStreaming
+                        ? t('aiops.agent.cancelCurrentRun', { defaultValue: '取消当前执行' })
+                        : t('common.send')
+                    }
+                  >
+                    {agentStreaming ? (
+                      <Square className="h-3.5 w-3.5 fill-current" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {currentJobName && (
+                  <div className="text-muted-foreground mt-1.5 flex items-center gap-1 text-[10px]">
+                    <span>{t('aiops.chat.currentJob')}</span>
+                    <Badge variant="secondary" className="h-4 font-mono text-[10px]">
+                      {currentJobName}
+                    </Badge>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -3226,207 +4141,361 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
     )
   }
 
-  // ── Rule/LLM mode layout (unchanged) ──────────────────────────────────────
+  // ── Legacy ask layout ─────────────────────────────────────────────────────
 
   return (
     <>
-      <div className="bg-background fixed inset-y-0 right-0 z-50 flex w-full min-w-0 flex-col border-l shadow-2xl sm:w-[500px]">
-        {/* Header — pill tabs + help/close */}
-        <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="text-primary h-4 w-4" />
-            <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
+      <div
+        className="fixed inset-0 z-50 flex justify-end bg-black/10"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            onClose()
+          }
+        }}
+      >
+        <div
+          className="bg-background relative flex h-full w-full min-w-0 flex-col border-l shadow-2xl sm:max-w-[calc(100vw-48px)]"
+          style={{ width: `min(100vw, ${drawerWidth}px)` }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div
+            className="group absolute top-0 -left-1 z-40 hidden h-full w-3 cursor-ew-resize touch-none sm:block"
+            onPointerDown={handleDrawerResizeStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t('aiops.agent.resizeDrawer', { defaultValue: '调整助手宽度' })}
+          >
+            <span className="bg-primary/0 group-hover:bg-primary/35 pointer-events-none absolute top-0 left-1/2 h-full w-1.5 -translate-x-1/2 rounded-full transition-colors" />
           </div>
-          <div className="flex items-center gap-1">
-            <Tabs
-              value={chatMode}
-              onValueChange={(v) => setChatMode(v as 'rule' | 'llm' | 'agent')}
-            >
-              <TabsList className="h-7">
-                <TabsTrigger value="rule" className="h-6 px-2.5 text-[11px]">
-                  {t('aiops.chat.mode.rule')}
-                </TabsTrigger>
-                <TabsTrigger value="llm" className="h-6 px-2.5 text-[11px]">
-                  {t('aiops.chat.mode.llm')}
-                </TabsTrigger>
-                <TabsTrigger value="agent" className="h-6 px-2.5 text-[11px]">
-                  {t('aiops.chat.mode.agent', { defaultValue: 'Agent' })}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn('h-7 w-7', showHelp && 'bg-accent')}
-              onClick={() => setShowHelp((v) => !v)}
-              aria-label={t('aiops.chat.helpTitle')}
-            >
-              <HelpCircle className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={onClose}
-              aria-label={t('common.close')}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        {showHelp && <ModeGuideCard mode={chatMode} onClose={() => setShowHelp(false)} />}
-
-        {/* Messages */}
-        <ScrollArea className="chat-drawer-scroll-area min-h-0 min-w-0 flex-1 p-4">
-          <div className="min-w-0 space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  'flex min-w-0',
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
+          {/* Header */}
+          <div className="from-primary/5 to-primary/10 flex flex-none items-center justify-between border-b bg-gradient-to-r px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="text-primary h-4 w-4" />
+              <h3 className="text-sm font-semibold">{t('aiops.chat.assistantName')}</h3>
+            </div>
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className="h-6 px-2 text-[11px]">
+                {t('aiops.chat.mode.ask', { defaultValue: 'ask' })}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('h-7 w-7', showHelp && 'bg-accent')}
+                onClick={() => setShowHelp((v) => !v)}
+                aria-label={t('aiops.chat.helpTitle')}
               >
-                {message.role === 'user' ? (
-                  <div className="bg-primary text-primary-foreground max-w-[85%] min-w-0 overflow-hidden rounded-lg px-4 py-2">
-                    <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="max-w-[95%] min-w-0 space-y-2">
-                    <div className="bg-muted min-w-0 overflow-hidden rounded-lg px-4 py-3">
-                      {(() => {
-                        const { showAdminHint, cleanedContent } = getAssistantContentForDisplay(
-                          message.content,
-                          message.data,
-                          adminHintText
-                        )
-                        return (
-                          <>
-                            {showAdminHint && (
-                              <div className="bg-background/70 text-muted-foreground mb-2 rounded-md border px-3 py-1.5 text-xs">
-                                {adminHintText}
-                              </div>
-                            )}
-                            <div className="markdown-content w-full min-w-0 text-sm">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                components={markdownComponents}
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onClose}
+                aria-label={t('common.close')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {showHelp && <ModeGuideCard mode={chatMode} onClose={() => setShowHelp(false)} />}
+
+          {/* Messages */}
+          <ScrollArea className="chat-drawer-scroll-area min-h-0 min-w-0 flex-1 p-4">
+            <div className="min-w-0 space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    'group flex min-w-0 items-start gap-1',
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  )}
+                >
+                  {message.role === 'user' ? (
+                    <>
+                      {editingChatMessageId !== message.id && (
+                        <div className="mt-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => void copyMessageText(message.content)}
+                            title={t('common.copy', { defaultValue: '复制' })}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => beginEditChatMessage(message)}
+                            disabled={chatBusy}
+                            title={t('common.edit', { defaultValue: '编辑' })}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => regenerateChatFromMessage(message)}
+                            disabled={chatBusy}
+                            title={t('aiops.chat.regenerate', { defaultValue: '重新生成' })}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                      <div className="max-w-[85%] min-w-0">
+                        {editingChatMessageId === message.id ? (
+                          <div className="bg-primary/10 border-primary/20 rounded-lg border p-2">
+                            <Textarea
+                              value={editingChatDraft}
+                              onChange={(event) => setEditingChatDraft(event.target.value)}
+                              className="bg-background min-h-20 text-sm"
+                              autoFocus
+                            />
+                            <div className="mt-2 flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={cancelEditChatMessage}
                               >
-                                {cleanedContent}
-                              </ReactMarkdown>
+                                {t('common.cancel', { defaultValue: '取消' })}
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={() => submitEditChatMessage(message.id)}
+                                disabled={!editingChatDraft.trim() || chatBusy}
+                              >
+                                {t('aiops.chat.resendFromHere', { defaultValue: '重新发送' })}
+                              </Button>
                             </div>
-                          </>
-                        )
-                      })()}
-                    </div>
-                    {message.type === 'diagnosis' && isDiagnosisData(message.data) && (
-                      <div className="min-w-0">
-                        <DiagnosisCard diagnosis={message.data} />
+                          </div>
+                        ) : (
+                          <div className="bg-primary text-primary-foreground overflow-hidden rounded-lg px-4 py-2">
+                            <p className="text-sm [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="max-w-[95%] min-w-0 space-y-2">
+                        <div className="bg-muted min-w-0 overflow-hidden rounded-lg px-4 py-3">
+                          {(() => {
+                            const { showAdminHint, cleanedContent } = getAssistantContentForDisplay(
+                              message.content,
+                              message.data,
+                              adminHintText
+                            )
+                            return (
+                              <>
+                                {showAdminHint && (
+                                  <div className="bg-background/70 text-muted-foreground mb-2 rounded-md border px-3 py-1.5 text-xs">
+                                    {adminHintText}
+                                  </div>
+                                )}
+                                <div className="markdown-content w-full min-w-0 text-sm">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={markdownComponents}
+                                  >
+                                    {cleanedContent}
+                                  </ReactMarkdown>
+                                </div>
+                                {message.status === 'cancelled' && (
+                                  <Badge
+                                    variant="outline"
+                                    className="mt-2 h-5 gap-1 px-1.5 text-[10px]"
+                                  >
+                                    <Square className="h-2.5 w-2.5" />
+                                    {t('aiops.agent.cancelledByUser', { defaultValue: '已取消' })}
+                                  </Badge>
+                                )}
+                              </>
+                            )
+                          })()}
+                        </div>
+                        {message.type === 'diagnosis' && isDiagnosisData(message.data) && (
+                          <div className="min-w-0">
+                            <DiagnosisCard diagnosis={message.data} />
+                          </div>
+                        )}
+                      </div>
+                      {message.content && (
+                        <div className="mt-1 flex shrink-0 flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => void copyMessageText(message.content)}
+                            title={t('common.copy', { defaultValue: '复制' })}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => regenerateChatFromMessage(message)}
+                            disabled={chatBusy}
+                            title={t('aiops.chat.regenerate', { defaultValue: '重新生成' })}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+              {chatBusy &&
+                !(
+                  llmStreaming &&
+                  messages[messages.length - 1]?.role === 'assistant' &&
+                  messages[messages.length - 1]?.content
+                ) && (
+                  <div className="flex min-w-0 justify-start">
+                    <div className="bg-muted flex min-w-0 items-center gap-2 overflow-hidden rounded-lg px-4 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-muted-foreground text-sm">
+                        {t('aiops.chat.thinking')}
+                      </span>
+                    </div>
                   </div>
                 )}
-              </div>
-            ))}
-            {chatMutation.isPending && (
-              <div className="flex min-w-0 justify-start">
-                <div className="bg-muted flex min-w-0 items-center gap-2 overflow-hidden rounded-lg px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-muted-foreground text-sm">{t('aiops.chat.thinking')}</span>
-                </div>
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          {/* Smart Prompts */}
+          <div className="bg-muted/30 max-h-[30vh] flex-none overflow-y-auto border-t">
+            <div className="space-y-2 p-3">
+              {smartPrompts.map((category) => (
+                <Collapsible
+                  key={category.id}
+                  open={expandedCategories.includes(category.id)}
+                  onOpenChange={() => toggleCategory(category.id)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-full justify-between text-xs font-medium"
+                    >
+                      {category.category}
+                      <ChevronDown
+                        className={cn(
+                          'h-3 w-3 transition-transform',
+                          expandedCategories.includes(category.id) && 'rotate-180'
+                        )}
+                      />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
+                    <div className="grid gap-1.5">
+                      {category.prompts.map((prompt, idx) => (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSend(prompt.text)}
+                          disabled={chatBusy}
+                          className="h-auto justify-start px-2 py-1.5 text-left text-xs whitespace-normal"
+                          title={prompt.hint}
+                        >
+                          <span className="mr-1.5">{prompt.icon}</span>
+                          <span className="flex-1">{prompt.text}</span>
+                          {prompt.hint && (
+                            <span className="text-muted-foreground ml-1 hidden text-[10px] sm:inline">
+                              {prompt.hint.split(/[，,]/)[0]}
+                            </span>
+                          )}
+                        </Button>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+          </div>
+
+          {/* Input */}
+          <div className="bg-background flex-none border-t p-4">
+            <div className="flex items-end gap-2">
+              <Select
+                value={chatMode}
+                onValueChange={(value) => {
+                  if (chatBusy) {
+                    cancelChatRequest()
+                  }
+                  setChatMode(value as ChatMode)
+                }}
+              >
+                <SelectTrigger className="h-10 w-[92px] shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="llm">
+                    {t('aiops.chat.mode.ask', { defaultValue: 'ask' })}
+                  </SelectItem>
+                  <SelectItem value="agent">
+                    {t('aiops.chat.mode.agent', { defaultValue: 'agent' })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Textarea
+                ref={chatInputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSend()
+                  }
+                }}
+                placeholder={t('aiops.chat.inputPlaceholder')}
+                disabled={chatBusy}
+                className="max-h-36 min-h-10 flex-1 resize-none overflow-y-hidden py-2 leading-5"
+              />
+              <Button
+                onClick={() => {
+                  if (chatBusy) {
+                    cancelChatRequest({ markCancelled: true })
+                    return
+                  }
+                  handleSend()
+                }}
+                disabled={!chatBusy && !input.trim()}
+                size="icon"
+                className="h-10 w-10 shrink-0"
+                aria-label={
+                  chatBusy
+                    ? t('aiops.chat.cancelCurrentRequest', { defaultValue: '取消当前请求' })
+                    : t('common.send')
+                }
+              >
+                {chatBusy ? (
+                  <Square className="h-3.5 w-3.5 fill-current" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {currentJobName && (
+              <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
+                <span>{t('aiops.chat.currentJob')}</span>
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {currentJobName}
+                </Badge>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
-        </ScrollArea>
-
-        {/* Smart Prompts */}
-        <div className="bg-muted/30 max-h-[30vh] flex-none overflow-y-auto border-t">
-          <div className="space-y-2 p-3">
-            {smartPrompts.map((category) => (
-              <Collapsible
-                key={category.id}
-                open={expandedCategories.includes(category.id)}
-                onOpenChange={() => toggleCategory(category.id)}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-full justify-between text-xs font-medium"
-                  >
-                    {category.category}
-                    <ChevronDown
-                      className={cn(
-                        'h-3 w-3 transition-transform',
-                        expandedCategories.includes(category.id) && 'rotate-180'
-                      )}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
-                  <div className="grid gap-1.5">
-                    {category.prompts.map((prompt, idx) => (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleSend(prompt.text)}
-                        disabled={chatMutation.isPending}
-                        className="h-auto justify-start px-2 py-1.5 text-left text-xs whitespace-normal"
-                        title={prompt.hint}
-                      >
-                        <span className="mr-1.5">{prompt.icon}</span>
-                        <span className="flex-1">{prompt.text}</span>
-                        {prompt.hint && (
-                          <span className="text-muted-foreground ml-1 hidden text-[10px] sm:inline">
-                            {prompt.hint.split(/[，,]/)[0]}
-                          </span>
-                        )}
-                      </Button>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="bg-background flex-none border-t p-4">
-          <div className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSend()
-                }
-              }}
-              placeholder={t('aiops.chat.inputPlaceholder')}
-              disabled={chatMutation.isPending}
-              className="flex-1"
-            />
-            <Button
-              onClick={() => handleSend()}
-              disabled={chatMutation.isPending || !input.trim()}
-              size="icon"
-              aria-label={t('common.send')}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          {currentJobName && (
-            <div className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
-              <span>{t('aiops.chat.currentJob')}</span>
-              <Badge variant="secondary" className="font-mono text-xs">
-                {currentJobName}
-              </Badge>
-            </div>
-          )}
         </div>
       </div>
     </>
@@ -3435,7 +4504,7 @@ export function AIChatDrawer({ isOpen, onClose, currentJobName }: AIChatDrawerPr
 
 // ── Mode Guide Card Component ───────────────────────────────────────────────
 
-const GUIDE_MODES = ['rule', 'llm', 'agent'] as const
+const GUIDE_MODES = ['llm', 'agent'] as const
 
 function GuideIcon({ mode }: { mode: string }) {
   switch (mode) {
@@ -3448,9 +4517,9 @@ function GuideIcon({ mode }: { mode: string }) {
   }
 }
 
-function ModeGuideCard({ mode, onClose }: { mode: 'rule' | 'llm' | 'agent'; onClose: () => void }) {
+function ModeGuideCard({ mode, onClose }: { mode: ChatMode; onClose: () => void }) {
   const { t } = useTranslation()
-  const [guideMode, setGuideMode] = useState<'rule' | 'llm' | 'agent'>(mode)
+  const [guideMode, setGuideMode] = useState<ChatMode>(mode)
 
   // Sync with external mode changes
   useEffect(() => {

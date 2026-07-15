@@ -1,29 +1,39 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { t } from 'i18next'
-
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
-import { HealthOverviewAdmin } from '@/components/aiops/HealthOverviewAdmin'
-import { OpsReportTab } from '@/components/aiops/OpsReportTab'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin/aiops/')({
+  beforeLoad: () => {
+    throw redirect({ to: '/admin' })
+  },
   component: RouteComponent,
-  loader: () => ({ crumb: t('navigation.aiops') }),
 })
 
 function RouteComponent() {
-  return (
-    <Tabs defaultValue="health" className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="health">健康概览</TabsTrigger>
-        <TabsTrigger value="report">智能巡检报告</TabsTrigger>
-      </TabsList>
-      <TabsContent value="health">
-        <HealthOverviewAdmin />
-      </TabsContent>
-      <TabsContent value="report">
-        <OpsReportTab />
-      </TabsContent>
-    </Tabs>
-  )
+  return null
 }
+
+/*
+ * 管理端 AI 运维独立页面暂时下线：保留主体代码，后续如需恢复可还原。
+ *
+ * import { t } from 'i18next'
+ * import { AgentAuditSessionsDialog } from '@/components/agent-audit/AgentAuditSessionsDialog'
+ * import { HealthOverviewAdmin } from '@/components/aiops/HealthOverviewAdmin'
+ * import { OpsReportTab } from '@/components/aiops/OpsReportTab'
+ *
+ * export const Route = createFileRoute('/admin/aiops/')({
+ *   component: RouteComponent,
+ *   loader: () => ({ crumb: t('navigation.aiops') }),
+ * })
+ *
+ * function RouteComponent() {
+ *   return (
+ *     <div className="space-y-4">
+ *       <HealthOverviewAdmin actions={<AgentAuditSessionsDialog />} />
+ *
+ *       <div className="flex items-center justify-between">
+ *         <h2 className="text-lg font-semibold">智能巡检报告</h2>
+ *       </div>
+ *       <OpsReportTab />
+ *     </div>
+ *   )
+ * }
+ */

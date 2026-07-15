@@ -3,13 +3,13 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/pkg/patrol"
 )
 
@@ -62,12 +62,12 @@ func (s *ConfigService) EnsureBuiltinCronJobs(ctx context.Context) error {
 			_, err := cjc.WithContext(ctx).Where(cjc.Name.Eq(job.Name)).First()
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				if createErr := cjc.WithContext(ctx).Create(job); createErr != nil {
-					return fmt.Errorf("failed to create builtin cron job %s: %w", job.Name, createErr)
+					return bizerr.Internal.DatabaseError.Wrap(createErr, "failed to create builtin cron job "+job.Name)
 				}
 				continue
 			}
 			if err != nil {
-				return fmt.Errorf("failed to query builtin cron job %s: %w", job.Name, err)
+				return bizerr.Internal.DatabaseError.Wrap(err, "failed to query builtin cron job "+job.Name)
 			}
 		}
 		return nil

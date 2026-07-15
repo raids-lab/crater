@@ -11,6 +11,15 @@ type AgentChatRequest struct {
 	OrchestrationMode string          `json:"orchestrationMode,omitempty"`
 }
 
+type AgentAskRequest struct {
+	Message       string          `json:"message" binding:"required"`
+	SessionID     string          `json:"sessionId,omitempty"`
+	RequestID     string          `json:"requestId,omitempty"`
+	PageContext   json.RawMessage `json:"pageContext,omitempty"`
+	ClientContext json.RawMessage `json:"clientContext,omitempty"`
+	JobName       string          `json:"jobName,omitempty"`
+}
+
 type ConfirmToolRequest struct {
 	ConfirmID string          `json:"confirmId" binding:"required"`
 	Confirmed bool            `json:"confirmed"`
@@ -50,8 +59,19 @@ type AgentInternalContext struct {
 }
 
 type AgentConfigSummary struct {
-	DefaultOrchestrationMode string   `json:"defaultOrchestrationMode"`
-	AvailableModes           []string `json:"availableModes,omitempty"`
+	DefaultOrchestrationMode string                 `json:"defaultOrchestrationMode"`
+	AvailableModes           []string               `json:"availableModes,omitempty"`
+	LLM                      *AgentLLMConfigSummary `json:"llm,omitempty"`
+}
+
+type AgentLLMConfigSummary struct {
+	Source       string `json:"source"`
+	UsingConfig  bool   `json:"usingConfig"`
+	Complete     bool   `json:"complete"`
+	BaseURL      string `json:"baseUrl,omitempty"`
+	Model        string `json:"model,omitempty"`
+	HasAPIKey    bool   `json:"hasApiKey"`
+	FallbackNote string `json:"fallbackNote,omitempty"`
 }
 
 type AgentTurnRequest struct {
@@ -62,12 +82,15 @@ type AgentTurnRequest struct {
 }
 
 type AgentToolConfirmation struct {
-	ConfirmID   string         `json:"confirm_id"`
-	ToolName    string         `json:"tool_name"`
-	Description string         `json:"description"`
-	RiskLevel   string         `json:"risk_level"`
-	Interaction string         `json:"interaction,omitempty"`
-	Form        *AgentToolForm `json:"form,omitempty"`
+	ConfirmID             string         `json:"confirm_id"`
+	ToolName              string         `json:"tool_name"`
+	Description           string         `json:"description"`
+	RiskLevel             string         `json:"risk_level"`
+	PermissionExplanation string         `json:"permission_explanation,omitempty"`
+	RiskExplanation       string         `json:"risk_explanation,omitempty"`
+	AffectedResources     []string       `json:"affected_resources,omitempty"`
+	Interaction           string         `json:"interaction,omitempty"`
+	Form                  *AgentToolForm `json:"form,omitempty"`
 }
 
 type AgentToolForm struct {
