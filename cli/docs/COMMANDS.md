@@ -513,7 +513,7 @@
 
 ## 7. 镜像模块 (image)
 
-本模块提供容器镜像信息的只读查询能力。所有命令均要求已有 active credentials。
+本模块提供容器镜像、镜像构建、分享、CUDA base image 和 Harbor 项目管理能力。所有命令均要求已有 active credentials。用户可操作资源使用 `crater image ...`；管理员/平台级资源统一使用 `crater admin image ...`，不得使用 `--admin` 切换。
 
 ### `crater image ls`
 - **描述**: 列出当前账号可见的镜像。
@@ -531,6 +531,55 @@
   - 默认模式以表格展示 ID、镜像地址、类型、可见性、架构和所有者。
 - **`--json` 的 `data`**：`images`（数组，元素与平台镜像响应一致，过滤后返回）。
 - **状态**: [x] Completed
+
+### Image Build Commands
+- `crater image build ls`: `/api/v1/images/kaniko`
+- `crater image build get <name>`: `/api/v1/images/getbyname?name=...`
+- `crater image build template <name>`: `/api/v1/images/template?name=...`
+- `crater image build pod <id>`: `/api/v1/images/podname?id=...`
+- `crater image build pip-apt --name NAME --tag TAG --image BASE [--packages TEXT] [--requirements TEXT]`
+- `crater image build dockerfile --name NAME --tag TAG (--dockerfile TEXT | --file PATH)`
+- `crater image build envd --name NAME --tag TAG (--envd TEXT | --file PATH) [--build-source EnvdAdvanced|EnvdRaw]`
+- `crater image build remove --ids 1,2`
+- Admin variants:
+  - `crater admin image build-ls`
+  - `crater admin image build-remove --ids 1,2`
+- JSON payload keys: `builds`, `build`, `template`, `pod`, `message`.
+
+### Image Record Commands
+- `crater image upload --image IMAGE [--type jupyter|webide|custom|pytorch|tensorflow]`
+- `crater image delete <id>`
+- `crater image delete-many --ids 1,2`
+- `crater image description <id> --description TEXT`
+- `crater image type <id> --type jupyter|webide|custom|pytorch|tensorflow`
+- `crater image tags <id> --tags a,b`
+- `crater image arch <id> --archs linux/amd64,linux/arm64`
+- `crater image valid --links image-a,image-b`
+- Admin variants:
+  - `crater admin image ls`
+  - `crater admin image delete-many --ids 1,2`
+  - `crater admin image description <id> --description TEXT`
+  - `crater admin image type <id> --type jupyter|webide|custom|pytorch|tensorflow`
+  - `crater admin image tags <id> --tags a,b`
+  - `crater admin image arch <id> --archs linux/amd64`
+  - `crater admin image public <id>`
+- `type=all` is accepted only as a local list filter, not as a writable image task type.
+- JSON payload keys: `images`, `message`, `invalid_pairs`.
+
+### Image Share, CUDA, Harbor, And Quota Commands
+- `crater image share ls <image-id>`: `/api/v1/images/share?imageID=...`
+- `crater image share users <image-id> [--name NAME]`: `/api/v1/images/user`
+- `crater image share accounts <image-id>`: `/api/v1/images/account`
+- `crater image share add <image-id> --share-type user|account --ids 1,2`
+- `crater image share remove <image-id> --share-type user|account --target-id ID`
+- `crater image cuda ls`
+- `crater admin image cuda add --image-label LABEL --label TEXT --value IMAGE`
+- `crater admin image cuda delete <id>`
+- `crater image harbor info`
+- `crater image harbor credential --yes`
+- `crater image quota get|set --size BYTES`
+- Harbor credential output contains sensitive data and requires explicit `--yes` in every mode.
+- JSON payload keys: `grants`, `users`, `accounts`, `cuda_base_images`, `harbor`, `credential`, `quota`, `message`.
 
 ---
 

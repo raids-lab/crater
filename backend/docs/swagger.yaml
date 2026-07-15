@@ -3511,6 +3511,45 @@ paths:
       summary: 管理员更新镜像架构
       tags:
       - ImagePack
+  /v1/admin/images/cudabaseimage:
+    post:
+      consumes:
+      - application/json
+      description: 添加新的CUDA基础镜像到系统中
+      parameters:
+      - description: CUDA基础镜像信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_image.CudaBaseImageCreateRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 添加CUDA基础镜像
+      tags:
+      - ImagePack
+  /v1/admin/images/cudabaseimage/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据ID删除指定的CUDA基础镜像
+      parameters:
+      - description: CUDA基础镜像ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 删除CUDA基础镜像
+      tags:
+      - ImagePack
   /v1/admin/images/description:
     post:
       consumes:
@@ -6079,44 +6118,6 @@ paths:
       security:
       - Bearer: []
       summary: 获取所有Cuda基础镜像
-      tags:
-      - ImagePack
-    post:
-      consumes:
-      - application/json
-      description: 添加新的CUDA基础镜像到系统中
-      parameters:
-      - description: CUDA基础镜像信息
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler_image.CudaBaseImageCreateRequest'
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 添加CUDA基础镜像
-      tags:
-      - ImagePack
-  /v1/images/cudabaseimage/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: 根据ID删除指定的CUDA基础镜像
-      parameters:
-      - description: CUDA基础镜像ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 删除CUDA基础镜像
       tags:
       - ImagePack
   /v1/images/deleteimage:
