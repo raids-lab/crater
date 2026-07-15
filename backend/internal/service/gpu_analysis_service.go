@@ -36,7 +36,7 @@ import (
 const (
 	PodAnalysisMinAge    = 2 * time.Hour
 	MetricsQueryDuration = 2 * time.Hour
-	LLMRequestTimeout    = 300 * time.Second  // 为LLM请求设置超时
+	LLMRequestTimeout    = 420 * time.Second  // 为LLM请求设置超时
 	MaxQueryLength       = 4000               // LLM查询的最大长度
 	SleepBetweenRetries  = 2 * time.Second    // LLM请求失败时的重试间隔
 	GpuAnalysisMaxAge    = 7 * 24 * time.Hour // GPU分析记录的最大保留时间
@@ -762,8 +762,8 @@ func (s *GpuAnalysisService) cleanOvertimeGpuAnalyses(ctx context.Context) {
 	klog.Info("Starting cleanup of overtime GPU analysis records...")
 	ga := s.q.GpuAnalysis
 	cutoffTime := time.Now().Add(-GpuAnalysisMaxAge)
-	// 超时且已review的记录可以删除
-	_, err := ga.WithContext(ctx).Where(ga.CreatedAt.Lt(cutoffTime), ga.ReviewStatus.Neq(uint8(model.ReviewStatusPending))).Delete()
+	// 超过保留时间的记录全部软删除，不区分审核状态
+	_, err := ga.WithContext(ctx).Where(ga.CreatedAt.Lt(cutoffTime)).Delete()
 	if err != nil {
 		klog.Errorf("Error cleaning up overtime GPU analysis records: %v", err)
 		return
