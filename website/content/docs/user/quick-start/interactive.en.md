@@ -20,7 +20,8 @@ On the **"New Jupyter Lab"** page, you can **set various configurations for inte
 - Add environment variables
 - Other options
   - Receive status notifications
-  - Enable node selection feature
+  - Enable CPU pinning
+  - Target node control (whitelist / blacklist modes)
 
 ![](./images/inter/settings.webp)
 
@@ -28,17 +29,36 @@ Various settings for interactive jobs can be done by **importing a configuration
 
 ```json
 {
-  "version": "20240528",
+  "version": "20260707",
   "type": "jupyter",
   "data": {
-    "taskname": "DL-bench-test",
-    "cpu": 2,
-    "gpu": {
-      "count": 1,
-      "model": "nvidia.com/a100"
+    "jobName": "DL-bench-test",
+    "task": {
+      "taskName": "training",
+      "replicas": 1,
+      "resource": {
+        "cpu": 2,
+        "memory": 8,
+        "gpu": {
+          "count": 1,
+          "model": "nvidia.com/a100"
+        },
+        "network": {
+          "enabled": false
+        },
+        "vgpu": {
+          "enabled": false
+        }
+      },
+      "image": {
+        "imageLink": "harbor.act.buaa.edu.cn/crater-images/nvidia-pytorch:24.08-py3",
+        "archs": ["linux/amd64"]
+      },
+      "shell": "",
+      "command": "",
+      "workingDir": "/home/liuxw24",
+      "ports": []
     },
-    "memory": 4,
-    "image": "harbor.act.buaa.edu.cn/crater-images/nvidia-pytorch:24.08-py3",
     "volumeMounts": [
       {
         "type": 1,
@@ -47,12 +67,15 @@ Various settings for interactive jobs can be done by **importing a configuration
       }
     ],
     "envs": [],
-    "observability": {
-      "tbEnable": false
-    },
     "nodeSelector": {
-      "enable": false
-    }
+      "enable": false,
+      "mode": "include",
+      "nodes": []
+    },
+    "alertEnabled": true,
+    "cpuPinningEnabled": false,
+    "forwards": [],
+    "scheduleType": 1
   }
 }
 ```

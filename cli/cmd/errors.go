@@ -106,6 +106,18 @@ type usageIssue struct {
 	Field   string
 }
 
+func missingIssue(field string, labelKey string) usageIssue {
+	return usageIssue{
+		Code:    errorcodes.ErrMissingRequiredFlag,
+		Message: i18n.T("err_missing_required", i18n.T(labelKey), field),
+		Field:   field,
+	}
+}
+
+func invalidIssue(field string, message string) usageIssue {
+	return usageIssue{Code: errorcodes.ErrInvalidFlagValue, Message: message, Field: field}
+}
+
 func primaryUsageCode(issues []usageIssue) string {
 	hasMissing := false
 	hasInvalid := false

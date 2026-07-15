@@ -32,7 +32,7 @@ description: "Crater 全仓库代码审查与 PR 描述：纵览 backend/fronten
 
 - **安全**：无硬编码密钥/Token/密码/内网 IP；DAO 与存储层无 SQL 字符串拼接。
 - **后端**：管理员接口入 `Admin` 路由、用户接口入 `Protected` 路由；外部 API 变更同步 `swag`；HTTP 状态码符合 RESTful；错误信息为清晰英文。
-- **作业模板**：作业配置字段、模板序列化或克隆作业 payload 变更须判断是否应阻断旧模板 / 旧导出配置；需要阻断时提升对应前端 `MetadataForm*` version，旧配置仍需可用时补充兼容处理与验证。
+- **作业模板**：作业配置字段、模板持久化结构、模板序列化或 clone / template source 变更须检查是否提升对应前端 `MetadataForm*` version；提升版本时必须有“上一版本 -> 当前版本”的迁移函数并接入模板迁移注册表，旧版本通过链式迁移升级，不支持的更早版本要明确报错。新增或修改作业模板加载 / 解析入口时，必须复用统一模板迁移逻辑，不要手写局部兼容，也不要把任意 JSON 导入误接入作业模板迁移。
 - **前端**：无硬编码文本（接入 i18n）；翻译 key 使用英文语义 key 并放入合适 domain，不得新增中文 key；新增 / 修改可翻译文案须同步所有语言 `translation.json`，保证翻译准确和专有名词一致；身份判断用 `useIsAdmin()`；非幂等操作执行前须有确认弹出框，说明对象和后果；改动 `ui-custom/` 等高复用组件须评估影响范围与兼容性（审查时列为核心规范，要求开发者确认）；不易理解的输入 / 配置项须提供帮助图标与 hover tooltip；前端 / UI 改动的 PR 描述须包含相应界面截图。
 - **Chart**：`values.yaml` / 模板 / 依赖 / 配置项行为或默认值变更须提升 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion`，二者必须保持完全相同的值，并同步 `charts/crater/README.md`；values-only 可 patch，前后端 API 变化影响应用契约须 minor，不主动 major；版本发布变化须提醒创建 GitHub tag；新增项含英文注释。
 - **文档**：`website/` 应面向平台用户（集群用户与集群管理员）承载部署、使用、管理、排障等产品文档；`docs/` 和仓库各级 `.md` 默认面向开发者 / 贡献者。归档须正确；术语准确（Account=调度队列）；`website/` 部署命令无硬编码 Chart 版本，命令附近用 `<CraterChartVersionNotice />`，代码块内用 `<chart-version>`，Chart 配置页用 `<ChartBadge />`。

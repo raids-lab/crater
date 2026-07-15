@@ -18,11 +18,15 @@ import {
   ArrowDownAZIcon,
   ArrowDownZAIcon,
   BarChart3Icon,
+  ClockIcon,
+  DownloadIcon,
   EllipsisVerticalIcon,
+  Globe2Icon,
+  HardDriveIcon,
+  HeartIcon,
   SearchIcon,
 } from 'lucide-react'
 import { Trash2Icon } from 'lucide-react'
-import { motion } from 'motion/react'
 import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -46,7 +50,6 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-import TipBadge from '@/components/badge/tip-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
@@ -65,6 +68,7 @@ import {
 
 import { IUserInfo } from '@/services/api/vcjob'
 
+import { formatFileSize } from '@/utils/file-size'
 import { atomUserInfo } from '@/utils/store'
 
 export interface DataItem {
@@ -72,7 +76,15 @@ export interface DataItem {
   name: string
   desc: string
   createdAt?: string
+  updatedAt?: string
+  sourceUpdatedAt?: string
   mountCount?: number
+  sizeBytes?: number
+  downloadCount?: number
+  likes?: number
+  source?: string
+  organization?: string
+  organizationUrl?: string
   tag: string[]
   url?: string
   template?: string
@@ -132,46 +144,51 @@ export default function DataList({
     return Number.isFinite(numericValue) ? numericValue : 0
   }
 
-  const filteredItems = [...items]
-    .sort((a, b) => {
-      const direction = sort === 'descending' ? -1 : 1
+  // Memoize sorting and filtering to keep large resource lists responsive.
+  const filteredItems = useMemo(
+    () =>
+      [...items]
+        .sort((a, b) => {
+          const direction = sort === 'descending' ? -1 : 1
 
-      if (sortField === 'mountCount') {
-        const aCount = toSortableNumber(a.mountCount)
-        const bCount = toSortableNumber(b.mountCount)
+          if (sortField === 'mountCount') {
+            const aCount = toSortableNumber(a.mountCount)
+            const bCount = toSortableNumber(b.mountCount)
 
-        if (aCount !== bCount) {
-          return (aCount - bCount) * direction
-        }
-      } else {
-        const aTime = toSortableNumber(new Date(a.createdAt || '').getTime())
-        const bTime = toSortableNumber(new Date(b.createdAt || '').getTime())
+            if (aCount !== bCount) {
+              return (aCount - bCount) * direction
+            }
+          } else {
+            const aTime = toSortableNumber(new Date(a.createdAt || '').getTime())
+            const bTime = toSortableNumber(new Date(b.createdAt || '').getTime())
 
-        if (aTime !== bTime) {
-          return (aTime - bTime) * direction
-        }
-      }
+            if (aTime !== bTime) {
+              return (aTime - bTime) * direction
+            }
+          }
 
-      const aCreatedAt = toSortableNumber(new Date(a.createdAt || '').getTime())
-      const bCreatedAt = toSortableNumber(new Date(b.createdAt || '').getTime())
-      if (aCreatedAt !== bCreatedAt) {
-        return (aCreatedAt - bCreatedAt) * direction
-      }
+          const aCreatedAt = toSortableNumber(new Date(a.createdAt || '').getTime())
+          const bCreatedAt = toSortableNumber(new Date(b.createdAt || '').getTime())
+          if (aCreatedAt !== bCreatedAt) {
+            return (aCreatedAt - bCreatedAt) * direction
+          }
 
-      return (a.id - b.id) * direction
-    })
-    .filter((item) =>
-      modelType === '所有标签' ? true : item.tag.includes(modelType) ? true : false
-    )
-    .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    // 修改：基于所有者筛选，添加"所有"选项
-    .filter((item) =>
-      ownerFilter === '所有'
-        ? true
-        : ownerFilter === '我的'
-          ? user?.name === item.owner.username
-          : user?.name !== item.owner.username
-    )
+          return (a.id - b.id) * direction
+        })
+        .filter((item) =>
+          modelType === '所有标签' ? true : item.tag.includes(modelType) ? true : false
+        )
+        .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        // 修改：基于所有者筛选，添加"所有"选项
+        .filter((item) =>
+          ownerFilter === '所有'
+            ? true
+            : ownerFilter === '我的'
+              ? user?.name === item.owner.username
+              : user?.name !== item.owner.username
+        ),
+    [items, sort, sortField, modelType, searchTerm, ownerFilter, user?.name]
+  )
 
   return (
     <div>
@@ -269,17 +286,16 @@ export default function DataList({
       {filteredItems.length === 0 ? (
         <Nothing />
       ) : (
-        <ul className="faded-bottom no-scrollbar grid min-w-0 gap-4 overflow-auto pt-4 pb-16 md:grid-cols-2 lg:grid-cols-3">
+        <ul className="faded-bottom no-scrollbar grid min-w-0 gap-3 overflow-auto pt-4 pb-16 md:grid-cols-2">
           {filteredItems.map((item, index) => (
-            <motion.li
+            // Keep entry animation CSS-only and cap the stagger so large lists
+            // do not accumulate long JavaScript animation delays.
+            <li
               key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: (index / 3) * 0.1 }}
-              whileHover={{ y: -4 }}
-              className="group bg-card hover:border-primary/40 flex min-w-0 flex-col justify-between gap-3 rounded-xl border shadow-sm transition-all duration-200 hover:shadow-lg"
+              style={{ animationDelay: `${Math.min(index, 12) * 40}ms` }}
+              className="group bg-card hover:border-primary/35 animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-backwards flex min-w-0 flex-col gap-1.5 rounded-lg border px-3 py-2.5 shadow-sm transition-all duration-200 hover:shadow-md"
             >
-              <div className="flex min-w-0 flex-row items-center justify-between gap-2 p-4 pb-0">
+              <div className="flex min-w-0 flex-row items-center justify-between gap-2">
                 {mainArea ? <>{mainArea(item)}</> : <></>}
                 {user?.name === item.owner.username && (
                   <AlertDialog>
@@ -332,58 +348,83 @@ export default function DataList({
                 )}
               </div>
 
-              {item.tag.length > 0 && (
-                <div className="flex flex-row flex-wrap gap-1 px-4 pb-1">
-                  {item.tag.map((tag) => (
-                    <Badge variant="secondary" key={tag} className="rounded-full font-normal">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <p
-                className="text-muted-foreground line-clamp-2 min-h-[2.5rem] px-4 text-sm text-balance"
-                title={item.desc}
-              >
-                {item.desc}
-              </p>
-              <div>
-                <Separator className="opacity-60" />
-                <div className="flex items-center justify-between gap-2 px-4 py-3">
-                  <div className="flex flex-row flex-wrap items-center gap-1">
-                    <TipBadge
-                      title={
-                        <UserLabel
-                          info={item.owner}
-                          className="hover:text-highlight-orange text-xs"
-                        />
-                      }
-                    />
-                    <TipBadge
-                      title={<TimeDistance date={item.createdAt || '2023'} />}
-                      className="bg-purple-600/15 text-purple-600 hover:bg-purple-600/25"
-                    />
-                  </div>
-                  {item.mountCount !== undefined && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={t('dataList.mountCount', { count: item.mountCount })}
-                          className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
-                        >
-                          <BarChart3Icon className="size-4" aria-hidden="true" />
-                          <span>{item.mountCount}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t('dataList.mountCountTooltip')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
+              <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 overflow-hidden text-xs">
+                {item.tag.map((tag) => (
+                  <Badge
+                    variant="secondary"
+                    key={tag}
+                    className="h-5 shrink-0 rounded-md px-1.5 text-[10px] font-normal"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+                {item.desc && item.tag.length === 0 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="truncate" title={item.desc}>
+                      {item.desc}
+                    </span>
+                  </>
+                )}
               </div>
-            </motion.li>
+              <div className="text-muted-foreground flex min-w-0 items-center gap-x-3 overflow-hidden text-xs">
+                {item.sizeBytes !== undefined && item.sizeBytes > 0 && (
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <HardDriveIcon className="size-3.5" />
+                    {formatFileSize(item.sizeBytes)}
+                  </span>
+                )}
+                {item.sourceUpdatedAt && (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1"
+                    title={t('dataList.sourceUpdatedAt')}
+                  >
+                    <Globe2Icon className="size-3.5" />
+                    <TimeDistance date={item.sourceUpdatedAt} />
+                  </span>
+                )}
+                <span
+                  className="inline-flex shrink-0 items-center gap-1"
+                  title={t('dataList.craterUpdatedAt')}
+                >
+                  <ClockIcon className="size-3.5" />
+                  <TimeDistance date={item.updatedAt || item.createdAt || '2023'} />
+                </span>
+                {item.downloadCount !== undefined && item.downloadCount > 0 && (
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <DownloadIcon className="size-3.5" />
+                    {item.downloadCount.toLocaleString()}
+                  </span>
+                )}
+                {item.likes !== undefined && item.likes > 0 && (
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <HeartIcon className="size-3.5" />
+                    {item.likes.toLocaleString()}
+                  </span>
+                )}
+                <UserLabel
+                  info={item.owner}
+                  className="hover:text-highlight-orange min-w-0 truncate text-xs"
+                />
+                {item.mountCount !== undefined && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t('dataList.mountCount', { count: item.mountCount })}
+                        className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
+                      >
+                        <BarChart3Icon className="size-4" aria-hidden="true" />
+                        <span>{item.mountCount}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t('dataList.mountCountTooltip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </li>
           ))}
         </ul>
       )}

@@ -7674,7 +7674,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取当前用户的所有模型下载任务,可通过category参数过滤",
+                "description": "下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)",
                 "consumes": [
                     "application/json"
                 ],
@@ -7684,12 +7684,36 @@ const docTemplate = `{
                 "tags": [
                     "ModelDownload"
                 ],
-                "summary": "获取用户的模型下载任务列表",
+                "summary": "获取模型下载任务列表",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "过滤类别: model 或 dataset",
                         "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "页码(从1开始);不传则返回全量数组",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量,默认20,最大100",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "过滤状态: Pending/Downloading/Paused/Ready/Failed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "按名称模糊搜索",
+                        "name": "search",
                         "in": "query"
                     }
                 ],
@@ -7697,7 +7721,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp"
                         }
                     }
                 }
@@ -7745,7 +7769,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "删除指定的模型下载任务记录",
+                "description": "删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中",
                 "consumes": [
                     "application/json"
                 ],
@@ -7782,7 +7806,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取模型下载任务的实时日志",
+                "description": "返回定时持久化到下载记录中的日志",
                 "consumes": [
                     "application/json"
                 ],
@@ -7792,7 +7816,7 @@ const docTemplate = `{
                 "tags": [
                     "ModelDownload"
                 ],
-                "summary": "获取模型下载任务的 Pod 日志",
+                "summary": "获取模型下载任务日志",
                 "parameters": [
                     {
                         "type": "integer",
@@ -7874,6 +7898,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "可选的临时访问令牌",
+                        "name": "data",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.DownloadActionReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -7911,6 +7943,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "可选的临时访问令牌",
+                        "name": "data",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.DownloadActionReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -9820,11 +9860,79 @@ const docTemplate = `{
                     "VolcanoJob"
                 ],
                 "summary": "Get the jobs of the user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size, 1-200",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search jobs",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of days to look back, -1 for all",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job types",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Schedule types",
+                        "name": "schedule_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job statuses",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node name",
+                        "name": "node",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Volcano Job List",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp"
                         }
                     },
                     "400": {
@@ -9867,13 +9975,73 @@ const docTemplate = `{
                         "description": "Number of days to look back, default is 14",
                         "name": "days",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size, 1-200",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search jobs",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job types",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Schedule types",
+                        "name": "schedule_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job statuses",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node name",
+                        "name": "node",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "admin get Volcano Job List",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp"
                         }
                     },
                     "400": {
@@ -9886,6 +10054,154 @@ const docTemplate = `{
                         "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/all/facets": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get all visible job facets",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of days to look back, -1 for all",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search jobs",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job types",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Schedule types",
+                        "name": "schedule_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job statuses",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node name",
+                        "name": "node",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/facets": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get job facets for the current user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of days to look back, -1 for all",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search jobs",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job types",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Schedule types",
+                        "name": "schedule_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job statuses",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node name",
+                        "name": "node",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse"
                         }
                     }
                 }
@@ -10072,13 +10388,73 @@ const docTemplate = `{
                         "description": "Number of days to look back, default is 30, -1 for all",
                         "name": "days",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size, 1-200",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort fields",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search jobs",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job types",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Schedule types",
+                        "name": "schedule_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job statuses",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node name",
+                        "name": "node",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "User's Job List",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp"
                         }
                     },
                     "400": {
@@ -10103,6 +10479,87 @@ const docTemplate = `{
                         "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/user/{username}/facets": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Get job facets for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of days to look back, -1 for all",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search jobs",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job types",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Schedule types",
+                        "name": "schedule_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Job statuses",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node name",
+                        "name": "node",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse"
                         }
                     }
                 }
@@ -11227,6 +11684,31 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.FacetItem": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.FacetResponse": {
+            "type": "object",
+            "properties": {
+                "facets": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.FacetItem"
+                        }
+                    }
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp": {
             "type": "object",
             "properties": {
@@ -11235,6 +11717,26 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/internal_handler_operations.OperationLogResp"
                     }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.JobResp"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
                 },
                 "total": {
                     "type": "integer"
@@ -11392,6 +11894,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.FacetResponse"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp": {
             "type": "object",
             "properties": {
@@ -11401,6 +11918,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp"
                 },
                 "msg": {
                     "type": "string"
@@ -11671,6 +12203,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.LoginResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ModelDownloadListResp"
                 },
                 "msg": {
                     "type": "string"
@@ -12931,6 +13478,14 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.DownloadActionReq": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.FailureStat": {
             "type": "object",
             "properties": {
@@ -13359,9 +13914,36 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.ModelDownloadListResp": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.ModelDownloadResp"
+                    }
+                },
+                "summary": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.ModelDownloadResp": {
             "type": "object",
             "properties": {
+                "canManage": {
+                    "type": "boolean"
+                },
+                "canViewLogs": {
+                    "type": "boolean"
+                },
                 "category": {
                     "type": "string"
                 },
@@ -13370,6 +13952,9 @@ const docTemplate = `{
                 },
                 "creatorId": {
                     "type": "integer"
+                },
+                "displayName": {
+                    "type": "string"
                 },
                 "downloadSpeed": {
                     "type": "string"
@@ -13383,11 +13968,23 @@ const docTemplate = `{
                 "jobName": {
                     "type": "string"
                 },
+                "library": {
+                    "type": "string"
+                },
+                "license": {
+                    "type": "string"
+                },
                 "message": {
+                    "type": "string"
+                },
+                "modelType": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
+                },
+                "parameterCount": {
+                    "type": "integer"
                 },
                 "path": {
                     "type": "string"
@@ -13404,11 +14001,26 @@ const docTemplate = `{
                 "source": {
                     "type": "string"
                 },
+                "sourceCreatedAt": {
+                    "type": "string"
+                },
+                "sourceUpdatedAt": {
+                    "type": "string"
+                },
+                "sourceUrl": {
+                    "type": "string"
+                },
                 "status": {
+                    "type": "string"
+                },
+                "task": {
                     "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
+                },
+                "userInfo": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
                 }
             }
         },
@@ -14901,6 +15513,68 @@ const docTemplate = `{
                 },
                 "imageLink": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler_vcjob.JobResp": {
+            "type": "object",
+            "properties": {
+                "billedPointsTotal": {
+                    "type": "number"
+                },
+                "completedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "jobType": {
+                    "type": "string"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "lockedTimestamp": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "permanentLocked": {
+                    "type": "boolean"
+                },
+                "queue": {
+                    "type": "string"
+                },
+                "resources": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "scheduleType": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "userInfo": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
+                },
+                "waitingToleranceSeconds": {
+                    "type": "integer"
                 }
             }
         },

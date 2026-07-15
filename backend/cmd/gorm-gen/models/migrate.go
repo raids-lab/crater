@@ -19,6 +19,21 @@ import (
 	"github.com/raids-lab/crater/pkg/patrol"
 )
 
+type modelDownloadSourceMetadataMigration struct {
+	DisplayName         string     `gorm:"type:varchar(256);comment:源站展示名称"`
+	SourceDescription   string     `gorm:"type:text;comment:源站简介摘要"`
+	SourceReadme        string     `gorm:"type:text;comment:源站README内容(截断保存)"`
+	License             string     `gorm:"type:varchar(128);comment:源站许可证"`
+	Task                string     `gorm:"type:varchar(128);comment:源站任务分类"`
+	Library             string     `gorm:"type:varchar(128);comment:源站框架或库"`
+	ModelType           string     `gorm:"type:varchar(128);comment:源站模型类型"`
+	ParameterCount      int64      `gorm:"default:0;comment:模型参数量"`
+	SourcePrivate       bool       `gorm:"default:false;comment:源站是否私有"`
+	SourceGated         bool       `gorm:"default:false;comment:源站是否需要申请访问"`
+	SourceLoginRequired bool       `gorm:"default:false;comment:源站是否要求登录下载"`
+	SourceCreatedAt     *time.Time `gorm:"comment:源站创建时间"`
+}
+
 //nolint:gocyclo // ignore cyclomatic complexity
 func main() {
 	db := query.GetDB()
@@ -1496,6 +1511,184 @@ func main() {
 				})
 			},
 		},
+		{
+			ID: "202607100100",
+			Migrate: func(tx *gorm.DB) error {
+				for _, index := range jobListIndexes() {
+					if err := tx.Exec(index.create).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				indexes := jobListIndexes()
+				for index := len(indexes) - 1; index >= 0; index-- {
+					if err := tx.Exec(indexes[index].drop).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			ID: "202607111400",
+			Migrate: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					Logs        string     `gorm:"type:text;comment:终态时保存的Pod日志(K8s Job被GC后仍可查看)"`
+					LogsSavedAt *time.Time `gorm:"comment:日志保存时间"`
+				}
+				migrator := tx.Table("model_downloads").Migrator()
+				if err := migrator.AddColumn(&ModelDownload{}, "Logs"); err != nil {
+					return err
+				}
+				return migrator.AddColumn(&ModelDownload{}, "LogsSavedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					Logs        string     `gorm:"type:text"`
+					LogsSavedAt *time.Time `gorm:""`
+				}
+				migrator := tx.Table("model_downloads").Migrator()
+				if err := migrator.DropColumn(&ModelDownload{}, "Logs"); err != nil {
+					return err
+				}
+				return migrator.DropColumn(&ModelDownload{}, "LogsSavedAt")
+			},
+		},
+		{
+			ID: "202607111930",
+			Migrate: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					Organization    string     `gorm:"type:varchar(128);comment:源站组织或作者"`
+					LogoURL         string     `gorm:"type:varchar(512);comment:源站组织头像地址"`
+					SourceURL       string     `gorm:"type:varchar(512);comment:源站仓库详情地址"`
+					SourceDownloads int64      `gorm:"default:0;comment:源站下载次数"`
+					SourceLikes     int64      `gorm:"default:0;comment:源站点赞次数"`
+					SourceUpdatedAt *time.Time `gorm:"comment:源站更新时间"`
+				}
+				migrator := tx.Table("model_downloads").Migrator()
+				for _, field := range []string{
+					"Organization", "LogoURL", "SourceURL", "SourceDownloads", "SourceLikes", "SourceUpdatedAt",
+				} {
+					if err := migrator.AddColumn(&ModelDownload{}, field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					Organization    string
+					LogoURL         string
+					SourceURL       string
+					SourceDownloads int64
+					SourceLikes     int64
+					SourceUpdatedAt *time.Time
+				}
+				migrator := tx.Table("model_downloads").Migrator()
+				for _, field := range []string{
+					"SourceUpdatedAt", "SourceLikes", "SourceDownloads", "SourceURL", "LogoURL", "Organization",
+				} {
+					if err := migrator.DropColumn(&ModelDownload{}, field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			ID: "202607112045",
+			Migrate: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					MetadataRefreshedAt *time.Time `gorm:"comment:源站元数据刷新时间;index"`
+				}
+				return tx.Table("model_downloads").Migrator().AddColumn(&ModelDownload{}, "MetadataRefreshedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					MetadataRefreshedAt *time.Time
+				}
+				return tx.Table("model_downloads").Migrator().DropColumn(&ModelDownload{}, "MetadataRefreshedAt")
+			},
+		},
+		{
+			ID: "202607112100",
+			Migrate: func(tx *gorm.DB) error {
+				type Dataset struct {
+					SizeBytes int64 `gorm:"not null;default:0;comment:资源文件总大小(字节)"`
+				}
+				return tx.Table("datasets").Migrator().AddColumn(&Dataset{}, "SizeBytes")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Dataset struct {
+					SizeBytes int64
+				}
+				return tx.Table("datasets").Migrator().DropColumn(&Dataset{}, "SizeBytes")
+			},
+		},
+		{
+			ID: "202607112110",
+			Migrate: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					Status              string     `gorm:"index:idx_download_metadata_refresh,priority:1"`
+					MetadataRefreshedAt *time.Time `gorm:"index:idx_download_metadata_refresh,priority:2"`
+				}
+				return tx.Table("model_downloads").Migrator().CreateIndex(
+					&ModelDownload{}, "idx_download_metadata_refresh",
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Table("model_downloads").Migrator().DropIndex(
+					&model.ModelDownload{}, "idx_download_metadata_refresh",
+				)
+			},
+		},
+		{
+			ID: "202607112120",
+			Migrate: func(tx *gorm.DB) error {
+				migrator := tx.Table("model_downloads").Migrator()
+				for _, field := range []string{
+					"DisplayName", "SourceDescription", "SourceReadme", "License", "Task", "Library", "ModelType",
+					"ParameterCount", "SourcePrivate", "SourceGated", "SourceLoginRequired", "SourceCreatedAt",
+				} {
+					if err := migrator.AddColumn(&modelDownloadSourceMetadataMigration{}, field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				migrator := tx.Table("model_downloads").Migrator()
+				for _, field := range []string{
+					"SourceCreatedAt", "SourceLoginRequired", "SourceGated", "SourcePrivate", "ParameterCount",
+					"ModelType", "Library", "Task", "License", "SourceReadme", "SourceDescription", "DisplayName",
+				} {
+					if err := migrator.DropColumn(&modelDownloadSourceMetadataMigration{}, field); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		},
+		{
+			ID: "202607112130",
+			Migrate: func(tx *gorm.DB) error {
+				type ModelDownload struct {
+					Status   string `gorm:"index:idx_download_resource_lookup,priority:1"`
+					Name     string `gorm:"index:idx_download_resource_lookup,priority:2"`
+					Category string `gorm:"index:idx_download_resource_lookup,priority:3"`
+				}
+				return tx.Table("model_downloads").Migrator().CreateIndex(
+					&ModelDownload{}, "idx_download_resource_lookup",
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Table("model_downloads").Migrator().DropIndex(
+					&model.ModelDownload{}, "idx_download_resource_lookup",
+				)
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1759,4 +1952,34 @@ func ensureOpsAuditSchema(tx *gorm.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_audit_items_failure
 			ON ops_audit_items (failure_reason) WHERE failure_reason IS NOT NULL`,
 	})
+}
+
+type jobListIndex struct {
+	create string
+	drop   string
+}
+
+func jobListIndexes() []jobListIndex {
+	return []jobListIndex{
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_creation_timestamp ON jobs (creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_account_creation_timestamp ON jobs (account_id, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_account_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_user_creation_timestamp ON jobs (user_id, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_user_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_status_creation_timestamp ON jobs (status, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_status_creation_timestamp`,
+		},
+		{
+			create: `CREATE INDEX IF NOT EXISTS idx_jobs_type_creation_timestamp ON jobs (job_type, creation_timestamp DESC)`,
+			drop:   `DROP INDEX IF EXISTS idx_jobs_type_creation_timestamp`,
+		},
+	}
 }

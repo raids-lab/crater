@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -81,8 +80,11 @@ func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.GetSelfJobs)
+	g.GET("facets", mgr.GetSelfJobFacets)
 	g.GET("all", mgr.GetAllJobsInDays)
+	g.GET("all/facets", mgr.GetAllJobFacets)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
+	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetSelfJobBilling)
 	g.GET("billing/all", mgr.GetAllJobBillingInDays)
 	g.GET("billing/user/:username", mgr.GetUserJobBillingInDays)
@@ -122,7 +124,9 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobsInDays)
+	g.GET("facets", mgr.GetAllJobFacets)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
+	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetAllJobBillingInDays)
 	g.GET("billing/user/:username", mgr.GetUserJobBillingInDays)
 	g.GET(":name/billing", mgr.GetJobBillingDetail)
@@ -589,6 +593,7 @@ type (
 		Locked                  bool               `json:"locked"`
 		PermanentLocked         bool               `json:"permanentLocked"`
 		LockedTimestamp         metav1.Time        `json:"lockedTimestamp"`
+		BilledPointsTotal       float64            `json:"billedPointsTotal"`
 	}
 
 	JobBillingResp struct {
@@ -606,25 +611,25 @@ type (
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[any]	"Volcano Job List"
+//	@Param			page		query	int	false	"Page number"
+//	@Param			page_size	query	int	false	"Page size, 1-200"
+//	@Param			sort		query	string	false	"Sort fields"
+//	@Param			search		query	string	false	"Search jobs"
+//	@Param			days		query	int	false	"Number of days to look back, -1 for all"
+//	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
+//	@Param			schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
+//	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
+//	@Param			node		query	string	false	"Node name"
+//	@Success		200	{object}	resputil.Response[resputil.Page[JobResp]]	"Volcano Job List"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs [get]
 func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 	token := util.GetToken(c)
-
-	// TODO: add indexer to list jobs by user
-	j := query.Job
-	jobs, err := j.WithContext(c).Preload(j.Account).Preload(j.User).
-		Where(j.UserID.Eq(token.UserID), j.AccountID.Eq(token.AccountID)).Find()
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	jobList := convertJobResp(jobs)
-
-	resputil.Success(c, jobList)
+	mgr.listJobs(c, -1, jobListScope{
+		UserID:    &token.UserID,
+		AccountID: &token.AccountID,
+	})
 }
 
 // GetAllJobsInDays godoc
@@ -636,47 +641,136 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			days	query		int						false	"Number of days to look back, default is 14"	default(14)
-//	@Success		200		{object}	resputil.Response[any]	"admin get Volcano Job List"
+//	@Param			page		query	int	false	"Page number"
+//	@Param			page_size	query	int	false	"Page size, 1-200"
+//	@Param			sort		query	string	false	"Sort fields"
+//	@Param			search		query	string	false	"Search jobs"
+//	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
+//	@Param			schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
+//	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
+//	@Param			node		query	string	false	"Node name"
+//	@Success		200		{object}	resputil.Response[resputil.Page[JobResp]]	"admin get Volcano Job List"
 //	@Failure		400		{object}	resputil.Response[any]	"admin Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/all [get]
 func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
-	type QueryParams struct {
-		Days int `form:"days"`
-	}
+	mgr.listJobs(c, allJobsDefaultDays, jobListScope{})
+}
 
-	var req QueryParams
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	// Use default value of 7 if days parameter is not provided or is zero
-	days := 7
-	if req.Days > 0 {
-		days = req.Days
-	}
-
-	j := query.Job
-	q := j.WithContext(c).Preload(j.Account).Preload(query.Job.User)
-
-	// If days is -1, don't apply time filter (return all jobs)
-	// Otherwise apply the time filter for the specified days
-	if req.Days != -1 {
-		now := time.Now()
-		lookbackPeriod := now.AddDate(0, 0, -days)
-		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
-	}
-
-	jobs, err := q.Find()
+func (mgr *VolcanojobMgr) listJobs(c *gin.Context, defaultDays int, scope jobListScope) {
+	request, err := bindJobListQuery(c, true)
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
+	jobs, total, err := findJobs(c, scope, &request, defaultDays)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list jobs failed"))
+		return
+	}
+	resputil.Success(c, resputil.NewPage(
+		convertJobResp(jobs),
+		total,
+		request.Page,
+		request.PageSize,
+	))
+}
 
-	jobList := convertJobResp(jobs)
+// GetSelfJobFacets godoc
+//
+//	@Summary	Get job facets for the current user
+//	@Tags		VolcanoJob
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		days	query	int	false	"Number of days to look back, -1 for all"
+//	@Param		search	query	string	false	"Search jobs"
+//	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
+//	@Param		schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
+//	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
+//	@Param		node	query	string	false	"Node name"
+//	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
+//	@Router		/v1/vcjobs/facets [get]
+func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
+	token := util.GetToken(c)
+	mgr.listJobFacets(c, -1, jobListScope{
+		UserID:    &token.UserID,
+		AccountID: &token.AccountID,
+	}, false)
+}
 
-	resputil.Success(c, jobList)
+// GetAllJobFacets godoc
+//
+//	@Summary	Get all visible job facets
+//	@Tags		VolcanoJob
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		days	query	int	false	"Number of days to look back, -1 for all"
+//	@Param		search	query	string	false	"Search jobs"
+//	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
+//	@Param		schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
+//	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
+//	@Param		node	query	string	false	"Node name"
+//	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
+//	@Router		/v1/vcjobs/all/facets [get]
+func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
+	mgr.listJobFacets(c, allJobsDefaultDays, jobListScope{}, true)
+}
+
+// GetUserJobFacets godoc
+//
+//	@Summary	Get job facets for a user
+//	@Tags		VolcanoJob
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		username	path	string	true	"Username"
+//	@Param		days	query	int	false	"Number of days to look back, -1 for all"
+//	@Param		search	query	string	false	"Search jobs"
+//	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
+//	@Param		schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
+//	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
+//	@Param		node	query	string	false	"Node name"
+//	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
+//	@Router		/v1/vcjobs/user/{username}/facets [get]
+func (mgr *VolcanojobMgr) GetUserJobFacets(c *gin.Context) {
+	scope, ok := resolveJobUserScope(c)
+	if !ok {
+		return
+	}
+	mgr.listJobFacets(c, userJobsDefaultDays, scope, false)
+}
+
+func (mgr *VolcanojobMgr) listJobFacets(
+	c *gin.Context,
+	defaultDays int,
+	scope jobListScope,
+	includeOverview bool,
+) {
+	request, err := bindJobListQuery(c, false)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	facets, err := findJobFacets(c, scope, &request, defaultDays, includeOverview)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list job facets failed"))
+		return
+	}
+	resputil.Success(c, resputil.FacetResponse{Facets: facets})
+}
+
+func resolveJobUserScope(c *gin.Context) (jobListScope, bool) {
+	username := c.Param("username")
+	if username == "" {
+		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("username is required"))
+		return jobListScope{}, false
+	}
+	u := query.User
+	targetUser, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
+	if err != nil {
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "user not found"))
+		return jobListScope{}, false
+	}
+	return jobListScope{UserID: &targetUser.ID}, true
 }
 
 func convertJobBillingResp(jobs []*model.Job) []JobBillingResp {
@@ -793,68 +887,26 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Security		Bearer
 //	@Param			username	path		string					true	"Username"
 //	@Param			days		query		int						false	"Number of days to look back, default is 30, -1 for all"	default(30)
-//	@Success		200			{object}	resputil.Response[any]	"User's Job List"
+//	@Param			page		query		int					false	"Page number"
+//	@Param			page_size	query		int					false	"Page size, 1-200"
+//	@Param			sort		query		string				false	"Sort fields"
+//	@Param			search		query		string				false	"Search jobs"
+//	@Param			job_type	query		[]string			false	"Job types" collectionFormat(multi)
+//	@Param			schedule_type	query		[]int				false	"Schedule types" collectionFormat(multi)
+//	@Param			status		query		[]string			false	"Job statuses" collectionFormat(multi)
+//	@Param			node		query		string				false	"Node name"
+//	@Success		200			{object}	resputil.Response[resputil.Page[JobResp]]	"User's Job List"
 //	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		403			{object}	resputil.Response[any]	"Forbidden - insufficient permissions"
 //	@Failure		404			{object}	resputil.Response[any]	"User not found"
 //	@Failure		500			{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/user/{username} [get]
 func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
-	// Get username from path parameter
-	username := c.Param("username")
-	if username == "" {
-		resputil.BadRequestError(c, "username is required")
+	scope, ok := resolveJobUserScope(c)
+	if !ok {
 		return
 	}
-
-	// Get days from query parameter
-	type QueryParams struct {
-		Days int `form:"days"`
-	}
-
-	var req QueryParams
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	// Use default value of 30 days
-	days := 30
-	if req.Days > 0 {
-		days = req.Days
-	}
-
-	// Get target user information
-	u := query.User
-	targetUser, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
-	if err != nil {
-		resputil.Error(c, "User not found", resputil.NotSpecified)
-		return
-	}
-
-	// Permission check:
-	// Both users and administrators can view jobs of any user
-	// No additional permission check needed beyond authentication
-
-	// Query jobs
-	j := query.Job
-	q := j.WithContext(c).Preload(j.Account).Preload(j.User).Where(j.UserID.Eq(targetUser.ID))
-
-	// Apply time filter if days is not -1
-	if req.Days != -1 {
-		now := time.Now()
-		lookbackPeriod := now.AddDate(0, 0, -days)
-		q = q.Where(j.CreatedAt.Gte(lookbackPeriod))
-	}
-
-	jobs, err := q.Find()
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	jobList := convertJobResp(jobs)
-	resputil.Success(c, jobList)
+	mgr.listJobs(c, userJobsDefaultDays, scope)
 }
 
 func convertJobResp(jobs []*model.Job) []JobResp {
@@ -886,11 +938,9 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 			Locked:                  job.LockedTimestamp.After(utils.GetLocalTime()),
 			PermanentLocked:         utils.IsPermanentTime(job.LockedTimestamp),
 			LockedTimestamp:         metav1.NewTime(job.LockedTimestamp),
+			BilledPointsTotal:       service.ToDisplayPoints(job.BilledPointsTotal),
 		}
 	}
-	sort.Slice(jobList, func(i, j int) bool {
-		return jobList[i].CreationTimestamp.After(jobList[j].CreationTimestamp.Time)
-	})
 	return jobList
 }
 

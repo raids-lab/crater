@@ -13,6 +13,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -62,15 +63,34 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type DatasetResp struct {
-	Name       string                                 `json:"name"`
-	ID         uint                                   `json:"id"`
-	URL        string                                 `json:"url"`
-	Describe   string                                 `json:"describe"`
-	CreatedAt  time.Time                              `json:"createdAt"`
-	Type       model.DataType                         `json:"type"`
-	MountCount int                                    `json:"mountCount"`
-	Extra      datatypes.JSONType[model.ExtraContent] `json:"extra"`
-	UserInfo   model.UserInfo                         `json:"userInfo"`
+	Name            string                                 `json:"name"`
+	ID              uint                                   `json:"id"`
+	URL             string                                 `json:"url"`
+	Describe        string                                 `json:"describe"`
+	CreatedAt       time.Time                              `json:"createdAt"`
+	UpdatedAt       time.Time                              `json:"updatedAt"`
+	SourceUpdatedAt *time.Time                             `json:"sourceUpdatedAt"`
+	Type            model.DataType                         `json:"type"`
+	MountCount      int                                    `json:"mountCount"`
+	SizeBytes       int64                                  `json:"sizeBytes"`
+	DownloadCount   int                                    `json:"downloadCount"`
+	Likes           int64                                  `json:"likes"`
+	Source          string                                 `json:"source"`
+	Organization    string                                 `json:"organization"`
+	OrganizationURL string                                 `json:"organizationUrl"`
+	DisplayName     string                                 `json:"displayName"`
+	Readme          string                                 `json:"readme"`
+	License         string                                 `json:"license"`
+	Task            string                                 `json:"task"`
+	Library         string                                 `json:"library"`
+	ModelType       string                                 `json:"modelType"`
+	ParameterCount  int64                                  `json:"parameterCount"`
+	SourcePrivate   bool                                   `json:"sourcePrivate"`
+	SourceGated     bool                                   `json:"sourceGated"`
+	LoginRequired   bool                                   `json:"loginRequired"`
+	SourceCreatedAt *time.Time                             `json:"sourceCreatedAt"`
+	Extra           datatypes.JSONType[model.ExtraContent] `json:"extra"`
+	UserInfo        model.UserInfo                         `json:"userInfo"`
 }
 
 // GetDatasets godoc
@@ -87,42 +107,40 @@ type DatasetResp struct {
 //	@Router			/v1/dataset/mydataset [get]
 func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 	token := util.GetToken(c)
-	datasets := make(map[uint]DatasetResp)
-
 	ud := query.UserDataset
-	d := query.Dataset
 	userDatasets, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
 	if err != nil {
 		klog.Infof("Can't get , err: %v", err)
 		resputil.Error(c, "Can't get mydatasets", resputil.NotSpecified)
 		return
 	}
-	for i := range userDatasets {
-		dataset, ferr := d.WithContext(c).
-			Preload(query.Image.User).
-			Where(d.ID.Eq(userDatasets[i].DatasetID)).
-			First()
-		if ferr != nil {
-			resputil.Error(c, fmt.Sprintf("Get user's dataset failed, err %v", ferr), resputil.NotSpecified)
-			return
-		}
-		datasets[dataset.ID] = convertDataset(dataset)
+	datasetIDs := make(map[uint]struct{}, len(userDatasets))
+	for _, association := range userDatasets {
+		datasetIDs[association.DatasetID] = struct{}{}
 	}
-	err = mgr.generateQueueDataseResponse(c, model.DefaultAccountID, datasets)
+
+	accountIDs := []uint{model.DefaultAccountID}
+	if token.AccountID != model.DefaultAccountID {
+		accountIDs = append(accountIDs, token.AccountID)
+	}
+	qd := query.AccountDataset
+	accountDatasets, err := qd.WithContext(c).Where(qd.AccountID.In(accountIDs...)).Find()
 	if err != nil {
-		resputil.Error(c, "Can't get public datasets", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get account datasets failed"))
 		return
 	}
-	if token.AccountID != model.DefaultAccountID {
-		err = mgr.generateQueueDataseResponse(c, token.AccountID, datasets)
-		if err != nil {
-			resputil.Error(c, "Can't get queue datasets", resputil.NotSpecified)
-			return
-		}
+	for _, association := range accountDatasets {
+		datasetIDs[association.DatasetID] = struct{}{}
 	}
-	result := make([]DatasetResp, 0, len(datasets))
-	for id := range datasets {
-		result = append(result, datasets[id])
+
+	ids := make([]uint, 0, len(datasetIDs))
+	for id := range datasetIDs {
+		ids = append(ids, id)
+	}
+	result, err := listDatasetResponses(c, ids)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get datasets failed"))
+		return
 	}
 	resputil.Success(c, result)
 }
@@ -147,12 +165,12 @@ func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 		return
 	}
 	d := query.Dataset
-	dataset, err := d.WithContext(c).Preload(query.Image.User).Where(d.ID.Eq(req.DatasetID)).First()
+	dataset, err := d.WithContext(c).Preload(d.User).Where(d.ID.Eq(req.DatasetID)).First()
 	if err != nil {
 		resputil.Error(c, "this dataset not exist", resputil.InvalidRequest)
 		return
 	}
-	res := convertDataset(dataset)
+	res := convertDataset(c, dataset)
 	var result []DatasetResp
 	result = append(result, res)
 	resputil.Success(c, result)
@@ -171,41 +189,18 @@ func (mgr *DatasetMgr) GetDatasetByID(c *gin.Context) {
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/admin/dataset/alldataset [get]
 func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
-	datasets := make(map[uint]DatasetResp)
 	d := query.Dataset
-	dataset, err := d.WithContext(c).Preload(query.Image.User).Where(d.ID.IsNotNull()).Find()
+	datasets, err := d.WithContext(c).Preload(d.User).Where(d.ID.IsNotNull()).Order(d.UpdatedAt.Desc()).Find()
 	if err != nil {
 		resputil.Error(c, "Can't get datasets", resputil.NotSpecified)
 		return
 	}
-	for i := range dataset {
-		datasets[dataset[i].ID] = convertDataset(dataset[i])
-	}
-	result := make([]DatasetResp, 0, len(datasets))
-	for i := range datasets {
-		result = append(result, datasets[i])
+	result, err := convertDatasetBatch(c, datasets)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "enrich datasets failed"))
+		return
 	}
 	resputil.Success(c, result)
-}
-
-func (mgr *DatasetMgr) generateQueueDataseResponse(c *gin.Context, queueid uint, data map[uint]DatasetResp) error {
-	d := query.Dataset
-	qd := query.AccountDataset
-	queueDataset, err := qd.WithContext(c).Where(qd.AccountID.Eq(queueid)).Find()
-	if err != nil {
-		return err
-	}
-	for i := range queueDataset {
-		dataset, err := d.WithContext(c).
-			Preload(query.Image.User).
-			Where(d.ID.Eq(queueDataset[i].DatasetID)).
-			First()
-		if err != nil {
-			return err
-		}
-		data[dataset.ID] = convertDataset(dataset)
-	}
-	return nil
 }
 
 type DatasetReq struct {
@@ -786,16 +781,15 @@ type UpdateDatasetreq struct {
 //	@Failure		400	{object}	resputil.Response[any]		"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]		"Other errors"
 //	@Router			/v1/dataset/update [post]
+//
+//nolint:gocyclo // Existing update flow validates path, ownership, and each independently persisted field.
 func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	token := util.GetToken(c)
 	var req UpdateDatasetreq
-	var tempExtra model.ExtraContent
 	if err := c.ShouldBindJSON(&req); err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	tempExtra.Tags = req.Tags
-	tempExtra.WebURL = &req.WebURL
 	regex := regexp.MustCompile("^/+")
 	url := regex.ReplaceAllString(req.URL, "")
 	var realURL string
@@ -819,6 +813,16 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	if dataset.UserID != token.UserID && token.RolePlatform != model.RoleAdmin {
 		resputil.Error(c, "you has no permission to update describe", resputil.InvalidRequest)
 		return
+	}
+	tempExtra := dataset.Extra.Data()
+	tempExtra.Tags = make([]string, 0, len(req.Tags))
+	for _, tag := range req.Tags {
+		if tag != "auto-download" {
+			tempExtra.Tags = append(tempExtra.Tags, tag)
+		}
+	}
+	if req.WebURL != "" {
+		tempExtra.WebURL = &req.WebURL
 	}
 	_, err = d.WithContext(c).Where(d.ID.Eq(req.DatasetID)).Update(d.Name, req.Name)
 	if err != nil {
@@ -1043,19 +1047,136 @@ func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
-func convertDataset(dataset *model.Dataset) DatasetResp {
+func listDatasetResponses(c *gin.Context, ids []uint) ([]DatasetResp, error) {
+	if len(ids) == 0 {
+		return []DatasetResp{}, nil
+	}
+	d := query.Dataset
+	datasets, err := d.WithContext(c).
+		Preload(d.User).
+		Where(d.ID.In(ids...)).
+		Order(d.UpdatedAt.Desc()).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+	return convertDatasetBatch(c, datasets)
+}
+
+func convertDataset(c *gin.Context, dataset *model.Dataset) DatasetResp {
+	responses, err := convertDatasetBatch(c, []*model.Dataset{dataset})
+	if err != nil || len(responses) == 0 {
+		return baseDatasetResp(dataset)
+	}
+	return responses[0]
+}
+
+func convertDatasetBatch(c *gin.Context, datasets []*model.Dataset) ([]DatasetResp, error) {
+	names := make([]string, 0, len(datasets))
+	seenNames := make(map[string]struct{}, len(datasets))
+	for _, dataset := range datasets {
+		if dataset.Type != model.DataTypeModel && dataset.Type != model.DataTypeDataset {
+			continue
+		}
+		if _, exists := seenNames[dataset.Name]; exists {
+			continue
+		}
+		seenNames[dataset.Name] = struct{}{}
+		names = append(names, dataset.Name)
+	}
+
+	downloadsByResource := make(map[string]*model.ModelDownload, len(names))
+	if len(names) > 0 {
+		q := query.ModelDownload
+		downloads, err := q.WithContext(c).
+			Where(q.Name.In(names...), q.Status.Eq(string(model.ModelDownloadStatusReady))).
+			Order(q.UpdatedAt.Desc()).
+			Find()
+		if err != nil {
+			return nil, err
+		}
+		for _, download := range downloads {
+			key := resourceMetadataKey(download.Name, string(download.Category))
+			if _, exists := downloadsByResource[key]; !exists {
+				downloadsByResource[key] = download
+			}
+		}
+	}
+
+	responses := make([]DatasetResp, 0, len(datasets))
+	for _, dataset := range datasets {
+		resp := baseDatasetResp(dataset)
+		if download := downloadsByResource[resourceMetadataKey(dataset.Name, string(dataset.Type))]; download != nil {
+			enrichDatasetResp(&resp, download)
+		}
+		responses = append(responses, resp)
+	}
+	return responses, nil
+}
+
+func resourceMetadataKey(name, category string) string {
+	return category + "\x00" + name
+}
+
+func baseDatasetResp(dataset *model.Dataset) DatasetResp {
 	return DatasetResp{
 		Name:       dataset.Name,
 		Describe:   dataset.Describe,
 		URL:        dataset.URL,
 		ID:         dataset.ID,
 		CreatedAt:  dataset.CreatedAt,
+		UpdatedAt:  dataset.UpdatedAt,
 		Type:       dataset.Type,
 		MountCount: dataset.MountCount,
+		SizeBytes:  dataset.SizeBytes,
 		Extra:      dataset.Extra,
 		UserInfo: model.UserInfo{
 			Username: dataset.User.Name,
 			Nickname: dataset.User.Nickname,
 		},
+	}
+}
+
+func enrichDatasetResp(resp *DatasetResp, download *model.ModelDownload) {
+	if resp.SizeBytes == 0 {
+		resp.SizeBytes = download.SizeBytes
+	}
+	resp.DownloadCount = download.ReferenceCount
+	if download.SourceDownloads > 0 {
+		resp.DownloadCount = int(download.SourceDownloads)
+	}
+	resp.Likes = download.SourceLikes
+	resp.Source = string(download.Source)
+	extra := resp.Extra.Data()
+	filteredTags := extra.Tags[:0]
+	for _, tag := range extra.Tags {
+		if tag != "auto-download" {
+			filteredTags = append(filteredTags, tag)
+		}
+	}
+	extra.Tags = filteredTags
+	if extra.WebURL == nil {
+		sourceURL := sourceURLForDownload(download)
+		extra.WebURL = &sourceURL
+	}
+	resp.Extra = datatypes.NewJSONType(extra)
+	resp.Organization = download.Organization
+	resp.OrganizationURL = download.LogoURL
+	resp.DisplayName = download.DisplayName
+	resp.Readme = download.SourceReadme
+	resp.License = download.License
+	resp.Task = download.Task
+	resp.Library = download.Library
+	resp.ModelType = download.ModelType
+	resp.ParameterCount = download.ParameterCount
+	resp.SourcePrivate = download.SourcePrivate
+	resp.SourceGated = download.SourceGated
+	resp.LoginRequired = download.SourceLoginRequired
+	resp.SourceCreatedAt = download.SourceCreatedAt
+	if resp.Organization == "" {
+		resp.Organization = strings.SplitN(download.Name, "/", 2)[0]
+	}
+	if download.SourceUpdatedAt != nil {
+		resp.SourceUpdatedAt = download.SourceUpdatedAt
 	}
 }

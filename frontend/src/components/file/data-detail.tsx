@@ -21,13 +21,23 @@ import { useAtomValue } from 'jotai'
 import {
   ArrowLeftIcon,
   BarChart3Icon,
-  BotIcon,
+  BookOpenTextIcon,
   CalendarIcon,
+  CpuIcon,
   DatabaseIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
   File,
   FileIcon,
   FilesIcon,
   Folder,
+  HardDriveIcon,
+  HeartIcon,
+  LibraryIcon,
+  LockKeyholeIcon,
+  type LucideIcon,
+  ScaleIcon,
+  TagsIcon,
   Trash,
   User,
   UserRoundIcon,
@@ -38,8 +48,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogClose,
@@ -53,7 +64,9 @@ import {
 
 import ShareWithAccounts from '@/components/file/unselected-accounts'
 import ShareWithUsers from '@/components/file/unselected-users'
+import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
+import RepositorySourceMark from '@/components/model/repository-source-mark'
 import { DataTable } from '@/components/query-table'
 
 import {
@@ -72,6 +85,8 @@ import { IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
 
+import { formatFileSize } from '@/utils/file-size'
+import { formatParameterCount } from '@/utils/model-metadata'
 import { atomUserInfo } from '@/utils/store'
 
 import TooltipButton from '../button/tooltip-button'
@@ -89,6 +104,28 @@ interface SharedResourceTableProps extends DetailPageCoreProps {
   apiCancelDatasetSharewithUser: (csu: cancelSharedUserResp) => Promise<IResponse<string>>
   apiCancelDatasetSharewithQueue: (csq: cancelSharedQueueResp) => Promise<IResponse<string>>
   apiDatasetDelete: (datasetID: number) => Promise<IResponse<string>>
+}
+
+function MetadataItem({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  icon?: LucideIcon
+}) {
+  return (
+    <div className="bg-muted/40 rounded-lg border px-3 py-2.5">
+      <div className="text-muted-foreground mb-1 flex items-center gap-1.5 text-xs">
+        {Icon && <Icon className="size-3.5" />}
+        {label}
+      </div>
+      <div className="text-foreground truncate font-mono text-sm font-medium" title={value}>
+        {value}
+      </div>
+    </div>
+  )
 }
 
 export function SharedResourceTable({
@@ -220,6 +257,17 @@ export function SharedResourceTable({
     if (!tags || !Array.isArray(tags)) return []
     return tags.map((tag) => ({ value: tag }))
   }, [data?.extra.tag])
+
+  const sourceAccess = useMemo(() => {
+    if (data?.sourcePrivate) return t('sharedResource.access.private')
+    if (data?.sourceGated) return t('sharedResource.access.gated')
+    if (data?.loginRequired) return t('sharedResource.access.loginRequired')
+    return t('sharedResource.access.public')
+  }, [data?.loginRequired, data?.sourceGated, data?.sourcePrivate, t])
+
+  const hasRichSourceMetadata = Boolean(
+    data?.task || data?.modelType || data?.library || data?.license || data?.parameterCount
+  )
 
   const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(() => {
     return [
@@ -420,7 +468,18 @@ export function SharedResourceTable({
       {...props}
       header={
         <DetailTitle
-          icon={resourceType === 'model' ? BotIcon : DatabaseIcon}
+          icon={resourceType === 'sharefile' ? DatabaseIcon : undefined}
+          iconComponent={
+            resourceType !== 'sharefile' ? (
+              <RepositorySourceMark
+                source={data?.source}
+                organization={data?.organization || data?.name.split('/')[0]}
+                logoURL={data?.organizationUrl}
+                category={resourceType}
+                className="size-10 rounded-xl text-base"
+              />
+            ) : undefined
+          }
           title={data?.name}
           description={
             data?.extra.editable ? t('sharedResource.editable') : t('sharedResource.readOnly')
@@ -558,10 +617,60 @@ export function SharedResourceTable({
           value: data?.userInfo.username,
         },
         {
-          title: t('sharedResource.createdAt'),
+          title: t('sharedResource.localCreatedAt'),
           icon: CalendarIcon,
           value: <TimeDistance date={data?.createdAt} />,
         },
+        ...(data?.sourceCreatedAt
+          ? [
+              {
+                title: t('sharedResource.sourceCreatedAt'),
+                icon: CalendarIcon,
+                value: <TimeDistance date={data.sourceCreatedAt} />,
+              },
+            ]
+          : []),
+        {
+          title: t('sharedResource.localUpdatedAt'),
+          icon: CalendarIcon,
+          value: <TimeDistance date={data?.updatedAt} />,
+        },
+        ...(data?.sourceUpdatedAt
+          ? [
+              {
+                title: t('sharedResource.sourceUpdatedAt'),
+                icon: CalendarIcon,
+                value: <TimeDistance date={data.sourceUpdatedAt} />,
+              },
+            ]
+          : []),
+        ...(data?.sizeBytes
+          ? [
+              {
+                title: t('sharedResource.size'),
+                icon: HardDriveIcon,
+                value: formatFileSize(data.sizeBytes),
+              },
+            ]
+          : []),
+        ...(data?.downloadCount
+          ? [
+              {
+                title: t('sharedResource.downloadCount'),
+                icon: DownloadIcon,
+                value: data.downloadCount.toLocaleString(),
+              },
+            ]
+          : []),
+        ...(data?.likes
+          ? [
+              {
+                title: t('sharedResource.likes'),
+                icon: HeartIcon,
+                value: data.likes.toLocaleString(),
+              },
+            ]
+          : []),
         {
           title: t('sharedResource.mountCount'),
           icon: BarChart3Icon,
@@ -574,46 +683,100 @@ export function SharedResourceTable({
           icon: FileIcon,
           label: t('sharedResource.datasetInfo', { type: dataTypeLabel }),
           children: (
-            <div className="space-y-1 md:space-y-2 lg:space-y-3">
-              {data?.extra.tag && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-xl">
-                      <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                      {t('sharedResource.datasetTags', { type: dataTypeLabel })}
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground font-mono text-sm">
-                      {data?.extra.tag.join('、')}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              )}
-              {data?.extra.weburl && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-xl">
-                      <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                      {t('sharedResource.datasetRepo', { type: dataTypeLabel })}
-                    </CardTitle>
-                    <CardDescription className="text-muted-foreground font-mono text-sm">
-                      {data?.extra.weburl}
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              )}
-              <Card>
-                <CardHeader>
+            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+              <Card className="overflow-hidden">
+                <CardHeader className="from-primary/5 border-b bg-gradient-to-br to-transparent">
                   <CardTitle className="flex items-center text-xl">
-                    <Folder className="mr-2 h-5 w-5 text-blue-500" />
-                    {t('sharedResource.datasetDescription', {
-                      type: dataTypeLabel,
-                    })}
+                    <BookOpenTextIcon className="text-primary mr-2 h-5 w-5" />
+                    {t('sharedResource.introduction', { type: dataTypeLabel })}
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground font-mono text-sm">
-                    {data?.describe}
-                  </CardDescription>
+                  {!data?.readme && (
+                    <CardDescription className="text-foreground/80 pt-2 text-sm leading-7 whitespace-pre-line">
+                      {data?.describe || t('sharedResource.noIntroduction')}
+                    </CardDescription>
+                  )}
                 </CardHeader>
+                {data?.readme && (
+                  <CardContent className="max-h-[70vh] overflow-y-auto pt-6">
+                    <MarkdownRenderer>{data.readme}</MarkdownRenderer>
+                  </CardContent>
+                )}
+                <CardContent className="flex flex-col gap-4 pt-5">
+                  {!!data?.extra.tag?.length && (
+                    <div>
+                      <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-medium">
+                        <TagsIcon className="size-3.5" />
+                        {t('sharedResource.datasetTags', { type: dataTypeLabel })}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {data.extra.tag
+                          .filter((tag) => tag !== 'auto-download')
+                          .map((tag) => (
+                            <Badge key={tag} variant="secondary" className="font-normal">
+                              {tag}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  {data?.extra.weburl && (
+                    <Button variant="outline" size="sm" asChild className="w-fit">
+                      <a href={data.extra.weburl} target="_blank" rel="noreferrer">
+                        {t('sharedResource.openSourceRepo')}
+                        <ExternalLinkIcon className="size-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                </CardContent>
               </Card>
+
+              {resourceType !== 'sharefile' && hasRichSourceMetadata && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      {t('sharedResource.modelInformation', { type: dataTypeLabel })}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-2.5">
+                    {data?.task && (
+                      <MetadataItem label={t('sharedResource.task')} value={data.task} />
+                    )}
+                    {data?.modelType && (
+                      <MetadataItem
+                        label={t('sharedResource.modelType')}
+                        value={data.modelType}
+                        icon={CpuIcon}
+                      />
+                    )}
+                    {data?.library && (
+                      <MetadataItem
+                        label={t('sharedResource.library')}
+                        value={data.library}
+                        icon={LibraryIcon}
+                      />
+                    )}
+                    {data?.license && (
+                      <MetadataItem
+                        label={t('sharedResource.license')}
+                        value={data.license}
+                        icon={ScaleIcon}
+                      />
+                    )}
+                    {!!data?.parameterCount && (
+                      <MetadataItem
+                        label={t('sharedResource.parameterCount')}
+                        value={formatParameterCount(data.parameterCount)}
+                        icon={CpuIcon}
+                      />
+                    )}
+                    <MetadataItem
+                      label={t('sharedResource.access.label')}
+                      value={sourceAccess}
+                      icon={LockKeyholeIcon}
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </div>
           ),
           scrollable: true,

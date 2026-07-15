@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"gorm.io/gen/field"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -14,6 +15,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 type CancelWaitingJobsRequest struct {
@@ -44,11 +46,16 @@ func deleteUnscheduledJobs(c context.Context, clients *Clients, waitMinitues int
 	jobTypeStrs := lo.Map(jobTypes, func(jobType model.JobType, _ int) string {
 		return string(jobType)
 	})
+	now := utils.GetLocalTime()
 	jobDB := query.Job
 	jobs, err := jobDB.WithContext(c).Where(
+		field.Or(
+			jobDB.LockedTimestamp.IsNull(),
+			jobDB.LockedTimestamp.Lte(now),
+		),
 		jobDB.Status.Eq(string(batch.Pending)),
 		jobDB.JobType.In(jobTypeStrs...),
-		jobDB.CreationTimestamp.Lt(time.Now().Add(-time.Duration(waitMinitues)*time.Minute)),
+		jobDB.CreationTimestamp.Lt(now.Add(-time.Duration(waitMinitues)*time.Minute)),
 	).Find()
 
 	if err != nil {
@@ -70,6 +77,14 @@ func deleteUnscheduledJobs(c context.Context, clients *Clients, waitMinitues int
 			continue
 		}
 
+		latestJob, err := jobDB.WithContext(c).Where(jobDB.ID.Eq(job.ID)).First()
+		if err != nil {
+			klog.Errorf("Failed to get job %s from database: %v", job.JobName, err)
+			continue
+		}
+		if latestJob.LockedTimestamp.After(utils.GetLocalTime()) {
+			continue
+		}
 		if err := clients.Client.Delete(c, vcjob); err != nil {
 			klog.Errorf("Failed to delete job %s: %v", job.JobName, err)
 			continue

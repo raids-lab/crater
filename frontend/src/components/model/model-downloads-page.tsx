@@ -15,25 +15,78 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { ColumnDef } from '@tanstack/react-table'
-import { ArrowLeft, Copy, Pause, Play, RotateCw, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
+import {
+  ColumnDef,
+  PaginationState,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import {
+  AlertCircleIcon,
+  ArrowLeft,
+  CheckCircle2Icon,
+  Copy,
+  DownloadIcon,
+  LayersIcon,
+  Pause,
+  PauseCircleIcon,
+  Play,
+  RotateCw,
+  SearchIcon,
+  Trash2,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 import ModelDownloadPhaseBadge from '@/components/badge/model-download-phase-badge'
 import DocsButton from '@/components/button/docs-button'
 import { TimeDistance } from '@/components/custom/time-distance'
-import ModelDownloadLabel from '@/components/label/model-download-label'
 import SimpleTooltip from '@/components/label/simple-tooltip'
-import { DataTable } from '@/components/query-table'
-import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import UserLabel from '@/components/label/user-label'
+import PageTitle from '@/components/layout/page-title'
+import ModelDownloadProgress from '@/components/model/model-download-progress'
+import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
+import { DataTablePagination } from '@/components/query-table/pagination'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui-custom/alert-dialog'
 
 import {
   ModelDownload,
+  ModelDownloadListResp,
+  ModelDownloadStatus,
   apiDeleteModelDownload,
-  apiListModelDownloads,
+  apiListModelDownloadsPaged,
   apiPauseModelDownload,
   apiResumeModelDownload,
   apiRetryModelDownload,
@@ -41,119 +94,129 @@ import {
 
 import { logger } from '@/utils/loglevel'
 
-const getHeader = (key: string): string => {
-  const headers: Record<string, string> = {
-    name: '名称',
-    source: '来源',
-    category: '类别',
-    status: '状态',
-    path: '保存路径',
-    createdAt: '创建时间',
-  }
-  return headers[key] || key
+import { cn } from '@/lib/utils'
+
+const SEARCH_DEBOUNCE_MS = 400
+// 有进行中的任务时快轮询,否则慢轮询
+const ACTIVE_REFETCH_MS = 5000
+const IDLE_REFETCH_MS = 30000
+
+const sourceLabelMap: Record<string, string> = {
+  modelscope: 'ModelScope',
+  huggingface: 'HuggingFace',
 }
 
-const toolbarConfig = {
-  filterInput: {
-    key: 'name',
-    placeholder: '搜索模型名称...',
-  },
-  filterOptions: [
-    {
-      key: 'status',
-      title: '状态',
-      option: [
-        { label: '等待中', value: 'Pending' },
-        { label: '下载中', value: 'Downloading' },
-        { label: '已暂停', value: 'Paused' },
-        { label: '已完成', value: 'Ready' },
-        { label: '失败', value: 'Failed' },
-      ],
-    },
-  ],
-  getHeader,
-}
-
-interface ModelDownloadsPageProps {
-  category?: 'model' | 'dataset'
-}
-
-export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
+export function ModelDownloadsPage() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
-  const query = useQuery({
-    queryKey: ['model-downloads', category],
-    queryFn: async () => {
-      try {
-        const res = await apiListModelDownloads(category)
-        return Array.isArray(res.data) ? res.data : []
-      } catch (error) {
-        logger.error('Failed to fetch model downloads:', error)
-        return []
-      }
-    },
-    refetchInterval: 5000,
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
   })
+  const [statusFilter, setStatusFilter] = useState<ModelDownloadStatus | 'all'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'model' | 'dataset'>('all')
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  const [tokenTarget, setTokenTarget] = useState<{
+    action: 'resume' | 'retry'
+    download: ModelDownload
+  } | null>(null)
+
+  // 搜索防抖,避免每个按键都触发请求
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim())
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }, SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  const queryParams = useMemo(
+    () => ({
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      category: categoryFilter === 'all' ? undefined : categoryFilter,
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      search: search || undefined,
+    }),
+    [pagination, categoryFilter, statusFilter, search]
+  )
+
+  const query = useQuery({
+    queryKey: ['model-downloads', queryParams],
+    queryFn: () => apiListModelDownloadsPaged(queryParams),
+    refetchInterval: (q) => {
+      const resp = q.state.data?.data as ModelDownloadListResp | undefined
+      const summary = resp?.summary
+      const active =
+        (summary?.Pending ?? 0) + (summary?.Downloading ?? 0) > 0 ||
+        resp?.items?.some((d) => d.status === 'Pending' || d.status === 'Downloading')
+      return active ? ACTIVE_REFETCH_MS : IDLE_REFETCH_MS
+    },
+  })
+
+  const listData = query.data?.data
+  const summary = listData?.summary
+  const total = listData?.total ?? 0
 
   const refetchDownloads = async () => {
     try {
       await queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
     } catch (error) {
-      logger.error('更新查询失败', error)
+      logger.error('failed to refresh model download queries', error)
     }
   }
 
-  const { mutate: pauseDownload } = useMutation({
+  const { mutate: pauseDownload, isPending: isPausing } = useMutation({
     mutationFn: apiPauseModelDownload,
     onSuccess: async () => {
       await refetchDownloads()
-      toast.success('已暂停下载')
+      toast.success(t('modelDownload.action.pauseSuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '暂停失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.pauseFailed'))
     },
   })
 
-  const { mutate: resumeDownload } = useMutation({
+  const { mutate: resumeDownload, isPending: isResuming } = useMutation({
     mutationFn: apiResumeModelDownload,
     onSuccess: async () => {
       await refetchDownloads()
-      toast.success('已恢复下载')
+      setTokenTarget(null)
+      toast.success(t('modelDownload.action.resumeSuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '恢复失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.resumeFailed'))
     },
   })
 
-  const { mutate: retryDownload } = useMutation({
+  const { mutate: retryDownload, isPending: isRetrying } = useMutation({
     mutationFn: apiRetryModelDownload,
     onSuccess: async () => {
       await refetchDownloads()
-      toast.success('已重新下载')
+      setTokenTarget(null)
+      toast.success(t('modelDownload.action.retrySuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '重试失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.retryFailed'))
     },
   })
 
-  const { mutate: deleteDownload } = useMutation({
+  const { mutate: deleteDownload, isPending: isDeleting } = useMutation({
     mutationFn: apiDeleteModelDownload,
     onSuccess: async () => {
       await refetchDownloads()
-      // 同时刷新对应的列表(模型或数据集)
-      if (category === 'dataset') {
-        await queryClient.invalidateQueries({ queryKey: ['data', 'dataset'] })
-      } else {
-        await queryClient.invalidateQueries({ queryKey: ['data', 'model'] })
-      }
-      toast.success('删除成功')
+      await queryClient.invalidateQueries({ queryKey: ['data', 'dataset'] })
+      await queryClient.invalidateQueries({ queryKey: ['data', 'model'] })
+      toast.success(t('modelDownload.action.deleteSuccess'))
     },
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || '删除失败')
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.deleteFailed'))
     },
   })
 
@@ -161,55 +224,52 @@ export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
     () => [
       {
         accessorKey: 'name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
-        cell: ({ row }) => (
-          <Link
-            to="/portal/data/models/downloads/$id"
-            params={{ id: row.original.id.toString() }}
-            className="hover:text-primary cursor-pointer font-medium transition-colors duration-200"
-          >
-            <ModelDownloadLabel
-              name={row.original.name}
-              source={row.original.source}
-              revision={row.original.revision}
-              path={row.original.path}
-            />
-          </Link>
-        ),
-      },
-      {
-        accessorKey: 'source',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('source')} />
-        ),
-        cell: ({ row }) => (
-          <span className="text-sm">
-            {row.original.source === 'modelscope' ? 'ModelScope' : 'HuggingFace'}
-          </span>
-        ),
+        header: t('modelDownload.list.name'),
+        cell: ({ row }) => {
+          const d = row.original
+          return (
+            <div className="flex max-w-[280px] flex-col gap-0.5">
+              <Link
+                to={
+                  d.category === 'dataset'
+                    ? '/portal/data/datasets/downloads/$id'
+                    : '/portal/data/models/downloads/$id'
+                }
+                params={{ id: d.id.toString() }}
+                className="hover:text-primary truncate text-sm font-medium transition-colors duration-200"
+              >
+                {d.name}
+              </Link>
+              <span className="text-muted-foreground truncate text-xs">
+                {sourceLabelMap[d.source] ?? d.source}
+                {d.revision ? ` · ${d.revision}` : ''}
+              </span>
+            </div>
+          )
+        },
       },
       {
         accessorKey: 'category',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('category')} />
-        ),
+        header: t('modelDownload.list.category'),
         cell: ({ row }) => (
-          <span className="text-sm">{row.original.category === 'model' ? '模型' : '数据集'}</span>
+          <Badge variant="outline">{t(`modelDownload.category.${row.original.category}`)}</Badge>
+        ),
+      },
+      {
+        id: 'progress',
+        header: t('modelDownload.list.progress'),
+        cell: ({ row }) => (
+          <ModelDownloadProgress download={row.original} className="max-w-[220px]" />
         ),
       },
       {
         accessorKey: 'status',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('status')} />
-        ),
+        header: t('modelDownload.list.status'),
         cell: ({ row }) => {
           const d = row.original
           return (
             <div className="flex flex-col items-start gap-1">
               <ModelDownloadPhaseBadge status={d.status} />
-              {d.status === 'Downloading' && d.downloadSpeed && (
-                <span className="text-muted-foreground text-xs">{d.downloadSpeed}</span>
-              )}
               {d.status === 'Failed' && d.message && (
                 <SimpleTooltip tooltip={d.message}>
                   <span className="text-destructive/80 line-clamp-1 max-w-[220px] cursor-help text-xs">
@@ -220,32 +280,34 @@ export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
             </div>
           )
         },
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id))
-        },
+      },
+      {
+        accessorKey: 'userInfo',
+        header: t('modelDownload.list.creator'),
+        cell: ({ row }) => <UserLabel info={row.original.userInfo} />,
       },
       {
         accessorKey: 'path',
-        header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('path')} />,
+        header: t('modelDownload.list.path'),
         cell: ({ row }) => {
           const copyPath = () => {
             navigator.clipboard.writeText(row.original.path)
-            toast.success('路径已复制到剪贴板')
+            toast.success(t('modelDownload.pathCopied'))
           }
 
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <SimpleTooltip tooltip={row.original.path}>
-                <div className="text-muted-foreground max-w-[300px] truncate text-sm">
+                <div className="text-muted-foreground max-w-[200px] truncate font-mono text-xs">
                   {row.original.path}
                 </div>
               </SimpleTooltip>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-7 w-7 shrink-0"
                 onClick={copyPath}
-                title="复制路径"
+                title={t('modelDownload.copyPath')}
               >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
@@ -254,28 +316,31 @@ export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
         },
       },
       {
-        accessorKey: 'createdAt',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('createdAt')} />
-        ),
-        cell: ({ row }) => {
-          return <TimeDistance date={row.getValue('createdAt')} />
-        },
-        sortingFn: 'datetime',
+        accessorKey: 'updatedAt',
+        header: t('modelDownload.list.updatedAt'),
+        cell: ({ row }) => <TimeDistance date={row.original.updatedAt} />,
       },
       {
         id: 'actions',
-        enableHiding: false,
+        header: '',
         cell: ({ row }) => {
           const download = row.original
+          if (!download.canManage) {
+            return (
+              <SimpleTooltip tooltip={t('modelDownload.action.onlyManagers')}>
+                <span className="text-muted-foreground/50 text-xs">--</span>
+              </SimpleTooltip>
+            )
+          }
           return (
             <div className="flex flex-row space-x-1">
               {download.status === 'Downloading' && (
-                <SimpleTooltip tooltip="暂停下载">
+                <SimpleTooltip tooltip={t('modelDownload.action.pause')}>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
+                    disabled={isPausing}
                     onClick={() => pauseDownload(download.id)}
                   >
                     <Pause className="h-4 w-4" />
@@ -283,90 +348,315 @@ export function ModelDownloadsPage({ category }: ModelDownloadsPageProps) {
                 </SimpleTooltip>
               )}
               {download.status === 'Paused' && (
-                <SimpleTooltip tooltip="恢复下载">
+                <SimpleTooltip tooltip={t('modelDownload.action.resume.confirm')}>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => resumeDownload(download.id)}
+                    disabled={isResuming}
+                    onClick={() => setTokenTarget({ action: 'resume', download })}
                   >
                     <Play className="h-4 w-4" />
                   </Button>
                 </SimpleTooltip>
               )}
               {download.status === 'Failed' && (
-                <SimpleTooltip tooltip="重新下载">
+                <SimpleTooltip tooltip={t('modelDownload.action.retry.confirm')}>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => retryDownload(download.id)}
+                    disabled={isRetrying}
+                    onClick={() => setTokenTarget({ action: 'retry', download })}
                   >
                     <RotateCw className="h-4 w-4" />
                   </Button>
                 </SimpleTooltip>
               )}
-              <SimpleTooltip tooltip="删除">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                  onClick={() => deleteDownload(download.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </SimpleTooltip>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                    disabled={isDeleting}
+                    title={t('modelDownload.action.delete')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('modelDownload.action.deleteDescription', { name: download.name })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      disabled={isDeleting}
+                      onClick={() => deleteDownload(download.id)}
+                    >
+                      {isDeleting
+                        ? t('modelDownload.action.processing')
+                        : t('modelDownload.action.delete')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )
         },
       },
     ],
-    [pauseDownload, resumeDownload, retryDownload, deleteDownload]
+    [deleteDownload, isDeleting, isPausing, isResuming, isRetrying, pauseDownload, t]
   )
 
-  const pageInfo =
-    category === 'dataset'
-      ? {
-          title: '数据集下载管理',
-          description: '查看和管理从 ModelScope 或 HuggingFace 下载的数据集',
-        }
-      : {
-          title: '模型下载管理',
-          description: '查看和管理从 ModelScope 或 HuggingFace 下载的模型',
-        }
+  const defaultData = useMemo<ModelDownload[]>(() => [], [])
+
+  const table = useReactTable({
+    data: listData?.items ?? defaultData,
+    columns,
+    pageCount: total > 0 ? Math.ceil(total / pagination.pageSize) : 0,
+    state: { pagination },
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+  })
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value as ModelDownloadStatus | 'all')
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+  }
+
+  const summaryTotal = summary
+    ? Object.values(summary).reduce((acc, count) => acc + (count ?? 0), 0)
+    : 0
+
+  const statCards = [
+    {
+      key: 'all' as const,
+      label: t('modelDownload.stats.all'),
+      value: summaryTotal,
+      icon: LayersIcon,
+      iconClass: 'text-primary',
+      hint: undefined as string | undefined,
+    },
+    {
+      key: 'Downloading' as const,
+      label: t('modelDownload.stats.downloading'),
+      value: summary?.Downloading ?? 0,
+      icon: DownloadIcon,
+      iconClass: 'text-highlight-sky',
+      hint:
+        (summary?.Pending ?? 0) > 0
+          ? t('modelDownload.stats.pendingHint', { count: summary?.Pending })
+          : undefined,
+    },
+    {
+      key: 'Ready' as const,
+      label: t('modelDownload.stats.completed'),
+      value: summary?.Ready ?? 0,
+      icon: CheckCircle2Icon,
+      iconClass: 'text-highlight-emerald',
+      hint: undefined,
+    },
+    {
+      key: 'Paused' as const,
+      label: t('modelDownload.stats.paused'),
+      value: summary?.Paused ?? 0,
+      icon: PauseCircleIcon,
+      iconClass: 'text-amber-600',
+      hint: undefined,
+    },
+    {
+      key: 'Failed' as const,
+      label: t('modelDownload.stats.failed'),
+      value: summary?.Failed ?? 0,
+      icon: AlertCircleIcon,
+      iconClass: 'text-highlight-red',
+      hint: undefined,
+    },
+  ]
+
+  const lastUpdatedAt = useMemo(() => {
+    if (!query.dataUpdatedAt) {
+      return '--'
+    }
+    return new Date(query.dataUpdatedAt).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  }, [query.dataUpdatedAt])
 
   return (
-    <DataTable
-      info={pageInfo}
-      storageKey={category === 'dataset' ? 'dataset-downloads' : 'model-downloads'}
-      query={query}
-      columns={columns}
-      toolbarConfig={toolbarConfig}
-      multipleHandlers={[
-        {
-          title: (rows) => `删除 ${rows.length} 个下载任务`,
-          description: (rows) => (
-            <>{rows.map((row) => row.original.name).join(', ')} 将被删除，确认要继续吗？</>
-          ),
-          icon: <Trash2 className="text-destructive" />,
-          handleSubmit: (rows) => {
-            rows.forEach((row) => {
-              deleteDownload(row.original.id)
-            })
-          },
-          isDanger: true,
-        },
-      ]}
-    >
-      <div className="flex flex-row gap-3">
-        <Link to={category === 'dataset' ? '/portal/data/datasets' : '/portal/data/models'}>
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {category === 'dataset' ? '返回数据集列表' : '返回模型列表'}
-          </Button>
-        </Link>
-        <DocsButton title="查看文档" url={category === 'dataset' ? 'file/dataset' : 'file/model'} />
+    <div className="space-y-4">
+      <PageTitle
+        title={t('modelDownload.list.title')}
+        description={t('modelDownload.list.description')}
+      >
+        <div className="flex flex-row gap-3">
+          <Link to="/portal/data/models">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              {t('modelDownload.list.back')}
+            </Button>
+          </Link>
+          <DocsButton title={t('modelDownload.list.docs')} url="file/model" />
+        </div>
+      </PageTitle>
+
+      {/* 状态统计卡片,点击可按状态筛选 */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {statCards.map((card) => {
+          const selected = statusFilter === card.key
+          return (
+            <Card
+              key={card.key}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleStatusChange(selected ? 'all' : card.key)}
+              className={cn(
+                'cursor-pointer py-0 transition-all hover:shadow-md',
+                selected && 'ring-primary/60 ring-2'
+              )}
+            >
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="min-w-0">
+                  <p className="text-muted-foreground text-xs">{card.label}</p>
+                  <p className="text-2xl font-semibold tabular-nums">{card.value}</p>
+                  {card.hint && (
+                    <p className="text-muted-foreground truncate text-xs">{card.hint}</p>
+                  )}
+                </div>
+                <card.icon className={cn('size-5 shrink-0', card.iconClass)} />
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
-    </DataTable>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative">
+          <SearchIcon className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
+          <Input
+            placeholder={t('modelDownload.list.searchPlaceholder')}
+            className="h-9 w-full pl-8 sm:w-[250px]"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </div>
+        <Select
+          value={categoryFilter}
+          onValueChange={(value) => {
+            setCategoryFilter(value as 'all' | 'model' | 'dataset')
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+          }}
+        >
+          <SelectTrigger className="h-9 w-full sm:w-[140px]">
+            <SelectValue placeholder={t('modelDownload.list.category')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('modelDownload.category.all')}</SelectItem>
+            <SelectItem value="model">{t('modelDownload.category.model')}</SelectItem>
+            <SelectItem value="dataset">{t('modelDownload.category.dataset')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
+          <SelectTrigger className="h-9 w-full sm:w-[140px]">
+            <SelectValue placeholder={t('modelDownload.list.status')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('modelDownload.status.all')}</SelectItem>
+            <SelectItem value="Pending">{t('modelDownload.status.pending')}</SelectItem>
+            <SelectItem value="Downloading">{t('modelDownload.status.downloading')}</SelectItem>
+            <SelectItem value="Paused">{t('modelDownload.status.paused')}</SelectItem>
+            <SelectItem value="Ready">{t('modelDownload.status.completed')}</SelectItem>
+            <SelectItem value="Failed">{t('modelDownload.status.failed')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* 数据表 */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {query.isError ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <span className="text-destructive text-sm">
+                    {t('modelDownload.list.loadError')}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ) : query.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <span className="text-muted-foreground text-sm">{t('common.loading')}</span>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <span className="text-muted-foreground text-sm">
+                    {t('modelDownload.list.empty')}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <DataTablePagination
+        table={table}
+        updatedAt={lastUpdatedAt}
+        refetch={() => void query.refetch()}
+        pageSizeOptions={[10, 20, 50, 100]}
+      />
+      {tokenTarget && (
+        <ModelDownloadTokenDialog
+          action={tokenTarget.action}
+          downloadName={tokenTarget.download.name}
+          isPending={isResuming || isRetrying}
+          open
+          onOpenChange={(open) => !open && setTokenTarget(null)}
+          onSubmit={(token) => {
+            const request = { id: tokenTarget.download.id, token }
+            if (tokenTarget.action === 'resume') {
+              resumeDownload(request)
+            } else {
+              retryDownload(request)
+            }
+          }}
+        />
+      )}
+    </div>
   )
 }

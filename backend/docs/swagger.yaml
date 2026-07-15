@@ -405,12 +405,41 @@ definitions:
         description: 'Key: ResourceName, Value: Usage'
         type: object
     type: object
+  github_com_raids-lab_crater_internal_resputil.FacetItem:
+    properties:
+      count:
+        type: integer
+      value:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.FacetResponse:
+    properties:
+      facets:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.FacetItem'
+          type: array
+        type: object
+    type: object
   github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp:
     properties:
       items:
         items:
           $ref: '#/definitions/internal_handler_operations.OperationLogResp'
         type: array
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.JobResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
       total:
         type: integer
     type: object
@@ -515,6 +544,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.FacetResponse'
+      msg:
+        type: string
+    type: object
   ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp
   : properties:
       code:
@@ -522,6 +561,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp'
       msg:
         type: string
     type: object
@@ -702,6 +751,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.LoginResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.ModelDownloadListResp'
       msg:
         type: string
     type: object
@@ -1543,6 +1602,11 @@ definitions:
       status:
         type: string
     type: object
+  internal_handler.DownloadActionReq:
+    properties:
+      token:
+        type: string
+    type: object
   internal_handler.FailureStat:
     properties:
       count:
@@ -1824,14 +1888,34 @@ definitions:
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
     type: object
+  internal_handler.ModelDownloadListResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.ModelDownloadResp'
+        type: array
+      summary:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total:
+        type: integer
+    type: object
   internal_handler.ModelDownloadResp:
     properties:
+      canManage:
+        type: boolean
+      canViewLogs:
+        type: boolean
       category:
         type: string
       createdAt:
         type: string
       creatorId:
         type: integer
+      displayName:
+        type: string
       downloadSpeed:
         type: string
       downloadedBytes:
@@ -1840,10 +1924,18 @@ definitions:
         type: integer
       jobName:
         type: string
+      library:
+        type: string
+      license:
+        type: string
       message:
+        type: string
+      modelType:
         type: string
       name:
         type: string
+      parameterCount:
+        type: integer
       path:
         type: string
       referenceCount:
@@ -1854,10 +1946,20 @@ definitions:
         type: integer
       source:
         type: string
+      sourceCreatedAt:
+        type: string
+      sourceUpdatedAt:
+        type: string
+      sourceUrl:
+        type: string
       status:
+        type: string
+      task:
         type: string
       updatedAt:
         type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
     type: object
   internal_handler.NodeAnnotation:
     properties:
@@ -2848,6 +2950,47 @@ definitions:
         type: array
       imageLink:
         type: string
+    type: object
+  internal_handler_vcjob.JobResp:
+    properties:
+      billedPointsTotal:
+        type: number
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      jobName:
+        type: string
+      jobType:
+        type: string
+      locked:
+        type: boolean
+      lockedTimestamp:
+        type: string
+      name:
+        type: string
+      nodes:
+        items:
+          type: string
+        type: array
+      owner:
+        type: string
+      permanentLocked:
+        type: boolean
+      queue:
+        type: string
+      resources:
+        $ref: '#/definitions/v1.ResourceList'
+      scheduleType:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
+      startedAt:
+        type: string
+      status:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+      waitingToleranceSeconds:
+        type: integer
     type: object
   internal_handler_vcjob.JupyterTokenResp:
     properties:
@@ -8516,11 +8659,27 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取当前用户的所有模型下载任务,可通过category参数过滤
+      description: 下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)
       parameters:
       - description: '过滤类别: model 或 dataset'
         in: query
         name: category
+        type: string
+      - description: 页码(从1开始);不传则返回全量数组
+        in: query
+        name: page
+        type: integer
+      - description: 每页数量,默认20,最大100
+        in: query
+        name: pageSize
+        type: integer
+      - description: '过滤状态: Pending/Downloading/Paused/Ready/Failed'
+        in: query
+        name: status
+        type: string
+      - description: 按名称模糊搜索
+        in: query
+        name: search
         type: string
       produces:
       - application/json
@@ -8528,17 +8687,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp'
       security:
       - Bearer: []
-      summary: 获取用户的模型下载任务列表
+      summary: 获取模型下载任务列表
       tags:
       - ModelDownload
   /v1/models/downloads/{id}:
     delete:
       consumes:
       - application/json
-      description: 删除指定的模型下载任务记录
+      description: 删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
       parameters:
       - description: 下载任务ID
         in: path
@@ -8583,7 +8742,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取模型下载任务的实时日志
+      description: 返回定时持久化到下载记录中的日志
       parameters:
       - description: 下载任务ID
         in: path
@@ -8599,7 +8758,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
       security:
       - Bearer: []
-      summary: 获取模型下载任务的 Pod 日志
+      summary: 获取模型下载任务日志
       tags:
       - ModelDownload
   /v1/models/downloads/{id}/pause:
@@ -8636,6 +8795,11 @@ paths:
         name: id
         required: true
         type: integer
+      - description: 可选的临时访问令牌
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/internal_handler.DownloadActionReq'
       produces:
       - application/json
       responses:
@@ -8659,6 +8823,11 @@ paths:
         name: id
         required: true
         type: integer
+      - description: 可选的临时访问令牌
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/internal_handler.DownloadActionReq'
       produces:
       - application/json
       responses:
@@ -9884,13 +10053,59 @@ paths:
       consumes:
       - application/json
       description: Get the jobs of the user by client-go
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: Volcano Job List
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp'
         "400":
           description: Request parameter error
           schema:
@@ -10250,13 +10465,54 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: admin get Volcano Job List
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp'
         "400":
           description: admin Request parameter error
           schema:
@@ -10268,6 +10524,102 @@ paths:
       security:
       - Bearer: []
       summary: Get all of the jobs
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/all/facets:
+    get:
+      parameters:
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get all visible job facets
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/facets:
+    get:
+      parameters:
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get job facets for the current user
       tags:
       - VolcanoJob
   /v1/vcjobs/jupyter:
@@ -10381,13 +10733,54 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: User's Job List
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp'
         "400":
           description: Request parameter error
           schema:
@@ -10407,6 +10800,59 @@ paths:
       security:
       - Bearer: []
       summary: Get jobs of a specific user within days
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/user/{username}/facets:
+    get:
+      parameters:
+      - description: Username
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get job facets for a user
       tags:
       - VolcanoJob
   /v1/vcjobs/webide:

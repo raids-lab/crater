@@ -54,9 +54,8 @@ import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 import {
   type AgentReportData,
   type ApprovalOrder,
-  type ApprovalOrderReq,
   adminGetApprovalOrder,
-  updateApprovalOrder,
+  reviewApprovalOrder,
 } from '@/services/api/approvalorder'
 import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
 import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
@@ -65,7 +64,6 @@ import { queryNodes } from '@/services/query/node'
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
 
 import { hasNvidiaGPU } from '@/utils/resource'
-import { atomUserInfo } from '@/utils/store'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 
 import { DurationDialog } from '../../jobs/-components/duration-dialog'
@@ -82,7 +80,6 @@ export const Route = createFileRoute('/admin/more/orders/$id')({
 
 function RouteComponent() {
   const queryClient = useQueryClient()
-  const user = useAtomValue(atomUserInfo)
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { id } = Route.useParams()
   const { tab: currentTab } = Route.useSearch()
@@ -171,22 +168,6 @@ function RouteComponent() {
     selectedOrderRef.current = selectedOrder ?? null
   }, [selectedOrder])
 
-  const buildPayload = (target: ApprovalOrder, overrides: Partial<ApprovalOrderReq> = {}) => ({
-    name: target.name,
-    type: target.type,
-    status: overrides.status ?? target.status,
-    approvalorderTypeID: Number(target.content?.approvalorderTypeID) || 0,
-    approvalorderReason: target.content?.approvalorderReason ?? '',
-    approvalorderExtensionHours: Number(target.content?.approvalorderExtensionHours) || 0,
-    reviewerID: user?.id || 0,
-    reviewNotes:
-      overrides.reviewNotes ?? (typeof target.reviewNotes === 'string' ? target.reviewNotes : ''),
-  })
-
-  const updateDetailCache = (next: ApprovalOrder) => {
-    queryClient.setQueryData([...DETAIL_QUERY_KEY, orderId], next)
-  }
-
   const invalidateOrderLists = () => {
     queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
     queryClient.invalidateQueries({ queryKey: ['approvalorders'] })
@@ -195,13 +176,10 @@ function RouteComponent() {
 
   const approveMutation = useMutation({
     mutationFn: async (target: ApprovalOrder) => {
-      const payload = buildPayload(target, { status: 'Approved' })
-      const res = await updateApprovalOrder(target.id, payload)
-      return res.data
+      await reviewApprovalOrder(target.id, { status: 'Approved' })
     },
-    onSuccess: async (updated) => {
+    onSuccess: async () => {
       toast.success('工单已批准')
-      updateDetailCache(updated)
       invalidateOrderLists()
       await refetch()
     },
@@ -213,15 +191,12 @@ function RouteComponent() {
 
   const rejectMutation = useMutation({
     mutationFn: async ({ target, reason }: { target: ApprovalOrder; reason: string }) => {
-      const payload = buildPayload(target, { status: 'Rejected', reviewNotes: reason })
-      const res = await updateApprovalOrder(target.id, payload)
-      return res.data
+      await reviewApprovalOrder(target.id, { status: 'Rejected', reviewNotes: reason })
     },
-    onSuccess: async (updated) => {
+    onSuccess: async () => {
       toast.success('工单已拒绝')
       setIsRejectDialogOpen(false)
       setRejectionReason('')
-      updateDetailCache(updated)
       invalidateOrderLists()
       await refetch()
     },

@@ -93,9 +93,9 @@ Clone-job flows depend on the job template captured with the job at creation tim
 When changing job creation configuration fields, request/response schema, or template serialization:
 
 - Treat the job template payload as a versioned schema. If the change should block old templates or exported configs from being imported/cloned, bump the corresponding frontend `MetadataForm*` version so the block is explicit and intentional.
-- If old templates should remain usable, add the needed migration/compatibility handling instead of silently accepting mismatched data.
+- If old templates should remain usable, add a frontend migration from the previous version to the new version in `frontend/src/components/form/types.ts`; later old versions must migrate by chaining adjacent-version migrations through the shared import helpers in `frontend/src/utils/form.ts`.
 - Keep template creation, clone/replay, and public API behavior aligned; update `swag` annotations and frontend job creation / clone handling when the payload changes.
-- Verify current-version clone/import succeeds, and obsolete versions are either migrated or clearly blocked.
+- Verify current-version clone/import succeeds, supported obsolete versions are migrated, and unsupported older versions are clearly blocked.
 
 ## Errors And Security
 

@@ -20,6 +20,10 @@ on:
     paths:
       - ".github/workflows/depend-build.yml"
       - "hack/depend-image-dockerfile/**"
+  pull_request:
+    paths:
+      - ".github/workflows/depend-build.yml"
+      - "hack/depend-image-dockerfile/model-downloader/**"
 
 env:
   REGISTRY: ghcr.io
@@ -30,6 +34,8 @@ env:
   ENVD_VERSION: v1.2.1
   NERDCTL_CLIENT: nerdctl-client
   NERDCTL_VERSION: v2.1.2
+  MODEL_DOWNLOADER: crater-model-downloader
+  MODEL_DOWNLOADER_VERSION: v1.0.0
 
 jobs:
   detect-changes:
@@ -38,6 +44,7 @@ jobs:
       buildx-client: ${{ steps.changes.outputs.buildx-client }}
       envd-client: ${{ steps.changes.outputs.envd-client }}
       nerdctl-client: ${{ steps.changes.outputs.nerdctl-client }}
+      model-downloader: ${{ steps.changes.outputs.model-downloader }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -55,6 +62,8 @@ jobs:
               - 'hack/depend-image-dockerfile/envd-client/**'
             nerdctl-client:
               - 'hack/depend-image-dockerfile/nerdctl-client/**'
+            model-downloader:
+              - 'hack/depend-image-dockerfile/model-downloader/**'
 
   build-buildx-client:
     runs-on: ubuntu-latest
@@ -191,10 +200,55 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  build-model-downloader:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.model-downloader == 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta for model-downloader
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/${{ env.MODEL_DOWNLOADER }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ env.MODEL_DOWNLOADER_VERSION }}
+
+      - name: Build and push model-downloader image
+        uses: docker/build-push-action@v6
+        with:
+          context: hack/depend-image-dockerfile/model-downloader
+          file: hack/depend-image-dockerfile/model-downloader/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
   cleanup:
     runs-on: ubuntu-latest
-    needs: [build-buildx-client, build-envd-client, build-nerdctl-client]
-    if: always() && (needs.build-buildx-client.result == 'success' || needs.build-envd-client.result == 'success' || needs.build-nerdctl-client.result == 'success')
+    needs: [build-buildx-client, build-envd-client, build-nerdctl-client, build-model-downloader]
+    if: github.event_name != 'pull_request' && always() && (needs.build-buildx-client.result == 'success' || needs.build-envd-client.result == 'success' || needs.build-nerdctl-client.result == 'success' || needs.build-model-downloader.result == 'success')
     permissions:
       contents: read
       packages: write
@@ -230,6 +284,18 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}
           repository-owner: ${{ github.repository_owner }}
           package-name: ${{ env.NERDCTL_CLIENT }}
+          delete-untagged: true
+          keep-at-most: 5
+          skip-tags: latest
+        continue-on-error: true
+
+      - name: Clean up old model-downloader images
+        uses: quartx-analytics/ghcr-cleaner@v1
+        with:
+          owner-type: org
+          token: ${{ secrets.PAT_TOKEN }}
+          repository-owner: ${{ github.repository_owner }}
+          package-name: ${{ env.MODEL_DOWNLOADER }}
           delete-untagged: true
           keep-at-most: 5
           skip-tags: latest

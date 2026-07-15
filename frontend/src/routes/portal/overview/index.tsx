@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { UseQueryResult, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
@@ -23,7 +23,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import JobPhaseLabel, { getJobPhaseLabel, jobPhases } from '@/components/badge/job-phase-badge'
-import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
+import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
@@ -35,7 +35,7 @@ import { BillingSummaryCards } from '@/components/custom/billing-summary-cards'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { getHeader } from '@/components/job/overview/admin-jobs'
-import { scheduleTypes } from '@/components/job/statuses'
+import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -43,9 +43,13 @@ import { useAccountNameLookup } from '@/components/node/getaccountnickname'
 import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import {
+  type RemoteTableParams,
+  buildFacetQueryKey,
+  buildRemoteQueryKey,
+} from '@/components/query-table/remote-state'
 
-import { apiJobAllBillingList } from '@/services/api/billing'
 import { apiContextBillingSummary } from '@/services/api/context'
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
@@ -53,11 +57,14 @@ import {
   JobPhase,
   JobType,
   ScheduleType,
+  apiJobAllFacets,
   apiJobAllList,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { getUserPseudonym } from '@/utils/pseudonym'
@@ -69,33 +76,13 @@ export const Route = createFileRoute('/portal/overview/')({
   component: Overview,
 })
 
-const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
-    placeholder: '搜索用户名称',
-    key: 'owner',
-  },
-  filterOptions: [
-    {
-      key: 'jobType',
-      title: '类型',
-      option: jobTypes,
-    },
-    {
-      key: 'scheduleType',
-      title: getHeader('scheduleType'),
-      option: scheduleTypes,
-    },
-    {
-      key: 'status',
-      title: '状态',
-      option: jobPhases,
-      defaultValues: ['Running', 'Pending', 'Prequeue'],
-    },
-  ],
-  getHeader: getHeader,
-}
+type JobTableRow = IJobInfo
 
-type JobTableRow = IJobInfo & { billedPointsTotal?: number }
+const overviewSummaryParams: RemoteTableParams = {
+  page: 1,
+  page_size: 1,
+  filters: { days: ['7'] },
+}
 
 function Overview() {
   const { i18n, t } = useTranslation()
@@ -107,6 +94,13 @@ function Overview() {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
+  const tableState = useRemoteTableState('overview_joblist', {
+    sorting: [{ id: 'createdAt', desc: true }],
+    columnFilters: [
+      { id: 'days', value: ['7'] },
+      { id: 'status', value: ['Running', 'Pending', 'Prequeue'] },
+    ],
+  })
 
   // 获取当前语言对应的 date-fns locale
   const getDateLocale = useCallback((): Locale => {
@@ -158,6 +152,7 @@ function Overview() {
       },
       {
         accessorKey: 'nodes',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('nodes')} />
         ),
@@ -168,6 +163,7 @@ function Overview() {
       },
       {
         accessorKey: 'resources',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('resources')} />
         ),
@@ -248,47 +244,33 @@ function Overview() {
   )
 
   const jobQuery = useQuery({
-    queryKey: ['overview', 'joblist'],
-    queryFn: apiJobAllList,
-    select: (res) => res.data,
+    queryKey: buildRemoteQueryKey('overview-jobs', tableState.params),
+    queryFn: async ({ signal }) => (await apiJobAllList(tableState.params, signal)).data,
+    placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
-  const jobBillingQuery = useQuery({
-    queryKey: ['overview', 'joblist', 'billing'],
-    queryFn: () => apiJobAllBillingList(),
-    select: (res) =>
-      res.data.reduce<Record<string, number>>((acc, item) => {
-        acc[item.jobName] = item.billedPointsTotal
-        return acc
-      }, {}),
+  const jobFacetsQuery = useQuery({
+    queryKey: buildFacetQueryKey('overview-jobs', tableState.params),
+    queryFn: async ({ signal }) => (await apiJobAllFacets(tableState.params, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
-    enabled: billingVisible,
   })
-  const mergedJobQuery = useMemo(
-    () =>
-      ({
-        data: (jobQuery.data ?? []).map((job) => ({
-          ...job,
-          billedPointsTotal: jobBillingQuery.data?.[job.jobName] ?? 0,
-        })),
-        isLoading: jobQuery.isLoading || (billingVisible && jobBillingQuery.isLoading),
-        dataUpdatedAt: Math.max(
-          jobQuery.dataUpdatedAt,
-          billingVisible ? jobBillingQuery.dataUpdatedAt : 0
-        ),
-        refetch: jobQuery.refetch,
-      }) as unknown as UseQueryResult<JobTableRow[], Error>,
-    [
-      billingVisible,
-      jobBillingQuery.data,
-      jobBillingQuery.dataUpdatedAt,
-      jobBillingQuery.isLoading,
-      jobQuery.data,
-      jobQuery.dataUpdatedAt,
-      jobQuery.isLoading,
-      jobQuery.refetch,
-    ]
-  )
+  const jobSummaryFacetsQuery = useQuery({
+    queryKey: buildFacetQueryKey('overview-job-summary', overviewSummaryParams),
+    queryFn: async ({ signal }) => (await apiJobAllFacets(overviewSummaryParams, signal)).data,
+    refetchInterval: REFETCH_INTERVAL,
+  })
+  const toolbarConfig = useMemo(() => {
+    const config = getRemoteJobToolbarConfig(jobFacetsQuery.data)
+    return {
+      ...config,
+      getHeader,
+      filterOptions: config.filterOptions.map((filter) =>
+        filter.key === 'status'
+          ? { ...filter, defaultValues: ['Running', 'Pending', 'Prequeue'] }
+          : filter
+      ),
+    }
+  }, [jobFacetsQuery.data])
 
   const resourcesQuery = useQuery(
     queryResources(true, (resource) => {
@@ -302,88 +284,31 @@ function Overview() {
   })
 
   const jobStatus = useMemo(() => {
-    if (!jobQuery.data) {
-      return []
-    }
-    const data = jobQuery.data
-    const counts = data
-      .filter((d) => d.status !== JobPhase.Deleted && d.status !== JobPhase.Freed)
-      .reduce(
-        (acc, item) => {
-          const phase = item.status
-          if (!acc[phase]) {
-            acc[phase] = 0
-          }
-          acc[phase] += 1
-          return acc
-        },
-        {} as Record<JobPhase, number>
-      )
-    return Object.entries(counts).map(([phase, count]) => ({
-      id: phase,
-      label: getJobPhaseLabel(phase as JobPhase).label,
-      value: count,
-    }))
-  }, [jobQuery.data])
+    return (jobSummaryFacetsQuery.data?.facets.status ?? [])
+      .filter(({ value }) => value !== JobPhase.Deleted && value !== JobPhase.Freed)
+      .map(({ value, count }) => ({
+        id: value,
+        label: getJobPhaseLabel(value as JobPhase).label,
+        value: count,
+      }))
+  }, [jobSummaryFacetsQuery.data])
 
   const hideUsername = useAtomValue(globalHideUsername)
   const userStatus = useMemo(() => {
-    if (!jobQuery.data) {
-      return []
-    }
-    const data = jobQuery.data
-    const counts = data
-      .filter((job) => job.status == 'Running')
-      .reduce(
-        (acc, item) => {
-          const owner = hideUsername ? getUserPseudonym(item.owner) : item.owner
-          if (!acc[owner]) {
-            acc[owner] = {
-              nickname: item.userInfo.nickname ?? item.owner,
-              count: 0,
-            }
-          }
-          acc[owner].count += 1
-          return acc
-        },
-        {} as Record<string, { nickname: string; count: number }>
-      )
-    return Object.entries(counts).map(([owner, pair]) => ({
-      id: owner,
-      label: hideUsername ? getUserPseudonym(owner) : pair.nickname,
-      value: pair.count,
-    }))
-  }, [hideUsername, jobQuery.data])
-
-  const gpuStatus = useMemo(() => {
-    if (!jobQuery.data) {
-      return []
-    }
-    const data = jobQuery.data
-    const counts = data
-      .filter((job) => job.status == 'Running')
-      .reduce(
-        (acc, item) => {
-          const resources = item.resources
-          for (const [k, value] of Object.entries(resources ?? {})) {
-            if (k.startsWith('nvidia.com')) {
-              const key = k.replace('nvidia.com/', '')
-              if (!acc[key]) {
-                acc[key] = 0
-              }
-              acc[key] += parseInt(value)
-            }
-          }
-          return acc
-        },
-        {} as Record<string, number>
-      )
-    return Object.entries(counts).map(([phase, count]) => ({
-      id: phase,
-      label: phase,
+    return (jobSummaryFacetsQuery.data?.facets.owner ?? []).map(({ value, count }) => ({
+      id: value,
+      label: hideUsername ? getUserPseudonym(value) : value,
       value: count,
     }))
-  }, [jobQuery.data])
+  }, [hideUsername, jobSummaryFacetsQuery.data])
+
+  const gpuStatus = useMemo(() => {
+    return (jobSummaryFacetsQuery.data?.facets.gpu_resource ?? []).map(({ value, count }) => ({
+      id: value,
+      label: value,
+      value: count,
+    }))
+  }, [jobSummaryFacetsQuery.data])
 
   const gpuAllocation = useMemo(() => {
     if (resourcesQuery.data === undefined) {
@@ -426,21 +351,21 @@ function Overview() {
           items={[
             {
               title: '运行中作业',
-              value: jobQuery.data?.filter((job) => job.status === JobPhase.Running).length,
+              value: jobStatus.find(({ id }) => id === JobPhase.Running)?.value ?? 0,
               className: 'text-highlight-blue',
               description: '正在运行的作业数量',
               icon: FlaskConicalIcon,
             },
             {
               title: t('statuses.awaitingAdmission'),
-              value: jobQuery.data?.filter((job) => job.status === JobPhase.Prequeue).length ?? 0,
+              value: jobStatus.find(({ id }) => id === JobPhase.Prequeue)?.value ?? 0,
               className: 'text-highlight-violet',
               description: t('jobs.statuses.prequeue.description'),
               icon: ClockIcon,
             },
             {
               title: t('statuses.pendingScheduling'),
-              value: jobQuery.data?.filter((job) => job.status === JobPhase.Pending).length ?? 0,
+              value: jobStatus.find(({ id }) => id === JobPhase.Pending)?.value ?? 0,
               className: 'text-highlight-purple',
               description: t('jobs.statuses.pending.description'),
               icon: ClockIcon,
@@ -466,7 +391,7 @@ function Overview() {
           icon={FlaskConicalIcon}
           cardTitle="作业状态"
           cardDescription="查看集群近 7 天作业的状态统计"
-          isLoading={jobQuery.isLoading}
+          isLoading={jobSummaryFacetsQuery.isLoading}
         >
           <NivoPie
             data={jobStatus}
@@ -481,19 +406,20 @@ function Overview() {
           icon={UsersRoundIcon}
           cardTitle="用户统计"
           cardDescription="当前正在运行作业所属的用户"
-          isLoading={jobQuery.isLoading}
+          isLoading={jobSummaryFacetsQuery.isLoading}
         >
           <NivoPie data={userStatus} margin={{ top: 20, bottom: 30 }} />
         </PieCard>
       </div>
-      <DataTable
+      <RemoteDataTable
         info={{
           title: '作业信息',
           description: '查看近 7 天集群作业的运行情况',
         }}
-        storageKey="overview_joblist"
-        query={mergedJobQuery}
+        query={jobQuery}
+        state={tableState}
         columns={jobColumns}
+        getRowId={(row) => row.jobName}
         toolbarConfig={toolbarConfig}
       />
       <DataTable

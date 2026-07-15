@@ -123,6 +123,8 @@ interface DataTablePaginationProps<TData> {
   refetch: () => void
   table: Table<TData>
   multipleHandlers?: MultipleHandler<TData>[]
+  pageSizeOptions?: number[]
+  totalItems?: number
 }
 
 export function DataTablePagination<TData>({
@@ -130,6 +132,8 @@ export function DataTablePagination<TData>({
   refetch,
   table,
   multipleHandlers,
+  pageSizeOptions = [10, 20, 50, 100, 200],
+  totalItems,
 }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation()
 
@@ -203,14 +207,14 @@ export function DataTablePagination<TData>({
         <Select
           value={`${table.getState().pagination.pageSize}`}
           onValueChange={(value) => {
-            table.setPageSize(Number(value))
+            table.setPagination({ pageIndex: 0, pageSize: Number(value) })
           }}
         >
           <SelectTrigger className="bg-background h-9 w-[100px] pr-2 pl-3 text-xs">
             <SelectValue placeholder={table.getState().pagination.pageSize} />
           </SelectTrigger>
           <SelectContent side="top">
-            {[10, 20, 50, 100, 200].map((pageSize) => (
+            {pageSizeOptions.map((pageSize) => (
               <SelectItem key={pageSize} value={`${pageSize}`}>
                 {t('dataTablePagination.itemsPerPage', { count: pageSize })}
               </SelectItem>
@@ -223,14 +227,14 @@ export function DataTablePagination<TData>({
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>
               {t('dataTablePagination.totalItems', {
-                count: table.getFilteredRowModel().rows.length,
+                count: totalItems ?? table.getFilteredRowModel().rows.length,
               })}
             </>
           ) : (
             <>
               {t('dataTablePagination.selectedItems', {
                 selected: table.getFilteredSelectedRowModel().rows.length,
-                total: table.getFilteredRowModel().rows.length,
+                total: totalItems ?? table.getFilteredRowModel().rows.length,
               })}
             </>
           )}

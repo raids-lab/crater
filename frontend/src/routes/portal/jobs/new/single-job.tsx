@@ -69,6 +69,7 @@ import { ScheduleType, apiTrainingCreate } from '@/services/api/vcjob'
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
+  NodeSelectorMode,
   VolumeMountType,
   buildNodeSelectors,
   convertToResourceList,
@@ -226,7 +227,8 @@ function RouteComponent() {
       scheduleType: ScheduleType.Normal,
       nodeSelector: {
         enable: false,
-        excludedNodes: [],
+        mode: NodeSelectorMode.Include,
+        nodes: [],
       },
       forwards: [],
     },
@@ -448,8 +450,8 @@ conda activate base;
               alertEnabledPath="alertEnabled"
               cpuPinningEnabledPath="cpuPinningEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
-              nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
+              nodeSelectorModePath="nodeSelector.mode"
+              nodeSelectorNodesPath="nodeSelector.nodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

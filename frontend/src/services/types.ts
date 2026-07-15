@@ -42,3 +42,19 @@ export interface IWithPagination<T> {
   items: T[]
   total: number
 }
+
+export interface IPage<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface IFacetItem {
+  value: string
+  count: number
+}
+
+export interface IFacetResponse {
+  facets: Record<string, IFacetItem[]>
+}

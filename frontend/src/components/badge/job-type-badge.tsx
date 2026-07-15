@@ -38,6 +38,18 @@ export const jobTypes = [
     value: 'pytorch',
     label: 'Pytorch',
   },
+  {
+    value: 'kuberay',
+    label: 'KubeRay',
+  },
+  {
+    value: 'deepspeed',
+    label: 'DeepSpeed',
+  },
+  {
+    value: 'openmpi',
+    label: 'OpenMPI',
+  },
 ]
 
 const getJobTypeLabel = (
@@ -77,6 +89,24 @@ const getJobTypeLabel = (
         label: 'Pytorch',
         color: 'text-highlight-rose bg-highlight-rose/10',
         description: 'Pytorch DDP 作业',
+      }
+    case JobType.KubeRay:
+      return {
+        label: 'KubeRay',
+        color: 'text-highlight-blue bg-highlight-blue/10',
+        description: 'KubeRay 作业',
+      }
+    case JobType.DeepSpeed:
+      return {
+        label: 'DeepSpeed',
+        color: 'text-highlight-orange bg-highlight-orange/10',
+        description: 'DeepSpeed 作业',
+      }
+    case JobType.OpenMPI:
+      return {
+        label: 'OpenMPI',
+        color: 'text-highlight-green bg-highlight-green/10',
+        description: 'OpenMPI 作业',
       }
     default:
       return {
