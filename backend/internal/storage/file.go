@@ -17,6 +17,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -532,7 +533,7 @@ func GetDatasetFiles(c *gin.Context) {
 	ss := "/api/ss/dataset/" + strconv.FormatUint(uint64(datasetReq.ID), 10)
 	realPath, err := resolveDatasetStoragePath(URL, strings.TrimPrefix(c.Request.URL.Path, ss))
 	if err != nil {
-		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, err.Error()))
 		return
 	}
 
