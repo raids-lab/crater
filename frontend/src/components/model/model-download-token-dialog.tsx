@@ -74,6 +74,10 @@ export default function ModelDownloadTokenDialog({
         </AlertDialogHeader>
         {action === 'retry' && (
           <Input
+            name="model-download-revision"
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
             value={revision}
             onChange={(event) => setRevision(event.target.value)}
             placeholder={t('modelDownload.action.revisionPlaceholder', {
@@ -85,7 +89,11 @@ export default function ModelDownloadTokenDialog({
         )}
         <Input
           type="password"
-          autoComplete="off"
+          name="model-download-access-token"
+          autoComplete="new-password"
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
           value={token}
           onChange={(event) => setToken(event.target.value)}
           placeholder={t('modelDownload.action.tokenPlaceholder')}

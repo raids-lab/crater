@@ -32,6 +32,8 @@ modelMetadata:
   logoAllowedHosts:
     - huggingface.co
     - cdn-avatars.huggingface.co
+    - resouces.modelscope.cn
+    - resources.modelscope.cn
   # Logical prefix in download records before mapping to storage.prefix.public
   logicalPublicPrefix: public
   timeoutSeconds: 20

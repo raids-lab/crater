@@ -737,6 +737,8 @@
   "modelDownload.detail.status": "状態",
   "modelDownload.detail.storageSpace": "ストレージ領域",
   "modelDownload.detail.updatedAt": "更新日時",
+  "modelDownload.detail.viewDatasetCard": "データセットの詳細を表示",
+  "modelDownload.detail.viewModelCard": "モデルカードを表示",
   "modelDownload.list.back": "モデル一覧へ戻る",
   "modelDownload.list.category": "種類",
   "modelDownload.list.creator": "作成者",

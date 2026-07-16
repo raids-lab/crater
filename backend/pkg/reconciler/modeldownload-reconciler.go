@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-logr/logr"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +30,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/governance/modeldataset"
 	"github.com/raids-lab/crater/pkg/config"
 )
 
@@ -246,9 +249,14 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 ) error {
 	organization := strings.SplitN(download.Name, "/", 2)[0]
 	metadata := parseRepositoryMetadata(logs)
+	logoURL, logoData, logoContentType, logoErr := resolveRepositoryLogo(ctx, download, metadata.LogoURL)
+	if logoErr != nil {
+		// Logo collection is best effort and must never turn a successful model
+		// download into a failed task. A later metadata refresh can retry it.
+		klog.Warningf("Failed to cache repository logo for %s: %v", download.Name, logoErr)
+	}
 	updates := map[string]any{
 		"organization":          organization,
-		"logo_url":              metadata.LogoURL,
 		"source_url":            downloadSourceURL(download),
 		"display_name":          metadata.DisplayName,
 		"source_description":    metadata.Description,
@@ -263,6 +271,9 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 		"source_downloads":      metadata.Downloads,
 		"source_likes":          metadata.Likes,
 	}
+	if len(logoData) > 0 {
+		updates["logo_url"] = logoURL
+	}
 	if metadata.UpdatedAt != "" {
 		if updatedAt, err := time.Parse(time.RFC3339, metadata.UpdatedAt); err == nil {
 			updates["source_updated_at"] = updatedAt
@@ -276,24 +287,26 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 
 	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		source := model.ModelDatasetSource{
-			Provider:       model.ModelDatasetProvider(download.Source),
-			ResourceType:   model.DataType(download.Category),
-			RepositoryID:   download.Name,
-			RepositoryURL:  downloadSourceURL(download),
-			Organization:   organization,
-			LogoURL:        metadata.LogoURL,
-			DisplayName:    metadata.DisplayName,
-			Description:    metadata.Description,
-			License:        metadata.License,
-			Task:           metadata.Task,
-			Library:        metadata.Library,
-			ModelType:      metadata.ModelType,
-			ParameterCount: metadata.ParameterCount,
-			Private:        metadata.Private,
-			Gated:          metadata.Gated,
-			LoginRequired:  metadata.LoginRequired,
-			Downloads:      metadata.Downloads,
-			Likes:          metadata.Likes,
+			Provider:        model.ModelDatasetProvider(download.Source),
+			ResourceType:    model.DataType(download.Category),
+			RepositoryID:    download.Name,
+			RepositoryURL:   downloadSourceURL(download),
+			Organization:    organization,
+			LogoURL:         logoURL,
+			LogoData:        logoData,
+			LogoContentType: logoContentType,
+			DisplayName:     metadata.DisplayName,
+			Description:     metadata.Description,
+			License:         metadata.License,
+			Task:            metadata.Task,
+			Library:         metadata.Library,
+			ModelType:       metadata.ModelType,
+			ParameterCount:  metadata.ParameterCount,
+			Private:         metadata.Private,
+			Gated:           metadata.Gated,
+			LoginRequired:   metadata.LoginRequired,
+			Downloads:       metadata.Downloads,
+			Likes:           metadata.Likes,
 		}
 		if value, ok := updates["source_updated_at"].(time.Time); ok {
 			source.SourceUpdatedAt = &value
@@ -323,6 +336,56 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 		download.ModelDatasetSourceID = &persisted.ID
 		return nil
 	})
+}
+
+func resolveRepositoryLogo(
+	ctx context.Context, download *model.ModelDownload, metadataLogoURL string,
+) (logoURL string, logoData []byte, contentType string, err error) {
+	organization := strings.SplitN(download.Name, "/", 2)[0]
+	var cached model.ModelDatasetSource
+	lookup := query.GetDB().WithContext(ctx).
+		Where("LOWER(organization) = ? AND octet_length(logo_data) > 0", strings.ToLower(organization)).
+		Order("updated_at DESC").
+		First(&cached)
+	if lookup.Error == nil {
+		return cached.LogoURL, cached.LogoData, cached.LogoContentType, nil
+	}
+	if !errors.Is(lookup.Error, gorm.ErrRecordNotFound) {
+		return "", nil, "", fmt.Errorf("load cached organization logo: %w", lookup.Error)
+	}
+
+	appConfig := config.GetConfig()
+	httpClient := &http.Client{Timeout: time.Duration(appConfig.MetadataTimeoutSeconds()) * time.Second}
+	logoURL = strings.TrimSpace(metadataLogoURL)
+	if logoURL == "" {
+		switch download.Source {
+		case model.ModelSourceHuggingFace:
+			logoURL, err = modeldataset.FetchHuggingFaceAvatarURL(
+				ctx, httpClient, appConfig.HuggingFaceMetadataEndpoints(), organization,
+			)
+		case model.ModelSourceModelScope:
+			logoURL, err = modeldataset.FetchModelScopeAvatarURL(
+				ctx, httpClient, downloadSourceURL(download),
+			)
+		}
+		if err != nil {
+			return "", nil, "", err
+		}
+	}
+	if logoURL == "" {
+		return "", nil, "", nil
+	}
+	logoData, contentType, err = modeldataset.FetchSourceLogo(
+		ctx,
+		httpClient,
+		logoURL,
+		appConfig.MetadataLogoAllowedHosts(),
+		appConfig.MetadataMaxLogoBytes(),
+	)
+	if err != nil {
+		return "", nil, "", err
+	}
+	return logoURL, logoData, contentType, nil
 }
 
 func (r *ModelDownloadReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
@@ -771,8 +834,35 @@ func datasetExtraForDownload(
 func (r *ModelDownloadReconciler) createDatasetForModel(
 	ctx context.Context, download *model.ModelDownload, readmeDesc string, repositoryTags []string,
 ) error {
+	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txQuery := query.Use(tx)
+
+		// More than one backend instance may reconcile the same completed Job. Lock
+		// every download row for this logical resource so all source/revision variants
+		// serialize on the same lock before checking whether the Dataset exists.
+		// Locking only the current download row would not protect concurrent
+		// HuggingFace and ModelScope downloads of the same repository name.
+		if _, err := txQuery.ModelDownload.WithContext(ctx).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(txQuery.ModelDownload.Name.Eq(download.Name)).
+			Order(txQuery.ModelDownload.ID).
+			Find(); err != nil {
+			return fmt.Errorf("failed to lock model downloads for %s: %w", download.Name, err)
+		}
+
+		return r.createDatasetForModelTx(ctx, txQuery, download, readmeDesc, repositoryTags)
+	})
+}
+
+func (r *ModelDownloadReconciler) createDatasetForModelTx(
+	ctx context.Context,
+	txQuery *query.Query,
+	download *model.ModelDownload,
+	readmeDesc string,
+	repositoryTags []string,
+) error {
 	// Create a dataset record for the downloaded model or dataset
-	qDataset := query.Dataset
+	qDataset := txQuery.Dataset
 
 	// 根据 category 确定数据类型
 	var dataType model.DataType
@@ -791,9 +881,12 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 	// Check if dataset already exists for this resource (check by name only, regardless of type)
 	// This prevents creating duplicate records with different types
 	// First check for non-deleted records
-	existingDataset, _ := qDataset.WithContext(ctx).
+	existingDataset, err := qDataset.WithContext(ctx).
 		Where(qDataset.Name.Eq(download.Name)).
 		First()
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to query existing dataset: %w", err)
+	}
 
 	if existingDataset != nil {
 		if existingDataset.Type != dataType {
@@ -810,13 +903,16 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 			return fmt.Errorf("failed to update existing dataset metadata: %w", err)
 		}
 		klog.V(logVerboseLevelDebug).Infof("Dataset already exists for %s %s (dataset ID: %d)", resourceLabel, download.Name, existingDataset.ID)
-		return r.ensureDatasetAssociations(ctx, existingDataset.ID, download.CreatorID)
+		return r.ensureDatasetAssociations(ctx, txQuery, existingDataset.ID, download.CreatorID)
 	}
 
 	// Check for soft-deleted records
-	softDeletedDataset, _ := qDataset.WithContext(ctx).Unscoped().
+	softDeletedDataset, err := qDataset.WithContext(ctx).Unscoped().
 		Where(qDataset.Name.Eq(download.Name), qDataset.DeletedAt.IsNotNull()).
 		First()
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to query soft-deleted dataset: %w", err)
+	}
 
 	if softDeletedDataset != nil {
 		// Restore the soft-deleted dataset
@@ -842,7 +938,7 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 			return fmt.Errorf("failed to update restored dataset metadata: %w", err)
 		}
 
-		return r.ensureDatasetAssociations(ctx, softDeletedDataset.ID, download.CreatorID)
+		return r.ensureDatasetAssociations(ctx, txQuery, softDeletedDataset.ID, download.CreatorID)
 	}
 
 	// 将前端路径(如public/222/...)转换为物理路径(如sugon-gpu-incoming/222/...)用于存储访问
@@ -868,7 +964,7 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 		return fmt.Errorf("failed to create dataset: %w", err)
 	}
 
-	if err := r.ensureDatasetAssociations(ctx, dataset.ID, download.CreatorID); err != nil {
+	if err := r.ensureDatasetAssociations(ctx, txQuery, dataset.ID, download.CreatorID); err != nil {
 		return err
 	}
 
@@ -877,9 +973,9 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 }
 
 func (r *ModelDownloadReconciler) ensureDatasetAssociations(
-	ctx context.Context, datasetID, userID uint,
+	ctx context.Context, txQuery *query.Query, datasetID, userID uint,
 ) error {
-	qUserDataset := query.UserDataset
+	qUserDataset := txQuery.UserDataset
 	if _, err := qUserDataset.WithContext(ctx).
 		Where(qUserDataset.UserID.Eq(userID), qUserDataset.DatasetID.Eq(datasetID)).
 		First(); err != nil {
@@ -893,7 +989,7 @@ func (r *ModelDownloadReconciler) ensureDatasetAssociations(
 		}
 	}
 
-	qAccountDataset := query.AccountDataset
+	qAccountDataset := txQuery.AccountDataset
 	if _, err := qAccountDataset.WithContext(ctx).
 		Where(qAccountDataset.AccountID.Eq(model.DefaultAccountID), qAccountDataset.DatasetID.Eq(datasetID)).
 		First(); err != nil {

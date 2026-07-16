@@ -47,6 +47,7 @@ const (
 	maxSourceDescriptionBytes = 500
 	maxMetadataTags           = 4
 	maxStoredReadmeBytes      = 64 * 1024
+	maxModelScopePageBytes    = 2 * 1024 * 1024
 	maxLogoRedirects          = 5
 )
 
@@ -88,6 +89,7 @@ func main() {
 	afterID := flag.Uint("after-id", 0, "resume after this model download ID")
 	maxRecords := flag.Int("max-records", 0, "maximum records to process; 0 means unlimited")
 	force := flag.Bool("force", false, "refresh records even if their metadata is still fresh")
+	missingLogoOnly := flag.Bool("missing-logo-only", false, "refresh only records without a cached source logo")
 	staleAfter := flag.Duration("stale-after", 7*24*time.Hour, "refresh metadata older than this duration")
 	delay := flag.Duration("delay", defaultRequestDelay, "delay between source API requests")
 	source := flag.String("source", "", "optional source filter: huggingface or modelscope")
@@ -116,8 +118,23 @@ func main() {
 		if *source != "" {
 			builder = builder.Where("source = ?", *source)
 		}
-		if !*force {
-			builder = builder.Where("metadata_refreshed_at IS NULL OR metadata_refreshed_at < ?", time.Now().Add(-*staleAfter))
+		if *missingLogoOnly {
+			builder = builder.Where(`
+				model_dataset_source_id IS NULL OR EXISTS (
+					SELECT 1 FROM model_dataset_sources
+					WHERE model_dataset_sources.id = model_downloads.model_dataset_source_id
+						AND model_dataset_sources.deleted_at IS NULL
+						AND COALESCE(octet_length(model_dataset_sources.logo_data), 0) = 0
+				)`)
+		} else if !*force {
+			builder = builder.Where(`
+				metadata_refreshed_at IS NULL OR metadata_refreshed_at < ? OR
+				EXISTS (
+					SELECT 1 FROM model_dataset_sources
+					WHERE model_dataset_sources.id = model_downloads.model_dataset_source_id
+						AND model_dataset_sources.deleted_at IS NULL
+						AND COALESCE(octet_length(model_dataset_sources.logo_data), 0) = 0
+				)`, time.Now().Add(-*staleAfter))
 		}
 		if err := builder.Order("id ASC").Limit(*batchSize).Find(&downloads).Error; err != nil {
 			panic(err)
@@ -170,12 +187,17 @@ func refreshDownload(
 	}
 
 	organization := strings.SplitN(download.Name, "/", 2)[0]
-	logo := cachedLogo{}
-	if download.Source == model.ModelSourceHuggingFace {
-		var ok bool
-		logo, ok = avatarCache[organization]
+	organizationKey := strings.ToLower(organization)
+	logo, ok := avatarCache[organizationKey]
+	if !ok {
+		logo, ok = loadCachedOrganizationLogo(db, organization)
 		if !ok {
-			logo.URL, err = fetchHuggingFaceAvatar(client, endpoints.HuggingFace, organization)
+			switch download.Source {
+			case model.ModelSourceHuggingFace:
+				logo.URL, err = fetchHuggingFaceAvatar(client, endpoints.HuggingFace, organization)
+			case model.ModelSourceModelScope:
+				logo.URL, err = fetchModelScopeAvatar(client, selectedEndpoint, download)
+			}
 			if err != nil {
 				fmt.Printf("WARN id=%d owner avatar lookup failed: %v\n", download.ID, err)
 			}
@@ -190,8 +212,8 @@ func refreshDownload(
 					logo = cachedLogo{}
 				}
 			}
-			avatarCache[organization] = logo
 		}
+		avatarCache[organizationKey] = logo
 	}
 	sourceURL := repositoryURL(download, selectedEndpoint)
 	fmt.Printf("OK   id=%d source=%s name=%s downloads=%d likes=%d tags=%v\n",
@@ -343,44 +365,27 @@ func findDatasetForDownload(
 }
 
 func fetchHuggingFaceAvatar(client *http.Client, baseEndpoints []string, owner string) (string, error) {
-	escapedOwner := url.PathEscape(owner)
-	var lastErr error
-	for _, baseEndpoint := range baseEndpoints {
-		endpoints := []string{
-			strings.TrimRight(baseEndpoint, "/") + "/api/organizations/" + escapedOwner + "/overview",
-			strings.TrimRight(baseEndpoint, "/") + "/api/users/" + escapedOwner + "/overview",
-		}
-		for _, endpoint := range endpoints {
-			response, err := getResponse(client, endpoint)
-			if err != nil {
-				lastErr = err
-				continue
-			}
-			if response.StatusCode == http.StatusNotFound {
-				response.Body.Close()
-				continue
-			}
-			if response.StatusCode != http.StatusOK {
-				lastErr = fmt.Errorf("source returned HTTP %d", response.StatusCode)
-				response.Body.Close()
-				continue
-			}
-			var payload struct {
-				AvatarURL string `json:"avatarUrl"`
-			}
-			decodeErr := json.NewDecoder(response.Body).Decode(&payload)
-			response.Body.Close()
-			if decodeErr != nil {
-				lastErr = decodeErr
-				continue
-			}
-			return payload.AvatarURL, nil
-		}
+	return modeldataset.FetchHuggingFaceAvatarURL(context.Background(), client, baseEndpoints, owner)
+}
+
+func fetchModelScopeAvatar(
+	client *http.Client, baseEndpoint string, download *model.ModelDownload,
+) (string, error) {
+	return modeldataset.FetchModelScopeAvatarURL(
+		context.Background(), client, repositoryURL(download, baseEndpoint),
+	)
+}
+
+func loadCachedOrganizationLogo(db *gorm.DB, organization string) (cachedLogo, bool) {
+	var sources []model.ModelDatasetSource
+	err := db.Where(
+		"LOWER(organization) = ? AND octet_length(logo_data) > 0", strings.ToLower(organization),
+	).Order("updated_at DESC").Limit(1).Find(&sources).Error
+	if err != nil || len(sources) == 0 {
+		return cachedLogo{}, false
 	}
-	if lastErr != nil {
-		return "", lastErr
-	}
-	return "", nil
+	source := sources[0]
+	return cachedLogo{URL: source.LogoURL, Data: source.LogoData, ContentType: source.LogoContentType}, true
 }
 
 func fetchMetadata(
@@ -775,55 +780,9 @@ func getJSONFromEndpoints(
 func fetchLogo(client *http.Client, endpoint string, allowedHosts []string, maxBytes int64) (
 	data []byte, contentType string, err error,
 ) {
-	if err := validateLogoURL(endpoint, allowedHosts); err != nil {
-		return nil, "", err
-	}
-	logoClient := *client
-	logoClient.CheckRedirect = func(request *http.Request, via []*http.Request) error {
-		if len(via) >= maxLogoRedirects {
-			return errors.New("logo source exceeded redirect limit")
-		}
-		return validateLogoURL(request.URL.String(), allowedHosts)
-	}
-	response, err := getResponse(&logoClient, endpoint)
-	if err != nil {
-		return nil, "", err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return nil, "", fmt.Errorf("logo source returned HTTP %d", response.StatusCode)
-	}
-	contentType = strings.TrimSpace(strings.Split(response.Header.Get("Content-Type"), ";")[0])
-	if !strings.HasPrefix(contentType, "image/") {
-		return nil, "", fmt.Errorf("logo source returned unsupported Content-Type %q", contentType)
-	}
-	data, err = io.ReadAll(io.LimitReader(response.Body, maxBytes+1))
-	if err != nil {
-		return nil, "", err
-	}
-	if int64(len(data)) > maxBytes {
-		return nil, "", fmt.Errorf("logo exceeds %d bytes", maxBytes)
-	}
-	return data, contentType, nil
-}
-
-func validateLogoURL(endpoint string, allowedHosts []string) error {
-	parsed, err := url.Parse(endpoint)
-	if err != nil {
-		return fmt.Errorf("invalid logo URL: %w", err)
-	}
-	if parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil {
-		return errors.New("logo URL must be an absolute HTTPS URL without credentials")
-	}
-
-	host := strings.ToLower(strings.TrimSuffix(parsed.Hostname(), "."))
-	for _, allowedHost := range allowedHosts {
-		allowedHost = strings.ToLower(strings.TrimSuffix(strings.TrimSpace(allowedHost), "."))
-		if host == allowedHost {
-			return nil
-		}
-	}
-	return fmt.Errorf("logo host %q is not allowed", host)
+	return modeldataset.FetchSourceLogo(
+		context.Background(), client, endpoint, allowedHosts, maxBytes,
+	)
 }
 
 func repositoryURL(download *model.ModelDownload, baseEndpoint string) string {

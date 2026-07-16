@@ -13,7 +13,7 @@ You can view models under `Data Management - Models`. The models displayed here 
 
 ![model](./img/model.webp)
 
-Each model shows its metadata and available actions. Open the model's **Files** tab to see and copy its actual storage path and browse its files. Historical downloads may still use a longer path containing the source and revision. Crater does not move those directories automatically because existing jobs may depend on them.
+Each model shows its metadata and available actions. Open the model's **Files** tab to browse files and copy the logical shared-storage path that jobs can mount; cluster-specific physical directory prefixes are not shown. Historical downloads may still use a longer path containing the source and revision. Crater does not move those directories automatically because existing jobs may depend on them.
 
 ## Download a Model from a Repository
 

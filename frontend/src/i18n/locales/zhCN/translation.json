@@ -737,6 +737,8 @@
   "modelDownload.detail.status": "状态",
   "modelDownload.detail.storageSpace": "存储空间",
   "modelDownload.detail.updatedAt": "更新于",
+  "modelDownload.detail.viewDatasetCard": "查看数据集详情",
+  "modelDownload.detail.viewModelCard": "查看模型卡片",
   "modelDownload.list.back": "返回模型列表",
   "modelDownload.list.category": "类型",
   "modelDownload.list.creator": "创建者",

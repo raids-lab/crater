@@ -59,7 +59,7 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | ModelScope URL used by download jobs |
 | backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | Hugging Face-compatible endpoints tried in order during metadata refresh |
 | backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | ModelScope-compatible endpoints tried in order during metadata refresh |
-| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co"]` | Exact HTTPS host allowlist for fetching and caching logos; every redirect hop is checked |
+| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co", "resouces.modelscope.cn", "resources.modelscope.cn"]` | Exact HTTPS host allowlist for fetching and caching logos; every redirect hop is checked |
 | backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | Logical path prefix used before download records are mapped to public storage |
 | backendConfig.modelMetadata.timeoutSeconds | int | `20` | Timeout in seconds for each source metadata request |
 | backendConfig.modelMetadata.maxLogoBytes | int | `524288` | Maximum number of bytes cached for one source logo |
@@ -196,6 +196,8 @@ backendConfig:
     logoAllowedHosts:
       - huggingface.co
       - cdn-avatars.huggingface.co
+      - resouces.modelscope.cn
+      - resources.modelscope.cn
       - your-trusted-logo-cdn.example.com
 ```
 

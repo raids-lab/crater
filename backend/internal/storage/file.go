@@ -530,13 +530,10 @@ func GetDatasetFiles(c *gin.Context) {
 		return
 	}
 	ss := "/api/ss/dataset/" + strconv.FormatUint(uint64(datasetReq.ID), 10)
-	path := strings.TrimPrefix(c.Request.URL.Path, ss)
-	token := getFirstToken(path)
-	var realPath string
-	if token == "" {
-		realPath = URL
-	} else {
-		realPath = URL + "/" + strings.TrimPrefix(path, "/"+token)
+	realPath, err := resolveDatasetStoragePath(URL, strings.TrimPrefix(c.Request.URL.Path, ss))
+	if err != nil {
+		resputil.HTTPError(c, http.StatusBadRequest, err.Error(), resputil.NotSpecified)
+		return
 	}
 
 	// Stat the target first so we can distinguish "not found in storage" from
@@ -566,6 +563,18 @@ func GetDatasetFiles(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, data)
+}
+
+func resolveDatasetStoragePath(datasetURL, relativeURL string) (string, error) {
+	basePath := cleanURLPath(datasetURL)
+	relativePath := cleanURLPath(relativeURL)
+	if relativePath == "" {
+		return basePath, nil
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, "../") {
+		return "", errors.New("dataset path must stay within the resource directory")
+	}
+	return urlpath.Join(basePath, relativePath), nil
 }
 
 func handleDirsList(fs webdav.FileSystem, path string) ([]Files, error) {

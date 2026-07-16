@@ -59,7 +59,7 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | ダウンロードジョブが使用する ModelScope の URL |
 | backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | メタデータ更新時に順番に試行する Hugging Face 互換エンドポイント |
 | backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | メタデータ更新時に順番に試行する ModelScope 互換エンドポイント |
-| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co"]` | Logo の取得とキャッシュを許可する HTTPS ホストの完全一致リスト。リダイレクトの各段階も検証される |
+| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co", "resouces.modelscope.cn", "resources.modelscope.cn"]` | Logo の取得とキャッシュを許可する HTTPS ホストの完全一致リスト。リダイレクトの各段階も検証される |
 | backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | ダウンロードレコードを公開ストレージへ対応付ける前に使用する論理パスプレフィックス |
 | backendConfig.modelMetadata.timeoutSeconds | int | `20` | ソースメタデータの各リクエストのタイムアウト（秒） |
 | backendConfig.modelMetadata.maxLogoBytes | int | `524288` | 1 件のソース Logo としてキャッシュできる最大バイト数 |
@@ -196,6 +196,8 @@ backendConfig:
     logoAllowedHosts:
       - huggingface.co
       - cdn-avatars.huggingface.co
+      - resouces.modelscope.cn
+      - resources.modelscope.cn
       - your-trusted-logo-cdn.example.com
 ```
 

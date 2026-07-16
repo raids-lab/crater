@@ -19,7 +19,7 @@ import "testing"
 func TestMetadataLogoAllowedHosts(t *testing.T) {
 	var defaultConfig Config
 	defaults := defaultConfig.MetadataLogoAllowedHosts()
-	if len(defaults) != 2 || defaults[1] != "cdn-avatars.huggingface.co" {
+	if len(defaults) != 4 || defaults[2] != "resouces.modelscope.cn" || defaults[3] != "resources.modelscope.cn" {
 		t.Fatalf("unexpected default logo hosts: %v", defaults)
 	}
 

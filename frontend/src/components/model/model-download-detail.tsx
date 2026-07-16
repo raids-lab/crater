@@ -18,6 +18,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import {
   ActivityIcon,
   ArrowLeft,
+  BookOpenIcon,
   CalendarIcon,
   ClockIcon,
   Copy,
@@ -29,7 +30,6 @@ import {
   Pause,
   Play,
   RotateCw,
-  Trash2,
   UserIcon,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -37,7 +37,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 import ModelDownloadPhaseBadge from '@/components/badge/model-download-phase-badge'
@@ -49,20 +49,9 @@ import PageTitle from '@/components/layout/page-title'
 import ModelDownloadProgress from '@/components/model/model-download-progress'
 import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
 import RepositorySourceMark from '@/components/model/repository-source-mark'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui-custom/alert-dialog'
 
+import { apiGetDataset } from '@/services/api/dataset'
 import {
-  apiDeleteModelDownload,
   apiGetModelDownload,
   apiGetModelDownloadLogs,
   apiPauseModelDownload,
@@ -93,6 +82,19 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       return status === 'Downloading' || status === 'Pending' ? 3000 : false
     },
   })
+
+  const { data: resources = [] } = useQuery({
+    queryKey: ['data', download?.category || 'model'],
+    queryFn: () => apiGetDataset(),
+    select: (res) => res.data,
+    enabled: download?.status === 'Ready',
+  })
+
+  const linkedResource = resources.find(
+    (resource) =>
+      resource.type === download?.category &&
+      resource.name.toLowerCase() === download?.name.toLowerCase()
+  )
 
   const refetchDownload = async () => {
     try {
@@ -141,28 +143,21 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: apiDeleteModelDownload,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['modelDownloads'] })
-      toast.success(t('modelDownload.action.deleteSuccess'))
-      const returnPath =
-        download?.category === 'dataset'
-          ? '/portal/data/datasets/downloads'
-          : '/portal/data/models/downloads'
-      navigate({ to: returnPath })
-    },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.deleteFailed'))
-    },
-  })
-
   const copyPath = () => {
     if (download?.path) {
       navigator.clipboard.writeText(download.path)
       toast.success(t('modelDownload.pathCopied'))
     }
+  }
+
+  const navigateToResourceCard = () => {
+    if (!linkedResource || !download) return
+    const params = { id: String(linkedResource.id) }
+    if (download.category === 'dataset') {
+      navigate({ to: '/portal/data/datasets/$id', params, search: { tab: '' } })
+      return
+    }
+    navigate({ to: '/portal/data/models/$id', params, search: { tab: '' } })
   }
 
   if (isLoading || !download) {
@@ -195,6 +190,14 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
             }
           >
             <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
+              {download.status === 'Ready' && linkedResource && (
+                <Button onClick={navigateToResourceCard}>
+                  <BookOpenIcon className="size-4" />
+                  {download.category === 'dataset'
+                    ? t('modelDownload.detail.viewDatasetCard')
+                    : t('modelDownload.detail.viewModelCard')}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() =>
@@ -238,41 +241,6 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
                   <RotateCw className="size-4" />
                   {t('modelDownload.action.retry.confirm')}
                 </Button>
-              )}
-              {download.canDelete && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="destructive"
-                      disabled={deleteMutation.isPending}
-                      title={t('modelDownload.action.deleteTitle')}
-                      className="cursor-pointer"
-                    >
-                      <Trash2 className="size-4" />
-                      {t('modelDownload.action.delete')}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t('modelDownload.action.deleteDescription', { name: download.name })}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(download.id)}
-                      >
-                        {deleteMutation.isPending
-                          ? t('modelDownload.action.processing')
-                          : t('modelDownload.action.delete')}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
               )}
             </div>
           </PageTitle>
@@ -324,51 +292,51 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
             icon: FileTextIcon,
             label: t('modelDownload.detail.basicInfo'),
             children: (
-              <div className="space-y-1 md:space-y-2 lg:space-y-3">
-                {(download.status === 'Downloading' ||
-                  download.status === 'Paused' ||
-                  download.status === 'Ready') && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center text-xl">
-                        <ActivityIcon className="mr-2 h-5 w-5 text-blue-500" />
-                        {t('modelDownload.detail.progress')}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ModelDownloadProgress download={download} className="max-w-md" />
-                    </CardContent>
-                  </Card>
-                )}
-
+              <div className="space-y-3">
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-xl">
-                      <FolderIcon className="mr-2 h-5 w-5 text-blue-500" />
-                      {download.category === 'dataset'
-                        ? t('modelDownload.detail.datasetLocation')
-                        : t('modelDownload.detail.modelLocation')}
-                    </CardTitle>
-                    <CardDescription>
-                      {download.status === 'Ready'
-                        ? t('modelDownload.detail.pathReady')
-                        : t('modelDownload.detail.pathPending')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted flex-1 overflow-hidden rounded px-3 py-2 font-mono text-sm text-ellipsis">
-                        {download.path}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={copyPath}
-                        title={t('modelDownload.copyPath')}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <CardContent className="grid gap-6 p-6 lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.2fr)]">
+                    {download.status !== 'Failed' && (
+                      <section className="min-w-0 space-y-4">
+                        <div className="flex items-center gap-2 font-semibold">
+                          <ActivityIcon className="size-5 text-blue-500" />
+                          {t('modelDownload.detail.progress')}
+                        </div>
+                        <ModelDownloadProgress download={download} />
+                      </section>
+                    )}
+
+                    <section
+                      className={`min-w-0 space-y-3 ${download.status !== 'Failed' ? 'border-t pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6' : ''}`}
+                    >
+                      <div className="flex items-center gap-2 font-semibold">
+                        <FolderIcon className="size-5 text-blue-500" />
+                        {download.category === 'dataset'
+                          ? t('modelDownload.detail.datasetLocation')
+                          : t('modelDownload.detail.modelLocation')}
+                      </div>
+                      <p className="text-muted-foreground text-sm">
+                        {download.status === 'Ready'
+                          ? t('modelDownload.detail.pathReady')
+                          : t('modelDownload.detail.pathPending')}
+                      </p>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <code
+                          className="bg-muted min-w-0 flex-1 truncate rounded-md px-3 py-2.5 font-mono text-sm"
+                          title={download.path}
+                        >
+                          {download.path}
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={copyPath}
+                          title={t('modelDownload.copyPath')}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </section>
                   </CardContent>
                 </Card>
 

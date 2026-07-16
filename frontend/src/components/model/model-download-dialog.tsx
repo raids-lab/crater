@@ -16,6 +16,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { BoxIcon, DatabaseIcon } from 'lucide-react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -33,6 +34,16 @@ import { Input } from '@/components/ui/input'
 
 import LoadableButton from '@/components/button/loadable-button'
 import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui-custom/alert-dialog'
 
 import { CreateModelDownloadReq, apiCreateModelDownload } from '@/services/api/modeldownload'
 
@@ -61,6 +72,7 @@ export function ModelDownloadDialog({
   defaultCategory = 'model',
 }: ModelDownloadDialogProps) {
   const queryClient = useQueryClient()
+  const [pendingRequest, setPendingRequest] = useState<CreateModelDownloadReq | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -99,6 +111,7 @@ export function ModelDownloadDialog({
       const message = response.msg || defaultMessage
       toast.success(message)
       queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
+      setPendingRequest(null)
       closeSheet()
       form.reset()
     },
@@ -113,7 +126,7 @@ export function ModelDownloadDialog({
   })
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    mutate({
+    setPendingRequest({
       name: values.name,
       revision: values.revision || undefined,
       source: values.source,
@@ -122,124 +135,190 @@ export function ModelDownloadDialog({
     })
   }
 
+  const pendingCategoryLabel = pendingRequest?.category === 'dataset' ? '数据集' : '模型'
+  const pendingSourceLabel = pendingRequest?.source === 'modelscope' ? 'ModelScope' : 'HuggingFace'
+  const pendingPath = pendingRequest
+    ? `public/${pendingRequest.category === 'dataset' ? 'Datasets' : 'Models'}/${pendingRequest.name}`
+    : ''
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <SandwichLayout
-          footer={
-            <LoadableButton
-              type="submit"
-              isLoading={status === 'pending'}
-              isLoadingText="提交中..."
-            >
-              开始下载
-            </LoadableButton>
-          }
-        >
-          <FormField
-            name="source"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>下载来源</FormLabel>
-                <FormControl>
-                  <div className="bg-muted/60 grid grid-cols-2 gap-1 rounded-lg p-1">
-                    {(
-                      [
-                        { value: 'modelscope', label: 'ModelScope' },
-                        { value: 'huggingface', label: 'HuggingFace' },
-                      ] as const
-                    ).map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => field.onChange(opt.value)}
-                        className={cn(
-                          'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                          field.value === opt.value
-                            ? 'bg-background text-foreground shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <SandwichLayout
+            footer={
+              <LoadableButton
+                type="submit"
+                isLoading={status === 'pending'}
+                isLoadingText="提交中..."
+              >
+                开始下载
+              </LoadableButton>
+            }
+          >
+            <FormField
+              name="source"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>下载来源</FormLabel>
+                  <FormControl>
+                    <div className="bg-muted/60 grid grid-cols-2 gap-1 rounded-lg p-1">
+                      {(
+                        [
+                          { value: 'modelscope', label: 'ModelScope' },
+                          { value: 'huggingface', label: 'HuggingFace' },
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => field.onChange(opt.value)}
+                          className={cn(
+                            'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                            field.value === opt.value
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="space-y-2">
-            <FormLabel>类别</FormLabel>
-            <div className="flex items-center gap-2">
-              <span className="bg-primary/10 text-primary inline-flex items-center rounded-md px-2.5 py-1 text-sm font-medium">
-                {defaultCategory === 'dataset' ? (
-                  <DatabaseIcon className="mr-1.5 size-3.5" />
-                ) : (
-                  <BoxIcon className="mr-1.5 size-3.5" />
-                )}
-                {categoryLabel}
-              </span>
+            <div className="space-y-2">
+              <FormLabel>类别</FormLabel>
+              <div className="flex items-center gap-2">
+                <span className="bg-primary/10 text-primary inline-flex items-center rounded-md px-2.5 py-1 text-sm font-medium">
+                  {defaultCategory === 'dataset' ? (
+                    <DatabaseIcon className="mr-1.5 size-3.5" />
+                  ) : (
+                    <BoxIcon className="mr-1.5 size-3.5" />
+                  )}
+                  {categoryLabel}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <FormField
-            name="name"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{categoryLabel}名称</FormLabel>
-                <FormControl>
-                  <Input placeholder={sourcePlaceholder} className="font-mono" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              name="name"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{categoryLabel}名称</FormLabel>
+                  <FormControl>
+                    <Input placeholder={sourcePlaceholder} className="font-mono" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            name="revision"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>版本（可选）</FormLabel>
-                <FormControl>
-                  <Input placeholder={revisionPlaceholder} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              name="revision"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>版本（可选）</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={revisionPlaceholder}
+                      autoComplete="off"
+                      data-1p-ignore
+                      data-lpignore="true"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            name="token"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>访问令牌（可选）</FormLabel>
-                <FormControl>
-                  <Input type="password" placeholder="用于下载受限/私有仓库" {...field} />
-                </FormControl>
-                <FormDescription>{tokenHint}，仅用于本次下载，不会被保存。</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+            <FormField
+              name="token"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>访问令牌（可选）</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="用于下载受限/私有仓库"
+                      autoComplete="new-password"
+                      data-1p-ignore
+                      data-lpignore="true"
+                      data-form-type="other"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>{tokenHint}，仅用于本次下载，不会被保存。</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
-            <p className="mb-1 font-semibold">提示:</p>
-            <ul className="ml-4 list-disc space-y-1">
-              <li>模型统一下载到公共空间的 Models/ 目录,数据集下载到 Datasets/ 目录</li>
-              <li>文件会保存在对应目录下的名称子目录中</li>
-              <li>多个用户下载同一资源时会共享同一份文件</li>
-              <li>受限或私有仓库（如部分 Llama / Gemma）需填写访问令牌</li>
-              <li>下载过程可能需要较长时间,请耐心等待</li>
-            </ul>
-          </div>
-        </SandwichLayout>
-      </form>
-    </Form>
+            <div className="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
+              <p className="mb-1 font-semibold">提示:</p>
+              <ul className="ml-4 list-disc space-y-1">
+                <li>模型统一下载到公共空间的 Models/ 目录,数据集下载到 Datasets/ 目录</li>
+                <li>文件会保存在对应目录下的名称子目录中</li>
+                <li>多个用户下载同一资源时会共享同一份文件</li>
+                <li>受限或私有仓库（如部分 Llama / Gemma）需填写访问令牌</li>
+                <li>下载过程可能需要较长时间,请耐心等待</li>
+              </ul>
+            </div>
+          </SandwichLayout>
+        </form>
+      </Form>
+
+      <AlertDialog
+        open={pendingRequest !== null}
+        onOpenChange={(open) => !open && status !== 'pending' && setPendingRequest(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认提交{pendingCategoryLabel}下载任务</AlertDialogTitle>
+            <AlertDialogDescription>
+              请确认以下信息。提交后平台会在公共存储中创建或复用对应资源。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingRequest && (
+            <dl className="bg-muted/50 grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-md p-4 text-sm">
+              <dt className="text-muted-foreground">类别</dt>
+              <dd>{pendingCategoryLabel}</dd>
+              <dt className="text-muted-foreground">来源</dt>
+              <dd>{pendingSourceLabel}</dd>
+              <dt className="text-muted-foreground">名称</dt>
+              <dd className="font-mono break-all">{pendingRequest.name}</dd>
+              <dt className="text-muted-foreground">版本</dt>
+              <dd className="font-mono break-all">{pendingRequest.revision || '默认分支'}</dd>
+              <dt className="text-muted-foreground">保存路径</dt>
+              <dd className="font-mono break-all">{pendingPath}</dd>
+              <dt className="text-muted-foreground">访问令牌</dt>
+              <dd>{pendingRequest.token ? '已填写，仅用于本次下载' : '未填写'}</dd>
+            </dl>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={status === 'pending'}>返回修改</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={status === 'pending' || pendingRequest === null}
+              onClick={(event) => {
+                event.preventDefault()
+                if (pendingRequest) {
+                  mutate(pendingRequest)
+                }
+              }}
+            >
+              {status === 'pending' ? '提交中...' : '确认下载'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

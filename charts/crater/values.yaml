@@ -258,6 +258,8 @@ backendConfig:
     logoAllowedHosts:
       - "huggingface.co"
       - "cdn-avatars.huggingface.co"
+      - "resouces.modelscope.cn"
+      - "resources.modelscope.cn"
     # -- Logical prefix in download records before mapping to backendConfig.storage.prefix.public
     logicalPublicPrefix: "public"
     # -- Timeout in seconds for each source metadata request

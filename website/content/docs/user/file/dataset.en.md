@@ -20,7 +20,7 @@ Under `Data Management - Dataset`, you can view datasets. The datasets displayed
 
 ![dataset](./img/dataset.webp)
 
-Each dataset shows its metadata and available actions. Open the dataset's **Files** tab to see and copy its actual storage path and browse its files. Historical downloads may still use a longer path containing the source and revision. Crater does not move those directories automatically because existing jobs may depend on them.
+Each dataset shows its metadata and available actions. Open the dataset's **Files** tab to browse files and copy the logical shared-storage path that jobs can mount; cluster-specific physical directory prefixes are not shown. Historical downloads may still use a longer path containing the source and revision. Crater does not move those directories automatically because existing jobs may depend on them.
 
 ## Download a Dataset from a Repository
 

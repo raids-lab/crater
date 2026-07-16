@@ -34,7 +34,6 @@ import {
   Play,
   RotateCw,
   SearchIcon,
-  Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -69,23 +68,11 @@ import PageTitle from '@/components/layout/page-title'
 import ModelDownloadProgress from '@/components/model/model-download-progress'
 import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
 import { DataTablePagination } from '@/components/query-table/pagination'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui-custom/alert-dialog'
 
 import {
   ModelDownload,
   ModelDownloadListResp,
   ModelDownloadStatus,
-  apiDeleteModelDownload,
   apiListModelDownloadsPaged,
   apiPauseModelDownload,
   apiResumeModelDownload,
@@ -203,20 +190,6 @@ export function ModelDownloadsPage() {
     onError: (error: unknown) => {
       const err = error as { response?: { data?: { msg?: string } } }
       toast.error(err?.response?.data?.msg || t('modelDownload.action.retryFailed'))
-    },
-  })
-
-  const { mutate: deleteDownload, isPending: isDeleting } = useMutation({
-    mutationFn: apiDeleteModelDownload,
-    onSuccess: async () => {
-      await refetchDownloads()
-      await queryClient.invalidateQueries({ queryKey: ['data', 'dataset'] })
-      await queryClient.invalidateQueries({ queryKey: ['data', 'model'] })
-      toast.success(t('modelDownload.action.deleteSuccess'))
-    },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.deleteFailed'))
     },
   })
 
@@ -373,47 +346,12 @@ export function ModelDownloadsPage() {
                   </Button>
                 </SimpleTooltip>
               )}
-              {download.canDelete && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                      disabled={isDeleting}
-                      title={t('modelDownload.action.delete')}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {t('modelDownload.action.deleteDescription', { name: download.name })}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        disabled={isDeleting}
-                        onClick={() => deleteDownload(download.id)}
-                      >
-                        {isDeleting
-                          ? t('modelDownload.action.processing')
-                          : t('modelDownload.action.delete')}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
             </div>
           )
         },
       },
     ],
-    [deleteDownload, isDeleting, isPausing, isResuming, isRetrying, pauseDownload, t]
+    [isPausing, isResuming, isRetrying, pauseDownload, t]
   )
 
   const defaultData = useMemo<ModelDownload[]>(() => [], [])
@@ -501,7 +439,7 @@ export function ModelDownloadsPage() {
         description={t('modelDownload.list.description')}
       >
         <div className="flex flex-row gap-3">
-          <Link to="/portal/data/models">
+          <Link to="/portal/data/models" search={{ organization: undefined }}>
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('modelDownload.list.back')}

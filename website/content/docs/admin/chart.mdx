@@ -59,7 +59,7 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | 下载作业使用的 ModelScope 地址 |
 | backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | 元数据刷新按顺序尝试的 Hugging Face 兼容端点 |
 | backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | 元数据刷新按顺序尝试的 ModelScope 兼容端点 |
-| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co"]` | 允许抓取并缓存 Logo 的精确 HTTPS 主机白名单；重定向后的每一跳也会校验 |
+| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co", "resouces.modelscope.cn", "resources.modelscope.cn"]` | 允许抓取并缓存 Logo 的精确 HTTPS 主机白名单；重定向后的每一跳也会校验 |
 | backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | 下载记录映射到公共存储前使用的逻辑路径前缀 |
 | backendConfig.modelMetadata.timeoutSeconds | int | `20` | 单次来源元数据请求的超时时间（秒） |
 | backendConfig.modelMetadata.maxLogoBytes | int | `524288` | Crater 缓存单个来源 Logo 的最大字节数 |
@@ -196,6 +196,8 @@ backendConfig:
     logoAllowedHosts:
       - huggingface.co
       - cdn-avatars.huggingface.co
+      - resouces.modelscope.cn
+      - resources.modelscope.cn
       - your-trusted-logo-cdn.example.com
 ```
 

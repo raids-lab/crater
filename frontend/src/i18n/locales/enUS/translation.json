@@ -737,6 +737,8 @@
   "modelDownload.detail.status": "Status",
   "modelDownload.detail.storageSpace": "Storage space",
   "modelDownload.detail.updatedAt": "Updated",
+  "modelDownload.detail.viewDatasetCard": "View dataset details",
+  "modelDownload.detail.viewModelCard": "View model card",
   "modelDownload.list.back": "Back to models",
   "modelDownload.list.category": "Type",
   "modelDownload.list.creator": "Creator",

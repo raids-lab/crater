@@ -455,6 +455,24 @@ func PhysicalStoragePath(path, logicalPublicPrefix, physicalPublicPrefix string)
 	return path, false
 }
 
+// LogicalStoragePath converts a physical storage prefix back to the stable logical
+// prefix used by the file-system API and user-facing mount paths.
+func LogicalStoragePath(path, logicalPrefix, physicalPrefix string) (string, bool) {
+	path = cleanStoragePath(path)
+	logicalPrefix = cleanStoragePath(logicalPrefix)
+	physicalPrefix = cleanStoragePath(physicalPrefix)
+	if path == logicalPrefix || strings.HasPrefix(path, logicalPrefix+"/") {
+		return path, true
+	}
+	if path == physicalPrefix {
+		return logicalPrefix, true
+	}
+	if strings.HasPrefix(path, physicalPrefix+"/") {
+		return logicalPrefix + strings.TrimPrefix(path, physicalPrefix), true
+	}
+	return path, false
+}
+
 func sourceFromDownload(download *model.ModelDownload) *model.ModelDatasetSource {
 	return &model.ModelDatasetSource{
 		Provider:            model.ModelDatasetProvider(download.Source),

@@ -128,6 +128,17 @@ func TestPhysicalStoragePathIsConfigurable(t *testing.T) {
 	}
 }
 
+func TestLogicalStoragePathIsConfigurable(t *testing.T) {
+	logical, matched := LogicalStoragePath("shared-assets/Models/a/b", "catalog", "shared-assets")
+	if !matched || logical != "catalog/Models/a/b" {
+		t.Fatalf("LogicalStoragePath() = %q, %v", logical, matched)
+	}
+	logical, matched = LogicalStoragePath("user/alice/model", "catalog", "shared-assets")
+	if matched || logical != "user/alice/model" {
+		t.Fatalf("non-public path = %q, %v", logical, matched)
+	}
+}
+
 func TestReconcilePublicLinksOnePathlessHistoricalDatasetByIdentity(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:pathless_reconcile?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {

@@ -1385,6 +1385,11 @@ func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 
 func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload, modelDirName string) string {
 	var installCmd, preflightCmd, downloadCommand, totalProbeCmd, metadataCmd string
+	huggingFaceEndpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
+	disableXetCmd := ""
+	if shouldDisableHuggingFaceXet(download.Source, huggingFaceEndpoint) {
+		disableXetCmd = "export HF_HUB_DISABLE_XET=1"
+	}
 	if download.Source == model.ModelSourceHuggingFace {
 		// The project image already contains this dependency. The fallback preserves
 		// compatibility with existing custom Python images used by open-source deployments.
@@ -1697,6 +1702,7 @@ trap "kill $MONITOR_PID 2>/dev/null || true" EXIT
 	return fmt.Sprintf(`
 set -euo pipefail
 export HF_ENDPOINT=%q
+%s
 export MODELSCOPE_ENDPOINT=%q
 OUT_DIR="/data/%s"
 export OUT_DIR
@@ -1751,7 +1757,8 @@ else
     echo "[RESULT] size_bytes=$SIZE"
 fi
 `,
-		config.GetConfig().HuggingFaceDownloadEndpoint(),
+		huggingFaceEndpoint,
+		disableXetCmd,
 		config.GetConfig().ModelScopeDownloadEndpoint(),
 		modelDirName,
 		download.Name,
@@ -1764,6 +1771,11 @@ fi
 		metadataCmd,
 		descScript,
 	)
+}
+
+func shouldDisableHuggingFaceXet(source model.ModelSource, endpoint string) bool {
+	return source == model.ModelSourceHuggingFace &&
+		strings.TrimRight(strings.TrimSpace(endpoint), "/") != "https://huggingface.co"
 }
 
 // convertToPhysicalPath 将前端路径转换为物理存储路径

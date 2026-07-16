@@ -179,6 +179,41 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 	}
 }
 
+func TestShouldDisableHuggingFaceXet(t *testing.T) {
+	for _, testCase := range []struct {
+		name     string
+		source   model.ModelSource
+		endpoint string
+		want     bool
+	}{
+		{
+			name:     "hugging face mirror",
+			source:   model.ModelSourceHuggingFace,
+			endpoint: "https://hf-mirror.com",
+			want:     true,
+		},
+		{
+			name:     "official hugging face endpoint",
+			source:   model.ModelSourceHuggingFace,
+			endpoint: "https://huggingface.co/",
+			want:     false,
+		},
+		{
+			name:     "modelscope download",
+			source:   model.ModelSourceModelScope,
+			endpoint: "https://hf-mirror.com",
+			want:     false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := shouldDisableHuggingFaceXet(testCase.source, testCase.endpoint); got != testCase.want {
+				t.Fatalf("shouldDisableHuggingFaceXet(%q, %q) = %v, want %v",
+					testCase.source, testCase.endpoint, got, testCase.want)
+			}
+		})
+	}
+}
+
 func TestModelDownloadStoragePathUsesCanonicalShortPath(t *testing.T) {
 	base := "public/Models"
 	name := "Qwen/Qwen3-32B"

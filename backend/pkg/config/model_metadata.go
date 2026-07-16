@@ -27,6 +27,8 @@ const (
 var defaultLogoAllowedHosts = []string{
 	"huggingface.co",
 	"cdn-avatars.huggingface.co",
+	"resouces.modelscope.cn",
+	"resources.modelscope.cn",
 }
 
 func (c *Config) HuggingFaceDownloadEndpoint() string {
