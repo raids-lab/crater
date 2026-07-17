@@ -17,6 +17,7 @@ import {
   ERROR_SERVICE_ERROR,
   ERROR_TOKEN_EXPIRED,
   ERROR_TOKEN_INVALID,
+  ERROR_USER_BANNED,
   ERROR_USER_EMAIL_NOT_VERIFIED,
   ErrorCode,
 } from './error_code'
@@ -98,6 +99,11 @@ const ERROR_POLICY_TABLE: ErrorPolicy[] = [
     action: 'toast',
     match: (code) => code === ERROR_USER_EMAIL_NOT_VERIFIED,
     message: '接收通知需要验证邮箱，请前往个人主页验证',
+  },
+  {
+    action: 'toast',
+    match: (code) => code === ERROR_USER_BANNED,
+    message: (errorResponse) => errorResponse.msg || '当前账号已被封禁，请联系平台管理员',
   },
   {
     action: 'toast',

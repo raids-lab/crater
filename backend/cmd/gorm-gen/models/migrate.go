@@ -1327,6 +1327,27 @@ func main() {
 				)
 			},
 		},
+		{
+			ID: "202607171900",
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					BannedAt *time.Time `gorm:"index;comment:用户封禁时间，为空表示未封禁"`
+				}
+				if err := tx.Table("users").Migrator().AddColumn(&User{}, "BannedAt"); err != nil {
+					return err
+				}
+				return tx.Migrator().CreateTable(&model.UserBanRecord{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Migrator().DropTable(&model.UserBanRecord{}); err != nil {
+					return err
+				}
+				type User struct {
+					BannedAt *time.Time
+				}
+				return tx.Table("users").Migrator().DropColumn(&User{}, "BannedAt")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1359,6 +1380,7 @@ func main() {
 			&model.OperationLog{},
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
+			&model.UserBanRecord{},
 		)
 		if err != nil {
 			return err

@@ -39,7 +39,30 @@ export interface IUser {
   role: Role
   status: ProjectStatus
   extraBalance?: number
+  bannedAt?: string
   attributes: IUserAttributes
+}
+
+export type UserBanAction = 'ban' | 'unban'
+
+export interface IUserBanRecord {
+  id: number
+  createdAt: string
+  operatorId: number
+  operatorName: string
+  action: UserBanAction
+  reason: string
+}
+
+export interface IUserBanStatus {
+  banned: boolean
+  bannedAt?: string
+  records: IUserBanRecord[]
+}
+
+export interface IUpdateUserBanReq {
+  banned: boolean
+  reason: string
 }
 
 export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>('admin/users')
@@ -54,3 +77,9 @@ export const apiAdminUserUpdateRole = (userName: string, role: Role) =>
   apiV1Put<IResponse<string>>(`admin/users/${userName}/role`, {
     role,
   })
+
+export const apiAdminGetUserBanStatus = (userName: string) =>
+  apiV1Get<IResponse<IUserBanStatus>>(`admin/users/${userName}/ban`)
+
+export const apiAdminUpdateUserBanStatus = (userName: string, data: IUpdateUserBanReq) =>
+  apiV1Put<IResponse<IUserBanStatus>>(`admin/users/${userName}/ban`, data)

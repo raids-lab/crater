@@ -56,6 +56,7 @@ type VolcanojobMgr struct {
 	queueQuotaSvc   *service.PrequeueService
 	prequeueWatcher *prequeuewatcher.PrequeueWatcher
 	billingService  *service.BillingService
+	userBanService  *service.UserBanService
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
@@ -71,6 +72,7 @@ func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 		queueQuotaSvc:   conf.PrequeueService,
 		prequeueWatcher: conf.PrequeueWatcher,
 		billingService:  conf.BillingService,
+		userBanService:  conf.UserBanService,
 	}
 }
 
@@ -199,6 +201,9 @@ func (mgr *VolcanojobMgr) preCheckCreateJob(
 	scheduleType model.ScheduleType,
 	requireInteractiveLimit bool,
 ) bool {
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
+		return false
+	}
 	if err := mgr.checkBillingBeforeCreate(c, token.UserID, token.AccountID, scheduleType); err != nil {
 		resputil.Error(c, err.Error(), resputil.BusinessLogicError)
 		return false

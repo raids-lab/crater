@@ -9,7 +9,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -28,6 +30,9 @@ import (
 func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 	req := &CreateKanikoRequest{}
 	token := util.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityImageBuild) {
+		return
+	}
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
@@ -67,6 +72,9 @@ func (mgr *ImagePackMgr) UserCreateByPipApt(c *gin.Context) {
 func (mgr *ImagePackMgr) UserCreateByDockerfile(c *gin.Context) {
 	req := &CreateByDockerfileRequest{}
 	token := util.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityImageBuild) {
+		return
+	}
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
@@ -143,6 +151,9 @@ func extractBaseImageFromDockerfile(dockerfile string) (string, error) {
 func (mgr *ImagePackMgr) UserCreateByEnvd(c *gin.Context) {
 	req := &CreateByEnvdRequest{}
 	token := util.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityImageBuild) {
+		return
+	}
 	if err := c.ShouldBindJSON(req); err != nil {
 		msg := fmt.Sprintf("validate create parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)

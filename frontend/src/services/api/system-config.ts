@@ -17,6 +17,14 @@ export interface IGpuAnalysisStatus {
   enabled: boolean
 }
 
+export interface IUserBanPolicy {
+  allowPlatformAccess: boolean
+  allowJobSubmission: boolean
+  allowImageBuild: boolean
+  allowModelDownload: boolean
+  allowDatasetDownload: boolean
+}
+
 export interface IPrequeueConfig {
   backfillEnabled: boolean
   queueQuotaEnabled: boolean
@@ -88,6 +96,12 @@ export const apiAdminGetGpuAnalysisStatus = () =>
 /** 设置 GPU 分析开关状态 */
 export const apiAdminSetGpuAnalysisStatus = (enable: boolean) =>
   apiV1Put<IResponse<string>>('admin/system-config/gpu-analysis', { enable })
+
+export const apiAdminGetUserBanPolicy = () =>
+  apiV1Get<IResponse<IUserBanPolicy>>('admin/system-config/user-ban')
+
+export const apiAdminUpdateUserBanPolicy = (policy: IUserBanPolicy) =>
+  apiV1Put<IResponse<IUserBanPolicy>>('admin/system-config/user-ban', policy)
 
 /** 获取预排队配置 */
 export const apiAdminGetPrequeueConfig = () =>

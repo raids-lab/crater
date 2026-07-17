@@ -17,7 +17,16 @@
 // Modified code
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { Activity, Calendar, Database, GpuIcon, List, User, Users } from 'lucide-react'
+import {
+  Activity,
+  Calendar,
+  Database,
+  GpuIcon,
+  List,
+  ShieldBanIcon,
+  User,
+  Users,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import TipBadge from '@/components/badge/tip-badge'
@@ -30,6 +39,8 @@ import { StatisticsDashboard } from '@/components/statistics/statistics-dashboar
 import { Role } from '@/services/api/auth'
 import { apiGetUser } from '@/services/api/user'
 
+import useIsAdmin from '@/hooks/use-admin'
+
 import { getUserPseudonym } from '@/utils/pseudonym'
 import { globalHideUsername } from '@/utils/store'
 import { configGrafanaUserAtom } from '@/utils/store/config'
@@ -37,12 +48,14 @@ import { configGrafanaUserAtom } from '@/utils/store/config'
 import RecentActivity from './recent-activity'
 import SharedItems from './shared-items'
 import { UserAvatar } from './user-avatar'
+import { UserBanHistory } from './user-ban-history'
 import { UserJobsOverview } from './user-jobs'
 
 export default function UserDetail({ name, ...props }: DetailPageCoreProps & { name: string }) {
   const { t } = useTranslation()
   const hideUsername = useAtomValue(globalHideUsername)
   const grafanaUser = useAtomValue(configGrafanaUserAtom)
+  const isAdminView = useIsAdmin()
   // TODO: 这两个标签页对应的能力尚未实现，先在正式版本中隐藏（管理员/用户视图都隐藏）。
   // 等 SharedItems / RecentActivity 真实可用后，再把该开关改为可配置项（feature flag / config）。
   const hideUnimplementedTabs = true
@@ -120,6 +133,17 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
       children: <UserJobsOverview username={name} />,
       scrollable: true,
     },
+    ...(isAdminView
+      ? [
+          {
+            key: 'ban-history',
+            icon: ShieldBanIcon,
+            label: t('userBan.history.tab'),
+            children: <UserBanHistory username={name} />,
+            scrollable: true,
+          },
+        ]
+      : []),
     ...(!hideUnimplementedTabs
       ? ([
           {

@@ -27,6 +27,14 @@ const (
 	ConfigKeyBillingDefaultIssuePeriodMinute          = "BILLING_DEFAULT_ISSUE_PERIOD_MINUTES"
 	ConfigKeyBillingAccountIssueAmountOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_AMOUNT_OVERRIDE"
 	ConfigKeyBillingAccountIssuePeriodOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_PERIOD_OVERRIDE"
+
+	// User ban capability policy. Values are "true" or "false" and describe
+	// what a banned user is still allowed to do.
+	ConfigKeyBanAllowPlatformAccess  = "BAN_ALLOW_PLATFORM_ACCESS"
+	ConfigKeyBanAllowJobSubmission   = "BAN_ALLOW_JOB_SUBMISSION"
+	ConfigKeyBanAllowImageBuild      = "BAN_ALLOW_IMAGE_BUILD"
+	ConfigKeyBanAllowModelDownload   = "BAN_ALLOW_MODEL_DOWNLOAD"
+	ConfigKeyBanAllowDatasetDownload = "BAN_ALLOW_DATASET_DOWNLOAD"
 )
 
 // DefaultConfigKeys 定义了系统启动时必须存在的键
@@ -44,4 +52,9 @@ var DefaultConfigKeys = []string{
 	ConfigKeyBillingDefaultIssuePeriodMinute,
 	ConfigKeyBillingAccountIssueAmountOverrideEnabled,
 	ConfigKeyBillingAccountIssuePeriodOverrideEnabled,
+	ConfigKeyBanAllowPlatformAccess,
+	ConfigKeyBanAllowJobSubmission,
+	ConfigKeyBanAllowImageBuild,
+	ConfigKeyBanAllowModelDownload,
+	ConfigKeyBanAllowDatasetDownload,
 }

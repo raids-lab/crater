@@ -28,6 +28,7 @@ type SystemConfigMgr struct {
 	name           string
 	service        *service.ConfigService
 	billingService *service.BillingService
+	userBanService *service.UserBanService
 	cronjobManager *cronjob.CronJobManager
 	watcher        *prequeuewatcher.PrequeueWatcher
 }
@@ -37,6 +38,7 @@ func NewSystemConfigMgr(conf *RegisterConfig) Manager {
 		name:           "system-config",
 		service:        conf.ConfigService,
 		billingService: conf.BillingService,
+		userBanService: conf.UserBanService,
 		cronjobManager: conf.CronJobManager,
 		watcher:        conf.PrequeueWatcher,
 	}
@@ -65,6 +67,8 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/billing/reconcile", mgr.TriggerBillingBaseLoop)
 	g.POST("/billing/reset-all", mgr.ResetAllBillingBalances)
 	g.POST("/billing/extra-balance-all", mgr.GrantAllUsersExtraBalance)
+	g.GET("/user-ban", mgr.GetUserBanPolicy)
+	g.PUT("/user-ban", mgr.UpdateUserBanPolicy)
 }
 
 // --- DTOs ---

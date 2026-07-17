@@ -55,6 +55,7 @@ type User struct {
 	ImageQuota          int64      `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
 	ExtraBalance        int64      `gorm:"type:bigint;not null;default:0;comment:用户额外点数余额(内部微点, 充值/奖励)"`
 	LastEmailVerifiedAt *time.Time `gorm:"comment:最后一次邮箱验证时间"`
+	BannedAt            *time.Time `gorm:"index;comment:用户封禁时间，为空表示未封禁"`
 
 	Attributes   datatypes.JSONType[UserAttribute] `gorm:"comment:用户的额外属性 (昵称、邮箱、电话、头像等)"`
 	UserAccounts []UserAccount

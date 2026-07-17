@@ -98,7 +98,12 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 						model.ConfigKeyEnableBillingActive,
 						model.ConfigKeyEnableRunningSettlement,
 						model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
-						model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled:
+						model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled,
+						model.ConfigKeyBanAllowPlatformAccess,
+						model.ConfigKeyBanAllowJobSubmission,
+						model.ConfigKeyBanAllowImageBuild,
+						model.ConfigKeyBanAllowModelDownload,
+						model.ConfigKeyBanAllowDatasetDownload:
 						defaultValue = "false"
 					case model.ConfigKeyRunningSettlementIntervalMinute:
 						defaultValue = "5"

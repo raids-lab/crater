@@ -35,6 +35,7 @@ import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { PrequeueSettings } from './-components/prequeue-settings'
+import { UserBanSettings } from './-components/user-ban-settings'
 
 export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
@@ -343,6 +344,10 @@ function RouteComponent() {
           onResetAll={() => resetAllBillingMutation.mutate()}
           onGrantAllExtra={(payload) => grantAllUsersExtraMutation.mutate(payload)}
         />
+      </Card>
+
+      <Card>
+        <UserBanSettings />
       </Card>
     </div>
   )

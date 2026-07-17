@@ -27,12 +27,14 @@ func init() {
 type UserMgr struct {
 	name           string
 	billingService *service.BillingService
+	userBanService *service.UserBanService
 }
 
 func NewUserMgr(conf *RegisterConfig) Manager {
 	return &UserMgr{
 		name:           "users",
 		billingService: conf.BillingService,
+		userBanService: conf.UserBanService,
 	}
 }
 
@@ -54,6 +56,8 @@ func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/:name/attributes", mgr.UpdateUserAttributesByAdmin)
 	g.POST("/:name/billing/extra-balance", mgr.AdjustUserExtraBalance)
 	g.GET("/:name/billing/accounts", mgr.GetUserBillingAccounts)
+	g.GET("/:name/ban", mgr.GetUserBanStatus)
+	g.PUT("/:name/ban", mgr.UpdateUserBanStatus)
 }
 
 type UserResp struct {
@@ -63,6 +67,7 @@ type UserResp struct {
 	Status       model.Status                            `json:"status"`       // 用户状态
 	ExtraBalance float64                                 `json:"extraBalance"` // 用户额外点数
 	Attributes   datatypes.JSONType[model.UserAttribute] `json:"attributes"`   // 用户额外属性
+	BannedAt     *time.Time                              `json:"bannedAt"`     // 用户封禁时间
 }
 
 type UserDetailResp struct {
@@ -173,7 +178,7 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	u := query.User
 	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes).
+		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.BannedAt).
 		Order(u.ID.Desc()).
 		Find()
 	if err != nil {
@@ -193,6 +198,7 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 			Status:       users[i].Status,
 			ExtraBalance: extraBalance,
 			Attributes:   users[i].Attributes,
+			BannedAt:     users[i].BannedAt,
 		})
 	}
 	klog.Infof("list users success, count: %d", len(resp))

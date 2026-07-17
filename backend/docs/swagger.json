@@ -3352,6 +3352,68 @@
                 }
             }
         },
+        "/v1/admin/system-config/user-ban": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取封禁用户仍被允许使用的平台能力",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "获取用户封禁能力策略",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanPolicyReq"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "设置封禁用户是否仍可访问平台、提交作业、制作镜像以及下载模型或数据集",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "更新用户封禁能力策略",
+                "parameters": [
+                    {
+                        "description": "封禁能力策略",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UserBanPolicyReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanPolicyReq"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/users": {
             "get": {
                 "security": [
@@ -3534,6 +3596,84 @@
                         "description": "其他错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/users/{name}/ban": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "仅平台管理员可查看指定用户的当前封禁状态和完整操作记录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "获取用户封禁状态和记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "仅平台管理员可修改用户封禁状态，操作原因会写入封禁记录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "封禁或解除封禁用户",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "封禁状态与原因",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateUserBanReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp"
                         }
                     }
                 }
@@ -10353,6 +10493,17 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_dao_model.UserBanAction": {
+            "type": "string",
+            "enum": [
+                "ban",
+                "unban"
+            ],
+            "x-enum-varnames": [
+                "UserBanActionBan",
+                "UserBanActionUnban"
+            ]
+        },
         "github_com_raids-lab_crater_dao_model.UserInfo": {
             "type": "object",
             "properties": {
@@ -11002,6 +11153,36 @@
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.TriggerAllJobsAnalysisResponse"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanPolicyReq": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.UserBanPolicyReq"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.UserBanStatusResp"
                 },
                 "msg": {
                     "type": "string"
@@ -12655,6 +12836,82 @@
             "properties": {
                 "role": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Role"
+                }
+            }
+        },
+        "internal_handler.UpdateUserBanReq": {
+            "type": "object",
+            "required": [
+                "banned",
+                "reason"
+            ],
+            "properties": {
+                "banned": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                }
+            }
+        },
+        "internal_handler.UserBanPolicyReq": {
+            "type": "object",
+            "properties": {
+                "allowDatasetDownload": {
+                    "type": "boolean"
+                },
+                "allowImageBuild": {
+                    "type": "boolean"
+                },
+                "allowJobSubmission": {
+                    "type": "boolean"
+                },
+                "allowModelDownload": {
+                    "type": "boolean"
+                },
+                "allowPlatformAccess": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.UserBanRecordResp": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanAction"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operatorId": {
+                    "type": "integer"
+                },
+                "operatorName": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.UserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "banned": {
+                    "type": "boolean"
+                },
+                "bannedAt": {
+                    "type": "string"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.UserBanRecordResp"
+                    }
                 }
             }
         },
