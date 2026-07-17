@@ -181,7 +181,6 @@ func (s *GpuAnalysisService) TriggerAllJobsAnalysis(ctx context.Context) (int, e
 
 	if len(gpuJobs) == 0 {
 		klog.Info("Found running jobs, but none are using GPU resources.")
-		go s.cleanupStaleAnalyses(context.Background())
 		return 0, nil
 	}
 
@@ -247,7 +246,6 @@ func (s *GpuAnalysisService) startAnalysisWorker() {
 		}()
 
 		// 可以选择在任务间稍作停顿，避免对 K8s API 和 LLM 造成太大压力
-		s.cleanupStaleAnalyses(context.Background())
 		time.Sleep(SleepBetweenRetries)
 	}
 	klog.Info("GPU analysis worker has stopped.") // 正常情况下不应执行到这里
@@ -659,68 +657,6 @@ func (s *GpuAnalysisService) execCommandInPod(
 		return stdout.String(), fmt.Errorf("command execution returned an error on stderr: %s", stderr.String())
 	}
 	return stdout.String(), nil
-}
-
-func (s *GpuAnalysisService) cleanupStaleAnalyses(ctx context.Context) {
-	klog.Info("Starting cleanup of stale GPU analysis records...")
-	ga := s.q.GpuAnalysis
-	j := s.q.Job
-
-	allAnalyses, err := ga.WithContext(ctx).Find()
-	if err != nil {
-		return
-	}
-
-	if len(allAnalyses) == 0 {
-		return
-	}
-
-	jobIDs := make(map[uint]struct{})
-	for _, analysis := range allAnalyses {
-		jobIDs[analysis.JobID] = struct{}{}
-	}
-
-	jobIDSlice := make([]uint, 0, len(jobIDs))
-	for id := range jobIDs {
-		jobIDSlice = append(jobIDSlice, id)
-	}
-
-	// 3. 一次性查询所有相关的 Job
-	// 使用 gen 的类型安全 Where 和 In
-	jobs, err := j.WithContext(ctx).Where(j.ID.In(jobIDSlice...)).Find()
-	if err != nil {
-		return
-	}
-
-	// 4. 筛选出所有仍然有效的 Job ID
-	eligibleJobIDs := make(map[uint]struct{})
-	for _, job := range jobs {
-		// 这里的 j 是 *model.Job 类型，可以直接调用我们之前定义的方法
-		if IsEligibleForGpuAnalysis(job) {
-			eligibleJobIDs[job.ID] = struct{}{}
-		}
-	}
-
-	// 5. 找出需要删除的 GpuAnalysis 记录的 ID
-	var analysisIDsToDelete []uint
-	for _, analysis := range allAnalyses {
-		_, isJobActive := eligibleJobIDs[analysis.JobID]
-		// 如果 Job ID 不在有效列表中，则说明该分析记录是过时的
-		if !isJobActive && analysis.ReviewStatus != model.ReviewStatusPending {
-			analysisIDsToDelete = append(analysisIDsToDelete, analysis.ID)
-		}
-	}
-
-	if len(analysisIDsToDelete) == 0 {
-		return
-	}
-
-	// 6. 批量删除过时的记录
-	// 使用 gen 的 Delete 方法
-	_, err = ga.WithContext(ctx).Where(ga.ID.In(analysisIDsToDelete...)).Delete()
-	if err != nil {
-		return
-	}
 }
 
 func IsEligibleForGpuAnalysis(j *model.Job) bool {
