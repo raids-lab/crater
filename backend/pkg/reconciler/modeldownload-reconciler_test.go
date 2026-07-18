@@ -15,10 +15,15 @@
 package reconciler
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"gorm.io/datatypes"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestClassifyDownloadFailure(t *testing.T) {
@@ -81,5 +86,107 @@ func TestDatasetExtraForDownloadPreservesTags(t *testing.T) {
 	}
 	if extra.WebURL == nil || *extra.WebURL != url || extra.Editable {
 		t.Fatalf("unexpected dataset extra: %#v", extra)
+	}
+}
+
+func TestCreateDatasetForModelDoesNotRepurposeSameNameDataset(t *testing.T) {
+	db := newModelDownloadDatasetTestDB(t)
+
+	manual := model.Dataset{
+		Name: "owner/resource", URL: "homes/user/private-resource", Type: model.DataTypeModel,
+		Describe: "user-created dataset", UserID: 9,
+		Extra: datatypes.NewJSONType(model.ExtraContent{Editable: true}),
+	}
+	if err := db.Create(&manual).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	download := &model.ModelDownload{
+		Name: "owner/resource", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "master",
+		Path: "storage/Models/owner/resource", SizeBytes: 42, CreatorID: 1,
+	}
+	reconciler := &ModelDownloadReconciler{}
+	reconcileDownloadedDataset(t, db, reconciler, download)
+	reconcileDownloadedDataset(t, db, reconciler, download)
+
+	assertDatasetCount(t, db, 2)
+	assertManualDatasetUnchanged(t, db, &manual)
+	assertDownloadedDataset(t, db, download, manual.ID)
+}
+
+func newModelDownloadDatasetTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	db, err := gorm.Open(sqlite.Open("file:model_download_dataset_identity?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.Dataset{}, &model.UserDataset{}, &model.AccountDataset{}); err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
+func reconcileDownloadedDataset(
+	t *testing.T, db *gorm.DB, reconciler *ModelDownloadReconciler, download *model.ModelDownload,
+) {
+	t.Helper()
+
+	if err := reconciler.createDatasetForModelTx(
+		context.Background(), query.Use(db), download, "downloaded model", []string{"llm"},
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertDatasetCount(t *testing.T, db *gorm.DB, want int64) {
+	t.Helper()
+
+	var datasetCount int64
+	if err := db.Model(&model.Dataset{}).Count(&datasetCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if datasetCount != want {
+		t.Fatalf("dataset count = %d, want one manual and one downloaded Dataset", datasetCount)
+	}
+}
+
+func assertManualDatasetUnchanged(t *testing.T, db *gorm.DB, manual *model.Dataset) {
+	t.Helper()
+
+	var unchanged model.Dataset
+	if err := db.First(&unchanged, manual.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.URL != manual.URL || unchanged.Describe != manual.Describe || unchanged.Type != manual.Type {
+		t.Fatalf("same-name user Dataset was modified: %#v", unchanged)
+	}
+	var manualPublicLinks int64
+	if err := db.Model(&model.AccountDataset{}).Where("dataset_id = ?", manual.ID).Count(&manualPublicLinks).Error; err != nil {
+		t.Fatal(err)
+	}
+	if manualPublicLinks != 0 {
+		t.Fatalf("same-name user Dataset received %d public associations", manualPublicLinks)
+	}
+}
+
+func assertDownloadedDataset(t *testing.T, db *gorm.DB, download *model.ModelDownload, manualDatasetID uint) {
+	t.Helper()
+
+	var downloaded model.Dataset
+	if err := db.Where("url = ? AND type = ?", download.Path, model.DataTypeModel).First(&downloaded).Error; err != nil {
+		t.Fatal(err)
+	}
+	if downloaded.ID == manualDatasetID || downloaded.Name != download.Name || downloaded.SizeBytes != download.SizeBytes {
+		t.Fatalf("unexpected downloaded Dataset: %#v", downloaded)
+	}
+	var publicLink model.AccountDataset
+	if err := db.Where("dataset_id = ? AND account_id = ?", downloaded.ID, model.DefaultAccountID).
+		First(&publicLink).Error; err != nil {
+		t.Fatalf("downloaded Dataset is not public: %v", err)
 	}
 }

@@ -242,63 +242,43 @@ func (mgr *ModelDownloadMgr) associateUserWithDownload(
 	return nil
 }
 
-// findReadyOrOngoingDownload reuses one logical public resource regardless of
-// which supported source or revision originally populated it. Prefer the
-// canonical short path when historical short- and long-path records coexist.
+// findReadyOrOngoingDownload only reuses a download with the exact requested
+// upstream identity. The canonical storage path is shared by all variants, so
+// a different source or revision must be reported as a conflict instead of
+// silently satisfying the request with unrelated files.
 func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 	c *gin.Context, txQ *query.Query,
-	name string, source model.ModelSource, category model.DownloadCategory, revision, canonicalPath string,
+	name string, source model.ModelSource, category model.DownloadCategory, revision string,
 ) (*model.ModelDownload, error) {
 	q := txQ.ModelDownload
 
-	readyDownloads, err := q.WithContext(c).
+	readyDownload, err := q.WithContext(c).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where(q.Name.Eq(name), q.Category.Eq(string(category)),
+		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
+			q.Revision.Eq(revision),
 			q.Status.Eq(string(model.ModelDownloadStatusReady))).
-		Order(q.ID).
-		Find()
-	if err != nil {
+		First()
+	if err == nil {
+		return readyDownload, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ready logical download")
 	}
-	if preferred := preferredLogicalDownload(readyDownloads, canonicalPath, source, revision); preferred != nil {
-		return preferred, nil
-	}
 
-	ongoingDownloads, err := q.WithContext(c).
+	ongoingDownload, err := q.WithContext(c).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where(q.Name.Eq(name), q.Category.Eq(string(category)),
+		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
+			q.Revision.Eq(revision),
 			q.Status.In(string(model.ModelDownloadStatusPending), string(model.ModelDownloadStatusDownloading),
 				string(model.ModelDownloadStatusPaused))).
-		Order(q.ID).
-		Find()
-	if err != nil {
+		First()
+	if err == nil {
+		return ongoingDownload, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ongoing logical download")
 	}
-	return preferredLogicalDownload(ongoingDownloads, canonicalPath, source, revision), nil
-}
-
-func preferredLogicalDownload(
-	downloads []*model.ModelDownload, canonicalPath string, source model.ModelSource, revision string,
-) *model.ModelDownload {
-	for _, download := range downloads {
-		if download.Path == canonicalPath && download.Source == source && download.Revision == revision {
-			return download
-		}
-	}
-	for _, download := range downloads {
-		if download.Path == canonicalPath {
-			return download
-		}
-	}
-	for _, download := range downloads {
-		if download.Source == source && download.Revision == revision {
-			return download
-		}
-	}
-	if len(downloads) > 0 {
-		return downloads[0]
-	}
-	return nil
+	return nil, nil
 }
 
 // lockModelDownloadIdentity serializes first-time downloads whose current
@@ -440,7 +420,7 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 
 		// 1. 查找已完成或正在进行的下载
 		existing, err := mgr.findReadyOrOngoingDownload(
-			c, tx, req.Name, source, category, revision, downloadPath,
+			c, tx, req.Name, source, category, revision,
 		)
 		if err != nil {
 			return err

@@ -224,26 +224,6 @@ func TestModelDownloadStoragePathUsesCanonicalShortPath(t *testing.T) {
 	}
 }
 
-func TestPreferredLogicalDownloadPrefersCanonicalPath(t *testing.T) {
-	longExact := &model.ModelDownload{
-		Model: gorm.Model{ID: 1},
-		Path:  "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Source: model.ModelSourceModelScope,
-		Revision: "master",
-	}
-	shortOtherSource := &model.ModelDownload{
-		Model: gorm.Model{ID: 2},
-		Path:  "public/Models/Qwen/Qwen3-32B", Source: model.ModelSourceHuggingFace, Revision: "main",
-	}
-
-	got := preferredLogicalDownload(
-		[]*model.ModelDownload{longExact, shortOtherSource},
-		"public/Models/Qwen/Qwen3-32B", model.ModelSourceModelScope, "master",
-	)
-	if got != shortOtherSource {
-		t.Fatalf("preferredLogicalDownload() = %#v, want canonical short-path record", got)
-	}
-}
-
 func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_reuse?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -278,13 +258,74 @@ func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
 	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
 		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master", "public/Models/Qwen/Qwen3-32B",
+		model.DownloadCategoryModel, "master",
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got == nil || got.ID != shortPath.ID {
-		t.Fatalf("findReadyOrOngoingDownload() = %#v, want short-path record %d", got, shortPath.ID)
+	if got == nil || got.ID != longPath.ID {
+		t.Fatalf("findReadyOrOngoingDownload() = %#v, want exact historical record %d", got, longPath.ID)
+	}
+}
+
+func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:logical_download_exact_ongoing?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	readyOtherSource := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryModel, Revision: "main",
+		Path: "public/Models/Qwen/Qwen3-32B", Status: model.ModelDownloadStatusReady,
+		CreatorID: 1,
+	}
+	ongoingExact := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "master",
+		Path: "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Status: model.ModelDownloadStatusDownloading,
+		CreatorID: 2,
+	}
+	if err := db.Create(&readyOtherSource).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&ongoingExact).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
+		model.DownloadCategoryModel, "master",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || got.ID != ongoingExact.ID {
+		t.Fatalf("findReadyOrOngoingDownload() = %#v, want exact ongoing record %d", got, ongoingExact.ID)
+	}
+
+	got, err = (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
+		model.DownloadCategoryModel, "v2",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != nil {
+		t.Fatalf("cross-revision request reused download %#v", got)
+	}
+	if err := checkLogicalDownloadConflict(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
+		model.DownloadCategoryModel, "v2",
+	); !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("cross-revision request should conflict with canonical storage, got %v", err)
 	}
 }
 

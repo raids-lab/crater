@@ -877,24 +877,21 @@ func (r *ModelDownloadReconciler) createDatasetForModelTx(
 
 	describe := datasetDescriptionForDownload(download, readmeDesc)
 	sourceURL := downloadSourceURL(download)
+	datasetURL := r.convertToPhysicalPath(download.Path)
 
-	// Check if dataset already exists for this resource (check by name only, regardless of type)
-	// This prevents creating duplicate records with different types
-	// First check for non-deleted records
+	// The physical storage location and resource type identify the downloaded
+	// resource. A display name is not globally unique and may also belong to a
+	// user-created Dataset that must not be repurposed by this reconciler.
 	existingDataset, err := qDataset.WithContext(ctx).
-		Where(qDataset.Name.Eq(download.Name)).
+		Where(qDataset.URL.Eq(datasetURL), qDataset.Type.Eq(string(dataType))).
 		First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("failed to query existing dataset: %w", err)
 	}
 
 	if existingDataset != nil {
-		if existingDataset.Type != dataType {
-			klog.Warningf("Dataset %s exists with wrong type %s, updating to %s", download.Name, existingDataset.Type, dataType)
-		}
 		extra := datasetExtraForDownload(existingDataset.Extra.Data(), download, sourceURL, repositoryTags)
 		if _, err := qDataset.WithContext(ctx).Where(qDataset.ID.Eq(existingDataset.ID)).Updates(map[string]any{
-			"type":                    dataType,
 			"describe":                describe,
 			"extra":                   datatypes.NewJSONType(extra),
 			"size_bytes":              download.SizeBytes,
@@ -908,7 +905,7 @@ func (r *ModelDownloadReconciler) createDatasetForModelTx(
 
 	// Check for soft-deleted records
 	softDeletedDataset, err := qDataset.WithContext(ctx).Unscoped().
-		Where(qDataset.Name.Eq(download.Name), qDataset.DeletedAt.IsNotNull()).
+		Where(qDataset.URL.Eq(datasetURL), qDataset.Type.Eq(string(dataType)), qDataset.DeletedAt.IsNotNull()).
 		First()
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("failed to query soft-deleted dataset: %w", err)
@@ -940,9 +937,6 @@ func (r *ModelDownloadReconciler) createDatasetForModelTx(
 
 		return r.ensureDatasetAssociations(ctx, txQuery, softDeletedDataset.ID, download.CreatorID)
 	}
-
-	// 将前端路径(如public/222/...)转换为物理路径(如sugon-gpu-incoming/222/...)用于存储访问
-	datasetURL := r.convertToPhysicalPath(download.Path)
 
 	// Create dataset record
 	dataset := &model.Dataset{
