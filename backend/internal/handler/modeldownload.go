@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -51,18 +50,18 @@ func init() {
 }
 
 type ModelDownloadMgr struct {
-	name          string
-	crClient      kubernetes.Interface
-	namespace     string
-	configService *service.ConfigService
+	name         string
+	crClient     kubernetes.Interface
+	namespace    string
+	quotaService *service.ModelDownloadQuotaService
 }
 
 func NewModelDownloadMgr(conf *RegisterConfig) Manager {
 	return &ModelDownloadMgr{
-		name:          "model-download",
-		crClient:      conf.KubeClient,
-		namespace:     config.GetConfig().Namespaces.Job,
-		configService: conf.ConfigService,
+		name:         "model-download",
+		crClient:     conf.KubeClient,
+		namespace:    config.GetConfig().Namespaces.Job,
+		quotaService: service.NewModelDownloadQuotaService(conf.ConfigService),
 	}
 }
 
@@ -119,6 +118,7 @@ type ModelDownloadResp struct {
 	Message         string           `json:"message"`
 	JobName         string           `json:"jobName"`
 	CreatorID       uint             `json:"creatorId"`
+	ReferenceCount  int              `json:"referenceCount"` // Deprecated: use requesterCount.
 	RequesterCount  int              `json:"requesterCount"`
 	Requesters      []model.UserInfo `json:"requesters"`
 	Relation        string           `json:"relation"`
@@ -260,6 +260,7 @@ func applyDownloadRequesters(
 	for i := range responses {
 		response := &responses[i]
 		response.RequesterCount = requesterCountByDownload[response.ID]
+		response.ReferenceCount = response.RequesterCount
 		response.Requesters = requestersByDownload[response.ID]
 		if response.Requesters == nil {
 			response.Requesters = []model.UserInfo{}
@@ -346,86 +347,6 @@ func lockModelDownloadIdentity(
 	identity := string(category) + ":" + name
 	if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", identity).Error; err != nil {
 		return bizerr.Internal.DatabaseError.Wrap(err, "lock logical download identity")
-	}
-	return nil
-}
-
-// reserveModelDownloadSubmission atomically applies the administrator-managed
-// per-user quotas and records one attempt that will create a Kubernetes Job.
-func (mgr *ModelDownloadMgr) reserveModelDownloadSubmission(
-	ctx context.Context, txQ *query.Query, token util.JWTMessage, downloadID uint,
-	action model.ModelDownloadSubmissionAction,
-) error {
-	if mgr.configService == nil {
-		return bizerr.Internal.DatabaseError.New("model download config service is not initialized")
-	}
-	cfg, err := mgr.configService.GetModelDownloadLimitConfig(ctx)
-	if err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "get model download quota")
-	}
-	if !cfg.Enabled {
-		return nil
-	}
-	if slices.Contains(cfg.WhitelistUserIDs, token.UserID) {
-		return nil
-	}
-
-	db := txQ.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
-	if db.Name() == "postgres" {
-		quotaIdentity := fmt.Sprintf("model-download-quota:%d", token.UserID)
-		if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", quotaIdentity).Error; err != nil {
-			return bizerr.Internal.DatabaseError.Wrap(err, "lock model download quota")
-		}
-	}
-
-	activeQuery := db.Table("model_downloads AS download").
-		Joins("JOIN model_download_submissions AS submission ON submission.model_download_id = download.id").
-		Where("download.status IN ?", []model.ModelDownloadStatus{
-			model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
-		}).
-		Where("submission.user_id = ? AND submission.status = ?", token.UserID, model.ModelDownloadSubmissionReserved)
-	if downloadID != 0 {
-		activeQuery = activeQuery.Where("download.id <> ?", downloadID)
-	}
-	var activeCount int64
-	if err := activeQuery.Distinct("download.id").Count(&activeCount).Error; err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "count concurrent model downloads")
-	}
-	if activeCount >= cfg.MaxConcurrent {
-		return bizerr.RateLimit.TooManyRequests.New(fmt.Sprintf(
-			"当前账号同时最多可有 %d 个等待中或下载中的任务，请等待任务完成或暂停后再试",
-			cfg.MaxConcurrent,
-		))
-	}
-
-	windowStart := time.Now().Add(-time.Duration(cfg.WindowHours) * time.Hour)
-	var windowUsageCount int64
-	if err := db.Table("model_download_submissions AS submission").
-		Joins("LEFT JOIN model_downloads AS download ON download.id = submission.model_download_id").
-		Where("submission.user_id = ?", token.UserID).
-		Where(
-			"(submission.status = ? AND submission.completed_at >= ?) OR "+
-				"(submission.status = ? AND download.deleted_at IS NULL AND download.status IN ?)",
-			model.ModelDownloadSubmissionSucceeded, windowStart,
-			model.ModelDownloadSubmissionReserved, []model.ModelDownloadStatus{
-				model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
-			},
-		).
-		Count(&windowUsageCount).Error; err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "count model download rolling-window usage")
-	}
-	if windowUsageCount >= cfg.MaxSuccessfulDownloads {
-		return bizerr.RateLimit.TooManyRequests.New(fmt.Sprintf(
-			"当前账号滚动 %d 小时内最多成功下载 %d 个模型或数据集；下载中的任务会临时预占名额，请等待任务完成、失败或暂停后再试",
-			cfg.WindowHours, cfg.MaxSuccessfulDownloads,
-		))
-	}
-
-	if err := db.Create(&model.ModelDownloadSubmission{
-		UserID: token.UserID, ModelDownloadID: downloadID, Action: action,
-		Status: model.ModelDownloadSubmissionReserved,
-	}).Error; err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "record model download submission")
 	}
 	return nil
 }
@@ -589,8 +510,9 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 			}
 			download, isNewDownload = restored, shouldSubmitRestoredDownload(restored)
 			if isNewDownload {
-				return mgr.reserveModelDownloadSubmission(
-					c, tx, token, restored.ID, model.ModelDownloadSubmissionCreate,
+				return mgr.quotaService.Reserve(
+					c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
+					restored.ID, model.ModelDownloadSubmissionCreate,
 				)
 			}
 			return nil
@@ -606,8 +528,9 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 				return err
 			}
 			download, isNewDownload = failed, true
-			return mgr.reserveModelDownloadSubmission(
-				c, tx, token, failed.ID, model.ModelDownloadSubmissionCreate,
+			return mgr.quotaService.Reserve(
+				c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
+				failed.ID, model.ModelDownloadSubmissionCreate,
 			)
 		}
 
@@ -627,8 +550,9 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 			return fmt.Errorf("create association failed: %w", err)
 		}
 		download, isNewDownload = newDownload, true
-		return mgr.reserveModelDownloadSubmission(
-			c, tx, token, newDownload.ID, model.ModelDownloadSubmissionCreate,
+		return mgr.quotaService.Reserve(
+			c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
+			newDownload.ID, model.ModelDownloadSubmissionCreate,
 		)
 	})
 
@@ -1021,8 +945,9 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
 			return err
 		}
-		if err := mgr.reserveModelDownloadSubmission(
-			c, tx, token, d.ID, model.ModelDownloadSubmissionRetry,
+		if err := mgr.quotaService.Reserve(
+			c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
+			d.ID, model.ModelDownloadSubmissionRetry,
 		); err != nil {
 			return err
 		}
@@ -1240,8 +1165,9 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 		if locked.Status != model.ModelDownloadStatusPaused {
 			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
 		}
-		if limitErr := mgr.reserveModelDownloadSubmission(
-			c, tx, token, locked.ID, model.ModelDownloadSubmissionResume,
+		if limitErr := mgr.quotaService.Reserve(
+			c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
+			locked.ID, model.ModelDownloadSubmissionResume,
 		); limitErr != nil {
 			return limitErr
 		}
@@ -1990,6 +1916,7 @@ func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelD
 		Message:         d.Message,
 		JobName:         d.JobName,
 		CreatorID:       d.CreatorID,
+		ReferenceCount:  d.ReferenceCount,
 		RequesterCount:  d.ReferenceCount,
 		Requesters:      []model.UserInfo{},
 		Relation:        relation,

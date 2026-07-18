@@ -16,36 +16,37 @@ import (
 )
 
 var (
-	Q                     = new(Query)
-	AITask                *aITask
-	Account               *account
-	AccountDataset        *accountDataset
-	Alert                 *alert
-	ApprovalOrder         *approvalOrder
-	CronJobConfig         *cronJobConfig
-	CronJobRecord         *cronJobRecord
-	CudaBaseImage         *cudaBaseImage
-	Dataset               *dataset
-	GpuAnalysis           *gpuAnalysis
-	Image                 *image
-	ImageAccount          *imageAccount
-	ImageUser             *imageUser
-	Job                   *job
-	Jobtemplate           *jobtemplate
-	Kaniko                *kaniko
-	ModelDatasetDiscovery *modelDatasetDiscovery
-	ModelDatasetSource    *modelDatasetSource
-	ModelDownload         *modelDownload
-	PrequeueConfig        *prequeueConfig
-	QueueQuotaLimit       *queueQuotaLimit
-	Resource              *resource
-	ResourceNetwork       *resourceNetwork
-	ResourceVGPU          *resourceVGPU
-	SystemConfig          *systemConfig
-	User                  *user
-	UserAccount           *userAccount
-	UserDataset           *userDataset
-	UserModelDownload     *userModelDownload
+	Q                       = new(Query)
+	AITask                  *aITask
+	Account                 *account
+	AccountDataset          *accountDataset
+	Alert                   *alert
+	ApprovalOrder           *approvalOrder
+	CronJobConfig           *cronJobConfig
+	CronJobRecord           *cronJobRecord
+	CudaBaseImage           *cudaBaseImage
+	Dataset                 *dataset
+	GpuAnalysis             *gpuAnalysis
+	Image                   *image
+	ImageAccount            *imageAccount
+	ImageUser               *imageUser
+	Job                     *job
+	Jobtemplate             *jobtemplate
+	Kaniko                  *kaniko
+	ModelDatasetDiscovery   *modelDatasetDiscovery
+	ModelDatasetSource      *modelDatasetSource
+	ModelDownload           *modelDownload
+	ModelDownloadSubmission *modelDownloadSubmission
+	PrequeueConfig          *prequeueConfig
+	QueueQuotaLimit         *queueQuotaLimit
+	Resource                *resource
+	ResourceNetwork         *resourceNetwork
+	ResourceVGPU            *resourceVGPU
+	SystemConfig            *systemConfig
+	User                    *user
+	UserAccount             *userAccount
+	UserDataset             *userDataset
+	UserModelDownload       *userModelDownload
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -69,6 +70,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	ModelDatasetDiscovery = &Q.ModelDatasetDiscovery
 	ModelDatasetSource = &Q.ModelDatasetSource
 	ModelDownload = &Q.ModelDownload
+	ModelDownloadSubmission = &Q.ModelDownloadSubmission
 	PrequeueConfig = &Q.PrequeueConfig
 	QueueQuotaLimit = &Q.QueueQuotaLimit
 	Resource = &Q.Resource
@@ -83,107 +85,110 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:                    db,
-		AITask:                newAITask(db, opts...),
-		Account:               newAccount(db, opts...),
-		AccountDataset:        newAccountDataset(db, opts...),
-		Alert:                 newAlert(db, opts...),
-		ApprovalOrder:         newApprovalOrder(db, opts...),
-		CronJobConfig:         newCronJobConfig(db, opts...),
-		CronJobRecord:         newCronJobRecord(db, opts...),
-		CudaBaseImage:         newCudaBaseImage(db, opts...),
-		Dataset:               newDataset(db, opts...),
-		GpuAnalysis:           newGpuAnalysis(db, opts...),
-		Image:                 newImage(db, opts...),
-		ImageAccount:          newImageAccount(db, opts...),
-		ImageUser:             newImageUser(db, opts...),
-		Job:                   newJob(db, opts...),
-		Jobtemplate:           newJobtemplate(db, opts...),
-		Kaniko:                newKaniko(db, opts...),
-		ModelDatasetDiscovery: newModelDatasetDiscovery(db, opts...),
-		ModelDatasetSource:    newModelDatasetSource(db, opts...),
-		ModelDownload:         newModelDownload(db, opts...),
-		PrequeueConfig:        newPrequeueConfig(db, opts...),
-		QueueQuotaLimit:       newQueueQuotaLimit(db, opts...),
-		Resource:              newResource(db, opts...),
-		ResourceNetwork:       newResourceNetwork(db, opts...),
-		ResourceVGPU:          newResourceVGPU(db, opts...),
-		SystemConfig:          newSystemConfig(db, opts...),
-		User:                  newUser(db, opts...),
-		UserAccount:           newUserAccount(db, opts...),
-		UserDataset:           newUserDataset(db, opts...),
-		UserModelDownload:     newUserModelDownload(db, opts...),
+		db:                      db,
+		AITask:                  newAITask(db, opts...),
+		Account:                 newAccount(db, opts...),
+		AccountDataset:          newAccountDataset(db, opts...),
+		Alert:                   newAlert(db, opts...),
+		ApprovalOrder:           newApprovalOrder(db, opts...),
+		CronJobConfig:           newCronJobConfig(db, opts...),
+		CronJobRecord:           newCronJobRecord(db, opts...),
+		CudaBaseImage:           newCudaBaseImage(db, opts...),
+		Dataset:                 newDataset(db, opts...),
+		GpuAnalysis:             newGpuAnalysis(db, opts...),
+		Image:                   newImage(db, opts...),
+		ImageAccount:            newImageAccount(db, opts...),
+		ImageUser:               newImageUser(db, opts...),
+		Job:                     newJob(db, opts...),
+		Jobtemplate:             newJobtemplate(db, opts...),
+		Kaniko:                  newKaniko(db, opts...),
+		ModelDatasetDiscovery:   newModelDatasetDiscovery(db, opts...),
+		ModelDatasetSource:      newModelDatasetSource(db, opts...),
+		ModelDownload:           newModelDownload(db, opts...),
+		ModelDownloadSubmission: newModelDownloadSubmission(db, opts...),
+		PrequeueConfig:          newPrequeueConfig(db, opts...),
+		QueueQuotaLimit:         newQueueQuotaLimit(db, opts...),
+		Resource:                newResource(db, opts...),
+		ResourceNetwork:         newResourceNetwork(db, opts...),
+		ResourceVGPU:            newResourceVGPU(db, opts...),
+		SystemConfig:            newSystemConfig(db, opts...),
+		User:                    newUser(db, opts...),
+		UserAccount:             newUserAccount(db, opts...),
+		UserDataset:             newUserDataset(db, opts...),
+		UserModelDownload:       newUserModelDownload(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	AITask                aITask
-	Account               account
-	AccountDataset        accountDataset
-	Alert                 alert
-	ApprovalOrder         approvalOrder
-	CronJobConfig         cronJobConfig
-	CronJobRecord         cronJobRecord
-	CudaBaseImage         cudaBaseImage
-	Dataset               dataset
-	GpuAnalysis           gpuAnalysis
-	Image                 image
-	ImageAccount          imageAccount
-	ImageUser             imageUser
-	Job                   job
-	Jobtemplate           jobtemplate
-	Kaniko                kaniko
-	ModelDatasetDiscovery modelDatasetDiscovery
-	ModelDatasetSource    modelDatasetSource
-	ModelDownload         modelDownload
-	PrequeueConfig        prequeueConfig
-	QueueQuotaLimit       queueQuotaLimit
-	Resource              resource
-	ResourceNetwork       resourceNetwork
-	ResourceVGPU          resourceVGPU
-	SystemConfig          systemConfig
-	User                  user
-	UserAccount           userAccount
-	UserDataset           userDataset
-	UserModelDownload     userModelDownload
+	AITask                  aITask
+	Account                 account
+	AccountDataset          accountDataset
+	Alert                   alert
+	ApprovalOrder           approvalOrder
+	CronJobConfig           cronJobConfig
+	CronJobRecord           cronJobRecord
+	CudaBaseImage           cudaBaseImage
+	Dataset                 dataset
+	GpuAnalysis             gpuAnalysis
+	Image                   image
+	ImageAccount            imageAccount
+	ImageUser               imageUser
+	Job                     job
+	Jobtemplate             jobtemplate
+	Kaniko                  kaniko
+	ModelDatasetDiscovery   modelDatasetDiscovery
+	ModelDatasetSource      modelDatasetSource
+	ModelDownload           modelDownload
+	ModelDownloadSubmission modelDownloadSubmission
+	PrequeueConfig          prequeueConfig
+	QueueQuotaLimit         queueQuotaLimit
+	Resource                resource
+	ResourceNetwork         resourceNetwork
+	ResourceVGPU            resourceVGPU
+	SystemConfig            systemConfig
+	User                    user
+	UserAccount             userAccount
+	UserDataset             userDataset
+	UserModelDownload       userModelDownload
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:                    db,
-		AITask:                q.AITask.clone(db),
-		Account:               q.Account.clone(db),
-		AccountDataset:        q.AccountDataset.clone(db),
-		Alert:                 q.Alert.clone(db),
-		ApprovalOrder:         q.ApprovalOrder.clone(db),
-		CronJobConfig:         q.CronJobConfig.clone(db),
-		CronJobRecord:         q.CronJobRecord.clone(db),
-		CudaBaseImage:         q.CudaBaseImage.clone(db),
-		Dataset:               q.Dataset.clone(db),
-		GpuAnalysis:           q.GpuAnalysis.clone(db),
-		Image:                 q.Image.clone(db),
-		ImageAccount:          q.ImageAccount.clone(db),
-		ImageUser:             q.ImageUser.clone(db),
-		Job:                   q.Job.clone(db),
-		Jobtemplate:           q.Jobtemplate.clone(db),
-		Kaniko:                q.Kaniko.clone(db),
-		ModelDatasetDiscovery: q.ModelDatasetDiscovery.clone(db),
-		ModelDatasetSource:    q.ModelDatasetSource.clone(db),
-		ModelDownload:         q.ModelDownload.clone(db),
-		PrequeueConfig:        q.PrequeueConfig.clone(db),
-		QueueQuotaLimit:       q.QueueQuotaLimit.clone(db),
-		Resource:              q.Resource.clone(db),
-		ResourceNetwork:       q.ResourceNetwork.clone(db),
-		ResourceVGPU:          q.ResourceVGPU.clone(db),
-		SystemConfig:          q.SystemConfig.clone(db),
-		User:                  q.User.clone(db),
-		UserAccount:           q.UserAccount.clone(db),
-		UserDataset:           q.UserDataset.clone(db),
-		UserModelDownload:     q.UserModelDownload.clone(db),
+		db:                      db,
+		AITask:                  q.AITask.clone(db),
+		Account:                 q.Account.clone(db),
+		AccountDataset:          q.AccountDataset.clone(db),
+		Alert:                   q.Alert.clone(db),
+		ApprovalOrder:           q.ApprovalOrder.clone(db),
+		CronJobConfig:           q.CronJobConfig.clone(db),
+		CronJobRecord:           q.CronJobRecord.clone(db),
+		CudaBaseImage:           q.CudaBaseImage.clone(db),
+		Dataset:                 q.Dataset.clone(db),
+		GpuAnalysis:             q.GpuAnalysis.clone(db),
+		Image:                   q.Image.clone(db),
+		ImageAccount:            q.ImageAccount.clone(db),
+		ImageUser:               q.ImageUser.clone(db),
+		Job:                     q.Job.clone(db),
+		Jobtemplate:             q.Jobtemplate.clone(db),
+		Kaniko:                  q.Kaniko.clone(db),
+		ModelDatasetDiscovery:   q.ModelDatasetDiscovery.clone(db),
+		ModelDatasetSource:      q.ModelDatasetSource.clone(db),
+		ModelDownload:           q.ModelDownload.clone(db),
+		ModelDownloadSubmission: q.ModelDownloadSubmission.clone(db),
+		PrequeueConfig:          q.PrequeueConfig.clone(db),
+		QueueQuotaLimit:         q.QueueQuotaLimit.clone(db),
+		Resource:                q.Resource.clone(db),
+		ResourceNetwork:         q.ResourceNetwork.clone(db),
+		ResourceVGPU:            q.ResourceVGPU.clone(db),
+		SystemConfig:            q.SystemConfig.clone(db),
+		User:                    q.User.clone(db),
+		UserAccount:             q.UserAccount.clone(db),
+		UserDataset:             q.UserDataset.clone(db),
+		UserModelDownload:       q.UserModelDownload.clone(db),
 	}
 }
 
@@ -197,102 +202,105 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:                    db,
-		AITask:                q.AITask.replaceDB(db),
-		Account:               q.Account.replaceDB(db),
-		AccountDataset:        q.AccountDataset.replaceDB(db),
-		Alert:                 q.Alert.replaceDB(db),
-		ApprovalOrder:         q.ApprovalOrder.replaceDB(db),
-		CronJobConfig:         q.CronJobConfig.replaceDB(db),
-		CronJobRecord:         q.CronJobRecord.replaceDB(db),
-		CudaBaseImage:         q.CudaBaseImage.replaceDB(db),
-		Dataset:               q.Dataset.replaceDB(db),
-		GpuAnalysis:           q.GpuAnalysis.replaceDB(db),
-		Image:                 q.Image.replaceDB(db),
-		ImageAccount:          q.ImageAccount.replaceDB(db),
-		ImageUser:             q.ImageUser.replaceDB(db),
-		Job:                   q.Job.replaceDB(db),
-		Jobtemplate:           q.Jobtemplate.replaceDB(db),
-		Kaniko:                q.Kaniko.replaceDB(db),
-		ModelDatasetDiscovery: q.ModelDatasetDiscovery.replaceDB(db),
-		ModelDatasetSource:    q.ModelDatasetSource.replaceDB(db),
-		ModelDownload:         q.ModelDownload.replaceDB(db),
-		PrequeueConfig:        q.PrequeueConfig.replaceDB(db),
-		QueueQuotaLimit:       q.QueueQuotaLimit.replaceDB(db),
-		Resource:              q.Resource.replaceDB(db),
-		ResourceNetwork:       q.ResourceNetwork.replaceDB(db),
-		ResourceVGPU:          q.ResourceVGPU.replaceDB(db),
-		SystemConfig:          q.SystemConfig.replaceDB(db),
-		User:                  q.User.replaceDB(db),
-		UserAccount:           q.UserAccount.replaceDB(db),
-		UserDataset:           q.UserDataset.replaceDB(db),
-		UserModelDownload:     q.UserModelDownload.replaceDB(db),
+		db:                      db,
+		AITask:                  q.AITask.replaceDB(db),
+		Account:                 q.Account.replaceDB(db),
+		AccountDataset:          q.AccountDataset.replaceDB(db),
+		Alert:                   q.Alert.replaceDB(db),
+		ApprovalOrder:           q.ApprovalOrder.replaceDB(db),
+		CronJobConfig:           q.CronJobConfig.replaceDB(db),
+		CronJobRecord:           q.CronJobRecord.replaceDB(db),
+		CudaBaseImage:           q.CudaBaseImage.replaceDB(db),
+		Dataset:                 q.Dataset.replaceDB(db),
+		GpuAnalysis:             q.GpuAnalysis.replaceDB(db),
+		Image:                   q.Image.replaceDB(db),
+		ImageAccount:            q.ImageAccount.replaceDB(db),
+		ImageUser:               q.ImageUser.replaceDB(db),
+		Job:                     q.Job.replaceDB(db),
+		Jobtemplate:             q.Jobtemplate.replaceDB(db),
+		Kaniko:                  q.Kaniko.replaceDB(db),
+		ModelDatasetDiscovery:   q.ModelDatasetDiscovery.replaceDB(db),
+		ModelDatasetSource:      q.ModelDatasetSource.replaceDB(db),
+		ModelDownload:           q.ModelDownload.replaceDB(db),
+		ModelDownloadSubmission: q.ModelDownloadSubmission.replaceDB(db),
+		PrequeueConfig:          q.PrequeueConfig.replaceDB(db),
+		QueueQuotaLimit:         q.QueueQuotaLimit.replaceDB(db),
+		Resource:                q.Resource.replaceDB(db),
+		ResourceNetwork:         q.ResourceNetwork.replaceDB(db),
+		ResourceVGPU:            q.ResourceVGPU.replaceDB(db),
+		SystemConfig:            q.SystemConfig.replaceDB(db),
+		User:                    q.User.replaceDB(db),
+		UserAccount:             q.UserAccount.replaceDB(db),
+		UserDataset:             q.UserDataset.replaceDB(db),
+		UserModelDownload:       q.UserModelDownload.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	AITask                IAITaskDo
-	Account               IAccountDo
-	AccountDataset        IAccountDatasetDo
-	Alert                 IAlertDo
-	ApprovalOrder         IApprovalOrderDo
-	CronJobConfig         ICronJobConfigDo
-	CronJobRecord         ICronJobRecordDo
-	CudaBaseImage         ICudaBaseImageDo
-	Dataset               IDatasetDo
-	GpuAnalysis           IGpuAnalysisDo
-	Image                 IImageDo
-	ImageAccount          IImageAccountDo
-	ImageUser             IImageUserDo
-	Job                   IJobDo
-	Jobtemplate           IJobtemplateDo
-	Kaniko                IKanikoDo
-	ModelDatasetDiscovery IModelDatasetDiscoveryDo
-	ModelDatasetSource    IModelDatasetSourceDo
-	ModelDownload         IModelDownloadDo
-	PrequeueConfig        IPrequeueConfigDo
-	QueueQuotaLimit       IQueueQuotaLimitDo
-	Resource              IResourceDo
-	ResourceNetwork       IResourceNetworkDo
-	ResourceVGPU          IResourceVGPUDo
-	SystemConfig          ISystemConfigDo
-	User                  IUserDo
-	UserAccount           IUserAccountDo
-	UserDataset           IUserDatasetDo
-	UserModelDownload     IUserModelDownloadDo
+	AITask                  IAITaskDo
+	Account                 IAccountDo
+	AccountDataset          IAccountDatasetDo
+	Alert                   IAlertDo
+	ApprovalOrder           IApprovalOrderDo
+	CronJobConfig           ICronJobConfigDo
+	CronJobRecord           ICronJobRecordDo
+	CudaBaseImage           ICudaBaseImageDo
+	Dataset                 IDatasetDo
+	GpuAnalysis             IGpuAnalysisDo
+	Image                   IImageDo
+	ImageAccount            IImageAccountDo
+	ImageUser               IImageUserDo
+	Job                     IJobDo
+	Jobtemplate             IJobtemplateDo
+	Kaniko                  IKanikoDo
+	ModelDatasetDiscovery   IModelDatasetDiscoveryDo
+	ModelDatasetSource      IModelDatasetSourceDo
+	ModelDownload           IModelDownloadDo
+	ModelDownloadSubmission IModelDownloadSubmissionDo
+	PrequeueConfig          IPrequeueConfigDo
+	QueueQuotaLimit         IQueueQuotaLimitDo
+	Resource                IResourceDo
+	ResourceNetwork         IResourceNetworkDo
+	ResourceVGPU            IResourceVGPUDo
+	SystemConfig            ISystemConfigDo
+	User                    IUserDo
+	UserAccount             IUserAccountDo
+	UserDataset             IUserDatasetDo
+	UserModelDownload       IUserModelDownloadDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		AITask:                q.AITask.WithContext(ctx),
-		Account:               q.Account.WithContext(ctx),
-		AccountDataset:        q.AccountDataset.WithContext(ctx),
-		Alert:                 q.Alert.WithContext(ctx),
-		ApprovalOrder:         q.ApprovalOrder.WithContext(ctx),
-		CronJobConfig:         q.CronJobConfig.WithContext(ctx),
-		CronJobRecord:         q.CronJobRecord.WithContext(ctx),
-		CudaBaseImage:         q.CudaBaseImage.WithContext(ctx),
-		Dataset:               q.Dataset.WithContext(ctx),
-		GpuAnalysis:           q.GpuAnalysis.WithContext(ctx),
-		Image:                 q.Image.WithContext(ctx),
-		ImageAccount:          q.ImageAccount.WithContext(ctx),
-		ImageUser:             q.ImageUser.WithContext(ctx),
-		Job:                   q.Job.WithContext(ctx),
-		Jobtemplate:           q.Jobtemplate.WithContext(ctx),
-		Kaniko:                q.Kaniko.WithContext(ctx),
-		ModelDatasetDiscovery: q.ModelDatasetDiscovery.WithContext(ctx),
-		ModelDatasetSource:    q.ModelDatasetSource.WithContext(ctx),
-		ModelDownload:         q.ModelDownload.WithContext(ctx),
-		PrequeueConfig:        q.PrequeueConfig.WithContext(ctx),
-		QueueQuotaLimit:       q.QueueQuotaLimit.WithContext(ctx),
-		Resource:              q.Resource.WithContext(ctx),
-		ResourceNetwork:       q.ResourceNetwork.WithContext(ctx),
-		ResourceVGPU:          q.ResourceVGPU.WithContext(ctx),
-		SystemConfig:          q.SystemConfig.WithContext(ctx),
-		User:                  q.User.WithContext(ctx),
-		UserAccount:           q.UserAccount.WithContext(ctx),
-		UserDataset:           q.UserDataset.WithContext(ctx),
-		UserModelDownload:     q.UserModelDownload.WithContext(ctx),
+		AITask:                  q.AITask.WithContext(ctx),
+		Account:                 q.Account.WithContext(ctx),
+		AccountDataset:          q.AccountDataset.WithContext(ctx),
+		Alert:                   q.Alert.WithContext(ctx),
+		ApprovalOrder:           q.ApprovalOrder.WithContext(ctx),
+		CronJobConfig:           q.CronJobConfig.WithContext(ctx),
+		CronJobRecord:           q.CronJobRecord.WithContext(ctx),
+		CudaBaseImage:           q.CudaBaseImage.WithContext(ctx),
+		Dataset:                 q.Dataset.WithContext(ctx),
+		GpuAnalysis:             q.GpuAnalysis.WithContext(ctx),
+		Image:                   q.Image.WithContext(ctx),
+		ImageAccount:            q.ImageAccount.WithContext(ctx),
+		ImageUser:               q.ImageUser.WithContext(ctx),
+		Job:                     q.Job.WithContext(ctx),
+		Jobtemplate:             q.Jobtemplate.WithContext(ctx),
+		Kaniko:                  q.Kaniko.WithContext(ctx),
+		ModelDatasetDiscovery:   q.ModelDatasetDiscovery.WithContext(ctx),
+		ModelDatasetSource:      q.ModelDatasetSource.WithContext(ctx),
+		ModelDownload:           q.ModelDownload.WithContext(ctx),
+		ModelDownloadSubmission: q.ModelDownloadSubmission.WithContext(ctx),
+		PrequeueConfig:          q.PrequeueConfig.WithContext(ctx),
+		QueueQuotaLimit:         q.QueueQuotaLimit.WithContext(ctx),
+		Resource:                q.Resource.WithContext(ctx),
+		ResourceNetwork:         q.ResourceNetwork.WithContext(ctx),
+		ResourceVGPU:            q.ResourceVGPU.WithContext(ctx),
+		SystemConfig:            q.SystemConfig.WithContext(ctx),
+		User:                    q.User.WithContext(ctx),
+		UserAccount:             q.UserAccount.WithContext(ctx),
+		UserDataset:             q.UserDataset.WithContext(ctx),
+		UserModelDownload:       q.UserModelDownload.WithContext(ctx),
 	}
 }
 

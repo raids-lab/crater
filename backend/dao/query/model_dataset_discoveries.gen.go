@@ -59,7 +59,7 @@ type modelDatasetDiscovery struct {
 	CreatedAt    field.Time
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
-	DiscoveryKey field.String // 稳定发现键(path:或dataset:)
+	DiscoveryKey field.String // 稳定发现键
 	Path         field.String // 文件系统路径,允许为空
 	Scope        field.String
 	ScopeID      field.Uint // 用户或队列ID

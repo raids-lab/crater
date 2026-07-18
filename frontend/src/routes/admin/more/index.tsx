@@ -75,7 +75,12 @@ function RouteComponent() {
     queryFn: () => apiAdminGetPrequeueConfig().then((res) => res.data),
   })
 
-  const { data: modelDownloadLimitConfig } = useQuery({
+  const {
+    data: modelDownloadLimitConfig,
+    isLoading: isModelDownloadLimitLoading,
+    isError: isModelDownloadLimitError,
+    refetch: refetchModelDownloadLimit,
+  } = useQuery({
     queryKey: ['admin', 'system-config', 'model-download-limit'],
     queryFn: () => apiAdminGetModelDownloadLimitConfig().then((res) => res.data),
   })
@@ -357,7 +362,10 @@ function RouteComponent() {
         <ModelDownloadLimitSettings
           config={modelDownloadLimitConfig}
           isPending={updateModelDownloadLimitMutation.isPending}
-          onSubmit={(config) => updateModelDownloadLimitMutation.mutate(config)}
+          isLoading={isModelDownloadLimitLoading}
+          isError={isModelDownloadLimitError}
+          onRetry={() => void refetchModelDownloadLimit()}
+          onSubmit={(config) => updateModelDownloadLimitMutation.mutateAsync(config)}
         />
       </Card>
 

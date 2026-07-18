@@ -46,6 +46,7 @@ func main() {
 		model.CronJobRecord{},
 		model.CronJobConfig{},
 		model.ModelDownload{},
+		model.ModelDownloadSubmission{},
 		model.ModelDatasetDiscovery{},
 		model.UserModelDownload{},
 		model.GpuAnalysis{},

@@ -12314,6 +12314,10 @@ const docTemplate = `{
                 "path": {
                     "type": "string"
                 },
+                "referenceCount": {
+                    "description": "Deprecated: use requesterCount.",
+                    "type": "integer"
+                },
                 "relation": {
                     "type": "string"
                 },
