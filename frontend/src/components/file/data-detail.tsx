@@ -23,6 +23,7 @@ import {
   BarChart3Icon,
   BookOpenTextIcon,
   CalendarIcon,
+  CopyIcon,
   CpuIcon,
   DatabaseIcon,
   DownloadIcon,
@@ -44,7 +45,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -62,9 +63,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 
+import { getFolderTitle } from '@/components/file/lazy-file-tree'
 import ShareWithAccounts from '@/components/file/unselected-accounts'
 import ShareWithUsers from '@/components/file/unselected-users'
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
+import { NavBreadcrumb } from '@/components/layout/app-breadcrumb'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import RepositorySourceMark from '@/components/model/repository-source-mark'
 import { DataTable } from '@/components/query-table'
@@ -170,6 +173,33 @@ export function SharedResourceTable({
   })
   const queryClient = useQueryClient()
   const [pathname, setPathname] = useState<string>('')
+  const baseStoragePath = data?.url?.replace(/\/+$/, '') ?? ''
+  useEffect(() => {
+    setPathname('')
+  }, [activeTab, datasetId, data?.url])
+  const currentStoragePath = useMemo(() => {
+    const relativePath = pathname.replace(/^\/+/, '')
+    return relativePath ? `${baseStoragePath}/${relativePath}` : baseStoragePath
+  }, [baseStoragePath, pathname])
+  const storageBreadcrumbs = useMemo(() => {
+    const pathParts = currentStoragePath.split('/').filter(Boolean)
+    return [
+      {
+        label: t('navigation.fileManagement'),
+        href: isAdminMode ? '/admin/files' : '/portal/files',
+      },
+      ...pathParts.map((part, index) => {
+        let targetPath = pathParts.slice(0, index + 1).join('/')
+        if (isAdminMode) {
+          targetPath = targetPath.replace(/^(public|account|user)(?=\/|$)/, 'admin-$1')
+        }
+        return {
+          label: index === 0 ? getFolderTitle(t, part) : part,
+          href: `${isAdminMode ? '/admin/files' : '/portal/files'}/${targetPath}`,
+        }
+      }),
+    ]
+  }, [currentStoragePath, isAdminMode, t])
 
   const handleBackClick = () => {
     if (pathname) {
@@ -185,9 +215,33 @@ export function SharedResourceTable({
     }
   }
 
+  const handleCopyStoragePath = () => {
+    if (!currentStoragePath) return
+    void navigator.clipboard
+      .writeText(currentStoragePath)
+      .then(() => toast.success(t('modelDownload.pathCopied')))
+      .catch(() => toast.error(t('sharedResource.pathCopyFailed')))
+  }
+
   const queryDataset = useQuery({
     queryKey: ['datasetfiles', pathname, datasetId],
-    queryFn: () => apiGetDatasetFiles(datasetId, pathname),
+    queryFn: async () => {
+      const response = await apiGetDatasetFiles(datasetId, pathname)
+
+      // Older storage-server versions return the resource directory itself for
+      // a root request, then list its contents only after the same directory
+      // name is appended to the URL. Keep compatibility with those deployments
+      // without exposing a duplicated breadcrumb to users.
+      if (pathname === '') {
+        const rootName = baseStoragePath.split('/').filter(Boolean).at(-1)
+        const [onlyEntry] = response.data ?? []
+        if (response.data?.length === 1 && onlyEntry?.isdir && onlyEntry.name === rootName) {
+          return apiGetDatasetFiles(datasetId, `/${rootName}`)
+        }
+      }
+
+      return response
+    },
     select: (res) => {
       return (
         res.data
@@ -683,8 +737,8 @@ export function SharedResourceTable({
           icon: FileIcon,
           label: t('sharedResource.datasetInfo', { type: dataTypeLabel }),
           children: (
-            <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-              <Card className="overflow-hidden">
+            <div className="grid h-full min-h-0 items-start gap-4 overflow-y-auto lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:overflow-hidden">
+              <Card className="min-w-0 overflow-hidden lg:flex lg:h-full lg:min-h-0 lg:flex-col">
                 <CardHeader className="from-primary/5 border-b bg-gradient-to-br to-transparent">
                   <CardTitle className="flex items-center text-xl">
                     <BookOpenTextIcon className="text-primary mr-2 h-5 w-5" />
@@ -696,12 +750,8 @@ export function SharedResourceTable({
                     </CardDescription>
                   )}
                 </CardHeader>
-                {data?.readme && (
-                  <CardContent className="max-h-[70vh] overflow-y-auto pt-6">
-                    <MarkdownRenderer>{data.readme}</MarkdownRenderer>
-                  </CardContent>
-                )}
-                <CardContent className="flex flex-col gap-4 pt-5">
+                <CardContent className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto pt-6 lg:max-h-none lg:min-h-0 lg:flex-1">
+                  {data?.readme && <MarkdownRenderer>{data.readme}</MarkdownRenderer>}
                   {!!data?.extra.tag?.length && (
                     <div>
                       <div className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-medium">
@@ -779,7 +829,7 @@ export function SharedResourceTable({
               )}
             </div>
           ),
-          scrollable: true,
+          scrollable: false,
         },
         {
           key: 'usershare',
@@ -813,15 +863,33 @@ export function SharedResourceTable({
           label: t('sharedResource.datasetFiles', { type: dataTypeLabel }),
           children: (
             <>
-              <TooltipButton
-                variant="outline"
-                size="icon"
-                onClick={handleBackClick}
-                className="mb-2 h-8 w-8"
-                tooltipContent={t('sharedResource.goBack')}
-              >
-                <ArrowLeftIcon className="size-4" />
-              </TooltipButton>
+              <div className="bg-muted/30 mb-2 flex min-w-0 items-center gap-2 rounded-md border p-1">
+                <TooltipButton
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleBackClick}
+                  disabled={!pathname}
+                  className="h-8 w-8 shrink-0"
+                  tooltipContent={t('sharedResource.goBack')}
+                >
+                  <ArrowLeftIcon className="size-4" />
+                </TooltipButton>
+                <NavBreadcrumb
+                  className="min-w-0 flex-1 overflow-hidden px-1"
+                  listClassName="flex-nowrap overflow-hidden font-mono"
+                  items={storageBreadcrumbs}
+                />
+                <TooltipButton
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopyStoragePath}
+                  disabled={!currentStoragePath}
+                  className="h-8 w-8 shrink-0"
+                  tooltipContent={t('modelDownload.copyPath')}
+                >
+                  <CopyIcon className="size-4" />
+                </TooltipButton>
+              </div>
               <DataTable
                 storageKey="dataset_files"
                 query={queryDataset}

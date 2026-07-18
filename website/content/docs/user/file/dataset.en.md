@@ -8,7 +8,7 @@ icon: HomeIcon
 
 ## What is a Dataset
 
-A dataset is essentially a link that points to a specific file location, making it more convenient to mount and share. The warehouse address function currently cannot directly download from open-source communities; it mainly provides a specific description for easier sharing. If you need to download from open-source communities, you can refer to the job template for downloading models and datasets from the ModelScope community, or download them locally and upload them to the platform. For uploading large files, refer to the file system section.
+A dataset is a read-only resource that points to a location in shared storage, making it easy to mount and share. Crater can download datasets directly from ModelScope or HuggingFace, or register a directory that has already been uploaded to the file system.
 
 ## Difference between Dataset/Model and Shared Files
 
@@ -20,7 +20,19 @@ Under `Data Management - Dataset`, you can view datasets. The datasets displayed
 
 ![dataset](./img/dataset.webp)
 
-Each dataset has some basic description. On the right, there are four buttons: delete, personal share, account share, and rename. These operations can only be used by the dataset creator.
+Each dataset shows its metadata and available actions. Open the dataset's **Files** tab to browse files and copy the logical shared-storage path that jobs can mount; cluster-specific physical directory prefixes are not shown. Historical downloads may still use a longer path containing the source and revision. Crater does not move those directories automatically because existing jobs may depend on them.
+
+## Download a Dataset from a Repository
+
+Select **Download dataset**, then enter the source, repository ID, revision, and an optional access token. New downloads use the canonical path:
+
+```text
+public/Datasets/<owner>/<repository>
+```
+
+Crater keeps one public resource for each repository ID. It reuses any existing Ready, pending, downloading, or paused record and its actual path, and associates each requesting user once. The reference count is the number of associated users. If the existing record has failed, retry or resolve it before requesting another source or revision.
+
+After a failed download, partial files remain in the original directory so retrying the same record can continue there. Only a record in Ready state represents a complete, usable dataset. Deleting a download task removes the task record but does not remove its stored files. Ask an administrator to clean up a failed directory only after confirming that no retry, mount, or user depends on it.
 
 ## How to Create a Dataset
 

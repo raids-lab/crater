@@ -55,3 +55,40 @@ func TestGetFirstToken(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveDatasetStoragePath(t *testing.T) {
+	t.Parallel()
+
+	const base = "sugon-gpu-incoming/Models/Qwen/Qwen3-32B"
+	tests := []struct {
+		name      string
+		relative  string
+		want      string
+		wantError bool
+	}{
+		{name: "resource root", relative: "", want: base},
+		{name: "one level", relative: "/figures", want: base + "/figures"},
+		{name: "nested", relative: "/figures/examples", want: base + "/figures/examples"},
+		{name: "normalize", relative: "/figures/../config", want: base + "/config"},
+		{name: "reject traversal", relative: "/../../other-model", wantError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := resolveDatasetStoragePath(base, tt.relative)
+			if tt.wantError {
+				if err == nil {
+					t.Fatalf("resolveDatasetStoragePath(%q, %q) accepted traversal", base, tt.relative)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("resolveDatasetStoragePath(%q, %q) error = %v", base, tt.relative, err)
+			}
+			if got != tt.want {
+				t.Fatalf("resolveDatasetStoragePath(%q, %q) = %q, want %q", base, tt.relative, got, tt.want)
+			}
+		})
+	}
+}

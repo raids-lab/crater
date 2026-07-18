@@ -58,8 +58,8 @@ type userAccount struct {
 	Role                       field.Uint8 // 用户在账户中的角色 (user, admin)
 	AccessMode                 field.Uint8 // 用户在账户空间的访问模式 (na, ro, rw)
 	Quota                      field.Field // 用户在账户中的资源配额
-	BillingIssueAmountOverride field.Int64 // 用户在账户内的周期发放额度覆盖(为空表示沿用账户配置)
-	PeriodFreeBalance          field.Int64 // 用户在当前周期的免费额度剩余
+	BillingIssueAmountOverride field.Int64 // 用户在账户内的周期发放额度覆盖(内部微点, 为空表示沿用账户配置)
+	PeriodFreeBalance          field.Int64 // 用户在当前周期的免费额度剩余(内部微点)
 
 	fieldMap map[string]field.Expr
 }

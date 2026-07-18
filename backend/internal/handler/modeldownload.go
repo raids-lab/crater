@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -96,6 +95,9 @@ type CreateDownloadReq struct {
 
 type DownloadActionReq struct {
 	Token string `json:"token"`
+	// Revision is optional and only used by retry. A non-nil empty value means
+	// "use the source default branch" while preserving the failed record's path.
+	Revision *string `json:"revision"`
 }
 
 type ModelDownloadResp struct {
@@ -118,6 +120,7 @@ type ModelDownloadResp struct {
 	SourceUpdatedAt *time.Time     `json:"sourceUpdatedAt"`
 	UserInfo        model.UserInfo `json:"userInfo"`
 	CanManage       bool           `json:"canManage"`
+	CanDelete       bool           `json:"canDelete"`
 	CanViewLogs     bool           `json:"canViewLogs"`
 	SourceURL       string         `json:"sourceUrl"`
 	DisplayName     string         `json:"displayName"`
@@ -239,28 +242,88 @@ func (mgr *ModelDownloadMgr) associateUserWithDownload(
 	return nil
 }
 
-// findReadyOrOngoingDownload 查找已完成或正在进行的下载
+// findReadyOrOngoingDownload only reuses a download with the exact requested
+// upstream identity. The canonical storage path is shared by all variants, so
+// a different source or revision must be reported as a conflict instead of
+// silently satisfying the request with unrelated files.
 func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 	c *gin.Context, txQ *query.Query,
 	name string, source model.ModelSource, category model.DownloadCategory, revision string,
-) *model.ModelDownload {
+) (*model.ModelDownload, error) {
 	q := txQ.ModelDownload
 
-	// 查询下载成功的记录
-	existingDownload, _ := q.WithContext(c).
-		Where(q.Name.Eq(name), q.Source.Eq(string(source)),
-			q.Category.Eq(string(category)), q.Revision.Eq(revision),
-			q.Status.Eq(string(model.ModelDownloadStatusReady))).First()
-	if existingDownload != nil {
-		return existingDownload
+	readyDownload, err := q.WithContext(c).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
+			q.Revision.Eq(revision),
+			q.Status.Eq(string(model.ModelDownloadStatusReady))).
+		First()
+	if err == nil {
+		return readyDownload, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ready logical download")
 	}
 
-	// 查询正在进行的下载
-	ongoingDownload, _ := q.WithContext(c).
+	ongoingDownload, err := q.WithContext(c).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
-			q.Revision.Eq(revision), q.Status.In(string(model.ModelDownloadStatusPending),
-				string(model.ModelDownloadStatusDownloading))).First()
-	return ongoingDownload
+			q.Revision.Eq(revision),
+			q.Status.In(string(model.ModelDownloadStatusPending), string(model.ModelDownloadStatusDownloading),
+				string(model.ModelDownloadStatusPaused))).
+		First()
+	if err == nil {
+		return ongoingDownload, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ongoing logical download")
+	}
+	return nil, nil
+}
+
+// lockModelDownloadIdentity serializes first-time downloads whose current
+// database uniqueness still differs by source and revision. Existing
+// installations may contain more than one historical record, so changing the
+// unique index in place would make upgrades fail; a PostgreSQL transaction
+// advisory lock prevents two new variants from racing into the same short path.
+func lockModelDownloadIdentity(
+	c *gin.Context, txQ *query.Query, name string, category model.DownloadCategory,
+) error {
+	db := txQ.ModelDownload.WithContext(c).UnderlyingDB()
+	if db.Name() != "postgres" {
+		return nil
+	}
+	identity := string(category) + ":" + name
+	if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", identity).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "lock logical download identity")
+	}
+	return nil
+}
+
+// checkLogicalDownloadConflict blocks a new source/revision when a historical
+// failed or soft-deleted record already owns storage for the same public model.
+// Ready and ongoing records are handled earlier and reused instead.
+func checkLogicalDownloadConflict(
+	c *gin.Context, txQ *query.Query,
+	name string, source model.ModelSource, category model.DownloadCategory, revision string,
+) error {
+	var conflict model.ModelDownload
+	db := txQ.ModelDownload.WithContext(c).Unscoped().UnderlyingDB()
+	err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("name = ? AND category = ? AND NOT (source = ? AND revision = ?)",
+			name, category, source, revision).
+		Order("id ASC").
+		First(&conflict).Error
+	if err == nil {
+		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf(
+			"model already has storage at %s from %s revision %q; reuse or resolve that record before downloading another source or revision",
+			conflict.Path, conflict.Source, conflict.Revision,
+		))
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "check logical download conflict")
+	}
+	return nil
 }
 
 // restoreAndResetSoftDeletedDownload 恢复并重置软删除的下载记录
@@ -351,14 +414,27 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 	var isNewDownload bool
 
 	err := db.Transaction(func(tx *query.Query) error {
+		if err := lockModelDownloadIdentity(c, tx, req.Name, category); err != nil {
+			return err
+		}
+
 		// 1. 查找已完成或正在进行的下载
-		existing := mgr.findReadyOrOngoingDownload(c, tx, req.Name, source, category, revision)
+		existing, err := mgr.findReadyOrOngoingDownload(
+			c, tx, req.Name, source, category, revision,
+		)
+		if err != nil {
+			return err
+		}
 		if existing != nil {
 			if err := mgr.associateUserWithDownload(c, tx, token.UserID, existing.ID); err != nil {
 				return err
 			}
 			download, isNewDownload = existing, false
 			return nil
+		}
+
+		if err := checkLogicalDownloadConflict(c, tx, req.Name, source, category, revision); err != nil {
+			return err
 		}
 
 		// 2. 查找并恢复软删除的记录
@@ -370,7 +446,7 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 			if err := mgr.associateUserWithDownload(c, tx, token.UserID, restored.ID); err != nil {
 				return err
 			}
-			download, isNewDownload = restored, true
+			download, isNewDownload = restored, shouldSubmitRestoredDownload(restored)
 			return nil
 		}
 
@@ -407,6 +483,10 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 	})
 
 	return download, isNewDownload, err
+}
+
+func shouldSubmitRestoredDownload(download *model.ModelDownload) bool {
+	return download.Status != model.ModelDownloadStatusReady
 }
 
 // @Summary		创建模型下载任务
@@ -459,13 +539,13 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	} else {
 		basePath = "public/Datasets"
 	}
-	downloadPath := modelDownloadStoragePath(basePath, safeName, source, req.Revision)
+	downloadPath := modelDownloadStoragePath(basePath, safeName)
 
 	// 在事务中获取或创建下载任务
 	download, isNewDownload, err := mgr.getOrCreateDownload(c, &req, token, source, category, downloadPath, req.Revision)
 	if err != nil {
 		klog.Errorf("get or create download failed: %v", err)
-		resputil.Error(c, "处理下载请求失败", resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -694,7 +774,7 @@ func (mgr *ModelDownloadMgr) requireManagePermission(c *gin.Context, downloadID 
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	path		int	true	"下载任务ID"
-//	@Param			data	body		DownloadActionReq	false	"可选的临时访问令牌"
+//	@Param			data	body		DownloadActionReq	false	"可选的临时访问令牌和重试版本"
 //	@Success		200	{object}	resputil.Response[ModelDownloadResp]
 //	@Router			/v1/models/downloads/{id}/retry [POST]
 func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
@@ -712,64 +792,24 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	if err := normalizeRetryRevision(&action); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 
 	if _, err := mgr.requireManagePermission(c, req.ID); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	q := query.ModelDownload
-
-	// 使用事务和行锁来防止并发重试导致的竞态条件
-	db := query.Use(query.GetDB())
-	var download *model.ModelDownload
-	var newJobName string
-
-	err = db.Transaction(func(tx *query.Query) error {
-		txQ := tx.ModelDownload
-
-		// 使用 FOR UPDATE 锁定记录
-		d, err := txQ.WithContext(c).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where(txQ.ID.Eq(req.ID)).
-			First()
-		if err != nil {
-			return fmt.Errorf("download not found: %w", err)
-		}
-
-		// 再次检查状态（可能被其他请求修改了）
-		if d.Status != model.ModelDownloadStatusFailed {
-			return fmt.Errorf("only failed downloads can be retried, current status: %s", d.Status)
-		}
-
-		// 生成新的 Job 名称并更新
-		newJobName = fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
-		updates := map[string]any{
-			"status":   model.ModelDownloadStatusDownloading,
-			"message":  "",
-			"job_name": newJobName,
-		}
-		_, err = txQ.WithContext(c).Where(txQ.ID.Eq(d.ID)).Updates(updates)
-		if err != nil {
-			return fmt.Errorf("update download record failed: %w", err)
-		}
-
-		d.Status = model.ModelDownloadStatusDownloading
-		d.JobName = newJobName
-		d.Message = ""
-		download = d
-		return nil
-	})
+	download, err := prepareRetryDownload(c, req.ID, token.Username, action.Revision)
 
 	if err != nil {
 		klog.Errorf("retry download transaction failed: %v", err)
-		if strings.Contains(err.Error(), "only failed downloads") {
-			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New(err.Error()))
-		} else {
-			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "retry download failed"))
-		}
+		resputil.HandleError(c, err)
 		return
 	}
+	q := query.ModelDownload
 
 	// 事务成功后提交 Job
 	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
@@ -790,10 +830,102 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 	resputil.Success(c, convertDownloadToResp(download, token))
 }
 
+func normalizeRetryRevision(action *DownloadActionReq) error {
+	if action.Revision == nil {
+		return nil
+	}
+	revision := strings.TrimSpace(*action.Revision)
+	if len(revision) > maxDownloadRevisionLength {
+		return bizerr.BadRequest.ParameterError.New("revision must not exceed 128 characters")
+	}
+	action.Revision = &revision
+	return nil
+}
+
+// prepareRetryDownload updates the failed record under a row lock. Correcting
+// the revision deliberately does not rewrite Path: the source SDK receives the
+// same local directory and can validate/reuse files from the failed attempt.
+func prepareRetryDownload(
+	c *gin.Context, downloadID uint, username string, revision *string,
+) (*model.ModelDownload, error) {
+	db := query.Use(query.GetDB())
+	var download *model.ModelDownload
+	err := db.Transaction(func(tx *query.Query) error {
+		txQ := tx.ModelDownload
+		d, err := txQ.WithContext(c).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(txQ.ID.Eq(downloadID)).
+			First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if d.Status != model.ModelDownloadStatusFailed {
+			return bizerr.Conflict.ResourceStatusError.New(
+				fmt.Sprintf("only failed downloads can be retried, current status: %s", d.Status),
+			)
+		}
+		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
+			return err
+		}
+
+		newJobName := fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
+		updates := map[string]any{
+			"status": model.ModelDownloadStatusDownloading, "message": "", "job_name": newJobName,
+		}
+		if revision != nil {
+			updates["revision"] = *revision
+		}
+		if _, err = txQ.WithContext(c).Where(txQ.ID.Eq(d.ID)).Updates(updates); err != nil {
+			return retryUpdateError(err)
+		}
+
+		d.Status, d.JobName, d.Message = model.ModelDownloadStatusDownloading, newJobName, ""
+		if revision != nil {
+			d.Revision = *revision
+		}
+		download = d
+		return nil
+	})
+	return download, err
+}
+
+func checkRetryRevisionConflict(
+	c *gin.Context, txQ *query.Query, download *model.ModelDownload, revision *string,
+) error {
+	if revision == nil || *revision == download.Revision {
+		return nil
+	}
+	conflict, err := txQ.ModelDownload.WithContext(c).Unscoped().
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(txQ.ModelDownload.ID.Neq(download.ID), txQ.ModelDownload.Name.Eq(download.Name),
+			txQ.ModelDownload.Source.Eq(string(download.Source)),
+			txQ.ModelDownload.Category.Eq(string(download.Category)),
+			txQ.ModelDownload.Revision.Eq(*revision)).
+		First()
+	if err == nil && conflict != nil {
+		return bizerr.Conflict.ResourceStatusError.New("download with requested revision already exists")
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "check retry revision conflict")
+	}
+	return nil
+}
+
+func retryUpdateError(err error) error {
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return bizerr.Conflict.ResourceStatusError.New("download with requested revision already exists")
+	}
+	var sqlStateError interface{ SQLState() string }
+	if errors.As(err, &sqlStateError) && sqlStateError.SQLState() == "23505" {
+		return bizerr.Conflict.ResourceStatusError.New("download with requested revision already exists")
+	}
+	return bizerr.Internal.DatabaseError.Wrap(err, "update download record failed")
+}
+
 // DeleteDownload godoc
 //
 //	@Summary		删除模型下载任务
-//	@Description	删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
+//	@Description	删除下载任务记录(仅平台管理员),已下载的文件保留在存储中
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
@@ -802,6 +934,11 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 //	@Success		200	{object}	resputil.Response[string]
 //	@Router			/v1/models/downloads/{id} [DELETE]
 func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
+	token := util.GetToken(c)
+	if !canDeleteDownload(token) {
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("only a platform administrator can delete download records"))
+		return
+	}
 	var req struct {
 		ID uint `uri:"id" binding:"required"`
 	}
@@ -810,9 +947,10 @@ func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid download id"))
 		return
 	}
-	download, err := mgr.requireManagePermission(c, req.ID)
+	q := query.ModelDownload
+	download, err := q.WithContext(c).Where(q.ID.Eq(req.ID)).First()
 	if err != nil {
-		resputil.HandleError(c, err)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found"))
 		return
 	}
 
@@ -833,6 +971,10 @@ func (mgr *ModelDownloadMgr) DeleteDownload(c *gin.Context) {
 
 	klog.Infof("Download record %d deleted, files preserved at: %s", req.ID, download.Path)
 	resputil.Success(c, "deleted successfully")
+}
+
+func canDeleteDownload(token util.JWTMessage) bool {
+	return token.RolePlatform == model.RoleAdmin
 }
 
 // PauseDownload godoc
@@ -1056,6 +1198,13 @@ func (mgr *ModelDownloadMgr) AdminDeleteDownload(c *gin.Context) {
 // a couple of times before being marked Failed.
 const downloadJobBackoffLimit int32 = 2
 
+const (
+	defaultModelDownloaderImage = "ghcr.io/raids-lab/crater-model-downloader:v1.0.0"
+	huggingFaceHubVersion       = "1.23.0"
+	modelScopeVersion           = "1.38.1"
+	modelScopeHubVersion        = "0.1.7"
+)
+
 func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.ModelDownload, username, accessToken string) error {
 	physicalPath := mgr.convertToPhysicalPath(download.Path)
 	subPath := filepath.Dir(physicalPath)
@@ -1087,7 +1236,8 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 					},
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:    corev1.RestartPolicyNever,
+					ImagePullSecrets: downloadImagePullSecrets(config.GetConfig().Secrets.ImagePullSecretName),
 					Containers: []corev1.Container{
 						{
 							Name:    "downloader",
@@ -1132,6 +1282,17 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 	// 提交 Job 到集群
 	_, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Create(c, job, metav1.CreateOptions{})
 	return err
+}
+
+// downloadImagePullSecrets keeps the public-image path credential-free while
+// allowing deployments to use a private, internally mirrored downloader image.
+// The secret itself remains an administrator-owned deployment setting; download
+// requests never accept or persist registry credentials.
+func downloadImagePullSecrets(secretName string) []corev1.LocalObjectReference {
+	if secretName == "" {
+		return nil
+	}
+	return []corev1.LocalObjectReference{{Name: secretName}}
 }
 
 // downloadTokenEnv injects the access token for the given source as the env var
@@ -1198,22 +1359,27 @@ func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 	if img := config.GetConfig().ModelDownload.Image; img != "" {
 		return img
 	}
-	// 使用官方 Python 镜像作为默认值
-	// 本地部署可通过配置文件指定内网镜像
-	return "python:3.11-slim"
+	// The public default is reproducible and can be mirrored or overridden by each deployment.
+	return defaultModelDownloaderImage
 }
 
 func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload, modelDirName string) string {
-	// 清华源配置
-	pypiMirror := "https://pypi.tuna.tsinghua.edu.cn/simple"
-	trustedHost := "--trusted-host pypi.tuna.tsinghua.edu.cn"
-
-	var installCmd, downloadCommand, totalProbeCmd, metadataCmd string
+	var installCmd, preflightCmd, downloadCommand, totalProbeCmd, metadataCmd string
+	huggingFaceEndpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
+	disableXetCmd := ""
+	if shouldDisableHuggingFaceXet(download.Source, huggingFaceEndpoint) {
+		disableXetCmd = "export HF_HUB_DISABLE_XET=1"
+	}
 	if download.Source == model.ModelSourceHuggingFace {
-		// 1. 安装 huggingface_hub
+		// The project image already contains this dependency. The fallback preserves
+		// compatibility with existing custom Python images used by open-source deployments.
 		installCmd = fmt.Sprintf(
-			"pip install -U 'huggingface_hub>=0.23.0' -i %s %s",
-			pypiMirror, trustedHost,
+			`if ! python -c 'import huggingface_hub' >/dev/null 2>&1; then
+    echo "huggingface_hub is missing; installing the tested fallback version"
+    pip install --no-cache-dir 'huggingface_hub==%s'
+fi
+python -c 'import huggingface_hub; print("[TOOLS] huggingface_hub=" + huggingface_hub.__version__)'`,
+			huggingFaceHubVersion,
 		)
 
 		// 2. 用 Python API snapshot_download，而不是 huggingface-cli
@@ -1268,6 +1434,7 @@ PY
 echo "Reading repository metadata..."
 python - << 'PY' || true
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -1285,8 +1452,10 @@ parameter_count = safetensors.get("total", 0) if isinstance(safetensors, dict) e
 owner = %q.split("/", 1)[0]
 avatar_url = ""
 for owner_type in ("organizations", "users"):
-    endpoint = "https://huggingface.co/api/{}/{}/overview".format(
-        owner_type, urllib.parse.quote(owner, safe="")
+    endpoint = "{}/api/{}/{}/overview".format(
+        os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/"),
+        owner_type,
+        urllib.parse.quote(owner, safe=""),
     )
     try:
         with urllib.request.urlopen(endpoint, timeout=10) as response:
@@ -1316,13 +1485,71 @@ print("[META] " + json.dumps({
 PY
 `, download.Name, repoType, download.Revision, download.Name, download.Name)
 	} else {
-		// Install the ModelScope CLI, then invoke it through an argument array so
-		// user-provided revisions never pass through shell parsing.
+		// The project image already contains these dependencies. The fallback keeps
+		// user-supplied Python images working while avoiding an unpinned installation.
 		installCmd = fmt.Sprintf(
-			"pip install -q modelscope -i %s %s",
-			pypiMirror, trustedHost,
+			`if ! python -c 'import modelscope, modelscope_hub' >/dev/null 2>&1; then
+    echo "ModelScope clients are missing; installing the tested fallback versions"
+    pip install --no-cache-dir 'modelscope==%s' 'modelscope-hub==%s'
+fi
+python - << 'PY'
+import modelscope
+import modelscope_hub
+print("[TOOLS] modelscope={} modelscope_hub={}".format(modelscope.__version__, modelscope_hub.__version__))
+PY`,
+			modelScopeVersion, modelScopeHubVersion,
 		)
 
+		// Validate an explicit revision before downloading. ModelScope's legacy file
+		// API currently returns Files=null for an unknown branch, which otherwise
+		// surfaces as an opaque "NoneType is not iterable" client error.
+		resourcePath := "models"
+		if download.Category == model.DownloadCategoryDataset {
+			resourcePath = "datasets"
+		}
+		preflightCmd = fmt.Sprintf(`
+echo "Validating ModelScope revision..."
+python - << 'PY'
+import json
+import os
+import sys
+import urllib.parse
+import urllib.request
+
+repo_id = %q
+revision = %q
+resource_path = %q
+if revision:
+    endpoint = os.environ.get("MODELSCOPE_ENDPOINT", "https://modelscope.cn").rstrip("/")
+    url = endpoint + "/api/v1/{}/{}/revisions".format(
+        resource_path, urllib.parse.quote(repo_id, safe="/"))
+    request = urllib.request.Request(url)
+    token = os.environ.get("MODELSCOPE_API_TOKEN", "")
+    if token:
+        request.add_header("Authorization", "Bearer " + token)
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            payload = json.load(response)
+        revision_map = (payload.get("Data") or payload.get("data") or {}).get("RevisionMap") or {}
+        entries = (revision_map.get("Branches") or []) + (revision_map.get("Tags") or [])
+        available = sorted({entry.get("Revision") for entry in entries if entry.get("Revision")})
+    except Exception as error:
+        print("[WARN] revision validation unavailable: {}".format(error), flush=True)
+    else:
+        if available and revision not in available:
+            print(
+                "[ERROR] revision_not_found: {!r} is not available for {}; available revisions: {}".format(
+                    revision, repo_id, ", ".join(available)
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
+            raise SystemExit(22)
+PY
+`, download.Name, download.Revision, resourcePath)
+
+		// Invoke the CLI through an argument array so
+		// user-provided revisions never pass through shell parsing.
 		var resourceFlag string
 		if download.Category == model.DownloadCategoryDataset {
 			resourceFlag = "--dataset"
@@ -1367,10 +1594,6 @@ except Exception:
 PY
 `, download.Name, download.Revision, string(download.Category))
 
-		resourcePath := "models"
-		if download.Category == model.DownloadCategoryDataset {
-			resourcePath = "datasets"
-		}
 		metadataCmd = fmt.Sprintf(`
 echo "Reading repository metadata..."
 python - << 'PY' || true
@@ -1378,7 +1601,7 @@ import json
 import os
 import urllib.request
 
-url = "https://modelscope.cn/openapi/v1/%s/%s"
+url = os.environ.get("MODELSCOPE_ENDPOINT", "https://modelscope.cn").rstrip("/") + "/openapi/v1/%s/%s"
 request = urllib.request.Request(url)
 token = os.environ.get("MODELSCOPE_API_TOKEN", "")
 if token:
@@ -1458,7 +1681,9 @@ trap "kill $MONITOR_PID 2>/dev/null || true" EXIT
 
 	return fmt.Sprintf(`
 set -euo pipefail
-export HF_ENDPOINT=https://hf-mirror.com
+export HF_ENDPOINT=%q
+%s
+export MODELSCOPE_ENDPOINT=%q
 OUT_DIR="/data/%s"
 export OUT_DIR
 mkdir -p "$OUT_DIR"
@@ -1472,14 +1697,15 @@ on_error() {
 }
 trap 'on_error $LINENO' ERR
 
-# 安装依赖
-echo "Installing dependencies from Tsinghua mirror..."
+# Verify preinstalled tools, with a pinned fallback for custom legacy images.
 %s
 
 # 确保 Python 包路径可用
 export PYTHONPATH="${PYTHONPATH:-}:/usr/local/lib/python3.11/site-packages"
 # 确保 PATH 包含 pip 安装的二进制目录（尽管我们现在不用 CLI 了，保留无妨）
 export PATH="/usr/local/bin:/root/.local/bin:$PATH"
+
+%s
 
 %s
 
@@ -1511,16 +1737,25 @@ else
     echo "[RESULT] size_bytes=$SIZE"
 fi
 `,
+		huggingFaceEndpoint,
+		disableXetCmd,
+		config.GetConfig().ModelScopeDownloadEndpoint(),
 		modelDirName,
 		download.Name,
 		download.Source,
 		installCmd,
 		totalProbeCmd,
+		preflightCmd,
 		progressScript,
 		downloadCommand,
 		metadataCmd,
 		descScript,
 	)
+}
+
+func shouldDisableHuggingFaceXet(source model.ModelSource, endpoint string) bool {
+	return source == model.ModelSourceHuggingFace &&
+		strings.TrimRight(strings.TrimSpace(endpoint), "/") != "https://huggingface.co"
 }
 
 // convertToPhysicalPath 将前端路径转换为物理存储路径
@@ -1550,15 +1785,8 @@ func sanitizeModelName(name string) string {
 	return pattern.ReplaceAllString(name, "")
 }
 
-func modelDownloadStoragePath(
-	basePath, safeName string, source model.ModelSource, revision string,
-) string {
-	revisionKey := "default"
-	if revision != "" {
-		digest := fmt.Sprintf("%x", sha256.Sum256([]byte(revision)))
-		revisionKey = digest[:12]
-	}
-	return filepath.Join(basePath, safeName, string(source), revisionKey)
+func modelDownloadStoragePath(basePath, safeName string) string {
+	return filepath.Join(basePath, safeName)
 }
 
 func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelDownloadResp {
@@ -1593,6 +1821,7 @@ func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelD
 		SourceUpdatedAt: d.SourceUpdatedAt,
 		UserInfo:        model.UserInfo{Username: username, Nickname: nickname},
 		CanManage:       d.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin,
+		CanDelete:       canDeleteDownload(token),
 		CanViewLogs:     d.CreatorID == token.UserID || token.RolePlatform == model.RoleAdmin,
 		SourceURL:       sourceURLForDownload(d),
 		DisplayName:     d.DisplayName,
@@ -1610,15 +1839,17 @@ func sourceURLForDownload(download *model.ModelDownload) string {
 		return download.SourceURL
 	}
 	if download.Source == model.ModelSourceHuggingFace {
+		endpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
 		if download.Category == model.DownloadCategoryDataset {
-			return "https://huggingface.co/datasets/" + download.Name
+			return endpoint + "/datasets/" + download.Name
 		}
-		return "https://huggingface.co/" + download.Name
+		return endpoint + "/" + download.Name
 	}
+	endpoint := config.GetConfig().ModelScopeDownloadEndpoint()
 	if download.Category == model.DownloadCategoryDataset {
-		return "https://modelscope.cn/datasets/" + download.Name
+		return endpoint + "/datasets/" + download.Name
 	}
-	return "https://modelscope.cn/models/" + download.Name
+	return endpoint + "/models/" + download.Name
 }
 
 func (mgr *ModelDownloadMgr) deleteDownloadJob(c *gin.Context, jobName string) error {

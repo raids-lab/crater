@@ -54,6 +54,7 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import Nothing from '@/components/placeholder/nothing'
+import { PaginationNav } from '@/components/query-table/pagination'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,6 +86,7 @@ export interface DataItem {
   source?: string
   organization?: string
   organizationUrl?: string
+  searchTerms?: string[]
   tag: string[]
   url?: string
   template?: string
@@ -97,12 +99,22 @@ export default function DataList({
   mainArea,
   actionArea,
   handleDelete,
+  description,
+  showOwner = true,
+  showDescriptionFallback = true,
+  showMetadata = true,
+  compactMetadata = false,
 }: {
   items: DataItem[]
   title: string
   mainArea?: (data: DataItem) => ReactNode
   actionArea?: ReactNode
   handleDelete?: (id: number) => void
+  description?: string
+  showOwner?: boolean
+  showDescriptionFallback?: boolean
+  showMetadata?: boolean
+  compactMetadata?: boolean
 }) {
   const { t } = useTranslation()
   const [sort, setSort] = useState('descending')
@@ -114,6 +126,8 @@ export default function DataList({
   const [modelType, setModelType] = useState('所有标签')
   const [searchTerm, setSearchTerm] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('所有') // 修改默认值为"所有"
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const user = useAtomValue(atomUserInfo)
 
   useEffect(() => {
@@ -178,7 +192,14 @@ export default function DataList({
         .filter((item) =>
           modelType === '所有标签' ? true : item.tag.includes(modelType) ? true : false
         )
-        .filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase()))
+        .filter((item) => {
+          const normalizedSearch = searchTerm.trim().toLowerCase()
+          return (
+            normalizedSearch === '' ||
+            item.name.toLowerCase().includes(normalizedSearch) ||
+            item.searchTerms?.some((term) => term.toLowerCase().includes(normalizedSearch))
+          )
+        })
         // 修改：基于所有者筛选，添加"所有"选项
         .filter((item) =>
           ownerFilter === '所有'
@@ -190,11 +211,24 @@ export default function DataList({
     [items, sort, sortField, modelType, searchTerm, ownerFilter, user?.name]
   )
 
+  useEffect(() => {
+    setPageIndex(0)
+  }, [modelType, ownerFilter, pageSize, searchTerm])
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize))
+  const currentPage = Math.min(pageIndex + 1, totalPages)
+  const paginatedItems = useMemo(
+    () => filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [currentPage, filteredItems, pageSize]
+  )
+
   return (
     <div>
       <PageTitle
         title={title}
-        description={`我们为您准备了一些常见${title}，也欢迎您上传并分享更多${title}。`}
+        description={
+          description || `我们为您准备了一些常见${title}，也欢迎您上传并分享更多${title}。`
+        }
       >
         {actionArea}
       </PageTitle>
@@ -226,16 +260,18 @@ export default function DataList({
           )}
 
           {/* 新增：简化的所有者筛选 */}
-          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-            <SelectTrigger className="min-w-28">
-              <SelectValue>{ownerFilter}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="所有">所有{title}</SelectItem>
-              <SelectItem value="我的">我的{title}</SelectItem>
-              <SelectItem value="他人">他人{title}</SelectItem>
-            </SelectContent>
-          </Select>
+          {showOwner && (
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="min-w-28">
+                <SelectValue>{ownerFilter}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="所有">所有{title}</SelectItem>
+                <SelectItem value="我的">我的{title}</SelectItem>
+                <SelectItem value="他人">他人{title}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select
@@ -287,7 +323,7 @@ export default function DataList({
         <Nothing />
       ) : (
         <ul className="faded-bottom no-scrollbar grid min-w-0 gap-3 overflow-auto pt-4 pb-16 md:grid-cols-2">
-          {filteredItems.map((item, index) => (
+          {paginatedItems.map((item, index) => (
             // Keep entry animation CSS-only and cap the stagger so large lists
             // do not accumulate long JavaScript animation delays.
             <li
@@ -297,7 +333,7 @@ export default function DataList({
             >
               <div className="flex min-w-0 flex-row items-center justify-between gap-2">
                 {mainArea ? <>{mainArea(item)}</> : <></>}
-                {user?.name === item.owner.username && (
+                {showOwner && user?.name === item.owner.username && (
                   <AlertDialog>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -358,7 +394,7 @@ export default function DataList({
                     {tag}
                   </Badge>
                 ))}
-                {item.desc && item.tag.length === 0 && (
+                {showDescriptionFallback && item.desc && item.tag.length === 0 && (
                   <>
                     <span aria-hidden="true">·</span>
                     <span className="truncate" title={item.desc}>
@@ -367,66 +403,98 @@ export default function DataList({
                   </>
                 )}
               </div>
-              <div className="text-muted-foreground flex min-w-0 items-center gap-x-3 overflow-hidden text-xs">
-                {item.sizeBytes !== undefined && item.sizeBytes > 0 && (
-                  <span className="inline-flex shrink-0 items-center gap-1">
-                    <HardDriveIcon className="size-3.5" />
-                    {formatFileSize(item.sizeBytes)}
-                  </span>
-                )}
-                {item.sourceUpdatedAt && (
-                  <span
-                    className="inline-flex shrink-0 items-center gap-1"
-                    title={t('dataList.sourceUpdatedAt')}
-                  >
-                    <Globe2Icon className="size-3.5" />
-                    <TimeDistance date={item.sourceUpdatedAt} />
-                  </span>
-                )}
-                <span
-                  className="inline-flex shrink-0 items-center gap-1"
-                  title={t('dataList.craterUpdatedAt')}
-                >
-                  <ClockIcon className="size-3.5" />
-                  <TimeDistance date={item.updatedAt || item.createdAt || '2023'} />
-                </span>
-                {item.downloadCount !== undefined && item.downloadCount > 0 && (
-                  <span className="inline-flex shrink-0 items-center gap-1">
-                    <DownloadIcon className="size-3.5" />
-                    {item.downloadCount.toLocaleString()}
-                  </span>
-                )}
-                {item.likes !== undefined && item.likes > 0 && (
-                  <span className="inline-flex shrink-0 items-center gap-1">
-                    <HeartIcon className="size-3.5" />
-                    {item.likes.toLocaleString()}
-                  </span>
-                )}
-                <UserLabel
-                  info={item.owner}
-                  className="hover:text-highlight-orange min-w-0 truncate text-xs"
-                />
-                {item.mountCount !== undefined && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t('dataList.mountCount', { count: item.mountCount })}
-                        className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
+              {showMetadata && (
+                <div className="text-muted-foreground flex min-w-0 items-center gap-x-3 overflow-hidden text-xs">
+                  {item.sizeBytes !== undefined && item.sizeBytes > 0 && (
+                    <span className="inline-flex shrink-0 items-center gap-1">
+                      <HardDriveIcon className="size-3.5" />
+                      {formatFileSize(item.sizeBytes)}
+                    </span>
+                  )}
+                  {!compactMetadata && (
+                    <>
+                      {item.sourceUpdatedAt && (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-1"
+                          title={t('dataList.sourceUpdatedAt')}
+                        >
+                          <Globe2Icon className="size-3.5" />
+                          <TimeDistance date={item.sourceUpdatedAt} />
+                        </span>
+                      )}
+                      <span
+                        className="inline-flex shrink-0 items-center gap-1"
+                        title={t('dataList.craterUpdatedAt')}
                       >
-                        <BarChart3Icon className="size-4" aria-hidden="true" />
-                        <span>{item.mountCount}</span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{t('dataList.mountCountTooltip')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
+                        <ClockIcon className="size-3.5" />
+                        <TimeDistance date={item.updatedAt || item.createdAt || '2023'} />
+                      </span>
+                      {item.downloadCount !== undefined && item.downloadCount > 0 && (
+                        <span className="inline-flex shrink-0 items-center gap-1">
+                          <DownloadIcon className="size-3.5" />
+                          {item.downloadCount.toLocaleString()}
+                        </span>
+                      )}
+                      {item.likes !== undefined && item.likes > 0 && (
+                        <span className="inline-flex shrink-0 items-center gap-1">
+                          <HeartIcon className="size-3.5" />
+                          {item.likes.toLocaleString()}
+                        </span>
+                      )}
+                      {showOwner && (
+                        <UserLabel
+                          info={item.owner}
+                          className="hover:text-highlight-orange min-w-0 truncate text-xs"
+                        />
+                      )}
+                      {item.mountCount !== undefined && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={t('dataList.mountCount', { count: item.mountCount })}
+                              className="text-muted-foreground hover:text-foreground inline-flex cursor-help items-center gap-1 text-xs font-medium"
+                            >
+                              <BarChart3Icon className="size-4" aria-hidden="true" />
+                              <span>{item.mountCount}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('dataList.mountCountTooltip')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
+      )}
+      {filteredItems.length > 0 && (
+        <div className="flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-muted-foreground flex items-center gap-3 text-xs font-medium">
+            <Select value={`${pageSize}`} onValueChange={(value) => setPageSize(Number(value))}>
+              <SelectTrigger className="bg-background h-9 w-[100px] pr-2 pl-3 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 50].map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {t('dataTablePagination.itemsPerPage', { count: size })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span>{t('dataTablePagination.totalItems', { count: filteredItems.length })}</span>
+          </div>
+          <PaginationNav
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setPageIndex(page - 1)}
+          />
+        </div>
       )}
     </div>
   )

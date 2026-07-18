@@ -63,9 +63,16 @@ func newModelDownload(db *gorm.DB, opts ...gen.DOOption) modelDownload {
 	_modelDownload.SourceCreatedAt = field.NewTime(tableName, "source_created_at")
 	_modelDownload.SourceUpdatedAt = field.NewTime(tableName, "source_updated_at")
 	_modelDownload.MetadataRefreshedAt = field.NewTime(tableName, "metadata_refreshed_at")
+	_modelDownload.ModelDatasetSourceID = field.NewUint(tableName, "model_dataset_source_id")
 	_modelDownload.JobName = field.NewString(tableName, "job_name")
 	_modelDownload.CreatorID = field.NewUint(tableName, "creator_id")
 	_modelDownload.ReferenceCount = field.NewInt(tableName, "reference_count")
+	_modelDownload.ModelDatasetSource = modelDownloadBelongsToModelDatasetSource{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("ModelDatasetSource", "model.ModelDatasetSource"),
+	}
+
 	_modelDownload.Creator = modelDownloadBelongsToCreator{
 		db: db.Session(&gorm.Session{}),
 
@@ -90,46 +97,49 @@ func newModelDownload(db *gorm.DB, opts ...gen.DOOption) modelDownload {
 type modelDownload struct {
 	modelDownloadDo modelDownloadDo
 
-	ALL                 field.Asterisk
-	ID                  field.Uint
-	CreatedAt           field.Time
-	UpdatedAt           field.Time
-	DeletedAt           field.Field
-	Name                field.String
-	Source              field.String
-	Category            field.String
-	Revision            field.String // 版本/分支/commit
-	Path                field.String // 实际下载路径
-	SizeBytes           field.Int64  // 文件总大小(字节)
-	DownloadedBytes     field.Int64  // 已下载大小(字节)
-	DownloadSpeed       field.String // 下载速度(如: 10MB/s)
-	Status              field.String // 下载状态
-	Message             field.String // 状态消息(错误信息等)
-	Logs                field.String // 终态时保存的Pod日志(K8s Job被GC后仍可查看)
-	LogsSavedAt         field.Time   // 日志保存时间
-	Organization        field.String // 源站组织或作者
-	LogoURL             field.String // 源站组织头像地址
-	SourceURL           field.String // 源站仓库详情地址
-	DisplayName         field.String // 源站展示名称
-	SourceDescription   field.String // 源站简介摘要
-	SourceReadme        field.String // 源站README内容(截断保存)
-	License             field.String // 源站许可证
-	Task                field.String // 源站任务分类
-	Library             field.String // 源站框架或库
-	ModelType           field.String // 源站模型类型
-	ParameterCount      field.Int64  // 模型参数量
-	SourcePrivate       field.Bool   // 源站是否私有
-	SourceGated         field.Bool   // 源站是否需要申请访问
-	SourceLoginRequired field.Bool   // 源站是否要求登录下载
-	SourceDownloads     field.Int64  // 源站下载次数
-	SourceLikes         field.Int64  // 源站点赞次数
-	SourceCreatedAt     field.Time   // 源站创建时间
-	SourceUpdatedAt     field.Time   // 源站更新时间
-	MetadataRefreshedAt field.Time   // 源站元数据刷新时间
-	JobName             field.String // K8s Job名称
-	CreatorID           field.Uint   // 首个发起下载的用户ID
-	ReferenceCount      field.Int    // 引用计数
-	Creator             modelDownloadBelongsToCreator
+	ALL                  field.Asterisk
+	ID                   field.Uint
+	CreatedAt            field.Time
+	UpdatedAt            field.Time
+	DeletedAt            field.Field
+	Name                 field.String
+	Source               field.String
+	Category             field.String
+	Revision             field.String // 版本/分支/commit
+	Path                 field.String // 实际下载路径
+	SizeBytes            field.Int64  // 文件总大小(字节)
+	DownloadedBytes      field.Int64  // 已下载大小(字节)
+	DownloadSpeed        field.String // 下载速度(如: 10MB/s)
+	Status               field.String // 下载状态
+	Message              field.String // 状态消息(错误信息等)
+	Logs                 field.String // 终态时保存的Pod日志(K8s Job被GC后仍可查看)
+	LogsSavedAt          field.Time   // 日志保存时间
+	Organization         field.String // 源站组织或作者
+	LogoURL              field.String // 源站组织头像地址
+	SourceURL            field.String // 源站仓库详情地址
+	DisplayName          field.String // 源站展示名称
+	SourceDescription    field.String // 源站简介摘要
+	SourceReadme         field.String // 源站README内容(截断保存)
+	License              field.String // 源站许可证
+	Task                 field.String // 源站任务分类
+	Library              field.String // 源站框架或库
+	ModelType            field.String // 源站模型类型
+	ParameterCount       field.Int64  // 模型参数量
+	SourcePrivate        field.Bool   // 源站是否私有
+	SourceGated          field.Bool   // 源站是否需要申请访问
+	SourceLoginRequired  field.Bool   // 源站是否要求登录下载
+	SourceDownloads      field.Int64  // 源站下载次数
+	SourceLikes          field.Int64  // 源站点赞次数
+	SourceCreatedAt      field.Time   // 源站创建时间
+	SourceUpdatedAt      field.Time   // 源站更新时间
+	MetadataRefreshedAt  field.Time   // 源站元数据刷新时间
+	ModelDatasetSourceID field.Uint   // 模型或数据集外部来源ID
+	JobName              field.String // K8s Job名称
+	CreatorID            field.Uint   // 首个发起下载的用户ID
+	ReferenceCount       field.Int    // 引用计数
+	ModelDatasetSource   modelDownloadBelongsToModelDatasetSource
+
+	Creator modelDownloadBelongsToCreator
 
 	fieldMap map[string]field.Expr
 }
@@ -181,6 +191,7 @@ func (m *modelDownload) updateTableName(table string) *modelDownload {
 	m.SourceCreatedAt = field.NewTime(table, "source_created_at")
 	m.SourceUpdatedAt = field.NewTime(table, "source_updated_at")
 	m.MetadataRefreshedAt = field.NewTime(table, "metadata_refreshed_at")
+	m.ModelDatasetSourceID = field.NewUint(table, "model_dataset_source_id")
 	m.JobName = field.NewString(table, "job_name")
 	m.CreatorID = field.NewUint(table, "creator_id")
 	m.ReferenceCount = field.NewInt(table, "reference_count")
@@ -212,7 +223,7 @@ func (m *modelDownload) GetFieldByName(fieldName string) (field.OrderExpr, bool)
 }
 
 func (m *modelDownload) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 39)
+	m.fieldMap = make(map[string]field.Expr, 41)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["updated_at"] = m.UpdatedAt
@@ -248,6 +259,7 @@ func (m *modelDownload) fillFieldMap() {
 	m.fieldMap["source_created_at"] = m.SourceCreatedAt
 	m.fieldMap["source_updated_at"] = m.SourceUpdatedAt
 	m.fieldMap["metadata_refreshed_at"] = m.MetadataRefreshedAt
+	m.fieldMap["model_dataset_source_id"] = m.ModelDatasetSourceID
 	m.fieldMap["job_name"] = m.JobName
 	m.fieldMap["creator_id"] = m.CreatorID
 	m.fieldMap["reference_count"] = m.ReferenceCount
@@ -256,6 +268,8 @@ func (m *modelDownload) fillFieldMap() {
 
 func (m modelDownload) clone(db *gorm.DB) modelDownload {
 	m.modelDownloadDo.ReplaceConnPool(db.Statement.ConnPool)
+	m.ModelDatasetSource.db = db.Session(&gorm.Session{Initialized: true})
+	m.ModelDatasetSource.db.Statement.ConnPool = db.Statement.ConnPool
 	m.Creator.db = db.Session(&gorm.Session{Initialized: true})
 	m.Creator.db.Statement.ConnPool = db.Statement.ConnPool
 	return m
@@ -263,8 +277,90 @@ func (m modelDownload) clone(db *gorm.DB) modelDownload {
 
 func (m modelDownload) replaceDB(db *gorm.DB) modelDownload {
 	m.modelDownloadDo.ReplaceDB(db)
+	m.ModelDatasetSource.db = db.Session(&gorm.Session{})
 	m.Creator.db = db.Session(&gorm.Session{})
 	return m
+}
+
+type modelDownloadBelongsToModelDatasetSource struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a modelDownloadBelongsToModelDatasetSource) Where(conds ...field.Expr) *modelDownloadBelongsToModelDatasetSource {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a modelDownloadBelongsToModelDatasetSource) WithContext(ctx context.Context) *modelDownloadBelongsToModelDatasetSource {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a modelDownloadBelongsToModelDatasetSource) Session(session *gorm.Session) *modelDownloadBelongsToModelDatasetSource {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a modelDownloadBelongsToModelDatasetSource) Model(m *model.ModelDownload) *modelDownloadBelongsToModelDatasetSourceTx {
+	return &modelDownloadBelongsToModelDatasetSourceTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a modelDownloadBelongsToModelDatasetSource) Unscoped() *modelDownloadBelongsToModelDatasetSource {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type modelDownloadBelongsToModelDatasetSourceTx struct{ tx *gorm.Association }
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Find() (result *model.ModelDatasetSource, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Append(values ...*model.ModelDatasetSource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Replace(values ...*model.ModelDatasetSource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Delete(values ...*model.ModelDatasetSource) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a modelDownloadBelongsToModelDatasetSourceTx) Unscoped() *modelDownloadBelongsToModelDatasetSourceTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type modelDownloadBelongsToCreator struct {

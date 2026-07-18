@@ -80,6 +80,68 @@ images:
     # -- DBBackup image tag
     tag: "16.4"
 
+# -- Periodically refresh public model and dataset metadata from configured source endpoints
+modelMetadataRefresh:
+  # -- Enable periodic refresh; the first run backfills metadata for existing ready downloads
+  enabled: true
+  # -- Write refreshed metadata and cached logos to the database
+  apply: true
+  # -- Cron schedule for metadata refresh
+  schedule: "15 */6 * * *"
+  # -- Number of ready download records processed per database batch
+  batchSize: 100
+  # -- Refresh metadata older than this duration
+  staleAfter: "168h"
+  # -- Delay between source requests
+  delay: "100ms"
+  # -- Optional environment variables such as HTTPS_PROXY and NO_PROXY for restricted networks
+  extraEnv: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# -- Reconcile public model and dataset storage with database records
+modelDatasetGovernance:
+  # -- Disabled by default because full filesystem scans must first be reviewed with dry-run
+  enabled: false
+  # -- Cron schedule used after an administrator explicitly enables recurring scans
+  schedule: "30 2 * * 0"
+  # -- Filesystem mount root inside the storage container
+  storageRoot: "/crater"
+  # -- Logical public prefix stored by model download records
+  logicalPublicPrefix: "public"
+  # -- Models subdirectory below backendConfig.storage.prefix.public
+  modelsSubdirectory: "Models"
+  # -- Optional model subdirectories below backendConfig.storage.prefix.public; when set, takes precedence over modelsSubdirectory
+  modelsSubdirectories: []
+  # -- Datasets subdirectory below backendConfig.storage.prefix.public
+  datasetsSubdirectory: "Datasets"
+  # -- Maximum directory depth scanned below each resource root
+  maxDepth: 8
+  # -- Directory basenames excluded from filesystem scans
+  excludeDirectories: ".cache,.git,.conda,node_modules,site-packages,test,tests,tmp,temp"
+  # -- Model weight filename patterns used together with config.json
+  modelWeightPatterns: "*.safetensors,pytorch_model*.bin,model*.bin,*.gguf,tf_model.h5,flax_model.msgpack"
+  # -- Dataset marker filename patterns; empty keeps filesystem-only dataset discovery disabled
+  datasetMarkerPatterns: ""
+  # -- Maximum number of bytes imported from a local README
+  maxReadmeBytes: 65536
+  # -- Maximum duration of one filesystem scan
+  scanTimeout: "30m"
+  # -- Apply reconciliation results; keep false for the first validation run
+  apply: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
 # -- Persistent Volume Claim configuration
 storage:
   # -- Whether to create PVC or use existing pvc.
@@ -175,10 +237,35 @@ backendConfig:
   # -- Model download functionality configurations
   modelDownload:
     # -- Container image used for model download jobs
-    # Can be customized for local deployments with network restrictions
-    # Default: python:3.11-slim (public Docker Hub)
-    # Internal deployment uses: crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim
-    image: "crater-harbor.act.buaa.edu.cn/docker.io/library/python:3.11-slim"
+    # Crater's public image pins source-client versions; deployments may mirror it internally
+    image: "ghcr.io/raids-lab/crater-model-downloader:v1.0.0"
+    # -- Hugging Face Hub base URL used by model download jobs
+    # Set this to an administrator-approved mirror or gateway when the official Hub is unavailable
+    huggingFaceEndpoint: "https://huggingface.co"
+    # -- ModelScope base URL used by model download jobs
+    modelScopeEndpoint: "https://modelscope.cn"
+
+  # -- Model and dataset source metadata refresh configuration
+  modelMetadata:
+    # -- Hugging Face-compatible endpoints tried in order for public metadata refresh
+    huggingFaceEndpoints:
+      # Example for a restricted network: "https://hf-mirror.com"
+      - "https://huggingface.co"
+    # -- ModelScope-compatible endpoints tried in order for public metadata refresh
+    modelScopeEndpoints:
+      - "https://modelscope.cn"
+    # -- Exact HTTPS hosts allowed when caching source logos; add trusted mirror/CDN hosts as needed
+    logoAllowedHosts:
+      - "huggingface.co"
+      - "cdn-avatars.huggingface.co"
+      - "resouces.modelscope.cn"
+      - "resources.modelscope.cn"
+    # -- Logical prefix in download records before mapping to backendConfig.storage.prefix.public
+    logicalPublicPrefix: "public"
+    # -- Timeout in seconds for each source metadata request
+    timeoutSeconds: 20
+    # -- Maximum source logo size cached by Crater, in bytes
+    maxLogoBytes: 524288
 
   # -- Endpoint URL for Prometheus API used for metrics and monitoring
   # If not specified, Prometheus integration will be disabled
@@ -243,6 +330,7 @@ backendConfig:
     # Secret must contain appropriate forwarding certificates
     tlsForwardSecretName: crater-tls-forward-secret
     # -- Name of the Kubernetes secret for pulling container images from private registries
+    # Also applied to model download Jobs when modelDownload.image is private
     # If not specified, no image pull secret will be used
     imagePullSecretName: ""
 

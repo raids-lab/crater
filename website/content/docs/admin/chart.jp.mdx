@@ -54,7 +54,15 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | バックエンド API サービスのリスニングポート |
 | backendConfig.enableLeaderElection | bool | `false` | Leader 選挙を有効にするかどうか（高可用性デプロイ用） |
-| backendConfig.modelDownload.image | string | `"python:3.11-slim"` | モデルダウンロードジョブで使用されるコンテナイメージ |
+| backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | モデルおよびデータセットのダウンロードジョブで使用するコンテナイメージ |
+| backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | ダウンロードジョブが使用する Hugging Face Hub の URL。管理者が承認したミラーに変更可能 |
+| backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | ダウンロードジョブが使用する ModelScope の URL |
+| backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | メタデータ更新時に順番に試行する Hugging Face 互換エンドポイント |
+| backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | メタデータ更新時に順番に試行する ModelScope 互換エンドポイント |
+| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co", "resouces.modelscope.cn", "resources.modelscope.cn"]` | Logo の取得とキャッシュを許可する HTTPS ホストの完全一致リスト。リダイレクトの各段階も検証される |
+| backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | ダウンロードレコードを公開ストレージへ対応付ける前に使用する論理パスプレフィックス |
+| backendConfig.modelMetadata.timeoutSeconds | int | `20` | ソースメタデータの各リクエストのタイムアウト（秒） |
+| backendConfig.modelMetadata.maxLogoBytes | int | `524288` | 1 件のソース Logo としてキャッシュできる最大バイト数 |
 | backendConfig.prometheusAPI | string | `"http://..."` | 監視メトリクスを取得するための Prometheus API アドレス |
 | backendConfig.auth.token.accessTokenSecret | string | `"..."` | JWT Access Token の署名シークレット |
 | backendConfig.auth.token.refreshTokenSecret | string | `"..."` | JWT Refresh Token の署名シークレット |
@@ -151,6 +159,50 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | cronjobConfig.jobs.longTime.BATCH_DAYS | string | `"4"` | バッチジョブの最大実行日数 |
 | cronjobConfig.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES | string | `"5"` | Waiting 状態の Jupyter ジョブのクリーンアップ閾値 |
 
+## モデル・データセットのメタデータジョブ
+
+| パラメータ | 型 | デフォルト値 | 説明 |
+|-----|------|---------|-------------|
+| modelMetadataRefresh.enabled | bool | `true` | 定期メタデータ更新ジョブを作成する。初回実行では既存の Ready ダウンロードを自動的に処理する |
+| modelMetadataRefresh.apply | bool | `true` | ソースメタデータとキャッシュした Logo をデータベースへ書き込む |
+| modelMetadataRefresh.schedule | string | `"15 */6 * * *"` | メタデータ更新の Cron スケジュール |
+| modelMetadataRefresh.batchSize | int | `100` | データベースの 1 バッチで処理する Ready ダウンロードレコード数 |
+| modelMetadataRefresh.staleAfter | string | `"168h"` | 2 回目以降は、この期間より古いレコードだけを更新する |
+| modelMetadataRefresh.delay | string | `"100ms"` | ソースへのリクエスト間の待機時間 |
+| modelDatasetGovernance.enabled | bool | `false` | 公開モデル・データセットのストレージガバナンスジョブを作成する。全体スキャンはデフォルトで無効 |
+| modelDatasetGovernance.apply | bool | `false` | ガバナンス結果を書き込む。初回スキャンのログ確認中は無効のままにする |
+| modelDatasetGovernance.schedule | string | `"30 2 * * 0"` | ストレージガバナンスの Cron スケジュール |
+| modelDatasetGovernance.modelsSubdirectories | list | `[]` | `["Models", "LLM"]` などの任意のモデルサブディレクトリ。空でない場合は単一ディレクトリ設定を上書きする |
+
+### 既存モデルの Logo 初回バックフィル
+
+Chart 1.1.0 では、メタデータ更新とデータベースへの書き込みがデフォルトで有効です。初回実行では、状態が `Ready` で更新時刻がまだない既存のモデルおよびデータセットのダウンロードレコードを選び、Logo、README、ソース統計などのメタデータをバックフィルします。成功したレコードには更新時刻が保存されるため、その後は 6 時間ごとに全件を再処理せず、`staleAfter` より古いレコードだけを更新します。
+
+次回の Cron スケジュールを待たず、設定反映後すぐにバックフィルする場合は、CronJob から一度限りの Job を作成します。
+
+```bash
+kubectl create job --from=cronjob/model-metadata-refresh \
+  model-metadata-refresh-initial -n crater
+kubectl logs -n crater -f job/model-metadata-refresh-initial
+```
+
+同名の Job が存在する場合は別の名前を使用してください。先にネットワーク接続とメタデータを確認する場合は、Job を実行する前に `modelMetadataRefresh.apply` を一時的に `false` にします。dry-run では結果をログに出力するだけで、データベースは更新しません。
+
+Logo は `backendConfig.modelMetadata.logoAllowedHosts` に完全一致で登録された HTTPS ホストからだけ取得され、リダイレクトの各段階でも再検証されます。ミラーや別の信頼済み CDN を使用する場合は、対象ホストを明示的に追加してください。
+
+```yaml
+backendConfig:
+  modelMetadata:
+    logoAllowedHosts:
+      - huggingface.co
+      - cdn-avatars.huggingface.co
+      - resouces.modelscope.cn
+      - resources.modelscope.cn
+      - your-trusted-logo-cdn.example.com
+```
+
+更新ジョブが処理するのは既存の `Ready` ダウンロードレコードだけです。未完了または失敗したダウンロードは、このバックフィルの既存リソースとして扱われません。
+
 ## データベースバックアップ (dbBackup)
 
 | パラメータ | 型 | デフォルト値 | 説明 |
@@ -185,4 +237,3 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | images.frontend.repository | string | `"..."` | フロントエンドサービスのイメージリポジトリ |
 | images.storage.repository | string | `"..."` | ストレージ管理サービスのイメージリポジトリ |
 | images.buildkit.tag | string | `"v0.23.1"` | Buildkit コアイメージのタグ |
-

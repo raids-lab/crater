@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"net/http"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,10 +16,13 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/governance/modeldataset"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 )
+
+const autoDownloadTag = "auto-download"
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -36,7 +41,9 @@ func NewDatasetMgr(_ *RegisterConfig) Manager {
 
 func (mgr *DatasetMgr) GetName() string { return mgr.name }
 
-func (mgr *DatasetMgr) RegisterPublic(_ *gin.RouterGroup) {}
+func (mgr *DatasetMgr) RegisterPublic(g *gin.RouterGroup) {
+	g.GET("/source-logo/:sourceId", mgr.GetSourceLogo)
+}
 
 func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetDatasets)
@@ -60,6 +67,47 @@ func (mgr *DatasetMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/share/queue", mgr.AdminShareDatasetWithQueue)
 	g.POST("/cancelshare/user", mgr.AdminCancelShareDatasetWithUser)
 	g.POST("/cancelshare/queue", mgr.AdmincancelShareDatasetWithQueue)
+}
+
+// GetSourceLogo returns a platform-cached public source logo.
+//
+//	@Summary		获取平台缓存的模型或数据集来源 Logo
+//	@Description	返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点
+//	@Tags			Dataset
+//	@Produce		image/png,image/jpeg,image/webp,image/svg+xml
+//	@Param			sourceId	path	int	true	"来源 ID"
+//	@Success		200		{file}	binary
+//	@Failure		400
+//	@Failure		404
+//	@Router			/dataset/source-logo/{sourceId} [get]
+func (mgr *DatasetMgr) GetSourceLogo(c *gin.Context) {
+	var req struct {
+		SourceID uint `uri:"sourceId" binding:"required"`
+	}
+	if err := c.ShouldBindUri(&req); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	var source model.ModelDatasetSource
+	if err := query.GetDB().WithContext(c).
+		Select("logo_data", "logo_content_type", "updated_at").
+		First(&source, req.SourceID).Error; err != nil || len(source.LogoData) == 0 {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	contentType := source.LogoContentType
+	if contentType == "" {
+		contentType = http.DetectContentType(source.LogoData)
+	}
+	etag := fmt.Sprintf("\"%x\"", sha256.Sum256(source.LogoData))
+	c.Header("Cache-Control", "public, no-cache")
+	c.Header("ETag", etag)
+	c.Header("X-Content-Type-Options", "nosniff")
+	if c.GetHeader("If-None-Match") == etag {
+		c.Status(http.StatusNotModified)
+		return
+	}
+	c.Data(http.StatusOK, contentType, source.LogoData)
 }
 
 type DatasetResp struct {
@@ -817,7 +865,7 @@ func (mgr *DatasetMgr) UpdateDataset(c *gin.Context) {
 	tempExtra := dataset.Extra.Data()
 	tempExtra.Tags = make([]string, 0, len(req.Tags))
 	for _, tag := range req.Tags {
-		if tag != "auto-download" {
+		if tag != autoDownloadTag {
 			tempExtra.Tags = append(tempExtra.Tags, tag)
 		}
 	}
@@ -1063,6 +1111,35 @@ func listDatasetResponses(c *gin.Context, ids []uint) ([]DatasetResp, error) {
 	return convertDatasetBatch(c, datasets)
 }
 
+// deduplicateDownloadedDatasets keeps one canonical row for a downloaded
+// logical resource. It deliberately does not merge user-created resources,
+// which may legitimately reuse a name at different storage paths. Prefer the
+// lowest ID because it is the original row and is most likely to carry existing
+// sharing associations.
+func deduplicateDownloadedDatasets(
+	datasets []*model.Dataset, downloadedResourceKeys map[string]struct{},
+) []*model.Dataset {
+	result := make([]*model.Dataset, 0, len(datasets))
+	positions := make(map[string]int, len(datasets))
+	for _, dataset := range datasets {
+		key := string(dataset.Type) + "\x00" + strings.ToLower(strings.TrimSpace(dataset.Name))
+		if _, downloaded := downloadedResourceKeys[key]; !downloaded {
+			result = append(result, dataset)
+			continue
+		}
+		position, exists := positions[key]
+		if !exists {
+			positions[key] = len(result)
+			result = append(result, dataset)
+			continue
+		}
+		if dataset.ID < result[position].ID {
+			result[position] = dataset
+		}
+	}
+	return result
+}
+
 func convertDataset(c *gin.Context, dataset *model.Dataset) DatasetResp {
 	responses, err := convertDatasetBatch(c, []*model.Dataset{dataset})
 	if err != nil || len(responses) == 0 {
@@ -1071,6 +1148,7 @@ func convertDataset(c *gin.Context, dataset *model.Dataset) DatasetResp {
 	return responses[0]
 }
 
+//nolint:gocyclo // Batch enrichment deliberately keeps legacy and source-table fallback in one pass.
 func convertDatasetBatch(c *gin.Context, datasets []*model.Dataset) ([]DatasetResp, error) {
 	names := make([]string, 0, len(datasets))
 	seenNames := make(map[string]struct{}, len(datasets))
@@ -1086,6 +1164,7 @@ func convertDatasetBatch(c *gin.Context, datasets []*model.Dataset) ([]DatasetRe
 	}
 
 	downloadsByResource := make(map[string]*model.ModelDownload, len(names))
+	downloadedResourceKeys := make(map[string]struct{}, len(names))
 	if len(names) > 0 {
 		q := query.ModelDownload
 		downloads, err := q.WithContext(c).
@@ -1100,18 +1179,172 @@ func convertDatasetBatch(c *gin.Context, datasets []*model.Dataset) ([]DatasetRe
 			if _, exists := downloadsByResource[key]; !exists {
 				downloadsByResource[key] = download
 			}
+			downloadedResourceKeys[resourceMetadataKey(
+				strings.ToLower(strings.TrimSpace(download.Name)), string(download.Category),
+			)] = struct{}{}
 		}
+	}
+	datasets = deduplicateDownloadedDatasets(datasets, downloadedResourceKeys)
+	sourceIDs := make([]uint, 0, len(datasets))
+	for _, dataset := range datasets {
+		if dataset.ModelDatasetSourceID != nil {
+			sourceIDs = append(sourceIDs, *dataset.ModelDatasetSourceID)
+		}
+	}
+	sourcesByID := make(map[uint]*model.ModelDatasetSource, len(sourceIDs))
+	if len(sourceIDs) > 0 {
+		var sources []*model.ModelDatasetSource
+		if err := query.GetDB().WithContext(c).Where("id IN ?", sourceIDs).Find(&sources).Error; err != nil {
+			return nil, err
+		}
+		for _, source := range sources {
+			sourcesByID[source.ID] = source
+		}
+	}
+	logoKeys := make(map[string]struct{}, len(datasets)+len(downloadsByResource))
+	for _, dataset := range datasets {
+		if key := normalizedOrganizationLogoKey("", dataset.Name); key != "" {
+			logoKeys[key] = struct{}{}
+		}
+	}
+	for _, download := range downloadsByResource {
+		if key := downloadOrganizationLogoKey(download); key != "" {
+			logoKeys[key] = struct{}{}
+		}
+	}
+	logoSourceIDs, err := loadOrganizationLogoSourceIDs(c, sourcesByID, logoKeys)
+	if err != nil {
+		return nil, err
 	}
 
 	responses := make([]DatasetResp, 0, len(datasets))
 	for _, dataset := range datasets {
 		resp := baseDatasetResp(dataset)
-		if download := downloadsByResource[resourceMetadataKey(dataset.Name, string(dataset.Type))]; download != nil {
-			enrichDatasetResp(&resp, download)
+		if dataset.ModelDatasetSourceID != nil && sourcesByID[*dataset.ModelDatasetSourceID] != nil {
+			source := sourcesByID[*dataset.ModelDatasetSourceID]
+			enrichDatasetRespFromSource(&resp, source, logoSourceIDs[organizationLogoKey(source)])
+		} else if download := downloadsByResource[resourceMetadataKey(dataset.Name, string(dataset.Type))]; download != nil {
+			enrichDatasetResp(&resp, download, logoSourceIDs[downloadOrganizationLogoKey(download)])
+		} else if logoSourceID := logoSourceIDs[normalizedOrganizationLogoKey("", dataset.Name)]; logoSourceID != 0 {
+			resp.Organization = strings.SplitN(dataset.Name, "/", 2)[0]
+			resp.OrganizationURL = fmt.Sprintf("/api/dataset/source-logo/%d", logoSourceID)
 		}
 		responses = append(responses, resp)
 	}
 	return responses, nil
+}
+
+func organizationLogoKey(source *model.ModelDatasetSource) string {
+	return normalizedOrganizationLogoKey(source.Organization, source.RepositoryID)
+}
+
+func downloadOrganizationLogoKey(download *model.ModelDownload) string {
+	return normalizedOrganizationLogoKey(download.Organization, download.Name)
+}
+
+func normalizedOrganizationLogoKey(organization, repositoryID string) string {
+	organization = strings.TrimSpace(organization)
+	if organization == "" {
+		parts := strings.SplitN(strings.TrimSpace(repositoryID), "/", 2)
+		if len(parts) < 2 {
+			return ""
+		}
+		organization = parts[0]
+	}
+	return strings.ToLower(organization)
+}
+
+// loadOrganizationLogoSourceIDs lets repositories from the same organization reuse one
+// platform-cached logo. Historical source rows may contain LogoURL but no LogoData because
+// they were refreshed before binary logo caching was enabled.
+func loadOrganizationLogoSourceIDs(
+	c *gin.Context,
+	sourcesByID map[uint]*model.ModelDatasetSource,
+	additionalKeys map[string]struct{},
+) (map[string]uint, error) {
+	result := make(map[string]uint)
+	missingKeys := make(map[string]struct{})
+	for _, source := range sourcesByID {
+		key := organizationLogoKey(source)
+		if key == "" {
+			continue
+		}
+		if len(source.LogoData) > 0 {
+			result[key] = source.ID
+		} else {
+			missingKeys[key] = struct{}{}
+		}
+	}
+	for key := range additionalKeys {
+		if key != "" && result[key] == 0 {
+			missingKeys[key] = struct{}{}
+		}
+	}
+	if len(missingKeys) == 0 {
+		return result, nil
+	}
+
+	organizations := make([]string, 0, len(missingKeys))
+	for key := range missingKeys {
+		if result[key] == 0 {
+			organizations = append(organizations, key)
+		}
+	}
+	if len(organizations) == 0 {
+		return result, nil
+	}
+
+	var cachedSources []model.ModelDatasetSource
+	if err := query.GetDB().WithContext(c).
+		Where("LOWER(organization) IN ? AND octet_length(logo_data) > 0", organizations).
+		Order("updated_at DESC").
+		Find(&cachedSources).Error; err != nil {
+		return nil, err
+	}
+	for i := range cachedSources {
+		key := organizationLogoKey(&cachedSources[i])
+		if result[key] == 0 {
+			result[key] = cachedSources[i].ID
+		}
+	}
+	return result, nil
+}
+
+func enrichDatasetRespFromSource(resp *DatasetResp, source *model.ModelDatasetSource, logoSourceID uint) {
+	resp.DownloadCount = int(source.Downloads)
+	resp.Likes = source.Likes
+	resp.Source = string(source.Provider)
+	resp.Organization = source.Organization
+	if resp.Organization == "" {
+		resp.Organization = strings.SplitN(source.RepositoryID, "/", 2)[0]
+	}
+	if logoSourceID != 0 {
+		resp.OrganizationURL = fmt.Sprintf("/api/dataset/source-logo/%d", logoSourceID)
+	}
+	resp.DisplayName = source.DisplayName
+	resp.Readme = source.Readme
+	resp.License = source.License
+	resp.Task = source.Task
+	resp.Library = source.Library
+	resp.ModelType = source.ModelType
+	resp.ParameterCount = source.ParameterCount
+	resp.SourcePrivate = source.Private
+	resp.SourceGated = source.Gated
+	resp.LoginRequired = source.LoginRequired
+	resp.SourceCreatedAt = source.SourceCreatedAt
+	resp.SourceUpdatedAt = source.SourceUpdatedAt
+	extra := resp.Extra.Data()
+	filteredTags := extra.Tags[:0]
+	for _, tag := range extra.Tags {
+		if tag != autoDownloadTag {
+			filteredTags = append(filteredTags, tag)
+		}
+	}
+	extra.Tags = filteredTags
+	if extra.WebURL == nil && source.RepositoryURL != "" {
+		extra.WebURL = &source.RepositoryURL
+	}
+	resp.Extra = datatypes.NewJSONType(extra)
 }
 
 func resourceMetadataKey(name, category string) string {
@@ -1122,7 +1355,7 @@ func baseDatasetResp(dataset *model.Dataset) DatasetResp {
 	return DatasetResp{
 		Name:       dataset.Name,
 		Describe:   dataset.Describe,
-		URL:        dataset.URL,
+		URL:        logicalDatasetStoragePath(dataset.URL),
 		ID:         dataset.ID,
 		CreatedAt:  dataset.CreatedAt,
 		UpdatedAt:  dataset.UpdatedAt,
@@ -1137,7 +1370,25 @@ func baseDatasetResp(dataset *model.Dataset) DatasetResp {
 	}
 }
 
-func enrichDatasetResp(resp *DatasetResp, download *model.ModelDownload) {
+func logicalDatasetStoragePath(rawURL string) string {
+	prefixes := config.GetConfig().Storage.Prefix
+	mappings := []struct {
+		physical string
+		logical  string
+	}{
+		{physical: prefixes.Public, logical: model.PublicPath},
+		{physical: prefixes.Account, logical: model.AccountPath},
+		{physical: prefixes.User, logical: model.UserPath},
+	}
+	for _, mapping := range mappings {
+		if logical, matched := modeldataset.LogicalStoragePath(rawURL, mapping.logical, mapping.physical); matched {
+			return logical
+		}
+	}
+	return rawURL
+}
+
+func enrichDatasetResp(resp *DatasetResp, download *model.ModelDownload, logoSourceID uint) {
 	if resp.SizeBytes == 0 {
 		resp.SizeBytes = download.SizeBytes
 	}
@@ -1150,7 +1401,7 @@ func enrichDatasetResp(resp *DatasetResp, download *model.ModelDownload) {
 	extra := resp.Extra.Data()
 	filteredTags := extra.Tags[:0]
 	for _, tag := range extra.Tags {
-		if tag != "auto-download" {
+		if tag != autoDownloadTag {
 			filteredTags = append(filteredTags, tag)
 		}
 	}
@@ -1161,7 +1412,9 @@ func enrichDatasetResp(resp *DatasetResp, download *model.ModelDownload) {
 	}
 	resp.Extra = datatypes.NewJSONType(extra)
 	resp.Organization = download.Organization
-	resp.OrganizationURL = download.LogoURL
+	if logoSourceID != 0 {
+		resp.OrganizationURL = fmt.Sprintf("/api/dataset/source-logo/%d", logoSourceID)
+	}
 	resp.DisplayName = download.DisplayName
 	resp.Readme = download.SourceReadme
 	resp.License = download.License

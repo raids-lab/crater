@@ -184,6 +184,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/dataset/source-logo/{sourceId}": {
+            "get": {
+                "description": "返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点",
+                "produces": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/webp",
+                    "image/svg+xml"
+                ],
+                "tags": [
+                    "Dataset"
+                ],
+                "summary": "获取平台缓存的模型或数据集来源 Logo",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "来源 ID",
+                        "name": "sourceId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    }
+                }
+            }
+        },
         "/metrics": {
             "get": {
                 "security": [
@@ -6557,7 +6595,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中",
+                "description": "删除下载任务记录(仅平台管理员),已下载的文件保留在存储中",
                 "consumes": [
                     "application/json"
                 ],
@@ -6733,7 +6771,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "可选的临时访问令牌",
+                        "description": "可选的临时访问令牌和重试版本",
                         "name": "data",
                         "in": "body",
                         "schema": {
@@ -11749,6 +11787,10 @@ const docTemplate = `{
         "internal_handler.DownloadActionReq": {
             "type": "object",
             "properties": {
+                "revision": {
+                    "description": "Revision is optional and only used by retry. A non-nil empty value means\n\"use the source default branch\" while preserving the failed record's path.",
+                    "type": "string"
+                },
                 "token": {
                     "type": "string"
                 }
@@ -12058,6 +12100,9 @@ const docTemplate = `{
         "internal_handler.ModelDownloadResp": {
             "type": "object",
             "properties": {
+                "canDelete": {
+                    "type": "boolean"
+                },
                 "canManage": {
                     "type": "boolean"
                 },

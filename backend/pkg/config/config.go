@@ -131,9 +131,26 @@ type Config struct {
 	// Optional: If not specified, default values will be used.
 	ModelDownload struct {
 		// Image is the container image used for model download jobs.
-		// Optional: Defaults to "crater-harbor.act.buaa.edu.cn/docker.io/python:3.11-slim" if not specified.
+		// Optional: Defaults to the public Crater downloader image if not specified.
 		Image string `json:"image"`
+		// HuggingFaceEndpoint is the Hub base URL used by download jobs.
+		// Optional: Defaults to the official Hugging Face Hub.
+		HuggingFaceEndpoint string `json:"huggingFaceEndpoint"`
+		// ModelScopeEndpoint is the ModelScope base URL used by download jobs.
+		// Optional: Defaults to the official ModelScope service.
+		ModelScopeEndpoint string `json:"modelScopeEndpoint"`
 	} `json:"modelDownload"`
+
+	// ModelMetadata configures background metadata refresh endpoints and cache limits.
+	// Endpoints are tried in order and must be selected by each deployment administrator.
+	ModelMetadata struct {
+		HuggingFaceEndpoints []string `json:"huggingFaceEndpoints"`
+		ModelScopeEndpoints  []string `json:"modelScopeEndpoints"`
+		LogoAllowedHosts     []string `json:"logoAllowedHosts"`
+		LogicalPublicPrefix  string   `json:"logicalPublicPrefix"`
+		TimeoutSeconds       int      `json:"timeoutSeconds"`
+		MaxLogoBytes         int64    `json:"maxLogoBytes"`
+	} `json:"modelMetadata"`
 
 	// Registry contains container registry configuration for image storage and building.
 	// Optional: If Enable is false, registry functionality will be disabled.
@@ -595,8 +612,10 @@ func (c *Config) PrintConfig() {
 	if c.ModelDownload.Image != "" {
 		klog.Infof("Model Download Image: %s", c.ModelDownload.Image)
 	} else {
-		klog.Info("Model Download Image: <default: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim>")
+		klog.Info("Model Download Image: <default: ghcr.io/raids-lab/crater-model-downloader:v1.0.0>")
 	}
+	klog.Infof("Model Metadata Endpoints: HuggingFace=%d, ModelScope=%d",
+		len(c.HuggingFaceMetadataEndpoints()), len(c.ModelScopeMetadataEndpoints()))
 
 	// Secrets
 	klog.Infof("TLS Secrets: %s, %s", c.Secrets.TLSSecretName, c.Secrets.TLSForwardSecretName)
