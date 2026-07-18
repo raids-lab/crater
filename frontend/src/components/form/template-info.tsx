@@ -29,12 +29,13 @@ import CardTitle from '@/components/label/card-title'
 import { UIStateUpdater, useTemplateLoader } from '@/hooks/use-template-loader'
 
 import { MarkdownRenderer } from './markdown-renderer'
+import { MetadataFormType } from './types'
 
 interface TemplateInfoProps<T extends FieldValues> {
   /** The form object to populate */
   form: UseFormReturn<T>
   /** Metadata configuration for import/export */
-  metadata: { version: string; type: string }
+  metadata: MetadataFormType
   /** Optional UI state updaters for accordions, tabs, etc. */
   uiStateUpdaters?: UIStateUpdater<T>[]
   /** Optional callback when template loaded successfully */

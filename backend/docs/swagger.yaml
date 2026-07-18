@@ -376,12 +376,41 @@ definitions:
         description: 'Key: ResourceName, Value: Usage'
         type: object
     type: object
+  github_com_raids-lab_crater_internal_resputil.FacetItem:
+    properties:
+      count:
+        type: integer
+      value:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.FacetResponse:
+    properties:
+      facets:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.FacetItem'
+          type: array
+        type: object
+    type: object
   github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp:
     properties:
       items:
         items:
           $ref: '#/definitions/internal_handler_operations.OperationLogResp'
         type: array
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.JobResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
       total:
         type: integer
     type: object
@@ -474,6 +503,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.FacetResponse'
+      msg:
+        type: string
+    type: object
   ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp
   : properties:
       code:
@@ -481,6 +520,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp'
       msg:
         type: string
     type: object
@@ -2192,6 +2241,47 @@ definitions:
         type: array
       imageLink:
         type: string
+    type: object
+  internal_handler_vcjob.JobResp:
+    properties:
+      billedPointsTotal:
+        type: number
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      jobName:
+        type: string
+      jobType:
+        type: string
+      locked:
+        type: boolean
+      lockedTimestamp:
+        type: string
+      name:
+        type: string
+      nodes:
+        items:
+          type: string
+        type: array
+      owner:
+        type: string
+      permanentLocked:
+        type: boolean
+      queue:
+        type: string
+      resources:
+        $ref: '#/definitions/v1.ResourceList'
+      scheduleType:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
+      startedAt:
+        type: string
+      status:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+      waitingToleranceSeconds:
+        type: integer
     type: object
   internal_handler_vcjob.JupyterTokenResp:
     properties:
@@ -8008,13 +8098,59 @@ paths:
       consumes:
       - application/json
       description: Get the jobs of the user by client-go
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: Volcano Job List
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp'
         "400":
           description: Request parameter error
           schema:
@@ -8374,13 +8510,54 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: admin get Volcano Job List
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp'
         "400":
           description: admin Request parameter error
           schema:
@@ -8392,6 +8569,102 @@ paths:
       security:
       - Bearer: []
       summary: Get all of the jobs
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/all/facets:
+    get:
+      parameters:
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get all visible job facets
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/facets:
+    get:
+      parameters:
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get job facets for the current user
       tags:
       - VolcanoJob
   /v1/vcjobs/jupyter:
@@ -8505,13 +8778,54 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: User's Job List
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_JobResp'
         "400":
           description: Request parameter error
           schema:
@@ -8531,6 +8845,59 @@ paths:
       security:
       - Bearer: []
       summary: Get jobs of a specific user within days
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/user/{username}/facets:
+    get:
+      parameters:
+      - description: Username
+        in: path
+        name: username
+        required: true
+        type: string
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - description: Search jobs
+        in: query
+        name: search
+        type: string
+      - collectionFormat: multi
+        description: Job types
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Job statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get job facets for a user
       tags:
       - VolcanoJob
   /v1/vcjobs/webide:

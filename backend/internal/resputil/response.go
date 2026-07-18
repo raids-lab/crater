@@ -20,6 +20,29 @@ type List[T any] struct {
 	Items []T   `json:"items"`
 }
 
+type Page[T any] struct {
+	Items    []T   `json:"items"`
+	Total    int64 `json:"total"`
+	Page     int   `json:"page"`
+	PageSize int   `json:"page_size"`
+}
+
+func NewPage[T any](items []T, total int64, page, pageSize int) Page[T] {
+	if items == nil {
+		items = []T{}
+	}
+	return Page[T]{Items: items, Total: total, Page: page, PageSize: pageSize}
+}
+
+type FacetItem struct {
+	Value string `json:"value"`
+	Count int64  `json:"count"`
+}
+
+type FacetResponse struct {
+	Facets map[string][]FacetItem `json:"facets"`
+}
+
 // emit 内部统一发送方法，接收基础 ErrorCode
 func emit(c *gin.Context, httpCode int, bizCode bizerr.BizCode, msg string, data any) {
 	c.JSON(httpCode, Response[any]{

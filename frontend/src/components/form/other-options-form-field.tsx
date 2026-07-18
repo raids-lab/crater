@@ -50,9 +50,12 @@ import {
 } from '@/components/ui/form'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { apiGetNodes } from '@/services/api/cluster'
+
+import { NodeSelectorMode } from '@/utils/form'
 
 import { cn } from '@/lib/utils'
 
@@ -72,80 +75,23 @@ function useNodeNames() {
   })
 }
 
-// NodeSingleSelect is a searchable single-select for the "specify work node" option.
-function NodeSingleSelect({
-  value,
-  onChange,
-  options,
-  placeholder,
-}: {
-  value: string
-  onChange: (value: string) => void
-  options: string[]
-  placeholder: string
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <Popover modal open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <FormControl>
-          <Button
-            variant="outline"
-            role="combobox"
-            type="button"
-            aria-expanded={open}
-            className={cn('w-full justify-between font-mono', !value && 'text-muted-foreground')}
-          >
-            <span className="truncate">{value || placeholder}</span>
-            <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-          </Button>
-        </FormControl>
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0"
-        style={{ width: 'var(--radix-popover-trigger-width)' }}
-        align="start"
-      >
-        <Command>
-          <CommandInput placeholder={placeholder} className="h-9" />
-          <CommandList>
-            <CommandEmpty>无可用节点</CommandEmpty>
-            <CommandGroup>
-              {options.map((name) => (
-                <CommandItem
-                  key={name}
-                  value={name}
-                  onSelect={() => {
-                    onChange(name)
-                    setOpen(false)
-                  }}
-                  className="font-mono"
-                >
-                  {name}
-                  <CheckIcon
-                    className={cn('ml-auto size-4', value === name ? 'opacity-100' : 'opacity-0')}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-// NodeMultiSelect is a searchable multi-select for excluded nodes.
+// NodeMultiSelect is a searchable multi-select for node scheduling constraints.
 function NodeMultiSelect({
   values,
   onChange,
   options,
   placeholder,
+  selectedLabel,
+  emptyLabel,
+  removeLabel,
 }: {
   values: string[]
   onChange: (values: string[]) => void
   options: string[]
   placeholder: string
+  selectedLabel: string
+  emptyLabel: string
+  removeLabel: (name: string) => string
 }) {
   const [open, setOpen] = useState(false)
   const toggle = (name: string) => {
@@ -170,9 +116,7 @@ function NodeMultiSelect({
                 values.length === 0 && 'text-muted-foreground'
               )}
             >
-              <span className="truncate">
-                {values.length > 0 ? `已排除 ${values.length} 个节点` : placeholder}
-              </span>
+              <span className="truncate">{values.length > 0 ? selectedLabel : placeholder}</span>
               <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
             </Button>
           </FormControl>
@@ -185,7 +129,7 @@ function NodeMultiSelect({
           <Command>
             <CommandInput placeholder={placeholder} className="h-9" />
             <CommandList>
-              <CommandEmpty>无可用节点</CommandEmpty>
+              <CommandEmpty>{emptyLabel}</CommandEmpty>
               <CommandGroup>
                 {options.map((name) => {
                   const selected = values.includes(name)
@@ -222,7 +166,7 @@ function NodeMultiSelect({
                 type="button"
                 onClick={() => toggle(name)}
                 className="hover:text-destructive"
-                aria-label={`移除 ${name}`}
+                aria-label={removeLabel(name)}
               >
                 <XIcon className="size-3" />
               </button>
@@ -238,8 +182,8 @@ interface OtherOptionsFormCardProps<T extends FieldValues> {
   form: UseFormReturn<T>
   alertEnabledPath: FieldPath<T>
   nodeSelectorEnablePath: FieldPath<T>
-  nodeSelectorNodeNamePath: FieldPath<T>
-  nodeSelectorExcludedNodesPath?: FieldPath<T> // 可选的排除节点路径
+  nodeSelectorModePath: FieldPath<T>
+  nodeSelectorNodesPath: FieldPath<T>
   cpuPinningEnabledPath?: FieldPath<T> // 可选的 CPU 绑核路径
   open: boolean
   setOpen: (open: boolean) => void
@@ -249,14 +193,20 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   form,
   alertEnabledPath,
   nodeSelectorEnablePath,
-  nodeSelectorNodeNamePath,
-  nodeSelectorExcludedNodesPath,
+  nodeSelectorModePath,
+  nodeSelectorNodesPath,
   cpuPinningEnabledPath,
   open,
   setOpen,
 }: OtherOptionsFormCardProps<T>) {
   const { t } = useTranslation()
   const nodeSelectorEnabled = form.watch(nodeSelectorEnablePath)
+  const watchedNodeSelectorMode = form.watch(nodeSelectorModePath) as NodeSelectorMode | undefined
+  const nodeSelectorMode =
+    watchedNodeSelectorMode === NodeSelectorMode.Exclude
+      ? NodeSelectorMode.Exclude
+      : NodeSelectorMode.Include
+  const nodeSelectorIsIncludeMode = nodeSelectorMode === NodeSelectorMode.Include
   const [cpuPinningConfirmOpen, setCpuPinningConfirmOpen] = useState(false)
   const { data: nodeNames = [] } = useNodeNames()
 
@@ -368,16 +318,16 @@ export function OtherOptionsFormCard<T extends FieldValues>({
               control={form.control}
               name={nodeSelectorEnablePath}
               render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0 pb-1.5">
                   <FormLabel className="font-normal">
-                    {t('otherOptionsFormCard.specifyWorkNode')}
+                    {t('otherOptionsFormCard.targetNodeControl')}
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          {t('otherOptionsFormCard.tooltip.debugPerformanceTesting')}
+                          {t('otherOptionsFormCard.tooltip.targetNodeControl')}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -390,58 +340,69 @@ export function OtherOptionsFormCard<T extends FieldValues>({
             />
             <FormField
               control={form.control}
-              name={nodeSelectorNodeNamePath}
+              name={nodeSelectorModePath}
+              render={({ field }) => (
+                <FormItem
+                  className={cn('gap-1', {
+                    hidden: !nodeSelectorEnabled,
+                  })}
+                >
+                  <FormControl>
+                    <Tabs
+                      value={nodeSelectorMode}
+                      onValueChange={(value) => {
+                        field.onChange(value as NodeSelectorMode)
+                      }}
+                      className="w-full"
+                    >
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value={NodeSelectorMode.Include} className="cursor-pointer">
+                          {t('otherOptionsFormCard.mode.include')}
+                        </TabsTrigger>
+                        <TabsTrigger value={NodeSelectorMode.Exclude} className="cursor-pointer">
+                          {t('otherOptionsFormCard.mode.exclude')}
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </FormControl>
+                  <FormDescription>
+                    {nodeSelectorIsIncludeMode
+                      ? t('otherOptionsFormCard.includeModeDescription')
+                      : t('otherOptionsFormCard.excludeModeDescription')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={nodeSelectorNodesPath}
               render={({ field }) => (
                 <FormItem
                   className={cn({
                     hidden: !nodeSelectorEnabled,
                   })}
                 >
-                  <NodeSingleSelect
-                    value={(field.value as string) ?? ''}
-                    onChange={field.onChange}
+                  <NodeMultiSelect
+                    values={(field.value as string[]) ?? []}
+                    onChange={(values) => field.onChange(values as PathValue<T, FieldPath<T>>)}
                     options={nodeNames}
-                    placeholder={t('otherOptionsFormCard.selectNodePlaceholder')}
+                    placeholder={
+                      nodeSelectorIsIncludeMode
+                        ? t('otherOptionsFormCard.includeNodePlaceholder')
+                        : t('otherOptionsFormCard.excludeNodePlaceholder')
+                    }
+                    selectedLabel={t('otherOptionsFormCard.selectedNodeCount', {
+                      count: ((field.value as string[]) ?? []).length,
+                    })}
+                    emptyLabel={t('otherOptionsFormCard.emptyNodeList')}
+                    removeLabel={(name) => t('otherOptionsFormCard.removeNodeAriaLabel', { name })}
                   />
-                  <FormDescription>{t('otherOptionsFormCard.nodeNameDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
-          {nodeSelectorExcludedNodesPath && (
-            <div className="space-y-1.5">
-              <FormLabel className="font-normal">
-                {t('otherOptionsFormCard.excludeWorkNode')}
-                <TooltipProvider delayDuration={100}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>{t('otherOptionsFormCard.tooltip.excludeNode')}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </FormLabel>
-              <FormField
-                control={form.control}
-                name={nodeSelectorExcludedNodesPath}
-                render={({ field }) => (
-                  <FormItem>
-                    <NodeMultiSelect
-                      values={(field.value as string[]) ?? []}
-                      onChange={(values) => field.onChange(values as PathValue<T, FieldPath<T>>)}
-                      options={nodeNames}
-                      placeholder={t('otherOptionsFormCard.excludeNodePlaceholder')}
-                    />
-                    <FormDescription>
-                      {t('otherOptionsFormCard.excludeNodeDescription')}
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          )}
         </div>
       </AccordionCard>
     </>

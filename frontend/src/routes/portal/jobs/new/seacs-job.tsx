@@ -45,6 +45,7 @@ import { EnvFormCard } from '@/components/form/env-form-field'
 import FormLabelMust from '@/components/form/form-label-must'
 import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
+import { MetadataFormSingle } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
 import { publishValidateSearch } from '@/components/job/publish'
@@ -57,14 +58,17 @@ import { apiJobTemplate, apiSparseCreate } from '@/services/api/vcjob'
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
 import {
+  NodeSelectorMode,
   VolumeMountType,
   buildNodeSelectors,
   convertToResourceList,
   ensureImageCompatibility,
   envsSchema,
   exportToJsonFile,
+  exportToJsonString,
   forwardsSchema,
   importFromJsonFile,
+  importFromJsonString,
   nodeSelectorSchema,
   taskSchema,
   volumeMountsSchema,
@@ -83,9 +87,6 @@ export const Route = createFileRoute('/portal/jobs/new/seacs-job')({
     }
   },
 })
-
-const VERSION = '20240528'
-const JOB_TYPE = 'single'
 
 const formSchema = z.object({
   jobName: z
@@ -119,6 +120,20 @@ const formSchema = z.object({
 
 type FormSchema = z.infer<typeof formSchema>
 
+const dataProcessor = (data: FormSchema) => {
+  data.task.image = ensureImageCompatibility(data.task.image) as {
+    imageLink: string
+    archs: string[]
+  }
+  if (data.forwards === undefined || data.forwards === null) {
+    data.forwards = []
+  }
+  if (data.alertEnabled === undefined) {
+    data.alertEnabled = true
+  }
+  return data
+}
+
 function RouteComponent() {
   const [envOpen, setEnvOpen] = useState<boolean>(false)
   const [otherOpen, setOtherOpen] = useState<boolean>(false)
@@ -148,15 +163,7 @@ function RouteComponent() {
         embeddingDim: values.dim.map((item) => item.embeddingDim),
         replicas: 1,
         selectors: buildNodeSelectors(values.nodeSelector),
-        template: JSON.stringify(
-          {
-            version: VERSION,
-            type: JOB_TYPE,
-            data: currentValues,
-          },
-          null,
-          2
-        ),
+        template: exportToJsonString(MetadataFormSingle, currentValues),
       }),
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
@@ -216,7 +223,8 @@ function RouteComponent() {
       envs: [],
       nodeSelector: {
         enable: false,
-        excludedNodes: [],
+        mode: NodeSelectorMode.Include,
+        nodes: [],
       },
       forwards: [],
     },
@@ -225,18 +233,21 @@ function RouteComponent() {
   const { mutate: fetchJobTemplate } = useMutation({
     mutationFn: (jobName: string) => apiJobTemplate(jobName),
     onSuccess: (response) => {
-      const jobInfo = JSON.parse(response.data)
+      try {
+        const jobInfo = dataProcessor(
+          importFromJsonString<FormSchema>(MetadataFormSingle, response.data)
+        )
 
-      // 处理 image 字段的兼容性
-      jobInfo.data.task.image = ensureImageCompatibility(jobInfo.data.task.image) as {
-        imageLink: string
-        archs: string[]
-      }
+        form.reset(jobInfo)
 
-      form.reset(jobInfo.data)
-
-      if (jobInfo.data.envs.length > 0) {
-        setEnvOpen(true)
+        if (jobInfo.envs.length > 0) {
+          setEnvOpen(true)
+        }
+        if (jobInfo.nodeSelector.enable || jobInfo.alertEnabled === false) {
+          setOtherOpen(true)
+        }
+      } catch (error) {
+        showErrorToast(error)
       }
     },
     onError: () => {
@@ -327,12 +338,16 @@ function RouteComponent() {
               <Button variant="outline" type="button" className="relative cursor-pointer">
                 <Input
                   onChange={(e) => {
-                    importFromJsonFile<FormSchema>(VERSION, JOB_TYPE, e.target.files?.[0])
+                    importFromJsonFile<FormSchema>(MetadataFormSingle, e.target.files?.[0])
                       .then((data) => {
+                        data = dataProcessor(data)
                         form.reset(data)
 
                         if (data.envs.length > 0) {
                           setEnvOpen(true)
+                        }
+                        if (data.nodeSelector.enable || data.alertEnabled === false) {
+                          setOtherOpen(true)
                         }
                         toast.success(`导入配置成功`)
                       })
@@ -359,8 +374,8 @@ function RouteComponent() {
                       }
                       exportToJsonFile(
                         {
-                          version: VERSION,
-                          type: JOB_TYPE,
+                          version: MetadataFormSingle.version,
+                          type: MetadataFormSingle.type,
                           data: currentValues,
                         },
                         currentValues.jobName + '.json'
@@ -740,8 +755,8 @@ function RouteComponent() {
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
-              nodeSelectorNodeNamePath="nodeSelector.nodeName"
-              nodeSelectorExcludedNodesPath="nodeSelector.excludedNodes"
+              nodeSelectorModePath="nodeSelector.mode"
+              nodeSelectorNodesPath="nodeSelector.nodes"
               open={otherOpen}
               setOpen={setOtherOpen}
             />

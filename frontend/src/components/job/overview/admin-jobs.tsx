@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
 import { CalendarIcon, LockIcon, Trash2Icon } from 'lucide-react'
@@ -31,32 +31,34 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
-import JobTypeLabel, { jobTypes } from '@/components/badge/job-type-badge'
+import JobPhaseLabel from '@/components/badge/job-phase-badge'
+import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
-import { scheduleTypes } from '@/components/job/statuses'
+import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
-import { apiAdminGetJobBillingList } from '@/services/api/billing'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
   JobPhase,
   JobType,
   ScheduleType,
+  apiAdminGetJobFacets,
   apiAdminGetJobList,
   apiJobDeleteForAdmin,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { isBillingVisibleForAdmin } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -74,7 +76,7 @@ export type StatusValue =
   | 'Preempted'
   | 'Deleted'
 
-type JobTableRow = IJobInfo & { billedPointsTotal?: number }
+type JobTableRow = IJobInfo
 
 export const getHeader = (key: string): string => {
   switch (key) {
@@ -108,7 +110,6 @@ export const getHeader = (key: string): string => {
 const AdminJobOverview = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [days, setDays] = useState(7)
   const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([])
   const [isLockDialogOpen, setIsLockDialogOpen] = useState(false)
   const [isExtendDialogOpen, setIsExtendDialogOpen] = useState(false)
@@ -117,96 +118,42 @@ const AdminJobOverview = () => {
     queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForAdmin(billingStatus)
-
-  const toolbarConfig: DataTableToolbarConfig = {
-    globalSearch: {
-      enabled: true,
-    },
-    filterOptions: [
-      {
-        key: 'jobType',
-        title: t('jobs.filters.jobType'),
-        option: jobTypes,
-      },
-      {
-        key: 'scheduleType',
-        title: t('jobs.filters.scheduleType'),
-        option: scheduleTypes,
-      },
-      {
-        key: 'status',
-        title: t('jobs.filters.status'),
-        option: jobPhases,
-      },
-    ],
-    getHeader: getHeader,
-  }
+  const tableState = useRemoteTableState('admin_job_overview', {
+    sorting: [{ id: 'createdAt', desc: true }],
+    columnFilters: [{ id: 'days', value: ['7'] }],
+  })
+  const days = Number(
+    (
+      tableState.columnFilters.find(({ id }) => id === 'days')?.value as string[] | undefined
+    )?.[0] ?? 7
+  )
 
   const vcjobQuery = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', days],
-    queryFn: () => apiAdminGetJobList(days),
-    select: (res) => res.data,
+    queryKey: buildRemoteQueryKey('admin-jobs', tableState.params),
+    queryFn: async ({ signal }) => (await apiAdminGetJobList(tableState.params, signal)).data,
+    placeholderData: keepPreviousData,
   })
-  const billingQuery = useQuery({
-    queryKey: ['admin', 'tasklist', 'job', 'billing', days],
-    queryFn: () => apiAdminGetJobBillingList(days),
-    select: (res) =>
-      res.data.reduce<Record<string, number>>((acc, item) => {
-        acc[item.jobName] = item.billedPointsTotal
-        return acc
-      }, {}),
-    enabled: billingVisible,
+  const facetsQuery = useQuery({
+    queryKey: buildFacetQueryKey('admin-jobs', tableState.params),
+    queryFn: async ({ signal }) => (await apiAdminGetJobFacets(tableState.params, signal)).data,
   })
-  const refetchVcjobQuery = vcjobQuery.refetch
-  const refetchBillingQuery = billingQuery.refetch
-  const refetchMergedQuery = useCallback(async () => {
-    const [vcjobResult] = await Promise.all([refetchVcjobQuery(), refetchBillingQuery()])
-    return vcjobResult
-  }, [refetchBillingQuery, refetchVcjobQuery])
-  const mergedVcjobQuery = useMemo(
-    () =>
-      ({
-        data: (vcjobQuery.data ?? []).map((job) => ({
-          ...job,
-          billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
-        })),
-        isLoading: vcjobQuery.isLoading || (billingVisible && billingQuery.isLoading),
-        dataUpdatedAt: Math.max(
-          vcjobQuery.dataUpdatedAt,
-          billingVisible ? billingQuery.dataUpdatedAt : 0
-        ),
-        refetch: refetchMergedQuery,
-      }) as unknown as UseQueryResult<JobTableRow[], Error>,
-    [
-      billingVisible,
-      billingQuery.data,
-      billingQuery.dataUpdatedAt,
-      billingQuery.isLoading,
-      refetchMergedQuery,
-      vcjobQuery.data,
-      vcjobQuery.dataUpdatedAt,
-      vcjobQuery.isLoading,
-    ]
+  const toolbarConfig = useMemo(
+    () => ({ ...getRemoteJobToolbarConfig(facetsQuery.data), getHeader }),
+    [facetsQuery.data]
   )
 
   const refetchTaskList = useCallback(async () => {
     try {
       await Promise.all([
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
-          queryClient.invalidateQueries({
-            queryKey: ['admin', 'tasklist', 'job', days],
-          })
+          queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-jobs'] })
         ),
-        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
-          queryClient.invalidateQueries({
-            queryKey: ['admin', 'tasklist', 'job', 'billing', days],
-          })
-        ),
+        queryClient.invalidateQueries({ queryKey: ['remote-list-facets', 'admin-jobs'] }),
       ])
     } catch (error) {
       logger.error('更新查询失败', error)
     }
-  }, [queryClient, days])
+  }, [queryClient])
 
   const { mutate: deleteTask } = useMutation({
     mutationFn: apiJobDeleteForAdmin,
@@ -287,6 +234,7 @@ const AdminJobOverview = () => {
       },
       {
         accessorKey: 'nodes',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('nodes')} />
         ),
@@ -297,6 +245,7 @@ const AdminJobOverview = () => {
       },
       {
         accessorKey: 'resources',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('resources')} />
         ),
@@ -377,14 +326,15 @@ const AdminJobOverview = () => {
 
   return (
     <>
-      <DataTable
+      <RemoteDataTable
         info={{
           title: t('adminJobOverview.title'),
           description: t('adminJobOverview.description'),
         }}
-        storageKey="admin_job_overview"
-        query={mergedVcjobQuery}
+        query={vcjobQuery}
+        state={tableState}
         columns={vcjobColumns}
+        getRowId={(row) => row.jobName}
         toolbarConfig={toolbarConfig}
         multipleHandlers={[
           {
@@ -432,7 +382,10 @@ const AdminJobOverview = () => {
         <Select
           value={days.toString()}
           onValueChange={(value) => {
-            setDays(parseInt(value))
+            tableState.setColumnFilters((current) => [
+              ...current.filter(({ id }) => id !== 'days'),
+              { id: 'days', value: [value] },
+            ])
           }}
         >
           <SelectTrigger className="bg-background h-9 pr-2 pl-3">
@@ -449,7 +402,7 @@ const AdminJobOverview = () => {
             ))}
           </SelectContent>
         </Select>
-      </DataTable>
+      </RemoteDataTable>
 
       {/* Duration Dialog for locking/unlocking jobs (batch operation) */}
       <DurationDialog

@@ -18,8 +18,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { ChartNoAxesColumn, CircleHelpIcon, Plus, Trash2 } from 'lucide-react'
-import { ChangeEvent, KeyboardEvent, useMemo } from 'react'
-import { FieldPath, FieldValues, UseFormReturn } from 'react-hook-form'
+import { ChangeEvent, KeyboardEvent, useEffect, useMemo } from 'react'
+import { FieldPath, FieldValues, PathValue, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -140,6 +140,7 @@ export function ResourceFormFields<T extends FieldValues>({
         )
     },
   })
+  const resourceOptions = resources ?? []
 
   const billingEntry = useMemo(() => {
     const resourceList: Record<string, string> = {}
@@ -245,7 +246,7 @@ export function ResourceFormFields<T extends FieldValues>({
             </FormLabel>
             <FormControl>
               <Combobox
-                items={resources ?? []}
+                items={resourceOptions}
                 renderLabel={(item) => (
                   <div className="flex w-full flex-row items-center justify-between gap-3">
                     <p>{item.label}</p>
@@ -279,7 +280,8 @@ export function ResourceFormFields<T extends FieldValues>({
       {rdmaPath && (
         <RDMAFormFields
           form={form}
-          resources={resources ?? []}
+          resources={resourceOptions}
+          resourcesLoaded={resources !== undefined}
           gpuModelPath={gpuModelPath}
           rdmaPath={rdmaPath}
         />
@@ -287,7 +289,7 @@ export function ResourceFormFields<T extends FieldValues>({
       {vgpuPath && (
         <VGPUFormFields
           form={form}
-          resources={resources ?? []}
+          resources={resourceOptions}
           gpuModelPath={gpuModelPath}
           vgpuPath={vgpuPath}
         />
@@ -318,11 +320,13 @@ export function ResourceFormFields<T extends FieldValues>({
 function RDMAFormFields<T extends FieldValues>({
   form,
   resources,
+  resourcesLoaded,
   gpuModelPath,
   rdmaPath,
 }: {
   form: UseFormReturn<T>
   resources: ComboboxItem<Resource>[]
+  resourcesLoaded: boolean
   gpuModelPath: FieldPath<T>
   rdmaPath: {
     rdmaEnabled: FieldPath<T>
@@ -332,8 +336,9 @@ function RDMAFormFields<T extends FieldValues>({
   const { t } = useTranslation()
   const gpuModel = form.watch(gpuModelPath)
   const rdmaEnabled = form.watch(rdmaPath.rdmaEnabled)
+  const rdmaLabel = form.watch(rdmaPath.rdmaLabel)
   const gpuID = useMemo(() => {
-    if (gpuModel) {
+    if (typeof gpuModel === 'string' && gpuModel) {
       const gpu = resources?.find((item) => item.value === gpuModel)
       return gpu?.detail?.ID ?? 0
     }
@@ -344,6 +349,7 @@ function RDMAFormFields<T extends FieldValues>({
   const { data: networks } = useQuery({
     queryKey: ['resources', 'networks', 'list', gpuID],
     queryFn: () => apiResourceNetworks(gpuID),
+    enabled: gpuID > 0,
     select: (res) =>
       res.data
         .filter((item) => item.amountSingleMax > 0)
@@ -356,6 +362,48 @@ function RDMAFormFields<T extends FieldValues>({
             }) as ComboboxItem<Resource>
         ),
   })
+
+  useEffect(() => {
+    const selectedNetwork = typeof rdmaLabel === 'string' ? rdmaLabel : ''
+    const clearRDMA = () => {
+      if (rdmaEnabled) {
+        form.setValue(rdmaPath.rdmaEnabled, false as PathValue<T, FieldPath<T>>, {
+          shouldDirty: true,
+          shouldValidate: true,
+        })
+      }
+      if (selectedNetwork) {
+        form.setValue(rdmaPath.rdmaLabel, undefined as PathValue<T, FieldPath<T>>, {
+          shouldDirty: true,
+          shouldValidate: true,
+        })
+      }
+    }
+
+    if (!gpuModel || (resourcesLoaded && gpuID === 0)) {
+      clearRDMA()
+      return
+    }
+    if (!networks) {
+      return
+    }
+
+    const selectedNetworkExists =
+      selectedNetwork !== '' && networks.some((item) => item.value === selectedNetwork)
+    if (networks.length === 0 || (selectedNetwork && !selectedNetworkExists)) {
+      clearRDMA()
+    }
+  }, [
+    form,
+    gpuID,
+    gpuModel,
+    networks,
+    rdmaEnabled,
+    rdmaLabel,
+    rdmaPath.rdmaEnabled,
+    rdmaPath.rdmaLabel,
+    resourcesLoaded,
+  ])
 
   return (
     <>

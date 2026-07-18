@@ -30,6 +30,7 @@ export type DataTableToolbarConfig = {
     title: string
     option?: DataTableFacetedFilterOption[]
     defaultValues?: string[]
+    remoteFacets?: boolean
   }[]
   getHeader: (key: string) => string
 } & (
@@ -98,6 +99,7 @@ export function DataTableToolbar<TData>({
                 title={filterOption.title}
                 options={filterOption.option}
                 defaultValues={filterOption.defaultValues}
+                remoteFacets={filterOption.remoteFacets}
               />
             )
         )}

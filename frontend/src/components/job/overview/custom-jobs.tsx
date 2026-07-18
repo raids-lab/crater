@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { Trash2Icon } from 'lucide-react'
 import { useMemo } from 'react'
@@ -30,23 +30,26 @@ import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import JobResourceSummary from '@/components/job/job-resource-summary'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
-import { getHeader, jobToolbarConfig } from '@/components/job/statuses'
+import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
-import { apiJobBillingList } from '@/services/api/billing'
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
   JobPhase,
   JobType,
   ScheduleType,
+  apiJobBatchFacets,
   apiJobBatchList,
   apiJobDelete,
+  batchJobTypes,
   getDisplayJobPhase,
-  isInteracitveJob,
 } from '@/services/api/vcjob'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -55,7 +58,7 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import ListedNewJobButton from '../new-job-button'
 
-type JobTableRow = IJobInfo & { billedPointsTotal?: number }
+type JobTableRow = IJobInfo
 
 const VolcanoOverview = () => {
   const { t } = useTranslation()
@@ -65,54 +68,31 @@ const VolcanoOverview = () => {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
+  const tableState = useRemoteTableState('portal_batch_job_overview', {
+    sorting: [{ id: 'createdAt', desc: true }],
+  })
 
   const batchQuery = useQuery({
-    queryKey: ['job', 'batch'],
-    queryFn: apiJobBatchList,
-    select: (res) => res.data.filter((task) => !isInteracitveJob(task.jobType)),
+    queryKey: buildRemoteQueryKey('jobs-batch', tableState.params),
+    queryFn: async ({ signal }) => (await apiJobBatchList(tableState.params, signal)).data,
+    placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
-  const billingQuery = useQuery({
-    queryKey: ['job', 'billing'],
-    queryFn: apiJobBillingList,
-    select: (res) =>
-      res.data.reduce<Record<string, number>>((acc, item) => {
-        acc[item.jobName] = item.billedPointsTotal
-        return acc
-      }, {}),
-    refetchInterval: REFETCH_INTERVAL,
-    enabled: billingVisible,
+  const facetsQuery = useQuery({
+    queryKey: buildFacetQueryKey('jobs-batch', tableState.params),
+    queryFn: async ({ signal }) => (await apiJobBatchFacets(tableState.params, signal)).data,
   })
-  const mergedBatchQuery = useMemo(
-    () =>
-      ({
-        data: (batchQuery.data ?? []).map((job) => ({
-          ...job,
-          billedPointsTotal: billingQuery.data?.[job.jobName] ?? 0,
-        })),
-        isLoading: batchQuery.isLoading || (billingVisible && billingQuery.isLoading),
-        dataUpdatedAt: Math.max(
-          batchQuery.dataUpdatedAt,
-          billingVisible ? billingQuery.dataUpdatedAt : 0
-        ),
-        refetch: batchQuery.refetch,
-      }) as unknown as UseQueryResult<JobTableRow[], Error>,
-    [
-      batchQuery.data,
-      batchQuery.dataUpdatedAt,
-      batchQuery.isLoading,
-      batchQuery.refetch,
-      billingVisible,
-      billingQuery.data,
-      billingQuery.dataUpdatedAt,
-      billingQuery.isLoading,
-    ]
+  const toolbarConfig = useMemo(
+    () => getRemoteJobToolbarConfig(facetsQuery.data, batchJobTypes),
+    [facetsQuery.data]
   )
 
   const refetchTaskList = async () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['remote-list', 'jobs-batch'] }),
+        queryClient.invalidateQueries({ queryKey: ['remote-list-facets', 'jobs-batch'] }),
         queryClient.invalidateQueries({ queryKey: ['job'] }),
         queryClient.invalidateQueries({ queryKey: ['job', 'billing'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'quota'] }),
@@ -172,6 +152,7 @@ const VolcanoOverview = () => {
       },
       {
         accessorKey: 'nodes',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('nodes')} />
         ),
@@ -182,6 +163,7 @@ const VolcanoOverview = () => {
       },
       {
         accessorKey: 'resources',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('resources')} />
         ),
@@ -242,15 +224,16 @@ const VolcanoOverview = () => {
   )
 
   return (
-    <DataTable
+    <RemoteDataTable
       info={{
         title: '自定义作业',
         description: '使用自定义作业进行训练、推理等任务',
       }}
-      storageKey="portal_batch_job_overview"
-      query={mergedBatchQuery}
+      query={batchQuery}
+      state={tableState}
       columns={batchColumns}
-      toolbarConfig={jobToolbarConfig}
+      getRowId={(row) => row.jobName}
+      toolbarConfig={toolbarConfig}
       briefChildren={<JobResourceSummary />}
       multipleHandlers={[
         {
@@ -276,7 +259,7 @@ const VolcanoOverview = () => {
         <DocsButton title="查看文档" url="quick-start/batchprocess" />
         <ListedNewJobButton mode="custom" />
       </div>
-    </DataTable>
+    </RemoteDataTable>
   )
 }
 

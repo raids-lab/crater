@@ -16,12 +16,18 @@
 import { getDefaultStore } from 'jotai'
 import { Event as KubernetesEvent } from 'kubernetes-types/core/v1'
 
+import {
+  type RemoteTableParams,
+  buildFacetSearchParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { V1ResourceList } from '@/utils/resource'
 import { globalJobUrl } from '@/utils/store'
 
-import { IResponse } from '../types'
+import type { IFacetResponse, IPage, IResponse } from '../types'
 import { ImageInfoResponse } from './imagepack'
 import { TerminatedState } from './tool'
 
@@ -69,27 +75,71 @@ export interface IJobInfo {
   locked: boolean
   permanentLocked: boolean
   lockedTimestamp?: string
+  billedPointsTotal: number
 }
 
-export const apiAdminGetJobList = (days: number) =>
-  apiV1Get<IResponse<IJobInfo[]>>(`admin/${JOB_URL}`, {
-    searchParams: { days },
+export const apiAdminGetJobList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(`admin/${JOB_URL}`, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
+export const apiAdminGetJobFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IFacetResponse>>(`admin/${JOB_URL}/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(params)),
+    signal,
   })
 
 export const apiAdminGetJobDetail = (jobName: string) =>
   apiV1Get<IResponse<IJupyterDetail>>(`admin/${JOB_URL}/${jobName}/detail`)
 
-export const apiAdminGetUserJobList = (username: string, days: number = 30) =>
-  apiV1Get<IResponse<IJobInfo[]>>(`admin/${JOB_URL}/user/${username}`, {
-    searchParams: { days },
+export const apiAdminGetUserJobList = (
+  username: string,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(`admin/${JOB_URL}/user/${username}`, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
   })
 
-export const apiGetUserJobs = (username: string, days: number = 30) =>
-  apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/user/${username}`, {
-    searchParams: { days },
+export const apiAdminGetUserJobFacets = (
+  username: string,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IFacetResponse>>(`admin/${JOB_URL}/user/${username}/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(params)),
+    signal,
   })
 
-export const apiJobAllList = () => apiV1Get<IResponse<IJobInfo[]>>(`${JOB_URL}/all`)
+export const apiGetUserJobs = (username: string, params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(`${JOB_URL}/user/${username}`, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
+export const apiGetUserJobFacets = (
+  username: string,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/user/${username}/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
+export const apiJobAllList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(`${JOB_URL}/all`, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
+export const apiJobAllFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/all/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(params)),
+    signal,
+  })
 
 export enum JobPhase {
   Prequeue = 'Prequeue',
@@ -162,9 +212,57 @@ export const getJobStateType = (phase: JobPhase): JobStatus => {
   return JobStatus.Unknown
 }
 
-export const apiJobBatchList = () => apiV1Get<IResponse<IJobInfo[]>>(JOB_URL)
+export const apiJobBatchList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
+    signal,
+  })
 
-export const apiJobInteractiveList = () => apiV1Get<IResponse<IJobInfo[]>>(JOB_URL)
+export const apiJobBatchFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
+    signal,
+  })
+
+export const apiJobInteractiveList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, interactiveJobTypes))),
+    signal,
+  })
+
+export const apiJobInteractiveFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(withJobTypes(params, interactiveJobTypes))),
+    signal,
+  })
+
+export const interactiveJobTypes = [JobType.Jupyter, JobType.WebIDE]
+export const batchJobTypes = Object.values(JobType).filter(
+  (type) => !interactiveJobTypes.includes(type)
+)
+
+function withJobTypes(params: RemoteTableParams, allowed: JobType[]): RemoteTableParams {
+  const { jobType, job_type, ...filters } = params.filters
+  const selected = jobType ?? job_type
+  const selectedTypes = selected?.filter((type) => allowed.includes(type as JobType)) ?? []
+  const jobTypes = selectedTypes.length > 0 ? selectedTypes : allowed
+  return {
+    ...params,
+    filters: { ...filters, job_type: jobTypes },
+  }
+}
+
+export function toJobProtocol(params: RemoteTableParams): RemoteTableParams {
+  const { jobType, scheduleType, ...filters } = params.filters
+  return {
+    ...params,
+    filters: {
+      ...filters,
+      ...(jobType ? { job_type: jobType } : {}),
+      ...(scheduleType ? { schedule_type: scheduleType } : {}),
+    },
+  }
+}
 
 export interface PodDetail {
   name: string

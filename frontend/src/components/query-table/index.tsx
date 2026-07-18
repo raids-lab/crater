@@ -23,7 +23,6 @@ import {
   SortingState,
   Updater,
   VisibilityState,
-  flexRender,
   getCoreRowModel,
   getFacetedRowModel,
   getFacetedUniqueValues,
@@ -32,31 +31,16 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { GridIcon } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useLocalStorage } from 'usehooks-ts'
 
-import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-
-import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
-import PageTitle from '@/components/layout/page-title'
 
 import usePaginationWithStorage from '@/hooks/use-pagination-with-storage'
 
-import { cn } from '@/lib/utils'
-
-import { DataTablePagination, MultipleHandler } from './pagination'
-import { DataTableToolbar, DataTableToolbarConfig } from './toolbar'
+import { type MultipleHandler } from './pagination'
+import { DataTableShell } from './shell'
+import { type DataTableToolbarConfig } from './toolbar'
 
 const resolveUpdater = <TState,>(updater: Updater<TState>, state: TState) => {
   return typeof updater === 'function' ? (updater as (state: TState) => TState)(state) : updater
@@ -78,7 +62,7 @@ interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElem
   initialColumnVisibility?: VisibilityState
 }
 
-export function DataTable<TData, TValue>({
+export function LocalDataTable<TData, TValue>({
   info,
   storageKey,
   query,
@@ -91,7 +75,6 @@ export function DataTable<TData, TValue>({
   className,
   initialColumnVisibility = {},
 }: DataTableProps<TData, TValue>) {
-  const { t } = useTranslation()
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility)
   const [columnFilters, setColumnFilters] = useLocalStorage<ColumnFiltersState>(
@@ -100,12 +83,7 @@ export function DataTable<TData, TValue>({
   )
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
-  const { data: queryData, isLoading, dataUpdatedAt, refetch } = query
-  const updatedAt = new Date(dataUpdatedAt).toLocaleString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
+  const { data: queryData, error, isError, isLoading, dataUpdatedAt, refetch } = query
   const [pagination, setPagination] = usePaginationWithStorage(storageKey)
 
   const data = useMemo(() => {
@@ -204,88 +182,23 @@ export function DataTable<TData, TValue>({
   }, [pageCount, pagination.pageIndex, setPagination])
 
   return (
-    <div className={cn('flex flex-col gap-4', className)}>
-      {info && (
-        <PageTitle title={info.title} description={info.description}>
-          {children}
-        </PageTitle>
-      )}
-      {briefChildren && <>{briefChildren}</>}
-      {toolbarConfig && (
-        <DataTableToolbar table={table} config={toolbarConfig} isLoading={query.isLoading}>
-          {!info && <>{children}</>}
-        </DataTableToolbar>
-      )}
-      <Card className="overflow-hidden rounded-md p-0 shadow-xs">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead
-                        key={header.id}
-                        colSpan={header.colSpan}
-                        className="text-muted-foreground px-4"
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="pl-4">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={table.getAllColumns().length} className="h-60">
-                        <LoadingCircleIcon />
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={table.getAllColumns().length}
-                        className="text-muted-foreground/85 h-60 text-center hover:bg-transparent"
-                      >
-                        <div className="flex flex-col items-center justify-center py-16">
-                          <div className="bg-muted mb-4 rounded-full p-3">
-                            <GridIcon className="h-6 w-6" />
-                          </div>
-                          <p className="select-none">
-                            {withI18n ? t('dataTable.noData') : '暂无数据'}
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <DataTablePagination
-        table={table}
-        refetch={() => void refetch()}
-        updatedAt={updatedAt}
-        multipleHandlers={multipleHandlers}
-      />
-    </div>
+    <DataTableShell
+      table={table}
+      info={info}
+      toolbarConfig={toolbarConfig}
+      multipleHandlers={multipleHandlers}
+      briefChildren={briefChildren}
+      withI18n={withI18n}
+      className={className}
+      isLoading={isLoading}
+      isError={isError}
+      errorMessage={error?.message}
+      refetch={() => void refetch()}
+      dataUpdatedAt={dataUpdatedAt}
+    >
+      {children}
+    </DataTableShell>
   )
 }
+
+export const DataTable = LocalDataTable

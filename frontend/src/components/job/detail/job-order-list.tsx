@@ -16,9 +16,20 @@
 import { DurationDialog } from '@/routes/admin/jobs/-components/duration-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 import { ApprovalOrderDataTable } from '@/components/approval-order/approval-order-data-table'
 import {
@@ -30,13 +41,11 @@ import {
 import {
   type ApprovalOrder,
   listApprovalOrdersbyName,
-  updateApprovalOrder,
+  reviewApprovalOrder,
 } from '@/services/api/approvalorder'
 
 import useAdmin from '@/hooks/use-admin'
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
-
-import { atomUserInfo } from '@/utils/store'
 
 interface JobOrderListProps {
   jobName: string
@@ -45,9 +54,11 @@ interface JobOrderListProps {
 export default function JobOrderList({ jobName }: JobOrderListProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const user = useAtomValue(atomUserInfo)
   const isAdmin = useAdmin()
   const navigate = useNavigate()
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<ApprovalOrder | null>(null)
 
   // 使用锁定管理器 hook
   const {
@@ -86,15 +97,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
   // 批准操作（仅用于无需锁定的场景）
   const { mutate: approveOrder, isPending: isApproving } = useMutation({
     mutationFn: async (order: ApprovalOrder) => {
-      await updateApprovalOrder(order.id, {
-        name: order.name,
-        type: order.type,
-        status: 'Approved',
-        approvalorderTypeID: Number(order.content.approvalorderTypeID) || 0,
-        approvalorderReason: String(order.content.approvalorderReason || ''),
-        approvalorderExtensionHours: Number(order.content.approvalorderExtensionHours) || 0,
-        reviewerID: user?.id || 0,
-      })
+      await reviewApprovalOrder(order.id, { status: 'Approved' })
       return order
     },
     onSuccess: () => {
@@ -108,25 +111,30 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
 
   // 拒绝操作 mutation
   const { mutate: rejectOrder, isPending: isRejecting } = useMutation({
-    mutationFn: async (order: ApprovalOrder) => {
-      return updateApprovalOrder(order.id, {
-        name: order.name,
-        type: order.type,
-        status: 'Rejected',
-        approvalorderTypeID: Number(order.content.approvalorderTypeID) || 0,
-        approvalorderReason: String(order.content.approvalorderReason || ''),
-        approvalorderExtensionHours: Number(order.content.approvalorderExtensionHours) || 0,
-        reviewerID: user?.id || 0,
-      })
+    mutationFn: async ({ order, reason }: { order: ApprovalOrder; reason: string }) => {
+      return reviewApprovalOrder(order.id, { status: 'Rejected', reviewNotes: reason })
     },
     onSuccess: () => {
       toast.success(t('ApprovalOrderTable.toast.rejectSuccess'))
       refetchOrders()
+      setRejectDialogOpen(false)
+      setRejectReason('')
+      setRejectTarget(null)
     },
     onError: () => {
       toast.error(t('ApprovalOrderTable.toast.rejectError'))
     },
   })
+
+  const handleRejectConfirm = () => {
+    if (!rejectTarget) return
+    const reason = rejectReason.trim()
+    if (!reason) {
+      toast.error('请输入拒绝理由')
+      return
+    }
+    rejectOrder({ order: rejectTarget, reason })
+  }
 
   const handleViewOrder = (order: ApprovalOrder) => {
     // 首先显示一个提示，确认点击被触发
@@ -182,7 +190,11 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
       },
       reject: {
         show: isPending,
-        onClick: rejectOrder,
+        onClick: (order) => {
+          setRejectTarget(order)
+          setRejectReason('')
+          setRejectDialogOpen(true)
+        },
         disabled: () => isApproving || isRejecting,
       },
     }
@@ -230,6 +242,37 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
           defaultHours={(selectedExtHours || 8) % 24}
         />
       )}
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>拒绝工单</DialogTitle>
+            <DialogDescription>
+              提供拒绝理由后提交，系统会将该工单标记为拒绝状态。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Input
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="请输入拒绝原因"
+              disabled={isRejecting}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectDialogOpen(false)}
+              disabled={isRejecting}
+            >
+              取消
+            </Button>
+            <Button onClick={handleRejectConfirm} disabled={isRejecting}>
+              {isRejecting ? '提交中...' : '确认拒绝'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
