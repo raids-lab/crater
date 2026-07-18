@@ -17,6 +17,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
@@ -124,6 +125,60 @@ func TestRetryUpdateDuplicateIsConflict(t *testing.T) {
 	}
 	if err := retryUpdateError(gorm.ErrInvalidData); !errors.Is(err, bizerr.Internal.Base) {
 		t.Fatalf("non-duplicate retry update should remain internal: %v", err)
+	}
+}
+
+func TestConcurrentModelDownloadLimitCountsPendingAndDownloading(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:concurrent_model_download_limit?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	statuses := []model.ModelDownloadStatus{
+		model.ModelDownloadStatusPending,
+		model.ModelDownloadStatusDownloading,
+		model.ModelDownloadStatusPending,
+		model.ModelDownloadStatusDownloading,
+		model.ModelDownloadStatusDownloading,
+		model.ModelDownloadStatusPaused,
+		model.ModelDownloadStatusReady,
+		model.ModelDownloadStatusFailed,
+	}
+	downloads := make([]model.ModelDownload, 0, len(statuses))
+	for i, status := range statuses {
+		downloads = append(downloads, model.ModelDownload{
+			Name: fmt.Sprintf("owner/model-%d", i), Source: model.ModelSourceModelScope,
+			Category: model.DownloadCategoryModel, Revision: "main",
+			Path: fmt.Sprintf("public/Models/owner/model-%d", i), Status: status, CreatorID: 7,
+		})
+	}
+	if err := db.Create(&downloads).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	userToken := util.JWTMessage{UserID: 7}
+	err = enforceConcurrentModelDownloadLimit(ginContext, query.Use(db), userToken)
+	if !errors.Is(err, bizerr.RateLimit.Base) {
+		t.Fatalf("five active downloads should hit the rate limit, got %v", err)
+	}
+
+	adminToken := util.JWTMessage{UserID: 7, RolePlatform: model.RoleAdmin}
+	if err := enforceConcurrentModelDownloadLimit(ginContext, query.Use(db), adminToken); err != nil {
+		t.Fatalf("platform administrators should bypass the limit: %v", err)
+	}
+
+	if err := db.Model(&downloads[0]).Update("status", model.ModelDownloadStatusPaused).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := enforceConcurrentModelDownloadLimit(ginContext, query.Use(db), userToken); err != nil {
+		t.Fatalf("four active downloads plus paused/ready/failed tasks should be allowed: %v", err)
 	}
 }
 

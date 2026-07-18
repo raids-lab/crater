@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -35,11 +36,12 @@ import (
 )
 
 const (
-	defaultDownloadLogTailLines int64 = 1000
-	maxStoredDownloadLogBytes         = 64 * 1024
-	maxDownloadRevisionLength         = 128
-	CategoryModel                     = "model"
-	CategoryDataset                   = "dataset"
+	defaultDownloadLogTailLines        int64 = 1000
+	maxStoredDownloadLogBytes                = 64 * 1024
+	maxDownloadRevisionLength                = 128
+	maxConcurrentModelDownloadsPerUser       = 5
+	CategoryModel                            = "model"
+	CategoryDataset                          = "dataset"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -300,6 +302,42 @@ func lockModelDownloadIdentity(
 	return nil
 }
 
+// enforceConcurrentModelDownloadLimit serializes quota checks per user and
+// limits only tasks that currently consume (or are waiting for) a download Job.
+// Reusing an existing download is handled before this check and does not consume
+// another slot. Administrators are exempt so they can recover platform tasks.
+func enforceConcurrentModelDownloadLimit(
+	ctx context.Context, txQ *query.Query, token util.JWTMessage,
+) error {
+	if token.RolePlatform == model.RoleAdmin {
+		return nil
+	}
+
+	db := txQ.ModelDownload.WithContext(ctx).UnderlyingDB()
+	if db.Name() == "postgres" {
+		quotaIdentity := fmt.Sprintf("model-download-quota:%d", token.UserID)
+		if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", quotaIdentity).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "lock model download quota")
+		}
+	}
+
+	q := txQ.ModelDownload
+	activeCount, err := q.WithContext(ctx).
+		Where(q.CreatorID.Eq(token.UserID),
+			q.Status.In(string(model.ModelDownloadStatusPending), string(model.ModelDownloadStatusDownloading))).
+		Count()
+	if err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "count concurrent model downloads")
+	}
+	if activeCount >= maxConcurrentModelDownloadsPerUser {
+		return bizerr.RateLimit.TooManyRequests.New(fmt.Sprintf(
+			"普通用户同时最多可有 %d 个等待中或下载中的任务，请等待任务完成或暂停后再试",
+			maxConcurrentModelDownloadsPerUser,
+		))
+	}
+	return nil
+}
+
 // checkLogicalDownloadConflict blocks a new source/revision when a historical
 // failed or soft-deleted record already owns storage for the same public model.
 // Ready and ongoing records are handled earlier and reused instead.
@@ -434,6 +472,9 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 		}
 
 		if err := checkLogicalDownloadConflict(c, tx, req.Name, source, category, revision); err != nil {
+			return err
+		}
+		if err := enforceConcurrentModelDownloadLimit(c, tx, token); err != nil {
 			return err
 		}
 
@@ -802,7 +843,7 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 		return
 	}
 
-	download, err := prepareRetryDownload(c, req.ID, token.Username, action.Revision)
+	download, err := prepareRetryDownload(c, req.ID, token, action.Revision)
 
 	if err != nil {
 		klog.Errorf("retry download transaction failed: %v", err)
@@ -846,11 +887,14 @@ func normalizeRetryRevision(action *DownloadActionReq) error {
 // the revision deliberately does not rewrite Path: the source SDK receives the
 // same local directory and can validate/reuse files from the failed attempt.
 func prepareRetryDownload(
-	c *gin.Context, downloadID uint, username string, revision *string,
+	c *gin.Context, downloadID uint, token util.JWTMessage, revision *string,
 ) (*model.ModelDownload, error) {
 	db := query.Use(query.GetDB())
 	var download *model.ModelDownload
 	err := db.Transaction(func(tx *query.Query) error {
+		if err := enforceConcurrentModelDownloadLimit(c, tx, token); err != nil {
+			return err
+		}
 		txQ := tx.ModelDownload
 		d, err := txQ.WithContext(c).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
@@ -868,7 +912,7 @@ func prepareRetryDownload(
 			return err
 		}
 
-		newJobName := fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
+		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
 		updates := map[string]any{
 			"status": model.ModelDownloadStatusDownloading, "message": "", "job_name": newJobName,
 		}
@@ -1070,6 +1114,9 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 	q := query.ModelDownload
 	db := query.Use(query.GetDB())
 	err = db.Transaction(func(tx *query.Query) error {
+		if limitErr := enforceConcurrentModelDownloadLimit(c, tx, token); limitErr != nil {
+			return limitErr
+		}
 		txQ := tx.ModelDownload
 		locked, lockErr := txQ.WithContext(c).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
