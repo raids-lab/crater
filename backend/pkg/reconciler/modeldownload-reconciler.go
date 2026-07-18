@@ -31,6 +31,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/governance/modeldataset"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/config"
 )
 
@@ -454,11 +455,23 @@ func (r *ModelDownloadReconciler) getJobStatus(job *batchv1.Job) model.ModelDown
 func (r *ModelDownloadReconciler) updateDownloadStatus(
 	ctx context.Context, download *model.ModelDownload, status model.ModelDownloadStatus,
 ) error {
-	q := query.ModelDownload
-	_, err := q.WithContext(ctx).
-		Where(q.ID.Eq(download.ID)).
-		Update(q.Status, status)
-	return err
+	db := query.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.ModelDownload{}).
+			Where("id = ?", download.ID).
+			Update("status", status).Error; err != nil {
+			return err
+		}
+
+		switch status {
+		case model.ModelDownloadStatusReady:
+			return service.CompleteModelDownloadQuotaReservation(ctx, tx, download.ID, time.Now())
+		case model.ModelDownloadStatusFailed:
+			return service.ReleaseModelDownloadQuotaReservation(ctx, tx, download.ID)
+		default:
+			return nil
+		}
+	})
 }
 
 func (r *ModelDownloadReconciler) latestPodForJob(ctx context.Context, job *batchv1.Job) (*v1.Pod, error) {

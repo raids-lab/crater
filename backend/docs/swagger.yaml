@@ -573,6 +573,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.AdminModelDownloadLimitConfigResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
     properties:
       code:
@@ -650,6 +660,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.LoginResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.ModelDownloadLimitConfigResp'
       msg:
         type: string
     type: object
@@ -1121,6 +1141,21 @@ definitions:
       username:
         type: string
     type: object
+  internal_handler.AdminModelDownloadLimitConfigResp:
+    properties:
+      enabled:
+        type: boolean
+      maxConcurrent:
+        type: integer
+      maxSuccessfulDownloads:
+        type: integer
+      whitelistUserIds:
+        items:
+          type: integer
+        type: array
+      windowHours:
+        type: integer
+    type: object
   internal_handler.ApprovalOrderResp:
     properties:
       content:
@@ -1447,6 +1482,19 @@ definitions:
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
     type: object
+  internal_handler.ModelDownloadLimitConfigResp:
+    properties:
+      enabled:
+        type: boolean
+      exempt:
+        type: boolean
+      maxConcurrent:
+        type: integer
+      maxSuccessfulDownloads:
+        type: integer
+      windowHours:
+        type: integer
+    type: object
   internal_handler.ModelDownloadListResp:
     properties:
       items:
@@ -1499,8 +1547,14 @@ definitions:
         type: integer
       path:
         type: string
-      referenceCount:
+      relation:
+        type: string
+      requesterCount:
         type: integer
+      requesters:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+        type: array
       revision:
         type: string
       sizeBytes:
@@ -1820,6 +1874,26 @@ definitions:
     required:
     - baseUrl
     - modelName
+    type: object
+  internal_handler.UpdateModelDownloadLimitConfigReq:
+    properties:
+      enabled:
+        type: boolean
+      maxConcurrent:
+        type: integer
+      maxSuccessfulDownloads:
+        type: integer
+      whitelistUserIds:
+        items:
+          type: integer
+        type: array
+      windowHours:
+        type: integer
+    required:
+    - enabled
+    - maxConcurrent
+    - maxSuccessfulDownloads
+    - windowHours
     type: object
   internal_handler.UpdatePrequeueConfigReq:
     properties:
@@ -4699,6 +4773,44 @@ paths:
       security:
       - Bearer: []
       summary: 更新 LLM 配置
+      tags:
+      - SystemConfig
+  /v1/admin/system-config/model-download-limit:
+    get:
+      description: 获取下载额度和白名单用户 ID
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp'
+      security:
+      - Bearer: []
+      summary: 管理员获取模型与数据集下载额度
+      tags:
+      - SystemConfig
+    put:
+      consumes:
+      - application/json
+      description: 配置所有用户的并发任务上限、滚动窗口成功下载上限和豁免白名单
+      parameters:
+      - description: 下载额度配置
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateModelDownloadLimitConfigReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 更新模型与数据集下载额度
       tags:
       - SystemConfig
   /v1/admin/system-config/prequeue:
@@ -8012,6 +8124,21 @@ paths:
       summary: 获取资源统计信息
       tags:
       - statistics
+  /v1/system-config/model-download-limit:
+    get:
+      description: 获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp'
+      security:
+      - Bearer: []
+      summary: 获取模型与数据集下载额度
+      tags:
+      - SystemConfig
   /v1/token/verify:
     get:
       consumes:

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BoxIcon, DatabaseIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -46,6 +46,9 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import { CreateModelDownloadReq, apiCreateModelDownload } from '@/services/api/modeldownload'
+import { apiGetModelDownloadLimitConfig } from '@/services/api/system-config'
+
+import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
@@ -73,6 +76,11 @@ export function ModelDownloadDialog({
 }: ModelDownloadDialogProps) {
   const queryClient = useQueryClient()
   const [pendingRequest, setPendingRequest] = useState<CreateModelDownloadReq | null>(null)
+
+  const { data: limitConfig } = useQuery({
+    queryKey: ['system-config', 'model-download-limit'],
+    queryFn: () => apiGetModelDownloadLimitConfig().then((res) => res.data),
+  })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -115,14 +123,7 @@ export function ModelDownloadDialog({
       closeSheet()
       form.reset()
     },
-    onError: (error: unknown) => {
-      const message =
-        error && typeof error === 'object' && 'response' in error
-          ? ((error as { response?: { data?: { msg?: string } } }).response?.data?.msg ??
-            '提交失败，请重试')
-          : '提交失败，请重试'
-      toast.error(message)
-    },
+    onError: showErrorToast,
   })
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -140,6 +141,19 @@ export function ModelDownloadDialog({
   const pendingPath = pendingRequest
     ? `public/${pendingRequest.category === 'dataset' ? 'Datasets' : 'Models'}/${pendingRequest.name}`
     : ''
+
+  const effectiveLimitConfig = limitConfig ?? {
+    enabled: true,
+    maxConcurrent: 5,
+    windowHours: 2,
+    maxSuccessfulDownloads: 5,
+    exempt: false,
+  }
+  const quotaHint = !effectiveLimitConfig.enabled
+    ? '当前未启用下载额度限制。'
+    : effectiveLimitConfig.exempt
+      ? '当前账号在下载额度白名单内，不受同时下载任务数和滚动窗口成功下载数限制。'
+      : `当前账号同时最多可有 ${effectiveLimitConfig.maxConcurrent} 个等待中或下载中的任务；滚动 ${effectiveLimitConfig.windowHours} 小时最多成功下载 ${effectiveLimitConfig.maxSuccessfulDownloads} 个。下载中的任务会临时预占窗口名额，失败或暂停后释放；白名单用户不受限制。`
 
   return (
     <>
@@ -267,7 +281,8 @@ export function ModelDownloadDialog({
               <ul className="ml-4 list-disc space-y-1">
                 <li>模型统一下载到公共空间的 Models/ 目录,数据集下载到 Datasets/ 目录</li>
                 <li>文件会保存在对应目录下的名称子目录中</li>
-                <li>多个用户下载同一资源时会共享同一份文件</li>
+                <li>多个用户下载同一资源时会共享同一份文件，不会重复创建下载任务</li>
+                <li>{quotaHint}</li>
                 <li>受限或私有仓库（如部分 Llama / Gemma）需填写访问令牌</li>
                 <li>下载过程可能需要较长时间,请耐心等待</li>
               </ul>
@@ -284,7 +299,7 @@ export function ModelDownloadDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>确认提交{pendingCategoryLabel}下载任务</AlertDialogTitle>
             <AlertDialogDescription>
-              请确认以下信息。提交后平台会在公共存储中创建或复用对应资源。
+              请确认以下信息。提交后平台会在公共存储中创建或复用对应资源。{quotaHint}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pendingRequest && (

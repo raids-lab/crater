@@ -17,10 +17,12 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -29,6 +31,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -75,6 +78,271 @@ func TestNormalizeRetryRevision(t *testing.T) {
 	tooLong := strings.Repeat("x", maxDownloadRevisionLength+1)
 	if err := normalizeRetryRevision(&DownloadActionReq{Revision: &tooLong}); err == nil {
 		t.Fatal("overlong retry revision should be rejected")
+	}
+}
+
+func TestConfigurableModelDownloadQuotas(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:configurable_model_download_quotas?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.SystemConfig{}, &model.PrequeueConfig{}, &model.ModelDownload{}, &model.ModelDownloadSubmission{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	configService := service.NewConfigService(query.Use(db))
+	if err := configService.UpdateModelDownloadLimitConfig(t.Context(), service.ModelDownloadLimitConfig{
+		Enabled: true, MaxConcurrent: 2, WindowHours: 2, MaxSuccessfulDownloads: 2,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	mgr := &ModelDownloadMgr{configService: configService}
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	userToken := util.JWTMessage{UserID: 7, Username: "user-7"}
+	downloads := make([]model.ModelDownload, 0, 2)
+
+	for i, status := range []model.ModelDownloadStatus{
+		model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
+	} {
+		download := model.ModelDownload{
+			Name: fmt.Sprintf("owner/model-%d", i), Source: model.ModelSourceModelScope,
+			Category: model.DownloadCategoryModel, Revision: "main",
+			Path: fmt.Sprintf("public/Models/owner/model-%d", i), Status: status, CreatorID: userToken.UserID,
+		}
+		if err := db.Create(&download).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Create(&model.ModelDownloadSubmission{
+			UserID: userToken.UserID, ModelDownloadID: download.ID,
+			Action: model.ModelDownloadSubmissionCreate, Status: model.ModelDownloadSubmissionReserved,
+		}).Error; err != nil {
+			t.Fatal(err)
+		}
+		downloads = append(downloads, download)
+	}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), userToken, 100, model.ModelDownloadSubmissionCreate,
+	); !errors.Is(err, bizerr.RateLimit.Base) {
+		t.Fatalf("configured concurrent limit should return rate limit, got %v", err)
+	}
+
+	if err := db.Model(&model.ModelDownload{}).Where("creator_id = ?", userToken.UserID).
+		Update("status", model.ModelDownloadStatusReady).Error; err != nil {
+		t.Fatal(err)
+	}
+	completedAt := time.Now()
+	for i := range downloads {
+		if err := service.CompleteModelDownloadQuotaReservation(
+			t.Context(), db, downloads[i].ID, completedAt,
+		); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pendingDownload := model.ModelDownload{
+		Name: "owner/pending", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "main", Path: "public/Models/owner/pending",
+		Status: model.ModelDownloadStatusPending, CreatorID: userToken.UserID,
+	}
+	if err := db.Create(&pendingDownload).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), userToken, pendingDownload.ID, model.ModelDownloadSubmissionRetry,
+	); !errors.Is(err, bizerr.RateLimit.Base) {
+		t.Fatalf("configured rolling-window limit should return rate limit, got %v", err)
+	}
+
+	if err := db.Model(&model.ModelDownloadSubmission{}).
+		Where("user_id = ? AND status = ?", userToken.UserID, model.ModelDownloadSubmissionSucceeded).
+		Update("completed_at", time.Now().Add(-3*time.Hour)).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), userToken, pendingDownload.ID, model.ModelDownloadSubmissionResume,
+	); err != nil {
+		t.Fatalf("successful downloads outside the configured window should not count: %v", err)
+	}
+
+	assertAdminRequiresDownloadQuotaWhitelist(t, db, configService, mgr, ginContext)
+}
+
+func TestModelDownloadWindowQuotaReservesAndSettlesSuccessfulDownloads(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:model_download_quota_settlement?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.SystemConfig{}, &model.PrequeueConfig{}, &model.ModelDownload{}, &model.ModelDownloadSubmission{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	configService := service.NewConfigService(query.Use(db))
+	if err := configService.UpdateModelDownloadLimitConfig(t.Context(), service.ModelDownloadLimitConfig{
+		Enabled: true, MaxConcurrent: 10, WindowHours: 2, MaxSuccessfulDownloads: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	mgr := &ModelDownloadMgr{configService: configService}
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	originalCreator := util.JWTMessage{UserID: 7, Username: "user-7"}
+	retrier := util.JWTMessage{UserID: 8, Username: "user-8"}
+
+	failed := createQuotaTestDownload(t, db, originalCreator.UserID, "failed", model.ModelDownloadStatusFailed)
+	if err := db.Create(&model.ModelDownloadSubmission{
+		UserID: originalCreator.UserID, ModelDownloadID: failed.ID,
+		Action: model.ModelDownloadSubmissionCreate, Status: model.ModelDownloadSubmissionReleased,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), retrier, failed.ID, model.ModelDownloadSubmissionRetry,
+	); err != nil {
+		t.Fatalf("a released failed attempt should not consume the rolling window: %v", err)
+	}
+	if err := db.Model(&failed).Update("status", model.ModelDownloadStatusDownloading).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	next := createQuotaTestDownload(t, db, retrier.UserID, "next", model.ModelDownloadStatusPending)
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), retrier, next.ID, model.ModelDownloadSubmissionCreate,
+	); !errors.Is(err, bizerr.RateLimit.Base) {
+		t.Fatalf("an active reservation should prevent overbooking the rolling window, got %v", err)
+	}
+	originalCreatorNext := createQuotaTestDownload(
+		t, db, originalCreator.UserID, "creator-next", model.ModelDownloadStatusPending,
+	)
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), originalCreator, originalCreatorNext.ID, model.ModelDownloadSubmissionCreate,
+	); err != nil {
+		t.Fatalf("another user's retry must not consume the original creator's quota: %v", err)
+	}
+	if err := service.ReleaseModelDownloadQuotaReservation(t.Context(), db, failed.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&failed).Update("status", model.ModelDownloadStatusFailed).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), retrier, next.ID, model.ModelDownloadSubmissionCreate,
+	); err != nil {
+		t.Fatalf("failure should release the reserved rolling-window slot: %v", err)
+	}
+	if err := service.CompleteModelDownloadQuotaReservation(t.Context(), db, next.ID, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Model(&next).Update("status", model.ModelDownloadStatusReady).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	third := createQuotaTestDownload(t, db, retrier.UserID, "third", model.ModelDownloadStatusPending)
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), retrier, third.ID, model.ModelDownloadSubmissionCreate,
+	); !errors.Is(err, bizerr.RateLimit.Base) {
+		t.Fatalf("a successful download should consume the rolling window from completion, got %v", err)
+	}
+}
+
+func createQuotaTestDownload(
+	t *testing.T, db *gorm.DB, creatorID uint, name string, status model.ModelDownloadStatus,
+) model.ModelDownload {
+	t.Helper()
+	download := model.ModelDownload{
+		Name: "owner/" + name, Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "main", Path: "public/Models/owner/" + name,
+		Status: status, CreatorID: creatorID,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	return download
+}
+
+func assertAdminRequiresDownloadQuotaWhitelist(
+	t *testing.T,
+	db *gorm.DB,
+	configService *service.ConfigService,
+	mgr *ModelDownloadMgr,
+	ginContext *gin.Context,
+) {
+	t.Helper()
+	limit := service.ModelDownloadLimitConfig{
+		Enabled: true, MaxConcurrent: 2, WindowHours: 2, MaxSuccessfulDownloads: 1,
+	}
+	if err := configService.UpdateModelDownloadLimitConfig(t.Context(), limit); err != nil {
+		t.Fatal(err)
+	}
+	adminToken := util.JWTMessage{UserID: 7, RolePlatform: model.RoleAdmin}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), adminToken, 104, model.ModelDownloadSubmissionCreate,
+	); !errors.Is(err, bizerr.RateLimit.Base) {
+		t.Fatalf("platform administrators should be limited unless whitelisted, got %v", err)
+	}
+
+	limit.WhitelistUserIDs = []uint{adminToken.UserID}
+	if err := configService.UpdateModelDownloadLimitConfig(t.Context(), limit); err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.reserveModelDownloadSubmission(
+		ginContext, query.Use(db), adminToken, 105, model.ModelDownloadSubmissionCreate,
+	); err != nil {
+		t.Fatalf("whitelisted platform administrator should bypass quotas: %v", err)
+	}
+}
+
+func TestDownloadRelationshipDefaults(t *testing.T) {
+	creator := util.JWTMessage{UserID: 7}
+	download := &model.ModelDownload{CreatorID: creator.UserID}
+	if got := convertDownloadToResp(download, creator).Relation; got != ModelDownloadRelationCreator {
+		t.Fatalf("creator relation = %q", got)
+	}
+	if got := convertDownloadToResp(download, util.JWTMessage{UserID: 8}).Relation; got != ModelDownloadRelationNone {
+		t.Fatalf("unassociated user relation = %q", got)
+	}
+}
+
+func TestApplyDownloadRequestersRecordsDemandWithoutChangingPublicAccess(t *testing.T) {
+	responses := []ModelDownloadResp{
+		{ID: 10, Relation: ModelDownloadRelationCreator},
+		{ID: 11, Relation: ModelDownloadRelationNone},
+	}
+	associations := []*model.UserModelDownload{
+		{ModelDownloadID: 10, UserID: 1, User: model.User{Name: "alice", Nickname: "Alice"}},
+		{ModelDownloadID: 10, UserID: 2, User: model.User{Name: "bob"}},
+		{ModelDownloadID: 10, UserID: 3}, // Keep deleted users in the demand count.
+		{ModelDownloadID: 11, UserID: 1, User: model.User{Name: "alice", Nickname: "Alice"}},
+	}
+
+	applyDownloadRequesters(responses, associations, util.JWTMessage{UserID: 1})
+
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	creatorResponse := responses[0]
+	if creatorResponse.Relation != ModelDownloadRelationCreator {
+		t.Fatalf("creator relation changed to %q", creatorResponse.Relation)
+	}
+	if creatorResponse.RequesterCount != 3 || len(creatorResponse.Requesters) != 2 {
+		t.Fatalf("requesters = %d/%d, want 3 recorded and 2 visible", creatorResponse.RequesterCount,
+			len(creatorResponse.Requesters))
+	}
+	visibleRequesters := creatorResponse.Requesters
+	if len(visibleRequesters) != 2 {
+		t.Fatalf("visible requester count = %d, want 2", len(visibleRequesters))
+	}
+	if visibleRequesters[1] != (model.UserInfo{Username: "bob", Nickname: "bob"}) {
+		t.Fatalf("empty nickname should fall back to username: %#v", visibleRequesters[1])
+	}
+	requesterResponse := responses[1]
+	if requesterResponse.Relation != ModelDownloadRelationSubmitted || !requesterResponse.CanViewLogs {
+		t.Fatalf("requesting user context not applied: %#v", requesterResponse)
 	}
 }
 

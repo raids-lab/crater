@@ -70,10 +70,10 @@ type ModelDownload struct {
 	JobName              string              `gorm:"type:varchar(256);comment:K8s Job名称"`
 	CreatorID            uint                `gorm:"not null;comment:首个发起下载的用户ID"`
 	Creator              User                `gorm:"foreignKey:CreatorID"`
-	ReferenceCount       int                 `gorm:"default:0;comment:引用计数"`
+	ReferenceCount       int                 `gorm:"default:0;comment:提交下载需求的用户计数"`
 }
 
-// UserModelDownload 用户与下载的关联表
+// UserModelDownload records users who explicitly submitted a need for this download.
 type UserModelDownload struct {
 	ID              uint          `gorm:"primaryKey"`
 	UserID          uint          `gorm:"not null;comment:用户ID;uniqueIndex:idx_user_download,priority:1"`
@@ -81,4 +81,39 @@ type UserModelDownload struct {
 	CreatedAt       time.Time     `gorm:"comment:用户添加此下载的时间"`
 	User            User          `gorm:"foreignKey:UserID"`
 	ModelDownload   ModelDownload `gorm:"foreignKey:ModelDownloadID"`
+}
+
+type ModelDownloadSubmissionAction string
+
+const (
+	ModelDownloadSubmissionCreate ModelDownloadSubmissionAction = "create"
+	ModelDownloadSubmissionRetry  ModelDownloadSubmissionAction = "retry"
+	ModelDownloadSubmissionResume ModelDownloadSubmissionAction = "resume"
+)
+
+type ModelDownloadSubmissionStatus string
+
+const (
+	// ModelDownloadSubmissionReserved temporarily occupies one rolling-window
+	// slot while the Kubernetes download Job is active.
+	ModelDownloadSubmissionReserved ModelDownloadSubmissionStatus = "Reserved"
+	// ModelDownloadSubmissionSucceeded starts consuming the rolling window from
+	// the time the model or dataset finishes downloading.
+	ModelDownloadSubmissionSucceeded ModelDownloadSubmissionStatus = "Succeeded"
+	// ModelDownloadSubmissionReleased records an attempt that failed, was paused,
+	// or was otherwise canceled and therefore does not consume quota.
+	ModelDownloadSubmissionReleased ModelDownloadSubmissionStatus = "Released"
+)
+
+// ModelDownloadSubmission records quota reservations for Jobs that may produce
+// a completed model or dataset. Reusing an existing public download does not
+// create a quota submission.
+type ModelDownloadSubmission struct {
+	ID              uint                          `gorm:"primaryKey"`
+	UserID          uint                          `gorm:"not null;index:idx_mds_uc,priority:1;index:idx_mds_q,priority:1"`
+	ModelDownloadID uint                          `gorm:"not null;index"`
+	Action          ModelDownloadSubmissionAction `gorm:"type:varchar(16);not null"`
+	Status          ModelDownloadSubmissionStatus `gorm:"type:varchar(16);not null;default:Reserved;index:idx_mds_q,priority:2"`
+	CreatedAt       time.Time                     `gorm:"not null;index:idx_mds_uc,priority:2"`
+	CompletedAt     *time.Time                    `gorm:"index:idx_mds_q,priority:3"`
 }

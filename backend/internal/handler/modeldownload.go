@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -29,6 +31,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -48,16 +51,18 @@ func init() {
 }
 
 type ModelDownloadMgr struct {
-	name      string
-	crClient  kubernetes.Interface
-	namespace string
+	name          string
+	crClient      kubernetes.Interface
+	namespace     string
+	configService *service.ConfigService
 }
 
 func NewModelDownloadMgr(conf *RegisterConfig) Manager {
 	return &ModelDownloadMgr{
-		name:      "model-download",
-		crClient:  conf.KubeClient,
-		namespace: config.GetConfig().Namespaces.Job,
+		name:          "model-download",
+		crClient:      conf.KubeClient,
+		namespace:     config.GetConfig().Namespaces.Job,
+		configService: conf.ConfigService,
 	}
 }
 
@@ -101,36 +106,44 @@ type DownloadActionReq struct {
 }
 
 type ModelDownloadResp struct {
-	ID              uint           `json:"id"`
-	Name            string         `json:"name"`
-	Source          string         `json:"source"`
-	Category        string         `json:"category"`
-	Revision        string         `json:"revision"`
-	Path            string         `json:"path"`
-	SizeBytes       int64          `json:"sizeBytes"`
-	DownloadedBytes int64          `json:"downloadedBytes"`
-	DownloadSpeed   string         `json:"downloadSpeed"`
-	Status          string         `json:"status"`
-	Message         string         `json:"message"`
-	JobName         string         `json:"jobName"`
-	CreatorID       uint           `json:"creatorId"`
-	ReferenceCount  int            `json:"referenceCount"`
-	CreatedAt       time.Time      `json:"createdAt"`
-	UpdatedAt       time.Time      `json:"updatedAt"`
-	SourceUpdatedAt *time.Time     `json:"sourceUpdatedAt"`
-	UserInfo        model.UserInfo `json:"userInfo"`
-	CanManage       bool           `json:"canManage"`
-	CanDelete       bool           `json:"canDelete"`
-	CanViewLogs     bool           `json:"canViewLogs"`
-	SourceURL       string         `json:"sourceUrl"`
-	DisplayName     string         `json:"displayName"`
-	License         string         `json:"license"`
-	Task            string         `json:"task"`
-	Library         string         `json:"library"`
-	ModelType       string         `json:"modelType"`
-	ParameterCount  int64          `json:"parameterCount"`
-	SourceCreatedAt *time.Time     `json:"sourceCreatedAt"`
+	ID              uint             `json:"id"`
+	Name            string           `json:"name"`
+	Source          string           `json:"source"`
+	Category        string           `json:"category"`
+	Revision        string           `json:"revision"`
+	Path            string           `json:"path"`
+	SizeBytes       int64            `json:"sizeBytes"`
+	DownloadedBytes int64            `json:"downloadedBytes"`
+	DownloadSpeed   string           `json:"downloadSpeed"`
+	Status          string           `json:"status"`
+	Message         string           `json:"message"`
+	JobName         string           `json:"jobName"`
+	CreatorID       uint             `json:"creatorId"`
+	RequesterCount  int              `json:"requesterCount"`
+	Requesters      []model.UserInfo `json:"requesters"`
+	Relation        string           `json:"relation"`
+	CreatedAt       time.Time        `json:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt"`
+	SourceUpdatedAt *time.Time       `json:"sourceUpdatedAt"`
+	UserInfo        model.UserInfo   `json:"userInfo"`
+	CanManage       bool             `json:"canManage"`
+	CanDelete       bool             `json:"canDelete"`
+	CanViewLogs     bool             `json:"canViewLogs"`
+	SourceURL       string           `json:"sourceUrl"`
+	DisplayName     string           `json:"displayName"`
+	License         string           `json:"license"`
+	Task            string           `json:"task"`
+	Library         string           `json:"library"`
+	ModelType       string           `json:"modelType"`
+	ParameterCount  int64            `json:"parameterCount"`
+	SourceCreatedAt *time.Time       `json:"sourceCreatedAt"`
 }
+
+const (
+	ModelDownloadRelationNone      = "none"
+	ModelDownloadRelationCreator   = "creator"
+	ModelDownloadRelationSubmitted = "submitted"
+)
 
 type ListDownloadsReq struct {
 	Page     int    `form:"page"`
@@ -179,21 +192,28 @@ func (mgr *ModelDownloadMgr) canViewDownloadLogs(
 	return false, bizerr.Internal.DatabaseError.Wrap(err, "check download log permission failed")
 }
 
-func (mgr *ModelDownloadMgr) applyLogViewPermissions(
+func (mgr *ModelDownloadMgr) applyDownloadUserContext(
 	c *gin.Context, downloads []*model.ModelDownload, responses []ModelDownloadResp, token util.JWTMessage,
 ) error {
-	if token.RolePlatform == model.RoleAdmin {
-		for i := range responses {
-			responses[i].CanViewLogs = true
-		}
-		return nil
+	if len(downloads) != len(responses) {
+		return bizerr.Internal.DatabaseError.New("download responses do not match download records")
 	}
-
+	downloadsByID := make(map[uint]*model.ModelDownload, len(downloads))
+	for _, download := range downloads {
+		downloadsByID[download.ID] = download
+	}
 	ids := make([]uint, 0, len(downloads))
-	for i, download := range downloads {
+	for i := range responses {
+		response := &responses[i]
+		download, ok := downloadsByID[response.ID]
+		if !ok {
+			return bizerr.Internal.DatabaseError.New("download response does not match download record")
+		}
+		if token.RolePlatform == model.RoleAdmin {
+			response.CanViewLogs = true
+		}
 		if download.CreatorID == token.UserID {
-			responses[i].CanViewLogs = true
-			continue
+			response.CanViewLogs = true
 		}
 		ids = append(ids, download.ID)
 	}
@@ -203,22 +223,52 @@ func (mgr *ModelDownloadMgr) applyLogViewPermissions(
 
 	q := query.UserModelDownload
 	associations, err := q.WithContext(c).
-		Where(q.UserID.Eq(token.UserID), q.ModelDownloadID.In(ids...)).
+		Preload(q.User).
+		Where(q.ModelDownloadID.In(ids...)).
+		Order(q.CreatedAt.Asc()).
 		Find()
 	if err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "list download log permissions failed")
+		return bizerr.Internal.DatabaseError.Wrap(err, "list download requesters failed")
 	}
-	allowed := make(map[uint]struct{}, len(associations))
+	applyDownloadRequesters(responses, associations, token)
+	return nil
+}
+
+func applyDownloadRequesters(
+	responses []ModelDownloadResp, associations []*model.UserModelDownload, token util.JWTMessage,
+) {
+	requestersByDownload := make(map[uint][]model.UserInfo, len(responses))
+	requesterCountByDownload := make(map[uint]int, len(responses))
+	requestedByCurrentUser := make(map[uint]struct{}, len(responses))
 	for _, association := range associations {
-		allowed[association.ModelDownloadID] = struct{}{}
-	}
-	for i, download := range downloads {
-		if responses[i].CanViewLogs {
+		requesterCountByDownload[association.ModelDownloadID]++
+		if association.UserID == token.UserID {
+			requestedByCurrentUser[association.ModelDownloadID] = struct{}{}
+		}
+		if association.User.Name == "" {
 			continue
 		}
-		_, responses[i].CanViewLogs = allowed[download.ID]
+		nickname := association.User.Nickname
+		if nickname == "" {
+			nickname = association.User.Name
+		}
+		requestersByDownload[association.ModelDownloadID] = append(
+			requestersByDownload[association.ModelDownloadID],
+			model.UserInfo{Username: association.User.Name, Nickname: nickname},
+		)
 	}
-	return nil
+	for i := range responses {
+		response := &responses[i]
+		response.RequesterCount = requesterCountByDownload[response.ID]
+		response.Requesters = requestersByDownload[response.ID]
+		if response.Requesters == nil {
+			response.Requesters = []model.UserInfo{}
+		}
+		if _, ok := requestedByCurrentUser[response.ID]; ok && response.Relation != ModelDownloadRelationCreator {
+			response.Relation = ModelDownloadRelationSubmitted
+			response.CanViewLogs = true
+		}
+	}
 }
 
 // CreateDownload godoc
@@ -298,6 +348,97 @@ func lockModelDownloadIdentity(
 		return bizerr.Internal.DatabaseError.Wrap(err, "lock logical download identity")
 	}
 	return nil
+}
+
+// reserveModelDownloadSubmission atomically applies the administrator-managed
+// per-user quotas and records one attempt that will create a Kubernetes Job.
+func (mgr *ModelDownloadMgr) reserveModelDownloadSubmission(
+	ctx context.Context, txQ *query.Query, token util.JWTMessage, downloadID uint,
+	action model.ModelDownloadSubmissionAction,
+) error {
+	if mgr.configService == nil {
+		return bizerr.Internal.DatabaseError.New("model download config service is not initialized")
+	}
+	cfg, err := mgr.configService.GetModelDownloadLimitConfig(ctx)
+	if err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "get model download quota")
+	}
+	if !cfg.Enabled {
+		return nil
+	}
+	if slices.Contains(cfg.WhitelistUserIDs, token.UserID) {
+		return nil
+	}
+
+	db := txQ.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
+	if db.Name() == "postgres" {
+		quotaIdentity := fmt.Sprintf("model-download-quota:%d", token.UserID)
+		if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", quotaIdentity).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "lock model download quota")
+		}
+	}
+
+	activeQuery := db.Table("model_downloads AS download").
+		Joins("JOIN model_download_submissions AS submission ON submission.model_download_id = download.id").
+		Where("download.status IN ?", []model.ModelDownloadStatus{
+			model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
+		}).
+		Where("submission.user_id = ? AND submission.status = ?", token.UserID, model.ModelDownloadSubmissionReserved)
+	if downloadID != 0 {
+		activeQuery = activeQuery.Where("download.id <> ?", downloadID)
+	}
+	var activeCount int64
+	if err := activeQuery.Distinct("download.id").Count(&activeCount).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "count concurrent model downloads")
+	}
+	if activeCount >= cfg.MaxConcurrent {
+		return bizerr.RateLimit.TooManyRequests.New(fmt.Sprintf(
+			"当前账号同时最多可有 %d 个等待中或下载中的任务，请等待任务完成或暂停后再试",
+			cfg.MaxConcurrent,
+		))
+	}
+
+	windowStart := time.Now().Add(-time.Duration(cfg.WindowHours) * time.Hour)
+	var windowUsageCount int64
+	if err := db.Table("model_download_submissions AS submission").
+		Joins("LEFT JOIN model_downloads AS download ON download.id = submission.model_download_id").
+		Where("submission.user_id = ?", token.UserID).
+		Where(
+			"(submission.status = ? AND submission.completed_at >= ?) OR "+
+				"(submission.status = ? AND download.deleted_at IS NULL AND download.status IN ?)",
+			model.ModelDownloadSubmissionSucceeded, windowStart,
+			model.ModelDownloadSubmissionReserved, []model.ModelDownloadStatus{
+				model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
+			},
+		).
+		Count(&windowUsageCount).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "count model download rolling-window usage")
+	}
+	if windowUsageCount >= cfg.MaxSuccessfulDownloads {
+		return bizerr.RateLimit.TooManyRequests.New(fmt.Sprintf(
+			"当前账号滚动 %d 小时内最多成功下载 %d 个模型或数据集；下载中的任务会临时预占名额，请等待任务完成、失败或暂停后再试",
+			cfg.WindowHours, cfg.MaxSuccessfulDownloads,
+		))
+	}
+
+	if err := db.Create(&model.ModelDownloadSubmission{
+		UserID: token.UserID, ModelDownloadID: downloadID, Action: action,
+		Status: model.ModelDownloadSubmissionReserved,
+	}).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "record model download submission")
+	}
+	return nil
+}
+
+func updateDownloadAndReleaseQuota(
+	ctx context.Context, downloadID uint, updates map[string]any,
+) error {
+	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&model.ModelDownload{}).Where("id = ?", downloadID).Updates(updates).Error; err != nil {
+			return err
+		}
+		return service.ReleaseModelDownloadQuotaReservation(ctx, tx, downloadID)
+	})
 }
 
 // checkLogicalDownloadConflict blocks a new source/revision when a historical
@@ -447,6 +588,11 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 				return err
 			}
 			download, isNewDownload = restored, shouldSubmitRestoredDownload(restored)
+			if isNewDownload {
+				return mgr.reserveModelDownloadSubmission(
+					c, tx, token, restored.ID, model.ModelDownloadSubmissionCreate,
+				)
+			}
 			return nil
 		}
 
@@ -460,7 +606,9 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 				return err
 			}
 			download, isNewDownload = failed, true
-			return nil
+			return mgr.reserveModelDownloadSubmission(
+				c, tx, token, failed.ID, model.ModelDownloadSubmissionCreate,
+			)
 		}
 
 		// 4. 创建新的下载任务
@@ -479,7 +627,9 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 			return fmt.Errorf("create association failed: %w", err)
 		}
 		download, isNewDownload = newDownload, true
-		return nil
+		return mgr.reserveModelDownloadSubmission(
+			c, tx, token, newDownload.ID, model.ModelDownloadSubmissionCreate,
+		)
 	})
 
 	return download, isNewDownload, err
@@ -553,6 +703,9 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	if !isNewDownload {
 		resp := convertDownloadToResp(download, token)
 		resp.CanViewLogs = true
+		if download.CreatorID != token.UserID {
+			resp.Relation = ModelDownloadRelationSubmitted
+		}
 		if download.Status == model.ModelDownloadStatusReady {
 			c.JSON(http.StatusOK, gin.H{
 				"code": resputil.OK,
@@ -563,7 +716,7 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"code": resputil.OK,
 				"data": resp,
-				"msg":  "该资源正在下载中，已将您加入共享列表",
+				"msg":  "该资源正在下载中，已记录您的下载需求",
 			})
 		}
 		return
@@ -572,12 +725,13 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	// 提交 K8s Job
 	if err := mgr.submitDownloadJob(c, download, token.Username, req.Token); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
-		q := query.ModelDownload
 		updates := map[string]any{
 			"status":  model.ModelDownloadStatusFailed,
 			"message": fmt.Sprintf("submit job failed: %v", err),
 		}
-		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
+		if rollbackErr := updateDownloadAndReleaseQuota(c, download.ID, updates); rollbackErr != nil {
+			klog.Errorf("release failed download quota reservation: %v", rollbackErr)
+		}
 
 		resputil.Error(c, "submit download job failed", resputil.NotSpecified)
 		return
@@ -633,7 +787,7 @@ func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 		for i, d := range downloads {
 			resp[i] = convertDownloadToResp(d, token)
 		}
-		if err := mgr.applyLogViewPermissions(c, downloads, resp, token); err != nil {
+		if err := mgr.applyDownloadUserContext(c, downloads, resp, token); err != nil {
 			resputil.HandleError(c, err)
 			return
 		}
@@ -674,7 +828,7 @@ func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 	for i, d := range downloads {
 		items[i] = convertDownloadToResp(d, token)
 	}
-	if err := mgr.applyLogViewPermissions(c, downloads, items, token); err != nil {
+	if err := mgr.applyDownloadUserContext(c, downloads, items, token); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -739,12 +893,12 @@ func (mgr *ModelDownloadMgr) GetDownload(c *gin.Context) {
 	}
 
 	resp := convertDownloadToResp(download, token)
-	canViewLogs, err := mgr.canViewDownloadLogs(c, download.ID, token)
-	if err != nil {
+	responses := []ModelDownloadResp{resp}
+	if err := mgr.applyDownloadUserContext(c, []*model.ModelDownload{download}, responses, token); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
-	resp.CanViewLogs = canViewLogs
+	resp = responses[0]
 
 	resputil.Success(c, resp)
 }
@@ -802,15 +956,13 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 		return
 	}
 
-	download, err := prepareRetryDownload(c, req.ID, token.Username, action.Revision)
+	download, err := mgr.prepareRetryDownload(c, req.ID, token, action.Revision)
 
 	if err != nil {
 		klog.Errorf("retry download transaction failed: %v", err)
 		resputil.HandleError(c, err)
 		return
 	}
-	q := query.ModelDownload
-
 	// 事务成功后提交 Job
 	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
@@ -819,7 +971,9 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 			"status":  model.ModelDownloadStatusFailed,
 			"message": fmt.Sprintf("submit job failed: %v", err),
 		}
-		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates)
+		if rollbackErr := updateDownloadAndReleaseQuota(c, download.ID, updates); rollbackErr != nil {
+			klog.Errorf("release failed retry quota reservation: %v", rollbackErr)
+		}
 		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "submit download job failed"))
 		return
 	}
@@ -845,8 +999,8 @@ func normalizeRetryRevision(action *DownloadActionReq) error {
 // prepareRetryDownload updates the failed record under a row lock. Correcting
 // the revision deliberately does not rewrite Path: the source SDK receives the
 // same local directory and can validate/reuse files from the failed attempt.
-func prepareRetryDownload(
-	c *gin.Context, downloadID uint, username string, revision *string,
+func (mgr *ModelDownloadMgr) prepareRetryDownload(
+	c *gin.Context, downloadID uint, token util.JWTMessage, revision *string,
 ) (*model.ModelDownload, error) {
 	db := query.Use(query.GetDB())
 	var download *model.ModelDownload
@@ -867,8 +1021,16 @@ func prepareRetryDownload(
 		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
 			return err
 		}
+		if err := mgr.reserveModelDownloadSubmission(
+			c, tx, token, d.ID, model.ModelDownloadSubmissionRetry,
+		); err != nil {
+			return err
+		}
+		if err := mgr.associateUserWithDownload(c, tx, token.UserID, d.ID); err != nil {
+			return err
+		}
 
-		newJobName := fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
+		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
 		updates := map[string]any{
 			"status": model.ModelDownloadStatusDownloading, "message": "", "job_name": newJobName,
 		}
@@ -1004,8 +1166,6 @@ func (mgr *ModelDownloadMgr) PauseDownload(c *gin.Context) {
 		return
 	}
 
-	q := query.ModelDownload
-
 	if download.Status != model.ModelDownloadStatusDownloading {
 		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only downloading tasks can be paused"))
 		return
@@ -1022,7 +1182,7 @@ func (mgr *ModelDownloadMgr) PauseDownload(c *gin.Context) {
 		"status":  model.ModelDownloadStatusPaused,
 		"message": "Download paused by user",
 	}
-	if _, err := q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(updates); err != nil {
+	if err := updateDownloadAndReleaseQuota(c, download.ID, updates); err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "update paused download failed"))
 		return
 	}
@@ -1067,7 +1227,6 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 		return
 	}
 
-	q := query.ModelDownload
 	db := query.Use(query.GetDB())
 	err = db.Transaction(func(tx *query.Query) error {
 		txQ := tx.ModelDownload
@@ -1080,6 +1239,11 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 		}
 		if locked.Status != model.ModelDownloadStatusPaused {
 			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
+		}
+		if limitErr := mgr.reserveModelDownloadSubmission(
+			c, tx, token, locked.ID, model.ModelDownloadSubmissionResume,
+		); limitErr != nil {
+			return limitErr
 		}
 
 		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
@@ -1109,7 +1273,9 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 			"status":  model.ModelDownloadStatusPaused,
 			"message": fmt.Sprintf("resume failed: %v", err),
 		}
-		_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(rollbackUpdates)
+		if rollbackErr := updateDownloadAndReleaseQuota(c, download.ID, rollbackUpdates); rollbackErr != nil {
+			klog.Errorf("release failed resume quota reservation: %v", rollbackErr)
+		}
 		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "submit download job failed"))
 		return
 	}
@@ -1146,6 +1312,10 @@ func (mgr *ModelDownloadMgr) ListAllDownloads(c *gin.Context) {
 	resp := make([]ModelDownloadResp, len(downloads))
 	for i, d := range downloads {
 		resp[i] = convertDownloadToResp(d, token)
+	}
+	if err := mgr.applyDownloadUserContext(c, downloads, resp, token); err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
 	resputil.Success(c, resp)
@@ -1801,6 +1971,11 @@ func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelD
 		nickname = username
 	}
 
+	relation := ModelDownloadRelationNone
+	if d.CreatorID == token.UserID {
+		relation = ModelDownloadRelationCreator
+	}
+
 	return ModelDownloadResp{
 		ID:              d.ID,
 		Name:            d.Name,
@@ -1815,7 +1990,9 @@ func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelD
 		Message:         d.Message,
 		JobName:         d.JobName,
 		CreatorID:       d.CreatorID,
-		ReferenceCount:  d.ReferenceCount,
+		RequesterCount:  d.ReferenceCount,
+		Requesters:      []model.UserInfo{},
+		Relation:        relation,
 		CreatedAt:       d.CreatedAt,
 		UpdatedAt:       d.UpdatedAt,
 		SourceUpdatedAt: d.SourceUpdatedAt,
@@ -1869,6 +2046,11 @@ func (mgr *ModelDownloadMgr) deleteDownloadJob(c *gin.Context, jobName string) e
 func (mgr *ModelDownloadMgr) deleteDownloadRecord(c *gin.Context, downloadID uint) error {
 	db := query.Use(query.GetDB())
 	err := db.Transaction(func(tx *query.Query) error {
+		if releaseErr := service.ReleaseModelDownloadQuotaReservation(
+			c, tx.ModelDownload.WithContext(c).UnderlyingDB().Session(&gorm.Session{NewDB: true}), downloadID,
+		); releaseErr != nil {
+			return releaseErr
+		}
 		qUserDownload := tx.UserModelDownload
 		if _, deleteErr := qUserDownload.WithContext(c).
 			Where(qUserDownload.ModelDownloadID.Eq(downloadID)).

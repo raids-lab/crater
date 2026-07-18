@@ -3318,6 +3318,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/system-config/model-download-limit": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取下载额度和白名单用户 ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "管理员获取模型与数据集下载额度",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "配置所有用户的并发任务上限、滚动窗口成功下载上限和豁免白名单",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "更新模型与数据集下载额度",
+                "parameters": [
+                    {
+                        "description": "下载额度配置",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateModelDownloadLimitConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/system-config/prequeue": {
             "get": {
                 "security": [
@@ -8539,6 +8601,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system-config/model-download-limit": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "获取模型与数据集下载额度",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/token/verify": {
             "get": {
                 "security": [
@@ -10769,6 +10856,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.AdminModelDownloadLimitConfigResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp": {
             "type": "object",
             "properties": {
@@ -10883,6 +10985,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.LoginResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ModelDownloadLimitConfigResp"
                 },
                 "msg": {
                     "type": "string"
@@ -11594,6 +11711,29 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.AdminModelDownloadLimitConfigResp": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "maxConcurrent": {
+                    "type": "integer"
+                },
+                "maxSuccessfulDownloads": {
+                    "type": "integer"
+                },
+                "whitelistUserIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "windowHours": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.ApprovalOrderResp": {
             "type": "object",
             "properties": {
@@ -12076,6 +12216,26 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.ModelDownloadLimitConfigResp": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "exempt": {
+                    "type": "boolean"
+                },
+                "maxConcurrent": {
+                    "type": "integer"
+                },
+                "maxSuccessfulDownloads": {
+                    "type": "integer"
+                },
+                "windowHours": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.ModelDownloadListResp": {
             "type": "object",
             "properties": {
@@ -12154,8 +12314,17 @@ const docTemplate = `{
                 "path": {
                     "type": "string"
                 },
-                "referenceCount": {
+                "relation": {
+                    "type": "string"
+                },
+                "requesterCount": {
                     "type": "integer"
+                },
+                "requesters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
+                    }
                 },
                 "revision": {
                     "type": "string"
@@ -12639,6 +12808,35 @@ const docTemplate = `{
                 "validate": {
                     "description": "是否立即校验连接",
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.UpdateModelDownloadLimitConfigReq": {
+            "type": "object",
+            "required": [
+                "enabled",
+                "maxConcurrent",
+                "maxSuccessfulDownloads",
+                "windowHours"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "maxConcurrent": {
+                    "type": "integer"
+                },
+                "maxSuccessfulDownloads": {
+                    "type": "integer"
+                },
+                "whitelistUserIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "windowHours": {
+                    "type": "integer"
                 }
             }
         },

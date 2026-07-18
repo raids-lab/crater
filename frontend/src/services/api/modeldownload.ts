@@ -33,6 +33,7 @@ export interface ModelDownloadActionReq {
 }
 
 export type ModelDownloadStatus = 'Pending' | 'Downloading' | 'Paused' | 'Ready' | 'Failed'
+export type ModelDownloadRelation = 'creator' | 'submitted' | 'none'
 
 export interface ModelDownload {
   id: number
@@ -48,7 +49,9 @@ export interface ModelDownload {
   message: string
   jobName: string
   creatorId: number
-  referenceCount: number
+  requesterCount: number
+  requesters: IUserInfo[]
+  relation: ModelDownloadRelation
   createdAt: string
   updatedAt: string
   sourceUpdatedAt?: string

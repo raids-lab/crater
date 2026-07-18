@@ -19,11 +19,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
 	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 )
 
 func TestClassifyDownloadFailure(t *testing.T) {
@@ -86,6 +87,79 @@ func TestDatasetExtraForDownloadPreservesTags(t *testing.T) {
 	}
 	if extra.WebURL == nil || *extra.WebURL != url || extra.Editable {
 		t.Fatalf("unexpected dataset extra: %#v", extra)
+	}
+}
+
+func TestUpdateDownloadStatusSettlesQuotaReservations(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:model_download_quota_reconciler?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}, &model.ModelDownloadSubmission{}); err != nil {
+		t.Fatal(err)
+	}
+	query.SetDefault(db)
+	reconciler := &ModelDownloadReconciler{}
+
+	successful := model.ModelDownload{
+		Name: "owner/success", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "main", Path: "public/Models/owner/success",
+		Status: model.ModelDownloadStatusDownloading, CreatorID: 7,
+	}
+	if err := db.Create(&successful).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ModelDownloadSubmission{
+		UserID: 7, ModelDownloadID: successful.ID,
+		Action: model.ModelDownloadSubmissionRetry, Status: model.ModelDownloadSubmissionReserved,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := reconciler.updateDownloadStatus(t.Context(), &successful, model.ModelDownloadStatusReady); err != nil {
+		t.Fatal(err)
+	}
+	assertQuotaSubmissionSettlement(t, db, successful.ID, model.ModelDownloadSubmissionSucceeded, true)
+
+	failed := model.ModelDownload{
+		Name: "owner/failed", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "main", Path: "public/Models/owner/failed",
+		Status: model.ModelDownloadStatusDownloading, CreatorID: 7,
+	}
+	if err := db.Create(&failed).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ModelDownloadSubmission{
+		UserID: 7, ModelDownloadID: failed.ID,
+		Action: model.ModelDownloadSubmissionCreate, Status: model.ModelDownloadSubmissionReserved,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := reconciler.updateDownloadStatus(t.Context(), &failed, model.ModelDownloadStatusFailed); err != nil {
+		t.Fatal(err)
+	}
+	assertQuotaSubmissionSettlement(t, db, failed.ID, model.ModelDownloadSubmissionReleased, false)
+}
+
+func assertQuotaSubmissionSettlement(
+	t *testing.T,
+	db *gorm.DB,
+	downloadID uint,
+	wantStatus model.ModelDownloadSubmissionStatus,
+	wantCompletion bool,
+) {
+	t.Helper()
+	var submission model.ModelDownloadSubmission
+	if err := db.Where("model_download_id = ?", downloadID).First(&submission).Error; err != nil {
+		t.Fatal(err)
+	}
+	if submission.Status != wantStatus {
+		t.Fatalf("submission status = %s, want %s", submission.Status, wantStatus)
+	}
+	if (submission.CompletedAt != nil) != wantCompletion {
+		t.Fatalf("submission completion = %v, want present=%t", submission.CompletedAt, wantCompletion)
 	}
 }
 
