@@ -268,7 +268,6 @@ export function ModelDownloadDialog({
                 <li>模型统一下载到公共空间的 Models/ 目录,数据集下载到 Datasets/ 目录</li>
                 <li>文件会保存在对应目录下的名称子目录中</li>
                 <li>多个用户下载同一资源时会共享同一份文件</li>
-                <li>普通用户同时最多可有 5 个等待中或下载中的任务；暂停、完成和失败不占名额</li>
                 <li>受限或私有仓库（如部分 Llama / Gemma）需填写访问令牌</li>
                 <li>下载过程可能需要较长时间,请耐心等待</li>
               </ul>
@@ -285,8 +284,7 @@ export function ModelDownloadDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>确认提交{pendingCategoryLabel}下载任务</AlertDialogTitle>
             <AlertDialogDescription>
-              请确认以下信息。提交后平台会在公共存储中创建或复用对应资源。普通用户同时最多可有 5
-              个等待中或下载中的任务。
+              请确认以下信息。提交后平台会在公共存储中创建或复用对应资源。
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pendingRequest && (
