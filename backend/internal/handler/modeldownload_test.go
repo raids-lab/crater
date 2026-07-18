@@ -163,6 +163,10 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		"available revisions",
 		"modelscope==" + modelScopeVersion,
 		"modelscope-hub==" + modelScopeHubVersion,
+		"raw_readme = text.encode(\"utf-8\")[:max_readme_bytes]",
+		"[README] begin zlib+base64",
+		"[README] chunk ",
+		"[README] end",
 	} {
 		if !strings.Contains(command, expected) {
 			t.Fatalf("download command does not contain %q", expected)

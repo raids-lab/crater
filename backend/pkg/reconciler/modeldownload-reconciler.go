@@ -1,7 +1,10 @@
 package reconciler
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,7 +79,13 @@ const (
 	progressRequeueInterval             = 5 * time.Second
 	// maxStoredLogBytes caps the log tail persisted on the download record when
 	// the job reaches a terminal state (the K8s Job itself is GC'd after 7 days).
-	maxStoredLogBytes = 64 * 1024
+	maxStoredLogBytes       = 64 * 1024
+	maxStoredReadmeBytes    = modeldataset.MaxStoredReadmeBytes
+	maxEncodedReadmeBytes   = (maxStoredReadmeBytes+1024)*4/3 + 4
+	readmeCaptureBegin      = "[README] begin zlib+base64"
+	readmeCaptureChunk      = "[README] chunk "
+	readmeCaptureEnd        = "[README] end"
+	readmeCapturedLogNotice = "[README] captured for the model details page"
 )
 
 // Markers printed by the download job script (see buildDownloadCommand).
@@ -173,20 +182,24 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 		}
 	}
 
-	if newStatus == model.ModelDownloadStatusReady && download.Status != model.ModelDownloadStatusReady {
+	if shouldSyncReadyArtifacts(download, newStatus) {
 		if err := r.extractFinalResult(ctx, job, download); err != nil {
 			logger.Error(err, "failed to extract final result")
 		}
 
 		// Persist the log tail before the Job/Pod is GC'd, and reuse it to pick
-		// up the [DESC] summary the job extracted from the repo's README.
+		// up the README and [DESC] summary extracted from the downloaded revision.
 		logs := r.persistFinalLogs(ctx, job, download)
-		if err := r.persistRepositoryMetadata(ctx, download, logs); err != nil {
+		metadata := parseRepositoryMetadata(logs)
+		readmeDescription := parseDescriptionFromLogs(logs)
+		if metadata.Description == "" {
+			metadata.Description = readmeDescription
+		}
+		if err := r.persistRepositoryMetadata(ctx, download, &metadata); err != nil {
 			logger.Error(err, "failed to persist repository metadata")
 		}
 
-		metadata := parseRepositoryMetadata(logs)
-		if err := r.createDatasetForModel(ctx, download, parseDescriptionFromLogs(logs), metadata.Tags); err != nil {
+		if err := r.createDatasetForModel(ctx, download, readmeDescription, metadata.Tags); err != nil {
 			logger.Error(err, "failed to create dataset for model")
 			return ctrl.Result{RequeueAfter: progressRequeueInterval}, err
 		}
@@ -215,9 +228,19 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	return ctrl.Result{}, nil
 }
 
+// shouldSyncReadyArtifacts also repairs a Ready row whose status was advanced
+// by another controller before README persistence completed. This matters for
+// local development, where a local backend may temporarily overlap the backend
+// already running in the target cluster.
+func shouldSyncReadyArtifacts(download *model.ModelDownload, newStatus model.ModelDownloadStatus) bool {
+	return newStatus == model.ModelDownloadStatusReady &&
+		(download.Status != model.ModelDownloadStatusReady || download.SourceReadme == "")
+}
+
 type repositoryMetadata struct {
 	DisplayName    string   `json:"display_name"`
 	Description    string   `json:"description"`
+	Readme         string   `json:"readme"`
 	License        string   `json:"license"`
 	Task           string   `json:"task"`
 	Library        string   `json:"library"`
@@ -235,20 +258,19 @@ type repositoryMetadata struct {
 }
 
 func parseRepositoryMetadata(logs string) repositoryMetadata {
+	metadata := repositoryMetadata{Readme: parseReadmeFromLogs(logs)}
 	matches := metadataPattern.FindAllStringSubmatch(logs, -1)
 	if len(matches) == 0 {
-		return repositoryMetadata{}
+		return metadata
 	}
-	var metadata repositoryMetadata
 	_ = json.Unmarshal([]byte(matches[len(matches)-1][1]), &metadata)
 	return metadata
 }
 
 func (r *ModelDownloadReconciler) persistRepositoryMetadata(
-	ctx context.Context, download *model.ModelDownload, logs string,
+	ctx context.Context, download *model.ModelDownload, metadata *repositoryMetadata,
 ) error {
 	organization := strings.SplitN(download.Name, "/", 2)[0]
-	metadata := parseRepositoryMetadata(logs)
 	logoURL, logoData, logoContentType, logoErr := resolveRepositoryLogo(ctx, download, metadata.LogoURL)
 	if logoErr != nil {
 		// Logo collection is best effort and must never turn a successful model
@@ -274,6 +296,9 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 	if len(logoData) > 0 {
 		updates["logo_url"] = logoURL
 	}
+	if metadata.Readme != "" {
+		updates["source_readme"] = metadata.Readme
+	}
 	if metadata.UpdatedAt != "" {
 		if updatedAt, err := time.Parse(time.RFC3339, metadata.UpdatedAt); err == nil {
 			updates["source_updated_at"] = updatedAt
@@ -297,6 +322,7 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 			LogoContentType: logoContentType,
 			DisplayName:     metadata.DisplayName,
 			Description:     metadata.Description,
+			Readme:          metadata.Readme,
 			License:         metadata.License,
 			Task:            metadata.Task,
 			Library:         metadata.Library,
@@ -615,7 +641,7 @@ func (r *ModelDownloadReconciler) persistFinalLogs(ctx context.Context, job *bat
 	now := time.Now()
 	q := query.ModelDownload
 	if _, err := q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(map[string]any{
-		"logs":          truncateLogTail(logs, maxStoredLogBytes),
+		"logs":          truncateLogTail(logsWithoutCapturedReadme(logs), maxStoredLogBytes),
 		"logs_saved_at": now,
 	}); err != nil {
 		klog.Warningf("failed to persist final logs for download %d: %v", download.ID, err)
@@ -647,6 +673,85 @@ func parseDescriptionFromLogs(logs string) string {
 		return ""
 	}
 	return strings.TrimSpace(matches[len(matches)-1][1])
+}
+
+// parseReadmeFromLogs reconstructs the bounded, compressed README emitted by
+// the download job. Reading through a limit protects the controller from a
+// malformed compression payload while still accepting the full configured size.
+func parseReadmeFromLogs(logs string) string {
+	var payload strings.Builder
+	collecting := false
+	latest := ""
+	for _, rawLine := range strings.Split(logs, "\n") {
+		line := strings.TrimSuffix(rawLine, "\r")
+		switch line {
+		case readmeCaptureBegin:
+			payload.Reset()
+			collecting = true
+		case readmeCaptureEnd:
+			if collecting {
+				if decoded := decodeCapturedReadme(payload.String()); decoded != "" {
+					latest = decoded
+				}
+			}
+			collecting = false
+		default:
+			if !collecting || !strings.HasPrefix(line, readmeCaptureChunk) {
+				continue
+			}
+			chunk := strings.TrimPrefix(line, readmeCaptureChunk)
+			if payload.Len()+len(chunk) > maxEncodedReadmeBytes {
+				payload.Reset()
+				collecting = false
+				continue
+			}
+			payload.WriteString(chunk)
+		}
+	}
+	return latest
+}
+
+func decodeCapturedReadme(payload string) string {
+	if payload == "" || len(payload) > maxEncodedReadmeBytes {
+		return ""
+	}
+	compressed, err := base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		return ""
+	}
+	reader, err := zlib.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return ""
+	}
+	defer reader.Close()
+
+	content, err := io.ReadAll(io.LimitReader(reader, maxStoredReadmeBytes+1))
+	if err != nil {
+		return ""
+	}
+	if len(content) > maxStoredReadmeBytes {
+		content = content[:maxStoredReadmeBytes]
+	}
+	return modeldataset.CleanReadme(string(content), maxStoredReadmeBytes)
+}
+
+// logsWithoutCapturedReadme keeps the human-facing log readable and prevents a
+// large encoded README from consuming the persisted log-tail budget.
+func logsWithoutCapturedReadme(logs string) string {
+	lines := strings.Split(logs, "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, rawLine := range lines {
+		line := strings.TrimSuffix(rawLine, "\r")
+		switch {
+		case line == readmeCaptureBegin:
+			filtered = append(filtered, readmeCapturedLogNotice)
+		case line == readmeCaptureEnd, strings.HasPrefix(line, readmeCaptureChunk):
+			continue
+		default:
+			filtered = append(filtered, rawLine)
+		}
+	}
+	return strings.Join(filtered, "\n")
 }
 
 // extractFailureReason reads the failed pod's logs (and termination state) and

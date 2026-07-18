@@ -15,7 +15,10 @@
 package reconciler
 
 import (
+	"bytes"
+	"compress/zlib"
 	"context"
+	"encoding/base64"
 	"strings"
 	"testing"
 
@@ -62,10 +65,45 @@ func TestStoredLogTailAndDescription(t *testing.T) {
 	}
 }
 
+func TestShouldSyncReadyArtifacts(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		download   model.ModelDownload
+		jobStatus  model.ModelDownloadStatus
+		wantToSync bool
+	}{
+		{
+			name: "ready transition", download: model.ModelDownload{Status: model.ModelDownloadStatusDownloading},
+			jobStatus: model.ModelDownloadStatusReady, wantToSync: true,
+		},
+		{
+			name: "recover missing readme", download: model.ModelDownload{Status: model.ModelDownloadStatusReady},
+			jobStatus: model.ModelDownloadStatusReady, wantToSync: true,
+		},
+		{
+			name: "already persisted", download: model.ModelDownload{
+				Status: model.ModelDownloadStatusReady, SourceReadme: "# Model Card",
+			},
+			jobStatus: model.ModelDownloadStatusReady, wantToSync: false,
+		},
+		{
+			name: "failed job", download: model.ModelDownload{Status: model.ModelDownloadStatusDownloading},
+			jobStatus: model.ModelDownloadStatusFailed, wantToSync: false,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := shouldSyncReadyArtifacts(&testCase.download, testCase.jobStatus); got != testCase.wantToSync {
+				t.Fatalf("shouldSyncReadyArtifacts() = %v, want %v", got, testCase.wantToSync)
+			}
+		})
+	}
+}
+
 func TestParseRepositoryMetadata(t *testing.T) {
-	metadata := parseRepositoryMetadata(`noise
+	logs := `noise
 [META] {"downloads":4235273,"likes":333,"updated_at":"2025-07-26T16:12:41Z","tags":["text-generation"]}
-`)
+` + capturedReadmeLogs(t, "---\nlicense: apache-2.0\n---\n# Model Card\n<script>unsafe()</script>\nUseful details.", 11)
+	metadata := parseRepositoryMetadata(logs)
 
 	if metadata.Downloads != 4235273 || metadata.Likes != 333 || metadata.UpdatedAt != "2025-07-26T16:12:41Z" {
 		t.Fatalf("unexpected repository metadata: %#v", metadata)
@@ -73,6 +111,47 @@ func TestParseRepositoryMetadata(t *testing.T) {
 	if strings.Join(metadata.Tags, ",") != "text-generation" {
 		t.Fatalf("unexpected repository tags: %#v", metadata.Tags)
 	}
+	if metadata.Readme != "# Model Card\n\nUseful details." {
+		t.Fatalf("unexpected cleaned README: %q", metadata.Readme)
+	}
+}
+
+func TestCapturedReadmeIsRemovedFromStoredLogs(t *testing.T) {
+	logs := "before\n" + capturedReadmeLogs(t, "# Model Card", 4) + "after\n"
+	stored := logsWithoutCapturedReadme(logs)
+
+	if strings.Contains(stored, readmeCaptureChunk) || strings.Contains(stored, readmeCaptureBegin) ||
+		strings.Contains(stored, readmeCaptureEnd) {
+		t.Fatalf("stored logs expose encoded README: %q", stored)
+	}
+	for _, expected := range []string{"before", readmeCapturedLogNotice, "after"} {
+		if !strings.Contains(stored, expected) {
+			t.Fatalf("stored logs do not contain %q: %q", expected, stored)
+		}
+	}
+}
+
+func capturedReadmeLogs(t *testing.T, readme string, chunkSize int) string {
+	t.Helper()
+
+	var compressed bytes.Buffer
+	writer := zlib.NewWriter(&compressed)
+	if _, err := writer.Write([]byte(readme)); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	payload := base64.StdEncoding.EncodeToString(compressed.Bytes())
+
+	var logs strings.Builder
+	logs.WriteString(readmeCaptureBegin + "\n")
+	for offset := 0; offset < len(payload); offset += chunkSize {
+		end := min(offset+chunkSize, len(payload))
+		logs.WriteString(readmeCaptureChunk + payload[offset:end] + "\n")
+	}
+	logs.WriteString(readmeCaptureEnd + "\n")
+	return logs.String()
 }
 
 func TestDatasetExtraForDownloadPreservesTags(t *testing.T) {
