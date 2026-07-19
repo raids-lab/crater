@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { TFunction } from 'i18next'
 import { BoxIcon, DatabaseIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -46,21 +48,25 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import { CreateModelDownloadReq, apiCreateModelDownload } from '@/services/api/modeldownload'
+import { apiGetModelDownloadLimitConfig } from '@/services/api/system-config'
+
+import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
-const formSchema = z.object({
-  name: z
-    .string()
-    .min(1, { message: '请输入名称' })
-    .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, {
-      message: '格式应为: owner/name,如 qwen/Qwen2.5-Coder-7B-Instruct',
-    }),
-  revision: z.string().optional(),
-  source: z.enum(['modelscope', 'huggingface']),
-  category: z.enum(['model', 'dataset']),
-  token: z.string().optional(),
-})
+const createFormSchema = (t: TFunction) =>
+  z.object({
+    name: z
+      .string()
+      .min(1, { message: t('modelDownload.dialog.validation.nameRequired') })
+      .regex(/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, {
+        message: t('modelDownload.dialog.validation.nameFormat'),
+      }),
+    revision: z.string().optional(),
+    source: z.enum(['modelscope', 'huggingface']),
+    category: z.enum(['model', 'dataset']),
+    token: z.string().optional(),
+  })
 
 interface ModelDownloadDialogProps {
   closeSheet: () => void
@@ -71,8 +77,15 @@ export function ModelDownloadDialog({
   closeSheet,
   defaultCategory = 'model',
 }: ModelDownloadDialogProps) {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [pendingRequest, setPendingRequest] = useState<CreateModelDownloadReq | null>(null)
+  const formSchema = createFormSchema(t)
+
+  const { data: limitConfig } = useQuery({
+    queryKey: ['system-config', 'model-download-limit'],
+    queryFn: () => apiGetModelDownloadLimitConfig().then((res) => res.data),
+  })
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,28 +99,33 @@ export function ModelDownloadDialog({
   })
 
   const source = form.watch('source')
-  const categoryLabel = defaultCategory === 'dataset' ? '数据集' : '模型'
+  const categoryLabel = t(
+    defaultCategory === 'dataset'
+      ? 'modelDownload.dialog.category.dataset'
+      : 'modelDownload.dialog.category.model'
+  )
 
   const sourcePlaceholder =
     source === 'modelscope'
-      ? '例如: qwen/Qwen2.5-Coder-7B-Instruct'
-      : '例如: meta-llama/Llama-2-7b-hf'
+      ? t('modelDownload.dialog.namePlaceholder.modelscope')
+      : t('modelDownload.dialog.namePlaceholder.huggingface')
   const revisionPlaceholder =
     source === 'modelscope'
-      ? '例如: master、标签或 commit ID；留空使用默认分支'
-      : '例如: main、标签或 commit ID；留空使用默认分支'
+      ? t('modelDownload.dialog.revisionPlaceholder.modelscope')
+      : t('modelDownload.dialog.revisionPlaceholder.huggingface')
 
   const tokenHint =
     source === 'modelscope'
-      ? '从 ModelScope 个人中心获取 SDK Token'
-      : '从 HuggingFace Settings → Access Tokens 获取'
+      ? t('modelDownload.dialog.tokenHint.modelscope')
+      : t('modelDownload.dialog.tokenHint.huggingface')
 
   const { mutate, status } = useMutation({
     mutationFn: (data: CreateModelDownloadReq) => apiCreateModelDownload(data),
     onSuccess: (response, variables) => {
-      // 如果后端返回了消息（如"资源已存在"），显示该消息；否则根据类别显示默认消息
       const defaultMessage =
-        variables.category === 'dataset' ? '已提交数据集下载任务' : '已提交模型下载任务'
+        variables.category === 'dataset'
+          ? t('modelDownload.dialog.success.dataset')
+          : t('modelDownload.dialog.success.model')
       const message = response.msg || defaultMessage
       toast.success(message)
       queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
@@ -115,14 +133,7 @@ export function ModelDownloadDialog({
       closeSheet()
       form.reset()
     },
-    onError: (error: unknown) => {
-      const message =
-        error && typeof error === 'object' && 'response' in error
-          ? ((error as { response?: { data?: { msg?: string } } }).response?.data?.msg ??
-            '提交失败，请重试')
-          : '提交失败，请重试'
-      toast.error(message)
-    },
+    onError: showErrorToast,
   })
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
@@ -135,11 +146,32 @@ export function ModelDownloadDialog({
     })
   }
 
-  const pendingCategoryLabel = pendingRequest?.category === 'dataset' ? '数据集' : '模型'
+  const pendingCategoryLabel = t(
+    pendingRequest?.category === 'dataset'
+      ? 'modelDownload.dialog.category.dataset'
+      : 'modelDownload.dialog.category.model'
+  )
   const pendingSourceLabel = pendingRequest?.source === 'modelscope' ? 'ModelScope' : 'HuggingFace'
   const pendingPath = pendingRequest
     ? `public/${pendingRequest.category === 'dataset' ? 'Datasets' : 'Models'}/${pendingRequest.name}`
     : ''
+
+  const effectiveLimitConfig = limitConfig ?? {
+    enabled: true,
+    maxConcurrent: 5,
+    windowHours: 2,
+    maxSuccessfulDownloads: 5,
+    exempt: false,
+  }
+  const quotaHint = !effectiveLimitConfig.enabled
+    ? t('modelDownload.dialog.quota.disabled')
+    : effectiveLimitConfig.exempt
+      ? t('modelDownload.dialog.quota.exempt')
+      : t('modelDownload.dialog.quota.limited', {
+          maxConcurrent: effectiveLimitConfig.maxConcurrent,
+          windowHours: effectiveLimitConfig.windowHours,
+          maxSuccessfulDownloads: effectiveLimitConfig.maxSuccessfulDownloads,
+        })
 
   return (
     <>
@@ -150,9 +182,9 @@ export function ModelDownloadDialog({
               <LoadableButton
                 type="submit"
                 isLoading={status === 'pending'}
-                isLoadingText="提交中..."
+                isLoadingText={t('modelDownload.dialog.submitting')}
               >
-                开始下载
+                {t('modelDownload.dialog.startDownload')}
               </LoadableButton>
             }
           >
@@ -161,7 +193,7 @@ export function ModelDownloadDialog({
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>下载来源</FormLabel>
+                  <FormLabel>{t('modelDownload.dialog.sourceLabel')}</FormLabel>
                   <FormControl>
                     <div className="bg-muted/60 grid grid-cols-2 gap-1 rounded-lg p-1">
                       {(
@@ -192,7 +224,7 @@ export function ModelDownloadDialog({
             />
 
             <div className="space-y-2">
-              <FormLabel>类别</FormLabel>
+              <FormLabel>{t('modelDownload.dialog.categoryLabel')}</FormLabel>
               <div className="flex items-center gap-2">
                 <span className="bg-primary/10 text-primary inline-flex items-center rounded-md px-2.5 py-1 text-sm font-medium">
                   {defaultCategory === 'dataset' ? (
@@ -210,7 +242,9 @@ export function ModelDownloadDialog({
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{categoryLabel}名称</FormLabel>
+                  <FormLabel>
+                    {t('modelDownload.dialog.nameLabel', { category: categoryLabel })}
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder={sourcePlaceholder} className="font-mono" {...field} />
                   </FormControl>
@@ -224,7 +258,7 @@ export function ModelDownloadDialog({
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>版本（可选）</FormLabel>
+                  <FormLabel>{t('modelDownload.dialog.revisionLabel')}</FormLabel>
                   <FormControl>
                     <Input
                       placeholder={revisionPlaceholder}
@@ -244,11 +278,11 @@ export function ModelDownloadDialog({
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>访问令牌（可选）</FormLabel>
+                  <FormLabel>{t('modelDownload.dialog.tokenLabel')}</FormLabel>
                   <FormControl>
                     <Input
                       type="password"
-                      placeholder="用于下载受限/私有仓库"
+                      placeholder={t('modelDownload.dialog.tokenPlaceholder')}
                       autoComplete="new-password"
                       data-1p-ignore
                       data-lpignore="true"
@@ -256,20 +290,23 @@ export function ModelDownloadDialog({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>{tokenHint}，仅用于本次下载，不会被保存。</FormDescription>
+                  <FormDescription>
+                    {t('modelDownload.dialog.tokenDescription', { sourceHint: tokenHint })}
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             <div className="bg-muted/50 text-muted-foreground rounded-md p-3 text-xs">
-              <p className="mb-1 font-semibold">提示:</p>
+              <p className="mb-1 font-semibold">{t('modelDownload.dialog.tips.title')}</p>
               <ul className="ml-4 list-disc space-y-1">
-                <li>模型统一下载到公共空间的 Models/ 目录,数据集下载到 Datasets/ 目录</li>
-                <li>文件会保存在对应目录下的名称子目录中</li>
-                <li>多个用户下载同一资源时会共享同一份文件</li>
-                <li>受限或私有仓库（如部分 Llama / Gemma）需填写访问令牌</li>
-                <li>下载过程可能需要较长时间,请耐心等待</li>
+                <li>{t('modelDownload.dialog.tips.publicDirectories')}</li>
+                <li>{t('modelDownload.dialog.tips.nameSubdirectory')}</li>
+                <li>{t('modelDownload.dialog.tips.sharedResource')}</li>
+                <li>{quotaHint}</li>
+                <li>{t('modelDownload.dialog.tips.privateToken')}</li>
+                <li>{t('modelDownload.dialog.tips.patience')}</li>
               </ul>
             </div>
           </SandwichLayout>
@@ -282,29 +319,41 @@ export function ModelDownloadDialog({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认提交{pendingCategoryLabel}下载任务</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t('modelDownload.dialog.confirmTitle', { category: pendingCategoryLabel })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              请确认以下信息。提交后平台会在公共存储中创建或复用对应资源。
+              {t('modelDownload.dialog.confirmDescription', { quota: quotaHint })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pendingRequest && (
             <dl className="bg-muted/50 grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-2 rounded-md p-4 text-sm">
-              <dt className="text-muted-foreground">类别</dt>
+              <dt className="text-muted-foreground">{t('modelDownload.dialog.categoryLabel')}</dt>
               <dd>{pendingCategoryLabel}</dd>
-              <dt className="text-muted-foreground">来源</dt>
+              <dt className="text-muted-foreground">{t('modelDownload.dialog.sourceLabel')}</dt>
               <dd>{pendingSourceLabel}</dd>
-              <dt className="text-muted-foreground">名称</dt>
+              <dt className="text-muted-foreground">{t('modelDownload.dialog.details.name')}</dt>
               <dd className="font-mono break-all">{pendingRequest.name}</dd>
-              <dt className="text-muted-foreground">版本</dt>
-              <dd className="font-mono break-all">{pendingRequest.revision || '默认分支'}</dd>
-              <dt className="text-muted-foreground">保存路径</dt>
+              <dt className="text-muted-foreground">
+                {t('modelDownload.dialog.details.revision')}
+              </dt>
+              <dd className="font-mono break-all">
+                {pendingRequest.revision || t('modelDownload.dialog.defaultRevision')}
+              </dd>
+              <dt className="text-muted-foreground">{t('modelDownload.dialog.details.path')}</dt>
               <dd className="font-mono break-all">{pendingPath}</dd>
-              <dt className="text-muted-foreground">访问令牌</dt>
-              <dd>{pendingRequest.token ? '已填写，仅用于本次下载' : '未填写'}</dd>
+              <dt className="text-muted-foreground">{t('modelDownload.dialog.details.token')}</dt>
+              <dd>
+                {pendingRequest.token
+                  ? t('modelDownload.dialog.tokenProvided')
+                  : t('modelDownload.dialog.tokenMissing')}
+              </dd>
             </dl>
           )}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={status === 'pending'}>返回修改</AlertDialogCancel>
+            <AlertDialogCancel disabled={status === 'pending'}>
+              {t('modelDownload.dialog.backToEdit')}
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={status === 'pending' || pendingRequest === null}
               onClick={(event) => {
@@ -314,7 +363,9 @@ export function ModelDownloadDialog({
                 }
               }}
             >
-              {status === 'pending' ? '提交中...' : '确认下载'}
+              {status === 'pending'
+                ? t('modelDownload.dialog.submitting')
+                : t('modelDownload.dialog.confirmDownload')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

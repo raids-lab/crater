@@ -62,6 +62,7 @@ import {
 import useFixedLayout from '@/hooks/use-fixed-layout'
 
 import { logger } from '@/utils/loglevel'
+import { showErrorToast } from '@/utils/toast'
 
 export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
   useFixedLayout()
@@ -111,10 +112,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       await refetchDownload()
       toast.success(t('modelDownload.action.pauseSuccess'))
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.pauseFailed'))
-    },
+    onError: showErrorToast,
   })
 
   const resumeMutation = useMutation({
@@ -124,10 +122,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       setTokenAction(null)
       toast.success(t('modelDownload.action.resumeSuccess'))
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.resumeFailed'))
-    },
+    onError: showErrorToast,
   })
 
   const retryMutation = useMutation({
@@ -137,10 +132,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       setTokenAction(null)
       toast.success(t('modelDownload.action.retrySuccess'))
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.retryFailed'))
-    },
+    onError: showErrorToast,
   })
 
   const copyPath = () => {

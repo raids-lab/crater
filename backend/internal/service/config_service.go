@@ -19,6 +19,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/crypto"
@@ -28,11 +29,27 @@ import (
 // 定义掩码常量
 const MaskedAPIKeyPlaceholder = "********************************************"
 
+const (
+	DefaultModelDownloadMaxConcurrent          = 5
+	DefaultModelDownloadWindowHours            = 2
+	DefaultModelDownloadMaxSuccessfulDownloads = 5
+)
+
 // LLMConfig 结构体用于承载从数据库读取的配置
 type LLMConfig struct {
 	BaseURL   string
 	APIKey    string
 	ModelName string
+}
+
+// ModelDownloadLimitConfig controls model and dataset download quotas for all users.
+// Only explicitly whitelisted users are exempt from these limits.
+type ModelDownloadLimitConfig struct {
+	Enabled                bool
+	MaxConcurrent          int64
+	WindowHours            int64
+	MaxSuccessfulDownloads int64
+	WhitelistUserIDs       []uint
 }
 
 // cleanBaseURL 内部辅助：清理 URL 结尾的斜杠
@@ -100,6 +117,16 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 						model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
 						model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled:
 						defaultValue = "false"
+					case model.ConfigKeyModelDownloadLimitEnabled:
+						defaultValue = strconv.FormatBool(true)
+					case model.ConfigKeyModelDownloadMaxConcurrent:
+						defaultValue = strconv.Itoa(DefaultModelDownloadMaxConcurrent)
+					case model.ConfigKeyModelDownloadWindowHours:
+						defaultValue = strconv.Itoa(DefaultModelDownloadWindowHours)
+					case model.ConfigKeyModelDownloadMaxSuccessfulDownloads:
+						defaultValue = strconv.Itoa(DefaultModelDownloadMaxSuccessfulDownloads)
+					case model.ConfigKeyModelDownloadWhitelistUsers:
+						defaultValue = "[]"
 					case model.ConfigKeyRunningSettlementIntervalMinute:
 						defaultValue = "5"
 					case model.ConfigKeyBillingDefaultIssueAmount:
@@ -115,6 +142,108 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 						return createErr
 					}
 				} else {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func (s *ConfigService) GetModelDownloadLimitConfig(ctx context.Context) (*ModelDownloadLimitConfig, error) {
+	configMap, err := s.getConfigs(ctx,
+		model.ConfigKeyModelDownloadLimitEnabled,
+		model.ConfigKeyModelDownloadMaxConcurrent,
+		model.ConfigKeyModelDownloadWindowHours,
+		model.ConfigKeyModelDownloadMaxSuccessfulDownloads,
+		model.ConfigKeyModelDownloadWhitelistUsers,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	parsePositive := func(key string, fallback int64) (int64, error) {
+		value := configMap[key]
+		if value == "" {
+			return fallback, nil
+		}
+		parsed, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr != nil || parsed <= 0 {
+			return 0, bizerr.Internal.DatabaseError.New(
+				"invalid model download config " + key + "=" + strconv.Quote(value),
+			)
+		}
+		return parsed, nil
+	}
+
+	enabled := true
+	if value := configMap[model.ConfigKeyModelDownloadLimitEnabled]; value != "" {
+		enabled, err = strconv.ParseBool(value)
+		if err != nil {
+			return nil, bizerr.Internal.DatabaseError.New(
+				"invalid model download config " + model.ConfigKeyModelDownloadLimitEnabled +
+					"=" + strconv.Quote(value) + ": " + err.Error(),
+			)
+		}
+	}
+	maxConcurrent, err := parsePositive(
+		model.ConfigKeyModelDownloadMaxConcurrent, DefaultModelDownloadMaxConcurrent,
+	)
+	if err != nil {
+		return nil, err
+	}
+	windowHours, err := parsePositive(model.ConfigKeyModelDownloadWindowHours, DefaultModelDownloadWindowHours)
+	if err != nil {
+		return nil, err
+	}
+	maxSuccessfulDownloads, err := parsePositive(
+		model.ConfigKeyModelDownloadMaxSuccessfulDownloads, DefaultModelDownloadMaxSuccessfulDownloads,
+	)
+	if err != nil {
+		return nil, err
+	}
+	whitelistUserIDs := make([]uint, 0)
+	if value := configMap[model.ConfigKeyModelDownloadWhitelistUsers]; value != "" {
+		if err := json.Unmarshal([]byte(value), &whitelistUserIDs); err != nil {
+			return nil, bizerr.Internal.DatabaseError.Wrap(err, "invalid model download whitelist config")
+		}
+	}
+
+	return &ModelDownloadLimitConfig{
+		Enabled: enabled, MaxConcurrent: maxConcurrent,
+		WindowHours: windowHours, MaxSuccessfulDownloads: maxSuccessfulDownloads,
+		WhitelistUserIDs: lo.Uniq(whitelistUserIDs),
+	}, nil
+}
+
+func (s *ConfigService) UpdateModelDownloadLimitConfig(
+	ctx context.Context, cfg ModelDownloadLimitConfig,
+) error {
+	if cfg.MaxConcurrent <= 0 || cfg.WindowHours <= 0 || cfg.MaxSuccessfulDownloads <= 0 {
+		return bizerr.BadRequest.ParameterError.New("model download limits must be positive integers")
+	}
+	whitelistJSON, err := json.Marshal(lo.Uniq(cfg.WhitelistUserIDs))
+	if err != nil {
+		return bizerr.BadRequest.ParameterError.Wrap(err, "invalid model download whitelist")
+	}
+
+	updates := map[string]string{
+		model.ConfigKeyModelDownloadLimitEnabled:           strconv.FormatBool(cfg.Enabled),
+		model.ConfigKeyModelDownloadMaxConcurrent:          strconv.FormatInt(cfg.MaxConcurrent, 10),
+		model.ConfigKeyModelDownloadWindowHours:            strconv.FormatInt(cfg.WindowHours, 10),
+		model.ConfigKeyModelDownloadMaxSuccessfulDownloads: strconv.FormatInt(cfg.MaxSuccessfulDownloads, 10),
+		model.ConfigKeyModelDownloadWhitelistUsers:         string(whitelistJSON),
+	}
+	return s.q.Transaction(func(tx *query.Query) error {
+		for key, value := range updates {
+			result, err := tx.SystemConfig.WithContext(ctx).
+				Where(tx.SystemConfig.Key.Eq(key)).
+				Update(tx.SystemConfig.Value, value)
+			if err != nil {
+				return err
+			}
+			if result.RowsAffected == 0 {
+				if err := tx.SystemConfig.WithContext(ctx).Create(&model.SystemConfig{Key: key, Value: value}); err != nil {
 					return err
 				}
 			}

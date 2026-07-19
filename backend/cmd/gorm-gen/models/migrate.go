@@ -105,6 +105,43 @@ func modelDatasetSourceMigration() *gormigrate.Migration {
 	}
 }
 
+func modelDownloadSubmissionMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202607181200",
+		Migrate: func(tx *gorm.DB) error {
+			if err := createTableIfMissing(tx, &model.ModelDownloadSubmission{}); err != nil {
+				return err
+			}
+			if !tx.Migrator().HasTable(&model.ModelDownload{}) {
+				return nil
+			}
+			// Active downloads that predate quota tracking still need one owner
+			// reservation so an upgrade cannot temporarily bypass both limits.
+			return tx.Exec(`
+				INSERT INTO model_download_submissions
+					(user_id, model_download_id, action, status, created_at)
+				SELECT download.creator_id, download.id, ?, ?, CURRENT_TIMESTAMP
+				FROM model_downloads AS download
+				WHERE download.status IN ? AND download.deleted_at IS NULL
+					AND NOT EXISTS (
+						SELECT 1 FROM model_download_submissions AS submission
+						WHERE submission.model_download_id = download.id
+							AND submission.status = ?
+					)`,
+				model.ModelDownloadSubmissionCreate,
+				model.ModelDownloadSubmissionReserved,
+				[]model.ModelDownloadStatus{
+					model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
+				},
+				model.ModelDownloadSubmissionReserved,
+			).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return dropTableIfPresent(tx, &model.ModelDownloadSubmission{})
+		},
+	}
+}
+
 func createTableIfMissing(db *gorm.DB, value any) error {
 	if db.Migrator().HasTable(value) {
 		return nil
@@ -1462,6 +1499,7 @@ func main() {
 			},
 		},
 		modelDatasetSourceMigration(),
+		modelDownloadSubmissionMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1489,6 +1527,7 @@ func main() {
 			&model.ModelDownload{},
 			&model.ModelDatasetDiscovery{},
 			&model.UserModelDownload{},
+			&model.ModelDownloadSubmission{},
 			&model.CronJobConfig{},
 			&model.CronJobRecord{},
 			&model.GpuAnalysis{},

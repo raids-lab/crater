@@ -136,7 +136,7 @@ type modelDownload struct {
 	ModelDatasetSourceID field.Uint   // 模型或数据集外部来源ID
 	JobName              field.String // K8s Job名称
 	CreatorID            field.Uint   // 首个发起下载的用户ID
-	ReferenceCount       field.Int    // 引用计数
+	ReferenceCount       field.Int    // 提交下载需求的用户计数
 	ModelDatasetSource   modelDownloadBelongsToModelDatasetSource
 
 	Creator modelDownloadBelongsToCreator

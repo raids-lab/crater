@@ -80,6 +80,7 @@ import {
 } from '@/services/api/modeldownload'
 
 import { logger } from '@/utils/loglevel'
+import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
@@ -91,6 +92,16 @@ const IDLE_REFETCH_MS = 30000
 const sourceLabelMap: Record<string, string> = {
   modelscope: 'ModelScope',
   huggingface: 'HuggingFace',
+}
+
+function downloadRelationKey(download: ModelDownload) {
+  if (download.relation === 'creator') return 'modelDownload.relation.creator'
+  if (download.relation === 'submitted') return 'modelDownload.relation.submitted'
+  if (download.status === 'Ready') return 'modelDownload.relation.publicReady'
+  if (['Pending', 'Downloading', 'Paused'].includes(download.status)) {
+    return 'modelDownload.relation.publicJoinable'
+  }
+  return null
 }
 
 export function ModelDownloadsPage() {
@@ -161,10 +172,7 @@ export function ModelDownloadsPage() {
       await refetchDownloads()
       toast.success(t('modelDownload.action.pauseSuccess'))
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.pauseFailed'))
-    },
+    onError: showErrorToast,
   })
 
   const { mutate: resumeDownload, isPending: isResuming } = useMutation({
@@ -174,10 +182,7 @@ export function ModelDownloadsPage() {
       setTokenTarget(null)
       toast.success(t('modelDownload.action.resumeSuccess'))
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.resumeFailed'))
-    },
+    onError: showErrorToast,
   })
 
   const { mutate: retryDownload, isPending: isRetrying } = useMutation({
@@ -187,10 +192,7 @@ export function ModelDownloadsPage() {
       setTokenTarget(null)
       toast.success(t('modelDownload.action.retrySuccess'))
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { msg?: string } } }
-      toast.error(err?.response?.data?.msg || t('modelDownload.action.retryFailed'))
-    },
+    onError: showErrorToast,
   })
 
   const columns = useMemo<ColumnDef<ModelDownload>[]>(
@@ -200,8 +202,10 @@ export function ModelDownloadsPage() {
         header: t('modelDownload.list.name'),
         cell: ({ row }) => {
           const d = row.original
+          const relationKey = downloadRelationKey(d)
+          const unavailableRequesterCount = Math.max(0, d.requesterCount - d.requesters.length)
           return (
-            <div className="flex max-w-[280px] flex-col gap-0.5">
+            <div className="flex max-w-[300px] flex-col gap-1">
               <Link
                 to={
                   d.category === 'dataset'
@@ -217,6 +221,49 @@ export function ModelDownloadsPage() {
                 {sourceLabelMap[d.source] ?? d.source}
                 {d.revision ? ` · ${d.revision}` : ''}
               </span>
+              {(relationKey || d.requesterCount > 0) && (
+                <div className="flex items-center gap-1.5">
+                  {relationKey && (
+                    <Badge
+                      variant={d.relation === 'none' ? 'outline' : 'secondary'}
+                      className="h-5 px-1.5 text-[10px] font-normal"
+                    >
+                      {t(relationKey)}
+                    </Badge>
+                  )}
+                  {d.requesterCount > 0 && (
+                    <SimpleTooltip
+                      tooltip={
+                        <div className="max-h-48 max-w-72 space-y-1 overflow-y-auto py-1">
+                          <p className="font-medium">
+                            {t('modelDownload.relation.requesterListTitle')}
+                          </p>
+                          {d.requesters.map((requester) => (
+                            <p key={requester.username}>
+                              {requester.nickname && requester.nickname !== requester.username
+                                ? `${requester.nickname} (@${requester.username})`
+                                : `@${requester.username}`}
+                            </p>
+                          ))}
+                          {unavailableRequesterCount > 0 && (
+                            <p className="text-muted-foreground">
+                              {t('modelDownload.relation.unavailableRequesterCount', {
+                                count: unavailableRequesterCount,
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      }
+                    >
+                      <span className="text-muted-foreground cursor-help text-[10px] underline decoration-dotted underline-offset-2">
+                        {t('modelDownload.relation.requesterCount', {
+                          count: d.requesterCount,
+                        })}
+                      </span>
+                    </SimpleTooltip>
+                  )}
+                </div>
+              )}
             </div>
           )
         },

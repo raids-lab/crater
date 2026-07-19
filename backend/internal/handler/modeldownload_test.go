@@ -78,6 +78,74 @@ func TestNormalizeRetryRevision(t *testing.T) {
 	}
 }
 
+func TestDownloadRelationshipDefaults(t *testing.T) {
+	creator := util.JWTMessage{UserID: 7}
+	download := &model.ModelDownload{CreatorID: creator.UserID}
+	if got := convertDownloadToResp(download, creator).Relation; got != ModelDownloadRelationCreator {
+		t.Fatalf("creator relation = %q", got)
+	}
+	if got := convertDownloadToResp(download, util.JWTMessage{UserID: 8}).Relation; got != ModelDownloadRelationNone {
+		t.Fatalf("unassociated user relation = %q", got)
+	}
+}
+
+func TestModelDownloadResponseKeepsReferenceCountCompatibilityAlias(t *testing.T) {
+	download := &model.ModelDownload{CreatorID: 7, ReferenceCount: 3}
+	response := convertDownloadToResp(download, util.JWTMessage{UserID: 7})
+	if response.ReferenceCount != response.RequesterCount || response.RequesterCount != 3 {
+		t.Fatalf("referenceCount/requesterCount = %d/%d, want 3/3",
+			response.ReferenceCount, response.RequesterCount)
+	}
+
+	encoded, err := json.Marshal(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{`"referenceCount":3`, `"requesterCount":3`} {
+		if !strings.Contains(string(encoded), field) {
+			t.Fatalf("response JSON %s does not contain compatibility field %s", encoded, field)
+		}
+	}
+}
+
+func TestApplyDownloadRequestersRecordsDemandWithoutChangingPublicAccess(t *testing.T) {
+	responses := []ModelDownloadResp{
+		{ID: 10, Relation: ModelDownloadRelationCreator},
+		{ID: 11, Relation: ModelDownloadRelationNone},
+	}
+	associations := []*model.UserModelDownload{
+		{ModelDownloadID: 10, UserID: 1, User: model.User{Name: "alice", Nickname: "Alice"}},
+		{ModelDownloadID: 10, UserID: 2, User: model.User{Name: "bob"}},
+		{ModelDownloadID: 10, UserID: 3}, // Keep deleted users in the demand count.
+		{ModelDownloadID: 11, UserID: 1, User: model.User{Name: "alice", Nickname: "Alice"}},
+	}
+
+	applyDownloadRequesters(responses, associations, util.JWTMessage{UserID: 1})
+
+	if len(responses) != 2 {
+		t.Fatalf("response count = %d, want 2", len(responses))
+	}
+	creatorResponse := responses[0]
+	if creatorResponse.Relation != ModelDownloadRelationCreator {
+		t.Fatalf("creator relation changed to %q", creatorResponse.Relation)
+	}
+	if creatorResponse.RequesterCount != 3 || len(creatorResponse.Requesters) != 2 {
+		t.Fatalf("requesters = %d/%d, want 3 recorded and 2 visible", creatorResponse.RequesterCount,
+			len(creatorResponse.Requesters))
+	}
+	visibleRequesters := creatorResponse.Requesters
+	if len(visibleRequesters) != 2 {
+		t.Fatalf("visible requester count = %d, want 2", len(visibleRequesters))
+	}
+	if visibleRequesters[1] != (model.UserInfo{Username: "bob", Nickname: "bob"}) {
+		t.Fatalf("empty nickname should fall back to username: %#v", visibleRequesters[1])
+	}
+	requesterResponse := responses[1]
+	if requesterResponse.Relation != ModelDownloadRelationSubmitted || !requesterResponse.CanViewLogs {
+		t.Fatalf("requesting user context not applied: %#v", requesterResponse)
+	}
+}
+
 func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:retry_revision_conflict?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,

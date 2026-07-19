@@ -1,0 +1,22 @@
+---
+title: Configure Model and Dataset Download Quotas
+description: Manage concurrent limits, rolling windows, and the download quota whitelist
+---
+
+Open **Model and dataset download quotas** under **Platform Settings** to configure download Job limits for all users. Before saving, the page displays the complete configuration and affected scope and requires confirmation.
+
+## Settings
+
+- **Enable download quotas** controls whether Crater enforces the limits. Job reservation, success, and release states are still recorded while enforcement is disabled.
+- **Maximum concurrent tasks** limits each non-whitelisted user's tasks in `Pending` or `Downloading`.
+- **Rolling window (hours)** is a lookback period measured from the current time, not a fixed clock interval.
+- **Successful downloads per window** counts successful tasks by actual completion time. Running Jobs reserve window slots.
+- **Whitelist** skips concurrent and rolling-window checks. Platform administrators are not automatically exempt and must be added explicitly.
+
+## Configuration transitions
+
+Every Job that Crater actually creates records its operator and lifecycle, including Jobs created while quotas are disabled or by whitelisted users. Consequently, pending or downloading tasks immediately count after quotas are enabled, and a user's running tasks count after that user is removed from the whitelist. Successful Jobs completed while enforcement was skipped also count if their completion time remains inside the rolling window.
+
+Failed, paused, deleted, or unsuccessfully submitted Jobs release their reservations. Pausing saves logs, deletes the Job, and keeps downloaded files. Resume and retry create a new Job and check the quota of the user performing the action.
+
+Reusing a completed public resource or joining an existing public download creates no Job and consumes no quota. Requester counts describe demand only and do not change public-directory permissions.
