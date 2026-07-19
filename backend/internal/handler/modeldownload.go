@@ -28,6 +28,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/governance/modeldataset"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
@@ -37,6 +38,8 @@ import (
 const (
 	defaultDownloadLogTailLines int64 = 1000
 	maxStoredDownloadLogBytes         = 64 * 1024
+	maxCapturedReadmeBytes            = modeldataset.MaxStoredReadmeBytes
+	readmeLogChunkCharacters          = 4096
 	maxDownloadRevisionLength         = 128
 	CategoryModel                     = "model"
 	CategoryDataset                   = "dataset"
@@ -1629,11 +1632,18 @@ PY
 `, resourcePath, download.Name)
 	}
 
-	// 下载完成后，从 README 提取一段简介，供平台展示与模型本身相关的描述。
-	descScript := `
+	// Capture the README from the exact downloaded revision. It is compressed and
+	// split across bounded log lines so the reconciler can persist it immediately
+	// without relying on the periodic source metadata refresh job.
+	descScript := fmt.Sprintf(`
 echo "Extracting summary from README..."
 python - << 'PY' || true
+import base64
 import os
+import zlib
+
+max_readme_bytes = %d
+chunk_characters = %d
 text = ""
 for name in ("README.md", "readme.md", "README.MD", "README"):
     p = os.path.join(os.environ["OUT_DIR"], name)
@@ -1644,6 +1654,14 @@ for name in ("README.md", "readme.md", "README.MD", "README"):
         except Exception:
             pass
         break
+raw_readme = text.encode("utf-8")[:max_readme_bytes]
+text = raw_readme.decode("utf-8", errors="ignore")
+if text:
+    payload = base64.b64encode(zlib.compress(text.encode("utf-8"), level=9)).decode("ascii")
+    print("[README] begin zlib+base64", flush=True)
+    for offset in range(0, len(payload), chunk_characters):
+        print("[README] chunk " + payload[offset:offset + chunk_characters], flush=True)
+    print("[README] end", flush=True)
 if text.startswith("---"):
     end = text.find("\n---", 3)
     if end != -1:
@@ -1661,7 +1679,7 @@ for block in text.split("\n\n"):
 if para:
     print("[DESC] " + para[:300], flush=True)
 PY
-`
+`, maxCapturedReadmeBytes, readmeLogChunkCharacters)
 
 	// 进度监控脚本（保持你原来的逻辑）
 	progressScript := `
