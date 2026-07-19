@@ -1,14 +1,17 @@
 package image
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 )
@@ -210,18 +213,14 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 //	@Param			name	query	string	true	"获取ImagePack的name"
 //	@Router			/v1/images/getbyname [GET]
 func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
-	kanikoQuery := query.Kaniko
 	var req GetKanikoRequest
-	var err error
-	if err = c.ShouldBindQuery(&req); err != nil {
+	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
 	}
-	var kaniko *model.Kaniko
-	if kaniko, err = kanikoQuery.WithContext(c).
-		Where(kanikoQuery.ImagePackName.Eq(req.ImagePackName)).
-		First(); err != nil {
+	kaniko, err := mgr.findCurrentUserKaniko(c, req.ImagePackName, 0)
+	if err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
@@ -255,18 +254,14 @@ func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 //	@Param			name	query	string	true	"获取ImagePack的name"
 //	@Router			/v1/images/get [GET]
 func (mgr *ImagePackMgr) GetKanikoTemplateByImagePackName(c *gin.Context) {
-	kanikoQuery := query.Kaniko
 	var req GetKanikoRequest
-	var err error
-	if err = c.ShouldBindQuery(&req); err != nil {
+	if err := c.ShouldBindQuery(&req); err != nil {
 		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
 	}
-	var kaniko *model.Kaniko
-	if kaniko, err = kanikoQuery.WithContext(c).
-		Where(kanikoQuery.ImagePackName.Eq(req.ImagePackName)).
-		First(); err != nil {
+	kaniko, err := mgr.findCurrentUserKaniko(c, req.ImagePackName, 0)
+	if err != nil {
 		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
@@ -293,6 +288,15 @@ func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
 		resputil.BadRequestError(c, msg)
 		return
 	}
+	if _, err = mgr.findCurrentUserKaniko(c, "", req.ID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to view this image build"))
+			return
+		}
+		klog.Errorf("fetch kaniko pod failed, id: %d, err: %v", req.ID, err)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "fetch kaniko pod failed"))
+		return
+	}
 	podName, podNameSpace, nodeName := mgr.getPodName(c, req.ID)
 	resp := GetKanikoPodResponse{
 		PodName:      podName,
@@ -300,6 +304,17 @@ func (mgr *ImagePackMgr) GetImagepackPodName(c *gin.Context) {
 		NodeName:     nodeName,
 	}
 	resputil.Success(c, resp)
+}
+
+func (mgr *ImagePackMgr) findCurrentUserKaniko(c *gin.Context, imagePackName string, id uint) (*model.Kaniko, error) {
+	kanikoQuery := query.Kaniko
+	q := kanikoQuery.WithContext(c).Where(kanikoQuery.UserID.Eq(util.GetToken(c).UserID))
+	if imagePackName != "" {
+		q = q.Where(kanikoQuery.ImagePackName.Eq(imagePackName))
+	} else {
+		q = q.Where(kanikoQuery.ID.Eq(id))
+	}
+	return q.First()
 }
 
 func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns, nodeName string) {

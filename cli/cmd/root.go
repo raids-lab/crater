@@ -210,14 +210,7 @@ func updateAllCommands(cmd *cobra.Command) {
 
 	// 3. Update Flags for this command
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		commandFlagKey := keyPath + "_flag_" + f.Name
-		if usage := i18n.T(commandFlagKey); usage != commandFlagKey {
-			f.Usage = usage
-			return
-		}
-		flagKey := "flag_" + f.Name
-		usage := i18n.T(flagKey)
-		if usage != flagKey {
+		if usage, ok := translatedFlagUsage(keyPath, f.Name); ok {
 			f.Usage = usage
 		}
 	})
@@ -226,4 +219,23 @@ func updateAllCommands(cmd *cobra.Command) {
 	for _, sub := range cmd.Commands() {
 		updateAllCommands(sub)
 	}
+}
+
+func translatedFlagUsage(keyPath, flagName string) (string, bool) {
+	keys := []string{keyPath + "_flag_" + flagName}
+	if isImageCommandPath(keyPath) {
+		keys = append(keys, "image_flag_"+flagName)
+	}
+	keys = append(keys, "flag_"+flagName)
+	for _, key := range keys {
+		if usage := i18n.T(key); usage != key {
+			return usage, true
+		}
+	}
+	return "", false
+}
+
+func isImageCommandPath(keyPath string) bool {
+	return keyPath == "image" || strings.HasPrefix(keyPath, "image_") ||
+		keyPath == "admin_image" || strings.HasPrefix(keyPath, "admin_image_")
 }

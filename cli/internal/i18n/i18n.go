@@ -24,6 +24,7 @@ var translations = mergeCatalogs(
 	catalogCompletion,
 	catalogDownload,
 	catalogRead,
+	catalogImage,
 	catalogOrder,
 	catalogErrors,
 	catalogJob,

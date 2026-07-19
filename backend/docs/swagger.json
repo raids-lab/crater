@@ -1504,6 +1504,68 @@
                 "responses": {}
             }
         },
+        "/v1/admin/images/cudabaseimage": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "添加新的CUDA基础镜像到系统中",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "添加CUDA基础镜像",
+                "parameters": [
+                    {
+                        "description": "CUDA基础镜像信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_image.CudaBaseImageCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/admin/images/cudabaseimage/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据ID删除指定的CUDA基础镜像",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "删除CUDA基础镜像",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "CUDA基础镜像ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/v1/admin/images/description": {
             "post": {
                 "security": [
@@ -5547,66 +5609,6 @@
                     "ImagePack"
                 ],
                 "summary": "获取所有Cuda基础镜像",
-                "responses": {}
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "添加新的CUDA基础镜像到系统中",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "添加CUDA基础镜像",
-                "parameters": [
-                    {
-                        "description": "CUDA基础镜像信息",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handler_image.CudaBaseImageCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/v1/images/cudabaseimage/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "根据ID删除指定的CUDA基础镜像",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "删除CUDA基础镜像",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "CUDA基础镜像ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
                 "responses": {}
             }
         },
