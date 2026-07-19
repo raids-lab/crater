@@ -19,15 +19,25 @@ import (
 	"compress/zlib"
 	"context"
 	"encoding/base64"
+	"errors"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
+	"github.com/go-logr/logr"
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	batchv1 "k8s.io/api/batch/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+const existingMetadataDisplayName = "Existing name"
 
 func TestClassifyDownloadFailure(t *testing.T) {
 	tests := []struct {
@@ -103,7 +113,10 @@ func TestParseRepositoryMetadata(t *testing.T) {
 	logs := `noise
 [META] {"downloads":4235273,"likes":333,"updated_at":"2025-07-26T16:12:41Z","tags":["text-generation"]}
 ` + capturedReadmeLogs(t, "---\nlicense: apache-2.0\n---\n# Model Card\n<script>unsafe()</script>\nUseful details.", 11)
-	metadata := parseRepositoryMetadata(logs)
+	metadata, err := parseRepositoryMetadata(logs)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if metadata.Downloads != 4235273 || metadata.Likes != 333 || metadata.UpdatedAt != "2025-07-26T16:12:41Z" {
 		t.Fatalf("unexpected repository metadata: %#v", metadata)
@@ -113,6 +126,194 @@ func TestParseRepositoryMetadata(t *testing.T) {
 	}
 	if metadata.Readme != "# Model Card\n\nUseful details." {
 		t.Fatalf("unexpected cleaned README: %q", metadata.Readme)
+	}
+}
+
+func TestParseRepositoryMetadataRejectsMissingPayload(t *testing.T) {
+	if _, err := parseRepositoryMetadata("[RESULT] size_bytes=42\n"); !errors.Is(err, errRepositoryPayloadMissing) {
+		t.Fatalf("parseRepositoryMetadata() error = %v, want %v", err, errRepositoryPayloadMissing)
+	}
+}
+
+func TestReadyArtifactSyncRetriesWhenFinalLogsAreUnavailable(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := v1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	reconciler := &ModelDownloadReconciler{
+		Client: fake.NewClientBuilder().WithScheme(scheme).Build(),
+	}
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Name: "download-owner-model", Namespace: "jobs"},
+		Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{{
+			Type: batchv1.JobComplete, Status: v1.ConditionTrue,
+		}}},
+	}
+	download := &model.ModelDownload{Status: model.ModelDownloadStatusDownloading}
+
+	result, err := reconciler.syncDownloadWithJob(context.Background(), job, download, logr.Discard())
+	if !errors.Is(err, errFinalLogsUnavailable) {
+		t.Fatalf("syncDownloadWithJob() error = %v, want %v", err, errFinalLogsUnavailable)
+	}
+	if result.RequeueAfter != progressRequeueInterval {
+		t.Fatalf("syncDownloadWithJob() RequeueAfter = %v, want %v", result.RequeueAfter, progressRequeueInterval)
+	}
+	if download.Status != model.ModelDownloadStatusDownloading {
+		t.Fatalf("download status advanced without final logs: %s", download.Status)
+	}
+}
+
+func TestReadyArtifactSyncRetriesWhenMetadataPersistenceFails(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:metadata_persistence_failure?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+	download := model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceModelScope, Category: model.DownloadCategoryModel,
+		Revision: "master", Path: "public/Models/owner/model", CreatorID: 1,
+		Status: model.ModelDownloadStatusDownloading, DisplayName: existingMetadataDisplayName,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	scheme := runtime.NewScheme()
+	if err := v1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: "download-owner-model-pod", Namespace: "jobs", Labels: map[string]string{"job-name": "download-owner-model"},
+	}}
+	reconciler := &ModelDownloadReconciler{
+		Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(pod).Build(),
+		podLogs: func(context.Context, *v1.Pod) (string, error) {
+			return "[META] {\"display_name\":\"Fresh name\"}\n", nil
+		},
+		db: db,
+	}
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Name: "download-owner-model", Namespace: "jobs"},
+		Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{{
+			Type: batchv1.JobComplete, Status: v1.ConditionTrue,
+		}}},
+	}
+
+	result, err := reconciler.syncDownloadWithJob(context.Background(), job, &download, logr.Discard())
+	if err == nil || !strings.Contains(err.Error(), "persist repository metadata") {
+		t.Fatalf("syncDownloadWithJob() error = %v, want metadata persistence failure", err)
+	}
+	if result.RequeueAfter != progressRequeueInterval {
+		t.Fatalf("syncDownloadWithJob() RequeueAfter = %v, want %v", result.RequeueAfter, progressRequeueInterval)
+	}
+	var stored model.ModelDownload
+	if err := db.First(&stored, download.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != model.ModelDownloadStatusDownloading || stored.DisplayName != existingMetadataDisplayName {
+		t.Fatalf("failed finalization advanced or overwrote the download: %#v", stored)
+	}
+}
+
+func TestRepositoryReadmePatchPreservesExistingMetadata(t *testing.T) {
+	db := newRepositoryMetadataTestDB(t)
+	source := model.ModelDatasetSource{
+		Provider: model.ModelDatasetProviderModelScope, ResourceType: model.DataTypeModel,
+		RepositoryID: "owner/model", DisplayName: existingMetadataDisplayName, Description: "Existing description",
+		License: "apache-2.0", Downloads: 99, Readme: "Old README",
+	}
+	if err := db.Create(&source).Error; err != nil {
+		t.Fatal(err)
+	}
+	download := model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceModelScope, Category: model.DownloadCategoryModel,
+		Revision: "master", Path: "public/Models/owner/model", CreatorID: 1,
+		DisplayName: existingMetadataDisplayName, SourceDescription: "Existing description", License: "apache-2.0",
+		SourceDownloads: 99, SourceReadme: "Old README", ModelDatasetSourceID: &source.ID,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	metadata, err := parseRepositoryMetadata(capturedReadmeLogs(t, "# New model card", 8))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistRepositoryMetadataWithDB(
+		context.Background(), db, &download, &metadata, "", nil, "",
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	assertDownloadMetadataPatch(t, db, download.ID)
+	assertSourceMetadataPatch(t, db, source.ID)
+}
+
+func assertDownloadMetadataPatch(t *testing.T, db *gorm.DB, downloadID uint) {
+	t.Helper()
+
+	var stored model.ModelDownload
+	if err := db.First(&stored, downloadID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.DisplayName != existingMetadataDisplayName || stored.SourceDescription != "Existing description" ||
+		stored.License != "apache-2.0" || stored.SourceDownloads != 99 {
+		t.Fatalf("README patch cleared download metadata: %#v", stored)
+	}
+	if stored.SourceReadme != "# New model card" {
+		t.Fatalf("download README = %q, want updated model card", stored.SourceReadme)
+	}
+}
+
+func assertSourceMetadataPatch(t *testing.T, db *gorm.DB, sourceID uint) {
+	t.Helper()
+
+	var stored model.ModelDatasetSource
+	if err := db.First(&stored, sourceID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.DisplayName != existingMetadataDisplayName || stored.Description != "Existing description" ||
+		stored.License != "apache-2.0" || stored.Downloads != 99 {
+		t.Fatalf("README patch cleared source metadata: %#v", stored)
+	}
+	if stored.Readme != "# New model card" {
+		t.Fatalf("source README = %q, want updated model card", stored.Readme)
+	}
+}
+
+func newRepositoryMetadataTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	db, err := gorm.Open(sqlite.Open("file:repository_metadata_patch?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDatasetSource{}, &model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
+func TestCapturedReadmeIsBoundedAtUTF8Boundary(t *testing.T) {
+	oversized := strings.Repeat("x", maxStoredReadmeBytes+4096)
+	if got := parseReadmeFromLogs(capturedReadmeLogs(t, oversized, 128)); len(got) != maxStoredReadmeBytes {
+		t.Fatalf("oversized README length = %d, want %d", len(got), maxStoredReadmeBytes)
+	}
+
+	prefix := strings.Repeat("a", maxStoredReadmeBytes-1)
+	got := parseReadmeFromLogs(capturedReadmeLogs(t, prefix+"界tail", 128))
+	if got != prefix {
+		t.Fatalf("multibyte boundary kept partial data: length = %d", len(got))
+	}
+	if !utf8.ValidString(got) {
+		t.Fatal("truncated README is not valid UTF-8")
 	}
 }
 

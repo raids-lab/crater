@@ -163,7 +163,10 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		"available revisions",
 		"modelscope==" + modelScopeVersion,
 		"modelscope-hub==" + modelScopeHubVersion,
-		"raw_readme = text.encode(\"utf-8\")[:max_readme_bytes]",
+		`raw_readme = b""`,
+		`with open(p, "rb") as f:`,
+		"raw_readme = f.read(max_readme_bytes)",
+		`text = raw_readme.decode("utf-8", errors="ignore")`,
 		"[README] begin zlib+base64",
 		"[README] chunk ",
 		"[README] end",
@@ -177,6 +180,9 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 	}
 	if strings.Contains(command, "pip install -q modelscope") {
 		t.Fatal("download command performs an unpinned runtime installation")
+	}
+	if strings.Contains(command, "f.read()") {
+		t.Fatal("download command reads the complete README before truncating it")
 	}
 	if strings.Contains(command, "%!") {
 		t.Fatalf("download command contains an unresolved format directive: %s", command)

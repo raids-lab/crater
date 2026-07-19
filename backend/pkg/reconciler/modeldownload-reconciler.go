@@ -43,6 +43,8 @@ type ModelDownloadReconciler struct {
 	KubeClient kubernetes.Interface
 	Scheme     *runtime.Scheme
 	log        logr.Logger
+	db         *gorm.DB
+	podLogs    func(context.Context, *v1.Pod) (string, error)
 }
 
 // NewModelDownloadReconciler returns a new reconciler
@@ -53,6 +55,13 @@ func NewModelDownloadReconciler(crClient client.Client, kubeClient kubernetes.In
 		Scheme:     scheme,
 		log:        ctrl.Log.WithName("ModelDownload-reconciler"),
 	}
+}
+
+func (r *ModelDownloadReconciler) database() *gorm.DB {
+	if r.db != nil {
+		return r.db
+	}
+	return query.GetDB()
 }
 
 // SetupWithManager sets up the controller with the Manager
@@ -95,6 +104,17 @@ var (
 	resultPattern   = regexp.MustCompile(`\[RESULT\] size_bytes=(\d+)(?:\s+duration_seconds=(\d+)\s+speed_bytes_per_sec=(\d+))?`)
 	descPattern     = regexp.MustCompile(`\[DESC\] (.+)`)
 	metadataPattern = regexp.MustCompile(`\[META\] (.+)`)
+)
+
+var (
+	errFinalLogsUnavailable      = errors.New("final download logs are unavailable")
+	errRepositoryPayloadMissing  = errors.New("repository metadata payload is missing")
+	repositoryMetadataFieldNames = map[string]struct{}{
+		"display_name": {}, "description": {}, "readme": {}, "license": {},
+		"task": {}, "library": {}, "model_type": {}, "parameter_count": {},
+		"private": {}, "gated": {}, "login_required": {}, "downloads": {},
+		"likes": {}, "logo_url": {}, "created_at": {}, "updated_at": {}, "tags": {},
+	}
 )
 
 //+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -183,24 +203,7 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	}
 
 	if shouldSyncReadyArtifacts(download, newStatus) {
-		if err := r.extractFinalResult(ctx, job, download); err != nil {
-			logger.Error(err, "failed to extract final result")
-		}
-
-		// Persist the log tail before the Job/Pod is GC'd, and reuse it to pick
-		// up the README and [DESC] summary extracted from the downloaded revision.
-		logs := r.persistFinalLogs(ctx, job, download)
-		metadata := parseRepositoryMetadata(logs)
-		readmeDescription := parseDescriptionFromLogs(logs)
-		if metadata.Description == "" {
-			metadata.Description = readmeDescription
-		}
-		if err := r.persistRepositoryMetadata(ctx, download, &metadata); err != nil {
-			logger.Error(err, "failed to persist repository metadata")
-		}
-
-		if err := r.createDatasetForModel(ctx, download, readmeDescription, metadata.Tags); err != nil {
-			logger.Error(err, "failed to create dataset for model")
+		if err := r.syncReadyArtifacts(ctx, job, download); err != nil {
 			return ctrl.Result{RequeueAfter: progressRequeueInterval}, err
 		}
 	}
@@ -208,7 +211,9 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	// When a download fails, capture the reason from pod logs so the user can
 	// see why (gated repo, auth, network, OOM, ...) instead of an empty message.
 	if newStatus == model.ModelDownloadStatusFailed && download.Status != model.ModelDownloadStatusFailed {
-		r.persistFinalLogs(ctx, job, download)
+		if _, err := r.persistFinalLogs(ctx, job, download); err != nil {
+			logger.Error(err, "failed to persist failed download logs")
+		}
 		if err := r.extractFailureReason(ctx, job, download); err != nil {
 			logger.Error(err, "failed to extract failure reason")
 		}
@@ -226,6 +231,37 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ModelDownloadReconciler) syncReadyArtifacts(
+	ctx context.Context, job *batchv1.Job, download *model.ModelDownload,
+) error {
+	if err := r.extractFinalResult(ctx, job, download); err != nil {
+		return fmt.Errorf("extract final download result: %w", err)
+	}
+
+	// Persist the log tail before the Job/Pod is GC'd, and reuse it to pick
+	// up the README and [DESC] summary extracted from the downloaded revision.
+	logs, err := r.persistFinalLogs(ctx, job, download)
+	if err != nil {
+		return fmt.Errorf("persist final download logs: %w", err)
+	}
+	metadata, err := parseRepositoryMetadata(logs)
+	if err != nil {
+		return fmt.Errorf("parse repository metadata: %w", err)
+	}
+	readmeDescription := parseDescriptionFromLogs(logs)
+	if metadata.Description == "" && readmeDescription != "" {
+		metadata.Description = readmeDescription
+		metadata.markPresent("description")
+	}
+	if err := r.persistRepositoryMetadata(ctx, download, &metadata); err != nil {
+		return fmt.Errorf("persist repository metadata: %w", err)
+	}
+	if err := r.createDatasetForModel(ctx, download, readmeDescription, metadata.Tags); err != nil {
+		return fmt.Errorf("create dataset for model: %w", err)
+	}
+	return nil
 }
 
 // shouldSyncReadyArtifacts also repairs a Ready row whose status was advanced
@@ -255,90 +291,95 @@ type repositoryMetadata struct {
 	CreatedAt      string   `json:"created_at"`
 	UpdatedAt      string   `json:"updated_at"`
 	Tags           []string `json:"tags"`
+	present        map[string]struct{}
 }
 
-func parseRepositoryMetadata(logs string) repositoryMetadata {
-	metadata := repositoryMetadata{Readme: parseReadmeFromLogs(logs)}
-	matches := metadataPattern.FindAllStringSubmatch(logs, -1)
-	if len(matches) == 0 {
-		return metadata
+func (m *repositoryMetadata) markPresent(field string) {
+	if m.present == nil {
+		m.present = make(map[string]struct{})
 	}
-	_ = json.Unmarshal([]byte(matches[len(matches)-1][1]), &metadata)
-	return metadata
+	m.present[field] = struct{}{}
+}
+
+func (m *repositoryMetadata) isPresent(field string) bool {
+	_, ok := m.present[field]
+	return ok
+}
+
+func (m *repositoryMetadata) hasPayload() bool {
+	return len(m.present) > 0
+}
+
+func parseRepositoryMetadata(logs string) (repositoryMetadata, error) {
+	metadata := repositoryMetadata{}
+	if readme := parseReadmeFromLogs(logs); readme != "" {
+		metadata.Readme = readme
+		metadata.markPresent("readme")
+	}
+	matches := metadataPattern.FindAllStringSubmatch(logs, -1)
+	if len(matches) > 0 {
+		payload := []byte(matches[len(matches)-1][1])
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(payload, &fields); err != nil {
+			return metadata, fmt.Errorf("decode metadata fields: %w", err)
+		}
+		if err := json.Unmarshal(payload, &metadata); err != nil {
+			return metadata, fmt.Errorf("decode metadata payload: %w", err)
+		}
+		for field := range fields {
+			if _, supported := repositoryMetadataFieldNames[field]; supported {
+				metadata.markPresent(field)
+			}
+		}
+	}
+	if !metadata.hasPayload() {
+		return metadata, errRepositoryPayloadMissing
+	}
+	return metadata, nil
 }
 
 func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 	ctx context.Context, download *model.ModelDownload, metadata *repositoryMetadata,
 ) error {
-	organization := strings.SplitN(download.Name, "/", 2)[0]
-	logoURL, logoData, logoContentType, logoErr := resolveRepositoryLogo(ctx, download, metadata.LogoURL)
+	if metadata == nil || !metadata.hasPayload() {
+		return errRepositoryPayloadMissing
+	}
+	logoURL, logoData, logoContentType, logoErr := r.resolveRepositoryLogo(ctx, download, metadata.LogoURL)
 	if logoErr != nil {
 		// Logo collection is best effort and must never turn a successful model
 		// download into a failed task. A later metadata refresh can retry it.
 		klog.Warningf("Failed to cache repository logo for %s: %v", download.Name, logoErr)
 	}
-	updates := map[string]any{
-		"organization":          organization,
-		"source_url":            downloadSourceURL(download),
-		"display_name":          metadata.DisplayName,
-		"source_description":    metadata.Description,
-		"license":               metadata.License,
-		"task":                  metadata.Task,
-		"library":               metadata.Library,
-		"model_type":            metadata.ModelType,
-		"parameter_count":       metadata.ParameterCount,
-		"source_private":        metadata.Private,
-		"source_gated":          metadata.Gated,
-		"source_login_required": metadata.LoginRequired,
-		"source_downloads":      metadata.Downloads,
-		"source_likes":          metadata.Likes,
-	}
-	if len(logoData) > 0 {
-		updates["logo_url"] = logoURL
-	}
-	if metadata.Readme != "" {
-		updates["source_readme"] = metadata.Readme
-	}
-	if metadata.UpdatedAt != "" {
-		if updatedAt, err := time.Parse(time.RFC3339, metadata.UpdatedAt); err == nil {
-			updates["source_updated_at"] = updatedAt
-		}
-	}
-	if metadata.CreatedAt != "" {
-		if createdAt, err := time.Parse(time.RFC3339, metadata.CreatedAt); err == nil {
-			updates["source_created_at"] = createdAt
-		}
+	return persistRepositoryMetadataWithDB(
+		ctx, r.database(), download, metadata, logoURL, logoData, logoContentType,
+	)
+}
+
+func persistRepositoryMetadataWithDB(
+	ctx context.Context,
+	db *gorm.DB,
+	download *model.ModelDownload,
+	metadata *repositoryMetadata,
+	logoURL string,
+	logoData []byte,
+	logoContentType string,
+) error {
+	if metadata == nil || !metadata.hasPayload() {
+		return errRepositoryPayloadMissing
 	}
 
-	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	organization := strings.SplitN(download.Name, "/", 2)[0]
+	downloadUpdates, sourceUpdates := repositoryMetadataUpdates(
+		download, metadata, organization, logoURL, logoData, logoContentType,
+	)
+
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		source := model.ModelDatasetSource{
-			Provider:        model.ModelDatasetProvider(download.Source),
-			ResourceType:    model.DataType(download.Category),
-			RepositoryID:    download.Name,
-			RepositoryURL:   downloadSourceURL(download),
-			Organization:    organization,
-			LogoURL:         logoURL,
-			LogoData:        logoData,
-			LogoContentType: logoContentType,
-			DisplayName:     metadata.DisplayName,
-			Description:     metadata.Description,
-			Readme:          metadata.Readme,
-			License:         metadata.License,
-			Task:            metadata.Task,
-			Library:         metadata.Library,
-			ModelType:       metadata.ModelType,
-			ParameterCount:  metadata.ParameterCount,
-			Private:         metadata.Private,
-			Gated:           metadata.Gated,
-			LoginRequired:   metadata.LoginRequired,
-			Downloads:       metadata.Downloads,
-			Likes:           metadata.Likes,
-		}
-		if value, ok := updates["source_updated_at"].(time.Time); ok {
-			source.SourceUpdatedAt = &value
-		}
-		if value, ok := updates["source_created_at"].(time.Time); ok {
-			source.SourceCreatedAt = &value
+			Provider:      model.ModelDatasetProvider(download.Source),
+			ResourceType:  model.DataType(download.Category),
+			RepositoryID:  download.Name,
+			RepositoryURL: downloadSourceURL(download),
+			Organization:  organization,
 		}
 		var persisted model.ModelDatasetSource
 		lookup := tx.Where(
@@ -352,11 +393,12 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 			persisted = source
 		} else if lookup.Error != nil {
 			return lookup.Error
-		} else if err := tx.Model(&persisted).Updates(source).Error; err != nil {
+		}
+		if err := tx.Model(&persisted).Updates(sourceUpdates).Error; err != nil {
 			return err
 		}
-		updates["model_dataset_source_id"] = persisted.ID
-		if err := tx.Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(updates).Error; err != nil {
+		downloadUpdates["model_dataset_source_id"] = persisted.ID
+		if err := tx.Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(downloadUpdates).Error; err != nil {
 			return err
 		}
 		download.ModelDatasetSourceID = &persisted.ID
@@ -364,12 +406,80 @@ func (r *ModelDownloadReconciler) persistRepositoryMetadata(
 	})
 }
 
-func resolveRepositoryLogo(
+func repositoryMetadataUpdates(
+	download *model.ModelDownload,
+	metadata *repositoryMetadata,
+	organization string,
+	logoURL string,
+	logoData []byte,
+	logoContentType string,
+) (downloadUpdates, sourceUpdates map[string]any) {
+	downloadUpdates = map[string]any{
+		"organization": organization,
+		"source_url":   downloadSourceURL(download),
+	}
+	sourceUpdates = map[string]any{
+		"repository_url": downloadSourceURL(download),
+		"organization":   organization,
+	}
+	fieldUpdates := []struct {
+		field          string
+		downloadColumn string
+		sourceColumn   string
+		value          any
+	}{
+		{field: "display_name", downloadColumn: "display_name", sourceColumn: "display_name", value: metadata.DisplayName},
+		{field: "description", downloadColumn: "source_description", sourceColumn: "description", value: metadata.Description},
+		{field: "license", downloadColumn: "license", sourceColumn: "license", value: metadata.License},
+		{field: "task", downloadColumn: "task", sourceColumn: "task", value: metadata.Task},
+		{field: "library", downloadColumn: "library", sourceColumn: "library", value: metadata.Library},
+		{field: "model_type", downloadColumn: "model_type", sourceColumn: "model_type", value: metadata.ModelType},
+		{field: "parameter_count", downloadColumn: "parameter_count", sourceColumn: "parameter_count", value: metadata.ParameterCount},
+		{field: "private", downloadColumn: "source_private", sourceColumn: "private", value: metadata.Private},
+		{field: "gated", downloadColumn: "source_gated", sourceColumn: "gated", value: metadata.Gated},
+		{field: "login_required", downloadColumn: "source_login_required", sourceColumn: "login_required", value: metadata.LoginRequired},
+		{field: "downloads", downloadColumn: "source_downloads", sourceColumn: "downloads", value: metadata.Downloads},
+		{field: "likes", downloadColumn: "source_likes", sourceColumn: "likes", value: metadata.Likes},
+	}
+	for _, update := range fieldUpdates {
+		if !metadata.isPresent(update.field) {
+			continue
+		}
+		downloadUpdates[update.downloadColumn] = update.value
+		sourceUpdates[update.sourceColumn] = update.value
+	}
+	if len(logoData) > 0 {
+		downloadUpdates["logo_url"] = logoURL
+		sourceUpdates["logo_url"] = logoURL
+		sourceUpdates["logo_data"] = logoData
+		sourceUpdates["logo_content_type"] = logoContentType
+	}
+	if metadata.isPresent("readme") && metadata.Readme != "" {
+		downloadUpdates["source_readme"] = metadata.Readme
+		sourceUpdates["readme"] = metadata.Readme
+	}
+	if metadata.isPresent("updated_at") && metadata.UpdatedAt != "" {
+		if updatedAt, err := time.Parse(time.RFC3339, metadata.UpdatedAt); err == nil {
+			downloadUpdates["source_updated_at"] = updatedAt
+			sourceUpdates["source_updated_at"] = updatedAt
+		}
+	}
+	if metadata.isPresent("created_at") && metadata.CreatedAt != "" {
+		if createdAt, err := time.Parse(time.RFC3339, metadata.CreatedAt); err == nil {
+			downloadUpdates["source_created_at"] = createdAt
+			sourceUpdates["source_created_at"] = createdAt
+		}
+	}
+
+	return downloadUpdates, sourceUpdates
+}
+
+func (r *ModelDownloadReconciler) resolveRepositoryLogo(
 	ctx context.Context, download *model.ModelDownload, metadataLogoURL string,
 ) (logoURL string, logoData []byte, contentType string, err error) {
 	organization := strings.SplitN(download.Name, "/", 2)[0]
 	var cached model.ModelDatasetSource
-	lookup := query.GetDB().WithContext(ctx).
+	lookup := r.database().WithContext(ctx).
 		Where("LOWER(organization) = ? AND octet_length(logo_data) > 0", strings.ToLower(organization)).
 		Order("updated_at DESC").
 		First(&cached)
@@ -603,6 +713,9 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 }
 
 func (r *ModelDownloadReconciler) getPodLogs(ctx context.Context, pod *v1.Pod) (string, error) {
+	if r.podLogs != nil {
+		return r.podLogs(ctx, pod)
+	}
 	// Get pod logs using Kubernetes clientset
 	req := r.KubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{
 		Container: "downloader",
@@ -627,26 +740,33 @@ func (r *ModelDownloadReconciler) getPodLogs(ctx context.Context, pod *v1.Pod) (
 // persistFinalLogs stores the pod's log tail on the download record so it can
 // still be inspected after the K8s Job (TTL 7 days) and its pods are GC'd.
 // Returns the raw logs so callers can parse markers without a second fetch.
-func (r *ModelDownloadReconciler) persistFinalLogs(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) string {
+func (r *ModelDownloadReconciler) persistFinalLogs(
+	ctx context.Context, job *batchv1.Job, download *model.ModelDownload,
+) (string, error) {
 	pod, err := r.latestPodForJob(ctx, job)
-	if err != nil || pod == nil {
-		return ""
+	if err != nil {
+		return "", fmt.Errorf("find downloader pod: %w", err)
+	}
+	if pod == nil {
+		return "", errFinalLogsUnavailable
 	}
 
 	logs, err := r.getPodLogs(ctx, pod)
-	if err != nil || logs == "" {
-		return ""
+	if err != nil {
+		return "", fmt.Errorf("read downloader pod logs: %w", err)
+	}
+	if strings.TrimSpace(logs) == "" {
+		return "", errFinalLogsUnavailable
 	}
 
 	now := time.Now()
-	q := query.ModelDownload
-	if _, err := q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(map[string]any{
+	if err := r.database().WithContext(ctx).Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(map[string]any{
 		"logs":          truncateLogTail(logsWithoutCapturedReadme(logs), maxStoredLogBytes),
 		"logs_saved_at": now,
-	}); err != nil {
-		klog.Warningf("failed to persist final logs for download %d: %v", download.ID, err)
+	}).Error; err != nil {
+		return "", fmt.Errorf("update stored download logs: %w", err)
 	}
-	return logs
+	return logs, nil
 }
 
 // truncateLogTail keeps at most maxBytes from the end of the logs, starting at
@@ -729,10 +849,7 @@ func decodeCapturedReadme(payload string) string {
 	if err != nil {
 		return ""
 	}
-	if len(content) > maxStoredReadmeBytes {
-		content = content[:maxStoredReadmeBytes]
-	}
-	return modeldataset.CleanReadme(string(content), maxStoredReadmeBytes)
+	return modeldataset.CleanReadme(strings.ToValidUTF8(string(content), ""), maxStoredReadmeBytes)
 }
 
 // logsWithoutCapturedReadme keeps the human-facing log readable and prevents a

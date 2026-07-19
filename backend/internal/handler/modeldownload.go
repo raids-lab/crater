@@ -1644,17 +1644,16 @@ import zlib
 
 max_readme_bytes = %d
 chunk_characters = %d
-text = ""
+raw_readme = b""
 for name in ("README.md", "readme.md", "README.MD", "README"):
     p = os.path.join(os.environ["OUT_DIR"], name)
     if os.path.isfile(p):
         try:
-            with open(p, encoding="utf-8", errors="ignore") as f:
-                text = f.read()
+            with open(p, "rb") as f:
+                raw_readme = f.read(max_readme_bytes)
         except Exception:
             pass
         break
-raw_readme = text.encode("utf-8")[:max_readme_bytes]
 text = raw_readme.decode("utf-8", errors="ignore")
 if text:
     payload = base64.b64encode(zlib.compress(text.encode("utf-8"), level=9)).decode("ascii")
