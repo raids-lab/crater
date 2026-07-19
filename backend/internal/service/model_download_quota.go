@@ -77,7 +77,8 @@ func (s *ModelDownloadQuotaService) Reserve(
 		UserID: userID, ModelDownloadID: downloadID, Action: action,
 		Status: model.ModelDownloadSubmissionReserved,
 	}
-	if err := query.Use(tx).ModelDownloadSubmission.WithContext(ctx).Create(submission); err != nil {
+	if err := query.Use(tx).ModelDownloadSubmission.Table("model_download_submissions").
+		WithContext(ctx).Create(submission); err != nil {
 		return bizerr.Internal.DatabaseError.Wrap(err, "record model download submission")
 	}
 	return nil

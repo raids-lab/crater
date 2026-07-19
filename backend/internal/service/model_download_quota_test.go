@@ -129,6 +129,25 @@ func TestModelDownloadQuotaServiceTracksJobsAcrossConfigurationChanges(t *testin
 	}
 }
 
+func TestModelDownloadQuotaServiceReserveUsesSubmissionTableFromScopedDB(t *testing.T) {
+	db, _, quotaService := newModelDownloadQuotaTestServices(t, "scoped_db_submission_table")
+	userID := uint(7)
+	download := createModelDownloadQuotaTestRecord(
+		t, db, userID, "scoped-db", model.ModelDownloadStatusPending,
+	)
+
+	err := query.Use(db).Transaction(func(tx *query.Query) error {
+		return quotaService.Reserve(
+			t.Context(), tx.ModelDownload.WithContext(t.Context()).UnderlyingDB(),
+			userID, download.ID, model.ModelDownloadSubmissionCreate,
+		)
+	})
+	if err != nil {
+		t.Fatalf("reserve with a model-download-scoped DB should use the submission table: %v", err)
+	}
+	assertModelDownloadQuotaTestSubmission(t, db, userID, download.ID)
+}
+
 func TestModelDownloadQuotaServiceReservesAndSettlesByOperator(t *testing.T) {
 	db, configService, quotaService := newModelDownloadQuotaTestServices(t, "settlement_by_operator")
 	updateModelDownloadQuotaTestConfig(t, configService, ModelDownloadLimitConfig{
