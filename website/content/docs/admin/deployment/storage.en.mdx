@@ -45,7 +45,7 @@ storage-server, shared user files, and database backups require multiple Pods or
 - **NFS** requires an administrator to provide an NFS server, NFS client support on the nodes, and a Kubernetes provisioner. It is relatively simple to deploy and works well for clusters that already have a reliable NFS service or are modest in size. Capacity, performance, and availability depend on the NFS server.
 - **CephFS** requires an administrator to deploy or connect Ceph and install Kubernetes integration such as Rook and the CephFS CSI driver. It suits clusters that already operate Ceph and need scalability and storage-side fault tolerance, but it costs more to deploy and maintain.
 
-By default, the core Crater Chart creates a shared volume through a StorageClass named `nfs` and mounts the same PVC into multiple storage-server replicas to store and serve user files. When a user starts a Jupyter, WebIDE, or training workload, Crater mounts the user's HOME directory into the container. Account or public files, datasets, and models selected by the user are also mounted into the workload container from this storage capability. These mounts use Crater's configured RWX shared PVC or an optional read-only PVC backed by the same underlying storage.
+By default, the core Crater Chart creates a shared volume through a StorageClass named `nfs` and mounts the same PVC into multiple storage-server replicas to store and serve user files. When a user starts a Jupyter, WebIDE, or training workload, Crater mounts the user's HOME directory into the container. Files, datasets, and models that the user selects from Account Space or Public Space are also mounted into the workload container from this storage capability. These mounts use Crater's configured RWX shared PVC or an optional read-only PVC backed by the same underlying storage.
 
 A regular user image only provides the container runtime environment. It does not decide whether these files use LocalPV, NFS, or CephFS. The `StorageClass` referenced by the shared PVC determines the actual backend. The database backup feature also writes backups to a separate RWX volume that uses the `nfs` StorageClass by default.
 
@@ -109,7 +109,7 @@ After applying the fix, watch the CSI DaemonSet's `desired`, `updated`, `ready`,
 
 ## Related Documentation
 
-- [OpenEBS Deployment Guide](./openebs)
-- [CloudNativePG Deployment Guide](./cloudnative-pg)
-- [Prometheus Stack Deployment Guide](./prometheus)
-- [Rook-Ceph Learning Guide](../learning/ceph/ceph-basic)
+- [OpenEBS Deployment Guide](./openebs.mdx)
+- [CloudNativePG Deployment Guide](./cloudnative-pg.mdx)
+- [Prometheus Stack Deployment Guide](./prometheus.mdx)
+- [Rook-Ceph Learning Guide](../learning/ceph/ceph-basic.mdx)
