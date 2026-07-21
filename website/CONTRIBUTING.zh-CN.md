@@ -20,11 +20,12 @@
 
 修改 `website/` 时：
 
-- 期望 Node.js v22+、pnpm v10+。
+- 需要安装 NVM 和 pnpm v10+。
+- Makefile 会在运行 pnpm 前自动安装并选择 `.nvmrc` 中声明的 Node.js 版本。
 
 ```bash
 cd website
-pnpm install
+make install
 make run
 ```
 
@@ -32,6 +33,7 @@ make run
 
 | 命令 | 用途 |
 |------|------|
+| `make install` | 使用配置的 Node.js 版本安装依赖 |
 | `make run` | 启动本地文档站 |
 | `make build` | 构建文档站 |
 | `make pre-commit-check` | 提交前运行文档检查 |
