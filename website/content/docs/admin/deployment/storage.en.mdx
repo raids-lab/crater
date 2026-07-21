@@ -1,80 +1,115 @@
 ---
 title: Storage Architecture
-description: Crater utilizes a hybrid storage architecture to address both high-performance local workloads and persistent shared data access across pods and nodes. This document outlines the storage solutions used in the cluster.
+description: Explains how Crater uses node-local storage, shared file storage, and distributed block storage as needed, and how to select and verify StorageClasses during deployment.
 ---
 
-## 1. Local Persistent Volumes (LocalPV via OpenEBS)
+Crater does not require all data to use the same storage system, nor does every cluster need every storage capability described below. Select a combination based on the access pattern, performance, and reliability requirements of the components you enable.
 
-We use [OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv) to manage node-local storage for workloads that require high throughput and data-locality.
+Standard Kubernetes defines storage interfaces such as PVs, PVCs, and `StorageClass`, but it does not automatically provide OpenEBS, NFS, or Ceph. The Crater Chart declares PVCs and mounts them into components; it does not install these storage backends. Before deploying Crater, administrators must deploy or connect the required storage systems and prepare the corresponding `StorageClass` resources in the cluster.
 
-### Why LocalPV?
+## Architecture Overview
 
-- **CRD-Based Management**: Allows Kubernetes-native declarative management of local disks.
-- **Performance**: Data remains on the same node, minimizing network overhead.
-- **Use Case in Crater**:
-  - Job cache directories
-  - Local dataset staging areas
-  - Per-node inference or training scratch space
+Applications do not select a particular storage server directly. They use storage through Kubernetes interfaces:
 
-### StorageClass
+```text
+Crater component → PVC → StorageClass → storage driver or provisioner → storage backend
+```
 
-A dedicated `StorageClass` is configured for local disk provisioning. This class is referenced by other charts like:
-- `cloudnative-pg` for database storage
-- Distributed job outputs that do not require replication
+Crater is concerned with whether a volume satisfies the required access mode, while the cluster administrator decides whether the backend uses OpenEBS, NFS, or Ceph. The following table lists storage capabilities that can be combined as needed, not mandatory layers that every deployment must include.
 
-See: [`deployments/openebs`](../deployments/openebs)
+| Storage capability | When it is needed | Typical access pattern | Primary use in Crater | Common implementation |
+| --- | --- | --- | --- | --- |
+| Node-local storage | When BuildKit is enabled, or when following this site's CloudNativePG deployment | Mounted on one node with low latency | Rebuildable build caches, or persistent data replicated by the application layer | OpenEBS LocalPV |
+| Shared file storage | Usually required for a basic Crater deployment | Concurrent access from multiple Pods or nodes (RWX) | User HOME directories, datasets, models, shared files, and backups | NFS or CephFS |
+| Distributed block storage | Optional when enabling independent components that require persistent RWO volumes | Usually read and written from one node (RWO) | Historical metrics in the current Prometheus Stack deployment guide | Ceph RBD |
 
----
+A PVC in the `Bound` state only means that Kubernetes has allocated storage for the claim. It does not guarantee that the target node has mounted the volume successfully. Actual availability also depends on node-side mount tools, CSI plugins, networking, and the storage backend.
 
-## 2. Shared Block Storage (Ceph RBD via Rook)
+## How the Storage Capabilities Work Together
 
-For persistent, multi-node accessible volumes, Crater uses [Rook-Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html). RBD volumes are dynamically provisioned and support:
+### Node-Local Storage
 
-- ReadWriteOnce access with migration support
-- Replication and failure recovery
-- Suitable for:
-  - Prometheus TSDB storage
-  - Crater internal services requiring persistence
-  - Datasets shared across nodes
+[OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv) exposes a node's local directories or disks as Kubernetes persistent volumes. LocalPV is a Kubernetes-supported volume type, but the OpenEBS provisioner used for dynamic provisioning must be installed separately by an administrator. The deployment described in this documentation uses its `openebs-hostpath` StorageClass.
 
-Ceph was selected due to its:
+Crater uses this capability in two specific situations:
 
-- Kubernetes-native provisioning via Rook
-- Strong community support
-- Scalability and fault tolerance
+- When the BuildKit image-building service is enabled, each BuildKit instance uses a separate LocalPV for its build cache. Keeping the cache local reduces repeated downloads and image-layer builds. Losing the cache slows later builds, but the data can be regenerated. BuildKit is disabled by default, so clusters that do not use image building do not need LocalPV for this purpose.
+- In the CloudNativePG deployment described on this site, each PostgreSQL instance uses LocalPV for database files. The volume itself does not replicate data; CloudNativePG must provide replication, failover, and backups.
 
-> 📌 Most of our stateful components such as Prometheus use Ceph RBD volumes via a custom `StorageClass`.
+LocalPV is not distributed storage and does not automatically copy data to other nodes. A volume has node constraints, so its Pod must return to the node that holds the data to continue using it. Use this capability only for rebuildable data or data whose redundancy is already provided by the application layer.
 
----
+### Shared File Storage
 
-## Storage Usage Matrix
+storage-server, shared user files, and database backups require multiple Pods or nodes to access the same directory. They normally use NFS or CephFS with `ReadWriteMany` support. Both serve the same role in Crater, but differ in implementation and operational cost:
 
-| Component             | Type               | Storage Backend       | Notes                                  |
-|-----------------------|--------------------|----------------------|----------------------------------------|
-| PostgreSQL (Crater DB) | Persistent         | LocalPV (OpenEBS)    | High-speed, node-specific              |
-| Prometheus TSDB        | Persistent         | Ceph RBD (Rook)      | Multi-node, highly durable             |
-| User Jobs             | Ephemeral / Persistent | LocalPV / Ceph RBD | Based on configuration                 |
-| Grafana Dashboards     | Ephemeral / Persistent | Ceph RBD           | Optional, depending on dashboard config|
+- **NFS** requires an administrator to provide an NFS server, NFS client support on the nodes, and a Kubernetes provisioner. It is relatively simple to deploy and works well for clusters that already have a reliable NFS service or are modest in size. Capacity, performance, and availability depend on the NFS server.
+- **CephFS** requires an administrator to deploy or connect Ceph and install Kubernetes integration such as Rook and the CephFS CSI driver. It suits clusters that already operate Ceph and need scalability and storage-side fault tolerance, but it costs more to deploy and maintain.
 
----
+By default, the core Crater Chart creates a shared volume through a StorageClass named `nfs` and mounts the same PVC into multiple storage-server replicas to store and serve user files. When a user starts a Jupyter, WebIDE, or training workload, Crater mounts the user's HOME directory into the container. Account or public files, datasets, and models selected by the user are also mounted into the workload container from this storage capability. These mounts use Crater's configured RWX shared PVC or an optional read-only PVC backed by the same underlying storage.
 
-## Notes
+A regular user image only provides the container runtime environment. It does not decide whether these files use LocalPV, NFS, or CephFS. The `StorageClass` referenced by the shared PVC determines the actual backend. The database backup feature also writes backups to a separate RWX volume that uses the `nfs` StorageClass by default.
 
-- Always ensure nodes offering LocalPV have labeled and mounted disk paths.
-- Ceph RBD requires pre-provisioned block storage devices on cluster nodes.
-- Use node affinity and tolerations with LocalPV to bind pods to correct storage locations.
-- See each chart’s documentation for the appropriate `StorageClass` override.
+Here, `nfs` is only the default StorageClass name; it does not mean that Crater installs NFS. If the cluster uses CephFS, set both locations to the actual CephFS `StorageClass`. Crater uses the volume in the same way.
 
----
+### Distributed Block Storage
 
-## Related Modules
+[Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html) provides virtual block devices from a Ceph cluster. Kubernetes formats them on a node and mounts them into a Pod. As with CephFS, administrators must deploy the Ceph cluster, Rook, and the RBD CSI driver in advance; Crater does not install them automatically.
 
-- [`openebs`](./openebs.md)
-- [`cloudnative-pg`](./cloudnative-pg.md)
-- [`prometheus`](./prometheus.md)
+The core Crater Chart does not use RBD directly by default, so distributed block storage is not a base dependency of Crater. The Prometheus Stack deployment described on this site uses `rook-ceph-rbd` to retain historical Prometheus metrics. Prometheus needs a reliable persistent volume but does not require multiple nodes to write the same filesystem concurrently. If an administrator separately enables Grafana persistence, Grafana also needs a suitable persistent volume, but it does not have to use RBD.
 
-## Installation
+The absence of Ceph RBD does not affect user HOME directories, datasets, models, or regular jobs as long as shared file storage is available. A Prometheus Stack deployment can replace RBD with another RWO `StorageClass` that meets its requirements. Without a persistent volume, Prometheus may lose historical metrics when its Pod is recreated. If a PVC is declared but no usable `StorageClass` exists, the affected Pod cannot complete deployment.
 
-We recommend leveraging NFS as the storage provisioner and using official Helm chart with Crater's preconfigured values.
- 
-📖 Detailed guide: [`deployments/nfs/README.md`](../deployments/nfs/README.md)
+RBD and CephFS can share the same underlying Ceph cluster, but they are different volume types: RBD provides block devices, while CephFS provides a shared filesystem, and they use different CSI drivers. RBD cannot replace the RWX file storage required by storage-server, and RBD support on a node does not imply CephFS support.
+
+Therefore, a cluster that uses only NFS for shared file storage can omit distributed block storage entirely if it does not enable components that require persistent RWO volumes. NFS and RBD are not interchangeable products for the same purpose: a cluster may use only NFS, or run NFS and RBD together as needed.
+
+## How Crater Uses Storage
+
+The core Crater Chart connects to existing StorageClasses through the following settings:
+
+| Purpose | When used | Chart setting | Requirement | Default |
+| --- | --- | --- | --- | --- |
+| User HOME directories, shared files, datasets, and models | Basic installation; shared by storage-server and user workloads | `storage.storageClass` | RWX | `nfs` |
+| PostgreSQL backup volume | When database backups and PVC creation are enabled | `dbBackup.config.storageClass` | RWX | `nfs` |
+| AMD BuildKit cache | When AMD BuildKit is enabled | `buildkitConfig.amdConfig.cache.storageClass` | Node-local RWO volume | `openebs-hostpath` |
+| ARM BuildKit cache | When ARM BuildKit is enabled | `buildkitConfig.armConfig.cache.storageClass` | Node-local RWO volume | `openebs-hostpath` |
+
+Independent components such as CloudNativePG and Prometheus select storage through their own deployment settings. The current documentation uses OpenEBS LocalPV for CloudNativePG and Ceph RBD for Prometheus. These are documented deployment choices, not mandatory dependencies of core Crater components on specific storage products. Administrators may adjust them to match the cluster's reliability design, but must preserve the access modes required by each component.
+
+You do not need to install every backend. You must, however, provide storage for every Crater feature you enable. A basic installation usually starts with an RWX `StorageClass` for storage-server and user workloads. Install OpenEBS when enabling BuildKit or following this site's CloudNativePG deployment. For the documented Prometheus deployment, provide Ceph RBD or another suitable persistent RWO backend. Clusters that already operate Ceph may also replace the default NFS backend with CephFS.
+
+Larger clusters commonly use a mixed design: local caches avoid consuming shared storage, while data that needs cross-node access or recovery remains on shared storage.
+
+## Deployment and Operational Checks
+
+Before deploying Crater or updating stateful components, verify at least the following:
+
+1. The actual storage backend is deployed or connected, every referenced `StorageClass` exists, and its access mode meets the component's requirements.
+2. Local paths are ready on LocalPV target nodes, and Pod placement is compatible with the volume's node constraints.
+3. NFS client support or the corresponding CSI node plugin covers every node where the workload may run.
+4. Create a test PVC and Pod and verify a real mount and read/write operation on the target node; do not rely only on the PVC being `Bound`.
+
+### CephFS CSI Node Coverage
+
+If a workload can be scheduled to tainted control-plane nodes or other dedicated nodes, the CephFS CSI DaemonSet must also be able to run on those nodes and register its driver. Workload tolerations are not automatically inherited by CSI plugins.
+
+In one real incident, storage-server used a node selector and toleration to run on control-plane nodes with a `NoSchedule` taint, but the Rook-managed CephFS CSI DaemonSet did not have the same toleration. The workload Pod could therefore be scheduled to the target node, while that node had no CephFS CSI Pod and no registered CephFS driver in its `CSINode` object.
+
+When the following symptoms appear together, check CSI node coverage and tolerations before investigating the application image:
+
+- A newly created Pod, or one created by a rollout, has been scheduled but remains in `ContainerCreating`; its container has not started.
+- The PVC is `Bound` and the VolumeAttachment may even show `attached=true`, but Pod events report that `rook-ceph.cephfs.csi.ceph.com` is not in the list of registered CSI drivers.
+- Existing Pods from the same workload can still read and write, while new, relocated, or recreated Pods cannot mount the volume.
+
+The continued operation of old Pods is not contradictory. The CSI node plugin establishes, unmounts, and republishes mounts; it does not proxy every file read and write. A previously established CephFS kernel mount may keep working after the plugin disappears, but Pod recreation, migration, a node restart, or a remount will expose the problem.
+
+During troubleshooting, compare the taints and tolerations of workload target nodes, the node coverage of the CephFS CSI DaemonSet, and driver registration in `CSINode`. Fix the Operator's desired state through persistent configuration supported by the installed Rook version; do not edit the Operator-managed DaemonSet directly.
+
+After applying the fix, watch the CSI DaemonSet's `desired`, `updated`, `ready`, `available`, and `unavailable` counts, then confirm the workload Pod's mount events. If a RollingUpdate stalls, inspect the first abnormal CSI Pod and its node events. With a small `maxUnavailable`, one node failure can block later updates; it does not mean that every node waiting for an update is faulty.
+
+## Related Documentation
+
+- [OpenEBS Deployment Guide](./openebs)
+- [CloudNativePG Deployment Guide](./cloudnative-pg)
+- [Prometheus Stack Deployment Guide](./prometheus)
+- [Rook-Ceph Learning Guide](../learning/ceph/ceph-basic)
