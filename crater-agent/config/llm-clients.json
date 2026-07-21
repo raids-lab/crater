@@ -1,0 +1,13 @@
+{
+  "default": {
+    "provider": "openai_compatible",
+    "base_url": "",
+    "api_key_env": "",
+    "model": "",
+    "temperature": 0.1,
+    "max_tokens": 8192,
+    "timeout": 120,
+    "streaming": true,
+    "stream_usage": true
+  }
+}

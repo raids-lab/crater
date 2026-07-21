@@ -2,8 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,11 +9,12 @@ import (
 	"gorm.io/gorm/clause"
 	"k8s.io/klog/v2"
 
+	"strings"
+
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
-	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
@@ -47,7 +46,6 @@ func (mgr *SystemConfigMgr) GetName() string                   { return mgr.name
 func (mgr *SystemConfigMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *SystemConfigMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/billing", mgr.GetBillingStatus)
-	g.GET("/model-download-limit", mgr.GetModelDownloadLimitConfig)
 }
 
 func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -61,8 +59,6 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/gpu-analysis", mgr.SetGpuAnalysisStatus)
 	g.GET("/prequeue", mgr.GetPrequeueConfig)
 	g.PUT("/prequeue", mgr.UpdatePrequeueConfig)
-	g.GET("/model-download-limit", mgr.GetAdminModelDownloadLimitConfig)
-	g.PUT("/model-download-limit", mgr.UpdateModelDownloadLimitConfig)
 
 	g.GET("/billing", mgr.GetBillingStatus)
 	g.PUT("/billing", mgr.SetBillingStatus)
@@ -110,30 +106,6 @@ type UpdatePrequeueConfigReq struct {
 	ActivateTickerIntervalSeconds    *int64 `json:"activateTickerIntervalSeconds" binding:"required,gt=0"`
 	MaxTotalActivationsPerRound      *int64 `json:"maxTotalActivationsPerRound" binding:"required,gt=0"`
 	PrequeueCandidateSize            *int64 `json:"prequeueCandidateSize" binding:"required,gt=0"`
-}
-
-type ModelDownloadLimitConfigResp struct {
-	Enabled                bool  `json:"enabled"`
-	MaxConcurrent          int64 `json:"maxConcurrent"`
-	WindowHours            int64 `json:"windowHours"`
-	MaxSuccessfulDownloads int64 `json:"maxSuccessfulDownloads"`
-	Exempt                 bool  `json:"exempt"`
-}
-
-type AdminModelDownloadLimitConfigResp struct {
-	Enabled                bool   `json:"enabled"`
-	MaxConcurrent          int64  `json:"maxConcurrent"`
-	WindowHours            int64  `json:"windowHours"`
-	MaxSuccessfulDownloads int64  `json:"maxSuccessfulDownloads"`
-	WhitelistUserIDs       []uint `json:"whitelistUserIds"`
-}
-
-type UpdateModelDownloadLimitConfigReq struct {
-	Enabled                *bool  `json:"enabled" binding:"required"`
-	MaxConcurrent          *int64 `json:"maxConcurrent" binding:"required,gt=0"`
-	WindowHours            *int64 `json:"windowHours" binding:"required,gt=0"`
-	MaxSuccessfulDownloads *int64 `json:"maxSuccessfulDownloads" binding:"required,gt=0"`
-	WhitelistUserIDs       []uint `json:"whitelistUserIds"`
 }
 
 type BillingStatusResp struct {
@@ -380,78 +352,6 @@ func (mgr *SystemConfigMgr) UpdatePrequeueConfig(c *gin.Context) {
 	}
 
 	resputil.Success(c, "Prequeue configuration updated successfully")
-}
-
-// GetModelDownloadLimitConfig godoc
-//
-//	@Summary		获取模型与数据集下载额度
-//	@Description	获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态
-//	@Tags			SystemConfig
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[ModelDownloadLimitConfigResp]
-//	@Router			/v1/system-config/model-download-limit [get]
-func (mgr *SystemConfigMgr) GetModelDownloadLimitConfig(c *gin.Context) {
-	cfg, err := mgr.service.GetModelDownloadLimitConfig(c.Request.Context())
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get model download limit config failed"))
-		return
-	}
-	resputil.Success(c, ModelDownloadLimitConfigResp{
-		Enabled: cfg.Enabled, MaxConcurrent: cfg.MaxConcurrent,
-		WindowHours: cfg.WindowHours, MaxSuccessfulDownloads: cfg.MaxSuccessfulDownloads,
-		Exempt: slices.Contains(cfg.WhitelistUserIDs, util.GetToken(c).UserID),
-	})
-}
-
-// GetAdminModelDownloadLimitConfig godoc
-//
-//	@Summary		管理员获取模型与数据集下载额度
-//	@Description	获取下载额度和白名单用户 ID
-//	@Tags			SystemConfig
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[AdminModelDownloadLimitConfigResp]
-//	@Router			/v1/admin/system-config/model-download-limit [get]
-func (mgr *SystemConfigMgr) GetAdminModelDownloadLimitConfig(c *gin.Context) {
-	cfg, err := mgr.service.GetModelDownloadLimitConfig(c.Request.Context())
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get model download limit config failed"))
-		return
-	}
-	resputil.Success(c, AdminModelDownloadLimitConfigResp{
-		Enabled: cfg.Enabled, MaxConcurrent: cfg.MaxConcurrent,
-		WindowHours: cfg.WindowHours, MaxSuccessfulDownloads: cfg.MaxSuccessfulDownloads,
-		WhitelistUserIDs: cfg.WhitelistUserIDs,
-	})
-}
-
-// UpdateModelDownloadLimitConfig godoc
-//
-//	@Summary		更新模型与数据集下载额度
-//	@Description	配置所有用户的并发任务上限、滚动窗口成功下载上限和豁免白名单
-//	@Tags			SystemConfig
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			data	body		UpdateModelDownloadLimitConfigReq	true	"下载额度配置"
-//	@Success		200		{object}	resputil.Response[string]
-//	@Router			/v1/admin/system-config/model-download-limit [put]
-func (mgr *SystemConfigMgr) UpdateModelDownloadLimitConfig(c *gin.Context) {
-	var req UpdateModelDownloadLimitConfigReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid model download limit config"))
-		return
-	}
-	if err := mgr.service.UpdateModelDownloadLimitConfig(c.Request.Context(), service.ModelDownloadLimitConfig{
-		Enabled: *req.Enabled, MaxConcurrent: *req.MaxConcurrent,
-		WindowHours: *req.WindowHours, MaxSuccessfulDownloads: *req.MaxSuccessfulDownloads,
-		WhitelistUserIDs: req.WhitelistUserIDs,
-	}); err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "update model download limit config failed"))
-		return
-	}
-	resputil.Success(c, "Model download limit configuration updated")
 }
 
 func (mgr *SystemConfigMgr) GetBillingStatus(c *gin.Context) {

@@ -6,11 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
-	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/resputil"
@@ -48,8 +45,6 @@ type (
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/jupyter [post]
-//
-//nolint:dupl //TODO: refactor similar code with CreateWebIDEJob
 func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -122,7 +117,6 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		req.Resource,
 		req.Image,
 		commandArgs,
-		JupyterPort,
 		string(CraterJobTypeJupyter),
 		req.CpuPinningEnabled,
 	)
@@ -133,41 +127,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 
 	queueName := vcqueue.ResolveJobQueueName(token)
 	// 6. Create volcano job
-	job := batch.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        jobName,
-			Namespace:   config.GetConfig().Namespaces.Job,
-			Labels:      labels,
-			Annotations: jobAnnotations,
-		},
-		Spec: batch.JobSpec{
-			// 3 days
-			TTLSecondsAfterFinished: ptr.To(utils.ThreeDaySeconds),
-			MinAvailable:            1,
-			MaxRetry:                1,
-			Plugins:                 volcanoPlugins,
-			SchedulerName:           VolcanoSchedulerName,
-			Queue:                   queueName,
-			Policies: []batch.LifecyclePolicy{
-				{
-					Action: bus.RestartJobAction,
-					Event:  bus.PodEvictedEvent,
-				},
-			},
-			Tasks: []batch.TaskSpec{
-				{
-					Replicas: 1,
-					Template: v1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels:      labels,
-							Annotations: podAnnotations,
-						},
-						Spec: podSpec,
-					},
-				},
-			},
-		},
-	}
+	job := buildInteractiveVolcanoJob(jobName, labels, jobAnnotations, podAnnotations, &podSpec, queueName)
 
 	if err = mgr.submitJob(c, token, &job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)

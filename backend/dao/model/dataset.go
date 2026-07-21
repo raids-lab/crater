@@ -31,9 +31,6 @@ type Dataset struct {
 	MountCount int   `gorm:"column:mount_count;not null;default:0;comment:mount count"`
 	SizeBytes  int64 `gorm:"not null;default:0;comment:资源文件总大小(字节)"`
 
-	ModelDatasetSourceID *uint               `gorm:"index;comment:模型或数据集外部来源ID"`
-	ModelDatasetSource   *ModelDatasetSource `gorm:"foreignKey:ModelDatasetSourceID"`
-
 	UserDatasets    []UserDataset
 	AccountDatasets []AccountDataset
 }

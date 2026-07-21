@@ -36,8 +36,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/governance/modeldataset"
-	"github.com/raids-lab/crater/pkg/config"
 )
 
 const (
@@ -47,8 +45,6 @@ const (
 	maxSourceDescriptionBytes = 500
 	maxMetadataTags           = 4
 	maxStoredReadmeBytes      = 64 * 1024
-	maxModelScopePageBytes    = 2 * 1024 * 1024
-	maxLogoRedirects          = 5
 )
 
 type sourceMetadata struct {
@@ -71,17 +67,6 @@ type sourceMetadata struct {
 	Tags           []string
 }
 
-type sourceEndpoints struct {
-	HuggingFace []string
-	ModelScope  []string
-}
-
-type cachedLogo struct {
-	URL         string
-	Data        []byte
-	ContentType string
-}
-
 //nolint:gocyclo // Flag-driven batch orchestration is intentionally kept linear for resumability.
 func main() {
 	apply := flag.Bool("apply", false, "write refreshed metadata to the database")
@@ -89,7 +74,6 @@ func main() {
 	afterID := flag.Uint("after-id", 0, "resume after this model download ID")
 	maxRecords := flag.Int("max-records", 0, "maximum records to process; 0 means unlimited")
 	force := flag.Bool("force", false, "refresh records even if their metadata is still fresh")
-	missingLogoOnly := flag.Bool("missing-logo-only", false, "refresh only records without a cached source logo")
 	staleAfter := flag.Duration("stale-after", 7*24*time.Hour, "refresh metadata older than this duration")
 	delay := flag.Duration("delay", defaultRequestDelay, "delay between source API requests")
 	source := flag.String("source", "", "optional source filter: huggingface or modelscope")
@@ -101,14 +85,9 @@ func main() {
 		panic("source must be huggingface or modelscope")
 	}
 
-	appConfig := config.GetConfig()
 	db := query.GetDB()
-	client := &http.Client{Timeout: time.Duration(appConfig.MetadataTimeoutSeconds()) * time.Second}
-	endpoints := sourceEndpoints{
-		HuggingFace: appConfig.HuggingFaceMetadataEndpoints(),
-		ModelScope:  appConfig.ModelScopeMetadataEndpoints(),
-	}
-	avatarCache := make(map[string]cachedLogo)
+	client := &http.Client{Timeout: 20 * time.Second}
+	avatarCache := make(map[string]string)
 	var processed, refreshed, failed int
 	cursor := *afterID
 	stop := false
@@ -118,23 +97,8 @@ func main() {
 		if *source != "" {
 			builder = builder.Where("source = ?", *source)
 		}
-		if *missingLogoOnly {
-			builder = builder.Where(`
-				model_dataset_source_id IS NULL OR EXISTS (
-					SELECT 1 FROM model_dataset_sources
-					WHERE model_dataset_sources.id = model_downloads.model_dataset_source_id
-						AND model_dataset_sources.deleted_at IS NULL
-						AND COALESCE(octet_length(model_dataset_sources.logo_data), 0) = 0
-				)`)
-		} else if !*force {
-			builder = builder.Where(`
-				metadata_refreshed_at IS NULL OR metadata_refreshed_at < ? OR
-				EXISTS (
-					SELECT 1 FROM model_dataset_sources
-					WHERE model_dataset_sources.id = model_downloads.model_dataset_source_id
-						AND model_dataset_sources.deleted_at IS NULL
-						AND COALESCE(octet_length(model_dataset_sources.logo_data), 0) = 0
-				)`, time.Now().Add(-*staleAfter))
+		if !*force {
+			builder = builder.Where("metadata_refreshed_at IS NULL OR metadata_refreshed_at < ?", time.Now().Add(-*staleAfter))
 		}
 		if err := builder.Order("id ASC").Limit(*batchSize).Find(&downloads).Error; err != nil {
 			panic(err)
@@ -147,10 +111,7 @@ func main() {
 			download := &downloads[i]
 			cursor = download.ID
 			processed++
-			if err := refreshDownload(
-				db, client, endpoints, avatarCache, appConfig.MetadataLogoAllowedHosts(),
-				appConfig.MetadataMaxLogoBytes(), download, *apply,
-			); err != nil {
+			if err := refreshDownload(db, client, avatarCache, download, *apply); err != nil {
 				failed++
 				fmt.Printf("FAIL id=%d source=%s name=%s: %v\n", download.ID, download.Source, download.Name, err)
 			} else {
@@ -174,48 +135,29 @@ func main() {
 func refreshDownload(
 	db *gorm.DB,
 	client *http.Client,
-	endpoints sourceEndpoints,
-	avatarCache map[string]cachedLogo,
-	logoAllowedHosts []string,
-	maxLogoBytes int64,
+	avatarCache map[string]string,
 	download *model.ModelDownload,
 	apply bool,
 ) error {
-	metadata, selectedEndpoint, err := fetchMetadata(client, endpoints, download)
+	metadata, err := fetchMetadata(client, download)
 	if err != nil {
 		return err
 	}
 
 	organization := strings.SplitN(download.Name, "/", 2)[0]
-	organizationKey := strings.ToLower(organization)
-	logo, ok := avatarCache[organizationKey]
-	if !ok {
-		logo, ok = loadCachedOrganizationLogo(db, organization)
+	logoURL := ""
+	if download.Source == model.ModelSourceHuggingFace {
+		var ok bool
+		logoURL, ok = avatarCache[organization]
 		if !ok {
-			switch download.Source {
-			case model.ModelSourceHuggingFace:
-				logo.URL, err = fetchHuggingFaceAvatar(client, endpoints.HuggingFace, organization)
-			case model.ModelSourceModelScope:
-				logo.URL, err = fetchModelScopeAvatar(client, selectedEndpoint, download)
-			}
+			logoURL, err = fetchHuggingFaceAvatar(client, organization)
 			if err != nil {
-				fmt.Printf("WARN id=%d owner avatar lookup failed: %v\n", download.ID, err)
+				return fmt.Errorf("owner avatar lookup: %w", err)
 			}
-			if logo.URL != "" {
-				logo.Data, logo.ContentType, err = fetchLogo(
-					client, logo.URL, logoAllowedHosts, maxLogoBytes,
-				)
-				if err != nil {
-					fmt.Printf("WARN id=%d owner avatar cache failed: %v\n", download.ID, err)
-					// Do not persist an untrusted URL or overwrite a previously cached logo
-					// when a transient lookup, redirect, or allowlist check fails.
-					logo = cachedLogo{}
-				}
-			}
+			avatarCache[organization] = logoURL
 		}
-		avatarCache[organizationKey] = logo
 	}
-	sourceURL := repositoryURL(download, selectedEndpoint)
+	sourceURL := repositoryURL(download)
 	fmt.Printf("OK   id=%d source=%s name=%s downloads=%d likes=%d tags=%v\n",
 		download.ID, download.Source, download.Name, metadata.Downloads, metadata.Likes, metadata.Tags)
 	if !apply {
@@ -224,6 +166,7 @@ func refreshDownload(
 
 	updates := map[string]any{
 		"organization":          organization,
+		"logo_url":              logoURL,
 		"source_url":            sourceURL,
 		"display_name":          metadata.DisplayName,
 		"source_description":    metadata.Description,
@@ -240,9 +183,6 @@ func refreshDownload(
 		"source_likes":          metadata.Likes,
 		"metadata_refreshed_at": time.Now(),
 	}
-	if logo.URL != "" {
-		updates["logo_url"] = logo.URL
-	}
 	if metadata.SizeBytes > 0 && download.SizeBytes == 0 {
 		updates["size_bytes"] = metadata.SizeBytes
 	}
@@ -252,148 +192,72 @@ func refreshDownload(
 	if metadata.CreatedAt != nil && !metadata.CreatedAt.IsZero() {
 		updates["source_created_at"] = *metadata.CreatedAt
 	}
-	return db.Transaction(func(tx *gorm.DB) error {
-		now := time.Now()
-		sourceRecord := model.ModelDatasetSource{
-			Provider:            model.ModelDatasetProvider(download.Source),
-			ResourceType:        model.DataType(download.Category),
-			RepositoryID:        download.Name,
-			RepositoryURL:       sourceURL,
-			Organization:        organization,
-			LogoURL:             logo.URL,
-			LogoData:            logo.Data,
-			LogoContentType:     logo.ContentType,
-			DisplayName:         metadata.DisplayName,
-			Description:         metadata.Description,
-			Readme:              metadata.Readme,
-			License:             metadata.License,
-			Task:                metadata.Task,
-			Library:             metadata.Library,
-			ModelType:           metadata.ModelType,
-			ParameterCount:      metadata.ParameterCount,
-			Private:             metadata.Private,
-			Gated:               metadata.Gated,
-			LoginRequired:       metadata.LoginRequired,
-			Downloads:           metadata.Downloads,
-			Likes:               metadata.Likes,
-			SourceCreatedAt:     metadata.CreatedAt,
-			SourceUpdatedAt:     metadata.UpdatedAt,
-			MetadataRefreshedAt: &now,
-		}
-		var persisted model.ModelDatasetSource
-		lookup := tx.Where(
-			"provider = ? AND resource_type = ? AND repository_id = ?",
-			sourceRecord.Provider, sourceRecord.ResourceType, sourceRecord.RepositoryID,
-		).First(&persisted)
-		if errors.Is(lookup.Error, gorm.ErrRecordNotFound) {
-			if err := tx.Create(&sourceRecord).Error; err != nil {
-				return fmt.Errorf("create source record: %w", err)
-			}
-			persisted = sourceRecord
-		} else if lookup.Error != nil {
-			return fmt.Errorf("load source record: %w", lookup.Error)
-		} else if err := tx.Model(&persisted).Updates(sourceRecord).Error; err != nil {
-			return fmt.Errorf("update source record: %w", err)
-		}
+	if err := db.Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("database update: %w", err)
+	}
 
-		updates["model_dataset_source_id"] = persisted.ID
-		if err := tx.Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(updates).Error; err != nil {
-			return fmt.Errorf("database update: %w", err)
-		}
-
-		physicalPath, public := modeldataset.PhysicalStoragePath(
-			download.Path,
-			config.GetConfig().MetadataLogicalPublicPrefix(),
-			config.GetConfig().Storage.Prefix.Public,
-		)
-		dataset, err := findDatasetForDownload(tx, download, physicalPath, public)
-		if err != nil {
-			return err
-		}
-		if dataset == nil {
+	var dataset model.Dataset
+	if err := db.Where("name = ? AND type = ?", download.Name, model.DataType(download.Category)).First(&dataset).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
 		}
-		extra := dataset.Extra.Data()
-		extra.Tags = mergeTags(extra.Tags, append([]string{string(download.Source)}, metadata.Tags...))
-		extra.WebURL = &sourceURL
-		datasetSize := download.SizeBytes
-		if datasetSize == 0 {
-			datasetSize = metadata.SizeBytes
-		}
-		datasetUpdates := map[string]any{
-			"extra": datatypes.NewJSONType(extra), "size_bytes": datasetSize,
-			"model_dataset_source_id": persisted.ID,
-		}
-		if metadata.Description != "" && isGeneratedDescription(dataset.Describe, download) {
-			datasetUpdates["describe"] = metadata.Description
-		}
-		if err := tx.Model(&model.Dataset{}).Where("id = ?", dataset.ID).Updates(datasetUpdates).Error; err != nil {
-			return fmt.Errorf("dataset %d metadata update: %w", dataset.ID, err)
-		}
-		return nil
-	})
-}
-
-func findDatasetForDownload(
-	db *gorm.DB,
-	download *model.ModelDownload,
-	physicalPath string,
-	public bool,
-) (*model.Dataset, error) {
-	if public {
-		var exact model.Dataset
-		err := db.Where("url = ? AND type = ?", physicalPath, model.DataType(download.Category)).First(&exact).Error
-		if err == nil {
-			return &exact, nil
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("dataset path lookup: %w", err)
-		}
+		return fmt.Errorf("dataset lookup: %w", err)
 	}
-
-	var matches []model.Dataset
-	if err := db.Where(
-		"name = ? AND type = ? AND model_dataset_source_id IS NULL",
-		download.Name, model.DataType(download.Category),
-	).Order("id ASC").Limit(2).Find(&matches).Error; err != nil {
-		return nil, fmt.Errorf("dataset identity lookup: %w", err)
+	extra := dataset.Extra.Data()
+	extra.Tags = mergeTags(extra.Tags, append([]string{string(download.Source)}, metadata.Tags...))
+	extra.WebURL = &sourceURL
+	datasetSize := download.SizeBytes
+	if datasetSize == 0 {
+		datasetSize = metadata.SizeBytes
 	}
-	if len(matches) != 1 {
-		return nil, nil
+	datasetUpdates := map[string]any{"extra": datatypes.NewJSONType(extra), "size_bytes": datasetSize}
+	if metadata.Description != "" && isGeneratedDescription(dataset.Describe, download) {
+		datasetUpdates["describe"] = metadata.Description
 	}
-	return &matches[0], nil
-}
-
-func fetchHuggingFaceAvatar(client *http.Client, baseEndpoints []string, owner string) (string, error) {
-	return modeldataset.FetchHuggingFaceAvatarURL(context.Background(), client, baseEndpoints, owner)
-}
-
-func fetchModelScopeAvatar(
-	client *http.Client, baseEndpoint string, download *model.ModelDownload,
-) (string, error) {
-	return modeldataset.FetchModelScopeAvatarURL(
-		context.Background(), client, repositoryURL(download, baseEndpoint),
-	)
-}
-
-func loadCachedOrganizationLogo(db *gorm.DB, organization string) (cachedLogo, bool) {
-	var sources []model.ModelDatasetSource
-	err := db.Where(
-		"LOWER(organization) = ? AND octet_length(logo_data) > 0", strings.ToLower(organization),
-	).Order("updated_at DESC").Limit(1).Find(&sources).Error
-	if err != nil || len(sources) == 0 {
-		return cachedLogo{}, false
+	if err := db.Model(&model.Dataset{}).Where("id = ?", dataset.ID).
+		Updates(datasetUpdates).Error; err != nil {
+		return fmt.Errorf("dataset %d metadata update: %w", dataset.ID, err)
 	}
-	source := sources[0]
-	return cachedLogo{URL: source.LogoURL, Data: source.LogoData, ContentType: source.LogoContentType}, true
+	return nil
 }
 
-func fetchMetadata(
-	client *http.Client, endpoints sourceEndpoints, download *model.ModelDownload,
-) (sourceMetadata, string, error) {
+func fetchHuggingFaceAvatar(client *http.Client, owner string) (string, error) {
+	escapedOwner := url.PathEscape(owner)
+	endpoints := []string{
+		"https://huggingface.co/api/organizations/" + escapedOwner + "/overview",
+		"https://huggingface.co/api/users/" + escapedOwner + "/overview",
+	}
+	for _, endpoint := range endpoints {
+		response, err := getResponse(client, endpoint)
+		if err != nil {
+			return "", err
+		}
+		if response.StatusCode == http.StatusNotFound {
+			response.Body.Close()
+			continue
+		}
+		if response.StatusCode != http.StatusOK {
+			statusCode := response.StatusCode
+			response.Body.Close()
+			return "", fmt.Errorf("source returned HTTP %d", statusCode)
+		}
+		var payload struct {
+			AvatarURL string `json:"avatarUrl"`
+		}
+		decodeErr := json.NewDecoder(response.Body).Decode(&payload)
+		response.Body.Close()
+		if decodeErr != nil {
+			return "", decodeErr
+		}
+		return payload.AvatarURL, nil
+	}
+	return "", nil
+}
+
+func fetchMetadata(client *http.Client, download *model.ModelDownload) (sourceMetadata, error) {
 	owner, name, ok := strings.Cut(download.Name, "/")
 	if !ok {
-		return sourceMetadata{}, "", fmt.Errorf("invalid repository name")
+		return sourceMetadata{}, fmt.Errorf("invalid repository name")
 	}
 	owner = url.PathEscape(owner)
 	name = url.PathEscape(name)
@@ -403,6 +267,7 @@ func fetchMetadata(
 		if download.Category == model.DownloadCategoryDataset {
 			resource = "datasets"
 		}
+		endpoint := fmt.Sprintf("https://huggingface.co/api/%s/%s/%s", resource, owner, name)
 		var payload struct {
 			Downloads    int64           `json:"downloads"`
 			Likes        int64           `json:"likes"`
@@ -422,17 +287,14 @@ func fetchMetadata(
 				Total int64 `json:"total"`
 			} `json:"safetensors"`
 		}
-		selectedEndpoint, err := getJSONFromEndpoints(
-			client, endpoints.HuggingFace, "/api/"+resource+"/"+owner+"/"+name, &payload,
-		)
-		if err != nil {
-			return sourceMetadata{}, "", err
+		if err := getJSON(client, endpoint, &payload); err != nil {
+			return sourceMetadata{}, err
 		}
 		var cardData struct {
 			License string `json:"license"`
 		}
 		_ = json.Unmarshal(payload.CardData, &cardData)
-		readmeURL := selectedEndpoint + "/"
+		readmeURL := "https://huggingface.co/"
 		if download.Category == model.DownloadCategoryDataset {
 			readmeURL += "datasets/"
 		}
@@ -461,13 +323,14 @@ func fetchMetadata(
 			CreatedAt:      &payload.CreatedAt,
 			UpdatedAt:      &payload.LastModified,
 			Tags:           limitTags(payload.Tags),
-		}, selectedEndpoint, nil
+		}, nil
 	}
 
 	resource := "models"
 	if download.Category == model.DownloadCategoryDataset {
 		resource = "datasets"
 	}
+	endpoint := fmt.Sprintf("https://modelscope.cn/openapi/v1/%s/%s/%s", resource, owner, name)
 	var payload struct {
 		Success bool `json:"success"`
 		Data    struct {
@@ -488,14 +351,11 @@ func fetchMetadata(
 			LoginRequired bool      `json:"login_required"`
 		} `json:"data"`
 	}
-	selectedEndpoint, err := getJSONFromEndpoints(
-		client, endpoints.ModelScope, "/openapi/v1/"+resource+"/"+owner+"/"+name, &payload,
-	)
-	if err != nil {
-		return sourceMetadata{}, "", err
+	if err := getJSON(client, endpoint, &payload); err != nil {
+		return sourceMetadata{}, err
 	}
 	if !payload.Success {
-		return sourceMetadata{}, "", fmt.Errorf("source returned success=false")
+		return sourceMetadata{}, fmt.Errorf("source returned success=false")
 	}
 	task := ""
 	if len(payload.Data.Tasks) > 0 {
@@ -521,7 +381,7 @@ func fetchMetadata(
 		CreatedAt:      &payload.Data.CreatedAt,
 		UpdatedAt:      &payload.Data.LastModified,
 		Tags:           limitTags(append(payload.Data.Tasks, payload.Data.Tags...)),
-	}, selectedEndpoint, nil
+	}, nil
 }
 
 func fetchOptionalText(client *http.Client, endpoint string, limit int) (string, error) {
@@ -759,44 +619,17 @@ func getJSON(client *http.Client, endpoint string, target any) error {
 	return lastErr
 }
 
-func getJSONFromEndpoints(
-	client *http.Client, baseEndpoints []string, path string, target any,
-) (string, error) {
-	var lastErr error
-	for _, baseEndpoint := range baseEndpoints {
-		baseEndpoint = strings.TrimRight(baseEndpoint, "/")
-		if err := getJSON(client, baseEndpoint+path, target); err != nil {
-			lastErr = err
-			continue
-		}
-		return baseEndpoint, nil
-	}
-	if lastErr == nil {
-		lastErr = errors.New("no source metadata endpoint configured")
-	}
-	return "", lastErr
-}
-
-func fetchLogo(client *http.Client, endpoint string, allowedHosts []string, maxBytes int64) (
-	data []byte, contentType string, err error,
-) {
-	return modeldataset.FetchSourceLogo(
-		context.Background(), client, endpoint, allowedHosts, maxBytes,
-	)
-}
-
-func repositoryURL(download *model.ModelDownload, baseEndpoint string) string {
-	baseEndpoint = strings.TrimRight(baseEndpoint, "/")
+func repositoryURL(download *model.ModelDownload) string {
 	if download.Source == model.ModelSourceHuggingFace {
 		if download.Category == model.DownloadCategoryDataset {
-			return baseEndpoint + "/datasets/" + download.Name
+			return "https://huggingface.co/datasets/" + download.Name
 		}
-		return baseEndpoint + "/" + download.Name
+		return "https://huggingface.co/" + download.Name
 	}
 	if download.Category == model.DownloadCategoryDataset {
-		return baseEndpoint + "/datasets/" + download.Name
+		return "https://modelscope.cn/datasets/" + download.Name
 	}
-	return baseEndpoint + "/models/" + download.Name
+	return "https://modelscope.cn/models/" + download.Name
 }
 
 func limitTags(tags []string) []string {

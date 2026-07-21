@@ -124,7 +124,7 @@ type job struct {
 	KeepWhenLowResourceUsage field.Bool   // 当资源利用率低时是否保留
 	LockedTimestamp          field.Time   // 作业锁定时间
 	LastSettledAt            field.Time   // 作业上次结算时间
-	BilledPointsTotal        field.Int64  // 作业累计已结算点数(内部微点)
+	BilledPointsTotal        field.Int64  // 作业累计已结算点数
 	ProfileData              field.Field  // 作业的性能数据
 	ScheduleData             field.Field  // 作业的调度数据
 	Events                   field.Field  // 作业的事件 (运行时、失败时采集)
@@ -202,7 +202,7 @@ func (j *job) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (j *job) fillFieldMap() {
-	j.fieldMap = make(map[string]field.Expr, 32)
+	j.fieldMap = make(map[string]field.Expr, 31)
 	j.fieldMap["id"] = j.ID
 	j.fieldMap["created_at"] = j.CreatedAt
 	j.fieldMap["updated_at"] = j.UpdatedAt

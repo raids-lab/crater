@@ -15,7 +15,7 @@
  */
 import { Link, isMatch, useMatches, useRouter } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { Fragment, ReactNode, useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 
 import {
   Breadcrumb,
@@ -28,29 +28,12 @@ import {
 
 import { atomBreadcrumb } from '@/utils/store'
 
-export interface NavBreadcrumbItem {
-  href: string
-  label: ReactNode
-  back?: boolean
-}
-
-export const NavBreadcrumb = ({
-  className,
-  listClassName,
-  items: providedItems,
-}: {
-  className: string
-  listClassName?: string
-  items?: NavBreadcrumbItem[]
-}) => {
+export const NavBreadcrumb = ({ className }: { className: string }) => {
   const customItems = useAtomValue(atomBreadcrumb)
   const matches = useMatches()
   const router = useRouter()
 
   const items = useMemo(() => {
-    if (providedItems) {
-      return providedItems
-    }
     if (customItems.length > 0) {
       return customItems
     }
@@ -63,11 +46,11 @@ export const NavBreadcrumb = ({
         back: matchedWithBacks.some((match) => match.pathname === pathname),
       }
     })
-  }, [matches, customItems, providedItems])
+  }, [matches, customItems])
 
   return (
     <Breadcrumb className={className}>
-      <BreadcrumbList className={listClassName}>
+      <BreadcrumbList>
         {items.map((item, index) => {
           return (
             <Fragment key={`bread-${index}`}>

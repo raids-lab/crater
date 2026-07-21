@@ -118,8 +118,14 @@ func (b *imagePacker) generateEnvdContainer(data *EnvdReq) []corev1.Container {
 		{
 			Name:  "buildkit",
 			Image: config.GetConfig().Registry.BuildTools.Images.Envd,
-			Args:  setupCommands,
-			Env:   envVars,
+			Command: []string{
+				setupCommands[0],
+				setupCommands[1],
+			},
+			Args: []string{
+				setupCommands[2],
+			},
+			Env: envVars,
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "harborcredits",

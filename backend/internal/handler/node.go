@@ -86,6 +86,7 @@ func (mgr *NodeMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/:name/gpu", mgr.ListNodeGPUInfo)
 }
 
+//nolint:dupl // Router registration blocks naturally look similar across managers.
 func (mgr *NodeMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.ListNode)
 	g.GET("/:name/pods", mgr.AdminGetPodsForNode)

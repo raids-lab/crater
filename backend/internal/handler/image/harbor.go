@@ -132,6 +132,7 @@ func (mgr *ImagePackMgr) UserGetProjectCredential(c *gin.Context) {
 		resputil.Error(c, "add project member failed", resputil.NotSpecified)
 		return
 	}
+	fmt.Printf("username: %s, password: %s\n", token.Username, password)
 	resp := GetProjectCredentialResponse{
 		Name:     &token.Username,
 		Password: &password,

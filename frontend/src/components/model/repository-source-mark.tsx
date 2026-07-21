@@ -57,6 +57,27 @@ export default function RepositorySourceMark({
     )
   }
 
+  if (organization) {
+    const colorIndex = Array.from(organization).reduce(
+      (sum, character) => sum + character.charCodeAt(0),
+      0
+    )
+    const gradient = organizationGradients[colorIndex % organizationGradients.length]
+    return (
+      <span
+        aria-label={organization}
+        title={organization}
+        className={cn(
+          'inline-flex size-5 shrink-0 items-center justify-center rounded-md bg-gradient-to-br text-[10px] font-bold text-white shadow-sm',
+          gradient,
+          className
+        )}
+      >
+        {organization.slice(0, 1).toUpperCase()}
+      </span>
+    )
+  }
+
   if (normalizedSource === 'huggingface') {
     return (
       <span
@@ -83,27 +104,6 @@ export default function RepositorySourceMark({
         )}
       >
         M
-      </span>
-    )
-  }
-
-  if (organization) {
-    const colorIndex = Array.from(organization).reduce(
-      (sum, character) => sum + character.charCodeAt(0),
-      0
-    )
-    const gradient = organizationGradients[colorIndex % organizationGradients.length]
-    return (
-      <span
-        aria-label={organization}
-        title={organization}
-        className={cn(
-          'inline-flex size-5 shrink-0 items-center justify-center rounded-md bg-gradient-to-br text-[10px] font-bold text-white shadow-sm',
-          gradient,
-          className
-        )}
-      >
-        {organization.slice(0, 1).toUpperCase()}
       </span>
     )
   }

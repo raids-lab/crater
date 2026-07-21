@@ -26,22 +26,6 @@ export interface IPrequeueConfig {
   prequeueCandidateSize: number
 }
 
-export interface IModelDownloadLimitConfig {
-  enabled: boolean
-  maxConcurrent: number
-  windowHours: number
-  maxSuccessfulDownloads: number
-  exempt: boolean
-}
-
-export interface IAdminModelDownloadLimitConfig {
-  enabled: boolean
-  maxConcurrent: number
-  windowHours: number
-  maxSuccessfulDownloads: number
-  whitelistUserIds: number[]
-}
-
 export interface IBillingStatus {
   featureEnabled: boolean
   active: boolean
@@ -112,18 +96,6 @@ export const apiAdminGetPrequeueConfig = () =>
 /** 更新预排队配置 */
 export const apiAdminUpdatePrequeueConfig = (data: IPrequeueConfig) =>
   apiV1Put<IResponse<string>>('admin/system-config/prequeue', data)
-
-/** 获取当前账号的模型与数据集下载额度及白名单豁免状态 */
-export const apiGetModelDownloadLimitConfig = () =>
-  apiV1Get<IResponse<IModelDownloadLimitConfig>>('system-config/model-download-limit')
-
-/** 管理员获取模型与数据集下载额度 */
-export const apiAdminGetModelDownloadLimitConfig = () =>
-  apiV1Get<IResponse<IAdminModelDownloadLimitConfig>>('admin/system-config/model-download-limit')
-
-/** 管理员更新模型与数据集下载额度 */
-export const apiAdminUpdateModelDownloadLimitConfig = (data: IAdminModelDownloadLimitConfig) =>
-  apiV1Put<IResponse<string>>('admin/system-config/model-download-limit', data)
 
 /** 获取计费开关状态 */
 export const apiGetBillingStatus = () =>

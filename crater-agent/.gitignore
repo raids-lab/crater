@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+.env
+*.log
+.ruff_cache/
+.pytest_cache/
+
+# Offline evaluation / local experiment artifacts
+/dataset/
+/crater_bench/
+/results/
+/logs/crater-agent/eval/
+/crater_agent/dataset/
+/crater_agent/eval/
+/crater_agent/res/
+
+# Local-only runtime configuration
+/config/kubeconfig
+/config/*offline*.json
+/config/*offline*.yaml
+/config/*bench*.json
+/config/*bench*.yaml
+/config/*tune*.json
+/config/*probe*.json
+/config/*plan-execute*.json
+/config/mops*.json
+
+# Large local dumps
+*.jsonl
+*.tar
+*.zip

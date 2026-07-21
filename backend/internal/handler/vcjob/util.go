@@ -12,10 +12,12 @@ import (
 	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,6 +27,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 var (
@@ -35,6 +38,79 @@ var (
 		},
 	}
 )
+
+func buildSingleTaskVolcanoJob(
+	jobName string,
+	labels map[string]string,
+	jobAnnotations map[string]string,
+	podAnnotations map[string]string,
+	podSpec *v1.PodSpec,
+	queueName string,
+	ttlSeconds int32,
+	completeTaskOnSuccess bool,
+) batch.Job {
+	task := batch.TaskSpec{
+		Replicas: 1,
+		Template: v1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels:      labels,
+				Annotations: podAnnotations,
+			},
+			Spec: *podSpec,
+		},
+	}
+	if completeTaskOnSuccess {
+		task.Policies = []batch.LifecyclePolicy{
+			{Action: bus.CompleteJobAction, Event: bus.TaskCompletedEvent},
+		}
+	}
+	return batch.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        jobName,
+			Namespace:   config.GetConfig().Namespaces.Job,
+			Labels:      labels,
+			Annotations: jobAnnotations,
+		},
+		Spec: batch.JobSpec{
+			TTLSecondsAfterFinished: ptr.To(ttlSeconds),
+			MinAvailable:            1,
+			MaxRetry:                1,
+			Plugins:                 volcanoPlugins,
+			SchedulerName:           VolcanoSchedulerName,
+			Queue:                   queueName,
+			Policies: []batch.LifecyclePolicy{
+				{Action: bus.RestartJobAction, Event: bus.PodEvictedEvent},
+			},
+			Tasks: []batch.TaskSpec{task},
+		},
+	}
+}
+
+func buildInteractiveVolcanoJob(
+	jobName string,
+	labels map[string]string,
+	jobAnnotations map[string]string,
+	podAnnotations map[string]string,
+	podSpec *v1.PodSpec,
+	queueName string,
+) batch.Job {
+	return buildSingleTaskVolcanoJob(
+		jobName, labels, jobAnnotations, podAnnotations, podSpec, queueName, utils.ThreeDaySeconds, false,
+	)
+}
+
+func buildTrainingVolcanoJob(
+	jobName string,
+	labels map[string]string,
+	jobAnnotations map[string]string,
+	podAnnotations map[string]string,
+	podSpec *v1.PodSpec,
+	queueName string,
+) batch.Job {
+	return buildSingleTaskVolcanoJob(
+		jobName, labels, jobAnnotations, podAnnotations, podSpec, queueName, utils.SevenDaySeconds, true,
+	)
+}
 
 // buildResourceRequirements creates resource requirements and resize policy based on CPU pinning setting
 func buildResourceRequirements(resourceList v1.ResourceList, cpuPinningEnabled bool) (v1.ResourceRequirements, []v1.ContainerResizePolicy) {
@@ -603,7 +679,6 @@ func generateInteractivePodSpec(
 	resourceList v1.ResourceList,
 	image ImageBaseInfo,
 	command []string,
-	port int32,
 	containerName string,
 	cpuPinningEnabled bool,
 ) (v1.PodSpec, error) {
@@ -668,7 +743,7 @@ func generateInteractivePodSpec(
 
 				Env: envs,
 				Ports: []v1.ContainerPort{
-					{ContainerPort: port, Name: containerName, Protocol: v1.ProtocolTCP},
+					{ContainerPort: JupyterPort, Name: containerName, Protocol: v1.ProtocolTCP},
 				},
 				SecurityContext: &v1.SecurityContext{
 					RunAsUser:  ptr.To(int64(0)),

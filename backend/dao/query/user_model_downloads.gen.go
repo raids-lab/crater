@@ -52,11 +52,6 @@ func newUserModelDownload(db *gorm.DB, opts ...gen.DOOption) userModelDownload {
 		db: db.Session(&gorm.Session{}),
 
 		RelationField: field.NewRelation("ModelDownload", "model.ModelDownload"),
-		ModelDatasetSource: struct {
-			field.RelationField
-		}{
-			RelationField: field.NewRelation("ModelDownload.ModelDatasetSource", "model.ModelDatasetSource"),
-		},
 		Creator: struct {
 			field.RelationField
 		}{
@@ -245,9 +240,6 @@ type userModelDownloadBelongsToModelDownload struct {
 
 	field.RelationField
 
-	ModelDatasetSource struct {
-		field.RelationField
-	}
 	Creator struct {
 		field.RelationField
 	}

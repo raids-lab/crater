@@ -17,6 +17,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useAtomValue, useSetAtom } from 'jotai'
 import {
+  BadgeCheck,
   BookOpenIcon,
   ChevronsUpDown,
   Globe,
@@ -141,12 +142,10 @@ export function NavUser() {
               </>
             )}
             <DropdownMenuGroup>
-              {/* <DropdownMenuItem asChild>
-                <Link to="/portal/more/user">
-                  <BadgeCheck />
-                  {t('navUser.personalPage')}
-                </Link>
-              </DropdownMenuItem> */}
+              <DropdownMenuItem onClick={() => navigate({ to: '/portal/more/user' })}>
+                <BadgeCheck />
+                {t('navUser.personalPage')}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.open(website)}>
                 <BookOpenIcon />
                 {t('navUser.platformDocs')}

@@ -20,11 +20,6 @@ on:
     paths:
       - "backend/internal/storage/**"
       - "backend/cmd/storage-server/**"
-      - "backend/cmd/model-dataset-governance/**"
-      - "backend/internal/governance/modeldataset/**"
-      - "backend/dao/model/**"
-      - "backend/dao/query/**"
-      - "backend/pkg/config/**"
       - "backend/storage-server.Dockerfile"
       - "backend/go.mod"
       - "backend/go.sum"
@@ -134,7 +129,6 @@ jobs:
         run: |
           mkdir -p bin/${{ matrix.platform.image_platform }}
           go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/storage-server cmd/storage-server/main.go
-          go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/${{ matrix.platform.image_platform }}/model-dataset-governance cmd/model-dataset-governance/main.go
         env:
           CGO_ENABLED: 0
           GOOS: ${{ matrix.platform.goos }}

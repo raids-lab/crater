@@ -118,83 +118,6 @@ export interface MultipleHandler<TData> {
   isDanger?: boolean
 }
 
-export function PaginationNav({
-  currentPage,
-  totalPages,
-  onPageChange,
-}: {
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-}) {
-  const { t } = useTranslation()
-  const paginationRange = usePagination({
-    currentPage,
-    totalPages,
-    siblingCount: 1,
-  })
-
-  return (
-    <div className="flex max-w-full items-center overflow-x-auto sm:space-x-2">
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationLink
-              aria-label={t('dataTablePagination.previousPage')}
-              size="icon"
-              className={
-                currentPage <= 1
-                  ? 'pointer-events-none cursor-not-allowed opacity-50'
-                  : 'cursor-pointer'
-              }
-              onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
-            >
-              <ChevronLeftIcon className="size-4" />
-            </PaginationLink>
-          </PaginationItem>
-
-          {paginationRange.map((pageNumber, index) => {
-            if (pageNumber === DOTS) {
-              return (
-                <PaginationItem key={`dots-${index}`}>
-                  <PaginationEllipsis />
-                </PaginationItem>
-              )
-            }
-
-            return (
-              <PaginationItem key={pageNumber}>
-                <PaginationLink
-                  onClick={() => onPageChange(pageNumber as number)}
-                  isActive={pageNumber === currentPage}
-                  className="cursor-pointer"
-                >
-                  {pageNumber}
-                </PaginationLink>
-              </PaginationItem>
-            )
-          })}
-
-          <PaginationItem>
-            <PaginationLink
-              aria-label={t('dataTablePagination.nextPage')}
-              size="icon"
-              className={
-                currentPage >= totalPages
-                  ? 'pointer-events-none cursor-not-allowed opacity-50'
-                  : 'cursor-pointer'
-              }
-              onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
-            >
-              <ChevronRightIcon className="size-4" />
-            </PaginationLink>
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    </div>
-  )
-}
-
 interface DataTablePaginationProps<TData> {
   updatedAt: string
   refetch: () => void
@@ -216,6 +139,12 @@ export function DataTablePagination<TData>({
 
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
+
+  const paginationRange = usePagination({
+    currentPage,
+    totalPages,
+    siblingCount: 1,
+  })
 
   const onPageChange = (page: number) => {
     table.setPageIndex(page - 1)
@@ -312,11 +241,66 @@ export function DataTablePagination<TData>({
         </p>
       </div>
       <div className="flex items-center sm:space-x-6">
-        <PaginationNav
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-        />
+        <div className="flex max-w-full items-center overflow-x-auto sm:space-x-2">
+          <Pagination>
+            <PaginationContent>
+              {/* Previous button */}
+              <PaginationItem>
+                <PaginationLink
+                  aria-label={t('dataTablePagination.previousPage')}
+                  size="icon"
+                  className={
+                    currentPage <= 1
+                      ? 'pointer-events-none cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
+                  }
+                  onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
+                >
+                  <ChevronLeftIcon className="size-4" />
+                </PaginationLink>
+              </PaginationItem>
+
+              {/* Page numbers */}
+              {paginationRange.map((pageNumber, index) => {
+                if (pageNumber === DOTS) {
+                  return (
+                    <PaginationItem key={`dots-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )
+                }
+
+                return (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      onClick={() => onPageChange(pageNumber as number)}
+                      isActive={pageNumber === currentPage}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+
+              {/* Next button */}
+              <PaginationItem>
+                <PaginationLink
+                  aria-label={t('dataTablePagination.nextPage')}
+                  size="icon"
+                  className={
+                    currentPage >= totalPages
+                      ? 'pointer-events-none cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
+                  }
+                  onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
+                >
+                  <ChevronRightIcon className="size-4" />
+                </PaginationLink>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
@@ -53,12 +54,16 @@ func (mgr *ContextMgr) GetName() string { return mgr.name }
 
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
+//nolint:dupl // Router registration blocks naturally look similar across managers.
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("prequeue", mgr.GetPrequeueStatus)
 	g.GET("quota", mgr.GetQuota)
 	g.GET("job-resource-summary", mgr.GetJobResourceSummary)
 	g.POST("resource-limit-check", mgr.CheckResourceLimit)
 	g.GET("billing/summary", mgr.GetBillingSummary)
+	g.GET("llm", mgr.GetUserLLMConfig)
+	g.PUT("llm", mgr.UpdateUserLLMConfig)
+	g.DELETE("llm", mgr.ResetUserLLMConfig)
 	g.PUT("attributes", mgr.UpdateUserAttributes)
 	g.POST("email/code", mgr.SendUserVerificationCode)
 	g.POST("email/update", mgr.UpdateUserEmail)
@@ -99,6 +104,15 @@ type (
 		CPU          JobResourceSummaryUsageResp         `json:"cpu"`
 		Memory       JobResourceSummaryUsageResp         `json:"memory"`
 		Accelerators []JobResourceSummaryAcceleratorResp `json:"accelerators"`
+	}
+	UserLLMConfigResp struct {
+		BaseURL       string `json:"baseUrl"`
+		APIKey        string `json:"apiKey"`
+		ModelName     string `json:"modelName"`
+		Source        string `json:"source"`
+		UsingPersonal bool   `json:"usingPersonal"`
+		Complete      bool   `json:"complete"`
+		HasAPIKey     bool   `json:"hasApiKey"`
 	}
 )
 
@@ -290,6 +304,75 @@ func hasPositiveQuantity(value string) bool {
 		return false
 	}
 	return quantity.MilliValue() > 0
+}
+
+func (mgr *ContextMgr) GetUserLLMConfig(c *gin.Context) {
+	if mgr.configService == nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.New("config service is not initialized"))
+		return
+	}
+	token := util.GetToken(c)
+	status, err := mgr.configService.GetEffectiveLLMConfigStatus(c.Request.Context(), token.UserID)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "failed to load LLM config"))
+		return
+	}
+
+	resp := UserLLMConfigResp{
+		Source:        status.Source,
+		UsingPersonal: status.UsingPersonal,
+		Complete:      status.Complete,
+		HasAPIKey:     status.HasAPIKey,
+	}
+	if status.Config != nil {
+		resp.BaseURL = strings.TrimSpace(status.Config.BaseURL)
+		resp.ModelName = strings.TrimSpace(status.Config.ModelName)
+		if status.UsingPersonal && strings.TrimSpace(status.Config.APIKey) != "" {
+			resp.APIKey = service.MaskedAPIKeyPlaceholder
+		}
+	}
+	resputil.Success(c, resp)
+}
+
+func (mgr *ContextMgr) UpdateUserLLMConfig(c *gin.Context) {
+	if mgr.configService == nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.New("config service is not initialized"))
+		return
+	}
+	var req UpdateLLMConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New(err.Error()))
+		return
+	}
+
+	token := util.GetToken(c)
+	serviceCfg := &service.LLMConfig{
+		BaseURL:   req.BaseURL,
+		APIKey:    req.APIKey,
+		ModelName: req.ModelName,
+	}
+	if err := mgr.configService.UpdateUserLLMConfig(c.Request.Context(), token.UserID, serviceCfg, req.Validate); err != nil {
+		if strings.Contains(err.Error(), "validation failed") {
+			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("LLM connection check failed. Please verify your settings."))
+			return
+		}
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, "User LLM configuration updated successfully")
+}
+
+func (mgr *ContextMgr) ResetUserLLMConfig(c *gin.Context) {
+	if mgr.configService == nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.New("config service is not initialized"))
+		return
+	}
+	token := util.GetToken(c)
+	if err := mgr.configService.ResetUserLLMConfig(c.Request.Context(), token.UserID); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, "User LLM configuration reset successfully")
 }
 
 type (

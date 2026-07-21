@@ -54,15 +54,7 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | Backend API service listening port |
 | backendConfig.enableLeaderElection | bool | `false` | Whether to enable Leader election (for HA deployment) |
-| backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | Container image used for model and dataset download jobs |
-| backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | Hugging Face Hub URL used by download jobs; it may be replaced with an administrator-approved mirror |
-| backendConfig.modelDownload.modelScopeEndpoint | string | `"https://modelscope.cn"` | ModelScope URL used by download jobs |
-| backendConfig.modelMetadata.huggingFaceEndpoints | list | `["https://huggingface.co"]` | Hugging Face-compatible endpoints tried in order during metadata refresh |
-| backendConfig.modelMetadata.modelScopeEndpoints | list | `["https://modelscope.cn"]` | ModelScope-compatible endpoints tried in order during metadata refresh |
-| backendConfig.modelMetadata.logoAllowedHosts | list | `["huggingface.co", "cdn-avatars.huggingface.co", "resouces.modelscope.cn", "resources.modelscope.cn"]` | Exact HTTPS host allowlist for fetching and caching logos; every redirect hop is checked |
-| backendConfig.modelMetadata.logicalPublicPrefix | string | `"public"` | Logical path prefix used before download records are mapped to public storage |
-| backendConfig.modelMetadata.timeoutSeconds | int | `20` | Timeout in seconds for each source metadata request |
-| backendConfig.modelMetadata.maxLogoBytes | int | `524288` | Maximum number of bytes cached for one source logo |
+| backendConfig.modelDownload.image | string | `"python:3.11-slim"` | Container image used for model download jobs |
 | backendConfig.prometheusAPI | string | `"http://..."` | Prometheus API address for monitoring metrics |
 | backendConfig.auth.token.accessTokenSecret | string | `"..."` | JWT Access Token signing secret |
 | backendConfig.auth.token.refreshTokenSecret | string | `"..."` | JWT Refresh Token signing secret |
@@ -159,50 +151,6 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | cronjobConfig.jobs.longTime.BATCH_DAYS | string | `"4"` | Maximum runtime days for batch jobs |
 | cronjobConfig.jobs.waitingJupyter.JUPYTER_WAIT_MINUTES | string | `"5"` | Cleanup threshold for Jupyter jobs in Waiting state |
 
-## Model and Dataset Metadata Jobs
-
-| Parameter | Type | Default | Description |
-|-----|------|---------|-------------|
-| modelMetadataRefresh.enabled | bool | `true` | Create the periodic metadata refresh job; its first run automatically processes existing Ready downloads |
-| modelMetadataRefresh.apply | bool | `true` | Write source metadata and cached logos to the database |
-| modelMetadataRefresh.schedule | string | `"15 */6 * * *"` | Cron schedule for metadata refresh |
-| modelMetadataRefresh.batchSize | int | `100` | Number of Ready download records processed per database batch |
-| modelMetadataRefresh.staleAfter | string | `"168h"` | On later runs, refresh only records older than this duration |
-| modelMetadataRefresh.delay | string | `"100ms"` | Delay between source requests |
-| modelDatasetGovernance.enabled | bool | `false` | Create the public model and dataset storage governance job; full scans remain disabled by default |
-| modelDatasetGovernance.apply | bool | `false` | Write governance results; keep this disabled while reviewing the first scan logs |
-| modelDatasetGovernance.schedule | string | `"30 2 * * 0"` | Cron schedule for storage governance |
-| modelDatasetGovernance.modelsSubdirectories | list | `[]` | Optional model subdirectories, such as `["Models", "LLM"]`; a non-empty list overrides the single-directory setting |
-
-### Initial Logo Backfill for Existing Models
-
-Chart 1.1.0 enables metadata refresh and database writes by default. The first run selects existing model and dataset download records whose status is `Ready` and which have no refresh timestamp, then backfills logos, READMEs, source statistics, and other metadata. Successful records receive a refresh timestamp, so later runs only refresh records older than `staleAfter` instead of scanning everything every six hours.
-
-To backfill immediately after the configuration takes effect, without waiting for the next Cron schedule, create a one-time Job from the CronJob:
-
-```bash
-kubectl create job --from=cronjob/model-metadata-refresh \
-  model-metadata-refresh-initial -n crater
-kubectl logs -n crater -f job/model-metadata-refresh-initial
-```
-
-Use a different Job name if that name already exists. To validate network access and metadata first, temporarily set `modelMetadataRefresh.apply` to `false` before triggering the job; dry-run mode only prints results and does not update the database.
-
-Logos are fetched only from exact HTTPS hosts listed in `backendConfig.modelMetadata.logoAllowedHosts`, and every redirect hop is validated again. Add the exact host explicitly when using a mirror or another trusted CDN:
-
-```yaml
-backendConfig:
-  modelMetadata:
-    logoAllowedHosts:
-      - huggingface.co
-      - cdn-avatars.huggingface.co
-      - resouces.modelscope.cn
-      - resources.modelscope.cn
-      - your-trusted-logo-cdn.example.com
-```
-
-The refresh job only processes existing `Ready` download records. Incomplete or failed downloads are not treated as existing resources for this backfill.
-
 ## Database Backup (dbBackup)
 
 | Parameter | Type | Default | Description |
@@ -237,3 +185,4 @@ The refresh job only processes existing `Ready` download records. Incomplete or 
 | images.frontend.repository | string | `"..."` | Frontend service image repository |
 | images.storage.repository | string | `"..."` | Storage management service image repository |
 | images.buildkit.tag | string | `"v0.23.1"` | Buildkit core image tag |
+

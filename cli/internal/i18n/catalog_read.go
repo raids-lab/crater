@@ -17,8 +17,8 @@ var catalogRead = map[Language]map[string]string{
 		"job_events_short": "List events for a job",
 		"job_yaml_short":   "Show job YAML",
 
-		"image_short":    "Manage images and image builds",
-		"image_long":     "Build, upload, delete, share, and update Crater images and image build records.",
+		"image_short":    "View images",
+		"image_long":     "View container image lists from the active Crater platform.",
 		"image_ls_short": "List images",
 
 		"account_short":                          "View accounts",
@@ -182,8 +182,8 @@ var catalogRead = map[Language]map[string]string{
 		"job_events_short": "列出作业事件",
 		"job_yaml_short":   "显示作业 YAML",
 
-		"image_short":    "管理镜像与镜像构建",
-		"image_long":     "构建、上传、删除、分享和更新 Crater 镜像与镜像构建记录。",
+		"image_short":    "查看镜像",
+		"image_long":     "从当前激活的 Crater 平台查看容器镜像列表。",
 		"image_ls_short": "列出镜像",
 
 		"account_short":                          "查看账户",

@@ -1,12 +1,20 @@
 package handler
 
 import (
+	"context"
+	"encoding/json"
+	"time"
+
 	"github.com/gin-gonic/gin"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/cronjob"
@@ -15,6 +23,33 @@ import (
 	"github.com/raids-lab/crater/pkg/packer"
 	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
+
+type JobContextResp struct {
+	Meta struct {
+		Name               string              `json:"name,omitempty"`
+		JobName            string              `json:"jobName,omitempty"`
+		Namespace          string              `json:"namespace,omitempty"`
+		User               string              `json:"user,omitempty"`
+		Queue              string              `json:"queue,omitempty"`
+		JobType            model.JobType       `json:"jobType,omitempty"`
+		Status             batch.JobPhase      `json:"status,omitempty"`
+		CreationTimestamp  time.Time           `json:"creationTimestamp,omitempty"`
+		RunningTimestamp   time.Time           `json:"runningTimestamp,omitempty"`
+		CompletedTimestamp time.Time           `json:"completedTimestamp,omitempty"`
+		Nodes              []string            `json:"nodes,omitempty"`
+		Resources          corev1.ResourceList `json:"resources,omitempty"`
+	} `json:"meta"`
+	DB struct {
+		ProfileData      any            `json:"profileData,omitempty"`
+		ScheduleData     any            `json:"scheduleData,omitempty"`
+		Events           []corev1.Event `json:"events,omitempty"`
+		TerminatedStates any            `json:"terminatedStates,omitempty"`
+	} `json:"db"`
+	Log struct {
+		Container string `json:"container,omitempty"`
+		Tail      string `json:"tail,omitempty"`
+	} `json:"log,omitempty"`
+}
 
 // Manager is the interface that wraps the basic methods for a handler manager.
 type Manager interface {
@@ -58,6 +93,84 @@ type RegisterConfig struct {
 	PrequeueService    *service.PrequeueService
 	BillingService     *service.BillingService
 	GpuAnalysisService *service.GpuAnalysisService
+}
+
+type JobMutationSubmitter interface {
+	SubmitJupyterJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitWebIDEJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitTrainingJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitPytorchJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	SubmitTensorflowJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+	DeleteJob(ctx context.Context, token util.JWTMessage, jobName string) (any, error)
+	StopJob(ctx context.Context, token util.JWTMessage, jobName string) (any, error)
+	ResubmitJob(ctx context.Context, token util.JWTMessage, req json.RawMessage) (any, error)
+}
+
+type JobInsightReader interface {
+	FindScopedJob(ctx context.Context, token util.JWTMessage, jobName string) (*model.Job, error)
+	BuildJobDetail(job *model.Job) any
+	GetJobEvents(ctx context.Context, token util.JWTMessage, jobName string) (any, error)
+	GetJobLog(ctx context.Context, token util.JWTMessage, jobName string, tailLines int64, keyword string) (map[string]string, error)
+	GetDiagnosticContext(
+		ctx context.Context,
+		token util.JWTMessage,
+		jobName string,
+		includeLog bool,
+		tailLines int64,
+	) (JobContextResp, error)
+}
+
+type ImageAccessRecord struct {
+	Image       *model.Image
+	ShareStatus model.ImageShareType
+}
+
+type ImageInsightReader interface {
+	ListAccessibleImages(ctx context.Context, token util.JWTMessage) ([]ImageAccessRecord, error)
+}
+
+var jobMutationSubmitterFactory func(conf *RegisterConfig) JobMutationSubmitter
+var jobInsightReaderFactory func(conf *RegisterConfig) JobInsightReader
+var imageInsightReaderFactory func(conf *RegisterConfig) ImageInsightReader
+
+func RegisterJobMutationSubmitterFactory(factory func(conf *RegisterConfig) JobMutationSubmitter) {
+	jobMutationSubmitterFactory = factory
+}
+
+func RegisterJobInsightReaderFactory(factory func(conf *RegisterConfig) JobInsightReader) {
+	jobInsightReaderFactory = factory
+}
+
+func RegisterImageInsightReaderFactory(factory func(conf *RegisterConfig) ImageInsightReader) {
+	imageInsightReaderFactory = factory
+}
+
+func NewJobMutationSubmitter(conf *RegisterConfig) JobMutationSubmitter {
+	if jobMutationSubmitterFactory == nil {
+		return nil
+	}
+	return jobMutationSubmitterFactory(conf)
+}
+
+func NewJobInsightReader(conf *RegisterConfig) JobInsightReader {
+	if jobInsightReaderFactory == nil {
+		return nil
+	}
+	return jobInsightReaderFactory(conf)
+}
+
+func NewImageInsightReader(conf *RegisterConfig) ImageInsightReader {
+	if imageInsightReaderFactory == nil {
+		return nil
+	}
+	return imageInsightReaderFactory(conf)
+}
+
+// InternalRouter is an optional interface for managers that expose internal-only endpoints
+// (e.g. service-to-service callbacks authenticated via X-Agent-Internal-Token).
+// Managers that do not need internal routes do not need to implement this interface.
+type InternalRouter interface {
+	RegisterInternal(group *gin.RouterGroup)
 }
 
 // Registers is a slice of Manager Init functions.

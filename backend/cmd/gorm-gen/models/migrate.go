@@ -33,177 +33,6 @@ type modelDownloadSourceMetadataMigration struct {
 	SourceCreatedAt     *time.Time `gorm:"comment:源站创建时间"`
 }
 
-func modelDatasetSourceMigration() *gormigrate.Migration {
-	return &gormigrate.Migration{
-		ID: "202607121200",
-		Migrate: func(tx *gorm.DB) error {
-			if err := createTableIfMissing(tx, &model.ModelDatasetSource{}); err != nil {
-				return err
-			}
-			if err := createTableIfMissing(tx, &model.ModelDatasetDiscovery{}); err != nil {
-				return err
-			}
-			if err := addColumnIfMissing(tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID"); err != nil {
-				return err
-			}
-			if err := addColumnIfMissing(
-				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
-			); err != nil {
-				return err
-			}
-			if err := createConstraintIfMissing(
-				tx, "datasets", &model.Dataset{}, "ModelDatasetSource",
-			); err != nil {
-				return err
-			}
-			if err := createConstraintIfMissing(
-				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSource",
-			); err != nil {
-				return err
-			}
-			if err := createIndexIfMissing(
-				tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID",
-			); err != nil {
-				return err
-			}
-			return createIndexIfMissing(
-				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
-			)
-		},
-		Rollback: func(tx *gorm.DB) error {
-			if err := dropIndexIfPresent(
-				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
-			); err != nil {
-				return err
-			}
-			if err := dropIndexIfPresent(tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID"); err != nil {
-				return err
-			}
-			if err := dropConstraintIfPresent(
-				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSource",
-			); err != nil {
-				return err
-			}
-			if err := dropConstraintIfPresent(
-				tx, "datasets", &model.Dataset{}, "ModelDatasetSource",
-			); err != nil {
-				return err
-			}
-			if err := dropColumnIfPresent(
-				tx, "model_downloads", &model.ModelDownload{}, "ModelDatasetSourceID",
-			); err != nil {
-				return err
-			}
-			if err := dropColumnIfPresent(tx, "datasets", &model.Dataset{}, "ModelDatasetSourceID"); err != nil {
-				return err
-			}
-			if err := dropTableIfPresent(tx, &model.ModelDatasetDiscovery{}); err != nil {
-				return err
-			}
-			return dropTableIfPresent(tx, &model.ModelDatasetSource{})
-		},
-	}
-}
-
-func modelDownloadSubmissionMigration() *gormigrate.Migration {
-	return &gormigrate.Migration{
-		ID: "202607181200",
-		Migrate: func(tx *gorm.DB) error {
-			if err := createTableIfMissing(tx, &model.ModelDownloadSubmission{}); err != nil {
-				return err
-			}
-			if !tx.Migrator().HasTable(&model.ModelDownload{}) {
-				return nil
-			}
-			// Active downloads that predate quota tracking still need one owner
-			// reservation so an upgrade cannot temporarily bypass both limits.
-			return tx.Exec(`
-				INSERT INTO model_download_submissions
-					(user_id, model_download_id, action, status, created_at)
-				SELECT download.creator_id, download.id, ?, ?, CURRENT_TIMESTAMP
-				FROM model_downloads AS download
-				WHERE download.status IN ? AND download.deleted_at IS NULL
-					AND NOT EXISTS (
-						SELECT 1 FROM model_download_submissions AS submission
-						WHERE submission.model_download_id = download.id
-							AND submission.status = ?
-					)`,
-				model.ModelDownloadSubmissionCreate,
-				model.ModelDownloadSubmissionReserved,
-				[]model.ModelDownloadStatus{
-					model.ModelDownloadStatusPending, model.ModelDownloadStatusDownloading,
-				},
-				model.ModelDownloadSubmissionReserved,
-			).Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return dropTableIfPresent(tx, &model.ModelDownloadSubmission{})
-		},
-	}
-}
-
-func createTableIfMissing(db *gorm.DB, value any) error {
-	if db.Migrator().HasTable(value) {
-		return nil
-	}
-	return db.Migrator().CreateTable(value)
-}
-
-func dropTableIfPresent(db *gorm.DB, value any) error {
-	if !db.Migrator().HasTable(value) {
-		return nil
-	}
-	return db.Migrator().DropTable(value)
-}
-
-func addColumnIfMissing(db *gorm.DB, table string, value any, field string) error {
-	migrator := db.Table(table).Migrator()
-	if migrator.HasColumn(value, field) {
-		return nil
-	}
-	return migrator.AddColumn(value, field)
-}
-
-func dropColumnIfPresent(db *gorm.DB, table string, value any, field string) error {
-	migrator := db.Table(table).Migrator()
-	if !migrator.HasColumn(value, field) {
-		return nil
-	}
-	return migrator.DropColumn(value, field)
-}
-
-func createConstraintIfMissing(db *gorm.DB, table string, value any, name string) error {
-	migrator := db.Table(table).Migrator()
-	if migrator.HasConstraint(value, name) {
-		return nil
-	}
-	return migrator.CreateConstraint(value, name)
-}
-
-func dropConstraintIfPresent(db *gorm.DB, table string, value any, name string) error {
-	migrator := db.Table(table).Migrator()
-	if !migrator.HasConstraint(value, name) {
-		return nil
-	}
-	return migrator.DropConstraint(value, name)
-}
-
-func createIndexIfMissing(db *gorm.DB, table string, value any, name string) error {
-	migrator := db.Table(table).Migrator()
-	if migrator.HasIndex(value, name) {
-		return nil
-	}
-	return migrator.CreateIndex(value, name)
-}
-
-func dropIndexIfPresent(db *gorm.DB, table string, value any, name string) error {
-	migrator := db.Table(table).Migrator()
-	if !migrator.HasIndex(value, name) {
-		return nil
-	}
-	return migrator.DropIndex(value, name)
-}
-
 //nolint:gocyclo // ignore cyclomatic complexity
 func main() {
 	db := query.GetDB()
@@ -942,6 +771,119 @@ func main() {
 			},
 		},
 		{
+			ID: "202603290001",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&model.AgentSession{},
+					&model.AgentMessage{},
+					&model.AgentToolCall{},
+					&model.JobLogSnapshot{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"agent_sessions",
+					"agent_messages",
+					"agent_tool_calls",
+					"job_log_snapshots",
+				)
+			},
+		},
+		{
+			ID: "202604030001",
+			Migrate: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					PinnedAt *time.Time `gorm:"index"`
+				}
+				return tx.Migrator().AddColumn(&AgentSession{}, "PinnedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					PinnedAt *time.Time `gorm:"index"`
+				}
+				return tx.Migrator().DropColumn(&AgentSession{}, "PinnedAt")
+			},
+		},
+		{
+			ID: "202604030002",
+			Migrate: func(tx *gorm.DB) error {
+				if err := tx.AutoMigrate(
+					&model.AgentSession{},
+					&model.AgentToolCall{},
+					&model.AgentTurn{},
+					&model.AgentRunEvent{},
+				); err != nil {
+					return err
+				}
+				return tx.Exec(`
+					UPDATE agent_sessions
+					SET last_orchestration_mode = 'single_agent'
+					WHERE last_orchestration_mode IS NULL
+					   OR BTRIM(last_orchestration_mode) = ''
+				`).Error
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentSession struct {
+					LastOrchestrationMode string `gorm:"type:varchar(32);default:'single_agent'"`
+				}
+				type AgentToolCall struct {
+					TurnID        string `gorm:"type:uuid;index"`
+					ToolCallID    string `gorm:"type:varchar(128);index"`
+					AgentID       string `gorm:"type:varchar(128);index"`
+					ParentEventID *uint  `gorm:"index"`
+					AgentRole     string `gorm:"type:varchar(32);index"`
+				}
+				if err := tx.Migrator().DropTable("agent_run_events", "agent_turns"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "AgentRole"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "ParentEventID"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "AgentID"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "ToolCallID"); err != nil {
+					return err
+				}
+				if err := tx.Migrator().DropColumn(&AgentToolCall{}, "TurnID"); err != nil {
+					return err
+				}
+				return tx.Migrator().DropColumn(&AgentSession{}, "LastOrchestrationMode")
+			},
+		},
+		{
+			ID: "202604110001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS execution_backend VARCHAR(64),
+						ADD COLUMN IF NOT EXISTS sandbox_job_name VARCHAR(255),
+						ADD COLUMN IF NOT EXISTS script_name VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS result_artifact_ref TEXT,
+						ADD COLUMN IF NOT EXISTS egress_domains JSONB`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_sandbox_job_name
+						ON agent_tool_calls (sandbox_job_name)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_script_name
+						ON agent_tool_calls (script_name)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_script_name`,
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_sandbox_job_name`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS egress_domains,
+						DROP COLUMN IF EXISTS result_artifact_ref,
+						DROP COLUMN IF EXISTS script_name,
+						DROP COLUMN IF EXISTS sandbox_job_name,
+						DROP COLUMN IF EXISTS execution_backend`,
+				})
+			},
+		},
+		{
 			ID: "202512261300",
 			Migrate: func(tx *gorm.DB) error {
 				config := &model.CronJobConfig{
@@ -1294,6 +1236,65 @@ func main() {
 			},
 		},
 		{
+			ID: "202604220001",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.AgentFeedback{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("agent_feedbacks")
+			},
+		},
+		{
+			ID: "202604220002",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_sessions
+						ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'chat'`,
+					`UPDATE agent_sessions
+						SET source = 'chat'
+						WHERE source IS NULL OR BTRIM(source) = ''`,
+					`UPDATE agent_sessions
+						SET source = 'ops_audit'
+						WHERE title LIKE '[audit] 审批%'
+						  AND source = 'chat'`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_sessions_source
+						ON agent_sessions (source)`,
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS source VARCHAR(32) NOT NULL DEFAULT 'backend'`,
+					`UPDATE agent_tool_calls
+						SET source = 'backend'
+						WHERE source IS NULL OR BTRIM(source) = ''`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_source
+						ON agent_tool_calls (source)`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_source`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS source`,
+					`DROP INDEX IF EXISTS idx_agent_sessions_source`,
+					`ALTER TABLE agent_sessions
+						DROP COLUMN IF EXISTS source`,
+				})
+			},
+		},
+		{
+			ID: "202604230001",
+			Migrate: func(tx *gorm.DB) error {
+				type AgentFeedback struct {
+					EnrichedAt *time.Time `json:"enrichedAt,omitempty"`
+				}
+				return tx.Migrator().AddColumn(&AgentFeedback{}, "EnrichedAt")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type AgentFeedback struct {
+					EnrichedAt *time.Time `json:"enrichedAt,omitempty"`
+				}
+				return tx.Migrator().DropColumn(&AgentFeedback{}, "EnrichedAt")
+			},
+		},
+		{
 			ID: "202604261000",
 			Migrate: func(tx *gorm.DB) error {
 				type QueueQuotaLimit struct {
@@ -1322,6 +1323,33 @@ func main() {
 					return err
 				}
 				return nil
+			},
+		},
+		{
+			ID: "202604270001",
+			Migrate: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_script_name`,
+					`DROP INDEX IF EXISTS idx_agent_tool_calls_sandbox_job_name`,
+					`ALTER TABLE agent_tool_calls
+						DROP COLUMN IF EXISTS egress_domains,
+						DROP COLUMN IF EXISTS result_artifact_ref,
+						DROP COLUMN IF EXISTS script_name,
+						DROP COLUMN IF EXISTS sandbox_job_name`,
+				})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return runStatements(tx, []string{
+					`ALTER TABLE agent_tool_calls
+						ADD COLUMN IF NOT EXISTS sandbox_job_name VARCHAR(255),
+						ADD COLUMN IF NOT EXISTS script_name VARCHAR(128),
+						ADD COLUMN IF NOT EXISTS result_artifact_ref TEXT,
+						ADD COLUMN IF NOT EXISTS egress_domains JSONB`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_sandbox_job_name
+						ON agent_tool_calls (sandbox_job_name)`,
+					`CREATE INDEX IF NOT EXISTS idx_agent_tool_calls_script_name
+						ON agent_tool_calls (script_name)`,
+				})
 			},
 		},
 		{
@@ -1381,7 +1409,9 @@ func main() {
 					SourceUpdatedAt *time.Time `gorm:"comment:源站更新时间"`
 				}
 				migrator := tx.Table("model_downloads").Migrator()
-				for _, field := range []string{"Organization", "LogoURL", "SourceURL", "SourceDownloads", "SourceLikes", "SourceUpdatedAt"} {
+				for _, field := range []string{
+					"Organization", "LogoURL", "SourceURL", "SourceDownloads", "SourceLikes", "SourceUpdatedAt",
+				} {
 					if err := migrator.AddColumn(&ModelDownload{}, field); err != nil {
 						return err
 					}
@@ -1398,7 +1428,9 @@ func main() {
 					SourceUpdatedAt *time.Time
 				}
 				migrator := tx.Table("model_downloads").Migrator()
-				for _, field := range []string{"SourceUpdatedAt", "SourceLikes", "SourceDownloads", "SourceURL", "LogoURL", "Organization"} {
+				for _, field := range []string{
+					"SourceUpdatedAt", "SourceLikes", "SourceDownloads", "SourceURL", "LogoURL", "Organization",
+				} {
 					if err := migrator.DropColumn(&ModelDownload{}, field); err != nil {
 						return err
 					}
@@ -1498,8 +1530,6 @@ func main() {
 				)
 			},
 		},
-		modelDatasetSourceMigration(),
-		modelDownloadSubmissionMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1507,7 +1537,6 @@ func main() {
 			&model.User{},
 			&model.Account{},
 			&model.UserAccount{},
-			&model.ModelDatasetSource{},
 			&model.Dataset{},
 			&model.AccountDataset{},
 			&model.UserDataset{},
@@ -1525,9 +1554,7 @@ func main() {
 			&model.ResourceNetwork{},
 			&model.ResourceVGPU{},
 			&model.ModelDownload{},
-			&model.ModelDatasetDiscovery{},
 			&model.UserModelDownload{},
-			&model.ModelDownloadSubmission{},
 			&model.CronJobConfig{},
 			&model.CronJobRecord{},
 			&model.GpuAnalysis{},
@@ -1535,11 +1562,18 @@ func main() {
 			&model.OperationLog{},
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
+			&model.AgentSession{},
+			&model.AgentMessage{},
+			&model.AgentToolCall{},
+			&model.AgentTurn{},
+			&model.AgentRunEvent{},
+			&model.JobLogSnapshot{},
+			&model.AgentFeedback{},
+			&model.OperationLog{},
 		)
 		if err != nil {
 			return err
 		}
-
 		// create default account
 		account := model.Account{
 			Name:     "default",
@@ -1659,6 +1693,15 @@ func main() {
 	if err := m.Migrate(); err != nil {
 		panic(fmt.Errorf("could not migrate: %w", err))
 	}
+}
+
+func runStatements(tx *gorm.DB, statements []string) error {
+	for _, stmt := range statements {
+		if err := tx.Exec(stmt).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type jobListIndex struct {

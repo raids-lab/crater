@@ -48,7 +48,6 @@ build_binaries:
     - go run github.com/swaggo/swag/cmd/swag@latest init
     - go build -ldflags="-w -s" -o "${BIN_DIR}/migrate" cmd/gorm-gen/models/migrate.go
     - go build -ldflags="-w -s" -o "${BIN_DIR}/controller" main.go
-    - go build -ldflags="-w -s" -o "${BIN_DIR}/model-metadata-refresh" cmd/model-metadata-refresh/main.go
   artifacts:
     paths:
       - "${BIN_DIR}"
