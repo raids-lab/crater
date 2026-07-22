@@ -16,6 +16,7 @@ import {
   apiAdminGetGpuAnalysisStatus,
   apiAdminGetLLMConfig,
   apiAdminGetModelDownloadLimitConfig,
+  apiAdminGetPodBandwidthConfig,
   apiAdminGetPrequeueConfig,
   apiAdminGrantAllUsersExtraBalance,
   apiAdminResetAllBillingBalances,
@@ -24,6 +25,7 @@ import {
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
   apiAdminUpdateModelDownloadLimitConfig,
+  apiAdminUpdatePodBandwidthConfig,
   apiAdminUpdatePrequeueConfig,
 } from '@/services/api/system-config'
 import { markApiErrorHandled } from '@/services/client'
@@ -37,6 +39,7 @@ import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { ModelDownloadLimitSettings } from './-components/model-download-limit-settings'
+import { PodBandwidthSettings } from './-components/pod-bandwidth-settings'
 import { PrequeueSettings } from './-components/prequeue-settings'
 
 export const Route = createFileRoute('/admin/more/')({
@@ -83,6 +86,16 @@ function RouteComponent() {
   } = useQuery({
     queryKey: ['admin', 'system-config', 'model-download-limit'],
     queryFn: () => apiAdminGetModelDownloadLimitConfig().then((res) => res.data),
+  })
+
+  const {
+    data: podBandwidthConfig,
+    isLoading: isPodBandwidthLoading,
+    isError: isPodBandwidthError,
+    refetch: refetchPodBandwidth,
+  } = useQuery({
+    queryKey: ['admin', 'system-config', 'pod-bandwidth'],
+    queryFn: () => apiAdminGetPodBandwidthConfig().then((res) => res.data),
   })
 
   const [backfillEnabled, setBackfillEnabled] = useState(false)
@@ -304,6 +317,15 @@ function RouteComponent() {
     onError: showErrorToast,
   })
 
+  const updatePodBandwidthMutation = useMutation({
+    mutationFn: apiAdminUpdatePodBandwidthConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'pod-bandwidth'] })
+      toast.success(t('systemConfig.podBandwidth.saveSuccess'))
+    },
+    onError: showErrorToast,
+  })
+
   const handlePrequeueSubmit = () => {
     if (!validatePrequeuePositiveIntegers()) {
       return
@@ -355,6 +377,17 @@ function RouteComponent() {
           onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
           onPrequeueCandidateSizeChange={setPrequeueCandidateSize}
           onSubmit={handlePrequeueSubmit}
+        />
+      </Card>
+
+      <Card className="gap-0">
+        <PodBandwidthSettings
+          config={podBandwidthConfig}
+          isPending={updatePodBandwidthMutation.isPending}
+          isLoading={isPodBandwidthLoading}
+          isError={isPodBandwidthError}
+          onRetry={() => void refetchPodBandwidth()}
+          onSubmit={(config) => updatePodBandwidthMutation.mutateAsync(config)}
         />
       </Card>
 

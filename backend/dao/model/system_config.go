@@ -34,6 +34,12 @@ const (
 	ConfigKeyModelDownloadWindowHours            = "MODEL_DOWNLOAD_WINDOW_HOURS"
 	ConfigKeyModelDownloadMaxSuccessfulDownloads = "MODEL_DOWNLOAD_MAX_SUCCESSFUL_DOWNLOADS"
 	ConfigKeyModelDownloadWhitelistUsers         = "MODEL_DOWNLOAD_WHITELIST_USER_IDS"
+
+	// Pod bandwidth limit configuration keys.
+	ConfigKeyPodBandwidthEnabled       = "POD_BANDWIDTH_LIMIT_ENABLED"
+	ConfigKeyModelDownloadBandwidth    = "POD_BANDWIDTH_MODEL_DOWNLOAD"
+	ConfigKeyNormalJobIngressBandwidth = "POD_BANDWIDTH_NORMAL_JOB_INGRESS"
+	ConfigKeyNormalJobEgressBandwidth  = "POD_BANDWIDTH_NORMAL_JOB_EGRESS"
 )
 
 // DefaultConfigKeys 定义了系统启动时必须存在的键
@@ -56,4 +62,8 @@ var DefaultConfigKeys = []string{
 	ConfigKeyModelDownloadWindowHours,
 	ConfigKeyModelDownloadMaxSuccessfulDownloads,
 	ConfigKeyModelDownloadWhitelistUsers,
+	ConfigKeyPodBandwidthEnabled,
+	ConfigKeyModelDownloadBandwidth,
+	ConfigKeyNormalJobIngressBandwidth,
+	ConfigKeyNormalJobEgressBandwidth,
 }

@@ -4,11 +4,37 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 )
+
+func TestApplyPodBandwidthAnnotations(t *testing.T) {
+	job := &batch.Job{Spec: batch.JobSpec{Tasks: []batch.TaskSpec{
+		{Template: corev1.PodTemplateSpec{}},
+		{Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{"existing": "value"},
+		}}},
+	}}}
+	annotations := map[string]string{
+		"kubernetes.io/ingress-bandwidth": "1G",
+		"kubernetes.io/egress-bandwidth":  "1G",
+	}
+
+	applyPodBandwidthAnnotations(job, annotations)
+
+	for i, task := range job.Spec.Tasks {
+		if task.Template.Annotations["kubernetes.io/ingress-bandwidth"] != "1G" ||
+			task.Template.Annotations["kubernetes.io/egress-bandwidth"] != "1G" {
+			t.Fatalf("task %d annotations = %#v", i, task.Template.Annotations)
+		}
+	}
+	if job.Spec.Tasks[1].Template.Annotations["existing"] != "value" {
+		t.Fatal("existing pod annotations must be preserved")
+	}
+}
 
 func TestResolveDeleteSettlementTime(t *testing.T) {
 	t.Parallel()

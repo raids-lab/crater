@@ -23,6 +23,12 @@ func (mgr *VolcanojobMgr) submitJob(
 	token util.JWTMessage,
 	job *batch.Job,
 ) error {
+	bandwidthAnnotations, err := service.NormalJobPodBandwidthAnnotations(ctx, mgr.configService, mgr.kubeClient)
+	if err != nil {
+		return err
+	}
+	applyPodBandwidthAnnotations(job, bandwidthAnnotations)
+
 	scheduleType, err := model.ParseScheduleType(job.Annotations[vcjobservice.AnnotationKeyScheduleType])
 	if err != nil {
 		klog.Errorf("invalid schedule type annotation for job %s: %v", job.Name, err)
@@ -61,6 +67,20 @@ func (mgr *VolcanojobMgr) submitJob(
 		return err
 	}
 	return nil
+}
+
+func applyPodBandwidthAnnotations(job *batch.Job, annotations map[string]string) {
+	if len(annotations) == 0 {
+		return
+	}
+	for taskIndex := range job.Spec.Tasks {
+		if job.Spec.Tasks[taskIndex].Template.Annotations == nil {
+			job.Spec.Tasks[taskIndex].Template.Annotations = make(map[string]string)
+		}
+		for key, value := range annotations {
+			job.Spec.Tasks[taskIndex].Template.Annotations[key] = value
+		}
+	}
 }
 
 func (mgr *VolcanojobMgr) ensureJobAdmitted(ctx context.Context, job *batch.Job) error {

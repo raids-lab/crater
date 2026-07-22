@@ -1,0 +1,30 @@
+---
+title: 配置 Pod 带宽限制
+description: 分别配置模型下载和普通作业 Pod 的网络带宽上限
+---
+
+管理员可以在“平台设置”中的“Pod 带宽限制”分别控制模型下载、普通作业入站和普通作业出站带宽。该功能默认关闭，避免在尚未安装 bandwidth CNI 的集群上影响作业创建。
+
+## 集群能力检查
+
+页面会实时检查以下条件：
+
+- `kube-flannel-cfg` 的 `cni-conf.json` 已包含 `bandwidth` 插件，并声明 `bandwidth` capability。
+- Flannel DaemonSet 包含安装 bandwidth binary 的 initContainer。
+- Flannel DaemonSet 已在全部目标节点完成滚动更新并处于 Ready 状态。
+
+任一条件不满足时，平台会禁止开启限速。功能已经开启但集群能力随后失效时，平台也会阻止继续创建带限速配置的新作业，避免产生无法启动的 Pod。
+
+## 配置项
+
+- **模型下载带宽**：写入 model-dl Pod 的入站 bandwidth annotation，限制下载数据进入 Pod 的速率。
+- **普通作业入站带宽**：限制流入每个普通作业 Pod 的速率。
+- **普通作业出站带宽**：限制从每个普通作业 Pod 发出的速率。
+
+页面将数值和单位分开填写，单位可选择 Kbit/s、Mbit/s 或 Gbit/s。例如数值 `1` 配合 Gbit/s 会保存为 Kubernetes 数量 `1G`。
+
+配置保存在系统配置中，修改后无需重启后端，会实时用于之后创建的 Pod。CNI 只在 Pod sandbox 创建时读取 annotation，因此已经运行的 Pod 不会被在线修改，必须重建后才能使用新值。
+
+## 验证注意事项
+
+containerd 传给 bandwidth CNI 的初始 burst 可能约为 512 MiB。小文件传输可能完全落在 burst 内，看不出稳定限速效果；验证时应使用明显超过 512 MiB 的数据量。

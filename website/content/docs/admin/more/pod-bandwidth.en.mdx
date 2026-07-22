@@ -1,0 +1,30 @@
+---
+title: Configure Pod bandwidth limits
+description: Configure separate network limits for model download and ordinary job Pods
+---
+
+Administrators can use **Pod bandwidth limits** in Platform Settings to configure model download, ordinary job ingress, and ordinary job egress bandwidth separately. The feature is disabled by default so clusters without bandwidth CNI support are not affected.
+
+## Cluster capability check
+
+The page checks the following conditions in real time:
+
+- `cni-conf.json` in `kube-flannel-cfg` contains the `bandwidth` plugin and declares the `bandwidth` capability.
+- The Flannel DaemonSet contains an initContainer that installs the bandwidth binary.
+- The Flannel DaemonSet rollout is complete and Ready on every target node.
+
+The platform refuses to enable limiting if any condition is missing. If cluster support disappears after the feature was enabled, Crater also blocks new bandwidth-limited job submissions instead of creating Pods that cannot start.
+
+## Settings
+
+- **Model download bandwidth**: writes the ingress annotation on model-dl Pods and limits downloaded data entering the Pod.
+- **Ordinary job ingress**: limits data entering each ordinary job Pod.
+- **Ordinary job egress**: limits data sent from each ordinary job Pod.
+
+The page separates the numeric value from the unit. Units can be Kbit/s, Mbit/s, or Gbit/s. For example, value `1` with Gbit/s is stored as the Kubernetes quantity `1G`.
+
+The value is stored in system configuration. Updates do not require a backend restart and are read for every new Pod. Because CNI reads annotations only when creating the Pod sandbox, running Pods are unchanged and must be recreated to use a new value.
+
+## Verification note
+
+containerd may provide an initial burst of approximately 512 MiB to bandwidth CNI. Small transfers can fit entirely within this burst and may not show the steady-state limit. Use data substantially larger than 512 MiB when verifying the setting.

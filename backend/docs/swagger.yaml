@@ -703,6 +703,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodBandwidthConfigResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.PodBandwidthConfigResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp:
     properties:
       code:
@@ -1626,6 +1636,21 @@ definitions:
       value:
         type: string
     type: object
+  internal_handler.PodBandwidthConfigResp:
+    properties:
+      capabilityAvailable:
+        type: boolean
+      capabilityMessage:
+        type: string
+      enabled:
+        type: boolean
+      modelDownloadBandwidth:
+        type: string
+      normalJobEgressBandwidth:
+        type: string
+      normalJobIngressBandwidth:
+        type: string
+    type: object
   internal_handler.PrequeueConfigResp:
     properties:
       activateTickerIntervalSeconds:
@@ -1897,6 +1922,22 @@ definitions:
     - maxConcurrent
     - maxSuccessfulDownloads
     - windowHours
+    type: object
+  internal_handler.UpdatePodBandwidthConfigReq:
+    properties:
+      enabled:
+        type: boolean
+      modelDownloadBandwidth:
+        type: string
+      normalJobEgressBandwidth:
+        type: string
+      normalJobIngressBandwidth:
+        type: string
+    required:
+    - enabled
+    - modelDownloadBandwidth
+    - normalJobEgressBandwidth
+    - normalJobIngressBandwidth
     type: object
   internal_handler.UpdatePrequeueConfigReq:
     properties:
@@ -4853,6 +4894,44 @@ paths:
       security:
       - Bearer: []
       summary: 更新模型与数据集下载额度
+      tags:
+      - SystemConfig
+  /v1/admin/system-config/pod-bandwidth:
+    get:
+      description: 获取实时配置，并检查当前 Flannel CNI 是否已完整启用 bandwidth 插件
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodBandwidthConfigResp'
+      security:
+      - Bearer: []
+      summary: 管理员获取 Pod 带宽限制配置
+      tags:
+      - SystemConfig
+    put:
+      consumes:
+      - application/json
+      description: 分别配置模型下载、普通作业入站和普通作业出站带宽；对后续新建 Pod 生效，启用前校验 Flannel bandwidth 能力
+      parameters:
+      - description: Pod 带宽限制配置
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdatePodBandwidthConfigReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: 更新 Pod 带宽限制配置
       tags:
       - SystemConfig
   /v1/admin/system-config/prequeue:

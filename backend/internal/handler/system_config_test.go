@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -24,12 +25,52 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
+
+func TestUpdatePodBandwidthConfigRejectsUnavailableCNI(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:pod_bandwidth_handlers?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	configService := service.NewConfigService(query.Use(db))
+	mgr := &SystemConfigMgr{service: configService, kubeClient: fake.NewSimpleClientset()}
+	router := gin.New()
+	mgr.RegisterAdmin(router.Group("/v1/admin/system-config"))
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/v1/admin/system-config/pod-bandwidth",
+		bytes.NewBufferString(`{
+			"enabled": true,
+			"modelDownloadBandwidth": "1G",
+			"normalJobIngressBandwidth": "1G",
+			"normalJobEgressBandwidth": "1G"
+		}`),
+	)
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("PUT returned HTTP %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	cfg, err := configService.GetPodBandwidthConfig(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Enabled {
+		t.Fatal("failed CNI capability check must not persist enabled=true")
+	}
+}
 
 func TestModelDownloadLimitConfigRoutesHideWhitelistFromProtectedUsers(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:model_download_limit_handlers?mode=memory&cache=shared"), &gorm.Config{})
