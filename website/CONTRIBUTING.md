@@ -20,11 +20,12 @@ If a document is in the wrong place, move it rather than duplicating competing e
 
 For `website/` changes:
 
-- Node.js v22+ and pnpm v10+ are expected.
+- NVM and pnpm v10+ are expected.
+- The Makefile automatically installs and selects the Node.js version declared in `.nvmrc` before running pnpm.
 
 ```bash
 cd website
-pnpm install
+make install
 make run
 ```
 
@@ -32,6 +33,7 @@ Common targets:
 
 | Command | Purpose |
 |---------|---------|
+| `make install` | Install dependencies with the configured Node.js version |
 | `make run` | Start the local docs site |
 | `make build` | Build the docs site |
 | `make pre-commit-check` | Run docs checks before submitting |

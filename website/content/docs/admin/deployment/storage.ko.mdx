@@ -1,80 +1,115 @@
 ---
-title: 저장소 아키텍처
-description: Crater 는 고성능 로컬 워크로드 및 Pod 와 노드 간 지속 가능한 공유 데이터 액세스를 위해 하이브리드 저장소 아키텍처를 사용합니다. 이 문서는 클러스터에서 사용되는 저장소 솔루션에 대해 설명합니다.
+title: 스토리지 아키텍처
+description: Crater가 노드 로컬 스토리지, 공유 파일 스토리지, 분산 블록 스토리지를 필요에 따라 사용하는 방법과 배포 시 StorageClass를 선택하고 확인하는 방법을 설명합니다.
 ---
 
-## 1. 로컬 지속 가능 볼륨 (LocalPV via OpenEBS)
+Crater의 모든 데이터가 같은 스토리지 시스템을 사용할 필요는 없으며, 모든 클러스터가 아래의 모든 스토리지 기능을 갖출 필요도 없습니다. 활성화하는 컴포넌트의 액세스 방식, 성능, 신뢰성 요구 사항에 맞게 조합하세요.
 
-[OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv)를 사용하여 고 스루풋과 데이터 로컬리티가 필요한 워크로드에 대한 노드 로컬 저장소를 관리합니다.
+표준 Kubernetes는 PV, PVC, `StorageClass` 같은 스토리지 인터페이스를 정의하지만 OpenEBS, NFS, Ceph를 자동으로 제공하지는 않습니다. Crater Chart는 PVC를 선언하고 컴포넌트에 마운트하지만, 이러한 스토리지 백엔드를 설치하지는 않습니다. Crater를 배포하기 전에 관리자가 필요한 스토리지 시스템을 배포하거나 연결하고, 해당 `StorageClass`를 클러스터에 준비해야 합니다.
 
-### 왜 LocalPV 인가?
+## 아키텍처 개요
 
-- **CRD 기반 관리**: Kubernetes 네이티브의 선언형 방식으로 로컬 디스크를 관리할 수 있습니다.
-- **성능**: 데이터는 동일한 노드에 남아 있어 네트워크 오버헤드를 최소화합니다.
-- **Crater 의 사용 사례**:
-  - 작업 캐시 디렉터리
-  - 로컬 데이터세트 staging 영역
-  - 노드별 추론 또는 훈련 임시 공간
+애플리케이션은 특정 스토리지 서버를 직접 선택하지 않고 Kubernetes의 공통 인터페이스를 통해 스토리지를 사용합니다.
 
-### StorageClass
+```text
+Crater 컴포넌트 → PVC → StorageClass → 스토리지 드라이버 또는 provisioner → 실제 스토리지 백엔드
+```
 
-로컬 디스크 프로비저닝을 위해 전용 `StorageClass`가 구성됩니다. 이 클래스는 다음 차트에서 참조됩니다:
-- `cloudnative-pg` 데이터베이스 저장소
-- 복제가 필요하지 않는 분산 작업 출력
+Crater는 볼륨이 필요한 액세스 모드를 충족하는지에 관심을 두며, 하위에 OpenEBS, NFS, Ceph 중 무엇을 사용할지는 클러스터 관리자가 결정합니다. 아래 표는 필요에 따라 조합할 수 있는 스토리지 기능을 보여 줄 뿐, 모든 배포에 필수적인 고정 계층을 의미하지 않습니다.
 
-참조: [`deployments/openebs`](../deployments/openebs)
+| 스토리지 기능 | 필요한 경우 | 일반적인 액세스 방식 | Crater의 주요 용도 | 일반적인 구현 |
+| --- | --- | --- | --- | --- |
+| 노드 로컬 스토리지 | BuildKit을 활성화하거나 이 사이트의 CloudNativePG 배포 방식을 사용할 때 | 하나의 노드에 마운트, 낮은 지연 시간 | 재생성 가능한 빌드 캐시 또는 상위 애플리케이션이 복제를 보장하는 영구 데이터 | OpenEBS LocalPV |
+| 공유 파일 스토리지 | Crater 기본 설치에서 보통 필요 | 여러 Pod 또는 노드에서 동시 액세스(RWX) | 사용자 HOME, 데이터셋, 모델, 공유 파일, 백업 | NFS 또는 CephFS |
+| 분산 블록 스토리지 | 영구 RWO 볼륨이 필요한 독립 컴포넌트를 활성화할 때 선택 | 보통 하나의 노드에서 읽고 쓰기(RWO) | 현재 Prometheus Stack 배포 가이드의 이력 메트릭 | Ceph RBD |
 
----
+PVC가 `Bound` 상태라는 것은 Kubernetes가 요청에 스토리지를 할당했다는 뜻일 뿐, 대상 노드에서 볼륨 마운트가 성공했다는 보장은 아닙니다. 실제 사용 가능 여부는 노드의 마운트 도구, CSI 플러그인, 네트워크, 스토리지 백엔드 상태에도 영향을 받습니다.
 
-## 2. 공유 블록 저장소 (Ceph RBD via Rook)
+## 스토리지 기능 구성
 
-지속 가능한, 다노드 접근 가능한 볼륨을 위해 Crater 는 [Rook-Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html)를 사용합니다. RBD 볼륨은 동적으로 프로비저닝되며 다음을 지원합니다:
+### 노드 로컬 스토리지
 
-- 마이그레이션 지원을 통한 ReadWriteOnce 액세스
-- 복제 및 장애 복구
-- 다음에 적합합니다:
-  - Prometheus TSDB 저장소
-  - 지속성을 요구하는 Crater 내부 서비스
-  - 노드 간 공유되는 데이터세트
+[OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv)는 노드의 로컬 디렉터리나 디스크를 Kubernetes 영구 볼륨으로 노출합니다. LocalPV는 Kubernetes가 지원하는 볼륨 유형이지만, 동적 프로비저닝에 사용하는 OpenEBS provisioner는 관리자가 별도로 설치해야 합니다. 이 문서의 배포 방식은 `openebs-hostpath` StorageClass를 사용합니다.
 
-Ceph 는 다음 이유로 선택되었습니다:
+Crater는 이 기능을 다음 두 가지 구체적인 경우에 사용합니다.
 
-- Rook 를 통한 Kubernetes 네이티브 프로비저닝
-- 강력한 커뮤니티 지원
-- 확장성과 고가용성
+- BuildKit 이미지 빌드 서비스를 활성화하면 각 BuildKit 인스턴스가 별도의 LocalPV에 빌드 캐시를 저장합니다. 캐시를 로컬에 두면 이미지 레이어를 반복해 다운로드하거나 빌드하는 작업을 줄일 수 있습니다. 캐시가 손실되면 후속 빌드가 느려지지만 데이터는 다시 생성할 수 있습니다. BuildKit은 기본적으로 비활성화되어 있으므로 이미지 빌드를 사용하지 않는 클러스터에는 이 용도의 LocalPV가 필요하지 않습니다.
+- 이 사이트의 CloudNativePG 배포 방식에서는 각 PostgreSQL 인스턴스가 LocalPV에 데이터베이스 파일을 저장합니다. 볼륨 자체는 데이터를 복제하지 않으므로 복제, 장애 조치, 백업은 CloudNativePG가 제공해야 합니다.
 
-> 📌 우리의 대부분의 상태 저장 구성 요소인 Prometheus 는 사용자 정의 `StorageClass`를 통해 Ceph RBD 볼륨을 사용합니다.
+LocalPV는 분산 스토리지가 아니며 데이터를 다른 노드로 자동 복제하지 않습니다. 볼륨에는 노드 제약이 있어 Pod가 데이터를 보유한 노드로 돌아가야 계속 사용할 수 있습니다. 재생성 가능한 데이터나 상위 애플리케이션이 이미 중복성을 제공하는 데이터에만 이 기능을 사용하세요.
 
----
+### 공유 파일 스토리지
 
-## 저장소 사용 매트릭스
+storage-server, 공유 사용자 파일, 데이터베이스 백업은 여러 Pod 또는 노드가 같은 디렉터리에 액세스해야 합니다. 보통 `ReadWriteMany`를 지원하는 NFS 또는 CephFS를 사용합니다. 둘은 Crater에서 같은 역할을 하지만 구현 방식과 운영 비용이 다릅니다.
 
-| 구성 요소             | 유형               | 저장소 백엔드       | 설명                                   |
-|-----------------------|--------------------|----------------------|----------------------------------------|
-| PostgreSQL (Crater DB) | 지속 가능          | LocalPV (OpenEBS)    | 고속, 노드 특정                        |
-| Prometheus TSDB        | 지속 가능          | Ceph RBD (Rook)      | 다노드, 고도로 내구성 있는             |
-| 사용자 작업            | 일시적 / 지속 가능 | LocalPV / Ceph RBD   | 구성에 따라 다름                       |
-| Grafana 대시보드       | 일시적 / 지속 가능 | Ceph RBD             | 대시보드 구성에 따라 선택 가능         |
+- **NFS**를 사용하려면 관리자가 NFS 서버, 노드의 NFS 클라이언트 기능, Kubernetes provisioner를 준비해야 합니다. 배포가 비교적 간단하며 신뢰할 수 있는 NFS 서비스가 이미 있거나 규모가 작은 클러스터에 적합합니다. 용량, 성능, 가용성은 NFS 서버에 따라 결정됩니다.
+- **CephFS**를 사용하려면 관리자가 Ceph를 배포하거나 연결하고 Rook, CephFS CSI 드라이버 같은 Kubernetes 통합 컴포넌트를 설치해야 합니다. 이미 Ceph를 운영하고 확장성과 스토리지 측 내결함성이 필요한 클러스터에 적합하지만 배포와 유지 관리 비용이 더 큽니다.
 
----
+Crater 코어 Chart는 기본적으로 `nfs`라는 StorageClass를 통해 공유 볼륨을 생성하고, 같은 PVC를 여러 storage-server 복제본에 마운트해 사용자 파일을 저장하고 제공합니다. 사용자가 Jupyter, WebIDE 또는 학습 워크로드를 시작하면 Crater가 사용자의 HOME 디렉터리를 컨테이너에 마운트합니다. 사용자가 계정 공간이나 공개 공간에서 선택한 파일, 데이터셋, 모델도 이 스토리지에서 워크로드 컨테이너로 마운트됩니다. 이러한 마운트는 Crater에 설정된 RWX 공유 PVC 또는 같은 하위 스토리지를 사용하는 선택적 읽기 전용 PVC를 사용합니다.
 
-## 참고 사항
+일반 사용자 이미지는 컨테이너 실행 환경만 제공하며, 이러한 파일이 LocalPV, NFS, CephFS 중 무엇을 사용할지를 결정하지 않습니다. 실제 백엔드는 공유 PVC가 참조하는 `StorageClass`가 결정합니다. 데이터베이스 백업 기능도 기본적으로 `nfs` StorageClass를 사용하는 별도의 RWX 볼륨에 백업을 기록합니다.
 
-- LocalPV 를 제공하는 노드는 항상 라벨이 지정되고 마운트된 디스크 경로를 보장해야 합니다.
-- Ceph RBD 는 클러스터 노드에서 사전에 프로비저닝된 블록 저장소 장치가 필요합니다.
-- LocalPV 를 사용할 때 노드 애핀과 허용도를 사용하여 Pod 이 올바른 저장소 위치에 결합되도록 해야 합니다.
-- 각 차트의 문서를 참조하여 적절한 `StorageClass` 오버라이드를 사용하십시오.
+여기서 `nfs`는 기본 StorageClass 이름일 뿐, Crater가 NFS를 설치한다는 뜻이 아닙니다. 클러스터가 CephFS를 사용한다면 이 두 설정을 실제 CephFS `StorageClass`로 변경할 수 있으며, Crater의 볼륨 사용 방식은 같습니다.
 
----
+### 분산 블록 스토리지
 
-## 관련 모듈
+[Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html)는 Ceph 클러스터에서 가상 블록 디바이스를 제공하고, Kubernetes가 노드에서 포맷한 후 Pod에 마운트합니다. CephFS와 마찬가지로 관리자가 Ceph 클러스터, Rook, RBD CSI 드라이버를 미리 배포해야 하며 Crater가 자동으로 설치하지는 않습니다.
 
-- [`openebs`](./openebs.md)
-- [`cloudnative-pg`](./cloudnative-pg.md)
-- [`prometheus`](./prometheus.md)
+Crater 코어 Chart는 기본적으로 RBD를 직접 사용하지 않으므로 분산 블록 스토리지는 Crater의 기본 의존성이 아닙니다. 이 사이트의 Prometheus Stack 배포 방식은 `rook-ceph-rbd`를 사용해 Prometheus 이력 메트릭을 보관합니다. Prometheus에는 신뢰할 수 있는 영구 볼륨이 필요하지만 여러 노드가 같은 파일 시스템에 동시에 쓸 필요는 없습니다. 관리자가 Grafana 영구 저장을 별도로 활성화한다면 Grafana에도 적절한 영구 볼륨이 필요하지만 RBD일 필요는 없습니다.
 
-## 설치
+Ceph RBD가 없어도 공유 파일 스토리지를 사용할 수 있다면 사용자 HOME, 데이터셋, 모델, 일반 작업에 영향을 주지 않습니다. Prometheus Stack을 배포할 때는 RBD를 요구 사항을 충족하는 다른 RWO `StorageClass`로 대체할 수 있습니다. Prometheus에 영구 볼륨을 제공하지 않으면 Pod가 재생성될 때 이력 메트릭이 손실될 수 있습니다. PVC를 선언했지만 사용 가능한 `StorageClass`가 없으면 관련 Pod는 배포를 완료할 수 없습니다.
 
-NFS 를 저장소 프로비저너로 사용하고 Crater 의 사전 구성된 값과 함께 공식 Helm 차트를 사용하는 것을 권장합니다.
- 
-📖 자세한 가이드: [`deployments/nfs/README.md`](../deployments/nfs/README.md)
+RBD와 CephFS는 같은 Ceph 클러스터를 하위에서 공유할 수 있지만 서로 다른 볼륨 유형입니다. RBD는 블록 디바이스를, CephFS는 공유 파일 시스템을 제공하며 서로 다른 CSI 드라이버를 사용합니다. RBD는 storage-server에 필요한 RWX 파일 스토리지를 대체할 수 없고, 노드가 RBD를 지원한다고 해서 CephFS도 지원하는 것은 아닙니다.
+
+따라서 NFS만 공유 파일 스토리지로 사용하는 클러스터에서 영구 RWO 볼륨이 필요한 컴포넌트를 활성화하지 않는다면 분산 블록 스토리지를 생략해도 됩니다. NFS와 RBD는 같은 용도의 교체 제품이 아닙니다. 클러스터에서 NFS만 사용하거나, 필요에 따라 NFS와 RBD를 함께 사용할 수 있습니다.
+
+## Crater의 스토리지 사용 방식
+
+Crater 코어 Chart는 다음 설정을 통해 기존 StorageClass에 연결합니다.
+
+| 용도 | 사용 시점 | Chart 설정 | 요구 사항 | 기본값 |
+| --- | --- | --- | --- | --- |
+| 사용자 HOME, 공유 파일, 데이터셋, 모델 | 기본 설치. storage-server와 사용자 워크로드가 공유 | `storage.storageClass` | RWX | `nfs` |
+| PostgreSQL 백업 볼륨 | 데이터베이스 백업과 PVC 생성을 활성화할 때 | `dbBackup.config.storageClass` | RWX | `nfs` |
+| AMD BuildKit 캐시 | AMD BuildKit을 활성화할 때 | `buildkitConfig.amdConfig.cache.storageClass` | 노드 로컬 RWO 볼륨 | `openebs-hostpath` |
+| ARM BuildKit 캐시 | ARM BuildKit을 활성화할 때 | `buildkitConfig.armConfig.cache.storageClass` | 노드 로컬 RWO 볼륨 | `openebs-hostpath` |
+
+CloudNativePG, Prometheus 같은 독립 컴포넌트는 각자의 배포 설정에서 스토리지를 선택합니다. 현재 문서는 CloudNativePG에 OpenEBS LocalPV를, Prometheus에 Ceph RBD를 사용합니다. 이는 문서에서 선택한 배포 방식이지, Crater 코어 컴포넌트가 특정 스토리지 제품을 필수로 요구한다는 뜻은 아닙니다. 관리자는 클러스터의 신뢰성 설계에 맞게 조정할 수 있지만, 각 컴포넌트가 필요로 하는 액세스 모드는 유지해야 합니다.
+
+모든 백엔드를 설치할 필요는 없지만, 활성화한 Crater 기능에 필요한 스토리지는 제공해야 합니다. 기본 설치는 보통 storage-server와 사용자 워크로드를 위한 RWX `StorageClass`로 시작합니다. BuildKit을 활성화하거나 이 사이트의 CloudNativePG 배포를 사용할 때 OpenEBS를 설치합니다. 문서에 설명된 Prometheus 배포에는 Ceph RBD 또는 다른 적합한 영구 RWO 백엔드를 준비합니다. 이미 Ceph를 운영하는 클러스터는 기본 NFS를 CephFS로 대체할 수도 있습니다.
+
+대규모 클러스터에서는 로컬 캐시가 공유 스토리지를 소모하지 않도록 하고, 노드 간 액세스나 장애 복구가 필요한 데이터를 공유 스토리지에 두는 혼합 구성을 보통 사용합니다.
+
+## 배포 및 운영 확인
+
+Crater를 배포하거나 상태 유지 컴포넌트를 업데이트하기 전에 최소한 다음을 확인하세요.
+
+1. 실제 스토리지 백엔드가 배포되었거나 연결되었고, 참조하는 모든 `StorageClass`가 존재하며, 액세스 모드가 컴포넌트 요구 사항을 충족합니다.
+2. LocalPV 대상 노드에 로컬 경로가 준비되었고 Pod 배치가 볼륨의 노드 제약과 일치합니다.
+3. NFS 클라이언트 기능 또는 해당 CSI 노드 플러그인이 워크로드가 실행될 수 있는 모든 노드를 커버합니다.
+4. 테스트 PVC와 Pod를 만들고 대상 노드에서 실제 마운트와 읽기/쓰기 작업을 확인합니다. PVC가 `Bound`인지만 확인하지 마세요.
+
+### CephFS CSI 노드 커버리지
+
+워크로드가 taint가 있는 컨트롤 플레인 노드나 다른 전용 노드에 스케줄될 수 있다면 CephFS CSI DaemonSet도 해당 노드에서 실행되어 드라이버를 등록할 수 있어야 합니다. 워크로드의 toleration은 CSI 플러그인에 자동으로 상속되지 않습니다.
+
+실제 장애 사례에서 storage-server는 node selector와 toleration을 사용해 `NoSchedule` taint가 있는 컨트롤 플레인 노드에서 실행되었지만, Rook가 관리하는 CephFS CSI DaemonSet에는 같은 toleration이 없었습니다. 따라서 워크로드 Pod는 대상 노드에 스케줄될 수 있었지만, 해당 노드에는 CephFS CSI Pod가 없었고 `CSINode`에 CephFS 드라이버도 등록되지 않았습니다.
+
+다음 증상이 함께 나타나면 애플리케이션 이미지를 조사하기 전에 CSI 노드 커버리지와 toleration을 확인하세요.
+
+- 새로 생성되었거나 rollout에서 생성된 Pod가 노드에 스케줄되었지만 `ContainerCreating`에 머물며 컨테이너가 아직 시작되지 않습니다.
+- PVC가 `Bound`이고 VolumeAttachment가 `attached=true`로 표시되어도 Pod 이벤트에서 `rook-ceph.cephfs.csi.ceph.com`이 등록된 CSI 드라이버 목록에 없다고 보고합니다.
+- 같은 워크로드의 기존 Pod는 계속 읽고 쓸 수 있지만, 새로 생성되었거나 이동 또는 재생성된 Pod는 볼륨을 마운트하지 못합니다.
+
+기존 Pod가 계속 작동하는 것은 모순이 아닙니다. CSI 노드 플러그인은 마운트 설정, 해제, 재게시를 담당하지만 모든 파일 읽기와 쓰기를 중계하지는 않습니다. 플러그인이 사라진 후에도 이전에 설정된 CephFS 커널 마운트는 계속 작동할 수 있지만, Pod 재생성, 이동, 노드 재시작, 재마운트 시 문제가 드러납니다.
+
+문제를 해결할 때는 워크로드 대상 노드의 taint와 toleration, CephFS CSI DaemonSet의 노드 커버리지, `CSINode`의 드라이버 등록을 비교하세요. Operator가 관리하는 DaemonSet을 직접 수정하지 말고, 설치된 Rook 버전이 지원하는 영구 설정을 통해 Operator의 의도된 상태를 수정하세요.
+
+수정한 후 CSI DaemonSet의 `desired`, `updated`, `ready`, `available`, `unavailable` 수치를 관찰하고 워크로드 Pod의 마운트 이벤트를 확인하세요. RollingUpdate가 멈추면 첫 번째 비정상 CSI Pod와 해당 노드의 이벤트를 조사하세요. `maxUnavailable`이 작으면 하나의 노드 장애가 후속 업데이트를 차단할 수 있으며, 이는 업데이트를 기다리는 모든 노드에 문제가 있다는 뜻이 아닙니다.
+
+## 관련 문서
+
+- [OpenEBS 배포 가이드](./openebs.mdx)
+- [CloudNativePG 배포 가이드](./cloudnative-pg.mdx)
+- [Prometheus Stack 배포 가이드](./prometheus.mdx)
+- [Rook-Ceph 학습 가이드](../learning/ceph/ceph-basic.mdx)

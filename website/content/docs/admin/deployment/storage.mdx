@@ -1,80 +1,115 @@
 ---
 title: 存储架构
-description: Crater 使用混合存储架构来应对高吞吐量的本地工作负载以及跨 Pod 和节点的持久共享数据访问。本文档概述了集群中使用的存储解决方案。
+description: 说明 Crater 如何按需使用节点本地存储、共享文件存储和分布式块存储，以及部署时如何选择和检查 StorageClass。
 ---
 
-## 1. 本地持久卷（通过 OpenEBS 的 LocalPV）
+Crater 不要求所有数据使用同一种存储，也不要求每个集群都具备下文列出的全部存储能力。部署者应根据已启用组件的访问方式、性能和可靠性要求进行组合。
 
-我们使用 [OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv) 来管理节点本地存储，适用于需要高吞吐量和数据本地性的工作负载。
+标准 Kubernetes 只定义 PV、PVC 和 `StorageClass` 等存储接口，不会随集群自动提供 OpenEBS、NFS 或 Ceph。Crater Chart 负责声明 PVC 并挂载到组件，也不会安装这些存储后端。部署 Crater 前，管理员需要自行部署或接入存储系统，并在集群中准备好对应的 `StorageClass`。
 
-### 为什么使用 LocalPV？
+## 架构概览
 
-- **基于 CRD 的管理**：允许使用 Kubernetes 原生的声明式管理本地磁盘。
-- **性能**：数据保留在同一节点上，从而减少网络开销。
-- **Crater 中的应用场景**：
-  - 作业缓存目录
-  - 本地数据集暂存区
-  - 每个节点的推理或训练临时空间
+应用不会直接选择某台存储服务器，而是通过 Kubernetes 的统一接口使用存储：
 
-### StorageClass
+```text
+Crater 组件 → PVC → StorageClass → 存储驱动或 provisioner → 实际存储后端
+```
 
-为本地磁盘分配配置了一个专用的 `StorageClass`。该类被以下图表引用：
-- `cloudnative-pg` 用于数据库存储
-- 不需要复制的分布式作业输出
+因此，Crater 关注的是卷能否满足访问模式，集群管理员负责决定底层使用 OpenEBS、NFS 还是 Ceph。下表描述的是可按需组合的存储能力，不是每次部署都必须凑齐的固定层次。
 
-参见：[`deployments/openebs`](../deployments/openebs)
+| 存储能力 | 何时需要 | 典型访问方式 | Crater 中的主要用途 | 常用实现 |
+| --- | --- | --- | --- | --- |
+| 节点本地存储 | 启用 BuildKit，或采用本站的 CloudNativePG 方案时 | 单节点挂载，低延迟 | 可重建的构建缓存，或由上层应用保障副本的持久数据 | OpenEBS LocalPV |
+| 共享文件存储 | Crater 基础安装通常需要 | 多个 Pod 或节点同时读写（RWX） | 用户 HOME、数据集、模型、共享文件和备份 | NFS 或 CephFS |
+| 分布式块存储 | 启用需要持久 RWO 卷的独立组件时可选 | 通常由一个节点读写（RWO） | 当前 Prometheus Stack 文档方案中的历史指标 | Ceph RBD |
 
----
+PVC 显示 `Bound` 只表示 Kubernetes 已为申请分配存储，并不保证目标节点已经完成挂载。实际可用性还取决于节点上的挂载工具、CSI 插件、网络和后端存储状态。
 
-## 2. 共享块存储（通过 Rook 的 Ceph RBD）
+## 存储能力如何配合
 
-对于需要跨多个节点访问的持久化卷，Crater 使用 [Rook-Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html)。RBD 卷动态分配并支持：
+### 节点本地存储
 
-- 支持迁移的 ReadWriteOnce 访问
-- 复制和故障恢复
-- 适用于：
-  - Prometheus TSDB 存储
-  - 需要持久化的 Crater 内部服务
-  - 跨节点共享的数据集
+[OpenEBS LocalPV](https://openebs.io/docs/user-guides/localpv) 将节点上的本地目录或磁盘包装成 Kubernetes 持久卷。LocalPV 是 Kubernetes 支持的一类卷，但用于动态创建卷的 OpenEBS provisioner 需要管理员单独部署；Crater 当前文档方案使用它提供的 `openebs-hostpath` 存储类。
 
-选择 Ceph 的原因包括：
+Crater 在两个明确场景中使用这项存储能力：
 
-- 通过 Rook 实现 Kubernetes 原生的分配
-- 强大的社区支持
-- 可扩展性和容错性
+- 启用 BuildKit 镜像构建服务时，每个 BuildKit 实例使用独立的 LocalPV 保存构建缓存。缓存留在本地可以减少镜像层的重复下载和构建；缓存丢失会降低后续构建速度，但可以重新生成。BuildKit 默认关闭，因此不使用镜像构建功能时，不会因为它而要求部署 LocalPV。
+- 使用本站介绍的 CloudNativePG 部署方案时，每个 PostgreSQL 实例使用 LocalPV 保存数据库文件。卷本身不复制数据，数据库的副本、故障转移和备份需要由 CloudNativePG 负责。
 
-> 📌 我们的大多数有状态组件（如 Prometheus）都通过自定义的 `StorageClass` 使用 Ceph RBD 卷。
+LocalPV 本身不是分布式存储，也不会自动把数据复制到其他节点。卷会带有节点约束，Pod 需要回到保存数据的节点才能继续使用它。因此，只有可重建数据，或已经由上层应用提供冗余的数据，才适合使用这项能力。
 
----
+### 共享文件存储
 
-## 存储使用矩阵
+storage-server、用户共享文件和数据库备份需要多个 Pod 或节点访问同一目录，通常使用支持 `ReadWriteMany` 的 NFS 或 CephFS。两者在 Crater 架构中承担相同角色，但实现和运维方式不同：
 
-| 组件             | 类型               | 存储后端         | 说明                                  |
-|------------------|--------------------|------------------|----------------------------------------|
-| PostgreSQL (Crater DB) | 持久化         | LocalPV (OpenEBS) | 高速，节点专用                         |
-| Prometheus TSDB        | 持久化         | Ceph RBD (Rook)   | 多节点，高度耐用                      |
-| 用户作业             | 临时 / 持久化     | LocalPV / Ceph RBD | 依据配置决定                           |
-| Grafana 仪表盘     | 临时 / 持久化     | Ceph RBD           | 可选，取决于仪表盘配置                |
+- **NFS** 需要管理员准备 NFS 服务端、节点上的 NFS 客户端能力以及 Kubernetes provisioner。它部署简单，适合已有可靠 NFS 服务或规模较小的集群；容量、性能和可用性取决于 NFS 服务端。
+- **CephFS** 需要管理员部署或接入 Ceph，并安装 Rook/CephFS CSI 等 Kubernetes 接入组件。它适合已经运行 Ceph、需要扩展性和存储侧容错的集群，但部署和维护成本更高。
 
----
+Crater 核心 Chart 默认通过名为 `nfs` 的存储类创建共享卷，并把同一个 PVC 挂载到 storage-server 的多个副本，用于保存和提供用户文件。用户启动 Jupyter、WebIDE 或训练任务时，Crater 会把用户自己的 HOME 目录挂载到容器中；用户从账户空间或公共空间中选择的文件、数据集和模型，也会从这一层存储挂载到任务容器。这些挂载使用 Crater 配置的 RWX 共享 PVC，或指向同一底层存储的可选只读 PVC。
 
-## 注意事项
+普通用户镜像只提供容器运行环境，不会决定这些文件使用 LocalPV、NFS 还是 CephFS。具体后端由共享 PVC 所引用的 `StorageClass` 决定。数据库备份功能也默认把备份写入 NFS 存储类上的另一个 RWX 卷。
 
-- 确保提供 LocalPV 的节点已打标签并挂载磁盘路径。
-- Ceph RBD 需要在集群节点上预先配置好块存储设备。
-- 使用节点亲和性和容忍性与 LocalPV 绑定 Pod 到正确的存储位置。
-- 查看每个图表的文档，以获取适当的 `StorageClass` 覆盖设置。
+这里的 `nfs` 只是默认的 `StorageClass` 名称，并不表示 Crater 会部署 NFS。如果集群使用 CephFS，可以把这两处配置改为实际的 CephFS `StorageClass`，Crater 的使用方式不变。
 
----
+### 分布式块存储
 
-## 相关模块
+[Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html) 从 Ceph 集群提供虚拟块设备，Kubernetes 在节点上将其格式化并挂载给 Pod。和 CephFS 一样，Ceph 集群、Rook 与 RBD CSI 需要由管理员预先部署，Crater 不会自动安装它们。
 
-- [`openebs`](./openebs.md)
-- [`cloudnative-pg`](./cloudnative-pg.md)
-- [`prometheus`](./prometheus.md)
+Crater 核心 Chart 默认不直接使用 RBD，因此分布式块存储不是 Crater 的基础依赖。本站介绍的 Prometheus Stack 部署方案使用 `rook-ceph-rbd` 保存 Prometheus 历史指标，因为 Prometheus 需要可靠的持久卷，但不要求多个节点同时写入同一文件系统。如果管理员另外为 Grafana 启用持久化，Grafana 也需要合适的持久卷，但不必须使用 RBD。
 
-## 安装
+没有 Ceph RBD 不会影响用户 HOME、数据集、模型或普通作业，只要共享文件存储正常可用。如果需要部署 Prometheus Stack，可以将 RBD 替换为其他满足要求的 RWO `StorageClass`。如果不为 Prometheus 提供持久卷，Pod 重建后可能丢失历史指标；如果已声明 PVC 却没有可用的 `StorageClass`，相关 Pod 将无法完成部署。
 
-我们建议使用 NFS 作为存储提供程序，并使用带有 Crater 预配置值的官方 Helm 图表。
+RBD 和 CephFS 共用 Ceph 作为底层集群，但不是同一种卷：RBD 提供块设备，CephFS 提供共享文件系统，两者使用不同的 CSI 驱动。RBD 不能替代 storage-server 所需的 RWX 文件存储，节点支持 RBD 也不表示已经支持 CephFS。
 
-📖 详细指南：[`deployments/nfs/README.md`](../deployments/nfs/README.md)
+因此，只使用 NFS 提供共享文件存储的集群，如果没有启用需要持久 RWO 卷的组件，可以完全不部署分布式块存储。NFS 与 RBD 不是同一用途的二选一产品：集群可以只使用 NFS，也可以让 NFS 与 RBD 按需并存。
+
+## Crater 中的实现
+
+Crater 的核心 Chart 通过以下配置接入已有的 `StorageClass`：
+
+| 用途 | 何时使用 | Chart 配置 | 要求 | 默认值 |
+| --- | --- | --- | --- | --- |
+| 用户 HOME、共享文件、数据集和模型 | 基础安装；storage-server 和用户任务共用 | `storage.storageClass` | RWX | `nfs` |
+| PostgreSQL 备份卷 | 启用数据库备份并创建 PVC 时 | `dbBackup.config.storageClass` | RWX | `nfs` |
+| AMD BuildKit 缓存 | 启用 AMD BuildKit 时 | `buildkitConfig.amdConfig.cache.storageClass` | 节点本地 RWO 卷 | `openebs-hostpath` |
+| ARM BuildKit 缓存 | 启用 ARM BuildKit 时 | `buildkitConfig.armConfig.cache.storageClass` | 节点本地 RWO 卷 | `openebs-hostpath` |
+
+CloudNativePG 和 Prometheus 等独立组件按各自的部署配置选择存储。当前文档方案中，CloudNativePG 使用 OpenEBS LocalPV，Prometheus 使用 Ceph RBD；这些是已给出的部署选择，不是 Crater 核心组件对特定存储产品的强制依赖。部署者可以根据集群的可靠性设计调整，但必须保持组件所需的访问模式。
+
+部署时不必同时安装所有后端，但必须先提供 Crater 已启用功能所需的存储：基础安装通常先准备一个 RWX `StorageClass` 供 storage-server 和用户任务使用；启用 BuildKit 或采用本站的 CloudNativePG 方案时再部署 OpenEBS；采用本站的 Prometheus 方案时，则准备 Ceph RBD 或其他适合的持久 RWO 存储。已经维护 Ceph 的集群也可以使用 CephFS 替换默认 NFS。
+
+较大的集群通常采用混合方案，让本地缓存避免占用共享存储，同时将需要跨节点访问或故障恢复的数据放在共享层。
+
+## 部署与运维检查
+
+在部署 Crater 或更新有状态组件前，至少确认以下事项：
+
+1. 已部署或接入实际存储后端，集群中存在配置所引用的 `StorageClass`，并且访问模式满足组件要求。
+2. LocalPV 的目标节点已经准备好本地路径，Pod 的节点选择与卷的节点约束一致。
+3. NFS 客户端能力或对应 CSI 节点插件覆盖所有可能运行工作负载的节点。
+4. 创建测试 PVC 和 Pod，在目标节点实际完成挂载和读写，而不只检查 PVC 是否为 `Bound`。
+
+### CephFS CSI 节点覆盖
+
+如果工作负载能够调度到带污点的控制平面节点或其他专用节点，CephFS CSI DaemonSet 也必须能够调度到这些节点并注册驱动。工作负载的 toleration 不会自动传递给 CSI 插件。
+
+一次实际故障中，storage-server 通过 node selector 和 toleration 运行在带 `NoSchedule` 污点的控制平面节点，但 Rook 管理的 CephFS CSI DaemonSet 没有相同的 toleration。业务 Pod 因此能被调度到目标节点，该节点却没有 CephFS CSI Pod，`CSINode` 中也没有注册 CephFS 驱动。
+
+遇到以下组合现象时，应优先检查 CSI 节点覆盖和 toleration，而不是先排查业务镜像：
+
+- 新建或 rollout 产生的 Pod 已调度到节点，但一直停在 `ContainerCreating`；容器尚未启动。
+- PVC 已经 `Bound`，VolumeAttachment 甚至显示 `attached=true`，但 Pod 事件报告 `rook-ceph.cephfs.csi.ceph.com` 不在已注册的 CSI 驱动列表中。
+- 同一工作负载的旧 Pod 仍能读写，但新建、迁移或重建的 Pod 无法挂载。
+
+旧 Pod 仍可用并不矛盾。CSI 节点插件负责建立、卸载和重新发布挂载，不会代理应用的每次文件读写。插件消失后，过去建立的 CephFS 内核挂载可能继续工作，但 Pod 重建、迁移、节点重启或重新挂载都会暴露问题。
+
+排查时应同时对照工作负载目标节点的污点与 toleration、CephFS CSI DaemonSet 的节点覆盖，以及 `CSINode` 中的驱动注册。应通过当前 Rook 版本支持的持久配置修复 Operator 的期望状态，不要直接修改由 Operator 管理的 DaemonSet。
+
+修复后应观察 CSI DaemonSet 的 `desired`、`updated`、`ready`、`available` 和 `unavailable`，再确认业务 Pod 的挂载事件。如果 RollingUpdate 停滞，应先检查第一个异常的 CSI Pod 和所在节点事件；在 `maxUnavailable` 较小时，单个节点故障就可能阻塞后续更新，不表示所有未更新节点都存在问题。
+
+## 相关文档
+
+- [OpenEBS 部署指南](./openebs.mdx)
+- [CloudNativePG 部署指南](./cloudnative-pg.mdx)
+- [Prometheus Stack 部署指南](./prometheus.mdx)
+- [Rook-Ceph 练习指南](../learning/ceph/ceph-basic.mdx)
