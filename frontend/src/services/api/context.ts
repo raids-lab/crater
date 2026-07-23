@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
+import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { IResponse } from '../types'
 import { IUserAttributes } from './admin/user'
@@ -74,6 +74,23 @@ export interface PrequeueFeatureStatusResp {
   backfillEnabled: boolean
 }
 
+export interface UserLLMConfigResp {
+  baseUrl: string
+  apiKey: string
+  modelName: string
+  source: 'user_config' | 'system_config' | string
+  usingPersonal: boolean
+  complete: boolean
+  hasApiKey: boolean
+}
+
+export interface UpdateUserLLMConfigReq {
+  baseUrl: string
+  apiKey: string
+  modelName: string
+  validate: boolean
+}
+
 export const apiContextPrequeueStatus = () =>
   apiV1Get<IResponse<PrequeueFeatureStatusResp>>('context/prequeue')
 
@@ -85,6 +102,13 @@ export const apiContextJobResourceSummary = () =>
 
 export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
   apiV1Put<IResponse<string>>('context/attributes', data)
+
+export const apiContextGetLLMConfig = () => apiV1Get<IResponse<UserLLMConfigResp>>('context/llm')
+
+export const apiContextUpdateLLMConfig = (data: UpdateUserLLMConfigReq) =>
+  apiV1Put<IResponse<string>>('context/llm', data)
+
+export const apiContextResetLLMConfig = () => apiV1Delete<IResponse<string>>('context/llm')
 
 // apiSendVerificationEmail,
 // apiVerifyEmailCode,

@@ -16,10 +16,7 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"node", "ls"}, {"node", "get"}, {"node", "pods"}, {"node", "gpu"},
 		{"job", "ls"}, {"job", "get"}, {"job", "pods"}, {"job", "events"}, {"job", "yaml"}, {"job", "template"}, {"job", "token"}, {"job", "secret"}, {"job", "ssh"}, {"job", "snapshot"}, {"job", "alert"}, {"job", "delete"},
 		{"job", "create", "jupyter"}, {"job", "create", "webide"}, {"job", "create", "custom"}, {"job", "create", "tensorflow"}, {"job", "create", "pytorch"},
-		{"image", "ls"}, {"image", "build", "ls"}, {"image", "build", "pip-apt"}, {"image", "build", "dockerfile"}, {"image", "build", "envd"}, {"image", "build", "remove"}, {"image", "build", "get"}, {"image", "build", "template"}, {"image", "build", "pod"},
-		{"image", "upload"}, {"image", "delete"}, {"image", "delete-many"}, {"image", "description"}, {"image", "type"}, {"image", "tags"}, {"image", "arch"}, {"image", "valid"},
-		{"image", "share", "ls"}, {"image", "share", "users"}, {"image", "share", "accounts"}, {"image", "share", "add"}, {"image", "share", "remove"},
-		{"image", "cuda", "ls"}, {"image", "harbor", "info"}, {"image", "harbor", "credential"}, {"image", "quota", "get"}, {"image", "quota", "set"},
+		{"image", "ls"},
 		{"account", "ls"}, {"account", "get"}, {"account", "members"}, {"account", "users-out"}, {"account", "billing", "config"}, {"account", "billing", "members"},
 		{"resource", "ls"}, {"resource", "networks"}, {"resource", "vgpu"}, {"resource", "prices"},
 		{"dataset", "ls"}, {"dataset", "get"}, {"dataset", "users"}, {"dataset", "queues"}, {"dataset", "users-out"}, {"dataset", "queues-out"},
@@ -37,7 +34,6 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"admin", "dataset", "ls"},
 		{"admin", "model-download", "ls"},
 		{"admin", "billing", "status"}, {"admin", "billing", "jobs"},
-		{"admin", "image", "build-ls"}, {"admin", "image", "build-remove"}, {"admin", "image", "ls"}, {"admin", "image", "delete-many"}, {"admin", "image", "description"}, {"admin", "image", "type"}, {"admin", "image", "tags"}, {"admin", "image", "arch"}, {"admin", "image", "public"}, {"admin", "image", "cuda", "add"}, {"admin", "image", "cuda", "delete"},
 		{"admin", "job", "ls"}, {"admin", "job", "delete"}, {"admin", "job", "lock"}, {"admin", "job", "unlock"}, {"admin", "job", "keep"},
 		{"admin", "job", "clean", "waiting-jupyter"}, {"admin", "job", "clean", "waiting-custom"}, {"admin", "job", "clean", "long-running"}, {"admin", "job", "clean", "low-gpu"},
 		{"admin", "order", "ls"}, {"admin", "order", "get"}, {"admin", "order", "approve"}, {"admin", "order", "reject"}, {"admin", "order", "check"},
@@ -56,7 +52,7 @@ func TestReadCommandMatrix(t *testing.T) {
 	}
 
 	apiCases := [][]string{
-		{"node", "ls"}, {"job", "ls"}, {"image", "ls"}, {"image", "build", "ls"}, {"image", "cuda", "ls"}, {"image", "harbor", "info"}, {"image", "quota", "get"},
+		{"node", "ls"}, {"job", "ls"}, {"image", "ls"},
 		{"account", "ls"}, {"resource", "ls"}, {"dataset", "ls"}, {"template", "ls"}, {"model-download", "ls"},
 		{"context", "prequeue"}, {"context", "quota"}, {"context", "resources"}, {"context", "billing"},
 		{"billing", "status"}, {"billing", "summary"}, {"billing", "prices"}, {"billing", "jobs"},
@@ -64,7 +60,7 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"admin", "system-config", "llm"}, {"admin", "system-config", "gpu-analysis"}, {"admin", "system-config", "prequeue"},
 		{"admin", "queue-quotas"}, {"admin", "gpu-analyses"}, {"admin", "operation-logs"}, {"admin", "cronjobs"}, {"admin", "whitelist"},
 		{"admin", "account", "ls"}, {"admin", "dataset", "ls"}, {"admin", "model-download", "ls"},
-		{"admin", "billing", "status"}, {"admin", "billing", "jobs"}, {"admin", "image", "ls"}, {"admin", "image", "build-ls"}, {"admin", "job", "ls"}, {"admin", "order", "ls"}, {"admin", "user", "ls"}, {"admin", "user", "billing", "summary"},
+		{"admin", "billing", "status"}, {"admin", "billing", "jobs"}, {"admin", "job", "ls"}, {"admin", "order", "ls"}, {"admin", "user", "ls"}, {"admin", "user", "billing", "summary"},
 	}
 	env404 := append(baseEnv, "CRATER_TEST_SANDBOX_HTTP=error404")
 	for _, command := range apiCases {

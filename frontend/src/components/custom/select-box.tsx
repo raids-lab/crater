@@ -48,17 +48,7 @@ interface SelectBoxProps {
   inputPlaceholder?: string
   emptyPlaceholder?: string
   className?: string
-  withDialogOverlay?: boolean
-  disabled?: boolean
 }
-
-const OptionalDialogOverlay = ({
-  enabled,
-  children,
-}: {
-  enabled: boolean
-  children: React.ReactNode
-}) => (enabled ? <DialogOverlay>{children}</DialogOverlay> : <>{children}</>)
 
 const SelectBox = ({
   ref,
@@ -70,8 +60,6 @@ const SelectBox = ({
   value,
   onChange,
   onInputChange,
-  withDialogOverlay = true,
-  disabled = false,
 }: SelectBoxProps & {
   ref?: React.RefObject<HTMLInputElement>
 }) => {
@@ -102,7 +90,6 @@ const SelectBox = ({
         <PopoverTrigger asChild>
           <Button
             variant={'outline'}
-            disabled={disabled}
             className={cn(
               'flex h-full min-h-[36px] w-full cursor-pointer items-center justify-between px-3 py-1 font-normal whitespace-nowrap',
               'data-[state=open]:border-ring data-[state=open]:ring-ring/50 data-[state=open]:ring-[3px]',
@@ -154,7 +141,7 @@ const SelectBox = ({
             </div>
           </Button>
         </PopoverTrigger>
-        <OptionalDialogOverlay enabled={withDialogOverlay}>
+        <DialogOverlay>
           <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
             <Command>
               <div className="relative">
@@ -217,7 +204,7 @@ const SelectBox = ({
               </CommandList>
             </Command>
           </PopoverContent>
-        </OptionalDialogOverlay>
+        </DialogOverlay>
       </Popover>
     </div>
   )

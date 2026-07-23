@@ -1,7 +1,6 @@
 package image
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 
@@ -9,11 +8,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"gorm.io/datatypes"
-	"gorm.io/gorm"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 )
@@ -283,13 +280,7 @@ func (mgr *ImagePackMgr) DeleteImageByID(c *gin.Context) {
 	}
 	imageID := deleteImageRequest.ID
 	imageQuery := query.Image
-	if !mgr.requireImageOwner(c, imageID) {
-		return
-	}
-	if _, err = imageQuery.WithContext(c).
-		Where(imageQuery.ID.Eq(imageID)).
-		Where(imageQuery.UserID.Eq(util.GetToken(c).UserID)).
-		Delete(); err != nil {
+	if _, err = imageQuery.WithContext(c).Where(imageQuery.ID.Eq(imageID)).Delete(); err != nil {
 		klog.Errorf("delete image entity failed! err:%v", err)
 		resputil.Error(c, "failed to delete image", resputil.NotSpecified)
 	}
@@ -313,11 +304,6 @@ func (mgr *ImagePackMgr) UserDeleteImageByIDList(c *gin.Context) {
 		msg := fmt.Sprintf("validate delete parameters failed, err %v", err)
 		resputil.BadRequestError(c, msg)
 		return
-	}
-	for _, imageID := range deleteImageListRequest.IDList {
-		if !mgr.requireImageOwner(c, imageID) {
-			return
-		}
 	}
 	flag := mgr.deleteImageByIDList(c, false, deleteImageListRequest.IDList)
 	if flag {
@@ -437,9 +423,6 @@ func (mgr *ImagePackMgr) UserChangeImageDescription(c *gin.Context) {
 		resputil.BadRequestError(c, "validate failed")
 		return
 	}
-	if !mgr.requireImageOwner(c, req.ID) {
-		return
-	}
 	mgr.changeImageDescription(c, false, req.ID, req.Description)
 }
 
@@ -491,9 +474,6 @@ func (mgr *ImagePackMgr) UserChangeImageTaskType(c *gin.Context) {
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate task type failed, err %v", err)
 		resputil.BadRequestError(c, "validate failed")
-		return
-	}
-	if !mgr.requireImageOwner(c, req.ID) {
 		return
 	}
 	mgr.changeImageTaskType(c, false, req.ID, req.TaskType)
@@ -597,10 +577,7 @@ func (mgr *ImagePackMgr) UserChangeImageTags(c *gin.Context) {
 		resputil.BadRequestError(c, "validate failed")
 		return
 	}
-	if !mgr.requireImageOwner(c, req.ID) {
-		return
-	}
-	mgr.changeImageTags(c, false, req.ID, req.Tags)
+	mgr.changeImageTags(c, req.ID, req.Tags)
 }
 
 // AdminChangeImageTagsType godoc
@@ -619,16 +596,13 @@ func (mgr *ImagePackMgr) AdminChangeImageTags(c *gin.Context) {
 		resputil.BadRequestError(c, "validate failed")
 		return
 	}
-	mgr.changeImageTags(c, true, req.ID, req.Tags)
+	mgr.changeImageTags(c, req.ID, req.Tags)
 }
 
-func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, isAdminMode bool, imageID uint, newTags []string) {
+func (mgr *ImagePackMgr) changeImageTags(c *gin.Context, imageID uint, newTags []string) {
 	imageQuery := query.Image
-	specifiedQuery := imageQuery.WithContext(c)
-	if !isAdminMode {
-		specifiedQuery = specifiedQuery.Where(imageQuery.UserID.Eq(util.GetToken(c).UserID))
-	}
-	if _, err := specifiedQuery.Where(imageQuery.ID.Eq(imageID)).
+	if _, err := imageQuery.WithContext(c).
+		Where(imageQuery.ID.Eq(imageID)).
 		Update(imageQuery.Tags, datatypes.NewJSONType(newTags)); err != nil {
 		klog.Errorf("update image tags failed, err %v", err)
 		resputil.BadRequestError(c, "update tags failed")
@@ -650,9 +624,6 @@ func (mgr *ImagePackMgr) UserShareImage(c *gin.Context) {
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate tags data failed, err %v", err)
 		resputil.BadRequestError(c, "validate failed")
-		return
-	}
-	if !mgr.requireImageOwner(c, req.ImageID) {
 		return
 	}
 	for _, id := range req.IDList {
@@ -742,9 +713,6 @@ func (mgr *ImagePackMgr) UserCancelShareImage(c *gin.Context) {
 		resputil.BadRequestError(c, "validate failed")
 		return
 	}
-	if !mgr.requireImageOwner(c, req.ImageID) {
-		return
-	}
 	if req.Type == "user" {
 		if err := mgr.cancelShareImageWithUser(c, req.ImageID, req.ID); err != nil {
 			resputil.Error(c, fmt.Sprintf("%v", err), resputil.NotSpecified)
@@ -762,9 +730,9 @@ func (mgr *ImagePackMgr) UserCancelShareImage(c *gin.Context) {
 //nolint:dupl // ignore duplicate code
 func (mgr *ImagePackMgr) cancelShareImageWithAccount(c *gin.Context, imageID, accountID uint) error {
 	accountImageQuery := query.ImageAccount
-	accountQuery := query.Account
+	userQuery := query.User
 	// check if the account exists
-	if _, err := accountQuery.WithContext(c).Where(accountQuery.ID.Eq(accountID)).First(); err != nil {
+	if _, err := userQuery.WithContext(c).Where(userQuery.ID.Eq(accountID)).First(); err != nil {
 		return fmt.Errorf("account does not exist: %w", err)
 	}
 	// check if the image has been shared to this account
@@ -821,9 +789,6 @@ func (mgr *ImagePackMgr) GetImageGrantedUserOrAccount(c *gin.Context) {
 		resputil.BadRequestError(c, "validate failed")
 		return
 	}
-	if !mgr.requireImageOwner(c, req.ImageID) {
-		return
-	}
 
 	grangtedAccounts := []ImageGrantedAccounts{}
 	imageAccountQuery := query.ImageAccount
@@ -878,9 +843,6 @@ func (mgr *ImagePackMgr) UserGetImageUngrantedAccounts(c *gin.Context) {
 	if err := c.ShouldBindQuery(req); err != nil {
 		klog.Errorf("validate search failed, err %v", err)
 		resputil.BadRequestError(c, "validate failed")
-		return
-	}
-	if !mgr.requireImageOwner(c, req.ImageID) {
 		return
 	}
 	// 1. 查询已分享的AccountID
@@ -941,9 +903,6 @@ func (mgr *ImagePackMgr) UserSearchUngrantedUsers(c *gin.Context) {
 	if err := c.ShouldBindQuery(req); err != nil {
 		klog.Errorf("validate search failed, err %v", err)
 		resputil.BadRequestError(c, "validate failed")
-		return
-	}
-	if !mgr.requireImageOwner(c, req.ImageID) {
 		return
 	}
 
@@ -1018,7 +977,7 @@ func (mgr *ImagePackMgr) UserGetCudaBaseImages(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
-// AdminAddCudaBaseImage godoc
+// UserAddCudaBaseImage godoc
 //
 //	@Summary		添加CUDA基础镜像
 //	@Description	添加新的CUDA基础镜像到系统中
@@ -1027,8 +986,8 @@ func (mgr *ImagePackMgr) UserGetCudaBaseImages(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			data	body	CudaBaseImageCreateRequest	true	"CUDA基础镜像信息"
-//	@Router			/v1/admin/images/cudabaseimage [POST]
-func (mgr *ImagePackMgr) AdminAddCudaBaseImage(c *gin.Context) {
+//	@Router			/v1/images/cudabaseimage [POST]
+func (mgr *ImagePackMgr) UserAddCudaBaseImage(c *gin.Context) {
 	req := &CudaBaseImageCreateRequest{}
 	if err := c.ShouldBindJSON(req); err != nil {
 		klog.Errorf("validate cuda base image create request failed, err %v", err)
@@ -1064,7 +1023,7 @@ func (mgr *ImagePackMgr) AdminAddCudaBaseImage(c *gin.Context) {
 	resputil.Success(c, "cuda base image created successfully")
 }
 
-// AdminDeleteCudaBaseImage godoc
+// UserDeleteCudaBaseImage godoc
 //
 //	@Summary		删除CUDA基础镜像
 //	@Description	根据ID删除指定的CUDA基础镜像
@@ -1073,8 +1032,8 @@ func (mgr *ImagePackMgr) AdminAddCudaBaseImage(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	path	uint	true	"CUDA基础镜像ID"
-//	@Router			/v1/admin/images/cudabaseimage/{id} [DELETE]
-func (mgr *ImagePackMgr) AdminDeleteCudaBaseImage(c *gin.Context) {
+//	@Router			/v1/images/cudabaseimage/{id} [DELETE]
+func (mgr *ImagePackMgr) UserDeleteCudaBaseImage(c *gin.Context) {
 	req := &CudaBaseImageDeleteRequest{}
 	if err := c.ShouldBindUri(req); err != nil {
 		klog.Errorf("validate cuda base image delete request failed, err %v", err)
@@ -1123,9 +1082,6 @@ func (mgr *ImagePackMgr) UserUpdateImageArch(c *gin.Context) {
 		resputil.BadRequestError(c, "validate failed")
 		return
 	}
-	if !mgr.requireImageOwner(c, req.ID) {
-		return
-	}
 
 	mgr.updateImageArch(c, false, req.ID, req.Archs)
 }
@@ -1172,22 +1128,4 @@ func (mgr *ImagePackMgr) updateImageArch(c *gin.Context, isAdminMode bool, image
 
 	klog.Infof("image archs updated successfully, id: %d, new archs: %v", imageID, newArchs)
 	resputil.Success(c, "image archs updated successfully")
-}
-
-func (mgr *ImagePackMgr) requireImageOwner(c *gin.Context, imageID uint) bool {
-	imageQuery := query.Image
-	if _, err := imageQuery.WithContext(c).
-		Where(imageQuery.ID.Eq(imageID)).
-		Where(imageQuery.UserID.Eq(util.GetToken(c).UserID)).
-		First(); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			klog.Warningf("permission denied or image not found, imageID: %d", imageID)
-			resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to manage this image"))
-			return false
-		}
-		klog.Errorf("check image owner failed, imageID: %d, err: %v", imageID, err)
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "check image owner failed"))
-		return false
-	}
-	return true
 }

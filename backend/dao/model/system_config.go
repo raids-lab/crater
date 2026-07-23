@@ -27,13 +27,6 @@ const (
 	ConfigKeyBillingDefaultIssuePeriodMinute          = "BILLING_DEFAULT_ISSUE_PERIOD_MINUTES"
 	ConfigKeyBillingAccountIssueAmountOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_AMOUNT_OVERRIDE"
 	ConfigKeyBillingAccountIssuePeriodOverrideEnabled = "ENABLE_BILLING_ACCOUNT_ISSUE_PERIOD_OVERRIDE"
-
-	// 模型与数据集下载额度配置键
-	ConfigKeyModelDownloadLimitEnabled           = "MODEL_DOWNLOAD_LIMIT_ENABLED"
-	ConfigKeyModelDownloadMaxConcurrent          = "MODEL_DOWNLOAD_MAX_CONCURRENT"
-	ConfigKeyModelDownloadWindowHours            = "MODEL_DOWNLOAD_WINDOW_HOURS"
-	ConfigKeyModelDownloadMaxSuccessfulDownloads = "MODEL_DOWNLOAD_MAX_SUCCESSFUL_DOWNLOADS"
-	ConfigKeyModelDownloadWhitelistUsers         = "MODEL_DOWNLOAD_WHITELIST_USER_IDS"
 )
 
 // DefaultConfigKeys 定义了系统启动时必须存在的键
@@ -51,9 +44,4 @@ var DefaultConfigKeys = []string{
 	ConfigKeyBillingDefaultIssuePeriodMinute,
 	ConfigKeyBillingAccountIssueAmountOverrideEnabled,
 	ConfigKeyBillingAccountIssuePeriodOverrideEnabled,
-	ConfigKeyModelDownloadLimitEnabled,
-	ConfigKeyModelDownloadMaxConcurrent,
-	ConfigKeyModelDownloadWindowHours,
-	ConfigKeyModelDownloadMaxSuccessfulDownloads,
-	ConfigKeyModelDownloadWhitelistUsers,
 }

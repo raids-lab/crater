@@ -29,11 +29,9 @@ export interface CreateModelDownloadReq {
 export interface ModelDownloadActionReq {
   id: number
   token?: string
-  revision?: string
 }
 
 export type ModelDownloadStatus = 'Pending' | 'Downloading' | 'Paused' | 'Ready' | 'Failed'
-export type ModelDownloadRelation = 'creator' | 'submitted' | 'none'
 
 export interface ModelDownload {
   id: number
@@ -49,15 +47,12 @@ export interface ModelDownload {
   message: string
   jobName: string
   creatorId: number
-  requesterCount: number
-  requesters: IUserInfo[]
-  relation: ModelDownloadRelation
+  referenceCount: number
   createdAt: string
   updatedAt: string
   sourceUpdatedAt?: string
   userInfo: IUserInfo
   canManage: boolean
-  canDelete: boolean
   canViewLogs: boolean
   sourceUrl: string
   displayName: string
@@ -108,11 +103,8 @@ export const apiListModelDownloadsPaged = (params: ModelDownloadListParams) => {
 export const apiGetModelDownload = (id: number) =>
   apiV1Get<IResponse<ModelDownload>>(`model-download/models/downloads/${id}`)
 
-export const apiRetryModelDownload = ({ id, token, revision }: ModelDownloadActionReq) =>
-  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/retry`, {
-    token,
-    revision,
-  })
+export const apiRetryModelDownload = ({ id, token }: ModelDownloadActionReq) =>
+  apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/retry`, { token })
 
 export const apiPauseModelDownload = (id: number) =>
   apiV1Post<IResponse<ModelDownload>>(`model-download/models/downloads/${id}/pause`, {})

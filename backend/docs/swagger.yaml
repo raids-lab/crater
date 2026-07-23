@@ -573,16 +573,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        $ref: '#/definitions/internal_handler.AdminModelDownloadLimitConfigResp'
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp:
     properties:
       code:
@@ -660,16 +650,6 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.LoginResp'
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        $ref: '#/definitions/internal_handler.ModelDownloadLimitConfigResp'
       msg:
         type: string
     type: object
@@ -1141,21 +1121,6 @@ definitions:
       username:
         type: string
     type: object
-  internal_handler.AdminModelDownloadLimitConfigResp:
-    properties:
-      enabled:
-        type: boolean
-      maxConcurrent:
-        type: integer
-      maxSuccessfulDownloads:
-        type: integer
-      whitelistUserIds:
-        items:
-          type: integer
-        type: array
-      windowHours:
-        type: integer
-    type: object
   internal_handler.ApprovalOrderResp:
     properties:
       content:
@@ -1289,11 +1254,6 @@ definitions:
     type: object
   internal_handler.DownloadActionReq:
     properties:
-      revision:
-        description: |-
-          Revision is optional and only used by retry. A non-nil empty value means
-          "use the source default branch" while preserving the failed record's path.
-        type: string
       token:
         type: string
     type: object
@@ -1482,19 +1442,6 @@ definitions:
       user:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
     type: object
-  internal_handler.ModelDownloadLimitConfigResp:
-    properties:
-      enabled:
-        type: boolean
-      exempt:
-        type: boolean
-      maxConcurrent:
-        type: integer
-      maxSuccessfulDownloads:
-        type: integer
-      windowHours:
-        type: integer
-    type: object
   internal_handler.ModelDownloadListResp:
     properties:
       items:
@@ -1511,8 +1458,6 @@ definitions:
     type: object
   internal_handler.ModelDownloadResp:
     properties:
-      canDelete:
-        type: boolean
       canManage:
         type: boolean
       canViewLogs:
@@ -1548,16 +1493,7 @@ definitions:
       path:
         type: string
       referenceCount:
-        description: 'Deprecated: use requesterCount.'
         type: integer
-      relation:
-        type: string
-      requesterCount:
-        type: integer
-      requesters:
-        items:
-          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
-        type: array
       revision:
         type: string
       sizeBytes:
@@ -1877,26 +1813,6 @@ definitions:
     required:
     - baseUrl
     - modelName
-    type: object
-  internal_handler.UpdateModelDownloadLimitConfigReq:
-    properties:
-      enabled:
-        type: boolean
-      maxConcurrent:
-        type: integer
-      maxSuccessfulDownloads:
-        type: integer
-      whitelistUserIds:
-        items:
-          type: integer
-        type: array
-      windowHours:
-        type: integer
-    required:
-    - enabled
-    - maxConcurrent
-    - maxSuccessfulDownloads
-    - windowHours
     type: object
   internal_handler.UpdatePrequeueConfigReq:
     properties:
@@ -2776,32 +2692,6 @@ paths:
       summary: 获取后端用户认证模式
       tags:
       - Auth
-  /dataset/source-logo/{sourceId}:
-    get:
-      description: 返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点
-      parameters:
-      - description: 来源 ID
-        in: path
-        name: sourceId
-        required: true
-        type: integer
-      produces:
-      - image/png
-      - image/jpeg
-      - image/webp
-      - image/svg+xml
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: file
-        "400":
-          description: Bad Request
-        "404":
-          description: Not Found
-      summary: 获取平台缓存的模型或数据集来源 Logo
-      tags:
-      - Dataset
   /metrics:
     get:
       consumes:
@@ -3619,45 +3509,6 @@ paths:
       security:
       - Bearer: []
       summary: 管理员更新镜像架构
-      tags:
-      - ImagePack
-  /v1/admin/images/cudabaseimage:
-    post:
-      consumes:
-      - application/json
-      description: 添加新的CUDA基础镜像到系统中
-      parameters:
-      - description: CUDA基础镜像信息
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler_image.CudaBaseImageCreateRequest'
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 添加CUDA基础镜像
-      tags:
-      - ImagePack
-  /v1/admin/images/cudabaseimage/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: 根据ID删除指定的CUDA基础镜像
-      parameters:
-      - description: CUDA基础镜像ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses: {}
-      security:
-      - Bearer: []
-      summary: 删除CUDA基础镜像
       tags:
       - ImagePack
   /v1/admin/images/description:
@@ -4815,44 +4666,6 @@ paths:
       security:
       - Bearer: []
       summary: 更新 LLM 配置
-      tags:
-      - SystemConfig
-  /v1/admin/system-config/model-download-limit:
-    get:
-      description: 获取下载额度和白名单用户 ID
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp'
-      security:
-      - Bearer: []
-      summary: 管理员获取模型与数据集下载额度
-      tags:
-      - SystemConfig
-    put:
-      consumes:
-      - application/json
-      description: 配置所有用户的并发任务上限、滚动窗口成功下载上限和豁免白名单
-      parameters:
-      - description: 下载额度配置
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/internal_handler.UpdateModelDownloadLimitConfigReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
-      security:
-      - Bearer: []
-      summary: 更新模型与数据集下载额度
       tags:
       - SystemConfig
   /v1/admin/system-config/prequeue:
@@ -6268,6 +6081,44 @@ paths:
       summary: 获取所有Cuda基础镜像
       tags:
       - ImagePack
+    post:
+      consumes:
+      - application/json
+      description: 添加新的CUDA基础镜像到系统中
+      parameters:
+      - description: CUDA基础镜像信息
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_image.CudaBaseImageCreateRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 添加CUDA基础镜像
+      tags:
+      - ImagePack
+  /v1/images/cudabaseimage/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据ID删除指定的CUDA基础镜像
+      parameters:
+      - description: CUDA基础镜像ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 删除CUDA基础镜像
+      tags:
+      - ImagePack
   /v1/images/deleteimage:
     post:
       consumes:
@@ -6858,7 +6709,7 @@ paths:
     delete:
       consumes:
       - application/json
-      description: 删除下载任务记录(仅平台管理员),已下载的文件保留在存储中
+      description: 删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中
       parameters:
       - description: 下载任务ID
         in: path
@@ -6984,7 +6835,7 @@ paths:
         name: id
         required: true
         type: integer
-      - description: 可选的临时访问令牌和重试版本
+      - description: 可选的临时访问令牌
         in: body
         name: data
         schema:
@@ -8128,21 +7979,6 @@ paths:
       summary: 获取资源统计信息
       tags:
       - statistics
-  /v1/system-config/model-download-limit:
-    get:
-      description: 获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp'
-      security:
-      - Bearer: []
-      summary: 获取模型与数据集下载额度
-      tags:
-      - SystemConfig
   /v1/token/verify:
     get:
       consumes:

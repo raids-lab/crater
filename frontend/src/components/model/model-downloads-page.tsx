@@ -34,6 +34,7 @@ import {
   Play,
   RotateCw,
   SearchIcon,
+  Trash2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,11 +69,23 @@ import PageTitle from '@/components/layout/page-title'
 import ModelDownloadProgress from '@/components/model/model-download-progress'
 import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
 import { DataTablePagination } from '@/components/query-table/pagination'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui-custom/alert-dialog'
 
 import {
   ModelDownload,
   ModelDownloadListResp,
   ModelDownloadStatus,
+  apiDeleteModelDownload,
   apiListModelDownloadsPaged,
   apiPauseModelDownload,
   apiResumeModelDownload,
@@ -80,7 +93,6 @@ import {
 } from '@/services/api/modeldownload'
 
 import { logger } from '@/utils/loglevel'
-import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
@@ -92,16 +104,6 @@ const IDLE_REFETCH_MS = 30000
 const sourceLabelMap: Record<string, string> = {
   modelscope: 'ModelScope',
   huggingface: 'HuggingFace',
-}
-
-function downloadRelationKey(download: ModelDownload) {
-  if (download.relation === 'creator') return 'modelDownload.relation.creator'
-  if (download.relation === 'submitted') return 'modelDownload.relation.submitted'
-  if (download.status === 'Ready') return 'modelDownload.relation.publicReady'
-  if (['Pending', 'Downloading', 'Paused'].includes(download.status)) {
-    return 'modelDownload.relation.publicJoinable'
-  }
-  return null
 }
 
 export function ModelDownloadsPage() {
@@ -172,7 +174,10 @@ export function ModelDownloadsPage() {
       await refetchDownloads()
       toast.success(t('modelDownload.action.pauseSuccess'))
     },
-    onError: showErrorToast,
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { msg?: string } } }
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.pauseFailed'))
+    },
   })
 
   const { mutate: resumeDownload, isPending: isResuming } = useMutation({
@@ -182,7 +187,10 @@ export function ModelDownloadsPage() {
       setTokenTarget(null)
       toast.success(t('modelDownload.action.resumeSuccess'))
     },
-    onError: showErrorToast,
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { msg?: string } } }
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.resumeFailed'))
+    },
   })
 
   const { mutate: retryDownload, isPending: isRetrying } = useMutation({
@@ -192,7 +200,24 @@ export function ModelDownloadsPage() {
       setTokenTarget(null)
       toast.success(t('modelDownload.action.retrySuccess'))
     },
-    onError: showErrorToast,
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { msg?: string } } }
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.retryFailed'))
+    },
+  })
+
+  const { mutate: deleteDownload, isPending: isDeleting } = useMutation({
+    mutationFn: apiDeleteModelDownload,
+    onSuccess: async () => {
+      await refetchDownloads()
+      await queryClient.invalidateQueries({ queryKey: ['data', 'dataset'] })
+      await queryClient.invalidateQueries({ queryKey: ['data', 'model'] })
+      toast.success(t('modelDownload.action.deleteSuccess'))
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { msg?: string } } }
+      toast.error(err?.response?.data?.msg || t('modelDownload.action.deleteFailed'))
+    },
   })
 
   const columns = useMemo<ColumnDef<ModelDownload>[]>(
@@ -202,10 +227,8 @@ export function ModelDownloadsPage() {
         header: t('modelDownload.list.name'),
         cell: ({ row }) => {
           const d = row.original
-          const relationKey = downloadRelationKey(d)
-          const unavailableRequesterCount = Math.max(0, d.requesterCount - d.requesters.length)
           return (
-            <div className="flex max-w-[300px] flex-col gap-1">
+            <div className="flex max-w-[280px] flex-col gap-0.5">
               <Link
                 to={
                   d.category === 'dataset'
@@ -221,49 +244,6 @@ export function ModelDownloadsPage() {
                 {sourceLabelMap[d.source] ?? d.source}
                 {d.revision ? ` · ${d.revision}` : ''}
               </span>
-              {(relationKey || d.requesterCount > 0) && (
-                <div className="flex items-center gap-1.5">
-                  {relationKey && (
-                    <Badge
-                      variant={d.relation === 'none' ? 'outline' : 'secondary'}
-                      className="h-5 px-1.5 text-[10px] font-normal"
-                    >
-                      {t(relationKey)}
-                    </Badge>
-                  )}
-                  {d.requesterCount > 0 && (
-                    <SimpleTooltip
-                      tooltip={
-                        <div className="max-h-48 max-w-72 space-y-1 overflow-y-auto py-1">
-                          <p className="font-medium">
-                            {t('modelDownload.relation.requesterListTitle')}
-                          </p>
-                          {d.requesters.map((requester) => (
-                            <p key={requester.username}>
-                              {requester.nickname && requester.nickname !== requester.username
-                                ? `${requester.nickname} (@${requester.username})`
-                                : `@${requester.username}`}
-                            </p>
-                          ))}
-                          {unavailableRequesterCount > 0 && (
-                            <p className="text-muted-foreground">
-                              {t('modelDownload.relation.unavailableRequesterCount', {
-                                count: unavailableRequesterCount,
-                              })}
-                            </p>
-                          )}
-                        </div>
-                      }
-                    >
-                      <span className="text-muted-foreground cursor-help text-[10px] underline decoration-dotted underline-offset-2">
-                        {t('modelDownload.relation.requesterCount', {
-                          count: d.requesterCount,
-                        })}
-                      </span>
-                    </SimpleTooltip>
-                  )}
-                </div>
-              )}
             </div>
           )
         },
@@ -393,12 +373,45 @@ export function ModelDownloadsPage() {
                   </Button>
                 </SimpleTooltip>
               )}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                    disabled={isDeleting}
+                    title={t('modelDownload.action.delete')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('modelDownload.action.deleteTitle')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('modelDownload.action.deleteDescription', { name: download.name })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      disabled={isDeleting}
+                      onClick={() => deleteDownload(download.id)}
+                    >
+                      {isDeleting
+                        ? t('modelDownload.action.processing')
+                        : t('modelDownload.action.delete')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )
         },
       },
     ],
-    [isPausing, isResuming, isRetrying, pauseDownload, t]
+    [deleteDownload, isDeleting, isPausing, isResuming, isRetrying, pauseDownload, t]
   )
 
   const defaultData = useMemo<ModelDownload[]>(() => [], [])
@@ -486,7 +499,7 @@ export function ModelDownloadsPage() {
         description={t('modelDownload.list.description')}
       >
         <div className="flex flex-row gap-3">
-          <Link to="/portal/data/models" search={{ organization: undefined }}>
+          <Link to="/portal/data/models">
             <Button variant="outline" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('modelDownload.list.back')}
@@ -631,13 +644,11 @@ export function ModelDownloadsPage() {
         <ModelDownloadTokenDialog
           action={tokenTarget.action}
           downloadName={tokenTarget.download.name}
-          initialRevision={tokenTarget.download.revision}
-          source={tokenTarget.download.source}
           isPending={isResuming || isRetrying}
           open
           onOpenChange={(open) => !open && setTokenTarget(null)}
-          onSubmit={(token, revision) => {
-            const request = { id: tokenTarget.download.id, token, revision }
+          onSubmit={(token) => {
+            const request = { id: tokenTarget.download.id, token }
             if (tokenTarget.action === 'resume') {
               resumeDownload(request)
             } else {

@@ -137,6 +137,13 @@ func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 const (
 	VolcanoSchedulerName = "volcano"
 
+	volcanoTaskMaster = "master"
+	volcanoTaskWorker = "worker"
+
+	pytorchPluginMasterArg = "--master=master"
+	pytorchPluginWorkerArg = "--worker=worker"
+	pytorchPluginPortArg   = "--port=23456"
+
 	AnnotationKeyUser                    = "crater.raids.io/user"          // 用户名，以小写字母开头
 	AnnotationKeyTaskName                = "crater.raids.io/task-name"     // 任务名称（可能是中文）
 	AnnotationKeyTaskTemplate            = "crater.raids.io/task-template" // 任务模板
@@ -390,10 +397,10 @@ func (mgr *VolcanojobMgr) getDeleteJobRecord(c *gin.Context, jobName string) (*m
 	return getJob(c, jobName, &token)
 }
 
-func (mgr *VolcanojobMgr) buildDeleteJobPlan(c *gin.Context, jobRecord *model.Job) (*deleteJobPlan, error) {
+func (mgr *VolcanojobMgr) buildDeleteJobPlan(ctx context.Context, jobRecord *model.Job) (*deleteJobPlan, error) {
 	clusterJob := &batch.Job{}
 	namespace := config.GetConfig().Namespaces.Job
-	if err := mgr.client.Get(c, client.ObjectKey{Name: jobRecord.JobName, Namespace: namespace}, clusterJob); err != nil {
+	if err := mgr.client.Get(ctx, client.ObjectKey{Name: jobRecord.JobName, Namespace: namespace}, clusterJob); err != nil {
 		if errors.IsNotFound(err) {
 			return &deleteJobPlan{
 				shouldDeleteRecord: jobRecord.Status != model.Prequeue,
@@ -418,13 +425,13 @@ func (mgr *VolcanojobMgr) buildDeleteJobPlan(c *gin.Context, jobRecord *model.Jo
 	}, nil
 }
 
-func (mgr *VolcanojobMgr) applyDeleteJobPlan(c *gin.Context, record *model.Job, plan *deleteJobPlan) error {
+func (mgr *VolcanojobMgr) applyDeleteJobPlan(ctx context.Context, record *model.Job, plan *deleteJobPlan) error {
 	j := query.Job
 	if plan.shouldDeleteRecord {
-		if err := mgr.settleJobBeforeDelete(c, record, plan.clusterJob); err != nil {
+		if err := mgr.settleJobBeforeDelete(ctx, record, plan.clusterJob); err != nil {
 			return err
 		}
-		_, err := j.WithContext(c).Where(j.JobName.Eq(record.JobName)).Delete()
+		_, err := j.WithContext(ctx).Where(j.JobName.Eq(record.JobName)).Delete()
 		return err
 	}
 
@@ -433,24 +440,24 @@ func (mgr *VolcanojobMgr) applyDeleteJobPlan(c *gin.Context, record *model.Job, 
 		finalJob := *record
 		finalJob.Status = model.Deleted
 		finalJob.CompletedTimestamp = completedAt
-		if err := mgr.billingService.OnJobFinishedSettlement(c.Request.Context(), &finalJob); err != nil {
+		if err := mgr.billingService.OnJobFinishedSettlement(ctx, &finalJob); err != nil {
 			return err
 		}
 	}
 
-	_, err := j.WithContext(c).Where(j.JobName.Eq(record.JobName)).Updates(model.Job{
+	_, err := j.WithContext(ctx).Where(j.JobName.Eq(record.JobName)).Updates(model.Job{
 		Status:             model.Deleted,
 		CompletedTimestamp: completedAt,
 	})
 	return err
 }
 
-func (mgr *VolcanojobMgr) deleteClusterJob(c *gin.Context, plan *deleteJobPlan) error {
+func (mgr *VolcanojobMgr) deleteClusterJob(ctx context.Context, plan *deleteJobPlan) error {
 	if !plan.shouldDeleteJob || plan.clusterJob == nil {
 		return nil
 	}
 
-	return mgr.client.Delete(c, plan.clusterJob)
+	return mgr.client.Delete(ctx, plan.clusterJob)
 }
 
 func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, recordAdminOperation bool) {
@@ -473,20 +480,20 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, recordAdminOperation bool) {
 		return
 	}
 
-	plan, err := mgr.buildDeleteJobPlan(c, jobRecord)
+	plan, err := mgr.buildDeleteJobPlan(c.Request.Context(), jobRecord)
 	if err != nil {
 		recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	if err := mgr.applyDeleteJobPlan(c, jobRecord, plan); err != nil {
+	if err := mgr.applyDeleteJobPlan(c.Request.Context(), jobRecord, plan); err != nil {
 		recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
 
-	if err := mgr.deleteClusterJob(c, plan); err != nil {
+	if err := mgr.deleteClusterJob(c.Request.Context(), plan); err != nil {
 		recordDeleteJobOperation(constants.OpStatusFailed, err.Error(), jobRecord, nil)
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -510,14 +517,14 @@ func (mgr *VolcanojobMgr) notifyDeletedPrequeue(shouldDeleteRecord bool) {
 	mgr.prequeueWatcher.RequestFullScan()
 }
 
-func (mgr *VolcanojobMgr) settleJobBeforeDelete(c *gin.Context, record *model.Job, job *batch.Job) error {
+func (mgr *VolcanojobMgr) settleJobBeforeDelete(ctx context.Context, record *model.Job, job *batch.Job) error {
 	if mgr.billingService == nil || record == nil {
 		return nil
 	}
 
 	finalJob := *record
 	finalJob.CompletedTimestamp = resolveDeleteSettlementTime(record, job)
-	return mgr.billingService.OnJobFinishedSettlement(c.Request.Context(), &finalJob)
+	return mgr.billingService.OnJobFinishedSettlement(ctx, &finalJob)
 }
 
 func resolveDeleteSettlementTime(record *model.Job, job *batch.Job) time.Time {

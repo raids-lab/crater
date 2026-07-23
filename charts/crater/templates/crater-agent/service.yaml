@@ -1,0 +1,17 @@
+{{- if .Values.agent.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-agent-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crater-agent
+spec:
+  selector:
+    app: crater-agent
+  type: {{ .Values.agent.service.type }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.agent.service.port }}
+      targetPort: {{ .Values.agent.port }}
+{{- end }}

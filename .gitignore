@@ -40,6 +40,7 @@ dist-ssr
 *.dll
 *.so
 *.dylib
+backend/crater
 bin
 testbin/*
 Dockerfile.cross
@@ -51,6 +52,7 @@ etc/*
 
 # Configuration backups (created by make config-link)
 *.bak
+crater-agent/config/*backup*.json
 
 # Test binary, build with `go test -c`
 *.test
@@ -79,3 +81,5 @@ kubeconfig*
 
 # Claude Code
 .claude/
+storage/etc/config.yaml
+.codex

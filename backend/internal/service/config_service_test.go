@@ -1,58 +1,11 @@
 package service
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-
 	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
 )
-
-func TestModelDownloadLimitConfigDefaultsAndUpdate(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:model_download_limit_config?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
-		t.Fatal(err)
-	}
-	service := NewConfigService(query.Use(db))
-
-	cfg, err := service.GetModelDownloadLimitConfig(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defaultConfig := ModelDownloadLimitConfig{
-		Enabled: true, MaxConcurrent: 5, WindowHours: 2, MaxSuccessfulDownloads: 5,
-		WhitelistUserIDs: []uint{},
-	}
-	if !reflect.DeepEqual(*cfg, defaultConfig) {
-		t.Fatalf("unexpected default model download limits: %+v", cfg)
-	}
-
-	want := ModelDownloadLimitConfig{
-		Enabled: false, MaxConcurrent: 3, WindowHours: 6, MaxSuccessfulDownloads: 11,
-		WhitelistUserIDs: []uint{9, 9, 11},
-	}
-	if err := service.UpdateModelDownloadLimitConfig(t.Context(), want); err != nil {
-		t.Fatal(err)
-	}
-	got, err := service.GetModelDownloadLimitConfig(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	want.WhitelistUserIDs = []uint{9, 11}
-	if !reflect.DeepEqual(*got, want) {
-		t.Fatalf("updated config = %+v, want scalar values from %+v and deduplicated whitelist", *got, want)
-	}
-	if err := service.UpdateModelDownloadLimitConfig(t.Context(), ModelDownloadLimitConfig{}); err == nil {
-		t.Fatal("zero limits should be rejected")
-	}
-}
 
 func TestParsePrequeueRuntimeConfig(t *testing.T) {
 	t.Parallel()

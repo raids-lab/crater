@@ -184,44 +184,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/dataset/source-logo/{sourceId}": {
-            "get": {
-                "description": "返回平台缓存的来源 Logo，不要求浏览器访问外部模型站点",
-                "produces": [
-                    "image/png",
-                    "image/jpeg",
-                    "image/webp",
-                    "image/svg+xml"
-                ],
-                "tags": [
-                    "Dataset"
-                ],
-                "summary": "获取平台缓存的模型或数据集来源 Logo",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "来源 ID",
-                        "name": "sourceId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "404": {
-                        "description": "Not Found"
-                    }
-                }
-            }
-        },
         "/metrics": {
             "get": {
                 "security": [
@@ -1507,68 +1469,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/internal_handler_image.UpdateImageArchRequest"
                         }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/v1/admin/images/cudabaseimage": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "添加新的CUDA基础镜像到系统中",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "添加CUDA基础镜像",
-                "parameters": [
-                    {
-                        "description": "CUDA基础镜像信息",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handler_image.CudaBaseImageCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {}
-            }
-        },
-        "/v1/admin/images/cudabaseimage/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "根据ID删除指定的CUDA基础镜像",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "ImagePack"
-                ],
-                "summary": "删除CUDA基础镜像",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "CUDA基础镜像ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {}
@@ -3375,68 +3275,6 @@ const docTemplate = `{
                         "description": "服务器错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/system-config/model-download-limit": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取下载额度和白名单用户 ID",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SystemConfig"
-                ],
-                "summary": "管理员获取模型与数据集下载额度",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "配置所有用户的并发任务上限、滚动窗口成功下载上限和豁免白名单",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SystemConfig"
-                ],
-                "summary": "更新模型与数据集下载额度",
-                "parameters": [
-                    {
-                        "description": "下载额度配置",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_handler.UpdateModelDownloadLimitConfigReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
                         }
                     }
                 }
@@ -5680,6 +5518,66 @@ const docTemplate = `{
                 ],
                 "summary": "获取所有Cuda基础镜像",
                 "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "添加新的CUDA基础镜像到系统中",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "添加CUDA基础镜像",
+                "parameters": [
+                    {
+                        "description": "CUDA基础镜像信息",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_image.CudaBaseImageCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/v1/images/cudabaseimage/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "根据ID删除指定的CUDA基础镜像",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "删除CUDA基础镜像",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "CUDA基础镜像ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/v1/images/deleteimage": {
@@ -6659,7 +6557,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "删除下载任务记录(仅平台管理员),已下载的文件保留在存储中",
+                "description": "删除下载任务记录(仅创建者或管理员),已下载的文件保留在存储中",
                 "consumes": [
                     "application/json"
                 ],
@@ -6835,7 +6733,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "可选的临时访问令牌和重试版本",
+                        "description": "可选的临时访问令牌",
                         "name": "data",
                         "in": "body",
                         "schema": {
@@ -8598,31 +8496,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/system-config/model-download-limit": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "SystemConfig"
-                ],
-                "summary": "获取模型与数据集下载额度",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp"
                         }
                     }
                 }
@@ -10858,21 +10731,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdminModelDownloadLimitConfigResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/internal_handler.AdminModelDownloadLimitConfigResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderResp": {
             "type": "object",
             "properties": {
@@ -10987,21 +10845,6 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.LoginResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/internal_handler.ModelDownloadLimitConfigResp"
                 },
                 "msg": {
                     "type": "string"
@@ -11713,29 +11556,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler.AdminModelDownloadLimitConfigResp": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "maxConcurrent": {
-                    "type": "integer"
-                },
-                "maxSuccessfulDownloads": {
-                    "type": "integer"
-                },
-                "whitelistUserIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "windowHours": {
-                    "type": "integer"
-                }
-            }
-        },
         "internal_handler.ApprovalOrderResp": {
             "type": "object",
             "properties": {
@@ -11929,10 +11749,6 @@ const docTemplate = `{
         "internal_handler.DownloadActionReq": {
             "type": "object",
             "properties": {
-                "revision": {
-                    "description": "Revision is optional and only used by retry. A non-nil empty value means\n\"use the source default branch\" while preserving the failed record's path.",
-                    "type": "string"
-                },
                 "token": {
                     "type": "string"
                 }
@@ -12218,26 +12034,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler.ModelDownloadLimitConfigResp": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "exempt": {
-                    "type": "boolean"
-                },
-                "maxConcurrent": {
-                    "type": "integer"
-                },
-                "maxSuccessfulDownloads": {
-                    "type": "integer"
-                },
-                "windowHours": {
-                    "type": "integer"
-                }
-            }
-        },
         "internal_handler.ModelDownloadListResp": {
             "type": "object",
             "properties": {
@@ -12262,9 +12058,6 @@ const docTemplate = `{
         "internal_handler.ModelDownloadResp": {
             "type": "object",
             "properties": {
-                "canDelete": {
-                    "type": "boolean"
-                },
                 "canManage": {
                     "type": "boolean"
                 },
@@ -12317,20 +12110,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "referenceCount": {
-                    "description": "Deprecated: use requesterCount.",
                     "type": "integer"
-                },
-                "relation": {
-                    "type": "string"
-                },
-                "requesterCount": {
-                    "type": "integer"
-                },
-                "requesters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
-                    }
                 },
                 "revision": {
                     "type": "string"
@@ -12814,35 +12594,6 @@ const docTemplate = `{
                 "validate": {
                     "description": "是否立即校验连接",
                     "type": "boolean"
-                }
-            }
-        },
-        "internal_handler.UpdateModelDownloadLimitConfigReq": {
-            "type": "object",
-            "required": [
-                "enabled",
-                "maxConcurrent",
-                "maxSuccessfulDownloads",
-                "windowHours"
-            ],
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "maxConcurrent": {
-                    "type": "integer"
-                },
-                "maxSuccessfulDownloads": {
-                    "type": "integer"
-                },
-                "whitelistUserIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "windowHours": {
-                    "type": "integer"
                 }
             }
         },

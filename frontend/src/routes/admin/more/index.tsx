@@ -15,7 +15,6 @@ import {
   apiAdminGetBillingStatus,
   apiAdminGetGpuAnalysisStatus,
   apiAdminGetLLMConfig,
-  apiAdminGetModelDownloadLimitConfig,
   apiAdminGetPrequeueConfig,
   apiAdminGrantAllUsersExtraBalance,
   apiAdminResetAllBillingBalances,
@@ -23,7 +22,6 @@ import {
   apiAdminSetBillingStatus,
   apiAdminSetGpuAnalysisStatus,
   apiAdminUpdateLLMConfig,
-  apiAdminUpdateModelDownloadLimitConfig,
   apiAdminUpdatePrequeueConfig,
 } from '@/services/api/system-config'
 import { markApiErrorHandled } from '@/services/client'
@@ -36,7 +34,6 @@ import { BasicSettings } from './-components/basic-settings'
 import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
-import { ModelDownloadLimitSettings } from './-components/model-download-limit-settings'
 import { PrequeueSettings } from './-components/prequeue-settings'
 
 export const Route = createFileRoute('/admin/more/')({
@@ -73,16 +70,6 @@ function RouteComponent() {
   const { data: prequeueConfigData } = useQuery({
     queryKey: ['admin', 'system-config', 'prequeue'],
     queryFn: () => apiAdminGetPrequeueConfig().then((res) => res.data),
-  })
-
-  const {
-    data: modelDownloadLimitConfig,
-    isLoading: isModelDownloadLimitLoading,
-    isError: isModelDownloadLimitError,
-    refetch: refetchModelDownloadLimit,
-  } = useQuery({
-    queryKey: ['admin', 'system-config', 'model-download-limit'],
-    queryFn: () => apiAdminGetModelDownloadLimitConfig().then((res) => res.data),
   })
 
   const [backfillEnabled, setBackfillEnabled] = useState(false)
@@ -137,7 +124,8 @@ function RouteComponent() {
   const updateLLMMutation = useMutation({
     mutationFn: (vars: { data: LlmFormSchema; validate: boolean }) =>
       apiAdminUpdateLLMConfig({
-        ...vars.data,
+        baseUrl: vars.data.baseUrl,
+        modelName: vars.data.modelName,
         apiKey: vars.data.apiKey ?? '',
         validate: vars.validate,
       }),
@@ -292,18 +280,6 @@ function RouteComponent() {
     onError: handleError,
   })
 
-  const updateModelDownloadLimitMutation = useMutation({
-    mutationFn: apiAdminUpdateModelDownloadLimitConfig,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['admin', 'system-config', 'model-download-limit'],
-      })
-      queryClient.invalidateQueries({ queryKey: ['system-config', 'model-download-limit'] })
-      toast.success(t('systemConfig.modelDownloadLimit.saveSuccess'))
-    },
-    onError: showErrorToast,
-  })
-
   const handlePrequeueSubmit = () => {
     if (!validatePrequeuePositiveIntegers()) {
       return
@@ -355,17 +331,6 @@ function RouteComponent() {
           onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
           onPrequeueCandidateSizeChange={setPrequeueCandidateSize}
           onSubmit={handlePrequeueSubmit}
-        />
-      </Card>
-
-      <Card>
-        <ModelDownloadLimitSettings
-          config={modelDownloadLimitConfig}
-          isPending={updateModelDownloadLimitMutation.isPending}
-          isLoading={isModelDownloadLimitLoading}
-          isError={isModelDownloadLimitError}
-          onRetry={() => void refetchModelDownloadLimit()}
-          onSubmit={(config) => updateModelDownloadLimitMutation.mutateAsync(config)}
         />
       </Card>
 

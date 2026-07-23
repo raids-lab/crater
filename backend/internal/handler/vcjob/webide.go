@@ -35,8 +35,6 @@ import (
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/webide [post]
-//
-//nolint:dupl //TODO: refactor similar code with CreateJupyterJob
 func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -105,7 +103,6 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		req.Resource,
 		req.Image,
 		commandArgs,
-		JupyterPort,
 		string(CraterJobTypeWebIDE),
 		req.CpuPinningEnabled,
 	)

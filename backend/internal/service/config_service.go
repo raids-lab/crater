@@ -29,11 +29,7 @@ import (
 // 定义掩码常量
 const MaskedAPIKeyPlaceholder = "********************************************"
 
-const (
-	DefaultModelDownloadMaxConcurrent          = 5
-	DefaultModelDownloadWindowHours            = 2
-	DefaultModelDownloadMaxSuccessfulDownloads = 5
-)
+const userLLMConfigKeyPrefix = "USER_LLM"
 
 // LLMConfig 结构体用于承载从数据库读取的配置
 type LLMConfig struct {
@@ -42,14 +38,43 @@ type LLMConfig struct {
 	ModelName string
 }
 
-// ModelDownloadLimitConfig controls model and dataset download quotas for all users.
-// Only explicitly whitelisted users are exempt from these limits.
-type ModelDownloadLimitConfig struct {
-	Enabled                bool
-	MaxConcurrent          int64
-	WindowHours            int64
-	MaxSuccessfulDownloads int64
-	WhitelistUserIDs       []uint
+type LLMConfigStatus struct {
+	Config      *LLMConfig
+	Source      string
+	Complete    bool
+	HasAPIKey   bool
+	UsingConfig bool
+}
+
+type UserLLMConfigStatus struct {
+	Config        *LLMConfig
+	Source        string
+	Complete      bool
+	HasAPIKey     bool
+	UsingPersonal bool
+}
+
+func BuildAgentLLMClientConfig(cfg *LLMConfig) map[string]any {
+	if cfg == nil {
+		return nil
+	}
+	if strings.TrimSpace(cfg.BaseURL) == "" ||
+		strings.TrimSpace(cfg.ModelName) == "" ||
+		strings.TrimSpace(cfg.APIKey) == "" {
+		return nil
+	}
+	defaultClient := map[string]any{
+		"provider":     "openai_compatible",
+		"base_url":     strings.TrimSpace(cfg.BaseURL),
+		"model":        strings.TrimSpace(cfg.ModelName),
+		"api_key":      strings.TrimSpace(cfg.APIKey),
+		"temperature":  0.1,
+		"max_tokens":   8192,
+		"timeout":      120,
+		"streaming":    true,
+		"stream_usage": true,
+	}
+	return map[string]any{"default": defaultClient}
 }
 
 // cleanBaseURL 内部辅助：清理 URL 结尾的斜杠
@@ -117,16 +142,6 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 						model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
 						model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled:
 						defaultValue = "false"
-					case model.ConfigKeyModelDownloadLimitEnabled:
-						defaultValue = strconv.FormatBool(true)
-					case model.ConfigKeyModelDownloadMaxConcurrent:
-						defaultValue = strconv.Itoa(DefaultModelDownloadMaxConcurrent)
-					case model.ConfigKeyModelDownloadWindowHours:
-						defaultValue = strconv.Itoa(DefaultModelDownloadWindowHours)
-					case model.ConfigKeyModelDownloadMaxSuccessfulDownloads:
-						defaultValue = strconv.Itoa(DefaultModelDownloadMaxSuccessfulDownloads)
-					case model.ConfigKeyModelDownloadWhitelistUsers:
-						defaultValue = "[]"
 					case model.ConfigKeyRunningSettlementIntervalMinute:
 						defaultValue = "5"
 					case model.ConfigKeyBillingDefaultIssueAmount:
@@ -150,110 +165,78 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 	})
 }
 
-func (s *ConfigService) GetModelDownloadLimitConfig(ctx context.Context) (*ModelDownloadLimitConfig, error) {
-	configMap, err := s.getConfigs(ctx,
-		model.ConfigKeyModelDownloadLimitEnabled,
-		model.ConfigKeyModelDownloadMaxConcurrent,
-		model.ConfigKeyModelDownloadWindowHours,
-		model.ConfigKeyModelDownloadMaxSuccessfulDownloads,
-		model.ConfigKeyModelDownloadWhitelistUsers,
-	)
+// GetLLMConfig 从数据库按需读取最新配置
+func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
+	status, err := s.GetLLMConfigStatus(ctx)
 	if err != nil {
 		return nil, err
+	}
+	return status.Config, nil
+}
+
+func (s *ConfigService) GetLLMConfigStatus(ctx context.Context) (*LLMConfigStatus, error) {
+	cfg, err := s.loadStoredLLMConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	status := &LLMConfigStatus{
+		Config:      cfg,
+		Source:      "system_config",
+		Complete:    isLLMConfigComplete(cfg),
+		HasAPIKey:   strings.TrimSpace(cfg.APIKey) != "",
+		UsingConfig: isLLMConfigComplete(cfg),
+	}
+	return status, nil
+}
+
+func (s *ConfigService) GetEffectiveLLMConfig(ctx context.Context, userID uint) (*LLMConfig, error) {
+	status, err := s.GetEffectiveLLMConfigStatus(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return status.Config, nil
+}
+
+func (s *ConfigService) GetEffectiveLLMConfigStatus(ctx context.Context, userID uint) (*UserLLMConfigStatus, error) {
+	systemCfg, err := s.loadStoredLLMConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if userID == 0 {
+		return &UserLLMConfigStatus{
+			Config:        systemCfg,
+			Source:        "system_config",
+			Complete:      isLLMConfigComplete(systemCfg),
+			HasAPIKey:     strings.TrimSpace(systemCfg.APIKey) != "",
+			UsingPersonal: false,
+		}, nil
 	}
 
-	parsePositive := func(key string, fallback int64) (int64, error) {
-		value := configMap[key]
-		if value == "" {
-			return fallback, nil
-		}
-		parsed, parseErr := strconv.ParseInt(value, 10, 64)
-		if parseErr != nil || parsed <= 0 {
-			return 0, bizerr.Internal.DatabaseError.New(
-				"invalid model download config " + key + "=" + strconv.Quote(value),
-			)
-		}
-		return parsed, nil
+	userCfg, hasPersonal, err := s.loadUserLLMConfig(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPersonal {
+		return &UserLLMConfigStatus{
+			Config:        systemCfg,
+			Source:        "system_config",
+			Complete:      isLLMConfigComplete(systemCfg),
+			HasAPIKey:     strings.TrimSpace(systemCfg.APIKey) != "",
+			UsingPersonal: false,
+		}, nil
 	}
 
-	enabled := true
-	if value := configMap[model.ConfigKeyModelDownloadLimitEnabled]; value != "" {
-		enabled, err = strconv.ParseBool(value)
-		if err != nil {
-			return nil, bizerr.Internal.DatabaseError.New(
-				"invalid model download config " + model.ConfigKeyModelDownloadLimitEnabled +
-					"=" + strconv.Quote(value) + ": " + err.Error(),
-			)
-		}
-	}
-	maxConcurrent, err := parsePositive(
-		model.ConfigKeyModelDownloadMaxConcurrent, DefaultModelDownloadMaxConcurrent,
-	)
-	if err != nil {
-		return nil, err
-	}
-	windowHours, err := parsePositive(model.ConfigKeyModelDownloadWindowHours, DefaultModelDownloadWindowHours)
-	if err != nil {
-		return nil, err
-	}
-	maxSuccessfulDownloads, err := parsePositive(
-		model.ConfigKeyModelDownloadMaxSuccessfulDownloads, DefaultModelDownloadMaxSuccessfulDownloads,
-	)
-	if err != nil {
-		return nil, err
-	}
-	whitelistUserIDs := make([]uint, 0)
-	if value := configMap[model.ConfigKeyModelDownloadWhitelistUsers]; value != "" {
-		if err := json.Unmarshal([]byte(value), &whitelistUserIDs); err != nil {
-			return nil, bizerr.Internal.DatabaseError.Wrap(err, "invalid model download whitelist config")
-		}
-	}
-
-	return &ModelDownloadLimitConfig{
-		Enabled: enabled, MaxConcurrent: maxConcurrent,
-		WindowHours: windowHours, MaxSuccessfulDownloads: maxSuccessfulDownloads,
-		WhitelistUserIDs: lo.Uniq(whitelistUserIDs),
+	effective := mergeLLMConfig(systemCfg, userCfg)
+	return &UserLLMConfigStatus{
+		Config:        effective,
+		Source:        "user_config",
+		Complete:      isLLMConfigComplete(effective),
+		HasAPIKey:     strings.TrimSpace(effective.APIKey) != "",
+		UsingPersonal: true,
 	}, nil
 }
 
-func (s *ConfigService) UpdateModelDownloadLimitConfig(
-	ctx context.Context, cfg ModelDownloadLimitConfig,
-) error {
-	if cfg.MaxConcurrent <= 0 || cfg.WindowHours <= 0 || cfg.MaxSuccessfulDownloads <= 0 {
-		return bizerr.BadRequest.ParameterError.New("model download limits must be positive integers")
-	}
-	whitelistJSON, err := json.Marshal(lo.Uniq(cfg.WhitelistUserIDs))
-	if err != nil {
-		return bizerr.BadRequest.ParameterError.Wrap(err, "invalid model download whitelist")
-	}
-
-	updates := map[string]string{
-		model.ConfigKeyModelDownloadLimitEnabled:           strconv.FormatBool(cfg.Enabled),
-		model.ConfigKeyModelDownloadMaxConcurrent:          strconv.FormatInt(cfg.MaxConcurrent, 10),
-		model.ConfigKeyModelDownloadWindowHours:            strconv.FormatInt(cfg.WindowHours, 10),
-		model.ConfigKeyModelDownloadMaxSuccessfulDownloads: strconv.FormatInt(cfg.MaxSuccessfulDownloads, 10),
-		model.ConfigKeyModelDownloadWhitelistUsers:         string(whitelistJSON),
-	}
-	return s.q.Transaction(func(tx *query.Query) error {
-		for key, value := range updates {
-			result, err := tx.SystemConfig.WithContext(ctx).
-				Where(tx.SystemConfig.Key.Eq(key)).
-				Update(tx.SystemConfig.Value, value)
-			if err != nil {
-				return err
-			}
-			if result.RowsAffected == 0 {
-				if err := tx.SystemConfig.WithContext(ctx).Create(&model.SystemConfig{Key: key, Value: value}); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
-}
-
-// GetLLMConfig 从数据库按需读取最新配置
-func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
+func (s *ConfigService) loadStoredLLMConfig(ctx context.Context) (*LLMConfig, error) {
 	configMap, err := s.getConfigs(ctx, model.ConfigKeyLLMBaseURL, model.ConfigKeyLLMAPIKey, model.ConfigKeyLLMModelName)
 	if err != nil {
 		return nil, err
@@ -273,11 +256,107 @@ func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
 		}
 	}
 
-	return &LLMConfig{
+	cfg := &LLMConfig{
 		BaseURL:   configMap[model.ConfigKeyLLMBaseURL],
 		APIKey:    plainKey,
 		ModelName: configMap[model.ConfigKeyLLMModelName],
-	}, nil
+	}
+	return cfg, nil
+}
+
+func (s *ConfigService) loadUserLLMConfig(ctx context.Context, userID uint) (*LLMConfig, bool, error) {
+	baseURLKey, apiKeyKey, modelNameKey := userLLMConfigKeys(userID)
+	configMap, err := s.getConfigs(ctx, baseURLKey, apiKeyKey, modelNameKey)
+	if err != nil {
+		return nil, false, err
+	}
+
+	encryptedKey := configMap[apiKeyKey]
+	hasPersonal := strings.TrimSpace(encryptedKey) != "" ||
+		strings.TrimSpace(configMap[baseURLKey]) != "" ||
+		strings.TrimSpace(configMap[modelNameKey]) != ""
+	if !hasPersonal {
+		return nil, false, nil
+	}
+
+	plainKey := ""
+	if encryptedKey != "" {
+		decrypted, err := crypto.Decrypt(encryptedKey)
+		if err != nil {
+			klog.Errorf("Failed to decrypt user API Key: %v, assuming plain text or empty", err)
+			plainKey = encryptedKey
+		} else {
+			plainKey = decrypted
+		}
+	}
+
+	return &LLMConfig{
+		BaseURL:   configMap[baseURLKey],
+		APIKey:    plainKey,
+		ModelName: configMap[modelNameKey],
+	}, true, nil
+}
+
+func mergeLLMConfig(systemCfg, userCfg *LLMConfig) *LLMConfig {
+	merged := &LLMConfig{}
+	if systemCfg != nil {
+		merged.BaseURL = systemCfg.BaseURL
+		merged.ModelName = systemCfg.ModelName
+	}
+	if userCfg == nil {
+		if systemCfg != nil {
+			merged.APIKey = systemCfg.APIKey
+		}
+		return merged
+	}
+	if strings.TrimSpace(userCfg.BaseURL) != "" {
+		merged.BaseURL = userCfg.BaseURL
+	}
+	if strings.TrimSpace(userCfg.ModelName) != "" {
+		merged.ModelName = userCfg.ModelName
+	}
+	merged.APIKey = userCfg.APIKey
+	return merged
+}
+
+func userLLMConfigKeys(userID uint) (baseURLKey, apiKeyKey, modelNameKey string) {
+	prefix := fmt.Sprintf("%s:%d", userLLMConfigKeyPrefix, userID)
+	return prefix + ":BASE_URL", prefix + ":API_KEY", prefix + ":MODEL_NAME"
+}
+
+func isLLMConfigComplete(cfg *LLMConfig) bool {
+	if cfg == nil {
+		return false
+	}
+	return strings.TrimSpace(cfg.BaseURL) != "" &&
+		strings.TrimSpace(cfg.ModelName) != "" &&
+		strings.TrimSpace(cfg.APIKey) != ""
+}
+
+func (s *ConfigService) GetAgentLLMClientConfig(ctx context.Context) (map[string]any, error) {
+	status, err := s.GetLLMConfigStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if status == nil || !status.Complete {
+		return nil, bizerr.BadRequest.ParameterError.New(
+			"platform LLM config is incomplete: BaseURL, Model and API Key are required",
+		)
+	}
+	return BuildAgentLLMClientConfig(status.Config), nil
+}
+
+func (s *ConfigService) GetAgentLLMClientConfigForUser(ctx context.Context, userID uint) (map[string]any, error) {
+	status, err := s.GetEffectiveLLMConfigStatus(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if status == nil || !status.Complete {
+		return nil, bizerr.BadRequest.ParameterError.New(
+			"LLM config is incomplete: BaseURL, Model and API Key are required",
+		)
+	}
+	return BuildAgentLLMClientConfig(status.Config), nil
 }
 
 // CheckLLMConnection 使用 /models 接口进行校验，并验证 ModelName 是否存在
@@ -343,6 +422,88 @@ func (s *ConfigService) CheckLLMConnection(ctx context.Context, cfg *LLMConfig) 
 	}
 
 	return nil
+}
+
+func (s *ConfigService) UpdateUserLLMConfig(
+	ctx context.Context,
+	userID uint,
+	reqCfg *LLMConfig,
+	validate bool,
+) error {
+	if userID == 0 {
+		return bizerr.BadRequest.ParameterError.New("invalid user id")
+	}
+
+	oldCfg, hasOld, err := s.loadUserLLMConfig(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	apiKey := strings.TrimSpace(reqCfg.APIKey)
+	if apiKey == MaskedAPIKeyPlaceholder {
+		if hasOld {
+			apiKey = oldCfg.APIKey
+		} else {
+			apiKey = ""
+		}
+	}
+	if apiKey == "" {
+		return bizerr.BadRequest.ParameterError.New("API Key is required for personal LLM config")
+	}
+
+	effectiveCfg := &LLMConfig{
+		BaseURL:   strings.TrimSpace(reqCfg.BaseURL),
+		APIKey:    apiKey,
+		ModelName: strings.TrimSpace(reqCfg.ModelName),
+	}
+	if effectiveCfg.BaseURL == "" || effectiveCfg.ModelName == "" {
+		systemCfg, loadErr := s.loadStoredLLMConfig(ctx)
+		if loadErr != nil {
+			return loadErr
+		}
+		effectiveCfg = mergeLLMConfig(systemCfg, effectiveCfg)
+	}
+	if !isLLMConfigComplete(effectiveCfg) {
+		return bizerr.BadRequest.ParameterError.New(
+			"LLM config is incomplete: BaseURL, Model and API Key are required",
+		)
+	}
+	if validate {
+		if err := s.CheckLLMConnection(ctx, effectiveCfg); err != nil {
+			return bizerr.Conflict.ResourceStatusError.Wrap(err, "validation failed")
+		}
+	}
+
+	encrypted, err := crypto.Encrypt(apiKey)
+	if err != nil {
+		return bizerr.Internal.ServiceError.Wrap(err, "failed to encrypt api key")
+	}
+	baseURLKey, apiKeyKey, modelNameKey := userLLMConfigKeys(userID)
+	updates := map[string]string{
+		baseURLKey:   effectiveCfg.BaseURL,
+		apiKeyKey:    encrypted,
+		modelNameKey: effectiveCfg.ModelName,
+	}
+	return s.q.Transaction(func(tx *query.Query) error {
+		for key, value := range updates {
+			if err := tx.SystemConfig.WithContext(ctx).Save(&model.SystemConfig{Key: key, Value: value}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (s *ConfigService) ResetUserLLMConfig(ctx context.Context, userID uint) error {
+	if userID == 0 {
+		return bizerr.BadRequest.ParameterError.New("invalid user id")
+	}
+	baseURLKey, apiKeyKey, modelNameKey := userLLMConfigKeys(userID)
+	sc := s.q.SystemConfig
+	_, err := sc.WithContext(ctx).
+		Where(sc.Key.In(baseURLKey, apiKeyKey, modelNameKey)).
+		Delete()
+	return err
 }
 
 // SetGpuAnalysisEnabled 设置GPU分析功能的开关，并同步创建或更新定时任务的状态
@@ -461,7 +622,12 @@ func (s *ConfigService) ResetLLMConfig(ctx context.Context) error {
 }
 
 // UpdateLLMConfig 更新配置
-func (s *ConfigService) UpdateLLMConfig(ctx context.Context, reqCfg *LLMConfig, validate bool) error {
+func (s *ConfigService) UpdateLLMConfig(
+	ctx context.Context,
+	reqCfg *LLMConfig,
+	validate bool,
+) error {
+	// 1. 处理 API Key 的更新逻辑
 	finalKeyToSave := ""
 
 	if reqCfg.APIKey == MaskedAPIKeyPlaceholder {

@@ -67,4 +67,14 @@ func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 	for _, mgr := range managers {
 		mgr.RegisterAdmin(adminRouter.Group(mgr.GetName()))
 	}
+
+	/////////////////////////////////////////////////////////////
+	//// Internal routers (service-to-service, no user JWT) ////
+	/////////////////////////////////////////////////////////////
+	internalRouter := b.Group("/internal")
+	for _, mgr := range managers {
+		if ir, ok := mgr.(handler.InternalRouter); ok {
+			ir.RegisterInternal(internalRouter.Group(mgr.GetName()))
+		}
+	}
 }

@@ -131,26 +131,9 @@ type Config struct {
 	// Optional: If not specified, default values will be used.
 	ModelDownload struct {
 		// Image is the container image used for model download jobs.
-		// Optional: Defaults to the public Crater downloader image if not specified.
+		// Optional: Defaults to "crater-harbor.act.buaa.edu.cn/docker.io/python:3.11-slim" if not specified.
 		Image string `json:"image"`
-		// HuggingFaceEndpoint is the Hub base URL used by download jobs.
-		// Optional: Defaults to the official Hugging Face Hub.
-		HuggingFaceEndpoint string `json:"huggingFaceEndpoint"`
-		// ModelScopeEndpoint is the ModelScope base URL used by download jobs.
-		// Optional: Defaults to the official ModelScope service.
-		ModelScopeEndpoint string `json:"modelScopeEndpoint"`
 	} `json:"modelDownload"`
-
-	// ModelMetadata configures background metadata refresh endpoints and cache limits.
-	// Endpoints are tried in order and must be selected by each deployment administrator.
-	ModelMetadata struct {
-		HuggingFaceEndpoints []string `json:"huggingFaceEndpoints"`
-		ModelScopeEndpoints  []string `json:"modelScopeEndpoints"`
-		LogoAllowedHosts     []string `json:"logoAllowedHosts"`
-		LogicalPublicPrefix  string   `json:"logicalPublicPrefix"`
-		TimeoutSeconds       int      `json:"timeoutSeconds"`
-		MaxLogoBytes         int64    `json:"maxLogoBytes"`
-	} `json:"modelMetadata"`
 
 	// Registry contains container registry configuration for image storage and building.
 	// Optional: If Enable is false, registry functionality will be disabled.
@@ -335,6 +318,18 @@ type Config struct {
 		} `json:"normal"`
 	} `json:"auth"`
 
+	// Agent contains configuration for the Crater Agent (Python) service.
+	// Optional: Defaults to http://localhost:8000 if not specified.
+	Agent struct {
+		// ServiceURL is the base URL of the Python Agent service.
+		// Optional: Defaults to "http://localhost:8000".
+		ServiceURL string `json:"serviceURL"`
+		// InternalToken is the shared secret used by the Python Agent service when calling
+		// internal tool execution endpoints exposed by the Go backend.
+		// Optional: Can also be supplied via CRATER_AGENT_INTERNAL_TOKEN.
+		InternalToken string `json:"internalToken"`
+	} `json:"agent"`
+
 	// SchedulerPlugins contains configuration for Kubernetes scheduler plugin integrations.
 	// Optional: Individual plugins can be enabled/disabled independently.
 	SchedulerPlugins struct {
@@ -370,7 +365,7 @@ type Config struct {
 
 // ValidateConfig validates the configuration structure and checks for required fields
 //
-//nolint:gocyclo // This is long but simple.
+//nolint:gocyclo // Centralized config validation necessarily checks many independent sections.
 func (c *Config) ValidateConfig() error {
 	var errors []string
 
@@ -578,6 +573,8 @@ func (c *Config) logConfigWarnings() {
 }
 
 // PrintConfig prints the configuration in a formatted and readable way, masking sensitive information
+//
+//nolint:gocyclo // Config summary intentionally prints many optional sections.
 func (c *Config) PrintConfig() {
 	klog.Info("=== Configuration Summary ===")
 
@@ -612,10 +609,8 @@ func (c *Config) PrintConfig() {
 	if c.ModelDownload.Image != "" {
 		klog.Infof("Model Download Image: %s", c.ModelDownload.Image)
 	} else {
-		klog.Info("Model Download Image: <default: ghcr.io/raids-lab/crater-model-downloader:v1.0.0>")
+		klog.Info("Model Download Image: <default: crater-harbor.act.buaa.edu.cn/crater/base/python:3.11-slim>")
 	}
-	klog.Infof("Model Metadata Endpoints: HuggingFace=%d, ModelScope=%d",
-		len(c.HuggingFaceMetadataEndpoints()), len(c.ModelScopeMetadataEndpoints()))
 
 	// Secrets
 	klog.Infof("TLS Secrets: %s, %s", c.Secrets.TLSSecretName, c.Secrets.TLSForwardSecretName)
@@ -644,6 +639,18 @@ func (c *Config) PrintConfig() {
 			c.SMTP.Host, c.SMTP.Port, c.SMTP.User, c.SMTP.Notify)
 	} else {
 		klog.Info("SMTP: Disabled")
+	}
+
+	// Agent
+	if c.Agent.ServiceURL != "" {
+		klog.Infof("Agent Service URL: %s", c.Agent.ServiceURL)
+	} else {
+		klog.Info("Agent Service URL: <default: http://localhost:8000>")
+	}
+	if c.Agent.InternalToken != "" {
+		klog.Info("Agent Internal Token: <configured>")
+	} else {
+		klog.Info("Agent Internal Token: <not configured, env fallback supported>")
 	}
 
 	// Authentication

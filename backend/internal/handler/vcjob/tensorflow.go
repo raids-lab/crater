@@ -215,7 +215,7 @@ func buildTensorflowTasks(
 			},
 		}
 
-		if task.Name == "worker" {
+		if task.Name == volcanoTaskWorker {
 			taskSpec.Policies = []batch.LifecyclePolicy{
 				{
 					Action: bus.CompleteJobAction,

@@ -32,19 +32,15 @@ import {
 interface ModelDownloadTokenDialogProps {
   action: 'resume' | 'retry'
   downloadName: string
-  initialRevision?: string
-  source?: string
   isPending: boolean
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (token?: string, revision?: string) => void
+  onSubmit: (token?: string) => void
 }
 
 export default function ModelDownloadTokenDialog({
   action,
   downloadName,
-  initialRevision,
-  source,
   isPending,
   open,
   onOpenChange,
@@ -52,14 +48,12 @@ export default function ModelDownloadTokenDialog({
 }: ModelDownloadTokenDialogProps) {
   const { t } = useTranslation()
   const [token, setToken] = useState('')
-  const [revision, setRevision] = useState('')
 
   useEffect(() => {
-    if (open) {
+    if (!open) {
       setToken('')
-      setRevision(initialRevision ?? '')
     }
-  }, [initialRevision, open])
+  }, [open])
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -72,28 +66,9 @@ export default function ModelDownloadTokenDialog({
             {t('modelDownload.action.tokenDescription')}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {action === 'retry' && (
-          <Input
-            name="model-download-revision"
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            value={revision}
-            onChange={(event) => setRevision(event.target.value)}
-            placeholder={t('modelDownload.action.revisionPlaceholder', {
-              defaultRevision: source === 'modelscope' ? 'master' : 'main',
-            })}
-            aria-label={t('modelDownload.action.revisionLabel')}
-            disabled={isPending}
-          />
-        )}
         <Input
           type="password"
-          name="model-download-access-token"
-          autoComplete="new-password"
-          data-1p-ignore
-          data-lpignore="true"
-          data-form-type="other"
+          autoComplete="off"
           value={token}
           onChange={(event) => setToken(event.target.value)}
           placeholder={t('modelDownload.action.tokenPlaceholder')}
@@ -106,7 +81,7 @@ export default function ModelDownloadTokenDialog({
             disabled={isPending}
             onClick={(event) => {
               event.preventDefault()
-              onSubmit(token.trim() || undefined, action === 'retry' ? revision.trim() : undefined)
+              onSubmit(token.trim() || undefined)
             }}
           >
             {isPending

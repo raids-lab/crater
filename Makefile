@@ -57,6 +57,33 @@ config-unlink: ## Remove configuration symlinks (only symlinks, not regular file
 config-restore: ## Restore configuration files from .bak backups
 	@bash hack/config.sh restore
 
+##@ Development
+
+.PHONY: run-agent
+run-agent: ## Run the local Python crater-agent service.
+	@echo "$(GREEN)Starting crater-agent on http://localhost:8000 ...$(RESET)"
+	@cd crater-agent && \
+		if [ ! -d .venv ]; then python3.11 -m venv .venv || python3 -m venv .venv; fi && \
+		.venv/bin/python -m pip install -e . && \
+		.venv/bin/python -m uvicorn crater_agent.app:app --host 0.0.0.0 --port 8000
+
+.PHONY: run-backend
+run-backend: ## Run the local Go backend.
+	@$(MAKE) -C backend run
+
+.PHONY: run-frontend
+run-frontend: ## Run the local React frontend.
+	@$(MAKE) -C frontend run
+
+.PHONY: run-dev
+run-dev: ## Run agent, backend, and frontend together for local development.
+	@echo "$(GREEN)Starting crater agent, backend, and frontend. Press Ctrl-C to stop all.$(RESET)"
+	@set -e; \
+	trap 'for pid in $$(jobs -p); do kill $$pid 2>/dev/null || true; done' INT TERM EXIT; \
+	$(MAKE) run-agent & \
+	$(MAKE) run-backend & \
+	$(MAKE) run-frontend & \
+	wait
+
 # 默认目标
 .DEFAULT_GOAL := help
-

@@ -485,7 +485,7 @@ export const apiGetCudaBaseImages = () =>
   apiV1Get<IResponse<CudaBaseImageResponse>>('images/cudabaseimage')
 
 export const apiAddCudaBaseImage = (data: CudaBaseImageCreate) =>
-  apiV1Post<IResponse<string>>('admin/images/cudabaseimage', data)
+  apiV1Post<IResponse<string>>('images/cudabaseimage', data)
 
 export const apiDeleteCudaBaseImage = (id: number) =>
-  apiV1Delete<IResponse<string>>(`admin/images/cudabaseimage/${id}`)
+  apiV1Delete<IResponse<string>>(`images/cudabaseimage/${id}`)

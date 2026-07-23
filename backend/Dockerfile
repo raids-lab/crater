@@ -30,8 +30,7 @@ ENV GIN_MODE=release
 COPY LICENSE NOTICE /usr/share/doc/crater/
 COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/controller .
 COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/migrate .
-COPY $BIN_DIR/bin-${TARGETPLATFORM//\//_}/model-metadata-refresh .
-RUN chmod +x controller migrate model-metadata-refresh
+RUN chmod +x controller migrate
 
 EXPOSE 8088:8088
 
