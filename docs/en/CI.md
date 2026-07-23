@@ -418,9 +418,9 @@ Unlike frontend/backend and dependency images, the documentation website include
 
 Taking creating a PR that updates the documentation website as an example, the execution flow is as follows:
 
-1. **When PR is created**: When the PR modifies files under `website/src/**` or `website/content/**` directories, two workflows are triggered simultaneously:
+1. **When PR is created**: When the PR modifies files under `website/src/**` or `website/content/**` directories, the documentation CI runs the following stages:
    - **PR Check** (`docs-build.yml`): Builds the Next.js website to verify successful build and checks whether newly added or modified images are in WebP format
-   - **Automatic Correction** (`docs-autocorrect.yml`): Automatically corrects documentation format. For internal PRs, it directly commits corrections; for Fork PRs, it reports issues in PR comments
+   - **Automatic Correction** (`docs-autocorrect.yml` and `docs-autocorrect-fix.yml`): Checks documentation formatting. For internal PRs, it directly commits corrections; for Fork PRs, it runs a read-only lint check and reports issues in the workflow output
 
 2. **After PR merge**: When the PR is merged to the main branch, two workflows are triggered:
    - **Documentation Deployment** (`docs-deploy.yml`): Builds the Next.js website including Pagefind search index and deploys it to GitHub Pages, automatically updating the documentation website
@@ -470,21 +470,21 @@ After deployment, the documentation website is automatically updated, and users 
 
 ### Automatic Correction
 
-Automatic correction uses the `autocorrect` tool to automatically correct documentation format, triggered when creating Pull Requests, listening to changes in `website/src/**` and `website/content/**`. Different processing strategies are adopted based on PR source.
+Automatic correction uses the `autocorrect` tool to check documentation format, triggered when creating Pull Requests and listening to changes in `website/src/**` and `website/content/**`. The workflow is split by PR source so Fork PR code never runs with a write-capable token.
 
 For internal PRs (from the same repository), automatic correction directly fixes files and commits changes:
 
 ```yaml
-- name: AutoCorrect and Fix (for internal PRs)
+- name: Fix changed files
   uses: huacnlee/autocorrect-action@v2
   with:
-    args: --fix ${{ steps.internal_files.outputs.files }}
+    args: autocorrect-input --fix
 
-- name: Commit changes (for internal PRs)
+- name: Commit changes
   uses: stefanzweifel/git-auto-commit-action@v5
 ```
 
-For Fork PRs (from external repositories), due to permission limitations, changes cannot be directly committed. Therefore, Reviewdog is used to report format issues in PR comments, and contributors fix them themselves.
+For Fork PRs (from external repositories), `docs-autocorrect.yml` runs on the low-privilege `pull_request` event with read-only repository access. It checks only changed documentation files and reports formatting issues in the workflow output, and contributors fix them themselves. Internal PR auto-fixes run separately in `docs-autocorrect-fix.yml` under `pull_request_target`, guarded so it never checks out a Fork PR branch.
 
 Automatic correction excludes `*.*.mdx` files (multi-language files) to avoid affecting translation files.
 
