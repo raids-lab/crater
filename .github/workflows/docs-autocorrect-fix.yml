@@ -1,4 +1,4 @@
-# Copyright 2025 Crater
+# Copyright 2026 The Crater Project Team, RAIDS-Lab
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,34 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: AutoCorrect Docs
+name: AutoCorrect Docs Fix
 
 on:
-  pull_request:
+  pull_request_target:
     paths:
-      - ".github/workflows/docs-autocorrect.yml"
+      - ".github/workflows/docs-autocorrect-fix.yml"
       - "website/src/**"
       - "website/content/**"
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
-  group: docs-autocorrect-${{ github.event.pull_request.number }}
+  group: docs-autocorrect-fix-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   autocorrect:
-    name: Run AutoCorrect on Website
-    if: github.event.pull_request.head.repo.full_name != github.repository
+    name: Fix AutoCorrect issues on Website
+    # Never check out fork code in this write-capable job.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    permissions:
+      # Required only for pushing the AutoCorrect commit to an internal PR branch.
+      contents: write
 
     steps:
-      - name: Checkout PR code
+      - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
-          persist-credentials: false
+          # The auto-commit step uses these credentials to push to the internal branch.
+          persist-credentials: true
 
       - name: Prepare changed files
         id: changed-files
@@ -47,6 +52,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          FILE_LIST: ${{ runner.temp }}/autocorrect-files
         run: |
           set -euo pipefail
 
@@ -56,7 +62,7 @@ jobs:
             exit 1
           fi
           mkdir "$input_dir"
-          files_exist=false
+          : > "$FILE_LIST"
 
           while IFS= read -r -d '' file; do
             filename=${file##*/}
@@ -71,7 +77,7 @@ jobs:
             target="$input_dir/$file"
             mkdir -p -- "${target%/*}"
             cp -- "$file" "$target"
-            files_exist=true
+            printf '%s\0' "$file" >> "$FILE_LIST"
           done < <(
             git diff --name-only -z --diff-filter=AM "$BASE_SHA" "$HEAD_SHA" -- \
               "website/src/**" \
@@ -79,13 +85,39 @@ jobs:
               "website/messages/**"
           )
 
-          echo "files_exist=$files_exist" >> "$GITHUB_OUTPUT"
-          if [[ "$files_exist" == "false" ]]; then
+          if [[ -s "$FILE_LIST" ]]; then
+            echo "files_exist=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "files_exist=false" >> "$GITHUB_OUTPUT"
             rmdir "$input_dir"
           fi
 
-      - name: Lint changed files
+      - name: Fix changed files
         if: steps.changed-files.outputs.files_exist == 'true'
         uses: huacnlee/autocorrect-action@v2
         with:
-          args: autocorrect-input --lint --no-diff-bg-color
+          args: autocorrect-input --fix
+
+      - name: Copy fixes to PR branch
+        if: steps.changed-files.outputs.files_exist == 'true'
+        shell: bash
+        env:
+          FILE_LIST: ${{ runner.temp }}/autocorrect-files
+        run: |
+          set -euo pipefail
+
+          input_dir="autocorrect-input"
+          while IFS= read -r -d '' file; do
+            cp -- "$input_dir/$file" "$file"
+          done < "$FILE_LIST"
+          rm -r -- "$input_dir"
+
+      - name: Commit changes
+        if: steps.changed-files.outputs.files_exist == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: ${{ github.event.pull_request.head.ref }}
+          commit_message: "style(website): Auto-correct files by autocorrect-action"
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          commit_author: GitHub Actions <41898282+github-actions[bot]@users.noreply.github.com>

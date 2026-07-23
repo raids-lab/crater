@@ -418,9 +418,9 @@ detect-changes:
 
 以创建一个更新文档网站的 PR 为例，执行流程如下：
 
-1. **PR 创建时**：当 PR 修改了 `website/src/**` 或 `website/content/**` 目录下的文件时，会同时触发两个 workflow：
+1. **PR 创建时**：当 PR 修改了 `website/src/**` 或 `website/content/**` 目录下的文件时，文档 CI 会执行以下阶段：
    - **PR 检查**（`docs-build.yml`）：构建 Next.js 网站验证构建是否成功，检查新增或修改的图片是否为 WebP 格式
-   - **自动修正**（`docs-autocorrect.yml`）：自动修正文档格式，对于内部 PR 会直接提交修正，对于 Fork PR 会在 PR 评论中报告问题
+   - **自动修正**（`docs-autocorrect.yml` 和 `docs-autocorrect-fix.yml`）：检查文档格式，对于内部 PR 会直接提交修正，对于 Fork PR 会执行只读 lint 检查并在 workflow 输出中报告问题
 
 2. **PR 合并后**：当 PR 合并到 main 分支后，会触发两个 workflow：
    - **文档部署**（`docs-deploy.yml`）：构建包含 PageFind 搜索索引的 Next.js 网站，并部署到 GitHub Pages，文档网站自动更新
@@ -470,21 +470,21 @@ PR 检查在创建 Pull Request 时触发，监听 `website/src/**`、`website/c
 
 ### 自动修正
 
-自动修正使用 `autocorrect` 工具自动修正文档格式，在创建 Pull Request 时触发，监听 `website/src/**` 和 `website/content/**` 的变更。根据 PR 来源的不同，采用不同的处理策略。
+自动修正使用 `autocorrect` 工具检查文档格式，在创建 Pull Request 时触发，监听 `website/src/**` 和 `website/content/**` 的变更。workflow 会按照 PR 来源拆分，避免 Fork PR 代码在拥有写权限的 Token 环境中运行。
 
 对于内部 PR（来自同一仓库），自动修正会直接修复文件并提交更改：
 
 ```yaml
-- name: AutoCorrect and Fix (for internal PRs)
+- name: Fix changed files
   uses: huacnlee/autocorrect-action@v2
   with:
-    args: --fix ${{ steps.internal_files.outputs.files }}
+    args: autocorrect-input --fix
 
-- name: Commit changes (for internal PRs)
+- name: Commit changes
   uses: stefanzweifel/git-auto-commit-action@v5
 ```
 
-对于 Fork PR（来自外部仓库），由于权限限制，无法直接提交更改，因此使用 Reviewdog 在 PR 评论中报告格式问题，由贡献者自行修正。
+对于 Fork PR（来自外部仓库），`docs-autocorrect.yml` 使用低权限的 `pull_request` 事件运行，仅拥有仓库只读权限。它只检查本次 PR 变更的文档文件，并在 workflow 输出中报告格式问题，由贡献者自行修正。内部 PR 的自动修正由 `docs-autocorrect-fix.yml` 在 `pull_request_target` 事件中单独执行，并通过条件保证不会 checkout Fork PR 分支。
 
 自动修正会排除 `*.*.mdx` 文件（多语言文件），避免影响翻译文件。
 
