@@ -42,6 +42,22 @@ export interface IAdminModelDownloadLimitConfig {
   whitelistUserIds: number[]
 }
 
+export interface IPodBandwidthConfig {
+  enabled: boolean
+  modelDownloadBandwidth: string
+  jobIngressBandwidth: string
+  jobEgressBandwidth: string
+  capabilityAvailable: boolean
+  capabilityMessage: string
+}
+
+export interface IUpdatePodBandwidthConfig {
+  enabled: boolean
+  modelDownloadBandwidth: string
+  jobIngressBandwidth: string
+  jobEgressBandwidth: string
+}
+
 export interface IBillingStatus {
   featureEnabled: boolean
   active: boolean
@@ -124,6 +140,14 @@ export const apiAdminGetModelDownloadLimitConfig = () =>
 /** 管理员更新模型与数据集下载额度 */
 export const apiAdminUpdateModelDownloadLimitConfig = (data: IAdminModelDownloadLimitConfig) =>
   apiV1Put<IResponse<string>>('admin/system-config/model-download-limit', data)
+
+/** 管理员获取 Pod 带宽限制及集群 CNI 能力状态 */
+export const apiAdminGetPodBandwidthConfig = () =>
+  apiV1Get<IResponse<IPodBandwidthConfig>>('admin/system-config/pod-bandwidth')
+
+/** 管理员更新 Pod 带宽限制 */
+export const apiAdminUpdatePodBandwidthConfig = (data: IUpdatePodBandwidthConfig) =>
+  apiV1Put<IResponse<string>>('admin/system-config/pod-bandwidth', data)
 
 /** 获取计费开关状态 */
 export const apiGetBillingStatus = () =>

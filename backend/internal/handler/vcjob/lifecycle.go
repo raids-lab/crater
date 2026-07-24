@@ -37,7 +37,7 @@ func (mgr *VolcanojobMgr) submitJob(
 	}
 
 	if mgr.prequeueWatcher == nil {
-		if err := vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job); err != nil {
+		if err := mgr.activateJob(ctx, job); err != nil {
 			return err
 		}
 		return nil
@@ -57,10 +57,17 @@ func (mgr *VolcanojobMgr) submitJob(
 		return mgr.createPrequeueRecord(ctx, token, job)
 	}
 
-	if err := vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job); err != nil {
+	if err := mgr.activateJob(ctx, job); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (mgr *VolcanojobMgr) activateJob(ctx context.Context, job *batch.Job) error {
+	if err := service.ApplyJobPodBandwidth(ctx, mgr.configService, mgr.kubeClient, job); err != nil {
+		return err
+	}
+	return vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job)
 }
 
 func (mgr *VolcanojobMgr) ensureJobAdmitted(ctx context.Context, job *batch.Job) error {

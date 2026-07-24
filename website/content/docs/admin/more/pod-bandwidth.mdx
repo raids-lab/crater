@@ -1,0 +1,31 @@
+---
+title: 配置 Pod 带宽限制
+description: 分别配置模型下载和 Volcano 作业 Pod 的网络带宽上限
+---
+
+管理员可以在“平台设置”中的“Pod 带宽限制”分别控制模型下载、Volcano 作业入站和出站带宽。作业配置同时覆盖普通作业与回填作业。该功能默认关闭，避免在尚未安装 bandwidth CNI 的集群上影响作业创建。
+
+## 集群能力检查
+
+页面会实时检查以下条件：
+
+- `kube-flannel` namespace 中存在 `kube-flannel-cfg` ConfigMap 和 `kube-flannel-ds` DaemonSet。
+- ConfigMap 的 `cni-conf.json` 已包含 `bandwidth` 插件，并声明 `bandwidth` capability。
+- DaemonSet 包含名为 `install-bandwidth-plugin` 的 initContainer，通过挂载节点 `/opt/cni/bin`，将 `/opt/cni/bin/bandwidth` 复制到 `/host/opt/cni/bin/bandwidth`。
+- DaemonSet 已在全部目标节点完成滚动更新并处于 Ready 状态。
+
+这是 Crater 当前支持的 Flannel 部署契约；使用其他 namespace、资源名称或安装方式时，平台会将能力报告为不可用。任一条件不满足时，平台会禁止开启限速。功能已经开启但集群能力随后失效时，直接提交的作业会停止创建，Prequeue 作业也会在激活时等待能力恢复。
+
+## 配置项
+
+- **模型下载带宽**：写入 model-dl Pod 的入站 bandwidth annotation，限制下载数据进入 Pod 的速率。
+- **作业入站带宽**：限制流入普通与回填作业 Pod 的速率。
+- **作业出站带宽**：限制从普通与回填作业 Pod 发出的速率。
+
+页面将数值和单位分开填写，单位可选择 Kbit/s、Mbit/s 或 Gbit/s。例如数值 `1` 配合 Gbit/s 会保存为 Kubernetes 数量 `1G`。
+
+配置保存在系统配置中，修改后无需重启后端。Crater 会在实际创建模型下载 Pod 或 Volcano Job 时读取最新配置；Prequeue 作业使用激活时的配置，而不是提交时的快照。CNI 只在 Pod sandbox 创建时读取 annotation，因此已经运行的 Pod 不会被在线修改，必须重建后才能使用新值。
+
+## 验证注意事项
+
+containerd 传给 bandwidth CNI 的初始 burst 可能约为 512 MiB。小文件传输可能完全落在 burst 内，看不出稳定限速效果；验证时应使用明显超过 512 MiB 的数据量。

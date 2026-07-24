@@ -12,6 +12,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/utils"
 )
@@ -73,7 +74,7 @@ func (w *PrequeueWatcher) claimAndActivatePrequeueJob(ctx context.Context, candi
 			return nil
 		}
 
-		job, err := vcjobservice.RestoreJobFromRecord(candidate)
+		job, err := w.restoreJobForActivation(ctx, candidate)
 		if err != nil {
 			return err
 		}
@@ -86,6 +87,17 @@ func (w *PrequeueWatcher) claimAndActivatePrequeueJob(ctx context.Context, candi
 		return nil
 	})
 	return activated, err
+}
+
+func (w *PrequeueWatcher) restoreJobForActivation(ctx context.Context, candidate *model.Job) (*batch.Job, error) {
+	job, err := vcjobservice.RestoreJobFromRecord(candidate)
+	if err != nil {
+		return nil, err
+	}
+	if err := service.ApplyJobPodBandwidth(ctx, w.configService, w.kubeClient, job); err != nil {
+		return nil, err
+	}
+	return job, nil
 }
 
 // selectActivationCandidates applies quota and timeout blockers while preserving FCFS order.

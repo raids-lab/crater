@@ -101,6 +101,41 @@ func (s *ConfigService) SetCronJobManager(cjm *cronjob.CronJobManager) {
 	s.cronJobManager = cjm
 }
 
+func defaultSystemConfigValue(key string) string {
+	switch key {
+	case model.ConfigKeyEnableGpuAnalysis,
+		model.ConfigKeyEnableBillingFeature,
+		model.ConfigKeyEnableBillingActive,
+		model.ConfigKeyEnableRunningSettlement,
+		model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
+		model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled,
+		model.ConfigKeyPodBandwidthEnabled:
+		return "false"
+	case model.ConfigKeyModelDownloadLimitEnabled:
+		return strconv.FormatBool(true)
+	case model.ConfigKeyModelDownloadMaxConcurrent:
+		return strconv.Itoa(DefaultModelDownloadMaxConcurrent)
+	case model.ConfigKeyModelDownloadWindowHours:
+		return strconv.Itoa(DefaultModelDownloadWindowHours)
+	case model.ConfigKeyModelDownloadMaxSuccessfulDownloads:
+		return strconv.Itoa(DefaultModelDownloadMaxSuccessfulDownloads)
+	case model.ConfigKeyModelDownloadWhitelistUsers:
+		return "[]"
+	case model.ConfigKeyModelDownloadBandwidth,
+		model.ConfigKeyJobIngressBandwidth,
+		model.ConfigKeyJobEgressBandwidth:
+		return defaultPodBandwidth
+	case model.ConfigKeyRunningSettlementIntervalMinute:
+		return "5"
+	case model.ConfigKeyBillingDefaultIssueAmount:
+		return FormatBillingAmountConfigValue(defaultBillingIssueAmount)
+	case model.ConfigKeyBillingDefaultIssuePeriodMinute:
+		return "43200"
+	default:
+		return ""
+	}
+}
+
 // initDefaultConfigs 确保数据库中存在所有必要的配置键
 func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 	return s.q.Transaction(func(tx *query.Query) error {
@@ -108,36 +143,10 @@ func (s *ConfigService) initDefaultConfigs(ctx context.Context) error {
 			_, err := tx.SystemConfig.WithContext(ctx).Where(tx.SystemConfig.Key.Eq(key)).First()
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					defaultValue := ""
-					switch key {
-					case model.ConfigKeyEnableGpuAnalysis,
-						model.ConfigKeyEnableBillingFeature,
-						model.ConfigKeyEnableBillingActive,
-						model.ConfigKeyEnableRunningSettlement,
-						model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
-						model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled:
-						defaultValue = "false"
-					case model.ConfigKeyModelDownloadLimitEnabled:
-						defaultValue = strconv.FormatBool(true)
-					case model.ConfigKeyModelDownloadMaxConcurrent:
-						defaultValue = strconv.Itoa(DefaultModelDownloadMaxConcurrent)
-					case model.ConfigKeyModelDownloadWindowHours:
-						defaultValue = strconv.Itoa(DefaultModelDownloadWindowHours)
-					case model.ConfigKeyModelDownloadMaxSuccessfulDownloads:
-						defaultValue = strconv.Itoa(DefaultModelDownloadMaxSuccessfulDownloads)
-					case model.ConfigKeyModelDownloadWhitelistUsers:
-						defaultValue = "[]"
-					case model.ConfigKeyRunningSettlementIntervalMinute:
-						defaultValue = "5"
-					case model.ConfigKeyBillingDefaultIssueAmount:
-						defaultValue = FormatBillingAmountConfigValue(defaultBillingIssueAmount)
-					case model.ConfigKeyBillingDefaultIssuePeriodMinute:
-						defaultValue = "43200"
-					}
 					klog.Infof("[ConfigService] Seeding missing config key: %s", key)
 					if createErr := tx.SystemConfig.WithContext(ctx).Create(&model.SystemConfig{
 						Key:   key,
-						Value: defaultValue,
+						Value: defaultSystemConfigValue(key),
 					}); createErr != nil {
 						return createErr
 					}
@@ -234,6 +243,10 @@ func (s *ConfigService) UpdateModelDownloadLimitConfig(
 		model.ConfigKeyModelDownloadMaxSuccessfulDownloads: strconv.FormatInt(cfg.MaxSuccessfulDownloads, 10),
 		model.ConfigKeyModelDownloadWhitelistUsers:         string(whitelistJSON),
 	}
+	return s.updateConfigs(ctx, updates)
+}
+
+func (s *ConfigService) updateConfigs(ctx context.Context, updates map[string]string) error {
 	return s.q.Transaction(func(tx *query.Query) error {
 		for key, value := range updates {
 			result, err := tx.SystemConfig.WithContext(ctx).

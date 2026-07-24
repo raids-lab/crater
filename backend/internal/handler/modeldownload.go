@@ -50,18 +50,20 @@ func init() {
 }
 
 type ModelDownloadMgr struct {
-	name         string
-	crClient     kubernetes.Interface
-	namespace    string
-	quotaService *service.ModelDownloadQuotaService
+	name          string
+	crClient      kubernetes.Interface
+	namespace     string
+	quotaService  *service.ModelDownloadQuotaService
+	configService *service.ConfigService
 }
 
 func NewModelDownloadMgr(conf *RegisterConfig) Manager {
 	return &ModelDownloadMgr{
-		name:         "model-download",
-		crClient:     conf.KubeClient,
-		namespace:    config.GetConfig().Namespaces.Job,
-		quotaService: service.NewModelDownloadQuotaService(conf.ConfigService),
+		name:          "model-download",
+		crClient:      conf.KubeClient,
+		namespace:     config.GetConfig().Namespaces.Job,
+		quotaService:  service.NewModelDownloadQuotaService(conf.ConfigService),
+		configService: conf.ConfigService,
 	}
 }
 
@@ -1302,6 +1304,12 @@ const (
 )
 
 func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.ModelDownload, username, accessToken string) error {
+	podAnnotations, err := service.ModelDownloadPodBandwidthAnnotations(
+		c.Request.Context(), mgr.configService, mgr.crClient,
+	)
+	if err != nil {
+		return err
+	}
 	physicalPath := mgr.convertToPhysicalPath(download.Path)
 	subPath := filepath.Dir(physicalPath)
 	modelDirName := filepath.Base(physicalPath)
@@ -1330,6 +1338,7 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 						"app":               "model-download",
 						"model-download-id": fmt.Sprintf("%d", download.ID),
 					},
+					Annotations: podAnnotations,
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:    corev1.RestartPolicyNever,
@@ -1376,7 +1385,7 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 	}
 
 	// 提交 Job 到集群
-	_, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Create(c, job, metav1.CreateOptions{})
+	_, err = mgr.crClient.BatchV1().Jobs(mgr.namespace).Create(c, job, metav1.CreateOptions{})
 	return err
 }
 

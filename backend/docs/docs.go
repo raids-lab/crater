@@ -3442,6 +3442,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/system-config/pod-bandwidth": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前配置，并按受支持的 kube-flannel 资源与 installer 契约检查 bandwidth 能力",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "管理员获取 Pod 带宽限制配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodBandwidthConfigResp"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "分别配置模型下载、Volcano 作业入站和出站带宽；Normal 与 Backfill 作业均覆盖，对 Pod 实际创建时生效",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "更新 Pod 带宽限制配置",
+                "parameters": [
+                    {
+                        "description": "Pod 带宽限制配置",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdatePodBandwidthConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/system-config/prequeue": {
             "get": {
                 "security": [
@@ -11053,6 +11115,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodBandwidthConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.PodBandwidthConfigResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp": {
             "type": "object",
             "properties": {
@@ -12436,6 +12513,29 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.PodBandwidthConfigResp": {
+            "type": "object",
+            "properties": {
+                "capabilityAvailable": {
+                    "type": "boolean"
+                },
+                "capabilityMessage": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "jobEgressBandwidth": {
+                    "type": "string"
+                },
+                "jobIngressBandwidth": {
+                    "type": "string"
+                },
+                "modelDownloadBandwidth": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.PrequeueConfigResp": {
             "type": "object",
             "properties": {
@@ -12843,6 +12943,29 @@ const docTemplate = `{
                 },
                 "windowHours": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.UpdatePodBandwidthConfigReq": {
+            "type": "object",
+            "required": [
+                "enabled",
+                "jobEgressBandwidth",
+                "jobIngressBandwidth",
+                "modelDownloadBandwidth"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "jobEgressBandwidth": {
+                    "type": "string"
+                },
+                "jobIngressBandwidth": {
+                    "type": "string"
+                },
+                "modelDownloadBandwidth": {
+                    "type": "string"
                 }
             }
         },

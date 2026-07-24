@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/query"
@@ -31,6 +33,7 @@ type SystemConfigMgr struct {
 	billingService *service.BillingService
 	cronjobManager *cronjob.CronJobManager
 	watcher        *prequeuewatcher.PrequeueWatcher
+	kubeClient     kubernetes.Interface
 }
 
 func NewSystemConfigMgr(conf *RegisterConfig) Manager {
@@ -40,6 +43,7 @@ func NewSystemConfigMgr(conf *RegisterConfig) Manager {
 		billingService: conf.BillingService,
 		cronjobManager: conf.CronJobManager,
 		watcher:        conf.PrequeueWatcher,
+		kubeClient:     conf.KubeClient,
 	}
 }
 
@@ -63,6 +67,8 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/prequeue", mgr.UpdatePrequeueConfig)
 	g.GET("/model-download-limit", mgr.GetAdminModelDownloadLimitConfig)
 	g.PUT("/model-download-limit", mgr.UpdateModelDownloadLimitConfig)
+	g.GET("/pod-bandwidth", mgr.GetAdminPodBandwidthConfig)
+	g.PUT("/pod-bandwidth", mgr.UpdateAdminPodBandwidthConfig)
 
 	g.GET("/billing", mgr.GetBillingStatus)
 	g.PUT("/billing", mgr.SetBillingStatus)
@@ -134,6 +140,22 @@ type UpdateModelDownloadLimitConfigReq struct {
 	WindowHours            *int64 `json:"windowHours" binding:"required,gt=0"`
 	MaxSuccessfulDownloads *int64 `json:"maxSuccessfulDownloads" binding:"required,gt=0"`
 	WhitelistUserIDs       []uint `json:"whitelistUserIds"`
+}
+
+type PodBandwidthConfigResp struct {
+	Enabled                bool   `json:"enabled"`
+	ModelDownloadBandwidth string `json:"modelDownloadBandwidth"`
+	JobIngressBandwidth    string `json:"jobIngressBandwidth"`
+	JobEgressBandwidth     string `json:"jobEgressBandwidth"`
+	CapabilityAvailable    bool   `json:"capabilityAvailable"`
+	CapabilityMessage      string `json:"capabilityMessage"`
+}
+
+type UpdatePodBandwidthConfigReq struct {
+	Enabled                *bool  `json:"enabled" binding:"required"`
+	ModelDownloadBandwidth string `json:"modelDownloadBandwidth" binding:"required"`
+	JobIngressBandwidth    string `json:"jobIngressBandwidth" binding:"required"`
+	JobEgressBandwidth     string `json:"jobEgressBandwidth" binding:"required"`
 }
 
 type BillingStatusResp struct {
@@ -452,6 +474,77 @@ func (mgr *SystemConfigMgr) UpdateModelDownloadLimitConfig(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, "Model download limit configuration updated")
+}
+
+// GetAdminPodBandwidthConfig godoc
+//
+//	@Summary		管理员获取 Pod 带宽限制配置
+//	@Description	获取当前配置，并按受支持的 kube-flannel 资源与 installer 契约检查 bandwidth 能力
+//	@Tags			SystemConfig
+//	@Produce		json
+//	@Security		Bearer
+//	@Success		200	{object}	resputil.Response[PodBandwidthConfigResp]
+//	@Router			/v1/admin/system-config/pod-bandwidth [get]
+func (mgr *SystemConfigMgr) GetAdminPodBandwidthConfig(c *gin.Context) {
+	cfg, err := mgr.service.GetPodBandwidthConfig(c.Request.Context())
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get pod bandwidth config failed"))
+		return
+	}
+	capabilityErr := service.CheckFlannelBandwidthCNISupport(c.Request.Context(), mgr.kubeClient)
+	capabilityMessage := ""
+	if capabilityErr != nil {
+		var capabilityBizError *bizerr.BizError
+		if errors.As(capabilityErr, &capabilityBizError) {
+			capabilityMessage = capabilityBizError.Message
+		} else {
+			capabilityMessage = capabilityErr.Error()
+		}
+	}
+	resputil.Success(c, PodBandwidthConfigResp{
+		Enabled:                cfg.Enabled,
+		ModelDownloadBandwidth: cfg.ModelDownloadBandwidth,
+		JobIngressBandwidth:    cfg.JobIngressBandwidth,
+		JobEgressBandwidth:     cfg.JobEgressBandwidth,
+		CapabilityAvailable:    capabilityErr == nil, CapabilityMessage: capabilityMessage,
+	})
+}
+
+// UpdateAdminPodBandwidthConfig godoc
+//
+//	@Summary		更新 Pod 带宽限制配置
+//	@Description	分别配置模型下载、Volcano 作业入站和出站带宽；Normal 与 Backfill 作业均覆盖，对 Pod 实际创建时生效
+//	@Tags			SystemConfig
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			data	body		UpdatePodBandwidthConfigReq	true	"Pod 带宽限制配置"
+//	@Success		200		{object}	resputil.Response[string]
+//	@Router			/v1/admin/system-config/pod-bandwidth [put]
+func (mgr *SystemConfigMgr) UpdateAdminPodBandwidthConfig(c *gin.Context) {
+	var req UpdatePodBandwidthConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid pod bandwidth config"))
+		return
+	}
+	if *req.Enabled {
+		if err := service.CheckFlannelBandwidthCNISupport(c.Request.Context(), mgr.kubeClient); err != nil {
+			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.Wrap(
+				err, "cannot enable pod bandwidth limiting because the cluster CNI capability is unavailable",
+			))
+			return
+		}
+	}
+	if err := mgr.service.UpdatePodBandwidthConfig(c.Request.Context(), service.PodBandwidthConfig{
+		Enabled:                *req.Enabled,
+		ModelDownloadBandwidth: req.ModelDownloadBandwidth,
+		JobIngressBandwidth:    req.JobIngressBandwidth,
+		JobEgressBandwidth:     req.JobEgressBandwidth,
+	}); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, "Pod bandwidth configuration updated")
 }
 
 func (mgr *SystemConfigMgr) GetBillingStatus(c *gin.Context) {
