@@ -2,6 +2,7 @@ import { addHours, format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { CalendarClock } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,7 @@ export function DurationFields({
   showPreview = true,
   className,
 }: DurationFieldsProps) {
+  const { t } = useTranslation()
   const [days, setDays] = useState<number>(value?.days ?? 0)
   const [hours, setHours] = useState<number>(value?.hours ?? 0)
 
@@ -79,7 +81,7 @@ export function DurationFields({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="duration-days" className="mb-2 block">
-            天数
+            {t('durationDialog.form.days.text')}
           </Label>
           <Input
             id="duration-days"
@@ -104,7 +106,7 @@ export function DurationFields({
         </div>
         <div>
           <Label htmlFor="duration-hours" className="mb-2 block">
-            小时数
+            {t('durationDialog.form.hours.text')}
           </Label>
           <Input
             id="duration-hours"
@@ -129,9 +131,11 @@ export function DurationFields({
         </div>
       </div>
 
-      <div className="text-muted-foreground mt-4 text-xs">
-        {maxTotalHours ? `（上限建议：${maxTotalHours} 小时）` : null}
-      </div>
+      {maxTotalHours > 0 && (
+        <div className="text-muted-foreground mt-4 text-xs">
+          {`（上限建议：${maxTotalHours} 小时）`}
+        </div>
+      )}
 
       {preview && (
         <Card className="mt-5 border-dashed">

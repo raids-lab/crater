@@ -49,6 +49,7 @@ import {
   buildFacetQueryKey,
   buildRemoteQueryKey,
 } from '@/components/query-table/remote-state'
+import { UserBanAlert } from '@/components/user/user-ban-alert'
 
 import { apiContextBillingSummary } from '@/services/api/context'
 import { apiGetBillingStatus } from '@/services/api/system-config'
@@ -329,6 +330,7 @@ function Overview() {
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-2">
+        <UserBanAlert className="lg:col-span-2" />
         <PageTitle
           title={`欢迎回来，${userInfo?.nickname} 👋`}
           description="使用异构集群管理平台 Crater 加速您的科研工作"

@@ -21,7 +21,9 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 )
@@ -32,18 +34,20 @@ func init() {
 }
 
 type AuthMgr struct {
-	name     string
-	client   *http.Client
-	req      *imrocreq.Client
-	tokenMgr *util.TokenManager
+	name           string
+	client         *http.Client
+	req            *imrocreq.Client
+	tokenMgr       *util.TokenManager
+	userBanService *service.UserBanService
 }
 
-func NewAuthMgr(_ *RegisterConfig) Manager {
+func NewAuthMgr(conf *RegisterConfig) Manager {
 	return &AuthMgr{
-		name:     "auth",
-		client:   &http.Client{},
-		req:      imrocreq.C(),
-		tokenMgr: util.GetTokenMgr(),
+		name:           "auth",
+		client:         &http.Client{},
+		req:            imrocreq.C(),
+		tokenMgr:       util.GetTokenMgr(),
+		userBanService: conf.UserBanService,
 	}
 }
 
@@ -221,6 +225,16 @@ func (mgr *AuthMgr) Check(c *gin.Context) {
 		resputil.Success(c, nil)
 		return
 	}
+	if mgr.userBanService != nil {
+		if err := mgr.userBanService.RequireCapability(
+			c.Request.Context(),
+			user.ID,
+			service.UserBanCapabilityPlatformAccess,
+		); err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
+	}
 
 	// 获取当前队列信息
 	currentQueue, err := q.WithContext(c).Where(q.ID.Eq(jwtMessage.AccountID)).First()
@@ -316,6 +330,25 @@ func (mgr *AuthMgr) handleLoginError(c *gin.Context, err error) {
 	}
 }
 
+func (mgr *AuthMgr) validateLoginUser(c *gin.Context, user *model.User) bool {
+	if user.Status != model.StatusActive {
+		resputil.HandleError(c, bizerr.Auth.AccountLocked.New("User is not active"))
+		return false
+	}
+	if mgr.userBanService == nil {
+		return true
+	}
+	if err := mgr.userBanService.RequireCapability(
+		c.Request.Context(),
+		user.ID,
+		service.UserBanCapabilityPlatformAccess,
+	); err != nil {
+		resputil.HandleError(c, err)
+		return false
+	}
+	return true
+}
+
 // Login godoc
 //
 //	@Summary		用户登录
@@ -375,8 +408,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
-	if user.Status != model.StatusActive {
-		resputil.HTTPError(c, http.StatusUnauthorized, "User is not active", resputil.NotSpecified)
+	if !mgr.validateLoginUser(c, user) {
 		return
 	}
 
@@ -1057,6 +1089,16 @@ func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 	if err != nil {
 		resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.NotSpecified)
 		return
+	}
+	if mgr.userBanService != nil {
+		if err := mgr.userBanService.RequireCapability(
+			c.Request.Context(),
+			chaims.UserID,
+			service.UserBanCapabilityPlatformAccess,
+		); err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
 	}
 
 	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&chaims)

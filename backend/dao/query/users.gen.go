@@ -41,6 +41,8 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.ImageQuota = field.NewInt64(tableName, "image_quota")
 	_user.ExtraBalance = field.NewInt64(tableName, "extra_balance")
 	_user.LastEmailVerifiedAt = field.NewTime(tableName, "last_email_verified_at")
+	_user.BannedTimestamp = field.NewTime(tableName, "banned_timestamp")
+	_user.BanRestrictions = field.NewField(tableName, "ban_restrictions")
 	_user.Attributes = field.NewField(tableName, "attributes")
 	_user.UserAccounts = userHasManyUserAccounts{
 		db: db.Session(&gorm.Session{}),
@@ -76,6 +78,8 @@ type user struct {
 	ImageQuota          field.Int64  // 用户在镜像仓库的配额
 	ExtraBalance        field.Int64  // 用户额外点数余额(内部微点, 充值/奖励)
 	LastEmailVerifiedAt field.Time   // 最后一次邮箱验证时间
+	BannedTimestamp     field.Time   // 用户封禁截止时间，晚于当前时间表示封禁中
+	BanRestrictions     field.Field  // 最近一次封禁配置的限制内容，仅在封禁截止时间有效时生效
 	Attributes          field.Field  // 用户的额外属性 (昵称、邮箱、电话、头像等)
 	UserAccounts        userHasManyUserAccounts
 
@@ -109,6 +113,8 @@ func (u *user) updateTableName(table string) *user {
 	u.ImageQuota = field.NewInt64(table, "image_quota")
 	u.ExtraBalance = field.NewInt64(table, "extra_balance")
 	u.LastEmailVerifiedAt = field.NewTime(table, "last_email_verified_at")
+	u.BannedTimestamp = field.NewTime(table, "banned_timestamp")
+	u.BanRestrictions = field.NewField(table, "ban_restrictions")
 	u.Attributes = field.NewField(table, "attributes")
 
 	u.fillFieldMap()
@@ -134,7 +140,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 16)
+	u.fieldMap = make(map[string]field.Expr, 18)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -148,6 +154,8 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["image_quota"] = u.ImageQuota
 	u.fieldMap["extra_balance"] = u.ExtraBalance
 	u.fieldMap["last_email_verified_at"] = u.LastEmailVerifiedAt
+	u.fieldMap["banned_timestamp"] = u.BannedTimestamp
+	u.fieldMap["ban_restrictions"] = u.BanRestrictions
 	u.fieldMap["attributes"] = u.Attributes
 
 }

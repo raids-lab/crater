@@ -11,8 +11,10 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/util"
@@ -24,6 +26,9 @@ type CreateTaskResp struct {
 
 func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	token := interutil.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
+		return
+	}
 	var vcReq CreateJupyterReq
 	if err := c.ShouldBindJSON(&vcReq); err != nil {
 		resputil.BadRequestError(c, err.Error())
@@ -171,6 +176,9 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	var req CreateTaskReq
 
 	token := interutil.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
+		return
+	}
 	req.TaskName = vcReq.Name
 	req.Namespace = config.GetConfig().Namespaces.Job
 	req.UserName = token.AccountName

@@ -45,6 +45,7 @@ var (
 	SystemConfig            *systemConfig
 	User                    *user
 	UserAccount             *userAccount
+	UserBanRecord           *userBanRecord
 	UserDataset             *userDataset
 	UserModelDownload       *userModelDownload
 )
@@ -79,6 +80,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	SystemConfig = &Q.SystemConfig
 	User = &Q.User
 	UserAccount = &Q.UserAccount
+	UserBanRecord = &Q.UserBanRecord
 	UserDataset = &Q.UserDataset
 	UserModelDownload = &Q.UserModelDownload
 }
@@ -114,6 +116,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		SystemConfig:            newSystemConfig(db, opts...),
 		User:                    newUser(db, opts...),
 		UserAccount:             newUserAccount(db, opts...),
+		UserBanRecord:           newUserBanRecord(db, opts...),
 		UserDataset:             newUserDataset(db, opts...),
 		UserModelDownload:       newUserModelDownload(db, opts...),
 	}
@@ -150,6 +153,7 @@ type Query struct {
 	SystemConfig            systemConfig
 	User                    user
 	UserAccount             userAccount
+	UserBanRecord           userBanRecord
 	UserDataset             userDataset
 	UserModelDownload       userModelDownload
 }
@@ -187,6 +191,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		SystemConfig:            q.SystemConfig.clone(db),
 		User:                    q.User.clone(db),
 		UserAccount:             q.UserAccount.clone(db),
+		UserBanRecord:           q.UserBanRecord.clone(db),
 		UserDataset:             q.UserDataset.clone(db),
 		UserModelDownload:       q.UserModelDownload.clone(db),
 	}
@@ -231,6 +236,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		SystemConfig:            q.SystemConfig.replaceDB(db),
 		User:                    q.User.replaceDB(db),
 		UserAccount:             q.UserAccount.replaceDB(db),
+		UserBanRecord:           q.UserBanRecord.replaceDB(db),
 		UserDataset:             q.UserDataset.replaceDB(db),
 		UserModelDownload:       q.UserModelDownload.replaceDB(db),
 	}
@@ -265,6 +271,7 @@ type queryCtx struct {
 	SystemConfig            ISystemConfigDo
 	User                    IUserDo
 	UserAccount             IUserAccountDo
+	UserBanRecord           IUserBanRecordDo
 	UserDataset             IUserDatasetDo
 	UserModelDownload       IUserModelDownloadDo
 }
@@ -299,6 +306,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		SystemConfig:            q.SystemConfig.WithContext(ctx),
 		User:                    q.User.WithContext(ctx),
 		UserAccount:             q.UserAccount.WithContext(ctx),
+		UserBanRecord:           q.UserBanRecord.WithContext(ctx),
 		UserDataset:             q.UserDataset.WithContext(ctx),
 		UserModelDownload:       q.UserModelDownload.WithContext(ctx),
 	}

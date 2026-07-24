@@ -93,6 +93,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	registerConfig.ConfigService = service.NewConfigService(query.Q)
 	registerConfig.BillingService = service.NewBillingService(query.Q)
 	registerConfig.PrequeueService = service.NewPrequeueService(query.Q, registerConfig.ConfigService)
+	registerConfig.UserBanService = service.NewUserBanService(query.Q)
 
 	registerConfig.GpuAnalysisService = service.NewGpuAnalysisService(
 		query.Q,

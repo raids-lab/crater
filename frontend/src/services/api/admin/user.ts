@@ -18,6 +18,13 @@ import { IResponse } from '@/services/types'
 
 import { ProjectStatus } from '../account'
 import { Role } from '../auth'
+import {
+  IUserBanRestrictions,
+  IUserBanRecord as IVisibleUserBanRecord,
+  IUserBanStatus as IVisibleUserBanStatus,
+} from '../user-ban'
+
+export type { IUserBanRestrictions, IUserBanSummary, UserBanAction } from '../user-ban'
 
 export interface IUserAttributes {
   id: number
@@ -39,7 +46,40 @@ export interface IUser {
   role: Role
   status: ProjectStatus
   extraBalance?: number
+  banned: boolean
+  permanentBanned: boolean
+  bannedTimestamp?: string
+  banRestrictions: IUserBanRestrictions
   attributes: IUserAttributes
+}
+
+export interface IUserBanRecord extends IVisibleUserBanRecord {
+  operatorId: number
+  operatorName: string
+  operatorNickname: string
+}
+
+export interface IUserBanStatus extends Omit<IVisibleUserBanStatus, 'records'> {
+  records: IUserBanRecord[]
+}
+
+export const getUserBanOperatorDisplayName = (
+  record: Pick<IUserBanRecord, 'operatorName' | 'operatorNickname'>
+) => {
+  const nickname = record.operatorNickname?.trim()
+  return nickname && nickname !== record.operatorName
+    ? `${nickname} (@${record.operatorName})`
+    : record.operatorName
+}
+
+export interface IUpdateUserBanReq {
+  banned: boolean
+  isPermanent: boolean
+  days: number
+  hours: number
+  minutes: number
+  banRestrictions: IUserBanRestrictions
+  reason: string
 }
 
 export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>('admin/users')
@@ -54,3 +94,9 @@ export const apiAdminUserUpdateRole = (userName: string, role: Role) =>
   apiV1Put<IResponse<string>>(`admin/users/${userName}/role`, {
     role,
   })
+
+export const apiAdminGetUserBanStatus = (userName: string) =>
+  apiV1Get<IResponse<IUserBanStatus>>(`admin/users/${userName}/ban`)
+
+export const apiAdminUpdateUserBanStatus = (userName: string, data: IUpdateUserBanReq) =>
+  apiV1Put<IResponse<IUserBanStatus>>(`admin/users/${userName}/ban`, data)

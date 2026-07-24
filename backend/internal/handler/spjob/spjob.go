@@ -19,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	recommenddljobapi "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
@@ -51,6 +52,7 @@ type SparseJobMgr struct {
 	name       string
 	jobclient  *crclient.RecommendDLJobController
 	kubeClient kubernetes.Interface
+	banService *service.UserBanService
 }
 
 func NewSparseJobMgr(conf *handler.RegisterConfig) handler.Manager {
@@ -58,6 +60,7 @@ func NewSparseJobMgr(conf *handler.RegisterConfig) handler.Manager {
 		name:       "spjobs",
 		jobclient:  &crclient.RecommendDLJobController{Client: conf.Client},
 		kubeClient: conf.KubeClient,
+		banService: conf.UserBanService,
 	}
 }
 
@@ -121,6 +124,9 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.banService, service.UserBanCapabilityJobSubmission) {
+		return
+	}
 
 	volumes, volumeMounts, err := vcjob.GenerateVolumeMounts(c, req.VolumeMounts, token)
 	if err != nil {

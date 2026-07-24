@@ -26,6 +26,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	interpayload "github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aijobapi "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
@@ -48,6 +49,7 @@ type AIJobMgr struct {
 	kubeClient     kubernetes.Interface
 	taskService    aitaskctl.DBService
 	taskController aitaskctl.TaskControllerInterface
+	userBanService *service.UserBanService
 }
 
 func NewAITaskMgr(conf *handler.RegisterConfig) handler.Manager {
@@ -57,6 +59,7 @@ func NewAITaskMgr(conf *handler.RegisterConfig) handler.Manager {
 		kubeClient:     conf.KubeClient,
 		taskService:    aitaskctl.NewDBService(),
 		taskController: conf.AITaskCtrl,
+		userBanService: conf.UserBanService,
 	}
 }
 

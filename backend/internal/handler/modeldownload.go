@@ -50,20 +50,22 @@ func init() {
 }
 
 type ModelDownloadMgr struct {
-	name          string
-	crClient      kubernetes.Interface
-	namespace     string
-	quotaService  *service.ModelDownloadQuotaService
-	configService *service.ConfigService
+	name           string
+	crClient       kubernetes.Interface
+	namespace      string
+	quotaService   *service.ModelDownloadQuotaService
+	configService  *service.ConfigService
+	userBanService *service.UserBanService
 }
 
 func NewModelDownloadMgr(conf *RegisterConfig) Manager {
 	return &ModelDownloadMgr{
-		name:          "model-download",
-		crClient:      conf.KubeClient,
-		namespace:     config.GetConfig().Namespaces.Job,
-		quotaService:  service.NewModelDownloadQuotaService(conf.ConfigService),
-		configService: conf.ConfigService,
+		name:           "model-download",
+		crClient:       conf.KubeClient,
+		namespace:      config.GetConfig().Namespaces.Job,
+		quotaService:   service.NewModelDownloadQuotaService(conf.ConfigService),
+		configService:  conf.ConfigService,
+		userBanService: conf.UserBanService,
 	}
 }
 
@@ -167,6 +169,14 @@ func bindDownloadAction(c *gin.Context) (DownloadActionReq, error) {
 		return req, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid download action request")
 	}
 	return req, nil
+}
+
+func (mgr *ModelDownloadMgr) requireDownloadCapability(c *gin.Context, category model.DownloadCategory) bool {
+	capability := service.UserBanCapabilityModelDownload
+	if category == model.DownloadCategoryDataset {
+		capability = service.UserBanCapabilityDatasetDownload
+	}
+	return RequireUserBanCapability(c, mgr.userBanService, capability)
 }
 
 func (mgr *ModelDownloadMgr) canViewDownloadLogs(
@@ -604,6 +614,9 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 
 	// 设置分类
 	category := model.DownloadCategory(req.Category)
+	if !mgr.requireDownloadCapability(c, category) {
+		return
+	}
 
 	// 生成安全的路径名
 	safeName := sanitizeModelName(req.Name)
@@ -877,8 +890,12 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 		return
 	}
 
-	if _, err := mgr.requireManagePermission(c, req.ID); err != nil {
+	existingDownload, err := mgr.requireManagePermission(c, req.ID)
+	if err != nil {
 		resputil.HandleError(c, err)
+		return
+	}
+	if !mgr.requireDownloadCapability(c, existingDownload.Category) {
 		return
 	}
 
@@ -1151,6 +1168,9 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 	download, err := mgr.requireManagePermission(c, req.ID)
 	if err != nil {
 		resputil.HandleError(c, err)
+		return
+	}
+	if !mgr.requireDownloadCapability(c, download.Category) {
 		return
 	}
 

@@ -13,7 +13,9 @@ import (
 	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -296,6 +298,9 @@ func (mgr *VolcanojobMgr) CreateSnapshot(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
+	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityImageBuild) {
+		return
+	}
 
 	// find from db
 	job, err := getJob(c, req.JobName, &token)
