@@ -53,6 +53,7 @@ func main() {
 		model.SystemConfig{},
 		model.PrequeueConfig{},
 		model.QueueQuotaLimit{},
+		model.UserBanRecord{},
 	)
 
 	// 执行并生成代码

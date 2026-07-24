@@ -13,10 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import i18n from '@/i18n'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
 
+import { ERROR_USER_BANNED } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
+
+const isToastHandled = (error: unknown) =>
+  Boolean(
+    error && typeof error === 'object' && (error as { isHandledByBiz?: boolean }).isHandledByBiz
+  )
+
+const showUserBanToast = () => {
+  toast.error(i18n.t('userBan.errors.operationBlockedTitle'), {
+    description: i18n.t('userBan.errors.operationBlockedDescription'),
+  })
+}
 
 const markToastHandled = (error: unknown) => {
   if (!error || typeof error !== 'object') {
@@ -36,6 +49,9 @@ const markToastHandled = (error: unknown) => {
 }
 
 export const showErrorToast = (error: unknown) => {
+  if (isToastHandled(error)) {
+    return
+  }
   markToastHandled(error)
 
   // 1. Handle AxiosError (for backward compatibility with axios-based code)
@@ -46,6 +62,11 @@ export const showErrorToast = (error: unknown) => {
         const httpStatus = error.response.status
         const businessCode = errorResponse.code
         const errorMsg = errorResponse.msg || error.message
+
+        if (businessCode === ERROR_USER_BANNED) {
+          showUserBanToast()
+          return
+        }
 
         // Build complete error message: HTTP status code + business error code + error message
         const fullErrorMessage = `[HTTP ${httpStatus}] [Code ${businessCode}] ${errorMsg}`
@@ -80,6 +101,11 @@ export const showErrorToast = (error: unknown) => {
     if (errorWithData.data) {
       const businessCode = errorWithData.data.code
       const errorMsg = errorWithData.data.msg || 'Request failed'
+
+      if (businessCode === ERROR_USER_BANNED) {
+        showUserBanToast()
+        return
+      }
 
       // Build complete error message: HTTP status code + business error code + error message
       if (httpStatus !== undefined) {

@@ -27,12 +27,14 @@ func init() {
 type UserMgr struct {
 	name           string
 	billingService *service.BillingService
+	userBanService *service.UserBanService
 }
 
 func NewUserMgr(conf *RegisterConfig) Manager {
 	return &UserMgr{
 		name:           "users",
 		billingService: conf.BillingService,
+		userBanService: conf.UserBanService,
 	}
 }
 
@@ -41,6 +43,8 @@ func (mgr *UserMgr) GetName() string { return mgr.name }
 func (mgr *UserMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *UserMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("/ban", mgr.GetCurrentUserBanStatus)
+	g.GET("/:name/ban", mgr.GetVisibleUserBanStatus)
 	g.GET("/:name", mgr.GetUser) // 新增获取单个用户的接口
 	g.GET("/email/verified", mgr.CheckIfEmailVerified)
 }
@@ -54,15 +58,21 @@ func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/:name/attributes", mgr.UpdateUserAttributesByAdmin)
 	g.POST("/:name/billing/extra-balance", mgr.AdjustUserExtraBalance)
 	g.GET("/:name/billing/accounts", mgr.GetUserBillingAccounts)
+	g.GET("/:name/ban", mgr.GetUserBanStatus)
+	g.PUT("/:name/ban", mgr.UpdateUserBanStatus)
 }
 
 type UserResp struct {
-	ID           uint                                    `json:"id"`           // 用户ID
-	Name         string                                  `json:"name"`         // 用户名称
-	Role         model.Role                              `json:"role"`         // 用户角色
-	Status       model.Status                            `json:"status"`       // 用户状态
-	ExtraBalance float64                                 `json:"extraBalance"` // 用户额外点数
-	Attributes   datatypes.JSONType[model.UserAttribute] `json:"attributes"`   // 用户额外属性
+	ID              uint                                    `json:"id"`                        // 用户ID
+	Name            string                                  `json:"name"`                      // 用户名称
+	Role            model.Role                              `json:"role"`                      // 用户角色
+	Status          model.Status                            `json:"status"`                    // 用户状态
+	ExtraBalance    float64                                 `json:"extraBalance"`              // 用户额外点数
+	Attributes      datatypes.JSONType[model.UserAttribute] `json:"attributes"`                // 用户额外属性
+	Banned          bool                                    `json:"banned"`                    // 当前是否处于封禁状态
+	PermanentBanned bool                                    `json:"permanentBanned"`           // 是否永久封禁
+	BannedTimestamp *time.Time                              `json:"bannedTimestamp,omitempty"` // 用户封禁截止时间
+	BanRestrictions model.UserBanRestrictions               `json:"banRestrictions"`           // 当前生效的封禁限制，未封禁时为空
 }
 
 type UserDetailResp struct {
@@ -71,6 +81,7 @@ type UserDetailResp struct {
 	Nickname     string       `json:"nickname"`     // 用户昵称
 	Role         model.Role   `json:"role"`         // 用户角色
 	Status       model.Status `json:"status"`       // 用户状态
+	Banned       bool         `json:"banned"`       // 当前是否处于封禁状态
 	CreatedAt    time.Time    `json:"createdAt"`    // 创建时间
 	Teacher      *string      `json:"teacher"`      // 导师
 	Group        *string      `json:"group"`        // 课题组
@@ -173,7 +184,7 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	u := query.User
 	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes).
+		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.BannedTimestamp, u.BanRestrictions).
 		Order(u.ID.Desc()).
 		Find()
 	if err != nil {
@@ -186,13 +197,21 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 		if mgr.isBillingFeatureEnabled(c) {
 			extraBalance = service.ToDisplayPoints(users[i].ExtraBalance)
 		}
+		banned := service.IsUserBanned(users[i].BannedTimestamp)
 		resp = append(resp, UserResp{
-			ID:           users[i].ID,
-			Name:         users[i].Name,
-			Role:         users[i].Role,
-			Status:       users[i].Status,
-			ExtraBalance: extraBalance,
-			Attributes:   users[i].Attributes,
+			ID:              users[i].ID,
+			Name:            users[i].Name,
+			Role:            users[i].Role,
+			Status:          users[i].Status,
+			ExtraBalance:    extraBalance,
+			Attributes:      users[i].Attributes,
+			Banned:          banned,
+			PermanentBanned: service.IsUserPermanentlyBanned(users[i].BannedTimestamp),
+			BannedTimestamp: users[i].BannedTimestamp,
+			BanRestrictions: service.EffectiveUserBanRestrictions(
+				banned,
+				users[i].BanRestrictions.Data(),
+			),
 		})
 	}
 	klog.Infof("list users success, count: %d", len(resp))
@@ -338,6 +357,7 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 		Nickname:     user.Nickname,
 		Role:         user.Role,
 		Status:       user.Status,
+		Banned:       service.IsUserBanned(user.BannedTimestamp),
 		CreatedAt:    user.CreatedAt,
 		ExtraBalance: service.ToDisplayPoints(user.ExtraBalance),
 	}

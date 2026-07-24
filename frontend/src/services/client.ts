@@ -17,6 +17,7 @@ import {
   ERROR_SERVICE_ERROR,
   ERROR_TOKEN_EXPIRED,
   ERROR_TOKEN_INVALID,
+  ERROR_USER_BANNED,
   ERROR_USER_EMAIL_NOT_VERIFIED,
   ErrorCode,
 } from './error_code'
@@ -100,6 +101,10 @@ const ERROR_POLICY_TABLE: ErrorPolicy[] = [
     message: '接收通知需要验证邮箱，请前往个人主页验证',
   },
   {
+    action: 'delegate',
+    match: (code) => code === ERROR_USER_BANNED,
+  },
+  {
     action: 'toast',
     match: (code) => code === ERROR_SERVICE_ERROR,
     message: (errorResponse) => errorResponse.msg || '后端服务异常',
@@ -111,7 +116,7 @@ const ERROR_POLICY_TABLE: ErrorPolicy[] = [
   },
 ]
 
-const scheduleUnhandledConflictFallback = (error: EnhancedHTTPError) => {
+const scheduleUnhandledErrorFallback = (error: EnhancedHTTPError) => {
   if (error.fallbackLogTimer) {
     return
   }
@@ -125,7 +130,7 @@ const scheduleUnhandledConflictFallback = (error: EnhancedHTTPError) => {
     const httpStatus = error.httpStatus ?? error.response.status
     const message = error.data?.msg ?? error.message
     showErrorToast(error)
-    logger.error(`[UnhandledConflict] http=${httpStatus} code=${businessCode} msg=${message}`)
+    logger.error(`[UnhandledApiError] http=${httpStatus} code=${businessCode} msg=${message}`)
   }, 0)
 }
 
@@ -139,7 +144,7 @@ const applyErrorPolicy = (
 ) => {
   switch (policy.action) {
     case 'delegate':
-      scheduleUnhandledConflictFallback(error)
+      scheduleUnhandledErrorFallback(error)
       return
     case 'silent':
       return
@@ -147,6 +152,7 @@ const applyErrorPolicy = (
       const message =
         typeof policy.message === 'function' ? policy.message(errorResponse, error) : policy.message
       if (message) {
+        markApiErrorHandled(error)
         showErrorToast(message)
       }
       return
@@ -154,7 +160,7 @@ const applyErrorPolicy = (
   }
 }
 
-export const markApiErrorHandled = (error: unknown) => {
+export function markApiErrorHandled(error: unknown) {
   if (!error || typeof error !== 'object') {
     return
   }

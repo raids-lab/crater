@@ -6,6 +6,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 )
 
-func AuthProtected() gin.HandlerFunc {
+func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var authToken string
 		// if request type is websocket, read token from string
@@ -34,6 +35,17 @@ func AuthProtected() gin.HandlerFunc {
 			resputil.HTTPError(c, http.StatusUnauthorized, err.Error(), resputil.TokenExpired)
 			c.Abort()
 			return
+		}
+		if userBanService != nil {
+			if err := userBanService.RequireCapability(
+				c.Request.Context(),
+				token.UserID,
+				service.UserBanCapabilityPlatformAccess,
+			); err != nil {
+				resputil.HandleError(c, err)
+				c.Abort()
+				return
+			}
 		}
 
 		// If query method is not GET (e.g. POST, PUT, DELETE), validate permissions from database

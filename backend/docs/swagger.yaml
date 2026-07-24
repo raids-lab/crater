@@ -324,6 +324,29 @@ definitions:
         description: UID and GID are used for Filesystem
         type: string
     type: object
+  github_com_raids-lab_crater_dao_model.UserBanAction:
+    enum:
+    - ban
+    - extend
+    - unban
+    type: string
+    x-enum-varnames:
+    - UserBanActionBan
+    - UserBanActionExtend
+    - UserBanActionUnban
+  github_com_raids-lab_crater_dao_model.UserBanRestrictions:
+    properties:
+      datasetDownload:
+        type: boolean
+      imageBuild:
+        type: boolean
+      jobSubmission:
+        type: boolean
+      modelDownload:
+        type: boolean
+      platformAccess:
+        type: boolean
+    type: object
   github_com_raids-lab_crater_dao_model.UserInfo:
     properties:
       nickname:
@@ -613,6 +636,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CurrentUserBanStatusResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.CurrentUserBanStatusResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DeleteProjectResp:
     properties:
       code:
@@ -793,6 +826,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.UserBanStatusResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserDetailResp:
     properties:
       code:
@@ -800,6 +843,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.UserDetailResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_VisibleUserBanStatusResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.VisibleUserBanStatusResp'
       msg:
         type: string
     type: object
@@ -1264,6 +1317,19 @@ definitions:
     required:
     - category
     - name
+    type: object
+  internal_handler.CurrentUserBanStatusResp:
+    properties:
+      banRestrictions:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+      banned:
+        type: boolean
+      bannedTimestamp:
+        type: string
+      permanentBanned:
+        type: boolean
+      reason:
+        type: string
     type: object
   internal_handler.DatasetReq:
     properties:
@@ -1984,11 +2050,74 @@ definitions:
     required:
     - role
     type: object
+  internal_handler.UpdateUserBanReq:
+    properties:
+      banRestrictions:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+      banned:
+        type: boolean
+      days:
+        type: integer
+      hours:
+        type: integer
+      isPermanent:
+        type: boolean
+      minutes:
+        type: integer
+      reason:
+        maxLength: 500
+        type: string
+    required:
+    - banned
+    type: object
+  internal_handler.UserBanRecordResp:
+    properties:
+      action:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanAction'
+      banRestrictions:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+      bannedTimestamp:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      operatorId:
+        type: integer
+      operatorName:
+        type: string
+      operatorNickname:
+        type: string
+      permanentBanned:
+        type: boolean
+      reason:
+        type: string
+    type: object
+  internal_handler.UserBanStatusResp:
+    properties:
+      banRestrictions:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+      banned:
+        type: boolean
+      bannedTimestamp:
+        type: string
+      permanentBanned:
+        type: boolean
+      reason:
+        type: string
+      records:
+        items:
+          $ref: '#/definitions/internal_handler.UserBanRecordResp'
+        type: array
+    type: object
   internal_handler.UserDetailResp:
     properties:
       avatar:
         description: 头像
         type: string
+      banned:
+        description: 当前是否处于封禁状态
+        type: boolean
       createdAt:
         description: 创建时间
         type: string
@@ -2042,6 +2171,40 @@ definitions:
       commitSHA:
         description: Full commit SHA
         type: string
+    type: object
+  internal_handler.VisibleUserBanRecordResp:
+    properties:
+      action:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanAction'
+      banRestrictions:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+      bannedTimestamp:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      permanentBanned:
+        type: boolean
+      reason:
+        type: string
+    type: object
+  internal_handler.VisibleUserBanStatusResp:
+    properties:
+      banRestrictions:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+      banned:
+        type: boolean
+      bannedTimestamp:
+        type: string
+      permanentBanned:
+        type: boolean
+      reason:
+        type: string
+      records:
+        items:
+          $ref: '#/definitions/internal_handler.VisibleUserBanRecordResp'
+        type: array
     type: object
   internal_handler.cancelSharedQueueReq:
     properties:
@@ -5075,6 +5238,55 @@ paths:
       security:
       - Bearer: []
       summary: 管理员更新用户属性
+      tags:
+      - User
+  /v1/admin/users/{name}/ban:
+    get:
+      description: 仅平台管理员可查看指定用户的当前封禁状态和完整操作记录
+      parameters:
+      - description: username
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp'
+      security:
+      - Bearer: []
+      summary: 获取用户封禁状态和记录
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: 按作业锁定规则增加封禁时长，并为该用户设置本次封禁的限制内容
+      parameters:
+      - description: username
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 封禁状态、增加时长与原因；解除封禁时原因可为空
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.UpdateUserBanReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp'
+      security:
+      - Bearer: []
+      summary: 设置、延长或解除用户封禁
       tags:
       - User
   /v1/admin/users/{name}/billing/extra-balance:
@@ -8276,6 +8488,42 @@ paths:
       security:
       - Bearer: []
       summary: 获取单个用户信息
+      tags:
+      - User
+  /v1/users/{name}/ban:
+    get:
+      description: 已登录用户可查看指定用户的封禁状态和记录，但不返回执行管理员信息
+      parameters:
+      - description: username
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_VisibleUserBanStatusResp'
+      security:
+      - Bearer: []
+      summary: 获取用户封禁状态和记录
+      tags:
+      - User
+  /v1/users/ban:
+    get:
+      description: 返回当前用户仍在生效的封禁时间、原因和限制内容，不包含管理员操作历史
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CurrentUserBanStatusResp'
+      security:
+      - Bearer: []
+      summary: 获取当前用户封禁状态
       tags:
       - User
   /v1/users/email/verified:

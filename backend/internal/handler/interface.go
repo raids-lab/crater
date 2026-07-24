@@ -58,6 +58,7 @@ type RegisterConfig struct {
 	PrequeueService    *service.PrequeueService
 	BillingService     *service.BillingService
 	GpuAnalysisService *service.GpuAnalysisService
+	UserBanService     *service.UserBanService
 }
 
 // Registers is a slice of Manager Init functions.

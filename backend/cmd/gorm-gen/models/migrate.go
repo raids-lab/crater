@@ -1499,6 +1499,79 @@ func main() {
 			},
 		},
 		modelDatasetSourceMigration(),
+		{
+			ID: "202607171900",
+			Migrate: func(tx *gorm.DB) error {
+				type User struct {
+					BannedTimestamp *time.Time     `gorm:"index;comment:用户封禁截止时间，晚于当前时间表示封禁中"`
+					BanRestrictions datatypes.JSON `gorm:"type:jsonb;not null;default:'{}';comment:最近一次封禁配置的限制内容，仅在封禁截止时间有效时生效"`
+				}
+				if err := addColumnIfMissing(tx, "users", &User{}, "BannedTimestamp"); err != nil {
+					return err
+				}
+				if err := createIndexIfMissing(tx, "users", &User{}, "BannedTimestamp"); err != nil {
+					return err
+				}
+				if err := addColumnIfMissing(tx, "users", &User{}, "BanRestrictions"); err != nil {
+					return err
+				}
+
+				type UserBanRecord struct {
+					ID              uint           `gorm:"primarykey"`
+					CreatedAt       time.Time      `gorm:"index:idx_user_ban_records_created_at"`
+					UserID          uint           `gorm:"index:idx_user_ban_records_user_id;not null"`
+					UserName        string         `gorm:"type:varchar(64);not null"`
+					OperatorID      uint           `gorm:"index:idx_user_ban_records_operator_id;not null"`
+					OperatorName    string         `gorm:"type:varchar(64);not null"`
+					Action          string         `gorm:"type:varchar(16);not null"`
+					BannedTimestamp *time.Time     `gorm:"comment:操作后的封禁截止时间，为空表示解除封禁"`
+					BanRestrictions datatypes.JSON `gorm:"type:jsonb;not null;default:'{}';comment:操作后的封禁限制内容"`
+					Reason          string         `gorm:"type:text;not null"`
+				}
+				migrator := tx.Table("user_ban_records").Migrator()
+				if !tx.Migrator().HasTable("user_ban_records") {
+					if err := migrator.CreateTable(&UserBanRecord{}); err != nil {
+						return err
+					}
+				}
+				if err := addColumnIfMissing(
+					tx, "user_ban_records", &UserBanRecord{}, "BanRestrictions",
+				); err != nil {
+					return err
+				}
+				for _, index := range []string{
+					"idx_user_ban_records_created_at",
+					"idx_user_ban_records_user_id",
+					"idx_user_ban_records_operator_id",
+				} {
+					if migrator.HasIndex(&UserBanRecord{}, index) {
+						continue
+					}
+					if err := migrator.CreateIndex(&UserBanRecord{}, index); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if tx.Migrator().HasTable("user_ban_records") {
+					if err := tx.Migrator().DropTable("user_ban_records"); err != nil {
+						return err
+					}
+				}
+				type User struct {
+					BannedTimestamp *time.Time
+					BanRestrictions datatypes.JSON
+				}
+				if err := dropColumnIfPresent(tx, "users", &User{}, "BanRestrictions"); err != nil {
+					return err
+				}
+				if err := dropIndexIfPresent(tx, "users", &User{}, "BannedTimestamp"); err != nil {
+					return err
+				}
+				return dropColumnIfPresent(tx, "users", &User{}, "BannedTimestamp")
+			},
+		},
 		modelDownloadSubmissionMigration(),
 	})
 
@@ -1535,6 +1608,7 @@ func main() {
 			&model.OperationLog{},
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
+			&model.UserBanRecord{},
 		)
 		if err != nil {
 			return err

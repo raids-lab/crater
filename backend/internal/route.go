@@ -54,7 +54,7 @@ func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 	//// Protected routers, need login ////
 	///////////////////////////////////////
 	protectedRouter := b.Group(constants.APIV1Prefix)
-	protectedRouter.Use(middleware.AuthProtected())
+	protectedRouter.Use(middleware.AuthProtected(conf.UserBanService))
 	for _, mgr := range managers {
 		mgr.RegisterProtected(protectedRouter.Group(mgr.GetName()))
 	}
@@ -63,7 +63,7 @@ func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 	//// Admin routers, need admin role ///
 	///////////////////////////////////////
 	adminRouter := b.Group(constants.APIV1AdminPrefix)
-	adminRouter.Use(middleware.AuthProtected(), middleware.AuthAdmin())
+	adminRouter.Use(middleware.AuthProtected(conf.UserBanService), middleware.AuthAdmin())
 	for _, mgr := range managers {
 		mgr.RegisterAdmin(adminRouter.Group(mgr.GetName()))
 	}

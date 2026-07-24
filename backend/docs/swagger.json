@@ -3763,6 +3763,84 @@
                 }
             }
         },
+        "/v1/admin/users/{name}/ban": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "仅平台管理员可查看指定用户的当前封禁状态和完整操作记录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "获取用户封禁状态和记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按作业锁定规则增加封禁时长，并为该用户设置本次封禁的限制内容",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "设置、延长或解除用户封禁",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "封禁状态、增加时长与原因；解除封禁时原因可为空",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.UpdateUserBanReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/users/{name}/billing/extra-balance": {
             "post": {
                 "security": [
@@ -8722,6 +8800,31 @@
                 }
             }
         },
+        "/v1/users/ban": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "返回当前用户仍在生效的封禁时间、原因和限制内容，不包含管理员操作历史",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "获取当前用户封禁状态",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CurrentUserBanStatusResp"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/users/email/verified": {
             "get": {
                 "security": [
@@ -8806,6 +8909,40 @@
                         "description": "其他错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/users/{name}/ban": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "已登录用户可查看指定用户的封禁状态和记录，但不返回执行管理员信息",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "获取用户封禁状态和记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "username",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_VisibleUserBanStatusResp"
                         }
                     }
                 }
@@ -10542,6 +10679,39 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_dao_model.UserBanAction": {
+            "type": "string",
+            "enum": [
+                "ban",
+                "extend",
+                "unban"
+            ],
+            "x-enum-varnames": [
+                "UserBanActionBan",
+                "UserBanActionExtend",
+                "UserBanActionUnban"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.UserBanRestrictions": {
+            "type": "object",
+            "properties": {
+                "datasetDownload": {
+                    "type": "boolean"
+                },
+                "imageBuild": {
+                    "type": "boolean"
+                },
+                "jobSubmission": {
+                    "type": "boolean"
+                },
+                "modelDownload": {
+                    "type": "boolean"
+                },
+                "platformAccess": {
+                    "type": "boolean"
+                }
+            }
+        },
         "github_com_raids-lab_crater_dao_model.UserInfo": {
             "type": "object",
             "properties": {
@@ -10972,6 +11142,21 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_CurrentUserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.CurrentUserBanStatusResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_DeleteProjectResp": {
             "type": "object",
             "properties": {
@@ -11242,6 +11427,21 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.UserBanStatusResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_UserDetailResp": {
             "type": "object",
             "properties": {
@@ -11251,6 +11451,21 @@
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.UserDetailResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_VisibleUserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.VisibleUserBanStatusResp"
                 },
                 "msg": {
                     "type": "string"
@@ -11943,6 +12158,26 @@
                 },
                 "token": {
                     "description": "Token is an optional access token for gated/private repositories on the\nsource site. It is only forwarded to the download Job as an env var and is\nnever persisted on the (shared, deduplicated) download record.",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.CurrentUserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "banRestrictions": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                },
+                "banned": {
+                    "type": "boolean"
+                },
+                "bannedTimestamp": {
+                    "type": "string"
+                },
+                "permanentBanned": {
+                    "type": "boolean"
+                },
+                "reason": {
                     "type": "string"
                 }
             }
@@ -13030,12 +13265,107 @@
                 }
             }
         },
+        "internal_handler.UpdateUserBanReq": {
+            "type": "object",
+            "required": [
+                "banned"
+            ],
+            "properties": {
+                "banRestrictions": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                },
+                "banned": {
+                    "type": "boolean"
+                },
+                "days": {
+                    "type": "integer"
+                },
+                "hours": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "minutes": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                }
+            }
+        },
+        "internal_handler.UserBanRecordResp": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanAction"
+                },
+                "banRestrictions": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                },
+                "bannedTimestamp": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operatorId": {
+                    "type": "integer"
+                },
+                "operatorName": {
+                    "type": "string"
+                },
+                "operatorNickname": {
+                    "type": "string"
+                },
+                "permanentBanned": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.UserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "banRestrictions": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                },
+                "banned": {
+                    "type": "boolean"
+                },
+                "bannedTimestamp": {
+                    "type": "string"
+                },
+                "permanentBanned": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.UserBanRecordResp"
+                    }
+                }
+            }
+        },
         "internal_handler.UserDetailResp": {
             "type": "object",
             "properties": {
                 "avatar": {
                     "description": "头像",
                     "type": "string"
+                },
+                "banned": {
+                    "description": "当前是否处于封禁状态",
+                    "type": "boolean"
                 },
                 "createdAt": {
                     "description": "创建时间",
@@ -13115,6 +13445,58 @@
                 "commitSHA": {
                     "description": "Full commit SHA",
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler.VisibleUserBanRecordResp": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanAction"
+                },
+                "banRestrictions": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                },
+                "bannedTimestamp": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "permanentBanned": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.VisibleUserBanStatusResp": {
+            "type": "object",
+            "properties": {
+                "banRestrictions": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                },
+                "banned": {
+                    "type": "boolean"
+                },
+                "bannedTimestamp": {
+                    "type": "string"
+                },
+                "permanentBanned": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.VisibleUserBanRecordResp"
+                    }
                 }
             }
         },

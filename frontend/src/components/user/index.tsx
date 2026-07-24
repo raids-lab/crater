@@ -17,10 +17,20 @@
 // Modified code
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { Activity, Calendar, Database, GpuIcon, List, User, Users } from 'lucide-react'
+import {
+  Activity,
+  Calendar,
+  Database,
+  GpuIcon,
+  List,
+  ShieldBanIcon,
+  User,
+  Users,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import TipBadge from '@/components/badge/tip-badge'
+import { UserBanStatusBadge } from '@/components/badge/user-ban-status-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
@@ -29,20 +39,26 @@ import { StatisticsDashboard } from '@/components/statistics/statistics-dashboar
 
 import { Role } from '@/services/api/auth'
 import { apiGetUser } from '@/services/api/user'
+import { USER_BAN_STATUS_REFETCH_INTERVAL } from '@/services/api/user-ban'
+
+import useIsAdmin from '@/hooks/use-admin'
 
 import { getUserPseudonym } from '@/utils/pseudonym'
-import { globalHideUsername } from '@/utils/store'
+import { atomUserInfo, globalHideUsername } from '@/utils/store'
 import { configGrafanaUserAtom } from '@/utils/store/config'
 
 import RecentActivity from './recent-activity'
 import SharedItems from './shared-items'
 import { UserAvatar } from './user-avatar'
+import { UserBanHistory } from './user-ban-history'
 import { UserJobsOverview } from './user-jobs'
 
 export default function UserDetail({ name, ...props }: DetailPageCoreProps & { name: string }) {
   const { t } = useTranslation()
   const hideUsername = useAtomValue(globalHideUsername)
+  const currentUser = useAtomValue(atomUserInfo)
   const grafanaUser = useAtomValue(configGrafanaUserAtom)
+  const isAdminView = useIsAdmin()
   // TODO: 这两个标签页对应的能力尚未实现，先在正式版本中隐藏（管理员/用户视图都隐藏）。
   // 等 SharedItems / RecentActivity 真实可用后，再把该开关改为可配置项（feature flag / config）。
   const hideUnimplementedTabs = true
@@ -53,16 +69,25 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
     queryFn: () => apiGetUser(name || ''),
     select: (data) => data.data,
     enabled: !!name,
+    refetchInterval: USER_BAN_STATUS_REFETCH_INTERVAL,
   })
 
   // Header 部分保持不变
   const header = (
-    <div className="flex items-center space-x-4">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       <UserAvatar user={user} className="size-20" size={80} />
-      <div>
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
+      <div className="min-w-0">
+        <h1 className="flex flex-wrap items-center gap-2 text-3xl font-bold">
           {hideUsername ? getUserPseudonym(user?.name) : user?.nickname || user?.name}
           {user?.role === Role.Admin && <TipBadge />}
+          {user && (
+            <UserBanStatusBadge
+              banned={user.banned}
+              adminUserName={isAdminView ? name : undefined}
+              visibleUserName={isAdminView ? undefined : name}
+              isCurrentUser={currentUser?.name === name}
+            />
+          )}
         </h1>
         <p className="text-muted-foreground">
           @{hideUsername ? getUserPseudonym(user?.name) : user?.name}
@@ -118,6 +143,13 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
       icon: List,
       label: t('userDetail.tabs.userJobs'),
       children: <UserJobsOverview username={name} />,
+      scrollable: true,
+    },
+    {
+      key: 'ban-history',
+      icon: ShieldBanIcon,
+      label: t('userBan.history.tab'),
+      children: <UserBanHistory username={name} showOperator={isAdminView} />,
       scrollable: true,
     },
     ...(!hideUnimplementedTabs

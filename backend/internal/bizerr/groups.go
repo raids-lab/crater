@@ -43,6 +43,8 @@ type forbiddenGroup struct {
 	PermissionDenied BizCode `code:"40301"`
 	// UserEmailNotVerified: 强制性要求（如必须验证邮箱后才能发布内容）
 	UserEmailNotVerified BizCode `code:"40302"`
+	// UserBanned: 用户已被管理员封禁，当前有效的封禁限制不允许执行该操作
+	UserBanned BizCode `code:"40303"`
 }
 
 // notFoundGroup 404xx - 资源不存在

@@ -35,6 +35,7 @@ export const ERROR_MFA_REQUIRED: ErrorCode = 40108
 // 403xx - Forbidden
 export const ERROR_PERMISSION_DENIED: ErrorCode = 40301
 export const ERROR_USER_EMAIL_NOT_VERIFIED: ErrorCode = 40302
+export const ERROR_USER_BANNED: ErrorCode = 40303
 
 // 404xx - Not Found
 export const ERROR_DATA_BASE_NOT_FOUND: ErrorCode = 40401

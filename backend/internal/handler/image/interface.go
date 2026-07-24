@@ -8,6 +8,7 @@ import (
 	imrocreq "github.com/imroc/req/v3"
 
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/imageregistry"
@@ -25,6 +26,7 @@ type ImagePackMgr struct {
 	imagePacker     packer.ImagePackerInterface
 	imageRegistry   imageregistry.ImageRegistryInterface
 	req             *imrocreq.Client
+	userBanService  *service.UserBanService
 }
 
 func (mgr *ImagePackMgr) GetName() string { return mgr.name }
@@ -87,6 +89,7 @@ func NewImagePackMgr(conf *handler.RegisterConfig) handler.Manager {
 		imagePacker:     conf.ImagePacker,
 		imageRegistry:   conf.ImageRegistry,
 		req:             imrocreq.C(),
+		userBanService:  conf.UserBanService,
 	}
 }
 
