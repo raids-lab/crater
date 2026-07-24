@@ -122,8 +122,8 @@ func defaultSystemConfigValue(key string) string {
 	case model.ConfigKeyModelDownloadWhitelistUsers:
 		return "[]"
 	case model.ConfigKeyModelDownloadBandwidth,
-		model.ConfigKeyNormalJobIngressBandwidth,
-		model.ConfigKeyNormalJobEgressBandwidth:
+		model.ConfigKeyJobIngressBandwidth,
+		model.ConfigKeyJobEgressBandwidth:
 		return defaultPodBandwidth
 	case model.ConfigKeyRunningSettlementIntervalMinute:
 		return "5"

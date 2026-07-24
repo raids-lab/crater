@@ -23,12 +23,6 @@ func (mgr *VolcanojobMgr) submitJob(
 	token util.JWTMessage,
 	job *batch.Job,
 ) error {
-	bandwidthAnnotations, err := service.NormalJobPodBandwidthAnnotations(ctx, mgr.configService, mgr.kubeClient)
-	if err != nil {
-		return err
-	}
-	applyPodBandwidthAnnotations(job, bandwidthAnnotations)
-
 	scheduleType, err := model.ParseScheduleType(job.Annotations[vcjobservice.AnnotationKeyScheduleType])
 	if err != nil {
 		klog.Errorf("invalid schedule type annotation for job %s: %v", job.Name, err)
@@ -43,7 +37,7 @@ func (mgr *VolcanojobMgr) submitJob(
 	}
 
 	if mgr.prequeueWatcher == nil {
-		if err := vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job); err != nil {
+		if err := mgr.activateJob(ctx, job); err != nil {
 			return err
 		}
 		return nil
@@ -63,24 +57,17 @@ func (mgr *VolcanojobMgr) submitJob(
 		return mgr.createPrequeueRecord(ctx, token, job)
 	}
 
-	if err := vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job); err != nil {
+	if err := mgr.activateJob(ctx, job); err != nil {
 		return err
 	}
 	return nil
 }
 
-func applyPodBandwidthAnnotations(job *batch.Job, annotations map[string]string) {
-	if len(annotations) == 0 {
-		return
+func (mgr *VolcanojobMgr) activateJob(ctx context.Context, job *batch.Job) error {
+	if err := service.ApplyJobPodBandwidth(ctx, mgr.configService, mgr.kubeClient, job); err != nil {
+		return err
 	}
-	for taskIndex := range job.Spec.Tasks {
-		if job.Spec.Tasks[taskIndex].Template.Annotations == nil {
-			job.Spec.Tasks[taskIndex].Template.Annotations = make(map[string]string)
-		}
-		for key, value := range annotations {
-			job.Spec.Tasks[taskIndex].Template.Annotations[key] = value
-		}
-	}
+	return vcjobservice.ActivateJob(ctx, mgr.client, mgr.serviceManager, job)
 }
 
 func (mgr *VolcanojobMgr) ensureJobAdmitted(ctx context.Context, job *batch.Job) error {

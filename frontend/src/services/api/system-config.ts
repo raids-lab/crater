@@ -45,8 +45,8 @@ export interface IAdminModelDownloadLimitConfig {
 export interface IPodBandwidthConfig {
   enabled: boolean
   modelDownloadBandwidth: string
-  normalJobIngressBandwidth: string
-  normalJobEgressBandwidth: string
+  jobIngressBandwidth: string
+  jobEgressBandwidth: string
   capabilityAvailable: boolean
   capabilityMessage: string
 }
@@ -54,8 +54,8 @@ export interface IPodBandwidthConfig {
 export interface IUpdatePodBandwidthConfig {
   enabled: boolean
   modelDownloadBandwidth: string
-  normalJobIngressBandwidth: string
-  normalJobEgressBandwidth: string
+  jobIngressBandwidth: string
+  jobEgressBandwidth: string
 }
 
 export interface IBillingStatus {

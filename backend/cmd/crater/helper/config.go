@@ -124,6 +124,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 		registerConfig.PrequeueService,
 		registerConfig.ConfigService,
 		mgr.GetClient(),
+		registerConfig.KubeClient,
 		serviceManager,
 	)
 }

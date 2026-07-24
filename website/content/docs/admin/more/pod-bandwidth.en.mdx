@@ -1,29 +1,30 @@
 ---
 title: Configure Pod bandwidth limits
-description: Configure separate network limits for model download and ordinary job Pods
+description: Configure separate network limits for model download and Volcano job Pods
 ---
 
-Administrators can use **Pod bandwidth limits** in Platform Settings to configure model download, ordinary job ingress, and ordinary job egress bandwidth separately. The feature is disabled by default so clusters without bandwidth CNI support are not affected.
+Administrators can use **Pod bandwidth limits** in Platform Settings to configure model download, Volcano job ingress, and Volcano job egress bandwidth separately. The job settings cover both normal and backfill jobs. The feature is disabled by default so clusters without bandwidth CNI support are not affected.
 
 ## Cluster capability check
 
 The page checks the following conditions in real time:
 
-- `cni-conf.json` in `kube-flannel-cfg` contains the `bandwidth` plugin and declares the `bandwidth` capability.
-- The Flannel DaemonSet contains an initContainer that installs the bandwidth binary.
-- The Flannel DaemonSet rollout is complete and Ready on every target node.
+- The `kube-flannel` namespace contains the `kube-flannel-cfg` ConfigMap and `kube-flannel-ds` DaemonSet.
+- `cni-conf.json` in the ConfigMap contains the `bandwidth` plugin and declares the `bandwidth` capability.
+- The DaemonSet contains an initContainer named `install-bandwidth-plugin` that mounts the host `/opt/cni/bin` directory and copies `/opt/cni/bin/bandwidth` to `/host/opt/cni/bin/bandwidth`.
+- The DaemonSet rollout is complete and Ready on every target node.
 
-The platform refuses to enable limiting if any condition is missing. If cluster support disappears after the feature was enabled, Crater also blocks new bandwidth-limited job submissions instead of creating Pods that cannot start.
+This is the Flannel deployment contract currently supported by Crater. Other namespaces, resource names, or installation methods are reported as unavailable. The platform refuses to enable limiting if any condition is missing. If support disappears later, directly submitted jobs stop before creation and prequeued jobs wait at activation until the capability recovers.
 
 ## Settings
 
 - **Model download bandwidth**: writes the ingress annotation on model-dl Pods and limits downloaded data entering the Pod.
-- **Ordinary job ingress**: limits data entering each ordinary job Pod.
-- **Ordinary job egress**: limits data sent from each ordinary job Pod.
+- **Job ingress**: limits data entering normal and backfill job Pods.
+- **Job egress**: limits data sent from normal and backfill job Pods.
 
 The page separates the numeric value from the unit. Units can be Kbit/s, Mbit/s, or Gbit/s. For example, value `1` with Gbit/s is stored as the Kubernetes quantity `1G`.
 
-The value is stored in system configuration. Updates do not require a backend restart and are read for every new Pod. Because CNI reads annotations only when creating the Pod sandbox, running Pods are unchanged and must be recreated to use a new value.
+The value is stored in system configuration and updates do not require a backend restart. Crater reads the latest configuration when it actually creates a model download Pod or Volcano Job. Prequeued jobs use the configuration from activation time, not a submission-time snapshot. Because CNI reads annotations only when creating the Pod sandbox, running Pods are unchanged and must be recreated to use a new value.
 
 ## Verification note
 

@@ -143,19 +143,19 @@ type UpdateModelDownloadLimitConfigReq struct {
 }
 
 type PodBandwidthConfigResp struct {
-	Enabled                   bool   `json:"enabled"`
-	ModelDownloadBandwidth    string `json:"modelDownloadBandwidth"`
-	NormalJobIngressBandwidth string `json:"normalJobIngressBandwidth"`
-	NormalJobEgressBandwidth  string `json:"normalJobEgressBandwidth"`
-	CapabilityAvailable       bool   `json:"capabilityAvailable"`
-	CapabilityMessage         string `json:"capabilityMessage"`
+	Enabled                bool   `json:"enabled"`
+	ModelDownloadBandwidth string `json:"modelDownloadBandwidth"`
+	JobIngressBandwidth    string `json:"jobIngressBandwidth"`
+	JobEgressBandwidth     string `json:"jobEgressBandwidth"`
+	CapabilityAvailable    bool   `json:"capabilityAvailable"`
+	CapabilityMessage      string `json:"capabilityMessage"`
 }
 
 type UpdatePodBandwidthConfigReq struct {
-	Enabled                   *bool  `json:"enabled" binding:"required"`
-	ModelDownloadBandwidth    string `json:"modelDownloadBandwidth" binding:"required"`
-	NormalJobIngressBandwidth string `json:"normalJobIngressBandwidth" binding:"required"`
-	NormalJobEgressBandwidth  string `json:"normalJobEgressBandwidth" binding:"required"`
+	Enabled                *bool  `json:"enabled" binding:"required"`
+	ModelDownloadBandwidth string `json:"modelDownloadBandwidth" binding:"required"`
+	JobIngressBandwidth    string `json:"jobIngressBandwidth" binding:"required"`
+	JobEgressBandwidth     string `json:"jobEgressBandwidth" binding:"required"`
 }
 
 type BillingStatusResp struct {
@@ -479,7 +479,7 @@ func (mgr *SystemConfigMgr) UpdateModelDownloadLimitConfig(c *gin.Context) {
 // GetAdminPodBandwidthConfig godoc
 //
 //	@Summary		管理员获取 Pod 带宽限制配置
-//	@Description	获取实时配置，并检查当前 Flannel CNI 是否已完整启用 bandwidth 插件
+//	@Description	获取当前配置，并按受支持的 kube-flannel 资源与 installer 契约检查 bandwidth 能力
 //	@Tags			SystemConfig
 //	@Produce		json
 //	@Security		Bearer
@@ -502,18 +502,18 @@ func (mgr *SystemConfigMgr) GetAdminPodBandwidthConfig(c *gin.Context) {
 		}
 	}
 	resputil.Success(c, PodBandwidthConfigResp{
-		Enabled:                   cfg.Enabled,
-		ModelDownloadBandwidth:    cfg.ModelDownloadBandwidth,
-		NormalJobIngressBandwidth: cfg.NormalJobIngressBandwidth,
-		NormalJobEgressBandwidth:  cfg.NormalJobEgressBandwidth,
-		CapabilityAvailable:       capabilityErr == nil, CapabilityMessage: capabilityMessage,
+		Enabled:                cfg.Enabled,
+		ModelDownloadBandwidth: cfg.ModelDownloadBandwidth,
+		JobIngressBandwidth:    cfg.JobIngressBandwidth,
+		JobEgressBandwidth:     cfg.JobEgressBandwidth,
+		CapabilityAvailable:    capabilityErr == nil, CapabilityMessage: capabilityMessage,
 	})
 }
 
 // UpdateAdminPodBandwidthConfig godoc
 //
 //	@Summary		更新 Pod 带宽限制配置
-//	@Description	分别配置模型下载、普通作业入站和普通作业出站带宽；对后续新建 Pod 生效，启用前校验 Flannel bandwidth 能力
+//	@Description	分别配置模型下载、Volcano 作业入站和出站带宽；Normal 与 Backfill 作业均覆盖，对 Pod 实际创建时生效
 //	@Tags			SystemConfig
 //	@Accept			json
 //	@Produce		json
@@ -536,10 +536,10 @@ func (mgr *SystemConfigMgr) UpdateAdminPodBandwidthConfig(c *gin.Context) {
 		}
 	}
 	if err := mgr.service.UpdatePodBandwidthConfig(c.Request.Context(), service.PodBandwidthConfig{
-		Enabled:                   *req.Enabled,
-		ModelDownloadBandwidth:    req.ModelDownloadBandwidth,
-		NormalJobIngressBandwidth: req.NormalJobIngressBandwidth,
-		NormalJobEgressBandwidth:  req.NormalJobEgressBandwidth,
+		Enabled:                *req.Enabled,
+		ModelDownloadBandwidth: req.ModelDownloadBandwidth,
+		JobIngressBandwidth:    req.JobIngressBandwidth,
+		JobEgressBandwidth:     req.JobEgressBandwidth,
 	}); err != nil {
 		resputil.HandleError(c, err)
 		return

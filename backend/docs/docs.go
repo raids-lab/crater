@@ -3449,7 +3449,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取实时配置，并检查当前 Flannel CNI 是否已完整启用 bandwidth 插件",
+                "description": "获取当前配置，并按受支持的 kube-flannel 资源与 installer 契约检查 bandwidth 能力",
                 "produces": [
                     "application/json"
                 ],
@@ -3472,7 +3472,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "分别配置模型下载、普通作业入站和普通作业出站带宽；对后续新建 Pod 生效，启用前校验 Flannel bandwidth 能力",
+                "description": "分别配置模型下载、Volcano 作业入站和出站带宽；Normal 与 Backfill 作业均覆盖，对 Pod 实际创建时生效",
                 "consumes": [
                     "application/json"
                 ],
@@ -12525,13 +12525,13 @@ const docTemplate = `{
                 "enabled": {
                     "type": "boolean"
                 },
+                "jobEgressBandwidth": {
+                    "type": "string"
+                },
+                "jobIngressBandwidth": {
+                    "type": "string"
+                },
                 "modelDownloadBandwidth": {
-                    "type": "string"
-                },
-                "normalJobEgressBandwidth": {
-                    "type": "string"
-                },
-                "normalJobIngressBandwidth": {
                     "type": "string"
                 }
             }
@@ -12950,21 +12950,21 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "enabled",
-                "modelDownloadBandwidth",
-                "normalJobEgressBandwidth",
-                "normalJobIngressBandwidth"
+                "jobEgressBandwidth",
+                "jobIngressBandwidth",
+                "modelDownloadBandwidth"
             ],
             "properties": {
                 "enabled": {
                     "type": "boolean"
                 },
+                "jobEgressBandwidth": {
+                    "type": "string"
+                },
+                "jobIngressBandwidth": {
+                    "type": "string"
+                },
                 "modelDownloadBandwidth": {
-                    "type": "string"
-                },
-                "normalJobEgressBandwidth": {
-                    "type": "string"
-                },
-                "normalJobIngressBandwidth": {
                     "type": "string"
                 }
             }

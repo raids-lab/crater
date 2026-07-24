@@ -21,9 +21,11 @@ import (
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -35,18 +37,24 @@ const (
 	podIngressBandwidthAnnotation = "kubernetes.io/ingress-bandwidth"
 	podEgressBandwidthAnnotation  = "kubernetes.io/egress-bandwidth"
 
-	flannelNamespace     = "kube-flannel"
-	flannelConfigMapName = "kube-flannel-cfg"
-	flannelDaemonSetName = "kube-flannel-ds"
+	flannelNamespace                       = "kube-flannel"
+	flannelConfigMapName                   = "kube-flannel-cfg"
+	flannelDaemonSetName                   = "kube-flannel-ds"
+	flannelCNIConfigKey                    = "cni-conf.json"
+	flannelBandwidthInstallerContainerName = "install-bandwidth-plugin"
+	flannelCNIBinVolumeHostPath            = "/opt/cni/bin"
+	flannelCNIBinVolumeMountPath           = "/host/opt/cni/bin"
+	flannelBandwidthBinarySource           = "/opt/cni/bin/bandwidth"
+	flannelBandwidthBinaryDestination      = "/host/opt/cni/bin/bandwidth"
 )
 
 // PodBandwidthConfig controls the limits applied to newly created Crater
 // workload Pods.
 type PodBandwidthConfig struct {
-	Enabled                   bool
-	ModelDownloadBandwidth    string
-	NormalJobIngressBandwidth string
-	NormalJobEgressBandwidth  string
+	Enabled                bool
+	ModelDownloadBandwidth string
+	JobIngressBandwidth    string
+	JobEgressBandwidth     string
 }
 
 func (s *ConfigService) GetPodBandwidthConfig(ctx context.Context) (*PodBandwidthConfig, error) {
@@ -54,8 +62,8 @@ func (s *ConfigService) GetPodBandwidthConfig(ctx context.Context) (*PodBandwidt
 		ctx,
 		model.ConfigKeyPodBandwidthEnabled,
 		model.ConfigKeyModelDownloadBandwidth,
-		model.ConfigKeyNormalJobIngressBandwidth,
-		model.ConfigKeyNormalJobEgressBandwidth,
+		model.ConfigKeyJobIngressBandwidth,
+		model.ConfigKeyJobEgressBandwidth,
 	)
 	if err != nil {
 		return nil, err
@@ -76,20 +84,20 @@ func (s *ConfigService) GetPodBandwidthConfig(ctx context.Context) (*PodBandwidt
 	if err != nil {
 		return nil, err
 	}
-	normalJobIngressBandwidth, err := storedPodBandwidth(configMap, model.ConfigKeyNormalJobIngressBandwidth)
+	jobIngressBandwidth, err := storedPodBandwidth(configMap, model.ConfigKeyJobIngressBandwidth)
 	if err != nil {
 		return nil, err
 	}
-	normalJobEgressBandwidth, err := storedPodBandwidth(configMap, model.ConfigKeyNormalJobEgressBandwidth)
+	jobEgressBandwidth, err := storedPodBandwidth(configMap, model.ConfigKeyJobEgressBandwidth)
 	if err != nil {
 		return nil, err
 	}
 
 	return &PodBandwidthConfig{
-		Enabled:                   enabled,
-		ModelDownloadBandwidth:    modelDownloadBandwidth,
-		NormalJobIngressBandwidth: normalJobIngressBandwidth,
-		NormalJobEgressBandwidth:  normalJobEgressBandwidth,
+		Enabled:                enabled,
+		ModelDownloadBandwidth: modelDownloadBandwidth,
+		JobIngressBandwidth:    jobIngressBandwidth,
+		JobEgressBandwidth:     jobEgressBandwidth,
 	}, nil
 }
 
@@ -99,8 +107,8 @@ func (s *ConfigService) UpdatePodBandwidthConfig(ctx context.Context, cfg PodBan
 		value *string
 	}{
 		{name: "model download bandwidth", value: &cfg.ModelDownloadBandwidth},
-		{name: "normal job ingress bandwidth", value: &cfg.NormalJobIngressBandwidth},
-		{name: "normal job egress bandwidth", value: &cfg.NormalJobEgressBandwidth},
+		{name: "job ingress bandwidth", value: &cfg.JobIngressBandwidth},
+		{name: "job egress bandwidth", value: &cfg.JobEgressBandwidth},
 	}
 	for _, item := range values {
 		*item.value = strings.TrimSpace(*item.value)
@@ -110,10 +118,10 @@ func (s *ConfigService) UpdatePodBandwidthConfig(ctx context.Context, cfg PodBan
 	}
 
 	updates := map[string]string{
-		model.ConfigKeyPodBandwidthEnabled:       strconv.FormatBool(cfg.Enabled),
-		model.ConfigKeyModelDownloadBandwidth:    cfg.ModelDownloadBandwidth,
-		model.ConfigKeyNormalJobIngressBandwidth: cfg.NormalJobIngressBandwidth,
-		model.ConfigKeyNormalJobEgressBandwidth:  cfg.NormalJobEgressBandwidth,
+		model.ConfigKeyPodBandwidthEnabled:    strconv.FormatBool(cfg.Enabled),
+		model.ConfigKeyModelDownloadBandwidth: cfg.ModelDownloadBandwidth,
+		model.ConfigKeyJobIngressBandwidth:    cfg.JobIngressBandwidth,
+		model.ConfigKeyJobEgressBandwidth:     cfg.JobEgressBandwidth,
 	}
 	return s.updateConfigs(ctx, updates)
 }
@@ -168,9 +176,9 @@ func ModelDownloadPodBandwidthAnnotations(
 	}, nil
 }
 
-// NormalJobPodBandwidthAnnotations returns independent ingress and egress
-// limits for every Pod in a new ordinary job.
-func NormalJobPodBandwidthAnnotations(
+// JobPodBandwidthAnnotations returns independent ingress and egress limits for
+// every Pod in a new Volcano job, including normal and backfill jobs.
+func JobPodBandwidthAnnotations(
 	ctx context.Context,
 	configService *ConfigService,
 	kubeClient kubernetes.Interface,
@@ -180,9 +188,43 @@ func NormalJobPodBandwidthAnnotations(
 		return nil, err
 	}
 	return map[string]string{
-		podIngressBandwidthAnnotation: cfg.NormalJobIngressBandwidth,
-		podEgressBandwidthAnnotation:  cfg.NormalJobEgressBandwidth,
+		podIngressBandwidthAnnotation: cfg.JobIngressBandwidth,
+		podEgressBandwidthAnnotation:  cfg.JobEgressBandwidth,
 	}, nil
+}
+
+// ApplyJobPodBandwidth applies the current system configuration immediately
+// before a Volcano Job is created. Existing bandwidth annotations are removed
+// first so prequeued jobs do not retain a stale configuration snapshot.
+func ApplyJobPodBandwidth(
+	ctx context.Context,
+	configService *ConfigService,
+	kubeClient kubernetes.Interface,
+	job *batch.Job,
+) error {
+	if job == nil {
+		return bizerr.Internal.ServiceError.New("job is not initialized")
+	}
+	annotations, err := JobPodBandwidthAnnotations(ctx, configService, kubeClient)
+	if err != nil {
+		return err
+	}
+	for taskIndex := range job.Spec.Tasks {
+		taskAnnotations := job.Spec.Tasks[taskIndex].Template.Annotations
+		delete(taskAnnotations, podIngressBandwidthAnnotation)
+		delete(taskAnnotations, podEgressBandwidthAnnotation)
+		if len(annotations) == 0 {
+			continue
+		}
+		if taskAnnotations == nil {
+			taskAnnotations = make(map[string]string)
+			job.Spec.Tasks[taskIndex].Template.Annotations = taskAnnotations
+		}
+		for key, value := range annotations {
+			taskAnnotations[key] = value
+		}
+	}
+	return nil
 }
 
 func enabledPodBandwidthConfig(
@@ -206,9 +248,10 @@ func enabledPodBandwidthConfig(
 	return cfg, nil
 }
 
-// CheckFlannelBandwidthCNISupport verifies the two cluster-level pieces Crater
-// relies on: the bandwidth plugin in the Flannel CNI chain and a fully rolled
-// out DaemonSet that installs the binary on nodes.
+// CheckFlannelBandwidthCNISupport verifies Crater's supported Flannel deployment
+// contract: standard kube-flannel resources, the bandwidth plugin in the CNI
+// chain, the chart installer writing to the host CNI directory, and a complete
+// DaemonSet rollout.
 func CheckFlannelBandwidthCNISupport(ctx context.Context, kubeClient kubernetes.Interface) error {
 	if kubeClient == nil {
 		return bizerr.Internal.ServiceError.New("kubernetes client is not initialized")
@@ -222,10 +265,10 @@ func CheckFlannelBandwidthCNISupport(ctx context.Context, kubeClient kubernetes.
 			err, "cannot read "+flannelNamespace+"/"+flannelConfigMapName+" ConfigMap",
 		)
 	}
-	cniConfig := configMap.Data["cni-conf.json"]
+	cniConfig := configMap.Data[flannelCNIConfigKey]
 	if cniConfig == "" {
 		return bizerr.Conflict.ResourceStatusError.New(
-			flannelNamespace + "/" + flannelConfigMapName + " ConfigMap has no cni-conf.json",
+			flannelNamespace + "/" + flannelConfigMapName + " ConfigMap has no " + flannelCNIConfigKey,
 		)
 	}
 	if err := checkFlannelBandwidthPlugin(cniConfig); err != nil {
@@ -269,24 +312,8 @@ func checkFlannelBandwidthPlugin(cniConfig string) error {
 }
 
 func checkFlannelBandwidthDaemonSet(daemonSet *appsv1.DaemonSet) error {
-	installerFound := false
-	for containerIndex := range daemonSet.Spec.Template.Spec.InitContainers {
-		container := &daemonSet.Spec.Template.Spec.InitContainers[containerIndex]
-		arguments := append(append([]string{}, container.Command...), container.Args...)
-		for _, argument := range arguments {
-			if strings.Contains(argument, "/bandwidth") {
-				installerFound = true
-				break
-			}
-		}
-		if installerFound {
-			break
-		}
-	}
-	if !installerFound {
-		return bizerr.Conflict.ResourceStatusError.New(
-			"flannel DaemonSet does not install the bandwidth binary",
-		)
+	if err := checkFlannelBandwidthInstaller(daemonSet); err != nil {
+		return err
 	}
 
 	if daemonSet.Status.ObservedGeneration < daemonSet.Generation {
@@ -307,4 +334,85 @@ func checkFlannelBandwidthDaemonSet(daemonSet *appsv1.DaemonSet) error {
 		)
 	}
 	return nil
+}
+
+func checkFlannelBandwidthInstaller(daemonSet *appsv1.DaemonSet) error {
+	if daemonSet == nil {
+		return bizerr.Conflict.ResourceStatusError.New("flannel DaemonSet is not initialized")
+	}
+
+	hostVolumeName := findHostPathVolumeName(daemonSet, flannelCNIBinVolumeHostPath)
+	if hostVolumeName == "" {
+		return bizerr.Conflict.ResourceStatusError.New(
+			"flannel DaemonSet does not expose host CNI directory " + flannelCNIBinVolumeHostPath,
+		)
+	}
+
+	installer := findInitContainer(daemonSet, flannelBandwidthInstallerContainerName)
+	if installer == nil {
+		return bizerr.Conflict.ResourceStatusError.New(
+			"flannel DaemonSet has no " + flannelBandwidthInstallerContainerName + " initContainer",
+		)
+	}
+
+	if !isBandwidthCopyInstaller(installer) {
+		return bizerr.Conflict.ResourceStatusError.New(
+			"flannel " + flannelBandwidthInstallerContainerName + " initContainer must copy " +
+				flannelBandwidthBinarySource + " to " + flannelBandwidthBinaryDestination,
+		)
+	}
+
+	if hasWritableVolumeMount(installer, hostVolumeName, flannelCNIBinVolumeMountPath) {
+		return nil
+	}
+	return bizerr.Conflict.ResourceStatusError.New(
+		"flannel " + flannelBandwidthInstallerContainerName + " initContainer must mount host CNI directory at " +
+			flannelCNIBinVolumeMountPath,
+	)
+}
+
+func findHostPathVolumeName(daemonSet *appsv1.DaemonSet, hostPath string) string {
+	for volumeIndex := range daemonSet.Spec.Template.Spec.Volumes {
+		volume := &daemonSet.Spec.Template.Spec.Volumes[volumeIndex]
+		if volume.HostPath != nil && volume.HostPath.Path == hostPath {
+			return volume.Name
+		}
+	}
+	return ""
+}
+
+func findInitContainer(daemonSet *appsv1.DaemonSet, name string) *corev1.Container {
+	for containerIndex := range daemonSet.Spec.Template.Spec.InitContainers {
+		container := &daemonSet.Spec.Template.Spec.InitContainers[containerIndex]
+		if container.Name == name {
+			return container
+		}
+	}
+	return nil
+}
+
+func isBandwidthCopyInstaller(installer *corev1.Container) bool {
+	return len(installer.Command) == 1 &&
+		(installer.Command[0] == "cp" || installer.Command[0] == "/bin/cp") &&
+		containsArgument(installer.Args, flannelBandwidthBinarySource) &&
+		containsArgument(installer.Args, flannelBandwidthBinaryDestination)
+}
+
+func hasWritableVolumeMount(container *corev1.Container, volumeName, mountPath string) bool {
+	for mountIndex := range container.VolumeMounts {
+		mount := &container.VolumeMounts[mountIndex]
+		if mount.Name == volumeName && mount.MountPath == mountPath && !mount.ReadOnly {
+			return true
+		}
+	}
+	return false
+}
+
+func containsArgument(arguments []string, expected string) bool {
+	for _, argument := range arguments {
+		if argument == expected {
+			return true
+		}
+	}
+	return false
 }

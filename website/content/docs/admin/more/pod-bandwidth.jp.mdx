@@ -1,29 +1,30 @@
 ---
 title: Pod 帯域幅制限の設定
-description: モデルダウンロード Pod と通常ジョブ Pod のネットワーク上限を個別に設定します
+description: モデルダウンロード Pod と Volcano ジョブ Pod のネットワーク上限を個別に設定します
 ---
 
-管理者はプラットフォーム設定の「Pod 帯域幅制限」から、モデルダウンロード、通常ジョブの受信、通常ジョブの送信帯域幅を個別に管理できます。bandwidth CNI が未導入のクラスターへ影響しないよう、この機能は既定で無効です。
+管理者はプラットフォーム設定の「Pod 帯域幅制限」から、モデルダウンロード、Volcano ジョブの受信・送信帯域幅を個別に管理できます。ジョブ設定は通常ジョブとバックフィルジョブの両方に適用されます。bandwidth CNI が未導入のクラスターへ影響しないよう、この機能は既定で無効です。
 
 ## クラスター機能の確認
 
 画面は次の条件をリアルタイムで確認します。
 
-- `kube-flannel-cfg` の `cni-conf.json` に `bandwidth` プラグインと `bandwidth` capability が含まれていること。
-- Flannel DaemonSet に bandwidth binary をインストールする initContainer があること。
-- Flannel DaemonSet のロールアウトがすべての対象ノードで完了し、Ready であること。
+- `kube-flannel` namespace に `kube-flannel-cfg` ConfigMap と `kube-flannel-ds` DaemonSet があること。
+- ConfigMap の `cni-conf.json` に `bandwidth` プラグインと `bandwidth` capability が含まれていること。
+- DaemonSet に `install-bandwidth-plugin` initContainer があり、ホストの `/opt/cni/bin` をマウントして `/opt/cni/bin/bandwidth` を `/host/opt/cni/bin/bandwidth` へコピーすること。
+- DaemonSet のロールアウトがすべての対象ノードで完了し、Ready であること。
 
-いずれかの条件を満たさない場合、プラットフォームは制限の有効化を拒否します。有効化後にクラスター機能が失われた場合も、起動できない Pod を作成しないよう、新しい帯域制限付きジョブの送信を停止します。
+これは Crater が現在サポートする Flannel のデプロイ契約です。namespace、リソース名、インストール方法が異なる場合、機能は利用不可として表示されます。条件を満たさない場合、直接送信されたジョブは作成前に停止し、Prequeue ジョブは機能が回復するまでアクティベーション時に待機します。
 
 ## 設定項目
 
 - **モデルダウンロード帯域幅**：model-dl Pod の受信 annotation を設定し、ダウンロードデータが Pod に入る速度を制限します。
-- **通常ジョブの受信帯域幅**：各通常ジョブ Pod に入るデータ速度を制限します。
-- **通常ジョブの送信帯域幅**：各通常ジョブ Pod から出るデータ速度を制限します。
+- **ジョブの受信帯域幅**：通常ジョブとバックフィルジョブの Pod に入るデータ速度を制限します。
+- **ジョブの送信帯域幅**：通常ジョブとバックフィルジョブの Pod から出るデータ速度を制限します。
 
 画面では数値と単位を分けて入力し、Kbit/s、Mbit/s、Gbit/s から単位を選択できます。たとえば数値 `1` と Gbit/s は Kubernetes 数量 `1G` として保存されます。
 
-設定はシステム設定に保存され、バックエンドを再起動せずに新しい Pod へ反映されます。CNI は Pod sandbox 作成時にのみ annotation を読み取るため、実行中の Pod は変更されず、新しい値を適用するには再作成が必要です。
+設定はシステム設定に保存され、バックエンドの再起動は不要です。モデルダウンロード Pod または Volcano Job の実際の作成時に最新設定を読み込み、Prequeue ジョブは送信時ではなくアクティベーション時の設定を使用します。CNI は Pod sandbox 作成時にのみ annotation を読み取るため、実行中の Pod は再作成が必要です。
 
 ## 検証時の注意
 

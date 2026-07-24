@@ -40,8 +40,8 @@ interface BandwidthValue {
 
 interface BandwidthFormState {
   modelDownload: BandwidthValue
-  normalJobIngress: BandwidthValue
-  normalJobEgress: BandwidthValue
+  jobIngress: BandwidthValue
+  jobEgress: BandwidthValue
 }
 
 interface BandwidthFieldProps {
@@ -143,8 +143,8 @@ export function PodBandwidthSettings({
   const [enabled, setEnabled] = useState(false)
   const [limits, setLimits] = useState<BandwidthFormState>({
     modelDownload: { ...defaultBandwidth },
-    normalJobIngress: { ...defaultBandwidth },
-    normalJobEgress: { ...defaultBandwidth },
+    jobIngress: { ...defaultBandwidth },
+    jobEgress: { ...defaultBandwidth },
   })
   const [pendingConfig, setPendingConfig] = useState<IUpdatePodBandwidthConfig | null>(null)
   const [isConfirming, setIsConfirming] = useState(false)
@@ -154,8 +154,8 @@ export function PodBandwidthSettings({
     setEnabled(config.enabled)
     setLimits({
       modelDownload: parseBandwidth(config.modelDownloadBandwidth),
-      normalJobIngress: parseBandwidth(config.normalJobIngressBandwidth),
-      normalJobEgress: parseBandwidth(config.normalJobEgressBandwidth),
+      jobIngress: parseBandwidth(config.jobIngressBandwidth),
+      jobEgress: parseBandwidth(config.jobEgressBandwidth),
     })
   }, [config])
 
@@ -175,8 +175,8 @@ export function PodBandwidthSettings({
     setPendingConfig({
       enabled,
       modelDownloadBandwidth: formatBandwidth(limits.modelDownload),
-      normalJobIngressBandwidth: formatBandwidth(limits.normalJobIngress),
-      normalJobEgressBandwidth: formatBandwidth(limits.normalJobEgress),
+      jobIngressBandwidth: formatBandwidth(limits.jobIngress),
+      jobEgressBandwidth: formatBandwidth(limits.jobEgress),
     })
   }
 
@@ -272,20 +272,20 @@ export function PodBandwidthSettings({
               onChange={(value) => updateLimit('modelDownload', value)}
             />
             <BandwidthField
-              id="normal-job-ingress-bandwidth"
-              label={t('systemConfig.podBandwidth.normalJobIngress')}
-              description={t('systemConfig.podBandwidth.normalJobIngressDescription')}
-              value={limits.normalJobIngress}
+              id="job-ingress-bandwidth"
+              label={t('systemConfig.podBandwidth.jobIngress')}
+              description={t('systemConfig.podBandwidth.jobIngressDescription')}
+              value={limits.jobIngress}
               disabled={controlsDisabled}
-              onChange={(value) => updateLimit('normalJobIngress', value)}
+              onChange={(value) => updateLimit('jobIngress', value)}
             />
             <BandwidthField
-              id="normal-job-egress-bandwidth"
-              label={t('systemConfig.podBandwidth.normalJobEgress')}
-              description={t('systemConfig.podBandwidth.normalJobEgressDescription')}
-              value={limits.normalJobEgress}
+              id="job-egress-bandwidth"
+              label={t('systemConfig.podBandwidth.jobEgress')}
+              description={t('systemConfig.podBandwidth.jobEgressDescription')}
+              value={limits.jobEgress}
               disabled={controlsDisabled}
-              onChange={(value) => updateLimit('normalJobEgress', value)}
+              onChange={(value) => updateLimit('jobEgress', value)}
             />
           </div>
         )}
@@ -341,13 +341,13 @@ export function PodBandwidthSettings({
                   </dt>
                   <dd>{displayBandwidth(pendingConfig.modelDownloadBandwidth)}</dd>
                   <dt className="text-muted-foreground">
-                    {t('systemConfig.podBandwidth.normalJobIngress')}
+                    {t('systemConfig.podBandwidth.jobIngress')}
                   </dt>
-                  <dd>{displayBandwidth(pendingConfig.normalJobIngressBandwidth)}</dd>
+                  <dd>{displayBandwidth(pendingConfig.jobIngressBandwidth)}</dd>
                   <dt className="text-muted-foreground">
-                    {t('systemConfig.podBandwidth.normalJobEgress')}
+                    {t('systemConfig.podBandwidth.jobEgress')}
                   </dt>
-                  <dd>{displayBandwidth(pendingConfig.normalJobEgressBandwidth)}</dd>
+                  <dd>{displayBandwidth(pendingConfig.jobEgressBandwidth)}</dd>
                 </>
               )}
             </dl>

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -26,6 +27,7 @@ type PrequeueWatcher struct {
 	queueQuotaSvc  *service.PrequeueService
 	configService  *service.ConfigService
 	k8sClient      client.Client
+	kubeClient     kubernetes.Interface
 	serviceMgr     crclient.ServiceManagerInterface
 	logger         logr.Logger
 	signalCh       chan struct{}
@@ -41,6 +43,7 @@ func New(
 	queueQuotaSvc *service.PrequeueService,
 	configService *service.ConfigService,
 	k8sClient client.Client,
+	kubeClient kubernetes.Interface,
 	serviceMgr crclient.ServiceManagerInterface,
 ) *PrequeueWatcher {
 	return &PrequeueWatcher{
@@ -48,6 +51,7 @@ func New(
 		queueQuotaSvc: queueQuotaSvc,
 		configService: configService,
 		k8sClient:     k8sClient,
+		kubeClient:    kubeClient,
 		serviceMgr:    serviceMgr,
 		logger:        ctrl.Log.WithName("prequeue-watcher"),
 		signalCh:      make(chan struct{}, signalBufferSize),

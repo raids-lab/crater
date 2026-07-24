@@ -53,8 +53,8 @@ func TestUpdatePodBandwidthConfigRejectsUnavailableCNI(t *testing.T) {
 		bytes.NewBufferString(`{
 			"enabled": true,
 			"modelDownloadBandwidth": "1G",
-			"normalJobIngressBandwidth": "1G",
-			"normalJobEgressBandwidth": "1G"
+			"jobIngressBandwidth": "1G",
+			"jobEgressBandwidth": "1G"
 		}`),
 	)
 	request.Header.Set("Content-Type", "application/json")
