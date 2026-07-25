@@ -786,7 +786,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - Sensitive credential reads (`/token`, `/secret`, Harbor credential APIs) are not exposed in the broad read surface.
 - WebSocket and terminal endpoints are not exposed because they are interactive rather than stable one-shot reads.
 - The untracked local `inference-services` API is not documented here until that backend/frontend feature lands in the branch base.
-- Public health, Swagger, Prometheus metrics, and low-level WebDAV file listing are left to their domain-specific tools rather than this first read CLI pass.
+- Public health, Swagger, Prometheus metrics, and generic WebDAV operations are left to their domain-specific tools rather than this read CLI surface.
 
 ### Admin-Only Read Coverage
 - `crater admin system-config llm|gpu-analysis|prequeue`: `/api/v1/admin/system-config/{llm,gpu-analysis,prequeue}`.
@@ -796,3 +796,28 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater admin cronjobs`: `/api/v1/admin/operations/cronjob`.
 - `crater admin whitelist`: `/api/v1/admin/operations/whitelist`.
 - These commands surface existing admin GET APIs only. They do not perform update/delete/reconcile actions.
+
+---
+
+## 8. 远端文件模块 (file)
+
+本模块面向普通用户访问 storage service 暴露的逻辑文件空间。远端路径不是本机路径，只允许以 `user`、`public` 或 `account` 为首段；CLI 会规范化安全的 `.`、重复分隔符和首尾分隔符，逐段进行 URL 编码，保留合法的空格与非 ASCII 文件名，并在请求前拒绝任何 `..` 段、反斜杠和控制字符。
+
+### `crater file ls [remote-path]`
+
+- **描述**：列出当前用户可见的远端文件或目录。
+- **位置参数**：
+  - `[remote-path]`（可选）：逻辑远端目录。省略时列出可见根目录；可用根为 `user`、`public`、`account`。
+- **处理逻辑**：
+  - 调用 `GET /api/ss/files` 或 `GET /api/ss/files/*path`。
+  - 目录排在普通文件之前，同类型条目按名称稳定排序。
+  - 空目录返回稳定的空列表。
+  - 本命令只读取普通用户文件视图，不会切换到管理员接口。
+- **输出格式**：
+  - 默认模式：表格展示 `NAME`、`TYPE`、`SIZE`、`MODIFIED`；目录的大小显示为 `-`。
+  - `--json`：stdout 输出成功信封 JSON。
+- **`--json` 的 `data`**：
+  - `files`（数组）：文件条目，每项包含 `name`、`size`、`isdir`、`modifytime`。
+- **状态**：[x] Completed
+
+下载、上传、创建目录、移动和删除不属于本命令范围，由各自独立的文件命令契约定义。
