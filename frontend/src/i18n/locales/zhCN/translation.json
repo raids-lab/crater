@@ -1345,7 +1345,7 @@
   "systemConfig.podBandwidth.confirmTitle": "确认更新 Pod 带宽限制",
   "systemConfig.podBandwidth.description": "分别配置模型下载和 Volcano 作业 Pod 的网络带宽。",
   "systemConfig.podBandwidth.enabled": "启用 Pod 带宽限制",
-  "systemConfig.podBandwidth.enabledDescription": "开启后，以下限制会应用到后续新建的 Pod。",
+  "systemConfig.podBandwidth.enabledDescription": "开启后，以下限制会应用到后续新建的 Pod；CNI 不可用时会自动关闭限速并继续创建作业，恢复后需重新开启。",
   "systemConfig.podBandwidth.existingPodsNote": "配置会在 Pod 实际创建时读取；等待激活的 Prequeue 作业也使用届时最新配置，运行中的 Pod 必须重建。",
   "systemConfig.podBandwidth.invalidBandwidth": "三项带宽数值都必须大于 0",
   "systemConfig.podBandwidth.jobEgress": "作业出站带宽",

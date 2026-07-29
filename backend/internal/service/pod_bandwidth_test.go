@@ -168,6 +168,69 @@ func TestApplyJobPodBandwidthCoversNormalAndBackfillJobs(t *testing.T) {
 	}
 }
 
+func TestPodBandwidthCapabilityFailureDisablesFeatureAndFailsOpen(t *testing.T) {
+	configService := newPodBandwidthTestConfigService(t, "pod_bandwidth_fail_open")
+	enabledConfig := PodBandwidthConfig{
+		Enabled:                true,
+		ModelDownloadBandwidth: "100M",
+		JobIngressBandwidth:    testJobIngressBandwidth,
+		JobEgressBandwidth:     testJobEgressBandwidth,
+	}
+	if err := configService.UpdatePodBandwidthConfig(t.Context(), enabledConfig); err != nil {
+		t.Fatal(err)
+	}
+
+	unavailableClient := fake.NewSimpleClientset()
+	annotations, err := ModelDownloadPodBandwidthAnnotations(t.Context(), configService, unavailableClient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if annotations != nil {
+		t.Fatalf("unavailable CNI should omit model download annotations: %#v", annotations)
+	}
+	assertPodBandwidthDisabled(t, configService)
+
+	if err := configService.UpdatePodBandwidthConfig(t.Context(), enabledConfig); err != nil {
+		t.Fatal(err)
+	}
+	job := &batch.Job{Spec: batch.JobSpec{Tasks: []batch.TaskSpec{{
+		Template: corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
+			podIngressBandwidthAnnotation: "stale-ingress",
+			podEgressBandwidthAnnotation:  "stale-egress",
+		}}},
+	}}}}
+	if err := ApplyJobPodBandwidth(t.Context(), configService, unavailableClient, job); err != nil {
+		t.Fatal(err)
+	}
+	annotations = job.Spec.Tasks[0].Template.Annotations
+	if _, exists := annotations[podIngressBandwidthAnnotation]; exists {
+		t.Fatalf("unavailable CNI retained ingress annotation: %#v", annotations)
+	}
+	if _, exists := annotations[podEgressBandwidthAnnotation]; exists {
+		t.Fatalf("unavailable CNI retained egress annotation: %#v", annotations)
+	}
+	assertPodBandwidthDisabled(t, configService)
+
+	annotations, err = JobPodBandwidthAnnotations(t.Context(), configService, supportedFlannelClient())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if annotations != nil {
+		t.Fatalf("capability recovery must not re-enable bandwidth limiting: %#v", annotations)
+	}
+}
+
+func assertPodBandwidthDisabled(t *testing.T, configService *ConfigService) {
+	t.Helper()
+	cfg, err := configService.GetPodBandwidthConfig(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Enabled {
+		t.Fatal("CNI capability failure must persist enabled=false")
+	}
+}
+
 func TestPodBandwidthConfigValidation(t *testing.T) {
 	configService := newPodBandwidthTestConfigService(t, "pod_bandwidth_validation")
 	invalidConfigs := []PodBandwidthConfig{

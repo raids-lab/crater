@@ -1345,7 +1345,7 @@
   "systemConfig.podBandwidth.confirmTitle": "Pod 帯域幅制限の更新を確認",
   "systemConfig.podBandwidth.description": "モデルダウンロード Pod と Volcano ジョブ Pod のネットワーク上限を個別に設定します。",
   "systemConfig.podBandwidth.enabled": "Pod 帯域幅制限を有効化",
-  "systemConfig.podBandwidth.enabledDescription": "有効化すると、以下の制限が今後作成される Pod に適用されます。",
+  "systemConfig.podBandwidth.enabledDescription": "有効化すると、以下の制限が新しい Pod に適用されます。CNI を利用できない場合はジョブを継続するため自動的に無効化され、復旧後に再度有効化する必要があります。",
   "systemConfig.podBandwidth.existingPodsNote": "Pod の実際の作成時に最新設定を読み込み、Prequeue ジョブもアクティベーション時の設定を使用します。実行中の Pod は再作成が必要です。",
   "systemConfig.podBandwidth.invalidBandwidth": "3 つの帯域幅の値はすべて 0 より大きくする必要があります",
   "systemConfig.podBandwidth.jobEgress": "ジョブの送信帯域幅",

@@ -1345,7 +1345,7 @@
   "systemConfig.podBandwidth.confirmTitle": "Confirm Pod bandwidth update",
   "systemConfig.podBandwidth.description": "Configure network limits separately for model download and Volcano job Pods.",
   "systemConfig.podBandwidth.enabled": "Enable Pod bandwidth limits",
-  "systemConfig.podBandwidth.enabledDescription": "When enabled, the limits below apply to subsequently created Pods.",
+  "systemConfig.podBandwidth.enabledDescription": "When enabled, the limits below apply to new Pods. If CNI becomes unavailable, limiting is automatically disabled so jobs can continue; re-enable it after recovery.",
   "systemConfig.podBandwidth.existingPodsNote": "The latest configuration is read when Pods are actually created, including prequeued jobs at activation. Running Pods must be recreated.",
   "systemConfig.podBandwidth.invalidBandwidth": "All three bandwidth values must be greater than zero",
   "systemConfig.podBandwidth.jobEgress": "Job egress",

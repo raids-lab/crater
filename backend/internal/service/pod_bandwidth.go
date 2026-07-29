@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog/v2"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -124,6 +125,12 @@ func (s *ConfigService) UpdatePodBandwidthConfig(ctx context.Context, cfg PodBan
 		model.ConfigKeyJobEgressBandwidth:     cfg.JobEgressBandwidth,
 	}
 	return s.updateConfigs(ctx, updates)
+}
+
+func (s *ConfigService) disablePodBandwidth(ctx context.Context) error {
+	return s.updateConfigs(ctx, map[string]string{
+		model.ConfigKeyPodBandwidthEnabled: strconv.FormatBool(false),
+	})
 }
 
 func storedPodBandwidth(configMap map[string]string, key string) (string, error) {
@@ -243,7 +250,22 @@ func enabledPodBandwidthConfig(
 		return nil, nil
 	}
 	if err := CheckFlannelBandwidthCNISupport(ctx, kubeClient); err != nil {
-		return nil, err
+		// Disable the feature and fail open so a CNI incident does not block workload creation.
+		if disableErr := configService.disablePodBandwidth(ctx); disableErr != nil {
+			klog.Errorf(
+				"pod bandwidth limiting is unavailable and could not be disabled; "+
+					"creating workload without bandwidth annotations: capability error: %v, disable error: %v",
+				err,
+				disableErr,
+			)
+			return nil, nil
+		}
+		klog.Warningf(
+			"pod bandwidth limiting was disabled because CNI support is unavailable; "+
+				"creating workload without bandwidth annotations: %v",
+			err,
+		)
+		return nil, nil
 	}
 	return cfg, nil
 }

@@ -14,7 +14,7 @@ The page checks the following conditions in real time:
 - The DaemonSet contains an initContainer named `install-bandwidth-plugin` that mounts the host `/opt/cni/bin` directory and copies `/opt/cni/bin/bandwidth` to `/host/opt/cni/bin/bandwidth`.
 - The DaemonSet rollout is complete and Ready on every target node.
 
-This is the Flannel deployment contract currently supported by Crater. Other namespaces, resource names, or installation methods are reported as unavailable. The platform refuses to enable limiting if any condition is missing. If support disappears later, directly submitted jobs stop before creation and prequeued jobs wait at activation until the capability recovers.
+This is the Flannel deployment contract currently supported by Crater. Other namespaces, resource names, or installation methods are reported as unavailable. The platform refuses to enable limiting if any condition is missing. If support disappears later, Crater persistently disables bandwidth limiting, omits the bandwidth annotations, and continues creating or activating jobs. An administrator must re-enable limiting after the capability recovers.
 
 ## Settings
 

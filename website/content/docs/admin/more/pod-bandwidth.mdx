@@ -14,7 +14,7 @@ description: 分别配置模型下载和 Volcano 作业 Pod 的网络带宽上�
 - DaemonSet 包含名为 `install-bandwidth-plugin` 的 initContainer，通过挂载节点 `/opt/cni/bin`，将 `/opt/cni/bin/bandwidth` 复制到 `/host/opt/cni/bin/bandwidth`。
 - DaemonSet 已在全部目标节点完成滚动更新并处于 Ready 状态。
 
-这是 Crater 当前支持的 Flannel 部署契约；使用其他 namespace、资源名称或安装方式时，平台会将能力报告为不可用。任一条件不满足时，平台会禁止开启限速。功能已经开启但集群能力随后失效时，直接提交的作业会停止创建，Prequeue 作业也会在激活时等待能力恢复。
+这是 Crater 当前支持的 Flannel 部署契约；使用其他 namespace、资源名称或安装方式时，平台会将能力报告为不可用。任一条件不满足时，平台会禁止开启限速。功能已经开启但集群能力随后失效时，Crater 会将限速开关持久化关闭、停止写入 bandwidth annotation，并继续创建或激活作业。能力恢复后，需要管理员重新开启限速。
 
 ## 配置项
 

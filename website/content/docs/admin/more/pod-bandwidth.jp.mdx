@@ -14,7 +14,7 @@ description: モデルダウンロード Pod と Volcano ジョブ Pod のネッ
 - DaemonSet に `install-bandwidth-plugin` initContainer があり、ホストの `/opt/cni/bin` をマウントして `/opt/cni/bin/bandwidth` を `/host/opt/cni/bin/bandwidth` へコピーすること。
 - DaemonSet のロールアウトがすべての対象ノードで完了し、Ready であること。
 
-これは Crater が現在サポートする Flannel のデプロイ契約です。namespace、リソース名、インストール方法が異なる場合、機能は利用不可として表示されます。条件を満たさない場合、直接送信されたジョブは作成前に停止し、Prequeue ジョブは機能が回復するまでアクティベーション時に待機します。
+これは Crater が現在サポートする Flannel のデプロイ契約です。namespace、リソース名、インストール方法が異なる場合、機能は利用不可として表示されます。機能を有効にした後でクラスター機能が失われた場合、Crater は帯域幅制限を永続的に無効化し、bandwidth annotation を付けずにジョブの作成またはアクティベーションを続行します。機能の復旧後、管理者が帯域幅制限を再度有効化する必要があります。
 
 ## 設定項目
 

@@ -72,19 +72,26 @@ func TestRestoreJobForActivationUsesLatestBandwidthConfig(t *testing.T) {
 	}
 
 	watcher.kubeClient = fake.NewSimpleClientset()
-	if _, err := watcher.restoreJobForActivation(t.Context(), record); err == nil {
-		t.Fatal("activation must recheck the current CNI capability")
-	}
-	watcher.kubeClient = supportedBandwidthFlannelClient()
-
-	if err := configService.UpdatePodBandwidthConfig(t.Context(), service.PodBandwidthConfig{
-		Enabled:                false,
-		ModelDownloadBandwidth: "100M",
-		JobIngressBandwidth:    "200M",
-		JobEgressBandwidth:     "300M",
-	}); err != nil {
+	restored, err = watcher.restoreJobForActivation(t.Context(), record)
+	if err != nil {
 		t.Fatal(err)
 	}
+	annotations = restored.Spec.Tasks[0].Template.Annotations
+	if _, exists := annotations["kubernetes.io/ingress-bandwidth"]; exists {
+		t.Fatalf("unavailable CNI retained ingress annotation: %#v", annotations)
+	}
+	if _, exists := annotations["kubernetes.io/egress-bandwidth"]; exists {
+		t.Fatalf("unavailable CNI retained egress annotation: %#v", annotations)
+	}
+	cfg, err := configService.GetPodBandwidthConfig(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Enabled {
+		t.Fatal("CNI capability failure must disable bandwidth limiting")
+	}
+
+	watcher.kubeClient = supportedBandwidthFlannelClient()
 	restored, err = watcher.restoreJobForActivation(t.Context(), record)
 	if err != nil {
 		t.Fatal(err)
