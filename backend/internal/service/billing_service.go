@@ -494,7 +494,7 @@ func (s *BillingService) IssueDueAccounts(ctx context.Context) (int, error) {
 		for i := range accounts {
 			acc := accounts[i]
 			issueAmount, periodMinutes := issueConfig.resolveForAccount(acc)
-			if !isIssueConfigValid(issueAmount, periodMinutes) {
+			if !isPeriodicIssueEnabled(periodMinutes) {
 				continue
 			}
 			period := time.Duration(periodMinutes) * time.Minute
@@ -523,10 +523,7 @@ func (s *BillingService) IssueAccountNow(ctx context.Context, accountID uint) er
 		if err != nil {
 			return err
 		}
-		issueAmount, periodMinutes := issueConfig.resolveForAccount(account)
-		if !isIssueConfigValid(issueAmount, periodMinutes) {
-			return nil
-		}
+		issueAmount, _ := issueConfig.resolveForAccount(account)
 		_, err = s.issueAccountNowTx(ctx, tx, accountID, issueAmount, now)
 		return err
 	})
@@ -536,6 +533,15 @@ func (s *BillingService) IssueUserAccountNow(ctx context.Context, userID, accoun
 	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return s.issueUserAccountNowTx(ctx, tx, userID, accountID)
 	})
+}
+
+// IssueUserAccountNowInTransaction initializes one user-account billing balance in the caller's transaction.
+func (s *BillingService) IssueUserAccountNowInTransaction(
+	ctx context.Context,
+	tx *query.Query,
+	userID, accountID uint,
+) error {
+	return s.issueUserAccountNowTx(ctx, tx.UserAccount.WithContext(ctx).UnderlyingDB(), userID, accountID)
 }
 
 func (s *BillingService) bootstrapIssueConfigOnFeatureEnableTx(ctx context.Context, tx *gorm.DB) error {
@@ -635,10 +641,7 @@ func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *gorm.DB,
 		return err
 	}
 	issueConfig := loadBillingIssueConfigTx(ctx, tx)
-	issueAmount, periodMinutes := issueConfig.resolveForAccount(account)
-	if !isIssueConfigValid(issueAmount, periodMinutes) {
-		return nil
-	}
+	issueAmount, _ := issueConfig.resolveForAccount(account)
 
 	uaQuery := txQuery.UserAccount
 	ua, err := uaQuery.WithContext(ctx).
@@ -943,10 +946,7 @@ func (s *BillingService) issueConfiguredAccountsNowTx(
 		if onlyNeverIssued && account.BillingLastIssuedAt != nil && !account.BillingLastIssuedAt.IsZero() {
 			continue
 		}
-		issueAmount, periodMinutes := issueConfig.resolveForAccount(account)
-		if !isIssueConfigValid(issueAmount, periodMinutes) {
-			continue
-		}
+		issueAmount, _ := issueConfig.resolveForAccount(account)
 		issuedUserAccounts, err := s.issueAccountNowTx(ctx, tx, account.ID, issueAmount, now)
 		if err != nil {
 			return 0, 0, err
@@ -1286,11 +1286,8 @@ func shouldIssueDueAccounts(featureEnabled, active bool) bool {
 	return featureEnabled && active
 }
 
-func isIssueConfigValid(issueAmount int64, periodMinutes int) bool {
-	if periodMinutes <= 0 {
-		return false
-	}
-	return issueAmount > 0
+func isPeriodicIssueEnabled(periodMinutes int) bool {
+	return periodMinutes > 0
 }
 
 func upsertSystemConfigTx(ctx context.Context, tx *gorm.DB, key, value string) error {

@@ -5,10 +5,13 @@ import (
 	"time"
 
 	"gorm.io/datatypes"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	apiresource "k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 )
 
 const boolFalseString = "false"
@@ -161,6 +164,120 @@ func TestShouldIssueDueAccounts(t *testing.T) {
 				t.Fatalf("shouldIssueDueAccounts() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestPeriodicIssueRequiresPositivePeriod(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		periodMinutes int
+		want          bool
+	}{
+		{
+			name:          "positive period enables periodic issuance",
+			periodMinutes: 60,
+			want:          true,
+		},
+		{
+			name:          "zero period disables periodic issuance",
+			periodMinutes: 0,
+			want:          false,
+		},
+		{
+			name:          "negative period disables periodic issuance",
+			periodMinutes: -1,
+			want:          false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isPeriodicIssueEnabled(tc.periodMinutes); got != tc.want {
+				t.Fatalf("isPeriodicIssueEnabled() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestImmediateIssueOverwritesBalancesWhenAccountAmountIsZero(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:billing_zero_account_amount?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.Account{}, &model.UserAccount{}, &model.SystemConfig{}); err != nil {
+		t.Fatal(err)
+	}
+
+	zeroAmount := int64(0)
+	zeroPeriod := 0
+	account := model.Account{
+		Model:                     gorm.Model{ID: 2},
+		Name:                      "zero-base",
+		Nickname:                  "Zero Base",
+		Space:                     "zero-base",
+		BillingIssueAmount:        &zeroAmount,
+		BillingIssuePeriodMinutes: &zeroPeriod,
+	}
+	if err := db.Create(&account).Error; err != nil {
+		t.Fatal(err)
+	}
+	memberAmount := int64(12) * BillingPointScale
+	overriddenUserAccount := model.UserAccount{
+		UserID:                     7,
+		AccountID:                  account.ID,
+		Role:                       model.RoleUser,
+		AccessMode:                 model.AccessModeRO,
+		BillingIssueAmountOverride: &memberAmount,
+		PeriodFreeBalance:          1,
+	}
+	baseUserAccount := model.UserAccount{
+		UserID:            8,
+		AccountID:         account.ID,
+		Role:              model.RoleUser,
+		AccessMode:        model.AccessModeRO,
+		PeriodFreeBalance: 5 * BillingPointScale,
+	}
+	if err := db.Create(&[]model.UserAccount{overriddenUserAccount, baseUserAccount}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.SystemConfig{
+		Key:   model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
+		Value: "true",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	billingService := NewBillingService(query.Use(db))
+	err = db.WithContext(t.Context()).Transaction(func(tx *gorm.DB) error {
+		_, _, issueErr := billingService.issueConfiguredAccountsNowTx(t.Context(), tx, time.Now(), false)
+		return issueErr
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var updatedOverride model.UserAccount
+	if err := db.Where("user_id = ? AND account_id = ?", overriddenUserAccount.UserID, account.ID).
+		First(&updatedOverride).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updatedOverride.PeriodFreeBalance != memberAmount {
+		t.Fatalf("overridden period free balance = %d, want %d", updatedOverride.PeriodFreeBalance, memberAmount)
+	}
+
+	var updatedBase model.UserAccount
+	if err := db.Where("user_id = ? AND account_id = ?", baseUserAccount.UserID, account.ID).
+		First(&updatedBase).Error; err != nil {
+		t.Fatal(err)
+	}
+	if updatedBase.PeriodFreeBalance != 0 {
+		t.Fatalf("base period free balance = %d, want 0", updatedBase.PeriodFreeBalance)
 	}
 }
 

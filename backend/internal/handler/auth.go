@@ -38,6 +38,7 @@ type AuthMgr struct {
 	client         *http.Client
 	req            *imrocreq.Client
 	tokenMgr       *util.TokenManager
+	billingService *service.BillingService
 	userBanService *service.UserBanService
 }
 
@@ -47,6 +48,7 @@ func NewAuthMgr(conf *RegisterConfig) Manager {
 		client:         &http.Client{},
 		req:            imrocreq.C(),
 		tokenMgr:       util.GetTokenMgr(),
+		billingService: conf.BillingService,
 		userBanService: conf.UserBanService,
 	}
 }
@@ -609,8 +611,6 @@ type (
 
 // createUser is called when the user is not found in the database
 func (mgr *AuthMgr) createUser(c context.Context, name string, password *string, attrFromLDAP *model.UserAttribute) (*model.User, error) {
-	u := query.User
-	uq := query.UserAccount
 	userAttribute := model.UserAttribute{
 		UID: ptr.To("1001"),
 		GID: ptr.To("1001"),
@@ -677,19 +677,34 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 		user.Nickname = userAttribute.Nickname
 	}
 
-	if err := u.WithContext(c).Create(&user); err != nil {
-		return nil, err
-	}
+	billingEnabled := mgr.billingService != nil && mgr.billingService.IsFeatureEnabled(c)
+	err := query.Q.Transaction(func(tx *query.Query) error {
+		if err := tx.User.WithContext(c).Create(&user); err != nil {
+			return err
+		}
 
-	// add default user queue
-	userAccount := model.UserAccount{
-		UserID:     user.ID,
-		AccountID:  model.DefaultAccountID,
-		Role:       model.RoleUser,
-		AccessMode: model.AccessModeRO,
-	}
+		// Add the default user account and initialize its billing balance atomically.
+		userAccount := model.UserAccount{
+			UserID:     user.ID,
+			AccountID:  model.DefaultAccountID,
+			Role:       model.RoleUser,
+			AccessMode: model.AccessModeRO,
+		}
+		if err := tx.UserAccount.WithContext(c).Create(&userAccount); err != nil {
+			return err
+		}
 
-	if err := uq.WithContext(c).Create(&userAccount); err != nil {
+		if billingEnabled {
+			return mgr.billingService.IssueUserAccountNowInTransaction(
+				c,
+				tx,
+				user.ID,
+				model.DefaultAccountID,
+			)
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
