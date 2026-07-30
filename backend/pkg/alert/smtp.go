@@ -2,6 +2,7 @@ package alert
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strconv"
 
@@ -13,12 +14,13 @@ import (
 )
 
 type SMTPAlerter struct {
-	host     string
-	port     int
-	username string
-	password string
-	from     string
-	fromName string // 添加发件人昵称字段
+	host               string
+	port               int
+	username           string
+	password           string
+	from               string
+	fromName           string // 添加发件人昵称字段
+	insecureSkipVerify bool
 }
 
 func newSMTPAlerter() (alertHandlerInterface, error) {
@@ -36,13 +38,27 @@ func newSMTPAlerter() (alertHandlerInterface, error) {
 	fromName := "Crater System"
 
 	return &SMTPAlerter{
-		host:     smtpHost,
-		port:     port,
-		username: smtpConfig.SMTP.User,
-		password: smtpConfig.SMTP.Password,
-		from:     smtpConfig.SMTP.Notify,
-		fromName: fromName,
+		host:               smtpHost,
+		port:               port,
+		username:           smtpConfig.SMTP.User,
+		password:           smtpConfig.SMTP.Password,
+		from:               smtpConfig.SMTP.Notify,
+		fromName:           fromName,
+		insecureSkipVerify: smtpConfig.SMTP.InsecureSkipVerify,
 	}, nil
+}
+
+func (sa *SMTPAlerter) newDialer() *gomail.Dialer {
+	d := gomail.NewDialer(sa.host, sa.port, sa.username, sa.password)
+	// Use STARTTLS when advertised by the server.
+	d.SSL = false
+	if sa.insecureSkipVerify {
+		d.TLSConfig = &tls.Config{
+			ServerName:         sa.host,
+			InsecureSkipVerify: sa.insecureSkipVerify, // #nosec G402 -- Explicit operator opt-in with a startup warning.
+		}
+	}
+	return d
 }
 
 func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttribute, subject, body string) error {
@@ -59,9 +75,7 @@ func (sa *SMTPAlerter) SendMessageTo(_ context.Context, receiver *model.UserAttr
 	m.SetHeader("Subject", fmt.Sprintf("[Crater] %s", subject))
 	m.SetBody("text/html", body)
 
-	d := gomail.NewDialer(sa.host, sa.port, sa.username, sa.password)
-	// 禁用SSL/TLS，如果服务器不支持
-	d.SSL = false
+	d := sa.newDialer()
 
 	if err := d.DialAndSend(m); err != nil {
 		klog.Errorf("Failed to send email to %s: %v", *receiver.Email, err)
