@@ -305,6 +305,7 @@
   "cronPolicy.customWait": "待機時間（CUSTOM_WAIT_MINUTES、分）",
   "cronPolicy.enable": "有効化",
   "cronPolicy.executeError": "実行失敗：",
+  "cronPolicy.executeSuccess": "実行成功",
   "cronPolicy.executeNow": "今すぐ実行",
   "cronPolicy.executing": "実行中...",
   "cronPolicy.gpuAnalysisError": "GPU 不正使用検知ポリシーの更新に失敗しました：",

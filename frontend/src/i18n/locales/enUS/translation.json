@@ -305,6 +305,7 @@
   "cronPolicy.customWait": "Wait Time (CUSTOM_WAIT_MINUTES, minutes)",
   "cronPolicy.enable": "Enable",
   "cronPolicy.executeError": "Execution failed: ",
+  "cronPolicy.executeSuccess": "Execution successful",
   "cronPolicy.executeNow": "Execute Now",
   "cronPolicy.executing": "Executing...",
   "cronPolicy.gpuAnalysisError": "Failed to update GPU abuse detection policy:",

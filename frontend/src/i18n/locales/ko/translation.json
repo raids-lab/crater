@@ -304,6 +304,7 @@
   "cronPolicy.customWait": "대기 시간 (CUSTOM_WAIT_MINUTES, 분)",
   "cronPolicy.enable": "활성화",
   "cronPolicy.executeError": "실행 실패: ",
+  "cronPolicy.executeSuccess": "실행 성공",
   "cronPolicy.executeNow": "즉시 실행",
   "cronPolicy.executing": "실행 중...",
   "cronPolicy.gpuAnalysisError": "GPU 비정상 점유 감지 정책 업데이트 실패:",
