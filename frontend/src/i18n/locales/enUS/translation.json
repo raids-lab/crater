@@ -26,7 +26,7 @@
   "about.backendVersion": "Backend Version",
   "about.buildTime": "Build Time",
   "about.commit": "Commit",
-  "about.copyright": "© 2025 Crater. All rights reserved",
+  "about.copyright": "Copyright 2023-{{year}} The Crater Project Team, RAIDS-Lab",
   "about.description": "View current application version information",
   "about.developmentVersion": "Dev",
   "about.frontendVersion": "Frontend Version",
