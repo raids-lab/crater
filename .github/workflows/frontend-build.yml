@@ -82,6 +82,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch release tags for versioning
+        run: |
+          if ! git remote get-url upstream >/dev/null 2>&1; then
+            git remote add upstream https://github.com/raids-lab/crater.git
+          fi
+          git fetch upstream --tags --force
+
       - name: Set version variables
         id: set-version
         run: |
