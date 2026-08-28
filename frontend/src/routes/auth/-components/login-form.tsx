@@ -211,7 +211,8 @@ export function LoginForm({
       // zod 已经保证 acceptPrivacy === true，走到这里就是已同意
       resetAll()
       loginUser({
-        username: values.username,
+        username:
+          authMode === AuthMode.LDAP ? values.username.trim().toLowerCase() : values.username,
         password: values.password,
         auth: authMode === AuthMode.LDAP ? 'ldap' : 'normal',
       })
@@ -238,7 +239,18 @@ export function LoginForm({
               <FormItem>
                 <FormLabel>账号</FormLabel>
                 <FormControl>
-                  <Input autoComplete="username" {...field} />
+                  <Input
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    {...field}
+                    onChange={(event) => {
+                      field.onChange(
+                        authMode === AuthMode.LDAP
+                          ? event.target.value.toLowerCase()
+                          : event.target.value
+                      )
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
