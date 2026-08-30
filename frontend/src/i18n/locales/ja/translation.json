@@ -967,6 +967,7 @@
   "nodeDetail.table.headers.jobName": "Job",
   "nodeDetail.table.headers.name": "名前",
   "nodeDetail.table.headers.resources": "リソースの申請",
+  "nodeDetail.table.headers.startTime": "開始日時",
   "nodeDetail.table.headers.status": "状態",
   "nodeDetail.table.headers.type": "タイプ",
   "nodeDetail.table.headers.userName": "Owner",

@@ -964,6 +964,7 @@
   "nodeDetail.table.headers.jobName": "Job",
   "nodeDetail.table.headers.name": "이름",
   "nodeDetail.table.headers.resources": "요청 리소스",
+  "nodeDetail.table.headers.startTime": "시작 시간",
   "nodeDetail.table.headers.status": "상태",
   "nodeDetail.table.headers.type": "유형",
   "nodeDetail.table.headers.userName": "Owner",

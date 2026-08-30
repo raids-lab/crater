@@ -967,6 +967,7 @@
   "nodeDetail.table.headers.jobName": "作业",
   "nodeDetail.table.headers.name": "名称",
   "nodeDetail.table.headers.resources": "申请资源",
+  "nodeDetail.table.headers.startTime": "启动于",
   "nodeDetail.table.headers.status": "状态",
   "nodeDetail.table.headers.type": "类型",
   "nodeDetail.table.headers.userName": "归属",

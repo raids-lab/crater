@@ -967,6 +967,7 @@
   "nodeDetail.table.headers.jobName": "Job",
   "nodeDetail.table.headers.name": "Name",
   "nodeDetail.table.headers.resources": "Requested Resources",
+  "nodeDetail.table.headers.startTime": "Started At",
   "nodeDetail.table.headers.status": "Status",
   "nodeDetail.table.headers.type": "Type",
   "nodeDetail.table.headers.userName": "Owner",
