@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 )
 
-// AuthInfo 代表一组保存的认证凭据
+// AuthInfo 代表一组保存的认证凭据。
+// Token is persisted in state.json and must be stripped before command output.
 type AuthInfo struct {
 	PlatformURL string `json:"platform_url"`
 	Username    string `json:"username"`
@@ -15,6 +16,7 @@ type AuthInfo struct {
 	UserID      int    `json:"user_id"`
 	Nickname    string `json:"nickname"`
 	Role        string `json:"role"` // 默认角色
+	Token       string `json:"token,omitempty"`
 }
 
 // ActiveContext 当前激活的认证环境

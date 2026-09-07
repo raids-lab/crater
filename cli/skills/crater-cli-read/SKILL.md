@@ -1,6 +1,6 @@
 ---
 name: crater-cli-read
-version: 1.3.1
+version: 1.3.2
 description: "Crater CLI 用户视图读取域：指导 AI Agent 通过 crater node、job、image、account、resource、dataset、model-download、pod 等用户可见命令查看平台只读信息。管理员视图请使用 crater-cli-admin-read。"
 metadata:
   requires:
@@ -27,7 +27,7 @@ metadata:
 ## 安全原则
 
 - 本领域命令均为只读命令，不修改平台资源。
-- 仍需先确认存在 active credentials；不要要求用户提供 token 或 Keyring 内容。
+- 仍需先确认存在 active credentials；不要要求用户提供 token 或 `state.json` 内容。
 - 脚本化或 Agent 场景优先使用 `--json --no-interactive`。
 - 不主动调用 token、secret、credential、websocket、terminal 或 log streaming 端点；这些不是普通只读清单能力。
 - 不要在普通用户场景调用管理员命令；如果用户明确要求管理员或平台级数据，切换到 `crater-cli-admin-read`。

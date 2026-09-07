@@ -361,13 +361,9 @@ func activeModelDownloadClient() (api.ModelDownloadClient, error) {
 			Message:  i18n.T("err_no_active"),
 		}
 	}
-	token, err := session.LoadToken(active)
+	token, err := loadAccessToken(active)
 	if err != nil {
-		return nil, &clierror.Error{
-			Category: errorcodes.CategorySystem,
-			Code:     errorcodes.ErrSecureStorageError,
-			Message:  i18n.T("err_token_load_failed", err.Error()),
-		}
+		return nil, err
 	}
 	return api.NewModelDownloadClient(active.PlatformURL, token), nil
 }
