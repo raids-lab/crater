@@ -48,7 +48,7 @@ func TestSaveLoginPersistsTokenInState(t *testing.T) {
 		t.Fatalf("state.json missing persisted token: %s", raw)
 	}
 
-	token, err := LoadToken(st.ActiveContext)
+	token, err := LoadToken(st, st.ActiveContext)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,9 +82,24 @@ func TestLoadTokenMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = LoadToken(m.State.ActiveContext)
+	_, err = LoadToken(m.State, m.State.ActiveContext)
 	if !errors.Is(err, ErrNoToken) {
 		t.Fatalf("LoadToken error = %v, want ErrNoToken", err)
+	}
+}
+
+func TestLoadTokenAuthInfoNotFound(t *testing.T) {
+	t.Setenv("CRATER_TEST_SANDBOX", "")
+	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
+
+	active := state.ActiveContext{
+		PlatformURL: "https://example.invalid",
+		Username:    "alice",
+		Method:      "ldap",
+	}
+	_, err := LoadToken(state.State{ActiveContext: active}, active)
+	if !errors.Is(err, ErrAuthInfoNotFound) {
+		t.Fatalf("LoadToken error = %v, want ErrAuthInfoNotFound", err)
 	}
 }
 
@@ -113,6 +128,23 @@ func TestPublicAuthInfoOmitsTokenFromJSON(t *testing.T) {
 	}
 	if strings.Contains(string(exported), "secret-token") || strings.Contains(string(exported), `"token"`) {
 		t.Fatalf("public JSON leaked token: %s", exported)
+	}
+}
+
+func TestPublicAuthInfosOmitTokens(t *testing.T) {
+	infos := []state.AuthInfo{
+		{Username: "alice", Token: "alice-secret"},
+		{Username: "bob", Token: "bob-secret"},
+	}
+
+	public := PublicAuthInfos(infos)
+	for i, info := range public {
+		if info.Token != "" {
+			t.Fatalf("public auth info %d retained token %q", i, info.Token)
+		}
+	}
+	if infos[0].Token == "" || infos[1].Token == "" {
+		t.Fatal("PublicAuthInfos modified the persisted input slice")
 	}
 }
 

@@ -10,8 +10,8 @@ import (
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 )
 
-func loadAccessToken(ac session.ActiveContext) (string, error) {
-	token, err := session.LoadToken(ac)
+func loadAccessToken(st session.State, ac session.ActiveContext) (string, error) {
+	token, err := session.LoadToken(st, ac)
 	if err != nil {
 		if errors.Is(err, session.ErrNoToken) {
 			return "", &clierror.Error{
@@ -20,11 +20,14 @@ func loadAccessToken(ac session.ActiveContext) (string, error) {
 				Message:  i18n.T("err_token_missing"),
 			}
 		}
-		return "", &clierror.Error{
-			Category: errorcodes.CategorySystem,
-			Code:     errorcodes.ErrConfigWriteFailed,
-			Message:  i18n.T("err_token_load_failed", err.Error()),
+		if errors.Is(err, session.ErrAuthInfoNotFound) {
+			return "", &clierror.Error{
+				Category: errorcodes.CategoryUsage,
+				Code:     errorcodes.ErrNotFound,
+				Message:  i18n.T("err_not_found"),
+			}
 		}
+		return "", err
 	}
 	return token, nil
 }
@@ -46,7 +49,7 @@ func activeAPIClient() (*api.Client, error) {
 			Message:  i18n.T("err_no_active"),
 		}
 	}
-	token, err := loadAccessToken(active)
+	token, err := loadAccessToken(st, active)
 	if err != nil {
 		return nil, err
 	}

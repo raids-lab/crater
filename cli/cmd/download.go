@@ -361,7 +361,7 @@ func activeModelDownloadClient() (api.ModelDownloadClient, error) {
 			Message:  i18n.T("err_no_active"),
 		}
 	}
-	token, err := loadAccessToken(active)
+	token, err := loadAccessToken(st, active)
 	if err != nil {
 		return nil, err
 	}

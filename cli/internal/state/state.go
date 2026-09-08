@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-// AuthInfo 代表一组保存的认证凭据。
+// AuthInfo represents a saved set of credentials.
 // Token is persisted in state.json and must be stripped before command output.
 type AuthInfo struct {
 	PlatformURL string `json:"platform_url"`
@@ -71,6 +71,9 @@ func (m *Manager) Save() error {
 	}
 	if err := os.MkdirAll(filepath.Dir(m.Path), 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+	if err := os.Chmod(m.Path, 0600); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to restrict state file permissions: %w", err)
 	}
 	return os.WriteFile(m.Path, data, 0600)
 }
