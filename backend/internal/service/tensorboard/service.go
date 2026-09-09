@@ -511,7 +511,19 @@ func (svc *TensorboardService) Create(
 
 	cfg := config.GetConfig()
 	ns := cfg.Namespaces.Job
-	builder := interutil.NewBuilder(ns)
+	if strings.TrimSpace(cfg.Tensorboard.Image) == "" ||
+		cfg.Tensorboard.ImagePullPolicy == "" {
+		return nil, bizerr.Internal.K8sServiceError.New("TensorBoard image configuration is incomplete")
+	}
+	imagePullSecrets := make([]corev1.LocalObjectReference, 0, len(cfg.Tensorboard.ImagePullSecrets))
+	for _, secret := range cfg.Tensorboard.ImagePullSecrets {
+		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{Name: secret.Name})
+	}
+	builder := interutil.NewBuilder(ns, interutil.TensorboardImageConfig{
+		Image:            cfg.Tensorboard.Image,
+		ImagePullPolicy:  corev1.PullPolicy(cfg.Tensorboard.ImagePullPolicy),
+		ImagePullSecrets: imagePullSecrets,
+	})
 
 	// Build the Kubernetes deployment.
 	deploy := builder.BuildDeployment(

@@ -64,6 +64,11 @@ Generate backend config with images from top-level images section
 */}}
 {{- define "crater.backendConfig" -}}
 {{- $config := deepCopy .Values.backendConfig -}}
+{{- $_ := set $config "tensorboard" (dict
+  "image" (printf "%s:%s" .Values.images.tensorboard.repository .Values.images.tensorboard.tag)
+  "imagePullPolicy" .Values.imagePullPolicy
+  "imagePullSecrets" .Values.imagePullSecrets
+) -}}
 {{- if $config.registry.enable -}}
   {{- $buildTools := $config.registry.buildTools -}}
   {{- $_ := set $buildTools "images" (dict 
@@ -101,4 +106,3 @@ Avoid rendering full backend config into ss-config.
 -}}
 {{- $config | toYaml -}}
 {{- end -}}
-

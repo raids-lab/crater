@@ -20,6 +20,15 @@ modelDownload:
   # ModelScope base URL used by download jobs
   modelScopeEndpoint: https://modelscope.cn
 
+# Image configuration for dynamically created TensorBoard workloads
+tensorboard:
+  # Full image reference, including its immutable tag or digest
+  image: docker.io/tensorflow/tensorflow:2.20.0
+  # Kubernetes image pull policy: Always, IfNotPresent, or Never
+  imagePullPolicy: IfNotPresent
+  # Secrets must exist in the configured job namespace
+  imagePullSecrets: []
+
 # Source metadata refresh configuration
 modelMetadata:
   # Endpoints are tried in order; use only mirrors or gateways trusted by the administrator
