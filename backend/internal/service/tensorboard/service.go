@@ -33,6 +33,7 @@ const (
 	maxTensorboardSourceJobs = 10
 	maxActiveTensorboards    = 10
 	tensorboardHTTPPortName  = "http"
+	tensorboardAuthPath      = "/api/tensorboard/auth"
 )
 
 type TensorboardService struct {
@@ -562,6 +563,10 @@ func (svc *TensorboardService) Create(
 		port,
 		host,
 		prefix,
+		crclient.IngressOptions{Annotations: map[string]string{
+			"nginx.ingress.kubernetes.io/auth-url":    "https://$host" + tensorboardAuthPath,
+			"nginx.ingress.kubernetes.io/auth-method": "GET",
+		}},
 	)
 	if err != nil {
 		_ = svc.crClient.Delete(ctx, deploy)
@@ -575,6 +580,30 @@ func (svc *TensorboardService) Create(
 		TensorboardID: tbID,
 		AccessPath:    urlPath,
 	}, nil
+}
+
+// GetAccessPath verifies panel ownership before an authenticated browser session is created.
+func (svc *TensorboardService) GetAccessPath(
+	ctx context.Context,
+	username string,
+	tbID string,
+) (string, error) {
+	cfg := config.GetConfig()
+	var deploy appsv1.Deployment
+	err := svc.crClient.Get(ctx, client.ObjectKey{
+		Namespace: cfg.Namespaces.Job,
+		Name:      fmt.Sprintf("tb-%s", tbID),
+	}, &deploy)
+	if err != nil {
+		return "", wrapTensorboardLookupError(err)
+	}
+	if !isTensorboardOwner(&deploy, username) {
+		return "", bizerr.Forbidden.PermissionDenied.New(
+			"you do not have permission to access this TensorBoard panel",
+		)
+	}
+
+	return fmt.Sprintf("https://%s/ingress/%s-%s", cfg.Host, username, tbID), nil
 }
 
 func (svc *TensorboardService) ExtendTTL(

@@ -70,6 +70,10 @@ export function apiTensorboardExtendTTL(id: string, ttlHours: number) {
   return apiV1Post<string>(`tensorboard/${id}/extend`, { ttlHours })
 }
 
+export function apiTensorboardCreateAccessSession(id: string) {
+  return apiV1Post<string>(`tensorboard/${id}/access`)
+}
+
 export function apiTensorboardDelete(id: string) {
   return apiV1Delete<string>(`tensorboard/${id}`)
 }

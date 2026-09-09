@@ -44,6 +44,7 @@ import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import {
   MAX_ACTIVE_TENSORBOARDS,
   TensorboardInfo,
+  apiTensorboardCreateAccessSession,
   apiTensorboardDelete,
   apiTensorboardList,
 } from '@/services/api/tensorboard'
@@ -52,18 +53,30 @@ import { showErrorToast } from '@/utils/toast'
 
 function OpenTensorboardButton({ board }: { board: TensorboardInfo }) {
   const { t } = useTranslation()
+  const { mutate: openBoard, isPending: isOpening } = useMutation({
+    mutationFn: () => apiTensorboardCreateAccessSession(board.id),
+    onSuccess: (response) => {
+      const win = window.open(response.data, '_blank', 'noopener,noreferrer')
+      if (win) win.opener = null
+    },
+    onError: (err: unknown) => {
+      showErrorToast(err)
+    },
+  })
   const button = (
     <Button
       variant="outline"
       size="sm"
       className="text-primary"
-      disabled={board.status !== 'ready'}
-      onClick={() => {
-        const win = window.open(board.accessPath, '_blank', 'noopener,noreferrer')
-        if (win) win.opener = null
-      }}
+      disabled={board.status !== 'ready' || isOpening}
+      onClick={() => openBoard()}
     >
-      <TerminalIcon className="mr-1 size-4" /> {t('tensorboard.list.open')}
+      {isOpening ? (
+        <LoaderCircleIcon className="mr-1 size-4 animate-spin" />
+      ) : (
+        <TerminalIcon className="mr-1 size-4" />
+      )}{' '}
+      {t('tensorboard.list.open')}
     </Button>
   )
 
