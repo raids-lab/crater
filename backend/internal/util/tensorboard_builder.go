@@ -18,7 +18,7 @@ const (
 	AnnotationKeyExpirationTime = "crater.raids.io/expiration-time"
 	LabelKeyTensorboardID       = "crater.raids.io/tensorboard-id"
 	LabelKeyTypeTensorboard     = "tensorboard"
-	DefaultTensorboardImage     = "crater-harbor.act.buaa.edu.cn/user-gederong27/tensorboard:2.20.0"
+	DefaultTensorboardImage     = "crater-harbor.act.buaa.edu.cn/docker.io/tensorflow/tensorflow:2.20.0"
 	TensorboardPort             = 6006
 )
 

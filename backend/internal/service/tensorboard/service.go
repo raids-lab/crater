@@ -29,6 +29,7 @@ import (
 const (
 	tensorboardLogDirEnv     = "TENSORBOARD_LOGDIR"
 	multiSourceLogRoot       = "/tensorboard-runs"
+	personalVolumeName       = "tensorboard-personal"
 	maxTensorboardSourceJobs = 10
 	maxActiveTensorboards    = 10
 	tensorboardHTTPPortName  = "http"
@@ -347,6 +348,71 @@ func (svc *TensorboardService) prepareSingleSourceStorage(
 	}, nil
 }
 
+func buildPersonalStorage(
+	user *model.User,
+	logDir string,
+	claimName string,
+	userStoragePrefix string,
+) (*tensorboardStorage, error) {
+	logDir = strings.TrimSpace(logDir)
+	if logDir == "" {
+		return nil, bizerr.BadRequest.MissingParameter.New("provide a TensorBoard log directory")
+	}
+	if !path.IsAbs(logDir) {
+		return nil, bizerr.BadRequest.ParameterError.New("log directory must be an absolute path")
+	}
+
+	cleanLogDir := path.Clean(logDir)
+	personalMountPath := path.Join("/home", user.Name)
+	if !pathWithinMount(cleanLogDir, personalMountPath) {
+		return nil, bizerr.BadRequest.ParameterError.New(
+			"a panel without a source job can only read the current user's personal workspace",
+		)
+	}
+	if strings.TrimSpace(claimName) == "" || strings.TrimSpace(user.Space) == "" {
+		return nil, bizerr.Internal.K8sServiceError.New("personal storage is not configured")
+	}
+
+	return &tensorboardStorage{
+		logDir: cleanLogDir,
+		volumes: []corev1.Volume{{
+			Name: personalVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: claimName,
+				},
+			},
+		}},
+		volumeMounts: []corev1.VolumeMount{{
+			Name:      personalVolumeName,
+			MountPath: personalMountPath,
+			SubPath:   path.Join(userStoragePrefix, user.Space),
+			ReadOnly:  true,
+		}},
+	}, nil
+}
+
+func (svc *TensorboardService) preparePersonalStorage(
+	ctx context.Context,
+	userID uint,
+	logDir string,
+) (*tensorboardStorage, error) {
+	user, err := query.User.WithContext(ctx).Where(query.User.ID.Eq(userID)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerr.NotFound.DataBaseNotFound.Wrap(err, "user not found")
+		}
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "get user storage failed")
+	}
+
+	cfg := config.GetConfig()
+	claimName := cfg.Storage.PVC.ReadWriteMany
+	if cfg.Storage.PVC.ReadOnlyMany != nil && strings.TrimSpace(*cfg.Storage.PVC.ReadOnlyMany) != "" {
+		claimName = *cfg.Storage.PVC.ReadOnlyMany
+	}
+	return buildPersonalStorage(user, logDir, claimName, cfg.Storage.Prefix.User)
+}
+
 func (svc *TensorboardService) prepareMultiSourceStorage(
 	ctx context.Context,
 	userID uint,
@@ -393,7 +459,7 @@ func (svc *TensorboardService) prepareStorage(
 
 	switch len(sources) {
 	case 0:
-		return nil, bizerr.BadRequest.MissingParameter.New("at least one source job is required")
+		return svc.preparePersonalStorage(ctx, userID, req.LogDir)
 	case 1:
 		return svc.prepareSingleSourceStorage(ctx, userID, sources[0])
 	default:

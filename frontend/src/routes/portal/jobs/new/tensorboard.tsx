@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { useDebounceValue } from 'usehooks-ts'
 import { z } from 'zod'
 
 import {
@@ -42,6 +43,15 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import SelectBox from '@/components/custom/select-box'
@@ -54,6 +64,7 @@ import { PublishConfigForm } from '@/components/job/publish'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
 
+import { apiGetFiles } from '@/services/api/file'
 import {
   type CreateTensorboardReq,
   MAX_TENSORBOARD_SOURCE_JOBS,
@@ -70,10 +81,38 @@ type TensorboardSearch = {
   sourceJob?: string
 }
 
+// Temporarily disable storage probing and directory browsing while keeping
+// log-dir-only TensorBoard creation available.
+const enableLogDirInspection = false
+
 const validateTensorboardSearch = (search: Record<string, unknown>): TensorboardSearch => ({
   fromTemplate: Number(search.fromTemplate) || undefined,
   sourceJob: typeof search.sourceJob === 'string' ? search.sourceJob : undefined,
 })
+
+const cleanAbsolutePath = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('/')) return null
+  const segments = trimmed.split('/').filter(Boolean)
+  if (segments.some((segment) => segment === '.' || segment === '..')) return null
+  return segments.length === 0 ? '/' : `/${segments.join('/')}`
+}
+
+const toPersonalStoragePath = (logDir: string, username?: string) => {
+  if (!username) return null
+  const cleanLogDir = cleanAbsolutePath(logDir)
+  if (!cleanLogDir) return null
+  const personalRoot = `/home/${username}`
+  if (cleanLogDir === personalRoot) return 'user'
+  if (!cleanLogDir.startsWith(`${personalRoot}/`)) return null
+  return `user/${cleanLogDir.slice(personalRoot.length + 1)}`
+}
+
+const appendSubdirectory = (logDir: string, childName: string) => {
+  const cleanLogDir = cleanAbsolutePath(logDir)
+  if (!cleanLogDir) return logDir
+  return cleanLogDir === '/' ? `/${childName}` : `${cleanLogDir}/${childName}`
+}
 
 export const Route = createFileRoute('/portal/jobs/new/tensorboard')({
   validateSearch: validateTensorboardSearch,
@@ -90,7 +129,6 @@ const createFormSchema = (t: TFunction) =>
     .object({
       sourceJobNames: z
         .array(z.string())
-        .min(1, t('tensorboard.validation.sourceRequired'))
         .max(
           MAX_TENSORBOARD_SOURCE_JOBS,
           t('tensorboard.validation.maxSourceJobs', { count: MAX_TENSORBOARD_SOURCE_JOBS })
@@ -103,7 +141,7 @@ const createFormSchema = (t: TFunction) =>
         .max(168, t('tensorboard.validation.maxTTL')),
     })
     .superRefine((data, ctx) => {
-      if (data.sourceJobNames.length === 1) {
+      if (data.sourceJobNames.length <= 1) {
         const logDir = data.logDir.trim()
         if (logDir === '') {
           ctx.addIssue({
@@ -203,6 +241,8 @@ function RouteComponent() {
   })
   const selectedSourceJobNames = form.watch('sourceJobNames')
   const selectedSourceLogDirs = form.watch('sourceLogDirs')
+  const selectedLogDir = form.watch('logDir').trim()
+  const [debouncedLogDir] = useDebounceValue(selectedLogDir, 400)
   const isMultiSource = selectedSourceJobNames.length > 1
   const [sourceConfigStates, setSourceConfigStates] = useState<Record<string, SourceConfigState>>(
     {}
@@ -216,6 +256,32 @@ function RouteComponent() {
   const hasMissingMultiLogDirs =
     isMultiSource &&
     selectedSourceJobNames.some((jobName) => (selectedSourceLogDirs[jobName] ?? '').trim() === '')
+  const personalStoragePath = useMemo(
+    () => toPersonalStoragePath(debouncedLogDir, currentUser?.name),
+    [currentUser?.name, debouncedLogDir]
+  )
+  const currentPersonalStoragePath = useMemo(
+    () => toPersonalStoragePath(selectedLogDir, currentUser?.name),
+    [currentUser?.name, selectedLogDir]
+  )
+  const isLogDirCheckCurrent = selectedLogDir === debouncedLogDir
+  const shouldInspectLogDir =
+    enableLogDirInspection &&
+    !isMultiSource &&
+    debouncedLogDir !== '' &&
+    personalStoragePath !== null
+  const {
+    data: logDirChildren = [],
+    isError: isLogDirInvalid,
+    isFetching: isInspectingLogDir,
+    isSuccess: isLogDirValid,
+  } = useQuery({
+    queryKey: ['tensorboard', 'log-dir-children', personalStoragePath],
+    queryFn: () => apiGetFiles(personalStoragePath ?? ''),
+    enabled: shouldInspectLogDir,
+    retry: false,
+    select: (res) => (res.data ?? []).filter((item) => item.isdir),
+  })
 
   const { mutate: loadSourceConfig } = useMutation({
     mutationFn: apiTensorboardSourceConfig,
@@ -304,14 +370,43 @@ function RouteComponent() {
       toast.info(t('tensorboard.create.duplicateSubmit'))
       return
     }
-    const singleSource = data.sourceJobNames.length === 1
+    const hasMultipleSources = data.sourceJobNames.length > 1
+    if (!hasMultipleSources) {
+      const logDir = data.logDir.trim()
+      const currentStoragePath = toPersonalStoragePath(logDir, currentUser?.name)
+      if (data.sourceJobNames.length === 0 && currentStoragePath === null) {
+        form.setError('logDir', {
+          type: 'manual',
+          message: t('tensorboard.validation.personalLogDirRequired'),
+        })
+        return
+      }
+      if (enableLogDirInspection && currentStoragePath !== null) {
+        if (logDir !== debouncedLogDir || isInspectingLogDir) {
+          form.setError('logDir', {
+            type: 'manual',
+            message: t('tensorboard.validation.logDirChecking'),
+          })
+          return
+        }
+        if (!isLogDirValid || isLogDirInvalid) {
+          form.setError('logDir', {
+            type: 'manual',
+            message: t('tensorboard.validation.logDirInvalid'),
+          })
+          return
+        }
+      }
+    }
     setPendingCreateRequest({
       sourceJobs: data.sourceJobNames.map((jobName) => ({
         jobName,
-        logDir: singleSource ? data.logDir.trim() : (data.sourceLogDirs[jobName] ?? '').trim(),
+        logDir: hasMultipleSources
+          ? (data.sourceLogDirs[jobName] ?? '').trim()
+          : data.logDir.trim(),
       })),
       // Keep the top-level value for compatibility with exported legacy configurations.
-      logDir: singleSource ? data.logDir.trim() : '',
+      logDir: hasMultipleSources ? '' : data.logDir.trim(),
       ttlHours: data.ttlHours,
     })
   }
@@ -355,11 +450,11 @@ function RouteComponent() {
           </PageTitle>
 
           <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
-            <Card className="rounded-md border shadow-sm">
-              <CardHeader className="bg-muted/50 p-4 pb-2">
+            <Card>
+              <CardHeader>
                 <CardTitle icon={LayoutGridIcon}>{t('tensorboard.create.basicSettings')}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 p-4">
+              <CardContent className="grid gap-5">
                 <FormField
                   control={form.control}
                   name="sourceJobNames"
@@ -369,7 +464,6 @@ function RouteComponent() {
                         <FormLabel>
                           <HardDriveIcon className="mr-2 inline-block h-4 w-4" />
                           {t('tensorboard.create.sourceJobs')}
-                          <FormLabelMust />
                         </FormLabel>
                         <FormHelpTooltip
                           content={t('tensorboard.create.sourceJobsDescription', {
@@ -514,8 +608,78 @@ function RouteComponent() {
                           {t('tensorboard.create.logDirDescription')}
                         </FormDescription>
                         <FormControl>
-                          <Input placeholder="/workspace/logs" {...field} />
+                          <Input
+                            placeholder={`/home/${currentUser?.name ?? 'username'}/tensorboard-runs`}
+                            {...field}
+                            onChange={(event) => {
+                              form.clearErrors('logDir')
+                              field.onChange(event)
+                            }}
+                          />
                         </FormControl>
+                        {enableLogDirInspection &&
+                          selectedLogDir !== '' &&
+                          currentPersonalStoragePath !== null && (
+                            <div className="space-y-2">
+                              <Select
+                                key={selectedLogDir}
+                                disabled={
+                                  !isLogDirCheckCurrent ||
+                                  isInspectingLogDir ||
+                                  isLogDirInvalid ||
+                                  logDirChildren.length === 0
+                                }
+                                onValueChange={(childName) => {
+                                  field.onChange(appendSubdirectory(selectedLogDir, childName))
+                                  form.clearErrors('logDir')
+                                }}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue
+                                    placeholder={
+                                      !isLogDirCheckCurrent || isInspectingLogDir
+                                        ? t('tensorboard.create.scanningLogDir')
+                                        : t('tensorboard.create.subdirectoryCount', {
+                                            count: logDirChildren.length,
+                                          })
+                                    }
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectGroup>
+                                    <SelectLabel>
+                                      {t('tensorboard.create.selectSubdirectory')}
+                                    </SelectLabel>
+                                    {logDirChildren.map((directory) => (
+                                      <SelectItem key={directory.name} value={directory.name}>
+                                        {directory.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                              {isLogDirCheckCurrent && isLogDirValid && (
+                                <p className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2Icon className="h-3.5 w-3.5" />
+                                  {t('tensorboard.create.logDirValid')}
+                                </p>
+                              )}
+                              {isLogDirCheckCurrent && isLogDirInvalid && (
+                                <p className="text-destructive flex items-center gap-1 text-xs">
+                                  <AlertCircleIcon className="h-3.5 w-3.5" />
+                                  {t('tensorboard.validation.logDirInvalid')}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        {selectedLogDir !== '' &&
+                          currentPersonalStoragePath === null &&
+                          selectedSourceJobNames.length === 0 && (
+                            <p className="text-destructive flex items-center gap-1 text-xs">
+                              <AlertCircleIcon className="h-3.5 w-3.5" />
+                              {t('tensorboard.validation.personalLogDirRequired')}
+                            </p>
+                          )}
                         {selectedSourceJobNames.length === 1 &&
                           sourceConfigStates[selectedSourceJobNames[0]]?.status === 'error' && (
                             <p className="text-xs text-amber-600 dark:text-amber-400">
@@ -581,10 +745,14 @@ function RouteComponent() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('tensorboard.create.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('tensorboard.create.confirmDescription', {
-                count: pendingCreateRequest?.sourceJobs?.length ?? 0,
-                ttl: pendingCreateRequest?.ttlHours ?? 0,
-              })}
+              {(pendingCreateRequest?.sourceJobs?.length ?? 0) === 0
+                ? t('tensorboard.create.confirmDescriptionWithoutSource', {
+                    ttl: pendingCreateRequest?.ttlHours ?? 0,
+                  })
+                : t('tensorboard.create.confirmDescription', {
+                    count: pendingCreateRequest?.sourceJobs?.length ?? 0,
+                    ttl: pendingCreateRequest?.ttlHours ?? 0,
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

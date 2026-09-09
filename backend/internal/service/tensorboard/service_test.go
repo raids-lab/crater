@@ -264,6 +264,54 @@ func TestIsLogDirMountedAcceptsRootMount(t *testing.T) {
 	}
 }
 
+func TestBuildPersonalStorageAllowsLogDirWithoutSourceJob(t *testing.T) {
+	user := &model.User{Name: "alice", Space: "alice-space"}
+	storage, err := buildPersonalStorage(
+		user,
+		" /home/alice/tensorboard-runs/run-a/ ",
+		"storage-rox",
+		"users",
+	)
+	if err != nil {
+		t.Fatalf("buildPersonalStorage returned an error: %v", err)
+	}
+	if storage.logDir != "/home/alice/tensorboard-runs/run-a" {
+		t.Fatalf("unexpected log directory: %q", storage.logDir)
+	}
+	if len(storage.volumes) != 1 || storage.volumes[0].PersistentVolumeClaim == nil ||
+		storage.volumes[0].PersistentVolumeClaim.ClaimName != "storage-rox" {
+		t.Fatalf("unexpected personal volume: %#v", storage.volumes)
+	}
+	if len(storage.volumeMounts) != 1 {
+		t.Fatalf("expected one personal mount, got %#v", storage.volumeMounts)
+	}
+	mount := storage.volumeMounts[0]
+	if mount.MountPath != "/home/alice" || mount.SubPath != "users/alice-space" || !mount.ReadOnly {
+		t.Fatalf("unexpected personal mount: %#v", mount)
+	}
+}
+
+func TestBuildPersonalStorageRejectsInvalidLogDirs(t *testing.T) {
+	user := &model.User{Name: "alice", Space: "alice-space"}
+	tests := []struct {
+		name   string
+		logDir string
+	}{
+		{name: "missing", logDir: ""},
+		{name: "relative", logDir: "tensorboard-runs/run-a"},
+		{name: "another user", logDir: "/home/bob/tensorboard-runs/run-a"},
+		{name: "parent traversal", logDir: "/home/alice/../bob/tensorboard-runs/run-a"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := buildPersonalStorage(user, tt.logDir, "storage-rox", "users"); err == nil {
+				t.Fatalf("expected log directory %q to be rejected", tt.logDir)
+			}
+		})
+	}
+}
+
 func TestIsTensorboardOwner(t *testing.T) {
 	tests := []struct {
 		name     string

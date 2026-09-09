@@ -8643,7 +8643,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 基于当前用户的一个或多个来源任务创建 TensorBoard 面板
+      description: 从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务
       parameters:
       - description: TensorBoard 面板配置
         in: body
