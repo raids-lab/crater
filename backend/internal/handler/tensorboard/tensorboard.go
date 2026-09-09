@@ -1,6 +1,10 @@
 package tensorboard
 
 import (
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -9,6 +13,11 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	tensorboardservice "github.com/raids-lab/crater/internal/service/tensorboard"
 	interutil "github.com/raids-lab/crater/internal/util"
+)
+
+const (
+	tensorboardAccessCookie = "crater_tensorboard_access"
+	tensorboardIDLength     = 8
 )
 
 type TensorboardMgr struct {
@@ -30,14 +39,110 @@ func NewTensorboardMgr(config *handler.RegisterConfig) handler.Manager {
 
 func (mgr *TensorboardMgr) GetName() string { return "tensorboard" }
 
-func (mgr *TensorboardMgr) RegisterPublic(_ *gin.RouterGroup) {}
-func (mgr *TensorboardMgr) RegisterAdmin(_ *gin.RouterGroup)  {}
+func (mgr *TensorboardMgr) RegisterPublic(group *gin.RouterGroup) {
+	group.GET("/auth", mgr.AuthorizeIngress)
+}
+func (mgr *TensorboardMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 func (mgr *TensorboardMgr) RegisterProtected(group *gin.RouterGroup) {
 	group.POST("", mgr.UserCreate)
 	group.GET("", mgr.UserList)
 	group.GET("/source/:jobName", mgr.UserGetSourceConfig)
 	group.DELETE("/:id", mgr.UserDelete)
 	group.POST("/:id/extend", mgr.UserExtendTTL)
+	group.POST("/:id/access", mgr.UserCreateAccessSession)
+}
+
+// UserCreateAccessSession authorizes a browser to open one owned TensorBoard panel.
+//
+//	@Summary		创建 TensorBoard 访问会话
+//	@Description	校验面板所有权，并为该面板路径设置短期登录 Cookie
+//	@Tags			TensorBoard
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			id	path		string	true	"TensorBoard 面板 ID"
+//	@Success		200	{object}	resputil.Response[string]
+//	@Failure		401	{object}	resputil.Response[any]
+//	@Failure		403	{object}	resputil.Response[any]
+//	@Failure		404	{object}	resputil.Response[any]
+//	@Failure		500	{object}	resputil.Response[any]
+//	@Router			/v1/tensorboard/{id}/access [post]
+func (mgr *TensorboardMgr) UserCreateAccessSession(c *gin.Context) {
+	token := interutil.GetToken(c)
+	accessPath, err := mgr.service.GetAccessPath(c.Request.Context(), token.Username, c.Param("id"))
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
+	authToken, ok := bearerToken(c.GetHeader("Authorization"))
+	if !ok {
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("invalid access token"))
+		return
+	}
+	c.SetSameSite(http.SameSiteStrictMode)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     tensorboardAccessCookie,
+		Value:    authToken,
+		Path:     "/ingress/" + token.Username + "-" + c.Param("id"),
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+	resputil.Success(c, accessPath)
+}
+
+// AuthorizeIngress validates the login session and ownership for ingress-nginx.
+//
+//	@Summary		校验 TensorBoard Ingress 访问
+//	@Description	供 ingress-nginx external-auth 子请求调用
+//	@Tags			TensorBoard
+//	@Success		204
+//	@Failure		401
+//	@Router			/tensorboard/auth [get]
+func (mgr *TensorboardMgr) AuthorizeIngress(c *gin.Context) {
+	cookie, err := c.Cookie(tensorboardAccessCookie)
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	token, err := interutil.GetTokenMgr().CheckToken(cookie)
+	if err != nil || !isOwnedTensorboardURL(c.GetHeader("X-Original-URL"), token.Username) {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	c.AbortWithStatus(http.StatusNoContent)
+}
+
+func bearerToken(header string) (string, bool) {
+	parts := strings.Fields(header)
+	returnToken := ""
+	if len(parts) == 2 && parts[0] == "Bearer" {
+		returnToken = parts[1]
+	}
+	return returnToken, returnToken != ""
+}
+
+func isOwnedTensorboardURL(rawURL, username string) bool {
+	parsed, err := url.ParseRequestURI(rawURL)
+	if err != nil || username == "" {
+		return false
+	}
+	routePrefix := "/ingress/" + username + "-"
+	escapedPath := parsed.EscapedPath()
+	if !strings.HasPrefix(escapedPath, routePrefix) {
+		return false
+	}
+	remainder := strings.TrimPrefix(escapedPath, routePrefix)
+	tensorboardID := strings.SplitN(remainder, "/", 2)[0]
+	if len(tensorboardID) != tensorboardIDLength {
+		return false
+	}
+	for _, character := range tensorboardID {
+		if !strings.ContainsRune("0123456789abcdef", character) {
+			return false
+		}
+	}
+	return true
 }
 
 // UserGetSourceConfig returns TensorBoard settings stored in the selected job configuration.

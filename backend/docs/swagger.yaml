@@ -3220,6 +3220,17 @@ paths:
       summary: 获取系统中每种Status的Job的数量
       tags:
       - Metrics
+  /tensorboard/auth:
+    get:
+      description: 供 ingress-nginx external-auth 子请求调用
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+      summary: 校验 TensorBoard Ingress 访问
+      tags:
+      - TensorBoard
   /v1/accounts:
     get:
       consumes:
@@ -8710,6 +8721,43 @@ paths:
       security:
       - Bearer: []
       summary: 删除 TensorBoard 面板
+      tags:
+      - TensorBoard
+  /v1/tensorboard/{id}/access:
+    post:
+      description: 校验面板所有权，并为该面板路径设置短期登录 Cookie
+      parameters:
+      - description: TensorBoard 面板 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建 TensorBoard 访问会话
       tags:
       - TensorBoard
   /v1/tensorboard/{id}/extend:

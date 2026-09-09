@@ -277,6 +277,23 @@
                 }
             }
         },
+        "/tensorboard/auth": {
+            "get": {
+                "description": "供 ingress-nginx external-auth 子请求调用",
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "校验 TensorBoard Ingress 访问",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
         "/v1/accounts": {
             "get": {
                 "security": [
@@ -8947,6 +8964,64 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/{id}/access": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "校验面板所有权，并为该面板路径设置短期登录 Cookie",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "创建 TensorBoard 访问会话",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TensorBoard 面板 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "403": {
