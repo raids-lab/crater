@@ -26,7 +26,7 @@
   "about.backendVersion": "백엔드",
   "about.buildTime": "빌드 시간",
   "about.commit": "커밋",
-  "about.copyright": "© 2025 Crater. 모든 권리 보유",
+  "about.copyright": "저작권 2023-{{year}} The Crater Project Team, RAIDS-Lab",
   "about.description": "현재 애플리케이션 버전 정보를 확인합니다",
   "about.developmentVersion": "개발판",
   "about.frontendVersion": "프론트엔드",

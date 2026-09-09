@@ -26,7 +26,7 @@
   "about.backendVersion": "后端版本",
   "about.buildTime": "构建时间",
   "about.commit": "提交",
-  "about.copyright": "© 2025 Crater. 保留所有权利",
+  "about.copyright": "版权所有 2023-{{year}} The Crater Project Team, RAIDS-Lab",
   "about.description": "查看当前应用的版本信息",
   "about.developmentVersion": "开发版本",
   "about.frontendVersion": "前端版本",

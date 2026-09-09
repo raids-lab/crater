@@ -26,7 +26,7 @@
   "about.backendVersion": "バックエンド",
   "about.buildTime": "ビルド時間",
   "about.commit": "コミット",
-  "about.copyright": "© 2025 Crater. 全著作権所有",
+  "about.copyright": "著作権 2023-{{year}} The Crater Project Team, RAIDS-Lab",
   "about.description": "現在のアプリケーションバージョン情報を表示",
   "about.developmentVersion": "開発版",
   "about.frontendVersion": "フロントエンド",
