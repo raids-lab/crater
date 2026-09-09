@@ -32,10 +32,9 @@ func SaveState(st state.State) error {
 	return nil
 }
 
-// ActiveAuthInfo returns the AuthInfo that matches the current ActiveContext in state.
-// If no active context is set or no matching AuthInfo exists, ok is false.
-func ActiveAuthInfo(st state.State) (info state.AuthInfo, ok bool) {
-	ac := st.ActiveContext
+// AuthInfoFor returns the AuthInfo that matches ac.
+// If no matching AuthInfo exists, ok is false.
+func AuthInfoFor(st state.State, ac state.ActiveContext) (info state.AuthInfo, ok bool) {
 	if ac.PlatformURL == "" || ac.Username == "" || ac.Method == "" {
 		return state.AuthInfo{}, false
 	}
@@ -45,4 +44,10 @@ func ActiveAuthInfo(st state.State) (info state.AuthInfo, ok bool) {
 		}
 	}
 	return state.AuthInfo{}, false
+}
+
+// ActiveAuthInfo returns the AuthInfo that matches the current ActiveContext in state.
+// If no active context is set or no matching AuthInfo exists, ok is false.
+func ActiveAuthInfo(st state.State) (info state.AuthInfo, ok bool) {
+	return AuthInfoFor(st, st.ActiveContext)
 }

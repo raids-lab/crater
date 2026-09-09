@@ -88,6 +88,6 @@ crater job ls --all-pages --json
 
 ## 敏感信息
 
-- 不要让用户在聊天里发送密码、token、cookie、Keyring 内容或完整认证文件。
+- 不要让用户在聊天里发送密码、token、cookie 或完整认证文件（含 `state.json`）。
 - 普通 shell 中不推荐使用明文 `--password`，因为可能进入 shell history。
 - 需要登录时，优先让用户在本机终端交互式输入密码。

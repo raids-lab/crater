@@ -67,6 +67,7 @@ UNIT_TEST_PKGS := \
 	./internal/api \
 	./internal/completion \
 	./internal/output \
+	./internal/session \
 	./internal/state \
 	./internal/testenv \
 	./internal/version

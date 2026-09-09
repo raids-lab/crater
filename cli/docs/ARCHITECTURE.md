@@ -6,11 +6,11 @@
 
 | 区域 | 职责（实现视角） |
 |------|------------------|
-| `cmd/` | Cobra 命令树、`RunE` 编排；读 flag；调用 `internal/api`、`internal/state`、`internal/credential` 等；成功时调用 `internal/output` 写 stdout；失败时 `return`（多为 `*clierror.Error`）。`cmd/root.go` 的 `Execute` 在调用 Cobra 前预扫描 `--json`、初始化语言与帮助、`handleError` + `exitCodeFor` + `os.Exit`。 |
+| `cmd/` | Cobra 命令树、`RunE` 编排；读 flag；调用 `internal/api`、`internal/session` 等；成功时调用 `internal/output` 写 stdout；失败时 `return`（多为 `*clierror.Error`）。`cmd/root.go` 的 `Execute` 在调用 Cobra 前预扫描 `--json`、初始化语言与帮助、`handleError` + `exitCodeFor` + `os.Exit`。 |
 | `internal/api/` | 与 Crater 平台的 HTTP：拼 URL、发请求、按 `Response[T]` 解包；定义 `RequestError`、`NetworkError` 等供上层映射。 |
 | `internal/clierror/` | 结构化 CLI 错误类型 `Error`（`Category` / `Code` / `Message` / `Context`），供 `cmd` 返回、`internal/output` 渲染。 |
 | `internal/output/` | 成功 JSON 信封与编码；错误写到 stderr 的渲染。不负责退出码与进程退出。 |
-| `internal/state/`、`internal/credential/`、`internal/i18n/` | 本地状态、凭据存储、文案与语言。 |
+| `internal/state/`、`internal/session/`、`internal/i18n/` | 本地状态（含明文 token）、session 门面、文案与语言。 |
 | `internal/snaptest/` | 快照测试工具库：构建 `crater` 二进制、运行子进程、收集 `stdout/stderr/exit`、读写与比对 `txtar` golden。仅供测试包使用。 |
 | `pkg/errorcodes/` | 稳定字符串错误码、`Category` 常量、与退出码映射 `ExitCodeForCategory`。 |
 | `skills/` | 面向平台用户 AI Agent 分发的 Skills，按 `crater-cli-<domain>` 组织；用于说明如何安全调用 CLI，不参与二进制运行时。 |
@@ -100,7 +100,7 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 CLI 的快照测试与可复现测试通过环境变量实现“网络与存储”两类外部副作用隔离：
 
 - **网络隔离**：`CRATER_TEST_SANDBOX_HTTP` 由 `internal/api/client.go` 的 `applyHTTPSim` 实现；通常统一模拟传输层失败（如超时、404），成功快照可按上节契约仅放行测试管理的 loopback fixture。
-- **存储隔离**：`CRATER_TEST_SANDBOX=1` 由 `internal/session` 实现。开启后，`session` 返回稳定的 fake session（多账号上下文 + fake token），并使写入操作 no-op，从而避免触达开发者真实 `state.json` 与 OS keyring。
+- **存储隔离**：`CRATER_TEST_SANDBOX=1` 由 `internal/session` 实现。开启后，`session` 返回稳定的 fake session（多账号上下文 + fake token），并使写入操作 no-op，从而避免触达开发者真实 `state.json`。
 
 该机制的目的有二：
 
@@ -153,4 +153,4 @@ CLI 的多语言由 `internal/i18n` 提供，命令层只负责“选择语言�
 
 ## 本地数据与配置
 
-`internal/state` 管理 `state.json` 等；`internal/credential` 对接系统 keyring 存 token；`internal/i18n` 提供多语言文案。命令层读写这些模块，与网络包解耦。
+`internal/state` 管理 `state.json`（身份摘要与 access token 明文同文件）；`internal/session` 是命令层读写本地状态与 token 的入口，输出前必须去掉 `token`；`internal/i18n` 提供多语言文案。命令层不应直接拼配置路径或把磁盘上的 `AuthInfo` 原样打到 stdout。

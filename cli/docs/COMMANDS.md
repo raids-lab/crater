@@ -169,6 +169,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 ## 3. 认证模块 (auth)
 
+需要访问平台的命令会读取当前 `active_context` 对应 `auth_infos` 条目中的 `token`。`auth ls` / `switch` / `rm` / `logout` 不读取 token。已有激活身份但该条目没有 `token`（例如从旧 Keyring 升级后尚未重新登录）时，访问平台的命令失败并提示重新 `auth login`。
+
 ### `crater auth login`
 - **描述**: 登录到一个 Crater platform 实例并获取 Token。
 - **选项**:
@@ -184,9 +186,9 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - **非交互式约束**: 在开启 `--no-interactive` 或 `--json` 时，如果未提供 `--password`，程序将直接报错而非使用空密码。
 - **预期行为**:
   - 调用 `/api/auth/login` 接口。
-  - 成功后将 Token 存入系统 Keyring，键名为 `crater`，子键为 `platform|user|mode`。
-  - 更新 `state.json` 中的 `auth_infos` 列表，并自动将该环境设为 `active_context`。
-- **`--json` 的 `data`**：`user`（与 CLI 持久化视图一致的用户摘要对象；**不含** token 明文等敏感字段，与实现 `config.AuthInfo` 对齐）。
+  - 成功后将 access token 明文写入 `state.json` 中对应 `auth_infos` 条目的 `token` 字段（与身份摘要同一文件，权限 `0600`）。
+  - 更新 `auth_infos` 列表，并自动将该环境设为 `active_context`。
+- **`--json` 的 `data`**：`user`（身份摘要对象，字段与 `auth_infos` 条目一致，但**不含** `token`）。
 - **状态**: [x] Completed
 
 ### `crater auth switch`
@@ -223,7 +225,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 标记出当前激活的 (`active`) 上下文。
 - **输出格式**:
   - 表格形式显示: `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
-- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目）。
+- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目；字段与磁盘 `auth_infos` 相同，但**不含** `token`）。
 - **状态**: [x] Completed
 
 ### `crater auth rm`
@@ -239,8 +241,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     - **交互模式**: 在终端列出所有匹配项，并要求用户确认是否删除。
     - **非交互模式 (`--no-interactive`)**: 必须配合 `-y` 选项，否则报错并拒绝执行。
   - **清理逻辑**: 
-    - 从 `state.json` 中移除对应条目。
-    - 同时从系统 Keyring 中删除关联的 Token。
+    - 从 `state.json` 的 `auth_infos` 中移除对应条目（其中的 `token` 一并删除）。
     - 如果删除的是当前 `active` 的上下文，则将 `active_context` 置为空。
 - **`--json` 的 `data`**：`removed_count`（整数）。
 - **状态**: [x] Completed
@@ -255,8 +256,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     - **交互模式**: 确认是否登出当前用户。
     - **非交互模式 (`--no-interactive`)**: 必须配合 `-y` 选项，否则报错。
   - **清理逻辑**: 
-    - 从 Keyring 中删除当前激活项的 Token。
-    - 从 `state.json` 的 `auth_infos` 列表中移除该项。
+    - 从 `state.json` 的 `auth_infos` 列表中移除当前激活项（其中的 `token` 一并删除）。
   - **后续行为 (Auto-Switch)**:
     - 如果列表中仍有其他已保存的认证上下文，则**自动切换**到列表中的第一项作为新的 `active_context`。
     - 如果列表为空，则清空 `active_context`。
@@ -276,7 +276,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--category` (string, required): 下载类别，可选 `model` 或 `dataset`。
   - `--source` (string): 下载来源，可选 `modelscope` / `ms` 或 `huggingface` / `hf`，默认为 `modelscope`；`ms` 与 `hf` 仅为 CLI 简写，发送给平台前会规范化为全拼。
   - `--revision` (string): 可选的分支、tag 或 revision。
-  - `--token` (string): 可选的访问令牌，用于 gated/private 仓库。该值仅随本次请求发送给平台，不写入 CLI 本地配置或 keyring，不在成功/错误输出中展示。
+  - `--token` (string): 可选的访问令牌，用于 gated/private 仓库。该值仅随本次请求发送给平台，不写入 CLI 本地配置，不在成功/错误输出中展示。
   - `--token-env` (string): 从指定环境变量读取可选访问令牌。与 `--token`、`--token-stdin` 互斥。
   - `--token-stdin` (bool): 从 stdin 读取可选访问令牌。与 `--token`、`--token-env` 互斥。
   - `--wait` (bool): 提交后轮询任务，直到状态进入 `Ready`、`Failed` 或 `Paused`。
@@ -285,7 +285,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**:
   - 本地校验 `--name`、`--category`、`--source`；可在请求前发现的问题必须聚合为单个 `usage_error`。
   - 若提供 `--token-env` 或 `--token-stdin`，CLI 读取 token 后仅用于本次请求；不得在输出中展示 token。
-  - 读取当前激活的认证上下文与 token；若未登录或 token 不可用，返回错误。
+  - 读取当前激活身份的 token；若未登录或该身份没有保存 token，返回错误（见认证模块）。
   - 调用平台接口创建下载任务。后端根据 `category` 自动选择平台侧目标目录（模型为 `public/Models`，数据集为 `public/Datasets`）。
   - 若平台返回资源已存在或正在下载，CLI 仍按成功处理并展示后端返回的任务信息与消息。
 - **输出格式**:
