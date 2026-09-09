@@ -18,19 +18,27 @@ const (
 	AnnotationKeyExpirationTime = "crater.raids.io/expiration-time"
 	LabelKeyTensorboardID       = "crater.raids.io/tensorboard-id"
 	LabelKeyTypeTensorboard     = "tensorboard"
-	DefaultTensorboardImage     = "crater-harbor.act.buaa.edu.cn/docker.io/tensorflow/tensorflow:2.20.0"
 	TensorboardPort             = 6006
 )
 
+// TensorboardImageConfig describes the image settings for a TensorBoard workload.
+type TensorboardImageConfig struct {
+	Image            string
+	ImagePullPolicy  corev1.PullPolicy
+	ImagePullSecrets []corev1.LocalObjectReference
+}
+
 // Builder defines the utility to build K8s resources for Tensorboard
 type Builder struct {
-	Namespace string
+	Namespace   string
+	ImageConfig TensorboardImageConfig
 }
 
 // NewBuilder creates a new Builder
-func NewBuilder(namespace string) *Builder {
+func NewBuilder(namespace string, imageConfig TensorboardImageConfig) *Builder {
 	return &Builder{
-		Namespace: namespace,
+		Namespace:   namespace,
+		ImageConfig: imageConfig,
 	}
 }
 
@@ -104,12 +112,14 @@ func (b *Builder) BuildDeployment(
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					ImagePullSecrets: b.ImageConfig.ImagePullSecrets,
 					Containers: []corev1.Container{
 						{
-							Name:         "tensorboard",
-							Image:        DefaultTensorboardImage,
-							Command:      cmd,
-							VolumeMounts: volumeMounts,
+							Name:            "tensorboard",
+							Image:           b.ImageConfig.Image,
+							ImagePullPolicy: b.ImageConfig.ImagePullPolicy,
+							Command:         cmd,
+							VolumeMounts:    volumeMounts,
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: TensorboardPort,
