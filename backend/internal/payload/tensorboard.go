@@ -7,8 +7,9 @@ type TensorboardSourceJobReq struct {
 	LogDir  string `json:"logDir,omitempty"`
 }
 
-// CreateTensorboardReq describes the source jobs and lifetime of a TensorBoard panel.
-// The backend resolves trusted data mounts from jobs owned by the current user.
+// CreateTensorboardReq describes the optional source jobs, log directory, and panel lifetime.
+// Without a source job, LogDir must point into the current user's personal workspace.
+// With source jobs, the backend resolves trusted data mounts from jobs owned by the current user.
 // SourceJobName, SourceJobNames, and LogDir remain available for legacy API clients.
 type CreateTensorboardReq struct {
 	SourceJobName  string                    `json:"sourceJobName,omitempty" example:"job-old-xxxx"`

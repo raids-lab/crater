@@ -65,7 +65,7 @@ func (mgr *TensorboardMgr) UserGetSourceConfig(c *gin.Context) {
 // UserCreate provisions a TensorBoard deployment, service, and ingress.
 //
 //	@Summary		创建 TensorBoard 面板
-//	@Description	基于当前用户的一个或多个来源任务创建 TensorBoard 面板
+//	@Description	从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务
 //	@Tags			TensorBoard
 //	@Accept			json
 //	@Produce		json
