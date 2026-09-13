@@ -42,7 +42,7 @@ func runFileLs(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		remotePath = args[0]
 	}
-	normalizedPath, err := normalizeRemotePath(remotePath, true)
+	normalizedPath, err := normalizeRemotePath(remotePath)
 	if err != nil {
 		return err
 	}
@@ -66,12 +66,9 @@ func runFileLs(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func normalizeRemotePath(remotePath string, allowEmpty bool) (string, error) {
+func normalizeRemotePath(remotePath string) (string, error) {
 	if remotePath == "" {
-		if allowEmpty {
-			return "", nil
-		}
-		return "", invalidRemotePathIssue(i18n.T("err_file_path_invalid", remotePath))
+		return "", nil
 	}
 	if strings.ContainsRune(remotePath, '\\') {
 		return "", invalidRemotePathIssue(i18n.T("err_file_path_invalid", remotePath))
@@ -84,10 +81,7 @@ func normalizeRemotePath(remotePath string, allowEmpty bool) (string, error) {
 
 	normalized := strings.Trim(remotePath, "/")
 	if normalized == "" {
-		if allowEmpty {
-			return "", nil
-		}
-		return "", invalidRemotePathIssue(i18n.T("err_file_path_empty"))
+		return "", nil
 	}
 	rawSegments := strings.Split(normalized, "/")
 	segments := make([]string, 0, len(rawSegments))
@@ -101,10 +95,7 @@ func normalizeRemotePath(remotePath string, allowEmpty bool) (string, error) {
 		segments = append(segments, segment)
 	}
 	if len(segments) == 0 {
-		if allowEmpty {
-			return "", nil
-		}
-		return "", invalidRemotePathIssue(i18n.T("err_file_path_invalid", remotePath))
+		return "", nil
 	}
 	if !isFileRemoteRoot(segments[0]) {
 		return "", invalidRemotePathIssue(i18n.T("err_file_path_root", remotePath))

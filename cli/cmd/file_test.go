@@ -10,17 +10,19 @@ import (
 
 func TestNormalizeRemotePath(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
-		allowEmpty bool
-		want       string
-		wantErr    bool
+		name    string
+		input   string
+		want    string
+		wantErr bool
 	}{
-		{name: "visible root", allowEmpty: true, want: ""},
+		{name: "visible root", want: ""},
+		{name: "slash root", input: "/", want: ""},
+		{name: "repeated slash root", input: "///", want: ""},
+		{name: "dot root", input: ".", want: ""},
+		{name: "normalized dot root", input: "/././", want: ""},
 		{name: "logical root", input: "user", want: "user"},
 		{name: "leading and trailing slash", input: "/public/实验 data/", want: "public/实验 data"},
 		{name: "account nested", input: "account/projects/run #1", want: "account/projects/run #1"},
-		{name: "empty rejected", input: "", wantErr: true},
 		{name: "unknown root", input: "admin/secret", wantErr: true},
 		{name: "parent traversal", input: "user/../public", wantErr: true},
 		{name: "current segment normalized", input: "user/./file", want: "user/file"},
@@ -31,7 +33,7 @@ func TestNormalizeRemotePath(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := normalizeRemotePath(test.input, test.allowEmpty)
+			got, err := normalizeRemotePath(test.input)
 			if (err != nil) != test.wantErr {
 				t.Fatalf("normalizeRemotePath(%q) error = %v, wantErr %v", test.input, err, test.wantErr)
 			}
