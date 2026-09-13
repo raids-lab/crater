@@ -50,6 +50,10 @@ export const jobTypes = [
     value: 'openmpi',
     label: 'OpenMPI',
   },
+  {
+    value: 'model-deployment',
+    label: '模型部署',
+  },
 ]
 
 const getJobTypeLabel = (
@@ -107,6 +111,12 @@ const getJobTypeLabel = (
         label: 'OpenMPI',
         color: 'text-highlight-green bg-highlight-green/10',
         description: 'OpenMPI 作业',
+      }
+    case JobType.ModelDeployment:
+      return {
+        label: '模型部署',
+        color: 'text-highlight-blue bg-highlight-blue/10',
+        description: 'Kthena 在线模型部署',
       }
     default:
       return {

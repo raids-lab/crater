@@ -45,34 +45,36 @@ func init() {
 }
 
 type VolcanojobMgr struct {
-	name            string
-	client          client.Client
-	config          *rest.Config
-	kubeClient      kubernetes.Interface
-	imagePacker     packer.ImagePackerInterface
-	imageRegistry   imageregistry.ImageRegistryInterface
-	serviceManager  crclient.ServiceManagerInterface
-	configService   *service.ConfigService
-	queueQuotaSvc   *service.PrequeueService
-	prequeueWatcher *prequeuewatcher.PrequeueWatcher
-	billingService  *service.BillingService
-	userBanService  *service.UserBanService
+	name              string
+	client            client.Client
+	workloadNamespace string
+	config            *rest.Config
+	kubeClient        kubernetes.Interface
+	imagePacker       packer.ImagePackerInterface
+	imageRegistry     imageregistry.ImageRegistryInterface
+	serviceManager    crclient.ServiceManagerInterface
+	configService     *service.ConfigService
+	queueQuotaSvc     *service.PrequeueService
+	prequeueWatcher   *prequeuewatcher.PrequeueWatcher
+	billingService    *service.BillingService
+	userBanService    *service.UserBanService
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
-		name:            "vcjobs",
-		client:          conf.Client,
-		config:          conf.KubeConfig,
-		kubeClient:      conf.KubeClient,
-		imagePacker:     conf.ImagePacker,
-		imageRegistry:   conf.ImageRegistry,
-		serviceManager:  conf.ServiceManager,
-		configService:   conf.ConfigService,
-		queueQuotaSvc:   conf.PrequeueService,
-		prequeueWatcher: conf.PrequeueWatcher,
-		billingService:  conf.BillingService,
-		userBanService:  conf.UserBanService,
+		name:              "vcjobs",
+		client:            conf.Client,
+		workloadNamespace: config.GetConfig().Namespaces.Job,
+		config:            conf.KubeConfig,
+		kubeClient:        conf.KubeClient,
+		imagePacker:       conf.ImagePacker,
+		imageRegistry:     conf.ImageRegistry,
+		serviceManager:    conf.ServiceManager,
+		configService:     conf.ConfigService,
+		queueQuotaSvc:     conf.PrequeueService,
+		prequeueWatcher:   conf.PrequeueWatcher,
+		billingService:    conf.BillingService,
+		userBanService:    conf.UserBanService,
 	}
 }
 
@@ -83,6 +85,15 @@ func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.GetSelfJobs)
 	g.GET("facets", mgr.GetSelfJobFacets)
+	// The unified workload endpoints intentionally sit alongside the legacy
+	// Volcano job APIs. They return database-backed Volcano jobs and Kthena
+	// ModelBoosters without turning an inference deployment into a Job record.
+	g.GET("workloads", mgr.GetSelfWorkloads)
+	g.GET("workloads/facets", mgr.GetSelfWorkloadFacets)
+	g.GET("workloads/all", mgr.GetAllWorkloads)
+	g.GET("workloads/all/facets", mgr.GetAllWorkloadFacets)
+	g.GET("workloads/user/:username", mgr.GetUserWorkloads)
+	g.GET("workloads/user/:username/facets", mgr.GetUserWorkloadFacets)
 	g.GET("all", mgr.GetAllJobsInDays)
 	g.GET("all/facets", mgr.GetAllJobFacets)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
@@ -127,6 +138,8 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobsInDays)
 	g.GET("facets", mgr.GetAllJobFacets)
+	g.GET("workloads", mgr.GetAllWorkloads)
+	g.GET("workloads/facets", mgr.GetAllWorkloadFacets)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
 	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetAllJobBillingInDays)

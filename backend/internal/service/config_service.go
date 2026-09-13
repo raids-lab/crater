@@ -104,6 +104,7 @@ func (s *ConfigService) SetCronJobManager(cjm *cronjob.CronJobManager) {
 func defaultSystemConfigValue(key string) string {
 	switch key {
 	case model.ConfigKeyEnableGpuAnalysis,
+		model.ConfigKeyEnableKthenaInference,
 		model.ConfigKeyEnableBillingFeature,
 		model.ConfigKeyEnableBillingActive,
 		model.ConfigKeyEnableRunningSettlement,
@@ -431,6 +432,35 @@ func (s *ConfigService) IsGpuAnalysisEnabled(ctx context.Context) bool {
 	}
 	enabled, _ := strconv.ParseBool(cfg.Value)
 	return enabled
+}
+
+// IsKthenaInferenceEnabled reports whether users can access Kthena model
+// deployment APIs. Missing, malformed, or unreadable configuration is treated
+// as disabled so that the feature remains opt-in.
+func (s *ConfigService) IsKthenaInferenceEnabled(ctx context.Context) bool {
+	configs, err := s.getConfigs(ctx, model.ConfigKeyEnableKthenaInference)
+	if err != nil {
+		klog.Errorf("[ConfigService] get Kthena inference feature config failed: %v", err)
+		return false
+	}
+
+	enabled, err := strconv.ParseBool(configs[model.ConfigKeyEnableKthenaInference])
+	if err != nil {
+		if value := configs[model.ConfigKeyEnableKthenaInference]; value != "" {
+			klog.Warningf("[ConfigService] invalid Kthena inference feature config: %q", value)
+		}
+		return false
+	}
+	return enabled
+}
+
+// SetKthenaInferenceEnabled updates the opt-in switch for Kthena model
+// deployment. updateConfigs also creates the key for installations that were
+// initialized before this switch was introduced.
+func (s *ConfigService) SetKthenaInferenceEnabled(ctx context.Context, enabled bool) error {
+	return s.updateConfigs(ctx, map[string]string{
+		model.ConfigKeyEnableKthenaInference: strconv.FormatBool(enabled),
+	})
 }
 
 // ResetLLMConfig 重置 LLM 配置并关闭 GPU 分析

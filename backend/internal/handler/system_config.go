@@ -52,6 +52,7 @@ func (mgr *SystemConfigMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *SystemConfigMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/billing", mgr.GetBillingStatus)
 	g.GET("/model-download-limit", mgr.GetModelDownloadLimitConfig)
+	g.GET("/kthena-inference", mgr.GetKthenaInferenceStatus)
 }
 
 func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -63,6 +64,8 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 
 	g.GET("/gpu-analysis", mgr.GetGpuAnalysisStatus)
 	g.PUT("/gpu-analysis", mgr.SetGpuAnalysisStatus)
+	g.GET("/kthena-inference", mgr.GetKthenaInferenceStatus)
+	g.PUT("/kthena-inference", mgr.SetKthenaInferenceStatus)
 	g.GET("/prequeue", mgr.GetPrequeueConfig)
 	g.PUT("/prequeue", mgr.UpdatePrequeueConfig)
 	g.GET("/model-download-limit", mgr.GetAdminModelDownloadLimitConfig)
@@ -98,6 +101,14 @@ type GpuAnalysisStatusResp struct {
 
 type SetGpuAnalysisStatusReq struct {
 	Enable bool `json:"enable"`
+}
+
+type KthenaInferenceStatusResp struct {
+	Enabled bool `json:"enabled"`
+}
+
+type SetKthenaInferenceStatusReq struct {
+	Enabled *bool `json:"enabled" binding:"required"`
 }
 
 type PrequeueConfigResp struct {
@@ -334,6 +345,50 @@ func (mgr *SystemConfigMgr) SetGpuAnalysisStatus(c *gin.Context) {
 		action = "enabled"
 	}
 	resputil.Success(c, "GPU analysis "+action)
+}
+
+// GetKthenaInferenceStatus godoc
+// @Summary		获取模型部署功能开关状态
+// @Description	查询当前系统是否允许用户创建和管理基于 Kthena 的在线模型部署。
+// @Tags			SystemConfig
+// @Produce		json
+// @Security		Bearer
+// @Success		200	{object}	resputil.Response[KthenaInferenceStatusResp]	"开关状态"
+// @Router			/v1/system-config/kthena-inference [get]
+// @Router			/v1/admin/system-config/kthena-inference [get]
+func (mgr *SystemConfigMgr) GetKthenaInferenceStatus(c *gin.Context) {
+	resputil.Success(c, KthenaInferenceStatusResp{
+		Enabled: mgr.service.IsKthenaInferenceEnabled(c.Request.Context()),
+	})
+}
+
+// SetKthenaInferenceStatus godoc
+// @Summary		设置模型部署功能开关
+// @Description	开启后，用户可以创建和管理基于 Kthena 的在线模型部署；关闭后所有模型部署接口均会拒绝访问。
+// @Tags			SystemConfig
+// @Accept			json
+// @Produce		json
+// @Security		Bearer
+// @Param			data	body		SetKthenaInferenceStatusReq	true	"开关设置"
+// @Success		200		{object}	resputil.Response[string]	"设置成功"
+// @Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+// @Router			/v1/admin/system-config/kthena-inference [put]
+func (mgr *SystemConfigMgr) SetKthenaInferenceStatus(c *gin.Context) {
+	var req SetKthenaInferenceStatusReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid Kthena inference feature config"))
+		return
+	}
+	if err := mgr.service.SetKthenaInferenceEnabled(c.Request.Context(), *req.Enabled); err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "update Kthena inference feature config failed"))
+		return
+	}
+
+	action := "disabled"
+	if *req.Enabled {
+		action = "enabled"
+	}
+	resputil.Success(c, "Kthena inference feature "+action)
 }
 
 // GetPrequeueConfig godoc

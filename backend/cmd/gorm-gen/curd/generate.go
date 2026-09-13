@@ -54,6 +54,9 @@ func main() {
 		model.PrequeueConfig{},
 		model.QueueQuotaLimit{},
 		model.UserBanRecord{},
+		model.KthenaChatSession{},
+		model.KthenaChatMessage{},
+		model.KthenaInferenceTemplate{},
 	)
 
 	// 执行并生成代码

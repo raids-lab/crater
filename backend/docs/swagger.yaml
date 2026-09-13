@@ -437,6 +437,19 @@ definitions:
       total:
         type: integer
     type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_WorkloadResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.WorkloadResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-any:
     properties:
       code:
@@ -490,6 +503,42 @@ definitions:
       data:
         items:
           $ref: '#/definitions/internal_handler.GpuAnalysisWithJobInfo'
+        type: array
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaConversationResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaConversationResp'
+        type: array
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaInferenceTemplateResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaInferenceTemplateResp'
+        type: array
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaServiceResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaServiceResp'
         type: array
       msg:
         type: string
@@ -553,6 +602,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_WorkloadResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_WorkloadResp'
       msg:
         type: string
     type: object
@@ -683,6 +742,56 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.JobResourceSummaryResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.KthenaConversationResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationTurnResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.KthenaConversationTurnResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaInferenceStatusResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.KthenaInferenceStatusResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaInferenceTemplateResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.KthenaInferenceTemplateResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaServiceResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.KthenaServiceResp'
       msg:
         type: string
     type: object
@@ -1313,6 +1422,13 @@ definitions:
       shortCommitSHA:
         type: string
     type: object
+  internal_handler.ChatMessage:
+    properties:
+      content:
+        type: string
+      role:
+        type: string
+    type: object
   internal_handler.CheckResp:
     properties:
       context:
@@ -1344,6 +1460,42 @@ definitions:
     required:
     - category
     - name
+    type: object
+  internal_handler.CreateKthenaReq:
+    properties:
+      backendType:
+        type: string
+      cacheURI:
+        type: string
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      modelSource:
+        type: string
+      modelURI:
+        type: string
+      name:
+        type: string
+      platformModelId:
+        type: integer
+      replicas:
+        type: integer
+      selectors:
+        items:
+          $ref: '#/definitions/v1.NodeSelectorRequirement'
+        type: array
+      servedModel:
+        type: string
+      tolerations:
+        items:
+          $ref: '#/definitions/v1.Toleration'
+        type: array
+      worker:
+        $ref: '#/definitions/internal_handler.KthenaWorkerReq'
+    required:
+    - name
+    - worker
     type: object
   internal_handler.CurrentUserBanStatusResp:
     properties:
@@ -1526,6 +1678,311 @@ definitions:
     required:
     - name
     - template
+    type: object
+  internal_handler.KthenaAccess:
+    properties:
+      internalBaseURL:
+        type: string
+      modelName:
+        type: string
+      nodePortURL:
+        type: string
+      proxyBaseURL:
+        type: string
+      routeName:
+        type: string
+      routerService:
+        type: string
+      serverName:
+        type: string
+    type: object
+  internal_handler.KthenaConversationCreateReq:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaConversationMessageReq'
+        type: array
+      sessionId:
+        type: string
+      title:
+        type: string
+    type: object
+  internal_handler.KthenaConversationMessageReq:
+    properties:
+      content:
+        type: string
+      role:
+        type: string
+    type: object
+  internal_handler.KthenaConversationMessageResp:
+    properties:
+      content:
+        type: string
+      createdAt:
+        type: string
+      role:
+        type: string
+      sequence:
+        type: integer
+    type: object
+  internal_handler.KthenaConversationResp:
+    properties:
+      backendType:
+        type: string
+      createdAt:
+        type: string
+      messageCount:
+        type: integer
+      messages:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaConversationMessageResp'
+        type: array
+      modelName:
+        type: string
+      namespace:
+        type: string
+      serviceName:
+        type: string
+      sessionId:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  internal_handler.KthenaConversationTurnReq:
+    properties:
+      clientTurnId:
+        type: string
+      content:
+        type: string
+      maxTokens:
+        type: integer
+      sessionId:
+        type: string
+      temperature:
+        type: number
+    type: object
+  internal_handler.KthenaConversationTurnResp:
+    properties:
+      assistant:
+        $ref: '#/definitions/internal_handler.KthenaConversationMessageResp'
+      completion:
+        type: object
+      conversation:
+        $ref: '#/definitions/internal_handler.KthenaConversationResp'
+    type: object
+  internal_handler.KthenaConversationUpdateReq:
+    properties:
+      messages:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaConversationMessageReq'
+        type: array
+      title:
+        type: string
+    type: object
+  internal_handler.KthenaDiagnostic:
+    properties:
+      container:
+        type: string
+      details:
+        type: string
+      level:
+        type: string
+      message:
+        type: string
+      pod:
+        type: string
+      reason:
+        type: string
+      resource:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  internal_handler.KthenaInferenceStatusResp:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  internal_handler.KthenaInferenceTemplateReq:
+    properties:
+      config:
+        type: object
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - config
+    - name
+    type: object
+  internal_handler.KthenaInferenceTemplateResp:
+    properties:
+      config:
+        type: object
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  internal_handler.KthenaProxyReq:
+    properties:
+      max_tokens:
+        type: integer
+      messages:
+        items:
+          $ref: '#/definitions/internal_handler.ChatMessage'
+        type: array
+      model:
+        type: string
+      prompt: {}
+      stream:
+        type: boolean
+      temperature:
+        type: number
+    type: object
+  internal_handler.KthenaResource:
+    properties:
+      conditions:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+      kind:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      phase:
+        type: string
+      ready:
+        type: boolean
+    type: object
+  internal_handler.KthenaRuntimePod:
+    properties:
+      hostIP:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      nodeName:
+        type: string
+      phase:
+        type: string
+      podIP:
+        type: string
+      ready:
+        type: boolean
+      readyContainers:
+        type: integer
+      restarts:
+        type: integer
+      totalContainers:
+        type: integer
+    type: object
+  internal_handler.KthenaServiceResp:
+    properties:
+      access:
+        $ref: '#/definitions/internal_handler.KthenaAccess'
+      backendType:
+        type: string
+      cacheURI:
+        type: string
+      conditions:
+        items:
+          additionalProperties: {}
+          type: object
+        type: array
+      createdAt:
+        type: string
+      diagnostics:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaDiagnostic'
+        type: array
+      env:
+        additionalProperties:
+          type: string
+        type: object
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      modelSource:
+        type: string
+      modelURI:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      owner:
+        type: string
+      phase:
+        type: string
+      platformModelId:
+        type: integer
+      replicas:
+        type: integer
+      resources:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaResource'
+        type: array
+      runtimePods:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaRuntimePod'
+        type: array
+      servedModel:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+      workerCPU:
+        type: string
+      workerConfig:
+        additionalProperties:
+          type: string
+        type: object
+      workerGPU:
+        type: string
+      workerGPUModel:
+        type: string
+      workerImage:
+        type: string
+      workerMemory:
+        type: string
+      workerReplicas:
+        type: integer
+    type: object
+  internal_handler.KthenaWorkerReq:
+    properties:
+      config:
+        additionalProperties:
+          type: string
+        type: object
+      cpu:
+        type: string
+      gpu:
+        type: string
+      gpuModel:
+        type: string
+      image:
+        type: string
+      memory:
+        type: string
+      pods:
+        type: integer
+      replicas:
+        type: integer
+    required:
+    - image
     type: object
   internal_handler.LLMConfigResp:
     properties:
@@ -1839,6 +2296,13 @@ definitions:
     properties:
       enable:
         type: boolean
+    type: object
+  internal_handler.SetKthenaInferenceStatusReq:
+    properties:
+      enabled:
+        type: boolean
+    required:
+    - enabled
     type: object
   internal_handler.SharedQueueReq:
     properties:
@@ -2604,6 +3068,61 @@ definitions:
       token:
         type: string
     type: object
+  internal_handler_vcjob.WorkloadResp:
+    properties:
+      billedPointsTotal:
+        type: number
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      detailPath:
+        type: string
+      jobName:
+        type: string
+      jobType:
+        type: string
+      locked:
+        type: boolean
+      lockedTimestamp:
+        type: string
+      model:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      nodes:
+        items:
+          type: string
+        type: array
+      owner:
+        type: string
+      permanentLocked:
+        type: boolean
+      queue:
+        type: string
+      resources:
+        $ref: '#/definitions/v1.ResourceList'
+      scheduleType:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
+      scheduler:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+      statusDetail:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+      waitingToleranceSeconds:
+        type: integer
+      workloadID:
+        type: string
+      workloadKind:
+        type: string
+    type: object
   map_string_string:
     additionalProperties:
       type: string
@@ -2868,6 +3387,63 @@ definitions:
           +optional
         type: boolean
     type: object
+  v1.TaintEffect:
+    enum:
+    - NoSchedule
+    - PreferNoSchedule
+    - NoExecute
+    type: string
+    x-enum-varnames:
+    - TaintEffectNoSchedule
+    - TaintEffectPreferNoSchedule
+    - TaintEffectNoExecute
+  v1.Toleration:
+    properties:
+      effect:
+        allOf:
+        - $ref: '#/definitions/v1.TaintEffect'
+        description: |-
+          Effect indicates the taint effect to match. Empty means match all taint effects.
+          When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+          +optional
+      key:
+        description: |-
+          Key is the taint key that the toleration applies to. Empty means match all taint keys.
+          If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+          +optional
+        type: string
+      operator:
+        allOf:
+        - $ref: '#/definitions/v1.TolerationOperator'
+        description: |-
+          Operator represents a key's relationship to the value.
+          Valid operators are Exists and Equal. Defaults to Equal.
+          Exists is equivalent to wildcard for value, so that a pod can
+          tolerate all taints of a particular category.
+          +optional
+      tolerationSeconds:
+        description: |-
+          TolerationSeconds represents the period of time the toleration (which must be
+          of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+          it is not set, which means tolerate the taint forever (do not evict). Zero and
+          negative values will be treated as 0 (evict immediately) by the system.
+          +optional
+        type: integer
+      value:
+        description: |-
+          Value is the taint value the toleration matches to.
+          If the operator is Exists, the value should be empty, otherwise just a regular string.
+          +optional
+        type: string
+    type: object
+  v1.TolerationOperator:
+    enum:
+    - Exists
+    - Equal
+    type: string
+    x-enum-varnames:
+    - TolerationOpExists
+    - TolerationOpEqual
   volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase:
     enum:
     - Pending
@@ -4010,6 +4586,120 @@ paths:
       summary: 管理员更新镜像的任务类型
       tags:
       - ImagePack
+  /v1/admin/kthena/inference-services:
+    get:
+      consumes:
+      - application/json
+      description: List all Kthena inference services managed by Crater.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaServiceResp'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List all inference services
+      tags:
+      - kthena
+  /v1/admin/kthena/inference-services/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete any Kthena inference service managed by Crater.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete inference service as admin
+      tags:
+      - kthena
+    get:
+      consumes:
+      - application/json
+      description: Get any Kthena inference service managed by Crater.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaServiceResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get inference service as admin
+      tags:
+      - kthena
+  /v1/admin/kthena/inference-services/{name}/yaml:
+    get:
+      consumes:
+      - application/json
+      description: Get raw Kthena ModelBooster object for any inference service managed
+        by Crater.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get inference service YAML as admin
+      tags:
+      - kthena
   /v1/admin/models/downloads:
     get:
       consumes:
@@ -4995,6 +5685,48 @@ paths:
       security:
       - Bearer: []
       summary: 设置 GPU 分析功能开关
+      tags:
+      - SystemConfig
+  /v1/admin/system-config/kthena-inference:
+    get:
+      description: 查询当前系统是否允许用户创建和管理基于 Kthena 的在线模型部署。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 开关状态
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaInferenceStatusResp'
+      security:
+      - Bearer: []
+      summary: 获取模型部署功能开关状态
+      tags:
+      - SystemConfig
+    put:
+      consumes:
+      - application/json
+      description: 开启后，用户可以创建和管理基于 Kthena 的在线模型部署；关闭后所有模型部署接口均会拒绝访问。
+      parameters:
+      - description: 开关设置
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SetKthenaInferenceStatusReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 设置成功
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 设置模型部署功能开关
       tags:
       - SystemConfig
   /v1/admin/system-config/llm:
@@ -7123,6 +7855,618 @@ paths:
       summary: 更新作业模板
       tags:
       - jobtemplate
+  /v1/kthena/inference-services:
+    get:
+      consumes:
+      - application/json
+      description: List Kthena inference services owned by the current user and account.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaServiceResp'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List my inference services
+      tags:
+      - kthena
+    post:
+      consumes:
+      - application/json
+      description: Create a Kthena ModelBooster-backed inference service.
+      parameters:
+      - description: Create inference service request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.CreateKthenaReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaServiceResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create inference service
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a Kthena inference service owned by the current user and
+        account.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete inference service
+      tags:
+      - kthena
+    get:
+      consumes:
+      - application/json
+      description: Get a Kthena inference service owned by the current user and account.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaServiceResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get inference service
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}/conversations:
+    get:
+      description: List a user's deployment-scoped conversations; messages are omitted
+        by default.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Include recent messages
+        in: query
+        name: includeMessages
+        type: boolean
+      - description: Conversation limit, maximum 100
+        in: query
+        name: limit
+        type: integer
+      - description: Messages per conversation, maximum 500
+        in: query
+        name: messageLimit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaConversationResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List model deployment conversations
+      tags:
+      - kthena
+    post:
+      consumes:
+      - application/json
+      description: Create a user/deployment-scoped conversation; empty sessionId gets
+        a UUID and supplied UUIDs are idempotent.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Conversation
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaConversationCreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create model deployment conversation
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}/conversations/{sessionId}:
+    delete:
+      description: Permanently delete one current user's persisted Kthena conversation
+        and all of its messages.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Conversation session UUID
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete model deployment conversation
+      tags:
+      - kthena
+    get:
+      description: Get one persisted conversation and its most recent ordered messages
+        for the current user and authorized Kthena deployment.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Conversation session UUID
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      - description: Maximum recent messages, maximum 500
+        in: query
+        name: messageLimit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get model deployment conversation
+      tags:
+      - kthena
+    patch:
+      consumes:
+      - application/json
+      description: 'Update title and/or replace all messages of a current user''s
+        conversation. Sending messages: [] clears the message list.'
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Conversation session UUID
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      - description: Conversation update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaConversationUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Update model deployment conversation
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}/conversations/{sessionId}/turns:
+    post:
+      consumes:
+      - application/json
+      description: Use stored context to call Kthena and atomically save successful
+        user and assistant messages.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Conversation session UUID
+        in: path
+        name: sessionId
+        required: true
+        type: string
+      - description: User turn
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaConversationTurnReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationTurnResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "502":
+          description: Bad Gateway
+          schema: {}
+      security:
+      - Bearer: []
+      summary: Send a persisted model deployment conversation turn
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}/conversations/turns:
+    post:
+      consumes:
+      - application/json
+      description: Send an atomic turn without a path sessionId. Provide a body sessionId
+        to reuse a UUID, or leave it empty for a new UUID.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: User turn
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaConversationTurnReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaConversationTurnResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "502":
+          description: Bad Gateway
+          schema: {}
+      security:
+      - Bearer: []
+      summary: Send a new or existing persisted model deployment conversation turn
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}/openai/{path}:
+    post:
+      consumes:
+      - application/json
+      description: Proxy an OpenAI-compatible request to kthena-router for an inference
+        service owned by the current user and account.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: OpenAI-compatible API path
+        in: path
+        name: path
+        required: true
+        type: string
+      - description: OpenAI-compatible request body
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaProxyReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema: {}
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Model route or runtime pod not found
+          schema: {}
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Proxy OpenAI-compatible inference request
+      tags:
+      - kthena
+  /v1/kthena/inference-services/{name}/yaml:
+    get:
+      consumes:
+      - application/json
+      description: Get raw Kthena ModelBooster object for an inference service owned
+        by the current user and account.
+      parameters:
+      - description: Inference service name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get inference service YAML
+      tags:
+      - kthena
+  /v1/kthena/inference-templates:
+    get:
+      description: List the current user's templates in the active account. Templates
+        are never shared across users or accounts.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaInferenceTemplateResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List private Kthena deployment templates
+      tags:
+      - kthena
+    post:
+      consumes:
+      - application/json
+      description: Save the current deployment form as a private template for the
+        current user and account.
+      parameters:
+      - description: Template
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaInferenceTemplateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaInferenceTemplateResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create a private Kthena deployment template
+      tags:
+      - kthena
+  /v1/kthena/inference-templates/{id}:
+    delete:
+      description: Delete one template owned by the current user in the active account.
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Delete a private Kthena deployment template
+      tags:
+      - kthena
+    put:
+      consumes:
+      - application/json
+      description: Replace a template owned by the current user in the active account.
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Template
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.KthenaInferenceTemplateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaInferenceTemplateResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Update a private Kthena deployment template
+      tags:
+      - kthena
   /v1/models/download:
     post:
       consumes:
@@ -8459,6 +9803,21 @@ paths:
       summary: 获取资源统计信息
       tags:
       - statistics
+  /v1/system-config/kthena-inference:
+    get:
+      description: 查询当前系统是否允许用户创建和管理基于 Kthena 的在线模型部署。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 开关状态
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_KthenaInferenceStatusResp'
+      security:
+      - Bearer: []
+      summary: 获取模型部署功能开关状态
+      tags:
+      - SystemConfig
   /v1/system-config/model-download-limit:
     get:
       description: 获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态
@@ -9428,6 +10787,89 @@ paths:
       security:
       - Bearer: []
       summary: Create a WebIDE job
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/workloads:
+    get:
+      description: Lists persisted Volcano jobs and current-user Kthena ModelBoosters
+        as a single pageable list.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Search workloads
+        in: query
+        name: search
+        type: string
+      - description: Number of days to look back, -1 for all
+        in: query
+        name: days
+        type: integer
+      - collectionFormat: multi
+        description: Job types, including model-deployment
+        in: query
+        items:
+          type: string
+        name: job_type
+        type: array
+      - collectionFormat: multi
+        description: Workload kinds
+        in: query
+        items:
+          type: string
+        name: workload_kind
+        type: array
+      - collectionFormat: multi
+        description: Schedule types
+        in: query
+        items:
+          type: integer
+        name: schedule_type
+        type: array
+      - collectionFormat: multi
+        description: Workload statuses
+        in: query
+        items:
+          type: string
+        name: status
+        type: array
+      - description: Node name
+        in: query
+        name: node
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_WorkloadResp'
+      security:
+      - Bearer: []
+      summary: Get current user's unified workloads
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/workloads/facets:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
+      security:
+      - Bearer: []
+      summary: Get current user's unified workload facets
       tags:
       - VolcanoJob
 securityDefinitions:

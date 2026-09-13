@@ -26,6 +26,7 @@ interface RemoteDataTableProps<TData, TValue> extends HTMLAttributes<HTMLDivElem
   getRowId: (row: TData) => string
   toolbarConfig?: DataTableToolbarConfig
   multipleHandlers?: MultipleHandler<TData>[]
+  canSelectRow?: (row: TData) => boolean
   briefChildren?: React.ReactNode
   withI18n?: boolean
   initialColumnVisibility?: VisibilityState
@@ -39,6 +40,7 @@ export function RemoteDataTable<TData, TValue>({
   getRowId,
   toolbarConfig,
   multipleHandlers,
+  canSelectRow,
   children,
   briefChildren,
   withI18n = false,
@@ -70,6 +72,7 @@ export function RemoteDataTable<TData, TValue>({
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(Boolean(value))}
+            disabled={!row.getCanSelect()}
           />
         ),
         enableSorting: false,
@@ -97,7 +100,9 @@ export function RemoteDataTable<TData, TValue>({
       columnVisibility,
       rowSelection,
     },
-    enableRowSelection: Boolean(multipleHandlers?.length),
+    enableRowSelection: multipleHandlers?.length
+      ? (row) => canSelectRow?.(row.original) ?? true
+      : false,
     enableMultiSort: true,
     maxMultiSortColCount: 3,
     autoResetPageIndex: false,
