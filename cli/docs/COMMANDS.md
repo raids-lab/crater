@@ -821,3 +821,27 @@ This section records the read-only API surface covered by the CLI after the broa
 - **状态**：[x] Completed
 
 下载、上传、创建目录、移动和删除不属于本命令范围，由各自独立的文件命令契约定义。
+
+### `crater file download <remote-file> [local-path]`
+
+- **描述**：把一个远端普通文件流式下载到本机。
+- **位置参数**：
+  - `<remote-file>`（必填）：逻辑远端文件路径，必须指向 `user`、`public` 或 `account` 下的具体条目，不能只给逻辑根。
+  - `[local-path]`（可选）：目标本地文件路径；不是目录。省略时使用远端路径的最后一段作为当前目录下的文件名。
+- **选项**：
+  - `--overwrite`（bool）：允许替换已存在的本地文件；默认拒绝覆盖。
+- **处理逻辑**：
+  - 调用 `GET /api/ss/download/*path`，仅接受不带 `Content-Range` 的 `200 OK` 响应；合法的空文件仍可下载。响应内容直接流式写入目标同目录的临时文件，不把完整文件读入内存。
+  - 完整传输后依次同步、关闭临时文件。启用 `--overwrite` 时通过同目录重命名替换：Unix 平台提供原子替换，Windows 等非 Unix 平台为 best-effort，不承诺原子性；默认模式通过硬链接 no-clobber 发布，文件系统不支持时返回错误，不降级为可能覆盖目标的复制。
+  - 下载失败或 Ctrl-C 取消时清理临时文件，不输出成功元数据；即使使用 `--overwrite`，也不会在下载完成前删除或截断原文件。强制终止进程（如 SIGKILL）无法保证清理。
+  - 未使用 `--overwrite` 时，请求前会检查目标是否已存在，最终发布本身也采用原子 no-clobber 语义，避免检查与发布之间的竞态覆盖。
+  - 不支持目录递归下载、断点续传、并行分片或进度条。
+- **输出格式**：
+  - 默认模式：成功后展示远端路径、本地路径和写入字节数。
+  - `--json`：仅在下载成功后向 stdout 输出结果元数据；文件内容永远不会写入 stdout。
+- **`--json` 的 `data`**：
+  - `remote_path`（字符串）：规范化后的逻辑远端路径。
+  - `local_path`（字符串）：实际目标本地路径。
+  - `bytes`（整数）：写入字节数。
+  - `overwrite`（布尔）：本次是否启用了显式覆盖选项。
+- **状态**：[x] Completed
