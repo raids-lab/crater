@@ -16,7 +16,6 @@ import WarningAlert from '@/components/custom/warning-alert'
 import {
   apiAdminGetBillingStatus,
   apiAdminGetGpuAnalysisStatus,
-  apiAdminGetKthenaInferenceStatus,
   apiAdminGetLLMConfig,
   apiAdminGetModelDownloadLimitConfig,
   apiAdminGetPodBandwidthConfig,
@@ -26,7 +25,6 @@ import {
   apiAdminResetLLMConfig,
   apiAdminSetBillingStatus,
   apiAdminSetGpuAnalysisStatus,
-  apiAdminSetKthenaInferenceStatus,
   apiAdminUpdateLLMConfig,
   apiAdminUpdateModelDownloadLimitConfig,
   apiAdminUpdatePodBandwidthConfig,
@@ -99,11 +97,6 @@ function RouteComponent() {
   const { data: gpuStatusData } = useQuery({
     queryKey: ['admin', 'system-config', 'gpu-status'],
     queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
-  })
-
-  const { data: kthenaInferenceStatusData } = useQuery({
-    queryKey: ['admin', 'system-config', 'kthena-inference'],
-    queryFn: () => apiAdminGetKthenaInferenceStatus().then((res) => res.data),
   })
 
   const { data: prequeueConfigData } = useQuery({
@@ -220,28 +213,6 @@ function RouteComponent() {
       toast.success(message)
     },
     onError: handleError,
-  })
-
-  const toggleKthenaInferenceMutation = useMutation({
-    mutationFn: apiAdminSetKthenaInferenceStatus,
-    onSuccess: async (_data, enabled) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ['admin', 'system-config', 'kthena-inference'],
-        }),
-        queryClient.invalidateQueries({ queryKey: ['system-config', 'kthena-inference'] }),
-      ])
-      toast.success(
-        enabled
-          ? t('systemConfig.kthenaInference.enabledSuccess', {
-              defaultValue: '模型部署已开启',
-            })
-          : t('systemConfig.kthenaInference.disabledSuccess', {
-              defaultValue: '模型部署已关闭',
-            })
-      )
-    },
-    onError: showErrorToast,
   })
 
   const updateBillingMutation = useMutation({
@@ -442,11 +413,7 @@ function RouteComponent() {
         </Card>
 
         <Card>
-          <KthenaInferenceSettings
-            enabled={kthenaInferenceStatusData?.enabled ?? false}
-            isPending={toggleKthenaInferenceMutation.isPending}
-            onToggle={(enabled) => toggleKthenaInferenceMutation.mutate(enabled)}
-          />
+          <KthenaInferenceSettings />
         </Card>
       </TabsContent>
 
