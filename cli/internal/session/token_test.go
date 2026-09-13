@@ -12,7 +12,10 @@ import (
 )
 
 func TestSaveLoginPersistsTokenInState(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("AppData", filepath.Join(home, "AppData"))
 	t.Setenv("CRATER_TEST_SANDBOX", "")
 	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
 
@@ -58,7 +61,10 @@ func TestSaveLoginPersistsTokenInState(t *testing.T) {
 }
 
 func TestLoadTokenMissing(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("AppData", filepath.Join(home, "AppData"))
 	t.Setenv("CRATER_TEST_SANDBOX", "")
 	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
 

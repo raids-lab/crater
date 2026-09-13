@@ -10,6 +10,8 @@ import (
 func TestNewManagerDoesNotCreateConfigDirWhenStateMissing(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("AppData", filepath.Join(home, "AppData"))
 
 	m, err := NewManager()
 	if err != nil {
@@ -32,6 +34,8 @@ func TestNewManagerDoesNotCreateConfigDirWhenStateMissing(t *testing.T) {
 func TestManagerSaveCreatesConfigDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("AppData", filepath.Join(home, "AppData"))
 
 	m, err := NewManager()
 	if err != nil {
@@ -57,6 +61,8 @@ func TestManagerSaveRestrictsExistingStateFilePermissions(t *testing.T) {
 
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("AppData", filepath.Join(home, "AppData"))
 
 	m, err := NewManager()
 	if err != nil {
