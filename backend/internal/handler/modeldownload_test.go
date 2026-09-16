@@ -17,6 +17,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
@@ -106,6 +107,83 @@ func TestModelDownloadResponseKeepsReferenceCountCompatibilityAlias(t *testing.T
 		if !strings.Contains(string(encoded), field) {
 			t.Fatalf("response JSON %s does not contain compatibility field %s", encoded, field)
 		}
+	}
+}
+
+func TestReusedDownloadMessageMentionsCrossSourceReuse(t *testing.T) {
+	ready := &model.ModelDownload{
+		Source: model.ModelSourceModelScope, Path: "public/Datasets/owner/dataset",
+		Status: model.ModelDownloadStatusReady,
+	}
+	message := reusedDownloadMessage(ready, model.ModelSourceHuggingFace, "main")
+	if !strings.Contains(message, "from modelscope") || !strings.Contains(message, "from huggingface") {
+		t.Fatalf("cross-source ready message = %q", message)
+	}
+	if !strings.Contains(message, `shared revision is ""`) {
+		t.Fatalf("cross-revision ready message = %q", message)
+	}
+
+	downloading := &model.ModelDownload{
+		Source: model.ModelSourceModelScope, Status: model.ModelDownloadStatusDownloading,
+	}
+	message = reusedDownloadMessage(downloading, model.ModelSourceHuggingFace, "")
+	if !strings.Contains(message, "already being downloaded from modelscope") ||
+		!strings.Contains(message, "from huggingface") {
+		t.Fatalf("cross-source ongoing message = %q", message)
+	}
+}
+
+func TestPreflightSourceRepository(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		source    model.ModelSource
+		status    int
+		wantPath  string
+		wantError error
+	}{
+		{
+			name: "modelscope dataset exists", source: model.ModelSourceModelScope, status: http.StatusOK,
+			wantPath: "/api/v1/datasets/owner/dataset/revisions",
+		},
+		{
+			name: "hugging face dataset missing", source: model.ModelSourceHuggingFace, status: http.StatusNotFound,
+			wantPath: "/api/datasets/owner/dataset", wantError: bizerr.NotFound.Base,
+		},
+		{
+			name: "source requires token", source: model.ModelSourceHuggingFace, status: http.StatusUnauthorized,
+			wantPath: "/api/datasets/owner/dataset", wantError: bizerr.Forbidden.Base,
+		},
+		{
+			name: "source unavailable", source: model.ModelSourceModelScope, status: http.StatusServiceUnavailable,
+			wantPath: "/api/v1/datasets/owner/dataset/revisions", wantError: bizerr.Internal.Base,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != testCase.wantPath {
+					t.Errorf("request path = %q, want %q", r.URL.Path, testCase.wantPath)
+				}
+				if got := r.Header.Get("Authorization"); got != "Bearer temporary-token" {
+					t.Errorf("authorization header = %q", got)
+				}
+				w.WriteHeader(testCase.status)
+			}))
+			defer server.Close()
+
+			err := preflightSourceRepository(
+				t.Context(), testCase.source, model.DownloadCategoryDataset,
+				"owner/dataset", "temporary-token", server.URL,
+			)
+			if testCase.wantError == nil {
+				if err != nil {
+					t.Fatalf("preflightSourceRepository() error = %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, testCase.wantError) {
+				t.Fatalf("preflightSourceRepository() error = %v, want %v", err, testCase.wantError)
+			}
+		})
 	}
 }
 
@@ -222,7 +300,7 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		Revision: `main; touch /tmp/injected; $(id)`,
 	}
 
-	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "Qwen3-32B")
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "Qwen3-32B", true)
 
 	for _, expected := range []string{
 		`args = ["modelscope", "download", resource_flag, repo_id]`,
@@ -232,6 +310,7 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		"available revisions",
 		"modelscope==" + modelScopeVersion,
 		"modelscope-hub==" + modelScopeHubVersion,
+		`rm -rf "$OUT_DIR"`,
 		`raw_readme = b""`,
 		`with open(p, "rb") as f:`,
 		"raw_readme = f.read(max_readme_bytes)",
@@ -265,13 +344,16 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 		Category: model.DownloadCategoryDataset,
 	}
 
-	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda")
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda", true)
 
 	for _, expected := range []string{
 		`expected = "` + huggingFaceHubVersion + `"`,
 		`if actual != expected:`,
 		`unsupported huggingface_hub version`,
 		`use crater-model-downloader:v1.0.0 or an exact mirror of it`,
+		`from huggingface_hub import set_client_factory, snapshot_download`,
+		`httpx.Client(proxy=proxy, follow_redirects=True, trust_env=False)`,
+		`[NETWORK] using configured egress proxy`,
 		`if mirror != upstream:`,
 		`except (ImportError, AttributeError) as error:`,
 		"from huggingface_hub.utils import _pagination",
@@ -293,6 +375,55 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 	}
 	if strings.Contains(command, "pip install") {
 		t.Fatal("download command mutates the pinned downloader image at runtime")
+	}
+}
+
+func TestDownloadHuggingFaceEndpoint(t *testing.T) {
+	for _, testCase := range []struct {
+		name            string
+		endpoint        string
+		proxyConfigured bool
+		want            string
+	}{
+		{
+			name: "bypass hf mirror when proxy is configured", endpoint: "https://hf-mirror.com",
+			proxyConfigured: true, want: "https://huggingface.co",
+		},
+		{
+			name: "keep mirror without proxy", endpoint: "https://hf-mirror.com",
+			proxyConfigured: false, want: "https://hf-mirror.com",
+		},
+		{
+			name: "keep another custom endpoint", endpoint: "https://hf.example.test",
+			proxyConfigured: true, want: "https://hf.example.test",
+		},
+		{
+			name: "keep official endpoint", endpoint: "https://huggingface.co",
+			proxyConfigured: true, want: "https://huggingface.co",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := downloadHuggingFaceEndpoint(testCase.endpoint, testCase.proxyConfigured); got != testCase.want {
+				t.Fatalf("downloadHuggingFaceEndpoint(%q, %v) = %q, want %q",
+					testCase.endpoint, testCase.proxyConfigured, got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestResumedDownloadCommandPreservesExistingFiles(t *testing.T) {
+	download := &model.ModelDownload{
+		Name:     "chloechia/loveda",
+		Source:   model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryDataset,
+	}
+
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda", false)
+	if strings.Contains(command, `rm -rf "$OUT_DIR"`) {
+		t.Fatal("resumed download command must preserve its partially downloaded files")
+	}
+	if !strings.Contains(command, `mkdir -p "$OUT_DIR"`) {
+		t.Fatal("resumed download command must still create a missing output directory")
 	}
 }
 
@@ -341,6 +472,60 @@ func TestModelDownloadStoragePathUsesCanonicalShortPath(t *testing.T) {
 	}
 }
 
+func TestIsValidModelNameRejectsTraversalSegments(t *testing.T) {
+	for _, name := range []string{
+		"owner/model",
+		"owner/.hidden-model",
+		"owner/model...",
+	} {
+		if !isValidModelName(name) {
+			t.Fatalf("isValidModelName(%q) = false, want true", name)
+		}
+	}
+
+	for _, name := range []string{
+		"owner/.",
+		"owner/..",
+		"./model",
+		"../model",
+		"owner/model/extra",
+	} {
+		if isValidModelName(name) {
+			t.Fatalf("isValidModelName(%q) = true, want false", name)
+		}
+	}
+}
+
+func TestValidateDownloadStoragePath(t *testing.T) {
+	for _, download := range []*model.ModelDownload{
+		{
+			Name: "owner/model", Category: model.DownloadCategoryModel,
+			Path: filepath.Join("public", "Models", "owner", "model"),
+		},
+		{
+			Name: "owner/dataset", Category: model.DownloadCategoryDataset,
+			Path: filepath.Join("public", "Datasets", "owner", "dataset", "modelscope", "revision"),
+		},
+	} {
+		if err := validateDownloadStoragePath(download); err != nil {
+			t.Fatalf("validateDownloadStoragePath(%#v) = %v, want nil", download, err)
+		}
+	}
+
+	for _, download := range []*model.ModelDownload{
+		nil,
+		{Name: "owner/..", Category: model.DownloadCategoryModel, Path: "public/Models"},
+		{Name: "../model", Category: model.DownloadCategoryModel, Path: "public/model"},
+		{Name: "owner/model", Category: model.DownloadCategoryModel, Path: "public/Models"},
+		{Name: "owner/model", Category: model.DownloadCategoryModel, Path: "public/Models/owner/other"},
+		{Name: "owner/model", Category: model.DownloadCategory("unknown"), Path: "public/Models/owner/model"},
+	} {
+		if err := validateDownloadStoragePath(download); err == nil {
+			t.Fatalf("validateDownloadStoragePath(%#v) = nil, want error", download)
+		}
+	}
+}
+
 func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_reuse?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -374,8 +559,7 @@ func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
 	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master",
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "master",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -385,7 +569,7 @@ func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 	}
 }
 
-func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
+func TestFindLogicalDownloadReusesReadyRecordFromAnotherRevision(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_exact_ongoing?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		IgnoreRelationshipsWhenMigrating:         true,
@@ -403,7 +587,7 @@ func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
 		Path: "public/Models/Qwen/Qwen3-32B", Status: model.ModelDownloadStatusReady,
 		CreatorID: 1,
 	}
-	ongoingExact := model.ModelDownload{
+	ongoingOtherRevision := model.ModelDownload{
 		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceModelScope,
 		Category: model.DownloadCategoryModel, Revision: "master",
 		Path: "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Status: model.ModelDownloadStatusDownloading,
@@ -412,37 +596,29 @@ func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
 	if err := db.Create(&readyOtherSource).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&ongoingExact).Error; err != nil {
+	if err := db.Create(&ongoingOtherRevision).Error; err != nil {
 		t.Fatal(err)
 	}
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
 	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master",
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "master",
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got == nil || got.ID != ongoingExact.ID {
-		t.Fatalf("findReadyOrOngoingDownload() = %#v, want exact ongoing record %d", got, ongoingExact.ID)
+	if got == nil || got.ID != readyOtherSource.ID {
+		t.Fatalf("findReadyOrOngoingDownload() = %#v, want ready record %d", got, readyOtherSource.ID)
 	}
 
 	got, err = (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "v2",
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "v2",
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != nil {
-		t.Fatalf("cross-revision request reused download %#v", got)
-	}
-	if err := checkLogicalDownloadConflict(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "v2",
-	); !errors.Is(err, bizerr.Conflict.Base) {
-		t.Fatalf("cross-revision request should conflict with canonical storage, got %v", err)
+	if got == nil || got.ID != readyOtherSource.ID {
+		t.Fatalf("cross-revision request should reuse ready record %#v", got)
 	}
 }
 
@@ -497,7 +673,7 @@ func TestAssociateUserWithLogicalDownloadIncrementsReferenceOnce(t *testing.T) {
 	}
 }
 
-func TestLogicalDownloadConflictIncludesOtherSourceAndSoftDeletedRows(t *testing.T) {
+func TestFindLogicalDownloadIgnoresFailedAndSoftDeletedRows(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_conflict?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		IgnoreRelationshipsWhenMigrating:         true,
@@ -523,19 +699,26 @@ func TestLogicalDownloadConflictIncludesOtherSourceAndSoftDeletedRows(t *testing
 	}
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
-	err = checkLogicalDownloadConflict(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceHuggingFace,
-		model.DownloadCategoryModel, "main",
-	)
-	if !errors.Is(err, bizerr.Conflict.Base) {
-		t.Fatalf("expected cross-source soft-deleted conflict, got %v", err)
+	ready := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryModel, Revision: "legacy",
+		Path: "public/Models/Qwen/Qwen3-32B", Status: model.ModelDownloadStatusReady,
+		CreatorID: 2,
 	}
-
-	if err := checkLogicalDownloadConflict(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master",
-	); err != nil {
-		t.Fatalf("exact historical identity should be retried in place, got %v", err)
+	if err := db.Create(&ready).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&ready).Error; err != nil {
+		t.Fatal(err)
+	}
+	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "main",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != nil {
+		t.Fatalf("failed or soft-deleted history should not be reusable: %#v", got)
 	}
 }
 
@@ -563,6 +746,27 @@ func TestDownloadTokenEnvIsSourceSpecificAndEphemeral(t *testing.T) {
 
 	if env := downloadTokenEnv(model.ModelSourceModelScope, ""); env != nil {
 		t.Fatalf("empty token should not create environment variables: %#v", env)
+	}
+}
+
+func TestDownloadProxyEnv(t *testing.T) {
+	env := downloadProxyEnv("proxy:1080", "socks5://proxy:1081", "localhost,127.0.0.1")
+	if len(env) != 3 {
+		t.Fatalf("unexpected proxy environment: %#v", env)
+	}
+	want := map[string]string{
+		"HTTPS_PROXY": "http://proxy:1080",
+		"HTTP_PROXY":  "socks5://proxy:1081",
+		"NO_PROXY":    "localhost,127.0.0.1",
+	}
+	for _, variable := range env {
+		if want[variable.Name] != variable.Value {
+			t.Fatalf("unexpected proxy variable: %#v", variable)
+		}
+	}
+
+	if env := downloadProxyEnv("", "", ""); env != nil {
+		t.Fatalf("empty proxy configuration should not create environment variables: %#v", env)
 	}
 }
 
