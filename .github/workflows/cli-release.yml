@@ -1,0 +1,238 @@
+# Copyright 2026 The Crater Project Team, RAIDS-Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: CLI Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cli-release
+  cancel-in-progress: false
+
+jobs:
+  resolve-version:
+    name: Resolve build version
+    runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.version.outputs.app_version }}
+      commit_sha: ${{ steps.version.outputs.commit_sha }}
+      build_type: ${{ steps.version.outputs.build_type }}
+      build_time: ${{ steps.version.outputs.build_time }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set version variables
+        id: version
+        run: bash hack/set-build-version.sh
+
+  check-cli:
+    name: Check CLI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "cli/go.mod"
+          cache-dependency-path: cli/go.sum
+
+      - name: Download Go dependencies
+        working-directory: cli
+        run: go mod download
+
+      - name: Run CLI tests
+        working-directory: cli
+        run: make test
+
+  test-npm-scripts:
+    name: Test npm packaging scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Test npm packaging scripts
+        working-directory: cli/npm
+        run: npm test
+
+  cross-build:
+    name: Cross-build ${{ matrix.target.goos }}/${{ matrix.target.goarch }}
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "cli/go.mod"
+          cache-dependency-path: cli/go.sum
+
+      - name: Download Go dependencies
+        working-directory: cli
+        run: go mod download
+
+      - name: Build release artifact
+        env:
+          APP_VERSION: ${{ needs.resolve-version.outputs.app_version }}
+          COMMIT_SHA: ${{ needs.resolve-version.outputs.commit_sha }}
+          BUILD_TYPE: ${{ needs.resolve-version.outputs.build_type }}
+          BUILD_TIME: ${{ needs.resolve-version.outputs.build_time }}
+        run: >-
+          bash cli/hack/build-release-artifact.sh
+          ${{ matrix.target.goos }}
+          ${{ matrix.target.goarch }}
+          cli/dist
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crater-${{ matrix.target.goos }}-${{ matrix.target.goarch }}
+          path: cli/dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-npm:
+    name: Publish npm packages
+    needs: [resolve-version, check-cli, test-npm-scripts, cross-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: crater-*
+          path: cli/artifacts
+          merge-multiple: true
+
+      - name: Verify release tag target
+        run: >-
+          bash cli/hack/verify-release-tag.sh
+          "$GITHUB_REF_NAME"
+          "${{ needs.resolve-version.outputs.commit_sha }}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Install OIDC-capable npm CLI
+        run: npm install --global npm@11.19.1
+
+      - name: Build npm packages
+        run: >-
+          node cli/npm/scripts/build-packages.mjs
+          --version "${{ needs.resolve-version.outputs.app_version }}"
+          --artifacts cli/artifacts
+          --output "${RUNNER_TEMP}/npm-packages"
+
+      - name: Validate npm package contents
+        run: |
+          node -e '
+            const manifest = require(process.env.RUNNER_TEMP + "/npm-packages/publish-manifest.json");
+            for (const entry of [...manifest.platformPackages, manifest.rootPackage]) {
+              process.stdout.write(entry.directory + "\n");
+            }
+          ' | while IFS= read -r package_dir; do
+            npm pack "$package_dir" --dry-run --json >/dev/null
+          done
+
+      - name: Test installed npm entry package
+        env:
+          APP_VERSION: ${{ needs.resolve-version.outputs.app_version }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/npm-tarballs"
+          npm pack "${RUNNER_TEMP}/npm-packages/crater-cli" \
+            --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
+          npm pack "${RUNNER_TEMP}/npm-packages/crater-cli-linux-x64" \
+            --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
+          npm install \
+            --prefix "${RUNNER_TEMP}/npm-install" \
+            "${RUNNER_TEMP}/npm-tarballs/raids-lab-crater-cli-${APP_VERSION}.tgz" \
+            "${RUNNER_TEMP}/npm-tarballs/raids-lab-crater-cli-linux-x64-${APP_VERSION}.tgz" \
+            --offline \
+            --ignore-scripts \
+            --no-audit \
+            --no-fund
+          bash cli/hack/smoke-release-binary.sh \
+            "${RUNNER_TEMP}/npm-install/node_modules/.bin/crater" \
+            linux \
+            amd64 \
+            release \
+            "${{ needs.resolve-version.outputs.commit_sha }}" \
+            "${{ needs.resolve-version.outputs.app_version }}" \
+            "${{ needs.resolve-version.outputs.build_time }}"
+
+      - name: Validate temporary npm bootstrap token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [[ -z "$NODE_AUTH_TOKEN" ]]; then
+            echo "NPM_TOKEN is required until all Crater CLI packages have completed their first publication." >&2
+            exit 1
+          fi
+          npm whoami --registry https://registry.npmjs.org >/dev/null
+
+      - name: Publish platform packages and CLI entry package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: >-
+          node cli/npm/scripts/publish-packages.mjs
+          "${RUNNER_TEMP}/npm-packages/publish-manifest.json"
