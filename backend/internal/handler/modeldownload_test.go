@@ -17,7 +17,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
@@ -133,60 +132,6 @@ func TestReusedDownloadMessageMentionsCrossSourceReuse(t *testing.T) {
 	}
 }
 
-func TestPreflightSourceRepository(t *testing.T) {
-	for _, testCase := range []struct {
-		name      string
-		source    model.ModelSource
-		status    int
-		wantPath  string
-		wantError error
-	}{
-		{
-			name: "modelscope dataset exists", source: model.ModelSourceModelScope, status: http.StatusOK,
-			wantPath: "/api/v1/datasets/owner/dataset/revisions",
-		},
-		{
-			name: "hugging face dataset missing", source: model.ModelSourceHuggingFace, status: http.StatusNotFound,
-			wantPath: "/api/datasets/owner/dataset", wantError: bizerr.NotFound.Base,
-		},
-		{
-			name: "source requires token", source: model.ModelSourceHuggingFace, status: http.StatusUnauthorized,
-			wantPath: "/api/datasets/owner/dataset", wantError: bizerr.Forbidden.Base,
-		},
-		{
-			name: "source unavailable", source: model.ModelSourceModelScope, status: http.StatusServiceUnavailable,
-			wantPath: "/api/v1/datasets/owner/dataset/revisions", wantError: bizerr.Internal.Base,
-		},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != testCase.wantPath {
-					t.Errorf("request path = %q, want %q", r.URL.Path, testCase.wantPath)
-				}
-				if got := r.Header.Get("Authorization"); got != "Bearer temporary-token" {
-					t.Errorf("authorization header = %q", got)
-				}
-				w.WriteHeader(testCase.status)
-			}))
-			defer server.Close()
-
-			err := preflightSourceRepository(
-				t.Context(), testCase.source, model.DownloadCategoryDataset,
-				"owner/dataset", "temporary-token", server.URL,
-			)
-			if testCase.wantError == nil {
-				if err != nil {
-					t.Fatalf("preflightSourceRepository() error = %v", err)
-				}
-				return
-			}
-			if !errors.Is(err, testCase.wantError) {
-				t.Fatalf("preflightSourceRepository() error = %v, want %v", err, testCase.wantError)
-			}
-		})
-	}
-}
-
 func TestApplyDownloadRequestersRecordsDemandWithoutChangingPublicAccess(t *testing.T) {
 	responses := []ModelDownloadResp{
 		{ID: 10, Relation: ModelDownloadRelationCreator},
@@ -259,6 +204,49 @@ func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
 	err = checkRetryRevisionConflict(ginContext, query.Use(db), &active, &revision)
 	if !errors.Is(err, bizerr.Conflict.Base) {
 		t.Fatalf("expected a conflict for soft-deleted revision, got %v", err)
+	}
+}
+
+func TestCheckRetryLogicalConflictRejectsOtherReusableDownload(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:retry_logical_conflict?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	failed := model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Path: "public/Models/owner/model",
+		Status: model.ModelDownloadStatusFailed, CreatorID: 1,
+	}
+	ready := model.ModelDownload{
+		Name: failed.Name, Source: model.ModelSourceHuggingFace,
+		Category: failed.Category, Path: failed.Path,
+		Status: model.ModelDownloadStatusReady, CreatorID: 2,
+	}
+	if err := db.Create(&failed).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&ready).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	err = checkRetryLogicalConflict(ginContext, query.Use(db), &failed)
+	if !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("expected a conflict for another reusable download, got %v", err)
+	}
+
+	if err := db.Model(&ready).Update("status", model.ModelDownloadStatusFailed).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := checkRetryLogicalConflict(ginContext, query.Use(db), &failed); err != nil {
+		t.Fatalf("failed history must not block retry: %v", err)
 	}
 }
 
@@ -352,7 +340,7 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 		`unsupported huggingface_hub version`,
 		`use crater-model-downloader:v1.0.0 or an exact mirror of it`,
 		`from huggingface_hub import set_client_factory, snapshot_download`,
-		`httpx.Client(proxy=proxy, follow_redirects=True, trust_env=False)`,
+		`httpx.Client(follow_redirects=True, trust_env=True)`,
 		`[NETWORK] using configured egress proxy`,
 		`if mirror != upstream:`,
 		`except (ImportError, AttributeError) as error:`,

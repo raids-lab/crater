@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -46,7 +45,6 @@ const (
 	maxCapturedReadmeBytes              = modeldataset.MaxStoredReadmeBytes
 	readmeLogChunkCharacters            = 4096
 	maxDownloadRevisionLength           = 128
-	sourcePreflightTimeout              = 10 * time.Second
 	CategoryModel                       = "model"
 	CategoryDataset                     = "dataset"
 	modelDownloadModelsBasePath         = "public/Models"
@@ -360,100 +358,6 @@ func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 	return nil, nil
 }
 
-func hasReusableDownload(c *gin.Context, name string, category model.DownloadCategory) (bool, error) {
-	q := query.ModelDownload
-	_, err := q.WithContext(c).
-		Where(q.Name.Eq(name), q.Category.Eq(string(category)), q.Status.In(
-			string(model.ModelDownloadStatusReady),
-			string(model.ModelDownloadStatusPending),
-			string(model.ModelDownloadStatusDownloading),
-			string(model.ModelDownloadStatusPaused),
-		)).
-		First()
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil
-	}
-	return false, bizerr.Internal.DatabaseError.Wrap(err, "check reusable logical download")
-}
-
-func preflightSourceRepository(
-	ctx context.Context, source model.ModelSource, category model.DownloadCategory, name, accessToken, endpoint string,
-) error {
-	requestURL, err := sourceRepositoryURL(source, category, name, endpoint)
-	if err != nil {
-		return bizerr.Internal.ThirdPartyApiError.Wrap(err, "build source repository preflight request")
-	}
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, http.NoBody)
-	if err != nil {
-		return bizerr.Internal.ThirdPartyApiError.Wrap(err, "create source repository preflight request")
-	}
-	if accessToken != "" {
-		request.Header.Set("Authorization", "Bearer "+accessToken)
-	}
-
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return bizerr.Internal.ThirdPartyApiError.Wrap(err, "source repository preflight failed")
-	}
-	defer response.Body.Close()
-
-	sourceLabel := sourceDisplayName(source)
-	switch response.StatusCode {
-	case http.StatusOK:
-		return nil
-	case http.StatusNotFound:
-		return bizerr.NotFound.DataBaseNotFound.New(fmt.Sprintf(
-			"%s %q was not found on %s", category, name, sourceLabel,
-		))
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return bizerr.Forbidden.PermissionDenied.New(fmt.Sprintf(
-			"%s %q on %s requires authorization; provide a valid access token",
-			category, name, sourceLabel,
-		))
-	default:
-		return bizerr.Internal.ThirdPartyApiError.New(fmt.Sprintf(
-			"%s is temporarily unavailable while checking %s %q (status %d)",
-			sourceLabel, category, name, response.StatusCode,
-		))
-	}
-}
-
-func sourceRepositoryURL(
-	source model.ModelSource, category model.DownloadCategory, name, endpoint string,
-) (string, error) {
-	parsed, err := url.Parse(endpoint)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return "", bizerr.Internal.ServiceError.New(fmt.Sprintf("invalid %s endpoint", sourceDisplayName(source)))
-	}
-
-	resourcePath := "models"
-	if category == model.DownloadCategoryDataset {
-		resourcePath = "datasets"
-	}
-	segments := []string{parsed.Path, "api"}
-	if source == model.ModelSourceModelScope {
-		segments = append(segments, "v1")
-	}
-	segments = append(segments, resourcePath, name)
-	if source == model.ModelSourceModelScope {
-		segments = append(segments, "revisions")
-	}
-	parsed.Path = path.Join(segments...)
-	parsed.RawPath = ""
-	return parsed.String(), nil
-}
-
-func sourceDisplayName(source model.ModelSource) string {
-	if source == model.ModelSourceHuggingFace {
-		return "Hugging Face"
-	}
-	return "ModelScope"
-}
-
 // lockModelDownloadIdentity serializes first-time downloads whose current
 // database uniqueness still differs by source and revision. Existing
 // installations may contain more than one historical record, so changing the
@@ -670,24 +574,6 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 		return
 	}
 	token := util.GetToken(c)
-	hasReusable, err := hasReusableDownload(c, req.Name, category)
-	if err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
-	if !hasReusable {
-		endpoint := config.GetConfig().ModelScopeDownloadEndpoint()
-		if source == model.ModelSourceHuggingFace {
-			endpoint = config.GetConfig().HuggingFaceDownloadEndpoint()
-		}
-		preflightCtx, cancel := context.WithTimeout(c.Request.Context(), sourcePreflightTimeout)
-		err = preflightSourceRepository(preflightCtx, source, category, req.Name, req.Token, endpoint)
-		cancel()
-		if err != nil {
-			resputil.HandleError(c, err)
-			return
-		}
-	}
 
 	// 生成安全的路径名
 	safeName := sanitizeModelName(req.Name)
@@ -1066,6 +952,14 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 	var download *model.ModelDownload
 	err := db.Transaction(func(tx *query.Query) error {
 		txQ := tx.ModelDownload
+		identity, err := txQ.WithContext(c).Where(txQ.ID.Eq(downloadID)).First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if err := lockModelDownloadIdentity(c, tx, identity.Name, identity.Category); err != nil {
+			return err
+		}
+
 		d, err := txQ.WithContext(c).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where(txQ.ID.Eq(downloadID)).
@@ -1077,6 +971,9 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 			return bizerr.Conflict.ResourceStatusError.New(
 				fmt.Sprintf("only failed downloads can be retried, current status: %s", d.Status),
 			)
+		}
+		if err := checkRetryLogicalConflict(c, tx, d); err != nil {
+			return err
 		}
 		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
 			return err
@@ -1110,6 +1007,31 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 		return nil
 	})
 	return download, err
+}
+
+func checkRetryLogicalConflict(
+	c *gin.Context, txQ *query.Query, download *model.ModelDownload,
+) error {
+	q := txQ.ModelDownload
+	conflict, err := q.WithContext(c).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.ID.Neq(download.ID), q.Name.Eq(download.Name),
+			q.Category.Eq(string(download.Category)), q.Status.In(
+				string(model.ModelDownloadStatusReady),
+				string(model.ModelDownloadStatusPending),
+				string(model.ModelDownloadStatusDownloading),
+				string(model.ModelDownloadStatusPaused),
+			)).
+		First()
+	if err == nil && conflict != nil {
+		return bizerr.Conflict.ResourceStatusError.New(
+			"another active or ready download already uses this model or dataset; reuse it instead of retrying this record",
+		)
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "check retry logical download conflict")
+	}
+	return nil
 }
 
 func checkRetryRevisionConflict(
@@ -1719,11 +1641,12 @@ repo_type = %q
 # huggingface_hub 1.x uses a custom httpx transport. Configure its supported
 # client factory explicitly so restricted clusters reliably use their egress
 # proxy for redirected CDN downloads while keeping TLS verification enabled.
+# trust_env also preserves the administrator's NO_PROXY bypass list.
 proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
 if proxy:
     print("[NETWORK] using configured egress proxy", flush=True)
     set_client_factory(
-        lambda: httpx.Client(proxy=proxy, follow_redirects=True, trust_env=False)
+        lambda: httpx.Client(follow_redirects=True, trust_env=True)
     )
 
 # Some mirrors return an absolute rel="next" Link URL pointing to huggingface.co.
