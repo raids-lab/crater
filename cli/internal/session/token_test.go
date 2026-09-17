@@ -9,10 +9,11 @@ import (
 	"testing"
 
 	"github.com/raids-lab/crater/cli/internal/state"
+	"github.com/raids-lab/crater/cli/internal/testutil"
 )
 
 func TestSaveLoginPersistsTokenInState(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	testutil.IsolateUserConfigDir(t)
 	t.Setenv("CRATER_TEST_SANDBOX", "")
 	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
 
@@ -58,7 +59,7 @@ func TestSaveLoginPersistsTokenInState(t *testing.T) {
 }
 
 func TestLoadTokenMissing(t *testing.T) {
-	t.Setenv("HOME", t.TempDir())
+	testutil.IsolateUserConfigDir(t)
 	t.Setenv("CRATER_TEST_SANDBOX", "")
 	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
 
