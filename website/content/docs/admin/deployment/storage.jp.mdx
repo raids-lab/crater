@@ -51,6 +51,52 @@ Crater のコア Chart は、デフォルトで `nfs` という名前の Storage
 
 ここでの `nfs` はデフォルトの StorageClass 名にすぎず、Crater が NFS をインストールすることを意味しません。クラスターで CephFS を使う場合は、この 2 か所を実際の CephFS `StorageClass` に変更できます。Crater によるボリュームの使い方は変わりません。
 
+#### CephFS ユーザークォータの有効化
+
+Crater のユーザー領域使用量およびクォータ管理は CephFS 専用で、デフォルトでは無効です。NFS、RBD、ローカルボリュームでは有効にしないでください。専用の quota-agent がディレクトリ使用量を読み取り、`ceph.quota.max_bytes` を書き込みます。通常の storage-server とユーザーワークロードにクォータ変更権限を付与する必要はありません。
+
+有効化する前に、次を確認します。
+
+- `storage.pvcName` で指定した共有 PVC が Rook CephFS CSI によって提供され、`fsName` と `subvolumePath` を公開している。
+- Rook Operator がインストール済みで、管理者が `CephClient`、Secret、静的 PV、PVC を作成できる。
+- quota-agent が専用の CephX ID を使用し、その MDS capability の `p` 権限が共有 PVC のサブボリュームパスだけに制限されている。
+
+デプロイする Chart と同じバージョンのソースチェックアウトから初期化スクリプトを実行します。このスクリプトは元の CephFS サブボリューム用にパス制限付き CephClient と専用静的 PVC を作成し、ファイルはコピーしません。また、元の PV の回収ポリシーを `Retain` に変更するため、実行前にクラスターのデータライフサイクル方針と一致することを確認してください。
+
+```bash
+APP_NAMESPACE=crater-workspace \
+ROOK_NAMESPACE=rook-ceph \
+SOURCE_PVC=crater-rw-storage \
+bash backend/hack/bootstrap-cephfs-quota-agent.sh
+```
+
+クラスター values でコンポーネントを有効にします。有効化すると Chart は backend provider を内部 `storageServer` サービスに固定します。quota-agent を Ingress で公開しないでください。
+
+```yaml
+quotaAgent:
+  enabled: true
+  existingClaim: crater-quota-storage
+
+backendConfig:
+  storage:
+    quota:
+      rookNamespace: rook-ceph
+      cephFSCSIDriver: rook-ceph.cephfs.csi.ceph.com
+      cephFSName: cephfs
+```
+
+<CraterChartVersionNotice />
+
+```bash
+helm upgrade crater oci://ghcr.io/raids-lab/crater \
+  --version <chart-version> \
+  --values values.yaml
+```
+
+アップグレード後、専用 PVC が `Bound` であること、`deployment/crater-quota-agent` の rollout が成功すること、管理者 capability API が期待どおりの `usage_readable`、`quota_readable`、`quota_writable` を返すこと、およびストレージ管理ページが正常に読み込まれることを検証します。本番利用前にテストユーザーで「元のクォータを保存 → 一時クォータを設定 → 読み戻し → 超過書き込みを確認 → 元の値へ復元」を実施してください。
+
+ロールバックでは、制限を解除する必要があるユーザーを先に無制限へ戻し、`quotaAgent.enabled` と `backendConfig.storage.quota.enabled` を `false` にして再度アップグレードします。コンポーネントの無効化では、ファイルも既存の CephFS ディレクトリクォータも削除されません。恒久的に削除する場合は、専用 quota-agent PVC、静的 PV、CSI Secret、CephClient の順に削除します。元の共有 PVC または基盤の CephFS サブボリュームは削除しないでください。
+
 ### 分散ブロックストレージ
 
 [Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html) は Ceph クラスターから仮想ブロックデバイスを提供し、Kubernetes がノード上でフォーマットして Pod にマウントします。CephFS と同様に、Ceph クラスター、Rook、RBD CSI ドライバーは管理者が事前にデプロイする必要があり、Crater が自動的にインストールすることはありません。

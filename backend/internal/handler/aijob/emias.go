@@ -16,6 +16,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,6 +48,7 @@ type AIJobMgr struct {
 	name           string
 	client         client.Client
 	kubeClient     kubernetes.Interface
+	kubeConfig     *rest.Config
 	taskService    aitaskctl.DBService
 	taskController aitaskctl.TaskControllerInterface
 	userBanService *service.UserBanService
@@ -57,6 +59,7 @@ func NewAITaskMgr(conf *handler.RegisterConfig) handler.Manager {
 		name:           "aijobs",
 		client:         conf.Client,
 		kubeClient:     conf.KubeClient,
+		kubeConfig:     conf.KubeConfig,
 		taskService:    aitaskctl.NewDBService(),
 		taskController: conf.AITaskCtrl,
 		userBanService: conf.UserBanService,

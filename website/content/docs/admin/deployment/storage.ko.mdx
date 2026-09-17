@@ -51,6 +51,52 @@ Crater 코어 Chart는 기본적으로 `nfs`라는 StorageClass를 통해 공유
 
 여기서 `nfs`는 기본 StorageClass 이름일 뿐, Crater가 NFS를 설치한다는 뜻이 아닙니다. 클러스터가 CephFS를 사용한다면 이 두 설정을 실제 CephFS `StorageClass`로 변경할 수 있으며, Crater의 볼륨 사용 방식은 같습니다.
 
+#### CephFS 사용자 쿼터 활성화
+
+Crater의 사용자 공간 사용량 및 쿼터 관리는 CephFS에서만 동작하며 기본적으로 비활성화되어 있습니다. NFS, RBD 또는 로컬 볼륨에서는 활성화하지 마세요. 전용 quota-agent가 디렉터리 사용량을 읽고 `ceph.quota.max_bytes`를 기록하므로 일반 storage-server와 사용자 워크로드에는 쿼터 변경 권한이 필요하지 않습니다.
+
+활성화하기 전에 다음을 확인하세요.
+
+- `storage.pvcName`으로 지정한 공유 PVC가 Rook CephFS CSI에서 제공되고 `fsName`과 `subvolumePath`를 노출합니다.
+- Rook Operator가 설치되어 있고 관리자가 `CephClient`, Secret, 정적 PV, PVC를 만들 수 있습니다.
+- quota-agent가 전용 CephX ID를 사용하며 MDS capability의 `p` 권한이 공유 PVC의 하위 볼륨 경로로만 제한됩니다.
+
+배포할 Chart와 같은 버전의 소스 체크아웃에서 초기화 스크립트를 실행하세요. 이 스크립트는 원래 CephFS 하위 볼륨에 대해 경로가 제한된 CephClient와 전용 정적 PVC를 만들며 파일을 복사하지 않습니다. 또한 원래 PV의 회수 정책을 `Retain`으로 변경하므로 실행 전에 클러스터의 데이터 수명 주기 정책에 맞는지 확인해야 합니다.
+
+```bash
+APP_NAMESPACE=crater-workspace \
+ROOK_NAMESPACE=rook-ceph \
+SOURCE_PVC=crater-rw-storage \
+bash backend/hack/bootstrap-cephfs-quota-agent.sh
+```
+
+클러스터 values에서 컴포넌트를 활성화하세요. 활성화하면 Chart가 backend provider를 내부 `storageServer` 서비스로 고정합니다. quota-agent를 Ingress로 노출하지 마세요.
+
+```yaml
+quotaAgent:
+  enabled: true
+  existingClaim: crater-quota-storage
+
+backendConfig:
+  storage:
+    quota:
+      rookNamespace: rook-ceph
+      cephFSCSIDriver: rook-ceph.cephfs.csi.ceph.com
+      cephFSName: cephfs
+```
+
+<CraterChartVersionNotice />
+
+```bash
+helm upgrade crater oci://ghcr.io/raids-lab/crater \
+  --version <chart-version> \
+  --values values.yaml
+```
+
+업그레이드 후 전용 PVC가 `Bound`인지, `deployment/crater-quota-agent` rollout이 성공했는지, 관리자 capability API가 예상한 `usage_readable`, `quota_readable`, `quota_writable` 값을 반환하는지, 스토리지 관리 페이지가 정상적으로 로드되는지 검증하세요. 운영에 적용하기 전에 테스트 사용자로 “기존 쿼터 저장 → 임시 쿼터 설정 → 다시 읽기 → 쿼터 초과 쓰기 확인 → 기존 값 복원” 절차를 완료하세요.
+
+롤백할 때는 제한을 제거해야 하는 사용자를 먼저 무제한으로 되돌린 다음 `quotaAgent.enabled`와 `backendConfig.storage.quota.enabled`를 `false`로 설정하고 다시 업그레이드하세요. 컴포넌트를 비활성화해도 파일이나 기존 CephFS 디렉터리 쿼터는 삭제되지 않습니다. 영구 정리 시 전용 quota-agent PVC, 정적 PV, CSI Secret, CephClient 순서로 삭제하세요. 원래 공유 PVC나 기반 CephFS 하위 볼륨은 삭제하지 마세요.
+
 ### 분산 블록 스토리지
 
 [Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html)는 Ceph 클러스터에서 가상 블록 디바이스를 제공하고, Kubernetes가 노드에서 포맷한 후 Pod에 마운트합니다. CephFS와 마찬가지로 관리자가 Ceph 클러스터, Rook, RBD CSI 드라이버를 미리 배포해야 하며 Crater가 자동으로 설치하지는 않습니다.
