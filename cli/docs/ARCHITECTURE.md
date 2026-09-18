@@ -29,7 +29,7 @@ npm 分发采用“一个入口包 + 六个平台包”：
 - 入口包把六个平台包固定为同版本 `optionalDependencies`。`npm/lib/platform.cjs` 将 Node 的 `win32` / `x64` 等命名映射到 Go 的 `windows` / `amd64` 构建产物，运行时只启动当前平台的二进制。
 - `npm/scripts/build-packages.mjs` 从 workflow 汇总的原生二进制生成七个可发布目录；`publish-packages.mjs` 先发布六个平台包，确认 registry 可见后再发布入口包，并在重跑时跳过已经存在的相同版本。
 
-`.github/workflows/cli-pr.yml` 先运行 `Check CLI`（`make pre-commit-check`：单元测试与快照），再运行 `Check npm packaging`（打包脚本测试、六目标交叉编译、`npm pack`，并在 Linux 上安装入口包）。`cli-release.yml` 只接受精确的 `vX.Y.Z` tag，在确认远端 tag 仍指向原始 commit 后发布 npm，不创建 GitHub Release。正式 tag 同时直接触发现有的前端、后端、Storage 与 Helm workflow；GitHub Release 若由维护者填写，只作为更新说明，不触发任何 workflow。
+`.github/workflows/cli-pr.yml` 先运行 `Check CLI`（`make test`：单元测试与快照），再运行 `Check npm packaging`（打包脚本测试、六目标交叉编译、`npm pack`，并在 Linux 上安装入口包）。`cli-release.yml` 只接受精确的 `vX.Y.Z` tag，在确认远端 tag 仍指向原始 commit 后发布 npm，不创建 GitHub Release。正式 tag 同时直接触发现有的前端、后端、Storage 与 Helm workflow；GitHub Release 若由维护者填写，只作为更新说明，不触发任何 workflow。
 
 ## AI Agent Skills
 
