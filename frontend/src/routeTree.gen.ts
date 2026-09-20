@@ -72,6 +72,7 @@ import { Route as AdminEnvRegistryRouteRouteImport } from './routes/admin/env/re
 import { Route as AdminClusterResourcesRouteRouteImport } from './routes/admin/cluster/resources/route'
 import { Route as AdminClusterNodesRouteRouteImport } from './routes/admin/cluster/nodes/route'
 import { Route as PortalMoreOrdersIndexRouteImport } from './routes/portal/more/orders/index'
+import { Route as PortalJobsTensorboardIndexRouteImport } from './routes/portal/jobs/tensorboard/index'
 import { Route as PortalJobsInterIndexRouteImport } from './routes/portal/jobs/inter/index'
 import { Route as PortalJobsCustomIndexRouteImport } from './routes/portal/jobs/custom/index'
 import { Route as PortalEnvRegistryIndexRouteImport } from './routes/portal/env/registry/index'
@@ -87,6 +88,7 @@ import { Route as AdminClusterNodesIndexRouteImport } from './routes/admin/clust
 import { Route as PortalMoreOrdersIdRouteImport } from './routes/portal/more/orders/$id'
 import { Route as PortalJobsNewWebideJobRouteImport } from './routes/portal/jobs/new/webide-job'
 import { Route as PortalJobsNewTensorflowPsJobRouteImport } from './routes/portal/jobs/new/tensorflow-ps-job'
+import { Route as PortalJobsNewTensorboardRouteImport } from './routes/portal/jobs/new/tensorboard'
 import { Route as PortalJobsNewSingleJobRouteImport } from './routes/portal/jobs/new/single-job'
 import { Route as PortalJobsNewSeacsJobRouteImport } from './routes/portal/jobs/new/seacs-job'
 import { Route as PortalJobsNewPytorchDdpJobRouteImport } from './routes/portal/jobs/new/pytorch-ddp-job'
@@ -422,6 +424,12 @@ const PortalMoreOrdersIndexRoute = PortalMoreOrdersIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PortalMoreOrdersRouteRoute,
 } as any)
+const PortalJobsTensorboardIndexRoute =
+  PortalJobsTensorboardIndexRouteImport.update({
+    id: '/jobs/tensorboard/',
+    path: '/jobs/tensorboard/',
+    getParentRoute: () => PortalRouteRoute,
+  } as any)
 const PortalJobsInterIndexRoute = PortalJobsInterIndexRouteImport.update({
   id: '/jobs/inter/',
   path: '/jobs/inter/',
@@ -497,6 +505,12 @@ const PortalJobsNewTensorflowPsJobRoute =
   PortalJobsNewTensorflowPsJobRouteImport.update({
     id: '/tensorflow-ps-job',
     path: '/tensorflow-ps-job',
+    getParentRoute: () => PortalJobsNewRouteRoute,
+  } as any)
+const PortalJobsNewTensorboardRoute =
+  PortalJobsNewTensorboardRouteImport.update({
+    id: '/tensorboard',
+    path: '/tensorboard',
     getParentRoute: () => PortalJobsNewRouteRoute,
   } as any)
 const PortalJobsNewSingleJobRoute = PortalJobsNewSingleJobRouteImport.update({
@@ -673,6 +687,7 @@ export interface FileRoutesByFullPath {
   '/portal/jobs/new/pytorch-ddp-job': typeof PortalJobsNewPytorchDdpJobRoute
   '/portal/jobs/new/seacs-job': typeof PortalJobsNewSeacsJobRoute
   '/portal/jobs/new/single-job': typeof PortalJobsNewSingleJobRoute
+  '/portal/jobs/new/tensorboard': typeof PortalJobsNewTensorboardRoute
   '/portal/jobs/new/tensorflow-ps-job': typeof PortalJobsNewTensorflowPsJobRoute
   '/portal/jobs/new/webide-job': typeof PortalJobsNewWebideJobRoute
   '/portal/more/orders/$id': typeof PortalMoreOrdersIdRoute
@@ -688,6 +703,7 @@ export interface FileRoutesByFullPath {
   '/portal/env/registry/': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
+  '/portal/jobs/tensorboard': typeof PortalJobsTensorboardIndexRoute
   '/portal/more/orders/': typeof PortalMoreOrdersIndexRoute
   '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
@@ -750,6 +766,7 @@ export interface FileRoutesByTo {
   '/portal/jobs/new/pytorch-ddp-job': typeof PortalJobsNewPytorchDdpJobRoute
   '/portal/jobs/new/seacs-job': typeof PortalJobsNewSeacsJobRoute
   '/portal/jobs/new/single-job': typeof PortalJobsNewSingleJobRoute
+  '/portal/jobs/new/tensorboard': typeof PortalJobsNewTensorboardRoute
   '/portal/jobs/new/tensorflow-ps-job': typeof PortalJobsNewTensorflowPsJobRoute
   '/portal/jobs/new/webide-job': typeof PortalJobsNewWebideJobRoute
   '/portal/more/orders/$id': typeof PortalMoreOrdersIdRoute
@@ -765,6 +782,7 @@ export interface FileRoutesByTo {
   '/portal/env/registry': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter': typeof PortalJobsInterIndexRoute
+  '/portal/jobs/tensorboard': typeof PortalJobsTensorboardIndexRoute
   '/portal/more/orders': typeof PortalMoreOrdersIndexRoute
   '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
@@ -849,6 +867,7 @@ export interface FileRoutesById {
   '/portal/jobs/new/pytorch-ddp-job': typeof PortalJobsNewPytorchDdpJobRoute
   '/portal/jobs/new/seacs-job': typeof PortalJobsNewSeacsJobRoute
   '/portal/jobs/new/single-job': typeof PortalJobsNewSingleJobRoute
+  '/portal/jobs/new/tensorboard': typeof PortalJobsNewTensorboardRoute
   '/portal/jobs/new/tensorflow-ps-job': typeof PortalJobsNewTensorflowPsJobRoute
   '/portal/jobs/new/webide-job': typeof PortalJobsNewWebideJobRoute
   '/portal/more/orders/$id': typeof PortalMoreOrdersIdRoute
@@ -864,6 +883,7 @@ export interface FileRoutesById {
   '/portal/env/registry/': typeof PortalEnvRegistryIndexRoute
   '/portal/jobs/custom/': typeof PortalJobsCustomIndexRoute
   '/portal/jobs/inter/': typeof PortalJobsInterIndexRoute
+  '/portal/jobs/tensorboard/': typeof PortalJobsTensorboardIndexRoute
   '/portal/more/orders/': typeof PortalMoreOrdersIndexRoute
   '/portal/data/datasets/downloads/$id': typeof PortalDataDatasetsDownloadsIdRoute
   '/portal/data/models/downloads/$id': typeof PortalDataModelsDownloadsIdRoute
@@ -949,6 +969,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new/pytorch-ddp-job'
     | '/portal/jobs/new/seacs-job'
     | '/portal/jobs/new/single-job'
+    | '/portal/jobs/new/tensorboard'
     | '/portal/jobs/new/tensorflow-ps-job'
     | '/portal/jobs/new/webide-job'
     | '/portal/more/orders/$id'
@@ -964,6 +985,7 @@ export interface FileRouteTypes {
     | '/portal/env/registry/'
     | '/portal/jobs/custom'
     | '/portal/jobs/inter'
+    | '/portal/jobs/tensorboard'
     | '/portal/more/orders/'
     | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
@@ -1026,6 +1048,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new/pytorch-ddp-job'
     | '/portal/jobs/new/seacs-job'
     | '/portal/jobs/new/single-job'
+    | '/portal/jobs/new/tensorboard'
     | '/portal/jobs/new/tensorflow-ps-job'
     | '/portal/jobs/new/webide-job'
     | '/portal/more/orders/$id'
@@ -1041,6 +1064,7 @@ export interface FileRouteTypes {
     | '/portal/env/registry'
     | '/portal/jobs/custom'
     | '/portal/jobs/inter'
+    | '/portal/jobs/tensorboard'
     | '/portal/more/orders'
     | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
@@ -1124,6 +1148,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new/pytorch-ddp-job'
     | '/portal/jobs/new/seacs-job'
     | '/portal/jobs/new/single-job'
+    | '/portal/jobs/new/tensorboard'
     | '/portal/jobs/new/tensorflow-ps-job'
     | '/portal/jobs/new/webide-job'
     | '/portal/more/orders/$id'
@@ -1139,6 +1164,7 @@ export interface FileRouteTypes {
     | '/portal/env/registry/'
     | '/portal/jobs/custom/'
     | '/portal/jobs/inter/'
+    | '/portal/jobs/tensorboard/'
     | '/portal/more/orders/'
     | '/portal/data/datasets/downloads/$id'
     | '/portal/data/models/downloads/$id'
@@ -1598,6 +1624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalMoreOrdersIndexRouteImport
       parentRoute: typeof PortalMoreOrdersRouteRoute
     }
+    '/portal/jobs/tensorboard/': {
+      id: '/portal/jobs/tensorboard/'
+      path: '/jobs/tensorboard'
+      fullPath: '/portal/jobs/tensorboard'
+      preLoaderRoute: typeof PortalJobsTensorboardIndexRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/jobs/inter/': {
       id: '/portal/jobs/inter/'
       path: '/jobs/inter'
@@ -1701,6 +1734,13 @@ declare module '@tanstack/react-router' {
       path: '/tensorflow-ps-job'
       fullPath: '/portal/jobs/new/tensorflow-ps-job'
       preLoaderRoute: typeof PortalJobsNewTensorflowPsJobRouteImport
+      parentRoute: typeof PortalJobsNewRouteRoute
+    }
+    '/portal/jobs/new/tensorboard': {
+      id: '/portal/jobs/new/tensorboard'
+      path: '/tensorboard'
+      fullPath: '/portal/jobs/new/tensorboard'
+      preLoaderRoute: typeof PortalJobsNewTensorboardRouteImport
       parentRoute: typeof PortalJobsNewRouteRoute
     }
     '/portal/jobs/new/single-job': {
@@ -2193,6 +2233,7 @@ interface PortalJobsNewRouteRouteChildren {
   PortalJobsNewPytorchDdpJobRoute: typeof PortalJobsNewPytorchDdpJobRoute
   PortalJobsNewSeacsJobRoute: typeof PortalJobsNewSeacsJobRoute
   PortalJobsNewSingleJobRoute: typeof PortalJobsNewSingleJobRoute
+  PortalJobsNewTensorboardRoute: typeof PortalJobsNewTensorboardRoute
   PortalJobsNewTensorflowPsJobRoute: typeof PortalJobsNewTensorflowPsJobRoute
   PortalJobsNewWebideJobRoute: typeof PortalJobsNewWebideJobRoute
 }
@@ -2204,6 +2245,7 @@ const PortalJobsNewRouteRouteChildren: PortalJobsNewRouteRouteChildren = {
   PortalJobsNewPytorchDdpJobRoute: PortalJobsNewPytorchDdpJobRoute,
   PortalJobsNewSeacsJobRoute: PortalJobsNewSeacsJobRoute,
   PortalJobsNewSingleJobRoute: PortalJobsNewSingleJobRoute,
+  PortalJobsNewTensorboardRoute: PortalJobsNewTensorboardRoute,
   PortalJobsNewTensorflowPsJobRoute: PortalJobsNewTensorflowPsJobRoute,
   PortalJobsNewWebideJobRoute: PortalJobsNewWebideJobRoute,
 }
@@ -2231,6 +2273,7 @@ interface PortalRouteRouteChildren {
   PortalEnvImagesIndexRoute: typeof PortalEnvImagesIndexRoute
   PortalJobsCustomIndexRoute: typeof PortalJobsCustomIndexRoute
   PortalJobsInterIndexRoute: typeof PortalJobsInterIndexRoute
+  PortalJobsTensorboardIndexRoute: typeof PortalJobsTensorboardIndexRoute
 }
 
 const PortalRouteRouteChildren: PortalRouteRouteChildren = {
@@ -2253,6 +2296,7 @@ const PortalRouteRouteChildren: PortalRouteRouteChildren = {
   PortalEnvImagesIndexRoute: PortalEnvImagesIndexRoute,
   PortalJobsCustomIndexRoute: PortalJobsCustomIndexRoute,
   PortalJobsInterIndexRoute: PortalJobsInterIndexRoute,
+  PortalJobsTensorboardIndexRoute: PortalJobsTensorboardIndexRoute,
 }
 
 const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(

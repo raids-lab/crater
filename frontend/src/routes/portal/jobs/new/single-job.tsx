@@ -56,6 +56,7 @@ import { OtherOptionsFormCard } from '@/components/form/other-options-form-field
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { ScheduleTypeFormField } from '@/components/form/schedule-type-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
+import { TensorboardLogDirFormField } from '@/components/form/tensorboard-log-dir-form-field'
 import { MetadataFormCustom } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
@@ -84,6 +85,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { getDefaultTensorboardLogDir, withTensorboardLogDirEnv } from '@/utils/tensorboard'
 import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/single-job')({
@@ -105,6 +107,14 @@ const markdown = `## 运行规则
 const formSchema = z.object({
   jobName: jobNameSchema,
   task: taskSchema,
+  // Keep this additive field optional so existing custom-job templates remain valid.
+  tensorboardLogDir: z
+    .string()
+    .refine(
+      (value) => value === '' || value.startsWith('/'),
+      t('tensorboard.singleJob.absolutePath')
+    )
+    .optional(),
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
@@ -162,8 +172,12 @@ function RouteComponent() {
   })
   const isBackfillEnabled = prequeueStatusData?.backfillEnabled ?? false
   const { mutate: createTask, isPending } = useMutation({
-    mutationFn: (values: FormSchema) =>
-      apiTrainingCreate({
+    mutationFn: (values: FormSchema) => {
+      const tensorboardLogDir =
+        values.tensorboardLogDir?.trim() ||
+        getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`, values.jobName)
+
+      return apiTrainingCreate({
         name: values.jobName,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
@@ -171,14 +185,15 @@ function RouteComponent() {
         command: values.task.command,
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
-        envs: values.envs,
+        envs: withTensorboardLogDirEnv(values.envs, tensorboardLogDir),
         forwards: values.forwards,
         alertEnabled: values.alertEnabled,
         cpuPinningEnabled: values.cpuPinningEnabled,
         scheduleType: isBackfillEnabled ? values.scheduleType : ScheduleType.Normal,
         selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormCustom, values),
-      }),
+      })
+    },
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
@@ -221,6 +236,7 @@ function RouteComponent() {
           mountPath: `/home/${user?.name}`,
         },
       ],
+      tensorboardLogDir: '',
       envs: [],
       alertEnabled: true,
       cpuPinningEnabled: false,
@@ -417,6 +433,20 @@ conda activate base;
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tensorboardLogDir"
+                  render={({ field }) => (
+                    <TensorboardLogDirFormField
+                      defaultPath={getDefaultTensorboardLogDir(
+                        `/home/${user?.name ?? '<user>'}`,
+                        form.watch('jobName') || '<job-name>'
+                      )}
+                      descriptionKey="tensorboard.singleJob.logDirDescription"
+                      inputProps={{ ...field, value: field.value ?? '' }}
+                    />
                   )}
                 />
               </CardContent>

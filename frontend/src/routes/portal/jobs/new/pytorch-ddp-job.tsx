@@ -19,8 +19,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useRouter } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
-import { HammerIcon, LayoutGridIcon, PickaxeIcon } from 'lucide-react'
-import { CirclePlusIcon, XIcon } from 'lucide-react'
+import { CirclePlusIcon, HammerIcon, LayoutGridIcon, PickaxeIcon, XIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -49,6 +48,7 @@ import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
+import { TensorboardLogDirFormField } from '@/components/form/tensorboard-log-dir-form-field'
 import { MetadataFormPytorch } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
@@ -77,6 +77,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { getDefaultTensorboardLogDir, withTensorboardLogDirEnv } from '@/utils/tensorboard'
 import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/pytorch-ddp-job')({
@@ -166,6 +167,10 @@ const formSchema = z.object({
   jobName: jobNameSchema,
   ps: taskSchema,
   worker: taskSchema,
+  tensorboardLogDir: z
+    .string()
+    .refine((value) => value === '' || value.startsWith('/'), t('tensorboard.jobForm.absolutePath'))
+    .optional(),
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   alertEnabled: z.boolean().default(true),
@@ -226,8 +231,11 @@ function RouteComponent() {
     useJobCreateBillingBlockDialog()
 
   const { mutate: createTask, isPending } = useMutation({
-    mutationFn: (values: FormSchema) =>
-      apiPytorchCreate({
+    mutationFn: (values: FormSchema) => {
+      const defaultLogDir = getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`, values.jobName)
+      const tensorboardLogDir = values.tensorboardLogDir?.trim() || defaultLogDir
+
+      return apiPytorchCreate({
         name: values.jobName,
         tasks: [
           {
@@ -250,12 +258,13 @@ function RouteComponent() {
           },
         ],
         volumeMounts: values.volumeMounts,
-        envs: values.envs,
+        envs: withTensorboardLogDirEnv(values.envs, tensorboardLogDir),
         alertEnabled: values.alertEnabled,
         selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormPytorch, values),
         forwards: values.forwards,
-      }),
+      })
+    },
     onSuccess: async (_, { jobName: taskname }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
@@ -304,6 +313,7 @@ function RouteComponent() {
           mountPath: `/home/${user?.name}`,
         },
       ],
+      tensorboardLogDir: '',
       envs: [],
       alertEnabled: true,
       nodeSelector: {
@@ -426,6 +436,24 @@ function RouteComponent() {
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tensorboardLogDir"
+                  render={({ field }) => {
+                    const defaultPath = getDefaultTensorboardLogDir(
+                      `/home/${user?.name ?? '<user>'}`,
+                      form.watch('jobName') || '<job-name>'
+                    )
+
+                    return (
+                      <TensorboardLogDirFormField
+                        defaultPath={defaultPath}
+                        descriptionKey="tensorboard.ddpJob.logDirDescription"
+                        inputProps={{ ...field, value: field.value ?? '' }}
+                      />
+                    )
+                  }}
                 />
               </CardContent>
             </Card>

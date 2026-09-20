@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.1.2](https://img.shields.io/badge/Version-1.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.2](https://img.shields.io/badge/AppVersion-1.1.2-informational?style=flat-square)
+![Version: 1.1.3](https://img.shields.io/badge/Version-1.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.3](https://img.shields.io/badge/AppVersion-1.1.3-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -174,9 +174,9 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | grafanaProxy.host | string | `"gpu-grafana.example.com"` | Domain name for exposing Grafana via Ingress Also used in frontend config even if grafanaProxy.enable is false |
 | grafanaProxy.token | string | `"<MASKED>"` | Grafana access token (masked, please apply for read-only token in Grafana) |
 | host | string | `"crater.example.com"` | Domain name or IP address that the server will bind to (Required) Must be specified for the server to start |
-| imagePullPolicy | string | `"Always"` | Image pull policy ("IfNotPresent" | "Always", for development, use Always) |
-| imagePullSecrets | list | `[]` | Image pull secrets |
-| images | object | `{"backend":{"repository":"ghcr.io/raids-lab/crater-backend","tag":"latest"},"buildkit":{"repository":"docker.io/moby/buildkit","tag":"v0.23.1"},"buildx":{"repository":"ghcr.io/raids-lab/buildx-client","tag":"latest"},"cronjob":{"repository":"docker.io/badouralix/curl-jq","tag":"latest"},"dbBackup":{"repository":"docker.io/library/postgres","tag":"16.4"},"envd":{"repository":"ghcr.io/raids-lab/envd-client","tag":"latest"},"frontend":{"repository":"ghcr.io/raids-lab/crater-frontend","tag":"latest"},"grafanaProxy":{"repository":"docker.io/library/nginx","tag":"1.27.3-bookworm"},"nerdctl":{"repository":"ghcr.io/raids-lab/nerdctl-client","tag":"latest"},"storage":{"repository":"ghcr.io/raids-lab/storage-server","tag":"latest"}}` | Container images configuration |
+| imagePullPolicy | string | `"Always"` | Image pull policy for chart workloads and dynamically created TensorBoard panels Allowed values: "Always", "IfNotPresent", or "Never" |
+| imagePullSecrets | list | `[]` | Image pull secrets for chart workloads and dynamically created TensorBoard panels TensorBoard secrets must also exist in namespaces.job |
+| images | object | `{"backend":{"repository":"ghcr.io/raids-lab/crater-backend","tag":"latest"},"buildkit":{"repository":"docker.io/moby/buildkit","tag":"v0.23.1"},"buildx":{"repository":"ghcr.io/raids-lab/buildx-client","tag":"latest"},"cronjob":{"repository":"docker.io/badouralix/curl-jq","tag":"latest"},"dbBackup":{"repository":"docker.io/library/postgres","tag":"16.4"},"envd":{"repository":"ghcr.io/raids-lab/envd-client","tag":"latest"},"frontend":{"repository":"ghcr.io/raids-lab/crater-frontend","tag":"latest"},"grafanaProxy":{"repository":"docker.io/library/nginx","tag":"1.27.3-bookworm"},"nerdctl":{"repository":"ghcr.io/raids-lab/nerdctl-client","tag":"latest"},"storage":{"repository":"ghcr.io/raids-lab/storage-server","tag":"latest"},"tensorboard":{"repository":"docker.io/tensorflow/tensorflow","tag":"2.20.0"}}` | Container images configuration |
 | images.backend.repository | string | `"ghcr.io/raids-lab/crater-backend"` | Backend service image repository |
 | images.backend.tag | string | `"latest"` | Backend service image tag |
 | images.buildkit.repository | string | `"docker.io/moby/buildkit"` | Buildkit image repository for containerd-based builds |
@@ -197,6 +197,8 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | images.nerdctl.tag | string | `"latest"` | Nerdctl image tag |
 | images.storage.repository | string | `"ghcr.io/raids-lab/storage-server"` | Storage server image repository |
 | images.storage.tag | string | `"latest"` | Storage server image tag |
+| images.tensorboard.repository | string | `"docker.io/tensorflow/tensorflow"` | TensorBoard image repository used by dynamically created panels |
+| images.tensorboard.tag | string | `"2.20.0"` | TensorBoard image tag |
 | modelDatasetGovernance | object | `{"apply":false,"datasetMarkerPatterns":"","datasetsSubdirectory":"Datasets","enabled":false,"excludeDirectories":".cache,.git,.conda,node_modules,site-packages,test,tests,tmp,temp","logicalPublicPrefix":"public","maxDepth":8,"maxReadmeBytes":65536,"modelWeightPatterns":"*.safetensors,pytorch_model*.bin,model*.bin,*.gguf,tf_model.h5,flax_model.msgpack","modelsSubdirectories":[],"modelsSubdirectory":"Models","resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"scanTimeout":"30m","schedule":"30 2 * * 0","storageRoot":"/crater"}` | Reconcile public model and dataset storage with database records |
 | modelDatasetGovernance.apply | bool | `false` | Apply reconciliation results; keep false for the first validation run |
 | modelDatasetGovernance.datasetMarkerPatterns | string | `""` | Dataset marker filename patterns; empty keeps filesystem-only dataset discovery disabled |

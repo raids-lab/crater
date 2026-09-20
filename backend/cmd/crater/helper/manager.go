@@ -16,6 +16,7 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/internal/handler"
+	tensorboardservice "github.com/raids-lab/crater/internal/service/tensorboard"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
@@ -90,6 +91,11 @@ func (ms *ManagerSetup) SetupCustomCRDAddon(
 
 	// Setup Volcano
 	if err := ms.setupVolcano(mgr, registerConfig); err != nil {
+		return err
+	}
+
+	// Setup TensorBoard TTL garbage collector
+	if err := ms.setupTensorboardGarbageCollector(mgr); err != nil {
 		return err
 	}
 
@@ -180,6 +186,18 @@ func (ms *ManagerSetup) setupImagePacker(mgr manager.Manager, registerConfig *ha
 	err = modelDownloadReconciler.SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("unable to set up model download controller: %w", err)
+	}
+
+	return nil
+}
+
+func (ms *ManagerSetup) setupTensorboardGarbageCollector(mgr manager.Manager) error {
+	garbageCollector := tensorboardservice.NewTensorboardGarbageCollector(
+		mgr.GetClient(),
+		ms.backendConfig.Namespaces.Job,
+	)
+	if err := mgr.Add(garbageCollector); err != nil {
+		return fmt.Errorf("unable to add TensorBoard garbage collector: %w", err)
 	}
 
 	return nil

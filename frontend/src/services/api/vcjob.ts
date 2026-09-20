@@ -129,6 +129,12 @@ export const apiGetUserJobFacets = (
     signal,
   })
 
+export const apiJobSelfList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
 export const apiJobAllList = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IPage<IJobInfo>>>(`${JOB_URL}/all`, {
     searchParams: buildRemoteSearchParams(toJobProtocol(params)),

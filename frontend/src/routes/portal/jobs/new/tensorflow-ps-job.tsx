@@ -49,6 +49,7 @@ import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
+import { TensorboardLogDirFormField } from '@/components/form/tensorboard-log-dir-form-field'
 import { MetadataFormTensorflow } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
@@ -76,6 +77,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { getDefaultTensorboardLogDir, withTensorboardLogDirEnv } from '@/utils/tensorboard'
 import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/tensorflow-ps-job')({
@@ -184,6 +186,10 @@ VC_TASK_INDEX=1
 be **deprecated** in the future releases.
 * No value are needed when register env plugin in the volcano job.
 
+## TensorBoard
+
+${t('tensorboard.tensorflowPSJob.compatibilityMarkdown')}
+
 ## 以普通用户运行
 
 自定义作业默认以 \`root\` 用户运行，这种情况下，由于 Jupyter 交互式作业默认以普通用户运行，可能会导致权限问题。
@@ -225,6 +231,10 @@ const formSchema = z.object({
     }),
   ps: taskSchema,
   worker: taskSchema,
+  tensorboardLogDir: z
+    .string()
+    .refine((value) => value === '' || value.startsWith('/'), t('tensorboard.jobForm.absolutePath'))
+    .optional(),
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   alertEnabled: z.boolean().default(true),
@@ -285,8 +295,11 @@ function RouteComponent() {
     useJobCreateBillingBlockDialog()
 
   const { mutate: createTask, isPending } = useMutation({
-    mutationFn: (values: FormSchema) =>
-      apiTensorflowCreate({
+    mutationFn: (values: FormSchema) => {
+      const defaultLogDir = getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`, values.jobName)
+      const tensorboardLogDir = values.tensorboardLogDir?.trim() || defaultLogDir
+
+      return apiTensorflowCreate({
         name: values.jobName,
         tasks: [
           {
@@ -309,12 +322,13 @@ function RouteComponent() {
           },
         ],
         volumeMounts: values.volumeMounts,
-        envs: values.envs,
+        envs: withTensorboardLogDirEnv(values.envs, tensorboardLogDir),
         alertEnabled: values.alertEnabled,
         selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormTensorflow, values),
         forwards: values.forwards,
-      }),
+      })
+    },
     onSuccess: async (_, { jobName: taskname }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
@@ -363,6 +377,7 @@ function RouteComponent() {
           mountPath: `/home/${user?.name}`,
         },
       ],
+      tensorboardLogDir: '',
       envs: [],
       alertEnabled: true,
       nodeSelector: {
@@ -480,6 +495,20 @@ function RouteComponent() {
                       <FormDescription>名称可重复，最多包含 40 个字符</FormDescription>
                       <FormMessage />
                     </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tensorboardLogDir"
+                  render={({ field }) => (
+                    <TensorboardLogDirFormField
+                      defaultPath={getDefaultTensorboardLogDir(
+                        `/home/${user?.name ?? '<user>'}`,
+                        form.watch('jobName') || '<job-name>'
+                      )}
+                      descriptionKey="tensorboard.tensorflowPSJob.logDirDescription"
+                      inputProps={{ ...field, value: field.value ?? '' }}
+                    />
                   )}
                 />
               </CardContent>

@@ -354,6 +354,48 @@ definitions:
       username:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_payload.CreateTensorboardReq:
+    properties:
+      logDir:
+        example: /mnt/vol0/logs
+        type: string
+      sourceJobName:
+        example: job-old-xxxx
+        type: string
+      sourceJobNames:
+        items:
+          type: string
+        type: array
+      sourceJobs:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq'
+        type: array
+      ttlHours:
+        example: 24
+        maximum: 168
+        minimum: 1
+        type: integer
+    required:
+    - ttlHours
+    type: object
+  github_com_raids-lab_crater_internal_payload.CreateTensorboardResp:
+    properties:
+      accessPath:
+        description: Relative route prefix used to access the panel.
+        type: string
+      tensorboardId:
+        description: Unique panel identifier.
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_payload.ExtendTTLReq:
+    properties:
+      ttlHours:
+        maximum: 168
+        minimum: 1
+        type: integer
+    required:
+    - ttlHours
+    type: object
   github_com_raids-lab_crater_internal_payload.Order:
     enum:
     - asc
@@ -388,6 +430,79 @@ definitions:
           Value: 包含 Label 和 Type 的详细对象
         type: object
     type: object
+  github_com_raids-lab_crater_internal_payload.TensorboardInfo:
+    properties:
+      accessPath:
+        type: string
+      createdAt:
+        type: string
+      expiration:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatus'
+      statusMessage:
+        type: string
+      statusReason:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatusReason'
+    type: object
+  github_com_raids-lab_crater_internal_payload.TensorboardSourceConfigResp:
+    properties:
+      logDir:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq:
+    properties:
+      jobName:
+        type: string
+      logDir:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_payload.TensorboardStatus:
+    enum:
+    - starting
+    - ready
+    - failed
+    type: string
+    x-enum-varnames:
+    - TensorboardStatusStarting
+    - TensorboardStatusReady
+    - TensorboardStatusFailed
+  github_com_raids-lab_crater_internal_payload.TensorboardStatusReason:
+    enum:
+    - deployment_failed
+    - status_check_pending
+    - pod_list_pending
+    - image_pull_failed
+    - container_start_failed
+    - container_exited
+    - deployment_starting
+    - network_config_incomplete
+    - service_missing
+    - network_check_pending
+    - service_misconfigured
+    - ingress_missing
+    - ingress_misconfigured
+    - endpoint_pending
+    - ready
+    type: string
+    x-enum-varnames:
+    - TensorboardStatusReasonDeploymentFailed
+    - TensorboardStatusReasonStatusCheckPending
+    - TensorboardStatusReasonPodListPending
+    - TensorboardStatusReasonImagePullFailed
+    - TensorboardStatusReasonContainerStartFailed
+    - TensorboardStatusReasonContainerExited
+    - TensorboardStatusReasonDeploymentStarting
+    - TensorboardStatusReasonNetworkConfigIncomplete
+    - TensorboardStatusReasonServiceMissing
+    - TensorboardStatusReasonNetworkCheckPending
+    - TensorboardStatusReasonServiceMisconfigured
+    - TensorboardStatusReasonIngressMissing
+    - TensorboardStatusReasonIngressMisconfigured
+    - TensorboardStatusReasonEndpointPending
+    - TensorboardStatusReasonReady
   github_com_raids-lab_crater_internal_payload.TimePointData:
     properties:
       timestamp:
@@ -443,6 +558,18 @@ definitions:
         description: 依然保持 int (ErrorCode) 类型
         type: integer
       data: {}
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_payload_TensorboardInfo:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardInfo'
+        type: array
       msg:
         type: string
     type: object
@@ -516,6 +643,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_CreateTensorboardResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp:
     properties:
       code:
@@ -523,6 +660,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_TensorboardSourceConfigResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceConfigResp'
       msg:
         type: string
     type: object
@@ -3073,6 +3220,17 @@ paths:
       summary: 获取系统中每种Status的Job的数量
       tags:
       - Metrics
+  /tensorboard/auth:
+    get:
+      description: 供 ingress-nginx external-auth 子请求调用
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+      summary: 校验 TensorBoard Ingress 访问
+      tags:
+      - TensorBoard
   /v1/accounts:
     get:
       consumes:
@@ -8474,6 +8632,208 @@ paths:
       summary: 获取模型与数据集下载额度
       tags:
       - SystemConfig
+  /v1/tensorboard:
+    get:
+      description: 获取当前用户创建的 TensorBoard 面板
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_payload_TensorboardInfo'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取 TensorBoard 面板列表
+      tags:
+      - TensorBoard
+    post:
+      consumes:
+      - application/json
+      description: 从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务
+      parameters:
+      - description: TensorBoard 面板配置
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_CreateTensorboardResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建 TensorBoard 面板
+      tags:
+      - TensorBoard
+  /v1/tensorboard/{id}:
+    delete:
+      description: 删除 TensorBoard 面板及其关联的网络资源
+      parameters:
+      - description: TensorBoard 面板 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 删除 TensorBoard 面板
+      tags:
+      - TensorBoard
+  /v1/tensorboard/{id}/access:
+    post:
+      description: 校验面板所有权，并为该面板路径设置短期登录 Cookie
+      parameters:
+      - description: TensorBoard 面板 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 创建 TensorBoard 访问会话
+      tags:
+      - TensorBoard
+  /v1/tensorboard/{id}/extend:
+    post:
+      consumes:
+      - application/json
+      description: 重新设置当前用户 TensorBoard 面板的过期时间
+      parameters:
+      - description: TensorBoard 面板 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 有效期设置
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.ExtendTTLReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 延长 TensorBoard 面板有效期
+      tags:
+      - TensorBoard
+  /v1/tensorboard/source/{jobName}:
+    get:
+      description: 获取当前用户来源任务中声明的 TensorBoard 日志目录
+      parameters:
+      - description: 来源任务名称
+        in: path
+        name: jobName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_TensorboardSourceConfigResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取 TensorBoard 来源任务配置
+      tags:
+      - TensorBoard
   /v1/token/verify:
     get:
       consumes:

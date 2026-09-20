@@ -23,9 +23,11 @@ firstUser:
   password: "Masked@Password"
 
 # -- Image configuration
-# -- Image pull policy ("IfNotPresent" | "Always", for development, use Always)
+# -- Image pull policy for chart workloads and dynamically created TensorBoard panels
+# Allowed values: "Always", "IfNotPresent", or "Never"
 imagePullPolicy: Always
-# -- Image pull secrets
+# -- Image pull secrets for chart workloads and dynamically created TensorBoard panels
+# TensorBoard secrets must also exist in namespaces.job
 imagePullSecrets: []
 # -- Container images configuration
 images:
@@ -79,6 +81,11 @@ images:
     repository: "docker.io/library/postgres"
     # -- DBBackup image tag
     tag: "16.4"
+  tensorboard:
+    # -- TensorBoard image repository used by dynamically created panels
+    repository: "docker.io/tensorflow/tensorflow"
+    # -- TensorBoard image tag
+    tag: "2.20.0"
 
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:
