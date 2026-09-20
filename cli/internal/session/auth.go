@@ -5,17 +5,18 @@ import (
 )
 
 // SaveLogin persists a successful login:
-// - store token in secure storage (keyring)
+// - store the access token on the AuthInfo
 // - upsert AuthInfo into state.json
 // - set ActiveContext to this account
 func SaveLogin(info state.AuthInfo, accessToken string) error {
+	if testSessionEnabled() {
+		return nil
+	}
+	info.Token = accessToken
 	ac := state.ActiveContext{
 		PlatformURL: info.PlatformURL,
 		Username:    info.Username,
 		Method:      info.Method,
-	}
-	if err := SaveToken(ac, accessToken); err != nil {
-		return err
 	}
 
 	st, err := LoadState()
@@ -38,4 +39,3 @@ func SaveLogin(info state.AuthInfo, accessToken string) error {
 	st.ActiveContext = ac
 	return SaveState(st)
 }
-

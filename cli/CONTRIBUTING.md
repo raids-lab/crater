@@ -69,13 +69,60 @@ Before opening or updating a pull request, run the full CLI test target unless t
 make test
 ```
 
-`make pre-commit-check` is available for consistency with other sub-projects and is currently equivalent to `make test`:
+The npm publishing helpers have their own unit tests:
+
+```bash
+make npm-test
+```
+
+`make pre-commit-check` is the local aggregate check. It runs both `make test` and `make npm-test`; CI keeps those responsibilities in separate jobs:
 
 ```bash
 make pre-commit-check
 ```
 
-## 4. Before Submitting
+## 4. Release Maintenance
+
+Repository-wide publish triggers are defined in the root [Publish Workflows](../CONTRIBUTING.md#publish-workflows) section. CLI follows that split: `main` updates do not publish CLI artifacts; only an exact `vX.Y.Z` tag publishes npm packages. Do not create GitHub Release assets or use a GitHub Release to start other workflows.
+
+CLI release automation has two entry points:
+
+- `cli-pr.yml` runs `Check CLI` (`make test`) first, then `Check npm packaging` (npm packaging-script tests, a six-target cross-build, `npm pack`, and a Linux install of the entry package).
+- `cli-release.yml` accepts only exact `vX.Y.Z` tags and publishes npm packages in platform-first order. It does not create or update a GitHub Release.
+
+An exact release tag is the single formal-release trigger: it also starts the existing frontend, backend, storage, and Helm workflows. Push the tag once and wait for that formal release to finish before pushing the next tag. Do not move a published release tag. A GitHub Release, if created, is only for human-written notes; it does not trigger workflows or carry CLI binaries.
+
+The npm distribution consists of the entry package `@raids-lab/crater-cli` and these optional native packages:
+
+- `@raids-lab/crater-cli-darwin-arm64`
+- `@raids-lab/crater-cli-darwin-x64`
+- `@raids-lab/crater-cli-linux-arm64`
+- `@raids-lab/crater-cli-linux-x64`
+- `@raids-lab/crater-cli-win32-arm64`
+- `@raids-lab/crater-cli-win32-x64`
+
+### First npm publication
+
+The packages must exist before npm trusted publishing or staged publishing can be configured. The bootstrap version of `cli-release.yml` therefore publishes directly and does not pause for approval. Before creating the first release tag:
+
+1. Enable 2FA on the publishing npm account and confirm that it can publish public packages under `@raids-lab`.
+2. Create a short-lived granular npm access token limited to the `@raids-lab` scope and the permissions required to publish these packages. Direct CI publication requires a token that can complete publication without an interactive OTP.
+3. Store it as the repository Actions secret `NPM_TOKEN`. Never put the token in a file, command output, issue, PR, or workflow input.
+4. Review the intended tag and the successful CLI PR checks. Pushing a matching tag starts the frontend, backend, storage, Helm, CLI, and irreversible npm publication workflows immediately.
+
+The publisher is restart-safe for a partially completed bootstrap: it checks the registry and skips any package/version that is already public, then continues with the remaining platform packages and publishes the entry package last. A package/version that npm has accepted can never be reused.
+
+### Migrate to staged trusted publishing
+
+After all seven packages have completed their first publication, make a separate reviewed change before the next release:
+
+1. With npm CLI 11.15 or newer and an npm session protected by 2FA, configure a GitHub trusted publisher for every package. Use repository `raids-lab/crater`, workflow file `cli-release.yml`, and grant `npm stage publish` only; do not grant direct `npm publish`.
+2. Adapt the release publisher from direct `npm publish` to `npm stage publish`, remove the bootstrap-token requirement, and replace live-registry visibility waits with checks appropriate for staged submissions. Approve the six platform packages with 2FA before approving the entry package.
+3. Verify one complete staged release, delete the `NPM_TOKEN` GitHub secret, revoke the temporary npm token, and configure each package to require 2FA and disallow traditional token publishing.
+
+Do not make only the npm-side permission change while leaving the workflow on direct publication: the next release would fail after its build.
+
+## 5. Before Submitting
 
 Check that:
 

@@ -381,6 +381,9 @@ backendConfig:
     # -- SMTP server port number (Required if Enable is true)
     # Typically 25, 465, or 587
     port: 25
+    # -- Skip SMTP TLS certificate and hostname verification
+    # Insecure: Enable only for servers with untrusted self-signed certificates
+    insecureSkipVerify: false
     # -- Username for SMTP authentication (Required if Enable is true)
     # Must be a valid SMTP user
     user: example

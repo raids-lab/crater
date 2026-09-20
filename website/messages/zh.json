@@ -27,7 +27,7 @@
     "altText": "Crater 平台"
   },
   "Footer": {
-    "copyright": "© {year} Crater. 保留所有权利。",
+    "copyright": "版权所有 2023-{year} The Crater Project Team, RAIDS-Lab。",
     "product": {
       "title": "产品",
       "features": "功能",
@@ -243,7 +243,7 @@
     "close": "关闭搜索",
     "select": "选择",
     "noResults": "未找到结果",
-    "poweredBy": "搜索引擎: ",
+    "poweredBy": "搜索引擎：",
     "untitled": "无标题"
   },
   "CraterChartVersionNotice": {

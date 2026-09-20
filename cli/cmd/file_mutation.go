@@ -12,6 +12,7 @@ import (
 
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
+	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
@@ -158,7 +159,7 @@ func runFileMoveWith(ctx context.Context, args []string, deps fileMutationDeps) 
 }
 
 func normalizeMutationPath(rawPath, field string) (string, *usageIssue) {
-	normalized, err := normalizeRemotePath(rawPath, false)
+	normalized, err := normalizeRemotePath(rawPath)
 	if err != nil {
 		var cliErr *clierror.Error
 		code := errorcodes.ErrInvalidFlagValue
@@ -195,4 +196,11 @@ func writeFileMutationResult(
 		}
 	}
 	return nil
+}
+
+func init() {
+	fileCmd.AddCommand(fileMkdirCmd, fileMoveCmd)
+	completion.RegisterPositional([]string{"file", "mkdir"}, 0, fileRootCompleter)
+	completion.RegisterPositional([]string{"file", "mv"}, 0, fileRootCompleter)
+	completion.RegisterPositional([]string{"file", "mv"}, 1, fileRootCompleter)
 }

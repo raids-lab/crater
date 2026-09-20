@@ -7,7 +7,6 @@ import (
 
 // SandboxEnabled returns true when the CLI should avoid touching developer environment:
 // - local state storage on disk
-// - OS keyring
 // - real network (typically used together with HTTP simulation)
 //
 // It is controlled by CRATER_TEST_SANDBOX and/or feature-specific flags.

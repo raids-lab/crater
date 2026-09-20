@@ -11912,6 +11912,9 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "startTime": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/v1.PodPhase"
                 },

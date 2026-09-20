@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -231,6 +232,13 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		"available revisions",
 		"modelscope==" + modelScopeVersion,
 		"modelscope-hub==" + modelScopeHubVersion,
+		`raw_readme = b""`,
+		`with open(p, "rb") as f:`,
+		"raw_readme = f.read(max_readme_bytes)",
+		`text = raw_readme.decode("utf-8", errors="ignore")`,
+		"[README] begin zlib+base64",
+		"[README] chunk ",
+		"[README] end",
 	} {
 		if !strings.Contains(command, expected) {
 			t.Fatalf("download command does not contain %q", expected)
@@ -242,8 +250,49 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 	if strings.Contains(command, "pip install -q modelscope") {
 		t.Fatal("download command performs an unpinned runtime installation")
 	}
+	if strings.Contains(command, "f.read()") {
+		t.Fatal("download command reads the complete README before truncating it")
+	}
 	if strings.Contains(command, "%!") {
 		t.Fatalf("download command contains an unresolved format directive: %s", command)
+	}
+}
+
+func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testing.T) {
+	download := &model.ModelDownload{
+		Name:     "chloechia/loveda",
+		Source:   model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryDataset,
+	}
+
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda")
+
+	for _, expected := range []string{
+		`expected = "` + huggingFaceHubVersion + `"`,
+		`if actual != expected:`,
+		`unsupported huggingface_hub version`,
+		`use crater-model-downloader:v1.0.0 or an exact mirror of it`,
+		`if mirror != upstream:`,
+		`except (ImportError, AttributeError) as error:`,
+		"from huggingface_hub.utils import _pagination",
+		`mirror = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")`,
+		`url.startswith(upstream + "/")`,
+		`return mirror + url[len(upstream):]`,
+		"_pagination._get_next_page = get_next_page_via_configured_endpoint",
+		"[PAGINATION] rewriting next-page URL to configured Hugging Face endpoint",
+		`"repo_type": repo_type`,
+	} {
+		if !strings.Contains(command, expected) {
+			t.Fatalf("download command does not contain %q", expected)
+		}
+	}
+	for _, deprecated := range []string{"local_dir_use_symlinks", "resume_download"} {
+		if strings.Contains(command, deprecated) {
+			t.Fatalf("download command still contains deprecated argument %q", deprecated)
+		}
+	}
+	if strings.Contains(command, "pip install") {
+		t.Fatal("download command mutates the pinned downloader image at runtime")
 	}
 }
 
@@ -518,11 +567,14 @@ func TestDownloadTokenEnvIsSourceSpecificAndEphemeral(t *testing.T) {
 }
 
 func TestTruncateDownloadLogTail(t *testing.T) {
-	logs := strings.Repeat("old line\n", 20) + "last line\n"
+	logs := strings.Repeat("old line\n", 20) + string([]byte{0xe2, 0x96, '[', 0xff}) + "\nlast line\n"
 	truncated := truncateDownloadLogTail(logs, 32)
 
 	if len(truncated) > 32 || strings.Contains(truncated, "old line\nold line\nold line\nold line") || !strings.HasSuffix(truncated, "last line\n") {
 		t.Fatalf("unexpected truncated log tail: %q", truncated)
+	}
+	if !utf8.ValidString(truncated) {
+		t.Fatalf("truncated log tail is not valid UTF-8: %q", truncated)
 	}
 }
 

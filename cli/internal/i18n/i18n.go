@@ -19,17 +19,18 @@ var currentLang Language = En
 
 var translations = mergeCatalogs(
 	catalogRoot,
+	catalogVersion,
 	catalogAuth,
 	catalogConfig,
 	catalogCompletion,
 	catalogCompatibility,
 	catalogDownload,
+	catalogFile,
 	catalogRead,
 	catalogImage,
 	catalogOrder,
 	catalogErrors,
 	catalogJob,
-	catalogFile,
 )
 
 func mergeCatalogs(catalogs ...map[Language]map[string]string) map[Language]map[string]string {

@@ -11,6 +11,7 @@ var catalogRoot = map[Language]map[string]string{
 		"flag_json":           "Output in raw JSON format",
 		"flag_no-interactive": "Disable interactive prompts",
 		"flag_help":           "Help for crater",
+		"flag_version":        "Show the CLI version",
 	},
 	ZhCN: {
 		// Command Descriptions
@@ -21,6 +22,6 @@ var catalogRoot = map[Language]map[string]string{
 		"flag_json":           "以原始 JSON 格式输出",
 		"flag_no-interactive": "禁用交互式提示",
 		"flag_help":           "显示帮助信息",
+		"flag_version":        "显示 CLI 版本",
 	},
 }
-

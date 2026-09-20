@@ -158,12 +158,19 @@ export function ModelDownloadLimitSettings({
           <TabsContent value="rules" className="mt-0 space-y-4">
             <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
               <div>
-                <Label className="text-base">{t('systemConfig.modelDownloadLimit.enabled')}</Label>
+                <Label htmlFor="model-download-limit-enabled" className="text-base">
+                  {t('systemConfig.modelDownloadLimit.enabled')}
+                </Label>
                 <p className="text-muted-foreground text-sm">
                   {t('systemConfig.modelDownloadLimit.scopeDescription')}
                 </p>
               </div>
-              <Switch checked={enabled} onCheckedChange={setEnabled} disabled={controlsDisabled} />
+              <Switch
+                id="model-download-limit-enabled"
+                checked={enabled}
+                onCheckedChange={setEnabled}
+                disabled={controlsDisabled}
+              />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
@@ -171,6 +178,7 @@ export function ModelDownloadLimitSettings({
                   {t('systemConfig.modelDownloadLimit.maxConcurrent')}
                   <SimpleTooltip
                     tooltip={t('systemConfig.modelDownloadLimit.maxConcurrentTooltip')}
+                    ariaLabel={t('systemConfig.modelDownloadLimit.maxConcurrentTooltip')}
                   >
                     <CircleHelpIcon className="text-muted-foreground ml-1 inline size-4 cursor-help" />
                   </SimpleTooltip>
@@ -187,7 +195,10 @@ export function ModelDownloadLimitSettings({
               <div className="space-y-2">
                 <Label htmlFor="model-download-window-hours">
                   {t('systemConfig.modelDownloadLimit.windowHours')}
-                  <SimpleTooltip tooltip={t('systemConfig.modelDownloadLimit.windowHoursTooltip')}>
+                  <SimpleTooltip
+                    tooltip={t('systemConfig.modelDownloadLimit.windowHoursTooltip')}
+                    ariaLabel={t('systemConfig.modelDownloadLimit.windowHoursTooltip')}
+                  >
                     <CircleHelpIcon className="text-muted-foreground ml-1 inline size-4 cursor-help" />
                   </SimpleTooltip>
                 </Label>
@@ -205,6 +216,7 @@ export function ModelDownloadLimitSettings({
                   {t('systemConfig.modelDownloadLimit.maxSuccessfulDownloads')}
                   <SimpleTooltip
                     tooltip={t('systemConfig.modelDownloadLimit.maxSuccessfulDownloadsTooltip')}
+                    ariaLabel={t('systemConfig.modelDownloadLimit.maxSuccessfulDownloadsTooltip')}
                   >
                     <CircleHelpIcon className="text-muted-foreground ml-1 inline size-4 cursor-help" />
                   </SimpleTooltip>

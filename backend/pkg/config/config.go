@@ -227,6 +227,10 @@ type Config struct {
 		// Required if Enable is true: Typically 25, 465, or 587.
 		Port string `json:"port"`
 
+		// InsecureSkipVerify disables SMTP TLS certificate and hostname verification.
+		// Optional: Defaults to false. Enable only for servers with untrusted self-signed certificates.
+		InsecureSkipVerify bool `json:"insecureSkipVerify"`
+
 		// User is the username for SMTP authentication.
 		// Required if Enable is true: Must be a valid SMTP user.
 		User string `json:"user"`
@@ -567,6 +571,10 @@ func (c *Config) logConfigWarnings() {
 	if c.Auth.LDAP.Enable && c.Auth.LDAP.UID.Source == UIDSourceExternal {
 		warnings = append(warnings, "auth.ldap.uid.source 'external' is deprecated and will be removed in the future; "+
 			"it is recommended to use 'rid' source for direct calculation from LDAP objectSid")
+	}
+
+	if c.SMTP.Enable && c.SMTP.InsecureSkipVerify {
+		warnings = append(warnings, "smtp.insecureSkipVerify is enabled; SMTP TLS certificate and hostname verification are disabled")
 	}
 
 	// Add more warning checks here, e.g.:

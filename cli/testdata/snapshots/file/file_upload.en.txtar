@@ -106,13 +106,14 @@ crater file --help
 -- en/09-file-help/exit --
 0
 -- en/09-file-help/stdout --
-Manage files and directories in user, public, and account storage spaces.
+List, upload, create directories, and move entries in user, public, and account storage spaces.
 
 Usage:
   crater file [flags]
   crater file [command]
 
 Available Commands:
+  ls          List remote files
   mkdir       Create one remote directory
   mv          Move one remote file or directory
   upload      Upload one local file

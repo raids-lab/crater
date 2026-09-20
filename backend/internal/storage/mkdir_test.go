@@ -246,3 +246,23 @@ func serveCreateDirectory(
 	router.ServeHTTP(recorder, request)
 	return recorder
 }
+
+func TestCreateStorageDirectoryRollsBackChmodFailure(t *testing.T) {
+	root, err := os.OpenRoot(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	sentinel := errors.New("chmod denied")
+	err = createStorageDirectoryWithChmod(root, "new-dir", 0o777,
+		func(*os.Root, string, os.FileMode) error { return sentinel })
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("got %v, want chmod error", err)
+	}
+	if _, err := root.Lstat("new-dir"); !os.IsNotExist(err) {
+		t.Fatalf("failed mkdir left an entry: %v", err)
+	}
+	if err := createStorageDirectory(root, "new-dir", 0o777); err != nil {
+		t.Fatalf("retry failed: %v", err)
+	}
+}

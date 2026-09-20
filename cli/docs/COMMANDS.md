@@ -16,6 +16,12 @@
 - `--help, -h`:
   - **行为**: 显示当前命令或子命令的帮助信息。
 
+根命令另外提供以下仅限根级使用的版本选项，不会由子命令继承：
+
+- `crater --version` / `crater -v`:
+  - **行为**：不要求登录、不使用已保存 token、不访问 Crater 平台。为选择显示语言，仍可能读取本地 `state.json` 的 `language` 字段。以单行输出当前 CLI 产品版本与 7 位短 commit SHA，格式为 `Crater CLI version <product-version>, build <short-commit>`。无法确定 commit 时使用 `unknown`。
+  - **约束**：不接受位置参数，也不能与 `--json` 同时使用；脚本或 Agent 需要结构化构建信息时应使用 `crater version --json`。
+
 CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-Crater-API-Version: <api-version>`，仅供平台诊断，不代表后端会据此改变或拒绝请求。普通业务命令不自动执行 API 兼容性握手。
 
 ### 公共列表分页 (List Pagination)
@@ -50,6 +56,34 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
      ```
    - **错误码定义**: 以 `pkg/errorcodes/codes.go` 为准。**`api_error`** 的 **`code`** 通常须与 **HTTP** 显式对应，命名形如 **`ERR_NOT_FOUND_404`**、**`ERR_SERVER_INTERNAL_5XX`** 等；`crater compatibility` 对握手接口 404 的领域化映射见本命令章节。完整约定见 **[SPEC.md](./SPEC.md)**「命令结果：错误与成功」中 `api_error` 与 HTTP 小节。
    - **退出码**: 出错时非零退出；具体数值由 `Execute` 根据 `*clierror.Error` 的 `category` 映射（实现为 `pkg/errorcodes.ExitCodeForCategory`：`usage_error`→2，`cancelled`→3，`api_error`→4，`system_error`→5；非 `*clierror.Error` 的错误→1）。命令实现里不必自行 `os.Exit`。
+
+---
+
+## 本地 CLI 版本 (`version`)
+
+### `crater version`
+
+- **描述**：显示当前本地 CLI 二进制的产品版本、源码提交、构建信息、Go 运行时以及 API 兼容版本。不要求登录、不使用已保存 token，也不访问 Crater 平台；为选择显示语言，仍可能读取本地 `state.json` 的 `language` 字段。
+- **位置参数**：无；出现任何位置参数均返回 `usage_error`。
+- **选项**：仅使用全局选项。
+- **默认输出**：在 `Crater CLI:` 标题下，按固定顺序显示产品版本、CLI API 版本、CLI 最低支持的后端 API 版本、Go 版本、完整 commit SHA、UTC 构建时间、`OS/ARCH` 和构建类型。未注入且无法可靠确定的值显示为 `unknown`；本地开发构建的产品版本默认为 `dev`、构建类型默认为 `development`。
+- **`--json` 成功体的 `data`**：仅包含 `version`，其结构为：
+  ```json
+  {
+    "version": {
+      "product_version": "1.2.3",
+      "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+      "build_type": "release",
+      "build_time": "2026-09-07T08:30:00Z",
+      "go_version": "go1.25.4",
+      "os": "linux",
+      "arch": "amd64",
+      "api_version": 1,
+      "min_supported_backend_api_version": 1
+    }
+  }
+  ```
+- **状态**：[x] Completed
 
 ---
 
@@ -169,6 +203,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 ## 3. 认证模块 (auth)
 
+需要访问平台的命令会读取当前 `active_context` 对应 `auth_infos` 条目中的 `token`。`auth ls` / `switch` / `rm` / `logout` 不读取 token。已有激活身份但该条目没有 `token`（例如从旧 Keyring 升级后尚未重新登录）时，访问平台的命令失败并提示重新 `auth login`。
+
 ### `crater auth login`
 - **描述**: 登录到一个 Crater platform 实例并获取 Token。
 - **选项**:
@@ -184,9 +220,9 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - **非交互式约束**: 在开启 `--no-interactive` 或 `--json` 时，如果未提供 `--password`，程序将直接报错而非使用空密码。
 - **预期行为**:
   - 调用 `/api/auth/login` 接口。
-  - 成功后将 Token 存入系统 Keyring，键名为 `crater`，子键为 `platform|user|mode`。
-  - 更新 `state.json` 中的 `auth_infos` 列表，并自动将该环境设为 `active_context`。
-- **`--json` 的 `data`**：`user`（与 CLI 持久化视图一致的用户摘要对象；**不含** token 明文等敏感字段，与实现 `config.AuthInfo` 对齐）。
+  - 成功后将 access token 明文写入 `state.json` 中对应 `auth_infos` 条目的 `token` 字段（与身份摘要同一文件，权限 `0600`）。
+  - 更新 `auth_infos` 列表，并自动将该环境设为 `active_context`。
+- **`--json` 的 `data`**：`user`（身份摘要对象，字段与 `auth_infos` 条目一致，但**不含** `token`）。
 - **状态**: [x] Completed
 
 ### `crater auth switch`
@@ -223,7 +259,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 标记出当前激活的 (`active`) 上下文。
 - **输出格式**:
   - 表格形式显示: `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
-- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目）。
+- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目；字段与磁盘 `auth_infos` 相同，但**不含** `token`）。
 - **状态**: [x] Completed
 
 ### `crater auth rm`
@@ -239,8 +275,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     - **交互模式**: 在终端列出所有匹配项，并要求用户确认是否删除。
     - **非交互模式 (`--no-interactive`)**: 必须配合 `-y` 选项，否则报错并拒绝执行。
   - **清理逻辑**: 
-    - 从 `state.json` 中移除对应条目。
-    - 同时从系统 Keyring 中删除关联的 Token。
+    - 从 `state.json` 的 `auth_infos` 中移除对应条目（其中的 `token` 一并删除）。
     - 如果删除的是当前 `active` 的上下文，则将 `active_context` 置为空。
 - **`--json` 的 `data`**：`removed_count`（整数）。
 - **状态**: [x] Completed
@@ -255,8 +290,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     - **交互模式**: 确认是否登出当前用户。
     - **非交互模式 (`--no-interactive`)**: 必须配合 `-y` 选项，否则报错。
   - **清理逻辑**: 
-    - 从 Keyring 中删除当前激活项的 Token。
-    - 从 `state.json` 的 `auth_infos` 列表中移除该项。
+    - 从 `state.json` 的 `auth_infos` 列表中移除当前激活项（其中的 `token` 一并删除）。
   - **后续行为 (Auto-Switch)**:
     - 如果列表中仍有其他已保存的认证上下文，则**自动切换**到列表中的第一项作为新的 `active_context`。
     - 如果列表为空，则清空 `active_context`。
@@ -276,7 +310,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--category` (string, required): 下载类别，可选 `model` 或 `dataset`。
   - `--source` (string): 下载来源，可选 `modelscope` / `ms` 或 `huggingface` / `hf`，默认为 `modelscope`；`ms` 与 `hf` 仅为 CLI 简写，发送给平台前会规范化为全拼。
   - `--revision` (string): 可选的分支、tag 或 revision。
-  - `--token` (string): 可选的访问令牌，用于 gated/private 仓库。该值仅随本次请求发送给平台，不写入 CLI 本地配置或 keyring，不在成功/错误输出中展示。
+  - `--token` (string): 可选的访问令牌，用于 gated/private 仓库。该值仅随本次请求发送给平台，不写入 CLI 本地配置，不在成功/错误输出中展示。
   - `--token-env` (string): 从指定环境变量读取可选访问令牌。与 `--token`、`--token-stdin` 互斥。
   - `--token-stdin` (bool): 从 stdin 读取可选访问令牌。与 `--token`、`--token-env` 互斥。
   - `--wait` (bool): 提交后轮询任务，直到状态进入 `Ready`、`Failed` 或 `Paused`。
@@ -285,7 +319,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**:
   - 本地校验 `--name`、`--category`、`--source`；可在请求前发现的问题必须聚合为单个 `usage_error`。
   - 若提供 `--token-env` 或 `--token-stdin`，CLI 读取 token 后仅用于本次请求；不得在输出中展示 token。
-  - 读取当前激活的认证上下文与 token；若未登录或 token 不可用，返回错误。
+  - 读取当前激活身份的 token；若未登录或该身份没有保存 token，返回错误（见认证模块）。
   - 调用平台接口创建下载任务。后端根据 `category` 自动选择平台侧目标目录（模型为 `public/Models`，数据集为 `public/Datasets`）。
   - 若平台返回资源已存在或正在下载，CLI 仍按成功处理并展示后端返回的任务信息与消息。
 - **输出格式**:
@@ -427,7 +461,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 ## 6. 作业模块 (job)
 
-本模块覆盖前端作业页面的通用 Volcano 作业能力：列表、详情、Pods、事件、YAML、模板、Jupyter/WebIDE 访问凭据、SSH、快照、告警、删除/停止、基础创建，以及管理员锁定/保留/清理操作。所有访问平台的命令都使用当前 `auth` active context 的 token。管理员能力统一放在 `crater admin job ...` 下，不使用普通命令加 `--admin`。
+本模块覆盖前端作业页面的通用 Volcano 作业能力：列表、详情、Pods、日志、事件、YAML、模板、Jupyter/WebIDE 访问凭据、SSH、快照、告警、删除/停止、基础创建，以及管理员锁定/保留/清理操作。所有访问平台的命令都使用当前 `auth` active context 的 token。管理员能力统一放在 `crater admin job ...` 下，不使用普通命令加 `--admin`。
 
 ### `crater job ls`
 - **描述**: 列出当前账号可见的作业。
@@ -437,8 +471,9 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--user` (string): 调用 `/api/v1/vcjobs/user/{username}`，列出指定用户且位于 `--days` 回看窗口内的作业。
   - `--days` (int): 覆盖当前路由的回溯天数；`-1` 表示不按时间过滤。小于 `-1` 的值返回 `usage_error`。不指定时，默认自视图不限制时间，`--all`/管理员视图回看 7 天，`--user` 回看 30 天。
   - `--search` (string): 服务端按作业名称、所有者或账户搜索，最多 128 个 Unicode 字符。
-  - `--status` (string): 服务端过滤作业状态。
-  - `--type` (string): 服务端过滤作业类型：`jupyter | webide | custom | pytorch | tensorflow | kuberay | deepspeed | openmpi`。
+  - `--status` (string slice): 服务端过滤作业状态，可重复或逗号分隔，最多 20 项。
+  - `--type` (string slice): 服务端过滤作业类型，可重复或逗号分隔，最多 20 项；类型为 `jupyter | webide | custom | pytorch | tensorflow | kuberay | deepspeed | openmpi`。
+  - `--schedule` (string slice): 服务端过滤调度类型，可重复或逗号分隔，值为 `normal | backfill`，最多 20 项。
   - `--node` (string): 服务端过滤运行在指定节点上的作业。
   - `--owner` (string): 本地按用户名或作业响应中的 owner 精确筛选。
   - `--from` / `--to` (string): 本地按 `createdAt` 时间范围筛选，支持 RFC3339 或 `YYYY-MM-DD`。
@@ -485,6 +520,29 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `events`: `events`
   - `yaml`: `yaml`
   - `template`: `template`
+- **状态**: [x] Completed
+
+### `crater job logs <name>`
+- **描述**: 根据平台作业名自动解析 Pod 和容器并输出日志，不需要手工执行 `job pods`、`pod containers`、`pod logs` 三条命令。
+- **位置参数**:
+  - `<name>` (positional, required): 平台作业名。
+- **选项**:
+  - `--pod` (string): 指定一个属于该作业的 Pod。
+  - `--all-pods` (bool): 输出作业全部 Pod 的日志；与 `--pod` 互斥。
+  - `--container` / `-c` (string): 指定容器。
+  - `--all-containers` (bool): 输出所选 Pod 中全部容器的日志；与 `--container` 互斥。
+  - `--tail` (int64, default `0`): 最近日志行数；`0` 表示全部，负数返回 `usage_error`。
+  - `--timestamps` (bool): 包含 Kubernetes 日志时间戳。
+  - `--previous` / `-p` (bool): 获取上一个已终止容器实例的日志。
+  - `--follow` / `-f` (bool): 实时跟随日志，仅支持一个 Pod 和一个容器；不能与 `--previous` 或 `--json` 同时使用。
+  - `--prefix` (bool): 仅为文本输出的每行添加 `[pod/container]` 前缀。选择多个日志来源时自动启用前缀；JSON 已提供独立的 `pod` 和 `container` 字段，不受该选项影响。
+- **选择逻辑**:
+  - 单 Pod、单普通容器会自动选择；默认忽略 init container。
+  - Pod 仅包含 init container 时不会自动回退；必须使用 `--container` 或 `--all-containers` 显式选择。
+  - 多 Pod 必须使用 `--pod` 或 `--all-pods`。
+  - Pod 中存在多个普通容器时必须使用 `--container` 或 `--all-containers`。
+  - 所有候选项和多来源输出均按 Pod、容器名称稳定排序。
+- **`--json` 的 `data`**：`logs`（数组）；每项固定包含 `namespace`、`pod`、`container`、`content`。`--prefix` 仅影响文本输出，不修改 JSON 内容。
 - **状态**: [x] Completed
 
 ### `crater job token|secret|ssh|snapshot|alert|delete <name>`
@@ -754,15 +812,15 @@ This section records the read-only API surface covered by the CLI after the broa
   - `crater pod containers|events|ingresses|nodeports <pod> --namespace NAMESPACE`
   - `crater pod logs <pod> <container> --namespace NAMESPACE [--tail N] [--timestamps] [--previous]`
 - 为兼容旧脚本，仍接受显式 namespace 的旧位置参数形式：`... <namespace> <pod>` 与 `logs <namespace> <pod> <container>`。同一次调用不能同时提供旧位置参数 namespace 和 `--namespace`，否则返回 `usage_error`。
-- 上述命令覆盖 `/api/v1/namespaces/...` diagnostic GET APIs。平台未向普通用户暴露全局作业命名空间配置，CLI 不硬编码或猜测默认值；`crater job get|pods|events|yaml` 始终使用作业 API 返回的真实 namespace。
-- Log streaming and terminal websocket APIs are intentionally not part of this read CLI.
+- 上述命令覆盖 `/api/v1/namespaces/...` diagnostic GET APIs；`pod logs` 会先解码后端 Base64 载荷再输出原始日志文本。平台未向普通用户暴露全局作业命名空间配置，CLI 不硬编码或猜测默认值；`crater job get|pods|logs|events|yaml` 始终使用作业 API 返回的真实 namespace。
+- Job-level log streaming is available through `crater job logs --follow`; terminal websocket APIs are intentionally not part of this CLI.
 - AIJob/SPJob reads are intentionally not exposed in this PR because their backend identifier contracts differ from Volcano job names and need a dedicated CLI design.
 
 ### Interfaces Not Exposed As General Read CLI
 - Sensitive credential reads (`/token`, `/secret`, Harbor credential APIs) are not exposed in the broad read surface.
-- WebSocket, terminal, and log streaming endpoints are not exposed because they are interactive/streaming rather than stable one-shot reads.
+- WebSocket and terminal endpoints are not exposed because they are interactive rather than stable one-shot reads.
 - The untracked local `inference-services` API is not documented here until that backend/frontend feature lands in the branch base.
-- Public health, Swagger, Prometheus metrics, and low-level WebDAV file listing are left to their domain-specific tools rather than this first read CLI pass.
+- Public health, Swagger, Prometheus metrics, and generic WebDAV operations are left to their domain-specific tools rather than this read CLI surface.
 
 ### Admin-Only Read Coverage
 - `crater admin system-config llm|gpu-analysis|prequeue`: `/api/v1/admin/system-config/{llm,gpu-analysis,prequeue}`.
@@ -778,6 +836,51 @@ This section records the read-only API surface covered by the CLI after the broa
 ## 8. 远端文件模块 (file)
 
 本模块面向普通用户访问 storage service 暴露的逻辑文件空间。远端路径不是本机路径，只允许以 `user`、`public` 或 `account` 为首段；CLI 会规范化安全的 `.`、重复分隔符和首尾分隔符，逐段进行 URL 编码，保留合法的空格与非 ASCII 文件名，并在请求前拒绝任何 `..` 段、反斜杠和控制字符。
+
+### `crater file ls [remote-path]`
+
+- **描述**：列出当前用户可见的远端文件或目录。
+- **位置参数**：
+  - `[remote-path]`（可选）：逻辑远端目录。省略时列出可见根目录；可用根为 `user`、`public`、`account`。
+- **处理逻辑**：
+  - 调用 `GET /api/ss/files` 或 `GET /api/ss/files/*path`。
+  - 目录排在普通文件之前，同类型条目按名称稳定排序。
+  - 空目录返回稳定的空列表。
+  - 本命令只读取普通用户文件视图，不会切换到管理员接口。
+- **输出格式**：
+  - 默认模式：表格展示 `NAME`、`TYPE`、`SIZE`、`MODIFIED`；目录的大小显示为 `-`。
+  - `--json`：stdout 输出成功信封 JSON。
+- **`--json` 的 `data`**：
+  - `files`（数组）：文件条目，每项包含 `name`、`size`、`isdir`、`modifytime`。
+- **状态**：[x] Completed
+
+下载、上传、创建目录、移动和删除不属于本命令范围，由各自独立的文件命令契约定义。
+
+### `crater file upload <local-file> <remote-path>`
+
+- **描述**：把一个本地普通文件流式上传到远端逻辑路径。
+- **位置参数**：
+  - `<local-file>`（必填）：本地普通文件。目录、管道、设备和 socket 会在请求前被拒绝。
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标文件路径，不能只给逻辑根。
+- **选项**：
+  - `--overwrite`（bool）：允许替换已存在的远端普通文件；默认拒绝覆盖。
+- **处理逻辑**：
+  - 调用 `POST /api/ss/upload/*path?overwrite=<bool>`，请求体直接流式读取本地文件，不把完整内容载入内存。
+  - storage service 在目标同目录写入临时文件，完成 `chmod`、`sync` 和 `close` 后才发布。新文件通过原子 no-clobber 链接发布；显式覆盖通过同目录原子重命名替换。服务端仅在支持安全 FD 相对发布的平台执行上传，其他平台明确失败。
+  - 服务端是覆盖策略的最终裁决者：即使预检后并发出现同名文件，未指定 `--overwrite` 也不会覆盖；上传失败不会暴露部分新文件或截断旧文件。
+  - 父目录必须预先存在，本命令不会自动创建目录。
+  - 不支持递归目录、glob、多文件、断点续传、分片或进度条。
+- **输出格式**：
+  - 默认模式：成功后展示本地路径、远端路径和已上传字节数。
+  - `--json`：stdout 仅输出结果元数据，不包含文件内容。
+- **`--json` 的 `data`**：
+  - `local_path`（字符串）：本地输入路径。
+  - `remote_path`（字符串）：规范化后的远端逻辑路径。
+  - `bytes`（整数）：服务端完整接收并发布的字节数。
+  - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
+  - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
+- **兼容性**：安全上传端点由 API 契约 2 提供，CLI 最低要求后端 API 版本 2。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **状态**：[x] Completed
 
 ### `crater file mkdir <remote-path>`
 
@@ -838,3 +941,5 @@ This section records the read-only API surface covered by the CLI after the broa
   - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
 - **兼容性**：安全上传端点随本功能新增。旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
 - **状态**：[x] Completed
+
+目录创建和移动命令要求后端 API 契约 3；CLI 不回退到旧语义。
